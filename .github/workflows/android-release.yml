@@ -1,0 +1,1038 @@
+# Produce the artefact Google Play actually accepts, and prove the app starts.
+#
+# Reads on from #245 (`android-build.yml`, the reproducible build), #37
+# (`docs/android-shell-build.md`), #244 (`docs/android-native-code.md`) and #27
+# (`docs/android-lock-screen.md`). The founder-facing half of this file is
+# `docs/android-release.md`.
+#
+# ── THREE GAPS, AND WHY THEY NEEDED A SECOND WORKFLOW ────────────────────────
+#
+#   1. NO BUNDLE EXISTED. `android-build.yml` runs `assembleDebug` and
+#      `assembleRelease`, which produce APKs. **Play requires an Android App
+#      Bundle**; an APK cannot be submitted to a new listing at all. `bundleRelease`
+#      is a different task with a different output directory, and until this file
+#      nothing in the repo ran it.
+#   2. NOTHING WAS SIGNED. `android-build.yml` says so in its own comments — "there
+#      is no keystore in this repo and no Play account". An unsigned bundle is the
+#      correct output for a build job with no credentials, and it is not
+#      submittable.
+#   3. THE APP HAD NEVER BEEN EXECUTED. Not on a device, not on an emulator. See
+#      the smoke job's header.
+#
+# THIS IS A SECOND FILE RATHER THAN THREE MORE STEPS IN THE FIRST, and the reason
+# is a property `android-workflow.test.mjs` pins by name: `android-build.yml`
+# READS NO SECRET, so it runs on any fork with no credentials, and it BOOTS NO
+# EMULATOR, because `docs/research/mp1-background-audio.md` §6.2 paid ~75 minutes
+# to learn what an emulator costs. Both of those are still true of that file and
+# should stay true — a job whose entire argument is "the build does not depend on
+# one machine" must not acquire a credential requirement. This file is where the
+# credentials and the emulator live, and it is triggered far less often.
+#
+# ── COST, MEASURED WHERE IT IS KNOWN AND ESTIMATED WHERE IT IS NOT ───────────
+#
+# `ubuntu-latest` bills at 1x and this repo is public, so GitHub-hosted minutes
+# are free. That is a reason not to worry about the bill, NOT a reason to run
+# this often — the sister project spent a build freeze suspecting exhausted
+# Actions minutes (#1641 there), and a slow job that runs on every PR is a slow
+# job everybody learns to ignore.
+#
+#   `android-bundle`  ~25 min. One Gradle configuration, one release compile.
+#   `android-smoke`   ~40 min, and the ONLY part of this repo with a genuine
+#                     flake surface: a cold emulator boot. MP1 §6.2 measured a
+#                     cold API-36 x86_64 boot NOT COMPLETING in ~35 minutes on a
+#                     laptop under WHPX, and its practical note for this exact
+#                     job says to "pin an older API level, or use a snapshot". So
+#                     the image here is API 34, not 36, and KVM is enabled
+#                     explicitly rather than hoped for. It is still the step most
+#                     likely to fail for reasons that have nothing to do with the
+#                     app.
+#
+# SO THE TRIGGER IS NARROW ON PURPOSE. `pull_request` fires only when the RELEASE
+# PIPELINE ITSELF changes — this file, the Gradle include, and the two scripts —
+# and NOT on every `mobile/**` change, which `android-build.yml` already covers.
+# `workflow_dispatch` is the founder's "make me something to upload" button. There
+# is no `push` and no `schedule`: a merge re-running what already ran on the PR
+# buys nothing, and a weekly emulator boot on days nothing changed buys less.
+#
+# NEITHER JOB IS A REQUIRED CHECK, and neither is named so it could become one by
+# accident — `protect-main` matches required contexts BY NAME (`backend`,
+# `data-and-site`, `path-policy`). A flaky required check is worse than no check;
+# this one is deliberately advisory, and the smoke job's verdict is read by a
+# human before a submission, not by a merge gate.
+#
+# ── NO THIRD-PARTY ACTIONS, INCLUDING THE OBVIOUS ONE ────────────────────────
+#
+# Every `uses:` here is `actions/*`. The standard way to run an Android emulator
+# in Actions is `reactivecircus/android-emulator-runner`, and it is not used, for
+# the same reason `android-actions/setup-android` is not used in
+# `android-build.yml`: a third-party action runs arbitrary code with the job's
+# token on every run. THAT ARGUMENT GOT STRONGER HERE, NOT WEAKER — this is the
+# one workflow in the repo that a signing key passes through. The emulator is
+# driven with `sdkmanager`, `avdmanager`, `emulator` and `adb` directly, which is
+# about thirty lines and is visible in this file.
+#
+# ── WHO CAN REACH THE KEY, SAID OUT LOUD RATHER THAN LEFT IMPLICIT ───────────
+#
+# GitHub makes secrets available to `pull_request` runs when the PR comes from a
+# branch in THIS repository (they are withheld only from forks). So a run of this
+# workflow on a same-repo PR can hold the upload key, and the workflow that run
+# executes is the one on the PR BRANCH — which means anyone with write access
+# here could, in principle, put a step in it that exfiltrates the key.
+#
+# THAT IS NOT A NEW HOLE THIS FILE OPENS; it is the property GitHub gives every
+# repository secret, and it is why the deliberate choice is stated rather than
+# discovered. It is accepted for two reasons: the alternative — materialising the
+# key only on `workflow_dispatch` — means the SIGNED path cannot be exercised
+# until after this file is on the default branch, and `workflow_dispatch` cannot
+# be triggered on a branch before then; and this repo's write list is two
+# founders plus agents operating under their authority, which is the same trust
+# boundary `path-policy` already describes as "a norm with a receipt, not a
+# wall".
+#
+# What follows from it, and is done: the key is decoded to a directory OUTSIDE
+# the uploaded artifact path, the password never reaches a command line, the
+# build log is scrubbed before anything reads it back, and a shred step runs on
+# failure as well as success. If the trust boundary ever widens — an outside
+# contributor with write access, a self-hosted runner — the right change is to
+# gate the key on `github.event_name != 'pull_request'` and accept that the
+# signed path is then only exercised post-merge.
+#
+# ── WHAT THIS STILL DOES NOT PROVE ───────────────────────────────────────────
+#
+# An emulator is not a phone, and `docs/research/mp1-background-audio.md` §6.4 is
+# a whole section on exactly where that bites: Doze never engages, the cached-app
+# freezer has no reason to fire, OEM battery managers are untestable by
+# construction, and audio focus, Bluetooth routing and car head units are not
+# reachable at all. So the smoke job settles LAUNCH and nothing about
+# BACKGROUNDED PLAYBACK, which remains `HUMAN-ACTIONS.md` #11's device pass. The
+# summary says so on the run itself, not only here.
+
+name: android-release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_code:
+        description: "versionCode for this bundle. Play REJECTS a versionCode it has already accepted, so bump it for every upload. Blank keeps Capacitor's template value of 1."
+        required: false
+        default: ""
+      version_name:
+        description: "versionName shown to users, e.g. 1.0.0. Blank keeps the template value of 1.0."
+        required: false
+        default: ""
+  pull_request:
+    # DELIBERATELY NOT `mobile/**`. `android-build.yml` covers ordinary shell
+    # changes; this fires only when the release pipeline itself changes, which is
+    # the only way a CI-only change can be reviewed against real output — and the
+    # only way the emulator job's cost lands on the PRs that chose to pay it.
+    paths:
+      - ".github/workflows/android-release.yml"
+      - "mobile/gradle/**"
+      - "tools/mobile/wire-signing.mjs"
+      - "tools/mobile/webview-probe.mjs"
+
+concurrency:
+  group: android-release-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # ───────────────────────────────────────────────────────────────────────────
+  # The submittable artefact.
+  # ───────────────────────────────────────────────────────────────────────────
+  android-bundle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      SDK_PLATFORM: platforms;android-36
+      SDK_BUILD_TOOLS: build-tools;36.0.0
+      # NO `runner.*` HERE. The `runner` context is not available in a job-level
+      # `env:` block and an unavailable context is a workflow-COMPILE error, not
+      # an empty string — the job would never start. $ART is set from
+      # $RUNNER_TEMP in the first step, exactly as the other two shell workflows
+      # do it.
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Toolchain versions (the first thing to read when this breaks)
+        run: |
+          set -euo pipefail
+          echo "ART=$RUNNER_TEMP/android-release" >> "$GITHUB_ENV"
+          mkdir -p "$RUNNER_TEMP/android-release"
+          # THE KEY DIRECTORY IS A SIBLING OF $ART, NEVER A CHILD OF IT, and that
+          # is the single most important line in this file. $ART is uploaded as a
+          # public artifact at the end of the run; anything inside it is
+          # downloadable by anyone who can see the repo. A keystore written one
+          # directory too deep is the founder's signing key published to the
+          # internet, from a run that looks completely routine.
+          echo "KEYDIR=$RUNNER_TEMP/android-keys" >> "$GITHUB_ENV"
+          {
+            echo "runner: $(uname -srm)"
+            java -version 2>&1
+            node --version
+          } | tee "$RUNNER_TEMP/android-release/toolchain.txt"
+          javac -version 2>&1 | grep -qE '^javac 21\.' \
+            || { echo "javac is not 21 — Capacitor 8 will fail at compileDebugJavaWithJavac"; exit 1; }
+
+      - name: The Android SDK, from the image plus exactly what we pin
+        run: |
+          set -euo pipefail
+          SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          if [ -z "$SDK" ] || [ ! -d "$SDK" ]; then
+            echo "Neither ANDROID_HOME nor ANDROID_SDK_ROOT points at an SDK on this runner."
+            exit 1
+          fi
+          echo "ANDROID_HOME=$SDK" >> "$GITHUB_ENV"
+          SDKMANAGER=$(command -v sdkmanager 2>/dev/null || true)
+          if [ -z "$SDKMANAGER" ]; then
+            SDKMANAGER=$(ls "$SDK"/cmdline-tools/*/bin/sdkmanager 2>/dev/null | tail -1 || true)
+          fi
+          if [ -z "$SDKMANAGER" ] || [ ! -x "$SDKMANAGER" ]; then
+            echo "no sdkmanager on PATH or under $SDK/cmdline-tools/*/bin/"
+            exit 1
+          fi
+          yes 2>/dev/null | "$SDKMANAGER" --licenses > /dev/null || true
+          "$SDKMANAGER" --install "$SDK_PLATFORM" "$SDK_BUILD_TOOLS"
+
+      - name: Install the shell's dependencies
+        working-directory: mobile
+        run: |
+          set -euo pipefail
+          npm ci --no-audit --no-fund
+
+      - name: Build the webDir and generate the Android project
+        working-directory: mobile
+        run: |
+          set -euo pipefail
+          npm run add:android 2>&1 | tee "$ART/cap-add-android.log"
+          echo "sdk.dir=$ANDROID_HOME" > android/local.properties
+          chmod +x android/gradlew
+
+      - name: Wire the signing include into the generated project
+        # `mobile/android/app/build.gradle` is Capacitor TEMPLATE OUTPUT,
+        # regenerated by the step above on every run, with no signingConfigs block
+        # and a hardcoded `versionCode 1`. The decision lives in the tracked
+        # `mobile/gradle/foray-signing.gradle`; this re-applies it after
+        # generation, the same shape `cap sync` uses for `foray-audio`.
+        #
+        # `--check` IS A SECOND RUN, NOT DECORATION. The first invocation reports
+        # what it did; the second re-reads both files off disk and fails if the
+        # apply line or the copied include is not there. A build that is silently
+        # not applying the signing config produces an unsigned bundle and prints
+        # BUILD SUCCESSFUL, which is the failure this whole file is about.
+        run: |
+          set -euo pipefail
+          node tools/mobile/wire-signing.mjs mobile/android
+          node tools/mobile/wire-signing.mjs mobile/android --check
+          tail -8 mobile/android/app/build.gradle | tee "$ART/app-build-gradle-tail.txt"
+
+      - name: Materialise the upload key, if the founder has installed one
+        # ABSENT IS A SUPPORTED STATE. With no `ANDROID_KEYSTORE_B64` secret —
+        # every fork, and every PR opened from one — the step exports an empty path
+        # and the build below produces an UNSIGNED bundle rather than failing. That
+        # is not a degraded mode to be hidden: it is checked for explicitly two
+        # steps down, so "unsigned" is a VERIFIED outcome rather than an assumed
+        # one, and a wiring bug that inverted the two branches fails on either.
+        #
+        # THE STORE IS PKCS12 AND ITS SINGLE PASSWORD IS ONE SECRET. There is no
+        # `ANDROID_KEY_PASSWORD`, because a PKCS12 entry cannot have a key password
+        # that differs from the store password.
+        id: key
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+        run: |
+          set -euo pipefail
+          if [ -z "${KEYSTORE_B64:-}" ]; then
+            echo "keyed=false" >> "$GITHUB_OUTPUT"
+            echo "path=" >> "$GITHUB_OUTPUT"
+            echo "No ANDROID_KEYSTORE_B64 secret is available: this run will produce an UNSIGNED bundle."
+            echo "That is expected on a fork. See docs/android-release.md for the three secret names."
+            exit 0
+          fi
+          mkdir -p "$KEYDIR"
+          chmod 700 "$KEYDIR"
+          # `--decode` (not `-d`) because GNU and BSD base64 disagree on the short
+          # flag, and a wrong-flag failure here writes a zero-byte file that Gradle
+          # would then reject with a message about keystore format.
+          # `if !`, NOT A BARE PIPELINE. GNU base64 exits 1 on invalid input and
+          # `set -o pipefail` would abort the step there — so the message below,
+          # which names the secret and the fix, was unreachable for the commonest
+          # half of the case it was written for, and the founder would see
+          # `base64: invalid input` instead.
+          if ! printf '%s' "$KEYSTORE_B64" | base64 --decode > "$KEYDIR/upload.p12"; then
+            echo "ANDROID_KEYSTORE_B64 is not valid base64 — re-run the gh secret set line in docs/android-release.md §2"
+            exit 1
+          fi
+          chmod 600 "$KEYDIR/upload.p12"
+          if [ ! -s "$KEYDIR/upload.p12" ]; then
+            echo "ANDROID_KEYSTORE_B64 decoded to an empty file — the secret is truncated"
+            exit 1
+          fi
+          echo "keyed=true" >> "$GITHUB_OUTPUT"
+          echo "path=$KEYDIR/upload.p12" >> "$GITHUB_OUTPUT"
+          echo "upload key materialised ($(stat -c%s "$KEYDIR/upload.p12") bytes) outside the uploaded artifact directory"
+
+      - name: bundleRelease — the .aab Play accepts
+        # THE OUTPUT DIRECTORY IS NOT THE APK ONE. `app/build/outputs/bundle/release/`,
+        # not `app/build/outputs/apk/release/`, and the file is `app-release.aab`
+        # whether or not it is signed — unlike the APK, which renames itself to
+        # `app-release-unsigned.apk`. So the filename cannot be used to tell the
+        # two apart, which is why the verification step below reads the signature.
+        id: bundle
+        working-directory: mobile/android
+        env:
+          KEYED: ${{ steps.key.outputs.keyed }}
+          # ENVIRONMENT, NEVER `-P`. A Gradle property is in the process's argv and
+          # therefore in `ps`, in the daemon's record of the invocation, and in any
+          # trace that echoes the command line. These are read by
+          # `System.getenv` in `mobile/gradle/foray-signing.gradle` and handed
+          # straight to `signingConfig`.
+          FORAY_KEYSTORE_PATH: ${{ steps.key.outputs.path }}
+          FORAY_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          FORAY_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          FORAY_VERSION_CODE: ${{ inputs.version_code }}
+          FORAY_VERSION_NAME: ${{ inputs.version_name }}
+        run: |
+          set -euo pipefail
+          # ── THE LENGTH FLOOR COMES FIRST, BEFORE ANY BUILD ─────────────────
+          # The scan further down is a SUBSTRING search. A three-letter password
+          # occurs in an ordinary Gradle log by coincidence, so the scan would
+          # delete a clean log and report a leak that did not happen. The honest
+          # reading of that case is the other one: a password short enough to
+          # collide with build output is not a password.
+          #
+          # IT IS FIRST BECAUSE IT USED TO SIT AFTER THE BUILD, and two reviewers
+          # independently found the same hole: `exit 1` there left an UNSCANNED
+          # log in $ART, which `if: always()` then published — the exact vector
+          # the scan exists to close, reachable only through the one input that
+          # makes the scan unusable. Ordering it first also makes the message true.
+          if [ -n "${FORAY_KEYSTORE_PASSWORD:-}" ] && [ "${#FORAY_KEYSTORE_PASSWORD}" -lt 12 ]; then
+            echo "the keystore password is under 12 characters. Refusing to build: it cannot be told apart"
+            echo "from ordinary log text, so the leak scan below would be meaningless. Rotate to a longer one."
+            exit 1
+          fi
+          # ── THE LOG IS WRITTEN OUTSIDE $ART AND COPIED IN ONLY ONCE CLEAN ──
+          # ORDERING ALONE WAS NOT ENOUGH. `timeout-minutes`, a cancelled
+          # concurrency group, or any future `exit` added between the build and
+          # the scan all leave whatever is on disk for the `if: always()` upload
+          # to publish — a scan that protects one code path of one step, against
+          # an upload that is unconditional, is a scan with a gap in it. So the
+          # log lives in $RUNNER_TEMP's root, which is NOT uploaded, until it has
+          # been read. Same structural argument that puts $KEYDIR beside $ART
+          # rather than inside it.
+          LOG="$RUNNER_TEMP/gradle-bundleRelease.log"
+          ./gradlew foraySigningStatus --no-daemon --console=plain -q \
+            | tee "$ART/signing-status.txt"
+          # AND THE TWO ANSWERS MUST AGREE, BEFORE 25 MINUTES ARE SPENT ON THEM.
+          # The workflow decides `keyed` from the secret; the Gradle include
+          # decides `signingRequested` from the environment it was handed. If those
+          # disagree — a renamed variable, a `working-directory` that stops the
+          # include being applied — the signature step catches it at the end of the
+          # build. This catches it at the start, and names which half is wrong.
+          # Until now nothing read `signing-status.txt`, so the file was evidence
+          # for a human and a check for nobody.
+          if [ "${KEYED:-false}" = "true" ]; then
+            grep -q 'FORAY_SIGNING_STATUS=keyed' "$ART/signing-status.txt" \
+              || { echo "a keystore was supplied but Gradle configured an UNSIGNED build — the signing include is not being applied"; exit 1; }
+          fi
+          # THE EXIT CODE IS CAPTURED, NOT INFERRED FROM `$?` AFTER A PIPE.
+          #
+          # GITHUB MASKS SECRETS IN LOGS AND NOT IN ARTIFACTS. This log is uploaded
+          # at the end of the run and is downloadable by anyone who can see the
+          # repo, so `***` in the web log is no protection at all for the copy in
+          # the zip. AGP does not print the password today; a future AGP, a
+          # `--stacktrace` added in haste, or a keystore error that echoes its
+          # inputs all could. The check never prints what it is looking for.
+          set +e
+          ./gradlew bundleRelease --no-daemon --console=plain > "$LOG" 2>&1
+          GRADLE_STATUS=$?
+          set -e
+          if [ -n "${FORAY_KEYSTORE_PASSWORD:-}" ] && grep -qF "$FORAY_KEYSTORE_PASSWORD" "$LOG"; then
+            rm -f "$LOG"
+            echo "the Gradle log contained the keystore password; it has been deleted rather than uploaded."
+            echo "Find what printed it before running this again."
+            exit 1
+          fi
+          # ONLY NOW does the log enter the directory that gets published.
+          cp "$LOG" "$ART/gradle-bundleRelease.log"
+          if [ "$GRADLE_STATUS" -ne 0 ]; then
+            echo "::group::bundleRelease tail"; tail -300 "$ART/gradle-bundleRelease.log"; echo "::endgroup::"
+            exit 1
+          fi
+          # A GREEN RELEASE BUILD THAT SKIPPED LINT PROVES LESS THAN IT LOOKS, and
+          # `bundleRelease` depends on `lintVitalRelease` exactly as `assembleRelease`
+          # does. Same two checks as android-build.yml — present in the task list, and
+          # not SKIPPED/NO-SOURCE — because the same three ways to bypass it apply.
+          LINTLINE=$(grep -E '^> Task :app:lintVitalRelease( |$)' "$ART/gradle-bundleRelease.log" | tail -1 || true)
+          if [ -z "$LINTLINE" ]; then
+            echo "bundleRelease did not run :app:lintVitalRelease — the release lint gate is not actually running"
+            exit 1
+          fi
+          case "$LINTLINE" in
+            *SKIPPED*|*NO-SOURCE*) echo "lintVitalRelease was registered but did not execute: $LINTLINE"; exit 1 ;;
+          esac
+          AAB=app/build/outputs/bundle/release/app-release.aab
+          test -f "$AAB" || { echo "no .aab at $AAB"; ls -R app/build/outputs || true; exit 1; }
+          cp "$AAB" "$ART/foray-release.aab"
+          echo "aab_bytes=$(stat -c%s "$AAB")" >> "$GITHUB_OUTPUT"
+
+      - name: It is really a BUNDLE, and it really contains the app
+        # DO NOT TRUST THAT THE TASK PRINTED SUCCESS. `android-build.yml` already
+        # documents three ways `assembleRelease` says BUILD SUCCESSFUL without
+        # having done the job; a bundle has its own. The file is opened and its
+        # entries are read.
+        #
+        # THE STRUCTURAL CHECK IS THE ONE THAT MATTERS. An .aab and an .apk are
+        # both zips and both end up in `app/build/outputs`, and a wrong `cp` or a
+        # future task rename would produce a file with the right name and the
+        # wrong contents. They are distinguishable by layout and by nothing else:
+        # a BUNDLE has `BundleConfig.pb` and a `base/` module with a PROTOBUF
+        # manifest and `resources.pb`; an APK has a top-level binary
+        # `AndroidManifest.xml` and `resources.arsc` and neither of the above. Both
+        # directions are asserted, so a renamed APK fails here rather than at
+        # Play's upload form.
+        id: verify
+        run: |
+          set -euo pipefail
+          AAB="$ART/foray-release.aab"
+          unzip -Z1 "$AAB" > "$ART/aab-entries.txt"
+          echo "$(wc -l < "$ART/aab-entries.txt") entries"
+          for needle in \
+            'BundleConfig.pb' \
+            'base/manifest/AndroidManifest.xml' \
+            'base/dex/classes.dex' \
+            'base/resources.pb' \
+            'base/assets/public/index.html' \
+            'base/assets/public/app.js' \
+            'base/assets/capacitor.plugins.json'
+          do
+            grep -qxF "$needle" "$ART/aab-entries.txt" \
+              || { echo "this is not a usable app bundle: no $needle"; exit 1; }
+          done
+          # `if`, NOT `grep … && { exit 1; }`. Under `set -e` the `&&` form does not
+          # abort on the *absent* case, which is the case we want, so it happens to
+          # work — and "happens to work because of an exemption in the -e rules" is
+          # not what a check that guards the shipped artefact should rest on.
+          for forbidden in 'AndroidManifest.xml' 'resources.arsc' 'classes.dex'
+          do
+            if grep -qxF "$forbidden" "$ART/aab-entries.txt"; then
+              echo "$forbidden at the archive root — this is an APK renamed to .aab, not a bundle"
+              exit 1
+            fi
+          done
+          # OUR OWN NATIVE CODE, INSIDE THE BUNDLE. `android-build.yml` reads the
+          # merged manifest and the DEBUG APK; nothing had ever read the release
+          # bundle. The manifest here is protobuf-encoded, so the needles are
+          # matched as raw bytes (`grep -a`) — protobuf stores these strings
+          # literally, and a manifest that lost the service would lose them.
+          unzip -p "$AAB" base/manifest/AndroidManifest.xml > "$ART/aab-manifest.pb"
+          for needle in \
+            'ai.jwlabs.foura' \
+            'ai.jwlabs.foura.audio.PlaybackKeepAliveService' \
+            'mediaPlayback' \
+            'android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK'
+          do
+            grep -qaF "$needle" "$ART/aab-manifest.pb" \
+              || { echo "the bundle's manifest is missing: $needle"; exit 1; }
+          done
+          unzip -p "$AAB" base/assets/capacitor.plugins.json | tee "$ART/aab-capacitor.plugins.json"
+          grep -qF 'ai.jwlabs.foura.audio.ForayAudioPlugin' "$ART/aab-capacitor.plugins.json" \
+            || { echo "the bundle did not register ForayAudioPlugin"; exit 1; }
+
+      - name: Signed, or verifiably not signed — never assumed either way
+        # BOTH BRANCHES ASSERT. The failure this exists for is the quiet one: a
+        # keystore secret is installed, something in the wiring stops working, and
+        # the run stays green while emitting an unsigned bundle that Play rejects
+        # two weeks later. So when a key was supplied the signature must VERIFY,
+        # and when none was the archive must contain NO signature block — a wiring
+        # bug that inverted the two would fail on whichever branch it took.
+        #
+        # `jarsigner`, not `apksigner`. A bundle carries a JAR signature; the APK
+        # signature schemes v2/v3 are applied by Play to the APKs it generates
+        # from the bundle, so `apksigner verify` on an .aab is the wrong question.
+        # No `-strict`: an upload key is self-signed by design, and `-strict`
+        # returns non-zero for a certificate chain it cannot validate.
+        id: signature
+        env:
+          KEYED: ${{ steps.key.outputs.keyed }}
+          # THE UPLOAD KEY'S PUBLIC IDENTITY, PINNED. This is a certificate
+          # fingerprint: public by construction, displayed by Play on its own App
+          # Signing page, and worth nothing to an attacker. Pinning it turns
+          # "something signed this" into "THE upload key signed this" — the one
+          # remaining silent failure after the checks above, because a bundle
+          # signed by the wrong key verifies perfectly and is rejected at upload
+          # with `Your Android App Bundle is signed with the wrong key`.
+          #
+          # IF THIS EVER GOES RED, DO NOT EDIT IT TO MATCH. A changed fingerprint
+          # means the key changed, and for an app already on Play that is
+          # unrecoverable without Google's key-reset process. Find out why first.
+          EXPECTED_SIGNER_SHA256: "92:92:D8:5B:96:32:05:B4:00:45:BC:26:FC:00:9A:C4:10:B1:12:F6:85:C6:88:75:82:32:48:04:DA:1F:8C:19"
+        run: |
+          set -euo pipefail
+          AAB="$ART/foray-release.aab"
+          SIGBLOCKS=$(grep -cE '^META-INF/.*\.(RSA|DSA|EC)$' "$ART/aab-entries.txt" || true)
+          if [ "${KEYED:-false}" = "true" ]; then
+            # EXACTLY ONE, not "at least one". Two signature blocks means two
+            # signers, and the fingerprint check below is a substring search over
+            # a certificate dump that would then contain both — so a bundle signed
+            # by the upload key AND something else would pass every check here.
+            if [ "$SIGBLOCKS" -ne 1 ]; then
+              echo "expected exactly one signature block in the bundle, found $SIGBLOCKS — the signing config was not applied, or something else signed it too"
+              exit 1
+            fi
+            jarsigner -verify "$AAB" > "$ART/jarsigner.txt" 2>&1 || {
+              cat "$ART/jarsigner.txt"; echo "jarsigner could not verify the bundle"; exit 1; }
+            grep -q 'jar verified' "$ART/jarsigner.txt" \
+              || { cat "$ART/jarsigner.txt"; echo "jarsigner did not report the bundle as verified"; exit 1; }
+            # `keytool -printcert -jarfile` reads the certificate OUT OF THE
+            # ARTEFACT, so this is a property of the file being uploaded rather
+            # than of the keystore we think we used. Colons and case are
+            # normalised away so a formatting change in keytool's output cannot
+            # make a matching fingerprint look like a mismatch.
+            keytool -printcert -jarfile "$AAB" > "$ART/signer-cert.txt" 2>&1 || {
+              cat "$ART/signer-cert.txt"; echo "keytool could not read the bundle's certificate"; exit 1; }
+            NORM=$(tr -d ':' < "$ART/signer-cert.txt" | tr 'a-f' 'A-F')
+            WANT=$(printf '%s' "$EXPECTED_SIGNER_SHA256" | tr -d ':' | tr 'a-f' 'A-F')
+            if ! printf '%s' "$NORM" | grep -qF "$WANT"; then
+              echo "the bundle is signed by a certificate that is NOT the pinned upload key."
+              echo "expected SHA-256 $EXPECTED_SIGNER_SHA256"
+              # The whole certificate, printed: it is public information, and the
+              # alternative is a mismatch nobody can diagnose without a rerun.
+              cat "$ART/signer-cert.txt"
+              exit 1
+            fi
+            echo "state=signed" >> "$GITHUB_OUTPUT"
+            echo "the bundle is signed, jarsigner verifies it, and the signer is the pinned upload key"
+          else
+            if [ "$SIGBLOCKS" -ne 0 ]; then
+              echo "no keystore was supplied but the bundle carries $SIGBLOCKS signature block(s) — something signed this and we do not know with what"
+              exit 1
+            fi
+            echo "state=unsigned" >> "$GITHUB_OUTPUT"
+            echo "no upload key on this run: the bundle is unsigned and NOT submittable. This is the expected state until HUMAN-ACTIONS.md's keystore item is done."
+          fi
+
+      - name: Shred the upload key
+        # `if: always()`, AND IT IS THE REASON THIS IS ITS OWN STEP. A decoded
+        # keystore that survives the job is a keystore in a workspace whose
+        # lifetime nobody in this repo controls: on a GitHub-hosted runner the VM
+        # is destroyed, which is why this is belt-and-braces rather than the only
+        # defence — but self-hosted runners reuse the filesystem, and the day
+        # someone adds one is not the day to discover the key was left behind.
+        # A step that only runs on success cleans up on exactly the runs where
+        # nothing went wrong.
+        #
+        # BEFORE the artifact upload, deliberately: ordering is what makes this a
+        # guarantee rather than a race, even though $KEYDIR is outside the
+        # uploaded path.
+        if: always()
+        run: |
+          set -euo pipefail
+          KEYDIR="${KEYDIR:-$RUNNER_TEMP/android-keys}"
+          if [ -d "$KEYDIR" ]; then
+            find "$KEYDIR" -type f -exec shred -u {} + 2>/dev/null || rm -rf "$KEYDIR"
+            rm -rf "$KEYDIR"
+          fi
+          test ! -e "$KEYDIR" || { echo "could not remove $KEYDIR"; exit 1; }
+          echo "no keystore remains on this runner"
+
+      - name: What this run established
+        if: always()
+        env:
+          BUNDLE_OUTCOME: ${{ steps.bundle.outcome }}
+          VERIFY_OUTCOME: ${{ steps.verify.outcome }}
+          AAB_BYTES: ${{ steps.bundle.outputs.aab_bytes }}
+          SIGN_STATE: ${{ steps.signature.outputs.state }}
+        run: |
+          set -euo pipefail
+          ART="${ART:-$RUNNER_TEMP/android-release}"
+          mkdir -p "$ART"
+          {
+            echo "## Android release bundle"
+            echo
+            echo "| | |"
+            echo "|---|---|"
+            echo "| \`bundleRelease\` (incl. \`lintVitalRelease\`) | **${BUNDLE_OUTCOME:-not reached}** |"
+            echo "| bundle structure verified | **${VERIFY_OUTCOME:-not reached}** |"
+            echo "| \`foray-release.aab\` | ${AAB_BYTES:-—} bytes |"
+            echo "| signature | **${SIGN_STATE:-not reached}** |"
+            echo
+            if [ "${SIGN_STATE:-}" = "unsigned" ]; then
+              echo "**This bundle cannot be submitted.** It is unsigned because"
+              echo "\`ANDROID_KEYSTORE_B64\` was not available to this run — which is the"
+              echo "expected state on a fork, and a configuration problem anywhere else."
+              echo "\`docs/android-release.md\` lists the three secrets and how they are set."
+            fi
+            if [ "${SIGN_STATE:-}" = "signed" ]; then
+              echo "**Ready to upload.** Download the \`foray-android-release\` artifact from"
+              echo "this run, unzip it, and submit \`foray-release.aab\` in the Play Console."
+              echo "The signer was checked against the pinned upload-key fingerprint, so this"
+              echo "file is signed with the key Play expects."
+            fi
+            echo
+            echo "**A launch is not a listening session.** The smoke job below (or its"
+            echo "absence) says whether the app starts. Neither job says anything about"
+            echo "backgrounded playback, Doze, the cached-app freezer, OEM battery managers"
+            echo "or Bluetooth routing — \`docs/research/mp1-background-audio.md\` §6.4 is why"
+            echo "an emulator cannot, and \`HUMAN-ACTIONS.md\` #11 is the device pass that can."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload the bundle and everything this run learned
+        # RETENTION IS 30 DAYS, not the 14 the build job uses. This artefact is
+        # meant to be DOWNLOADED AND SUBMITTED by a human on his own schedule, and
+        # a submission window that closes in a fortnight is an artefact that
+        # quietly has to be rebuilt.
+        #
+        # THE PATH IS $ART EXACTLY. The upload key was written to a SIBLING
+        # directory ($KEYDIR) precisely so that no widening of this path can
+        # publish it; `${{ runner.temp }}` here would upload the keystore.
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: foray-android-release
+          path: ${{ runner.temp }}/android-release
+          if-no-files-found: warn
+          retention-days: 30
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # The launch.
+  # ───────────────────────────────────────────────────────────────────────────
+  android-smoke:
+    # WHAT THIS JOB IS, IN ONE SENTENCE: the first time anything in this repo has
+    # ever RUN the Android app.
+    #
+    # `docs/android-shell-build.md` §3 says the CSP verdict in §2 is "INFERRED
+    # FROM SOURCE with nothing executed in a WebView". `mp1-background-audio.md`
+    # §6.2 records the emulator attempt that never reached a usable framework, so
+    # "the app never ran" was literally true. `android-build.yml`'s header repeats
+    # "A BUILD IS NOT A LAUNCH" because a green build is exactly the artefact that
+    # gets mistaken for one. Submitting to Play something that has never been
+    # started is how a crash-on-launch rejection happens.
+    #
+    # IT IS NOT `needs: android-bundle`, and that is deliberate rather than
+    # careless. The bundle is not installable — a .aab has to be turned into APKs
+    # first, and doing that requires a signing key this job must not have. And
+    # DevTools, which is what makes the probe below able to see anything at all,
+    # is reachable only on a DEBUGGABLE build (Capacitor's `CapConfig` defaults
+    # `webContentsDebuggingEnabled` to `FLAG_DEBUGGABLE`). So this job builds and
+    # installs the DEBUG APK, and the transfer to the release configuration is
+    # asserted rather than assumed — see the `minifyEnabled` step.
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    env:
+      SDK_PLATFORM: platforms;android-36
+      SDK_BUILD_TOOLS: build-tools;36.0.0
+      # ── API 34 WHILE THE APP TARGETS 36. DELIBERATE. ────────────────────
+      #
+      # Asked and answered here because a reader will wonder, and because the
+      # honest version has a cost attached.
+      #
+      # WHY NOT 36: `docs/research/mp1-background-audio.md` §6.2 is a measurement,
+      # not a preference — a cold API-36 x86_64 image did not reach a usable
+      # framework in ~35 minutes under WHPX, across three attempts, and §6.3's
+      # "practical note for #38 (the CI-runner work)" says in so many words to
+      # pin an older API level. A runner with KVM is a different machine from that
+      # laptop, but the measurement is the only data this project has and it points
+      # one way.
+      #
+      # WHY 34 IS A REASONABLE ANSWER: minSdk is 24 and targetSdk is 36, so 34 is
+      # inside the range this app claims to support, and it is nearer the installed
+      # base a real listener has than the newest image is. Testing on an older API
+      # than you target is what users do.
+      #
+      # WHAT IT THEREFORE DOES NOT EXERCISE, said plainly: every behaviour change
+      # that lands BECAUSE targetSdk is 36. Android 15's edge-to-edge enforcement,
+      # its foreground-service and `mediaPlayback` tightening, and anything Android
+      # 16 adds are all gated on the platform the app runs ON, and this job never
+      # runs on one. So "the app launches" from this job means "on API 34". If a
+      # launch crash ever appears only on a current phone, this is the first place
+      # to look, and the fix is a second matrix entry rather than a change here —
+      # `HUMAN-ACTIONS.md` #11's device pass is the cheaper instrument for it.
+      EMULATOR_IMAGE: system-images;android-34;google_apis;x86_64
+      AVD_NAME: foray-ci
+      PKG: ai.jwlabs.foura
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # 22 matches the other two shell workflows. It is also the floor for the
+          # WebView probe, which uses the global `WebSocket` Node has provided
+          # since 22; the script asserts that rather than assuming it.
+          node-version: 22
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Enable KVM, or the emulator falls back to software and never boots
+        # WITHOUT THIS THE JOB DOES NOT MERELY GET SLOWER. GitHub's Linux runners
+        # expose /dev/kvm but with permissions that do not include the runner
+        # user, and an emulator that cannot open it falls back to an interpreter
+        # — which is the regime MP1 §6.2 measured at "not booted after 35
+        # minutes". One udev rule is the difference between a ~2 minute boot and a
+        # timeout.
+        run: |
+          set -euo pipefail
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules > /dev/null
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          test -w /dev/kvm || { echo "/dev/kvm is still not writable — this runner cannot accelerate an emulator"; exit 1; }
+
+      - name: The Android SDK, plus the emulator and one system image
+        run: |
+          set -euo pipefail
+          echo "ART=$RUNNER_TEMP/android-smoke" >> "$GITHUB_ENV"
+          mkdir -p "$RUNNER_TEMP/android-smoke"
+          SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          if [ -z "$SDK" ] || [ ! -d "$SDK" ]; then
+            echo "Neither ANDROID_HOME nor ANDROID_SDK_ROOT points at an SDK on this runner."
+            exit 1
+          fi
+          echo "ANDROID_HOME=$SDK" >> "$GITHUB_ENV"
+          SDKMANAGER=$(command -v sdkmanager 2>/dev/null || true)
+          if [ -z "$SDKMANAGER" ]; then
+            SDKMANAGER=$(ls "$SDK"/cmdline-tools/*/bin/sdkmanager 2>/dev/null | tail -1 || true)
+          fi
+          if [ -z "$SDKMANAGER" ] || [ ! -x "$SDKMANAGER" ]; then
+            echo "no sdkmanager on PATH or under $SDK/cmdline-tools/*/bin/"
+            exit 1
+          fi
+          yes 2>/dev/null | "$SDKMANAGER" --licenses > /dev/null || true
+          "$SDKMANAGER" --install "$SDK_PLATFORM" "$SDK_BUILD_TOOLS" "platform-tools" "emulator" "$EMULATOR_IMAGE"
+          # `avdmanager` LIVES BESIDE THE RESOLVED `sdkmanager`, not at a guessed
+          # path. The image may carry a versioned `cmdline-tools/<rev>/` rather
+          # than one called `latest`, which is why sdkmanager is searched for
+          # above; assuming avdmanager is on PATH would reintroduce exactly that
+          # assumption one step later.
+          echo "$SDK/platform-tools" >> "$GITHUB_PATH"
+          echo "$SDK/emulator" >> "$GITHUB_PATH"
+          echo "$(dirname "$SDKMANAGER")" >> "$GITHUB_PATH"
+
+      - name: Build the webDir, generate the project, and build the debug APK
+        working-directory: mobile
+        run: |
+          set -euo pipefail
+          npm ci --no-audit --no-fund
+          npm run add:android > "$ART/cap-add-android.log" 2>&1
+          echo "sdk.dir=$ANDROID_HOME" > android/local.properties
+          chmod +x android/gradlew
+          cd android
+          if ! ./gradlew assembleDebug --no-daemon --console=plain \
+              > "$ART/gradle-assembleDebug.log" 2>&1; then
+            echo "::group::assembleDebug tail"; tail -300 "$ART/gradle-assembleDebug.log"; echo "::endgroup::"
+            exit 1
+          fi
+          APK=app/build/outputs/apk/debug/app-debug.apk
+          test -f "$APK"
+          cp "$APK" "$ART/app-debug.apk"
+          echo "APK=$PWD/$APK" >> "$GITHUB_ENV"
+
+      - name: The debug build is still a fair stand-in for the release build
+        # THE ASSUMPTION THIS JOB RESTS ON, CHECKED RATHER THAN ASSUMED. Everything
+        # below installs the DEBUG APK, because DevTools is only reachable on a
+        # debuggable build. That is worth anything only while the two
+        # configurations compile the same code, and today they do: Capacitor's
+        # template sets `minifyEnabled false` for release, so R8 does not strip,
+        # rename or inline anything in the release build that it leaves alone in
+        # the debug one.
+        #
+        # IF A FUTURE TEMPLATE TURNS MINIFICATION ON, that stops being true
+        # silently — and silently is the whole problem, because reflection-based
+        # plugin registration is exactly what R8 breaks and a Capacitor plugin
+        # that vanishes under minification produces a crash-on-launch that only
+        # the release build has. So the check fails the job and names the two ways
+        # out: install a release APK here instead, or delete this check and accept
+        # the gap in writing.
+        working-directory: mobile/android
+        run: |
+          set -euo pipefail
+          if grep -qE '^[[:space:]]*minifyEnabled[[:space:]]+true' app/build.gradle; then
+            echo "the release build type now minifies, so a debug-APK smoke test no longer stands in for it."
+            echo "Either install a release APK in this job, or delete this check and record the gap."
+            exit 1
+          fi
+          grep -qE '^[[:space:]]*minifyEnabled[[:space:]]+false' app/build.gradle \
+            || { echo "no minifyEnabled line in the generated app/build.gradle — Capacitor's template changed; re-read this step's argument before trusting the smoke result"; exit 1; }
+
+      - name: Create the AVD, and prove it exists before launching anything
+        # THIS STEP IS A SEPARATE STEP BECAUSE IT HAS ITS OWN VERDICT.
+        #
+        # WHAT WENT WRONG THE FIRST TIME, and it is the more useful half of this
+        # comment. `echo no | avdmanager create avd …` printed its interactive
+        # "Do you wish to create a custom hardware profile? [no]" prompt, exited
+        # ZERO, and created no AVD. Nothing checked. `emulator -avd foray-ci`
+        # then died instantly with `Unknown AVD name [foray-ci]`, and
+        # `timeout 600 adb wait-for-device` spent TEN MINUTES waiting for a device
+        # that could never appear — twelve minutes of runner time to report a
+        # fault that was knowable in one second.
+        #
+        # THE PROMPT WAS THE TRIGGER; THE DEFECT WAS THE MISSING CHECK. `set -euo
+        # pipefail` was in force the whole time and did not help, because the
+        # command it would have caught did not fail. This is the fifth
+        # "step that cannot fail when its precondition is unmet" found in this
+        # repo in three days, and the fourth in this PR — the other three were a
+        # keystore-outside-$ART test that compared strings for inequality, a
+        # fingerprint test that asserted its ingredients and not the comparison,
+        # and an ordering assertion that passed when the thing being ordered was
+        # deleted. A job whose whole purpose is to catch problems is not exempt.
+        #
+        # SO: THREE CHANGES, AND THE LAST IS THE ONE THAT MATTERS.
+        run: |
+          set -euo pipefail
+          # 1. ONE AVD LOCATION, DECLARED, FOR BOTH TOOLS. The observed failure
+          #    was the emulator reporting "HOME is defined but there is no file
+          #    foray-ci.ini in $HOME/.android/avd" — which is a statement about
+          #    where the EMULATOR looked, not about where avdmanager wrote. Those
+          #    two resolve their AVD root through different variables
+          #    (ANDROID_AVD_HOME, ANDROID_SDK_HOME, ANDROID_USER_HOME, HOME) and a
+          #    runner image is free to set any of them. Pinning it removes a whole
+          #    class of "created it, could not find it" from the diagnosis.
+          export ANDROID_AVD_HOME="$HOME/.android/avd"
+          echo "ANDROID_AVD_HOME=$ANDROID_AVD_HOME" >> "$GITHUB_ENV"
+          mkdir -p "$ANDROID_AVD_HOME"
+          # 2. `-d`, SO THE PROMPT NEVER HAPPENS. `avdmanager` asks about a custom
+          #    hardware profile only when no device is given; with `-d` it does not
+          #    ask, so there is no stdin to satisfy and nothing for `echo no` to
+          #    get wrong. `pixel_6` was verified to be a real device id in this
+          #    SDK's `avdmanager list device` (66 profiles, `id: 28 or "pixel_6"`)
+          #    rather than assumed. Stdin is closed as well, which prevents a HANG
+          #    but is NOT what makes this safe: the original `echo no |` already
+          #    gave avdmanager EOF, and it still exited 0 having created nothing.
+          #    Only check 3 turns that into a failure.
+          #
+          #    THE EXIT CODE IS CAPTURED DIRECTLY. Not `avdmanager … | tee`: a
+          #    local probe of this very command through `| head` reported exit 0
+          #    for a run that exited 1, which is the same defect this step is
+          #    being fixed for, one layer up.
+          set +e
+          avdmanager create avd -n "$AVD_NAME" -k "$EMULATOR_IMAGE" -d pixel_6 --force \
+            < /dev/null > "$ART/avdmanager.log" 2>&1
+          AVDMANAGER_STATUS=$?
+          set -e
+          cat "$ART/avdmanager.log"
+          if [ "$AVDMANAGER_STATUS" -ne 0 ]; then
+            echo "avdmanager exited $AVDMANAGER_STATUS — no AVD was created"
+            exit 1
+          fi
+          # 3. THE PRECONDITION IS ASSERTED WITH THE TOOL THAT WILL CONSUME IT.
+          #    The failure being fixed here was the emulator saying `Unknown AVD
+          #    name [foray-ci], use -list-avds to see valid list`, so the check is
+          #    that exact list and passing it makes that exact error unreachable.
+          #    NOT MORE THAN THAT: `-list-avds` enumerates the `.ini` files under
+          #    the AVD root, so it would still list an AVD whose system image had
+          #    gone missing. It proves the NAME RESOLVES, which is what was broken.
+          #
+          #    NOT `avdmanager list avd | grep`, AND THIS WAS MEASURED, NOT
+          #    GUESSED: on a real machine that command prints unusable AVDs too,
+          #    under a heading reading "The following Android Virtual Devices could
+          #    not be loaded" — two of them, on the founder's own box, missing
+          #    their system images. A grep for the name over that output is
+          #    satisfied by an AVD the emulator cannot start, which would have
+          #    shipped this same bug wearing a check.
+          emulator -list-avds > "$ART/emulator-list-avds.txt" 2>&1 || true
+          cat "$ART/emulator-list-avds.txt"
+          if ! grep -qxF "$AVD_NAME" "$ART/emulator-list-avds.txt"; then
+            echo "the emulator does not list an AVD called $AVD_NAME, so launching it would fail with Unknown AVD name."
+            echo "--- avdmanager's own view, including AVDs it considers broken:"
+            avdmanager list avd || true
+            echo "--- $ANDROID_AVD_HOME:"
+            ls -la "$ANDROID_AVD_HOME" || true
+            exit 1
+          fi
+          test -f "$ANDROID_AVD_HOME/$AVD_NAME.ini" \
+            || { echo "no $AVD_NAME.ini in $ANDROID_AVD_HOME — the emulator listed it but its config is not where both tools agree it should be"; exit 1; }
+          echo "AVD $AVD_NAME exists and the emulator can see it"
+
+      - name: Boot it
+        run: |
+          set -euo pipefail
+          adb start-server
+          # `-no-snapshot` because a saved snapshot is a second thing that can be
+          # stale, and this job is a cold-start check by nature.
+          nohup emulator -avd "$AVD_NAME" \
+            -no-window -no-audio -no-boot-anim -no-snapshot \
+            -gpu swiftshader_indirect -camera-back none -camera-front none \
+            -accel on -memory 4096 -partition-size 4096 \
+            > "$ART/emulator.log" 2>&1 &
+          EMU_PID=$!
+          # ONE LOOP, WATCHING BOTH THE DEVICE AND THE PROCESS, and the process
+          # half is the fix for "twelve minutes to report a one-second fault".
+          # `adb wait-for-device` waits for something to appear and has no opinion
+          # about whether anything is still trying: an emulator that exits during
+          # startup — a bad flag, no KVM, a corrupt image, an AVD that vanished —
+          # leaves it blocking for the full timeout with the answer already in the
+          # log. `kill -0` on the pid it started turns every one of those into a
+          # failure in seconds, with the log printed.
+          #
+          # `sys.boot_completed` IS THE PROPERTY WAITED ON, not `state: device`,
+          # and MP1 §6.2 is why: that run reached `state: device` with
+          # `ro.build.version.sdk=36` while the package service still answered
+          # "Can't find service: package". Visible and usable are different events.
+          DEADLINE=$(( $(date +%s) + 900 ))
+          # `timeout 30` ON THE ADB CALL, because both guards below live in the LOOP
+          # BODY and a hung `adb shell` never reaches either one. The old code was
+          # bounded by `timeout 600 adb wait-for-device`; replacing that with a poll
+          # and no bound would have re-opened the same "hold the runner until the
+          # job timeout" hole one level down. On timeout adb exits 124, the test is
+          # false, and the loop falls through to the pid check and the deadline.
+          until [ "$(timeout 30 adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ]; do
+            if ! kill -0 "$EMU_PID" 2>/dev/null; then
+              echo "the emulator process exited before the device finished booting"
+              tail -80 "$ART/emulator.log"
+              exit 1
+            fi
+            if [ "$(date +%s)" -ge "$DEADLINE" ]; then
+              echo "the emulator did not finish booting in 15 minutes"
+              tail -80 "$ART/emulator.log"
+              exit 1
+            fi
+            sleep 5
+          done
+          adb shell settings put global window_animation_scale 0
+          adb shell settings put global transition_animation_scale 0
+          adb shell settings put global animator_duration_scale 0
+          adb shell getprop ro.build.version.sdk | tee "$ART/device-sdk.txt"
+
+      - name: Install the app and start it
+        id: launch
+        run: |
+          set -euo pipefail
+          adb logcat -c
+          # `|| true` ON BOTH PIPELINES, for the same reason as the `pidof` lines
+          # below: `adb install` exits non-zero on failure and `adb shell`
+          # forwards `am start`'s status, so under `pipefail` the step would abort
+          # before the grep that carries the readable message. The greps are the
+          # verdict; the pipelines only have to deliver the text.
+          adb install -r -g "$APK" 2>&1 | tee "$ART/adb-install.txt" || true
+          grep -q '^Success' "$ART/adb-install.txt" || { echo "the APK did not install"; exit 1; }
+          # `-W` waits for the launch to complete and prints a Status line, so a
+          # missing or non-exported activity is a failure HERE with a readable
+          # message rather than a mystery further down.
+          adb shell am start -W -n "$PKG/.MainActivity" 2>&1 | tee "$ART/am-start.txt" || true
+          grep -q '^Status: ok' "$ART/am-start.txt" || { echo "am start did not report Status: ok"; exit 1; }
+
+      - name: The WebView is running OUR app, and the native bridge answers
+        # THE FOUR THINGS NOTHING ELSE IN THIS REPO CAN SEE. `mobile/android/` is
+        # not committed, so no unit test can read the running app; the APK checks
+        # in `android-build.yml` prove that classes were REGISTERED, not that any
+        # of them work. This step reads the live page over Chrome DevTools:
+        # `tools/mobile/webview-probe.mjs`'s header lists exactly what it asserts
+        # and why each one can fail while the process is perfectly alive.
+        id: probe
+        run: |
+          set -euo pipefail
+          # `|| true` SO THE DIAGNOSTIC BELOW CAN ACTUALLY RUN. `pidof` exits 1
+          # when there is no such process, `adb shell` forwards that, and under
+          # `set -euo pipefail` the assignment would abort the step — which is
+          # precisely the crashed-app case this line exists to report. The useful
+          # message would have been dead code and the failure would have read as
+          # an adb problem. Same shape as android-build.yml's `find … || true`
+          # around the merged-manifest diagnostic.
+          PID=$(adb shell pidof "$PKG" 2>/dev/null | tr -d '\r' | awk '{print $1}' || true)
+          [ -n "$PID" ] || { echo "the app process is already gone — it crashed during launch"; exit 1; }
+          echo "PID=$PID" >> "$GITHUB_ENV"
+          # FOUND, NOT NAME-ASSUMED, for the same reason the merged manifest is
+          # found rather than path-assumed in android-build.yml: the socket name
+          # is a WebView implementation detail. The `_$PID` form is the fallback,
+          # not the primary.
+          SOCK=$(adb shell cat /proc/net/unix 2>/dev/null | tr -d '\r' \
+                 | grep -o 'webview_devtools_remote_[0-9]*' | sort -u | head -1 || true)
+          SOCK="${SOCK:-webview_devtools_remote_$PID}"
+          echo "devtools socket: $SOCK"
+          adb forward tcp:9222 "localabstract:$SOCK"
+          node tools/mobile/webview-probe.mjs \
+            --endpoint http://127.0.0.1:9222 \
+            --timeout-ms 120000 \
+            --out "$ART/webview-probe.json"
+
+      - name: Still alive, and nothing crashed while we were looking
+        # "THE PROCESS IS STILL RUNNING A FEW SECONDS LATER" IS A REAL CHECK AND A
+        # WEAK ONE, so it is paired with the log. An app can survive as a process
+        # while a background thread throws, and a Capacitor plugin that fails to
+        # load logs and continues. `FATAL EXCEPTION` in the app's own log is the
+        # thing a human would look for, so the job looks for it.
+        run: |
+          set -euo pipefail
+          sleep 10
+          # `|| true` for the same reason as the probe step: a dead process makes
+          # `pidof` exit 1, and that is the answer this step is asking for.
+          STILL=$(adb shell pidof "$PKG" 2>/dev/null | tr -d '\r' | awk '{print $1}' || true)
+          [ -n "$STILL" ] || { echo "the app process died after the probe — it is not stable"; exit 1; }
+          [ "$STILL" = "$PID" ] || { echo "the pid changed from $PID to $STILL — the app restarted, which means it crashed"; exit 1; }
+          adb logcat -d > "$ART/logcat.txt"
+          if grep -qE 'FATAL EXCEPTION|ANR in ai\.jwlabs\.foura' "$ART/logcat.txt"; then
+            # BRACED AND `|| true`d BEFORE `head`. Three or more matches exceed
+            # 80 lines, `head` exits, `grep` takes SIGPIPE, and `pipefail` would
+            # abort the step right there — leaving `::endgroup::` unemitted (the
+            # log group then swallows the rest of the job) and the verdict line
+            # below unprinted, on the one run where it matters most.
+            echo "::group::crash"
+            { grep -A 30 -E 'FATAL EXCEPTION|ANR in ai\.jwlabs\.foura' "$ART/logcat.txt" || true; } | head -80
+            echo "::endgroup::"
+            echo "the log carries a fatal exception or an ANR"
+            exit 1
+          fi
+          grep -E '^[VDIWEF]/(Capacitor|ForayAudio)' "$ART/logcat.txt" | tail -60 | tee "$ART/capacitor-log.txt" || true
+
+      - name: What the launch established
+        if: always()
+        env:
+          LAUNCH_OUTCOME: ${{ steps.launch.outcome }}
+          PROBE_OUTCOME: ${{ steps.probe.outcome }}
+        run: |
+          set -euo pipefail
+          ART="${ART:-$RUNNER_TEMP/android-smoke}"
+          mkdir -p "$ART"
+          {
+            echo "## Android launch smoke test"
+            echo
+            echo "| | |"
+            echo "|---|---|"
+            echo "| install + \`am start\` | **${LAUNCH_OUTCOME:-not reached}** |"
+            echo "| WebView + bridge probe | **${PROBE_OUTCOME:-not reached}** |"
+            echo
+            if [ -f "$ART/webview-probe.json" ]; then
+              echo "<details><summary>What the running page reported</summary>"; echo
+              echo '```json'; cat "$ART/webview-probe.json"; echo '```'
+              echo; echo "</details>"
+            fi
+            echo
+            echo "**What this proves:** the app installs, the launcher activity starts, the"
+            echo "WebView is on the bundled \`index.html\`, \`app.js\` executed under the real"
+            echo "CSP and rendered into \`#view\`, \`window.Capacitor\` exists, and"
+            echo "\`ForayAudio.state\` answered from our own Java. That last pair is the first"
+            echo "EXECUTED evidence for \`docs/android-shell-build.md\` §2, which until now was"
+            echo "inferred from source."
+            echo
+            echo "**What it does not prove:** anything about backgrounded playback. An"
+            echo "emulator never enters Doze, never freezes a cached app, and cannot show OEM"
+            echo "battery managers, audio focus against a real telephony stack, or Bluetooth"
+            echo "routing — \`docs/research/mp1-background-audio.md\` §6.4. It also runs the"
+            echo "DEBUG APK, because DevTools is unreachable on a release build; the job"
+            echo "asserts \`minifyEnabled false\` so that stand-in stays honest."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload the launch evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: foray-android-smoke
+          path: ${{ runner.temp }}/android-smoke
+          if-no-files-found: warn
+          retention-days: 14

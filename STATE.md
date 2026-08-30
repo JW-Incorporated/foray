@@ -7,6 +7,46 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
+### The Android Play release pipeline — `android/release-pipeline`
+
+- **What:** three gaps between "it compiles" and "it is on Play", all closed in
+  one PR. (1) `bundleRelease` producing a **verified** `.aab` — Play does not
+  accept the APK `android-build.yml` has been making since #245 — uploaded as a
+  downloadable artifact. (2) Release **signing**, read from three GitHub Secrets,
+  absent-safe (a fork with no secrets still builds, unsigned, and the unsigned
+  case is verified rather than assumed). (3) An **emulator smoke test**: the first
+  time anything in this repo has ever *run* the Android app. It installs, starts
+  `MainActivity`, and reads the live page over Chrome DevTools — URL, `#view`
+  populated by `app.js`, `window.Capacitor`, and `ForayAudio.state` answering
+  `platform: "android"` from our own Java.
+- **Branch prefix:** `android/release-pipeline` — PR only, never main.
+- **New files:** `.github/workflows/android-release.yml`,
+  `mobile/gradle/foray-signing.gradle`, `tools/mobile/wire-signing.mjs` (+ test),
+  `tools/mobile/webview-probe.mjs` (+ test), `docs/android-release.md`.
+- **Shared files it touches:** `tools/mobile/android-workflow.test.mjs` (27 → 61
+  tests, a whole new section for the second workflow),
+  `test/suite-integrity.test.js` (three floors), `HUMAN-ACTIONS.md` (#26 new; a
+  note on #18).
+- **Rulings, since they constrain future work:**
+  - **`android-build.yml` is untouched and must stay so.** Its two pinned
+    properties — reads NO secret, boots NO emulator — are what keep it runnable
+    on any fork, and both are asserted. Everything credentialed or emulated lives
+    in the second file.
+  - **The signing config cannot live in `mobile/android/`.** That tree is
+    generated and gitignored, so `app/build.gradle` is template output with no
+    `signingConfigs` block and a hardcoded `versionCode 1`. It lives in
+    `mobile/gradle/foray-signing.gradle` and is re-applied after generation.
+    Filed under `mobile/` (unlisted, always waits for a human) rather than
+    `tools/` (auto-merges) on purpose.
+  - **The two jobs never depend on each other.** A flaked emulator must not stand
+    between the founder and a submittable bundle. Asserted by a test.
+- **Explicitly out of scope:** anything about backgrounded playback, the lock
+  screen, or Doze — `mp1-background-audio.md` §6.4 says why an emulator cannot
+  reach them, and `HUMAN-ACTIONS.md` #11 stays open. Also out of scope: the Play
+  listing copy (#42) and iOS.
+- **Needs `founder-approved`:** yes — it adds a file under `.github/workflows/`,
+  a DENIED path. Not self-applied.
+
 ### The segment pool stops shipping whole (#327) — `fix/327-slice-segments`
 
 - **What:** `data/segments.json` and `data/segment-sources.json` were copied into

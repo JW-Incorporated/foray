@@ -1121,6 +1121,22 @@ One iOS finding that does bear on your step 6, though: `navigator.serviceWorker`
 - **`await Capacitor.nativePromise("ForayAudio", "state", {})`** → `running`, `sessionActive`, `notificationsEnabled`, `notificationPermission`. "The lock screen is blank" has at least three causes and only one of them is a bug in the code; those four fields tell them apart.
 - **Then lock the phone and press each button** — play, pause, next, previous, the scrubber. Nothing about any of that has ever been observed. Also say whether a notification permission prompt appeared on your first play, because that is the one user-visible change in that branch and a founder may want it moved.
 
+**Note added by the Play release work (`android-release.yml`) — the BRIDGE half of this item is now measurable in CI, and the rest of it is not.** The
+`android-smoke` job boots an emulator on a GitHub runner, installs the app, and reads the live page over Chrome DevTools: `window.Capacitor`,
+`Capacitor.nativePromise("ForayAudio", "state", {})`, and whether `app.js` rendered into `<main id="view">` at all. If that job is green, the top open risk in
+this item — does our `script-src 'self'` block Capacitor's injected inline bridge on Android — is answered **by execution**, not by inference, and the answer is
+in the run's own summary and its `webview-probe.json` artifact.
+
+**That does not close this item, and the reason is not caution.** `docs/research/mp1-background-audio.md` §6.4 says which layers an emulator is faithful to
+and which it is not: the **Chromium** layer is the same WebView with the same page scheduler, which is exactly the layer the CSP question lives in — so the
+bridge verdict transfers. The layers it cannot reproduce are the ones every *other* question here lives in: Doze never engages, the cached-app freezer has no
+reason to fire, OEM battery managers are untestable by construction, and there is no real audio routing, telephony or Bluetooth. The lock screen, the transport
+buttons, the notification prompt and backgrounded playback are all still one phone and five minutes away, and nothing in CI will ever reach them.
+
+**And the "do not use an emulator" instruction above still stands for YOU.** MP1 §6.2's ~75 minutes was this laptop, under WHPX, on an API-36 image. The CI job
+pins API 34 and enables KVM explicitly — which is §6.3's own practical recommendation for exactly this case — and it is still the flakiest thing in the repo.
+A phone over USB remains the faster and better instrument on your desk.
+
 **Status:** OPEN
 
 ---
@@ -1771,6 +1787,58 @@ or on its own store URL.
 **Status:** OPEN
 
 ---
+---
+
+### 26. Back up the Android upload key, and install its three secrets
+
+**Tag:** `[BLOCKING]` for any Play upload · **Time:** ~10 minutes · **Owner:** Wyatt (he holds the key)
+
+**Why it matters.** There are now two halves to the Play path and only one of
+them is done. `.github/workflows/android-release.yml` produces a verified,
+signed `.aab` — but only if it can reach the upload key, and the key is a file on
+one Windows machine.
+
+**The irreversible part is the backup, not the secrets.** The secrets can be
+re-set in thirty seconds from the key. The key cannot be re-created from
+anything: if `foura-upload.p12` and its password are both lost, **this app can
+never be updated again**, and recovery means Google's key-reset process, which
+only exists for apps already enrolled in Play App Signing. Everything else on
+this list is a delay; this one is a wall.
+
+**Steps.**
+
+1. **Back the key up, in two places that do not fail together.**
+   `C:\Users\wjduv\Documents\JW Labs\android-signing\foura-upload.p12` plus its
+   password go into a password-manager entry *with the file attached*, and one
+   offline copy — an encrypted stick or a second machine — not synced to the same
+   account. A second copy in the same cloud drive is not a second copy.
+2. **Verify it is the right file** (read-only, generates nothing):
+
+   ```bash
+   keytool -list -v -storetype PKCS12 -keystore "C:\Users\wjduv\Documents\JW Labs\android-signing\foura-upload.p12"
+   ```
+
+   The `SHA256:` line must be
+   `92:92:D8:5B:96:32:05:B4:00:45:BC:26:FC:00:9A:C4:10:B1:12:F6:85:C6:88:75:82:32:48:04:DA:1F:8C:19`.
+   That value is also pinned in the workflow, so a mismatch here means the build
+   will refuse the file rather than sign with it.
+3. **Set the three secrets**, from files rather than by typing them, so the
+   values never enter a shell history or a transcript. `docs/android-release.md`
+   §2 has the exact `gh secret set` lines. The names are
+   `ANDROID_KEYSTORE_B64`, `ANDROID_KEYSTORE_PASSWORD` and `ANDROID_KEY_ALIAS` —
+   **three, not four**: a PKCS12 store has one password, so there is no
+   `ANDROID_KEY_PASSWORD`.
+4. Run **Actions → android-release → Run workflow** with `version_code: 1`.
+   Nothing in the run needs to be watched; the summary states whether the bundle
+   is signed and submittable, and names the artifact to download.
+5. When the Play listing is created, **accept Play App Signing.** It is what
+   makes step 1's worst case survivable at all.
+
+**Worked if:** an `android-release` run reports signature **signed** on its
+summary page, and you can say where the two backups are without looking.
+
+**Status:** OPEN
+
 ---
 ## DONE
 

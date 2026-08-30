@@ -24,6 +24,33 @@
  * § "A green test is not evidence until you have broken it". All of them were
  * run; a green suite on this file means the mutations were reverted, not that
  * they were skipped.
+ *
+ * ── IF YOU ARE ABOUT TO ASSERT THAT ONE THING COMES BEFORE ANOTHER, READ THIS
+ *
+ * USE `assertOrder`. Do not write `src.indexOf(a) < src.indexOf(b)`.
+ *
+ * `indexOf` RETURNS -1 FOR A MISSING NEEDLE, AND -1 IS LESS THAN EVERYTHING, so
+ * that predicate is TRUE when `a` is absent. The assertion therefore passes most
+ * loudly in the case it exists to forbid: `a` deleted entirely. It is not a
+ * hypothetical — it shipped in this file for about twenty minutes. The test
+ * "the password-length floor must run before any Gradle invocation" was written
+ * to pin the fix for a credential-leak vector two reviewers had just found, and a
+ * mutation that DELETED the floor left it green. The order was right; the
+ * existence was never checked.
+ *
+ * The general rule this is one instance of: an assertion about a RELATIONSHIP
+ * between two things must first assert that both things are there. Otherwise it
+ * degrades to a claim about the empty set, which every implementation satisfies.
+ * `assertOrder` does presence first, then position, and names which needle went
+ * missing.
+ *
+ * AND NOTE WHAT CAUGHT IT: a mutation run, not a review. This is the sixth
+ * guard-that-was-not-guarding found in this codebase in three days, and the
+ * distinction between them is worth carrying — most were caught by mutating the
+ * code and watching the suite stay green, but one (an R2 startup refusal that
+ * could never fire) was not, because its tests were coupled to the code and the
+ * CODE was wrong about the world. Mutation testing proves a test can see its
+ * subject; it cannot tell you the subject is the right one.
  */
 
 import test from "node:test";
@@ -44,6 +71,18 @@ const WF = fs.readFileSync(path.join(ROOT, WORKFLOW_REL), "utf8");
    comments so the assertion is about the YAML GitHub executes. */
 const YML = code(WF);
 const CI = fs.readFileSync(path.join(ROOT, ".github/workflows/ci.yml"), "utf8");
+
+/* THE SECOND ANDROID WORKFLOW, and the reason there is a second one.
+   `android-build.yml` must keep reading NO SECRET and booting NO EMULATOR — the
+   two properties this file has pinned since #245, and the two things a release
+   pipeline needs. So `bundleRelease`, the signing config and the emulator smoke
+   test live in `android-release.yml`, which is triggered far less often, and the
+   assertions below keep BOTH sets of properties true at once: the build job
+   stays credential-free, and the release job stays the only place a key or an
+   emulator appears. */
+const RELEASE_REL = ".github/workflows/android-release.yml";
+const REL = fs.readFileSync(path.join(ROOT, RELEASE_REL), "utf8");
+const RYML = code(REL);
 
 /** Every `./gradlew` COMMAND in the workflow, one joined line each. */
 function gradlewInvocations(src) {
@@ -73,6 +112,14 @@ function stepCode(nameFragment) {
   return s === null ? null : code(s);
 }
 
+/** The same, for `android-release.yml`. Same rule, same reason: that file argues
+ *  in its comments for every property asserted here, so any assertion that reads
+ *  the raw step is satisfiable by the argument rather than by the check. */
+function releaseStepCode(nameFragment) {
+  const s = step(REL, nameFragment);
+  return s === null ? null : code(s);
+}
+
 /** How many of a step's checks can actually FAIL THE JOB.
  *
  *  A SECOND MUTATION ROUND — a reviewer's, not the author's — killed three more
@@ -87,6 +134,23 @@ function stepCode(nameFragment) {
  *  matters: the count drops the moment a check stops being able to fail. */
 function failureClauses(stepSrc) {
   return (stepSrc.match(/exit 1/g) ?? []).length;
+}
+
+/** Assert that `first` appears BEFORE `second` in a step, with BOTH present.
+ *
+ *  `indexOf(a) < indexOf(b)` IS TRUE WHEN `a` IS ABSENT, because a missing
+ *  needle is -1 and -1 is less than everything. A round-2 mutation — moving the
+ *  password-length floor back to after the build, which is the defect two
+ *  reviewers had just found — SURVIVED for exactly that reason: the mutation
+ *  removed the marker, `indexOf` answered -1, and the ordering assertion
+ *  reported that the check it could no longer see came first. Ordering claims
+ *  have to assert presence before they assert position. */
+function assertOrder(stepSrc, first, second, why) {
+  const a = stepSrc.indexOf(first);
+  const b = stepSrc.indexOf(second);
+  assert.notEqual(a, -1, `${why} — but ${JSON.stringify(first)} is not in the step at all`);
+  assert.notEqual(b, -1, `${why} — but ${JSON.stringify(second)} is not in the step at all`);
+  assert.ok(a < b, why);
 }
 
 /* ────────────────────────── shape and trigger set ────────────────────────── */
@@ -322,6 +386,13 @@ test("no emulator is created, booted or installed", () => {
   for (const forbidden of ["avdmanager", "system-images;", "emulator -avd", "reactivecircus/android-emulator"]) {
     assert.equal(YML.includes(forbidden), false, `${forbidden} adds an emulator this job argues against`);
   }
+  /* AND THE OTHER HALF OF THE SAME DECISION, added when `android-release.yml`
+     landed. An emulator now exists in this repo; it is in the OTHER workflow, on
+     a trigger that fires when the release pipeline changes rather than on every
+     shell PR. Asserting it is there stops the pair from drifting into "no
+     emulator anywhere", which is how the launch check would be lost while this
+     test stayed green and looked like the reason. */
+  assert.match(RYML, /avdmanager create avd/, "the emulator smoke test must exist somewhere — android-release.yml is where");
 });
 
 /* ───────────── the two checks that ONLY a build can make ──────────────────── */
@@ -589,4 +660,790 @@ test("ci.yml still declares exactly its three jobs, and #245 added none", () => 
     false,
     "the Android build must not migrate into the workflow that gates every PR"
   );
+});
+
+/* ═════════════════════ android-release.yml — the Play path ═════════════════
+ *
+ * A SECOND WORKFLOW, ASSERTED IN THE SAME FILE, because the two are one
+ * decision: `android-build.yml` stays credential-free and emulator-free, and
+ * everything a release needs lives next door. Splitting these assertions into a
+ * second suite would let one half be deleted while the other stayed green and
+ * looked like it covered the topic.
+ *
+ * EVERY TEST BELOW NAMES ITS ONE-LINE MUTATION AND EVERY ONE WAS RUN. The
+ * mutation round on this section found two live vacuities, both recorded in the
+ * tests they belong to: an assertion that the keystore is written outside the
+ * uploaded directory that passed with the keystore written INSIDE it, and a
+ * "both signing branches can fail" assertion that passed with one branch's
+ * `exit 1` deleted.
+ */
+
+test("android-release.yml exists and has the same five top-level keys", () => {
+  /* MUTATION: delete the `permissions:` block -> fails.
+     Same shape as the other two shell workflows on purpose: three files that
+     build the same product should not have three different skeletons. */
+  assert.deepEqual(topLevelKeys(REL), ["name", "on", "concurrency", "permissions", "jobs"]);
+  assert.match(REL, /^name: android-release$/m);
+});
+
+test("it declares exactly two jobs, and neither is named like a required check", () => {
+  /* MUTATION: rename `android-smoke:` to `data-and-site:` -> fails.
+     `protect-main` matches required contexts BY NAME, so a job called `backend`,
+     `data-and-site` or `path-policy` in ANY workflow reports against the real
+     required check. A 40-minute emulator boot answering for `data-and-site`
+     would gate every content PR in the repo on a cold AVD. */
+  const jobs = block(REL, "jobs");
+  const names = jobs
+    .split(/\r?\n/)
+    .filter((l) => /^ {2}[a-z][\w-]*:/.test(l))
+    .map((l) => l.trim().replace(":", ""));
+  assert.deepEqual(names, ["android-bundle", "android-smoke"]);
+  for (const required of ["backend", "data-and-site", "path-policy", "ios-kit"]) {
+    assert.equal(names.includes(required), false, `a job named ${required} collides with a required check`);
+  }
+});
+
+test("the emulator job cannot gate the artefact — the two jobs are independent", () => {
+  /* MUTATION: add `needs: android-bundle` to the `android-smoke:` job -> fails.
+     THE WHOLE COST ARGUMENT FOR THE SPLIT. A cold emulator boot is the one
+     genuinely flaky thing in this repo (docs/research/mp1-background-audio.md
+     §6.2 measured a cold API-36 boot NOT completing in ~35 minutes), and the
+     .aab is on the critical path to a Play submission. If the two jobs are ever
+     chained in either direction, a flaked AVD stops the founder getting a
+     bundle — which is the "a flaky required check is worse than no check"
+     failure one level down from `required`. */
+  assert.equal(
+    /^\s*needs:/m.test(RYML),
+    false,
+    "neither job may depend on the other: a flaky emulator must never block the release bundle"
+  );
+});
+
+test("both jobs run on Linux and both have a timeout", () => {
+  /* MUTATION: delete `timeout-minutes:` from `android-smoke` -> fails (one, not two).
+     An emulator that never boots holds a runner for GitHub's 6-hour default, and
+     the boot poll below has its own 15-minute bound precisely because "hangs
+     forever" is this job's characteristic failure. */
+  const runners = (REL.match(/^ {4}runs-on: ubuntu-latest$/gm) ?? []).length;
+  assert.equal(runners, 2, "both jobs must be on ubuntu-latest");
+  assert.equal(/runs-on: macos/.test(RYML), false, "an Android build on macOS costs 10x and learns nothing");
+  assert.equal((REL.match(/^ {4}timeout-minutes: \d+$/gm) ?? []).length, 2, "both jobs need a timeout");
+});
+
+test("it never runs on a push or a schedule, and its path filter is the pipeline itself", () => {
+  /* MUTATION: add `- "mobile/**"` to the `paths:` list -> fails.
+     THE COST DECISION, AND IT IS NOT THE SAME ONE `android-build.yml` MADE.
+     That file watches `mobile/**` because it is the build check. This one runs a
+     release compile AND a cold emulator, ~65 minutes between them, and
+     `android-build.yml` already covers ordinary shell changes — so it fires only
+     when the release pipeline itself changes. Widening this filter turns every
+     `mobile/**` PR into a second Gradle build plus an AVD boot. */
+  const on = block(REL, "on");
+  assert.ok(on, "no `on:` block");
+  assert.match(on, /workflow_dispatch:/);
+  assert.match(on, /pull_request:/);
+  assert.equal(/^\s{2}push:/m.test(on), false, "a push trigger re-runs on merge what already ran on the PR");
+  assert.equal(/^\s{2}schedule:/m.test(on), false, "a weekly emulator boot on days nothing changed buys nothing");
+  assert.match(on, /^ {4}paths:$/m, "the pull_request trigger must filter with `paths:`");
+  assert.equal(/paths-ignore/.test(RYML), false, "`paths-ignore` INVERTS the filter");
+  /* The workflow's own path is in the filter deliberately: `workflow_dispatch`
+     cannot be triggered on a branch until the file is on the default branch, so
+     a `pull_request` trigger is the ONLY way this pipeline can be exercised
+     against real output before it merges. */
+  assert.ok(on.includes(`"${RELEASE_REL}"`), "the workflow must trigger on changes to itself");
+  for (const p of ['"mobile/gradle/**"', '"tools/mobile/wire-signing.mjs"', '"tools/mobile/webview-probe.mjs"']) {
+    assert.ok(on.includes(p), `the path filter is missing ${p} — a change to it would ship untested`);
+  }
+  for (const wide of ['"mobile/**"', '"data/**"', '"docs/**"', '"**"', '"app.js"']) {
+    assert.equal(on.includes(wide), false, `${wide} in this filter makes a 65-minute pipeline run on ordinary PRs`);
+  }
+});
+
+test("concurrency cancels superseded runs and it asks for no write permission", () => {
+  /* MUTATION: `contents: write` -> fails. A job that holds the signing key must
+     be the LEAST privileged job in the repo, not the most. */
+  assert.match(block(REL, "concurrency"), /cancel-in-progress: true/);
+  const p = block(REL, "permissions");
+  assert.match(p, /contents: read/);
+  for (const w of ["write", "write-all", "packages:", "id-token"]) {
+    assert.equal(p.includes(w), false, `the release job has no reason to hold ${w}`);
+  }
+});
+
+test("every action is GitHub's own — including for the emulator, where it is tempting not to be", () => {
+  /* MUTATION: add `- uses: reactivecircus/android-emulator-runner@v2` -> fails.
+     That action is the standard way to do this and it is deliberately not used.
+     A third-party action runs arbitrary code with the job's token on every run,
+     and THIS is the one workflow in the repo a signing key passes through — the
+     argument that kept `android-actions/setup-android` out of `android-build.yml`
+     is strictly stronger here. */
+  const uses = REL.split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter((l) => /^(- )?uses:/.test(l))
+    .map((l) => l.replace(/^(- )?uses:\s*/, ""));
+  assert.ok(uses.length >= 6, `expected at least six actions across two jobs, found ${uses.length}`);
+  for (const u of uses) {
+    assert.match(u, /^actions\/[\w-]+@v\d+$/, `${u} is not a major-pinned first-party actions/* action`);
+  }
+});
+
+/* ───────────────────── the bundle, which is the whole point ────────────────── */
+
+test("`bundleRelease` is INVOKED — not assembleRelease, and not merely mentioned", () => {
+  /* MUTATION: change `bundleRelease` to `assembleRelease` -> fails.
+     PLAY DOES NOT ACCEPT AN APK. `android-build.yml` has built
+     `app-release-unsigned.apk` since #245 and it has never been submittable; the
+     bundle task is a different task with a different output directory. Asserted
+     against real `./gradlew` invocations rather than file text, so the word in a
+     comment cannot satisfy it. */
+  const calls = gradlewInvocations(REL);
+  assert.ok(
+    calls.some((c) => /gradlew bundleRelease\b/.test(c)),
+    `no bundleRelease invocation; found: ${JSON.stringify(calls)}`
+  );
+  for (const c of calls) {
+    assert.match(c, /--console=plain/, `${c} must use --console=plain: the log's task lines are parsed`);
+    assert.equal(
+      /(-x|--exclude-task)\s/.test(c),
+      false,
+      `${c} excludes a task — the release lint gate is the one that must not be excluded`
+    );
+  }
+});
+
+test("the release lint gate cannot be skipped silently here either", () => {
+  /* MUTATION: delete the `*SKIPPED*` case arm -> fails.
+     `bundleRelease` depends on `lintVitalRelease` exactly as `assembleRelease`
+     does, and all three bypasses `android-build.yml` documents apply unchanged:
+     excluded on the command line, switched off by a `lint { checkReleaseBuilds
+     false }` a future template adds, or renamed by AGP — and the build prints
+     BUILD SUCCESSFUL in all three. */
+  const s = releaseStepCode("bundleRelease — the .aab");
+  assert.ok(s, "no bundleRelease step");
+  assert.match(
+    s,
+    /LINTLINE=\$\(grep -E '\^> Task :app:lintVitalRelease/,
+    "the lint verdict must be READ FROM the log, not merely mentioned near it"
+  );
+  assert.match(s, /\*SKIPPED\*\|\*NO-SOURCE\*/, "a registered-but-not-run lint task must fail the job");
+});
+
+test("the gradle exit code is captured directly, never read from `$?` after a pipe", () => {
+  /* MUTATION: replace the `GRADLE_STATUS=$?` capture with
+     `if ! ./gradlew bundleRelease … | tee …` -> fails.
+     `$?` AFTER A PIPE IS THE EXIT CODE OF `tee`, which succeeds while the build
+     fails. This repo has produced false-green reports in both directions from
+     exactly that. The build here writes to a file and the status is taken from
+     the command itself. */
+  const s = releaseStepCode("bundleRelease — the .aab");
+  assert.match(s, /GRADLE_STATUS=\$\?/, "the build's status must be captured immediately");
+  assert.match(s, /if \[ "\$GRADLE_STATUS" -ne 0 \]/, "and it must be what decides the step");
+  assert.equal(
+    /gradlew bundleRelease[^\n]*\|\s*tee/.test(RYML),
+    false,
+    "piping the build into tee makes $? the exit code of tee"
+  );
+});
+
+test("the .aab is opened and read, not trusted because a task printed success", () => {
+  /* MUTATION: delete the `'BundleConfig.pb'` needle -> fails.
+     Second MUTATION: delete the `'resources.arsc'` forbidden entry -> fails.
+     AN .aab AND AN .apk ARE BOTH ZIPS IN THE SAME OUTPUT TREE. A wrong `cp`, or
+     a future AGP that renames a task, produces a file with the right extension
+     and the wrong contents, and nothing before Play's upload form would notice.
+     They differ by LAYOUT and by nothing else, so both directions are asserted:
+     the bundle entries must be present AND the APK-only entries must be absent. */
+  const s = releaseStepCode("It is really a BUNDLE");
+  assert.ok(s, "no step verifies the bundle's structure");
+  for (const needle of [
+    "'BundleConfig.pb'",
+    "'base/manifest/AndroidManifest.xml'",
+    "'base/dex/classes.dex'",
+    "'base/resources.pb'",
+    "'base/assets/public/index.html'",
+    "'base/assets/capacitor.plugins.json'",
+  ]) {
+    assert.ok(s.includes(needle), `the bundle check does not look for ${needle}`);
+  }
+  for (const forbidden of ["'AndroidManifest.xml'", "'resources.arsc'"]) {
+    assert.ok(s.includes(forbidden), `the bundle check does not reject a root ${forbidden} — an APK would pass`);
+  }
+  /* AND OUR OWN NATIVE CODE, INSIDE THE RELEASE BUNDLE. `android-build.yml`
+     reads the merged manifest and the DEBUG APK; until this step nothing had
+     ever read the thing that actually gets uploaded. `mediaPlayback` is the
+     service type with no runtime prerequisite and NO TIMEOUT, which a 45-to-90
+     minute Foray depends on (mp1-background-audio.md §5.3). */
+  for (const needle of [
+    "'ai.jwlabs.foura.audio.PlaybackKeepAliveService'",
+    "'mediaPlayback'",
+    "'android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK'",
+  ]) {
+    assert.ok(s.includes(needle), `the bundle's manifest is not checked for ${needle}`);
+  }
+  assert.match(s, /grep -qF 'ai\.jwlabs\.foura\.audio\.ForayAudioPlugin'/);
+});
+
+test("the bundle artifact is uploaded, from exactly the report directory", () => {
+  /* MUTATION: change the path to `${{ runner.temp }}` -> fails, and this one is
+     not a tidiness point — see the keystore test below, which is the same
+     assertion from the other side. RUNNER_TEMP holds whatever every other step
+     left there, and on this job that includes a decoded signing key. */
+  const upload = step(REL, "Upload the bundle and everything this run learned");
+  assert.ok(upload, "the .aab is built and never uploaded — nobody can download it");
+  assert.match(upload, /path: \$\{\{ runner\.temp \}\}\/android-release\s*$/m);
+  assert.match(upload, /^ {8}if: always\(\)$/m, "a failed run's Gradle log is the most useful thing in it");
+  assert.match(upload, /retention-days: 30/, "the artefact is downloaded and submitted by a human on his own schedule");
+});
+
+/* ─────────────────────────── the key, and the blast radius ─────────────────── */
+
+test("the decoded keystore is written OUTSIDE the directory that gets uploaded", () => {
+  /* MUTATION: change `KEYDIR=$RUNNER_TEMP/android-keys` to
+     `KEYDIR=$RUNNER_TEMP/android-release/keys` -> fails.
+     THE WORST FAILURE THIS FILE CAN HAVE, and it would look completely routine:
+     the artifact upload publishes `$RUNNER_TEMP/android-release` to anyone who
+     can see the repo, so a keystore written one directory deeper is the
+     founder's signing key on the internet — and a leaked upload key means every
+     future update to the app can be signed by whoever has it.
+     THE FIRST VERSION OF THIS TEST WAS VACUOUS: it asserted the two paths were
+     "different strings", which is true of `…/android-release` and
+     `…/android-release/keys`. It now requires the key directory not to be a
+     child of the uploaded one, which is the property that matters. */
+  const s = releaseStepCode("Toolchain versions");
+  assert.ok(s, "no toolchain step");
+  const art = /ART=\$RUNNER_TEMP\/([\w-]+)/.exec(s);
+  const key = /KEYDIR=\$RUNNER_TEMP\/([\w-]+)/.exec(s);
+  assert.ok(art, "the report directory is not set from $RUNNER_TEMP in the first step");
+  assert.ok(key, "the key directory is not set from $RUNNER_TEMP in the first step");
+  assert.equal(
+    key[1] === art[1] || key[1].startsWith(art[1] + "/"),
+    false,
+    `the keystore directory ${key[1]} is inside the uploaded directory ${art[1]} — the key would be published`
+  );
+  const upload = step(REL, "Upload the bundle and everything this run learned");
+  assert.ok(
+    upload.includes(`/${art[1]}`),
+    "the upload path and the report directory must be the same one, or this test is checking nothing"
+  );
+});
+
+test("the key is shredded in a step that runs even when the build failed", () => {
+  /* MUTATION: delete `if: always()` from the shred step -> fails.
+     A cleanup that only runs on success cleans up on exactly the runs where
+     nothing went wrong. GitHub-hosted runners are destroyed after the job, so
+     this is defence in depth — until the day someone adds a self-hosted runner,
+     which is not the day to find out the key was left in a reused workspace. */
+  const s = step(REL, "Shred the upload key");
+  assert.ok(s, "nothing removes the decoded keystore");
+  assert.match(s, /^ {8}if: always\(\)$/m, "the shred must run on failure too");
+  assert.match(code(s), /shred -u|rm -rf/, "the shred step must actually delete something");
+  assert.match(code(s), /test ! -e "\$KEYDIR"/, "and it must verify the directory is gone rather than assume it");
+});
+
+test("exactly three secrets, by the names the founder is populating", () => {
+  /* MUTATION: add `FORAY_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}` to the
+     bundleRelease step's env -> fails.
+     THE STORE IS PKCS12 AND HAS ONE PASSWORD. keytool refuses to give a PKCS12
+     entry a key password different from the store password, so a fourth secret
+     would be a value that can disagree with a value it is not allowed to
+     disagree with — and the symptom is `keystore password was incorrect`, which
+     points at the wrong one of the two. The names are pinned because the founder
+     sets them with `gh secret set` from a separate machine; a rename here and
+     not there produces an unsigned bundle from a green run. */
+  const used = [...RYML.matchAll(/secrets\.([A-Z0-9_]+)/g)].map((m) => m[1]);
+  assert.deepEqual(
+    [...new Set(used)].sort(),
+    ["ANDROID_KEYSTORE_B64", "ANDROID_KEYSTORE_PASSWORD", "ANDROID_KEY_ALIAS"].sort()
+  );
+  assert.equal(
+    /ANDROID_KEY_PASSWORD/.test(RYML),
+    false,
+    "a PKCS12 key password cannot differ from the store password — a fourth secret is a second source of truth"
+  );
+});
+
+test("no secret ever reaches a Gradle command line", () => {
+  /* MUTATION: add `-PforayKeystorePassword=$FORAY_KEYSTORE_PASSWORD` to the
+     bundleRelease invocation -> fails.
+     A GRADLE PROPERTY IS IN THE PROCESS'S argv. That puts it in `ps`, in the
+     daemon's own record of the invocation, and in any trace that echoes the
+     command — none of which GitHub's log masking touches, because none of them
+     is the workflow log. The values are read by `System.getenv` in
+     `mobile/gradle/foray-signing.gradle` instead. */
+  for (const c of gradlewInvocations(REL)) {
+    assert.equal(/\s-P/.test(c), false, `${c} passes a Gradle property — secrets must arrive by environment only`);
+  }
+  assert.equal(
+    /signingReport/.test(RYML),
+    false,
+    "`signingReport` prints signing configuration by design — it must not run in a job that holds a key"
+  );
+});
+
+test("a Gradle log that contains the password is destroyed rather than uploaded", () => {
+  /* MUTATION: delete the `rm -f "$ART/gradle-bundleRelease.log"` line from the
+     scrub -> fails.
+     GITHUB MASKS SECRETS IN LOGS AND NOT IN ARTIFACTS. The build log is uploaded
+     and is downloadable by anyone who can see the repo, so `***` in the web view
+     protects nothing about the copy in the zip. AGP does not print the password
+     today; a `--stacktrace` added in a hurry, or a keystore error that echoes
+     its inputs, is one commit away. */
+  const s = releaseStepCode("bundleRelease — the .aab");
+  assert.match(s, /grep -qF "\$FORAY_KEYSTORE_PASSWORD" "\$LOG"/, "the log must be searched for the password");
+  assert.match(s, /rm -f "\$LOG"/, "and destroyed if it is in there");
+  /* ORDER, NOT JUST PRESENCE. Scrubbing after the failure branch has already
+     tailed the file would be a check that runs too late to matter. */
+  assertOrder(
+    s,
+    'grep -qF "$FORAY_KEYSTORE_PASSWORD"',
+    "bundleRelease tail",
+    "the scrub must happen before anything reads the log back out"
+  );
+});
+
+test("an unscanned build log cannot reach the uploaded directory by ANY path", () => {
+  /* MUTATION: change `LOG="$RUNNER_TEMP/gradle-bundleRelease.log"` to
+     `LOG="$ART/gradle-bundleRelease.log"` -> fails.
+     ORDERING THE SCRUB WAS NOT ENOUGH, AND TWO REVIEWERS FOUND THE SAME HOLE
+     INDEPENDENTLY. When the build wrote straight into $ART, every exit between
+     the build and the scrub left an unscanned log for the `if: always()` upload
+     to publish: the `timeout-minutes`, a cancelled concurrency group, and — as
+     shipped for about an hour — a password-length check that had been added
+     after the build and returned before the scrub, so the one input that makes
+     the scan unusable was also the one that skipped it.
+     A CHECK THAT PROTECTS ONE CODE PATH AGAINST AN UNCONDITIONAL UPLOAD IS A
+     CHECK WITH A GAP IN IT. The log now lives outside the uploaded directory
+     until it has been read, which is the same structural argument that puts
+     $KEYDIR beside $ART rather than inside it — and this test is the pair of the
+     keystore one above. */
+  const s = releaseStepCode("bundleRelease — the .aab");
+  assert.match(s, /LOG="\$RUNNER_TEMP\/gradle-bundleRelease\.log"/, "the build log must be written outside $ART");
+  assert.match(s, /gradlew bundleRelease [^\n]*> "\$LOG" 2>&1/, "and the build must write to it");
+  assert.match(s, /cp "\$LOG" "\$ART\/gradle-bundleRelease\.log"/, "it enters $ART by an explicit copy");
+  assertOrder(
+    s,
+    'grep -qF "$FORAY_KEYSTORE_PASSWORD"',
+    'cp "$LOG"',
+    "the copy into $ART must come AFTER the scan, or the scan is decoration"
+  );
+  /* THE LENGTH FLOOR IS BEFORE THE FIRST BUILD, which is what makes its own
+     message ("Refusing to build") true as well as what removes the gap. */
+  assertOrder(
+    s,
+    "${#FORAY_KEYSTORE_PASSWORD}",
+    "./gradlew",
+    "the password-length floor must run before any Gradle invocation"
+  );
+});
+
+test("Gradle's own view of whether it was keyed is READ, not merely recorded", () => {
+  /* MUTATION: delete the `grep -q 'FORAY_SIGNING_STATUS=keyed'` line -> fails.
+     `foraySigningStatus` was captured to a file that nothing opened — evidence
+     for a human and a check for nobody. The two halves can disagree: the
+     workflow decides `keyed` from the secret, the Gradle include decides
+     `signingRequested` from the environment it was handed, and a renamed
+     variable or an include that stops being applied separates them. The
+     signature step catches that after the build; this catches it before, which
+     on a 25-minute compile is the difference between a diagnosis and a wait. */
+  const s = releaseStepCode("bundleRelease — the .aab");
+  assert.match(s, /grep -q 'FORAY_SIGNING_STATUS=keyed' "\$ART\/signing-status\.txt"/);
+  assertOrder(
+    s,
+    "FORAY_SIGNING_STATUS=keyed",
+    "gradlew bundleRelease",
+    "the disagreement must be caught before the release compile, not after it"
+  );
+});
+
+test("every pipeline whose failure has a diagnostic can actually reach it", () => {
+  /* MUTATION: delete `|| true` from the `adb install` pipeline -> fails.
+     THE SAME DEFECT THREE TIMES, and a reviewer found all three: under
+     `set -o pipefail` a failing `adb install`, a failing `am start` (adb shell
+     forwards the remote status) or a failing `base64 --decode` aborts the step
+     BEFORE the `grep`/`if` written to explain it. The message is then dead code
+     and the operator gets the tool's own error instead — which is exactly the
+     shape android-build.yml's `find … || true` comment already records for the
+     merged-manifest diagnostic. */
+  const launch = releaseStepCode("Install the app and start it");
+  assert.match(launch, /adb install -r -g "\$APK"[^\n]*\|\| true/, "adb install exits non-zero on failure");
+  assert.match(launch, /am start -W -n "\$PKG\/\.MainActivity"[^\n]*\|\| true/, "adb shell forwards am's status");
+  const key = releaseStepCode("Materialise the upload key");
+  assert.match(key, /if ! printf '%s' "\$KEYSTORE_B64" \| base64 --decode/, "invalid base64 must reach its own message");
+  /* And the crash report, where SIGPIPE from `head` would otherwise abort the
+     step with the log group left open and the verdict line unprinted. */
+  const alive = releaseStepCode("Still alive, and nothing crashed");
+  assert.match(alive, /\{ grep -A 30 [^\n]*\|\| true; \} \| head -80/, "grep into head must survive SIGPIPE");
+});
+
+test("both signing outcomes are VERIFIED, and neither is assumed", () => {
+  /* MUTATION: delete the `exit 1` from the unsigned branch's `SIGBLOCKS -ne 0`
+     check -> fails.
+     THE QUIET FAILURE IS THE KEYED ONE: a key is installed, something in the
+     wiring stops applying it, the run stays green and emits an unsigned bundle
+     that Play rejects a fortnight later. So the keyed branch requires a
+     signature block AND a jarsigner verdict AND the pinned certificate; the
+     unkeyed branch requires the ABSENCE of a signature block, which is what
+     makes an inverted condition fail on whichever branch it takes rather than
+     on neither.
+     THE FIRST VERSION OF THIS TEST ONLY MATCHED THE `jarsigner -verify` TEXT and
+     stayed green with the entire unsigned branch reduced to an `echo`. Counting
+     the clauses that can fail the job is what notices. */
+  const s = releaseStepCode("Signed, or verifiably not signed");
+  assert.ok(s, "no step reads the signature");
+  assert.match(s, /jarsigner -verify/, "a bundle carries a JAR signature, so jarsigner is the right tool");
+  assert.equal(
+    /apksigner/.test(RYML),
+    false,
+    "apksigner reads APK signature schemes — on an .aab it answers the wrong question"
+  );
+  /* EXACTLY ONE, not "at least one" — a reviewer's point and a real hole. Two
+     signature blocks means two signers, and the fingerprint check below is a
+     substring search over a certificate dump that would then contain both, so a
+     bundle signed by the upload key AND something else passed every check. */
+  assert.match(s, /"\$SIGBLOCKS" -ne 1/, "the keyed branch must require exactly one signature block");
+  assert.match(s, /"\$SIGBLOCKS" -ne 0/, "the unkeyed branch must require the ABSENCE of one");
+  assert.equal(
+    failureClauses(s),
+    6,
+    "six clauses — wrong block count when keyed, jarsigner's exit, jarsigner's verdict, keytool's exit, a wrong fingerprint, and a block when NOT keyed — must each be able to fail the job"
+  );
+});
+
+test("the signer is pinned to the upload key's certificate, not merely to `signed`", () => {
+  /* MUTATION: delete the `EXPECTED_SIGNER_SHA256` comparison -> fails.
+     A bundle signed by the WRONG key verifies perfectly. Play answers "Your
+     Android App Bundle is signed with the wrong key", and for an app already
+     listed that is not a re-run, it is Google's key-reset process. The
+     fingerprint is a public value — Play displays the same one — so pinning it
+     costs nothing and closes the last silent way to ship an unusable artefact.
+     Read out of the ARTEFACT with `-jarfile`, so it is a property of the file
+     being uploaded rather than of the keystore we believe we used. */
+  const s = releaseStepCode("Signed, or verifiably not signed");
+  assert.match(s, /keytool -printcert -jarfile/, "the certificate must be read out of the .aab itself");
+  assert.match(s, /EXPECTED_SIGNER_SHA256/, "and compared against a pinned fingerprint");
+  /* THE COMPARISON, NOT ITS INGREDIENTS — AND THIS TEST WAS VACUOUS WITHOUT IT.
+     The mutation round replaced `if ! printf '%s' "$NORM" | grep -qF "$WANT"`
+     with `if false`, leaving the keytool call, the pinned constant and all five
+     `exit 1`s exactly where they were, and every assertion above stayed green
+     while the bundle stopped being checked against the key at all. The two
+     derivations and the branch that reads them are what has to be pinned. */
+  assert.match(s, /NORM=\$\(tr -d ':' < "\$ART\/signer-cert\.txt"/, "the compared value must come from the certificate dump");
+  assert.match(s, /WANT=\$\(printf '%s' "\$EXPECTED_SIGNER_SHA256"/, "and the expectation from the pinned constant");
+  assert.match(
+    s,
+    /if ! printf '%s' "\$NORM" \| grep -qF "\$WANT"; then/,
+    "the two must actually be compared, in the branch that fails the job"
+  );
+  const pinned = /EXPECTED_SIGNER_SHA256: "([0-9A-Fa-f:]+)"/.exec(REL);
+  assert.ok(pinned, "the pinned fingerprint must be a literal in the workflow, so a diff shows it changing");
+  assert.equal(
+    pinned[1].replace(/:/g, "").length,
+    64,
+    "a SHA-256 fingerprint is 32 bytes — a short value here would match a prefix of anything"
+  );
+});
+
+test("nothing keylike is committed anywhere in the signing config", () => {
+  /* MUTATION: change `storePassword keystorePassword` to `storePassword "hunter2"`
+     in mobile/gradle/foray-signing.gradle -> fails.
+     NOT EVEN AS AN EXAMPLE. A placeholder password in a tracked file is the
+     thing a future session copies into a real config, and a keystore in git is
+     unrecoverable — history rewrites do not un-clone. Every signing value must
+     trace back to `System.getenv`. */
+  const gradle = fs.readFileSync(path.join(ROOT, "mobile/gradle/foray-signing.gradle"), "utf8");
+  for (const setting of ["storePassword", "keyPassword", "keyAlias", "storeFile"]) {
+    const assignments = gradle
+      .split(/\r?\n/)
+      .filter((l) => new RegExp(`^\\s*${setting}\\s`).test(l));
+    assert.ok(assignments.length > 0, `${setting} is not configured at all`);
+    for (const a of assignments) {
+      const value = a.trim().replace(/^\w+\s+/, "");
+      assert.equal(
+        /^["']/.test(value),
+        false,
+        `${a.trim()} assigns a literal — every signing value must come from the environment`
+      );
+    }
+  }
+  assert.match(gradle, /System\.getenv\("FORAY_KEYSTORE_PASSWORD"\)/);
+  assert.equal(/-----BEGIN/.test(gradle), false, "no key material in a tracked file");
+  /* AND NO PATH TO A REAL STORE. A bare `.p12`/`.jks` search was the first
+     spelling of this and it matched the file's own COMMENTS, which name both
+     extensions to explain why `storeType` is declared rather than guessed — the
+     comment-satisfies-the-assertion failure this suite already records three
+     times. What must never appear is a store as a VALUE: a quoted filename, or
+     an absolute path on somebody's machine. */
+  assert.equal(
+    /["'][^"']*\.(p12|jks|keystore)["']|[A-Za-z]:\\\\|\/home\/|\/Users\//.test(gradle),
+    false,
+    "no keystore path as a value — the path arrives in FORAY_KEYSTORE_PATH at build time"
+  );
+});
+
+test("the signing include fails loudly on every way it can be half-configured", () => {
+  /* MUTATION: delete the `isInteger()` guard from
+     `mobile/gradle/foray-signing.gradle` -> fails.
+     ABSENT-SAFE IS NOT THE SAME AS BROKEN-SAFE, and that distinction is the whole
+     design of that file: no `FORAY_KEYSTORE_PATH` is an ordinary state that
+     yields an unsigned bundle, while a path that is set and unusable must throw.
+     Four ways to be half-configured, four `GradleException`s — and the fourth was
+     found by a reviewer and had NO TEST until a round-2 mutation survived: a
+     founder who types the version NAME (`1.0.0`) into the version_code box gets
+     `NumberFormatException: For input string` out of a generated project,
+     twenty-five minutes in, naming neither the variable nor the box.
+     THE GRADLE FILE HAS NO OTHER COVERAGE AT ALL. Gradle cannot run in this
+     repo's test environment, so this suite reading its text is the only thing
+     standing between these guards and a silent deletion. */
+  const gradle = fs.readFileSync(path.join(ROOT, "mobile/gradle/foray-signing.gradle"), "utf8");
+  const throws = (gradle.match(/throw new GradleException/g) ?? []).length;
+  assert.equal(throws, 5, `expected five GradleException guards, found ${throws}`);
+  for (const [needle, why] of [
+    [/if \(!keystoreFile\.isFile\(\)\)/, "a keystore path pointing at nothing must throw, not build unsigned"],
+    [/if \(!isSet\(keystorePassword\)\)/, "a keystore with no password must throw"],
+    [/if \(!isSet\(keystoreAlias\)\)/, "a keystore with no alias must throw"],
+    [/!versionCodeEnv\.trim\(\)\.isInteger\(\)/, "a non-integer versionCode must be named, not thrown as a NumberFormatException"],
+    [/versionCodeOverride <= 0/, "Play requires a positive versionCode, so 0 must not reach the build"],
+  ]) {
+    assert.match(gradle, needle, why);
+  }
+  /* AND THE PKCS12 DECLARATION, which is not a guard but is the same class of
+     one-line-from-broken: AGP guesses the store type from the file when this is
+     absent, and a wrong guess fails as `Invalid keystore format`. */
+  assert.match(gradle, /storeType "PKCS12"/, "the store type must be declared, not inferred from the extension");
+});
+
+/* ───────────────────────────── the launch itself ───────────────────────────── */
+
+test("THE AVD IS PROVEN TO EXIST BEFORE ANYTHING IS LAUNCHED", () => {
+  /* MUTATION: delete the `grep -qxF "$AVD_NAME" "$ART/emulator-list-avds.txt"`
+     branch -> fails.
+     THIS TEST EXISTS BECAUSE THE JOB SHIPPED WITHOUT IT AND COST TWELVE MINUTES
+     TO SAY NOTHING. `echo no | avdmanager create avd …` printed its interactive
+     "custom hardware profile?" prompt, exited ZERO, created no AVD, and nothing
+     looked. `emulator -avd foray-ci` then failed instantly with
+     `Unknown AVD name [foray-ci]` and `timeout 600 adb wait-for-device` waited
+     ten minutes for a device that could never appear.
+     `set -euo pipefail` WAS IN FORCE THROUGHOUT AND DID NOT HELP, because the
+     command it would have caught did not fail. That is the whole lesson: this is
+     a step that could not fail when its precondition was unmet — the fifth of
+     that shape in this repo in three days and the fourth in this PR, in the job
+     written to catch problems.
+     THE CHECK USES `emulator -list-avds`, THE TOOL THAT WILL CONSUME THE AVD.
+     Not `avdmanager list avd`, and that is measured rather than preferred: on a
+     real machine `avdmanager list avd` prints unusable AVDs too, under "The
+     following Android Virtual Devices could not be loaded" — two of them on the
+     founder's own box, missing their system images. A grep for the name over
+     that output is satisfied by an AVD the emulator cannot start, which is this
+     same bug wearing a check. */
+  const s = releaseStepCode("name: Create the AVD");
+  assert.ok(s, "no step creates the AVD and verifies it");
+  assert.match(s, /avdmanager create avd/, "the AVD must be created");
+  assert.match(
+    s,
+    /emulator -list-avds > "\$ART\/emulator-list-avds\.txt"/,
+    "and verified against the emulator's own view of what it can open — the redirect is pinned too, or the file the grep reads could be filled by a different command"
+  );
+  assert.match(
+    s,
+    /grep -qxF "\$AVD_NAME" "\$ART\/emulator-list-avds\.txt"/,
+    "the verdict must be an exact-line match for the AVD name in that list"
+  );
+  assert.match(s, /test -f "\$ANDROID_AVD_HOME\/\$AVD_NAME\.ini"/, "and the config file must be where both tools agree");
+  /* AND EACH OF THOSE THREE CHECKS MUST BE ABLE TO FAIL THE JOB, which is a
+     different claim from "the command is present" and the only one that matters.
+     A REVIEWER'S MUTATION ROUND CAUGHT THIS TEST SHIPPING THE VERY DEFECT IT WAS
+     WRITTEN FOR: deleting just the `exit 1` from the `grep -qxF` branch left the
+     suite green, so the step printed "the emulator does not list an AVD called
+     foray-ci", carried on, and launched the emulator anyway. Same for the status
+     branch's `exit 1`, and same for appending `|| true` to the `.ini` test. Three
+     regexes over command text, and the proving could be removed under all of
+     them. `failureClauses` is the assertion that has teeth. */
+  assert.equal(
+    failureClauses(s),
+    3,
+    "the avdmanager status, the emulator-list check and the .ini test must EACH be able to fail the step"
+  );
+  /* THE EXIT CODE, CAPTURED DIRECTLY. A local probe of this exact command
+     through `| head` reported 0 for a run that exited 1 — the same defect one
+     layer up, in the diagnostic written to investigate it. */
+  assert.match(s, /AVDMANAGER_STATUS=\$\?/, "avdmanager's status must be captured, not read after a pipe");
+  assert.match(s, /"\$AVDMANAGER_STATUS" -ne 0/, "and it must be able to fail the step");
+  /* `-d` REMOVES THE PROMPT ENTIRELY, which is better than answering it: with a
+     device given, avdmanager does not ask, so there is no stdin for an `echo` to
+     get wrong. stdin is closed as well, so a future cmdline-tools that asks
+     anyway fails fast instead of hanging. */
+  assert.match(s, /-d pixel_6/, "a device profile must be given so the interactive prompt never happens");
+  assert.match(s, /< \/dev\/null/, "and stdin closed, so a prompt cannot hang the job");
+  assert.equal(
+    /echo no \| avdmanager/.test(RYML),
+    false,
+    "`echo no | avdmanager` is the recipe that exited 0 and created nothing"
+  );
+  /* ONE AVD LOCATION FOR BOTH TOOLS. The observed error was the emulator saying
+     where IT looked, which says nothing about where avdmanager wrote; the two
+     resolve their root through different variables. */
+  assert.match(s, /ANDROID_AVD_HOME="\$HOME\/\.android\/avd"/, "the AVD root must be pinned for both tools");
+  /* AND IT IS A SEPARATE STEP FROM THE BOOT, so its verdict is its own. */
+  const boot = releaseStepCode("name: Boot it");
+  assert.ok(boot, "no step boots the emulator");
+  assert.equal(
+    /avdmanager create/.test(boot),
+    false,
+    "creation and boot must be separate steps, so a creation failure is reported as one"
+  );
+});
+
+test("a dead emulator is noticed in seconds, not at the end of the timeout", () => {
+  /* MUTATION: delete the `kill -0 "$EMU_PID"` branch -> fails.
+     Second MUTATION: restore `timeout 600 adb wait-for-device` -> fails (there is
+     no `adb wait-for-device` to assert any more; the poll replaced it).
+     TWELVE MINUTES TO REPORT A ONE-SECOND FAULT is what the first version did,
+     and the missing AVD was only one of the ways to get there. `adb
+     wait-for-device` waits for something to appear and has no opinion about
+     whether anything is still trying, so an emulator that exits during startup —
+     a bad flag, no KVM, a corrupt image — blocks it for the full timeout with the
+     answer already sitting in the log. Watching the pid it started turns every
+     one of those into a failure in seconds. */
+  const s = releaseStepCode("name: Boot it");
+  assert.match(s, /EMU_PID=\$!/, "the emulator's pid must be captured");
+  assert.match(s, /kill -0 "\$EMU_PID"/, "and checked while waiting, or a dead emulator waits out the clock");
+  assert.match(s, /getprop sys\.boot_completed/, "the boot must be waited for on sys.boot_completed");
+  assert.match(s, /DEADLINE=/, "an emulator that never boots must time out rather than hold the runner");
+  assert.equal(failureClauses(s), 2, "both a dead process and an expired deadline must be able to fail the step");
+});
+
+test("the emulator image is NOT API 36, because that cost is measured", () => {
+  /* MUTATION: change `system-images;android-34;…` to `system-images;android-36;…`
+     -> fails.
+     docs/research/mp1-background-audio.md §6.2: a cold API-36 x86_64 image did
+     not reach a usable framework in ~35 minutes under WHPX, across three
+     attempts, and §6.3's "practical note for #38 (the CI-runner work)" says in
+     so many words to pin an older API level. targetSdk is 36; the emulator's API
+     level is not what this job tests, and paying §6.2's bill again to make it
+     match a number would be paying it for nothing. */
+  assert.match(REL, /EMULATOR_IMAGE: system-images;android-34;google_apis;x86_64/);
+  assert.equal(
+    /system-images;android-3[56]/.test(RYML),
+    false,
+    "MP1 §6.2 measured an API-36 cold boot not completing in ~35 minutes"
+  );
+  assert.match(prose(REL), /§6\.2/, "the header must carry the citation, so the next session does not re-pay for it");
+});
+
+test("KVM is enabled and ASSERTED, not hoped for", () => {
+  /* MUTATION: delete the `test -w /dev/kvm` line -> fails.
+     Without the udev rule the runner user cannot open /dev/kvm and the emulator
+     falls back to interpretation — which is the regime §6.2 measured at "not
+     booted after 35 minutes". The difference between a ~2 minute boot and a
+     timeout is one file in /etc/udev/rules.d, so its effect is checked rather
+     than assumed: a silently unaccelerated emulator does not fail here, it fails
+     fifteen minutes later in the boot poll with a message about booting. */
+  const s = releaseStepCode("Enable KVM");
+  assert.ok(s, "nothing enables KVM");
+  assert.match(s, /99-kvm4all\.rules/);
+  assert.match(s, /test -w \/dev\/kvm/, "the rule's EFFECT must be checked, not just written");
+  assert.equal(failureClauses(s), 1, "the /dev/kvm check must be able to fail the job");
+});
+
+test("the app is installed and started, and `am start` must report ok", () => {
+  /* MUTATION: delete the `grep -q '^Status: ok'` line -> fails.
+     `adb shell am start` EXITS 0 WHEN IT FAILS. A missing activity, a
+     non-exported one, or a package name that does not match all produce
+     `Error type 3` on stdout and a zero exit status, so without reading the
+     Status line the "launch" step is an echo. `-W` is what makes the Status line
+     exist. `adb install` has the same shape and gets the same treatment. */
+  const s = releaseStepCode("Install the app and start it");
+  assert.ok(s, "no step installs and launches the app");
+  assert.match(s, /adb install -r -g "\$APK"/);
+  assert.match(s, /grep -q '\^Success'/, "adb install also prints failures to stdout and exits 0");
+  assert.match(s, /am start -W -n "\$PKG\/\.MainActivity"/, "-W is what produces a Status line to read");
+  assert.match(s, /grep -q '\^Status: ok'/);
+  assert.equal(failureClauses(s), 2, "both the install and the start must be able to fail the job");
+});
+
+test("the WebView is interrogated over DevTools, and the probe's verdict is the job's", () => {
+  /* MUTATION: append `|| true` to the `node tools/mobile/webview-probe.mjs` line
+     -> fails.
+     A PROBE WHOSE EXIT CODE IS DISCARDED IS A COMMENT WITH A SUBPROCESS — the
+     exact failure a reviewer's mutation round found three times in
+     `android-build.yml`. This is the only thing in the repo that can see the app
+     RUNNING: `mobile/android/` is not committed, so no unit test can read it,
+     and the APK checks next door prove classes were REGISTERED, not that any of
+     them work. */
+  const s = releaseStepCode("The WebView is running OUR app");
+  assert.ok(s, "no step reads the running WebView");
+  assert.match(s, /node tools\/mobile\/webview-probe\.mjs/);
+  assert.equal(
+    /webview-probe\.mjs[\s\S]{0,240}\|\| true/.test(s),
+    false,
+    "the probe's exit code is the job's verdict and must not be discarded"
+  );
+  /* THE SOCKET IS FOUND, NOT NAME-ASSUMED, for the same reason the merged
+     manifest is found rather than path-assumed next door:
+     `webview_devtools_remote_<pid>` is a WebView implementation detail. */
+  assert.match(s, /\/proc\/net\/unix/, "the devtools socket must be discovered");
+  assert.match(s, /adb forward tcp:9222/);
+});
+
+test("the process is re-checked after the probe, by pid and not merely by presence", () => {
+  /* MUTATION: delete the `[ "$STILL" = "$PID" ]` comparison -> fails.
+     A CRASHED APP CAN LOOK ALIVE. `MainActivity` has `launchMode="singleTask"`
+     and Android restarts a crashed foreground app readily, so "a process with
+     this package name exists" is satisfied by the replacement. The pid is what
+     distinguishes "still running" from "running again". */
+  const s = releaseStepCode("Still alive, and nothing crashed");
+  assert.ok(s, "nothing re-checks the process after the probe");
+  assert.match(s, /pidof "\$PKG"/);
+  assert.match(s, /\[ "\$STILL" = "\$PID" \]/, "a restarted process is a crashed process");
+  assert.match(s, /FATAL EXCEPTION/, "the log must be read for a crash the process survived");
+  assert.equal(failureClauses(s), 3, "gone, restarted, and fatal-in-log must each be able to fail the job");
+});
+
+test("the debug-APK stand-in is checked rather than assumed", () => {
+  /* MUTATION: delete the `minifyEnabled … true` branch -> fails.
+     THE ASSUMPTION THE WHOLE SMOKE JOB RESTS ON. DevTools is reachable only on a
+     debuggable build (Capacitor's CapConfig defaults `webContentsDebuggingEnabled`
+     to FLAG_DEBUGGABLE), so this job installs the DEBUG APK — which is worth
+     something only while the two configurations compile the same code.
+     Capacitor's template sets `minifyEnabled false`, so today they do. If a
+     future template turns R8 on, that stops being true SILENTLY, and R8 breaking
+     reflection-based plugin registration is precisely a crash only the release
+     build has. */
+  const s = releaseStepCode("still a fair stand-in");
+  assert.ok(s, "nothing checks that the debug build still stands in for the release build");
+  assert.match(s, /minifyEnabled\[\[:space:\]\]\+true/, "minification turning on must fail this job");
+  assert.match(s, /minifyEnabled\[\[:space:\]\]\+false/, "and the line disappearing entirely must fail it too");
+  assert.equal(failureClauses(s), 2, "both the on case and the gone case must be able to fail the job");
+});
+
+test("the run's own summary says what a launch does NOT prove", () => {
+  /* MUTATION: delete the "What it does not prove" paragraph from the smoke
+     summary step -> fails.
+     THE HAZARD THIS REPO KEEPS PAYING FOR, with a green tick attached. A passing
+     launch check is exactly the artefact that will be read as "backgrounded
+     playback works", and §6.4 is a whole section on why an emulator cannot show
+     that: Doze never engages, the cached-app freezer has no reason to fire, OEM
+     battery managers are untestable by construction, and Bluetooth routing is
+     not reachable at all. MP1 §5.4 once claimed "confirmed live" for a spike
+     that never ran; the caveat goes where the tick is. */
+  const summary = releaseStepCode("What the launch established");
+  assert.ok(summary, "the smoke job has no summary step");
+  assert.match(summary, /What it does not prove/);
+  assert.match(summary, /GITHUB_STEP_SUMMARY/);
+  assert.match(summary, /§6\.4/, "the summary must cite the section that says why, not merely hedge");
+  const p = prose(REL);
+  assert.match(p, /WHAT THIS STILL DOES NOT PROVE/);
+  assert.match(p, /an emulator is not a phone/i);
+});
+
+test("the bundle summary tells a human where the artefact is and whether it is submittable", () => {
+  /* MUTATION: delete the `SIGN_STATE = unsigned` branch from the summary -> fails.
+     An unsigned .aab is indistinguishable from a signed one at a glance and Play
+     rejects it at the upload form. A run that produced one must say so on its own
+     face, next to the green tick, rather than in a step somebody has to expand. */
+  const s = releaseStepCode("What this run established");
+  assert.ok(s, "the bundle job has no summary step");
+  assert.match(s, /This bundle cannot be submitted/);
+  assert.match(s, /Ready to upload/);
+  assert.match(s, /foray-android-release/, "the summary must name the artifact to download");
 });
