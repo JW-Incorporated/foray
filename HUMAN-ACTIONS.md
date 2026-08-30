@@ -1751,7 +1751,7 @@ which of the two pages each one lives on. The literals, so they are also here:
 | App name | `4a` |
 | Short description | `docs/store/play/short-description.txt` (71 chars) |
 | Full description | `docs/store/play/full-description.txt` (2202 chars) |
-| App icon (512) | `icon-512.png` — repo root, already the right size |
+| App icon (512) | `docs/store/play/app-icon-512.png` — **not** the `icon-512.png` in the repo root, which Play rejected (24-bit, and the mark filled 41% of the square). README §4 says why there are two. |
 | Feature graphic | `docs/store/play/feature-graphic.png` |
 | Phone screenshots | the four `docs/store/play/screenshot-*.jpg`, in filename order |
 | Category | Music & Audio |
