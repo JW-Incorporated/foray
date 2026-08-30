@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-29T16:18:48.972Z",
+  "built_at": "2026-08-30T00:15:58.245Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-29-76154e9f",
+    "last_batch_id": "fresh-2026-08-30-0198c24b",
     "last_batch_tier": 1,
     "transcript_labels": "descriptive cost label, never an eligibility test — see tools/classify/labels.mjs"
   },
@@ -24524,10 +24524,38 @@
     "898635643": {
       "topics": [
         "music",
-        "history"
+        "tv-film"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hard Rock and Metal Reviews",
+      "display_title": "Rock & Metal Combat Podcast",
+      "blurb": "Hard Rock and Metal Reviews",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-0198c24b",
+      "classified_at": "2026-08-30T00:15:58.245Z"
     },
     "898834773": {
       "topics": [
@@ -24873,10 +24901,49 @@
     },
     "906576942": {
       "topics": [
-        "medicine"
+        "medicine",
+        "science",
+        "business",
+        "tv-film"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.85
+        },
+        {
+          "node": "science",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Dr. Anna Cabeca is America's top menopause doctor. Known most widely as The Girlfriend Doctor,",
+      "display_title": "The Girlfriend Doctor w/ Dr. Anna Cabeca",
+      "blurb": "Dr. Anna Cabeca is America's top menopause doctor. Known most widely as The Girlfriend Doctor, Dr. Anna is the first call for the woman who has questi...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-0198c24b",
+      "classified_at": "2026-08-30T00:15:58.245Z"
     },
     "906583152": {
       "topics": [
@@ -24887,10 +24954,49 @@
     },
     "906717198": {
       "topics": [
-        "sports/baseball"
+        "sports/baseball",
+        "news",
+        "news/commentary",
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/baseball",
+          "confidence": 0.9
+        },
+        {
+          "node": "news",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.8
+        },
+        {
+          "node": "education",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Find out about the stars of tomorrow, from the guys who know today. Jim Callis",
+      "display_title": "MLB Pipeline",
+      "blurb": "Find out about the stars of tomorrow, from the guys who know today. Jim Callis (@jimcallisMLB) and Jonathan Mayo (@JonathanMayo) are your tour guides ...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-0198c24b",
+      "classified_at": "2026-08-30T00:15:58.245Z"
     },
     "907175322": {
       "topics": [
@@ -25056,12 +25162,49 @@
     },
     "911156078": {
       "topics": [
-        "medicine/biology",
-        "science",
-        "nature"
+        "medicine",
+        "news",
+        "health/mental",
+        "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.85
+        },
+        {
+          "node": "news",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.85
+        },
+        {
+          "node": "science",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Bio Report podcast, hosted by award-winning journalist Daniel Levine, focuses on the intersec...",
+      "display_title": "The Bio Report",
+      "blurb": "The Bio Report podcast, hosted by award-winning journalist Daniel Levine, focuses on the intersection of biotechnology with business, science, and pol...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-0198c24b",
+      "classified_at": "2026-08-30T00:15:58.245Z"
     },
     "911502027": {
       "topics": [
@@ -25105,10 +25248,49 @@
     },
     "911802605": {
       "topics": [
-        "culture/art"
+        "craft",
+        "craft/photography",
+        "music",
+        "tv-film"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.85
+        },
+        {
+          "node": "craft/photography",
+          "confidence": 0.85
+        },
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Topics will touch on all film photography formats, do-it-yourself techniques, digital technologie...",
+      "display_title": "Film Photography Podcast",
+      "blurb": "Topics will touch on all film photography formats, do-it-yourself techniques, digital technologies, motion picture film making and more.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-0198c24b",
+      "classified_at": "2026-08-30T00:15:58.245Z"
     },
     "911911845": {
       "topics": [
@@ -25224,10 +25406,52 @@
     },
     "914371573": {
       "topics": [
-        "philosophy"
+        "music",
+        "tv-film",
+        "tv-film/reviews",
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.8
+        },
+        {
+          "node": "education",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Bullets, beans & band-aids baby! Oh yeah! If you love AR's, Glocks and freedom, then",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 12w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-0198c24b",
+      "classified_at": "2026-08-30T00:15:58.245Z"
     },
     "914691565": {
       "topics": [
@@ -25387,10 +25611,49 @@
     },
     "919266944": {
       "topics": [
-        "music"
+        "craft",
+        "craft/photography",
+        "music",
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.85
+        },
+        {
+          "node": "craft/photography",
+          "confidence": 0.85
+        },
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Peel back the glamour of the professional recording world. Guests from the world of audio",
+      "display_title": "Working Class Audio",
+      "blurb": "Peel back the glamour of the professional recording world. Guests from the world of audio for music, film, games, restoration, and more share their in...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-0198c24b",
+      "classified_at": "2026-08-30T00:15:58.245Z"
     },
     "920537000": {
       "topics": [
@@ -25695,10 +25958,49 @@
     },
     "926193073": {
       "topics": [
-        "tv-film/animation"
+        "tv-film/animation",
+        "craft",
+        "craft/photography",
+        "tv-film"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/animation",
+          "confidence": 0.9
+        },
+        {
+          "node": "craft",
+          "confidence": 0.85
+        },
+        {
+          "node": "craft/photography",
+          "confidence": 0.85
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "**New Episodes every Monday!** Join hosts dakazu, darfox8, Seamus2389, and Morgana Santilli for M...",
+      "display_title": "Manga Machinations",
+      "blurb": "**New Episodes every Monday!** Join hosts dakazu, darfox8, Seamus2389, and Morgana Santilli for Manga Machinations! Our weekly manga discussions focus...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-0198c24b",
+      "classified_at": "2026-08-30T00:15:58.245Z"
     },
     "926521563": {
       "topics": [
@@ -25922,10 +26224,52 @@
     },
     "932499233": {
       "topics": [
-        "news/commentary"
+        "medicine",
+        "news",
+        "craft",
+        "health/mental"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.85
+        },
+        {
+          "node": "news",
+          "confidence": 0.85
+        },
+        {
+          "node": "craft",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "The Inquiry gets beyond the headlines to explore the trends, forces and ideas shaping the",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-0198c24b",
+      "classified_at": "2026-08-30T00:15:58.245Z"
     },
     "933300204": {
       "topics": [
@@ -26061,10 +26405,44 @@
     },
     "938456371": {
       "topics": [
-        "food"
+        "food",
+        "business",
+        "business/management"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "business/management",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Gravy shares stories of the changing American South through the foods we eat. Gravy showcases",
+      "display_title": "Gravy",
+      "blurb": "Gravy shares stories of the changing American South through the foods we eat. Gravy showcases a South that is constantly evolving, accommodating new i...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-0198c24b",
+      "classified_at": "2026-08-30T00:15:58.245Z"
     },
     "939175693": {
       "topics": [
@@ -26076,10 +26454,38 @@
     "939201604": {
       "topics": [
         "music",
-        "history"
+        "tv-film"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Women of Substance Radio is an Award-Wining Podcast featuring the best music by Female Indie",
+      "display_title": "Women of Substance Music Podcast",
+      "blurb": "Women of Substance Radio is an Award-Wining Podcast featuring the best music by Female Indie Artists and Female-Fronted Indie Bands in all genres. Fou...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-0198c24b",
+      "classified_at": "2026-08-30T00:15:58.245Z"
     },
     "939293583": {
       "topics": [
@@ -26232,10 +26638,44 @@
     },
     "942230950": {
       "topics": [
-        "craft"
+        "craft",
+        "health/mental",
+        "psychology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.85
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Margaret and Catherine talk about what they are learning from their knitting, something about the",
+      "display_title": "Teaching Your Brain to Knit",
+      "blurb": "Margaret and Catherine talk about what they are learning from their knitting, something about the brain or learning, Behind the Redwood Curtain, the a...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-0198c24b",
+      "classified_at": "2026-08-30T00:15:58.245Z"
     },
     "942258146": {
       "topics": [
@@ -26579,10 +27019,49 @@
     },
     "953541032": {
       "topics": [
+        "engineering/precision-mfg",
+        "craft",
+        "business",
         "business/management"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/precision-mfg",
+          "confidence": 0.85
+        },
+        {
+          "node": "craft",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "business/management",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Manufacturing is tough—but you don't have to go it alone. If you're leading a manufacturing",
+      "display_title": "Making Chips Podcast for Manufacturing Leaders",
+      "blurb": "Manufacturing is tough—but you don't have to go it alone. If you're leading a manufacturing business, you face constant pressure: staying competitive,...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-0198c24b",
+      "classified_at": "2026-08-30T00:15:58.245Z"
     },
     "953568438": {
       "topics": [
@@ -26593,10 +27072,49 @@
     },
     "953925380": {
       "topics": [
-        "health/alternative"
+        "medicine",
+        "business",
+        "tv-film",
+        "health/sexuality"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/sexuality",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "A lively and informative podcast delving into health, nutrition, and unconventional topics beyond...",
+      "display_title": "Stuff Your Doctor Should Know",
+      "blurb": "A lively and informative podcast delving into health, nutrition, and unconventional topics beyond the mainstream medical model. Gain valuable insights...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-0198c24b",
+      "classified_at": "2026-08-30T00:15:58.245Z"
     },
     "954016339": {
       "topics": [
@@ -26622,10 +27140,52 @@
     },
     "954105187": {
       "topics": [
-        "religion/judaism"
+        "religion/judaism",
+        "medicine",
+        "music",
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.9
+        },
+        {
+          "node": "medicine",
+          "confidence": 0.85
+        },
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "A show about Judaism and sexuality with certified sex therapist Dr. Bat Sheva Marcus and",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 10w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-0198c24b",
+      "classified_at": "2026-08-30T00:15:58.245Z"
     },
     "954139712": {
       "topics": [
@@ -26803,10 +27363,49 @@
     },
     "955329085": {
       "topics": [
-        "sports/soccer"
+        "medicine",
+        "news",
+        "health/mental",
+        "news/commentary"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.85
+        },
+        {
+          "node": "news",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Global Tottenham Hotspur podcast/YouTube channel. Tim (@Timmah621), Vass (@vkon1), Dan (@YidVids)...",
+      "display_title": "Doctor Tottenham (A Tottenham Hotspur Podcast)",
+      "blurb": "Global Tottenham Hotspur podcast/YouTube channel. Tim (@Timmah621), Vass (@vkon1), Dan (@YidVids), Billie (@Billie_T), and Andy (@gaffneyvlc) discuss ...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-0198c24b",
+      "classified_at": "2026-08-30T00:15:58.245Z"
     },
     "955398045": {
       "topics": [
@@ -26832,10 +27431,54 @@
     },
     "955634521": {
       "topics": [
-        "business/careers"
+        "medicine",
+        "news",
+        "craft",
+        "news/politics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.85
+        },
+        {
+          "node": "news",
+          "confidence": 0.85
+        },
+        {
+          "node": "craft",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "I Am The Law takes a deep dive into the various practice areas and settings",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /deep[\\s-]dive/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 8,
+        "transcript_types": {
+          "text/html": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-0198c24b",
+      "classified_at": "2026-08-30T00:15:58.245Z"
     },
     "955750369": {
       "topics": [
@@ -27209,10 +27852,49 @@
     },
     "962472464": {
       "topics": [
+        "news",
+        "news/commentary",
+        "tv-film",
         "tv-film/reviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Bald Move's officially unofficial podcast for Pluribus on Apple TV+ Join us... for a review",
+      "display_title": "Pluribussin",
+      "blurb": "Bald Move's officially unofficial podcast for Pluribus on Apple TV+ Join us... for a review of the episode, analysis of the themes, and your feedback....",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-0198c24b",
+      "classified_at": "2026-08-30T00:15:58.245Z"
     },
     "962899095": {
       "topics": [
@@ -27349,10 +28031,49 @@
     },
     "964583650": {
       "topics": [
+        "medicine",
+        "science",
+        "business",
         "business/management"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.85
+        },
+        {
+          "node": "science",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "business/management",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Interviews, Tips & Strategies to help Real Estate Professionals and Entrepreneurs DOMINATE their ...",
+      "display_title": "GSD Mode Podcast",
+      "blurb": "Interviews, Tips & Strategies to help Real Estate Professionals and Entrepreneurs DOMINATE their Businesses! For more FREE Training & Resources, Go To...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-0198c24b",
+      "classified_at": "2026-08-30T00:15:58.245Z"
     },
     "964623770": {
       "topics": [
@@ -27546,11 +28267,49 @@
     },
     "966608311": {
       "topics": [
-        "tv-film/history",
-        "history"
+        "craft",
+        "craft/photography",
+        "music",
+        "tv-film"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.85
+        },
+        {
+          "node": "craft/photography",
+          "confidence": 0.85
+        },
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "One movie each week. 30 years in the making.",
+      "display_title": "30something Movie Podcast",
+      "blurb": "One movie each week. 30 years in the making.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-0198c24b",
+      "classified_at": "2026-08-30T00:15:58.245Z"
     },
     "966670774": {
       "topics": [
@@ -27740,7 +28499,34 @@
         "religion/islam"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/islam",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": true,
+      "rationale": "المصحف الكامل للقارئ من موقع المكتبة الصوتية للقرآن الكريم http://www.mp3quran.net Mp3 Quran Band...",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 17w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-0198c24b",
+      "classified_at": "2026-08-30T00:15:58.245Z"
     },
     "968365266": {
       "topics": [
@@ -27752,11 +28538,57 @@
     },
     "968638424": {
       "topics": [
+        "medicine",
+        "craft",
         "health/mental",
-        "psychology"
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.85
+        },
+        {
+          "node": "craft",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Struggling with panic attacks, agoraphobia, or other anxiety problems? The Anxious Truth will edu...",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 11w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 32,
+        "transcript_types": {
+          "text/html": 8,
+          "application/json": 8,
+          "application/x-subrip": 8,
+          "text/vtt": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-0198c24b",
+      "classified_at": "2026-08-30T00:15:58.245Z"
     },
     "968927571": {
       "topics": [
@@ -27899,18 +28731,98 @@
     },
     "972403908": {
       "topics": [
-        "adventure/exploration",
-        "nature"
+        "craft",
+        "craft/photography",
+        "science",
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.85
+        },
+        {
+          "node": "craft/photography",
+          "confidence": 0.85
+        },
+        {
+          "node": "science",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Backpacking, Adventure Travel, SCUBA, Sailing, Biking, Skiing, ADVENTURE! Listen to in-depth inte...",
+      "display_title": "Adventure Sports Podcast",
+      "blurb": "Backpacking, Adventure Travel, SCUBA, Sailing, Biking, Skiing, ADVENTURE! Listen to in-depth interviews three times each week from adventure sports en...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-0198c24b",
+      "classified_at": "2026-08-30T00:15:58.245Z"
     },
     "972414353": {
       "topics": [
-        "religion/islam"
+        "religion/islam",
+        "medicine",
+        "news",
+        "health/mental"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/islam",
+          "confidence": 0.9
+        },
+        {
+          "node": "medicine",
+          "confidence": 0.85
+        },
+        {
+          "node": "news",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Each week, we share an essential, relevant spiritual teaching from the religion of Islam designed",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 19w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-0198c24b",
+      "classified_at": "2026-08-30T00:15:58.245Z"
     },
     "972528193": {
       "topics": [
@@ -27988,10 +28900,56 @@
     },
     "973617661": {
       "topics": [
-        "news/daily"
+        "religion/judaism",
+        "news",
+        "news/politics",
+        "tv-film"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.9
+        },
+        {
+          "node": "news",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "The Dana Show with Dana Loesch is a daily conservative news and political commentary podcast",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 11w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 24,
+        "transcript_types": {
+          "application/x-subrip": 8,
+          "text/plain": 8,
+          "text/vtt": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-0198c24b",
+      "classified_at": "2026-08-30T00:15:58.245Z"
     },
     "973748237": {
       "topics": [
@@ -28162,10 +29120,44 @@
     },
     "976377038": {
       "topics": [
-        "health/alternative"
+        "medicine",
+        "food",
+        "tv-film"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.85
+        },
+        {
+          "node": "food",
+          "confidence": 0.85
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Herbal Radio brings you invaluable conversations with herbalists, botanists, scientists, conserva...",
+      "display_title": "Herbal Radio",
+      "blurb": "Herbal Radio brings you invaluable conversations with herbalists, botanists, scientists, conservationists, and more! Hoping to inspire the next genera...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-0198c24b",
+      "classified_at": "2026-08-30T00:15:58.245Z"
     },
     "976512348": {
       "topics": [
@@ -28214,11 +29206,49 @@
     },
     "977007408": {
       "topics": [
-        "sports/endurance",
-        "health/fitness"
+        "medicine",
+        "science",
+        "tv-film",
+        "tv-film/reviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.85
+        },
+        {
+          "node": "science",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "A lighthearted conversation by runners about their lives as runners and the issues that are",
+      "display_title": "Ten Junk Miles",
+      "blurb": "A lighthearted conversation by runners about their lives as runners and the issues that are interesting or important to them and guests of the show. T...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-0198c24b",
+      "classified_at": "2026-08-30T00:15:58.245Z"
     },
     "977345837": {
       "topics": [
@@ -28230,10 +29260,39 @@
     },
     "977602870": {
       "topics": [
-        "news/daily"
+        "news",
+        "news/commentary"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The latest national and international news from BBC Radio 4",
+      "display_title": "Six O'Clock News",
+      "blurb": "The latest national and international news from BBC Radio 4",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-0198c24b",
+      "classified_at": "2026-08-30T00:15:58.245Z"
     },
     "977824904": {
       "topics": [
@@ -28245,10 +29304,39 @@
     },
     "977872565": {
       "topics": [
-        "sports/football"
+        "tv-film",
+        "tv-film/reviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "HuskerOnline is your authority on Nebraska Athletics. Get the latest on the Huskers in our",
+      "display_title": "HuskerOnline Podcast",
+      "blurb": "HuskerOnline is your authority on Nebraska Athletics. Get the latest on the Huskers in our weekly HuskerOnline Show, along with several other specialt...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-0198c24b",
+      "classified_at": "2026-08-30T00:15:58.245Z"
     },
     "978052928": {
       "topics": [
@@ -28650,10 +29738,52 @@
     },
     "984107360": {
       "topics": [
-        "sports/baseball"
+        "news",
+        "craft",
+        "news/commentary",
+        "tv-film"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.85
+        },
+        {
+          "node": "craft",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Entertaining and insightful discussions about the Minnesota Twins! Featuring SKOR North personali...",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 10w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-0198c24b",
+      "classified_at": "2026-08-30T00:15:58.245Z"
     },
     "984527862": {
       "topics": [
@@ -28724,18 +29854,70 @@
     },
     "986153424": {
       "topics": [
-        "education/language-learning",
-        "linguistics/language"
+        "tv-film",
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.8
+        },
+        {
+          "node": "education",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "You are about to enjoy a charming theatrical performance, and, while doing so, you will",
+      "display_title": "Italian for Beginners",
+      "blurb": "You are about to enjoy a charming theatrical performance, and, while doing so, you will learn to understand and, eventually, speak Italian. As the pla...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-0198c24b",
+      "classified_at": "2026-08-30T00:15:58.245Z"
     },
     "986178502": {
       "topics": [
-        "kids-family/parenting"
+        "tv-film"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Co-hosts Meagan Francis and Sarah Powers offer practical tips and real-life encouragement for mom...",
+      "display_title": "The Mom Hour",
+      "blurb": "Co-hosts Meagan Francis and Sarah Powers offer practical tips and real-life encouragement for moms who want to enjoy motherhood more, and cut back on ...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-0198c24b",
+      "classified_at": "2026-08-30T00:15:58.245Z"
     },
     "986223478": {
       "topics": [
@@ -29097,10 +30279,38 @@
     },
     "994353832": {
       "topics": [
-        "sports/fantasy"
+        "tv-film"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "In This League Fantasy Podcast Network brings you the The \"Podcast\" of all podcasts that",
+      "display_title": "In This League Fantasy Football",
+      "blurb": "In This League Fantasy Podcast Network brings you the The \"Podcast\" of all podcasts that have ever graced www.inthisleague.com , The ITL Fantasy Footb...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 24,
+        "transcript_types": {
+          "application/x-subrip": 8,
+          "text/plain": 8,
+          "text/vtt": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-0198c24b",
+      "classified_at": "2026-08-30T00:15:58.245Z"
     },
     "994539742": {
       "topics": [
@@ -29147,10 +30357,52 @@
     },
     "995386468": {
       "topics": [
-        "sports/basketball"
+        "medicine",
+        "news",
+        "news/commentary",
+        "tv-film"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.85
+        },
+        {
+          "node": "news",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Locked On Hornets podcast is your daily ticket to stay ahead of the game and",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 10w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-0198c24b",
+      "classified_at": "2026-08-30T00:15:58.245Z"
     },
     "995635704": {
       "topics": [
@@ -29371,10 +30623,49 @@
     },
     "1003465597": {
       "topics": [
-        "news/politics"
+        "medicine",
+        "news",
+        "food",
+        "craft"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.85
+        },
+        {
+          "node": "news",
+          "confidence": 0.85
+        },
+        {
+          "node": "food",
+          "confidence": 0.85
+        },
+        {
+          "node": "craft",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Geopolitics &#038; Empire",
+      "display_title": "Geopolitics & Empire",
+      "blurb": "Geopolitics &#038; Empire",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-0198c24b",
+      "classified_at": "2026-08-30T00:15:58.245Z"
     },
     "1003655963": {
       "topics": [
@@ -29408,17 +30699,88 @@
     },
     "1004494626": {
       "topics": [
-        "travel"
+        "news",
+        "news/commentary"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Disney podcast bringing you a little Disney World where ever you may be. Talking mostly",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 11w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-0198c24b",
+      "classified_at": "2026-08-30T00:15:58.245Z"
     },
     "1005133566": {
       "topics": [
-        "culture/art"
+        "tv-film/animation",
+        "music",
+        "business",
+        "tv-film"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/animation",
+          "confidence": 0.9
+        },
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Alex Koch. Mike Napier. James Lewis. Children of the nineties, lovers of sequential art, NERDS",
+      "display_title": "Graphic Novelism | The History of Comic Books",
+      "blurb": "Alex Koch. Mike Napier. James Lewis. Children of the nineties, lovers of sequential art, NERDS -- coming of age in a world they never made, these thre...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-0198c24b",
+      "classified_at": "2026-08-30T00:15:58.245Z"
     },
     "1005210315": {
       "topics": [
@@ -29444,10 +30806,49 @@
     },
     "1005628280": {
       "topics": [
-        "tv-film/interviews"
+        "craft",
+        "craft/photography",
+        "tv-film",
+        "tv-film/reviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.85
+        },
+        {
+          "node": "craft/photography",
+          "confidence": 0.85
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "A weekly podcast where we unwrap each and every episode of Twin Peaks, oh and",
+      "display_title": "Twin Peaks Unwrapped",
+      "blurb": "A weekly podcast where we unwrap each and every episode of Twin Peaks, oh and lots of pie.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-0198c24b",
+      "classified_at": "2026-08-30T00:15:58.245Z"
     },
     "1005719306": {
       "topics": [
@@ -29458,10 +30859,49 @@
     },
     "1005774516": {
       "topics": [
-        "medicine"
+        "medicine",
+        "health/mental",
+        "tv-film",
+        "tv-film/reviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.85
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Core EM Emergency Medicine Podcast",
+      "display_title": "Core EM - Emergency Medicine Podcast",
+      "blurb": "Core EM Emergency Medicine Podcast",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-0198c24b",
+      "classified_at": "2026-08-30T00:15:58.245Z"
     },
     "1006030122": {
       "topics": [
@@ -29566,10 +31006,39 @@
     },
     "1007053996": {
       "topics": [
-        "religion/christianity"
+        "business",
+        "religion"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "religion",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast with Francis Chan, best-selling author of Crazy Love, Forgotten God, Erasing Hell, Multip...",
+      "display_title": "Crazy Love Podcast",
+      "blurb": "Podcast with Francis Chan, best-selling author of Crazy Love, Forgotten God, Erasing Hell, Multiply, You and Me Forever and Letters to the Church, and...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-0198c24b",
+      "classified_at": "2026-08-30T00:15:58.245Z"
     },
     "1007344621": {
       "topics": [
@@ -29788,10 +31257,49 @@
     },
     "1015078747": {
       "topics": [
-        "relationships"
+        "health/mental",
+        "music",
+        "science",
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/mental",
+          "confidence": 0.85
+        },
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "science",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The ManTalks podcast features conversations between one of the leading men’s work facilitators, C...",
+      "display_title": "ManTalks Podcast",
+      "blurb": "The ManTalks podcast features conversations between one of the leading men’s work facilitators, Connor Beaton, and world class guests with expertise i...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-0198c24b",
+      "classified_at": "2026-08-30T00:15:58.245Z"
     },
     "1015189267": {
       "topics": [
@@ -29863,10 +31371,49 @@
     },
     "1016037208": {
       "topics": [
-        "kids-family/education"
+        "medicine",
+        "health/mental",
+        "music",
+        "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.85
+        },
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "science",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The place where young readers meet to talk about books. The show includes a celebrity",
+      "display_title": "Book Club for Kids",
+      "blurb": "The place where young readers meet to talk about books. The show includes a celebrity reader and an interview with the author. The host is award winni...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-0198c24b",
+      "classified_at": "2026-08-30T00:15:58.245Z"
     },
     "1016292617": {
       "topics": [
@@ -30228,10 +31775,37 @@
     },
     "1023224738": {
       "topics": [
-        "gaming"
+        "tv-film"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Every week the Lore Watch podcast explores the story and lore of Blizzard titles including",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-0198c24b",
+      "classified_at": "2026-08-30T00:15:58.245Z"
     },
     "1023234452": {
       "topics": [
@@ -30399,10 +31973,49 @@
     },
     "1027239734": {
       "topics": [
-        "tv-film/reviews"
+        "news",
+        "craft",
+        "craft/photography",
+        "news/commentary"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.85
+        },
+        {
+          "node": "craft",
+          "confidence": 0.85
+        },
+        {
+          "node": "craft/photography",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "We’re the movie podcast your mother warned you about! Located in the Washington DC area,",
+      "display_title": "Epic Film Guys Podcast",
+      "blurb": "We’re the movie podcast your mother warned you about! Located in the Washington DC area, filled with bloodcurdling screams and gut-busting laughs, thi...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-0198c24b",
+      "classified_at": "2026-08-30T00:15:58.245Z"
     },
     "1027430378": {
       "topics": [
@@ -30511,10 +32124,49 @@
     },
     "1029214087": {
       "topics": [
-        "sports/fantasy"
+        "news",
+        "news/politics",
+        "tv-film",
+        "tv-film/reviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "32 Fans began as a daily NFL preseason podcast, morphed into a weekly NFL podcast,",
+      "display_title": "32 Fans Podcast",
+      "blurb": "32 Fans began as a daily NFL preseason podcast, morphed into a weekly NFL podcast, and now features Akiva Wienerkur (@keev26) and Alexander Chester (@...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-0198c24b",
+      "classified_at": "2026-08-30T00:15:58.245Z"
     },
     "1029751323": {
       "topics": [
@@ -30562,11 +32214,44 @@
     },
     "1030846817": {
       "topics": [
-        "adventure/exploration",
-        "nature"
+        "tv-film",
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.8
+        },
+        {
+          "node": "education",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "A podcast for serious individuals dedicated to their study of self defense, concealed carry, tact...",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 11w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 8,
+        "transcript_types": {
+          "text/vtt": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-0198c24b",
+      "classified_at": "2026-08-30T00:15:58.245Z"
     },
     "1031099411": {
       "topics": [
@@ -30993,10 +32678,49 @@
     },
     "1038064178": {
       "topics": [
-        "sports/soccer"
+        "news",
+        "craft",
+        "news/commentary",
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.85
+        },
+        {
+          "node": "craft",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Tottenham Hotspur podcast covering all things Spurs brought to you by season ticket-holder and host",
+      "display_title": "The Tottenham Way",
+      "blurb": "Tottenham Hotspur podcast covering all things Spurs brought to you by season ticket-holder and host Marcus Buckland, with Spurs reporters Tom Allnutt,...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-0198c24b",
+      "classified_at": "2026-08-30T00:15:58.245Z"
     },
     "1038108799": {
       "topics": [
@@ -31008,11 +32732,49 @@
     },
     "1038357955": {
       "topics": [
+        "medicine",
+        "news",
         "health/mental",
-        "psychology"
+        "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.85
+        },
+        {
+          "node": "news",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.85
+        },
+        {
+          "node": "science",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Terri Cole Show is where psychology meets real life. Hosted by licensed psychotherapist and",
+      "display_title": "The Terri Cole Show",
+      "blurb": "The Terri Cole Show is where psychology meets real life. Hosted by licensed psychotherapist and bestselling author (Boundary Boss, Too Much and Father...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-0198c24b",
+      "classified_at": "2026-08-30T00:15:58.245Z"
     },
     "1039032256": {
       "topics": [
@@ -31113,17 +32875,88 @@
     },
     "1040046560": {
       "topics": [
-        "fiction/sci-fi"
+        "music",
+        "tv-film"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "A fictional podcast following three survivors as they trek across the country trying to survive",
+      "display_title": "End of All Hope",
+      "blurb": "A fictional podcast following three survivors as they trek across the country trying to survive an alien invasion.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-0198c24b",
+      "classified_at": "2026-08-30T00:15:58.245Z"
     },
     "1040121937": {
       "topics": [
-        "culture/books"
+        "craft",
+        "craft/photography",
+        "business",
+        "tv-film"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.85
+        },
+        {
+          "node": "craft/photography",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Discover your next favourite book, or take a deep dive into the mind of an",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /deep[\\s-]dive/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-0198c24b",
+      "classified_at": "2026-08-30T00:15:58.245Z"
     },
     "1040184070": {
       "topics": [
@@ -31201,11 +33034,49 @@
     },
     "1041814489": {
       "topics": [
-        "health/nutrition",
-        "food"
+        "medicine",
+        "food",
+        "health/mental",
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.85
+        },
+        {
+          "node": "food",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Join BFFs, registered dietitian nutritionists, and diabetes educators Wendy Lopez and Jessica Jon...",
+      "display_title": "Diabetes Digital Podcast by Food Heaven",
+      "blurb": "Join BFFs, registered dietitian nutritionists, and diabetes educators Wendy Lopez and Jessica Jones each week to navigate the many layers of diabetes ...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-0198c24b",
+      "classified_at": "2026-08-30T00:15:58.245Z"
     },
     "1041859215": {
       "topics": [
@@ -31594,11 +33465,49 @@
     },
     "1046390878": {
       "topics": [
-        "tv-film/history",
-        "history"
+        "business",
+        "tv-film",
+        "tv-film/reviews",
+        "philosophy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.8
+        },
+        {
+          "node": "philosophy",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Welcome to the Made for TV Mayhem Show, where Amanda Reyes, Dan Budnick and Nathan",
+      "display_title": "Made for TV Mayhem Show",
+      "blurb": "Welcome to the Made for TV Mayhem Show, where Amanda Reyes, Dan Budnick and Nathan Johnson discuss all things made for TV (but mostly TV movies).",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-0198c24b",
+      "classified_at": "2026-08-30T00:15:58.245Z"
     },
     "1046413761": {
       "topics": [
@@ -31665,10 +33574,52 @@
     },
     "1047320599": {
       "topics": [
-        "business/careers"
+        "business",
+        "business/management",
+        "business/careers",
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "business/management",
+          "confidence": 0.75
+        },
+        {
+          "node": "business/careers",
+          "confidence": 0.75
+        },
+        {
+          "node": "education",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Build a career that matters to you with job search strategies and career advice from",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 16w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-0198c24b",
+      "classified_at": "2026-08-30T00:15:58.245Z"
     },
     "1047335260": {
       "topics": [
@@ -31916,10 +33867,49 @@
     },
     "1050033167": {
       "topics": [
-        "sports/hockey"
+        "craft",
+        "health/mental",
+        "music",
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.85
+        },
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "For fans of the New York Islanders.",
+      "display_title": "Islanders Anxiety: A New York Islanders podcast",
+      "blurb": "For fans of the New York Islanders.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-0198c24b",
+      "classified_at": "2026-08-30T00:15:58.245Z"
     },
     "1050103463": {
       "topics": [
@@ -31938,10 +33928,49 @@
     },
     "1050310200": {
       "topics": [
-        "music"
+        "music",
+        "business",
+        "tv-film",
+        "tv-film/reviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "What does it take to maintain a career in music? We track down members of",
+      "display_title": "The Hustle",
+      "blurb": "What does it take to maintain a career in music? We track down members of bands that we love and find out what their lives are like now.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-0198c24b",
+      "classified_at": "2026-08-30T00:15:58.245Z"
     },
     "1050430296": {
       "topics": [
@@ -32099,10 +34128,44 @@
     },
     "1051556032": {
       "topics": [
+        "business",
+        "tv-film",
         "tv-film/reviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Join two literary nerds and Supernatural devotees in rewatching and (over)analyzing the show from...",
+      "display_title": "The Plaidcast Supernatural Rewatch",
+      "blurb": "Join two literary nerds and Supernatural devotees in rewatching and (over)analyzing the show from episode one. We've got work to do! (Spoilers for sea...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-0198c24b",
+      "classified_at": "2026-08-30T00:15:58.245Z"
     },
     "1051557000": {
       "topics": [
