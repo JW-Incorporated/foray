@@ -9,8 +9,10 @@ use). The Foray itself is `data/forays.json` → `geology-plates-1`; that file i
 the only record of the order, and §2 below is pinned against it row for row by
 `tools/foray/check-forays.test.mjs`, so the two cannot drift apart.
 
-**Status: draft.** All four Forays in the repo are drafts. Publishing one out of
-draft is a founder action.
+**Status: draft.** ~~All four Forays in the repo are drafts.~~ As of 2026-08-30
+`capital-types-1` is published and the other three, including this one, are still
+drafts (`docs/curation/foray2-capital.md` §11a says why that one). Publishing one
+out of draft is a founder action.
 
 ---
 

@@ -7,6 +7,41 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
+### THE REPO HAS A PUBLISHED FORAY — `foray/publish-first` (2026-08-30)
+
+- **What:** `capital-types-1` is `status: "published"`. **This is the first time
+  any Foray has been visible to a visitor who did not type `?foray=`**, and it
+  changes a premise several files were written against. If you are about to state
+  "every Foray is a draft" anywhere, it is no longer true.
+- **Why:** the founder is writing the Play listing and it could not describe
+  Forays without describing something no visitor could reach.
+- **Which one, and why not the others:** `docs/curation/foray2-capital.md` §11a.
+  Decided on measurements (lowest cross-episode seam rate per minute; the only
+  non-superseded candidate whose own record reports no global rules missed), not
+  on taste. All four passed `check-forays.mjs` before and after, so the gate did
+  not choose.
+- **What is still NOT true, and matters to anyone building on this** — §11b–c:
+  - **Rule X1 is unmet and is unmeetable today.** "A cross-episode seam always
+    carries narration" (tier A, gate yes) fails at all 10 of this Foray's
+    cross-episode seams, and at every other Foray's — a Foray over N episodes has
+    at least N−1 such seams however it is ordered. **X1 needs narration AUDIO;
+    there is none in the repo and voicing is founder spend.** Do not "fix" this by
+    authoring unvoiced bridges: the player drops them and `app.js` renders each as
+    a blank "can't play" row under a banner saying the Foray is broken
+    (`geology-foray-assembly.md` §4).
+  - **Nobody has listened to it end to end.** `HUMAN-ACTIONS.md` #8, still open.
+  - **#224 is open** and this is the Foray it was seen on — expect playback to
+    stop at a seam with the screen off.
+  - **`app.js`'s home row has a cold-load race**, deliberately unfixed; it needs a
+    harness that does not stub `window.addEventListener`.
+- **Files a follow-on will collide with:** `data/forays.json` (one word),
+  `tools/foray/check-forays.test.mjs` (the draft valve is now an exact-set pin on
+  which Foray is published — publishing the next one costs one line there, plus a
+  new test pinning the `status` enum), `app.js` (two comment blocks),
+  `HUMAN-ACTIONS.md` (#8 and the Play-listing item), `docs/store/play/README.md`.
+- **Owed next:** the Play listing copy is now the stale thing.
+  `docs/store/play/README.md` names the three claims a rewrite must not make.
+
 ### The Android Play release pipeline — `android/release-pipeline`
 
 - **What:** three gaps between "it compiles" and "it is on Play", all closed in

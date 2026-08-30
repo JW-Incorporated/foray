@@ -101,20 +101,44 @@ do not stop after §7 thinking you are done. Every answer already exists:
 
 - **No promo video.** Optional, and there is nothing to link.
 - **No tablet or other form-factor art.** See above.
-- **No mention of forays** in the copy. A foray is the app's stitched sequence of
-  segments from several shows, and it is the most interesting thing 4a does —
-  but every foray in `data/forays.json` is `status: "draft"`, and a draft is
-  reachable only by opening its id in the URL. Nobody who installs from Play can
-  browse to one. Describing forays in the listing would be advertising a feature
-  the store's own visitors cannot use, so the copy stays on what ships. **Publish
-  a foray and this listing should be rewritten** — it is the strongest thing
-  there would be to say.
+- ~~**No mention of forays** in the copy … every foray in `data/forays.json` is
+  `status: "draft"` … Nobody who installs from Play can browse to one.~~
+  **THE PREMISE EXPIRED 2026-08-30.** `capital-types-1` is now
+  `status: "published"`, so it is listed on the home screen for an ordinary
+  visitor and a Play installer **can** browse to it. (Verified against the real
+  data through `player/foray-resolve.js`, **not observed in a browser** —
+  `docs/curation/foray2-capital.md` §11c records a cold-load race in which the
+  row can be missing on first paint.) The copy in this package
+  still says nothing about forays, so **the copy is now the thing that is out of
+  date, and rewriting it is the highest-value edit available to this listing** —
+  a foray is the most interesting thing 4a does.
+
+  **Three things the rewrite must not claim**, because they are not true and a
+  store listing is a binding public statement:
+
+  1. **Not "forays", plural, and not a library.** There is exactly **one**
+     published: *The types of capital a startup can raise*, 51 minutes, 22
+     segments from 7 shows. The other three are still drafts. "A foray" is
+     honest; "forays" or "a growing collection" is not.
+  2. **Nothing about a host, a narrator or a guide.** A foray is edited tape with
+     a 2.0 s beat between segments and nothing spoken in between. **No narration
+     audio exists anywhere in the repo** — rule X1 ("a cross-episode seam always
+     carries narration") is unmet at all 10 of this foray's cross-episode seams,
+     and meeting it is ElevenLabs spend nobody has authorised. See
+     `docs/curation/foray2-capital.md` §11b.
+  3. **No promise about background or offline playback.** **#224** is open;
+     `HUMAN-ACTIONS.md` #11 says in terms to expect playback to stop at a seam
+     with the screen off.
+
+  One more thing the founder should know before writing the copy: **nobody has
+  listened to this foray end to end.** `HUMAN-ACTIONS.md` #8 is still open.
 - **No mention of thumbs-up/down voting, its reason chips, or "more like this /
-  less like this"**, for the same reason and it is worth being explicit about it
+  less like this"** — but the reason has changed and it is worth being explicit
   because `https://jwlabs.ai/4a/features/` does describe them. Every one of those
   controls is rendered only by `renderForay()` in `app.js` and keyed to a segment,
-  so they live behind the same draft wall the forays do. Publishing a foray
-  unlocks this paragraph too.
+  so they used to sit behind the same draft wall the forays did. **That wall is
+  down**: they are reachable inside `capital-types-1`. This paragraph is now a
+  choice rather than a constraint.
 - **No promise of a daily cadence**, beyond the app's own "a daily podcast
   picker" subtitle visible in the screenshots. The four subjects are re-rolled on
   every page load, not once a day — measured on the live site 2026-08-25 — so the
