@@ -1715,6 +1715,62 @@ written once.
 
 **Status:** OPEN
 
+### 26. Publish the Play Store listing from `docs/store/play/`
+
+**Tag:** `[BLOCKING]` · **Time:** ~40 minutes, plus IARC and Data safety · **Owner:** Joey
+
+**Why it matters.** Every asset Play requires for 4a now exists and is checked
+in — the 1024x500 feature graphic, four 720x1280 phone screenshots, the short and
+full descriptions. None of it reaches the store without a founder in the Play
+Console: it needs the developer account's identity and login, and it is a
+click-through UI no agent can reach. The package was assembled so that this is
+copying, not writing.
+
+**Everything you need is in one file: `docs/store/play/README.md`.** It is
+ordered the way the Console's form is, names the field for every value, and says
+which of the two pages each one lives on. The literals, so they are also here:
+
+| field | value |
+|---|---|
+| App name | `4a` |
+| Short description | `docs/store/play/short-description.txt` (71 chars) |
+| Full description | `docs/store/play/full-description.txt` (2202 chars) |
+| App icon (512) | `icon-512.png` — repo root, already the right size |
+| Feature graphic | `docs/store/play/feature-graphic.png` |
+| Phone screenshots | the four `docs/store/play/screenshot-*.jpg`, in filename order |
+| Category | Music & Audio |
+| Privacy policy URL | `https://jwlabs.ai/4a/privacy/` |
+| Ads | **No, my app does not contain ads.** |
+| Data safety | answer from `docs/legal/data-safety.md`, question by question |
+
+**Two things that will otherwise catch you out.**
+
+- **"Main store listing" is not the whole form.** The listing cannot go live
+  until **Policy and programs → App content** is complete: Data safety, the IARC
+  content-rating questionnaire, the ads declaration, target audience, and the
+  privacy policy URL. README §8 covers it. This is the step that turns a
+  40-minute job into an afternoon, so start it early.
+- **Nothing in the copy mentions forays**, and that is deliberate rather than an
+  oversight. Every Foray in `data/forays.json` is `status: "draft"` and reachable
+  only by opening its id in the URL, so a Play visitor cannot get to one;
+  advertising it would be advertising a feature they cannot use. The same applies
+  to the thumbs-up/down voting and its reason chips, which are rendered only
+  inside a Foray. **Publish a Foray (#22 is upstream of that) and this listing is
+  worth rewriting** — it is the strongest thing there would be to say about the
+  app. The reasoning is recorded in README's "What is deliberately not in this
+  package".
+
+**Do not retype any of the copy.** The character counts above are asserted
+against the files by `tools/store/play-listing.test.mjs`, so what is in the file
+is what fits the field. Paste whole files.
+
+**Worked if:** the Play Console shows the listing as complete with no red
+warnings on Main store listing or App content, and `4a` resolves in a Play search
+or on its own store URL.
+
+**Status:** OPEN
+
+---
 ---
 ## DONE
 
