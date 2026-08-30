@@ -671,8 +671,17 @@ const FLOORS = {
      the committed PNG, re-render from the brand master, compare pixels), and
      two more are the ban on unverifiable scale claims and on company-size
      signalling — both founder rulings, both previously enforced only by someone
-     remembering. */
-  "tools/store/play-listing.test.mjs": 14,
+     remembering.
+
+     THE FLOOR ROSE FROM 14 TO 21 when Play rejected the submission's icon and
+     `docs/store/play/app-icon-512.png` was added to answer it. Those seven are
+     the highest-value tests in the file and the least obviously necessary,
+     which is the combination a floor exists for: one of them asserts colour
+     type 6 where every other PNG assertion in this repo asserts 2, and it looks
+     exactly like a copy-paste error someone would "fix". Play requires an alpha
+     channel and the App Store rejects one, so the inversion is the whole
+     point. */
+  "tools/store/play-listing.test.mjs": 21,
   "tools/transcribe/fetch-audio.test.mjs": 64,
   /* ADR-0008's decode-and-compare: the instrument the cheap ones defer to.
      Floored because everything expensive about it — the download, the PyAV

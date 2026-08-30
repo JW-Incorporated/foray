@@ -37,8 +37,26 @@ file are the section headings — they are meant to survive as they are.
 
 Field: **App icon**, 512 × 512 PNG.
 
-**This one is not in this folder.** It is `icon-512.png` in the repo root,
-already the right size and format. Upload that file.
+Upload **`app-icon-512.png`** (512 × 512, 83,547 bytes).
+
+**Do not upload `icon-512.png` from the repo root.** It is also 512 × 512 and it
+is the wrong file — Play rejected it. Two reasons, both real:
+
+- Play's spec is a **32-bit PNG (with alpha)**. `icon-512.png` is 24-bit RGB
+  with no alpha channel, and it has to stay that way: **the App Store rejects an
+  icon that carries an alpha channel**, and that same file is the App Store's
+  icon, the PWA manifest's, the service worker's precache and the Android
+  lock-screen artwork. The two stores want opposite files, so there are two
+  files. `app-icon-512.png` is fully opaque — it has an alpha channel, nothing
+  in it is transparent.
+- The mark filled 41% of the height, floating in a cream band. Play masks icons
+  with a 30% corner radius and shows them at about 48 px in a list, where that
+  reads as a small logo in a box. `app-icon-512.png` crops the wordmark to the
+  "4a" ligature — dropping the trailing waveform, which is an unreadable smudge
+  at 48 px anyway — and fills 67% of the height.
+
+Neither file has rounded corners or a drop shadow baked in, and neither should:
+Play applies both itself, and pre-rounded artwork gets rounded twice.
 
 ## 5. Feature graphic
 
@@ -124,6 +142,11 @@ do not stop after §7 thinking you are done. Every answer already exists:
 
 ## Regenerating
 
+- **App icon:** `node tools/store/build-play-icon.mjs`. Same rule — it is
+  rendered from `tools/brand/4a-logo.png`, and hand-editing it turns the build
+  red (`tools/store/play-listing.test.mjs`). It does **not** regenerate
+  `icon-512.png`; that one comes from `node tools/brand/build-icons.mjs` and is
+  a different file on purpose.
 - **Feature graphic:** `node tools/store/build-feature-graphic.mjs`. It is
   rendered from `tools/brand/4a-logo.png`; never edit the PNG by hand, the build
   goes red (`tools/store/play-listing.test.mjs`).
