@@ -1214,21 +1214,102 @@ test("the signing include fails loudly on every way it can be half-configured", 
 
 /* ───────────────────────────── the launch itself ───────────────────────────── */
 
-test("the emulator is created, booted, and waited for on the property that matters", () => {
-  /* MUTATION: delete the `getprop sys.boot_completed` poll, leaving only
-     `adb wait-for-device` -> fails.
-     `adb wait-for-device` RETURNS TOO EARLY AND MP1 §6.2 IS THE RECEIPT: that
-     run reached `state: device` with `ro.build.version.sdk=36` while the package
-     service still answered "Can't find service: package" and `pm install` never
-     succeeded. The device being visible and the framework being usable are
-     different events, and installing between them fails in a way that reads like
-     a broken APK. */
-  const s = releaseStepCode("Boot an emulator");
-  assert.ok(s, "no step boots an emulator");
+test("THE AVD IS PROVEN TO EXIST BEFORE ANYTHING IS LAUNCHED", () => {
+  /* MUTATION: delete the `grep -qxF "$AVD_NAME" "$ART/emulator-list-avds.txt"`
+     branch -> fails.
+     THIS TEST EXISTS BECAUSE THE JOB SHIPPED WITHOUT IT AND COST TWELVE MINUTES
+     TO SAY NOTHING. `echo no | avdmanager create avd …` printed its interactive
+     "custom hardware profile?" prompt, exited ZERO, created no AVD, and nothing
+     looked. `emulator -avd foray-ci` then failed instantly with
+     `Unknown AVD name [foray-ci]` and `timeout 600 adb wait-for-device` waited
+     ten minutes for a device that could never appear.
+     `set -euo pipefail` WAS IN FORCE THROUGHOUT AND DID NOT HELP, because the
+     command it would have caught did not fail. That is the whole lesson: this is
+     a step that could not fail when its precondition was unmet — the fifth of
+     that shape in this repo in three days and the fourth in this PR, in the job
+     written to catch problems.
+     THE CHECK USES `emulator -list-avds`, THE TOOL THAT WILL CONSUME THE AVD.
+     Not `avdmanager list avd`, and that is measured rather than preferred: on a
+     real machine `avdmanager list avd` prints unusable AVDs too, under "The
+     following Android Virtual Devices could not be loaded" — two of them on the
+     founder's own box, missing their system images. A grep for the name over
+     that output is satisfied by an AVD the emulator cannot start, which is this
+     same bug wearing a check. */
+  const s = releaseStepCode("name: Create the AVD");
+  assert.ok(s, "no step creates the AVD and verifies it");
   assert.match(s, /avdmanager create avd/, "the AVD must be created");
-  assert.match(s, /adb wait-for-device/);
+  assert.match(
+    s,
+    /emulator -list-avds > "\$ART\/emulator-list-avds\.txt"/,
+    "and verified against the emulator's own view of what it can open — the redirect is pinned too, or the file the grep reads could be filled by a different command"
+  );
+  assert.match(
+    s,
+    /grep -qxF "\$AVD_NAME" "\$ART\/emulator-list-avds\.txt"/,
+    "the verdict must be an exact-line match for the AVD name in that list"
+  );
+  assert.match(s, /test -f "\$ANDROID_AVD_HOME\/\$AVD_NAME\.ini"/, "and the config file must be where both tools agree");
+  /* AND EACH OF THOSE THREE CHECKS MUST BE ABLE TO FAIL THE JOB, which is a
+     different claim from "the command is present" and the only one that matters.
+     A REVIEWER'S MUTATION ROUND CAUGHT THIS TEST SHIPPING THE VERY DEFECT IT WAS
+     WRITTEN FOR: deleting just the `exit 1` from the `grep -qxF` branch left the
+     suite green, so the step printed "the emulator does not list an AVD called
+     foray-ci", carried on, and launched the emulator anyway. Same for the status
+     branch's `exit 1`, and same for appending `|| true` to the `.ini` test. Three
+     regexes over command text, and the proving could be removed under all of
+     them. `failureClauses` is the assertion that has teeth. */
+  assert.equal(
+    failureClauses(s),
+    3,
+    "the avdmanager status, the emulator-list check and the .ini test must EACH be able to fail the step"
+  );
+  /* THE EXIT CODE, CAPTURED DIRECTLY. A local probe of this exact command
+     through `| head` reported 0 for a run that exited 1 — the same defect one
+     layer up, in the diagnostic written to investigate it. */
+  assert.match(s, /AVDMANAGER_STATUS=\$\?/, "avdmanager's status must be captured, not read after a pipe");
+  assert.match(s, /"\$AVDMANAGER_STATUS" -ne 0/, "and it must be able to fail the step");
+  /* `-d` REMOVES THE PROMPT ENTIRELY, which is better than answering it: with a
+     device given, avdmanager does not ask, so there is no stdin for an `echo` to
+     get wrong. stdin is closed as well, so a future cmdline-tools that asks
+     anyway fails fast instead of hanging. */
+  assert.match(s, /-d pixel_6/, "a device profile must be given so the interactive prompt never happens");
+  assert.match(s, /< \/dev\/null/, "and stdin closed, so a prompt cannot hang the job");
+  assert.equal(
+    /echo no \| avdmanager/.test(RYML),
+    false,
+    "`echo no | avdmanager` is the recipe that exited 0 and created nothing"
+  );
+  /* ONE AVD LOCATION FOR BOTH TOOLS. The observed error was the emulator saying
+     where IT looked, which says nothing about where avdmanager wrote; the two
+     resolve their root through different variables. */
+  assert.match(s, /ANDROID_AVD_HOME="\$HOME\/\.android\/avd"/, "the AVD root must be pinned for both tools");
+  /* AND IT IS A SEPARATE STEP FROM THE BOOT, so its verdict is its own. */
+  const boot = releaseStepCode("name: Boot it");
+  assert.ok(boot, "no step boots the emulator");
+  assert.equal(
+    /avdmanager create/.test(boot),
+    false,
+    "creation and boot must be separate steps, so a creation failure is reported as one"
+  );
+});
+
+test("a dead emulator is noticed in seconds, not at the end of the timeout", () => {
+  /* MUTATION: delete the `kill -0 "$EMU_PID"` branch -> fails.
+     Second MUTATION: restore `timeout 600 adb wait-for-device` -> fails (there is
+     no `adb wait-for-device` to assert any more; the poll replaced it).
+     TWELVE MINUTES TO REPORT A ONE-SECOND FAULT is what the first version did,
+     and the missing AVD was only one of the ways to get there. `adb
+     wait-for-device` waits for something to appear and has no opinion about
+     whether anything is still trying, so an emulator that exits during startup —
+     a bad flag, no KVM, a corrupt image — blocks it for the full timeout with the
+     answer already sitting in the log. Watching the pid it started turns every
+     one of those into a failure in seconds. */
+  const s = releaseStepCode("name: Boot it");
+  assert.match(s, /EMU_PID=\$!/, "the emulator's pid must be captured");
+  assert.match(s, /kill -0 "\$EMU_PID"/, "and checked while waiting, or a dead emulator waits out the clock");
   assert.match(s, /getprop sys\.boot_completed/, "the boot must be waited for on sys.boot_completed");
   assert.match(s, /DEADLINE=/, "an emulator that never boots must time out rather than hold the runner");
+  assert.equal(failureClauses(s), 2, "both a dead process and an expired deadline must be able to fail the step");
 });
 
 test("the emulator image is NOT API 36, because that cost is measured", () => {

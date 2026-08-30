@@ -523,7 +523,7 @@ const FLOORS = {
          only genuinely flaky thing in this repo (mp1-background-audio.md §6.2), and
          the .aab is the critical path to a submission. One `needs:` would put the
          flake in front of the artefact. */
-  "tools/mobile/android-workflow.test.mjs": 59,
+  "tools/mobile/android-workflow.test.mjs": 61,
   /* Wiring the signing config into a project nobody commits. ZERO SLACK.
      `mobile/android/` is regenerated on every build, so the only evidence the
      release signing config ever reaches Gradle is that this script ran and its

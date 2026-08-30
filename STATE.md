@@ -23,7 +23,7 @@ docs/. Completed workstreams move to their plan doc's retro section.
 - **New files:** `.github/workflows/android-release.yml`,
   `mobile/gradle/foray-signing.gradle`, `tools/mobile/wire-signing.mjs` (+ test),
   `tools/mobile/webview-probe.mjs` (+ test), `docs/android-release.md`.
-- **Shared files it touches:** `tools/mobile/android-workflow.test.mjs` (27 → 60
+- **Shared files it touches:** `tools/mobile/android-workflow.test.mjs` (27 → 61
   tests, a whole new section for the second workflow),
   `test/suite-integrity.test.js` (three floors), `HUMAN-ACTIONS.md` (#26 new; a
   note on #18).

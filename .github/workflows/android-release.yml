@@ -634,13 +634,32 @@ jobs:
     env:
       SDK_PLATFORM: platforms;android-36
       SDK_BUILD_TOOLS: build-tools;36.0.0
-      # API 34, NOT 36, AND THAT IS THE ONE MEASUREMENT-DRIVEN CHOICE IN THIS JOB.
-      # `docs/research/mp1-background-audio.md` §6.2: a cold API-36 x86_64 image
-      # did not reach a usable framework in ~35 minutes under WHPX, and §6.3's
-      # "practical note for #38 (the CI-runner work)" says to pin an older API
-      # level. targetSdk is 36 and minSdk is 24, so 34 is inside the supported
-      # range and is not what is being tested here — what is being tested is
-      # whether the app starts.
+      # ── API 34 WHILE THE APP TARGETS 36. DELIBERATE. ────────────────────
+      #
+      # Asked and answered here because a reader will wonder, and because the
+      # honest version has a cost attached.
+      #
+      # WHY NOT 36: `docs/research/mp1-background-audio.md` §6.2 is a measurement,
+      # not a preference — a cold API-36 x86_64 image did not reach a usable
+      # framework in ~35 minutes under WHPX, across three attempts, and §6.3's
+      # "practical note for #38 (the CI-runner work)" says in so many words to
+      # pin an older API level. A runner with KVM is a different machine from that
+      # laptop, but the measurement is the only data this project has and it points
+      # one way.
+      #
+      # WHY 34 IS A REASONABLE ANSWER: minSdk is 24 and targetSdk is 36, so 34 is
+      # inside the range this app claims to support, and it is nearer the installed
+      # base a real listener has than the newest image is. Testing on an older API
+      # than you target is what users do.
+      #
+      # WHAT IT THEREFORE DOES NOT EXERCISE, said plainly: every behaviour change
+      # that lands BECAUSE targetSdk is 36. Android 15's edge-to-edge enforcement,
+      # its foreground-service and `mediaPlayback` tightening, and anything Android
+      # 16 adds are all gated on the platform the app runs ON, and this job never
+      # runs on one. So "the app launches" from this job means "on API 34". If a
+      # launch crash ever appears only on a current phone, this is the first place
+      # to look, and the fix is a second matrix entry rather than a change here —
+      # `HUMAN-ACTIONS.md` #11's device pass is the cheaper instrument for it.
       EMULATOR_IMAGE: system-images;android-34;google_apis;x86_64
       AVD_NAME: foray-ci
       PKG: ai.jwlabs.foura
@@ -751,10 +770,98 @@ jobs:
           grep -qE '^[[:space:]]*minifyEnabled[[:space:]]+false' app/build.gradle \
             || { echo "no minifyEnabled line in the generated app/build.gradle — Capacitor's template changed; re-read this step's argument before trusting the smoke result"; exit 1; }
 
-      - name: Boot an emulator
+      - name: Create the AVD, and prove it exists before launching anything
+        # THIS STEP IS A SEPARATE STEP BECAUSE IT HAS ITS OWN VERDICT.
+        #
+        # WHAT WENT WRONG THE FIRST TIME, and it is the more useful half of this
+        # comment. `echo no | avdmanager create avd …` printed its interactive
+        # "Do you wish to create a custom hardware profile? [no]" prompt, exited
+        # ZERO, and created no AVD. Nothing checked. `emulator -avd foray-ci`
+        # then died instantly with `Unknown AVD name [foray-ci]`, and
+        # `timeout 600 adb wait-for-device` spent TEN MINUTES waiting for a device
+        # that could never appear — twelve minutes of runner time to report a
+        # fault that was knowable in one second.
+        #
+        # THE PROMPT WAS THE TRIGGER; THE DEFECT WAS THE MISSING CHECK. `set -euo
+        # pipefail` was in force the whole time and did not help, because the
+        # command it would have caught did not fail. This is the fifth
+        # "step that cannot fail when its precondition is unmet" found in this
+        # repo in three days, and the fourth in this PR — the other three were a
+        # keystore-outside-$ART test that compared strings for inequality, a
+        # fingerprint test that asserted its ingredients and not the comparison,
+        # and an ordering assertion that passed when the thing being ordered was
+        # deleted. A job whose whole purpose is to catch problems is not exempt.
+        #
+        # SO: THREE CHANGES, AND THE LAST IS THE ONE THAT MATTERS.
         run: |
           set -euo pipefail
-          echo no | avdmanager create avd -n "$AVD_NAME" -k "$EMULATOR_IMAGE" --force
+          # 1. ONE AVD LOCATION, DECLARED, FOR BOTH TOOLS. The observed failure
+          #    was the emulator reporting "HOME is defined but there is no file
+          #    foray-ci.ini in $HOME/.android/avd" — which is a statement about
+          #    where the EMULATOR looked, not about where avdmanager wrote. Those
+          #    two resolve their AVD root through different variables
+          #    (ANDROID_AVD_HOME, ANDROID_SDK_HOME, ANDROID_USER_HOME, HOME) and a
+          #    runner image is free to set any of them. Pinning it removes a whole
+          #    class of "created it, could not find it" from the diagnosis.
+          export ANDROID_AVD_HOME="$HOME/.android/avd"
+          echo "ANDROID_AVD_HOME=$ANDROID_AVD_HOME" >> "$GITHUB_ENV"
+          mkdir -p "$ANDROID_AVD_HOME"
+          # 2. `-d`, SO THE PROMPT NEVER HAPPENS. `avdmanager` asks about a custom
+          #    hardware profile only when no device is given; with `-d` it does not
+          #    ask, so there is no stdin to satisfy and nothing for `echo no` to
+          #    get wrong. `pixel_6` was verified to be a real device id in this
+          #    SDK's `avdmanager list device` (66 profiles, `id: 28 or "pixel_6"`)
+          #    rather than assumed. Stdin is closed as well, which prevents a HANG
+          #    but is NOT what makes this safe: the original `echo no |` already
+          #    gave avdmanager EOF, and it still exited 0 having created nothing.
+          #    Only check 3 turns that into a failure.
+          #
+          #    THE EXIT CODE IS CAPTURED DIRECTLY. Not `avdmanager … | tee`: a
+          #    local probe of this very command through `| head` reported exit 0
+          #    for a run that exited 1, which is the same defect this step is
+          #    being fixed for, one layer up.
+          set +e
+          avdmanager create avd -n "$AVD_NAME" -k "$EMULATOR_IMAGE" -d pixel_6 --force \
+            < /dev/null > "$ART/avdmanager.log" 2>&1
+          AVDMANAGER_STATUS=$?
+          set -e
+          cat "$ART/avdmanager.log"
+          if [ "$AVDMANAGER_STATUS" -ne 0 ]; then
+            echo "avdmanager exited $AVDMANAGER_STATUS — no AVD was created"
+            exit 1
+          fi
+          # 3. THE PRECONDITION IS ASSERTED WITH THE TOOL THAT WILL CONSUME IT.
+          #    The failure being fixed here was the emulator saying `Unknown AVD
+          #    name [foray-ci], use -list-avds to see valid list`, so the check is
+          #    that exact list and passing it makes that exact error unreachable.
+          #    NOT MORE THAN THAT: `-list-avds` enumerates the `.ini` files under
+          #    the AVD root, so it would still list an AVD whose system image had
+          #    gone missing. It proves the NAME RESOLVES, which is what was broken.
+          #
+          #    NOT `avdmanager list avd | grep`, AND THIS WAS MEASURED, NOT
+          #    GUESSED: on a real machine that command prints unusable AVDs too,
+          #    under a heading reading "The following Android Virtual Devices could
+          #    not be loaded" — two of them, on the founder's own box, missing
+          #    their system images. A grep for the name over that output is
+          #    satisfied by an AVD the emulator cannot start, which would have
+          #    shipped this same bug wearing a check.
+          emulator -list-avds > "$ART/emulator-list-avds.txt" 2>&1 || true
+          cat "$ART/emulator-list-avds.txt"
+          if ! grep -qxF "$AVD_NAME" "$ART/emulator-list-avds.txt"; then
+            echo "the emulator does not list an AVD called $AVD_NAME, so launching it would fail with Unknown AVD name."
+            echo "--- avdmanager's own view, including AVDs it considers broken:"
+            avdmanager list avd || true
+            echo "--- $ANDROID_AVD_HOME:"
+            ls -la "$ANDROID_AVD_HOME" || true
+            exit 1
+          fi
+          test -f "$ANDROID_AVD_HOME/$AVD_NAME.ini" \
+            || { echo "no $AVD_NAME.ini in $ANDROID_AVD_HOME — the emulator listed it but its config is not where both tools agree it should be"; exit 1; }
+          echo "AVD $AVD_NAME exists and the emulator can see it"
+
+      - name: Boot it
+        run: |
+          set -euo pipefail
           adb start-server
           # `-no-snapshot` because a saved snapshot is a second thing that can be
           # stale, and this job is a cold-start check by nature.
@@ -763,18 +870,36 @@ jobs:
             -gpu swiftshader_indirect -camera-back none -camera-front none \
             -accel on -memory 4096 -partition-size 4096 \
             > "$ART/emulator.log" 2>&1 &
-          timeout 600 adb wait-for-device || {
-            echo "adb never saw the device in 10 minutes"; tail -60 "$ART/emulator.log"; exit 1; }
-          # `sys.boot_completed` IS THE PROPERTY THAT MATTERS, and MP1 §6.2 is why
-          # it is polled rather than assumed from `adb wait-for-device`: that run
-          # reached `state: device` with `ro.build.version.sdk=36` and the package
-          # service still answered "Can't find service: package". The device being
-          # visible and the framework being usable are different events.
+          EMU_PID=$!
+          # ONE LOOP, WATCHING BOTH THE DEVICE AND THE PROCESS, and the process
+          # half is the fix for "twelve minutes to report a one-second fault".
+          # `adb wait-for-device` waits for something to appear and has no opinion
+          # about whether anything is still trying: an emulator that exits during
+          # startup — a bad flag, no KVM, a corrupt image, an AVD that vanished —
+          # leaves it blocking for the full timeout with the answer already in the
+          # log. `kill -0` on the pid it started turns every one of those into a
+          # failure in seconds, with the log printed.
+          #
+          # `sys.boot_completed` IS THE PROPERTY WAITED ON, not `state: device`,
+          # and MP1 §6.2 is why: that run reached `state: device` with
+          # `ro.build.version.sdk=36` while the package service still answered
+          # "Can't find service: package". Visible and usable are different events.
           DEADLINE=$(( $(date +%s) + 900 ))
-          until [ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ]; do
+          # `timeout 30` ON THE ADB CALL, because both guards below live in the LOOP
+          # BODY and a hung `adb shell` never reaches either one. The old code was
+          # bounded by `timeout 600 adb wait-for-device`; replacing that with a poll
+          # and no bound would have re-opened the same "hold the runner until the
+          # job timeout" hole one level down. On timeout adb exits 124, the test is
+          # false, and the loop falls through to the pid check and the deadline.
+          until [ "$(timeout 30 adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ]; do
+            if ! kill -0 "$EMU_PID" 2>/dev/null; then
+              echo "the emulator process exited before the device finished booting"
+              tail -80 "$ART/emulator.log"
+              exit 1
+            fi
             if [ "$(date +%s)" -ge "$DEADLINE" ]; then
               echo "the emulator did not finish booting in 15 minutes"
-              tail -60 "$ART/emulator.log"
+              tail -80 "$ART/emulator.log"
               exit 1
             fi
             sleep 5
