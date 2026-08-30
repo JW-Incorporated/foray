@@ -1,245 +1,127 @@
 {
-  "generated_at": "2026-08-29T12:56:38.110Z",
+  "generated_at": "2026-08-30T12:20:45.602Z",
   "resolved": [
     {
-      "id": "cbc-ideas--how-a-german-philosopher-predicted-our",
-      "show": "CBC Ideas",
-      "title": "How a German philosopher predicted our digital age",
-      "apple_collection_id": 151485663,
-      "apple_track_id": 1000729758282,
-      "apple_episode_url": "https://podcasts.apple.com/us/podcast/how-a-german-philosopher-predicted-our-digital-age/id151485663?i=1000729758282&uo=4",
-      "release_date": "2026-08-28",
-      "duration_min": 54,
-      "duration_sec": 3248,
-      "audio_url": "https://mgln.ai/e/12/cbc.mc.tritondigital.com/CBC_IDEAS_P/media/ideas/ideas-AUXfWQ0C-20251002.mp3",
+      "id": "the-ancients--robert-harris-on-roman-general-agrippa",
+      "show": "The Ancients",
+      "title": "Robert Harris on Roman General Agrippa",
+      "apple_collection_id": 1520403988,
+      "apple_track_id": 1000786273501,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/robert-harris-on-roman-general-agrippa/id1520403988?i=1000786273501&uo=4",
+      "release_date": "2026-08-30",
+      "duration_min": 57,
+      "duration_sec": 3446,
+      "audio_url": "https://sphinx.acast.com/p/acast/s/the-ancients/e/6a9011c30c15e359f9d01b39/media.mp3?tk=eyJ0ayI6ImRlZmF1bHQiLCJhZHMiOnRydWUsInNwb25zIjp0cnVlLCJzdGF0dXMiOiJwdWJsaWMifQ==&sig=L5pjay6ewkAmsk1aXPpqGEewqIvHMdcCCTxEPonmGfA",
       "audio_type": "audio/mpeg",
-      "audio_bytes": 53976216,
-      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/94/fe/a5/94fea51f-9e41-b60f-b5f2-3549407ef6fc/mza_4140352385670983274.jpg/600x600bb.jpg",
+      "audio_bytes": 83204548,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/6c/94/31/6c943113-5484-a41d-5cb7-bf606ff289ef/mza_6401313720037127611.jpeg/600x600bb.jpg",
       "topics": [
-        "engineering/energy-fusion"
+        "history/military-ancient"
       ],
       "explicit": false,
-      "_description": "What happens when original artworks become endless copies? German philosopher Walter Benjamin called it the death of \"aura,\" and his concept predicted our digital age. He describes \"aura\" as the energy that encases an object, and argued standing before the presence of a great artwork was transcendent. His ideas continue to flourish in university settings around the world. *This episode originally aired on Oct. 2, 2025."
+      "_description": "Augustus was Rome's first Emperor. But who made his empire possible? Behind the throne stood Marcus Agrippa, the brilliant general whose victories secured the Roman world yet whose name was consciously erased from the record by his erstwhile great friend. In this very special episode Tristan Hughes is joined by bestselling author Robert Harris to uncover the remarkable life of Agrippa. How did a man from relative obscurity become Augustus’s most trusted ally? What role did he play in the victory"
     },
     {
-      "id": "stuff-you-should-know--selects-flagpole-sitting-a-real-fad",
-      "show": "Stuff You Should Know",
-      "title": "Selects: Flagpole Sitting: A Real Fad",
-      "apple_collection_id": 278981407,
-      "apple_track_id": 1000786630771,
-      "apple_episode_url": "https://podcasts.apple.com/us/podcast/selects-flagpole-sitting-a-real-fad/id278981407?i=1000786630771&uo=4",
-      "release_date": "2026-08-29",
-      "duration_min": 50,
-      "duration_sec": 3018,
-      "audio_url": "https://podtrac.com/pts/redirect.mp3/pscrb.fm/rss/p/traffic.omny.fm/d/clips/e73c998e-6e60-432f-8610-ae210140c5b1/a91018a4-ea4f-4130-bf55-ae270180c327/0ed221fa-bab3-4359-a416-b4b300e368c8/audio.mp3?utm_source=Podcast&in_playlist=44710ecc-10bb-48d1-93c7-ae270180c33e",
+      "id": "engines-of-our-ingenuity--the-engines-of-our-ingenuity-1623",
+      "show": "Engines of Our Ingenuity",
+      "title": "The Engines of Our Ingenuity 1623: Joel Dorman and Ester Steele",
+      "apple_collection_id": 121493645,
+      "apple_track_id": 1000786735309,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/the-engines-of-our-ingenuity-1623-joel-dorman/id121493645?i=1000786735309&uo=4",
+      "release_date": "2026-08-30",
+      "duration_min": 4,
+      "duration_sec": 229,
+      "audio_url": "https://op3.dev/e/dts.podtrac.com/redirect.mp3/ondemand.houstonpublicmedia.org/engines-of-our-ingenuity/KUHF_20260830.mp3?srcid=apple-podcasts",
       "audio_type": "audio/mpeg",
-      "audio_bytes": 48326213,
-      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/aa/82/91/aa82912f-23ee-6f6a-583c-a4e993164d0e/mza_12111158076643383507.jpg/600x600bb.jpg",
+      "audio_bytes": 1832618,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts113/v4/d9/48/5f/d9485f01-660b-d928-e85f-d61b6f877982/mza_8721609852467453666.png/600x600bb.jpg",
       "topics": [
-        "science/materials",
         "history/technology"
       ],
       "explicit": false,
-      "_description": "The 1920s were just absolutely nuts. People got into weird fads really intensely and one of the strangest of all was flagpole sitting. It&rsquo;s just what it sounds like &ndash; sitting on top of a flagpole for as long as you can. One man sat above them all. Learn all about him and many of these wild fads in this classic episode. See omnystudio.com/listener for privacy information."
+      "_description": "Episode: 1623 The textbooks of J. Dorman and Esther Steele. Today, we meet two very special teachers."
     },
     {
-      "id": "gardenfork-radio--expired-mayonnaise",
-      "show": "GardenFork Radio - Eclectic DIY",
-      "title": "Expired Mayonnaise",
-      "apple_collection_id": 330291397,
-      "apple_track_id": 1000786551541,
-      "apple_episode_url": "https://podcasts.apple.com/us/podcast/expired-mayonnaise/id330291397?i=1000786551541&uo=4",
-      "release_date": "2026-08-28",
-      "duration_min": 34,
-      "duration_sec": 2043,
-      "audio_url": "https://traffic.libsyn.com/secure/gardenforkradio/GFR_718.mp3?dest-id=298169",
+      "id": "planet-money--dolly-parton-s-9-to-5",
+      "show": "Planet Money",
+      "title": "Dolly Parton’s “9 to 5,” the true story behind the anthem (bonus)",
+      "apple_collection_id": 290783428,
+      "apple_track_id": 1000786573986,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/dolly-partons-9-to-5-the-true-story-behind-the-anthem-bonus/id290783428?i=1000786573986&uo=4",
+      "release_date": "2026-08-30",
+      "duration_min": 23,
+      "duration_sec": 1374,
+      "audio_url": "https://tracking.swap.fm/track/XvDEoI11TR00olTUO8US/prfx.byspotify.com/e/play.podtrac.com/npr-510289/npr.simplecastaudio.com/43b5acee-463e-4612-95ad-d2596d9dd337/episodes/15c8254d-eae7-4f9a-af7a-88c5b68b596e/audio/128/default.mp3?awCollectionId=43b5acee-463e-4612-95ad-d2596d9dd337&awEpisodeId=15c8254d-eae7-4f9a-af7a-88c5b68b596e&feed=hvWWWzRv&t=podcast&e=nx-s1-5948176&p=510289&d=1374&size=21996860",
       "audio_type": "audio/mpeg",
-      "audio_bytes": 81944960,
-      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts125/v4/7d/82/8b/7d828b9f-0ec4-d346-e9e5-b47731a86acb/mza_552515355794024318.jpg/600x600bb.jpg",
+      "audio_bytes": 21996860,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/85/df/53/85df5334-0fae-28a9-2bc4-b97b81061d0e/mza_10839245066228881011.jpg/600x600bb.jpg",
       "topics": [
-        "craft/diy-home"
+        "economics/markets"
       ],
       "explicit": false,
-      "_description": "And an update of my thoughts on hypnotherapy. Hypnotherapy Practitioner List : https://internationalboardofhypnotherapy.com/?page_id=258 The hypnotherapy app I like the best is called Harmony Hypnosis https://hypnosisappstore.com/apps/harmony-hypnosis-meditation/ Eric's Amazon Page affiliate link: https://geni.us/5UWTG Sign Up For My Free Newsletters: https://www.gardenfork.tv/email/ Here are 2 After Shows for you to check out, please consider becoming a Patron of GF. https://www.patreon.com/pos"
+      "_description": "The brilliance of \"9 to 5\" is that it is catchy even though it’s also kinda depressing. You will be dancing along. You're enjoying it. And, then when you really listen to the lyrics, you're like, Wait, this is messed up. This is real. This is a problem we need to fix. Like, why does it have to be this way? That is the spirit of the song, why it became an anthem, and the heart of the movie 9 to 5 . There’s so much to say about Dolly Parton, about her music, acting career, her business savvy, not "
     },
     {
-      "id": "bad-friends--new-episode-on-patron-today",
-      "show": "Bad Friends",
-      "title": "New Episode on Patron Today",
-      "apple_collection_id": 1496265971,
-      "apple_track_id": 1000786525858,
-      "apple_episode_url": "https://podcasts.apple.com/us/podcast/new-episode-on-patron-today/id1496265971?i=1000786525858&uo=4",
-      "release_date": "2026-08-28",
-      "duration_min": 4,
-      "duration_sec": 236,
-      "audio_url": "https://www.podtrac.com/pts/redirect.mp3/pdst.fm/e/pscrb.fm/rss/p/pfx.vpixl.com/u8u9X/mgln.ai/e/1118/arttrk.com/p/YMH00/clrtpod.com/m/traffic.megaphone.fm/YMH4214462455.mp3",
+      "id": "call-her-daddy--fearful-disorganized-attachment-101",
+      "show": "Call Her Daddy",
+      "title": "Fearful/Disorganized Attachment 101",
+      "apple_collection_id": 1418960261,
+      "apple_track_id": 1000786532774,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/fearful-disorganized-attachment-101/id1418960261?i=1000786532774&uo=4",
+      "release_date": "2026-08-30",
+      "duration_min": 47,
+      "duration_sec": 2795,
+      "audio_url": "https://dts.podtrac.com/redirect.mp3/stitcher.simplecastaudio.com/f09b6967-f720-4383-a6cf-42d1f475bd95/episodes/aec69d7c-7361-40a5-91fc-b66c1a90b43c/audio/128/default.mp3?aid=rss_feed&awCollectionId=f09b6967-f720-4383-a6cf-42d1f475bd95&awEpisodeId=aec69d7c-7361-40a5-91fc-b66c1a90b43c&feed=mKn_QmLS",
       "audio_type": "audio/mpeg",
-      "audio_bytes": null,
-      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/b0/26/c8/b026c805-1a24-55ea-cff3-d0329d2338ce/mza_11376115143280052758.jpeg/600x600bb.jpg",
+      "audio_bytes": 45281117,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/05/10/91/05109145-8c22-5464-1f20-aaedeab769f8/mza_10276081716633787086.jpg/600x600bb.jpg",
       "topics": [
-        "comedy/casual-hangs"
+        "comedy/interviews"
       ],
       "explicit": true,
-      "_description": "For more exclusive content and ad-free early episodes go to https://www.patreon.com/badfriends Learn more about your ad choices. Visit megaphone.fm/adchoices"
+      "_description": "This week, Alex continues her attachment style series and dives into fearful, or disorganized, attachment. She discusses why people with this attachment style can crave intimacy while simultaneously fearing it, how childhood instability can shape adult relationships, and why chaos can sometimes feel safer than healthy love. Enjoy! Hosted by Simplecast, an AdsWizz company. See pcm.adswizz.com for information about our collection and use of personal data for advertising."
     },
     {
-      "id": "partially-examined-life--pel-presents-nem-259-glenn-morrow",
-      "show": "The Partially Examined Life Philosophy Podcast",
-      "title": "PEL Presents NEM#259: Glenn Morrow (Bar/None): Songwriting Re-Emergence",
-      "apple_collection_id": 318345767,
-      "apple_track_id": 1000786522574,
-      "apple_episode_url": "https://podcasts.apple.com/us/podcast/pel-presents-nem-259-glenn-morrow-bar-none-songwriting/id318345767?i=1000786522574&uo=4",
-      "release_date": "2026-08-28",
-      "duration_min": 62,
-      "duration_sec": 3730,
-      "audio_url": "https://prfx.byspotify.com/e/pscrb.fm/rss/p/dts.podtrac.com/redirect.mp3/mgln.ai/e/802/claritaspod.com/measure/traffic.libsyn.com/secure/partiallyexaminedlife/NEM_ep_259_7-22-26.mp3?dest-id=16399",
-      "audio_type": "audio/mpeg",
-      "audio_bytes": 89660622,
-      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts114/v4/32/eb/a9/32eba9ac-dfb0-618b-e874-6696c69ea59d/mza_257738567509116492.jpeg/600x600bb.jpg",
-      "topics": [
-        "philosophy/ideas"
-      ],
-      "explicit": false,
-      "_description": "lenn was a central figure in the Hoboken punk scene, fronting the band \"a\" in the late '70s and then The Individuals in the early '80s. His next band, Rage to Live, was the first release from Bar/None records in 1986, and Glenn then joined the label as a partner and signed They Might Be Giants, Yo La Tengo, etc. He started recording his own music again in the early 2010's and has now released three albums as Glenn Morrow's Cry for Help. We discuss \"Sweater Weather\" (and listen at the end to \"Tha"
-    },
-    {
-      "id": "radiolab--dolly-parton-s-america-sad-ass",
-      "show": "Radiolab",
-      "title": "Dolly Parton's America: Sad Ass Songs",
-      "apple_collection_id": 152249110,
-      "apple_track_id": 1000786509470,
-      "apple_episode_url": "https://podcasts.apple.com/us/podcast/dolly-partons-america-sad-ass-songs/id152249110?i=1000786509470&uo=4",
-      "release_date": "2026-08-28",
-      "duration_min": 65,
-      "duration_sec": 3891,
-      "audio_url": "https://pscrb.fm/rss/p/mgln.ai/e/14/prfx.byspotify.com/e/dts.podtrac.com/pts/redirect.mp3/waaa.wnyc.org/758af4c0-a2c3-47ec-a2d8-05f41bfbde51/episodes/3d739fac-22c2-44fa-b2d6-054c8db3cfb7/audio/128/default.mp3?aid=rss_feed&awCollectionId=758af4c0-a2c3-47ec-a2d8-05f41bfbde51&awEpisodeId=3d739fac-22c2-44fa-b2d6-054c8db3cfb7&feed=EmVW7VGp",
-      "audio_type": "audio/mpeg",
-      "audio_bytes": 62258096,
-      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/2b/b2/4d/2bb24d28-f3bb-916f-6bf3-9e125ba5219b/mza_4476298389845914795.jpg/600x600bb.jpg",
-      "topics": [
-        "science/storytelling"
-      ],
-      "explicit": true,
-      "_description": "The world lost a legend recently, and we wanted in some small way to pay tribute to the great Dolly Parton. So we’re playing you an episode from a series we had a small part in back in 2017, Dolly Parton’s America .&nbsp; The series kicked off with a simple question: How did the queen of the boob joke become a feminist icon? Helen Morales, author of “Pilgrimage to Dollywood,” gave us a stern directive – look at the lyrics! So we dive into Dolly’s discography, starting with the early period of wh"
-    },
-    {
-      "id": "amicus-dahlia-lithwick--becoming-justice-gorsuch-3-a-lunch",
-      "show": "Amicus With Dahlia Lithwick | Law, justice, and the courts",
-      "title": "Becoming Justice Gorsuch | 3. A Lunch Room for Life",
-      "apple_collection_id": 928790786,
-      "apple_track_id": 1000786354725,
-      "apple_episode_url": "https://podcasts.apple.com/us/podcast/becoming-justice-gorsuch-3-a-lunch-room-for-life/id928790786?i=1000786354725&uo=4",
+      "id": "astonishing-legends--richard-hatem-s-light-in-the",
+      "show": "Astonishing Legends",
+      "title": "Richard Hatem's Light in the Dark Tour 2026!",
+      "apple_collection_id": 923527373,
+      "apple_track_id": 1000786694478,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/richard-hatems-light-in-the-dark-tour-2026/id923527373?i=1000786694478&uo=4",
       "release_date": "2026-08-29",
-      "duration_min": 56,
-      "duration_sec": 3368,
-      "audio_url": "https://sphinx.acast.com/p/open/s/695ea2381c1db1c5bdf7c59b/e/6a90ace6d3e4bd9041773c19/media.mp3",
-      "audio_type": "audio/mpeg",
-      "audio_bytes": 53904195,
-      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/e8/52/9b/e8529b7b-21fe-9692-48fd-7696d23a8807/mza_17089514366859568033.jpeg/600x600bb.jpg",
-      "topics": [
-        "society/law"
-      ],
-      "explicit": false,
-      "_description": "With Amicus on a brief summer break, we’re bringing you the final installment of Slow Burn’s latest season, Becoming Justice Gorsuch. Host Susan Matthews enlists Slate’s jurisprudence team—Amicus co-hosts Dahlia Lithwick and Mark Joseph Stern—to discuss Neil Gorsuch’s key rulings to date, his unpredictability, and how this textualist will shape this court (and our country) for decades to come. In this week’s bonus episode: Susan, Dahlia, and Mark recently reconvened to record an update to this c"
-    },
-    {
-      "id": "criminal--911",
-      "show": "Criminal",
-      "title": "911",
-      "apple_collection_id": 809264944,
-      "apple_track_id": 1000779883366,
-      "apple_episode_url": "https://podcasts.apple.com/us/podcast/911/id809264944?i=1000779883366&uo=4",
-      "release_date": "2026-08-28",
-      "duration_min": 40,
-      "duration_sec": 2402,
-      "audio_url": "https://www.podtrac.com/pts/redirect.mp3/pdst.fm/e/pscrb.fm/rss/p/mgln.ai/e/257/traffic.megaphone.fm/VMP8791174936.mp3",
+      "duration_min": 2,
+      "duration_sec": 127,
+      "audio_url": "https://pdst.fm/e/arttrk.com/p/ABMA5/clrtpod.com/m/pscrb.fm/rss/p/dts.podtrac.com/redirect.mp3/audioboom.com/posts/8946847.mp3?modified=1788031639&sid=4322549&source=rss&rssua=Foray",
       "audio_type": "audio/mpeg",
       "audio_bytes": null,
-      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/bd/98/22/bd9822cc-b8e0-59de-5809-45926a0ee5f3/mza_2331604259390110897.jpeg/600x600bb.jpg",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/ad/76/bc/ad76bc47-5cc2-3a33-3831-eb131d4056ed/mza_6281920426640935874.jpg/600x600bb.jpg",
       "topics": [
-        "true-crime",
-        "society/law"
+        "paranormal",
+        "history"
       ],
       "explicit": false,
-      "_description": "A conversation with a 911 operator about what happens on the other end of the line – and the day she heard her daughter's voice on the phone. This episode was originally released in 2024. We're going on tour - and it's a different kind of show than any we've done before. Upcoming dates in Durham, NC, and Portland, ME, are on sale now. Find ticket links and updates at ⁠thisiscriminal.com/live⁠. Say hello on Facebook, Instagram and TikTok. Sign up for our occasional newsletter. Follow the show and"
+      "_description": "Our friend Richard Hatem is taking his Paranormal Bookshelf on the road! The Light in the Dark Tour 2026 is an all new live show playing six cities in seven days, September 13th through 19th, and it winds up at the Mothman Festival in Point Pleasant, West Virginia. Richard and Susan Lambert will be at the festival both days selling Mothman and podcast merch, and on Saturday night, September 19th, he's performing an episode of the podcast picked especially for Point Pleasant. Hear Scott and Rich "
     },
     {
-      "id": "dear-sugars--rewind-the-stepchild-s-dilemma",
-      "show": "Dear Sugars",
-      "title": "Rewind: The Stepchild's Dilemma",
-      "apple_collection_id": 950464429,
-      "apple_track_id": 1000786657229,
-      "apple_episode_url": "https://podcasts.apple.com/us/podcast/rewind-the-stepchilds-dilemma/id950464429?i=1000786657229&uo=4",
-      "release_date": "2026-08-29",
-      "duration_min": 45,
-      "duration_sec": 2720,
-      "audio_url": "https://mgln.ai/e/29/pscrb.fm/rss/p/prfx.byspotify.com/e/traffic.megaphone.fm/BUR4964548090.mp3",
-      "audio_type": "audio/mpeg",
-      "audio_bytes": 43524719,
-      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/13/86/7f/13867f22-67b6-49d0-9b74-8eaa458aab0d/mza_10920335765348487691.jpg/600x600bb.jpg",
-      "topics": [
-        "relationships",
-        "personal-journals"
-      ],
-      "explicit": false,
-      "_description": "Whether you’re 5, 15, or 50 years old, it can be difficult to usher a stepparent in and out of the family unit. In today’s episode, the Sugars answer letters from stepchildren who have fraught relationships with their stepparents. This episode was originally released on April 28th, 2018."
-    },
-    {
-      "id": "wow-in-the-world--wewow-on-the-weekend-a-bananas",
+      "id": "wow-in-the-world--wewow-on-the-weekend-q-a",
       "show": "Wow in the World",
-      "title": "WeWow on the Weekend: A Bananas Crafternoon! (Encore)",
+      "title": "WeWow on the Weekend: Q&A, and a Case For the Giggles! (Encore)",
       "apple_collection_id": 1233834541,
-      "apple_track_id": 1000786621366,
-      "apple_episode_url": "https://podcasts.apple.com/us/podcast/wewow-on-the-weekend-a-bananas-crafternoon-encore/id1233834541?i=1000786621366&uo=4",
-      "release_date": "2026-08-29",
-      "duration_min": 12,
-      "duration_sec": 692,
-      "audio_url": "https://pscrb.fm/rss/p/rss.art19.com/episodes/68cf03f3-20c5-4af0-b058-6f4a6fd6d7bd.mp3?rss_browser=BAhJIgpGb3JheQY6BkVU--3f447deb1117b611db0e9adfdd91a5aaf96f4fde",
+      "apple_track_id": 1000786742453,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/wewow-on-the-weekend-q-a-and-a-case-for-the-giggles-encore/id1233834541?i=1000786742453&uo=4",
+      "release_date": "2026-08-30",
+      "duration_min": 20,
+      "duration_sec": 1187,
+      "audio_url": "https://pscrb.fm/rss/p/rss.art19.com/episodes/25dcf494-8ef3-4aa2-871b-7c45cedd2141.mp3?rss_browser=BAhJIgpGb3JheQY6BkVU--3f447deb1117b611db0e9adfdd91a5aaf96f4fde",
       "audio_type": "audio/mpeg",
-      "audio_bytes": 11075918,
-      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/06/f4/d0/06f4d043-8980-9c7c-9ee1-ae82ed339f02/mza_16402950441466616298.jpeg/600x600bb.jpg",
+      "audio_bytes": 18992901,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/fe/0c/96/fe0c964d-8da5-c057-cbc7-8be9045731dd/mza_12324882638608714489.jpeg/600x600bb.jpg",
       "topics": [
         "kids-family/education"
       ],
       "explicit": false,
-      "_description": "What do ice cream, finger paint, and bananas have in common? This episode of WeWow, the bonkerballs variety show for kids and families from the creators of Wow in the World, has all of that and more. Dennis and Reggie are back with another weekend full of laughs and listener love. Whether you're a longtime Wowzer or just tuning in, WeWow on the Weekend is the kind of family variety podcast that makes every car ride, breakfast table, and slow Saturday morning a little more wow-worthy. This week, "
-    },
-    {
-      "id": "wow-in-the-world--two-whats-and-a-wow-wow",
-      "show": "Wow in the World",
-      "title": "Two Whats?! And A Wow! – Wow Around the World (Encore)",
-      "apple_collection_id": 1233834541,
-      "apple_track_id": 1000786446787,
-      "apple_episode_url": "https://podcasts.apple.com/us/podcast/two-whats-and-a-wow-wow-around-the-world-encore/id1233834541?i=1000786446787&uo=4",
-      "release_date": "2026-08-28",
-      "duration_min": 14,
-      "duration_sec": 861,
-      "audio_url": "https://pscrb.fm/rss/p/rss.art19.com/episodes/6787e5d8-00e3-442b-afbe-79f5e99f928c.mp3?rss_browser=BAhJIgpGb3JheQY6BkVU--3f447deb1117b611db0e9adfdd91a5aaf96f4fde",
-      "audio_type": "audio/mpeg",
-      "audio_bytes": 13792653,
-      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/6e/c4/4f/6ec44f3d-307c-1dc2-e4d7-7a6b30027ec3/mza_15586195477280633904.jpeg/600x600bb.jpg",
-      "topics": [
-        "kids-family/education"
-      ],
-      "explicit": false,
-      "_description": "On the next episode of Two Whats?! And a Wow, we really build the suspense. Literally! We’re celebrating famous landmarks from around the world. Mindy &amp; Guy will help you separate the facts from the foolishness about some of the most famous man-made structures on Earth! Originally aired 6/28/24. See Privacy Policy at https://art19.com/privacy and California Privacy Notice at https://art19.com/privacy#do-not-sell-my-info ."
+      "_description": "What do questions and answers, piano songs, and giggles have in common? This episode of WeWow, the bonkerballs variety show for kids and families from the creators of Wow in the World, has all of that and more. Dennis and Reggie are back with another weekend full of laughs, listener love, and a laughter encore episode that'll have the whole family talking all over again. Whether you're a longtime Wowzer or just tuning in, WeWow on the Weekend is the kind of family variety podcast that makes ever"
     }
   ],
-  "dropped": [
-    {
-      "show": "Within Tolerance",
-      "title": "Within Tolerance Episode 282 - The Bot Will Remember This with Zap",
-      "reason": "no trackId match"
-    },
-    {
-      "show": "Masters of Scale",
-      "title": "Pioneers of AI: Designing AI for people and the planet, with Aza Raskin",
-      "reason": "no trackId match"
-    },
-    {
-      "show": "Old Gods of Appalachia",
-      "title": "Old Gods of Appalachia presents: Goth Prom",
-      "reason": "no trackId match"
-    }
-  ]
+  "dropped": []
 }
