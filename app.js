@@ -1263,6 +1263,52 @@ function showIntroPopupOnce() {
   ok.addEventListener("click", dismiss);
 }
 
+/* One result row per matched show -- deliberately not epRow/miniCard: a show
+   search result has no play control, duration, or star (it names a SHOW, not
+   a playable item), and links straight to the page Stage 1 already built. */
+function showResultRow(show) {
+  return `<a class="show-result" href="#/show/${encodeURIComponent(show.show_id)}">
+    ${show.artwork_url ? `<img class="show-result-art" src="${esc(safeUrl(show.artwork_url))}" alt="">` : `<span class="show-result-art show-result-art-blank"></span>`}
+    <span class="show-result-title">${esc(show.title)}</span>
+  </a>`;
+}
+
+/* ---------- Shows search (Stage 2, docs/show-pages-plan.md) ----------
+
+   A separate affordance from #pl-form's topic playlist builder, on purpose
+   (plan §2, kanban card scope): the two ask different questions ("what
+   should I listen to" vs "does this show exist here") and are never merged
+   into one result list or one search mode. Toggled by two tab buttons that
+   show/hide their own form+results block; only one is visible at a time. */
+function renderShowSearchResults(query) {
+  const note = $("#sh-note");
+  const results = $("#sh-results");
+  const shows = SearchEngine.searchShows(query, state.catalog?.shows || []);
+  if (!shows.length) {
+    results.innerHTML = "";
+    results.hidden = true;
+    note.textContent = `No shows match "${query}" in 4a's catalogue.`;
+    note.hidden = false;
+    return;
+  }
+  note.hidden = true;
+  results.innerHTML = shows.map(showResultRow).join("");
+  results.hidden = false;
+}
+
+function setSearchTab(mode) {
+  const topics = mode === "topics";
+  $("#tab-topics").classList.toggle("on", topics);
+  $("#tab-topics").setAttribute("aria-pressed", String(topics));
+  $("#tab-shows").classList.toggle("on", !topics);
+  $("#tab-shows").setAttribute("aria-pressed", String(!topics));
+  $("#pl-form").hidden = !topics;
+  $("#pl-note").hidden = !topics || !$("#pl-note").textContent;
+  $("#sh-form").hidden = topics;
+  $("#sh-note").hidden = topics || !$("#sh-note").textContent;
+  $("#sh-results").hidden = topics || !$("#sh-results").innerHTML;
+}
+
 function renderHome() {
   document.body.className = "view-home";
   if (!state.cardSlots.length) buildCards();
@@ -1273,11 +1319,21 @@ function renderHome() {
       ${jumpBackInHtml(resumeRows)}
       ${forayHomeHtml()}
       <div class="cards4">${state.cardSlots.map(miniCard).join("")}</div>
+      <div class="search-tabs" role="tablist">
+        <button type="button" id="tab-topics" class="search-tab on" role="tab" aria-pressed="true">Playlists</button>
+        <button type="button" id="tab-shows" class="search-tab" role="tab" aria-pressed="false">Shows</button>
+      </div>
       <form id="pl-form" autocomplete="off">
         <input id="pl-input" type="text" maxlength="120" placeholder="build me a playlist…">
         <button type="submit">Go</button>
       </form>
       <p id="pl-note" class="note" hidden></p>
+      <form id="sh-form" autocomplete="off" hidden>
+        <input id="sh-input" type="text" maxlength="120" placeholder="search shows by name…">
+        <button type="submit">Go</button>
+      </form>
+      <p id="sh-note" class="note" hidden></p>
+      <div id="sh-results" class="show-results" hidden></div>
     </div>`;
 
   showIntroPopupOnce();
@@ -1296,6 +1352,20 @@ function renderHome() {
       $("#banner-slot").innerHTML = "";
     });
   }
+
+  $("#tab-topics").addEventListener("click", () => setSearchTab("topics"));
+  $("#tab-shows").addEventListener("click", () => setSearchTab("shows"));
+  setSearchTab("topics"); // paints the initial hidden/visible split in JS,
+  // not just via the template's static `hidden` attribute, so it holds
+  // even where the template string's markup isn't reparsed into live DOM
+  // state (matches how #pl-note/#sh-note's `hidden` toggling already works).
+
+  $("#sh-form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const query = $("#sh-input").value.trim();
+    if (!query) return;
+    renderShowSearchResults(query);
+  });
 
   $("#pl-form").addEventListener("submit", (e) => {
     e.preventDefault();
