@@ -238,6 +238,13 @@ const FLOORS = {
      it — see the suite header for how the coverage divides against
      data-deletion and app-security. */
   "test/playlist-durability.test.js": 33,
+  /* #/show/:id, Stage 1 of docs/show-pages-plan.md. Floored because the join it
+     guards (show_id first, title-alias fallback for Lingthusiasm) fails
+     silently in exactly the way #276's playlist decay did: a dropped fallback
+     entry renders zero episodes rather than an error, on one specific show,
+     and nothing else in the repo would notice. Every test names its mutation;
+     see the suite header for the full list of what each test pins. */
+  "test/show-page.test.js": 9,
   /* #301's bound, over the REAL catalogue: improving a result the ranking keeps
      below the top one must never empty its query or drop a bar-clearer. One test,
      floored at one, because the alternative to a floor here is a suite that can be

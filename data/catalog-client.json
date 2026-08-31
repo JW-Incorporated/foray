@@ -1,0 +1,2255 @@
+{
+  "version": 1,
+  "shows": [
+    {
+      "show_id": "lex-fridman-podcast",
+      "title": "Lex Fridman Podcast",
+      "artwork_url": null,
+      "editorial_note": "Marathon technical interviews with the actual scientists and founders building fusion reactors, AI, and everything adjacent.",
+      "taxonomy_node_ids": [
+        "engineering/energy-fusion"
+      ],
+      "episode_count": null
+    },
+    {
+      "show_id": "titans-of-nuclear",
+      "title": "Titans of Nuclear",
+      "artwork_url": null,
+      "editorial_note": "The widest bench in fusion/fission podcasting -- a new reactor architecture or company nearly every episode.",
+      "taxonomy_node_ids": [
+        "engineering/energy-fusion"
+      ],
+      "episode_count": null
+    },
+    {
+      "show_id": "omega-tau",
+      "title": "omega tau",
+      "artwork_url": null,
+      "editorial_note": "The most technically dense engineering-tour podcast in English -- stellarators, magnets, superconductivity, no hand-holding.",
+      "taxonomy_node_ids": [
+        "engineering/energy-fusion",
+        "science/materials"
+      ],
+      "episode_count": null
+    },
+    {
+      "show_id": "cleantechies-podcast",
+      "title": "CleanTechies Podcast",
+      "artwork_url": null,
+      "editorial_note": "Shorter founder interviews across the clean-energy startup landscape, fusion included.",
+      "taxonomy_node_ids": [
+        "engineering/energy-fusion"
+      ],
+      "episode_count": null
+    },
+    {
+      "show_id": "catalyst-shayle-kann",
+      "title": "Catalyst with Shayle Kann",
+      "artwork_url": null,
+      "editorial_note": "Energy-transition analyst digs into the engineering and market mechanics of new power technologies.",
+      "taxonomy_node_ids": [
+        "engineering/energy-fusion"
+      ],
+      "episode_count": null
+    },
+    {
+      "show_id": "lab-to-market-leadership",
+      "title": "Lab to Market Leadership",
+      "artwork_url": null,
+      "editorial_note": "How deep-tech founders take a lab result to a company -- fusion and hard-tech leadership stories.",
+      "taxonomy_node_ids": [
+        "engineering/energy-fusion",
+        "business/startups"
+      ],
+      "episode_count": null
+    },
+    {
+      "show_id": "cbc-ideas",
+      "title": "CBC Ideas",
+      "artwork_url": null,
+      "editorial_note": "CBC's long-running ideas documentary strand -- occasionally lands on fusion, energy, and technology with a narrative, current-affairs voice.",
+      "taxonomy_node_ids": [
+        "engineering/energy-fusion"
+      ],
+      "episode_count": null
+    },
+    {
+      "show_id": "stuff-you-should-know",
+      "title": "Stuff You Should Know",
+      "artwork_url": null,
+      "editorial_note": "Reliable general-audience explainer show -- easy entry points into metallurgy, materials, and technology history topics.",
+      "taxonomy_node_ids": [
+        "science/materials",
+        "history/technology"
+      ],
+      "episode_count": null
+    },
+    {
+      "show_id": "materialism-podcast",
+      "title": "Materialism: A Materials Science Podcast",
+      "artwork_url": null,
+      "editorial_note": "The dedicated materials-science show -- history, commercialization, and characterization of the stuff things are made of.",
+      "taxonomy_node_ids": [
+        "science/materials"
+      ],
+      "episode_count": null
+    },
+    {
+      "show_id": "inside-chips",
+      "title": "Inside Chips (Semiconductor Engineering)",
+      "artwork_url": null,
+      "editorial_note": "B2B semiconductor-fab panel talk -- precision process control that rhymes with reactor-grade manufacturing.",
+      "taxonomy_node_ids": [
+        "engineering/precision-mfg"
+      ],
+      "episode_count": null
+    },
+    {
+      "show_id": "mtdcnc-podcast",
+      "title": "MTDCNC Podcast",
+      "artwork_url": null,
+      "editorial_note": "UK precision-machining trade show -- interviews with the people who design, build, and operate CNC and aerospace-grade equipment.",
+      "taxonomy_node_ids": [
+        "engineering/precision-mfg",
+        "science/materials"
+      ],
+      "episode_count": null
+    },
+    {
+      "show_id": "being-an-engineer",
+      "title": "Being an Engineer",
+      "artwork_url": null,
+      "editorial_note": "Product-engineering war stories, CAD to tooling to production, on everything from medical devices to a coffee tamper.",
+      "taxonomy_node_ids": [
+        "engineering/precision-mfg",
+        "craft/diy-home"
+      ],
+      "episode_count": null
+    },
+    {
+      "show_id": "fall-of-civilizations",
+      "title": "Fall of Civilizations Podcast",
+      "artwork_url": null,
+      "editorial_note": "The benchmark long-form documentary history show -- multi-hour rise-and-fall sagas with real engineering and military detail.",
+      "taxonomy_node_ids": [
+        "history/military-ancient",
+        "history/technology"
+      ],
+      "episode_count": null
+    },
+    {
+      "show_id": "the-rest-is-history",
+      "title": "The Rest Is History",
+      "artwork_url": null,
+      "editorial_note": "Sandbrook and Holland's conversational history juggernaut -- broad chronological coverage, strong narrative pacing.",
+      "taxonomy_node_ids": [
+        "history/technology",
+        "history/military-ancient"
+      ],
+      "episode_count": null
+    },
+    {
+      "show_id": "conan-obrien-needs-a-friend",
+      "title": "Conan O'Brien Needs a Friend",
+      "artwork_url": null,
+      "editorial_note": "Conan's real-friendship-with-guests premise -- consistently the warmest, easiest hang in the catalog.",
+      "taxonomy_node_ids": [
+        "comedy/casual-hangs"
+      ],
+      "episode_count": null
+    },
+    {
+      "show_id": "smartless",
+      "title": "SmartLess",
+      "artwork_url": null,
+      "editorial_note": "Bateman, Hayes, and Arnett's surprise-guest hang -- low pressure, high chemistry.",
+      "taxonomy_node_ids": [
+        "comedy/casual-hangs"
+      ],
+      "episode_count": null
+    },
+    {
+      "show_id": "my-brother-my-brother-and-me",
+      "title": "My Brother, My Brother and Me",
+      "artwork_url": null,
+      "editorial_note": "Three real brothers answering advice questions with pure absurdism -- zero stakes, guaranteed laughs.",
+      "taxonomy_node_ids": [
+        "comedy/casual-hangs"
+      ],
+      "episode_count": null
+    },
+    {
+      "show_id": "making-chips",
+      "title": "Making Chips Podcast for Manufacturing Leaders",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/3d/14/ae/3d14aee2-cf0c-2ac9-24b5-798e78820153/mza_1466453196835194745.jpg/600x600bb.jpg",
+      "editorial_note": "Machine-shop leadership talk -- how precision shops actually quote, hire, and scale, from people who run them.",
+      "taxonomy_node_ids": [
+        "engineering/precision-mfg"
+      ],
+      "episode_count": 530
+    },
+    {
+      "show_id": "business-of-machining",
+      "title": "Business of Machining",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts125/v4/77/a4/bc/77a4bc8a-76f6-e612-da13-050262cbdbae/mza_5516773433192487976.jpg/600x600bb.jpg",
+      "editorial_note": "Two shop owners talking CNC economics, tooling choices, and the unglamorous daily grind of running a machine shop.",
+      "taxonomy_node_ids": [
+        "engineering/precision-mfg"
+      ],
+      "episode_count": 459
+    },
+    {
+      "show_id": "within-tolerance",
+      "title": "Within Tolerance",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts125/v4/83/6e/ba/836ebae9-68ae-7506-52aa-57d847536a8f/mza_6383185451985653612.jpg/600x600bb.jpg",
+      "editorial_note": "Metrology and quality-control nerdery -- measurement uncertainty and inspection for people who care about tenths of a thousandth.",
+      "taxonomy_node_ids": [
+        "engineering/precision-mfg"
+      ],
+      "episode_count": 283
+    },
+    {
+      "show_id": "mrs-bulletin-materials-news",
+      "title": "MRS Bulletin Materials News Podcast",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/fc/b2/80/fcb28066-fcdb-d4e8-3014-bf8598d56c24/mza_8464533906158578485.jpg/600x600bb.jpg",
+      "editorial_note": "Materials Research Society's news show -- quick, credentialed hits on new-materials breakthroughs across biomaterials, quantum, and energy.",
+      "taxonomy_node_ids": [
+        "science/materials"
+      ],
+      "episode_count": 136
+    },
+    {
+      "show_id": "its-a-material-world",
+      "title": "It's a Material World: Materials Science Podcast",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts125/v4/3d/c1/2d/3dc12d7b-192f-76ae-871a-2585a1a45679/mza_4165954840319623046.jpg/600x600bb.jpg",
+      "editorial_note": "Panel conversations on how engineered materials quietly reshape everyday industries -- broad rather than deep.",
+      "taxonomy_node_ids": [
+        "science/materials"
+      ],
+      "episode_count": 100
+    },
+    {
+      "show_id": "hardcore-history",
+      "title": "Dan Carlin's Hardcore History",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/49/b7/eb/49b7eb32-8f08-6fac-aadb-2f002131fe5f/mza_15196161972010256532.jpg/600x600bb.jpg",
+      "editorial_note": "The gold standard for narrative military history -- multi-hour, meticulously researched sagas, ancient through modern.",
+      "taxonomy_node_ids": [
+        "history/military-ancient"
+      ],
+      "episode_count": 12
+    },
+    {
+      "show_id": "the-ancients",
+      "title": "The Ancients",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/6c/94/31/6c943113-5484-a41d-5cb7-bf606ff289ef/mza_6401313720037127611.jpeg/600x600bb.jpg",
+      "editorial_note": "History Hit's flagship ancient-world show -- Tristan Hughes runs down a civilization, battle, or discovery with an academic guest.",
+      "taxonomy_node_ids": [
+        "history/military-ancient"
+      ],
+      "episode_count": 743
+    },
+    {
+      "show_id": "ancient-history-fangirl",
+      "title": "Ancient History Fangirl",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts123/v4/3a/b4/37/3ab4371d-8b31-8d91-758b-cad09fc294e8/mza_249453363545711140.jpg/600x600bb.jpg",
+      "editorial_note": "Ancient history and mythology told with storyteller's pacing rather than a lecture's.",
+      "taxonomy_node_ids": [
+        "history/military-ancient"
+      ],
+      "episode_count": 359
+    },
+    {
+      "show_id": "history-of-ancient-greece",
+      "title": "The History of Ancient Greece",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts116/v4/d1/e6/ea/d1e6eaa9-ad5c-d10b-8c03-781854009f2b/mza_13555901365096986505.png/600x600bb.jpg",
+      "editorial_note": "Chronological deep dive through Greek military and political history, Bronze Age through Roman conquest.",
+      "taxonomy_node_ids": [
+        "history/military-ancient"
+      ],
+      "episode_count": 131
+    },
+    {
+      "show_id": "engines-of-our-ingenuity",
+      "title": "Engines of Our Ingenuity",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts113/v4/d9/48/5f/d9485f01-660b-d928-e85f-d61b6f877982/mza_8721609852467453666.png/600x600bb.jpg",
+      "editorial_note": "Bite-sized (5-minute) stories of inventions and the people behind them -- good filler between longer picks.",
+      "taxonomy_node_ids": [
+        "history/technology"
+      ],
+      "episode_count": 100
+    },
+    {
+      "show_id": "the-engineering-history-podcast",
+      "title": "The Engineering History Podcast",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts122/v4/fb/cf/06/fbcf0690-5b34-7158-7b05-ad3872df2e42/mza_8045345893151664664.jpg/600x600bb.jpg",
+      "editorial_note": "Where engineering and history collide -- from the Golden Gate Bridge to the Boston Molasses Flood.",
+      "taxonomy_node_ids": [
+        "history/technology"
+      ],
+      "episode_count": 67
+    },
+    {
+      "show_id": "acquired",
+      "title": "Acquired",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/a8/e1/de/a8e1deff-9f88-4e55-a541-b0dc793c0cdc/mza_11539673419613154037.jpg/600x600bb.jpg",
+      "editorial_note": "3-5 hour definitive company histories with real primary research -- deep-tech business strategy done properly.",
+      "taxonomy_node_ids": [
+        "business/startups",
+        "history/technology"
+      ],
+      "episode_count": 215
+    },
+    {
+      "show_id": "founders",
+      "title": "Founders",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/ed/71/4f/ed714f67-f095-a4ef-f38e-d8c02300666a/mza_11432355988627368701.jpg/600x600bb.jpg",
+      "editorial_note": "David Senra reads founder biographies and pulls out the operating lessons -- obsessive, opinionated, prolific.",
+      "taxonomy_node_ids": [
+        "business/startups"
+      ],
+      "episode_count": 448
+    },
+    {
+      "show_id": "this-week-in-startups",
+      "title": "This Week in Startups",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/bf/ce/23/bfce2354-2548-00f0-d795-a34404946a6b/mza_10222213905677371023.jpg/600x600bb.jpg",
+      "editorial_note": "Jason Calacanis's long-running startup news and interview show -- a pulse check on where venture money is flowing.",
+      "taxonomy_node_ids": [
+        "business/startups"
+      ],
+      "episode_count": 1442
+    },
+    {
+      "show_id": "techsurge-deep-tech-podcast",
+      "title": "TechSurge: Deep Tech Podcast",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/1b/46/9c/1b469cf6-a85d-2977-1ac5-51f92ef65669/mza_5261734729492018704.jpg/600x600bb.jpg",
+      "editorial_note": "VC-hosted show on frontier technology -- AI, robotics, and the energy/hard-science startups behind them.",
+      "taxonomy_node_ids": [
+        "business/startups",
+        "engineering/energy-fusion"
+      ],
+      "episode_count": 37
+    },
+    {
+      "show_id": "twenty-minute-vc",
+      "title": "The Twenty Minute VC (20VC)",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/cb/4a/f9/cb4af9a2-5857-c3f1-30d4-14395af9a14f/mza_11350890235230424535.jpeg/600x600bb.jpg",
+      "editorial_note": "Harry Stebbings' venture-capital interview marathon -- useful for the funding and market-dynamics side of deep tech.",
+      "taxonomy_node_ids": [
+        "business/startups"
+      ],
+      "episode_count": 1478
+    },
+    {
+      "show_id": "luthier-on-luthier",
+      "title": "Luthier on Luthier with Michael Bashkin",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts113/v4/61/85/33/618533ae-ee68-8a43-0da7-c01d2652c700/mza_6282196726920991032.jpg/600x600bb.jpg",
+      "editorial_note": "One guitar builder interviewing another -- bracing, wood selection, and the small decisions that make an instrument sing.",
+      "taxonomy_node_ids": [
+        "craft/instrument-making"
+      ],
+      "episode_count": 115
+    },
+    {
+      "show_id": "fretboard-journal-guitar-podcast",
+      "title": "The Fretboard Journal Guitar Podcast",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/a2/43/83/a2438301-5237-b57b-0397-513a28d9f36a/mza_8050638846459341682.jpeg/600x600bb.jpg",
+      "editorial_note": "Long-running guitar-culture interviews that regularly drift into build technique and lutherie history.",
+      "taxonomy_node_ids": [
+        "craft/instrument-making"
+      ],
+      "episode_count": 542
+    },
+    {
+      "show_id": "violin-chronicles",
+      "title": "The Violin Chronicles Podcast",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts116/v4/0d/37/1e/0d371eff-59fe-9669-1bd3-e02d47142f21/mza_4837951534807794831.jpg/600x600bb.jpg",
+      "editorial_note": "The craft and history of violin making, from historic Cremonese workshops to modern luthiers.",
+      "taxonomy_node_ids": [
+        "craft/instrument-making"
+      ],
+      "episode_count": 49
+    },
+    {
+      "show_id": "piano-tech-radio-hour",
+      "title": "Piano Tech Radio Hour",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/e6/ad/89/e6ad89a2-f470-45a9-a359-d7fe4c7ea397/mza_9972727323134304732.jpg/600x600bb.jpg",
+      "editorial_note": "Piano technicians and rebuilders talk tuning, regulation, and instrument restoration in real technical depth.",
+      "taxonomy_node_ids": [
+        "craft/instrument-making"
+      ],
+      "episode_count": 102
+    },
+    {
+      "show_id": "gardenfork-radio",
+      "title": "GardenFork Radio - Eclectic DIY",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts125/v4/7d/82/8b/7d828b9f-0ec4-d346-e9e5-b47731a86acb/mza_552515355794024318.jpg/600x600bb.jpg",
+      "editorial_note": "Eclectic, low-key DIY -- home fixes, workshop tips, cooking, and gardening in short practical bursts.",
+      "taxonomy_node_ids": [
+        "craft/diy-home"
+      ],
+      "episode_count": 100
+    },
+    {
+      "show_id": "around-the-house-eric-g",
+      "title": "Around the House with Eric G",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/55/d0/42/55d042d1-d595-0fce-c14a-04e2d4d48505/mza_8757307005226717506.jpg/600x600bb.jpg",
+      "editorial_note": "Call-in home-improvement radio energy -- practical answers to real renovation and repair questions.",
+      "taxonomy_node_ids": [
+        "craft/diy-home"
+      ],
+      "episode_count": 1242
+    },
+    {
+      "show_id": "wood-talk",
+      "title": "Wood Talk | Woodworking",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts116/v4/03/77/34/037734a5-38ac-d844-4d1e-f25fb7bfb11f/mza_406931835671098101.jpeg/600x600bb.jpg",
+      "editorial_note": "Three working woodworkers riffing on tools, technique, and shop mistakes -- funnier than a how-to show has any right to be.",
+      "taxonomy_node_ids": [
+        "craft/diy-home"
+      ],
+      "episode_count": 620
+    },
+    {
+      "show_id": "shop-talk-live",
+      "title": "Shop Talk Live - Fine Woodworking",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts123/v4/eb/1f/ea/eb1feaf2-3356-a81b-b589-980f7f9a3107/mza_4940064301473067456.jpg/600x600bb.jpg",
+      "editorial_note": "Fine Woodworking magazine's staff panel answering listener questions with real technique depth.",
+      "taxonomy_node_ids": [
+        "craft/diy-home"
+      ],
+      "episode_count": 386
+    },
+    {
+      "show_id": "good-hang-amy-poehler",
+      "title": "Good Hang with Amy Poehler",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/2b/94/bb/2b94bb6e-44f1-9d57-7748-b7456072806d/mza_1064202164981856225.jpg/600x600bb.jpg",
+      "editorial_note": "Amy Poehler catching up with famous friends -- warm, unhurried, zero homework required.",
+      "taxonomy_node_ids": [
+        "comedy/casual-hangs"
+      ],
+      "episode_count": 72
+    },
+    {
+      "show_id": "fly-on-the-wall",
+      "title": "Fly on the Wall with Dana Carvey and David Spade",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/c4/5f/1e/c45f1e02-7a76-a6e6-d53d-9705246ed2c1/mza_17162576389956741702.jpeg/600x600bb.jpg",
+      "editorial_note": "Two old SNL/showbiz friends swapping stories and characters -- easy, silly, industry-insider hang.",
+      "taxonomy_node_ids": [
+        "comedy/casual-hangs"
+      ],
+      "episode_count": 399
+    },
+    {
+      "show_id": "bad-friends",
+      "title": "Bad Friends",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/b0/26/c8/b026c805-1a24-55ea-cff3-d0329d2338ce/mza_11376115143280052758.jpeg/600x600bb.jpg",
+      "editorial_note": "Andrew Santino and Bobby Lee roasting each other -- spikier energy than the other comfort picks for days that need more jolt.",
+      "taxonomy_node_ids": [
+        "comedy/casual-hangs"
+      ],
+      "episode_count": 334
+    },
+    {
+      "show_id": "gastropod",
+      "title": "Gastropod",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/2f/86/b8/2f86b835-3646-79db-508b-3dfe2ab5c57f/mza_7794159422468204289.jpeg/600x600bb.jpg",
+      "editorial_note": "Two science journalists dissect food chemistry and history -- a stretch pick for engineering minds.",
+      "taxonomy_node_ids": [
+        "food/cooking-science"
+      ],
+      "episode_count": 291
+    },
+    {
+      "show_id": "the-bbq-central-show",
+      "title": "The BBQ Central Show",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/b6/ae/a7/b6aea743-7a14-dd74-7297-552d4225b7d4/mza_12416154268561529211.jpg/600x600bb.jpg",
+      "editorial_note": "Long-running BBQ radio show with pitmasters and technique talk -- the answer to a barbecue request.",
+      "taxonomy_node_ids": [
+        "food/cooking-science"
+      ],
+      "episode_count": 1846
+    },
+    {
+      "show_id": "black-box-down",
+      "title": "Black Box Down",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts112/v4/a4/6d/76/a46d7680-e413-8e4b-a188-911b14774738/mza_10934758751055584416.jpg/600x600bb.jpg",
+      "editorial_note": "Two hosts dissect major aviation disasters and the engineering fixes that followed each one.",
+      "taxonomy_node_ids": [
+        "aviation/accidents"
+      ],
+      "episode_count": 150
+    },
+    {
+      "show_id": "flight-safety-detectives",
+      "title": "Flight Safety Detectives",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts116/v4/d3/a4/5a/d3a45a3c-d254-9e7c-ec02-2fa924091f83/mza_3114558249847592794.jpeg/600x600bb.jpg",
+      "editorial_note": "Former NTSB investigators break down real crash investigations and the safety systems behind them.",
+      "taxonomy_node_ids": [
+        "aviation/accidents"
+      ],
+      "episode_count": 335
+    },
+    {
+      "show_id": "this-podcast-will-kill-you",
+      "title": "This Podcast Will Kill You",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/31/fc/17/31fc17a4-78dc-a4ec-ed10-909b8aa0a67b/mza_1082798024989117655.jpg/600x600bb.jpg",
+      "editorial_note": "Two epidemiologists cover one disease a week -- biology, history, and how outbreaks actually spread.",
+      "taxonomy_node_ids": [
+        "medicine/biology"
+      ],
+      "episode_count": 293
+    },
+    {
+      "show_id": "two-scientists-walk-into-a-bar",
+      "title": "Two Scientists Walk Into a Bar",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/3b/05/d4/3b05d4a1-674b-df85-6c89-a5db183bd4d6/mza_6969913091258002714.jpg/600x600bb.jpg",
+      "editorial_note": "Genentech researchers translate frontier biology -- AI drug discovery, gene therapy, cancer -- into plain talk.",
+      "taxonomy_node_ids": [
+        "medicine/biology"
+      ],
+      "episode_count": 56
+    },
+    {
+      "show_id": "lingthusiasm",
+      "title": "Lingthusiasm - A podcast that's enthusiastic about linguistics",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/76/cf/ad/76cfad4d-692b-aa33-d43f-76aa0bc54338/mza_14324813511257672417.jpg/600x600bb.jpg",
+      "editorial_note": "Two linguists dig into how language actually works, from grammar structure to internet slang.",
+      "taxonomy_node_ids": [
+        "linguistics/language"
+      ],
+      "episode_count": 117
+    },
+    {
+      "show_id": "the-allusionist",
+      "title": "The Allusionist",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/d2/ee/57/d2ee5738-0ae8-cb97-2a15-8cefab5598c0/mza_18103885882368855276.jpeg/600x600bb.jpg",
+      "editorial_note": "Helen Zaltzman on the strange histories tangled up inside ordinary words and phrases.",
+      "taxonomy_node_ids": [
+        "linguistics/language"
+      ],
+      "episode_count": 251
+    },
+    {
+      "show_id": "science-for-sport-podcast",
+      "title": "Science for Sport Podcast",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/d1/ce/2f/d1ce2fc5-acd9-6780-ec02-08e05123ad99/mza_11239183095122157429.jpg/600x600bb.jpg",
+      "editorial_note": "Applied sports-science interviews on the physiology and engineering behind elite athletic performance.",
+      "taxonomy_node_ids": [
+        "sports/biomechanics"
+      ],
+      "episode_count": 326
+    },
+    {
+      "show_id": "just-fly-performance-podcast",
+      "title": "Just Fly Performance Podcast",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts116/v4/bf/31/2a/bf312a79-6f03-6b36-101c-b39a3624ae7b/mza_17594812248167925708.jpeg/600x600bb.jpg",
+      "editorial_note": "Long-form coaching interviews on the biomechanics of speed, power, and athletic movement.",
+      "taxonomy_node_ids": [
+        "sports/biomechanics"
+      ],
+      "episode_count": 300
+    },
+    {
+      "show_id": "the-outlaw-ocean",
+      "title": "The Outlaw Ocean",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/20/a0/63/20a06386-3541-7eed-8889-b30f3d565449/mza_10915069505959056021.jpg/600x600bb.jpg",
+      "editorial_note": "Investigative reporting from the world's most lawless waters -- crime, labor, and geopolitics at sea.",
+      "taxonomy_node_ids": [
+        "nature/ocean-science"
+      ],
+      "episode_count": 19
+    },
+    {
+      "show_id": "the-sound-aquatic",
+      "title": "The Sound Aquatic",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts125/v4/c8/88/f6/c888f6a7-9aec-3b61-1f41-71b9466eb283/mza_16970995618975324032.jpg/600x600bb.jpg",
+      "editorial_note": "Short, well-produced series on how marine animals use sound to navigate and communicate.",
+      "taxonomy_node_ids": [
+        "nature/ocean-science"
+      ],
+      "episode_count": 6
+    },
+    {
+      "show_id": "song-exploder",
+      "title": "Song Exploder",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/05/7b/35/057b3588-c74c-0334-d8ef-c6b8166d4afc/mza_12324100546486323942.jpg/600x600bb.jpg",
+      "editorial_note": "Musicians take one song apart, track by track, to show exactly how it was built.",
+      "taxonomy_node_ids": [
+        "music/theory-production"
+      ],
+      "episode_count": 369
+    },
+    {
+      "show_id": "switched-on-pop",
+      "title": "Switched on Pop",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts112/v4/4a/87/8c/4a878cc7-0b12-dc80-93b0-c2ce08d5dd0c/mza_8267236680144001404.jpeg/600x600bb.jpg",
+      "editorial_note": "Musicologists analyze pop hits for the theory and production choices that make them work.",
+      "taxonomy_node_ids": [
+        "music/theory-production"
+      ],
+      "episode_count": 542
+    },
+    {
+      "show_id": "my-favorite-theorem",
+      "title": "My Favorite Theorem",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts125/v4/5d/28/98/5d28982a-7fc4-59e7-7d74-9707b6d45c81/mza_808230165933535031.png/600x600bb.jpg",
+      "editorial_note": "Mathematicians pick a favorite theorem and explain why it delights them, no lecture required.",
+      "taxonomy_node_ids": [
+        "math/puzzles"
+      ],
+      "episode_count": 96
+    },
+    {
+      "show_id": "99-percent-invisible",
+      "title": "99% Invisible",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/79/d0/35/79d035ea-9043-b43e-7380-33cd47bd968b/mza_2606971010425550919.jpg/600x600bb.jpg",
+      "editorial_note": "Roman Mars's design-and-infrastructure show -- the hidden systems and decisions behind the built world.",
+      "taxonomy_node_ids": [
+        "architecture/infrastructure"
+      ],
+      "episode_count": 812
+    },
+    {
+      "show_id": "the-worlds-best-construction-podcast",
+      "title": "The World's Best Construction Podcast",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts112/v4/d1/8d/15/d18d15c0-ce12-312d-fdae-6d58179572d3/mza_17731699531660745375.jpeg/600x600bb.jpg",
+      "editorial_note": "The B1M's hosts riff on megaprojects, skyscrapers, and infrastructure news from around the world.",
+      "taxonomy_node_ids": [
+        "architecture/infrastructure"
+      ],
+      "episode_count": 196
+    },
+    {
+      "show_id": "spit-and-twitches-animal-cognition",
+      "title": "Spit and Twitches: The Animal Cognition Podcast",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts113/v4/c3/ca/ed/c3caeddc-304a-ec4f-ce5a-848c8cf5361a/mza_5199943751913908942.jpg/600x600bb.jpg",
+      "editorial_note": "Researchers discuss their own animal-cognition studies -- parrots, primates, spiders, and beyond.",
+      "taxonomy_node_ids": [
+        "nature/animal-cognition"
+      ],
+      "episode_count": 25
+    },
+    {
+      "show_id": "ologies-with-alie-ward",
+      "title": "Ologies with Alie Ward",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts125/v4/44/4e/42/444e42f6-1ce8-1e7b-2d50-4ed506c27004/mza_18370866018545460916.jpg/600x600bb.jpg",
+      "editorial_note": "Alie Ward interviews an expert '-ologist' each week on one absurdly specific scientific niche.",
+      "taxonomy_node_ids": [
+        "nature/animal-cognition"
+      ],
+      "episode_count": 519
+    },
+    {
+      "show_id": "spycast",
+      "title": "SpyCast",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/8b/ef/54/8bef54df-87de-d35e-dffc-9e5b7a69a077/mza_1037153440664024317.jpg/600x600bb.jpg",
+      "editorial_note": "International Spy Museum's official show -- tradecraft, Cold War history, and modern espionage tech.",
+      "taxonomy_node_ids": [
+        "espionage/cold-war-tech"
+      ],
+      "episode_count": 752
+    },
+    {
+      "show_id": "main-engine-cut-off",
+      "title": "Main Engine Cut Off",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/74/29/03/742903dd-7666-7c87-a784-e6f33f68083b/mza_2462898383911641826.jpg/600x600bb.jpg",
+      "editorial_note": "Anthony Colangelo's near-daily rundown of rocket-industry news -- sharp technical reads on NASA, SpaceX, and the rest of the launch business.",
+      "taxonomy_node_ids": [
+        "space/rockets"
+      ],
+      "episode_count": 337
+    },
+    {
+      "show_id": "off-nominal",
+      "title": "Off-Nominal",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts116/v4/8a/3a/c3/8a3ac39d-9739-d1bd-0699-25d89bd74531/mza_6548671454048201085.jpg/600x600bb.jpg",
+      "editorial_note": "Two space-industry insiders riff on spaceflight news with technical fluency and genuine friendship.",
+      "taxonomy_node_ids": [
+        "space/rockets"
+      ],
+      "episode_count": 251
+    },
+    {
+      "show_id": "planetary-radio",
+      "title": "Planetary Radio: Space Exploration, Astronomy and Science",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts116/v4/12/9d/e6/129de6c3-8048-078a-e054-751af12fdcd1/mza_5394175969927495016.jpg/600x600bb.jpg",
+      "editorial_note": "The Planetary Society's flagship show -- working scientists and engineers on missions across the solar system.",
+      "taxonomy_node_ids": [
+        "space/rockets"
+      ],
+      "episode_count": 1346
+    },
+    {
+      "show_id": "advent-of-computing",
+      "title": "Advent of Computing",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/3d/ba/93/3dba93d2-ebf6-3c55-266d-346d9f766811/mza_14699723287906703668.png/600x600bb.jpg",
+      "editorial_note": "A historian traces forgotten programming languages, machines, and the people who built early computing culture.",
+      "taxonomy_node_ids": [
+        "computing/history"
+      ],
+      "episode_count": 202
+    },
+    {
+      "show_id": "corecursive",
+      "title": "CoRecursive: Coding Stories",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts114/v4/d1/68/fa/d168faa0-54ad-137d-c936-b728cdb61a06/mza_6770579440872689479.png/600x600bb.jpg",
+      "editorial_note": "Software engineers tell the real stories behind the code -- bugs, breakthroughs, and the humans who shipped them.",
+      "taxonomy_node_ids": [
+        "computing/history"
+      ],
+      "episode_count": 118
+    },
+    {
+      "show_id": "software-engineering-daily",
+      "title": "Software Engineering Daily",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/95/aa/58/95aa58ac-8618-5259-4a26-2f864665ebf4/mza_15276922367235047332.png/600x600bb.jpg",
+      "editorial_note": "Daily interviews with practicing engineers on the infrastructure, languages, and systems running modern software.",
+      "taxonomy_node_ids": [
+        "computing/history"
+      ],
+      "episode_count": 105
+    },
+    {
+      "show_id": "planet-money",
+      "title": "Planet Money",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/85/df/53/85df5334-0fae-28a9-2bc4-b97b81061d0e/mza_10839245066228881011.jpg/600x600bb.jpg",
+      "editorial_note": "NPR's economics desk turns markets, policy, and money into stories with real stakes.",
+      "taxonomy_node_ids": [
+        "economics/markets"
+      ],
+      "episode_count": 659
+    },
+    {
+      "show_id": "odd-lots",
+      "title": "Odd Lots",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/f3/99/6a/f3996a52-e4a4-bf0d-b7d6-e376c4058568/mza_15550359494736224565.jpg/600x600bb.jpg",
+      "editorial_note": "Bloomberg's Joe Weisenthal and Tracy Alloway go deep on markets with the people who actually trade them.",
+      "taxonomy_node_ids": [
+        "economics/markets"
+      ],
+      "episode_count": 1243
+    },
+    {
+      "show_id": "freakonomics-radio",
+      "title": "Freakonomics Radio",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/f7/0c/c5/f70cc540-ce36-d96f-b111-c970aad5505c/mza_17703422762227531425.jpg/600x600bb.jpg",
+      "editorial_note": "Stephen Dubner applies economic reasoning to questions far outside traditional economics.",
+      "taxonomy_node_ids": [
+        "economics/markets"
+      ],
+      "episode_count": 985
+    },
+    {
+      "show_id": "hidden-brain",
+      "title": "Hidden Brain",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/e2/18/b8/e218b838-b790-3a33-441f-c3772d9abbbf/mza_6896085647855199484.jpg/600x600bb.jpg",
+      "editorial_note": "Shankar Vedantam on the unconscious patterns that quietly steer human behavior.",
+      "taxonomy_node_ids": [
+        "psychology/decision-making"
+      ],
+      "episode_count": 696
+    },
+    {
+      "show_id": "you-are-not-so-smart",
+      "title": "You Are Not So Smart",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/90/f3/e5/90f3e5da-d661-3581-4474-6e14f342c86a/mza_8266442694079680437.jpg/600x600bb.jpg",
+      "editorial_note": "David McRaney on cognitive bias, self-delusion, and how people actually change their minds.",
+      "taxonomy_node_ids": [
+        "psychology/decision-making"
+      ],
+      "episode_count": 340
+    },
+    {
+      "show_id": "choiceology",
+      "title": "Choiceology with Katy Milkman",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/d4/dd/1a/d4dd1a96-3d19-d117-049a-e7efb67e15cc/mza_5642620100423641543.jpg/600x600bb.jpg",
+      "editorial_note": "Behavioral economist Katy Milkman uses real stories to unpack why people choose the way they do.",
+      "taxonomy_node_ids": [
+        "psychology/decision-making"
+      ],
+      "episode_count": 114
+    },
+    {
+      "show_id": "planetgeo-geology-podcast",
+      "title": "PlanetGeo: The Geology Podcast",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/38/86/14/388614d9-589d-ec16-8605-d30fc7743100/mza_8513962717529195959.jpg/600x600bb.jpg",
+      "editorial_note": "Two geologists dig into granite, geochronology, and the debates that shaped modern earth science.",
+      "taxonomy_node_ids": [
+        "nature/earth-science"
+      ],
+      "episode_count": 290
+    },
+    {
+      "show_id": "geology-bites",
+      "title": "Geology Bites",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts116/v4/ae/51/7b/ae517b55-4fc5-430e-29a3-227d8bfce933/mza_8769318646279676626.jpg/600x600bb.jpg",
+      "editorial_note": "Working geologists explain their own published research, from moon magnetism to ancient plate tectonics.",
+      "taxonomy_node_ids": [
+        "nature/earth-science"
+      ],
+      "episode_count": 125
+    },
+    {
+      "show_id": "dont-panic-geocast",
+      "title": "Don't Panic Geocast",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/0f/5e/01/0f5e017a-0afe-0d53-9f83-d622ac15b92b/mza_13516733366155734010.jpg/600x600bb.jpg",
+      "editorial_note": "A weekly geoscience news roundup with a running paper-of-the-week segment for working researchers.",
+      "taxonomy_node_ids": [
+        "nature/earth-science"
+      ],
+      "episode_count": 433
+    },
+    {
+      "show_id": "well-theres-your-problem",
+      "title": "Well There's Your Problem",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts125/v4/21/da/66/21da66c0-ff2d-981c-862c-8d8138903ec5/mza_1840288066774406949.jpg/600x600bb.jpg",
+      "editorial_note": "Three hosts dissect engineering disasters and the organizational failures that caused them, at length.",
+      "taxonomy_node_ids": [
+        "engineering/disasters"
+      ],
+      "episode_count": 261
+    },
+    {
+      "show_id": "causality-engineered-network",
+      "title": "Causality",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts114/v4/34/09/ce/3409cefa-3979-0266-d5e1-7638b92ec963/mza_17109904737658847010.png/600x600bb.jpg",
+      "editorial_note": "Documentary-style breakdowns of engineering disasters -- what went wrong, and how it could have been stopped.",
+      "taxonomy_node_ids": [
+        "engineering/disasters"
+      ],
+      "episode_count": 76
+    },
+    {
+      "show_id": "brady-heywood-podcast",
+      "title": "Brady Heywood Podcast",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/4e/a4/3c/4ea43c6c-4d89-e32c-b100-60dda271e13e/mza_10745713349607623394.jpg/600x600bb.jpg",
+      "editorial_note": "A forensic engineer investigates real structural failures, from mine collapses to bridge design errors.",
+      "taxonomy_node_ids": [
+        "engineering/disasters"
+      ],
+      "episode_count": 37
+    },
+    {
+      "show_id": "f1-beyond-the-grid",
+      "title": "F1 Beyond The Grid",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/bc/6d/a0/bc6da0d0-b7c2-fd70-85cd-8e766835d9f5/mza_4794308754520312855.png/600x600bb.jpg",
+      "editorial_note": "Former F1 broadcaster Tom Clarkson interviews team principals and engineers shaping Formula 1 strategy.",
+      "taxonomy_node_ids": [
+        "automotive/racing"
+      ],
+      "episode_count": 434
+    },
+    {
+      "show_id": "tuned-in-hpa",
+      "title": "Tuned In",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/6e/a3/51/6ea3511a-15be-0c65-a3ed-3dec954e398f/mza_9722013193950538670.jpg/600x600bb.jpg",
+      "editorial_note": "High Performance Academy's motorsport engineers talk tuning, fabrication, and the physics of going fast.",
+      "taxonomy_node_ids": [
+        "automotive/racing"
+      ],
+      "episode_count": 366
+    },
+    {
+      "show_id": "the-race-f1-podcast",
+      "title": "The Race F1 Podcast",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/40/7b/8c/407b8cbe-cd34-d818-ff69-a11bc1d6c690/mza_9877600709441097500.jpeg/600x600bb.jpg",
+      "editorial_note": "A former F1 technical director breaks down car design, regulations, and race-weekend engineering calls.",
+      "taxonomy_node_ids": [
+        "automotive/racing"
+      ],
+      "episode_count": 933
+    },
+    {
+      "show_id": "volts",
+      "title": "Volts",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts122/v4/f4/ec/55/f4ec55b0-e781-4b63-d852-6e3ae373f407/mza_13099907872217237817.jpg/600x600bb.jpg",
+      "editorial_note": "David Roberts interviews the engineers and regulators rebuilding the electric grid around renewables.",
+      "taxonomy_node_ids": [
+        "engineering/energy-grid"
+      ],
+      "episode_count": 431
+    },
+    {
+      "show_id": "energy-gang",
+      "title": "Energy Gang",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/57/dd/d2/57ddd238-d522-ef9f-3c19-8c78f44268d8/mza_2097564139452517130.jpeg/600x600bb.jpg",
+      "editorial_note": "Wood Mackenzie analysts and guests debate the politics and economics of the energy transition.",
+      "taxonomy_node_ids": [
+        "engineering/energy-grid"
+      ],
+      "episode_count": 578
+    },
+    {
+      "show_id": "watt-it-takes",
+      "title": "Watt It Takes",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/27/e7/47/27e747dd-e8d3-d4c0-d470-44cd990b2f74/mza_13309759620403809513.jpg/600x600bb.jpg",
+      "editorial_note": "Founder interviews on the startups electrifying grids, transit, and industrial power.",
+      "taxonomy_node_ids": [
+        "engineering/energy-grid"
+      ],
+      "episode_count": 98
+    },
+    {
+      "show_id": "philosophize-this",
+      "title": "Philosophize This!",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/c1/b7/51/c1b751eb-ab38-f11c-d6c1-0a9de79b7061/mza_12134548126279202007.jpg/600x600bb.jpg",
+      "editorial_note": "Stephen West walks through the history of philosophy one thinker and argument at a time.",
+      "taxonomy_node_ids": [
+        "philosophy/ideas"
+      ],
+      "episode_count": 249
+    },
+    {
+      "show_id": "partially-examined-life",
+      "title": "The Partially Examined Life Philosophy Podcast",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts114/v4/32/eb/a9/32eba9ac-dfb0-618b-e874-6696c69ea59d/mza_257738567509116492.jpeg/600x600bb.jpg",
+      "editorial_note": "Four non-professional philosophers work through primary texts in real, unpolished detail.",
+      "taxonomy_node_ids": [
+        "philosophy/ideas"
+      ],
+      "episode_count": 876
+    },
+    {
+      "show_id": "philosophy-bites",
+      "title": "Philosophy Bites",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts125/v4/4b/46/9c/4b469ca0-6e1c-80fd-a654-09a21cfc0cc7/mza_14359361872834352420.jpg/600x600bb.jpg",
+      "editorial_note": "Short, sharp interviews with working philosophers on one focused question each episode.",
+      "taxonomy_node_ids": [
+        "philosophy/ideas"
+      ],
+      "episode_count": 406
+    },
+    {
+      "show_id": "camera-shake-photography-podcast",
+      "title": "Camera Shake Photography Podcast",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts116/v4/7c/5e/51/7c5e519b-7f7a-2a58-ca12-f3aa88d921f7/mza_13857594628227726337.jpg/600x600bb.jpg",
+      "editorial_note": "Working photographers talk technique, business, and the craft decisions behind their best work.",
+      "taxonomy_node_ids": [
+        "craft/photography"
+      ],
+      "episode_count": 316
+    },
+    {
+      "show_id": "go-creative-show",
+      "title": "Go Creative Show",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/a1/38/dc/a138dcee-48d4-ebbb-a5c6-21405f1cd531/mza_4780285040992364296.jpeg/600x600bb.jpg",
+      "editorial_note": "Cinematographers and directors break down how specific films and shows actually got shot.",
+      "taxonomy_node_ids": [
+        "craft/photography",
+        "craft/filmmaking"
+      ],
+      "episode_count": 101
+    },
+    {
+      "show_id": "the-cinematography-podcast",
+      "title": "The Cinematography Podcast",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts125/v4/48/06/54/48065404-97a9-b8be-c4ac-cca360291f66/mza_13428131324207435940.jpg/600x600bb.jpg",
+      "editorial_note": "Working cinematographers explain the lighting, color, and lens choices behind current film and TV.",
+      "taxonomy_node_ids": [
+        "craft/photography",
+        "craft/filmmaking"
+      ],
+      "episode_count": 429
+    },
+    {
+      "show_id": "radiolab",
+      "title": "Radiolab",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/2b/b2/4d/2bb24d28-f3bb-916f-6bf3-9e125ba5219b/mza_4476298389845914795.jpg/600x600bb.jpg",
+      "editorial_note": "WNYC's original science-storytelling show, turning curiosity and hard evidence into sound-rich narrative journeys.",
+      "taxonomy_node_ids": [
+        "science/storytelling"
+      ],
+      "episode_count": 856
+    },
+    {
+      "show_id": "science-vs",
+      "title": "Science Vs",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/62/15/18/621518e5-8eb3-392b-25a7-e7444aab86b6/mza_815589518502039493.jpg/600x600bb.jpg",
+      "editorial_note": "Wendy Zukerman puts popular claims on trial against the actual scientific evidence.",
+      "taxonomy_node_ids": [
+        "science/storytelling"
+      ],
+      "episode_count": 337
+    },
+    {
+      "show_id": "unexplainable",
+      "title": "Unexplainable",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/eb/87/4d/eb874d60-4424-62df-a136-d5b5f32c451b/mza_11680166435885601347.jpg/600x600bb.jpg",
+      "editorial_note": "Vox's science show for the stuff researchers still can't fully explain.",
+      "taxonomy_node_ids": [
+        "science/storytelling"
+      ],
+      "episode_count": 292
+    },
+    {
+      "show_id": "how-i-built-this",
+      "title": "How I Built This with Guy Raz",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/64/45/06/644506b5-c44f-f661-f74e-f63a4b2511bc/mza_14892199991035639268.jpeg/600x600bb.jpg",
+      "editorial_note": "Guy Raz asks founders how they actually built their companies, mistakes included.",
+      "taxonomy_node_ids": [
+        "business/founders"
+      ],
+      "episode_count": 849
+    },
+    {
+      "show_id": "business-wars",
+      "title": "Business Wars",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/88/78/24/887824a1-8191-f922-a27e-499bb3f9e624/mza_2534133078841157643.jpeg/600x600bb.jpg",
+      "editorial_note": "Head-to-head corporate rivalry stories -- real strategy, real stakes, real winners and losers.",
+      "taxonomy_node_ids": [
+        "business/founders"
+      ],
+      "episode_count": 723
+    },
+    {
+      "show_id": "masters-of-scale",
+      "title": "Masters of Scale",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/13/4b/81/134b8173-d713-cbb2-2d3b-4a8692bd87c0/mza_996010941061703843.jpeg/600x600bb.jpg",
+      "editorial_note": "Reid Hoffman and founders unpack how companies actually scale, one hard lesson at a time.",
+      "taxonomy_node_ids": [
+        "business/founders"
+      ],
+      "episode_count": 713
+    },
+    {
+      "show_id": "we-have-ways-of-making-you-talk",
+      "title": "WW2 Pod: We Have Ways of Making You Talk",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/c5/22/e9/c522e983-ceb9-9337-d7b5-9b6f1e77e16b/mza_10534174726318393863.jpeg/600x600bb.jpg",
+      "editorial_note": "James Holland and Al Murray's meticulous, funny rundown of World War II campaigns.",
+      "taxonomy_node_ids": [
+        "history/military-modern"
+      ],
+      "episode_count": 1006
+    },
+    {
+      "show_id": "unauthorized-history-pacific-war",
+      "title": "The Unauthorized History of the Pacific War",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts116/v4/fb/ee/c8/fbeec8e6-3d1f-20b4-d8b4-025fc884959e/mza_7133861084749007820.jpg/600x600bb.jpg",
+      "editorial_note": "A WWII Museum historian and a submarine commodore reconstruct the Pacific War's naval battles.",
+      "taxonomy_node_ids": [
+        "history/military-modern"
+      ],
+      "episode_count": 228
+    },
+    {
+      "show_id": "history-of-wwii-podcast",
+      "title": "The History of WWII Podcast",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/bb/fa/9a/bbfa9a3d-9cb1-a452-fc74-c8ebab7bac9a/mza_13831910833290623732.jpg/600x600bb.jpg",
+      "editorial_note": "Ray Harris Jr's methodical, near-daily march through World War II, battle by battle.",
+      "taxonomy_node_ids": [
+        "history/military-modern"
+      ],
+      "episode_count": 643
+    },
+    {
+      "show_id": "the-war-on-cars",
+      "title": "The War on Cars",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Features126/v4/0b/ad/19/0bad19f8-b182-5020-a70f-85729285514a/mza_1833798207903169371.png/600x600bb.jpg",
+      "editorial_note": "Sarah Goodyear, Doug Gordon, and Aaron Naparstek on the fight between cars and cities.",
+      "taxonomy_node_ids": [
+        "cities/urbanism"
+      ],
+      "episode_count": 246
+    },
+    {
+      "show_id": "strong-towns-podcast",
+      "title": "The Strong Towns Podcast",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts122/v4/63/63/8c/63638c2a-3e02-dc38-8a26-50a832d39a6f/mza_868145100848425715.jpg/600x600bb.jpg",
+      "editorial_note": "Chuck Marohn's movement rethinking how American towns actually build and pay for infrastructure.",
+      "taxonomy_node_ids": [
+        "cities/urbanism"
+      ],
+      "episode_count": 600
+    },
+    {
+      "show_id": "talking-headways",
+      "title": "Talking Headways: A Streetsblog Podcast",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/89/59/f1/8959f121-bfad-7597-127c-66ddafc642e2/mza_17751439431270750380.png/600x600bb.jpg",
+      "editorial_note": "Streetsblog's transit-nerd interview show -- policy, funding, and the politics of getting around.",
+      "taxonomy_node_ids": [
+        "cities/urbanism"
+      ],
+      "episode_count": 807
+    },
+    {
+      "show_id": "chemistry-world-podcast",
+      "title": "Chemistry World Podcast",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts125/v4/e9/bd/26/e9bd26f1-5fd8-c11d-9099-9a5ba8e4d2fa/mza_7726010091290240505.jpg/600x600bb.jpg",
+      "editorial_note": "The Royal Society of Chemistry's weekly tour of chemistry news and the periodic table.",
+      "taxonomy_node_ids": [
+        "science/chemistry"
+      ],
+      "episode_count": 72
+    },
+    {
+      "show_id": "distillations",
+      "title": "Distillations | Science History Institute",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/f8/ac/cb/f8accb85-5de3-13cf-79c7-2ae52d7d788b/mza_13590418307554863530.jpg/600x600bb.jpg",
+      "editorial_note": "Science History Institute's documentary strand on chemistry's stranger, more human stories.",
+      "taxonomy_node_ids": [
+        "science/chemistry"
+      ],
+      "episode_count": 362
+    },
+    {
+      "show_id": "tiny-matters",
+      "title": "Tiny Matters",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/32/b2/87/32b287af-fcdb-1d61-0b23-9bf511c23f0e/mza_13346310199661029114.jpeg/600x600bb.jpg",
+      "editorial_note": "ACS-affiliated hosts unpack molecules and microbes with a big, surprising societal reach.",
+      "taxonomy_node_ids": [
+        "science/chemistry"
+      ],
+      "episode_count": 179
+    },
+    {
+      "show_id": "the-sharp-end-podcast",
+      "title": "the Sharp End Podcast",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts125/v4/74/f2/d7/74f2d72c-fa5e-6ad6-6ca8-665b6aa2798a/mza_3128307597345150216.jpg/600x600bb.jpg",
+      "editorial_note": "Real climbers and rescuers narrate the accidents behind the American Alpine Club's annual report.",
+      "taxonomy_node_ids": [
+        "adventure/exploration"
+      ],
+      "episode_count": 138
+    },
+    {
+      "show_id": "the-enormocast",
+      "title": "The Enormocast: the climbing podcast",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts122/v4/ca/f3/b5/caf3b5bf-75df-9cd9-ab9a-040a9db19900/mza_11650686212841206162.jpg/600x600bb.jpg",
+      "editorial_note": "Chris Kalous's long-form conversations with the most interesting people in climbing.",
+      "taxonomy_node_ids": [
+        "adventure/exploration"
+      ],
+      "episode_count": 340
+    },
+    {
+      "show_id": "alpinist",
+      "title": "Alpinist",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts123/v4/e7/9b/e7/e79be7c0-9ad1-3173-6d32-ea6de8ceccce/mza_2356562848676951642.png/600x600bb.jpg",
+      "editorial_note": "Alpinist Magazine's oral-history interviews -- dramatic ascents and the community's sharpest debates.",
+      "taxonomy_node_ids": [
+        "adventure/exploration"
+      ],
+      "episode_count": 74
+    },
+    {
+      "show_id": "designer-notes",
+      "title": "Designer Notes",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/c9/10/5c/c9105c1d-64eb-9d62-0949-a08ec7a0e7b9/mza_9310467645383947947.jpg/600x600bb.jpg",
+      "editorial_note": "Soren Johnson interviews veteran game designers about the decisions behind their defining games.",
+      "taxonomy_node_ids": [
+        "gaming/design"
+      ],
+      "episode_count": 96
+    },
+    {
+      "show_id": "game-design-round-table",
+      "title": "The Game Design Round Table",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/25/3b/bf/253bbfd2-5db2-b9a4-1886-9eb87ea7f67a/mza_8863316281658631687.jpg/600x600bb.jpg",
+      "editorial_note": "Two working designers cover thematic design, mechanics, and the business behind games.",
+      "taxonomy_node_ids": [
+        "gaming/design"
+      ],
+      "episode_count": 391
+    },
+    {
+      "show_id": "clockwork-game-design-podcast",
+      "title": "The Clockwork Game Design Podcast",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/07/37/43/073743cb-a057-3692-b2bb-3f0d678ed7b3/mza_10460167288299676493.jpg/600x600bb.jpg",
+      "editorial_note": "Keith Burgun's opinionated, technical take on strategy games and what makes them work.",
+      "taxonomy_node_ids": [
+        "gaming/design"
+      ],
+      "episode_count": 50
+    },
+    {
+      "show_id": "huberman-lab",
+      "title": "Huberman Lab",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/9a/d3/19/9ad31912-0b5a-a16e-2d7c-9fd074698b9c/mza_8994222203629500925.jpg/600x600bb.jpg",
+      "editorial_note": "Stanford neuroscientist Andrew Huberman translates lab research into usable protocols for body and mind.",
+      "taxonomy_node_ids": [
+        "medicine/neuroscience"
+      ],
+      "episode_count": 421
+    },
+    {
+      "show_id": "the-matt-walker-podcast",
+      "title": "The Matt Walker Podcast",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/5a/3e/6c/5a3e6c8c-6c6f-31eb-6002-0bdaba3ae4f8/mza_5768385804711493809.jpg/600x600bb.jpg",
+      "editorial_note": "UC Berkeley sleep scientist Matt Walker on the neuroscience of rest and its consequences.",
+      "taxonomy_node_ids": [
+        "medicine/neuroscience"
+      ],
+      "episode_count": 179
+    },
+    {
+      "show_id": "the-peter-attia-drive",
+      "title": "The Peter Attia Drive",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/89/b8/c0/89b8c0bb-f65c-66ef-8b96-fffea8f0cf5f/mza_872007510196734520.png/600x600bb.jpg",
+      "editorial_note": "Physician Peter Attia on longevity science -- training, nutrition, and disease risk in real depth.",
+      "taxonomy_node_ids": [
+        "medicine/neuroscience"
+      ],
+      "episode_count": 446
+    },
+    {
+      "show_id": "strict-scrutiny",
+      "title": "Strict Scrutiny",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/68/3f/62/683f6228-b15b-e0de-8c2c-e8c20860ca98/mza_763663699315012405.png/600x600bb.jpg",
+      "editorial_note": "Three law professors dissect Supreme Court cases with real expertise and sharp opinions.",
+      "taxonomy_node_ids": [
+        "society/law"
+      ],
+      "episode_count": 419
+    },
+    {
+      "show_id": "amicus-dahlia-lithwick",
+      "title": "Amicus With Dahlia Lithwick | Law, justice, and the courts",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/e8/52/9b/e8529b7b-21fe-9692-48fd-7696d23a8807/mza_17089514366859568033.jpeg/600x600bb.jpg",
+      "editorial_note": "Dahlia Lithwick's long-running Slate show on the Supreme Court and how courts actually work.",
+      "taxonomy_node_ids": [
+        "society/law"
+      ],
+      "episode_count": 617
+    },
+    {
+      "show_id": "5-4-podcast",
+      "title": "5-4",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts114/v4/ca/d5/c1/cad5c11c-26c6-7e25-afc7-9a496c7f6e03/mza_5631414486129804049.jpeg/600x600bb.jpg",
+      "editorial_note": "A skeptical, sharply argued rundown of Supreme Court rulings from Prologue Projects.",
+      "taxonomy_node_ids": [
+        "society/law"
+      ],
+      "episode_count": 408
+    },
+    {
+      "show_id": "craft-beer-and-brewing-magazine-podcast",
+      "title": "Craft Beer & Brewing Magazine Podcast",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/b6/db/11/b6db1143-1196-629d-97cc-f028ceda4084/mza_14037476996481271738.jpg/600x600bb.jpg",
+      "editorial_note": "Trade-magazine interviews with brewers on recipes, technique, and the business of beer.",
+      "taxonomy_node_ids": [
+        "food/fermentation"
+      ],
+      "episode_count": 490
+    },
+    {
+      "show_id": "experimental-brewing",
+      "title": "Experimental Brewing",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts123/v4/69/02/c9/6902c9d5-5666-4f07-3484-a59a050924b0/mza_14428162548472453750.jpg/600x600bb.jpg",
+      "editorial_note": "Homebrewing authors Denny Conn and Drew Beechum test ingredients and technique on air.",
+      "taxonomy_node_ids": [
+        "food/fermentation"
+      ],
+      "episode_count": 385
+    },
+    {
+      "show_id": "fermup",
+      "title": "FermUp - The Fermented Food Podcast",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/fd/44/87/fd44870b-c4cc-2d63-3eaa-2c592249faeb/mza_7028328887605081253.jpg/600x600bb.jpg",
+      "editorial_note": "Weekly conversations on the art, science, and history of fermenting food at home.",
+      "taxonomy_node_ids": [
+        "food/fermentation"
+      ],
+      "episode_count": 100
+    },
+    {
+      "show_id": "i-know-dino",
+      "title": "I Know Dino: The Big Dinosaur Podcast",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/49/6c/4c/496c4c91-e216-77d6-64a4-8096e6f89f48/mza_14223214653639207080.jpeg/600x600bb.jpg",
+      "editorial_note": "Weekly dinosaur-of-the-day segment plus interviews with working paleontologists -- 700+ episodes since 2013.",
+      "taxonomy_node_ids": [
+        "nature/paleontology"
+      ],
+      "episode_count": 766
+    },
+    {
+      "show_id": "common-descent",
+      "title": "The Common Descent Podcast",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts113/v4/2d/ad/58/2dad5885-6566-fdd4-6b52-f87b69af3688/mza_3078482384516892224.png/600x600bb.jpg",
+      "editorial_note": "Two Gray Fossil Site paleontologists trace one lineage per episode across deep time, plus research news.",
+      "taxonomy_node_ids": [
+        "nature/paleontology"
+      ],
+      "episode_count": 378
+    },
+    {
+      "show_id": "palaeocast",
+      "title": "Palaeocast",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/87/90/22/879022e7-e4e6-1325-15f2-f55150a0ab7a/mza_15756898592287997744.jpg/600x600bb.jpg",
+      "editorial_note": "Interviews with the researchers behind new fossil papers and museum collections -- ad-free since 2012.",
+      "taxonomy_node_ids": [
+        "nature/paleontology"
+      ],
+      "episode_count": 244
+    },
+    {
+      "show_id": "the-archaeology-show",
+      "title": "The Archaeology Show",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/86/63/56/86635691-554e-b600-8c66-c1074a6a661d/mza_10852883160787441689.jpg/600x600bb.jpg",
+      "editorial_note": "Working CRM archaeologists dissect excavation news and dating controversies as they break.",
+      "taxonomy_node_ids": [
+        "history/archaeology"
+      ],
+      "episode_count": 345
+    },
+    {
+      "show_id": "the-dirt-podcast",
+      "title": "The Dirt Podcast",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts122/v4/f1/96/33/f1963322-eda5-5c9f-3e79-6e751924c14e/mza_2215059003106526372.jpg/600x600bb.jpg",
+      "editorial_note": "Two archaeologists start from a single artifact and test what the physical evidence can actually say.",
+      "taxonomy_node_ids": [
+        "history/archaeology"
+      ],
+      "episode_count": 271
+    },
+    {
+      "show_id": "storm-front-freaks",
+      "title": "Storm Front Freaks",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts116/v4/c5/9e/38/c59e387e-bdf7-92cd-8162-1dad9a4997f2/mza_17431518058263513553.png/600x600bb.jpg",
+      "editorial_note": "Meteorologists and storm chasers interview forecasters, hurricane hunters, and tornado researchers; 247 episodes through 2025.",
+      "taxonomy_node_ids": [
+        "nature/weather"
+      ],
+      "episode_count": 316
+    },
+    {
+      "show_id": "weather-geeks",
+      "title": "Weather Geeks",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts125/v4/ac/3e/b2/ac3eb254-1388-0ff9-1b40-3bb4a7a9477f/mza_15265358397985929611.jpeg/600x600bb.jpg",
+      "editorial_note": "The Weather Channel's science desk -- climate researchers, forecasters, and NOAA officials on severe-weather mechanics.",
+      "taxonomy_node_ids": [
+        "nature/weather"
+      ],
+      "episode_count": 432
+    },
+    {
+      "show_id": "ams-on-the-air",
+      "title": "AMS on the Air",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/7c/e1/7b/7ce17b72-6429-7267-a678-11f6919e00ac/mza_8555350216165036473.jpg/600x600bb.jpg",
+      "editorial_note": "The American Meteorological Society's researcher interviews -- storm forecasting, Doppler fieldwork; ended 2022 but holds up.",
+      "taxonomy_node_ids": [
+        "nature/weather"
+      ],
+      "episode_count": 42
+    },
+    {
+      "show_id": "myths-and-legends",
+      "title": "Myths and Legends",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/db/81/8e/db818e29-55f8-5343-a185-8db92a0e1981/mza_6705057508729367288.jpg/600x600bb.jpg",
+      "editorial_note": "Folklore retellings from primary sources -- Norse, Korean, Czech, Hawaiian -- far beyond the Greek staples.",
+      "taxonomy_node_ids": [
+        "culture/mythology"
+      ],
+      "episode_count": 653
+    },
+    {
+      "show_id": "our-fake-history",
+      "title": "Our Fake History",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/5a/f4/d7/5af4d750-f640-3800-502b-59797b8cf1ac/mza_1498867679306953233.jpeg/600x600bb.jpg",
+      "editorial_note": "Tests popular legends against the historical record -- which curses, rides, and reputations were invented later.",
+      "taxonomy_node_ids": [
+        "culture/mythology"
+      ],
+      "episode_count": 308
+    },
+    {
+      "show_id": "folklore-and-fiction",
+      "title": "Folklore & Fiction",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/66/9d/f9/669df985-c514-5f52-9e5b-a0ee6fee422f/mza_15700984164930545441.png/600x600bb.jpg",
+      "editorial_note": "Folklorist Ceallaigh MacCath-Moran defines one folklore concept per episode from academic sources; concluded 2023.",
+      "taxonomy_node_ids": [
+        "culture/mythology"
+      ],
+      "episode_count": 51
+    },
+    {
+      "show_id": "artcurious",
+      "title": "ArtCurious Podcast",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/11/19/85/1119854e-3751-d6eb-f7db-05db20b77c78/mza_7711951324914404642.jpg/600x600bb.jpg",
+      "editorial_note": "Jennifer Dasal on the overlooked and scandalous corners of art history, not just canon highlights.",
+      "taxonomy_node_ids": [
+        "culture/art"
+      ],
+      "episode_count": 227
+    },
+    {
+      "show_id": "the-lonely-palette",
+      "title": "The Lonely Palette",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/10/1b/12/101b1204-dbbc-934e-ef9b-30a1153d134b/mza_16898327166045428548.jpg/600x600bb.jpg",
+      "editorial_note": "Art historian Tamar Avishai close-reads one painting per episode, context and reception included.",
+      "taxonomy_node_ids": [
+        "culture/art"
+      ],
+      "episode_count": 107
+    },
+    {
+      "show_id": "a-piece-of-work",
+      "title": "A Piece of Work",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/8b/89/72/8b89723f-15ea-82ae-8ca3-c1e37142e846/mza_7170972663751800578.jpeg/600x600bb.jpg",
+      "editorial_note": "MoMA and WNYC's one-season primer -- Abbi Jacobson and curators unpack one modern-art idea per episode.",
+      "taxonomy_node_ids": [
+        "culture/art"
+      ],
+      "episode_count": 11
+    },
+    {
+      "show_id": "sticky-notes",
+      "title": "Sticky Notes: The Classical Music Podcast",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts125/v4/58/60/74/58607414-6263-9fa9-4fad-d5879c071643/mza_11208751241845350981.jpeg/600x600bb.jpg",
+      "editorial_note": "Conductor Joshua Weilerstein takes apart one orchestral work per episode, analysis plus composer biography.",
+      "taxonomy_node_ids": [
+        "music/classical"
+      ],
+      "episode_count": 291
+    },
+    {
+      "show_id": "aria-code",
+      "title": "Aria Code",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/74/4f/0f/744f0fb5-c809-e2bc-c4fd-93c12cfa61aa/mza_13829604431152977285.jpeg/600x600bb.jpg",
+      "editorial_note": "WQXR and the Met Opera break down one famous aria per episode with the singers themselves.",
+      "taxonomy_node_ids": [
+        "music/classical"
+      ],
+      "episode_count": 52
+    },
+    {
+      "show_id": "music-history-monday",
+      "title": "Music History Monday",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts114/v4/8a/07/22/8a0722a8-e4bd-c875-482d-ce7244fe023b/mza_7770565009869786384.jpg/600x600bb.jpg",
+      "editorial_note": "Musicologist Robert Greenberg pins each week to a date in music history, composer-first.",
+      "taxonomy_node_ids": [
+        "music/classical"
+      ],
+      "episode_count": 120
+    },
+    {
+      "show_id": "that-triathlon-show",
+      "title": "That Triathlon Show",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/a0/53/7b/a0537b7e-22bb-0f4c-ce13-8b85515690c8/mza_9842357023075081546.jpg/600x600bb.jpg",
+      "editorial_note": "Mikael Eriksson interviews sport scientists and elite coaches on research-grounded triathlon training.",
+      "taxonomy_node_ids": [
+        "sports/endurance"
+      ],
+      "episode_count": 705
+    },
+    {
+      "show_id": "fast-talk",
+      "title": "Fast Talk",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/83/5c/44/835c44ca-7d8e-f044-9562-9952adaef507/mza_17747615336144522345.jpg/600x600bb.jpg",
+      "editorial_note": "Physiology-first cycling and running science -- lab researchers on thresholds, fueling, and training mechanics.",
+      "taxonomy_node_ids": [
+        "sports/endurance"
+      ],
+      "episode_count": 470
+    },
+    {
+      "show_id": "physiology-endurance-running",
+      "title": "The Physiology of Endurance Running Podcast",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts122/v4/55/bb/d5/55bbd5f1-ba6c-45df-dfda-0596767f21ae/mza_11148415829583992708.jpeg/600x600bb.jpg",
+      "editorial_note": "Sub-elite marathoners with sport-science training turn new research papers into running takeaways.",
+      "taxonomy_node_ids": [
+        "sports/endurance"
+      ],
+      "episode_count": 110
+    },
+    {
+      "show_id": "shipwrecks-and-sea-dogs",
+      "title": "Shipwrecks and Sea Dogs",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/a3/6a/6e/a36a6eee-d6fa-4def-65b8-33304a949d54/mza_15180103104043645429.jpeg/600x600bb.jpg",
+      "editorial_note": "Rich Napolitano narrates maritime disasters and naval battles, whaling wrecks through modern ferry sinkings.",
+      "taxonomy_node_ids": [
+        "transport/maritime"
+      ],
+      "episode_count": 186
+    },
+    {
+      "show_id": "maritime-history-podcast",
+      "title": "The Maritime History Podcast",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/ee/12/ff/ee12ff8f-f776-46b9-5949-1bf0c5e3392e/mza_4848375488342862302.png/600x600bb.jpg",
+      "editorial_note": "Chronological maritime history from antiquity -- trireme engineering and naval tactics in long form.",
+      "taxonomy_node_ids": [
+        "transport/maritime"
+      ],
+      "episode_count": 76
+    },
+    {
+      "show_id": "the-roundhouse",
+      "title": "The Roundhouse",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts125/v4/16/46/21/16462154-72d2-453e-2b31-e239b8d8d7de/mza_5473076236390767867.jpg/600x600bb.jpg",
+      "editorial_note": "Interviews across the railroad industry and its history, Civil War logistics to transcontinental lines.",
+      "taxonomy_node_ids": [
+        "transport/trains"
+      ],
+      "episode_count": 166
+    },
+    {
+      "show_id": "railway-mania",
+      "title": "Railway Mania",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/9a/b0/c2/9ab0c282-12c3-3e81-6eac-43d5c032c262/mza_12176814833401994542.jpg/600x600bb.jpg",
+      "editorial_note": "UK railway history with historians and authors -- locomotive engineering, heritage lines, and rail-age drama.",
+      "taxonomy_node_ids": [
+        "transport/trains"
+      ],
+      "episode_count": 39
+    },
+    {
+      "show_id": "woodshop-life",
+      "title": "Woodshop Life Podcast",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts125/v4/b3/2a/bb/b32abb08-08a2-18cd-3cd0-ff21b4e67556/mza_14318323082919900905.jpg/600x600bb.jpg",
+      "editorial_note": "Listener Q&A on real shop problems -- jigs, finishing, veneer, wood movement -- running since 2018.",
+      "taxonomy_node_ids": [
+        "craft/woodworking"
+      ],
+      "episode_count": 100
+    },
+    {
+      "show_id": "mwa-woodworking",
+      "title": "MWA Podcast - Woodworking Conversations",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/5d/b8/f4/5db8f408-cb22-1835-9326-0ba4bca7e066/mza_15782888279691799407.jpg/600x600bb.jpg",
+      "editorial_note": "Long-form conversations with hand-tool makers, chairmakers, and craft-guild figures like Lie-Nielsen and Benchcrafted.",
+      "taxonomy_node_ids": [
+        "craft/woodworking"
+      ],
+      "episode_count": 618
+    },
+    {
+      "show_id": "practical-ai",
+      "title": "Practical AI",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/72/7a/be/727abe96-2e44-d9ac-a6d9-7226372b5eb9/mza_6848050469316823102.jpg/600x600bb.jpg",
+      "editorial_note": "How AI systems actually get built, scaled, and secured -- engineers over headline commentary.",
+      "taxonomy_node_ids": [
+        "engineering/ai-robotics"
+      ],
+      "episode_count": 364
+    },
+    {
+      "show_id": "twiml-ai",
+      "title": "The TWIML AI Podcast",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/16/e7/85/16e78525-cfa1-a5f6-0ca9-f80dab699c61/mza_5916579879984323845.jpeg/600x600bb.jpg",
+      "editorial_note": "Sam Charrington's research-heavy interviews across ML theory, applied engineering, and domain AI since 2016.",
+      "taxonomy_node_ids": [
+        "engineering/ai-robotics"
+      ],
+      "episode_count": 789
+    },
+    {
+      "show_id": "robot-brains",
+      "title": "The Robot Brains Podcast",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts114/v4/7a/69/10/7a6910b4-e716-4d7c-7cd1-820a71a9d95a/mza_14389524355238016360.jpeg/600x600bb.jpg",
+      "editorial_note": "Berkeley's Pieter Abbeel interviews the researchers building embodied AI; dormant since 2023, still a strong archive.",
+      "taxonomy_node_ids": [
+        "engineering/ai-robotics"
+      ],
+      "episode_count": 67
+    },
+    {
+      "show_id": "robot-talk",
+      "title": "Robot Talk",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts125/v4/ad/df/d4/addfd411-bc85-f633-5b0b-24fd3e54746b/mza_11020288050044747333.jpg/600x600bb.jpg",
+      "editorial_note": "Weekly interviews with working roboticists on haptics, manipulation, surgery, and manufacturing automation.",
+      "taxonomy_node_ids": [
+        "engineering/ai-robotics"
+      ],
+      "episode_count": 169
+    },
+    {
+      "show_id": "happiness-lab",
+      "title": "The Happiness Lab with Dr. Laurie Santos",
+      "artwork_url": null,
+      "editorial_note": "Yale psychologist Laurie Santos turns happiness research into practical, myth-busting takes on feeling better.",
+      "taxonomy_node_ids": [
+        "health/mental",
+        "psychology"
+      ],
+      "episode_count": null
+    },
+    {
+      "show_id": "ten-percent-happier",
+      "title": "10% Happier with Dan Harris",
+      "artwork_url": null,
+      "editorial_note": "Dan Harris interviews clinicians and researchers on anxiety, meditation, and the science of a steadier mind.",
+      "taxonomy_node_ids": [
+        "health/mental",
+        "psychology"
+      ],
+      "episode_count": null
+    },
+    {
+      "show_id": "feel-better-live-more",
+      "title": "Feel Better, Live More with Dr Rangan Chatterjee",
+      "artwork_url": null,
+      "editorial_note": "GP Rangan Chatterjee hosts long-form conversations with doctors and scientists on sleep, stress, and healthy habits.",
+      "taxonomy_node_ids": [
+        "health/mental",
+        "health/nutrition"
+      ],
+      "episode_count": null
+    },
+    {
+      "show_id": "the-psychology-podcast",
+      "title": "The Psychology Podcast",
+      "artwork_url": null,
+      "editorial_note": "Scott Barry Kaufman's long-running interviews with the researchers behind mindset, emotion, and personality science.",
+      "taxonomy_node_ids": [
+        "psychology"
+      ],
+      "episode_count": null
+    },
+    {
+      "show_id": "maintenance-phase",
+      "title": "Maintenance Phase",
+      "artwork_url": null,
+      "editorial_note": "Aubrey Gordon and Michael Hobbes debunk the junk science behind diets, wellness fads, and nutrition panics.",
+      "taxonomy_node_ids": [
+        "health/nutrition"
+      ],
+      "episode_count": null
+    },
+    {
+      "show_id": "zoe-science-nutrition",
+      "title": "ZOE Science & Nutrition",
+      "artwork_url": null,
+      "editorial_note": "Jonathan Wolf and Tim Spector translate nutrition and gut-microbiome research into practical eating guidance.",
+      "taxonomy_node_ids": [
+        "health/nutrition"
+      ],
+      "episode_count": null
+    },
+    {
+      "show_id": "foundmyfitness",
+      "title": "FoundMyFitness",
+      "artwork_url": null,
+      "editorial_note": "Biochemist Rhonda Patrick digs into the primary research on exercise, nutrition, and healthy ageing.",
+      "taxonomy_node_ids": [
+        "health/nutrition",
+        "medicine/neuroscience"
+      ],
+      "episode_count": null
+    },
+    {
+      "show_id": "sigma-nutrition-radio",
+      "title": "Sigma Nutrition Radio",
+      "artwork_url": null,
+      "editorial_note": "Rigorous, evidence-first interviews on nutrition science, separating what studies show from wellness marketing.",
+      "taxonomy_node_ids": [
+        "health/nutrition"
+      ],
+      "episode_count": null
+    },
+    {
+      "show_id": "mel-robbins-podcast",
+      "title": "The Mel Robbins Podcast",
+      "artwork_url": null,
+      "editorial_note": "Mel Robbins pairs motivational solo episodes with expert guests on habits, confidence, and everyday change.",
+      "taxonomy_node_ids": [
+        "education/self-improvement",
+        "health/mental"
+      ],
+      "episode_count": null
+    },
+    {
+      "show_id": "happier-gretchen-rubin",
+      "title": "Happier with Gretchen Rubin",
+      "artwork_url": null,
+      "editorial_note": "Gretchen Rubin and Elizabeth Craft test practical habit and happiness strategies drawn from her research.",
+      "taxonomy_node_ids": [
+        "education/self-improvement"
+      ],
+      "episode_count": null
+    },
+    {
+      "show_id": "good-inside-dr-becky",
+      "title": "Good Inside with Dr. Becky",
+      "artwork_url": null,
+      "editorial_note": "Clinical psychologist Becky Kennedy answers hard parenting questions with sturdy, research-grounded guidance.",
+      "taxonomy_node_ids": [
+        "kids-family/parenting",
+        "psychology"
+      ],
+      "episode_count": null
+    },
+    {
+      "show_id": "ask-lisa-parenting",
+      "title": "Ask Lisa: The Psychology of Parenting",
+      "artwork_url": null,
+      "editorial_note": "Clinical psychologist Lisa Damour and Reena Ninan bring science-backed answers to real questions about raising tweens and teens.",
+      "taxonomy_node_ids": [
+        "kids-family/parenting",
+        "psychology"
+      ],
+      "episode_count": null
+    },
+    {
+      "show_id": "armchair-expert",
+      "title": "Armchair Expert with Dax Shepard",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/f0/13/8f/f0138f4b-8bc3-0a64-2c11-ef566840f60f/mza_3062409012210474882.jpeg/600x600bb.jpg",
+      "editorial_note": "Dax Shepard's long-form celebrity interviews that keep going until the guest actually opens up.",
+      "taxonomy_node_ids": [
+        "comedy/interviews"
+      ],
+      "episode_count": 1067
+    },
+    {
+      "show_id": "call-her-daddy",
+      "title": "Call Her Daddy",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/05/10/91/05109145-8c22-5464-1f20-aaedeab769f8/mza_10276081716633787086.jpg/600x600bb.jpg",
+      "editorial_note": "Alex Cooper sits down one-on-one with women who rarely give this candid an interview.",
+      "taxonomy_node_ids": [
+        "comedy/interviews"
+      ],
+      "episode_count": 598
+    },
+    {
+      "show_id": "this-past-weekend-theo-von",
+      "title": "This Past Weekend w/ Theo Von",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/9c/f6/5a/9cf65abb-f8db-fb7b-984f-b4276a1e8c85/mza_2107148709996282347.jpg/600x600bb.jpg",
+      "editorial_note": "Theo Von's Louisiana storytelling turns every guest conversation into a warm, meandering hang.",
+      "taxonomy_node_ids": [
+        "comedy/interviews"
+      ],
+      "episode_count": 554
+    },
+    {
+      "show_id": "wtf-marc-maron",
+      "title": "WTF with Marc Maron Podcast",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts122/v4/8b/14/d0/8b14d040-414c-92a6-21f8-04fb72d8d926/mza_13560057034834656474.jpeg/600x600bb.jpg",
+      "editorial_note": "The podcast that defined the comedian-interview form -- Maron gets guests to their real stuff.",
+      "taxonomy_node_ids": [
+        "comedy/interviews"
+      ],
+      "episode_count": 1226
+    },
+    {
+      "show_id": "las-culturistas",
+      "title": "Las Culturistas with Matt Rogers and Bowen Yang",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/25/2e/88/252e88df-e96e-a264-7a32-456dce4a36dd/mza_13164992107952038598.jpg/600x600bb.jpg",
+      "editorial_note": "Matt Rogers and Bowen Yang and a guest riff on culture high and low at full volume.",
+      "taxonomy_node_ids": [
+        "comedy/interviews",
+        "culture/pop-culture"
+      ],
+      "episode_count": 566
+    },
+    {
+      "show_id": "comedy-bang-bang",
+      "title": "Comedy Bang Bang: The Podcast",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/0b/ca/6e/0bca6ee0-0b2b-5df7-edee-4d9d1b2d4e8a/mza_10749952114435066299.jpg/600x600bb.jpg",
+      "editorial_note": "Scott Aukerman hosts real guests and improvised characters in the same absurd conversation.",
+      "taxonomy_node_ids": [
+        "comedy/casual-hangs"
+      ],
+      "episode_count": 162
+    },
+    {
+      "show_id": "2-bears-1-cave",
+      "title": "2 Bears, 1 Cave with Tom Segura & Bert Kreischer",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/2a/6b/83/2a6b830c-da57-31f3-9bc6-eb34b56aaaa7/mza_2112252473885241390.jpg/600x600bb.jpg",
+      "editorial_note": "Tom Segura and Bert Kreischer needling each other -- spikier energy for days that need a jolt.",
+      "taxonomy_node_ids": [
+        "comedy/casual-hangs"
+      ],
+      "episode_count": 333
+    },
+    {
+      "show_id": "how-did-this-get-made",
+      "title": "How Did This Get Made?",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/4b/06/00/4b06006c-8936-1653-fc82-132b64441f4f/mza_5523773122723324139.jpg/600x600bb.jpg",
+      "editorial_note": "Paul Scheer, June Diane Raphael, and Jason Mantzoukas lovingly tear apart the worst movies ever made.",
+      "taxonomy_node_ids": [
+        "comedy/casual-hangs",
+        "tv-film/reviews"
+      ],
+      "episode_count": 378
+    },
+    {
+      "show_id": "handsome",
+      "title": "Handsome",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/e1/96/1b/e1961bc1-eae4-b488-3b0f-abdc52f06568/mza_18244201912816466457.jpeg/600x600bb.jpg",
+      "editorial_note": "Tig Notaro, Mae Martin, and Fortune Feimster answer one listener question and wander delightfully off it.",
+      "taxonomy_node_ids": [
+        "comedy/casual-hangs"
+      ],
+      "episode_count": 251
+    },
+    {
+      "show_id": "kill-tony",
+      "title": "KILL TONY",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/a0/ad/df/a0addf99-adce-5a42-a138-81d9f8e4562e/mza_8301528492532104652.jpg/600x600bb.jpg",
+      "editorial_note": "Live one-minute stand-up sets from unknowns, judged on the spot by Tony Hinchcliffe and famous drop-ins.",
+      "taxonomy_node_ids": [
+        "comedy/stand-up"
+      ],
+      "episode_count": 775
+    },
+    {
+      "show_id": "working-it-out-birbiglia",
+      "title": "Mike Birbiglia's Working It Out",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/ef/af/30/efaf301d-6e45-ca17-192e-ef7e66afdcfd/mza_16176505125015117955.jpg/600x600bb.jpg",
+      "editorial_note": "Mike Birbiglia and a fellow comedian workshop unfinished jokes and talk honestly about the craft.",
+      "taxonomy_node_ids": [
+        "comedy/stand-up",
+        "comedy/interviews"
+      ],
+      "episode_count": 253
+    },
+    {
+      "show_id": "criminal",
+      "title": "Criminal",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/bd/98/22/bd9822cc-b8e0-59de-5809-45926a0ee5f3/mza_2331604259390110897.jpeg/600x600bb.jpg",
+      "editorial_note": "Phoebe Judge's quietly reported stories about people who've done wrong, been wronged, or landed in between.",
+      "taxonomy_node_ids": [
+        "true-crime",
+        "society/law"
+      ],
+      "episode_count": 470
+    },
+    {
+      "show_id": "serial",
+      "title": "Serial",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/9a/fb/87/9afb8760-0e05-2b3e-24a2-7e14cce74570/mza_14816055607064169808.jpg/600x600bb.jpg",
+      "editorial_note": "The show that defined narrative true crime: one investigation, reported week by week, told with rigor.",
+      "taxonomy_node_ids": [
+        "true-crime",
+        "society/law"
+      ],
+      "episode_count": 125
+    },
+    {
+      "show_id": "astonishing-legends",
+      "title": "Astonishing Legends",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/ad/76/bc/ad76bc47-5cc2-3a33-3831-eb131d4056ed/mza_6281920426640935874.jpg/600x600bb.jpg",
+      "editorial_note": "Scott Philbrick and Forrest Burgess research strange events at length, weighing evidence over easy answers.",
+      "taxonomy_node_ids": [
+        "paranormal",
+        "history"
+      ],
+      "episode_count": 454
+    },
+    {
+      "show_id": "lore",
+      "title": "Lore",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/9b/e0/c0/9be0c09c-b803-4774-77d3-85167bc87a31/mza_16743750170316675841.jpg/600x600bb.jpg",
+      "editorial_note": "Aaron Mahnke's folklore series on the dark historical roots of our fears and superstitions.",
+      "taxonomy_node_ids": [
+        "paranormal",
+        "history"
+      ],
+      "episode_count": 799
+    },
+    {
+      "show_id": "casefile-true-crime",
+      "title": "Casefile True Crime",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/32/81/a3/3281a345-6fa5-1d0d-b0bc-f02b0850a0ae/mza_17562537467118278179.jpeg/600x600bb.jpg",
+      "editorial_note": "Meticulously sourced, anonymously narrated accounts of solved and unsolved crimes, heavy on documented detail.",
+      "taxonomy_node_ids": [
+        "true-crime"
+      ],
+      "episode_count": 499
+    },
+    {
+      "show_id": "unexplained",
+      "title": "Unexplained",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/7e/a9/5c/7ea95c62-4e9b-359b-7dde-2df168676370/mza_156597234584228073.jpg/600x600bb.jpg",
+      "editorial_note": "Richard MacLean Smith's measured narration of real events that resist a tidy explanation.",
+      "taxonomy_node_ids": [
+        "paranormal"
+      ],
+      "episode_count": 424
+    },
+    {
+      "show_id": "in-the-dark",
+      "title": "In The Dark",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/72/ce/d9/72ced9bc-ce68-c56b-5194-c743c55b46b7/mza_13873143646731532957.jpg/600x600bb.jpg",
+      "editorial_note": "Madeleine Baran and team spend years on a single case, testing what the justice system got wrong.",
+      "taxonomy_node_ids": [
+        "true-crime",
+        "society/law"
+      ],
+      "episode_count": 70
+    },
+    {
+      "show_id": "crime-junkie",
+      "title": "Crime Junkie",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/8c/35/04/8c350430-2fbf-98d0-0a25-00b76550ffeb/mza_13445204151221888086.jpg/600x600bb.jpg",
+      "editorial_note": "Ashley Flowers walks through cases conversationally; the picks here favor documented, victim-centered reporting.",
+      "taxonomy_node_ids": [
+        "true-crime"
+      ],
+      "episode_count": 517
+    },
+    {
+      "show_id": "morbid",
+      "title": "Morbid",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/a4/69/a6/a469a64c-580d-938a-53f1-893d968e1332/mza_11675757052043432554.jpg/600x600bb.jpg",
+      "editorial_note": "A high-reach true-crime and history show; these picks lean to its best-researched historical cases.",
+      "taxonomy_node_ids": [
+        "true-crime",
+        "history"
+      ],
+      "episode_count": 879
+    },
+    {
+      "show_id": "dateline-nbc",
+      "title": "Dateline NBC",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/8c/00/7a/8c007a42-e550-0214-d4cb-b59cd7edf194/mza_5305664083935674472.jpeg/600x600bb.jpg",
+      "editorial_note": "NBC correspondents narrate single-case documentaries built on trial footage, interviews, and evidence.",
+      "taxonomy_node_ids": [
+        "true-crime",
+        "society/law"
+      ],
+      "episode_count": 882
+    },
+    {
+      "show_id": "wicked-words-kate-winkler-dawson",
+      "title": "Wicked Words - A True Crime Talk Show with Kate Winkler Dawson",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/9f/d5/37/9fd53772-b22c-5e3c-ac4a-3d8b9452fa74/mza_3649081017768100450.jpg/600x600bb.jpg",
+      "editorial_note": "Historian Kate Winkler Dawson interviews reporters and authors about how they investigate crime stories.",
+      "taxonomy_node_ids": [
+        "true-crime",
+        "history"
+      ],
+      "episode_count": 286
+    },
+    {
+      "show_id": "bone-valley",
+      "title": "Bone Valley",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/aa/72/2f/aa722ff2-7e96-dfbd-fd98-d23d36d035b3/mza_9383434172737455327.jpg/600x600bb.jpg",
+      "editorial_note": "Lava for Good's investigative series reexamine wrongful convictions with new reporting and archival records.",
+      "taxonomy_node_ids": [
+        "true-crime",
+        "society/law"
+      ],
+      "episode_count": 134
+    },
+    {
+      "show_id": "this-american-life",
+      "title": "This American Life",
+      "artwork_url": null,
+      "editorial_note": "Ira Glass and team build each week around a theme, mixing reported stories with personal narrative.",
+      "taxonomy_node_ids": [
+        "personal-journals",
+        "science/storytelling"
+      ],
+      "episode_count": null
+    },
+    {
+      "show_id": "snap-judgment",
+      "title": "Snap Judgment",
+      "artwork_url": null,
+      "editorial_note": "Glynn Washington hosts cinematic first-person stories, scored like radio drama, from storytellers worldwide.",
+      "taxonomy_node_ids": [
+        "science/storytelling",
+        "personal-journals"
+      ],
+      "episode_count": null
+    },
+    {
+      "show_id": "the-moth",
+      "title": "The Moth",
+      "artwork_url": null,
+      "editorial_note": "True stories told live without notes, from the institution that helped define the form.",
+      "taxonomy_node_ids": [
+        "science/storytelling",
+        "culture/performing-arts"
+      ],
+      "episode_count": null
+    },
+    {
+      "show_id": "ear-hustle",
+      "title": "Ear Hustle",
+      "artwork_url": null,
+      "editorial_note": "Earlonne Woods and Nigel Poor report daily life inside San Quentin, told by those living it.",
+      "taxonomy_node_ids": [
+        "society",
+        "personal-journals"
+      ],
+      "episode_count": null
+    },
+    {
+      "show_id": "storycorps",
+      "title": "StoryCorps",
+      "artwork_url": null,
+      "editorial_note": "Short, intimate conversations between everyday people, drawn from the largest archive of American voices.",
+      "taxonomy_node_ids": [
+        "personal-journals",
+        "society"
+      ],
+      "episode_count": null
+    },
+    {
+      "show_id": "heavyweight",
+      "title": "Heavyweight",
+      "artwork_url": null,
+      "editorial_note": "Jonathan Goldstein helps people return to a moment from their past they wish had gone differently.",
+      "taxonomy_node_ids": [
+        "personal-journals",
+        "relationships"
+      ],
+      "episode_count": null
+    },
+    {
+      "show_id": "death-sex-money",
+      "title": "Death, Sex & Money",
+      "artwork_url": null,
+      "editorial_note": "Anna Sale hosts frank conversations about the things we think about but rarely say aloud.",
+      "taxonomy_node_ids": [
+        "personal-journals",
+        "relationships"
+      ],
+      "episode_count": null
+    },
+    {
+      "show_id": "where-should-we-begin",
+      "title": "Where Should We Begin? with Esther Perel",
+      "artwork_url": null,
+      "editorial_note": "Therapist Esther Perel opens her office for real, one-time counseling sessions with anonymous couples.",
+      "taxonomy_node_ids": [
+        "relationships",
+        "psychology"
+      ],
+      "episode_count": null
+    },
+    {
+      "show_id": "modern-love",
+      "title": "Modern Love",
+      "artwork_url": null,
+      "editorial_note": "Anna Martin hosts essays and interviews about love in its complicated forms, from the Times column.",
+      "taxonomy_node_ids": [
+        "relationships",
+        "personal-journals"
+      ],
+      "episode_count": null
+    },
+    {
+      "show_id": "we-can-do-hard-things",
+      "title": "We Can Do Hard Things",
+      "artwork_url": null,
+      "editorial_note": "Glennon Doyle, Abby Wambach and Amanda Doyle talk honestly about hard things, with warmth and candor.",
+      "taxonomy_node_ids": [
+        "relationships",
+        "health/mental"
+      ],
+      "episode_count": null
+    },
+    {
+      "show_id": "dear-sugars",
+      "title": "Dear Sugars",
+      "artwork_url": null,
+      "editorial_note": "Cheryl Strayed and Steve Almond answer letters with radical empathy and hard-won personal honesty.",
+      "taxonomy_node_ids": [
+        "relationships",
+        "personal-journals"
+      ],
+      "episode_count": null
+    },
+    {
+      "show_id": "dear-prudence",
+      "title": "Dear Prudence",
+      "artwork_url": null,
+      "editorial_note": "Slate advice columnists answer listener letters on family, friendship and love with humor and candor.",
+      "taxonomy_node_ids": [
+        "relationships",
+        "personal-journals"
+      ],
+      "episode_count": null
+    },
+    {
+      "show_id": "wow-in-the-world",
+      "title": "Wow in the World",
+      "artwork_url": null,
+      "editorial_note": "Guy Raz and Mindy Thomas guide kids and grown-ups through real science with jokes, sound effects and wonder.",
+      "taxonomy_node_ids": [
+        "kids-family/education"
+      ],
+      "episode_count": null
+    },
+    {
+      "show_id": "story-pirates",
+      "title": "Story Pirates",
+      "artwork_url": null,
+      "editorial_note": "A comedy troupe turns stories written by real kids into sketches, songs and full-cast performances.",
+      "taxonomy_node_ids": [
+        "kids-family/stories"
+      ],
+      "episode_count": null
+    },
+    {
+      "show_id": "circle-round",
+      "title": "Circle Round",
+      "artwork_url": null,
+      "editorial_note": "WBUR adapts folktales from around the world into music-rich radio plays for kids, each with a conversation starter.",
+      "taxonomy_node_ids": [
+        "kids-family/stories"
+      ],
+      "episode_count": null
+    },
+    {
+      "show_id": "welcome-to-night-vale",
+      "title": "Welcome to Night Vale",
+      "artwork_url": null,
+      "editorial_note": "Community radio for a small desert town where every conspiracy is real; self-contained broadcasts make any episode a doorway in.",
+      "taxonomy_node_ids": [
+        "fiction",
+        "fiction/drama"
+      ],
+      "episode_count": null
+    },
+    {
+      "show_id": "the-magnus-archives",
+      "title": "The Magnus Archives",
+      "artwork_url": null,
+      "editorial_note": "A horror anthology framed as recorded statements to a paranormal institute, where standalone cases slowly reveal a larger dread.",
+      "taxonomy_node_ids": [
+        "fiction",
+        "fiction/drama"
+      ],
+      "episode_count": null
+    },
+    {
+      "show_id": "old-gods-of-appalachia",
+      "title": "Old Gods of Appalachia",
+      "artwork_url": null,
+      "editorial_note": "Eldritch horror set in an alternate Appalachia, narrated with the cadence of front-porch folklore.",
+      "taxonomy_node_ids": [
+        "fiction",
+        "fiction/drama"
+      ],
+      "episode_count": null
+    },
+    {
+      "show_id": "levar-burton-reads",
+      "title": "LeVar Burton Reads",
+      "artwork_url": null,
+      "editorial_note": "LeVar Burton performs a hand-picked short story each episode, so every one stands entirely on its own.",
+      "taxonomy_node_ids": [
+        "fiction",
+        "fiction/sci-fi"
+      ],
+      "episode_count": null
+    },
+    {
+      "show_id": "twenty-thousand-hertz",
+      "title": "Twenty Thousand Hertz",
+      "artwork_url": null,
+      "editorial_note": "Dallas Taylor tells the stories behind the world's most recognizable sounds, from film scores to everyday noises.",
+      "taxonomy_node_ids": [
+        "culture/design",
+        "music/theory-production"
+      ],
+      "episode_count": null
+    },
+    {
+      "show_id": "design-matters",
+      "title": "Design Matters with Debbie Millman",
+      "artwork_url": null,
+      "editorial_note": "The long-running interview show where Debbie Millman talks with designers, writers and artists about how they make meaning.",
+      "taxonomy_node_ids": [
+        "culture/design"
+      ],
+      "episode_count": null
+    },
+    {
+      "show_id": "the-great-women-artists",
+      "title": "The Great Women Artists",
+      "artwork_url": null,
+      "editorial_note": "Art historian Katy Hessel interviews artists, curators and writers about the women who reshaped art.",
+      "taxonomy_node_ids": [
+        "culture/art"
+      ],
+      "episode_count": null
+    },
+    {
+      "show_id": "dissect",
+      "title": "Dissect",
+      "artwork_url": null,
+      "editorial_note": "Cole Cuchna spends a whole season on one album, taking it apart song by song to show how it works.",
+      "taxonomy_node_ids": [
+        "music/theory-production"
+      ],
+      "episode_count": null
+    },
+    {
+      "show_id": "broken-record",
+      "title": "Broken Record with Rick Rubin, Malcolm Gladwell, Bruce Headlam and Justin Richmond",
+      "artwork_url": null,
+      "editorial_note": "Musicians sit down with Rick Rubin and company to talk craft, inspiration and the making of the work.",
+      "taxonomy_node_ids": [
+        "music"
+      ],
+      "episode_count": null
+    },
+    {
+      "show_id": "basic-brewing-radio",
+      "title": "Basic Brewing Radio",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts125/v4/3c/52/06/3c5206cb-3c81-e73d-6c1e-e9676f5eb451/mza_6652414973040377254.jpg/600x600bb.jpg",
+      "editorial_note": "Twenty years of homebrewing experiments, run as tests with results reported.",
+      "taxonomy_node_ids": [
+        "food/fermentation",
+        "food/drinks"
+      ],
+      "episode_count": 978
+    },
+    {
+      "show_id": "whiskycast",
+      "title": "WhiskyCast",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts122/v4/49/39/7a/49397a97-40bb-14a0-c110-b59cb96c49e6/mza_346208350090045766.jpg/600x600bb.jpg",
+      "editorial_note": "Distillery interviews and whisky trade news, running weekly since 2005.",
+      "taxonomy_node_ids": [
+        "food/drinks"
+      ],
+      "episode_count": 1176
+    },
+    {
+      "show_id": "ill-drink-to-that-wine-talk",
+      "title": "I'll Drink to That! Wine Talk",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/54/00/c5/5400c527-76de-e543-2905-80004703b12a/mza_17756266480680203435.jpeg/600x600bb.jpg",
+      "editorial_note": "Long-form interviews with winemakers and sommeliers about their own work.",
+      "taxonomy_node_ids": [
+        "food/drinks"
+      ],
+      "episode_count": 505
+    },
+    {
+      "show_id": "inside-winemaking",
+      "title": "Inside Winemaking - the art and science of growing grapes and crafting wine",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts125/v4/de/36/2c/de362c99-57f1-5dec-2139-534327421fba/mza_12479071518656272860.png/600x600bb.jpg",
+      "editorial_note": "A working Napa winemaker asks other winemakers how they make their decisions.",
+      "taxonomy_node_ids": [
+        "food/drinks",
+        "food/fermentation"
+      ],
+      "episode_count": 224
+    },
+    {
+      "show_id": "cider-chat",
+      "title": "Cider Chat",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts125/v4/7d/5b/2a/7d5b2a5d-5439-2823-d1c4-8310c5b5a349/mza_15700147877021374767.png/600x600bb.jpg",
+      "editorial_note": "Cidermakers and orchardists on fruit, fermentation, and what proper cider means.",
+      "taxonomy_node_ids": [
+        "food/fermentation",
+        "food/drinks"
+      ],
+      "episode_count": 514
+    },
+    {
+      "show_id": "bourbon-pursuit",
+      "title": "Bourbon Pursuit",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/d7/d8/e0/d7d8e09b-e9ee-c938-b377-f7739801262f/mza_16631299733019105118.jpg/600x600bb.jpg",
+      "editorial_note": "Distillers, blenders and coopers on how American whiskey is actually made.",
+      "taxonomy_node_ids": [
+        "food/drinks"
+      ],
+      "episode_count": 1207
+    },
+    {
+      "show_id": "spirits-and-distilling",
+      "title": "Spirits & Distilling Podcast",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/4c/14/dd/4c14ddaf-0381-52ed-5ce4-8595b6553f76/mza_15577906674133471666.jpg/600x600bb.jpg",
+      "editorial_note": "Craft distillers on stills, cuts and cask policy. Dormant since December 2025.",
+      "taxonomy_node_ids": [
+        "food/drinks"
+      ],
+      "episode_count": 47
+    }
+  ]
+}

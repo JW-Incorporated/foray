@@ -416,8 +416,8 @@ test("no note this app renders into #view capitalises the unit", () => {
   ].map((m) => m[1]);
   assert.equal(
     notes.length,
-    6,
-    `expected six one-line #view notes, found ${notes.length}. More is fine -- ` +
+    7,
+    `expected seven one-line #view notes, found ${notes.length}. More is fine -- ` +
       "raise this count so the new one is covered. Fewer means a note was lost " +
       `or reshaped: ${notes.join(" | ")}`
   );
