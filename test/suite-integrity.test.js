@@ -270,6 +270,10 @@ const FLOORS = {
      Every test names its mutation; see the suite header for the full list
      of what each test pins. */
   "test/up-next-queue.test.js": 13,
+  /* Settings drawer stays open on toggle (Joey, 2026-08-31, t_0c09d83a): the
+     three toggles' click handlers, plus the two real-navigation regression
+     guards. */
+  "test/drawer-settings-toggle.test.js": 6,
   /* "Up Next" auto-advance (docs/listening-queue-plan.md §8 addendum, kanban
      card t_b9880844). Floored for the same reason as up-next-queue.test.js
      above: the auto-advance decision path (off-by-default, queue-origin

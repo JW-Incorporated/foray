@@ -169,8 +169,23 @@ body {
 #view { padding-top: calc(var(--topbar-h) + env(safe-area-inset-top)); }
 
 .home {
+  /* Static 100vh fallback first, then `svh` (small viewport height — the
+     height with the browser's toolbar fully expanded, i.e. the smallest it
+     ever reports). `dvh` was here before and tracked the browser chrome
+     live: during iOS Safari's rubber-band overscroll bounce the reported
+     dynamic viewport height jitters as the gesture plays out, and since
+     `.cards4`/`.mini-card` below derive their size from `.home`'s height via
+     `flex: 1; min-height: 0`, that jitter visibly stretched and shrank the
+     cards while scrolling (#reported 2026-08-31, introduced by #359's bounce
+     restore). `svh` stays fixed regardless of toolbar/overscroll state, so
+     `.home` — and everything sized from it — no longer recomputes mid-bounce. */
   height: calc(100vh - var(--topbar-h) - env(safe-area-inset-top));
-  height: calc(100dvh - var(--topbar-h) - env(safe-area-inset-top));
+  height: calc(100svh - var(--topbar-h) - env(safe-area-inset-top));
+  /* Contain the rubber-band bounce here so it doesn't chain into resizing
+     this element's flex children — the page (body) still bounces normally
+     (#359's fix stays intact, no `overflow: hidden` above), only the visual
+     stretch effect on the cards themselves is suppressed. */
+  overscroll-behavior-y: contain;
   display: flex;
   flex-direction: column;
   gap: 8px;
