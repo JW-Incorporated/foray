@@ -213,3 +213,21 @@ test("renderEpisode still renders the full page (artwork/title/show/duration/hoo
   assert.match(html, /class="ep-art"/, "artwork must render");
   assert.match(html, /Listen in your podcast app ↗<\/a>/, "fallback link must render in place of ▶");
 });
+
+test("renderEpisode renders no play affordance at all (not even a dead link) when the item has neither audio_url nor apple_collection_id", () => {
+  // Mirrors archivedRow's guard: a snapshot with no apple_collection_id gets
+  // no link rather than a link to ".../idundefined" (docs/episode-pages-plan.md
+  // §3's archivedRow row, applied to the episode page's own fallback).
+  // Mutation: drop the `item.apple_collection_id ? ... : ""` guard so the
+  // fallback renders unconditionally. This then produces a dead link and the
+  // assertion fails.
+  const app = loadApp();
+  app._state(`state.itemIndex["ep-8"] = {
+    id: "ep-8", title: "No Metadata At All", show: "Great Show", duration_min: 5,
+  };`);
+  app.renderEpisode("ep-8");
+  const html = app._view.innerHTML;
+  assert.doesNotMatch(html, /class="play-btn"/, "no in-app ▶ button without audio_url");
+  assert.doesNotMatch(html, /class="go"/, "no dead external link without apple_collection_id");
+  assert.match(html, /class="star /, "star toggle still renders");
+});

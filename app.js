@@ -1495,8 +1495,8 @@ function renderEpisode(id) {
       </div>
       ${item.artwork_url ? `<img class="ep-art" src="${esc(safeUrl(item.artwork_url))}" alt="">` : ""}
       ${item.hook ? `<p class="fp-s-why">${esc(item.hook)}</p>` : ""}
-      <div class="ep-actions">${playBtn(item) || `<a class="go" href="${esc(safeUrl(playLink(item)))}" target="_blank" rel="noopener"
-        data-ev="picked" data-ep="${esc(item.id)}" data-ctx="episode-page">Listen in your podcast app ↗</a>`}${starBtn(item.id)}${upNextBtn(item.id)}</div>
+      <div class="ep-actions">${playBtn(item) || (item.apple_collection_id ? `<a class="go" href="${esc(safeUrl(playLink(item)))}" target="_blank" rel="noopener"
+        data-ev="picked" data-ep="${esc(item.id)}" data-ctx="episode-page">Listen in your podcast app ↗</a>` : "")}${starBtn(item.id)}${upNextBtn(item.id)}</div>
     </div>`;
   bindPickLogging($("#view"));
   bindStars($("#view"));
