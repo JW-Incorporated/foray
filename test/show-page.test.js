@@ -323,6 +323,115 @@ test("catalog-client.json carries exactly the six fields renderShow() reads, for
   }
 });
 
+/* ==================================================================== */
+/* 5. STAGE 4 — SHOW-NAME LINKS ON epRow/archivedRow/renderEpisode       */
+/* ==================================================================== */
+
+test("epRow links its show-name text to #/show/:show_id when the show is in catalog.json", async () => {
+  /* Against the real committed data, not a synthetic fixture, so this proves
+     the join actually resolves for real content, not just the shape of the
+     code. Reuses renderShow's own render (epRow is exactly what it calls) so
+     this is also an end-to-end proof, not a unit test in isolation.
+
+     MUTATION: change showNameLink's template to a plain `${label}` (drop the
+     `<a>` wrapper). This assertion fails because no `#/show/lex-fridman-podcast`
+     href appears anywhere in the output. */
+  const m = await mountBooted();
+  const catalog = readJson("data/catalog-client.json");
+  const show = catalog.shows.find((s) => s.show_id === "lex-fridman-podcast");
+  assert.ok(show, "fixture assumption: lex-fridman-podcast must be in catalog-client.json");
+
+  m.ctx.renderShow("lex-fridman-podcast");
+  const html = m.view();
+  assert.ok(
+    html.includes(`<a class="show-link" href="#/show/lex-fridman-podcast">${m.ctx.esc(show.title)}</a>`),
+    "every epRow on the show's own page must link its show name back to that show's page"
+  );
+});
+
+test("epRow/archivedRow do not touch the play/star/external-link controls (PR #357 regression)", () => {
+  /* Explicit regression coverage per the card body — Stage 4 must add a link
+     on the show-name text ONLY. Asserts the exact set of controls next to a
+     synthetic row is unchanged shape, independent of the row-count suite in
+     test/playlist-durability.test.js (also re-run, unchanged, for this PR).
+
+     MUTATION: remove starBtn/upNextBtn/playBtn from epRow's template. This
+     assertion fails because the corresponding class disappears. */
+  const m = mount();
+  const item = { id: "ep-x", title: "X", show: "Unlisted Show", duration_min: 10, audio_url: "https://example.com/a.mp3" };
+  const html = m.ctx.epRow(item, 0, "ctx-1", -1);
+  assert.match(html, /class="play-btn"/, "play button must be present, unchanged");
+  assert.match(html, /class="star /, "star toggle must be present, unchanged");
+  assert.match(html, /data-upnext=/, "up-next control must be present, unchanged");
+  assert.strictEqual((html.match(/class="play-btn"/g) || []).length, 1, "exactly one play control per row (PR #357)");
+});
+
+test("archivedRow links its show-name text to #/show/:show_id for a gone episode", () => {
+  /* An archived part's show is still browsable even though the specific
+     episode aged out of the catalogue — the card body calls this out by name.
+
+     MUTATION: make archivedRow use `esc(item.show)` again instead of
+     showNameLink(item.show). This assertion fails because no anchor appears. */
+  const m = mount();
+  m.state.catalog = { shows: [{ show_id: "gone-show", title: "Gone Show" }] };
+  const item = { id: "ep-y", title: "Y", show: "Gone Show", duration_min: 5 };
+  const html = m.ctx.archivedRow(item, 0, "ctx-1");
+  assert.ok(
+    html.includes('<a class="show-link" href="#/show/gone-show">Gone Show</a>'),
+    "archivedRow must still link the show name even when the episode itself is gone"
+  );
+});
+
+test("showNameLink falls back to plain escaped text when no catalog record joins", () => {
+  /* Absence is a real, renderable state (Stage 1's own rule) — a show
+     discover.json names that catalog.json does not carry yet must not throw
+     or produce a dead link.
+
+     MUTATION: make showIdForShowName return an empty string instead of null
+     for a miss. `showId ? ... : label` still holds (empty string is falsy),
+     so this specific mutation wouldn't be caught — the real risk mutation is
+     dropping the ternary's else branch entirely, which would emit an <a
+     href="#/show/undefined"> and fail the plain-text assertion below. */
+  const m = mount();
+  m.state.catalog = { shows: [] };
+  const html = m.ctx.showNameLink("Some Unknown Show");
+  assert.strictEqual(html, m.ctx.esc("Some Unknown Show"), "must render plain escaped text, no anchor, when no show record matches");
+});
+
+test("showIdForShowName resolves Lingthusiasm via TITLE_ALIASES, the same fallback episodesForShow uses", () => {
+  /* The reverse direction of the Stage 1 fallback test above: given the short
+     discover.json name, showIdForShowName must still find the show_id even
+     though catalog.json's title carries the extra subtitle.
+
+     MUTATION: drop the TITLE_ALIASES fallback loop in showIdForShowName. This
+     assertion fails because only an exact-title match would be attempted. */
+  const m = mount();
+  const catalog = readJson("data/catalog-client.json");
+  const show = catalog.shows.find((s) => s.show_id === "lingthusiasm");
+  m.state.catalog = catalog;
+  assert.strictEqual(m.ctx.showIdForShowName("Lingthusiasm"), show.show_id);
+});
+
+test("renderEpisode links its show-name text to #/show/:show_id when the show joins", () => {
+  /* Per the card body: renderEpisode's existing show-name text field becomes
+     a link too, sequenced after show-pages Stage 1 (now merged).
+
+     MUTATION: revert renderEpisode's show line to `esc(item.show || "")`.
+     This assertion fails because no anchor appears in the output. */
+  const m = mount();
+  m.state.catalog = { shows: [{ show_id: "ep-show", title: "Episode Show" }] };
+  m.state.session = { session_id: "s-1", builder: "test", episodes: {}, cards: [] };
+  m.state.itemIndex = {
+    "ep-z": { id: "ep-z", title: "Z", show: "Episode Show", duration_min: 5, audio_url: "https://example.com/a.mp3" },
+  };
+  m.ctx.renderEpisode("ep-z");
+  const html = m.view();
+  assert.ok(
+    html.includes('<a class="show-link" href="#/show/ep-show">Episode Show</a>'),
+    "renderEpisode must link the show name to its show page"
+  );
+});
+
 test("catalog-client.json is measurably smaller than catalog.json (the gzip claim is real)", () => {
   /* Not a byte-exact pin (catalog.json changes nightly) — just proves the
      projection is doing real work, so the PR's "measured, not assumed" claim
