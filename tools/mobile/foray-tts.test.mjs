@@ -53,6 +53,27 @@ test("buildIpaOverrides: apostrophe term (ch'arki) matches on its own word bound
   assert.equal(overrides[0].term, "ch'arki");
 });
 
+test("buildIpaOverrides: 'sake' (Japanese drink) gets its own override, not the English 'sake' reading", () => {
+  // Regression test for the bug Joey heard in the beat-6 Kokoro fixture sample
+  // (alcohol-forms-spine.md beat 6): 'sake' was missing from hard-terms.json
+  // entirely, so Kokoro read the Japanese rice-wine loanword as the English word
+  // 'sake' (as in 'for the sake of'). This case matters specifically because
+  // 'sake' is a common English dictionary word that ALSO happens to be an
+  // unrelated foreign loanword -- unlike this file's other lexicon entries,
+  // which are foreign-looking spellings a plain-English reading never touches.
+  const SAKE_LEXICON = [{ term: "sake", ipa: "ˈsɑːkeɪ" }];
+  const overrides = buildIpaOverrides("Beer, sake and every grain spirit require an extra step.", SAKE_LEXICON);
+  assert.equal(overrides.length, 1);
+  assert.equal(overrides[0].term, "sake");
+  assert.equal(overrides[0].ipa, "ˈsɑːkeɪ");
+});
+
+test("buildIpaOverrides: 'sake' does not false-match inside a longer word", () => {
+  const SAKE_LEXICON = [{ term: "sake", ipa: "ˈsɑːkeɪ" }];
+  const overrides = buildIpaOverrides("sakedom is not a real word, sake is.", SAKE_LEXICON);
+  assert.equal(overrides.length, 1, "only the standalone 'sake' should match, not the 'sake' inside 'sakedom'");
+});
+
 test("buildIpaOverrides: does not match a substring inside a longer word", () => {
   const overrides = buildIpaOverrides("kojima is a surname, not koji.", [{ term: "koji", ipa: "koʑi" }]);
   // "koji" alone should match once (the standalone occurrence), not twice (not inside "kojima")
