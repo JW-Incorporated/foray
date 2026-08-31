@@ -1365,7 +1365,7 @@ function renderHome() {
 function epRow(item, idx, ctx, nextIdx) {
   const inApp = playBtn(item);
   const external = inApp ? "" : `<a class="go" href="${esc(safeUrl(playLink(item)))}" target="_blank" rel="noopener"
-       data-ev="picked" data-ep="${item.id}" data-ctx="${ctx}">Play</a>`;
+       data-ev="picked" data-ep="${item.id}" data-ctx="${ctx}">Listen in your podcast app ↗</a>`;
   return `<div class="ep-row">
     <span class="q-num ${idx === nextIdx ? "next" : ""}">${idx + 1}</span>
     <div class="info">
@@ -1407,7 +1407,7 @@ function archivedRow(item, idx, ctx) {
   const named = !!item.title;
   const link = item.apple_collection_id
     ? `<a class="go" href="${esc(safeUrl(playLink(item)))}" target="_blank" rel="noopener"
-         data-ev="picked" data-ep="${esc(item.id)}" data-ctx="${esc(ctx)}">Open</a>`
+         data-ev="picked" data-ep="${esc(item.id)}" data-ctx="${esc(ctx)}">Listen in your podcast app ↗</a>`
     : "";
   return `<div class="ep-row gone">
     <span class="q-num">${idx + 1}</span>
@@ -1527,7 +1527,8 @@ function renderEpisode(id) {
       </div>
       ${item.artwork_url ? `<img class="ep-art" src="${esc(safeUrl(item.artwork_url))}" alt="">` : ""}
       ${item.hook ? `<p class="fp-s-why">${esc(item.hook)}</p>` : ""}
-      <div class="ep-actions">${playBtn(item)}${starBtn(item.id)}${upNextBtn(item.id)}</div>
+      <div class="ep-actions">${item.audio_url ? playBtn(item) : `<a class="go" href="${esc(safeUrl(playLink(item)))}" target="_blank" rel="noopener"
+        data-ev="picked" data-ep="${esc(item.id)}" data-ctx="episode-page">Listen in your podcast app ↗</a>`}${starBtn(item.id)}${upNextBtn(item.id)}</div>
     </div>`;
   bindStars($("#view"));
   bindUpNext($("#view"));

@@ -1056,3 +1056,27 @@ its reasoning.
   queue was rejected in favor of one small idempotent "+ Up Next" control
   that never removes, with the list-management surface entirely on the
   queue's own page.
+
+## 2026-08-31 (episode pages Stage 2 — honest "listen elsewhere" fallback)
+
+- **An unplayable episode still gets one explicit, honestly-labelled external
+  control instead of a silent gap.** Per `docs/episode-pages-plan.md` §2, this
+  is the one genuinely reversible-but-costly product decision in that plan.
+  When an episode has no `audio_url`, `renderEpisode()` renders the full page
+  (artwork/title/show/duration/hook) exactly as it does for a playable
+  episode, and puts a **"Listen in your podcast app ↗"** link where the ▶
+  button would be, rather than omitting a playback control entirely. Product
+  principle #3 ("legally boring") means 4a categorically cannot serve audio it
+  has no `audio_url` for — this is a fact about the episode, not a UI choice,
+  and hiding the affordance would silently under-deliver for a listener who
+  specifically wants that episode. The same copy replaces the prior "Play"
+  label on `epRow()`'s external fallback and "Open" on `archivedRow()`'s
+  link, purely for consistency — none of the three controls' `href`/gating
+  logic changed (`epRow`'s external control still only appears when there is
+  no in-app ▶, per PR #357; `archivedRow`'s link still requires
+  `apple_collection_id`). Rejected alternative: hiding the play affordance
+  entirely for unplayable episodes — worse than an honest, clearly-labelled
+  external link, since it leaves the listener with no path to that episode
+  at all. Reversible: relabelling or re-hiding this control later is a
+  one-line change: it costs whatever confusion the interim copy causes, not
+  data or architecture.
