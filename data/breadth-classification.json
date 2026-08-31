@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-31T08:18:33.466Z",
+  "built_at": "2026-08-31T16:18:47.662Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-31-a0b0972f",
+    "last_batch_id": "fresh-2026-08-31-16c7b28c",
     "last_batch_tier": 1,
     "transcript_labels": "descriptive cost label, never an eligibility test — see tools/classify/labels.mjs"
   },
@@ -74839,10 +74839,49 @@
     },
     "1444729607": {
       "topics": [
-        "culture/books"
+        "society",
+        "culture/books",
+        "engineering/ai-robotics",
+        "nature/ocean-science"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.3
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.3
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.3
+        },
+        {
+          "node": "nature/ocean-science",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sentimental Garbage.",
+      "display_title": "Sentimental Garbage",
+      "blurb": "Sentimental Garbage is a podcast hosted by Caroline O'Donoghue about the culture we love that society can sometimes make us feel ashamed of",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-16c7b28c",
+      "classified_at": "2026-08-31T16:18:47.662Z"
     },
     "1444873564": {
       "topics": [
@@ -74867,10 +74906,53 @@
     },
     "1445185242": {
       "topics": [
-        "sports/football"
+        "sports/football",
+        "engineering/ai-robotics",
+        "nature/ocean-science",
+        "business/careers"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/football",
+          "confidence": 0.45
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.3
+        },
+        {
+          "node": "nature/ocean-science",
+          "confidence": 0.3
+        },
+        {
+          "node": "business/careers",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": false,
+      "rationale": "SNR Drive (Pittsburgh Steelers).",
+      "display_title": "SNR Drive (Pittsburgh Steelers)",
+      "blurb": "Members of the Steelers Audio Network team dive into the days topics each afternoon, Monday through Friday, on SNR",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 7,
+        "episodes_with_timed_transcript": 7,
+        "transcript_tags": 21,
+        "transcript_types": {
+          "application/srt": 7,
+          "text/vtt": 7,
+          "text/plain": 7
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-16c7b28c",
+      "classified_at": "2026-08-31T16:18:47.662Z"
     },
     "1445199346": {
       "topics": [
@@ -74981,10 +75063,48 @@
     "1445580533": {
       "topics": [
         "adventure/exploration",
+        "education",
+        "transport/trains",
         "nature"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.45
+        },
+        {
+          "node": "education",
+          "confidence": 0.3
+        },
+        {
+          "node": "transport/trains",
+          "confidence": 0.3
+        },
+        {
+          "node": "nature",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Train Your Own Horse with Stacy Westfall.",
+      "display_title": "Train Your Own Horse with Stacy Westfall",
+      "blurb": "Stacy Westfall teaches people how to understand, enjoy and successfully train their own horses",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-16c7b28c",
+      "classified_at": "2026-08-31T16:18:47.662Z"
     },
     "1445582279": {
       "topics": [
@@ -75003,10 +75123,49 @@
     },
     "1445601454": {
       "topics": [
-        "news/daily"
+        "culture/art",
+        "business/careers",
+        "news/daily",
+        "engineering/ai-robotics"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.3
+        },
+        {
+          "node": "business/careers",
+          "confidence": 0.3
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.3
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": false,
+      "rationale": "MPR News with Angela Davis.",
+      "display_title": "MPR News with Angela Davis",
+      "blurb": "Conversations about life in Minnesota and how the state is changing, weekdays from MPR News",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-16c7b28c",
+      "classified_at": "2026-08-31T16:18:47.662Z"
     },
     "1445604871": {
       "topics": [
@@ -75120,24 +75279,131 @@
     },
     "1445929750": {
       "topics": [
-        "business/careers"
+        "business",
+        "business/careers",
+        "nature/pets",
+        "business/management"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.45
+        },
+        {
+          "node": "business/careers",
+          "confidence": 0.45
+        },
+        {
+          "node": "nature/pets",
+          "confidence": 0.3
+        },
+        {
+          "node": "business/management",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Think Like an Owner.",
+      "display_title": "Think Like an Owner",
+      "blurb": "Exploring how the most ambitious CEOs grow great companies, with a focus in garage door and home services",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-16c7b28c",
+      "classified_at": "2026-08-31T16:18:47.662Z"
     },
     "1445947956": {
       "topics": [
-        "kids-family/education"
+        "education/how-to",
+        "kids-family/education",
+        "science/storytelling",
+        "culture/art"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/how-to",
+          "confidence": 0.3
+        },
+        {
+          "node": "kids-family/education",
+          "confidence": 0.3
+        },
+        {
+          "node": "science/storytelling",
+          "confidence": 0.3
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Simply Charlotte Mason Homeschooling (video).",
+      "display_title": "Simply Charlotte Mason Homeschooling (video)",
+      "blurb": "The weekly Simply Charlotte Mason homeschooling video podcast with Sonya Shafer",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-16c7b28c",
+      "classified_at": "2026-08-31T16:18:47.662Z"
     },
     "1445952749": {
       "topics": [
-        "religion/hinduism"
+        "religion/hinduism",
+        "comedy/interviews"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/hinduism",
+          "confidence": 0.3
+        },
+        {
+          "node": "comedy/interviews",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Mahabharat Hindi Podcast.",
+      "display_title": "Mahabharat Hindi Podcast",
+      "blurb": "This will be a podcast of Mahabharat narrated by Atul Purohit in Hindi",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-16c7b28c",
+      "classified_at": "2026-08-31T16:18:47.662Z"
     },
     "1446051252": {
       "topics": [
@@ -75309,10 +75575,50 @@
     "1446356779": {
       "topics": [
         "sports/endurance",
-        "health/fitness"
+        "transport/trains",
+        "health/fitness",
+        "engineering/ai-robotics"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.6
+        },
+        {
+          "node": "transport/trains",
+          "confidence": 0.3
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.3
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Cultra Trail Running.",
+      "display_title": "Cultra Trail Running",
+      "blurb": "Our weekly podcast shares the unique perspective of the North East, Beast Coast Ultra running scene: raw, impulsive, and irreverent",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 2,
+        "episodes_with_timed_transcript": 2,
+        "transcript_tags": 2,
+        "transcript_types": {
+          "text/vtt": 2
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-16c7b28c",
+      "classified_at": "2026-08-31T16:18:47.662Z"
     },
     "1446371409": {
       "topics": [
@@ -75435,17 +75741,94 @@
     "1446537332": {
       "topics": [
         "health/nutrition",
-        "food"
+        "health/fitness",
+        "nature/pets",
+        "architecture"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/nutrition",
+          "confidence": 0.6
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.45
+        },
+        {
+          "node": "nature/pets",
+          "confidence": 0.3
+        },
+        {
+          "node": "architecture",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Bodybuilding Dietitians.",
+      "display_title": "The Bodybuilding Dietitians",
+      "blurb": "Welcome to The Bodybuilding Dietitians Podcast! Join your hosts Jack Radford-Smith, Lauren Stevens, and Damien Cox who are qualified dietitians, exerc",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-16c7b28c",
+      "classified_at": "2026-08-31T16:18:47.662Z"
     },
     "1446584406": {
       "topics": [
-        "sports/volleyball"
+        "nature/pets",
+        "sports/volleyball",
+        "nature/ocean-science",
+        "automotive"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/pets",
+          "confidence": 0.3
+        },
+        {
+          "node": "sports/volleyball",
+          "confidence": 0.3
+        },
+        {
+          "node": "nature/ocean-science",
+          "confidence": 0.3
+        },
+        {
+          "node": "automotive",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Coach Factor.",
+      "display_title": "Coach Factor",
+      "blurb": "Il primo Podcast italiano per allenatori creato da allenatori",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-16c7b28c",
+      "classified_at": "2026-08-31T16:18:47.662Z"
     },
     "1446796385": {
       "topics": [
@@ -75530,10 +75913,49 @@
     },
     "1447029317": {
       "topics": [
-        "comedy/casual-hangs"
+        "comedy/casual-hangs",
+        "engineering/ai-robotics",
+        "engineering/disasters",
+        "culture/art"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.3
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.3
+        },
+        {
+          "node": "engineering/disasters",
+          "confidence": 0.3
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": false,
+      "rationale": "RTVS Podcasts.",
+      "display_title": "RTVS Podcasts",
+      "blurb": "Let the ultimate podcasting",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-16c7b28c",
+      "classified_at": "2026-08-31T16:18:47.662Z"
     },
     "1447052185": {
       "topics": [
@@ -75814,10 +76236,49 @@
     },
     "1448151398": {
       "topics": [
-        "true-crime"
+        "true-crime",
+        "science",
+        "business/careers",
+        "science/storytelling"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.6
+        },
+        {
+          "node": "science",
+          "confidence": 0.3
+        },
+        {
+          "node": "business/careers",
+          "confidence": 0.3
+        },
+        {
+          "node": "science/storytelling",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Going West: True Crime.",
+      "display_title": "Going West: True Crime",
+      "blurb": "Daphne Woolsoncroft and Heath Merryman discuss haunting details of different disappearance and murder cases week by week",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-16c7b28c",
+      "classified_at": "2026-08-31T16:18:47.662Z"
     },
     "1448169027": {
       "topics": [
@@ -75859,10 +76320,52 @@
     },
     "1448196964": {
       "topics": [
-        "culture/design"
+        "culture/design",
+        "business/marketing",
+        "engineering/ai-robotics",
+        "nature/pets"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/design",
+          "confidence": 0.6
+        },
+        {
+          "node": "business/marketing",
+          "confidence": 0.45
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.3
+        },
+        {
+          "node": "nature/pets",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Make Money as a Floral Designer — Thrive Podcast f.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 11w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-16c7b28c",
+      "classified_at": "2026-08-31T16:18:47.662Z"
     },
     "1448200735": {
       "topics": [
@@ -75896,10 +76399,49 @@
     },
     "1448214127": {
       "topics": [
-        "business/careers"
+        "business/careers",
+        "culture/books",
+        "culture/performing-arts",
+        "engineering/energy-grid"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/careers",
+          "confidence": 0.45
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.3
+        },
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.3
+        },
+        {
+          "node": "engineering/energy-grid",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Ninja Selling Podcast.",
+      "display_title": "Ninja Selling Podcast",
+      "blurb": "The Ninja Selling Podcast is for real estate agents, loan officers, sales professionals and anyone looking to better their business to increase their ",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-16c7b28c",
+      "classified_at": "2026-08-31T16:18:47.662Z"
     },
     "1448228102": {
       "topics": [
@@ -75910,10 +76452,52 @@
     },
     "1448261954": {
       "topics": [
-        "true-crime"
+        "business/careers",
+        "comedy/stand-up",
+        "true-crime",
+        "science/storytelling"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/careers",
+          "confidence": 0.3
+        },
+        {
+          "node": "comedy/stand-up",
+          "confidence": 0.3
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.3
+        },
+        {
+          "node": "science/storytelling",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Necronomipod.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-16c7b28c",
+      "classified_at": "2026-08-31T16:18:47.662Z"
     },
     "1448263089": {
       "topics": [
@@ -75990,17 +76574,80 @@
     },
     "1448447486": {
       "topics": [
-        "comedy/casual-hangs"
+        "comedy/casual-hangs",
+        "engineering/ai-robotics"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.3
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": false,
+      "rationale": "三好坏男孩.",
+      "display_title": "三好坏男孩",
+      "blurb": "一路喧嚣 六根不静 而立无影 不举有时 大酒过后 状态失焦 三五好友 三言两语 堆起回忆的篝火 怎料越烧越旺 欢迎收听三好坏男孩 《三好人生》：只剩戒不掉的好奇心，那些人，那些神人，那些跨越我们认知界限的人们，我们要用声音记录你的故事。 《三好乱弹》：还有聊不完的黑白灰，那些事，那些故事，那些光怪陆",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-16c7b28c",
+      "classified_at": "2026-08-31T16:18:47.662Z"
     },
     "1448473319": {
       "topics": [
-        "philosophy"
+        "philosophy",
+        "culture/books",
+        "society"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy",
+          "confidence": 0.3
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.3
+        },
+        {
+          "node": "society",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Так вышло.",
+      "display_title": "Так вышло",
+      "blurb": "Так вышло, что мы — Екатерина Кронгауз и Андрей Бабицкий — некоторое время вели подкаст «Дело случая», обсуждая сложные моральные коллизии современног",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-16c7b28c",
+      "classified_at": "2026-08-31T16:18:47.662Z"
     },
     "1448513177": {
       "topics": [
@@ -76128,10 +76775,49 @@
     },
     "1448655584": {
       "topics": [
-        "culture/fashion"
+        "culture/fashion",
+        "culture/art",
+        "engineering/energy-grid",
+        "engineering/ai-robotics"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/fashion",
+          "confidence": 0.45
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.3
+        },
+        {
+          "node": "engineering/energy-grid",
+          "confidence": 0.3
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Life of A Makeup Artist.",
+      "display_title": "The Life of A Makeup Artist",
+      "blurb": "The Life of a Makeup Artist is a beauty podcast that gives you a real insider look (with no filters!) on how artists really live",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-16c7b28c",
+      "classified_at": "2026-08-31T16:18:47.662Z"
     },
     "1448662475": {
       "topics": [
@@ -76330,19 +77016,98 @@
     },
     "1449052830": {
       "topics": [
+        "history",
+        "adventure",
         "health/mental",
         "psychology"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.3
+        },
+        {
+          "node": "adventure",
+          "confidence": 0.3
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.3
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Bore You To Sleep - Sleep Stories for Adults.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-16c7b28c",
+      "classified_at": "2026-08-31T16:18:47.662Z"
     },
     "1449137711": {
       "topics": [
+        "engineering/energy-grid",
+        "comedy/interviews",
         "news/tech",
         "computing"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/energy-grid",
+          "confidence": 0.3
+        },
+        {
+          "node": "comedy/interviews",
+          "confidence": 0.3
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.3
+        },
+        {
+          "node": "computing",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Everything Electric Podcast.",
+      "display_title": "Everything Electric Podcast",
+      "blurb": "Robert Llewellyn (Red Dwarf, Scrapheap Challenge) hosts a podcast about sustainability, eco-news and interviews from around the globe",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-16c7b28c",
+      "classified_at": "2026-08-31T16:18:47.662Z"
     },
     "1449191242": {
       "topics": [
@@ -76532,10 +77297,49 @@
     },
     "1449523846": {
       "topics": [
-        "travel"
+        "travel",
+        "food",
+        "engineering/ai-robotics",
+        "nature/pets"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.45
+        },
+        {
+          "node": "food",
+          "confidence": 0.3
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.3
+        },
+        {
+          "node": "nature/pets",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Disney Dining Show.",
+      "display_title": "The Disney Dining Show",
+      "blurb": "The Disney Dining Show is a weekly podcast that reviews and discusses the dining at Walt Disney World Resort in Orlando, Florida, and occasionally oth",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-16c7b28c",
+      "classified_at": "2026-08-31T16:18:47.662Z"
     },
     "1449553339": {
       "topics": [
@@ -76586,10 +77390,52 @@
     },
     "1449687140": {
       "topics": [
-        "nature/pets"
+        "nature/pets",
+        "travel",
+        "medicine/neuroscience",
+        "engineering/ai-robotics"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/pets",
+          "confidence": 0.6
+        },
+        {
+          "node": "travel",
+          "confidence": 0.3
+        },
+        {
+          "node": "medicine/neuroscience",
+          "confidence": 0.3
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Catexplorer Podcast.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-16c7b28c",
+      "classified_at": "2026-08-31T16:18:47.662Z"
     },
     "1449704438": {
       "topics": [
@@ -76615,10 +77461,51 @@
     },
     "1449785792": {
       "topics": [
-        "tv-film/reviews"
+        "tv-film/reviews",
+        "culture/art",
+        "tv-film",
+        "nature/ocean-science"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.45
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.3
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.3
+        },
+        {
+          "node": "nature/ocean-science",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Pod Yourself A Gun - A Rewatch Podcast.",
+      "display_title": "Pod Yourself A Gun - A Rewatch Podcast",
+      "blurb": "Comedians Matt Lieb and Vince Mancini watch every episode of The Sopranos, The Wire (and other future shows) and talk about it with friends, fans, act",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 8,
+        "transcript_types": {
+          "text/vtt": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-16c7b28c",
+      "classified_at": "2026-08-31T16:18:47.662Z"
     },
     "1449818548": {
       "topics": [
@@ -76675,10 +77562,49 @@
     },
     "1449924733": {
       "topics": [
-        "kids-family/parenting"
+        "kids-family/parenting",
+        "space",
+        "kids-family",
+        "medicine"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.45
+        },
+        {
+          "node": "space",
+          "confidence": 0.3
+        },
+        {
+          "node": "kids-family",
+          "confidence": 0.3
+        },
+        {
+          "node": "medicine",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Motherly Podcast.",
+      "display_title": "The Motherly Podcast",
+      "blurb": "The Motherly Podcast features honest conversations about modern motherhood with inspiring leaders—who also happen to be mothers",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-16c7b28c",
+      "classified_at": "2026-08-31T16:18:47.662Z"
     },
     "1449936525": {
       "topics": [
@@ -76857,10 +77783,52 @@
     },
     "1450277129": {
       "topics": [
-        "true-crime"
+        "true-crime",
+        "kids-family",
+        "science/storytelling",
+        "engineering/ai-robotics"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.45
+        },
+        {
+          "node": "kids-family",
+          "confidence": 0.3
+        },
+        {
+          "node": "science/storytelling",
+          "confidence": 0.3
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Root of Evil: The True Story of the Hodel Family a.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 14w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-16c7b28c",
+      "classified_at": "2026-08-31T16:18:47.662Z"
     },
     "1450285761": {
       "topics": [
@@ -77040,10 +78008,52 @@
     },
     "1450501536": {
       "topics": [
-        "food"
+        "food",
+        "food/cooking-science",
+        "kids-family",
+        "medicine"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.6
+        },
+        {
+          "node": "food/cooking-science",
+          "confidence": 0.45
+        },
+        {
+          "node": "kids-family",
+          "confidence": 0.3
+        },
+        {
+          "node": "medicine",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": true,
+      "rationale": "The Healthy Mama Kitchen Podcast: Healthy Cooking .",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 16w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-16c7b28c",
+      "classified_at": "2026-08-31T16:18:47.662Z"
     },
     "1450522865": {
       "topics": [
@@ -77100,11 +78110,52 @@
     },
     "1450729314": {
       "topics": [
+        "comedy/interviews",
         "nature/earth-science",
-        "science"
+        "science",
+        "engineering/ai-robotics"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/interviews",
+          "confidence": 0.3
+        },
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.3
+        },
+        {
+          "node": "science",
+          "confidence": 0.3
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Talk+Water.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /deep[\\s-]dive/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-16c7b28c",
+      "classified_at": "2026-08-31T16:18:47.662Z"
     },
     "1450764373": {
       "topics": [
@@ -77222,11 +78273,51 @@
     },
     "1451082652": {
       "topics": [
+        "nature",
         "adventure/exploration",
-        "nature"
+        "culture/books",
+        "sports"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.45
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.45
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.3
+        },
+        {
+          "node": "sports",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Nine Finger Chronicles - Deer Hunting Podcast.",
+      "display_title": "Nine Finger Chronicles - Deer Hunting Podcast",
+      "blurb": "Going strong for over a decade with real relatable podcasts, The Nine Finger Chronicles covers in-depth hunting strategy, individual hunter profiles, ",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 7,
+        "episodes_with_timed_transcript": 7,
+        "transcript_tags": 7,
+        "transcript_types": {
+          "text/vtt": 7
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-16c7b28c",
+      "classified_at": "2026-08-31T16:18:47.662Z"
     },
     "1451109634": {
       "topics": [
@@ -77330,17 +78421,95 @@
     },
     "1451560910": {
       "topics": [
-        "sports/baseball"
+        "sports/baseball",
+        "nature/ocean-science",
+        "science/storytelling",
+        "engineering"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/baseball",
+          "confidence": 0.45
+        },
+        {
+          "node": "nature/ocean-science",
+          "confidence": 0.3
+        },
+        {
+          "node": "science/storytelling",
+          "confidence": 0.3
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Two Strike Noise - A Baseball History Podcast.",
+      "display_title": "Two Strike Noise - A Baseball History Podcast",
+      "blurb": "We talk to you about baseball history & have been described as specializing in Boston Red Sox history",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-16c7b28c",
+      "classified_at": "2026-08-31T16:18:47.662Z"
     },
     "1451573723": {
       "topics": [
-        "sports/basketball"
+        "sports/basketball",
+        "craft",
+        "news",
+        "engineering/ai-robotics"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/basketball",
+          "confidence": 0.45
+        },
+        {
+          "node": "craft",
+          "confidence": 0.3
+        },
+        {
+          "node": "news",
+          "confidence": 0.3
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Gyro Step: Covering all things Milwaukee Bucks.",
+      "display_title": "Gyro Step: Covering all things Milwaukee Bucks",
+      "blurb": "Hosted by Ti Windisch and Rohan Katti, the Gyro Step focuses on analyzing games, news, and anything else related to the Milwaukee Bucks",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-16c7b28c",
+      "classified_at": "2026-08-31T16:18:47.662Z"
     },
     "1451609095": {
       "topics": [
@@ -77610,10 +78779,53 @@
     },
     "1452065072": {
       "topics": [
-        "news/politics"
+        "news/politics",
+        "medicine",
+        "medicine/biology",
+        "engineering/energy-fusion"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.6
+        },
+        {
+          "node": "medicine",
+          "confidence": 0.3
+        },
+        {
+          "node": "medicine/biology",
+          "confidence": 0.3
+        },
+        {
+          "node": "engineering/energy-fusion",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Newt's World.",
+      "display_title": "Newt's World",
+      "blurb": "Join Newt Gingrich, former U",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 24,
+        "transcript_types": {
+          "application/srt": 8,
+          "text/vtt": 8,
+          "text/plain": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-16c7b28c",
+      "classified_at": "2026-08-31T16:18:47.662Z"
     },
     "1452077561": {
       "topics": [
@@ -77675,10 +78887,52 @@
     },
     "1452122496": {
       "topics": [
-        "religion/spirituality"
+        "religion/spirituality",
+        "engineering",
+        "history/military-modern",
+        "psychology"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.45
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.3
+        },
+        {
+          "node": "history/military-modern",
+          "confidence": 0.3
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": true,
+      "rationale": "The Cosmic Matrix.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-16c7b28c",
+      "classified_at": "2026-08-31T16:18:47.662Z"
     },
     "1452297085": {
       "topics": [
@@ -77753,10 +79007,54 @@
     },
     "1452461494": {
       "topics": [
-        "gaming"
+        "gaming",
+        "craft/filmmaking",
+        "science/storytelling",
+        "science/physics"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.45
+        },
+        {
+          "node": "craft/filmmaking",
+          "confidence": 0.3
+        },
+        {
+          "node": "science/storytelling",
+          "confidence": 0.3
+        },
+        {
+          "node": "science/physics",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Elder Scrolls Lorecast: Skyrim, Oblivion, ESO and .",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 14w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 5,
+        "episodes_with_timed_transcript": 5,
+        "transcript_tags": 5,
+        "transcript_types": {
+          "text/vtt": 5
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-16c7b28c",
+      "classified_at": "2026-08-31T16:18:47.662Z"
     },
     "1452595912": {
       "topics": [
@@ -77784,17 +79082,98 @@
     },
     "1452724092": {
       "topics": [
-        "sports/fantasy"
+        "sports/fantasy",
+        "sports/football",
+        "craft/filmmaking",
+        "news"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/fantasy",
+          "confidence": 0.6
+        },
+        {
+          "node": "sports/football",
+          "confidence": 0.3
+        },
+        {
+          "node": "craft/filmmaking",
+          "confidence": 0.3
+        },
+        {
+          "node": "news",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": true,
+      "rationale": "The Fantasy Football Show - with Smitty (Video Sho.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-16c7b28c",
+      "classified_at": "2026-08-31T16:18:47.662Z"
     },
     "1452750851": {
       "topics": [
-        "fiction/drama"
+        "nature/pets",
+        "business/careers",
+        "fiction/drama",
+        "science/storytelling"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/pets",
+          "confidence": 0.45
+        },
+        {
+          "node": "business/careers",
+          "confidence": 0.3
+        },
+        {
+          "node": "fiction/drama",
+          "confidence": 0.3
+        },
+        {
+          "node": "science/storytelling",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Goblin Market.",
+      "display_title": "Goblin Market",
+      "blurb": "Squeez&#x2019;d from the goblin fruits for you",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-16c7b28c",
+      "classified_at": "2026-08-31T16:18:47.662Z"
     },
     "1452892284": {
       "topics": [
@@ -77812,10 +79191,49 @@
     },
     "1452916523": {
       "topics": [
-        "tv-film/reviews"
+        "tv-film/reviews",
+        "craft/filmmaking",
+        "sports",
+        "news"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.45
+        },
+        {
+          "node": "craft/filmmaking",
+          "confidence": 0.3
+        },
+        {
+          "node": "sports",
+          "confidence": 0.3
+        },
+        {
+          "node": "news",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Big Screen Sports - The Sports Movie Podcast.",
+      "display_title": "Big Screen Sports - The Sports Movie Podcast",
+      "blurb": "Hosted by Kyle Bandujo, Big Screen Sports is a weekly film review podcast discussing the best and worst in the sports movie universe",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-16c7b28c",
+      "classified_at": "2026-08-31T16:18:47.662Z"
     },
     "1452927313": {
       "topics": [
@@ -77851,10 +79269,49 @@
     },
     "1453073959": {
       "topics": [
-        "nature"
+        "nature",
+        "space",
+        "science/storytelling",
+        "medicine/biology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.75
+        },
+        {
+          "node": "space",
+          "confidence": 0.3
+        },
+        {
+          "node": "science/storytelling",
+          "confidence": 0.3
+        },
+        {
+          "node": "medicine/biology",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Conservation Connection.",
+      "display_title": "Conservation Connection",
+      "blurb": "Every day, scientists and conservationists around the globe are working to answer critical questions about our rapidly changing environment and the or",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-16c7b28c",
+      "classified_at": "2026-08-31T16:18:47.662Z"
     },
     "1453224776": {
       "topics": [
@@ -77865,10 +79322,49 @@
     },
     "1453243738": {
       "topics": [
-        "culture/design"
+        "culture/design",
+        "culture/books",
+        "comedy/interviews",
+        "nature/pets"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/design",
+          "confidence": 0.6
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.3
+        },
+        {
+          "node": "comedy/interviews",
+          "confidence": 0.3
+        },
+        {
+          "node": "nature/pets",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Home Stagers and Designers on Fire.",
+      "display_title": "Home Stagers and Designers on Fire",
+      "blurb": "Are you a Home Stager or Designer who wants to attract more ideal clients, up level your business, make more money and still have a smokin' hot life? ",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-16c7b28c",
+      "classified_at": "2026-08-31T16:18:47.662Z"
     },
     "1453293843": {
       "topics": [
@@ -78049,24 +79545,146 @@
     },
     "1453765092": {
       "topics": [
-        "medicine"
+        "medicine",
+        "medicine/neuroscience",
+        "engineering/ai-robotics",
+        "nature/pets"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.6
+        },
+        {
+          "node": "medicine/neuroscience",
+          "confidence": 0.3
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.3
+        },
+        {
+          "node": "nature/pets",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Harrison's PodClass: Internal Medicine Cases and B.",
+      "display_title": "Harrison's PodClass: Internal Medicine Cases and Board Prep",
+      "blurb": "Produced by McGraw Hill, Harrison's Podclass delivers illuminating and engaging discussions led by Drs",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-16c7b28c",
+      "classified_at": "2026-08-31T16:18:47.662Z"
     },
     "1453788965": {
       "topics": [
-        "true-crime"
+        "true-crime",
+        "personal-journals",
+        "relationships",
+        "science/storytelling"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.45
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.3
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.3
+        },
+        {
+          "node": "science/storytelling",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": false,
+      "rationale": "To Live and Die in LA.",
+      "display_title": "To Live and Die in LA",
+      "blurb": "In Feb 2018, an aspiring actress vanished from her Hollywood apartment",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-16c7b28c",
+      "classified_at": "2026-08-31T16:18:47.662Z"
     },
     "1453800632": {
       "topics": [
-        "business/marketing"
+        "business/marketing",
+        "nature/pets",
+        "business/management",
+        "science/storytelling"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/marketing",
+          "confidence": 0.6
+        },
+        {
+          "node": "nature/pets",
+          "confidence": 0.3
+        },
+        {
+          "node": "business/management",
+          "confidence": 0.3
+        },
+        {
+          "node": "science/storytelling",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Public Relations Review Podcast.",
+      "display_title": "Public Relations Review Podcast",
+      "blurb": "An award-winning, global podcast with host Peter Woolfolk discussing substantive public relations topics, issues, and more with public relations profe",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 32,
+        "transcript_types": {
+          "text/html": 8,
+          "application/json": 8,
+          "application/x-subrip": 8,
+          "text/vtt": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-16c7b28c",
+      "classified_at": "2026-08-31T16:18:47.662Z"
     },
     "1453805439": {
       "topics": [
@@ -78347,10 +79965,48 @@
     "1454221849": {
       "topics": [
         "sports",
-        "news"
+        "comedy/interviews",
+        "news",
+        "culture/art"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.45
+        },
+        {
+          "node": "comedy/interviews",
+          "confidence": 0.3
+        },
+        {
+          "node": "news",
+          "confidence": 0.3
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": false,
+      "rationale": "iFL Radio.",
+      "display_title": "iFL Radio",
+      "blurb": "iFL TV is the number one online source for boxing featuring raw interviews with the biggest names in the sport",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-16c7b28c",
+      "classified_at": "2026-08-31T16:18:47.662Z"
     },
     "1454237999": {
       "topics": [
@@ -78368,17 +80024,95 @@
     },
     "1454289485": {
       "topics": [
-        "music"
+        "music",
+        "business/careers",
+        "comedy/interviews",
+        "society"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.45
+        },
+        {
+          "node": "business/careers",
+          "confidence": 0.45
+        },
+        {
+          "node": "comedy/interviews",
+          "confidence": 0.3
+        },
+        {
+          "node": "society",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Can U Put Me On Guestlist?.",
+      "display_title": "Can U Put Me On Guestlist?",
+      "blurb": "As the dance music industry grows and grows, Katie digs deep into the lives of DJs, producers, managers, tour managers, publicists, club owners, label",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-16c7b28c",
+      "classified_at": "2026-08-31T16:18:47.662Z"
     },
     "1454388298": {
       "topics": [
-        "business/marketing"
+        "business/marketing",
+        "business",
+        "business/careers",
+        "education/how-to"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/marketing",
+          "confidence": 0.6
+        },
+        {
+          "node": "business",
+          "confidence": 0.3
+        },
+        {
+          "node": "business/careers",
+          "confidence": 0.3
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Everyday VOpreneur® with Marc Scott.",
+      "display_title": "Everyday VOpreneur® with Marc Scott",
+      "blurb": "You‘re a Voice Actor",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-16c7b28c",
+      "classified_at": "2026-08-31T16:18:47.662Z"
     },
     "1454390428": {
       "topics": [
@@ -78659,12 +80393,49 @@
     },
     "1455133736": {
       "topics": [
-        "medicine/biology",
-        "science",
-        "nature"
+        "medicine",
+        "nature/ocean-science",
+        "business/careers",
+        "medicine/biology"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.3
+        },
+        {
+          "node": "nature/ocean-science",
+          "confidence": 0.3
+        },
+        {
+          "node": "business/careers",
+          "confidence": 0.3
+        },
+        {
+          "node": "medicine/biology",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Contagious Conversations.",
+      "display_title": "Contagious Conversations",
+      "blurb": "Curious about the people who are making the world healthier and safer for us all, and what set them on that path? Get inspired as the CDC Foundation i",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-16c7b28c",
+      "classified_at": "2026-08-31T16:18:47.662Z"
     },
     "1455157759": {
       "topics": [
@@ -79373,10 +81144,49 @@
     },
     "1456292665": {
       "topics": [
-        "relationships"
+        "relationships",
+        "science/storytelling",
+        "medicine/neuroscience",
+        "engineering/ai-robotics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.75
+        },
+        {
+          "node": "science/storytelling",
+          "confidence": 0.3
+        },
+        {
+          "node": "medicine/neuroscience",
+          "confidence": 0.3
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Unsolicited Advice with Ashley and Taryne.",
+      "display_title": "Unsolicited Advice with Ashley and Taryne",
+      "blurb": "Every week, YouTubers/Comedians Ashley Nichole and Taryne Renee answer listeners' wild questions about everything from love to dating to jobs to life'",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-16c7b28c",
+      "classified_at": "2026-08-31T16:18:47.662Z"
     },
     "1456327498": {
       "topics": [
@@ -79531,10 +81341,49 @@
     },
     "1456794132": {
       "topics": [
-        "sports/fantasy"
+        "sports/fantasy",
+        "sports/baseball",
+        "culture/art",
+        "culture/performing-arts"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/fantasy",
+          "confidence": 0.45
+        },
+        {
+          "node": "sports/baseball",
+          "confidence": 0.3
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.3
+        },
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Halp's Dynasty Baseball Podcast from ImaginaryBric.",
+      "display_title": "Halp's Dynasty Baseball Podcast from ImaginaryBrickWall.com",
+      "blurb": "A fantasy baseball podcast focused on dynasty leagues and MLB prospects",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 5,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-16c7b28c",
+      "classified_at": "2026-08-31T16:18:47.662Z"
     },
     "1456798246": {
       "topics": [
@@ -79553,10 +81402,52 @@
     },
     "1456807247": {
       "topics": [
-        "sports/baseball"
+        "sports/baseball",
+        "business/careers",
+        "sports",
+        "engineering/energy-grid"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/baseball",
+          "confidence": 0.6
+        },
+        {
+          "node": "business/careers",
+          "confidence": 0.3
+        },
+        {
+          "node": "sports",
+          "confidence": 0.3
+        },
+        {
+          "node": "engineering/energy-grid",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Locked On Rangers - Daily Podcast On The Texas Ran.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 10w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-16c7b28c",
+      "classified_at": "2026-08-31T16:18:47.662Z"
     },
     "1456850698": {
       "topics": [
@@ -79921,10 +81812,49 @@
     },
     "1457755417": {
       "topics": [
-        "sports/baseball"
+        "sports/baseball",
+        "sports",
+        "nature/ocean-science",
+        "nature/pets"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/baseball",
+          "confidence": 0.6
+        },
+        {
+          "node": "sports",
+          "confidence": 0.3
+        },
+        {
+          "node": "nature/ocean-science",
+          "confidence": 0.3
+        },
+        {
+          "node": "nature/pets",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Baseball Betting Show with Greg Peterson.",
+      "display_title": "The Baseball Betting Show with Greg Peterson",
+      "blurb": "Greg Peterson hosts The Baseball Betting Show, a podcast about MLB betting",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-16c7b28c",
+      "classified_at": "2026-08-31T16:18:47.662Z"
     },
     "1457878143": {
       "topics": [
@@ -80018,10 +81948,48 @@
     "1457994865": {
       "topics": [
         "fiction/comedy",
-        "comedy"
+        "comedy",
+        "engineering/ai-robotics",
+        "business/startups"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/comedy",
+          "confidence": 0.3
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.3
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.3
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": false,
+      "rationale": "No Batidão Cast.",
+      "display_title": "No Batidão Cast",
+      "blurb": "Diretamente do Morro da Karol, localizado em Tóquio de Janeiro, é transmitido o NBCast, o podcast oficial da página No Batidão do Kawaii o que reina é",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-16c7b28c",
+      "classified_at": "2026-08-31T16:18:47.662Z"
     },
     "1458025439": {
       "topics": [
@@ -80033,10 +82001,52 @@
     },
     "1458025883": {
       "topics": [
-        "sports/baseball"
+        "sports/baseball",
+        "engineering/ai-robotics",
+        "nature/ocean-science",
+        "culture/art"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/baseball",
+          "confidence": 0.45
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.3
+        },
+        {
+          "node": "nature/ocean-science",
+          "confidence": 0.3
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Locked On Rockies - Daily Podcast On The Colorado .",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 10w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-16c7b28c",
+      "classified_at": "2026-08-31T16:18:47.662Z"
     },
     "1458105982": {
       "topics": [
@@ -80055,10 +82065,49 @@
     },
     "1458117078": {
       "topics": [
-        "culture/art"
+        "culture/art",
+        "culture/performing-arts",
+        "craft/filmmaking",
+        "tv-film"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.6
+        },
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.3
+        },
+        {
+          "node": "craft/filmmaking",
+          "confidence": 0.3
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Film Forum Presents.",
+      "display_title": "Film Forum Presents",
+      "blurb": "FILM FORUM PRESENTS is the official podcast of Film Forum, a nonprofit cinema in downtown New York City, founded in 1970",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-16c7b28c",
+      "classified_at": "2026-08-31T16:18:47.662Z"
     },
     "1458149874": {
       "topics": [
@@ -80512,10 +82561,52 @@
     },
     "1458803180": {
       "topics": [
-        "business/management"
+        "business/management",
+        "culture/performing-arts",
+        "engineering/energy-fusion",
+        "engineering/ai-robotics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/management",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.3
+        },
+        {
+          "node": "engineering/energy-fusion",
+          "confidence": 0.3
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Leadership Without Losing Your Soul: Master Commun.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 13w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-16c7b28c",
+      "classified_at": "2026-08-31T16:18:47.662Z"
     },
     "1458825181": {
       "topics": [
@@ -80628,10 +82719,48 @@
     "1459017391": {
       "topics": [
         "music",
-        "history"
+        "history",
+        "science/storytelling",
+        "engineering/ai-robotics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.75
+        },
+        {
+          "node": "history",
+          "confidence": 0.45
+        },
+        {
+          "node": "science/storytelling",
+          "confidence": 0.3
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Digging Deep with Robert Plant.",
+      "display_title": "Digging Deep with Robert Plant",
+      "blurb": "Robert Plant’s music is the result of a lifetime striding around the globe, from The Midlands to Morocco, from Nashville to North Wales, and the influ",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-16c7b28c",
+      "classified_at": "2026-08-31T16:18:47.662Z"
     },
     "1459065653": {
       "topics": [
