@@ -175,3 +175,41 @@ test("renderEpisode renders no play button when audio_url is absent (Stage 1 sco
   assert.doesNotMatch(html, /class="play-btn"/, "no play button without audio_url");
   assert.match(html, /class="star /, "star toggle still renders");
 });
+
+/* ---------- renderEpisode: Stage 2 "listen elsewhere" fallback (§2) ---------- */
+
+test("renderEpisode shows an honest 'Listen in your podcast app' link when audio_url is absent, in place of the ▶ button", () => {
+  // Mutation: drop the `playBtn(item) || <a>...` fallback in renderEpisode.
+  // The episode page then offers no play affordance at all for an
+  // unplayable episode, and this assertion fails.
+  const app = loadApp();
+  app._state(`state.itemIndex["ep-6"] = {
+    id: "ep-6", title: "Unplayable Episode", show: "Great Show",
+    duration_min: 10, apple_collection_id: 555, apple_track_id: 777,
+  };`);
+  app.renderEpisode("ep-6");
+  const html = app._view.innerHTML;
+  assert.doesNotMatch(html, /class="play-btn"/, "no in-app ▶ button without audio_url");
+  assert.match(html, /Listen in your podcast app ↗<\/a>/, "the fallback control must use the honest label");
+  assert.match(html, /class="star /, "star toggle still renders");
+});
+
+test("renderEpisode still renders the full page (artwork/title/show/duration/hook) for an unplayable episode", () => {
+  // Mutation: return the not-found branch (or otherwise short-circuit) when
+  // audio_url is absent. Per plan §2 the page renders fully regardless.
+  const app = loadApp();
+  app._state(`state.itemIndex["ep-7"] = {
+    id: "ep-7", title: "Deep Dive Title", show: "Great Show",
+    duration_min: 42, hook: "A description hook",
+    artwork_url: "https://example.com/art.png",
+    apple_collection_id: 555, apple_track_id: 777,
+  };`);
+  app.renderEpisode("ep-7");
+  const html = app._view.innerHTML;
+  assert.match(html, /Deep Dive Title/, "title must render");
+  assert.match(html, /Great Show/, "show name must render");
+  assert.match(html, /42 min/, "duration must render");
+  assert.match(html, /A description hook/, "hook must render");
+  assert.match(html, /class="ep-art"/, "artwork must render");
+  assert.match(html, /Listen in your podcast app ↗<\/a>/, "fallback link must render in place of ▶");
+});
