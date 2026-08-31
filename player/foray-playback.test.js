@@ -900,8 +900,8 @@ class StubDom {
     for (const id of [
       "view", "fy-strip", "fy-now", "fy-total", "fy-play", "fy-next", "fy-prev", "fy-error",
       "fy-resume", "fy-bar-fill", "fy-restart", "fy-sheet", "fy-scrim", "fy-sheet-sub",
-      "fy-sheet-note", "fy-sheet-cancel", "fy-sheet-go", "banner-slot", "home-intro",
-      "intro-close", "pl-form", "pl-input", "pl-note", "pl-remove", "banner-done",
+      "fy-sheet-note", "fy-sheet-cancel", "fy-sheet-go", "banner-slot",
+      "pl-form", "pl-input", "pl-note", "pl-remove", "banner-done",
       "drawer", "drawer-overlay", "drawer-playlists", "family-toggle", "player-toggle",
       "menu-btn", "refresh-btn",
       // Playback speed (#242).

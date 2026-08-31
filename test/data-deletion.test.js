@@ -304,7 +304,7 @@ async function mount({
   for (const id of ["view", "drawer", "drawer-overlay", "drawer-playlists",
     "family-toggle", "player-toggle", "menu-btn", "refresh-btn",
     // The home screen's own vocabulary, needed only under `boot`.
-    "banner-slot", "home-intro", "intro-close", "pl-form", "pl-input", "pl-note",
+    "banner-slot", "pl-form", "pl-input", "pl-note",
     "pl-remove", "banner-done"]) {
     const el = new El("div");
     el.id = id;

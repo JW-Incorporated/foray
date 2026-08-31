@@ -336,14 +336,14 @@ test("the offline fallback page's one sentence names the app", () => {
    paying that cost looks like.
 
    KILLED BY: reverting to "Foray picks podcast episodes for you". */
-test("the first-visit intro card names the app", () => {
-  const m = fnBody("app.js", "introHtml").match(
-    /<p class="intro-tag">([^<]*)<\/p>/
+test("the first-visit intro popup names the app", () => {
+  const m = fnBody("app.js", "showIntroPopupOnce").match(
+    /ddEl\("h3", null, "([^"]*)"\)/
   );
-  assert.ok(m, "introHtml() no longer renders an .intro-tag");
+  assert.ok(m, "showIntroPopupOnce() no longer builds an <h3> title node");
   assert.ok(
     m[1].startsWith(`${APP_NAME} `),
-    `the intro card must open with the app's name; it opens "${m[1].slice(0, 40)}"`
+    `the intro popup must open with the app's name; it opens "${m[1].slice(0, 40)}"`
   );
   assert.ok(
     !/\b4 \w/.test(m[1]),

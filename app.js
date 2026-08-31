@@ -595,16 +595,32 @@ function searchCtx() {
 /* ---------- playlists ---------- */
 
 /* "give me a series about fusion" is a prompt, not a name. Derive a clean
-   title from the meaningful words of the ask. */
+   title from the meaningful words of the ask.
+
+   Used to keep only the first 4 words after stripping stopwords, which is why
+   "history of organized crime in southern california" (stopwords "of"/"in"
+   removed, leaving 5 real words) became "History Organized Crime Southern" —
+   the word that actually pins the topic, "California", was silently dropped.
+   A playlist title with the wrong last word reads as a typo, not a topic.
+
+   Now: keep up to 8 significant words (room for a real subject + qualifier),
+   then fall back to a character budget so a long tail of short words doesn't
+   blow past what a card can show — but the budget always cuts on a whole
+   word, never mid-word or mid-final-noun. */
 const ACRONYMS = new Set(["ai", "bbq", "ww2", "ww1", "f1", "nasa", "diy", "cia", "fbi", "nfl", "nba", "mlb", "ufc", "tv"]);
+const TITLE_MAX_WORDS = 8;
+const TITLE_MAX_CHARS = 60;
 
 function prettyTitle(query) {
   const raw = query.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
   let words = raw.filter(w => !SearchEngine.STOPWORDS.has(w));
   if (!words.length) words = raw;
-  return words.slice(0, 4)
-    .map(w => ACRONYMS.has(w) ? w.toUpperCase() : w[0].toUpperCase() + w.slice(1))
-    .join(" ") || "Playlist";
+  words = words.slice(0, TITLE_MAX_WORDS).map(w => ACRONYMS.has(w) ? w.toUpperCase() : w[0].toUpperCase() + w.slice(1));
+
+  // Trim from the end, whole words only, until the title fits the char budget.
+  while (words.length > 1 && words.join(" ").length > TITLE_MAX_CHARS) words.pop();
+
+  return words.join(" ") || "Playlist";
 }
 
 /* ---------- what a saved playlist keeps (#276) ----------
@@ -1016,13 +1032,50 @@ function miniCard(slot) {
   </a>`;
 }
 
-function introHtml() {
-  if (lsGet("cp_intro_dismissed", false)) return "";
-  return `<div class="intro" id="home-intro">
-    <button class="intro-close" id="intro-close" aria-label="Dismiss">✕</button>
-    <p class="intro-tag">4a picks podcast episodes for you, grouped into four topic queues below — not one long feed to scroll.</p>
-    <p class="intro-body">Three queues are topics you're already into. One is deliberately something else, on purpose. Tap a card to open its queue and see what's in it.</p>
-  </div>`;
+/* First-run explainer (#128 follow-up). Used to be a permanent card at the top
+   of the home screen — after the first read it was dead weight that pushed the
+   four topic queues down the screen for good. It is now a one-time popup shown
+   right after the very first app open (gated on the same cp_intro_dismissed
+   flag, so an existing install that already dismissed the card never sees it
+   again) and nothing about it lives in the home layout any more. */
+function showIntroPopupOnce() {
+  if (lsGet("cp_intro_dismissed", false)) return;
+  const wrap = ddEl("div", "fy-sheet");
+  wrap.id = "intro-sheet";
+
+  const scrim = ddEl("div", "fy-scrim");
+  const panel = ddEl("div", "fy-panel");
+  panel.setAttribute("role", "dialog");
+  panel.setAttribute("aria-modal", "true");
+
+  const grab = ddEl("div", "fy-grab");
+  grab.setAttribute("aria-hidden", "true");
+
+  const title = ddEl("h3", null, "4a picks podcast episodes for you");
+  title.id = "intro-sheet-title";
+  panel.setAttribute("aria-labelledby", "intro-sheet-title");
+
+  const sub = ddEl("p", "fy-sheet-sub",
+    "Grouped into four topic queues — not one long feed to scroll. Three queues are topics you're already into. One is deliberately something else, on purpose. Tap a card to open its queue and see what's in it.");
+
+  const actions = ddEl("div", "fy-sheet-actions");
+  const ok = ddEl("button", "fy-sheet-go", "Got it");
+  ok.type = "button";
+  ok.id = "intro-sheet-ok";
+  actions.append(ok);
+
+  panel.append(grab, title, sub, actions);
+  wrap.append(scrim, panel);
+  document.body.appendChild(wrap);
+  document.body.classList.add("fy-sheet-open");
+
+  const dismiss = () => {
+    lsSet("cp_intro_dismissed", true);
+    wrap.remove();
+    document.body.classList.remove("fy-sheet-open");
+  };
+  scrim.addEventListener("click", dismiss);
+  ok.addEventListener("click", dismiss);
 }
 
 function renderHome() {
@@ -1032,7 +1085,6 @@ function renderHome() {
   $("#view").innerHTML = `
     <div class="home">
       <div id="banner-slot">${bannerHtml()}</div>
-      ${introHtml()}
       ${jumpBackInHtml(resumeRows)}
       ${forayHomeHtml()}
       <div class="cards4">${state.cardSlots.map(miniCard).join("")}</div>
@@ -1043,10 +1095,7 @@ function renderHome() {
       <p id="pl-note" class="note" hidden></p>
     </div>`;
 
-  $("#intro-close")?.addEventListener("click", () => {
-    lsSet("cp_intro_dismissed", true);
-    $("#home-intro").remove();
-  });
+  showIntroPopupOnce();
 
   const done = $("#banner-done");
   if (done) {
@@ -1090,16 +1139,22 @@ function renderHome() {
   bindPlay($("#view"));
 }
 
+/* One playable row = one play control, never two. An item with audio_url gets
+   the in-app ▶ button and nothing else plays it; only an item with NO
+   audio_url falls back to the external "Play" link-out. Before this a row
+   with audio_url rendered both — the ▶ button AND a text link that also said
+   "Play" — which is two controls doing the same job. */
 function epRow(item, idx, ctx, nextIdx) {
+  const inApp = playBtn(item);
+  const external = inApp ? "" : `<a class="go" href="${esc(safeUrl(playLink(item)))}" target="_blank" rel="noopener"
+       data-ev="picked" data-ep="${item.id}" data-ctx="${ctx}">Play</a>`;
   return `<div class="ep-row">
     <span class="q-num ${idx === nextIdx ? "next" : ""}">${idx + 1}</span>
     <div class="info">
       <div class="t">${esc(item.title)}</div>
       <div class="s">${esc(item.show)} · ${fmtDur(item.duration_min)}</div>
     </div>
-    ${playBtn(item)}${starBtn(item.id)}
-    <a class="go" href="${esc(safeUrl(playLink(item)))}" target="_blank" rel="noopener"
-       data-ev="picked" data-ep="${item.id}" data-ctx="${ctx}">Play</a>
+    ${inApp}${starBtn(item.id)}${external}
   </div>`;
 }
 
@@ -1236,6 +1291,11 @@ function renderPlaylists() {
         <a class="back" href="#/">‹</a>
         <div><h2>Playlists</h2><p class="sub">${all.length} built</p></div>
       </div>
+      <form id="pl-form" autocomplete="off">
+        <input id="pl-input" type="text" maxlength="120" placeholder="build me a playlist…">
+        <button type="submit">Go</button>
+      </form>
+      <p id="pl-note" class="note" hidden></p>
       ${all.length ? all.map(p => `
         <a class="pl-row" href="#/playlist/${esc(p.id)}">
           <div class="info">
@@ -1244,8 +1304,27 @@ function renderPlaylists() {
           </div>
           <span class="chev">›</span>
         </a>`).join("")
-      : `<p class="note">No playlists yet — build one from the home screen.</p>`}
+      : `<p class="note">No playlists yet — type above to build your first one.</p>`}
     </div>`;
+
+  $("#pl-form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const query = $("#pl-input").value.trim();
+    if (!query) return;
+    const result = buildPlaylist(query);
+    logEvent("playlist_built", { query, status: result.status, found: result.playlist ? result.playlist.items.length : 0 });
+    if (result.status === "ok" || result.status === "sparse") {
+      location.hash = "#/playlist/" + result.playlist.id;
+    } else {
+      const note = $("#pl-note");
+      note.textContent = result.status === "unsaved"
+        ? "That playlist could not be saved — this device has no storage space left. Removing a playlist you have finished with frees enough for a new one."
+        : result.suggestions.length
+          ? `Not much on "${query}" yet — try ${result.suggestions.map(s => s.label).join(", ")} instead.`
+          : `Not much on "${query}" yet — try different words.`;
+      note.hidden = false;
+    }
+  });
 }
 
 /* ---------- Forays (#128) ----------
