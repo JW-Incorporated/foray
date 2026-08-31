@@ -1278,6 +1278,42 @@ function renderPlaylistDetail(id) {
   bindPlay($("#view"));
 }
 
+/* Resolve an episode id for `#/episode/:id` — the direct fix for "Open
+   episode" leaving 4a (mini-player's `openLink`, player/client.js). Same
+   two-source pattern archivedRow already relies on: `state.itemIndex`
+   first (freshest — populated by fullPool()/renderPlaylistDetail), then a
+   `cp_saved` snapshot fallback (covers aged-out parts the pool no longer
+   carries). No new fetch, no new data file — every field this page shows
+   already lives on both sources. */
+function resolveEpisode(id) {
+  const pool = hydrationPool(); // populate/reuse itemIndex — never throws (#276)
+  return pool[id] || savedMap()[id] || null;
+}
+
+function renderEpisode(id) {
+  document.body.className = "view-page";
+  const item = resolveEpisode(id);
+  if (!item) {
+    $("#view").innerHTML = `<div class="page"><p class="note">Episode not found.</p></div>`;
+    return;
+  }
+  $("#view").innerHTML = `
+    <div class="page">
+      <div class="page-head">
+        <a class="back" href="#/">‹</a>
+        <div>
+          <h2 class="fp-s-title">${esc(item.title)}</h2>
+          <p class="fp-s-show">${esc(item.show || "")}${item.duration_min ? ` · ${fmtDur(item.duration_min)}` : ""}</p>
+        </div>
+      </div>
+      ${item.artwork_url ? `<img class="ep-art" src="${esc(safeUrl(item.artwork_url))}" alt="">` : ""}
+      ${item.hook ? `<p class="fp-s-why">${esc(item.hook)}</p>` : ""}
+      <div class="ep-actions">${playBtn(item)}${starBtn(item.id)}</div>
+    </div>`;
+  bindStars($("#view"));
+  bindPlay($("#view"));
+}
+
 /* The count printed here is `resolveParts(p).length` — the SAME call
    renderPlaylistDetail maps into rows, deliberately, so "7 parts" and five rows
    cannot come apart again (#276). It is a saved-length question, not a pool
@@ -3398,6 +3434,7 @@ function route() {
   if (forayId) renderForay(forayId);
   else if ((m = /^#\/playlist\/(.+)$/.exec(h))) renderPlaylistDetail(m[1]);
   else if ((m = /^#\/subject\/(.+)$/.exec(h))) renderPlaylistDetail("subject-" + m[1]);
+  else if ((m = /^#\/episode\/(.+)$/.exec(h))) renderEpisode(m[1]);
   else if (h === "#/playlists") renderPlaylists();
   else renderHome();
 }
