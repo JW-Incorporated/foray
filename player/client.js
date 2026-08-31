@@ -106,6 +106,10 @@ import {
 } from "./diagnostic-log.js";
 import { forayCredits, collectionIdsByShow, creditsSummary, artworkUrlsByShow } from "./foray-sources.js";
 import { mountStrip, stripModel, stripSummary } from "./segment-strip.js";
+import {
+  HOLD_MS, MOVE_TOLERANCE_PX, ZOOM_SCALE,
+  startGesture, moveGesture, holdTimeoutGesture, endGesture, zoomOriginPercent,
+} from "./strip-scrub-gesture.js";
 import { createDurableStore } from "./durable-store.js";
 import { makeIdbTier } from "./idb-tier.js";
 import {
@@ -1365,6 +1369,23 @@ const ForayPlayer = {
       want next to a strip it renders itself. */
   stripModel,
   stripSummary,
+
+  /* ---------- press-and-hold zoom-to-scrub (V1) ----------
+
+     Bridged for the same reason everything else on this object is: app.js is
+     a classic script and cannot import strip-scrub-gesture.js directly. The
+     gesture STATE MACHINE lives entirely in that pure module; app.js owns the
+     real pointer listeners and the real setTimeout, and only calls through
+     here to advance the state and read `zoomOriginPercent` for the CSS
+     transform-origin. */
+  scrubGesture: {
+    HOLD_MS, MOVE_TOLERANCE_PX, ZOOM_SCALE,
+    start: startGesture,
+    move: moveGesture,
+    holdTimeout: holdTimeoutGesture,
+    end: endGesture,
+    originPercent: zoomOriginPercent,
+  },
 
   /* ---------- playback speed (#242) ---------- */
 

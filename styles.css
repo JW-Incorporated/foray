@@ -671,7 +671,30 @@ body.fp-open.fp-expanded { padding-bottom: 340px; }
      `gap` + `--seam`, not `--seam` alone. Measured in Chrome at a 362px strip
      (a 390px phone less the page's padding) rather than reasoned about. */
   --seg-min: 7px;
+  /* Press-and-hold zoom-to-scrub (V1). `touch-action: none` stops the browser
+     from interpreting a held-and-dragged finger as a page scroll/pan, which
+     would otherwise fight the gesture on exactly the input it exists for. */
+  touch-action: none;
+  transform: scale(1);
+  transform-origin: 50% 50%;
+  transition: transform 0.12s ease-out;
+  position: relative;
+  z-index: 1;
 }
+/* Set by app.js's bindStripZoomScrub via CSSOM (style-src 'self' — never a
+   style attribute). --zoom-origin follows the touch point so the enlarged
+   view stays centred on where the finger actually is, not the strip's
+   midpoint; --zoom-scale is player/strip-scrub-gesture.js's ZOOM_SCALE,
+   piped through rather than hardcoded here so the two never drift. */
+.fy-strip.is-zooming {
+  transform: scale(var(--zoom-scale, 2.5));
+  transform-origin: var(--zoom-origin, 50%) 50%;
+  transition: none;         /* live-tracks the finger; an easing curve would lag it */
+}
+@media (prefers-reduced-motion: reduce) {
+  .fy-strip { transition: none; }
+}
+
 /* Three sizes (#128): a list row, a card, the player. The seam scales with the
    height so the break still reads on a 5px strip, where a 5px gap would be a
    square hole and a 1px one would be the hairline again. */

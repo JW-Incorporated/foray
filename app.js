@@ -1925,6 +1925,119 @@ function stripElapsedFromBars(strip, x, rect, r) {
   return acc;                                               // past the last bar
 }
 
+/* Press-and-hold zoom-to-scrub on #fy-strip (V1).
+
+   Joey, live iPhone testing: "a brief click just jumps ahead to that
+   location; if I press and hold then there's a bubble view that pops up
+   showing a zoomed-in portion of the timeline". V1 ships the zoomed strip
+   itself, enlarged around the touch point while the hold-drag continues — no
+   floating magnifier bubble graphic yet; that is V2, filed as its own child
+   card (see the running-order jump note in stripElapsedAt's neighbourhood
+   above for how a click still commits the same way it always has).
+
+   THE STATE MACHINE IS NOT HERE. player/strip-scrub-gesture.js decides tap
+   vs hold vs drag as pure data; this function only owns the real
+   pointerdown/pointermove/pointerup listeners and the real setTimeout, and
+   translates the module's state into the one visual effect V1 asks for: a
+   CSS scale() around the touch point.
+
+   THE SEEK IS NOT HERE EITHER. `#fy-strip`'s existing `click` handler
+   (bound just above this call site) still does the seek, unchanged — a
+   `click` fires at the release point whether or not this handler ever
+   entered zoom, so "commit wherever the finger ended" falls out of the
+   platform. This function must never call `foraySeek`/`startAt` itself,
+   or the seek logic forks in two places that can drift.
+
+   `setPointerCapture` keeps events routed to the strip even though scaling
+   moves it visually out from under the finger mid-gesture — without it a
+   drag toward the zoomed edge would silently stop delivering pointermove. */
+function bindStripZoomScrub(r, player) {
+  const strip = $("#fy-strip");
+  const gest = player?.scrubGesture;
+  if (!strip || !gest) return;
+
+  let gesture = null;
+  let holdTimer = null;
+  let pointerId = null;
+  let preZoomRect = null;
+
+  const clearHoldTimer = () => {
+    if (holdTimer != null) { clearTimeout(holdTimer); holdTimer = null; }
+  };
+
+  /* `preZoomRect` is captured once, at pointerdown, before any zoom transform
+     exists — re-measuring mid-zoom would feed the origin math a box already
+     distorted by the previous frame's scale() (see zoomOriginPercent's own
+     header). It is cleared on release so the next gesture measures fresh. */
+  const applyZoomVisual = (clientX) => {
+    if (!preZoomRect) preZoomRect = strip.getBoundingClientRect();
+    const pct = gest.originPercent(clientX, preZoomRect);
+    if (pct == null) return;
+    // CSSOM, not a style attribute — the page CSP is style-src 'self', same
+    // rule segment-strip.js and paintSegFill already live under.
+    strip.style.setProperty("--zoom-origin", `${pct}%`);
+    strip.style.setProperty("--zoom-scale", String(gest.ZOOM_SCALE));
+    strip.classList.add("is-zooming");
+  };
+
+  const clearZoomVisual = () => {
+    strip.classList.remove("is-zooming");
+    strip.style.removeProperty("--zoom-origin");
+    strip.style.removeProperty("--zoom-scale");
+    preZoomRect = null;
+  };
+
+  const finish = () => {
+    clearHoldTimer();
+    gesture = gest.end(gesture);
+    clearZoomVisual();
+    pointerId = null;
+  };
+
+  strip.addEventListener("pointerdown", (e) => {
+    // One gesture at a time; a second finger touching the strip mid-hold is
+    // not a scrub, and letting it interrupt the first would jump the preview.
+    if (pointerId != null) return;
+    // Right/middle-click never means "press and hold" on desktop; only the
+    // primary pointer starts a gesture.
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    pointerId = e.pointerId;
+    gesture = gest.start(e.clientX, e.clientY);
+    if (typeof strip.setPointerCapture === "function") {
+      try { strip.setPointerCapture(pointerId); } catch { /* unsupported in some test DOMs; degrades to normal bubbling */ }
+    }
+    clearHoldTimer();
+    holdTimer = setTimeout(() => {
+      holdTimer = null;
+      gesture = gest.holdTimeout(gesture);
+      if (gesture.zooming) applyZoomVisual(e.clientX);
+    }, gest.HOLD_MS);
+  });
+
+  strip.addEventListener("pointermove", (e) => {
+    if (pointerId == null || e.pointerId !== pointerId || !gesture) return;
+    const wasZooming = gesture.zooming;
+    gesture = gest.move(gesture, e.clientX, e.clientY);
+    if (gesture.zooming) {
+      // Entered zoom by dragging past tolerance rather than by waiting out
+      // the hold timer — the timer would otherwise still fire later and flip
+      // the visual back on (harmlessly, since holdTimeoutGesture is a no-op
+      // once already zooming, but there is no reason to let it run).
+      if (!wasZooming) clearHoldTimer();
+      applyZoomVisual(e.clientX);
+    }
+  });
+
+  strip.addEventListener("pointerup", (e) => {
+    if (pointerId == null || e.pointerId !== pointerId) return;
+    finish();
+  });
+  strip.addEventListener("pointercancel", (e) => {
+    if (pointerId == null || e.pointerId !== pointerId) return;
+    finish();
+  });
+}
+
 /* The fill inside the bar the listener is currently inside — the one thing on
    this page that has to move continuously, and the reason it is painted above
    `paintForay`'s segment-change guard.
@@ -2235,6 +2348,8 @@ function bindForayTransport(r, player, resume = null) {
     const index = Number(seg.dataset.seg);
     return playerHasForay(r) ? guardForayTap(() => player.forayJump(index)) : start(index);
   });
+
+  bindStripZoomScrub(r, player);
 
   /* Re-entering the page mid-Foray must paint the segment that is actually
      audible, and route this page's callback at the live player — otherwise the
