@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "built_at": "2026-08-30T11:52:34.565Z",
+  "built_at": "2026-08-31T11:56:11.643Z",
   "tags": {
     "lex-fridman-podcast--don-lincoln-physics": [
       "physics",
@@ -16067,6 +16067,266 @@
       "solar",
       "science",
       "space"
+    ],
+    "the-rest-is-history--701-roman-civil-war-rise-of": [
+      "gaius-marius",
+      "roman-republic",
+      "ancient-rome",
+      "civil-war",
+      "ancient-history",
+      "storytelling",
+      "narrative"
+    ],
+    "conan-obrien-needs-a-friend--andy-daly-returns": [
+      "conan-obrien",
+      "andy-daly",
+      "comedy",
+      "funny",
+      "hollywood",
+      "hang",
+      "interview"
+    ],
+    "smartless--steve-zahn": [
+      "smartless",
+      "steve-zahn",
+      "comedy",
+      "funny",
+      "celebrities",
+      "hang",
+      "interview"
+    ],
+    "making-chips--at-the-boring-bar-ai-automation": [
+      "machine-shop",
+      "manufacturing",
+      "ai",
+      "automation",
+      "panel",
+      "interview"
+    ],
+    "the-ancients--robert-harris-on-roman-general-agrippa": [
+      "marcus-agrippa",
+      "augustus",
+      "ancient-rome",
+      "roman-empire",
+      "biography",
+      "interview",
+      "storytelling"
+    ],
+    "engines-of-our-ingenuity--the-engines-of-our-ingenuity-3404": [
+      "correspondence-schools",
+      "education",
+      "history-of-technology",
+      "bite-sized",
+      "explainer"
+    ],
+    "engines-of-our-ingenuity--the-engines-of-our-ingenuity-1623": [
+      "joel-dorman",
+      "esther-steele",
+      "education",
+      "textbooks",
+      "history-of-technology",
+      "bite-sized",
+      "explainer"
+    ],
+    "founders--431-how-henry-singleton-worked": [
+      "henry-singleton",
+      "teledyne",
+      "founders",
+      "biography",
+      "capital-allocation",
+      "business",
+      "storytelling"
+    ],
+    "twenty-minute-vc--20vc-the-ai-bubble-is-wrong": [
+      "ai",
+      "venture-capital",
+      "business",
+      "clickhouse",
+      "startups",
+      "interview"
+    ],
+    "fly-on-the-wall--jelly-roll-jed-york-and-jealousy": [
+      "dana-carvey",
+      "david-spade",
+      "jelly-roll",
+      "comedy",
+      "funny",
+      "hang",
+      "interview"
+    ],
+    "bad-friends--incel-interior-decorator": [
+      "bobby-lee",
+      "andrew-santino",
+      "comedy",
+      "funny",
+      "banter",
+      "hang"
+    ],
+    "science-for-sport-podcast--335-the-three-outcomes-that-define": [
+      "sports-science",
+      "training",
+      "interview",
+      "high-performance",
+      "athletics"
+    ],
+    "planet-money--dolly-parton-s-9-to-5": [
+      "dolly-parton",
+      "economics",
+      "music",
+      "labor",
+      "storytelling",
+      "explainer"
+    ],
+    "odd-lots--richmond-fed-s-tom-barkin-on": [
+      "economics",
+      "markets",
+      "federal-reserve",
+      "interview",
+      "finance"
+    ],
+    "you-are-not-so-smart--347-under-alien-skies-phil-plait": [
+      "phil-plait",
+      "astronomy",
+      "space",
+      "science",
+      "interview"
+    ],
+    "the-race-f1-podcast--is-norris-even-better-in-2026": [
+      "formula-1",
+      "motorsport",
+      "racing",
+      "lando-norris",
+      "mclaren",
+      "technical"
+    ],
+    "partially-examined-life--ep-399-dan-dennett-s-model": [
+      "philosophy",
+      "dan-dennett",
+      "consciousness",
+      "mind",
+      "cognitive-science"
+    ],
+    "unexplainable--a-breakthrough-in-synthetic-life": [
+      "synthetic-biology",
+      "biology",
+      "science-journalism",
+      "interview",
+      "biotechnology"
+    ],
+    "strong-towns-podcast--chuck-s-engineering-lawsuit-finally-has": [
+      "strong-towns",
+      "engineering",
+      "law",
+      "urbanism",
+      "cities",
+      "policy"
+    ],
+    "the-matt-walker-podcast--the-night-ferryman-a-sleep-story": [
+      "sleep",
+      "matt-walker",
+      "relaxation",
+      "neuroscience",
+      "bedtime-story"
+    ],
+    "the-peter-attia-drive--406-migraine-cluster-headache-and-tension": [
+      "migraine",
+      "headache",
+      "neuroscience",
+      "medicine",
+      "interview"
+    ],
+    "strict-scrutiny--is-scotus-letting-trump-meddle-in": [
+      "supreme-court",
+      "law",
+      "courts",
+      "politics",
+      "elections",
+      "explainer"
+    ],
+    "mel-robbins-podcast--heal-your-gut-a-doctor-s": [
+      "gut-health",
+      "nutrition",
+      "medicine",
+      "self-improvement",
+      "interview"
+    ],
+    "happier-gretchen-rubin--little-happier-why-the-knicks-play": [
+      "basketball",
+      "knicks",
+      "mindset",
+      "self-improvement",
+      "sports"
+    ],
+    "call-her-daddy--fearful-disorganized-attachment-101": [
+      "attachment-styles",
+      "relationships",
+      "psychology",
+      "self-improvement",
+      "interview"
+    ],
+    "comedy-bang-bang--jackman-backman-asif-ali-dan-lippert": [
+      "asif-ali",
+      "bill-walton",
+      "improv",
+      "characters",
+      "comedy",
+      "absurdist",
+      "panel"
+    ],
+    "working-it-out-birbiglia--222-joe-list-how-to-survive": [
+      "joe-list",
+      "stand-up",
+      "comedy",
+      "craft",
+      "interview"
+    ],
+    "lore--legends-87-cursive": [
+      "lore",
+      "folklore",
+      "history",
+      "cursive",
+      "writing",
+      "storytelling",
+      "narrative"
+    ],
+    "morbid--the-stamford-bra-murders": [
+      "morbid",
+      "true-crime",
+      "serial-killer",
+      "1970s",
+      "history",
+      "narrative"
+    ],
+    "wicked-words--kimberly-sheeter-air-minded": [
+      "wicked-words",
+      "interview",
+      "true-crime",
+      "aviation",
+      "1930s",
+      "journalism"
+    ],
+    "this-american-life--896-i-know-what-you-need": [
+      "this-american-life",
+      "reported-story",
+      "narrative",
+      "storytelling",
+      "helping",
+      "personal-stories"
+    ],
+    "welcome-to-night-vale--cecil-and-kevin-perform-more-from": [
+      "audio-drama",
+      "night-vale",
+      "fiction",
+      "joseph-fink",
+      "performance"
+    ],
+    "whiskycast--the-boys-are-back": [
+      "whisky",
+      "distilling",
+      "scotch",
+      "craft",
+      "family-business",
+      "entrepreneurship"
     ]
   }
 }
