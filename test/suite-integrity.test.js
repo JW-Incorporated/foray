@@ -180,6 +180,12 @@ const FLOORS = {
   "test/app-name.test.js": 21,
   "test/app-security.test.js": 26,
   "test/episode-page.test.js": 8,
+  /* Stage 3 of docs/episode-pages-plan.md — epRow/archivedRow/bannerHtml
+     title links to #/episode/:id (kanban card t_51e5d7bc). Floored at its
+     exact current count: this is a small, deliberately-scoped regression
+     suite (title link + PR #357 unchanged-controls checks), so any change to
+     its size is worth a second look. */
+  "test/episode-row-links.test.js": 5,
   /* "Delete my data" (#42). Zero slack, like media-session above and for the same
      reason: what this suite guards is a PROMISE — both tiers cleared, the server
      rows really deleted, no success message over a failure, and a confirmation a

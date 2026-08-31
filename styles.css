@@ -426,6 +426,8 @@ button.star.on { color: var(--gold); }
 .ep-row .info, .pl-row .info { flex: 1; min-width: 0; }
 .ep-row .t, .pl-row .t { font-family: var(--serif); font-size: 0.98rem; font-weight: 700; line-height: 1.3; }
 .ep-row .s, .pl-row .s { font-size: 0.78rem; color: var(--text-dim); margin-top: 2px; }
+.ep-title-link { color: inherit; text-decoration: none; }
+.ep-title-link:active { text-decoration: underline; }
 .show-link { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
 .fp-s-show .show-link { color: inherit; }
 .pl-row .chev { color: var(--text-dim); font-size: 1.3rem; flex: none; }
