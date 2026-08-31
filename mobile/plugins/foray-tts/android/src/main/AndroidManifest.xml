@@ -2,13 +2,21 @@
 <!--
   The library manifest AGP merges into the generated app's manifest.
 
-  NOTHING TO DECLARE, and that is worth stating rather than leaving unexplained:
-  `android.speech.tts.TextToSpeech` needs no `<uses-permission>` (it is not a
-  dangerous permission, not a runtime-requested one, and not gated behind a
-  foreground-service type the way `foray-audio`'s mediaPlayback service is) and
-  this plugin adds no `<service>`, `<receiver>` or `<activity>` of its own --
-  `TextToSpeech`'s engine binding is entirely internal to the framework class.
-  An empty manifest merge is the correct, minimal one here, not an oversight.
+  NOTHING TO DECLARE beyond the empty `<application>` element below, and that
+  is worth stating rather than leaving unexplained: `android.speech.tts.TextToSpeech`
+  needs no `<uses-permission>` (it is not a dangerous permission, not a
+  runtime-requested one, and not gated behind a foreground-service type the
+  way `foray-audio`'s mediaPlayback service is) and this plugin adds no
+  `<service>`, `<receiver>` or `<activity>` of its own -- `TextToSpeech`'s
+  engine binding is entirely internal to the framework class. An empty
+  `<application>` is what AGP's manifest merger expects as the library
+  manifest's structure (mirroring `foray-audio`'s own manifest shape, which
+  also carries an `<application>` element even where it has nothing else to
+  add); a `<manifest>` with no `<application>` child at all failed
+  `ManifestMerger2` in CI.
 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application />
+
 </manifest>
