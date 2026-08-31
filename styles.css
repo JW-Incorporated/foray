@@ -343,6 +343,88 @@ button.star.on { color: var(--gold); }
 }
 .note { color: var(--text-dim); font-size: 0.85rem; margin: 0; flex: none; }
 
+/* ---------- Shows search tabs (Stage 2, docs/show-pages-plan.md) ----------
+   A separate affordance next to #pl-form's topic playlist builder -- see
+   that file's header comment for why the two searches are never merged. */
+.search-tabs {
+  flex: none;
+  display: flex; gap: 8px;
+  margin-bottom: 10px;
+}
+.search-tab {
+  flex: none;
+  padding: 8px 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text-dim);
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+.search-tab.on {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+#sh-form {
+  flex: none;
+  display: flex; gap: 8px;
+  margin-bottom: 14px;
+}
+#sh-input {
+  flex: 1;
+  min-height: 52px;
+  padding: 0 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  color: var(--text);
+  font-size: 1rem;
+}
+#sh-form button {
+  flex: none;
+  min-width: 72px;
+  border-radius: var(--radius);
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: #fff;
+  font-weight: 700;
+  font-size: 1rem;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+}
+.show-results {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.show-result {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  color: var(--text);
+  text-decoration: none;
+}
+.show-result-art {
+  width: 44px; height: 44px;
+  border-radius: 8px;
+  object-fit: cover;
+  flex: none;
+}
+.show-result-art-blank {
+  background: var(--surface-2);
+}
+.show-result-title {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
 /* ---------- "this page is a version behind" bar (#233) ----------
    Fixed rather than in flow: the topbar is fixed and #view pads itself past it,
    so a bar in normal flow would sit underneath the topbar and be invisible.
