@@ -61,6 +61,18 @@ const ALIASES = {
    for the argument and for the asymmetry it leaves. */
 const BROAD_DF_THRESHOLD = 0.10;
 
+/* A primary (non-broad) token that is real and specific but has almost
+   no catalogue footprint AND no concept models it -- see the THIN ANCHOR
+   comment in interpretQuery, where this gates whether a token can be
+   silently outvoted by a commoner co-token under OR semantics. Corpus DF,
+   not tag DF (a different, larger-magnitude measure -- see BROAD_DF_THRESHOLD
+   vs the TAG_DF ladder above), so it is directly comparable to
+   BROAD_DF_THRESHOLD and sits one order of magnitude under it: broad tokens
+   are >=10% of the catalogue, thin tokens are under 0.2%, and the decade
+   between is intentionally silent -- most real topic words with any
+   coverage at all live there and must never be treated as thin. */
+const THIN_ANCHOR_DF = 0.002;
+
 /* THE TAG-DF LADDER: three fractions of the tag map (see tagDF), read by the two
    consumers that care how common a term is. #275.
 
@@ -430,6 +442,9 @@ function interpretQuery(q, ctx) {
       broad: corpusDF(tok, ctx) >= BROAD_DF_THRESHOLD,
       df: tagDF(tok, ctx),
       hasConceptExpansion,
+      /* See THIN_ANCHOR_DF below -- a specific, real word the taxonomy has
+         not modeled AND the catalogue barely mentions. */
+      thin: !hasConceptExpansion && corpusDF(tok, ctx) < THIN_ANCHOR_DF,
     };
   });
 
@@ -447,11 +462,57 @@ function interpretQuery(q, ctx) {
      recall for legitimate broader topic matches. */
   const properNounQuery = primaryGroups.length >= 2 && primaryGroups.every(g => !g.hasConceptExpansion);
 
+  /* THIN ANCHORS (#209 -- "Electrical Circuit Design Dummies" returning
+     game-design/finance content).
+
+     Plain OR semantics (below, non-properNoun path: "at least one primary
+     group matched") assumes every primary token is roughly as trustworthy a
+     signal as any other. That assumption breaks for a token that is BOTH
+     unmodeled by the taxonomy (no concept carries it, so it can only ever
+     match by bare literal text -- no sense-disambiguation, no tag/topic
+     bonus) AND almost absent from the catalogue (corpusDF under
+     THIN_ANCHOR_DF): such a token is real and specific -- exactly the word
+     the query is actually about -- but under OR semantics it can be
+     silently dropped in favour of whatever OTHER primary token the query
+     happens to also contain, if that other token is common. That is
+     precisely what happened: "circuit"/"electrical"/"dummies" in
+     "Electrical Circuit Design Dummies" each match at most one or two
+     catalogue items (df ~0.0005-0), so none of them anchor anything, while
+     "design" -- a real concept term but also a common literal word
+     (Game Design Round Table, Design Matters, Designer Notes) -- carries
+     the whole query alone. The result reads as a confident 10-pick answer
+     about circuit design and is actually 10 picks about "design" the show
+     title.
+
+     The fix is not to matcher-tune "design" (it is a correct match for
+     product/industrial-design queries, see the "design" battery case) --
+     it is to stop letting a thin token get overridden instead of honestly
+     reported as uncovered. A thin primary group must ALSO appear in a
+     result for that result to qualify at all (searchWithRelaxation), on
+     top of (not instead of) the normal hasPrimary/properNoun gates. That
+     leaves plain OR recall untouched for the common case (every primary
+     token is either concept-backed or has real catalogue presence) and
+     only tightens the narrow case a thin token identifies -- usually
+     collapsing the result set to genuinely honest sparse/empty, per
+     product principle #1, rather than fabricating relevance from whichever
+     other word happened to be common.
+
+     0.002 (0.2% of the catalogue): calibrated against corpusDF, one order
+     of magnitude under BROAD_DF_THRESHOLD's floor and TAG_DF_RARE (0.008,
+     a DIFFERENT measure, tag-map DF not corpus DF, so not directly
+     comparable) -- deliberately far below "rare but real" (e.g. "fusion"
+     ~a few percent) so it only catches tokens with essentially no
+     catalogue footprint, not merely uncommon ones. See
+     test/search-thin-anchor.test.js for the calibration cases this value
+     must keep passing. */
+  const thinAnchorCount = primaryGroups.filter(g => g.thin).length;
+
   return {
     groups, filters, topicBoosts,
     hasPrimary: primaryGroups.length > 0,
     properNounQuery,
     primaryGroupCount: primaryGroups.length,
+    thinAnchorCount,
   };
 }
 
@@ -738,6 +799,7 @@ function scoreMatch(item, interp, itemTags) {
   let sum = 0;
   let matchedGroups = 0;
   let primaryMatched = 0;
+  let thinMatched = 0;
   for (const group of interp.groups) {
     let best = 0;
     for (const [t, info] of group.terms) {
@@ -758,6 +820,7 @@ function scoreMatch(item, interp, itemTags) {
     if (best >= 1.2) {
       matchedGroups++;
       if (!group.broad) primaryMatched++;
+      if (group.thin) thinMatched++;
     }
     sum += best * dfMultiplier(group.df);
   }
@@ -793,10 +856,11 @@ function scoreMatch(item, interp, itemTags) {
       sum += 8;
       matchedGroups = interp.groups.length;
       primaryMatched = interp.primaryGroupCount;
+      thinMatched = interp.thinAnchorCount;
     }
   }
 
-  return { sum, matched: matchedGroups, primaryMatched };
+  return { sum, matched: matchedGroups, primaryMatched, thinMatched };
 }
 
 /* pool must already be pre-filtered (family mode etc. — app.js's poolFiltered()).
@@ -807,7 +871,7 @@ function searchWithRelaxation(pool, interp, minScore, itemTags, rankFallback) {
   const attempt = (filters) => {
     const p = pool.filter(i => passesFilters(i, filters));
     if (!interp.groups.length) {
-      return p.map(i => ({ i, sum: rankFallback ? rankFallback(i) : 0.5, matched: 0, primaryMatched: 0 }))
+      return p.map(i => ({ i, sum: rankFallback ? rankFallback(i) : 0.5, matched: 0, primaryMatched: 0, thinMatched: 0 }))
         .sort((a, b) => b.sum - a.sum);
     }
     return p.map(i => ({ i, ...scoreMatch(i, interp, itemTags) }))
@@ -820,8 +884,26 @@ function searchWithRelaxation(pool, interp, minScore, itemTags, rankFallback) {
          the gate tightens from OR to AND -- every primary token must match,
          not just one -- since a lone coincidental word match (e.g. "lex" in
          an unrelated Ancient Rome episode) shouldn't satisfy a 2-word name
-         search. */
+         search.
+
+         ON TOP of that (not instead of it): every THIN primary token (see
+         THIN ANCHOR in interpretQuery) must ALSO match, regardless of which
+         of the two rules above applied. A thin token is unmodeled AND
+         nearly absent from the catalogue, so OR semantics would let a
+         result qualify purely on some OTHER, commoner primary token while
+         silently dropping the thin one -- which is how "design" alone
+         carried "Electrical Circuit Design Dummies" to a confident 10-pick
+         game-design/celebrity result with zero of "circuit"/"electrical"
+         present in a single pick. Requiring every thin token to also match
+         does not touch queries with no thin tokens at all (thinMatched and
+         thinAnchorCount are both 0, so the check is `0 === 0`, always
+         true), and for a query that IS thin-anchored it either finds real
+         matches for the thin word too or -- far more often, since a thin
+         word by definition has almost no catalogue coverage -- honestly
+         empties out per product principle #1 instead of padding with an
+         unrelated common word's matches. */
       .filter(x => {
+        if (x.thinMatched !== interp.thinAnchorCount) return false;
         if (interp.properNounQuery) return x.primaryMatched === interp.primaryGroupCount && x.sum > minScore;
         return (interp.hasPrimary ? x.primaryMatched > 0 : x.matched > 0) && x.sum > minScore;
       })
