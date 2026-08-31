@@ -983,6 +983,38 @@ function episodesForShow(show) {
   return pool.filter(it => wanted.has(it.show));
 }
 
+/* ---------- show-name links (Stage 4 of docs/show-pages-plan.md) ----------
+
+   epRow/archivedRow/renderEpisode only ever have an episode's `show` string
+   (discover.json/itemIndex never carry show_id) — the reverse of
+   episodesForShow's join. Same two-step rule as Stage 1: match catalog.json's
+   `title` first, then TITLE_ALIASES for the one show (Lingthusiasm) whose
+   catalog title and discover `show` string disagree. Returns null (never
+   throws) when no show record matches, e.g. state.catalog not loaded yet or a
+   show discover.json carries that catalog.json doesn't — the caller falls
+   back to plain text, matching renderShow's own "absence is a real state, not
+   an error" rule. */
+function showIdForShowName(showName) {
+  if (!showName) return null;
+  const shows = state.catalog?.shows || [];
+  let s = shows.find(sh => sh.title === showName);
+  if (!s) {
+    const aliasedTitle = Object.keys(TITLE_ALIASES).find(k => TITLE_ALIASES[k] === showName);
+    if (aliasedTitle) s = shows.find(sh => sh.title === aliasedTitle);
+  }
+  return s ? s.show_id : null;
+}
+
+/* The show-name text as a link to its show page, or plain escaped text when
+   no show record joins (see showIdForShowName). Never returns an empty
+   string for a truthy showName, so callers can drop it straight into the
+   existing `${esc(item.show)}` slot without an extra guard. */
+function showNameLink(showName) {
+  const label = esc(showName || "");
+  const showId = showIdForShowName(showName);
+  return showId ? `<a class="show-link" href="#/show/${esc(showId)}">${label}</a>` : label;
+}
+
 function taxonomyChip(nodeId) {
   const node = (state.taxonomy?.nodes || []).find(n => n.id === nodeId);
   return `<span class="fy-chip">${esc(node?.label || nodeId)}</span>`;
@@ -1338,7 +1370,7 @@ function epRow(item, idx, ctx, nextIdx) {
     <span class="q-num ${idx === nextIdx ? "next" : ""}">${idx + 1}</span>
     <div class="info">
       <div class="t">${esc(item.title)}</div>
-      <div class="s">${esc(item.show)} · ${fmtDur(item.duration_min)}</div>
+      <div class="s">${showNameLink(item.show)} · ${fmtDur(item.duration_min)}</div>
     </div>
     ${inApp}${starBtn(item.id)}${upNextBtn(item.id)}${external}
   </div>`;
@@ -1382,7 +1414,7 @@ function archivedRow(item, idx, ctx) {
     <div class="info">
       <div class="t">${named ? esc(item.title) : "Part no longer in the catalogue"}</div>
       <div class="s">${named
-        ? `${esc(item.show)}${item.duration_min ? ` · ${fmtDur(item.duration_min)}` : ""} · not in 4a's catalogue right now`
+        ? `${showNameLink(item.show)}${item.duration_min ? ` · ${fmtDur(item.duration_min)}` : ""} · not in 4a's catalogue right now`
         : "Saved before 4a kept episode details"}</div>
     </div>
     ${named ? starBtn(item.id) : ""}${named ? upNextBtn(item.id) : ""}${link}
@@ -1490,7 +1522,7 @@ function renderEpisode(id) {
         <a class="back" href="#/">‹</a>
         <div>
           <h2 class="fp-s-title">${esc(item.title)}</h2>
-          <p class="fp-s-show">${esc(item.show || "")}${item.duration_min ? ` · ${fmtDur(item.duration_min)}` : ""}</p>
+          <p class="fp-s-show">${item.show ? showNameLink(item.show) : ""}${item.duration_min ? ` · ${fmtDur(item.duration_min)}` : ""}</p>
         </div>
       </div>
       ${item.artwork_url ? `<img class="ep-art" src="${esc(safeUrl(item.artwork_url))}" alt="">` : ""}
