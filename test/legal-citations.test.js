@@ -579,7 +579,7 @@ test("both documents' event-type totals are the numbers the code produces", () =
      rather than for a form. */
   const WORDS = {
     five: 5, six: 6, eleven: 11, twelve: 12, thirteen: 13, fourteen: 14,
-    seventeen: 17, eighteen: 18, nineteen: 19, twenty: 20,
+    fifteen: 15, seventeen: 17, eighteen: 18, nineteen: 19, twenty: 20,
   };
   const pp = read("docs/legal/privacy-policy.md");
   const ppClaim = /\*\*([A-Za-z]+) of the ([a-z]+) event types the app\s+records never leave the device\.\*\*/

@@ -7,6 +7,28 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
+### "Up Next" listening queue, Stage 1 (2026-08-31) — `t_f4da81f5/up-next-stage1`
+
+- **What:** `docs/listening-queue-plan.md` Stage 1, PR pending. New `cp_queue`
+  localStorage key (separate from `cp_playlists`), new `#/queue` route +
+  `renderQueue()`, a "+ Up Next" control on `epRow`/`archivedRow`/
+  `renderEpisode()`/`renderShow()`'s episode rows, drawer nav entry. No
+  auto-advance playback (deferred per the plan §4). Gated on PR #366
+  (show-pages Stage 1) actually merging — confirmed merged 2026-08-31
+  02:19 UTC before this branch was cut.
+- **Branch:** `t_f4da81f5/up-next-stage1` — PR only, never main.
+- **Owned/new files:** `test/up-next-queue.test.js`.
+- **Shared files it touches:** `app.js` (`queueIds`/`addToQueue`/
+  `removeFromQueue`/`moveQueueItem`/`queueRows`/`upNextBtn`/`renderQueue`/
+  `upNextRow`/`bindUpNext`/`bindUpNextReorder`, plus `epRow`/`archivedRow`/
+  `renderEpisode`/`renderShow`/`route()`), `styles.css` (`.up-next*`,
+  `.reorder` rules), `index.html` (drawer nav), `docs/DECISIONS.md`,
+  `docs/legal/privacy-policy.md` §1/§2, `docs/legal/data-safety.md`,
+  `test/data-deletion.test.js`, `test/legal-citations.test.js`,
+  `test/suite-integrity.test.js` (one floor).
+- **Explicitly out of scope:** auto-advance playback, multiple/named queues,
+  backend/account-scoped queue storage — all deferred per the plan.
+
 ### THE REPO HAS A PUBLISHED FORAY — `foray/publish-first` (2026-08-30)
 
 - **What:** `capital-types-1` is `status: "published"`. **This is the first time

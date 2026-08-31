@@ -248,6 +248,13 @@ const FLOORS = {
      and nothing else in the repo would notice. Every test names its mutation;
      see the suite header for the full list of what each test pins. */
   "test/show-page.test.js": 9,
+  /* "Up Next" listening queue, Stage 1 of docs/listening-queue-plan.md
+     (kanban card t_f4da81f5). Floored because the queue's own decay path
+     (an id ageing out of the pool, or the queue emptying) is exactly the
+     #276/show-pages shape: silently wrong is the failure mode, not a crash.
+     Every test names its mutation; see the suite header for the full list
+     of what each test pins. */
+  "test/up-next-queue.test.js": 13,
   /* #301's bound, over the REAL catalogue: improving a result the ranking keeps
      below the top one must never empty its query or drop a bar-clearer. One test,
      floored at one, because the alternative to a floor here is a suite that can be

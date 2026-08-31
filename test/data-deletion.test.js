@@ -401,7 +401,7 @@ async function mount({
 
 /* ================= 1. enumeration, not a list ================= */
 
-test("the shipped source names exactly the 21 cp_ key families the audit found", () => {
+test("the shipped source names exactly the 22 cp_ key families the audit found", () => {
   /* The count is pinned deliberately. 20-not-11 is the whole reason this control
      enumerates instead of carrying a list, and a new key is a privacy-policy
      change as much as a code change — see the next test.
@@ -409,11 +409,16 @@ test("the shipped source names exactly the 21 cp_ key families the audit found",
      20 -> 21 on 2026-08-18: `cp_diag`, the local field record (#264). It arrived
      the way this check is written to make sure a key arrives — the count failed,
      then the policy check failed, and both stayed red until
-     `docs/legal/privacy-policy.md` §1 documented the row. */
+     `docs/legal/privacy-policy.md` §1 documented the row.
+
+     21 -> 22 on 2026-08-31: `cp_queue`, the Up Next list
+     (docs/listening-queue-plan.md Stage 1, kanban card t_f4da81f5). Same
+     mechanism: this count failed first, then the "documented in the privacy
+     policy" test below failed, until privacy-policy.md §1 got the row. */
   const families = [...keyFamiliesInSource().keys()].sort();
   assert.strictEqual(
-    families.length, 21,
-    `expected 21 cp_ key families, found ${families.length}:\n${families.join("\n")}`
+    families.length, 22,
+    `expected 22 cp_ key families, found ${families.length}:\n${families.join("\n")}`
   );
   assert.ok(families.includes("cp_foray:"), "the patterned Foray resume key must be found as a family");
   assert.ok(families.includes("cp_pos:"), "the patterned episode-position key must be found as a family");

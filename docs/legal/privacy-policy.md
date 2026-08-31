@@ -91,6 +91,7 @@ The app also asks the browser to mark its storage as persistent
 | `cp_lastpick` | A snapshot of the last episode you picked | **No** (but marking it Done sends `finished` — §2) |
 | `cp_playlists` | Playlists you built, including the text you typed to build them. Since 2026-08-19 each part also keeps a copy of the episode's own details — its id, title, show name, length, Apple Podcasts ids and topic ids — so a playlist still lists what is in it after the episode leaves 4a's catalogue. It deliberately does **not** copy the audio URL or the artwork URL | **No** |
 | `cp_quests` | A legacy key, migrated once into `cp_playlists` | **No** |
+| `cp_queue` | Your Up Next list — an ordered array of episode ids you added from any episode row's "+ Up Next" control. Separate from `cp_playlists`; does not copy episode details, only the id | **No** |
 | `cp_recent_branches` | Which topic branches you recently came from | **No** |
 | `cp_foray:<id>` | Where you are inside a given foray, and which segment you were in | **No** |
 | `cp_pos:<id>` | Your position in seconds inside an individual episode | **No** |
@@ -114,7 +115,7 @@ request that is not to our own origin.
 ## 2. What leaves your device, exactly
 
 The app buffers events locally and periodically sends some of them to our
-database (Supabase — see §3). **Thirteen of the eighteen event types the app
+database (Supabase — see §3). **Fifteen of the twenty event types the app
 records never leave the device.** The buffer is trimmed to the most recent 5,000
 entries.
 
@@ -134,7 +135,8 @@ position; stored about every 15 seconds, recorded as an event at most once a
 minute per episode — `player/position-store.js:save()`), `foray_play`,
 `foray_restart`, `foray_progress_drift`, `source_opened`, `saved`'s counterpart
 `unsaved`, `playlist_built`, `playlist_removed`, `player_pref`, `family_mode`,
-`refreshed_all`, `storage_fault`.
+`refreshed_all`, `storage_fault`, `queued` and its counterpart `unqueued`
+(added to your Up Next list, or removed from it).
 
 **The `picked` row's two labels are narrower than they sound**, and we would
 rather say so than let the field names imply more collection than happens:
