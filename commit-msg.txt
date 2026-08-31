@@ -1,0 +1,14 @@
+Episode pages Stage 3: wire epRow/archivedRow/banner to episode pages
+
+- epRow() and archivedRow() episode titles now link to #/episode/:id,
+  on top of the existing play/star/up-next/external controls (unchanged).
+- The continue/resume banner is now an in-app link to #/episode/:id
+  instead of target="_blank" to playLink() -- the play-vs-external
+  decision now lives on the episode page itself (Stage 2).
+- Added .ep-title-link styling (matches .show-link's inherit-color pattern).
+- New test/episode-row-links.test.js (5 tests) pins the title links and
+  explicitly re-checks the PR #357 one-play-control-per-row invariant.
+- Floored the new suite in test/suite-integrity.test.js.
+
+node --check app.js, test/*.test.js (434/434), player/*.test.js
+(1003/1003) all green.
