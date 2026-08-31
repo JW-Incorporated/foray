@@ -1056,6 +1056,38 @@ function episodesForShow(show) {
   return pool.filter(it => wanted.has(it.show));
 }
 
+/* ---------- show-name links (Stage 4 of docs/show-pages-plan.md) ----------
+
+   epRow/archivedRow/renderEpisode only ever have an episode's `show` string
+   (discover.json/itemIndex never carry show_id) — the reverse of
+   episodesForShow's join. Same two-step rule as Stage 1: match catalog.json's
+   `title` first, then TITLE_ALIASES for the one show (Lingthusiasm) whose
+   catalog title and discover `show` string disagree. Returns null (never
+   throws) when no show record matches, e.g. state.catalog not loaded yet or a
+   show discover.json carries that catalog.json doesn't — the caller falls
+   back to plain text, matching renderShow's own "absence is a real state, not
+   an error" rule. */
+function showIdForShowName(showName) {
+  if (!showName) return null;
+  const shows = state.catalog?.shows || [];
+  let s = shows.find(sh => sh.title === showName);
+  if (!s) {
+    const aliasedTitle = Object.keys(TITLE_ALIASES).find(k => TITLE_ALIASES[k] === showName);
+    if (aliasedTitle) s = shows.find(sh => sh.title === aliasedTitle);
+  }
+  return s ? s.show_id : null;
+}
+
+/* The show-name text as a link to its show page, or plain escaped text when
+   no show record joins (see showIdForShowName). Never returns an empty
+   string for a truthy showName, so callers can drop it straight into the
+   existing `${esc(item.show)}` slot without an extra guard. */
+function showNameLink(showName) {
+  const label = esc(showName || "");
+  const showId = showIdForShowName(showName);
+  return showId ? `<a class="show-link" href="#/show/${esc(showId)}">${label}</a>` : label;
+}
+
 function taxonomyChip(nodeId) {
   const node = (state.taxonomy?.nodes || []).find(n => n.id === nodeId);
   return `<span class="fy-chip">${esc(node?.label || nodeId)}</span>`;
@@ -1298,12 +1330,101 @@ function miniCard(slot) {
   </a>`;
 }
 
+/* First-time explanation/consent screen (docs/ux/foray-m3-prototype.html +
+   docs/ux/README.md § "First-time vs. returning user"). Ports the INTENT of
+   the prototype's `V.signinNew` screen into the shipped stack — not a literal
+   port, same relationship PR #357's intro-popup fix already established.
+
+   This is deliberately a SEPARATE gate from showIntroPopupOnce()'s
+   cp_intro_dismissed flag. That flag alone is not a real "never used this
+   app" signal — it also flips true the moment this screen (or the old popup)
+   is dismissed, and a fresh device with a corrupted/partial localStorage
+   write could have history but no dismissed flag. The real signal is the
+   absence of any trace of prior use: no history, no saves, no playlists.
+   `cp_intro_dismissed` is intentionally NOT part of this check — this screen
+   must never reappear for an existing user just because that one flag is
+   unset (see the test for exactly that case). */
+function isGenuineFirstTimeUser() {
+  return (
+    pickedHistory().length === 0 &&
+    Object.keys(savedMap()).length === 0 &&
+    playlists().length === 0
+  );
+}
+
+/** Explanation + consent, not an interview. The M3 prototype's `finishOnb`/
+    `skipOnb` describe a preference INTERVIEW step that has no counterpart in
+    the real backend (the session doc has no such concept) — this screen does
+    not build one. It explains how interests are actually learned today
+    (weighted signals from what you play/save/skip, per `loadInterests()` /
+    `bump()` — never a fixed picklist), states what data leaves the device and
+    why (docs/legal/privacy-policy.md §§ "The short version", 2), and gives an
+    explicit skip path. Both actions land on today's home screen and set the
+    same cp_intro_dismissed flag showIntroPopupOnce() already uses, so this
+    screen and the older popup can never both show on the same visit and
+    neither shows again after. */
+function showFirstTimeExplainerOnce() {
+  if (!isGenuineFirstTimeUser()) return false;
+  if (lsGet("cp_intro_dismissed", false)) return false;
+
+  const wrap = ddEl("div", "fy-sheet");
+  wrap.id = "first-time-sheet";
+
+  const scrim = ddEl("div", "fy-scrim");
+  const panel = ddEl("div", "fy-panel");
+  panel.setAttribute("role", "dialog");
+  panel.setAttribute("aria-modal", "true");
+
+  const grab = ddEl("div", "fy-grab");
+  grab.setAttribute("aria-hidden", "true");
+
+  const title = ddEl("h3", null, "4a picks podcast episodes for you");
+  title.id = "first-time-sheet-title";
+  panel.setAttribute("aria-labelledby", "first-time-sheet-title");
+
+  const what = ddEl("p", "fy-sheet-sub",
+    "It groups real podcast episodes into short listening sessions built around topics you're into.");
+  const learn = ddEl("p", "fy-sheet-sub",
+    "There's no interview. 4a learns your interests from what you play, save and skip — every weight can change, nothing is locked in.");
+  const data = ddEl("p", "fy-sheet-sub",
+    "Your interests, history and saves stay on this device. A few anonymous events — what you picked, finished, saved and any feedback you leave — are sent to run the app. Nothing is sold or shared.");
+
+  const actions = ddEl("div", "fy-sheet-actions");
+  const skip = ddEl("button", "fy-sheet-cancel", "Skip for now");
+  skip.type = "button";
+  skip.id = "first-time-sheet-skip";
+  const go = ddEl("button", "fy-sheet-go", "Get started");
+  go.type = "button";
+  go.id = "first-time-sheet-go";
+  actions.append(skip, go);
+
+  panel.append(grab, title, what, learn, data, actions);
+  wrap.append(scrim, panel);
+  document.body.appendChild(wrap);
+  document.body.classList.add("fy-sheet-open");
+
+  const dismiss = () => {
+    lsSet("cp_intro_dismissed", true);
+    wrap.remove();
+    document.body.classList.remove("fy-sheet-open");
+  };
+  scrim.addEventListener("click", dismiss);
+  skip.addEventListener("click", dismiss);
+  go.addEventListener("click", dismiss);
+  return true;
+}
+
 /* First-run explainer (#128 follow-up). Used to be a permanent card at the top
    of the home screen — after the first read it was dead weight that pushed the
    four topic queues down the screen for good. It is now a one-time popup shown
    right after the very first app open (gated on the same cp_intro_dismissed
    flag, so an existing install that already dismissed the card never sees it
-   again) and nothing about it lives in the home layout any more. */
+   again) and nothing about it lives in the home layout any more.
+
+   Returning users, and first-time users who already saw
+   showFirstTimeExplainerOnce() this visit, are the only ones who reach this
+   function — renderHome() calls the two in sequence and short-circuits here
+   when the explainer just showed, so a first-ever visit never shows both. */
 function showIntroPopupOnce() {
   if (lsGet("cp_intro_dismissed", false)) return;
   const wrap = ddEl("div", "fy-sheet");
@@ -1344,6 +1465,52 @@ function showIntroPopupOnce() {
   ok.addEventListener("click", dismiss);
 }
 
+/* One result row per matched show -- deliberately not epRow/miniCard: a show
+   search result has no play control, duration, or star (it names a SHOW, not
+   a playable item), and links straight to the page Stage 1 already built. */
+function showResultRow(show) {
+  return `<a class="show-result" href="#/show/${encodeURIComponent(show.show_id)}">
+    ${show.artwork_url ? `<img class="show-result-art" src="${esc(safeUrl(show.artwork_url))}" alt="">` : `<span class="show-result-art show-result-art-blank"></span>`}
+    <span class="show-result-title">${esc(show.title)}</span>
+  </a>`;
+}
+
+/* ---------- Shows search (Stage 2, docs/show-pages-plan.md) ----------
+
+   A separate affordance from #pl-form's topic playlist builder, on purpose
+   (plan §2, kanban card scope): the two ask different questions ("what
+   should I listen to" vs "does this show exist here") and are never merged
+   into one result list or one search mode. Toggled by two tab buttons that
+   show/hide their own form+results block; only one is visible at a time. */
+function renderShowSearchResults(query) {
+  const note = $("#sh-note");
+  const results = $("#sh-results");
+  const shows = SearchEngine.searchShows(query, state.catalog?.shows || []);
+  if (!shows.length) {
+    results.innerHTML = "";
+    results.hidden = true;
+    note.textContent = `No shows match "${query}" in 4a's catalogue.`;
+    note.hidden = false;
+    return;
+  }
+  note.hidden = true;
+  results.innerHTML = shows.map(showResultRow).join("");
+  results.hidden = false;
+}
+
+function setSearchTab(mode) {
+  const topics = mode === "topics";
+  $("#tab-topics").classList.toggle("on", topics);
+  $("#tab-topics").setAttribute("aria-pressed", String(topics));
+  $("#tab-shows").classList.toggle("on", !topics);
+  $("#tab-shows").setAttribute("aria-pressed", String(!topics));
+  $("#pl-form").hidden = !topics;
+  $("#pl-note").hidden = !topics || !$("#pl-note").textContent;
+  $("#sh-form").hidden = topics;
+  $("#sh-note").hidden = topics || !$("#sh-note").textContent;
+  $("#sh-results").hidden = topics || !$("#sh-results").innerHTML;
+}
+
 function renderHome() {
   document.body.className = "view-home";
   if (!state.cardSlots.length) buildCards();
@@ -1354,14 +1521,24 @@ function renderHome() {
       ${jumpBackInHtml(resumeRows)}
       ${forayHomeHtml()}
       <div class="cards4">${state.cardSlots.map(miniCard).join("")}</div>
+      <div class="search-tabs" role="tablist">
+        <button type="button" id="tab-topics" class="search-tab on" role="tab" aria-pressed="true">Playlists</button>
+        <button type="button" id="tab-shows" class="search-tab" role="tab" aria-pressed="false">Shows</button>
+      </div>
       <form id="pl-form" autocomplete="off">
         <input id="pl-input" type="text" maxlength="120" placeholder="build me a playlist…">
         <button type="submit">Go</button>
       </form>
       <p id="pl-note" class="note" hidden></p>
+      <form id="sh-form" autocomplete="off" hidden>
+        <input id="sh-input" type="text" maxlength="120" placeholder="search shows by name…">
+        <button type="submit">Go</button>
+      </form>
+      <p id="sh-note" class="note" hidden></p>
+      <div id="sh-results" class="show-results" hidden></div>
     </div>`;
 
-  showIntroPopupOnce();
+  if (!showFirstTimeExplainerOnce()) showIntroPopupOnce();
 
   const done = $("#banner-done");
   if (done) {
@@ -1377,6 +1554,20 @@ function renderHome() {
       $("#banner-slot").innerHTML = "";
     });
   }
+
+  $("#tab-topics").addEventListener("click", () => setSearchTab("topics"));
+  $("#tab-shows").addEventListener("click", () => setSearchTab("shows"));
+  setSearchTab("topics"); // paints the initial hidden/visible split in JS,
+  // not just via the template's static `hidden` attribute, so it holds
+  // even where the template string's markup isn't reparsed into live DOM
+  // state (matches how #pl-note/#sh-note's `hidden` toggling already works).
+
+  $("#sh-form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const query = $("#sh-input").value.trim();
+    if (!query) return;
+    renderShowSearchResults(query);
+  });
 
   $("#pl-form").addEventListener("submit", (e) => {
     e.preventDefault();
@@ -1414,12 +1605,12 @@ function renderHome() {
 function epRow(item, idx, ctx, nextIdx) {
   const inApp = playBtn(item);
   const external = inApp ? "" : `<a class="go" href="${esc(safeUrl(playLink(item)))}" target="_blank" rel="noopener"
-       data-ev="picked" data-ep="${item.id}" data-ctx="${ctx}">Play</a>`;
+       data-ev="picked" data-ep="${item.id}" data-ctx="${ctx}">Listen in your podcast app ↗</a>`;
   return `<div class="ep-row">
     <span class="q-num ${idx === nextIdx ? "next" : ""}">${idx + 1}</span>
     <div class="info">
       <div class="t">${esc(item.title)}</div>
-      <div class="s">${esc(item.show)} · ${fmtDur(item.duration_min)}</div>
+      <div class="s">${showNameLink(item.show)} · ${fmtDur(item.duration_min)}</div>
     </div>
     ${inApp}${starBtn(item.id)}${upNextBtn(item.id)}${external}
   </div>`;
@@ -1456,14 +1647,14 @@ function archivedRow(item, idx, ctx) {
   const named = !!item.title;
   const link = item.apple_collection_id
     ? `<a class="go" href="${esc(safeUrl(playLink(item)))}" target="_blank" rel="noopener"
-         data-ev="picked" data-ep="${esc(item.id)}" data-ctx="${esc(ctx)}">Open</a>`
+         data-ev="picked" data-ep="${esc(item.id)}" data-ctx="${esc(ctx)}">Listen in your podcast app ↗</a>`
     : "";
   return `<div class="ep-row gone">
     <span class="q-num">${idx + 1}</span>
     <div class="info">
       <div class="t">${named ? esc(item.title) : "Part no longer in the catalogue"}</div>
       <div class="s">${named
-        ? `${esc(item.show)}${item.duration_min ? ` · ${fmtDur(item.duration_min)}` : ""} · not in 4a's catalogue right now`
+        ? `${showNameLink(item.show)}${item.duration_min ? ` · ${fmtDur(item.duration_min)}` : ""} · not in 4a's catalogue right now`
         : "Saved before 4a kept episode details"}</div>
     </div>
     ${named ? starBtn(item.id) : ""}${named ? upNextBtn(item.id) : ""}${link}
@@ -1571,12 +1762,13 @@ function renderEpisode(id) {
         <a class="back" href="#/">‹</a>
         <div>
           <h2 class="fp-s-title">${esc(item.title)}</h2>
-          <p class="fp-s-show">${esc(item.show || "")}${item.duration_min ? ` · ${fmtDur(item.duration_min)}` : ""}</p>
+          <p class="fp-s-show">${item.show ? showNameLink(item.show) : ""}${item.duration_min ? ` · ${fmtDur(item.duration_min)}` : ""}</p>
         </div>
       </div>
       ${item.artwork_url ? `<img class="ep-art" src="${esc(safeUrl(item.artwork_url))}" alt="">` : ""}
       ${item.hook ? `<p class="fp-s-why">${esc(item.hook)}</p>` : ""}
-      <div class="ep-actions">${playBtn(item)}${starBtn(item.id)}${upNextBtn(item.id)}</div>
+      <div class="ep-actions">${item.audio_url ? playBtn(item) : `<a class="go" href="${esc(safeUrl(playLink(item)))}" target="_blank" rel="noopener"
+        data-ev="picked" data-ep="${esc(item.id)}" data-ctx="episode-page">Listen in your podcast app ↗</a>`}${starBtn(item.id)}${upNextBtn(item.id)}</div>
     </div>`;
   bindStars($("#view"));
   bindUpNext($("#view"));

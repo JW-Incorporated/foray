@@ -163,9 +163,11 @@ test("renderEpisode renders the same for a cp_saved-only (aged-out) item", () =>
   assertFullEpisodeRender(app, app._view.innerHTML);
 });
 
-test("renderEpisode renders no play button when audio_url is absent (Stage 1 scope, not Stage 2's fallback link)", () => {
+test("renderEpisode renders the Stage 2 fallback link, not a play button, when audio_url is absent", () => {
   // Mutation: change playBtn(item) to unconditionally return a button. This
   // assertion then fails because a play-btn shows up for an unplayable item.
+  // Mutation 2: drop the `item.audio_url ? playBtn(item) : ...` fallback in
+  // renderEpisode. The page then renders neither control at all for ep-5.
   const app = loadApp();
   app._state(`state.itemIndex["ep-5"] = {
     id: "ep-5", title: "No Audio Here", show: "Great Show", duration_min: 10,
@@ -173,5 +175,6 @@ test("renderEpisode renders no play button when audio_url is absent (Stage 1 sco
   app.renderEpisode("ep-5");
   const html = app._view.innerHTML;
   assert.doesNotMatch(html, /class="play-btn"/, "no play button without audio_url");
+  assert.match(html, /Listen in your podcast app ↗/, "an honest external fallback replaces the ▶ button");
   assert.match(html, /class="star /, "star toggle still renders");
 });

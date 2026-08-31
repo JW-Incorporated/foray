@@ -164,7 +164,8 @@ Two things worth calling out plainly, because a generic policy would hide them:
   you marked something as too far left or right is a signal about content you
   reacted to, it is transmitted, and you should know that before you use it.
 
-**Nothing you type into the playlist box is transmitted.** That search runs
+**Nothing you type into the playlist box or the Shows search box is
+transmitted.** Neither search is logged as an event at all, and both run
 entirely on your device against files already downloaded
 (`search-engine.js`); playlist events are local-only.
 

@@ -89,7 +89,8 @@ function makeEl(tag) {
 const PAGE_IDS = [
   "view", "drawer", "drawer-overlay", "drawer-playlists", "family-toggle",
   "player-toggle", "autoadvance-toggle", "menu-btn", "refresh-btn", "banner-slot", "pl-form",
-  "pl-input", "pl-note",
+  "pl-input", "pl-note", "tab-topics", "tab-shows", "sh-form", "sh-input",
+  "sh-note", "sh-results",
 ];
 
 /**
@@ -632,7 +633,7 @@ test("an archived part offers no in-app play button — the audio URL was delibe
   assert.strictEqual(plays, 1, "only the live part may offer in-app playback");
   assert.ok(html.includes(`data-play="show-1--episode-1"`), "and it must be the live one");
   assert.ok(!html.includes(`data-play="show-2--episode-2"`));
-  assert.ok(/Open<\/a>/.test(html), "the archived part must still be openable elsewhere");
+  assert.ok(/Listen in your podcast app ↗<\/a>/.test(html), "the archived part must still be openable elsewhere");
 });
 
 test("a part with no snapshot behind it still holds its place, and links nowhere rather than to idundefined", () => {

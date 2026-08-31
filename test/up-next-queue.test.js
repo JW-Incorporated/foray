@@ -60,7 +60,8 @@ function makeEl(tag) {
 const PAGE_IDS = [
   "view", "drawer", "drawer-overlay", "drawer-playlists", "family-toggle",
   "player-toggle", "autoadvance-toggle", "menu-btn", "refresh-btn", "banner-slot", "pl-form",
-  "pl-input", "pl-note",
+  "pl-input", "pl-note", "tab-topics", "tab-shows", "sh-form", "sh-input",
+  "sh-note", "sh-results",
 ];
 
 function mount({ seed = {}, boot = false } = {}) {

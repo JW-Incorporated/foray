@@ -1213,6 +1213,37 @@ function prettyConceptLabel(id) {
   return id.split(/[-_]/).map(w => w[0].toUpperCase() + w.slice(1)).join(" ");
 }
 
+/* ---------- show search (Stage 2, docs/show-pages-plan.md) ----------
+
+   A SEPARATE mode from interpretQuery/scoreMatch above, on purpose (plan §2,
+   kanban card scope). Topic search answers "what should I listen to" by
+   scoring episode-level relevance against a semantic index; this answers
+   "does this show exist here" by plain substring matching against
+   catalog(-client).json's `title` field -- there is no `host` field today
+   (see the plan §2 and the card body) and this must not invent one, so it
+   is not wired to fall back on anything else. No STOPWORDS/ALIASES/df
+   machinery: a show's name is not a topic query, and running it through the
+   topic tokenizer would strip words like "The" or "On" out of an actual
+   show title ("The Daily", "On Being") that a listener typed on purpose. */
+function searchShows(query, shows) {
+  const q = String(query || "").trim().toLowerCase();
+  if (!q) return [];
+  const scored = [];
+  for (const show of shows || []) {
+    const title = String(show?.title || "");
+    const idx = title.toLowerCase().indexOf(q);
+    if (idx === -1) continue;
+    /* Ranked, not just filtered: an exact title match should lead, then a
+       match at the start of the title, then a match anywhere inside it.
+       Ties within a rank keep the catalogue's own title order (stable
+       sort), so results are deterministic for a fixed catalog snapshot. */
+    const rank = title.toLowerCase() === q ? 0 : idx === 0 ? 1 : 2;
+    scored.push({ show, rank, idx });
+  }
+  scored.sort((a, b) => a.rank - b.rank || a.idx - b.idx);
+  return scored.map(s => s.show);
+}
+
 const SearchEngine = {
   STOPWORDS, GENERIC_WORDS, ALIASES, BROAD_DF_THRESHOLD,
   TAG_DF_TOO_BROAD, TAG_DF_COMMON, TAG_DF_RARE,
@@ -1221,6 +1252,7 @@ const SearchEngine = {
   interpretQuery, passesFilters, scoreMatch, searchWithRelaxation, classifyResults, diversify,
   strongPrefix,
   suggestAdjacentTopics, prettyConceptLabel,
+  searchShows,
 };
 
 if (typeof module !== "undefined" && module.exports) {
