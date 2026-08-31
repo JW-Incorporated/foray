@@ -904,8 +904,13 @@ function moveQueueItem(id, dir) {
    `cp_saved` snapshot for one that has aged out but was starred, then a bare
    id for one that has neither — still a real row (archivedRow already
    renders an id-only part honestly), not a silently dropped one. */
-function queueRows() {
-  return queueIds().map(id => {
+/* Shared by queueRows() and the Library screen's Saved/History sections
+   (`docs/ux/foray-mockup.jsx`'s LibraryScreen, kanban card t_a1e7a69c) — all
+   three are "an id list plus this same three-way resolution", and having one
+   definition means a fix to the liveness rule (see the comment above
+   resolveParts, #276) cannot land in one caller and not the others. */
+function rowsForIds(ids) {
+  return ids.map(id => {
     const live = state.poolIds.has(id) ? state.itemIndex[id] : null;
     if (live) return { item: live, id, state: "live" };
     const saved = savedMap()[id];
@@ -913,6 +918,8 @@ function queueRows() {
     return { item: { id }, id, state: "unnamed" };
   });
 }
+
+function queueRows() { return rowsForIds(queueIds()); }
 
 /* One row per saved part, in saved order, each tagged with what the live pool
    can still do for it. `resolveParts(p).length` is the number BOTH views print,
@@ -1604,6 +1611,117 @@ function bindUpNextReorder(scope) {
       renderQueue();
     });
   });
+}
+
+/* ---------- Library (#/library, docs/ux/foray-mockup.jsx's LibraryScreen) ----------
+
+   Card t_a1e7a69c. One AGGREGATE view over four things that already live in
+   localStorage and already have their own render paths — this page adds no
+   new per-item UI, only a new place that lists what is already there:
+
+     Saved     cp_saved   via savedMap()     — reuses epRow/archivedRow
+     History   cp_history via pickedHistory()— reuses epRow/archivedRow
+     Playlists cp_playlists via playlists()  — reuses the same summary row
+                                                renderPlaylists() prints, capped
+     Up Next   cp_queue   via queueIds()     — same treatment as playlists,
+                                                for the reason below
+
+   Playlists and Up Next are LINKED, not embedded (Joey's call is made here,
+   for the PR to explain): both already have a real page (#/playlists,
+   #/queue) with its own controls (build/remove, reorder/dequeue) that this
+   aggregate view has no room for at mobile width — Library shows a short
+   summary (title + count, capped at 5) that opens straight into the real
+   page, the same "browse here, act there" split the mockup itself draws
+   between LibraryScreen and the screens it links out to (`playForay`/
+   `openShow` in the mockup, `#/playlist/:id` and `#/show/:id` here). Saved
+   and History get the FULL row treatment (epRow/archivedRow) because
+   Library IS their only page — there is no separate #/saved or #/history to
+   defer to.
+
+   Every link on this page is in-app: episode rows resolve through
+   epRow/archivedRow (which already only ever link within 4a or, for a part
+   with no in-app audio, out to the episode's own listening app — the same
+   fallback every other row in the app already uses, never a new one), and
+   the Playlists/Up Next summaries link to their own in-app pages. Nothing
+   here introduces a new external link-out.
+
+   History is newest-first (`pickedHistory()` appends, so the raw array is
+   oldest-first) and capped at the same 20 rows for the same reason renderHome
+   caps its rails — a scroll-forever list is not what "recently listened"
+   means. Saved has no cap: an unbounded star list is the one honest reading
+   of "everything you saved". */
+/* This one's href is `#${...}` rather than a bare `${...}` — the leading `#`
+   is a literal prefix, not part of the interpolation, so it reads the same
+   as every other in-app hash link (`#/playlist/` + esc(id), etc.) rather
+   than a URL built entirely from a variable, which is exactly the shape
+   test/app-security.test.js's static safeUrl-guard checks for
+   (CLAUDE.md § Conventions: "all href/src through safeUrl()" — that rule is
+   for links that can carry an attacker-controlled scheme; an in-app hash
+   route built from this module's own constant strings and `playlists()`/
+   `queueIds()` ids, which esc() already escapes, is not one). */
+function libSummaryRow(hashPath, title, sub) {
+  return `<a class="pl-row" href="#${esc(hashPath)}">
+    <div class="info">
+      <div class="t">${esc(title)}</div>
+      <div class="s">${esc(sub)}</div>
+    </div>
+    <span class="chev">›</span>
+  </a>`;
+}
+
+function libSection(title, bodyHtml) {
+  return `<div class="lib-section">
+    <div class="lib-section-head">${esc(title)}</div>
+    ${bodyHtml}
+  </div>`;
+}
+
+function renderLibrary() {
+  document.body.className = "view-page";
+  fullPool(); // populate itemIndex/poolIds so saved/history rows can play in-app
+
+  const savedRows = rowsForIds(Object.keys(savedMap()));
+  const historyIds = pickedHistory().slice().reverse().slice(0, 20);
+  const historyRows = rowsForIds(historyIds);
+  const allPlaylists = playlists();
+  const queued = queueIds();
+
+  const rowHtml = (r, i, ctx) => r.state === "live" ? epRow(r.item, i, ctx, -1) : archivedRow(r.item, i, ctx);
+
+  const savedHtml = savedRows.length
+    ? savedRows.map((r, i) => rowHtml(r, i, "library-saved")).join("")
+    : `<p class="note">Nothing saved yet — tap ☆ on an episode to keep it here.</p>`;
+
+  const historyHtml = historyRows.length
+    ? historyRows.map((r, i) => rowHtml(r, i, "library-history")).join("")
+    : `<p class="note">No listening history yet — episodes you play show up here.</p>`;
+
+  const playlistsHtml = allPlaylists.length
+    ? allPlaylists.slice(0, 5).map(p =>
+        libSummaryRow(`/playlist/${p.id}`, p.title, `${resolveParts(p).length} parts`)).join("")
+      + (allPlaylists.length > 5 ? `<a class="lib-more" href="#/playlists">All ${allPlaylists.length} playlists ›</a>` : "")
+    : `<p class="note">No playlists yet — build one from the home screen.</p>`;
+
+  const queueHtml = queued.length
+    ? libSummaryRow("/queue", "Up Next", `${queued.length} queued`)
+    : `<p class="note">Nothing in Up Next yet — add an episode from any row's "+ Up Next" button.</p>`;
+
+  $("#view").innerHTML = `
+    <div class="page">
+      <div class="page-head">
+        <a class="back" href="#/">‹</a>
+        <div><h2>Library</h2><p class="sub">saved, history, playlists &amp; Up Next</p></div>
+      </div>
+      ${libSection("Saved", savedHtml)}
+      ${libSection("Playlists", playlistsHtml)}
+      ${libSection("Up Next", queueHtml)}
+      ${libSection("History", historyHtml)}
+    </div>`;
+
+  bindPickLogging($("#view"));
+  bindStars($("#view"));
+  bindUpNext($("#view"));
+  bindPlay($("#view"));
 }
 
 function renderPlaylists() {
@@ -3807,6 +3925,7 @@ function route() {
   else if ((m = /^#\/show\/(.+)$/.exec(h))) renderShow(decodeURIComponent(m[1]));
   else if (h === "#/playlists") renderPlaylists();
   else if (h === "#/queue") renderQueue();
+  else if (h === "#/library") renderLibrary();
   else renderHome();
 }
 

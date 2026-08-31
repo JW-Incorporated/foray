@@ -56,6 +56,7 @@ can tell "not built yet" from "built, differently".
 | `Scrubber` over the whole Foray (`seek()`, jsx ~1329) | the segment strip IS the scrubber: a click is a position in the hour, cold or playing. It already looked like one and behaved like 32 jump targets | `app.js` (`stripElapsedAt`), `ForayPlayer.foraySeek` |
 | `SegmentStrip`'s partial fill on the current bar (`cur.into / seg.dur`, jsx ~229) | the live bar fills left to right; bars behind are full, ahead are empty | `app.js` (`paintSegFill`), `.fy-seg-fill` |
 | `ShowScreen` | NOT built. Its honest subset is: a "Where this came from" credit block per Foray — shows, episodes, clip counts, and a link out | `player/foray-sources.js` |
+| `LibraryScreen` | Built as one AGGREGATE view (no new per-item UI): Saved and History render as full rows (`epRow`/`archivedRow`) since Library is their only page; Playlists and Up Next render as short linked summaries (title/count, capped at 5) into their own existing pages (`#/playlists`, `#/queue`), since those already own their controls | `app.js` (`#/library`, `renderLibrary()`) |
 | `CreateScreen`, narrator bridges, generated cover art | NOT built, deliberately. See the scope notes above and in `STATE.md`. | — |
 | `PlayerBridge` (m3 prototype) — the handoff screen between two sources | NOT built. What exists instead is the seam itself: 2.0 s of silence at every unbridged transition, which is the beat the bridge screen was drawn around | `player/seam-gap.js` |
 
