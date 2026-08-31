@@ -180,6 +180,7 @@ const FLOORS = {
   "test/app-name.test.js": 21,
   "test/app-security.test.js": 26,
   "test/episode-page.test.js": 8,
+  "test/first-time-onboarding.test.js": 10,
   /* "Delete my data" (#42). Zero slack, like media-session above and for the same
      reason: what this suite guards is a PROMISE — both tiers cleared, the server
      rows really deleted, no success message over a failure, and a confirmation a

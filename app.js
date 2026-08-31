@@ -1217,12 +1217,101 @@ function miniCard(slot) {
   </a>`;
 }
 
+/* First-time explanation/consent screen (docs/ux/foray-m3-prototype.html +
+   docs/ux/README.md § "First-time vs. returning user"). Ports the INTENT of
+   the prototype's `V.signinNew` screen into the shipped stack — not a literal
+   port, same relationship PR #357's intro-popup fix already established.
+
+   This is deliberately a SEPARATE gate from showIntroPopupOnce()'s
+   cp_intro_dismissed flag. That flag alone is not a real "never used this
+   app" signal — it also flips true the moment this screen (or the old popup)
+   is dismissed, and a fresh device with a corrupted/partial localStorage
+   write could have history but no dismissed flag. The real signal is the
+   absence of any trace of prior use: no history, no saves, no playlists.
+   `cp_intro_dismissed` is intentionally NOT part of this check — this screen
+   must never reappear for an existing user just because that one flag is
+   unset (see the test for exactly that case). */
+function isGenuineFirstTimeUser() {
+  return (
+    pickedHistory().length === 0 &&
+    Object.keys(savedMap()).length === 0 &&
+    playlists().length === 0
+  );
+}
+
+/** Explanation + consent, not an interview. The M3 prototype's `finishOnb`/
+    `skipOnb` describe a preference INTERVIEW step that has no counterpart in
+    the real backend (the session doc has no such concept) — this screen does
+    not build one. It explains how interests are actually learned today
+    (weighted signals from what you play/save/skip, per `loadInterests()` /
+    `bump()` — never a fixed picklist), states what data leaves the device and
+    why (docs/legal/privacy-policy.md §§ "The short version", 2), and gives an
+    explicit skip path. Both actions land on today's home screen and set the
+    same cp_intro_dismissed flag showIntroPopupOnce() already uses, so this
+    screen and the older popup can never both show on the same visit and
+    neither shows again after. */
+function showFirstTimeExplainerOnce() {
+  if (!isGenuineFirstTimeUser()) return false;
+  if (lsGet("cp_intro_dismissed", false)) return false;
+
+  const wrap = ddEl("div", "fy-sheet");
+  wrap.id = "first-time-sheet";
+
+  const scrim = ddEl("div", "fy-scrim");
+  const panel = ddEl("div", "fy-panel");
+  panel.setAttribute("role", "dialog");
+  panel.setAttribute("aria-modal", "true");
+
+  const grab = ddEl("div", "fy-grab");
+  grab.setAttribute("aria-hidden", "true");
+
+  const title = ddEl("h3", null, "4a picks podcast episodes for you");
+  title.id = "first-time-sheet-title";
+  panel.setAttribute("aria-labelledby", "first-time-sheet-title");
+
+  const what = ddEl("p", "fy-sheet-sub",
+    "It groups real podcast episodes into short listening sessions built around topics you're into.");
+  const learn = ddEl("p", "fy-sheet-sub",
+    "There's no interview. 4a learns your interests from what you play, save and skip — every weight can change, nothing is locked in.");
+  const data = ddEl("p", "fy-sheet-sub",
+    "Your interests, history and saves stay on this device. A few anonymous events — what you picked, finished, saved and any feedback you leave — are sent to run the app. Nothing is sold or shared.");
+
+  const actions = ddEl("div", "fy-sheet-actions");
+  const skip = ddEl("button", "fy-sheet-cancel", "Skip for now");
+  skip.type = "button";
+  skip.id = "first-time-sheet-skip";
+  const go = ddEl("button", "fy-sheet-go", "Get started");
+  go.type = "button";
+  go.id = "first-time-sheet-go";
+  actions.append(skip, go);
+
+  panel.append(grab, title, what, learn, data, actions);
+  wrap.append(scrim, panel);
+  document.body.appendChild(wrap);
+  document.body.classList.add("fy-sheet-open");
+
+  const dismiss = () => {
+    lsSet("cp_intro_dismissed", true);
+    wrap.remove();
+    document.body.classList.remove("fy-sheet-open");
+  };
+  scrim.addEventListener("click", dismiss);
+  skip.addEventListener("click", dismiss);
+  go.addEventListener("click", dismiss);
+  return true;
+}
+
 /* First-run explainer (#128 follow-up). Used to be a permanent card at the top
    of the home screen — after the first read it was dead weight that pushed the
    four topic queues down the screen for good. It is now a one-time popup shown
    right after the very first app open (gated on the same cp_intro_dismissed
    flag, so an existing install that already dismissed the card never sees it
-   again) and nothing about it lives in the home layout any more. */
+   again) and nothing about it lives in the home layout any more.
+
+   Returning users, and first-time users who already saw
+   showFirstTimeExplainerOnce() this visit, are the only ones who reach this
+   function — renderHome() calls the two in sequence and short-circuits here
+   when the explainer just showed, so a first-ever visit never shows both. */
 function showIntroPopupOnce() {
   if (lsGet("cp_intro_dismissed", false)) return;
   const wrap = ddEl("div", "fy-sheet");
@@ -1280,7 +1369,7 @@ function renderHome() {
       <p id="pl-note" class="note" hidden></p>
     </div>`;
 
-  showIntroPopupOnce();
+  if (!showFirstTimeExplainerOnce()) showIntroPopupOnce();
 
   const done = $("#banner-done");
   if (done) {
