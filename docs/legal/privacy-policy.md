@@ -98,9 +98,10 @@ The app also asks the browser to mark its storage as persistent
 | `cp_rate` | Your playback speed | **No** |
 | `cp_player` | Which external podcast app you prefer to open episodes in | **No** |
 | `cp_family` | Family mode on/off — a local content filter that hides explicit-rated episodes | **No** |
+| `cp_autoadvance` | Up Next auto-advance on/off — a local per-device preference for whether finishing an episode played from your Up Next list starts the next queued item. Off by default | **No** (but see `autoadvance_pref` in §2) |
 | `cp_intro_dismissed` | Whether you dismissed the intro card | **No** |
 | `cp_foray_feedback` | Your per-segment thumbs: direction, reason codes, any note you typed, timestamp | **Yes, via `thumbs`** — see §2 |
-| `cp_events` | A rolling buffer of the last 5,000 events | **Partly** — 5 of the 18 event types are sent; see §2 |
+| `cp_events` | A rolling buffer of the last 5,000 events | **Partly** — 5 of the 19 event types are sent; see §2 |
 | `cp_synced_ts` | A bookmark recording which events have already been sent | **No** |
 | `cp_profile_id` | A random local id (e.g. `p-a1b2c3d4...`) generated on this device | **No** — it is stamped on local events but is **not** included in anything sent |
 | `cp_sb_session` | The access and refresh token for your anonymous account, and its user id | It **is** your credential for our database — see §3 |
@@ -115,7 +116,7 @@ request that is not to our own origin.
 ## 2. What leaves your device, exactly
 
 The app buffers events locally and periodically sends some of them to our
-database (Supabase — see §3). **Fifteen of the twenty event types the app
+database (Supabase — see §3). **Sixteen of the twenty-one event types the app
 records never leave the device.** The buffer is trimmed to the most recent 5,000
 entries.
 
@@ -135,7 +136,8 @@ position; stored about every 15 seconds, recorded as an event at most once a
 minute per episode — `player/position-store.js:save()`), `foray_play`,
 `foray_restart`, `foray_progress_drift`, `source_opened`, `saved`'s counterpart
 `unsaved`, `playlist_built`, `playlist_removed`, `player_pref`, `family_mode`,
-`refreshed_all`, `storage_fault`, `queued` and its counterpart `unqueued`
+`autoadvance_pref` (toggling Up Next auto-advance on or off), `refreshed_all`,
+`storage_fault`, `queued` and its counterpart `unqueued`
 (added to your Up Next list, or removed from it).
 
 **The `picked` row's two labels are narrower than they sound**, and we would

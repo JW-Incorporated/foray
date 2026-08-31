@@ -264,6 +264,14 @@ const FLOORS = {
      Every test names its mutation; see the suite header for the full list
      of what each test pins. */
   "test/up-next-queue.test.js": 13,
+  /* "Up Next" auto-advance (docs/listening-queue-plan.md §8 addendum, kanban
+     card t_b9880844). Floored for the same reason as up-next-queue.test.js
+     above: the auto-advance decision path (off-by-default, queue-origin
+     scoping, end-of-queue stop, mid-playback removal) is exactly the shape
+     of silent-wrong-behavior this repo's floors exist to catch, not a crash
+     path any other suite would notice going missing. Every test names its
+     mutation; see the suite header for the full list of what each pins. */
+  "test/up-next-autoadvance.test.js": 6,
   /* #301's bound, over the REAL catalogue: improving a result the ranking keeps
      below the top one must never empty its query or drop a bar-clearer. One test,
      floored at one, because the alternative to a floor here is a suite that can be

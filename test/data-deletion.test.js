@@ -302,7 +302,7 @@ async function mount({
 
   const dom = { body: new El("body") };
   for (const id of ["view", "drawer", "drawer-overlay", "drawer-playlists",
-    "family-toggle", "player-toggle", "menu-btn", "refresh-btn",
+    "family-toggle", "player-toggle", "autoadvance-toggle", "menu-btn", "refresh-btn",
     // The home screen's own vocabulary, needed only under `boot`.
     "banner-slot", "pl-form", "pl-input", "pl-note",
     "tab-topics", "tab-shows", "sh-form", "sh-input", "sh-note", "sh-results",
@@ -415,11 +415,15 @@ test("the shipped source names exactly the 22 cp_ key families the audit found",
      21 -> 22 on 2026-08-31: `cp_queue`, the Up Next list
      (docs/listening-queue-plan.md Stage 1, kanban card t_f4da81f5). Same
      mechanism: this count failed first, then the "documented in the privacy
-     policy" test below failed, until privacy-policy.md §1 got the row. */
+     policy" test below failed, until privacy-policy.md §1 got the row.
+
+     22 -> 23 on 2026-08-31: `cp_autoadvance`, the Up Next auto-advance
+     per-device toggle (docs/listening-queue-plan.md §8 addendum, kanban card
+     t_b9880844). Same mechanism again. */
   const families = [...keyFamiliesInSource().keys()].sort();
   assert.strictEqual(
-    families.length, 22,
-    `expected 22 cp_ key families, found ${families.length}:\n${families.join("\n")}`
+    families.length, 23,
+    `expected 23 cp_ key families, found ${families.length}:\n${families.join("\n")}`
   );
   assert.ok(families.includes("cp_foray:"), "the patterned Foray resume key must be found as a family");
   assert.ok(families.includes("cp_pos:"), "the patterned episode-position key must be found as a family");

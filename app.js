@@ -914,6 +914,79 @@ function queueRows() {
   });
 }
 
+/* ---------- Up Next auto-advance (docs/listening-queue-plan.md §4 addendum,
+   kanban card t_b9880844) ----------
+
+   CLAUDE.md product principle #1 explicitly bans "autoplay chains" as a dark
+   pattern. This feature is a genuine, deliberate exception carved out of that
+   rule for exactly one purpose — continuing a list the LISTENER built and
+   ordered by hand — and it is scoped as narrowly as it can be to stay
+   distinguishable from the pattern the principle bans:
+
+     - DEFAULT OFF. `cp_autoadvance` is read with a `false` fallback, same as
+       `cp_family`. A fresh install and a fresh page reload never runs an
+       autoplay chain nobody asked for.
+     - OPT-IN, ONE PER-DEVICE TOGGLE, no per-episode variant. See the drawer
+       control (`autoadvance-toggle`), same pattern as `family-toggle`/
+       `player-toggle`.
+     - ONLY WHEN THE FINISHED EPISODE WAS PLAYED FROM #/queue. Starting an
+       unrelated episode elsewhere in the app must never silently hijack it
+       into "now playing the queue" — see `queuePlaybackOrigin` below. This is
+       the addendum's answer to plan §4 Q1.
+     - THE QUEUE NEVER LOOPS. Reaching the end stops cleanly and says so
+       (`bannerHtml`-style toast is out of scope for Stage 1; the queue page's
+       own count already reflects an empty list). No pulling in more content
+       to keep going — that would be the "infinite scroll" half of principle
+       #1, not just the "autoplay chains" half. */
+function autoAdvanceOn() { return lsGet("cp_autoadvance", false); }
+
+/* Set the instant a queue-originated play is dispatched (bindPlay below,
+   guarded by `origin === "queue"`), read the instant an episode ends
+   (advanceQueueOnEnded). Cleared whenever ANY play starts that is NOT from
+   the queue, so playing an unrelated episode mid-list can never be read as
+   "still playing the queue" by a slow finish event that arrives after. One
+   flat field is enough — Stage 1 has exactly one player and one Up Next
+   list, never two concurrent playback sessions to disambiguate between. */
+function setQueuePlaybackOrigin(id) { state.queuePlaybackOrigin = id || null; }
+function clearQueuePlaybackOrigin() { state.queuePlaybackOrigin = null; }
+function isPlayingFromQueue(id) { return state.queuePlaybackOrigin === id; }
+
+/** Called from `ForayPlayer.onEpisodeEnded` (player/client.js) with the id of
+    the episode that just finished ordinary (non-Foray) playback.
+
+    Runs unconditionally — the guards below, not the caller, decide whether
+    anything happens — because the player module intentionally knows nothing
+    about Up Next; it only reports "this finished playing" once per episode. */
+function advanceQueueOnEnded(id) {
+  const wasFromQueue = isPlayingFromQueue(id);
+  clearQueuePlaybackOrigin();
+  if (!autoAdvanceOn()) return;
+  if (!wasFromQueue) return;
+  const ids = queueIds();
+  const i = ids.indexOf(id);
+  // Not (or no longer) in the list — reordered/removed mid-playback (plan §4
+  // Q4): freeze at what was queued when playback started, i.e. do nothing
+  // rather than guess at a new position.
+  if (i < 0) return;
+  const nextId = ids[i + 1];
+  // End of the queue: stop cleanly, no loop, no pulling in more content.
+  if (!nextId) return;
+  const nextItem = state.poolIds.has(nextId) ? state.itemIndex[nextId] : null;
+  // The next item aged out of the live pool since it was queued (archived/
+  // unnamed) — nothing playable to hand to the player. Stop rather than
+  // skip past it silently; a listener who reordered/removed things mid-list
+  // already gets the "freeze" behavior above for the same reason.
+  if (!nextItem || !nextItem.audio_url || !window.ForayPlayer) return;
+  setQueuePlaybackOrigin(nextId);
+  window.ForayPlayer.play(nextItem, { why: whyFor(nextId, nextItem) }).then(ok => {
+    if (!ok) { clearQueuePlaybackOrigin(); return; }
+    logEvent("play_started", { episode_id: nextId, topics: nextItem.topics || [], ctx: "autoadvance" });
+    const history = pickedHistory();
+    if (!history.includes(nextId)) lsSet("cp_history", history.concat(nextId).slice(-200));
+    trySyncEvents();
+  });
+}
+
 /* One row per saved part, in saved order, each tagged with what the live pool
    can still do for it. `resolveParts(p).length` is the number BOTH views print,
    so the count and the contents cannot disagree — that is the whole of #276, and
@@ -1136,7 +1209,13 @@ function bindPickLogging(scope) {
   });
 }
 
-function bindPlay(scope) {
+/* `origin` distinguishes "this play button lives on the #/queue page" (only
+   caller: renderQueue) from every other row in the app (undefined/omitted).
+   That distinction is the whole mechanism behind plan §4 Q1's answer: only a
+   play started FROM #/queue can ever trigger auto-advance — starting an
+   unrelated episode elsewhere must never be silently read as "now playing
+   the queue" (see setQueuePlaybackOrigin's header). */
+function bindPlay(scope, { origin = null } = {}) {
   scope.querySelectorAll("[data-play]").forEach(btn => {
     if (btn._bound) return;
     btn._bound = true;
@@ -1148,8 +1227,10 @@ function bindPlay(scope) {
       const id = btn.dataset.play;
       const item = state.itemIndex[id] || episode(id);
       if (!item || !window.ForayPlayer) return;
+      if (origin === "queue") setQueuePlaybackOrigin(id);
+      else clearQueuePlaybackOrigin();
       const ok = await window.ForayPlayer.play(item, { why: whyFor(id, item) });
-      if (!ok) return;
+      if (!ok) { clearQueuePlaybackOrigin(); return; }
       logEvent("play_started", { episode_id: id, topics: item.topics || [] });
       const history = pickedHistory();
       if (!history.includes(id)) lsSet("cp_history", history.concat(id).slice(-200));
@@ -1729,7 +1810,7 @@ function renderQueue() {
 
   bindPickLogging($("#view"));
   bindStars($("#view"));
-  bindPlay($("#view"));
+  bindPlay($("#view"), { origin: "queue" });
   bindUpNextReorder($("#view"));
 }
 
@@ -3291,6 +3372,7 @@ function renderDrawer() {
     || `<p class="drawer-empty">none yet</p>`;
   $("#family-toggle").textContent = `Family mode: ${familyMode() ? "on" : "off"}`;
   $("#player-toggle").textContent = `Open in: ${playerPref() === "apple" ? "Apple Podcasts" : "Pocket Casts (show page)"}`;
+  $("#autoadvance-toggle").textContent = `Up Next auto-advance: ${autoAdvanceOn() ? "on" : "off"}`;
 }
 
 function openDrawer(open) {
@@ -4056,6 +4138,17 @@ async function init() {
   logEvent("session_shown", { session_id: state.session.session_id });
   trySyncEvents();
 
+  /* Up Next auto-advance's wiring (docs/listening-queue-plan.md §4 addendum).
+     Fire-and-forget: a player that never loads (module failure, test
+     harness with no `window.addEventListener`) just means auto-advance never
+     fires, same as every other ForayPlayer-gated feature on this page — it
+     must not hold up `init()`, which has already returned control above. */
+  playerBridge().then(player => {
+    if (player && typeof player.onEpisodeEnded === "function") {
+      player.onEpisodeEnded(advanceQueueOnEnded);
+    }
+  });
+
   $("#menu-btn").addEventListener("click", () => openDrawer($("#drawer").hidden));
   $("#drawer-overlay").addEventListener("click", () => openDrawer(false));
   $("#drawer").addEventListener("click", (e) => {
@@ -4073,6 +4166,11 @@ async function init() {
     logEvent("player_pref", { player: playerPref() });
     renderDrawer();
     route();
+  });
+  $("#autoadvance-toggle").addEventListener("click", () => {
+    lsSet("cp_autoadvance", !autoAdvanceOn());
+    logEvent("autoadvance_pref", { on: autoAdvanceOn() });
+    renderDrawer();
   });
   /* The field record's surface (#264), appended for the same reason as the
      control below it and deliberately ABOVE it: "Delete my data" must stay the

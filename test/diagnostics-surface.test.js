@@ -130,7 +130,7 @@ function mount({
   const cleared = [];
   const body = new El("body");
   for (const id of ["view", "drawer", "drawer-overlay", "drawer-playlists",
-    "family-toggle", "player-toggle", "menu-btn", "refresh-btn",
+    "family-toggle", "player-toggle", "autoadvance-toggle", "menu-btn", "refresh-btn",
     // The home screen's own vocabulary, needed only under `boot`.
     "banner-slot", "pl-form", "pl-input", "pl-note",
     "tab-topics", "tab-shows", "sh-form", "sh-input", "sh-note", "sh-results",

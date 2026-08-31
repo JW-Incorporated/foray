@@ -1057,6 +1057,43 @@ its reasoning.
   that never removes, with the list-management surface entirely on the
   queue's own page.
 
+## 2026-08-31 (Up Next auto-advance, kanban card t_b9880844)
+
+- **A genuine product/principle conflict, resolved as opt-in default-off,
+  not silently picked either way.** Joey's ask (a queue that plays through)
+  and CLAUDE.md product principle #1 ("no autoplay chains") are in real
+  tension. Resolution: auto-advance ships as one per-device toggle
+  (`cp_autoadvance`), read with a `false` fallback — same shape as the
+  existing `cp_family`/`cp_player` drawer toggles. An unconfigured install
+  never runs an autoplay chain; turning it on is one explicit, reversible
+  tap. Full reasoning: `docs/listening-queue-plan.md` §8. **This decision is
+  provisional pending Joey's sign-off** — if he wants the default flipped to
+  on, that is his call to make, not a call this addendum makes for him.
+- **Scope: only a play started FROM `#/queue` can trigger auto-advance.**
+  Starting an unrelated episode elsewhere in the app must never be silently
+  read as "now playing the queue" — `#/queue`'s play buttons alone tag the
+  play as queue-originated (`bindPlay(scope, { origin: "queue" })`); every
+  other row's play button in the app does not.
+- **End of queue stops cleanly — no loop, no pulling in more content.**
+  Matches product principle #1's "no infinite scroll" language, not just its
+  "no autoplay chains" clause.
+- **Reorder/removal mid-playback freezes at what was queued when playback
+  started, not a live recompute.** Advance looks up the finishing episode's
+  position in `cp_queue` at the moment it ends; if that episode itself was
+  removed mid-playback there is no position to advance from and playback
+  simply stops, rather than guessing which item should play next. A live
+  recompute was rejected because it would let the running order shown on
+  `#/queue` visibly diverge from what is about to auto-play — confusing
+  enough to defer past this stage.
+- **`player/client.js` gains exactly one new signal:**
+  `ForayPlayer.onEpisodeEnded(fn)`, fired once per finished ordinary
+  (non-Foray) episode. Never fires for a Foray — a Foray already owns its
+  own segment-advance machinery via `player/queue-manager.js`, and this must
+  not be a second opinion layered on top of it. Every actual decision (is
+  auto-advance on, was this play queue-originated, what plays next) stays in
+  `app.js`; the player module remains exactly as ignorant of "Up Next" as it
+  was before this change.
+
 ## 2026-08-31 (episode pages Stage 2 — honest "listen elsewhere" fallback)
 
 - **An unplayable episode still gets one explicit, honestly-labelled external
