@@ -14,6 +14,7 @@ const state = {
   forays: null,             // data/forays.json   — may be absent; see fetchJson
   segments: null,           // data/segments.json
   segmentSources: null,     // data/segment-sources.json
+  catalog: null,            // data/catalog-client.json — show-level records, #/show/:id (Stage 1)
   foray: null,              // the resolved Foray currently on screen
   forayResume: null,        // its stored resume point, or null — see paintForay
   forayPlaying: null,       // id of the Foray the player is inside, or null
@@ -858,6 +859,74 @@ function resolveParts(p) {
 }
 
 function playlistById(id) { return playlists().find(p => p.id === id); }
+
+/* ---------- shows (#/show/:id, Stage 1 of docs/show-pages-plan.md) ----------
+
+   `show_id` is the join key catalog.json carries and app.js has never read
+   before this. It is not guaranteed to line up with an episode's `show` string
+   forever (docs/show-pages-plan.md §1) — today it does for 220/221 discover-pool
+   shows, verified when this landed, with one gap: Lingthusiasm's catalog.json
+   title carries a subtitle ("Lingthusiasm - A podcast that's enthusiastic about
+   linguistics") that its discover.json `show` field does not ("Lingthusiasm"),
+   so the exact-title fallback below would miss it. TITLE_ALIASES exists for
+   exactly that one show and is not expected to grow — a second alias is a sign
+   the underlying assumption (title strings agree) needs revisiting, not that
+   this list needs a third line. */
+const TITLE_ALIASES = {
+  "Lingthusiasm - A podcast that's enthusiastic about linguistics": "Lingthusiasm",
+};
+
+function showById(id) {
+  return (state.catalog?.shows || []).find(s => s.show_id === id) || null;
+}
+
+/* Every discover-pool episode belonging to a show, joined by show_id first and
+   falling back to a title match (with the one known alias) for the show
+   catalog.json doesn't carry an id-matched title for. Never assumes the join —
+   an empty result is a real, renderable state (a valid show_id with zero
+   episodes), not an error. */
+function episodesForShow(show) {
+  if (!show) return [];
+  const pool = (state.discover?.items || []);
+  const wanted = new Set([show.title, TITLE_ALIASES[show.title]].filter(Boolean));
+  return pool.filter(it => wanted.has(it.show));
+}
+
+function taxonomyChip(nodeId) {
+  const node = (state.taxonomy?.nodes || []).find(n => n.id === nodeId);
+  return `<span class="fy-chip">${esc(node?.label || nodeId)}</span>`;
+}
+
+function renderShow(show_id) {
+  document.body.className = "view-page";
+  const show = showById(show_id);
+  if (!show) { $("#view").innerHTML = `<div class="page"><p class="note">Show not found.</p></div>`; return; }
+  fullPool(); // populate itemIndex/poolIds so episode rows can play in-app
+  const eps = episodesForShow(show);
+  const ctx = "show-" + show.show_id;
+  const chips = (show.taxonomy_node_ids || []).map(taxonomyChip).join("");
+
+  $("#view").innerHTML = `
+    <div class="page">
+      <div class="page-head">
+        <a class="back" href="#/">‹</a>
+        <div>
+          <h2>${esc(show.title)}</h2>
+          <p class="sub">${eps.length} episode${eps.length === 1 ? "" : "s"} in 4a's catalogue</p>
+        </div>
+      </div>
+      ${show.artwork_url ? `<img class="show-art" src="${esc(safeUrl(show.artwork_url))}" alt="">` : ""}
+      ${show.editorial_note ? `<p class="note">${esc(show.editorial_note)}</p>` : ""}
+      ${chips ? `<div class="fy-chips">${chips}</div>` : ""}
+      ${eps.length
+        ? eps.map((item, i) => epRow(item, i, ctx, -1)).join("")
+        : `<p class="note">No episodes from this show are in 4a's catalogue right now.</p>`}
+    </div>`;
+
+  bindPickLogging($("#view"));
+  bindStars($("#view"));
+  bindPlay($("#view"));
+}
 
 function touchPlaylistPlayed(id) {
   const all = playlists();
@@ -3516,6 +3585,7 @@ function route() {
   else if ((m = /^#\/playlist\/(.+)$/.exec(h))) renderPlaylistDetail(m[1]);
   else if ((m = /^#\/subject\/(.+)$/.exec(h))) renderPlaylistDetail("subject-" + m[1]);
   else if ((m = /^#\/episode\/(.+)$/.exec(h))) renderEpisode(m[1]);
+  else if ((m = /^#\/show\/(.+)$/.exec(h))) renderShow(decodeURIComponent(m[1]));
   else if (h === "#/playlists") renderPlaylists();
   else renderHome();
 }
@@ -3548,7 +3618,7 @@ async function init() {
      missing from a cached service worker — see renderForay(). */
   [
     state.validated, state.taxonomy, state.discover, state.semantic, state.itemTags,
-    state.forays, state.segments, state.segmentSources,
+    state.forays, state.segments, state.segmentSources, state.catalog,
   ] = await Promise.all([
     fetchJson("data/validated-links.json"),
     fetchJson("data/taxonomy.json"),
@@ -3558,6 +3628,12 @@ async function init() {
     fetchJson("data/forays.json"),
     fetchJson("data/segments.json"),
     fetchJson("data/segment-sources.json"),
+    /* Show-level records for #/show/:id (Stage 1, docs/show-pages-plan.md).
+       data/catalog-client.json is the client-projected copy of data/catalog.json —
+       tools/build-catalog-client.mjs strips fields renderShow() never reads
+       (feed_url, apple_genre, cadence_hint, provenance) for a ~24% gzip saving;
+       see that script's header for the measurement. */
+    fetchJson("data/catalog-client.json"),
   ]);
 
   loadInterests();

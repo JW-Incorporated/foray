@@ -1021,6 +1021,16 @@ body.fy-sheet-open { overflow: hidden; }
 }
 .fy-chip.on { border-color: var(--accent); color: var(--text); background: var(--surface); }
 
+/* ---------- show page (#/show/:id, Stage 1) ---------- */
+.show-art {
+  display: block;
+  width: 100%; max-width: 220px;
+  border-radius: 12px;
+  margin: 0 auto 14px;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+}
+
 /* ---------- playback speed picker (#349) ---------- */
 .rate-options { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
 .rate-option {
