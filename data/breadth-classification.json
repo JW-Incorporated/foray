@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-31T00:18:16.326Z",
+  "built_at": "2026-08-31T08:18:33.466Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-31-65eb1227",
+    "last_batch_id": "fresh-2026-08-31-a0b0972f",
     "last_batch_tier": 1,
     "transcript_labels": "descriptive cost label, never an eligibility test — see tools/classify/labels.mjs"
   },
@@ -65014,7 +65014,31 @@
         "culture/books"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Literary analysis and discussion of books and series.",
+      "display_title": "Girls Gone Canon Cast",
+      "blurb": "In-depth literary commentary on books and adaptations.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-a0b0972f",
+      "classified_at": "2026-08-31T08:18:33.466Z"
     },
     "1378610256": {
       "topics": [
@@ -65155,7 +65179,31 @@
         "sports/wrestling"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/wrestling",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Professional wrestling history and analysis interviews.",
+      "display_title": "83 Weeks with Eric Bischoff",
+      "blurb": "Wrestling history and current event analysis with industry experts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-a0b0972f",
+      "classified_at": "2026-08-31T08:18:33.466Z"
     },
     "1380336613": {
       "topics": [
@@ -65655,10 +65703,34 @@
     },
     "1385864210": {
       "topics": [
-        "sports/baseball"
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Educational content and learning instruction.",
+      "display_title": "Dodgers Nation Podcast Network",
+      "blurb": "Educational content and learning.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-a0b0972f",
+      "classified_at": "2026-08-31T08:18:33.466Z"
     },
     "1386234384": {
       "topics": [
@@ -65677,10 +65749,34 @@
     },
     "1386400008": {
       "topics": [
-        "business/careers"
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Educational content and learning instruction.",
+      "display_title": "Disruptors",
+      "blurb": "Educational content and learning.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-a0b0972f",
+      "classified_at": "2026-08-31T08:18:33.466Z"
     },
     "1386509499": {
       "topics": [
@@ -65798,8 +65894,32 @@
       "topics": [
         "tv-film/interviews"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Uncertain classification; requires manual review.",
+      "display_title": "Decorating Pages: TV and Film Design",
+      "blurb": "Classification pending.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-a0b0972f",
+      "classified_at": "2026-08-31T08:18:33.466Z"
     },
     "1387192254": {
       "topics": [
@@ -65919,11 +66039,37 @@
     },
     "1389440760": {
       "topics": [
-        "business/startups",
-        "business/founders"
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Educational content and learning instruction.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-a0b0972f",
+      "classified_at": "2026-08-31T08:18:33.466Z"
     },
     "1389764855": {
       "topics": [
@@ -66063,10 +66209,34 @@
     },
     "1391405612": {
       "topics": [
-        "culture/design"
+        "fiction"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fictional storytelling and audio drama.",
+      "display_title": "Design Your Life with Vince Frost",
+      "blurb": "Fictional narrative and audio drama.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-a0b0972f",
+      "classified_at": "2026-08-31T08:18:33.466Z"
     },
     "1391452125": {
       "topics": [
@@ -66197,10 +66367,39 @@
     },
     "1392545186": {
       "topics": [
-        "religion/christianity"
+        "culture/books"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Literary analysis and discussion of books and series.",
+      "display_title": "The Remnant Radio's Podcast",
+      "blurb": "In-depth literary commentary on books and adaptations.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 32,
+        "transcript_types": {
+          "text/html": 8,
+          "application/json": 8,
+          "application/x-subrip": 8,
+          "text/vtt": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-a0b0972f",
+      "classified_at": "2026-08-31T08:18:33.466Z"
     },
     "1392662714": {
       "topics": [
@@ -66571,18 +66770,65 @@
     },
     "1397232326": {
       "topics": [
-        "tv-film/history",
-        "history"
+        "fiction/sci-fi"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fictional storytelling and audio drama.",
+      "display_title": "Movie Oubliette",
+      "blurb": "Fictional narrative and audio drama.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-a0b0972f",
+      "classified_at": "2026-08-31T08:18:33.466Z"
     },
     "1397524247": {
       "topics": [
         "music"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Uncertain classification; requires manual review.",
+      "display_title": "Discord and Rhyme: An Album Podcast",
+      "blurb": "Classification pending.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-a0b0972f",
+      "classified_at": "2026-08-31T08:18:33.466Z"
     },
     "1397527832": {
       "topics": [
@@ -66825,8 +67071,32 @@
       "topics": [
         "health/fitness"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Uncertain classification; requires manual review.",
+      "display_title": "Flow With Me Yoga",
+      "blurb": "Classification pending.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-a0b0972f",
+      "classified_at": "2026-08-31T08:18:33.466Z"
     },
     "1399962220": {
       "topics": [
@@ -67034,10 +67304,34 @@
     },
     "1401061816": {
       "topics": [
-        "religion/judaism"
+        "culture/books"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Literary analysis and discussion of books and series.",
+      "display_title": "The Rabbi Manis Friedman Podcast",
+      "blurb": "In-depth literary commentary on books and adaptations.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-a0b0972f",
+      "classified_at": "2026-08-31T08:18:33.466Z"
     },
     "1401506541": {
       "topics": [
@@ -67099,8 +67393,32 @@
       "topics": [
         "aviation"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Uncertain classification; requires manual review.",
+      "display_title": "Australian Aviation Podcast Network",
+      "blurb": "Classification pending.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-a0b0972f",
+      "classified_at": "2026-08-31T08:18:33.466Z"
     },
     "1402378177": {
       "topics": [
@@ -67312,10 +67630,34 @@
     },
     "1403815619": {
       "topics": [
-        "religion/judaism"
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Educational content and learning instruction.",
+      "display_title": "Living Emunah",
+      "blurb": "Educational content and learning.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-a0b0972f",
+      "classified_at": "2026-08-31T08:18:33.466Z"
     },
     "1404031853": {
       "topics": [
@@ -67500,10 +67842,34 @@
     },
     "1405797630": {
       "topics": [
-        "culture/art"
+        "fiction"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fictional storytelling and audio drama.",
+      "display_title": "The Photowalk",
+      "blurb": "Fictional narrative and audio drama.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-a0b0972f",
+      "classified_at": "2026-08-31T08:18:33.466Z"
     },
     "1406004700": {
       "topics": [
@@ -67689,17 +68055,65 @@
     },
     "1407041447": {
       "topics": [
-        "gaming"
+        "culture/books"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Literary analysis and discussion of books and series.",
+      "display_title": "Remember The Game? Retro Gaming Podcast",
+      "blurb": "In-depth literary commentary on books and adaptations.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-a0b0972f",
+      "classified_at": "2026-08-31T08:18:33.466Z"
     },
     "1407056689": {
       "topics": [
-        "culture/performing-arts"
+        "fiction"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fictional storytelling and audio drama.",
+      "display_title": "Hot Ones: The Classic Interviews",
+      "blurb": "Fictional narrative and audio drama.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-a0b0972f",
+      "classified_at": "2026-08-31T08:18:33.466Z"
     },
     "1407378924": {
       "topics": [
@@ -67781,18 +68195,65 @@
     },
     "1408859036": {
       "topics": [
-        "news/tech",
-        "computing"
+        "culture/books"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Literary analysis and discussion of books and series.",
+      "display_title": "LawNext",
+      "blurb": "In-depth literary commentary on books and adaptations.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-a0b0972f",
+      "classified_at": "2026-08-31T08:18:33.466Z"
     },
     "1408958605": {
       "topics": [
-        "news/commentary"
+        "fiction"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fictional storytelling and audio drama.",
+      "display_title": "Sara Gonzales Unfiltered",
+      "blurb": "Fictional narrative and audio drama.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-a0b0972f",
+      "classified_at": "2026-08-31T08:18:33.466Z"
     },
     "1408959075": {
       "topics": [
@@ -67919,8 +68380,36 @@
         "business/startups",
         "business/founders"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.55
+        },
+        {
+          "node": "business/founders",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Uncertain classification; requires manual review.",
+      "display_title": "POWERS",
+      "blurb": "Classification pending.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-a0b0972f",
+      "classified_at": "2026-08-31T08:18:33.466Z"
     },
     "1410611499": {
       "topics": [
@@ -67967,11 +68456,34 @@
     },
     "1410851204": {
       "topics": [
-        "education/language-learning",
-        "linguistics/language"
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Educational content and learning instruction.",
+      "display_title": "Podcast 100% in Italiano, by Italy Made Easy",
+      "blurb": "Educational content and learning.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-a0b0972f",
+      "classified_at": "2026-08-31T08:18:33.466Z"
     },
     "1410854326": {
       "topics": [
@@ -68045,10 +68557,34 @@
     },
     "1412191409": {
       "topics": [
-        "culture/art"
+        "culture/books"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Literary analysis and discussion of books and series.",
+      "display_title": "Marvel's Pull List",
+      "blurb": "In-depth literary commentary on books and adaptations.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-a0b0972f",
+      "classified_at": "2026-08-31T08:18:33.466Z"
     },
     "1412385746": {
       "topics": [
@@ -68508,8 +69044,32 @@
       "topics": [
         "sports/hockey"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/hockey",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Uncertain classification; requires manual review.",
+      "display_title": "Dropping the Gloves",
+      "blurb": "Classification pending.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-a0b0972f",
+      "classified_at": "2026-08-31T08:18:33.466Z"
     },
     "1419833736": {
       "topics": [
@@ -68728,7 +69288,31 @@
         "sports/wrestling"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/wrestling",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Professional wrestling history and analysis interviews.",
+      "display_title": "The Chewjitsu Podcast",
+      "blurb": "Wrestling history and current event analysis with industry experts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-a0b0972f",
+      "classified_at": "2026-08-31T08:18:33.466Z"
     },
     "1423288932": {
       "topics": [
@@ -68776,10 +69360,34 @@
     },
     "1423733399": {
       "topics": [
-        "fiction/sci-fi"
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Educational content and learning instruction.",
+      "display_title": "The Natureverse: Becoming Mother Nature",
+      "blurb": "Educational content and learning.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-a0b0972f",
+      "classified_at": "2026-08-31T08:18:33.466Z"
     },
     "1423759123": {
       "topics": [
@@ -68953,15 +69561,63 @@
       "topics": [
         "religion/islam"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/islam",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Uncertain classification; requires manual review.",
+      "display_title": "Sufi Heart with Omid Safi",
+      "blurb": "Classification pending.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-a0b0972f",
+      "classified_at": "2026-08-31T08:18:33.466Z"
     },
     "1427888185": {
       "topics": [
         "tv-film/animation"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/animation",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Uncertain classification; requires manual review.",
+      "display_title": "My Hero Academia Podcast",
+      "blurb": "Classification pending.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-a0b0972f",
+      "classified_at": "2026-08-31T08:18:33.466Z"
     },
     "1428091619": {
       "topics": [
@@ -69368,7 +70024,31 @@
         "true-crime"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "True crime cases investigation and narrative.",
+      "display_title": "The Lets Read Podcast",
+      "blurb": "True crime cases and investigation.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-a0b0972f",
+      "classified_at": "2026-08-31T08:18:33.466Z"
     },
     "1432259450": {
       "topics": [
@@ -69577,10 +70257,34 @@
     },
     "1433961166": {
       "topics": [
-        "health/fitness"
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Educational content and learning instruction.",
+      "display_title": "Fit, Healthy And Happy Podcast",
+      "blurb": "Educational content and learning.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-a0b0972f",
+      "classified_at": "2026-08-31T08:18:33.466Z"
     },
     "1433974017": {
       "topics": [
@@ -69626,11 +70330,34 @@
     },
     "1434087490": {
       "topics": [
-        "fiction/comedy",
-        "comedy"
+        "fiction"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fictional storytelling and audio drama.",
+      "display_title": "McGillicuddy and Murder's Pawn Shop",
+      "blurb": "Fictional narrative and audio drama.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-a0b0972f",
+      "classified_at": "2026-08-31T08:18:33.466Z"
     },
     "1434128185": {
       "topics": [
@@ -70068,11 +70795,34 @@
     },
     "1434863731": {
       "topics": [
-        "fiction/comedy",
-        "comedy"
+        "fiction/sci-fi"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fictional storytelling and audio drama.",
+      "display_title": "Adventures in New America",
+      "blurb": "Fictional narrative and audio drama.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-a0b0972f",
+      "classified_at": "2026-08-31T08:18:33.466Z"
     },
     "1434886389": {
       "topics": [
@@ -70546,8 +71296,40 @@
         "science",
         "nature"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine/biology",
+          "confidence": 0.55
+        },
+        {
+          "node": "science",
+          "confidence": 0.55
+        },
+        {
+          "node": "nature",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Uncertain classification; requires manual review.",
+      "display_title": "The Horse First: A Veterinary Sport Horse Podcast",
+      "blurb": "Classification pending.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-a0b0972f",
+      "classified_at": "2026-08-31T08:18:33.466Z"
     },
     "1435751945": {
       "topics": [
@@ -70561,8 +71343,36 @@
         "adventure/exploration",
         "nature"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.55
+        },
+        {
+          "node": "nature",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Uncertain classification; requires manual review.",
+      "display_title": "On The Wing Podcast",
+      "blurb": "Classification pending.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-a0b0972f",
+      "classified_at": "2026-08-31T08:18:33.466Z"
     },
     "1435805049": {
       "topics": [
@@ -70692,8 +71502,32 @@
       "topics": [
         "culture/fashion"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/fashion",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Uncertain classification; requires manual review.",
+      "display_title": "The Estée Lalonde Show",
+      "blurb": "Classification pending.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-a0b0972f",
+      "classified_at": "2026-08-31T08:18:33.466Z"
     },
     "1436176408": {
       "topics": [
@@ -70859,8 +71693,32 @@
       "topics": [
         "craft/diy-home"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Uncertain classification; requires manual review.",
+      "display_title": "The Homeowners Show",
+      "blurb": "Classification pending.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-a0b0972f",
+      "classified_at": "2026-08-31T08:18:33.466Z"
     },
     "1436511777": {
       "topics": [
@@ -71022,10 +71880,34 @@
     },
     "1436865324": {
       "topics": [
-        "sports/baseball"
+        "fiction"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fictional storytelling and audio drama.",
+      "display_title": "Atlanta Braves Radio Network",
+      "blurb": "Fictional narrative and audio drama.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-a0b0972f",
+      "classified_at": "2026-08-31T08:18:33.466Z"
     },
     "1436865572": {
       "topics": [
@@ -71207,10 +72089,34 @@
     },
     "1437194308": {
       "topics": [
-        "sports/baseball"
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Educational content and learning instruction.",
+      "display_title": "Behind the Braves",
+      "blurb": "Educational content and learning.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-a0b0972f",
+      "classified_at": "2026-08-31T08:18:33.466Z"
     },
     "1437213097": {
       "topics": [
@@ -71362,10 +72268,34 @@
     },
     "1437733673": {
       "topics": [
-        "tv-film/after-shows"
+        "culture/books"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Literary analysis and discussion of books and series.",
+      "display_title": "House Podcastica | All the Shows",
+      "blurb": "In-depth literary commentary on books and adaptations.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-a0b0972f",
+      "classified_at": "2026-08-31T08:18:33.466Z"
     },
     "1437744535": {
       "topics": [
@@ -71400,11 +72330,34 @@
     },
     "1437766060": {
       "topics": [
-        "economics/markets",
-        "business"
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Educational content and learning instruction.",
+      "display_title": "Chit Chat Stocks",
+      "blurb": "Educational content and learning.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-a0b0972f",
+      "classified_at": "2026-08-31T08:18:33.466Z"
     },
     "1437795866": {
       "topics": [
@@ -71792,10 +72745,34 @@
     },
     "1438546054": {
       "topics": [
-        "food"
+        "fiction"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fictional storytelling and audio drama.",
+      "display_title": "Proof",
+      "blurb": "Fictional narrative and audio drama.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-a0b0972f",
+      "classified_at": "2026-08-31T08:18:33.466Z"
     },
     "1438566169": {
       "topics": [
@@ -71855,8 +72832,40 @@
         "news",
         "business"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.55
+        },
+        {
+          "node": "business",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Uncertain classification; requires manual review.",
+      "display_title": "Bitcoin And | Bitcoin & Economic News",
+      "blurb": "Classification pending.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 24,
+        "transcript_types": {
+          "text/html": 8,
+          "application/x-subrip": 8,
+          "text/vtt": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-a0b0972f",
+      "classified_at": "2026-08-31T08:18:33.466Z"
     },
     "1438817292": {
       "topics": [
@@ -72054,10 +73063,34 @@
     },
     "1439390968": {
       "topics": [
-        "tv-film/after-shows"
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Educational content and learning instruction.",
+      "display_title": "The Rookie Podcast",
+      "blurb": "Educational content and learning.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-a0b0972f",
+      "classified_at": "2026-08-31T08:18:33.466Z"
     },
     "1439391041": {
       "topics": [
@@ -72070,8 +73103,32 @@
       "topics": [
         "sports/basketball"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/basketball",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Uncertain classification; requires manual review.",
+      "display_title": "Lakers Lounge",
+      "blurb": "Classification pending.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-a0b0972f",
+      "classified_at": "2026-08-31T08:18:33.466Z"
     },
     "1439485214": {
       "topics": [
@@ -72167,8 +73224,35 @@
       "topics": [
         "tv-film/after-shows"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/after-shows",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Uncertain classification; requires manual review.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-a0b0972f",
+      "classified_at": "2026-08-31T08:18:33.466Z"
     },
     "1439735906": {
       "topics": [
@@ -72215,10 +73299,34 @@
     },
     "1439764868": {
       "topics": [
-        "food"
+        "culture/books"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Literary analysis and discussion of books and series.",
+      "display_title": "The Sourdough Podcast",
+      "blurb": "In-depth literary commentary on books and adaptations.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-a0b0972f",
+      "classified_at": "2026-08-31T08:18:33.466Z"
     },
     "1439841133": {
       "topics": [
@@ -72232,8 +73340,32 @@
       "topics": [
         "sports/rugby"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/rugby",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Uncertain classification; requires manual review.",
+      "display_title": "Third Man In",
+      "blurb": "Classification pending.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-a0b0972f",
+      "classified_at": "2026-08-31T08:18:33.466Z"
     },
     "1439938731": {
       "topics": [
@@ -72310,11 +73442,34 @@
     },
     "1440180592": {
       "topics": [
-        "news",
-        "business"
+        "fiction"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fictional storytelling and audio drama.",
+      "display_title": "AgDay Podcast",
+      "blurb": "Fictional narrative and audio drama.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-a0b0972f",
+      "classified_at": "2026-08-31T08:18:33.466Z"
     },
     "1440183372": {
       "topics": [
@@ -72328,7 +73483,31 @@
         "culture/books"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Literary analysis and discussion of books and series.",
+      "display_title": "Fated Mates - Romance Books for Novel People",
+      "blurb": "In-depth literary commentary on books and adaptations.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-a0b0972f",
+      "classified_at": "2026-08-31T08:18:33.466Z"
     },
     "1440209326": {
       "topics": [
@@ -72391,10 +73570,34 @@
     },
     "1440526574": {
       "topics": [
-        "culture/art"
+        "fiction"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fictional storytelling and audio drama.",
+      "display_title": "The Storytelling Lab",
+      "blurb": "Fictional narrative and audio drama.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-a0b0972f",
+      "classified_at": "2026-08-31T08:18:33.466Z"
     },
     "1440529681": {
       "topics": [
@@ -72559,8 +73762,32 @@
       "topics": [
         "culture/fashion"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/fashion",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Uncertain classification; requires manual review.",
+      "display_title": "The Glossy Beauty Podcast",
+      "blurb": "Classification pending.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-a0b0972f",
+      "classified_at": "2026-08-31T08:18:33.466Z"
     },
     "1441099644": {
       "topics": [
@@ -72746,10 +73973,34 @@
     },
     "1441540511": {
       "topics": [
-        "religion/buddhism"
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Educational content and learning instruction.",
+      "display_title": "Buddhism for Everyone with JoAnn Fox",
+      "blurb": "Educational content and learning.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-a0b0972f",
+      "classified_at": "2026-08-31T08:18:33.466Z"
     },
     "1441557261": {
       "topics": [
@@ -72835,8 +74086,35 @@
       "topics": [
         "sports/football"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/football",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Uncertain classification; requires manual review.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 12w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-a0b0972f",
+      "classified_at": "2026-08-31T08:18:33.466Z"
     },
     "1441595858": {
       "topics": [
@@ -72943,8 +74221,32 @@
       "topics": [
         "sports/tennis"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/tennis",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Uncertain classification; requires manual review.",
+      "display_title": "Tennis Talk Podcast",
+      "blurb": "Classification pending.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-a0b0972f",
+      "classified_at": "2026-08-31T08:18:33.466Z"
     },
     "1441884090": {
       "topics": [
@@ -73508,8 +74810,32 @@
       "topics": [
         "science/chemistry"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/chemistry",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Uncertain classification; requires manual review.",
+      "display_title": "Healthy Talk Show (Audio)",
+      "blurb": "Classification pending.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-31-a0b0972f",
+      "classified_at": "2026-08-31T08:18:33.466Z"
     },
     "1444729607": {
       "topics": [
