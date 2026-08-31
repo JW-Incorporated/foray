@@ -1291,7 +1291,7 @@ function bannerHtml() {
   const c = currentContinue();
   if (!c) return "";
   snapshot(c.id, c);
-  return `<a class="banner" href="${esc(safeUrl(playLink(c)))}" target="_blank" rel="noopener"
+  return `<a class="banner" href="#/episode/${esc(encodeURIComponent(c.id))}"
       data-ev="picked" data-ep="${c.id}" data-ctx="continue">
     ${c.artwork_url ? `<img src="${esc(safeUrl(c.artwork_url))}" alt="">` : ""}
     <div class="b-info">
@@ -1609,7 +1609,7 @@ function epRow(item, idx, ctx, nextIdx) {
   return `<div class="ep-row">
     <span class="q-num ${idx === nextIdx ? "next" : ""}">${idx + 1}</span>
     <div class="info">
-      <div class="t">${esc(item.title)}</div>
+      <div class="t"><a class="ep-title-link" href="#/episode/${esc(encodeURIComponent(item.id))}">${esc(item.title)}</a></div>
       <div class="s">${showNameLink(item.show)} · ${fmtDur(item.duration_min)}</div>
     </div>
     ${inApp}${starBtn(item.id)}${upNextBtn(item.id)}${external}
@@ -1652,7 +1652,7 @@ function archivedRow(item, idx, ctx) {
   return `<div class="ep-row gone">
     <span class="q-num">${idx + 1}</span>
     <div class="info">
-      <div class="t">${named ? esc(item.title) : "Part no longer in the catalogue"}</div>
+      <div class="t">${named ? `<a class="ep-title-link" href="#/episode/${esc(encodeURIComponent(item.id))}">${esc(item.title)}</a>` : "Part no longer in the catalogue"}</div>
       <div class="s">${named
         ? `${showNameLink(item.show)}${item.duration_min ? ` · ${fmtDur(item.duration_min)}` : ""} · not in 4a's catalogue right now`
         : "Saved before 4a kept episode details"}</div>
