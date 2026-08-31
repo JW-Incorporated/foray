@@ -787,6 +787,62 @@ decision (CLAUDE.md decision authority #3) and not one to stumble into.
 locally — either from six `classify/*` PRs, or from one
 `classify/reconcile-*` PR.
 
+> **Update, 2026-08-31:** the reconciler ran again (18 days after the first,
+> 19,278 → 19,677 agent-classified shows), and it now blocks on a second
+> problem that (b) does not fix by itself — see #27. Recommendation (b) below
+> is unchanged and still correct; #27 is a prerequisite for it to keep
+> working cleanly rather than a reason to prefer (a).
+
+**Status:** OPEN
+
+---
+
+### 27. Rebase (or reconfigure) five of the six classify shard branches onto `main`, past PR #203
+
+**Tag:** `[BLOCKING]` · **Time:** ~15 minutes, or a cloud-routine config change · **Owner:** Wyatt
+
+**Why it matters.** PR #203 (2026-08-16) fixed the classify shard key from
+`Number(id) % N` (2.20x unbalanced) to `fnv1a32(String(id)) % N` and merged to
+`main`. Measured 2026-08-31, **five of the six live shard branches
+(`origin/reclassify-0,1,2,4,5`) never received that fix** — they forked from
+`origin/reclassify` on 2026-07-25 and have not merged or rebased onto `main`
+since, so their committed `tools/classify/prepare-batch.mjs` is still the
+pre-#203 file and computes the old, unbalanced key on every run, indefinitely.
+(`origin/reclassify-3` is the exception: it has #203's code, apparently
+copied in rather than merged — worth understanding, but not a problem by
+itself.)
+
+**This did not lose or misclassify any data — `reconcile-shards.mjs` was
+fixed in the same change that found this (see `docs/agents/runners.md`'s
+2026-08-31 update block) to correctly reconcile branches running either key,
+indefinitely.** So this is not urgent in the sense of blocking today's
+reconcile. It is real technical debt: the fleet will keep running an
+unbalanced shard key that PR #203 measured as 2.20x skewed (shard0 would idle
+around day 12 while shard3 still has 1.8x its share of work), and every future
+reconcile has to keep reasoning about two shard keys instead of one.
+
+**Two ways to actually fix it, pick one:**
+- **Rebase the five branches onto `main`** (or a common ancestor that already
+  has #203), so their `prepare-batch.mjs` starts computing the balanced key
+  going forward. This is a repo operation an agent could do, EXCEPT the
+  branches are driven by six always-on cloud routines that commit to them
+  directly — a rebase done by hand here could be overwritten or conflict with
+  the next scheduled run. **This needs Wyatt's judgment on whether the cloud
+  routines can be safely paused for the rebase, which is outside what this
+  repo's agents can see or control** (per CLAUDE.md decision authority #2,
+  the routine configuration itself is Wyatt's Claude Cloud account, not this
+  repo).
+- **Point each routine's cloud config at code that already has #203** —
+  functionally the same fix, applied at the routine-configuration layer
+  instead of the branch layer. Whichever of #5/#10's `HUMAN-ACTIONS.md`
+  history is current for "how these routines are configured" is the starting
+  point.
+
+**Worked if:** a fresh dry-run of `node tools/classify/reconcile-shards.mjs
+--dry-run` some time after this ships reports `shard_key hashed` (not
+`hashed+legacy`) for all six branches, meaning every branch's own new work is
+using the current key exclusively.
+
 **Status:** OPEN
 
 ---
