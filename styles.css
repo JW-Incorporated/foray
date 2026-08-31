@@ -539,6 +539,13 @@ body.fp-open.fp-expanded { padding-bottom: 340px; }
 .fp-s-title { font-family: var(--serif); font-size: 1.1rem; font-weight: 700; margin: 8px 0 2px; color: var(--text); }
 .fp-s-show { font-size: 0.75rem; color: var(--text-dim); margin: 0 0 8px; }
 .fp-s-why { font-size: 0.82rem; color: var(--text-dim); margin: 0 0 12px; }
+
+/* Episode page (#/episode/:id) — page wrapper only; artwork/title/show
+   typography is the existing .fp-s-title/.fp-s-show pair above, body copy
+   the existing .fp-s-why, both already used by the player sheet. */
+.ep-art { width: 100%; max-width: 320px; display: block; border-radius: 10px; margin: 0 0 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+.ep-actions { display: flex; align-items: center; gap: 12px; }
+
 .fp-scrub { width: 100%; accent-color: var(--accent); }
 .fp-times { display: flex; justify-content: space-between; font-size: 0.7rem; color: var(--text-dim); }
 .fp-row { display: flex; justify-content: center; align-items: center; gap: 18px; margin: 14px 0 6px; }
@@ -671,7 +678,79 @@ body.fp-open.fp-expanded { padding-bottom: 340px; }
      `gap` + `--seam`, not `--seam` alone. Measured in Chrome at a 362px strip
      (a 390px phone less the page's padding) rather than reasoned about. */
   --seg-min: 7px;
+  /* Press-and-hold zoom-to-scrub (V1). `touch-action: none` stops the browser
+     from interpreting a held-and-dragged finger as a page scroll/pan, which
+     would otherwise fight the gesture on exactly the input it exists for. */
+  touch-action: none;
+  transform: scale(1);
+  transform-origin: 50% 50%;
+  transition: transform 0.12s ease-out;
+  position: relative;
+  z-index: 1;
 }
+/* Set by app.js's bindStripZoomScrub via CSSOM (style-src 'self' — never a
+   style attribute). --zoom-origin follows the touch point so the enlarged
+   view stays centred on where the finger actually is, not the strip's
+   midpoint; --zoom-scale is player/strip-scrub-gesture.js's ZOOM_SCALE,
+   piped through rather than hardcoded here so the two never drift. */
+.fy-strip.is-zooming {
+  transform: scale(var(--zoom-scale, 2.5));
+  transform-origin: var(--zoom-origin, 50%) 50%;
+  transition: none;         /* live-tracks the finger; an easing curve would lag it */
+}
+@media (prefers-reduced-motion: reduce) {
+  .fy-strip { transition: none; }
+}
+
+/* Floating magnifier bubble (V2). Position/size are set by app.js's
+   bindStripZoomScrub via CSSOM (style-src 'self' — see the V1 zoom rule
+   above for why). Fixed positioning: coordinates are viewport-relative,
+   computed by player/strip-scrub-gesture.js's `bubblePosition` against
+   `window.innerWidth/Height`, so this element must not sit inside any
+   scaled/transformed ancestor (it is appended straight to <body>). */
+.fy-strip-bubble {
+  position: fixed;
+  z-index: 20;             /* above the mini-player bar and Now Playing sheet */
+  overflow: hidden;
+  border-radius: 10px;
+  background: var(--surface-2, #1c1c1e);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  pointer-events: none;    /* never steals the pointer capture the strip holds */
+}
+@media (prefers-reduced-motion: reduce) {
+  .fy-strip-bubble, .fy-strip-bubble__viewport > * { transition: none; }
+}
+.fy-strip-bubble__viewport {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+/* The cloned strip inside the bubble. Its own transform (translateX + scale)
+   is set per-frame by app.js from `bubbleContentOffset`/`BUBBLE_SCALE`; this
+   rule only fixes its transform-origin so the scale grows from the clone's
+   own top-left, matching the coordinate space `bubbleContentOffset` assumes. */
+.fy-strip-bubble__viewport > .fy-strip {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+/* The scrub-location marker: a fixed vertical line at the bubble's own
+   horizontal midline. It never moves, by construction — bubbleContentOffset
+   always translates the cloned content so the touch point lands exactly
+   here, which is what makes this a static CSS rule rather than a per-frame
+   calculation (see strip-scrub-gesture.js's V2 header). */
+.fy-strip-bubble__marker {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--accent, #ff453a);
+  pointer-events: none;
+}
+
 /* Three sizes (#128): a list row, a card, the player. The seam scales with the
    height so the break still reads on a 5px strip, where a 5px gap would be a
    square hole and a 1px one would be the hairline again. */

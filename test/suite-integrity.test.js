@@ -91,6 +91,7 @@ const FLOORS = {
      suite, and transposing its two arguments left everything green. */
   "player/diagnostic-log.test.js": 50,
   "player/diagnostic-record.test.js": 23,
+  "player/episode-link.test.js": 6,
   /* The durable store (#40). Both of these guard against silent DATA LOSS
      rather than a wrong answer on screen, which makes them the two suites in
      `player/` whose deletion would be hardest to notice: everything keeps
@@ -167,6 +168,7 @@ const FLOORS = {
      tone, and that both themes' palettes clear 3:1. Every test names the
      mutation that kills it. */
   "player/segment-strip.test.js": 27,
+  "player/strip-scrub-gesture.test.js": 41,
   "player/seek-policy.test.js": 33,
   /* The app's name on the surfaces users read (#302), 6 -> 8 when the two
      published legal documents were added, 8 -> 21 when the shipped UI copy that
@@ -177,6 +179,7 @@ const FLOORS = {
      reverting one of them passed the whole suite. */
   "test/app-name.test.js": 21,
   "test/app-security.test.js": 26,
+  "test/episode-page.test.js": 8,
   /* "Delete my data" (#42). Zero slack, like media-session above and for the same
      reason: what this suite guards is a PROMISE — both tiers cleared, the server
      rows really deleted, no success message over a failure, and a confirmation a

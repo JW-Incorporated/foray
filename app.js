@@ -1347,6 +1347,42 @@ function renderPlaylistDetail(id) {
   bindPlay($("#view"));
 }
 
+/* Resolve an episode id for `#/episode/:id` — the direct fix for "Open
+   episode" leaving 4a (mini-player's `openLink`, player/client.js). Same
+   two-source pattern archivedRow already relies on: `state.itemIndex`
+   first (freshest — populated by fullPool()/renderPlaylistDetail), then a
+   `cp_saved` snapshot fallback (covers aged-out parts the pool no longer
+   carries). No new fetch, no new data file — every field this page shows
+   already lives on both sources. */
+function resolveEpisode(id) {
+  const pool = hydrationPool(); // populate/reuse itemIndex — never throws (#276)
+  return pool[id] || savedMap()[id] || null;
+}
+
+function renderEpisode(id) {
+  document.body.className = "view-page";
+  const item = resolveEpisode(id);
+  if (!item) {
+    $("#view").innerHTML = `<div class="page"><p class="note">Episode not found.</p></div>`;
+    return;
+  }
+  $("#view").innerHTML = `
+    <div class="page">
+      <div class="page-head">
+        <a class="back" href="#/">‹</a>
+        <div>
+          <h2 class="fp-s-title">${esc(item.title)}</h2>
+          <p class="fp-s-show">${esc(item.show || "")}${item.duration_min ? ` · ${fmtDur(item.duration_min)}` : ""}</p>
+        </div>
+      </div>
+      ${item.artwork_url ? `<img class="ep-art" src="${esc(safeUrl(item.artwork_url))}" alt="">` : ""}
+      ${item.hook ? `<p class="fp-s-why">${esc(item.hook)}</p>` : ""}
+      <div class="ep-actions">${playBtn(item)}${starBtn(item.id)}</div>
+    </div>`;
+  bindStars($("#view"));
+  bindPlay($("#view"));
+}
+
 /* The count printed here is `resolveParts(p).length` — the SAME call
    renderPlaylistDetail maps into rows, deliberately, so "7 parts" and five rows
    cannot come apart again (#276). It is a saved-length question, not a pool
@@ -1994,6 +2030,200 @@ function stripElapsedFromBars(strip, x, rect, r) {
   return acc;                                               // past the last bar
 }
 
+/* The floating magnifier bubble itself (V2). ONE element for the whole page,
+   built lazily on first use and reused across gestures/strips — a Foray page
+   can be re-rendered mid-session (`paintForay`) and a bubble tied to a stale
+   strip element would leak. Appended to `document.body` (not `#fy-strip` or
+   `#foray-player`) because `position: fixed` coordinates are viewport-
+   relative and a `transform: scale()` ancestor (the zooming strip itself)
+   would otherwise warp them — the exact trap `zoomOriginPercent`'s own
+   header calls out for the strip's own rect. */
+let bubbleEls = null;
+
+function bubbleDomEl(tag, cls) {
+  const n = document.createElement(tag);
+  if (cls) n.className = cls;
+  return n;
+}
+
+function ensureBubbleEls() {
+  if (bubbleEls) return bubbleEls;
+  const bubble = bubbleDomEl("div", "fy-strip-bubble");
+  bubble.hidden = true;
+  const viewport = bubbleDomEl("div", "fy-strip-bubble__viewport");
+  const marker = bubbleDomEl("div", "fy-strip-bubble__marker");
+  bubble.append(viewport, marker);
+  document.body.append(bubble);
+  bubbleEls = { bubble, viewport };
+  return bubbleEls;
+}
+
+/* Press-and-hold zoom-to-scrub on #fy-strip (V1 in-place zoom + V2 floating
+   bubble).
+
+   Joey, live iPhone testing: "a brief click just jumps ahead to that
+   location; if I press and hold then there's a bubble view that pops up
+   showing a zoomed-in portion of the timeline and the location of the
+   scrubber/where I'm trying to jump to" — the iOS text-cursor-magnifier
+   pattern. V1 shipped the in-place scaled strip; this also floats a small
+   bubble ABOVE the touch point (never under the thumb) showing a genuinely
+   magnified crop of the strip around it, tracking the finger as it drags.
+
+   THE STATE MACHINE IS NOT HERE. player/strip-scrub-gesture.js decides tap
+   vs hold vs drag as pure data, and now also the bubble's position/content-
+   offset arithmetic (`bubblePosition`, `bubbleContentOffset`); this function
+   only owns the real pointerdown/pointermove/pointerup listeners and the
+   real setTimeout, and translates the module's state into DOM.
+
+   THE SEEK IS NOT HERE EITHER. `#fy-strip`'s existing `click` handler
+   (bound just above this call site) still does the seek, unchanged — a
+   `click` fires at the release point whether or not this handler ever
+   entered zoom, so "commit wherever the finger ended" falls out of the
+   platform. This function must never call `foraySeek`/`startAt` itself,
+   or the seek logic forks in two places that can drift.
+
+   `setPointerCapture` keeps events routed to the strip even though scaling
+   moves it visually out from under the finger mid-gesture — without it a
+   drag toward the zoomed edge would silently stop delivering pointermove. */
+function bindStripZoomScrub(r, player) {
+  const strip = $("#fy-strip");
+  const gest = player?.scrubGesture;
+  if (!strip || !gest) return;
+
+  let gesture = null;
+  let holdTimer = null;
+  let pointerId = null;
+  let preZoomRect = null;
+
+  const clearHoldTimer = () => {
+    if (holdTimer != null) { clearTimeout(holdTimer); holdTimer = null; }
+  };
+
+  /* `preZoomRect` is captured once, at pointerdown, before any zoom transform
+     exists — re-measuring mid-zoom would feed the origin math a box already
+     distorted by the previous frame's scale() (see zoomOriginPercent's own
+     header). It is cleared on release so the next gesture measures fresh. */
+  const applyZoomVisual = (clientX) => {
+    if (!preZoomRect) preZoomRect = strip.getBoundingClientRect();
+    const pct = gest.originPercent(clientX, preZoomRect);
+    if (pct == null) return;
+    // CSSOM, not a style attribute — the page CSP is style-src 'self', same
+    // rule segment-strip.js and paintSegFill already live under.
+    strip.style.setProperty("--zoom-origin", `${pct}%`);
+    strip.style.setProperty("--zoom-scale", String(gest.ZOOM_SCALE));
+    strip.classList.add("is-zooming");
+  };
+
+  /* The bubble's cloned content is built ONCE per gesture, at the moment it
+     first opens — not per-frame — because it is a snapshot of the strip's
+     bars (fill widths included), not a live mirror; a gesture is at most a
+     few seconds and the underlying Foray position does not repaint the
+     strip during a hold (the pointer has captured input). Re-cloning every
+     pointermove would be wasted DOM churn for no visible difference. */
+  const openBubble = (clientX, clientY) => {
+    if (!preZoomRect) preZoomRect = strip.getBoundingClientRect();
+    const { bubble, viewport } = ensureBubbleEls();
+    viewport.replaceChildren();
+    const clone = strip.cloneNode(true);
+    clone.removeAttribute("id");
+    clone.classList.remove("is-zooming");
+    clone.style.setProperty("width", `${preZoomRect.width}px`);
+    clone.style.setProperty("height", `${preZoomRect.height}px`);
+    clone.style.setProperty("transform-origin", "0 0");
+    viewport.append(clone);
+    bubble.hidden = false;
+    updateBubble(clientX, clientY);
+  };
+
+  const updateBubble = (clientX, clientY) => {
+    if (!preZoomRect || !bubbleEls || bubbleEls.bubble.hidden) return;
+    const { bubble, viewport } = bubbleEls;
+    const clone = viewport.firstElementChild;
+    if (!clone) return;
+    const viewportBox = { width: window.innerWidth, height: window.innerHeight };
+    const pos = gest.bubblePosition(clientX, clientY, viewportBox);
+    if (pos) {
+      bubble.style.setProperty("width", `${pos.width}px`);
+      bubble.style.setProperty("height", `${pos.height}px`);
+      bubble.style.setProperty("left", `${pos.left}px`);
+      bubble.style.setProperty("top", `${pos.top}px`);
+    }
+    const offset = gest.bubbleContentOffset(clientX, preZoomRect, gest.BUBBLE_WIDTH, gest.BUBBLE_SCALE);
+    if (offset != null) {
+      clone.style.setProperty(
+        "transform",
+        `translateX(${offset}px) scale(${gest.BUBBLE_SCALE})`,
+      );
+    }
+  };
+
+  const closeBubble = () => {
+    if (!bubbleEls) return;
+    bubbleEls.bubble.hidden = true;
+    bubbleEls.viewport.replaceChildren();
+  };
+
+  const clearZoomVisual = () => {
+    strip.classList.remove("is-zooming");
+    strip.style.removeProperty("--zoom-origin");
+    strip.style.removeProperty("--zoom-scale");
+    preZoomRect = null;
+    closeBubble();
+  };
+
+  const finish = () => {
+    clearHoldTimer();
+    gesture = gest.end(gesture);
+    clearZoomVisual();
+    pointerId = null;
+  };
+
+  strip.addEventListener("pointerdown", (e) => {
+    // One gesture at a time; a second finger touching the strip mid-hold is
+    // not a scrub, and letting it interrupt the first would jump the preview.
+    if (pointerId != null) return;
+    // Right/middle-click never means "press and hold" on desktop; only the
+    // primary pointer starts a gesture.
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    pointerId = e.pointerId;
+    gesture = gest.start(e.clientX, e.clientY);
+    if (typeof strip.setPointerCapture === "function") {
+      try { strip.setPointerCapture(pointerId); } catch { /* unsupported in some test DOMs; degrades to normal bubbling */ }
+    }
+    clearHoldTimer();
+    holdTimer = setTimeout(() => {
+      holdTimer = null;
+      gesture = gest.holdTimeout(gesture);
+      if (gesture.zooming) { applyZoomVisual(e.clientX); openBubble(e.clientX, e.clientY); }
+    }, gest.HOLD_MS);
+  });
+
+  strip.addEventListener("pointermove", (e) => {
+    if (pointerId == null || e.pointerId !== pointerId || !gesture) return;
+    const wasZooming = gesture.zooming;
+    gesture = gest.move(gesture, e.clientX, e.clientY);
+    if (gesture.zooming) {
+      // Entered zoom by dragging past tolerance rather than by waiting out
+      // the hold timer — the timer would otherwise still fire later and flip
+      // the visual back on (harmlessly, since holdTimeoutGesture is a no-op
+      // once already zooming, but there is no reason to let it run).
+      if (!wasZooming) clearHoldTimer();
+      applyZoomVisual(e.clientX);
+      if (!wasZooming) openBubble(e.clientX, e.clientY);
+      else updateBubble(e.clientX, e.clientY);
+    }
+  });
+
+  strip.addEventListener("pointerup", (e) => {
+    if (pointerId == null || e.pointerId !== pointerId) return;
+    finish();
+  });
+  strip.addEventListener("pointercancel", (e) => {
+    if (pointerId == null || e.pointerId !== pointerId) return;
+    finish();
+  });
+}
+
 /* The fill inside the bar the listener is currently inside — the one thing on
    this page that has to move continuously, and the reason it is painted above
    `paintForay`'s segment-change guard.
@@ -2304,6 +2534,8 @@ function bindForayTransport(r, player, resume = null) {
     const index = Number(seg.dataset.seg);
     return playerHasForay(r) ? guardForayTap(() => player.forayJump(index)) : start(index);
   });
+
+  bindStripZoomScrub(r, player);
 
   /* Re-entering the page mid-Foray must paint the segment that is actually
      audible, and route this page's callback at the live player — otherwise the
@@ -3352,6 +3584,7 @@ function route() {
   if (forayId) renderForay(forayId);
   else if ((m = /^#\/playlist\/(.+)$/.exec(h))) renderPlaylistDetail(m[1]);
   else if ((m = /^#\/subject\/(.+)$/.exec(h))) renderPlaylistDetail("subject-" + m[1]);
+  else if ((m = /^#\/episode\/(.+)$/.exec(h))) renderEpisode(m[1]);
   else if ((m = /^#\/show\/(.+)$/.exec(h))) renderShow(decodeURIComponent(m[1]));
   else if (h === "#/playlists") renderPlaylists();
   else renderHome();
