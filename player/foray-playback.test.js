@@ -72,7 +72,7 @@ import {
 } from "./foray-resolve.js";
 import { ForayProgressStore, resumePoint, makeProgress, progressKey } from "./foray-progress.js";
 import { SEAM_GAP_SEC } from "./seam-gap.js";
-import { nextRate, rateLabel, rateAriaLabel } from "./playback-rate.js";
+import { nextRate, normalizeRate, rateLabel, rateAriaLabel, RATES } from "./playback-rate.js";
 import { createDurableStore } from "./durable-store.js";
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -1004,6 +1004,15 @@ function fakeBridge(resolved, { resume = null, startThrows = null, rate = 1 } = 
     cycleRate: () => {
       calls.push({ name: "cycleRate", args: [] });
       liveRate = nextRate(liveRate);
+      return liveRate;
+    },
+    rateStops: () => {
+      calls.push({ name: "rateStops", args: [] });
+      return [...RATES];
+    },
+    setPlaybackRate: (r) => {
+      calls.push({ name: "setPlaybackRate", args: [r] });
+      liveRate = normalizeRate(r);
       return liveRate;
     },
     rateLabel: (r) => rateLabel(r),
@@ -2390,22 +2399,33 @@ test("the speed button says its value to a screen reader AT NORMAL SPEED too", a
   );
 });
 
-test("tapping the speed button cycles through the player and relabels", async () => {
-  /* MUTATION THAT KILLS THIS: have the binder call `player.playbackRate()` instead
-     of `player.cycleRate()`. The label stays at 1× and `cycleRate` never appears in
-     the call log. */
-  const { dom, bridge } = await mountForayPage();
-  const btn = dom.el("fy-rate");
-  assert.equal(btn.textContent, "1×");
+test("tapping the speed button opens a picker instead of cycling directly", () => {
+  /* #349: the button used to change the speed on every tap with no way to see
+     the other stops. It must now open a menu — meaning `rateStops()` is asked
+     for the ladder and the rate does NOT change from the tap alone (the harness
+     cannot render or click into the dynamically-built menu; that selection
+     path is proven cheaply in tools/refresh or by hand — what this binding
+     harness CAN prove is that the tap no longer mutates the rate directly).
 
-  await btn.click();
-  assert.equal(btn.textContent, "1.25×", "the next stop on the ladder");
-  await btn.click();
-  await btn.click();
-  assert.equal(btn.textContent, "1.75×");
+     MUTATION THAT KILLS THIS: put the old `player.cycleRate()` call back in the
+     click handler. The label would change to "1.25×" on the first tap and
+     `rateStops` would never appear in the call log. */
+  return mountForayPage().then(({ dom, bridge }) => {
+    const btn = dom.el("fy-rate");
+    assert.equal(btn.textContent, "1×");
 
-  assert.equal(bridge.calls.filter((c) => c.name === "cycleRate").length, 3);
-  assert.match(btn.getAttribute("aria-label") ?? "", /1\.75×/, "the accessible name moves with the label");
+    return btn.click().then(() => {
+      assert.ok(
+        bridge.calls.some((c) => c.name === "rateStops"),
+        "opening the picker must ask the player for the ladder"
+      );
+      assert.ok(
+        !bridge.calls.some((c) => c.name === "cycleRate"),
+        "a tap on the button must no longer cycle the rate directly"
+      );
+      assert.equal(btn.textContent, "1×", "the label does not change until a stop is picked");
+    });
+  });
 });
 
 test("changing the speed does NOT start playback", async () => {
