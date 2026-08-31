@@ -341,7 +341,7 @@ const FLOORS = {
   // whose deletion would be hardest to notice and most expensive to discover,
   // because the thing it guards is an absence.
   "tools/classify/no-exclusion.test.mjs": 25,
-  "tools/classify/reconcile-shards.test.mjs": 72,
+  "tools/classify/reconcile-shards.test.mjs": 75,
   /* Guards the metric the whole classification effort is judged on. Its per-item
      ("fully root-only") number is the one that maps to product behaviour; the
      pair count is not, and #205 measured why. A deleted suite here would let the

@@ -34,6 +34,7 @@ import {
   laneOf,
   keyForRow,
   laneForRow,
+  keysForRow,
   shardIndexOf,
   SHARD_KEY_CUTOVER,
   DEFAULT_SHARDS,
@@ -266,21 +267,35 @@ test("re-running against its own output adopts nothing more (idempotent)", () =>
   assert.deepEqual(second.entries, first.entries);
 });
 
-/* ------------------------------------ 2. disjointness is ENFORCED, not assumed */
+/* --------------------------- 2. cross-shard conflicts resolve, disjointness within the resolved set is still checked */
 
-test("two shards claiming the same show is fatal, and writes nothing", () => {
-  /* Lane-less branch names, because for correctly-named `reclassify-N`
-     branches the lane check makes a collision unreachable — two lanes cannot
-     contain one id. This guard is the backstop behind it. */
+test("two shards claiming the same show resolves by newest classified_at, not a fatal error", () => {
+  /* SUPERSEDED 2026-08-31 (rule 3b, see reconcile-shards.mjs header): a
+     cross-shard double-claim is no longer treated as an unexplainable
+     collision requiring a human — it is resolved exactly like an
+     agent-vs-incumbent conflict (rule 3), newest `classified_at` wins. This
+     reflects reality found in the live branches on 2026-08-31: ~30 real
+     double-claims, all produced by the legacy/hashed key split (rule 4), each
+     with a genuine days-to-weeks timestamp gap, not a coin-flip tie. */
   const laneless = (name, entries) => ({ branch: name, index: null, head: name, file: { version: 1, entries } });
-  const { entries, errors } = run(baseFile(), [
-    laneless("classify-a", { [ID.l0]: agent({ topics: ["space"], batch_id: "a" }) }),
-    laneless("classify-b", { [ID.l0]: agent({ topics: ["food"], batch_id: "b" }) })
+  const { entries, errors, stats } = run(baseFile(), [
+    laneless("classify-a", { [ID.l0]: agent({ topics: ["space"], batch_id: "a", classified_at: "2026-08-10T00:00:00.000Z" }) }),
+    laneless("classify-b", { [ID.l0]: agent({ topics: ["food"], batch_id: "b", classified_at: "2026-08-20T00:00:00.000Z" }) })
   ]);
-  assert.equal(entries, null, "a collision must produce no output at all");
-  assert.equal(errors.length, 1);
-  assert.match(errors[0], /claimed by both classify-a and classify-b/);
-  assert.match(errors[0], /not disjoint/);
+  assert.deepEqual(errors, []);
+  assert.deepEqual(entries[ID.l0].topics, ["food"], "the newer claim (classify-b) wins");
+  assert.equal(stats.cross_shard_conflicts.length, 1);
+  assert.equal(stats.cross_shard_conflicts[0].winner, "classify-b");
+});
+
+test("a cross-shard conflict tie (equal or missing timestamps) keeps the first-seen claim, never guesses beyond that", () => {
+  const laneless = (name, entries) => ({ branch: name, index: null, head: name, file: { version: 1, entries } });
+  const { entries, stats } = run(baseFile(), [
+    laneless("classify-a", { [ID.l0]: agent({ topics: ["space"], batch_id: "a", classified_at: null }) }),
+    laneless("classify-b", { [ID.l0]: agent({ topics: ["food"], batch_id: "b", classified_at: null }) })
+  ]);
+  assert.deepEqual(entries[ID.l0].topics, ["space"], "no signal to break the tie: first-seen (classify-a) is kept, not overwritten");
+  assert.equal(stats.cross_shard_conflicts[0].winner, "classify-a");
 });
 
 test("an off-lane show is fatal — this is the issue-#203 fail-open guard", () => {
@@ -508,9 +523,18 @@ test("a POST-cutover row is lane-checked by the hashed key, and accepted", () =>
   assert.equal(entries[id].source, "classify-agent-tier1");
 });
 
-test("a PRE-cutover row is NOT excused by the hashed key", () => {
-  /* The whole point of per-row era rather than "either key is fine": an id the
-     hash would place in lane 0 is still off-lane for a pre-#203 row. */
+test("a row placed in-lane by EITHER key is accepted, even if its era 'should' use the other one", () => {
+  /* SUPERSEDED 2026-08-31 (see reconcile-shards.mjs PASS 1a/1b and rule 4's
+     doc comment): the original design judged a row by ONE key, chosen from
+     its own `classified_at` against the #203 cutover instant. Measured
+     2026-08-31, that assumption is false for five of the six live branches —
+     their committed `prepare-batch.mjs` never merged #203 and computes the
+     legacy key unconditionally regardless of when a row was produced, so a
+     row's timestamp says nothing reliable about which key selected it.
+     `keysForRow()` now tries both and accepts a match from either — this
+     row's hashed lane is 0 (matching this shard) even though its timestamp
+     predates the cutover, and that is exactly the shape of row the live
+     fleet actually produces, so it must be accepted, not rejected. */
   const base = baseFile();
   let id = null;
   for (let n = 100000; n < 300000; n++) {
@@ -520,9 +544,40 @@ test("a PRE-cutover row is NOT excused by the hashed key", () => {
   base.entries[id] = genre(["science"]);
   const row = agent({ topics: ["space"], classified_at: "2026-08-10T00:00:00.000Z" });
   const { entries, errors } = run(base, [shard(0, { [id]: row })]);
-  assert.equal(entries, null, "the legacy key must still govern a legacy row");
+  assert.deepEqual(errors, [], "either key matching this shard's lane is enough, regardless of the row's era");
+  assert.equal(entries[id].source, "classify-agent-tier1");
+});
+
+test("a row off-lane under BOTH keys is still fatal — the real #203 fail-open guard", () => {
+  /* This is the case that must never slip through: a row that is off-lane no
+     matter which key placed it is exactly what an unsharded (`--shard` failed
+     open) run produces. */
+  const base = baseFile();
+  let id = null;
+  // Find an id that is off-lane-0 under BOTH keys.
+  for (let n = 100000; n < 300000; n++) {
+    const k = String(n);
+    if (shardOf(k, 6) !== 0 && laneOf(k, 6) !== 0) { id = k; break; }
+  }
+  assert.ok(id, "expected an id off-lane-0 under both keys");
+  base.entries[id] = genre(["science"]);
+  const row = agent({ topics: ["space"], classified_at: "2026-08-10T00:00:00.000Z" });
+  const { entries, errors } = run(base, [shard(0, { [id]: row })]);
+  assert.equal(entries, null, "a row off-lane under both keys must still be refused");
   assert.match(errors[0], /fall outside lane 0/);
-  assert.match(errors[0], /legacy lane/);
+});
+
+test("keysForRow: returns both keys when they agree, one when only one matches, none when neither does", () => {
+  const id = "1459232606"; // legacy and hashed lanes deliberately differ for this id (asserted above)
+  const legacyLane = laneOf(id, 6);
+  const hashedLane = shardOf(id, 6);
+  assert.notEqual(legacyLane, hashedLane);
+  const legacyMatches = keysForRow(id, {}, 6, legacyLane).map((k) => k.name);
+  assert.deepEqual(legacyMatches, ["legacy"]);
+  const hashedMatches = keysForRow(id, {}, 6, hashedLane).map((k) => k.name);
+  assert.deepEqual(hashedMatches, ["hashed"]);
+  const neitherLane = [0, 1, 2, 3, 4, 5].find((l) => l !== legacyLane && l !== hashedLane);
+  assert.deepEqual(keysForRow(id, {}, 6, neitherLane), []);
 });
 
 test("a MIXED-ERA branch merges, because each row is judged by its own key", () => {
