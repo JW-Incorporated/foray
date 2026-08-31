@@ -168,7 +168,7 @@ const FLOORS = {
      tone, and that both themes' palettes clear 3:1. Every test names the
      mutation that kills it. */
   "player/segment-strip.test.js": 27,
-  "player/strip-scrub-gesture.test.js": 23,
+  "player/strip-scrub-gesture.test.js": 41,
   "player/seek-policy.test.js": 33,
   /* The app's name on the surfaces users read (#302), 6 -> 8 when the two
      published legal documents were added, 8 -> 21 when the shipped UI copy that

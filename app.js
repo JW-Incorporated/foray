@@ -1961,21 +1961,50 @@ function stripElapsedFromBars(strip, x, rect, r) {
   return acc;                                               // past the last bar
 }
 
-/* Press-and-hold zoom-to-scrub on #fy-strip (V1).
+/* The floating magnifier bubble itself (V2). ONE element for the whole page,
+   built lazily on first use and reused across gestures/strips — a Foray page
+   can be re-rendered mid-session (`paintForay`) and a bubble tied to a stale
+   strip element would leak. Appended to `document.body` (not `#fy-strip` or
+   `#foray-player`) because `position: fixed` coordinates are viewport-
+   relative and a `transform: scale()` ancestor (the zooming strip itself)
+   would otherwise warp them — the exact trap `zoomOriginPercent`'s own
+   header calls out for the strip's own rect. */
+let bubbleEls = null;
+
+function bubbleDomEl(tag, cls) {
+  const n = document.createElement(tag);
+  if (cls) n.className = cls;
+  return n;
+}
+
+function ensureBubbleEls() {
+  if (bubbleEls) return bubbleEls;
+  const bubble = bubbleDomEl("div", "fy-strip-bubble");
+  bubble.hidden = true;
+  const viewport = bubbleDomEl("div", "fy-strip-bubble__viewport");
+  const marker = bubbleDomEl("div", "fy-strip-bubble__marker");
+  bubble.append(viewport, marker);
+  document.body.append(bubble);
+  bubbleEls = { bubble, viewport };
+  return bubbleEls;
+}
+
+/* Press-and-hold zoom-to-scrub on #fy-strip (V1 in-place zoom + V2 floating
+   bubble).
 
    Joey, live iPhone testing: "a brief click just jumps ahead to that
    location; if I press and hold then there's a bubble view that pops up
-   showing a zoomed-in portion of the timeline". V1 ships the zoomed strip
-   itself, enlarged around the touch point while the hold-drag continues — no
-   floating magnifier bubble graphic yet; that is V2, filed as its own child
-   card (see the running-order jump note in stripElapsedAt's neighbourhood
-   above for how a click still commits the same way it always has).
+   showing a zoomed-in portion of the timeline and the location of the
+   scrubber/where I'm trying to jump to" — the iOS text-cursor-magnifier
+   pattern. V1 shipped the in-place scaled strip; this also floats a small
+   bubble ABOVE the touch point (never under the thumb) showing a genuinely
+   magnified crop of the strip around it, tracking the finger as it drags.
 
    THE STATE MACHINE IS NOT HERE. player/strip-scrub-gesture.js decides tap
-   vs hold vs drag as pure data; this function only owns the real
-   pointerdown/pointermove/pointerup listeners and the real setTimeout, and
-   translates the module's state into the one visual effect V1 asks for: a
-   CSS scale() around the touch point.
+   vs hold vs drag as pure data, and now also the bubble's position/content-
+   offset arithmetic (`bubblePosition`, `bubbleContentOffset`); this function
+   only owns the real pointerdown/pointermove/pointerup listeners and the
+   real setTimeout, and translates the module's state into DOM.
 
    THE SEEK IS NOT HERE EITHER. `#fy-strip`'s existing `click` handler
    (bound just above this call site) still does the seek, unchanged — a
@@ -2016,11 +2045,61 @@ function bindStripZoomScrub(r, player) {
     strip.classList.add("is-zooming");
   };
 
+  /* The bubble's cloned content is built ONCE per gesture, at the moment it
+     first opens — not per-frame — because it is a snapshot of the strip's
+     bars (fill widths included), not a live mirror; a gesture is at most a
+     few seconds and the underlying Foray position does not repaint the
+     strip during a hold (the pointer has captured input). Re-cloning every
+     pointermove would be wasted DOM churn for no visible difference. */
+  const openBubble = (clientX, clientY) => {
+    if (!preZoomRect) preZoomRect = strip.getBoundingClientRect();
+    const { bubble, viewport } = ensureBubbleEls();
+    viewport.replaceChildren();
+    const clone = strip.cloneNode(true);
+    clone.removeAttribute("id");
+    clone.classList.remove("is-zooming");
+    clone.style.setProperty("width", `${preZoomRect.width}px`);
+    clone.style.setProperty("height", `${preZoomRect.height}px`);
+    clone.style.setProperty("transform-origin", "0 0");
+    viewport.append(clone);
+    bubble.hidden = false;
+    updateBubble(clientX, clientY);
+  };
+
+  const updateBubble = (clientX, clientY) => {
+    if (!preZoomRect || !bubbleEls || bubbleEls.bubble.hidden) return;
+    const { bubble, viewport } = bubbleEls;
+    const clone = viewport.firstElementChild;
+    if (!clone) return;
+    const viewportBox = { width: window.innerWidth, height: window.innerHeight };
+    const pos = gest.bubblePosition(clientX, clientY, viewportBox);
+    if (pos) {
+      bubble.style.setProperty("width", `${pos.width}px`);
+      bubble.style.setProperty("height", `${pos.height}px`);
+      bubble.style.setProperty("left", `${pos.left}px`);
+      bubble.style.setProperty("top", `${pos.top}px`);
+    }
+    const offset = gest.bubbleContentOffset(clientX, preZoomRect, gest.BUBBLE_WIDTH, gest.BUBBLE_SCALE);
+    if (offset != null) {
+      clone.style.setProperty(
+        "transform",
+        `translateX(${offset}px) scale(${gest.BUBBLE_SCALE})`,
+      );
+    }
+  };
+
+  const closeBubble = () => {
+    if (!bubbleEls) return;
+    bubbleEls.bubble.hidden = true;
+    bubbleEls.viewport.replaceChildren();
+  };
+
   const clearZoomVisual = () => {
     strip.classList.remove("is-zooming");
     strip.style.removeProperty("--zoom-origin");
     strip.style.removeProperty("--zoom-scale");
     preZoomRect = null;
+    closeBubble();
   };
 
   const finish = () => {
@@ -2046,7 +2125,7 @@ function bindStripZoomScrub(r, player) {
     holdTimer = setTimeout(() => {
       holdTimer = null;
       gesture = gest.holdTimeout(gesture);
-      if (gesture.zooming) applyZoomVisual(e.clientX);
+      if (gesture.zooming) { applyZoomVisual(e.clientX); openBubble(e.clientX, e.clientY); }
     }, gest.HOLD_MS);
   });
 
@@ -2061,6 +2140,8 @@ function bindStripZoomScrub(r, player) {
       // once already zooming, but there is no reason to let it run).
       if (!wasZooming) clearHoldTimer();
       applyZoomVisual(e.clientX);
+      if (!wasZooming) openBubble(e.clientX, e.clientY);
+      else updateBubble(e.clientX, e.clientY);
     }
   });
 

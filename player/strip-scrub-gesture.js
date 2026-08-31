@@ -129,3 +129,115 @@ export function zoomOriginPercent(x, rect) {
   const frac = (x - rect.left) / rect.width;
   return Math.max(0, Math.min(100, frac * 100));
 }
+
+/* ---------- floating magnifier bubble (V2) ----------
+ *
+ * Joey, live iPhone testing: "if I press and hold then there's a bubble
+ * view that pops up showing a zoomed-in portion of the timeline and the
+ * location of the scrubber/where I'm trying to jump to" -- the iOS
+ * text-cursor-magnifier pattern. V1 (this file's `zoomOriginPercent` and
+ * friends) only scaled the strip in place; this half is a small floating
+ * element that hovers ABOVE the touch point so a thumb covering the strip
+ * does not also cover the preview.
+ *
+ * SAME PURITY RULE AS THE REST OF THIS FILE: no DOM here. app.js measures
+ * real rects/viewports and passes them in; these two functions only do the
+ * arithmetic, so they are testable head-on like `zoomOriginPercent` above.
+ *
+ * WHY THE MARKER NEEDS NO MATH OF ITS OWN: `bubbleContentOffset` is defined
+ * so that the touch point always lands at the bubble's own horizontal
+ * midline, by construction -- so the "location of the scrubber" the bubble
+ * must show is just a fixed CSS line at 50%, drawn once in styles.css,
+ * never recomputed per frame. */
+
+/** Magnification inside the bubble. Higher than `ZOOM_SCALE` (the in-place
+    strip scale) on purpose -- the bubble is a small fixed box, so it needs
+    more magnification than the whole strip does to make a boundary readable
+    at a glance, the actual ask ("readable at a glance"). */
+export const BUBBLE_SCALE = 4;
+
+/** Bubble box size, in CSS px. Wide enough to show meaningful context around
+    the touch point, short enough to read as "a bubble", not a second strip. */
+export const BUBBLE_WIDTH = 220;
+export const BUBBLE_HEIGHT = 64;
+
+/** Vertical gap between the touch point and the bubble's bottom edge, in CSS
+    px. This is the whole reason the bubble exists as a separate element
+    rather than a tooltip glued to the finger: a gap of 0 would sit the
+    preview right under the thumb, exactly what it needs to avoid. */
+export const BUBBLE_GAP_PX = 28;
+
+/**
+ * Where to place the bubble's top-left corner, in viewport (fixed-position)
+ * coordinates -- horizontally centered on the touch point, floating
+ * `BUBBLE_GAP_PX` above it, both clamped so the bubble never renders
+ * partially off-screen.
+ *
+ * MUTATION TO BREAK THIS: drop either `Math.max(0, ...)` clamp on `left` or
+ * `top` and a touch near the left/top edge of the viewport would push the
+ * bubble partly off-screen.
+ *
+ * @param {number} x  pointer clientX
+ * @param {number} y  pointer clientY
+ * @param {{width:number,height:number}} viewport  `window.innerWidth/Height`
+ * @param {{width?:number,height?:number,gap?:number}} [opts]
+ * @returns {{left:number, top:number, width:number, height:number}|null}
+ */
+export function bubblePosition(x, y, viewport, opts = {}) {
+  const width = opts.width ?? BUBBLE_WIDTH;
+  const height = opts.height ?? BUBBLE_HEIGHT;
+  const gap = opts.gap ?? BUBBLE_GAP_PX;
+  if (
+    !viewport || !(viewport.width > 0) || !(viewport.height > 0) ||
+    typeof x !== "number" || !Number.isFinite(x) ||
+    typeof y !== "number" || !Number.isFinite(y)
+  ) return null;
+
+  let left = x - width / 2;
+  left = Math.max(0, Math.min(viewport.width - width, left));
+
+  // Anchored ABOVE the touch point (iOS pattern: the preview must not sit
+  // under the thumb that is covering the spot it previews). Only clamped at
+  // the top -- a bubble that cannot fit above (touch very near the top edge)
+  // still renders on-screen rather than off the top.
+  let top = y - gap - height;
+  top = Math.max(0, top);
+
+  return { left, top, width, height };
+}
+
+/**
+ * How far to translate the bubble's inner (scaled) content so the touch
+ * point lands exactly at the bubble's own horizontal midline. Clamped so the
+ * scaled content never scrolls past the strip's own edges -- dragging to the
+ * very start or end of the timeline should show the strip's boundary sitting
+ * inside the bubble, not empty space beyond it.
+ *
+ * MUTATION TO BREAK THIS: drop the `Math.max(min, ...)` or `Math.min(max, ...)`
+ * clamp and dragging past either end of the strip reveals blank space in the
+ * bubble instead of holding on the strip's own edge.
+ *
+ * @param {number} x  pointer clientX
+ * @param {{left:number,width:number}} rect  the strip's box, pre-zoom (same
+ *   contract as `zoomOriginPercent`'s `rect`)
+ * @param {number} bubbleWidth  the bubble's own width in CSS px
+ * @param {number} scale  magnification applied to the cloned content
+ * @returns {number|null} a CSS px translateX, or null when unmeasurable
+ */
+export function bubbleContentOffset(x, rect, bubbleWidth, scale) {
+  if (
+    !rect || !(rect.width > 0) || typeof x !== "number" || !Number.isFinite(x) ||
+    !(bubbleWidth > 0) || !(scale > 0)
+  ) return null;
+
+  const scaledWidth = rect.width * scale;
+  // When the scaled strip is narrower than the bubble itself (a very short
+  // strip, or a small viewport), there is no meaningful edge to track --
+  // center it instead of translating toward an edge that does not exist.
+  if (scaledWidth <= bubbleWidth) return (bubbleWidth - scaledWidth) / 2;
+
+  const raw = bubbleWidth / 2 - (x - rect.left) * scale;
+  const min = bubbleWidth - scaledWidth; // right edge of content aligns with bubble's right edge
+  const max = 0;                          // left edge of content aligns with bubble's left edge
+  return Math.max(min, Math.min(max, raw));
+}

@@ -109,6 +109,8 @@ import { mountStrip, stripModel, stripSummary } from "./segment-strip.js";
 import {
   HOLD_MS, MOVE_TOLERANCE_PX, ZOOM_SCALE,
   startGesture, moveGesture, holdTimeoutGesture, endGesture, zoomOriginPercent,
+  BUBBLE_SCALE, BUBBLE_WIDTH, BUBBLE_HEIGHT, BUBBLE_GAP_PX,
+  bubblePosition, bubbleContentOffset,
 } from "./strip-scrub-gesture.js";
 import { createDurableStore } from "./durable-store.js";
 import { makeIdbTier } from "./idb-tier.js";
@@ -1389,6 +1391,10 @@ const ForayPlayer = {
     holdTimeout: holdTimeoutGesture,
     end: endGesture,
     originPercent: zoomOriginPercent,
+    /* ---------- floating magnifier bubble (V2) ---------- */
+    BUBBLE_SCALE, BUBBLE_WIDTH, BUBBLE_HEIGHT, BUBBLE_GAP_PX,
+    bubblePosition,
+    bubbleContentOffset,
   },
 
   /* ---------- playback speed (#242) ---------- */
