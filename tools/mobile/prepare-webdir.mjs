@@ -224,6 +224,16 @@ export const SHELL_ONLY_FILES = [
     dest: "foray-media-session.js",
     module: true,
   },
+  /* This card's addition: the web half of `foray-tts` (docs/research/on-device-tts.md).
+     Independent of the two files above -- it does not touch playback state or
+     the lock screen, and nothing in it assumes foray-audio has run -- so its
+     position in this list does not matter the way the audio pair's does. Listed
+     last only because it was added last. */
+  {
+    src: "mobile/plugins/foray-tts/web/foray-tts.js",
+    dest: "foray-tts.js",
+    module: true,
+  },
 ];
 
 /** The `<script>` tags the bundle's `index.html` needs for `SHELL_ONLY_FILES`.

@@ -1,0 +1,6 @@
+{
+  "//": "Marks this directory as ESM for Node, so tools/mobile/foray-tts.test.mjs can import foray-tts.js directly. Same job foray-audio/web/package.json does for that plugin. NOT copied into the bundle -- module-ness in a browser comes from <script type=\"module\">, and prepare-webdir.mjs copies the one .js file (once wired -- see this plugin's README.md) and nothing else.",
+  "name": "foray-tts-web",
+  "private": true,
+  "type": "module"
+}

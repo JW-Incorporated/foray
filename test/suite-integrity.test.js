@@ -461,6 +461,13 @@ const FLOORS = {
      independently of the fixture suite. */
   "tools/mobile/prepare-webdir.test.mjs": 65,
   "tools/mobile/shell-invariants.test.mjs": 47,
+  /* `foray-tts`'s JS-side interface (docs/research/on-device-tts.md, this
+     card). Guards two things nothing else checks: that a lexicon entry with
+     `ipa: null` never becomes a guessed pronunciation override (a silent
+     mispronunciation risk, not a crash, so nothing else would catch it), and
+     that a native call failure/absence always falls back to Web Speech rather
+     than rejecting into a caller's promise chain. */
+  "tools/mobile/foray-tts.test.mjs": 22,
   /* The foreground service's web half (#27's Android half, on #37). Zero slack, and
      for the reason `media-session.test.js` above gives: what this suite guards is
      mostly a set of single-line edits away from their opposites, on a surface nobody
