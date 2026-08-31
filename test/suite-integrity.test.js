@@ -304,6 +304,17 @@ const FLOORS = {
      one passes it. The ceiling on TAG_DF_COMMON is a product judgement guarded by
      tools/test-search.mjs's "parenting" case. */
   "test/search-df-scaling.test.js": 10,
+  /* Thin anchors (#209): "Electrical Circuit Design Dummies" returned
+     game-design and personal-finance content, not electronics, because a
+     real but catalogue-thin, unmodeled token ("circuit") could be silently
+     outvoted by a commoner co-token ("design") under OR semantics. Floored
+     because the fixture half of this suite is the only place the exact
+     failure shape is reproduced under full control (a synthetic pool sized
+     so corpusDF crosses THIN_ANCHOR_DF deliberately), and the live-catalogue
+     half is the literal reproduction of Joey's bug report -- deleting either
+     would let the thin-anchor gate regress silently the way the original
+     bug shipped silently. Every test names the mutation that kills it. */
+  "test/search-thin-anchor.test.js": 9,
   /* One generation per page load (#233). Floored because the thing it guards is
      invisible in the product: a mismatched code/data pair renders, it just
      renders the wrong program's reading of today's document. Every test in there
