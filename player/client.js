@@ -112,7 +112,7 @@ import {
   createMediaSession, mediaSessionView, SEEK_BACKWARD_SEC, SEEK_FORWARD_SEC,
 } from "./media-session.js";
 import {
-  readRate, writeRate, nextRate, normalizeRate, rateLabel, rateAriaLabel,
+  readRate, writeRate, nextRate, normalizeRate, rateLabel, rateAriaLabel, RATES,
 } from "./playback-rate.js";
 
 /* The in-page buttons and the lock screen use ONE pair of numbers, imported
@@ -804,6 +804,65 @@ function paintRate(rate = currentRate()) {
   ui.rateBtn.setAttribute("aria-label", rateAriaLabel(rate));
 }
 
+/** The mini-player's speed picker (#349). Same fix as the Foray page's
+    #fy-rate: this button used to cycle to the next stop on every tap, with no
+    way to see or jump straight to any of the other five. Opens a small menu
+    naming every stop on the ladder instead — copied from what Apple Podcasts,
+    Spotify, Overcast and Pocket Casts all do — built fresh each open so it
+    never shows a stale "current" mark, and torn down on any dismissal. */
+let rateMenuEl = null;
+
+function closeRatePicker() {
+  if (!rateMenuEl) return;
+  rateMenuEl.remove();
+  rateMenuEl = null;
+  document.body.classList.remove("fy-sheet-open");
+}
+
+function openRatePicker() {
+  closeRatePicker();
+  const current = currentRate();
+
+  const wrap = el("div", "fy-sheet");
+  const scrim = el("div", "fy-scrim");
+  const panel = el("div", "fy-panel");
+  panel.setAttribute("role", "dialog");
+  panel.setAttribute("aria-modal", "true");
+
+  const grab = el("div", "fy-grab");
+  grab.setAttribute("aria-hidden", "true");
+
+  const title = el("h3", null, "Playback speed");
+  title.id = "mp-rate-title";
+  panel.setAttribute("aria-labelledby", "mp-rate-title");
+
+  const list = el("div", "rate-options");
+  for (const stop of RATES) {
+    const isCurrent = stop === current;
+    const opt = el("button", "rate-option" + (isCurrent ? " on" : ""), rateLabel(stop));
+    opt.type = "button";
+    if (isCurrent) opt.setAttribute("aria-current", "true");
+    opt.addEventListener("click", () => {
+      applyRate(stop);
+      closeRatePicker();
+    });
+    list.append(opt);
+  }
+
+  const actions = el("div", "fy-sheet-actions");
+  const cancel = el("button", "fy-sheet-cancel", "Cancel");
+  cancel.type = "button";
+  cancel.addEventListener("click", closeRatePicker);
+  actions.append(cancel);
+
+  panel.append(grab, title, list, actions);
+  wrap.append(scrim, panel);
+  scrim.addEventListener("click", closeRatePicker);
+  document.body.append(wrap);
+  document.body.classList.add("fy-sheet-open");
+  rateMenuEl = wrap;
+}
+
 /* ---------- transport, in one place ---------- */
 
 /**
@@ -1004,7 +1063,7 @@ function bind() {
     render();
   });
 
-  ui.rateBtn.addEventListener("click", () => applyRate(nextRate(currentRate())));
+  ui.rateBtn.addEventListener("click", () => openRatePicker());
 
   // Corner case #17: pocketing the phone must not lose the position. This is
   // the path that actually matters on mobile — beforeunload is unreliable there.
@@ -1320,6 +1379,15 @@ const ForayPlayer = {
       the module, which is the whole reason this bridge exists. */
   rateLabel(rate) {
     return rateLabel(rate);
+  },
+
+  /** The full ladder of selectable speeds, ascending — for a picker menu
+      (rather than the cycle button) to enumerate. Re-exported for the same
+      reason as rateLabel: app.js is a classic script and cannot import
+      playback-rate.js directly. Returns a fresh array each call so a caller
+      can't mutate the frozen source. */
+  rateStops() {
+    return [...RATES];
   },
 
   /** The accessible name, likewise. A page that wrote its own would be a second

@@ -935,6 +935,22 @@ body.fy-sheet-open { overflow: hidden; }
   cursor: pointer;
 }
 .fy-chip.on { border-color: var(--accent); color: var(--text); background: var(--surface); }
+
+/* ---------- playback speed picker (#349) ---------- */
+.rate-options { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+.rate-option {
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit; font-size: 0.95rem; font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+.rate-option.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, var(--surface-2)); }
+.rate-option:active { background: var(--surface); }
+
 #fy-sheet-note {
   width: 100%;
   padding: 10px 12px;

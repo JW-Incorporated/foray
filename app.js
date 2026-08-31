@@ -2146,32 +2146,31 @@ function bindForayTransport(r, player, resume = null) {
     await start(0);
   });
 
-  /* Playback speed (#242). Bound BEFORE the "nothing playable" bail-out below and
-     labelled from the stored value, because neither depends on this Foray: the
-     speed is global (one `cp_rate` for the app — a speed is a fact about the
-     listener, not about the audio), it is settable before anything has started, and
-     a Foray with no playable segments still leaves a listener who may want to set
-     it for the next one. `paintForay` relabels it on every tick from the snapshot,
-     so a change made in the mini-player's sheet shows up here too **while a Foray
-     is live** — `notifyForay` has nothing to notify when the player is on a single
-     episode, so in that one case this button keeps its label until the page is
-     rendered again. Stated rather than fixed: the value itself is always right
-     (it lives in `cp_rate`, which both controls read), the stale thing is a label
-     on a page whose Foray is not the thing playing, and a rate-only broadcast
-     channel is more machinery than that is worth. */
+  /* Playback speed (#242, popup menu #349). Bound BEFORE the "nothing playable"
+     bail-out below and labelled from the stored value, because neither depends
+     on this Foray: the speed is global (one `cp_rate` for the app — a speed is
+     a fact about the listener, not about the audio), it is settable before
+     anything has started, and a Foray with no playable segments still leaves a
+     listener who may want to set it for the next one. `paintForay` relabels it
+     on every tick from the snapshot, so a change made in the mini-player's
+     sheet shows up here too **while a Foray is live** — `notifyForay` has
+     nothing to notify when the player is on a single episode, so in that one
+     case this button keeps its label until the page is rendered again. Stated
+     rather than fixed: the value itself is always right (it lives in
+     `cp_rate`, which both controls read), the stale thing is a label on a page
+     whose Foray is not the thing playing, and a rate-only broadcast channel is
+     more machinery than that is worth.
+
+     THE BUTTON USED TO CYCLE ON TAP — one press silently jumped straight to
+     the next stop, with no way to see the other five without repeated taps or
+     to tell where "next" would land. Every major podcast app (Apple, Spotify,
+     Overcast, Pocket Casts) opens a menu naming every stop instead. Tapping
+     `#fy-rate` now opens that menu; nothing changes until a stop is tapped. */
   const rateBtn = $("#fy-rate");
-  /* BOTH methods checked, not just one. app.js and the module refresh
-     independently, and a bridge with `playbackRate` but no `cycleRate` would bind a
-     handler that throws into `guardForayTap` on every tap — a control that reports
-     "that didn't take" forever. They ship together, so this is belt and braces, and
-     it costs one `typeof`. */
-  if (rateBtn && typeof player.playbackRate === "function" && typeof player.cycleRate === "function") {
+  if (rateBtn && typeof player.rateStops === "function" && typeof player.setPlaybackRate === "function") {
     paintRateButton(player, player.playbackRate());
     rateBtn.addEventListener("click", () => guardForayTap(() => {
-      // Synchronous, and no `playerHasForay` branch: unlike every other control on
-      // this row, changing the speed is meaningful with nothing loaded and must not
-      // start playback as a side effect.
-      paintRateButton(player, player.cycleRate());
+      openRateMenu(player, (rate) => paintRateButton(player, rate));
     }));
   }
 
@@ -2280,6 +2279,69 @@ function paintRateButton(player, rate) {
   if (btn.textContent === label && btn.getAttribute("aria-label") === aria) return;
   btn.textContent = label;
   btn.setAttribute("aria-label", aria);
+}
+
+/** The speed picker (#349): a modal listing every stop on the ladder, tap one
+    to set it, tap outside or Cancel to leave the current speed alone. Same
+    fy-sheet/fy-scrim/fy-panel skeleton as the intro popup and the down-vote
+    sheet — one modal pattern for the whole app, not a third one-off.
+
+    Built and torn down on open/close rather than kept in the markup, same
+    choice showIntroPopupOnce made: this menu is opened rarely (compared to
+    the 4 Hz paintForay tick) and its content (which stop is "current") is
+    stale the instant it is left mounted across a rate change made elsewhere,
+    so there is nothing to gain from keeping it around between opens. */
+function openRateMenu(player, onChange) {
+  if (typeof player.rateStops !== "function") return;
+  const stops = player.rateStops();
+  const current = typeof player.playbackRate === "function" ? player.playbackRate() : null;
+
+  const wrap = ddEl("div", "fy-sheet");
+  wrap.id = "rate-sheet";
+
+  const scrim = ddEl("div", "fy-scrim");
+  const panel = ddEl("div", "fy-panel");
+  panel.setAttribute("role", "dialog");
+  panel.setAttribute("aria-modal", "true");
+
+  const grab = ddEl("div", "fy-grab");
+  grab.setAttribute("aria-hidden", "true");
+
+  const title = ddEl("h3", null, "Playback speed");
+  title.id = "rate-sheet-title";
+  panel.setAttribute("aria-labelledby", "rate-sheet-title");
+
+  const list = ddEl("div", "rate-options");
+  for (const stop of stops) {
+    const isCurrent = stop === current;
+    const opt = ddEl("button", "rate-option" + (isCurrent ? " on" : ""),
+      typeof player.rateLabel === "function" ? player.rateLabel(stop) : `${stop}×`);
+    opt.type = "button";
+    if (isCurrent) opt.setAttribute("aria-current", "true");
+    opt.addEventListener("click", () => {
+      const applied = player.setPlaybackRate(stop);
+      onChange(applied);
+      close();
+    });
+    list.append(opt);
+  }
+
+  const actions = ddEl("div", "fy-sheet-actions");
+  const cancel = ddEl("button", "fy-sheet-cancel", "Cancel");
+  cancel.type = "button";
+  actions.append(cancel);
+
+  panel.append(grab, title, list, actions);
+  wrap.append(scrim, panel);
+  document.body.appendChild(wrap);
+  document.body.classList.add("fy-sheet-open");
+
+  const close = () => {
+    wrap.remove();
+    document.body.classList.remove("fy-sheet-open");
+  };
+  scrim.addEventListener("click", close);
+  cancel.addEventListener("click", close);
 }
 
 /** The only thing that changes 4x a second. Deliberately not a re-render: the
