@@ -35,7 +35,13 @@ body {
   color: var(--text);
   line-height: 1.4;
 }
-body.view-home { overflow: hidden; }
+/* Was `overflow: hidden` on `body.view-home` — the home screen is designed
+   to fit one viewport with no internal scroll, but on iOS Safari a page with
+   no scrollable overflow anywhere also has no rubber-band bounce, which reads
+   as "unresponsive" / "is this frozen" on first touch, not "intentionally
+   fixed". Letting the body scroll normally (there is nothing to scroll TO on
+   home, so it always snaps back) keeps the one-screen layout while restoring
+   the felt responsiveness of an ordinary webpage. */
 
 /* ---------- top bar ---------- */
 .topbar {
