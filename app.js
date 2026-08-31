@@ -4062,9 +4062,14 @@ function enterForayFromQuery() {
   } catch (_) { /* a hash we cannot write is a home screen, not a broken page */ }
 }
 
-function route() {
+/* Renders whichever page the current hash points at, WITHOUT touching the
+   drawer. Split out of route() so a settings-toggle re-render (family mode,
+   player pref, auto-advance) can refresh the page behind the drawer without
+   the drawer-closing side effect below — those toggles are not navigation,
+   the hash never changes, and closing the drawer on them is the bug this
+   split fixes. route() itself still closes the drawer, for real navigation. */
+function renderCurrentPage() {
   if (!state.ready) return;
-  openDrawer(false);
   /* Both of these belong to a page that is about to be replaced. The sheet's DOM
      and listeners die with #view, so neither can act — but a stale entry left
      pointing at a detached segment is the kind of thing that becomes a bug the
@@ -4082,6 +4087,12 @@ function route() {
   else if (h === "#/playlists") renderPlaylists();
   else if (h === "#/queue") renderQueue();
   else renderHome();
+}
+
+function route() {
+  if (!state.ready) return;
+  openDrawer(false);
+  renderCurrentPage();
 }
 
 /* ---------- init ---------- */
@@ -4159,13 +4170,13 @@ async function init() {
     logEvent("family_mode", { on: familyMode() });
     buildCards();
     renderDrawer();
-    route();
+    renderCurrentPage();
   });
   $("#player-toggle").addEventListener("click", () => {
     lsSet("cp_player", playerPref() === "apple" ? "pocketcasts" : "apple");
     logEvent("player_pref", { player: playerPref() });
     renderDrawer();
-    route();
+    renderCurrentPage();
   });
   $("#autoadvance-toggle").addEventListener("click", () => {
     lsSet("cp_autoadvance", !autoAdvanceOn());
