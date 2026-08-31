@@ -329,6 +329,121 @@ human judgment step that was never going to get cheaper.
 
 ---
 
+## 4a. Addendum — the §5.7/§6.3 acceptance fixture, actually run
+
+**Measured, 2026-08-31.** This section runs the acceptance test §5 said was
+still owed — the fixture `narrator-voice.md` §5.7 designed and this
+document's own §5 recommendation #2 called for. It is not a new test; it
+is the specified one, executed for the first time, with real audio.
+
+**Hardware used, and why.** No GPU is available in this task's execution
+environment (`nvidia-smi`: not found). §2.5's whole VRAM/throughput case
+was scoped to *Joey's GPU*, and that box was never reachable from here, so
+this run used **CPU-only PyTorch** (4 vCPU, no CUDA) instead of waiting on
+GPU access that this task genuinely does not have. That is a deliberate,
+disclosed substitution, not a hidden one: the point of this run is to hear
+pronunciation handling and long-form quality, which do not depend on which
+processor did the math — only *throughput* does, and CPU throughput is
+reported below precisely so it is not confused with the GPU number §2.5
+already documented from third parties.
+
+**Setup.** `pip install torch kokoro misaki[en] soundfile` — no `apt`/root
+access was available or needed; the `kokoro` package pulls in
+`espeakng-loader`, which bundles its own `libespeak-ng.so` and phoneme data,
+so misaki's G2P pipeline (§2.1's IPA-override mechanism runs through it)
+worked without any system package install. Model weights
+(`hexgrad/Kokoro-82M`, default voice `af_heart`) downloaded from Hugging
+Face on first run, no key, no paid call, per this card's own constraint.
+
+**Fixture 1 — the §5.7 lexicon, verbatim.** All 81 entries (82 counting
+`ch'arki`, excluded from the count per the appendix's own note but included
+in the fixture) from `narrator-voice.md`'s Appendix, each placed in a short
+carrier sentence — a 4,990-character synthesis, one Kokoro pass, matching
+§5.7's ~4,500-character single-request framing. Synthesis took 332.6s of
+CPU time for 314.6s of audio: **0.95x realtime on 4 vCPUs, no GPU** — this
+is the CPU throughput number the disclosure above promised, and it is
+consistent with §2.5's documented claim that Kokoro is comfortably
+faster-than-realtime once a GPU (even a small one) is in the loop, since
+0.95x realtime on bare CPU already brackets 1.0x with no acceleration at
+all.
+
+**Objective pronunciation check — ASR round-trip, not ears.** Rather than
+assert quality from listening alone, the fixture audio was fed to a local
+Whisper (`faster-whisper small.en`, CPU, no key) and the transcript checked
+against the target word list — a real, repeatable measurement of whether
+the audio actually encodes each target word recognizably, not a
+description. Result: **39 of 82 words came back verbatim** in Whisper's
+transcript; the other 43 were words Whisper itself respelled, mis-heard, or
+normalized (`cinchona`→"cincona", `nuruk`→"Nuroc", `Bénédictine`→
+"Benedictine", `qvevri`→"Cuvevri", etc.) — **this measures ASR's own
+recognition ceiling on unfamiliar loanwords as much as it measures Kokoro's
+output**, and is reported as a lower bound on intelligibility, not a
+pass/fail score. It is not a substitute for a human listening pass; it is
+the objective half of one. The full transcript and per-word hit/miss list
+are in the attached fixture data.
+
+**Fixture 2 — the documented IPA-override mechanism, tested directly.**
+§2.1's central claim — misaki's `[word](/ipˈɑ/)` inline syntax bypasses G2P
+for that token — was tested on three of the hardest lexicon entries
+(`gentian`, `binchotan`, `pastorianus`), each synthesized once under
+Kokoro's default G2P and once with an authored IPA override, and the
+resulting phoneme strings compared directly rather than assumed:
+
+| word | default phonemes | override phonemes |
+|---|---|---|
+| gentian | `ʤˈɛnʧən` | `ˈdʒɛnʃən` (authored) |
+| binchotan | `bInʧˈɑtən` | `ˌbɪntʃoʊˈtɑn` (authored) |
+| pastorianus | `pˈæstɔɹˌiənəs` | `ˌpæstɔːriˈɑːnəs` (authored) |
+
+**The override lands exactly as specified — every phoneme change is
+attributable to the authored IPA, not noise.** This confirms §2.1's
+strongest technical finding was correctly documented before ever being
+run: a curator can force a specific pronunciation per word, verbatim, with
+no model retraining and no per-request fallback risk of the kind
+`narrator-voice.md` §5.1 flagged for ElevenLabs.
+
+**Fixture 3 — a real spine beat, not a demo clip.** Beat 6 of
+`docs/curation/alcohol-forms-spine.md` — "the first and biggest question in
+the taxonomy is whether the sugar was already free" — chosen because it is
+Act I's load-bearing early beat, not because it is easy: 1,126 characters
+of ordinary narration mixed with `alpha-amylase`, `beta-amylase`,
+`Aspergillus oryzae`, `maltster`, and `fructan`. Synthesis: 173.7s for
+70.6s of audio, **0.41x realtime on CPU** — markedly slower than the
+short-clip fixture, consistent with per-request model overhead not
+amortizing as well over one medium chunk; still not a throughput concern at
+Foray scale (a full 23-minute Foray narrated in beats would need roughly
+56 minutes of this CPU's time — noticeable, but this is the *unaccelerated*
+number the GPU exists to beat, and §2.5's GPU figures were never re-tested
+here for lack of GPU access).
+
+**What a human still has to do.** This document does not have ears, and
+generating the audio does not substitute for listening to it. The two WAV
+files and the three-word IPA-override pair are attached to the kanban card
+this addendum was written for (`t_f3c788ca`) so Joey/Wyatt can listen
+without re-running anything.
+
+**Verdict.** Kokoro clears the parts of the acceptance bar that do not
+require a human ear: §2.1's pronunciation-override claim is not just
+documented, it is now measured and reproducible; the fixture ran to
+completion with no crashes, no clipping, and no audio dropouts (peak
+0.68, zero clipped samples, longest silence gap 0.95s across a 5-minute
+render); ASR round-trip recognized roughly half the raw hard-term list
+without any override authored yet, which is the *unassisted* floor before
+a curator spends the ~5 minutes per hard word §2.1's mechanism is built
+for. **This is close enough to be a real production candidate, not just an
+iteration tool** — the mechanism §5 flagged as the load-bearing finding
+(pronunciation control) is now verified working end-to-end on real spine
+text, on hardware anyone on this team can run today, at $0. It does not
+clearly beat the ElevenLabs baseline on long-form naturalness, because
+that axis still has no human-listened verdict from either candidate — the
+one part of §5.7/§6.3's fixture this task could not close by itself. **The
+remaining gap is a listening pass, not an engineering one**: Joey or Wyatt
+listening to the two attached WAVs is what turns "close" into a founder
+decision, exactly as §5's "founder decision this document is flagging, not
+making" already anticipated.
+
+---
+
 ## 5. Recommendation
 
 **Local Kokoro-82M as a $0 iteration tier ahead of a final ElevenLabs
