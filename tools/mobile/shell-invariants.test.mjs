@@ -940,11 +940,15 @@ test("mobile/'s only non-Capacitor dependency is our own plugin, by a file: path
     );
     local.push({ name, target });
   }
-  /* Pinned at exactly one, because "how many local plugins does the shell have" is a
-     decision and today's answer is one. A second is fine — say so here, in the PR
-     that adds it. */
-  assert.equal(local.length, 1, "expected exactly one local plugin, found: " + (local.map((l) => l.name).join(", ") || "none"));
-  assert.equal(local[0].name, "foray-audio");
+  /* Pinned at exactly two, because "how many local plugins does the shell have" is a
+     decision and today's answer is two. `foray-tts` is the second, added by this
+     card (docs/research/on-device-tts.md) — say so here, in the PR that adds the
+     next one, same as this comment already asked of the PR that added this one. */
+  assert.equal(local.length, 2, "expected exactly two local plugins, found: " + (local.map((l) => l.name).join(", ") || "none"));
+  assert.deepEqual(
+    local.map((l) => l.name).sort(),
+    ["foray-audio", "foray-tts"]
+  );
 });
 
 test("the plugin name the web half calls is the name the Java registers", () => {
