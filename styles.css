@@ -473,6 +473,52 @@ button.danger {
   padding: 6px 0;
 }
 
+/* ---------- Up Next (docs/listening-queue-plan.md Stage 1) ---------- */
+
+button.up-next {
+  flex: none;
+  min-height: 40px;
+  padding: 0 10px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+button.up-next.on { color: var(--accent); border-color: var(--accent); }
+
+.up-next-reorder {
+  flex: none;
+  display: flex; flex-direction: column; gap: 2px;
+}
+button.reorder {
+  flex: none;
+  width: 28px; height: 22px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 0.8rem;
+  cursor: pointer;
+  padding: 0;
+}
+button.reorder:disabled { opacity: 0.35; cursor: default; }
+
+button.up-next-remove {
+  flex: none;
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  cursor: pointer;
+  padding: 0;
+}
+
 /* ---------- in-app player (#25) ---------- */
 
 /* Uses the :root custom properties, so light mode comes for free — the page

@@ -1024,3 +1024,35 @@ its reasoning.
   they describe a live deployment, and re-pointing it at `jwlabs.ai` is a site change
   in another repo. #25 gets a note saying why the TLDs now differ and why that reopens
   nothing (a 301 satisfies both stores).
+
+## 2026-08-31 (Up Next listening queue, Stage 1)
+
+- **One global "Up Next" list, in a new `cp_queue` key, fully separate from
+  `cp_playlists`.** `docs/listening-queue-plan.md` (PR #367) designed this;
+  this entry records the choice as implemented (kanban card `t_f4da81f5`,
+  gated on `#/show/:show_id` Stage 1 — PR #366 — actually merging, which it
+  did). Multiple named queues is deferred to a hypothetical v2, not built
+  now — mirrors the plan's rationale: a second parallel multi-list feature
+  would blur the exact line `cp_playlists` already occupies.
+- **No auto-advance playback in v1.** Tapping an Up Next row plays that one
+  episode via the existing single-episode `playBtn`/`epRow` path, unchanged.
+  Finishing an episode does not chain into the next queued item. This is
+  expensive to reverse only in the sense that user habits form around it —
+  the plan (§4) flags the auto-advance question as a real, undecided UX
+  branch (whether it reuses `player/queue-manager.js`'s primitive or is a
+  fully separate advance-on-end hook), deliberately left open until there is
+  real usage to learn from.
+- **Naming: "Up Next" in every user-facing string, never bare "queue".**
+  `player/queue-manager.js`/`queue-state.js` already own the word "queue" for
+  a foray's internal segment ordering; conflating the two is the exact
+  collision this repo's ownership rules (CLAUDE.md, "app is 4a / stitched-
+  audio unit is a foray") exist to prevent. Internal code names (`cp_queue`,
+  `queueIds()`, `renderQueue()`) are implementation detail and do say
+  "queue" — nothing internal renders to the screen.
+- **Reorder and remove live only on `#/queue`, not on the add-side row
+  controls** (`epRow`, `archivedRow`, `renderEpisode`, `renderShow`'s episode
+  rows). Those rows are already at their mobile control-density ceiling
+  (plan §1 Q3) — stacking reorder/remove onto every row that can add to the
+  queue was rejected in favor of one small idempotent "+ Up Next" control
+  that never removes, with the list-management surface entirely on the
+  queue's own page.

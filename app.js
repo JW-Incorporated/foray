@@ -467,6 +467,19 @@ function starBtn(id) {
   return `<button class="star ${on ? "on" : ""}" data-star="${esc(id)}" aria-label="Save">${on ? "★" : "☆"}</button>`;
 }
 
+/* "+ Up Next" row control (docs/listening-queue-plan.md Stage 1, plan §1 Q3).
+   Additive to the row — sits beside starBtn/playBtn, never replaces either.
+   Label is always "Up Next" (never bare "queue"), per plan §3. Once added the
+   control shows a plain "in Up Next" state rather than disappearing, mirroring
+   starBtn's on/off toggle so the row keeps giving feedback without navigating
+   away — the plan's explicit "browse and add without losing your place" ask. */
+function upNextBtn(id) {
+  if (!id) return "";
+  const on = isQueued(id);
+  return `<button class="up-next ${on ? "on" : ""}" data-upnext="${esc(id)}"
+    aria-label="${on ? "In Up Next" : "Add to Up Next"}">${on ? "✓ Up Next" : "+ Up Next"}</button>`;
+}
+
 /* ---------- the four suggestions ---------- */
 
 function pickedHistory() { return lsGet("cp_history", []); }
@@ -823,6 +836,84 @@ function playlists() {
 
 function savePlaylists(all) { return lsSet("cp_playlists", all.slice(0, 50).map(withMirror)); }
 
+/* ---------- Up Next (cp_queue) ----------
+
+   docs/listening-queue-plan.md Stage 1. `cp_queue` is a NEW key, deliberately
+   not shaped like `cp_playlists` (plan §2) — one flat, ordered array of
+   episode ids, fully separate storage from playlists (an episode can be in
+   both at once; they answer different questions). One global list in v1, not
+   multiple named queues (plan §1 Q1).
+
+   NAMING (plan §3): every user-facing string for this feature says "Up Next",
+   never bare "queue" — `player/queue-manager.js`/`queue-state.js` already own
+   that word for a foray's internal segment ordering, and confusing the two is
+   exactly the collision CLAUDE.md's ownership section warns about. Internal
+   names here (`cp_queue`, `queueIds`, `renderQueue`) are implementation detail
+   and are fine to say "queue" — nothing here renders to the screen. */
+
+function queueIds() {
+  const ids = lsGet("cp_queue", []);
+  /* A non-string/empty entry cannot be resolved against itemIndex or savedMap
+     (both keyed by real episode ids), so it can only ever render as a
+     permanently-broken row — dropping it here is not data loss, it is the
+     same "nothing in it to lose" guard `playlists()` applies to a corrupt
+     entry (line ~810 above). */
+  return Array.isArray(ids) ? ids.filter(id => typeof id === "string" && id) : [];
+}
+
+function saveQueueIds(ids) { return lsSet("cp_queue", ids); }
+
+function isQueued(id) { return !!id && queueIds().includes(id); }
+
+/* Idempotent by design: tapping "+ Up Next" twice on the same row (a slow
+   network re-render, a double-tap) must not duplicate the entry — the plan's
+   UI never offers a way to remove a duplicate, so silently de-duping here is
+   the only place that can hold that invariant. */
+function addToQueue(id) {
+  if (!id) return;
+  const ids = queueIds();
+  if (ids.includes(id)) return;
+  saveQueueIds(ids.concat(id));
+  logEvent("queued", { episode_id: id });
+}
+
+function removeFromQueue(id) {
+  if (!id) return;
+  saveQueueIds(queueIds().filter(x => x !== id));
+  logEvent("unqueued", { episode_id: id });
+}
+
+/** Swap a queued episode with its neighbour. `dir` is -1 (up/earlier) or +1
+    (down/later); a request that would walk off either end is a no-op, not a
+    wrap-around — reordering off the visible list would look like the item
+    vanished. */
+function moveQueueItem(id, dir) {
+  const ids = queueIds();
+  const i = ids.indexOf(id);
+  if (i < 0) return;
+  const j = i + dir;
+  if (j < 0 || j >= ids.length) return;
+  [ids[i], ids[j]] = [ids[j], ids[i]];
+  saveQueueIds(ids);
+}
+
+/* Same two-source resolution resolveParts() uses for a playlist part (line
+   ~850 above): `state.poolIds` for whether the catalogue still carries this
+   episode "live" (never `state.itemIndex` alone — see the comment on
+   resolveParts for why that distinction is load-bearing, #276), then a
+   `cp_saved` snapshot for one that has aged out but was starred, then a bare
+   id for one that has neither — still a real row (archivedRow already
+   renders an id-only part honestly), not a silently dropped one. */
+function queueRows() {
+  return queueIds().map(id => {
+    const live = state.poolIds.has(id) ? state.itemIndex[id] : null;
+    if (live) return { item: live, id, state: "live" };
+    const saved = savedMap()[id];
+    if (saved) return { item: saved, id, state: "archived" };
+    return { item: { id }, id, state: "unnamed" };
+  });
+}
+
 /* One row per saved part, in saved order, each tagged with what the live pool
    can still do for it. `resolveParts(p).length` is the number BOTH views print,
    so the count and the contents cannot disagree — that is the whole of #276, and
@@ -925,6 +1016,7 @@ function renderShow(show_id) {
 
   bindPickLogging($("#view"));
   bindStars($("#view"));
+  bindUpNext($("#view"));
   bindPlay($("#view"));
 }
 
@@ -1042,6 +1134,30 @@ function bindStars(scope) {
       e.preventDefault();
       e.stopPropagation();
       toggleStar(btn.dataset.star);
+    });
+  });
+}
+
+/* Toggling here is deliberately different from toggleStar: tapping "+ Up Next"
+   a second time does NOT remove the episode (plan §1 Q3 — the control adds;
+   removal lives on the #/queue page, not on every row it can appear on, to
+   keep browsing rows at their control-density ceiling). It just re-confirms
+   membership, which is why addToQueue is already idempotent rather than a
+   toggle. */
+function bindUpNext(scope) {
+  scope.querySelectorAll("[data-upnext]").forEach(btn => {
+    if (btn._bound) return;
+    btn._bound = true;
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const id = btn.dataset.upnext;
+      addToQueue(id);
+      scope.querySelectorAll(`[data-upnext="${CSS.escape(id)}"]`).forEach(b => {
+        b.textContent = "✓ Up Next";
+        b.classList.add("on");
+        b.setAttribute("aria-label", "In Up Next");
+      });
     });
   });
 }
@@ -1205,6 +1321,7 @@ function renderHome() {
   sizeProgressBars($("#view"));
   bindPickLogging($("#view"));
   bindStars($("#view"));
+  bindUpNext($("#view"));
   bindPlay($("#view"));
 }
 
@@ -1223,7 +1340,7 @@ function epRow(item, idx, ctx, nextIdx) {
       <div class="t">${esc(item.title)}</div>
       <div class="s">${esc(item.show)} · ${fmtDur(item.duration_min)}</div>
     </div>
-    ${inApp}${starBtn(item.id)}${external}
+    ${inApp}${starBtn(item.id)}${upNextBtn(item.id)}${external}
   </div>`;
 }
 
@@ -1268,7 +1385,7 @@ function archivedRow(item, idx, ctx) {
         ? `${esc(item.show)}${item.duration_min ? ` · ${fmtDur(item.duration_min)}` : ""} · not in 4a's catalogue right now`
         : "Saved before 4a kept episode details"}</div>
     </div>
-    ${named ? starBtn(item.id) : ""}${link}
+    ${named ? starBtn(item.id) : ""}${named ? upNextBtn(item.id) : ""}${link}
   </div>`;
 }
 
@@ -1344,6 +1461,7 @@ function renderPlaylistDetail(id) {
   });
   bindPickLogging($("#view"));
   bindStars($("#view"));
+  bindUpNext($("#view"));
   bindPlay($("#view"));
 }
 
@@ -1377,9 +1495,10 @@ function renderEpisode(id) {
       </div>
       ${item.artwork_url ? `<img class="ep-art" src="${esc(safeUrl(item.artwork_url))}" alt="">` : ""}
       ${item.hook ? `<p class="fp-s-why">${esc(item.hook)}</p>` : ""}
-      <div class="ep-actions">${playBtn(item)}${starBtn(item.id)}</div>
+      <div class="ep-actions">${playBtn(item)}${starBtn(item.id)}${upNextBtn(item.id)}</div>
     </div>`;
   bindStars($("#view"));
+  bindUpNext($("#view"));
   bindPlay($("#view"));
 }
 
@@ -1387,6 +1506,106 @@ function renderEpisode(id) {
    renderPlaylistDetail maps into rows, deliberately, so "7 parts" and five rows
    cannot come apart again (#276). It is a saved-length question, not a pool
    question, so this view needs no catalogue to answer it honestly. */
+/* ---------- Up Next page (#/queue, docs/listening-queue-plan.md Stage 1) ----------
+
+   Reachable from the drawer nav in the same place "Playlists" lives today
+   (plan §1 Q4). Reuses the ep-row/gone visual language resolveParts/epRow/
+   archivedRow already establish, per the plan's "same UI affordances,
+   separate storage" rule (§2) — this page does not read or write
+   cp_playlists, only cp_queue via queueRows().
+
+   Reorder + remove live HERE, not on the row controls that add to the queue
+   (epRow/archivedRow/renderEpisode/renderShow) — the plan's control-density
+   note (§1 Q3) rules out stacking a fourth/fifth icon onto rows that already
+   sit at their mobile-width ceiling. Play uses the existing single-episode
+   playBtn/epRow-style playback, unchanged — no auto-advance chaining into the
+   next Up Next item (plan §4, explicitly deferred). */
+function renderQueue() {
+  document.body.className = "view-page";
+  fullPool(); // populate itemIndex/poolIds so a live queued item can play in-app
+  const rows = queueRows();
+  $("#view").innerHTML = `
+    <div class="page">
+      <div class="page-head">
+        <a class="back" href="#/">‹</a>
+        <div><h2>Up Next</h2><p class="sub">${rows.length} queued</p></div>
+      </div>
+      ${rows.length
+        ? rows.map((r, i) => upNextRow(r, i, rows.length)).join("")
+        : `<p class="note">Nothing in Up Next yet — add an episode from any row's "+ Up Next" button.</p>`}
+    </div>`;
+
+  bindPickLogging($("#view"));
+  bindStars($("#view"));
+  bindPlay($("#view"));
+  bindUpNextReorder($("#view"));
+}
+
+/* One row: the SAME playable shape epRow/archivedRow already give (so a
+   queued row looks and behaves like every other episode row in the app), plus
+   up/down reorder controls and a remove control this page owns exclusively
+   (see renderQueue's header comment for why those do not live on the add-side
+   controls). `unnamed` (an id with neither a live pool entry nor a saved
+   snapshot) still gets a row — a count that disagrees with what is on screen
+   is the #276 defect this whole file works to avoid — just with no title,
+   no play, no star, matching the `unnamed` branch resolveParts already draws
+   for a playlist part with nothing to name it. */
+function upNextRow(r, idx, total) {
+  const { item, id, state } = r;
+  const named = state !== "unnamed";
+  const playable = state === "live";
+  const inApp = playable ? playBtn(item) : "";
+  const title = named ? esc(item.title) : "Episode no longer available";
+  const sub = state === "live"
+    ? `${esc(item.show)} · ${fmtDur(item.duration_min)}`
+    : state === "archived"
+      ? `${esc(item.show || "")}${item.duration_min ? ` · ${fmtDur(item.duration_min)}` : ""} · not in 4a's catalogue right now`
+      : "Removed from your history — no details saved";
+  return `<div class="ep-row up-next-row ${playable ? "" : "gone"}">
+    <span class="q-num">${idx + 1}</span>
+    <div class="info">
+      <div class="t">${title}</div>
+      <div class="s">${sub}</div>
+    </div>
+    ${inApp}${named ? starBtn(item.id) : ""}
+    <div class="up-next-reorder">
+      <button class="reorder up" data-reorder-up="${esc(id)}" ${idx === 0 ? "disabled" : ""} aria-label="Move up">↑</button>
+      <button class="reorder down" data-reorder-down="${esc(id)}" ${idx === total - 1 ? "disabled" : ""} aria-label="Move down">↓</button>
+    </div>
+    <button class="up-next-remove" data-dequeue="${esc(id)}" aria-label="Remove from Up Next">✕</button>
+  </div>`;
+}
+
+function bindUpNextReorder(scope) {
+  scope.querySelectorAll("[data-reorder-up]").forEach(btn => {
+    if (btn._bound) return;
+    btn._bound = true;
+    btn.addEventListener("click", (e) => {
+      e.preventDefault(); e.stopPropagation();
+      moveQueueItem(btn.dataset.reorderUp, -1);
+      renderQueue();
+    });
+  });
+  scope.querySelectorAll("[data-reorder-down]").forEach(btn => {
+    if (btn._bound) return;
+    btn._bound = true;
+    btn.addEventListener("click", (e) => {
+      e.preventDefault(); e.stopPropagation();
+      moveQueueItem(btn.dataset.reorderDown, 1);
+      renderQueue();
+    });
+  });
+  scope.querySelectorAll("[data-dequeue]").forEach(btn => {
+    if (btn._bound) return;
+    btn._bound = true;
+    btn.addEventListener("click", (e) => {
+      e.preventDefault(); e.stopPropagation();
+      removeFromQueue(btn.dataset.dequeue);
+      renderQueue();
+    });
+  });
+}
+
 function renderPlaylists() {
   document.body.className = "view-page";
   const all = playlists();
@@ -3587,6 +3806,7 @@ function route() {
   else if ((m = /^#\/episode\/(.+)$/.exec(h))) renderEpisode(m[1]);
   else if ((m = /^#\/show\/(.+)$/.exec(h))) renderShow(decodeURIComponent(m[1]));
   else if (h === "#/playlists") renderPlaylists();
+  else if (h === "#/queue") renderQueue();
   else renderHome();
 }
 
