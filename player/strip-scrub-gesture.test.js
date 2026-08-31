@@ -11,6 +11,8 @@ import assert from "node:assert/strict";
 import {
   HOLD_MS, MOVE_TOLERANCE_PX, ZOOM_SCALE,
   startGesture, moveGesture, holdTimeoutGesture, endGesture, zoomOriginPercent,
+  BUBBLE_SCALE, BUBBLE_WIDTH, BUBBLE_HEIGHT, BUBBLE_GAP_PX,
+  bubblePosition, bubbleContentOffset,
 } from "./strip-scrub-gesture.js";
 
 /* ---------- constants sanity ---------- */
@@ -191,4 +193,140 @@ test("ZOOM_SCALE magnifies (greater than 1) but is not absurd", () => {
   // MUTATION: ZOOM_SCALE = 1 -- the "zoom" would render pixel-identical to
   // the un-zoomed strip, i.e. no zoom at all.
   assert.ok(ZOOM_SCALE > 1 && ZOOM_SCALE <= 6);
+});
+
+/* ---------- floating magnifier bubble (V2) ---------- */
+
+test("BUBBLE_SCALE magnifies more than the in-place ZOOM_SCALE", () => {
+  // MUTATION: BUBBLE_SCALE <= ZOOM_SCALE -- a bubble that magnifies no more
+  // than the strip already does in place would not be "readable at a
+  // glance", the whole reason the bubble needs its own, higher scale.
+  assert.ok(BUBBLE_SCALE > ZOOM_SCALE);
+});
+
+test("BUBBLE_GAP_PX is a positive, plausible gap above the touch point", () => {
+  // MUTATION: BUBBLE_GAP_PX = 0 -- the bubble would sit directly on the
+  // touch point, right back under the thumb it exists to clear.
+  assert.ok(BUBBLE_GAP_PX > 0 && BUBBLE_GAP_PX < 100);
+});
+
+const VIEWPORT = { width: 400, height: 800 };
+
+test("bubblePosition centers horizontally on the touch point away from edges", () => {
+  const p = bubblePosition(200, 400, VIEWPORT);
+  // MUTATION: `x - width / 2` -> `x - width` -- this would shift the
+  // bubble a whole width left of center instead of centering it.
+  assert.equal(p.left, 200 - BUBBLE_WIDTH / 2);
+});
+
+test("bubblePosition floats above the touch point by the gap plus height", () => {
+  const p = bubblePosition(200, 400, VIEWPORT);
+  // MUTATION: `y - gap - height` -> `y - gap` -- this would put the
+  // bubble's TOP (not bottom) only `gap` above the touch, so the box would
+  // actually overlap the thumb instead of floating clear of it.
+  assert.equal(p.top, 400 - BUBBLE_GAP_PX - BUBBLE_HEIGHT);
+});
+
+test("bubblePosition clamps left so the bubble never renders off the left edge", () => {
+  const p = bubblePosition(2, 400, VIEWPORT);
+  // MUTATION: drop `Math.max(0, ...)` -- a touch near x=2 would compute a
+  // negative left and render the bubble partly off-screen.
+  assert.equal(p.left, 0);
+});
+
+test("bubblePosition clamps left so the bubble never renders off the right edge", () => {
+  const p = bubblePosition(VIEWPORT.width - 2, 400, VIEWPORT);
+  // MUTATION: drop `Math.min(viewport.width - width, ...)` -- a touch near
+  // the right edge would render the bubble partly off-screen to the right.
+  assert.equal(p.left, VIEWPORT.width - BUBBLE_WIDTH);
+});
+
+test("bubblePosition clamps top so the bubble never renders above the viewport", () => {
+  const p = bubblePosition(200, 5, VIEWPORT);
+  // MUTATION: drop `Math.max(0, top)` -- a touch very near the top of the
+  // viewport would compute a negative top and render off-screen above it.
+  assert.equal(p.top, 0);
+});
+
+test("bubblePosition returns a box of the requested (or default) size", () => {
+  const p = bubblePosition(200, 400, VIEWPORT);
+  assert.equal(p.width, BUBBLE_WIDTH);
+  assert.equal(p.height, BUBBLE_HEIGHT);
+});
+
+test("bubblePosition returns null with no viewport", () => {
+  assert.equal(bubblePosition(200, 400, null), null);
+});
+
+test("bubblePosition returns null for a zero-size viewport", () => {
+  // MUTATION: drop the `viewport.width > 0` / `viewport.height > 0` guards
+  // -- this would divide/compare against a degenerate box and could return
+  // a NaN-tainted position instead of the honest "cannot answer" null.
+  assert.equal(bubblePosition(200, 400, { width: 0, height: 800 }), null);
+});
+
+test("bubblePosition returns null for non-finite coordinates", () => {
+  assert.equal(bubblePosition(NaN, 400, VIEWPORT), null);
+  assert.equal(bubblePosition(200, NaN, VIEWPORT), null);
+});
+
+const STRIP_RECT = { left: 100, width: 200 }; // same span as zoomOriginPercent's RECT
+
+test("bubbleContentOffset centers the touch point at the bubble midline (strip midpoint)", () => {
+  const off = bubbleContentOffset(200, STRIP_RECT, BUBBLE_WIDTH, BUBBLE_SCALE);
+  // Touch at the strip's own midpoint (x=200, i.e. 50% across a [100,300]
+  // strip) should translate the scaled content so that point sits at the
+  // bubble's own midline: bubbleWidth/2 - (x - left) * scale.
+  // MUTATION: `bubbleWidth / 2 - (x - rect.left) * scale` -> drop the
+  // `bubbleWidth / 2` term -- the touch point would land at the bubble's
+  // left edge instead of its midline.
+  const expected = BUBBLE_WIDTH / 2 - (200 - STRIP_RECT.left) * BUBBLE_SCALE;
+  const clampedExpected = Math.max(
+    BUBBLE_WIDTH - STRIP_RECT.width * BUBBLE_SCALE,
+    Math.min(0, expected),
+  );
+  assert.equal(off, clampedExpected);
+});
+
+test("bubbleContentOffset clamps at the strip's left edge (no blank space)", () => {
+  const off = bubbleContentOffset(100, STRIP_RECT, BUBBLE_WIDTH, BUBBLE_SCALE);
+  // MUTATION: drop `Math.min(max, ...)` (max = 0) -- a touch at the strip's
+  // own left edge would translate content PAST the bubble's left edge,
+  // revealing blank space instead of holding on the strip's boundary.
+  assert.equal(off, 0);
+});
+
+test("bubbleContentOffset clamps at the strip's right edge (no blank space)", () => {
+  const off = bubbleContentOffset(300, STRIP_RECT, BUBBLE_WIDTH, BUBBLE_SCALE);
+  const scaledWidth = STRIP_RECT.width * BUBBLE_SCALE;
+  // MUTATION: drop `Math.max(min, ...)` (min = bubbleWidth - scaledWidth)
+  // -- a touch at the strip's own right edge would translate content past
+  // the bubble's right edge, revealing blank space beyond the strip's end.
+  assert.equal(off, BUBBLE_WIDTH - scaledWidth);
+});
+
+test("bubbleContentOffset centers content when the scaled strip is narrower than the bubble", () => {
+  const tinyRect = { left: 0, width: 10 };
+  const off = bubbleContentOffset(5, tinyRect, BUBBLE_WIDTH, 1);
+  // scaledWidth (10) <= bubbleWidth (220): no meaningful edge to track.
+  // MUTATION: drop this branch entirely -- the general formula would then
+  // translate toward a nonexistent edge instead of centering.
+  assert.equal(off, (BUBBLE_WIDTH - 10) / 2);
+});
+
+test("bubbleContentOffset returns null for an unmeasurable strip", () => {
+  assert.equal(bubbleContentOffset(150, null, BUBBLE_WIDTH, BUBBLE_SCALE), null);
+  assert.equal(bubbleContentOffset(150, { left: 0, width: 0 }, BUBBLE_WIDTH, BUBBLE_SCALE), null);
+});
+
+test("bubbleContentOffset returns null for a non-finite x", () => {
+  assert.equal(bubbleContentOffset(NaN, STRIP_RECT, BUBBLE_WIDTH, BUBBLE_SCALE), null);
+});
+
+test("bubbleContentOffset returns null for a non-positive scale or bubble width", () => {
+  // MUTATION: drop either `bubbleWidth > 0` or `scale > 0` guard -- a zero
+  // or negative divisor/multiplier downstream would produce a nonsense
+  // (Infinity/NaN or backwards) offset instead of the honest null.
+  assert.equal(bubbleContentOffset(150, STRIP_RECT, 0, BUBBLE_SCALE), null);
+  assert.equal(bubbleContentOffset(150, STRIP_RECT, BUBBLE_WIDTH, 0), null);
 });
