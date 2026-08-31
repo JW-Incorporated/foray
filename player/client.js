@@ -396,6 +396,34 @@ function buildUI() {
 let current = null;
 let scrubbing = false;
 
+/* ---------- episode-ended notification (Up Next auto-advance, #369) ----------
+
+   ONE signal, for ordinary single-episode playback only (never for a Foray —
+   a Foray already has its own internal advance-to-next-segment machinery and
+   this must not be a second opinion about that). `app.js` is the only
+   consumer, and it decides entirely on its own whether "ended" should mean
+   "start the next Up Next item" (docs/listening-queue-plan.md addendum) —
+   this module just reports the fact once, exactly once, per finished item.
+
+   `_endedAnnouncedFor` is the de-dupe: `render()` runs on every `timeupdate`/
+   `play`/`pause` while `manager.state.type === "ended"` keeps reading true
+   after the first tick, so without this a single finish would fire the
+   listener dozens of times. Cleared the moment a NEW item starts (`play()`
+   below), so the next episode's own end is reportable again. */
+let _endedAnnouncedFor = null;
+const _episodeEndedListeners = new Set();
+
+function _announceEpisodeEndedIfNeeded() {
+  if (foray || !manager || !current) return;
+  if (manager.state?.type !== "ended") return;
+  if (_endedAnnouncedFor === current.id) return;
+  _endedAnnouncedFor = current.id;
+  const id = current.id;
+  _episodeEndedListeners.forEach((fn) => {
+    try { fn(id); } catch (_) { /* a listener's own bug must not break playback */ }
+  });
+}
+
 /** The Foray being played, or null for ordinary single-episode playback.
     `{ resolved, index, onChange, error }`.
 
@@ -695,6 +723,8 @@ function render() {
   if (foray) {
     persistForayProgress();
     notifyForay();
+  } else {
+    _announceEpisodeEndedIfNeeded();
   }
 }
 
@@ -1319,6 +1349,10 @@ const ForayPlayer = {
     persistForayProgress({ force: true });
     foray = null;
     setSkipButtonMode(false);
+    // A new item starting makes its own eventual "ended" reportable again —
+    // without this a listener who replays the SAME episode id would never
+    // see a second ended announcement.
+    _endedAnnouncedFor = null;
     // Installed BEFORE the metadata is written, and it replaces the Foray's set
     // rather than adding to it: a stale `nexttrack` still pointed at a Foray
     // nobody is on is the one wiring bug this surface can hide.
@@ -1332,6 +1366,18 @@ const ForayPlayer = {
 
   isPlaying(id) {
     return isPlaying() && current?.id === id;
+  },
+
+  /** Subscribe to "an ordinary (non-Foray) episode just finished playing".
+      Returns an unsubscribe function. Fires at most once per finished
+      episode — see `_announceEpisodeEndedIfNeeded`'s header. Never fires for
+      a Foray: that has its own internal segment-advance machinery and this
+      must not layer a second opinion on top of it (docs/listening-queue-plan.md
+      §4 addendum). */
+  onEpisodeEnded(fn) {
+    if (typeof fn !== "function") return () => {};
+    _episodeEndedListeners.add(fn);
+    return () => _episodeEndedListeners.delete(fn);
   },
 
   /* ---------- Forays (#128) ---------- */

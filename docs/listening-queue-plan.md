@@ -197,6 +197,72 @@ queue-manager coupling question before there's real usage to learn from.
   gated on `t_290cba50` and `t_52c50bba` actually merging to `main` (not
   merely opening a PR) — those cards' final state should be re-verified at
   that time since this plan was written while both were still open PRs.
-- No auto-advance playback (§4, deferred).
+- No auto-advance playback (§4, deferred — see §8 for the addendum that
+  resolves this).
 - No multiple/named queues (§1, deferred pending usage signal).
 - No backend/account-scoped queue storage.
+
+## 8. Addendum — auto-advance (Stage 3, docs/listening-queue-plan.md §4,
+   kanban card t_b9880844)
+
+*Written before implementation, per CLAUDE.md workflow rule 1 and rule 4.
+Answers the four design questions the parent card raised, and resolves §4's
+open playback-integration question left dangling by Stage 1.*
+
+**The genuine tension, stated plainly.** Joey asked for a queue that plays
+through episode to episode. CLAUDE.md product principle #1 explicitly bans
+"autoplay chains" as a dark pattern. Those are in real conflict — this is not
+a coding decision with an obviously-correct answer, it is a product/principle
+collision, and it is flagged here rather than silently resolved either
+direction. The resolution below (opt-in, default off) is offered as the
+reading that satisfies BOTH: it gives Joey the queue-plays-through behavior he
+asked for, on demand, while keeping the "no dark pattern shipped live by
+default" half of principle #1 intact. If Joey wants it defaulted on instead,
+that is a product call only he can make — this addendum does not make it for
+him, and the implementation below is built so flipping the default is a
+one-line change to `autoAdvanceOn()`'s fallback, not a redesign.
+
+**Q1 — scope: only episodes played FROM `#/queue`, never any episode once
+something is queued.** Starting an unrelated episode elsewhere in the app
+must never be silently read as "now playing the queue" — that would be a
+second, worse dark pattern (an autoplay chain the listener didn't even
+choose to start). Implementation: the `#/queue` page's own play buttons tag
+the play as queue-originated (`bindPlay(scope, { origin: "queue" })`); every
+other play button in the app does not. Only a queue-originated play can ever
+trigger the next item.
+
+**Q2 — on by default or opt-in.** **Opt-in, default OFF, one per-device
+toggle** (drawer → Settings → "Up Next auto-advance"), same shape as the
+existing Family mode / player-preference toggles. This is the load-bearing
+answer to the tension above: an unconfigured install never runs an autoplay
+chain, and turning it on is one explicit, reversible tap — not a setup-flow
+default, not a per-playlist checkbox that could get toggled on by accident.
+
+**Q3 — end of queue.** Stops cleanly. No loop back to the first item, no
+pulling in more content to keep going (that second failure mode would be the
+"infinite scroll" half of principle #1, not just "autoplay chains"). The
+listener sees the ordinary player UI settle into "stopped" and the `#/queue`
+page's own row count already reflects what is left.
+
+**Q4 — reorder/removal mid-playback.** **Freezes at what was queued when
+playback started**, not a live recompute. Concretely: advance looks up the
+CURRENTLY-PLAYING episode's position in `cp_queue` at the moment it ends, not
+a position captured earlier, so a removal/reorder that happens BEFORE the
+episode finishes is still respected — but if the playing episode itself was
+removed from the queue mid-playback, there is no position to advance from and
+playback simply stops rather than guessing which item "should" be next. This
+is the smaller, more predictable rule of the two on offer (live recompute
+would mean the running order a listener sees on `#/queue` can visibly diverge
+from what is about to play automatically, which is confusing enough on its
+own to defer past Stage 1).
+
+**Implementation shape, for the record:** `player/client.js` gains one new
+signal, `ForayPlayer.onEpisodeEnded(fn)` — fired once per finished ordinary
+(non-Foray) episode, never for a Foray (a Foray already owns its own
+segment-advance machinery; this must not be a second opinion layered on top
+of it). `app.js` owns every actual decision: whether auto-advance is on,
+whether the finished play was queue-originated, and what (if anything) plays
+next. The player module stays exactly as ignorant of "Up Next" as it is
+today — Stage 1's separation between the two "queue" concepts (§3) is
+unchanged by this addendum.
+
