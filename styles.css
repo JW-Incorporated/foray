@@ -539,6 +539,13 @@ body.fp-open.fp-expanded { padding-bottom: 340px; }
 .fp-s-title { font-family: var(--serif); font-size: 1.1rem; font-weight: 700; margin: 8px 0 2px; color: var(--text); }
 .fp-s-show { font-size: 0.75rem; color: var(--text-dim); margin: 0 0 8px; }
 .fp-s-why { font-size: 0.82rem; color: var(--text-dim); margin: 0 0 12px; }
+
+/* Episode page (#/episode/:id) — page wrapper only; artwork/title/show
+   typography is the existing .fp-s-title/.fp-s-show pair above, body copy
+   the existing .fp-s-why, both already used by the player sheet. */
+.ep-art { width: 100%; max-width: 320px; display: block; border-radius: 10px; margin: 0 0 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+.ep-actions { display: flex; align-items: center; gap: 12px; }
+
 .fp-scrub { width: 100%; accent-color: var(--accent); }
 .fp-times { display: flex; justify-content: space-between; font-size: 0.7rem; color: var(--text-dim); }
 .fp-row { display: flex; justify-content: center; align-items: center; gap: 18px; margin: 14px 0 6px; }

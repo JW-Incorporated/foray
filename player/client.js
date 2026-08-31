@@ -360,9 +360,7 @@ function buildUI() {
   const rateBtn = el("button", "fp-rate", "1×");
   rateBtn.type = "button";
   rateBtn.setAttribute("aria-label", "Playback speed");
-  const openLink = el("a", "fp-openep", "Open episode ↗");
-  openLink.target = "_blank";
-  openLink.rel = "noopener";
+  const openLink = el("a", "fp-openep", "Episode");
   /* The bar already survives navigation — it lives on <body>, not inside
      #view — but until now there was no way BACK. Leaving the foray page to look
      at something else meant the running order, the segment you were on and the
@@ -718,8 +716,10 @@ function setNowPlaying(item, why) {
   } else {
     ui.art.hidden = true;
   }
-  if (item.apple_episode_url) {
-    ui.openLink.href = item.apple_episode_url;
+  if (item.id) {
+    // Our own route, built from our own id — mirrors ui.forayLink below:
+    // an in-app hash change, never target="_blank".
+    ui.openLink.href = `#/episode/${encodeURIComponent(item.id)}`;
     ui.openLink.hidden = false;
   } else {
     ui.openLink.hidden = true;
@@ -1035,6 +1035,10 @@ function bind() {
   // Following the route with the sheet still open would leave the Foray page
   // rendered underneath a full-height overlay.
   ui.forayLink.addEventListener("click", () => setExpanded(false));
+  // Same reasoning as forayLink above — now that "Episode" is an in-app
+  // hash route too, not target="_blank", the sheet must not linger open
+  // over the page it navigates to.
+  ui.openLink.addEventListener("click", () => setExpanded(false));
 
   // In a Foray these are previous/next SEGMENT, not ±15/30 s: a segment here is
   // often under two minutes, so a 30-second nudge mostly leaves it anyway, and
