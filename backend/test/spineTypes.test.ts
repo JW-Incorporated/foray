@@ -97,6 +97,15 @@ describe("isClaimShaped", () => {
   it("accepts an irregular simple-past verb not in any -ed/-s pattern", () => {
     expect(isClaimShaped("Ford ran the briquette operation for two decades")).toBe(true);
   });
+
+  it("accepts a plural-subject clause with a bare-form present-tense verb", () => {
+    expect(isClaimShaped("Researchers study charcoal production worldwide")).toBe(true);
+    expect(isClaimShaped("Historians dispute the standard timeline")).toBe(true);
+  });
+
+  it("rejects a mid-sentence capitalized noun followed by a plural noun (compound noun phrase, not a claim)", () => {
+    expect(isClaimShaped("Ford briquettes and Kingsford products")).toBe(false);
+  });
 });
 
 describe("countActs / countSlots / countBeats / allBeats", () => {

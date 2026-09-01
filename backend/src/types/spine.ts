@@ -275,14 +275,35 @@ const PLURAL_NOUN_EXCEPTIONS = new Set([
  * primary detection mechanism. */
 const GERUND_NOUN_EXCEPTIONS = new Set(["manufacturing", "marketing", "engineering", "farming", "advertising", "branding", "packaging"]);
 
-function looksLikeSubjectToken(rawWord: string): boolean {
-  if (rawWord.length === 0) return false;
-  const lower = rawWord.toLowerCase();
-  if (SUBJECT_PRONOUNS.has(lower)) return true;
-  // A capitalized token (proper noun heuristic) that isn't itself a
-  // sentence-initial common word is treated as a likely subject.
-  return /^[A-Z]/.test(rawWord);
-}
+/** Function words that can immediately follow a plural subject without
+ * being a verb ("Researchers and engineers...", "Historians of this era
+ * ...") — used only to gate rule (5) below, so a non-verb second word
+ * doesn't get misread as a bare-form present-tense verb. Deliberately
+ * covers the common conjunctions/prepositions/determiners, not an
+ * exhaustive closed class of every non-verb. */
+const NON_VERB_SECOND_WORDS = new Set([
+  "and",
+  "or",
+  "of",
+  "the",
+  "a",
+  "an",
+  "in",
+  "on",
+  "at",
+  "to",
+  "for",
+  "with",
+  "by",
+  "as",
+  "that",
+  "this",
+  "these",
+  "those",
+  "who",
+  "which",
+  "from"
+]);
 
 export function isClaimShaped(text: string): boolean {
   const trimmed = text.trim();
@@ -294,6 +315,27 @@ export function isClaimShaped(text: string): boolean {
 
   // (1) Closed-class auxiliary/modal/copula.
   if (words.some((w) => FINITE_AUX_VERBS.has(w))) return true;
+
+  // (5) Plural subject + bare-form present tense, e.g. "Researchers study
+  // charcoal production worldwide" or "Historians dispute the timeline" —
+  // covers plural-subject clauses whose verb carries NO suffix at all
+  // (no -s, no -ed, no -ing), which (2)-(4) below cannot detect by
+  // morphology alone. Deliberately narrow: only fires at the sentence's
+  // own subject-verb boundary (index 0 -> index 1), requires the first
+  // word to look like a plausible plural subject (capitalized, ends in
+  // "s"), and requires the second word to not be a function word.
+  const firstRaw = rawWords[0]!;
+  const secondWord = words[1];
+  if (
+    /^[A-Z]/.test(firstRaw) &&
+    words[0]!.endsWith("s") &&
+    secondWord &&
+    secondWord.length >= 3 &&
+    !NON_VERB_SECOND_WORDS.has(secondWord) &&
+    !FINITE_AUX_VERBS.has(secondWord)
+  ) {
+    return true;
+  }
 
   for (let i = 1; i < words.length; i++) {
     const word = words[i]!;
@@ -316,12 +358,18 @@ export function isClaimShaped(text: string): boolean {
       }
     }
 
-    // (2) Present-tense 3rd-person-singular via subject agreement:
-    // word ends in -s/-es, isn't a known plural-noun exception, and the
-    // immediately preceding token looks like a subject.
+    // (2) Present-tense 3rd-person-singular via subject agreement: word
+    // ends in -s/-es, isn't a known plural-noun exception, and the
+    // immediately preceding token is the sentence's OWN subject — i.e.
+    // sentence-initial (index 0) or a subject pronoun. Restricting to the
+    // true grammatical subject position (rather than any capitalized word
+    // anywhere in the sentence) is what stops a mid-sentence proper noun
+    // in a compound noun phrase ("Ford briquettes and Kingsford
+    // products") from making its following plural noun look like a verb.
     if (word.length > 3 && (word.endsWith("es") || word.endsWith("s")) && !PLURAL_NOUN_EXCEPTIONS.has(word)) {
       const prevRaw = rawWords[i - 1];
-      if (prevRaw && looksLikeSubjectToken(prevRaw)) return true;
+      const prevIsSentenceSubject = i === 1 ? /^[A-Z]/.test(prevRaw ?? "") : SUBJECT_PRONOUNS.has((prevRaw ?? "").toLowerCase());
+      if (prevIsSentenceSubject) return true;
     }
   }
 
