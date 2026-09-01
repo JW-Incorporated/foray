@@ -325,6 +325,39 @@ test("RETENTION: append()'s own scheduled flush enforces the cap, not just an ex
   );
 });
 
+test("RETENTION: a small idb flush does not re-scan the whole store every time (round-2 codex finding)", async () => {
+  /* The first fix (prune on every flush) was functionally correct but scanned
+     the whole store on every flush — a real perf regression Codex's own
+     re-review caught. This proves the throttled version: once the first
+     flush's mandatory check has run, further small flushes cost exactly the
+     ONE getAll() `unsynced()` itself always needs to answer the caller — not
+     a second one from pruning underneath it. */
+  const factory = new FakeFactory();
+  let getAllCalls = 0;
+  const realGetAll = FakeObjectStore.prototype.getAll;
+  FakeObjectStore.prototype.getAll = function (...args) { getAllCalls += 1; return realGetAll.apply(this, args); };
+  try {
+    const log = createEventLog({ indexedDB: factory, retention: 5000, scheduleFlush: () => {} });
+    // The FIRST flush of a session always checks once (catches any backlog
+    // left over from a prior session) — so this call costs TWO getAll()s: the
+    // prune's own scan, plus unsynced()'s own read of the result.
+    log.append({ type: "t", payload: {} });
+    await log.unsynced();
+    assert.equal(getAllCalls, 2, "the first flush's mandatory prune check adds one scan on top of unsynced()'s own read");
+    // Several more small flushes, well under PRUNE_CHECK_INTERVAL (250 for a
+    // 5000 retention) writes total — each should cost exactly ONE getAll(),
+    // from unsynced() itself, with no extra scan from pruning underneath it.
+    for (let batch = 0; batch < 5; batch++) {
+      const before = getAllCalls;
+      log.append({ type: "t", payload: {} });
+      await log.unsynced();
+      assert.equal(getAllCalls, before + 1, "a small flush under the check interval must cost exactly one scan, not two");
+    }
+  } finally {
+    FakeObjectStore.prototype.getAll = realGetAll;
+  }
+});
+
 /* ---------- health() shape ---------- */
 
 test("health() is always readable and never throws, even with a dead store", async () => {

@@ -143,6 +143,24 @@ export function createEventLog({
   let notified = 0;
   let inFault = false;
 
+  /* Retention enforcement (idb path only — see below) is throttled rather
+     than run on every flush: `pruneNow()` does a full `getAll()` over the
+     store, and Codex's round-2 review correctly called out that unconditional
+     per-flush pruning turns every `unsynced()`/`trySyncEvents()` call into TWO
+     full scans (one from the prune, one from the caller's own read) even when
+     nothing needed deleting. The ring is exempt — `pushRing` above already
+     self-caps it on every push, no scan required — so only the durable idb
+     store needs this. `writesSincePrune` starts at `Infinity` so the FIRST
+     flush of a session always prunes once, catching any backlog left over
+     from a previous session that ended before its own cap could run (e.g. the
+     tab closed while offline, mid-backlog). After that it prunes roughly
+     every `PRUNE_CHECK_INTERVAL` durable writes — bounding the store to
+     `retention + PRUNE_CHECK_INTERVAL` rows at worst, not unbounded, while
+     keeping the common case (a handful of rows a flush) to one scan per
+     interval instead of one scan per flush. */
+  const PRUNE_CHECK_INTERVAL = Math.max(50, Math.floor(retention / 20));
+  let writesSincePrune = Infinity;
+
   function pushRing(row) {
     ring.push({ ...row, id: `mem:${nextRingId++}` });
     while (ring.length > retention) ring.shift(); // oldest first — see header
@@ -174,15 +192,16 @@ export function createEventLog({
     flushTimer = schedule(() => { flushTimer = null; flushBuffered(); }) ?? true;
   }
 
-  /** Write whatever is buffered, then enforce retention. Never throws — a
-      failed write demotes its batch to the ring rather than losing it (see
-      header). Retention runs here, on every flush, rather than only from the
+  /** Write whatever is buffered, then enforce retention when due. Never
+      throws — a failed write demotes its batch to the ring rather than
+      losing it (see header). Retention is checked here — throttled by
+      `writesSincePrune`, see its comment above — rather than only from the
       caller's post-sync path: `trySyncEvents()` only prunes after a
       successful upload, so an offline device or a down server would
       otherwise let the store grow past `retention` for as long as sync kept
       failing — worse than the old localStorage write, which capped on every
-      write regardless of sync state. Pruning on every flush restores that
-      guarantee unconditionally. */
+      write regardless of sync state. Checking here restores that guarantee
+      unconditionally, without a full scan on every single flush. */
   async function flushBuffered() {
     if (pendingRows.length) {
       const batch = pendingRows.splice(0, pendingRows.length);
@@ -193,13 +212,17 @@ export function createEventLog({
           await withStore(open, STORE_NAME, "readwrite", (s) => {
             for (const row of batch) s.add(row);
           });
+          writesSincePrune += batch.length;
         } catch (err) {
           fault("flush", err);
           for (const row of batch) pushRing(row); // not lost — see header
         }
       }
     }
-    await pruneNow(retention);
+    if (hasIdb && writesSincePrune >= PRUNE_CHECK_INTERVAL) {
+      writesSincePrune = 0;
+      await pruneNow(retention);
+    }
   }
 
   /**
