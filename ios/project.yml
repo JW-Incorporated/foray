@@ -93,11 +93,36 @@ targets:
         DEVELOPMENT_TEAM: ""
         CODE_SIGN_STYLE: Automatic
 
+  # M5 (full-repo-review-report.md, 2026-08-31): an XCTest target with a
+  # fake `PlayerBackend` (see `App/Player/PlayerBackend.swift`'s own doc
+  # comment on why that protocol boundary exists) so `PlayerQueueManager` —
+  # previously compiled by nothing in CI at all — actually runs under test.
+  # `ForayKitTests` stays the pure-state-machine floor; this is the glue
+  # layer on top of it.
+  AppTests:
+    type: bundle.unit-test
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: AppTests
+    dependencies:
+      - target: Foray
+        embed: false
+      - package: ForayKit
+        product: ForayKit
+    settings:
+      base:
+        SWIFT_VERSION: "5.10"
+        IPHONEOS_DEPLOYMENT_TARGET: "17.0"
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Foray.app/Foray"
+        BUNDLE_LOADER: "$(TEST_HOST)"
+
 schemes:
   Foray:
     build:
       targets:
         Foray: all
+        AppTests: [test]
     run:
       config: Debug
     test:
@@ -105,8 +130,13 @@ schemes:
       # ForayKitTests is picked up automatically once the package
       # is added as a target dependency above; listed explicitly here so
       # `xcodebuild test -scheme Foray` also runs it from the CLI.
+      # AppTests is this deliverable's addition: PlayerQueueManager +
+      # FakePlayerBackend coverage, compiled and run against the real App
+      # target rather than merely inspected as source.
       targets:
         - name: ForayKitTests
+          parallelizable: true
+        - name: AppTests
           parallelizable: true
     archive:
       config: Release

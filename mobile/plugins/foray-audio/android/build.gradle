@@ -127,6 +127,21 @@ android {
         sourceCompatibility JavaVersion.VERSION_21
         targetCompatibility JavaVersion.VERSION_21
     }
+    /* M5 (full-repo-review-report.md, 2026-08-31): before this, CI's only Android
+       coverage was `tools/mobile/shell-invariants.test.mjs` (source-shape/JS-bridge)
+       plus `android-build.yml` compiling this module into an APK. Neither ever
+       EXECUTES a line of ForayAudioPlugin/PlaybackKeepAliveService/NowPlayingHub —
+       a JVM-level unit test module (Robolectric) is what lets that native lifecycle
+       code actually run, on the same ubuntu-latest runner that already builds it,
+       with no emulator and no new CI infra. `includeAndroidResources` is required
+       for Robolectric to resolve this module's own `R` class (strings.xml) and to
+       read its AndroidManifest.xml permission/service declarations under test. */
+    testOptions {
+        unitTests {
+            includeAndroidResources = true
+            returnDefaultValues = true
+        }
+    }
 }
 
 repositories {
@@ -139,4 +154,15 @@ dependencies {
     implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
     implementation "androidx.media3:media3-session:$media3Version"
     implementation "androidx.media3:media3-common:$media3Version"
+
+    /* JVM unit tests only (src/test), not instrumentation — no emulator/device
+       needed, so these run in the same `assembleDebug`-hosting CI job. Versions
+       picked as of 2026-08-31 (mavenCentral()/google() `maven-metadata.xml`
+       `<release>`), same sourcing discipline as the `media3Version` comment above:
+       the wrong version is a resolution error, not a test failure, so it is looked
+       up rather than remembered. */
+    testImplementation "junit:junit:4.13.2"
+    testImplementation "org.robolectric:robolectric:4.14.1"
+    testImplementation "androidx.test:core:1.6.1"
+    testImplementation "androidx.test.ext:junit:1.2.1"
 }
