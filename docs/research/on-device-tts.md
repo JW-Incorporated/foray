@@ -468,3 +468,188 @@ boundary flagged where the evidence runs out:
   #226's off-beat-narration concern in `narrator-pipeline.md`, but outside
   this document's remit, which was cost and technical capability, not
   content policy.
+
+---
+
+## 9. Addendum, 2026-09-01 — does on-device narration survive a locked screen? (§9.1 of `docs/curation/generation-architecture.md`)
+
+This continues the investigation above rather than opening a new one — §1–§8 established that
+a native plugin is required to reach any pronunciation control at all; that plugin
+(`mobile/plugins/foray-tts/`) is now built, wrapping `AVSpeechSynthesizer` on iOS and
+`TextToSpeech` on Android. This section answers the question the generation-architecture
+document raised against that plugin: **does the plugin, as built, survive a locked screen** —
+the question `docs/research/mp1-background-audio.md` already settled for a plain `<audio>`
+element (yes on iOS, with one caveat; needs native code on Android), but never asked of
+speech synthesis specifically.
+
+**No device was used and no audio was heard to produce this section**, same discipline as §0
+above. Every claim is sourced to Apple's own developer documentation/WWDC session captions, or
+labelled as an inference from this repo's own prior *measured* findings in
+`mp1-background-audio.md`.
+
+### 9.1 iOS: `AVSpeechSynthesizer` shares the app's `AVAudioSession` by default — this is the load-bearing documented fact
+
+**Documented, first-party — Apple's WWDC20 session 10022, "Create a seamless speech experience
+in your apps"** (`developer.apple.com/videos/play/wwdc2020/10022`), quoting the session's own
+captioned transcript verbatim: *"By default, [`usesApplicationAudioSession`] is set to `true`
+on your `AVSpeechSynthesizer`, and speech audio will use your application['s] shared audio
+session."* Apple's reference page for `AVCaptureSession.usesApplicationAudioSession` (a sibling
+property on a different class, same mechanism) confirms the default is `true` and that setting
+it `false` is what opts an object *out* of the shared session, which corroborates the WWDC
+reading rather than standing alone.
+
+**What this means, and why it is the central finding of this section.** `AVSpeechSynthesizer`
+is not a separate audio subsystem from `<audio>`/`AVPlayer` on iOS — by default it plays through
+the *same* process-wide `AVAudioSession` singleton that `PlayerQueueManager.swift` line 555
+already configures (`session.setCategory(.playback, mode: .spokenAudio, options: [])`) and that
+WebKit itself configures automatically the moment a page's `<audio>` element plays
+(`mobile/README.md` §"The one line iOS needs": *"WebKit sets the `AVAudioSession` category to
+`MediaPlayback` itself"*). This is the same mechanism `mp1-background-audio.md` measured
+surviving backgrounding with 0.0045 s overshoot — not a different, weaker one. **If the app's
+shared audio session already holds an active `.playback`-family category and is active at the
+moment `speak()` is called, `AVSpeechSynthesizer` inherits that same background-audio grant.**
+This directly weakens the generation-architecture document's own pessimistic default reading
+("very likely stops when the WebView is backgrounded") — that reading was written assuming
+`speechSynthesis` (the Web Speech API), which is a genuinely different, undocumented path (§9.2
+below), not assuming the native plugin that was actually built.
+
+**What is NOT documented, and is the real gap.** Apple's reference does not state that
+`AVSpeechSynthesizer.speak()` *activates* the session or sets its category itself — the WWDC
+wording is "will use," not "will configure." A synthesizer instance with the default
+`usesApplicationAudioSession = true` rides on whatever category is already active; it is not
+shown to set one. This matters concretely for **this app's own current implementation**:
+
+**Judgement, checked directly against `ForayTtsPlugin.swift` as built (`mobile/plugins/foray-tts/ios/Sources/ForayTtsPlugin/ForayTtsPlugin.swift`), not assumed.**
+The plugin's `speak()` method (lines 46–117) never touches `AVAudioSession` — no
+`setCategory`, no `setActive`, no read of the current route or category. It only builds an
+`AVSpeechUtterance` and calls `synthesizer.speak(utterance)`. Given the WWDC finding above, this
+means: **narration audio's background survival is entirely parasitic on some other code path
+having already put the shared session into an active `.playback`/`.spokenAudio` state** —
+either `PlayerQueueManager.swift`'s own configuration (uncompiled/unused per `mobile-shell.md`
+§1 — the shell runs the JS player, not that Swift file) or WebKit's own auto-configuration when
+an `<audio>` element is concurrently playing. **Neither is guaranteed to be true at the moment a
+pure narration item plays with no `<audio>` tape item active alongside it** — and per
+`generation-architecture.md` §1.2/§4.5, a narration-only Foray (a "Foray of Carries," fully
+AI-narrated, explicitly permitted at 100% share) is exactly the case where nothing else would be
+holding that session open. **This is the one concrete plugin gap this investigation surfaces**
+— named here per this card's own constraint, not fixed in this card.
+
+### 9.2 The Web Speech API (`speechSynthesis`) in a WKWebView — no documented survival mechanism, and general-purpose evidence points the other way
+
+**Documented, WebKit/W3C.** The W3C Web Speech API spec
+(`w3c.github.io/speech-api/`, already cited in §3 above) says nothing about background or
+locked-screen behavior at all — the spec is silent on power/lifecycle state entirely, in either
+direction. **This is a real absence, not a "no problem found."** Apple's own WebKit
+documentation likewise documents no background-audio guarantee for `speechSynthesis` anywhere
+in its `<audio>`/media-background-audio guidance — that guidance (§9.1 above, `mobile/README.md`)
+is scoped explicitly to `<audio>`/`AVPlayer`-family media elements, which is a documented,
+first-party different code path from `speechSynthesis`'s internal (undocumented) synthesis
+engine inside WebKit.
+
+**Documented, and directly relevant: WKWebView JavaScript execution itself is suspended when
+the hosting app backgrounds, unless something is actively holding a background assertion.**
+Multiple threads on Apple's own developer forums (`developer.apple.com/forums/thread/64150`,
+`/111247`, `/671830` — cited as illustrations of a widely-reported, Apple-forum-hosted behavior,
+not as the primary authority; the primary finding is `mp1-background-audio.md`'s own measured
+WebKit process-lifecycle log lines, §0b/§4.1b above, showing `didChangeThrottleState(Suspended)`
+and `applicationIsAboutToSuspend` firing on a real WebKit process once no assertion is held)
+report that a `WKWebView`'s JS execution pauses/freezes when the app is backgrounded and resumes
+only in the foreground, **by design** — one reply from the same thread states plainly: *"This is
+by design, for the same reasons any app that is suspended no longer gets to execute code."*
+`speechSynthesis.speak()` runs inside that same JS/WebKit execution context. Unlike a native
+`AVSpeechSynthesizer` call (§9.1), there is no documented mechanism by which invoking
+`speechSynthesis` from page JS causes WebKit to acquire or hold a background audio assertion —
+the assertion-holding mechanism `mp1-background-audio.md` measured is tied to the `<audio>`/media
+element lifecycle specifically (`WebPageProxy::clearAudibleActivity`, `updateAudibleMediaAssertions`
+— both keyed to the page's *media elements*, not to arbitrary JS execution or the Web Speech
+API).
+
+**Judgement.** Nothing here proves `speechSynthesis` stops the instant the screen locks — that
+claim would itself be an unlabelled inference of exactly the kind this repo's research
+convention exists to flag. What the documentation supports is narrower and sufficient for a
+verdict: **the Web Speech API has no first-party documented background-audio exemption of any
+kind**, and the general mechanism that would be required for one to exist (an active media
+assertion) is, per this repo's own prior measurement, keyed to `<audio>`/media elements rather
+than arbitrary script execution. This is the opposite documentation posture from §9.1's native
+path, where a first-party, session-sharing mechanism is at least named. The generation-architecture
+document's instinct to prefer the native plugin over Web Speech is confirmed by this section, not
+merely repeated.
+
+### 9.3 What documentation alone settles, and what it cannot
+
+**Settled by documentation, to the standard this repo holds itself to:**
+
+- The native `AVSpeechSynthesizer` path and the Web Speech API path are **not symmetric risks**.
+  The native path has a documented, first-party mechanism (`usesApplicationAudioSession = true`)
+  by which it *can* inherit exactly the background-audio grant `mp1-background-audio.md` already
+  measured working for `<audio>`. The Web Speech API path has no such mechanism documented
+  anywhere, by Apple, WebKit, the W3C spec, or Capacitor.
+- The currently-built `foray-tts` iOS plugin does not itself configure or activate the shared
+  audio session — it depends entirely on that session already being in the right state, which is
+  not guaranteed for a narration-only Foray. **This is a real, specific, checked-not-assumed gap**
+  in the plugin as it stands today (§9.1), separate from and narrower than the
+  generation-architecture document's original blanket "very likely stops" framing.
+- Capacitor's own documentation was checked and contributes nothing beyond what `mobile/README.md`
+  (this repo's own prior research, §7 of `mp1-background-audio.md`) already established: Capacitor
+  does not manage `AVAudioSession` itself on iOS: the one `UIBackgroundModes: audio` Info.plist
+  key plus whatever code sets the session category is the entire mechanism, with no
+  Capacitor-specific TTS accommodation documented anywhere in Capacitor's docs or the two
+  community TTS plugins already surveyed in §3 above.
+
+**NOT settled by documentation, and this is the honest limit of what this section can do:**
+
+- **Whether the native plugin, with its current implementation (no explicit session
+  configuration), actually survives a locked screen in practice.** Documentation establishes the
+  *possibility* via session inheritance; it does not establish that the inheritance actually
+  holds at the exact moment a narration-only Foray calls `speak()` with no `<audio>` element
+  concurrently active. This is exactly the class of claim `mp1-background-audio.md` §0/§4.1b
+  already demonstrated cannot be trusted from documentation or even from a Simulator — measured
+  Simulator behavior there was shown to differ from a real device on the identical question for
+  `<audio>` (`HUMAN-ACTIONS.md` #11's own "a Simulator is not a device" caveat), and nothing
+  about `AVSpeechSynthesizer` changes that limitation.
+- **Whether the Web Speech API genuinely stops immediately, after some delay, or unpredictably**
+  — documentation supports "no guarantee exists," not a specific failure mode or timing.
+
+**Verdict, stated plainly per this card's instruction: this needs a real, locked, physical
+device test. It cannot be settled from documentation alone.** The exact test to run is specified
+in §9.4 below and is filed as `HUMAN-ACTIONS.md` item #29.
+
+### 9.4 The exact test to run, and the plugin change to make first
+
+**Before testing:** the plugin gap named in §9.1 should be closed first, in a follow-up
+engineering card (explicitly not this one, per this card's scope constraint) — have
+`ForayTtsPlugin.swift`'s `speak()` (or its `load()`) explicitly set
+`AVAudioSession.sharedInstance().setCategory(.playback, mode: .spokenAudio, options: [])` and
+`setActive(true)` before calling `synthesizer.speak()`, mirroring exactly what
+`PlayerQueueManager.swift` line 555 already does for the (currently unused) Swift player and
+what WebKit does automatically for `<audio>`. Without this, the test below may fail for a reason
+that is fixable in five minutes rather than a reason that invalidates the native-plugin approach
+— so running the test against the current, unmodified plugin risks a false negative that
+looks like a hard blocker on §1.2 when it may only be a missing session call.
+
+**The test, once a build exists carrying that fix (or, if run against today's code, with the
+result explicitly labelled as testing the *unfixed* plugin):**
+
+1. Build the Capacitor iOS shell (`mobile-shell.md` §0/§6 — `npm run add:ios`, build via Xcode or
+   the existing CI path) with the `foray-tts` plugin wired to a single test call site that speaks
+   a long (60+ second) test sentence on a button press — the existing
+   `tools/mobile/tts-fixture.mjs` harness's approach, or a minimal ad hoc button, either is fine.
+2. Install on a real iPhone (TestFlight or a debug build over USB — `HUMAN-ACTIONS.md` #19/#16
+   cover the account/signing prerequisites if not already done).
+3. Ensure `UIBackgroundModes: audio` is present in `Info.plist` (`mobile/README.md` — should
+   already be true per `mobile-shell.md` §6 item 2, confirm rather than assume).
+4. Trigger the test narration call so speech begins.
+5. **Lock the phone immediately** (side button), and leave it locked and in your pocket.
+6. Wait at least 30 seconds — long enough to exceed both the 5 s audible-activity-clear and the
+   10 s foreground-assertion-release windows `mp1-background-audio.md` §4.1b measured for the
+   `<audio>` path, so a pass here is evidence of the same order of magnitude as that document's
+   own result, not a near-miss.
+7. Unlock and check: **did the test sentence finish playing, or did it stop partway through?**
+   If it stopped, note roughly how many seconds of the 60+ second sentence were heard before
+   silence.
+8. Report the result on the relevant GitHub issue/PR: "native TTS plugin, locked screen, N
+   seconds hidden, [continued throughout / stopped after ~X seconds]."
+
+**Worked if:** there is a written result for at least one real iPhone stating whether the test
+sentence played to completion with the screen locked, matching the reporting bar
+`HUMAN-ACTIONS.md` #11 already sets for the `<audio>` case.

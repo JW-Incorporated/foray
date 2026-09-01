@@ -1993,6 +1993,56 @@ XT on at least one model size, and the Vulkan device line confirms the GPU
 **Status:** OPEN
 
 ---
+
+### 29. Test whether on-device narration survives a locked screen on a real iPhone
+
+**Tag:** `[BLOCKING]` for `Foray_Generation_Architecture.md` §1.2/§9.1 · **Time:** ~5 minutes to start, then a 30-second wait · **Owner:** Joey (an iPhone)
+
+**Why it matters.** `Foray_Generation_Architecture.md` §9.1 flags this as the single
+highest-priority open question in the whole generation-architecture spec: *"Measure
+this before anything else in this document is built."* `docs/research/mp1-background-audio.md`
+already measured that a plain `<audio>` element survives a locked screen on iOS
+(0.0045 s out-point overshoot) — but `AVSpeechSynthesizer` (the native TTS plugin,
+`mobile/plugins/foray-tts/`) is a different API, and nobody has measured whether it
+gets the same treatment. `docs/research/on-device-tts.md` §9 (added 2026-09-01) worked
+through everything documentation alone can settle: `AVSpeechSynthesizer` *can*
+inherit the app's background-audio grant by default (`usesApplicationAudioSession = true`,
+per Apple's WWDC20 session 10022), but the plugin as currently built never explicitly
+activates that audio session itself — so whether it actually holds up on a locked
+phone is genuinely unknown without a device test. The Web Speech API path
+(`speechSynthesis`, no native plugin) has no such documented mechanism at all and is
+the weaker candidate either way.
+
+**Before running this test:** ideally a follow-up engineering card first makes
+`ForayTtsPlugin.swift` explicitly call `AVAudioSession.sharedInstance().setCategory(.playback,
+mode: .spokenAudio, options: [])` + `setActive(true)` before speaking (see
+`on-device-tts.md` §9.4) — without that fix, a failure here might just mean the
+session was never activated, not that the approach is unworkable. If that fix hasn't
+landed yet and you want to test anyway, that's fine — just note in your report that
+you tested the *unfixed* plugin.
+
+**Steps.**
+
+1. Get a build of the Capacitor iOS shell with the `foray-tts` plugin wired to speak
+   a long (60+ second) test sentence on a button press (a session can produce this on
+   request — say the word, same as `mobile-shell.md` §6 item 2 already covers for the
+   background-audio Info.plist line).
+2. Install it on your iPhone (TestFlight or a debug build over USB).
+3. Press the button to start the test sentence speaking.
+4. **Lock the phone immediately** and put it in your pocket.
+5. Wait at least 30 seconds.
+6. Unlock and check: did the sentence finish, or did it stop partway through? If it
+   stopped, roughly how many seconds played before silence?
+7. Report back: "native TTS plugin, locked screen, [continued throughout / stopped
+   after ~X seconds]."
+
+**Worked if:** there's a written result saying whether the test sentence played to
+completion with the screen locked — same reporting bar item #11 already set for the
+`<audio>` case.
+
+**Status:** OPEN
+
+---
 ## DONE
 
 *(Nothing filed yet. Finished items move here with the date they were done and
