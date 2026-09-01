@@ -130,33 +130,46 @@ export function countBeats(spine: Spine): number {
  * Claim-shape check (§4.3's own bar). A claim asserts something about its
  * subject; a topic just names it.
  *
- * This is deliberately NOT a flat verb allowlist — no fixed list of verbs
- * can be complete for arbitrary LLM-generated English, and an incomplete
- * list means an ordinary sentence with an unlisted verb ("Ford ran the
- * operation", "Kingsford controls the market") gets wrongly rejected,
- * which can fail an entire 80-110-beat long-tier spine over one
- * unlisted verb. Instead this combines:
+ * This is a LEXICAL HEURISTIC, not a parser — there is no dependency-free
+ * POS tagger in this codebase, and hand-rolling exhaustive English
+ * grammar is out of scope for a single validation gate. Three review
+ * rounds on this function converged on one structural trade-off, made
+ * explicit here rather than left implicit:
  *
+ *   REJECTING a valid claim is far more costly than ACCEPTING an invalid
+ *   one. A false rejection throws out an entire generated spine
+ *   (`buildSpine` fails the whole 8-110-beat paid LLM call over one
+ *   beat); a false acceptance lets a single topic-shaped beat slip past
+ *   validation into an otherwise-fine spine. This function is therefore
+ *   deliberately biased toward ACCEPTING — it looks for verb-shaped
+ *   evidence ANYWHERE past the first word, not only in a strict
+ *   subject-adjacent position, even though that means a rare
+ *   bare-noun-phrase construction (e.g. "Ford briquettes and Kingsford
+ *   products") can slip through as a false accept. The `beat-not-claim-
+ *   shaped` validation issue is best treated as high-recall, not perfect
+ *   precision: it reliably catches the doc's own example non-claim
+ *   ("Briquettes") and short noun phrases, without being a silent
+ *   production-killer for ordinary English sentences an LLM actually
+ *   writes.
+ *
+ * Signals combined, none needing to be individually exhaustive:
  *   1. A small CLOSED class of auxiliary/modal/copula verbs
- *      (`FINITE_AUX_VERBS`) — genuinely closed in English, safe to
- *      enumerate exhaustively.
- *   2. Subject-agreement morphology: a present-tense 3rd-person-singular
- *      verb ("controls", "dominates", "shapes") is detected structurally
- *      — a word ending in -s/-es, not the first token, immediately
- *      preceded by something that looks like a subject (a capitalized
- *      word, i.e. a likely proper noun, or a common subject pronoun) —
- *      rather than by checking it against a verb list at all.
- *   3. Regular past-tense/progressive morphology (-ed / a progressive
- *      "-ing" directly after a be-auxiliary), which covers the large
- *      regular-verb class without enumerating it.
- *   4. A short list of common IRREGULAR past-tense verbs as a final
- *      supplement, since (2) and (3) miss irregular simple pasts
- *      ("ran", "wrote", "sold") that carry no -s/-ed/-ing signal at all.
- *
- * None of these signals need to be exhaustive on their own — a claim
- * only needs to satisfy the false-negative-prone case if the other
- * three miss it, so completeness improves multiplicatively, not by one
- * ever-growing list.
+ *      (`FINITE_AUX_VERBS`) — genuinely closed in English.
+ *   2. A short list of common IRREGULAR past-tense verbs
+ *      (`COMMON_IRREGULAR_PAST_VERBS`) — covers simple pasts with no
+ *      -s/-ed/-ing signal at all ("ran", "wrote", "sold").
+ *   3. Regular past-tense morphology (-ed), and progressive morphology
+ *      (-ing directly after a be-auxiliary) — covers the open regular-
+ *      verb class without enumerating it.
+ *   4. Present-tense 3rd-person-singular morphology (-s/-es), gated only
+ *      by a small plural-noun exception list, checked anywhere past the
+ *      first word (see the trade-off note above for why this is
+ *      deliberately not further position-restricted).
+ *   5. A narrow bare-form fallback for a single plural-noun-looking
+ *      subject directly followed by an unsuffixed present-tense verb
+ *      ("Researchers study...", "Historians dispute...") — the one verb
+ *      shape with NO morphological signal at all, so it can only be
+ *      caught structurally at the sentence's own subject-verb boundary.
  */
 const FINITE_AUX_VERBS = new Set([
   "is",
@@ -184,7 +197,7 @@ const FINITE_AUX_VERBS = new Set([
   "must"
 ]);
 
-/** Supplements (2)/(3) above for common IRREGULAR simple-past verbs that
+/** Supplements (3)/(4) above for common IRREGULAR simple-past verbs that
  * carry no -ed/-s/-ing signal at all. Deliberately small and explicitly
  * a supplement, not the primary detection mechanism — see the doc
  * comment on `isClaimShaped`. */
@@ -242,10 +255,12 @@ const COMMON_IRREGULAR_PAST_VERBS = new Set([
 ]);
 
 /** Words that are near-universally used as nouns even though they carry
- * an -s suffix (plural nouns), to keep the subject-agreement check from
- * treating "the two Fords' rivals fought" style plurals as verbs. Kept
- * deliberately small — it only needs to catch common false positives,
- * not be exhaustive, since it only gates one of several signals. */
+ * an -s suffix (plural nouns), to keep the present-tense-agreement check
+ * from treating an obvious plural noun as a verb. Kept deliberately
+ * small and expanded as real false positives are found — it only needs
+ * to catch the common cases, not be exhaustive, since it gates one of
+ * several signals in a deliberately accept-biased check (see the
+ * trade-off note on `isClaimShaped`). */
 const PLURAL_NOUN_EXCEPTIONS = new Set([
   "years",
   "decades",
@@ -261,7 +276,11 @@ const PLURAL_NOUN_EXCEPTIONS = new Set([
   "items",
   "beats",
   "acts",
-  "slots"
+  "slots",
+  "products",
+  "grills",
+  "shows",
+  "podcasts"
 ]);
 
 /** Words that are near-universally used as nouns/adjectives even though
@@ -270,30 +289,12 @@ const PLURAL_NOUN_EXCEPTIONS = new Set([
  * primary detection mechanism. */
 const GERUND_NOUN_EXCEPTIONS = new Set(["manufacturing", "marketing", "engineering", "farming", "advertising", "branding", "packaging"]);
 
-/** Determiners/possessive-style words that continue a subject noun
- * phrase without themselves being the subject's head noun or the verb —
- * e.g. "The Ford Motor Company controls..." consumes "The" here before
- * reaching the capitalized head-noun sequence. Deliberately small: it
- * only needs to bridge the common determiner positions, not parse full
- * noun-phrase grammar. */
-const SUBJECT_PHRASE_DETERMINERS = new Set(["the", "a", "an", "this", "that", "these", "those", "its", "their", "his", "her", "our", "my", "your"]);
-
-function isSubjectPhraseContinuation(rawWord: string): boolean {
-  const lower = rawWord.toLowerCase();
-  if (SUBJECT_PHRASE_DETERMINERS.has(lower)) return true;
-  // A capitalized token that is not sentence-initial-by-punctuation-only
-  // (i.e. a proper-noun-looking word) continues a multi-word subject like
-  // "Ford Motor Company" or "The Ford Motor Company".
-  return /^[A-Z]/.test(rawWord);
-}
-
-/** Function words that can immediately follow a plural subject without
- * being a verb ("Researchers and engineers...", "Historians of this era
- * ...") — used to gate the subject-verb-boundary check below, so a
- * non-verb word right after the subject phrase doesn't get misread as a
- * bare-form present-tense verb. Deliberately covers the common
- * conjunctions/prepositions, not an exhaustive closed class of every
- * non-verb. */
+/** Function words that can immediately follow a subject without being a
+ * verb ("Researchers and engineers...", "Historians of this era...") —
+ * used to gate the bare-form fallback below, so a non-verb second word
+ * doesn't get misread as a bare-form present-tense verb. Deliberately
+ * covers the common conjunctions/prepositions, not an exhaustive closed
+ * class of every non-verb. */
 const NON_VERB_SECOND_WORDS = new Set([
   "and",
   "or",
@@ -311,14 +312,14 @@ const NON_VERB_SECOND_WORDS = new Set([
   "from"
 ]);
 
-/** True when `word` (lowercased, punctuation-stripped) looks like a
- * finite verb by itself — closed-class auxiliary, a known irregular
- * past, regular -ed, or -s/-es agreement not on the plural-noun
- * exception list. Does NOT check bare present-tense form (no suffix at
- * all, e.g. "study", "dispute") — that is only accepted at the
- * sentence's actual subject-verb boundary, see `isClaimShaped`, because
- * a bare noun/verb-form-alike word anywhere else in the sentence is too
- * ambiguous to trust on its own. */
+/** True when `word` (lowercased, punctuation-stripped) looks like an
+ * INFLECTED finite verb by itself — closed-class auxiliary, a known
+ * irregular past, regular -ed, or -s/-es agreement not on the
+ * plural-noun exception list. Does NOT check bare present-tense form (no
+ * suffix at all, e.g. "study", "dispute") — that is only accepted at the
+ * sentence's own subject-verb boundary via the fallback in
+ * `isClaimShaped`, since a bare word is otherwise indistinguishable from
+ * a noun. */
 function looksLikeInflectedVerb(word: string): boolean {
   if (FINITE_AUX_VERBS.has(word)) return true;
   if (COMMON_IRREGULAR_PAST_VERBS.has(word)) return true;
@@ -338,36 +339,36 @@ export function isClaimShaped(text: string): boolean {
   // (1) Closed-class auxiliary/modal/copula, anywhere in the sentence.
   if (words.some((w) => FINITE_AUX_VERBS.has(w))) return true;
 
-  // (5a) Multi-word subject phrase + INFLECTED verb, e.g. "The Ford Motor
-  // Company controls the market" or "Kingsford dominated the market for
-  // decades". Consume a subject noun phrase from the start (determiners +
-  // capitalized/proper-noun-looking words), then check whether the word
-  // immediately after it is a reliably-verb-shaped inflection (closed
-  // auxiliary, known irregular past, regular -ed, or -s/-es not on the
-  // plural-noun exception list). Only INFLECTED forms are accepted here —
-  // never a bare, unsuffixed word — because a bare word after an
-  // arbitrary-length subject phrase is indistinguishable from that
-  // phrase's own trailing noun ("The history of charcoal briquette
-  // manufacturing" must not pass just because "history" follows "The").
-  let subjectEnd = 0;
-  while (subjectEnd < rawWords.length && isSubjectPhraseContinuation(rawWords[subjectEnd]!)) {
-    subjectEnd += 1;
-  }
-  if (subjectEnd > 0 && subjectEnd < words.length) {
-    const candidate = words[subjectEnd]!;
-    if (candidate.length >= 3 && !NON_VERB_SECOND_WORDS.has(candidate) && looksLikeInflectedVerb(candidate)) {
-      return true;
+  // (2)-(4) Any INFLECTED verb-shaped word anywhere past the first token
+  // (irregular past, regular -ed, or -s/-es agreement). Checked anywhere
+  // in the sentence rather than only at the grammatical subject boundary
+  // — see the accept-biased trade-off documented on this function —
+  // which is what lets a common-noun subject ("Charcoal production
+  // shapes modern grilling culture") pass without needing to identify
+  // where its subject phrase ends.
+  for (let i = 1; i < words.length; i++) {
+    const word = words[i]!;
+    if (word.length === 0) continue;
+
+    if (looksLikeInflectedVerb(word)) return true;
+
+    // Progressive: "-ing" directly preceded by a be-auxiliary, e.g. "is
+    // reshaping", "was disputing" — excludes bare sentence-final gerund
+    // nouns like "...briquette manufacturing" because there is no
+    // preceding auxiliary there.
+    if (word.length > 4 && word.endsWith("ing") && !GERUND_NOUN_EXCEPTIONS.has(word)) {
+      const prev = words[i - 1];
+      if (prev && (prev === "is" || prev === "are" || prev === "was" || prev === "were" || prev === "been" || prev === "being")) {
+        return true;
+      }
     }
   }
 
-  // (5b) NARROW bare-form fallback: a single-token, plural-noun-looking
+  // (5) NARROW bare-form fallback: a single-token, plural-noun-looking
   // subject ("Researchers", "Historians" — capitalized, ends in "s")
   // directly followed by an unsuffixed present-tense verb ("study",
   // "dispute"), which carries no morphological signal at all and so
-  // cannot be caught by (5a) or the loop below. Deliberately restricted
-  // to this one safe shape (single capitalized+plural-looking first
-  // word) rather than any subject phrase, precisely because a bare verb
-  // candidate is otherwise indistinguishable from a trailing noun.
+  // cannot be caught by (2)-(4) above.
   const firstRaw = rawWords[0]!;
   const secondWord = words[1];
   if (
@@ -381,29 +382,6 @@ export function isClaimShaped(text: string): boolean {
     !/^[A-Z]/.test(rawWords[1] ?? "")
   ) {
     return true;
-  }
-
-  for (let i = 1; i < words.length; i++) {
-    const word = words[i]!;
-    if (word.length === 0) continue;
-
-    // (4) Common irregular simple past, anywhere in the sentence (covers
-    // relative clauses / passive constructions past the main subject).
-    if (COMMON_IRREGULAR_PAST_VERBS.has(word)) return true;
-
-    // (3a) Regular past tense, anywhere in the sentence.
-    if (word.length > 4 && word.endsWith("ed") && !GERUND_NOUN_EXCEPTIONS.has(word)) return true;
-
-    // (3b) Progressive: "-ing" directly preceded by a be-auxiliary, e.g.
-    // "is reshaping", "was disputing" — this excludes bare sentence-final
-    // gerund nouns like "...briquette manufacturing" because there is no
-    // preceding auxiliary there.
-    if (word.length > 4 && word.endsWith("ing") && !GERUND_NOUN_EXCEPTIONS.has(word)) {
-      const prev = words[i - 1];
-      if (prev && (prev === "is" || prev === "are" || prev === "was" || prev === "were" || prev === "been" || prev === "being")) {
-        return true;
-      }
-    }
   }
 
   return false;

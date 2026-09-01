@@ -117,6 +117,13 @@ describe("isClaimShaped", () => {
   it("still rejects a determiner + noun phrase with no verb at all", () => {
     expect(isClaimShaped("The history of charcoal briquette manufacturing")).toBe(false);
   });
+
+  it("accepts a common-noun subject with present-tense verb agreement anywhere in the sentence", () => {
+    // The exact case cited in review: a lowercase common-noun subject
+    // ("Charcoal production"), not a proper noun — the verb signal has to
+    // be found without relying on subject-position capitalization at all.
+    expect(isClaimShaped("Charcoal production shapes modern grilling culture")).toBe(true);
+  });
 });
 
 describe("countActs / countSlots / countBeats / allBeats", () => {
