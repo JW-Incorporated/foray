@@ -4099,7 +4099,7 @@ function route() {
 
 async function fetchJson(path) {
   try {
-    const res = await fetch(path, { cache: "no-cache" });
+    const res = await fetch(pinnedUrl(path), { cache: "no-cache" });
     return res.ok ? await res.json() : null;
   } catch (_) { return null; }
 }
@@ -4266,6 +4266,27 @@ const SHELL_NOTICE = {
   "generation-changed": "4a updated in the background, so this page is one version behind.",
 };
 
+/* THE PAGE'S HALF OF THE GENERATION PIN (#233/M4, sw.js's `handleShell`).
+ *
+ * The worker no longer remembers which pages are running last-known code —
+ * that lived in an in-memory `Set` that a browser-initiated worker eviction
+ * silently emptied, which failed a pinned page OPEN the next time it asked for
+ * data. The pin now lives here instead, in this page's own JS state, which
+ * cannot be evicted independently of the page itself: a `stale-shell` message
+ * names the retained generation this page's CODE actually came from, and every
+ * `data/*.json` fetch after that carries `?_fdid=<that id>` so sw.js's
+ * `handleData` keeps reading the SAME generation rather than whatever today's
+ * pointer names. A reload clears this by simply being a new document — there
+ * is nothing to clear on purpose.
+ */
+let pinnedDeployId = null;
+
+function pinnedUrl(path) {
+  if (!pinnedDeployId) return path;
+  const sep = path.includes("?") ? "&" : "?";
+  return `${path}${sep}_fdid=${encodeURIComponent(pinnedDeployId)}`;
+}
+
 function showShellNotice(reason) {
   /* Own properties only. A plain object literal answers `SHELL_NOTICE["constructor"]`
      with a function, and `SHELL_NOTICE["toString"]` with another one, so a bare
@@ -4312,7 +4333,15 @@ if ("serviceWorker" in navigator && shouldRegisterServiceWorker(window)) {
   if (typeof navigator.serviceWorker.addEventListener === "function") {
     navigator.serviceWorker.addEventListener("message", (e) => {
       const msg = e && e.data;
-      if (msg && msg.source === "foray-sw") showShellNotice(msg.reason);
+      if (!msg || msg.source !== "foray-sw") return;
+      /* `stale-shell` is the ONLY message that pins: it means THIS page's own
+         code fell back to a retained generation, and everything this page
+         fetches from here on must keep reading that same generation. A
+         `deployId` of null (an unretained/unknown generation on the worker's
+         side) intentionally still falls through to the un-pinned path — see
+         sw.js's `handleData` fail-safe for the matching reasoning. */
+      if (msg.reason === "stale-shell" && msg.deployId) pinnedDeployId = msg.deployId;
+      showShellNotice(msg.reason);
     });
   }
 }

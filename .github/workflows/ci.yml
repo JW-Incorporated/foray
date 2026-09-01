@@ -129,6 +129,12 @@ jobs:
             console.log('transcript availability:', ta.summary.episodes_with_transcript + '/' + ta.summary.episodes_total, '(' + ta.summary.transcript_coverage_pct + '%,', ta.summary.episodes_with_timed_transcript, 'anchorable)');
             console.log('data invariants ok');
           "
+      - name: Verify deploy manifest is current
+        # M4 (#233 remainder): deploy-manifest.json is generated, never
+        # hand-edited. --check regenerates it in memory and fails loudly if the
+        # committed copy has drifted from the tree — a stale manifest is
+        # exactly what would let sw.js promote a torn deploy.
+        run: node tools/ci/generate-manifest.mjs --check
       - name: Syntax-check site JS
         run: |
           node --check app.js

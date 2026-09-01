@@ -108,8 +108,10 @@ The app also asks the browser to mark its storage as persistent
 | `cp_storage_health` | A diagnostic record of storage failures, for troubleshooting | **No** |
 | `cp_diag` | A playback diagnostic record, capped at the most recent 200 entries: how long each seam between two segments took, the load deadline in force, out-point overshoot, stops (a lost audio route, an interruption), which resume point was written and read back, when the app went to the background and for how long, and any press of a play or transport control that failed — with the *class* of the error (for example `NotAllowedError`, meaning your browser held the audio back), never its message, and with a count when the same press fails repeatedly. It holds no audio, no URLs, no account id and no device names — when it records that a known audio route came back, it records only *that* one was recognised, never which | **No** — it is never transmitted; the drawer's **Playback diagnostics** shows it and lets you copy or clear it |
 
-The web app also keeps a Cache Storage bucket named `foray-v5` holding the app
-shell and the catalogue JSON files, so the app renders in a dead zone (`sw.js`).
+The web app also keeps Cache Storage buckets named `foray-gen-<deploy_id>` (one
+per retained deploy — up to two at a time), `foray-pointer` (which one is
+current) and `foray-pending` (used only mid-install), holding the app shell and
+the catalogue JSON files, so the app renders in a dead zone (`sw.js`).
 **It never caches podcast audio**, because the service worker ignores every
 request that is not to our own origin.
 
@@ -398,9 +400,9 @@ browser's settings for the origin the web app is served from,
 removes the local copies but **not** the server rows, for the reason in the
 paragraph above.
 
-The `foray-v5` Cache Storage bucket is not touched by the button: it holds the
-app shell and the catalogue files (§1), which are the same for every listener and
-say nothing about you.
+The `foray-gen-<deploy_id>` Cache Storage buckets are not touched by the
+button: they hold the app shell and the catalogue files (§1), which are the
+same for every listener and say nothing about you.
 
 > TODO(founder): publish a **data-deletion URL** for the store listings. The
 > in-app control answers Play's "can users request deletion" question, but the
