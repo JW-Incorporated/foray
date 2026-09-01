@@ -127,15 +127,21 @@ schemes:
       config: Debug
     test:
       config: Debug
-      # ForayKitTests is picked up automatically once the package
-      # is added as a target dependency above; listed explicitly here so
-      # `xcodebuild test -scheme Foray` also runs it from the CLI.
-      # AppTests is this deliverable's addition: PlayerQueueManager +
-      # FakePlayerBackend coverage, compiled and run against the real App
-      # target rather than merely inspected as source.
+      # ForayKitTests is NOT listed here. XcodeGen does not know about test
+      # targets belonging to a referenced local Swift package (it only knows
+      # the `ForayKit` product declared under `dependencies:` above) — that
+      # target only exists once Xcode itself opens the generated project and
+      # auto-discovers the local package's own `.testTarget`, so naming it
+      # here at `xcodegen generate` time is a scheme reference to a target
+      # that does not exist yet and fails validation. `swift test
+      # --package-path ios/ForayKit` (ci.yml) is what actually runs
+      # ForayKitTests in CI; Xcode's Test navigator picks it up automatically
+      # for anyone working in the generated project locally, exactly as the
+      # comment above `packages:` in this file already says.
+      #
+      # AppTests IS a normal XcodeGen-defined project target (see `targets:`
+      # above), so it belongs here.
       targets:
-        - name: ForayKitTests
-          parallelizable: true
         - name: AppTests
           parallelizable: true
     archive:
