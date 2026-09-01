@@ -46,6 +46,51 @@ import {
 export const SEGMENT = "segment";
 export const NARRATION = "narration";
 
+/* ── The jingle (generation-architecture.md §4.8, §7 item 4) ───────────────
+
+   "The jingle marks a change of tape." A short, ORIGINAL 4a sonic mark —
+   roughly 1-2 s, the same asset every time, played unmodified at a seam that
+   needs marking but not narrating. It is a fixed asset, not authored content,
+   so it needs almost no fields: an item kind, nothing more.
+
+   WHY A THIRD ITEM KIND, NOT A SEAM PROPERTY: a jingle is audible — the
+   listener hears real bytes, on the Foray's own clock, contributing to
+   `runtime_sec` exactly as a narration bridge does. A boolean flag on a seam
+   has nowhere to carry that; a queue entry does, for free, through the exact
+   machinery `NARRATION` already has (`itemRuntimeSec`, `forayRuntimeSec`,
+   `buildForayQueue`'s per-item loop). Piggybacking on `NARRATION` with a
+   sub-flag was the other option on the table and was rejected: a "narration"
+   item with no script and no real voice is exactly the malformed shape
+   `check-forays.mjs` (§7 item 5) now exists to reject, so a jingle would need
+   its own carve-out in every one of those checks anyway — at which point it
+   is not sharing the kind, it is disguised as it.
+
+   WHY IT NEEDS NO NEW SEAM-GAP CODE: `player/seam-gap.js`'s `isSegment()`
+   already returns false for anything without `start_sec`/`end_sec` bounds,
+   and `seamGapSec()` already returns 0 whenever either side of a transition
+   is not a segment. A jingle has no bounds, so a transition into or out of
+   one is *already* a no-beat transition — §4.8's own rule, "a bridge and a
+   gap are alternatives, never both," falls out of the existing predicate
+   rather than needing a new one. That is the "smaller, more localized
+   change" the architecture doc asks for. */
+export const JINGLE = "jingle";
+
+/** The one 4a sonic mark, TBD until sourced (§7 item 4's card explicitly
+    descopes producing the asset — this is schema/player wiring only). A
+    single constant rather than a per-item field: "it should be the same one
+    every time — it is a brand mark, and its value is entirely in being
+    recognized" (§4.8), so there is exactly one asset to point at, not one per
+    Foray. Swap this for the real hosted URL the day the asset lands; no
+    schema change follows from it. */
+export const JINGLE_ASSET_URL = "TBD:jingle-asset";
+
+/** "roughly 1-2 seconds" (§4.8). Fixed rather than measured because the
+    asset is fixed — unlike narration, there is no script to estimate a
+    duration from and no per-Foray variance to carry a `duration_source` for.
+    Update this one constant, once, the day the real asset is cut and its
+    true length is known. */
+export const JINGLE_DURATION_SEC = 1.5;
+
 const isNum = (n) => typeof n === "number" && Number.isFinite(n);
 const nonEmpty = (s) => typeof s === "string" && s.trim().length > 0;
 
@@ -244,6 +289,23 @@ export function buildForayQueue(foray, opts = {}) {
         audio_url: nonEmpty(url) ? url : null,
         title: raw.title ?? "", script: raw.script ?? "",
         duration_sec: dur.sec, duration_source: dur.source,
+      });
+      return;
+    }
+
+    if (raw.type === JINGLE) {
+      /* §7 item 4 / §4.8: fixed asset, fixed length, no authored content.
+         `uniqueId` and `kind: "jingle"` are the only things that make this a
+         distinct queue entry from a narration item — everything else is the
+         one shared constant. Kept OUT of `kind: "tts"` deliberately: a jingle
+         is not spoken and must never route through `_isSynthNarration` /
+         the on-device voice plugin, and a distinct `kind` is what keeps that
+         true without an extra flag the manager would have to remember to
+         check. */
+      items.push({
+        id: uniqueId(raw.id), ord: index, kind: JINGLE,
+        audio_url: JINGLE_ASSET_URL,
+        duration_sec: JINGLE_DURATION_SEC, duration_source: DURATION_MEASURED,
       });
       return;
     }
