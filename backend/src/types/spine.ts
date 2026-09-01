@@ -241,11 +241,6 @@ const COMMON_IRREGULAR_PAST_VERBS = new Set([
   "wore"
 ]);
 
-/** Common subject pronouns — used only to license the subject-agreement
- * check for present-tense -s/-es verbs (2), never as a verb signal
- * itself. */
-const SUBJECT_PRONOUNS = new Set(["it", "he", "she", "they", "this", "that", "these", "those", "we", "you"]);
-
 /** Words that are near-universally used as nouns even though they carry
  * an -s suffix (plural nouns), to keep the subject-agreement check from
  * treating "the two Fords' rivals fought" style plurals as verbs. Kept
@@ -275,19 +270,34 @@ const PLURAL_NOUN_EXCEPTIONS = new Set([
  * primary detection mechanism. */
 const GERUND_NOUN_EXCEPTIONS = new Set(["manufacturing", "marketing", "engineering", "farming", "advertising", "branding", "packaging"]);
 
+/** Determiners/possessive-style words that continue a subject noun
+ * phrase without themselves being the subject's head noun or the verb —
+ * e.g. "The Ford Motor Company controls..." consumes "The" here before
+ * reaching the capitalized head-noun sequence. Deliberately small: it
+ * only needs to bridge the common determiner positions, not parse full
+ * noun-phrase grammar. */
+const SUBJECT_PHRASE_DETERMINERS = new Set(["the", "a", "an", "this", "that", "these", "those", "its", "their", "his", "her", "our", "my", "your"]);
+
+function isSubjectPhraseContinuation(rawWord: string): boolean {
+  const lower = rawWord.toLowerCase();
+  if (SUBJECT_PHRASE_DETERMINERS.has(lower)) return true;
+  // A capitalized token that is not sentence-initial-by-punctuation-only
+  // (i.e. a proper-noun-looking word) continues a multi-word subject like
+  // "Ford Motor Company" or "The Ford Motor Company".
+  return /^[A-Z]/.test(rawWord);
+}
+
 /** Function words that can immediately follow a plural subject without
  * being a verb ("Researchers and engineers...", "Historians of this era
- * ...") — used only to gate rule (5) below, so a non-verb second word
- * doesn't get misread as a bare-form present-tense verb. Deliberately
- * covers the common conjunctions/prepositions/determiners, not an
- * exhaustive closed class of every non-verb. */
+ * ...") — used to gate the subject-verb-boundary check below, so a
+ * non-verb word right after the subject phrase doesn't get misread as a
+ * bare-form present-tense verb. Deliberately covers the common
+ * conjunctions/prepositions, not an exhaustive closed class of every
+ * non-verb. */
 const NON_VERB_SECOND_WORDS = new Set([
   "and",
   "or",
   "of",
-  "the",
-  "a",
-  "an",
   "in",
   "on",
   "at",
@@ -296,14 +306,26 @@ const NON_VERB_SECOND_WORDS = new Set([
   "with",
   "by",
   "as",
-  "that",
-  "this",
-  "these",
-  "those",
   "who",
   "which",
   "from"
 ]);
+
+/** True when `word` (lowercased, punctuation-stripped) looks like a
+ * finite verb by itself — closed-class auxiliary, a known irregular
+ * past, regular -ed, or -s/-es agreement not on the plural-noun
+ * exception list. Does NOT check bare present-tense form (no suffix at
+ * all, e.g. "study", "dispute") — that is only accepted at the
+ * sentence's actual subject-verb boundary, see `isClaimShaped`, because
+ * a bare noun/verb-form-alike word anywhere else in the sentence is too
+ * ambiguous to trust on its own. */
+function looksLikeInflectedVerb(word: string): boolean {
+  if (FINITE_AUX_VERBS.has(word)) return true;
+  if (COMMON_IRREGULAR_PAST_VERBS.has(word)) return true;
+  if (word.length > 4 && word.endsWith("ed") && !GERUND_NOUN_EXCEPTIONS.has(word)) return true;
+  if (word.length > 3 && (word.endsWith("es") || word.endsWith("s")) && !PLURAL_NOUN_EXCEPTIONS.has(word)) return true;
+  return false;
+}
 
 export function isClaimShaped(text: string): boolean {
   const trimmed = text.trim();
@@ -313,26 +335,50 @@ export function isClaimShaped(text: string): boolean {
 
   const words = rawWords.map((w) => w.toLowerCase().replace(/[^a-z0-9']/g, ""));
 
-  // (1) Closed-class auxiliary/modal/copula.
+  // (1) Closed-class auxiliary/modal/copula, anywhere in the sentence.
   if (words.some((w) => FINITE_AUX_VERBS.has(w))) return true;
 
-  // (5) Plural subject + bare-form present tense, e.g. "Researchers study
-  // charcoal production worldwide" or "Historians dispute the timeline" —
-  // covers plural-subject clauses whose verb carries NO suffix at all
-  // (no -s, no -ed, no -ing), which (2)-(4) below cannot detect by
-  // morphology alone. Deliberately narrow: only fires at the sentence's
-  // own subject-verb boundary (index 0 -> index 1), requires the first
-  // word to look like a plausible plural subject (capitalized, ends in
-  // "s"), and requires the second word to not be a function word.
+  // (5a) Multi-word subject phrase + INFLECTED verb, e.g. "The Ford Motor
+  // Company controls the market" or "Kingsford dominated the market for
+  // decades". Consume a subject noun phrase from the start (determiners +
+  // capitalized/proper-noun-looking words), then check whether the word
+  // immediately after it is a reliably-verb-shaped inflection (closed
+  // auxiliary, known irregular past, regular -ed, or -s/-es not on the
+  // plural-noun exception list). Only INFLECTED forms are accepted here —
+  // never a bare, unsuffixed word — because a bare word after an
+  // arbitrary-length subject phrase is indistinguishable from that
+  // phrase's own trailing noun ("The history of charcoal briquette
+  // manufacturing" must not pass just because "history" follows "The").
+  let subjectEnd = 0;
+  while (subjectEnd < rawWords.length && isSubjectPhraseContinuation(rawWords[subjectEnd]!)) {
+    subjectEnd += 1;
+  }
+  if (subjectEnd > 0 && subjectEnd < words.length) {
+    const candidate = words[subjectEnd]!;
+    if (candidate.length >= 3 && !NON_VERB_SECOND_WORDS.has(candidate) && looksLikeInflectedVerb(candidate)) {
+      return true;
+    }
+  }
+
+  // (5b) NARROW bare-form fallback: a single-token, plural-noun-looking
+  // subject ("Researchers", "Historians" — capitalized, ends in "s")
+  // directly followed by an unsuffixed present-tense verb ("study",
+  // "dispute"), which carries no morphological signal at all and so
+  // cannot be caught by (5a) or the loop below. Deliberately restricted
+  // to this one safe shape (single capitalized+plural-looking first
+  // word) rather than any subject phrase, precisely because a bare verb
+  // candidate is otherwise indistinguishable from a trailing noun.
   const firstRaw = rawWords[0]!;
   const secondWord = words[1];
   if (
     /^[A-Z]/.test(firstRaw) &&
     words[0]!.endsWith("s") &&
+    !PLURAL_NOUN_EXCEPTIONS.has(words[0]!) &&
     secondWord &&
     secondWord.length >= 3 &&
     !NON_VERB_SECOND_WORDS.has(secondWord) &&
-    !FINITE_AUX_VERBS.has(secondWord)
+    !looksLikeInflectedVerb(secondWord) &&
+    !/^[A-Z]/.test(rawWords[1] ?? "")
   ) {
     return true;
   }
@@ -341,10 +387,11 @@ export function isClaimShaped(text: string): boolean {
     const word = words[i]!;
     if (word.length === 0) continue;
 
-    // (4) Common irregular simple past.
+    // (4) Common irregular simple past, anywhere in the sentence (covers
+    // relative clauses / passive constructions past the main subject).
     if (COMMON_IRREGULAR_PAST_VERBS.has(word)) return true;
 
-    // (3a) Regular past tense.
+    // (3a) Regular past tense, anywhere in the sentence.
     if (word.length > 4 && word.endsWith("ed") && !GERUND_NOUN_EXCEPTIONS.has(word)) return true;
 
     // (3b) Progressive: "-ing" directly preceded by a be-auxiliary, e.g.
@@ -356,20 +403,6 @@ export function isClaimShaped(text: string): boolean {
       if (prev && (prev === "is" || prev === "are" || prev === "was" || prev === "were" || prev === "been" || prev === "being")) {
         return true;
       }
-    }
-
-    // (2) Present-tense 3rd-person-singular via subject agreement: word
-    // ends in -s/-es, isn't a known plural-noun exception, and the
-    // immediately preceding token is the sentence's OWN subject — i.e.
-    // sentence-initial (index 0) or a subject pronoun. Restricting to the
-    // true grammatical subject position (rather than any capitalized word
-    // anywhere in the sentence) is what stops a mid-sentence proper noun
-    // in a compound noun phrase ("Ford briquettes and Kingsford
-    // products") from making its following plural noun look like a verb.
-    if (word.length > 3 && (word.endsWith("es") || word.endsWith("s")) && !PLURAL_NOUN_EXCEPTIONS.has(word)) {
-      const prevRaw = rawWords[i - 1];
-      const prevIsSentenceSubject = i === 1 ? /^[A-Z]/.test(prevRaw ?? "") : SUBJECT_PRONOUNS.has((prevRaw ?? "").toLowerCase());
-      if (prevIsSentenceSubject) return true;
     }
   }
 

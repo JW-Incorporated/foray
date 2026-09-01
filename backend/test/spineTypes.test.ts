@@ -106,6 +106,17 @@ describe("isClaimShaped", () => {
   it("rejects a mid-sentence capitalized noun followed by a plural noun (compound noun phrase, not a claim)", () => {
     expect(isClaimShaped("Ford briquettes and Kingsford products")).toBe(false);
   });
+
+  it("accepts a multi-word capitalized subject phrase with an inflected verb", () => {
+    // The exact case cited in review: a determiner + multi-word proper
+    // noun subject, followed by a present-tense verb.
+    expect(isClaimShaped("The Ford Motor Company controls the market")).toBe(true);
+    expect(isClaimShaped("The Ford Motor Company dominated the market for decades")).toBe(true);
+  });
+
+  it("still rejects a determiner + noun phrase with no verb at all", () => {
+    expect(isClaimShaped("The history of charcoal briquette manufacturing")).toBe(false);
+  });
 });
 
 describe("countActs / countSlots / countBeats / allBeats", () => {
