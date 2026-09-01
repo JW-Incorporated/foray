@@ -160,11 +160,37 @@ function profileId() {
   return id;
 }
 
+/* Buffers rows logged before `player/client.js` has evaluated and published
+   `window.forayEventLog` — the same bridging pattern `waitForStorage()` above
+   uses for `cp_` keys, and for the same reason: `app.js` is a classic script
+   parsed before the deferred module below it, so a `logEvent` call made
+   during `init()`'s own early work (a `refreshed_all` on first paint, say)
+   must not be silently dropped just because the module has not arrived yet.
+   Drained by `flushBufferedEvents()`, called once the module is confirmed
+   present (mirroring `storageReady()`'s one-shot handoff). */
+let _bufferedEvents = [];
+
 function logEvent(type, payload) {
-  const events = lsGet("cp_events", []);
-  const builder = state.session?.builder || "unknown";
-  events.push({ ts: new Date().toISOString(), type, builder, profile: profileId(), payload });
-  lsSet("cp_events", events.slice(-5000));
+  const row = { ts: new Date().toISOString(), type, builder: state.session?.builder || "unknown", profile: profileId(), payload };
+  if (window.forayEventLog && typeof window.forayEventLog.append === "function") {
+    flushBufferedEvents();
+    window.forayEventLog.append(row);
+  } else {
+    _bufferedEvents.push(row);
+  }
+}
+
+/** Hand the pre-module buffer to `window.forayEventLog` the moment it exists.
+    Called from `logEvent` itself (the module may have arrived between two
+    calls) and once from `init()` after `waitForStorage()` settles, matching
+    how `player/client.js` publishes both bridges off the same
+    `forayplayer:ready` event. */
+function flushBufferedEvents() {
+  if (!_bufferedEvents.length) return;
+  if (!window.forayEventLog || typeof window.forayEventLog.append !== "function") return;
+  const rows = _bufferedEvents;
+  _bufferedEvents = [];
+  for (const row of rows) window.forayEventLog.append(row);
 }
 
 /* Durable telemetry: flush the buffered events to Supabase (ADR-0005 +
@@ -210,9 +236,10 @@ async function ensureAnonSession() {
   return null;
 }
 
-/* Map a buffered cp_events entry to a canonical events-table row, or null for
-   local-only types (see the client-integration spec §3). episode_id/session_id
-   stay null; durable ids ride in payload as episode_slug/session_key. */
+/* Map a buffered event-log row (window.forayEventLog, formerly `cp_events`) to
+   a canonical events-table row, or null for local-only types (see the
+   client-integration spec §3). episode_id/session_id stay null; durable ids
+   ride in payload as episode_slug/session_key. */
 const SB_ARCHETYPES = new Set(["deep-learn", "stretch", "narrative", "comfort", "continue"]);
 /* The player (player/client.js) is an ES module and cannot import from this
    classic script, so the event pipeline is handed over explicitly rather than
@@ -259,15 +286,19 @@ function toEventRow(e, userId) {
 
 async function trySyncEvents() {
   try {
-    const events = lsGet("cp_events", []);
-    const since = lsGet("cp_synced_ts", "");
-    const unsynced = events.filter(e => e.ts > since);
+    if (!window.forayEventLog || typeof window.forayEventLog.unsynced !== "function") return;
+    flushBufferedEvents();
+    const unsynced = await window.forayEventLog.unsynced();
     if (!unsynced.length) return;
     const s = await ensureAnonSession();
     if (!s) return; // offline / auth unavailable — buffer persists, retry next time
-    const lastTs = unsynced[unsynced.length - 1].ts;
     const rows = unsynced.map(e => toEventRow(e, s.user_id)).filter(Boolean);
-    if (!rows.length) { lsSet("cp_synced_ts", lastTs); return; } // all local-only
+    const syncedIds = unsynced.map(e => e.id);
+    if (!rows.length) {
+      await window.forayEventLog.markSynced(syncedIds); // all local-only
+      await window.forayEventLog.pruneToRetention(5000);
+      return;
+    }
     for (let i = 0; i < rows.length; i += 500) {
       const res = await fetch(SB_URL + "/rest/v1/events", {
         method: "POST",
@@ -281,7 +312,8 @@ async function trySyncEvents() {
       });
       if (!res.ok) return; // don't advance the cursor — retry the whole batch next time
     }
-    lsSet("cp_synced_ts", lastTs);
+    await window.forayEventLog.markSynced(syncedIds);
+    await window.forayEventLog.pruneToRetention(5000);
   } catch (_) { /* buffer persists, retry next time */ }
 }
 
@@ -682,9 +714,10 @@ function prettyTitle(query) {
    naming rather than rounding away: the largest single part is 468 B, and 50
    playlists of the ten longest-titled episodes in the catalogue come to ~252 KB.
    A blanket self-sufficient copy would be ~861 B a part — ~430 KB — for the worse
-   failure mode above. This lands in DurableStore's localStorage tier, where
-   `cp_events` (5,000 entries) is already several times any of these figures, so it
-   is not the largest thing in there; and lsSet reports a refused write rather than
+   failure mode above. This lands in DurableStore's localStorage tier — the event
+   queue (M3) moved off it into IndexedDB, so it is no longer the comparison point
+   here, but the playlist bytes above are still well inside what that tier already
+   held; and lsSet reports a refused write rather than
    swallowing it, which buildPlaylist now ACTS on rather than discarding. All four
    figures are asserted against the real catalogue in
    test/playlist-durability.test.js, so widening the whitelist turns CI red rather

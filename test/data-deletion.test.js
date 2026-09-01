@@ -402,7 +402,7 @@ async function mount({
 
 /* ================= 1. enumeration, not a list ================= */
 
-test("the shipped source names exactly the 22 cp_ key families the audit found", () => {
+test("the shipped source names exactly the 21 cp_ key families the audit found", () => {
   /* The count is pinned deliberately. 20-not-11 is the whole reason this control
      enumerates instead of carrying a list, and a new key is a privacy-policy
      change as much as a code change — see the next test.
@@ -419,11 +419,18 @@ test("the shipped source names exactly the 22 cp_ key families the audit found",
 
      22 -> 23 on 2026-08-31: `cp_autoadvance`, the Up Next auto-advance
      per-device toggle (docs/listening-queue-plan.md §8 addendum, kanban card
-     t_b9880844). Same mechanism again. */
+     t_b9880844). Same mechanism again.
+
+     23 -> 21 on 2026-09-01 (M3, kanban card t_c7199b13): `cp_events` and
+     `cp_synced_ts` retired. The outbound event queue moved off this store into
+     its own IndexedDB database (`player/event-log.js`) — it is not resumable
+     per-user state, so it was never the kind of key this enumeration exists to
+     protect, and it no longer names a `cp_` string anywhere in the shipped
+     source. See `docs/legal/privacy-policy.md` §1's note on the queue. */
   const families = [...keyFamiliesInSource().keys()].sort();
   assert.strictEqual(
-    families.length, 23,
-    `expected 23 cp_ key families, found ${families.length}:\n${families.join("\n")}`
+    families.length, 21,
+    `expected 21 cp_ key families, found ${families.length}:\n${families.join("\n")}`
   );
   assert.ok(families.includes("cp_foray:"), "the patterned Foray resume key must be found as a family");
   assert.ok(families.includes("cp_pos:"), "the patterned episode-position key must be found as a family");
@@ -586,7 +593,7 @@ test("one authenticated DELETE per table, filtered to this account's own uid", a
 });
 
 test("the events rows are deleted before the local token that reaches them", async () => {
-  const { arm, ui, log } = await mount({ seed: { cp_sb_session: sessionRow(), cp_events: "[]" } });
+  const { arm, ui, log } = await mount({ seed: { cp_sb_session: sessionRow() } });
   await arm();
   await ui.go.click();
   const firstDelete = log.findIndex((e) => e.kind === "fetch" && e.method === "DELETE");
@@ -824,11 +831,12 @@ test("an older player module with no stop method does not block the deletion", a
 });
 
 test("the deletion writes nothing back: no event row, no fresh profile id", async () => {
-  /* logEvent() writes cp_events and mints cp_profile_id, and the next sync would
-     create a NEW anonymous account — telling the server about a deletion by
-     starting a fresh identity. So this action is the one the app does not log. */
+  /* logEvent() writes to window.forayEventLog (formerly cp_events) and mints
+     cp_profile_id, and the next sync would create a NEW anonymous account —
+     telling the server about a deletion by starting a fresh identity. So this
+     action is the one the app does not log. */
   const { arm, ui, cpKeys, store } = await mount({
-    seed: { cp_events: "[]", cp_profile_id: '"p-1"', cp_interests: "{}" },
+    seed: { cp_profile_id: '"p-1"', cp_interests: "{}" },
   });
   await arm();
   await ui.go.click();
