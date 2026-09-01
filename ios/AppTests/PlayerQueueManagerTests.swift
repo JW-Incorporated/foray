@@ -80,10 +80,13 @@ final class PlayerQueueManagerTests: XCTestCase {
         // savePosition happens before the new loadItem — 05_CORNER_CASES-driven
         // ordering the manager's own comments call load-bearing (targetIndex vs
         // currentIndex split), verified here via the position store's write and
-        // the backend's second load call.
+        // the backend's second load call. Not `.last`: a successful load is
+        // immediately followed by `.itemLoaded` -> `.play`, so `.play` is the
+        // actual final call.
         let savedA = try XCTUnwrap(positionStore.loadPosition(itemID: "episode-a"))
         XCTAssertEqual(savedA, 42, accuracy: 0.001)
-        XCTAssertEqual(backend.calls.last, .load(url: itemB.localURL, startOffset: .zero))
+        XCTAssertTrue(backend.calls.contains(.load(url: itemB.localURL, startOffset: .zero)),
+            "expected a load of episode-b, calls=\(backend.calls)")
     }
 
     func testSkipToNextAtEndOfQueueEndsPlayback() async {
@@ -116,8 +119,10 @@ final class PlayerQueueManagerTests: XCTestCase {
         await manager.skipToPrevious()
 
         // "Restart" must mean zero, not the item's original resume offset — see
-        // the manager's own comment on `forceNextStartOffset`.
-        XCTAssertEqual(backend.calls.last, .load(url: item.localURL, startOffset: .zero))
+        // the manager's own comment on `forceNextStartOffset`. Not `.last`: the
+        // successful load is followed by `.itemLoaded` -> `.play`.
+        XCTAssertTrue(backend.calls.contains(.load(url: item.localURL, startOffset: .zero)),
+            "expected a restart load at zero offset, calls=\(backend.calls)")
     }
 
     func testTTSItemResetsRateAndEpisodeRestoresShowRate() async {
