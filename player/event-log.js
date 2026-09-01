@@ -143,23 +143,35 @@ export function createEventLog({
   let notified = 0;
   let inFault = false;
 
-  /* Retention enforcement (idb path only — see below) is throttled rather
-     than run on every flush: `pruneNow()` does a full `getAll()` over the
-     store, and Codex's round-2 review correctly called out that unconditional
-     per-flush pruning turns every `unsynced()`/`trySyncEvents()` call into TWO
-     full scans (one from the prune, one from the caller's own read) even when
-     nothing needed deleting. The ring is exempt — `pushRing` above already
-     self-caps it on every push, no scan required — so only the durable idb
-     store needs this. `writesSincePrune` starts at `Infinity` so the FIRST
-     flush of a session always prunes once, catching any backlog left over
-     from a previous session that ended before its own cap could run (e.g. the
-     tab closed while offline, mid-backlog). After that it prunes roughly
-     every `PRUNE_CHECK_INTERVAL` durable writes — bounding the store to
-     `retention + PRUNE_CHECK_INTERVAL` rows at worst, not unbounded, while
-     keeping the common case (a handful of rows a flush) to one scan per
-     interval instead of one scan per flush. */
-  const PRUNE_CHECK_INTERVAL = Math.max(50, Math.floor(retention / 20));
-  let writesSincePrune = Infinity;
+  /* Retention enforcement (idb path) is triggered by an ESTIMATE, not a full
+     scan on every flush: `pruneNow()` does a `getAll()` over the store, and
+     Codex's round-2 review correctly called out that scanning on every flush
+     turns each `unsynced()`/`trySyncEvents()` call into two full scans (one
+     from the prune, one from the caller's own read) even when nothing needed
+     deleting. Round-3 then correctly called out that a naive write-count
+     throttle (prune every N writes) lets the store overshoot the cap by up to
+     N-1 rows on ordinary small flushes, AND skips the check entirely when
+     writes are landing in the ring (an idb failure) rather than idb — so a
+     store already near the cap could grow toward roughly DOUBLE it while
+     quota errors kept diverting writes to the ring.
+     The fix: track a running estimate of the COMBINED size (idb rows this
+     session is confident about, plus the ring, which self-caps on every push
+     — see `pushRing`) and only pay for a real scan when that estimate crosses
+     `cap + PRUNE_MARGIN`. Because the estimate only ever UNDER-counts idb
+     rows between scans (ring pushes and the first-flush baseline are exact;
+     only successful idb adds between scans are estimated, and those can only
+     make the estimate an undercount, never an overcount), the real store can
+     exceed `cap` by at most `PRUNE_MARGIN` rows between the estimate crossing
+     the line and the scan that corrects it — a small, fixed bound, not a
+     multiple of `cap` and not proportional to write volume. `ring.length` is
+     always exact (it is just the live array's size, corrected on every
+     `pushRing`), so a run of idb failures that diverts writes into the ring
+     is reflected in the trigger immediately, not after N more writes — this
+     is what fixes the "ring failures skip the check" hole a write-count
+     throttle had. After any real scan, `idbCountEstimate` is reset to the
+     exact idb count `pruneNow` just read (drift correction). */
+  const PRUNE_MARGIN = Math.max(5, Math.min(50, Math.ceil(retention * 0.1)));
+  let idbCountEstimate = null; // null until the first real scan establishes a baseline
 
   function pushRing(row) {
     ring.push({ ...row, id: `mem:${nextRingId++}` });
@@ -192,35 +204,52 @@ export function createEventLog({
     flushTimer = schedule(() => { flushTimer = null; flushBuffered(); }) ?? true;
   }
 
-  /** Write whatever is buffered, then enforce retention when due. Never
-      throws — a failed write demotes its batch to the ring rather than
-      losing it (see header). Retention is checked here — throttled by
-      `writesSincePrune`, see its comment above — rather than only from the
-      caller's post-sync path: `trySyncEvents()` only prunes after a
-      successful upload, so an offline device or a down server would
-      otherwise let the store grow past `retention` for as long as sync kept
-      failing — worse than the old localStorage write, which capped on every
-      write regardless of sync state. Checking here restores that guarantee
-      unconditionally, without a full scan on every single flush. */
+  /** Write whatever is buffered, then enforce retention when the running
+      estimate says it is due (see the header comment above for why an
+      estimate, not a write-count throttle, and not a full scan every time).
+      Never throws — a failed write demotes its batch to the ring rather than
+      losing it (see header). Checked here rather than only from the caller's
+      post-sync path: `trySyncEvents()` only prunes after a successful
+      upload, so an offline device or a down server would otherwise let the
+      store grow past `retention` for as long as sync kept failing — worse
+      than the old localStorage write, which capped on every write regardless
+      of sync state. Checking here restores that guarantee unconditionally. */
   async function flushBuffered() {
     if (pendingRows.length) {
       const batch = pendingRows.splice(0, pendingRows.length);
       if (!hasIdb) {
-        for (const row of batch) pushRing(row);
+        for (const row of batch) pushRing(row); // ring.length is exact — no estimate needed
       } else {
         try {
           await withStore(open, STORE_NAME, "readwrite", (s) => {
             for (const row of batch) s.add(row);
           });
-          writesSincePrune += batch.length;
+          if (idbCountEstimate !== null) idbCountEstimate += batch.length;
         } catch (err) {
           fault("flush", err);
           for (const row of batch) pushRing(row); // not lost — see header
+          // A durable write just failed and this batch landed in the ring
+          // instead. The running estimate no longer reflects reality closely
+          // enough to trust: idbCountEstimate could still be sitting near a
+          // stale high-water mark from before failures started (e.g. exactly
+          // `retention` after the last successful prune), while every new
+          // row now piles into the ring, which self-caps at `retention` on
+          // its own (see pushRing) — independently of idb's count. Left
+          // alone, the two backends could each sit near `retention`
+          // simultaneously (combined ~2x the promised cap) without the
+          // sum-based trigger below ever firing, because the ring's own cap
+          // stops it from ever pushing the sum past `retention + PRUNE_MARGIN`
+          // when idbCountEstimate is small, and because a stale, too-high
+          // estimate never gets corrected once idb stops taking writes.
+          // Forcing a real scan (null) on every fallback write is the
+          // simplest thing that is always correct: the next check below sees
+          // `idbCountEstimate === null` and runs `pruneNow`, which reads the
+          // combined truth and re-baselines the estimate from it.
+          idbCountEstimate = null;
         }
       }
     }
-    if (hasIdb && writesSincePrune >= PRUNE_CHECK_INTERVAL) {
-      writesSincePrune = 0;
+    if (hasIdb && (idbCountEstimate === null || idbCountEstimate + ring.length >= retention + PRUNE_MARGIN)) {
       await pruneNow(retention);
     }
   }
@@ -233,7 +262,10 @@ export function createEventLog({
    * NOT flush first — callers that need buffered rows counted call
    * `flushBuffered()` (which calls this itself) or `pruneToRetention()`
    * below, which does flush; this raw form exists so `flushBuffered()` can
-   * call it without recursing into itself.
+   * call it without recursing into itself. Always ends by resetting
+   * `idbCountEstimate` to the exact idb count this scan just read (minus
+   * whatever it deleted) — the point of a real scan is to correct the
+   * estimate's drift, not just to delete rows.
    */
   async function pruneNow(cap) {
     const idbRows = await readIdbAll();
@@ -241,7 +273,10 @@ export function createEventLog({
       ...idbRows.filter(Boolean).map((r) => ({ ...r, _backend: "idb" })),
       ...ring.map((r) => ({ ...r, _backend: "ring" })),
     ];
-    if (combined.length <= cap) return;
+    if (combined.length <= cap) {
+      idbCountEstimate = idbRows.filter(Boolean).length; // exact, corrects any drift
+      return;
+    }
     const excess = combined.length - cap;
     const byAge = combined.slice().sort((a, b) => (a.ts < b.ts ? -1 : a.ts > b.ts ? 1 : 0));
     const toDelete = [];
@@ -259,15 +294,21 @@ export function createEventLog({
         if (ringIdsToDelete.has(ring[i].id)) ring.splice(i, 1);
       }
     }
+    let idbDeleted = 0;
     if (idbIdsToDelete.length && hasIdb) {
       try {
         await withStore(open, STORE_NAME, "readwrite", (s) => {
           for (const id of idbIdsToDelete) s.delete(id);
         });
+        idbDeleted = idbIdsToDelete.length;
       } catch (err) {
         fault("prune", err);
       }
     }
+    // Exact, whether or not the delete above succeeded: idbRows is what was
+    // actually read from the store just now, idbDeleted is what we confirmed
+    // we removed from it (0 if the delete transaction itself failed).
+    idbCountEstimate = idbRows.filter(Boolean).length - idbDeleted;
   }
 
   async function readIdbAll() {

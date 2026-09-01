@@ -358,6 +358,57 @@ test("RETENTION: a small idb flush does not re-scan the whole store every time (
   }
 });
 
+test("RETENTION: the combined store never overshoots the cap by more than a small fixed margin, however many small flushes land (round-3 codex finding #1)", async () => {
+  /* Codex round 3: a naive write-count throttle (prune every N writes) lets
+     the store overshoot by up to N-1 rows on ordinary small flushes — with
+     retention=20 and a fixed interval of 50, 49 one-row flushes after the
+     first check left 69 durable rows, more than 3x the cap. This proves the
+     estimate-based trigger instead bounds the overshoot to a small margin
+     (retention * 0.1, floor 5, ceiling 50) regardless of how many small
+     flushes land between real scans. */
+  const factory = new FakeFactory();
+  const log = createEventLog({ indexedDB: factory, retention: 20, scheduleFlush: () => {} });
+  for (let i = 0; i < 200; i++) {
+    log.append({ type: "t", payload: { i } });
+    await log.unsynced(); // one row at a time — the worst case for a write-count throttle
+  }
+  const left = [...factory.db.stores.get(STORE_NAME).data.values()];
+  const margin = Math.max(5, Math.min(50, Math.ceil(20 * 0.1))); // mirrors PRUNE_MARGIN's own formula
+  assert.ok(
+    left.length <= 20 + margin,
+    `expected at most ${20 + margin} rows (cap 20 + margin ${margin}), found ${left.length} after 200 one-row flushes`
+  );
+});
+
+test("RETENTION: durable-write failures diverting into the ring do not let the combined size grow past the margin (round-3 codex finding #2)", async () => {
+  /* Codex round 3: a write-count throttle only counted SUCCESSFUL idb writes,
+     so once idb was near the cap and a run of quota errors started diverting
+     writes into the ring, the check was never re-triggered — the combined
+     total could climb toward roughly double the cap. This proves the
+     estimate now includes `ring.length` directly (always exact, no counting
+     needed), so a ring-only failure run is caught by the same trigger. */
+  const factory = new FakeFactory();
+  const log = createEventLog({ indexedDB: factory, retention: 20, scheduleFlush: () => {} });
+  // Get idb close to the cap first, healthy.
+  for (let i = 0; i < 18; i++) log.append({ type: "idb", payload: { i } });
+  await log.unsynced();
+  const idbBefore = [...factory.db.stores.get(STORE_NAME).data.values()].length;
+  assert.ok(idbBefore <= 20, "sanity: idb itself must already be at/under the cap before the failure run starts");
+  // Now every durable write fails — everything from here lands in the ring.
+  factory.putError = quotaError();
+  for (let i = 0; i < 40; i++) {
+    log.append({ type: "ring", payload: { i } });
+    await log.unsynced();
+  }
+  const idbLeft = [...factory.db.stores.get(STORE_NAME).data.values()];
+  const combined = idbLeft.length + log.health().ringSize;
+  const margin = Math.max(5, Math.min(50, Math.ceil(20 * 0.1)));
+  assert.ok(
+    combined <= 20 + margin,
+    `expected the COMBINED total to stay near the cap (<= ${20 + margin}), found idb=${idbLeft.length} + ring=${log.health().ringSize} = ${combined}`
+  );
+});
+
 /* ---------- health() shape ---------- */
 
 test("health() is always readable and never throws, even with a dead store", async () => {
