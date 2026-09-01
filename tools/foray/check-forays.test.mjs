@@ -1539,23 +1539,43 @@ test("an estimated narration length is reported as an estimate; a measured one i
   assert.doesNotMatch(checkForays(measured).warnings.join("\n"), /estimated from the script/);
 });
 
-test("an unvoiced bridge is excluded from the clock and warned about, not counted", () => {
-  /* THE TWO GATES MUST AGREE ON WHAT PLAYS. `buildForayQueue` drops a narration
-     item with no asset, so the player's `totalSec` excludes it — and
+test("a script-only bridge is counted, not excluded — generation-architecture.md §7 item 1", () => {
+  /* THE TWO GATES MUST AGREE ON WHAT PLAYS. `buildForayQueue` now treats a
+     script-only narration item as playable via the on-device TTS plugin
+     (§7 item 1), so the player's `totalSec` INCLUDES it — and
      `player/foray-playback.test.js` asserts `totalSec` matches the committed
-     `runtime_sec` to within a second. Counting an unvoiced bridge here would
-     therefore make one gate or the other permanently red the moment a script was
-     authored, which is the ordinary pre-audio state.
+     `runtime_sec` to within a second. Excluding a script-only item here would
+     therefore make one gate or the other permanently red the moment on-device
+     narration shipped, which is now the ordinary state a script produces.
 
-     Mutation: push it into `timeline`/`narrations` anyway. The runtime moves, and
-     `runtime_sec` can no longer satisfy both gates at once. */
+     Mutation: drop it from `timeline`/`narrations` anyway. The runtime no
+     longer matches what the player will actually speak. */
   const f = fx();
-  boundary(f).items.splice(1, 0, { type: "narration", id: "nar-1", script: "x".repeat(340) });
-  assert.deepEqual(errorsFor(f), [], "an authored, unvoiced script is not an error");
+  const script = "x".repeat(340); // 20.0 s at 17 chars/s
+  const target = boundary(f);
+  target.items.splice(1, 0, { type: "narration", id: "nar-1", script });
+  target.runtime_sec = +(target.runtime_sec + 20).toFixed(2);
+  assert.deepEqual(errorsFor(f), [], "an authored script-only item is not an error");
   const { warnings, report } = checkForays(f);
-  assert.match(warnings.join("\n"), /has no usable `audio_url`\/`asset`, so the player drops it/);
+  assert.doesNotMatch(
+    warnings.join("\n"), /has no usable/,
+    "a script is usable now — no asset is needed to speak it"
+  );
+  assert.equal(report.forays[0].narration_sec, 20);
+  assert.equal(report.forays[0].runtime_sec, FIXTURE_RUNTIME + 20, "the spoken line now counts");
+});
+
+test("a narration item with neither asset nor script is excluded from the clock and warned about", () => {
+  /* The one shape that still cannot play: nothing to load AND nothing to
+     speak. `buildForayQueue` drops this exact case (§7 item 1's own
+     boundary), so it must still be excluded here too. */
+  const f = fx();
+  boundary(f).items.splice(1, 0, { type: "narration", id: "nar-1", duration_sec: 20 });
+  assert.deepEqual(errorsFor(f), []);
+  const { warnings, report } = checkForays(f);
+  assert.match(warnings.join("\n"), /has no usable `audio_url`\/`asset`\/`script`, so the player drops it/);
   assert.equal(report.forays[0].narration_sec, 0);
-  assert.equal(report.forays[0].runtime_sec, FIXTURE_RUNTIME, "unchanged: nothing extra will play");
+  assert.equal(report.forays[0].runtime_sec, FIXTURE_RUNTIME, "unchanged: nothing will play");
 });
 
 test("the checker's runtime and the player's agree on a bridged Foray", async () => {
@@ -1648,13 +1668,13 @@ test("a bridge that OPENS a Foray must declare its own slot", () => {
   assert.deepEqual(errorsFor(declared), []);
 });
 
-test("an unvoiced bridge is neither counted as unresolved nor erased from the report", () => {
+test("an unvoiced item (neither asset nor script) is neither counted as unresolved nor erased from the report", () => {
   /* Two separate ways the report lied about the state the checker deliberately
      permits. Mutations: drop `- unvoiced` from the tally, and drop
      `narration_unvoiced` from the report. */
   const f = fx();
   const target = boundary(f);
-  target.items.splice(1, 0, { type: "narration", id: "nar-1", script: "x".repeat(340), slot: target.items[0].slot });
+  target.items.splice(1, 0, { type: "narration", id: "nar-1", duration_sec: 20, slot: target.items[0].slot });
   target.items.push({ type: "segment", slot: target.slots.at(-1).id, segment_id: "does-not-exist" });
   const { warnings, report } = checkForays(f);
   assert.match(warnings.join("\n"), /^foray "boundary-1": 1 item\(s\) did not resolve/m);

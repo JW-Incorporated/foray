@@ -436,19 +436,21 @@ export function checkForays(files) {
         /* ---- WHETHER IT WILL ACTUALLY PLAY, which decides whether it counts
          *
          * `buildForayQueue` DROPS a narration item with no `audio_url`/`asset`
-         * ("narration has no asset") so a missing line cannot stall a Foray. So
-         * an unvoiced bridge contributes nothing to the player's `totalSec` — and
+         * AND no `script` (generation-architecture.md §7 item 1 inverted the
+         * old all-audio assumption: on-device narration's common case is
+         * SCRIPT, NO ASSET, and the queue now treats a script as playable via
+         * the on-device TTS plugin rather than dropping it). So an item that
+         * carries NEITHER contributes nothing to the player's `totalSec` — and
          * if it were counted here, the two gates would demand different
          * `runtime_sec` values and one of them would always be red. That is not
          * hypothetical: `player/foray-playback.test.js` asserts `totalSec` agrees
          * with the committed `runtime_sec` to within a second.
          *
          * `runtime_sec` must describe what a listener hears, so the checker
-         * follows the player: an unvoiced bridge is excluded from the clock and
-         * WARNED about, not rejected. Rejecting it would forbid the ordinary
-         * authoring state — narration-craft.md is explicit that the word budgets
-         * are the primitive, so a script exists long before audio does — and the
-         * item still has to be well-formed to get this far.
+         * follows the player: an item with nothing to play at all is excluded
+         * from the clock and WARNED about, not rejected — the item still has to
+         * be well-formed to get this far, and this only fires for the case
+         * neither an asset nor a script exists.
          *
          * Note what this does NOT weaken: the rejection above is about an item
          * that PLAYS and costs nothing. One that plays nothing and costs nothing
@@ -463,22 +465,29 @@ export function checkForays(files) {
          * this block exists to prevent, on a narrower trigger. Mirror the player;
          * do not paraphrase it. */
         const url = item.audio_url ?? item.asset ?? null;
-        if (!nonEmptyString(url)) {
+        // `hasScript` above is `player/foray-queue.js`'s own script check: a
+        // non-empty STRING, trimmed — the exact predicate that decides
+        // whether the queue speaks the line.
+        if (!nonEmptyString(url) && !hasScript) {
           unvoiced += 1;
           W(
-            `${name} has no usable \`audio_url\`/\`asset\`, so the player drops it and it is excluded ` +
-              `from \`runtime_sec\` and D1's clock (${dur.sec.toFixed(1)} s, ${dur.source}). ` +
-              `Restate \`runtime_sec\` when the audio lands.`
+            `${name} has no usable \`audio_url\`/\`asset\`/\`script\`, so the player drops it and it is ` +
+              `excluded from \`runtime_sec\` and D1's clock (${dur.sec.toFixed(1)} s, ${dur.source}). ` +
+              `Restate \`runtime_sec\` when the audio or the script lands.`
           );
           continue;
         }
-        /* The same two lexical checks every `segment-sources` audio_url gets.
-         * This field only became load-bearing in this change, and an http:// or
-         * tokened narration URL is the identical failure — a media load blocked
-         * by the CSP, or a credential in a committed data file. */
-        if (!/^https:\/\//.test(url)) E(`${where} asset must be https, got ${JSON.stringify(url)}`);
-        if (/[?&](token|auth|api_?key|secret|password|session)=/i.test(url)) {
-          E(`${where} asset looks tokened (secret leak)`);
+        /* The same two lexical checks every `segment-sources` audio_url gets —
+         * but only when an asset/audio_url actually exists to check. A
+         * script-only item has no URL at all (it is spoken on-device, not
+         * fetched), so these checks would be meaningless applied to it; the
+         * https/tokened rules are about a FILE this app fetches over the
+         * network, and a script is neither. */
+        if (nonEmptyString(url)) {
+          if (!/^https:\/\//.test(url)) E(`${where} asset must be https, got ${JSON.stringify(url)}`);
+          if (/[?&](token|auth|api_?key|secret|password|session)=/i.test(url)) {
+            E(`${where} asset looks tokened (secret leak)`);
+          }
         }
         narrations.push({ at, id: item.id ?? null, sec: dur.sec, source: dur.source });
         timeline.push({ kind: "narration", duration: dur.sec });
