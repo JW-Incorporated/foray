@@ -1231,3 +1231,25 @@ its reasoning.
      retry it. Fixed: the marker is now cleared only after the pointer write
      succeeds, making a failed promotion attempt retryable on the next
      activation instead of silently stuck.
+- **A third review pass found one more real bug and one legitimate question
+  about scope, both addressed:**
+  6. `stampPin` reused the cached origin response's headers verbatim after
+     prepending/inserting bytes, so a static host's `Content-Length` (GitHub
+     Pages sends one) would declare the ORIGINAL body's length against the
+     now-longer STAMPED body — a browser is entitled to reject that as a
+     malformed response, breaking the exact offline/stale fallback this exists
+     to serve. Fixed: fresh `Headers`, with `content-length` and
+     `content-encoding` explicitly dropped so the platform recomputes them.
+  7. The review asked directly whether the deferred `player/client.js`
+     module's original ordering hole (named in #233's own header: the module
+     is fetched in PARALLEL with the pin-setting files, so a load where it
+     independently falls back after `app.js`'s untagged data fetches have
+     already gone out is not retroactively re-taggable) is actually closed by
+     this change. It is not — install-time atomicity closes it for a TORN
+     INSTALL, not for this runtime race, and closing it fully would mean
+     blocking every page load on the module, contradicting the founding
+     "survive a dead zone" constraint. sw.js's header was corrected to say so
+     plainly instead of overclaiming three holes closed when it is two closed
+     and one narrowed-but-disclosed; the exposure is unchanged from the
+     original design's own stated limit (a stale PLAYER, never a stale reader
+     of `data/*.json`, which is what #233 was actually about).

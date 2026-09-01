@@ -47,26 +47,45 @@
    `tools/ci/generate-manifest.mjs`, and NOT the pre-existing `manifest.json`,
    which stays the PWA web-app manifest `index.html` links) naming a
    content-derived `deploy_id` and a sha256 for every shell/module/data file
-   that ships. Three holes this closes:
+   that ships. Two holes this closes, and one it narrows but does not close —
+   named honestly rather than overclaimed, because a review asked the question
+   directly:
 
-     - THE PIN COULD LAND AFTER THE DATA, for the one file fetched in parallel
-       with the pin-setting files: the deferred ES module `player/client.js`.
-       Closed because install now verifies and stages the WHOLE manifest before
-       anything is promoted — `client.js` is part of the generation like
-       everything else, not a straggler with its own cache-entry lifecycle.
      - THE CACHE WAS NOT GENERATION-ATOMIC. Each file used to be written to one
        shared cache as it arrived, so a load in which `app.js` answered and
        `client.js` timed out left two generations in one bucket. Now each
        generation gets its OWN cache (`foray-gen-<deploy_id>`), built from
        manifest-verified fetches only, and promotion is a single pointer write
        (`activate`) — nothing reads a generation as current until the pointer
-       says so, and an incomplete install promotes nothing.
+       says so, and an incomplete INSTALL promotes nothing.
      - THE DEGRADED SET LIVED ONLY IN WORKER MEMORY and failed open after an
-       idle-worker eviction. Replaced entirely: the pin above lives on the page,
-       and generation lookups go through durable `CacheStorage`, not a
+       idle-worker eviction. Replaced entirely: the pin lives on the page, and
+       generation lookups go through durable `CacheStorage`, not a
        worker-memory `Set`. A worker restart mid-session re-derives everything
        from the pointer cache and whatever `_fdid` the request already carries
        — there is nothing in memory to lose.
+     - THE PIN CAN STILL LAND AFTER THE DATA, at RUNTIME, for the one file
+       fetched in parallel with the pin-setting files: the deferred ES module
+       `player/client.js`. Install-time atomicity (above) closes this for a
+       TORN INSTALL — a manifest that never verifies never promotes, so a
+       load straight after install cannot see this split. It does NOT close it
+       for a load where `index.html` and `app.js` both answer live (untagged,
+       no pin — this page IS current) while `client.js`'s OWN request, fired
+       in parallel, independently fails and falls back to an OLDER retained
+       generation's cached copy. `handleShell` pins THAT ONE REQUEST'S
+       fallback correctly, but by the time it resolves, `app.js`'s `init()`
+       has already sent its untagged `data/*.json` fetches — there is nothing
+       left to retroactively re-tag. A review asked directly whether this is
+       closed; it is not, and closing it fully would mean blocking every page
+       load on `player/client.js` before starting any data fetch, which
+       contradicts the founding "survive a dead zone" constraint the same way
+       precaching the module outright would (see below). The exposure is the
+       same one the original design named: a stale `client.js` is a stale
+       PLAYER, not a stale reader of `data/*.json` — `renderForay` already
+       guards its calls into the module with `typeof`, and #233's actual
+       complaint (a Foray id the reader cannot resolve) is about `app.js`
+       against `data/*.json`, which this file's central mechanism protects
+       fully. Real, bounded, and disclosed rather than silently reintroduced.
 
    RETENTION. `activate` keeps the current and the immediately previous
    generation, and deletes anything older. That is what lets a page already
@@ -565,7 +584,22 @@ async function stampPin(request, response, deployId) {
         (m) => `${m}\n<meta name="foray-pin-deploy-id" content="${escapeHtmlAttr(deployId)}">`
       )
     : `self.__forayPinnedDeployId=${JSON.stringify(deployId)};\n${body}`;
-  return new Response(stamped, { status: response.status, headers: response.headers });
+  /* Fresh headers, NOT `response.headers` reused verbatim — a review caught
+     this: a static host commonly sends `Content-Length` on the cached
+     origin response this came from, and prepending/inserting bytes without
+     dropping it leaves a declared length that no longer matches the actual
+     body. A browser is entitled to reject that as a malformed
+     service-worker response, which would break exactly the offline/stale
+     fallback this function exists to serve. `Content-Length` (recomputed
+     automatically from the new body by the platform) and `Content-Encoding`
+     (the cached bytes are already decoded text, not compressed, so a stale
+     encoding header would make the browser try to decompress plain text)
+     are the two that matter; everything else on a same-origin text response
+     is safe to carry forward unmodified. */
+  const headers = new Headers(response.headers);
+  headers.delete("content-length");
+  headers.delete("content-encoding");
+  return new Response(stamped, { status: response.status, headers });
 }
 
 function escapeHtmlAttr(s) {

@@ -157,11 +157,15 @@ function loadWorker({ network, generations = {}, pointer = null, windows = [] } 
         breakPointerPutOnce.armed = false;
         throw new Error("simulated CacheStorage/quota failure on pointer write");
       }
-      bucket(name).set(keyFor(name, request), { body: await response.text(), status: response.status });
+      bucket(name).set(keyFor(name, request), {
+        body: await response.text(),
+        status: response.status,
+        headers: [...response.headers.entries()],
+      });
     },
     async match(request) {
       const hit = bucket(name).get(keyFor(name, request));
-      return hit ? new Response(hit.body, { status: hit.status }) : undefined;
+      return hit ? new Response(hit.body, { status: hit.status, headers: hit.headers }) : undefined;
     },
     async delete(request) {
       return bucket(name).delete(keyFor(name, request));
@@ -195,7 +199,7 @@ function loadWorker({ network, generations = {}, pointer = null, windows = [] } 
       async claim() { claims += 1; },
     },
     location: { origin: ORIGIN, href: `${BASE}sw.js` },
-    Response, Request, URL, URLSearchParams, Promise, Set, Map, JSON, Error, TypeError, Object,
+    Response, Request, Headers, URL, URLSearchParams, Promise, Set, Map, JSON, Error, TypeError, Object,
     setTimeout: (fn, ms) => {
       const t = { fn, ms, live: true };
       timers.push(t);
@@ -1011,6 +1015,46 @@ test("SYNCHRONOUS PIN: styles/icons (non-code fallbacks) are never stamped", asy
   });
   const res = await h.fetch(sub("styles.css"), { clientId: "page-1" });
   assert.equal(await res.text(), "CSS@1");
+});
+
+test("SYNCHRONOUS PIN: a stamped fallback carries no stale Content-Length header", async () => {
+  /* A review caught this: reusing the cached origin response's headers
+     verbatim after prepending/inserting bytes leaves a declared
+     Content-Length that no longer matches the actual (now longer) body — a
+     browser is entitled to reject that as a malformed response, breaking
+     exactly the offline/stale fallback this exists to serve. The generation
+     is installed here with a REAL Content-Length-bearing Response (the same
+     shape a static host like GitHub Pages actually sends), so this
+     reproduces the real header, not a hand-picked one. */
+  const originalBody = "APP@1";
+  const withLength = new Response(originalBody, {
+    status: 200,
+    headers: { "content-length": String(originalBody.length), "content-type": "text/javascript" },
+  });
+  const h = loadWorker({
+    network: (url) => {
+      if (url.endsWith("deploy-manifest.json")) {
+        return ok(JSON.stringify(manifestFor("1", { "app.js": originalBody })));
+      }
+      return url.endsWith("app.js") ? withLength.clone() : new Response("", { status: 404 });
+    },
+  });
+  await h.lifecycle("install");
+  await h.lifecycle("activate");
+
+  h.setNetwork(offline);
+  const res = await h.fetch(sub("app.js"), { clientId: "page-1" });
+  const text = await res.text();
+  assert.notEqual(unstampPin(text), text, "sanity: this response really was stamped");
+  const declaredLength = res.headers.get("content-length");
+  if (declaredLength !== null) {
+    assert.equal(
+      Number(declaredLength),
+      Buffer.byteLength(text, "utf8"),
+      "a Content-Length that survives stamping must match the STAMPED body, never the original's"
+    );
+  }
+  assert.equal(res.headers.get("content-type"), "text/javascript", "unrelated headers still carry forward");
 });
 
 /* -------------------------------------------------- what is not intercepted */
