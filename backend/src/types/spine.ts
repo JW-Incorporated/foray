@@ -110,6 +110,70 @@ export const SpineSchema = z
   .strict();
 export type Spine = z.infer<typeof SpineSchema>;
 
+/**
+ * §4.4 output shape (docs/curation/generation-architecture.md §4.4): the
+ * same `Act` shape, with slots/beats refined and two new fields added —
+ * `introduction` (the act's own opening, written here rather than left to
+ * §4.8's stitching stage) and `exit` (this act's half of the handoff into
+ * the next act; §4.8's continuity agent later reconciles the CROSS-act
+ * seam, but each act's own exit half is produced here).
+ *
+ * Still has no `voice` field — voice stays spine-level (see `ActSchema`'s
+ * doc comment above); deepening an act never introduces a per-act voice.
+ */
+export const DeepenedActSchema = ActSchema.extend({
+  introduction: z.string().trim().min(1),
+  exit: z.string().trim().min(1)
+}).strict();
+export type DeepenedAct = z.infer<typeof DeepenedActSchema>;
+
+export interface DeepenedActValidationIssue {
+  code: "beat-not-claim-shaped" | "introduction-missing" | "exit-missing" | "slot-count-changed";
+  message: string;
+}
+
+export interface DeepenedActValidationResult {
+  valid: boolean;
+  issues: DeepenedActValidationIssue[];
+}
+
+/**
+ * Structural validation for one deepened act, checked against the ORIGINAL
+ * spine act it deepened. §4.4 refines slots/beats — it does not add or
+ * remove them — so a builder that drops or invents a slot is a bug this
+ * catches rather than a silent shape drift.
+ */
+export function validateDeepenedAct(original: Act, deepened: DeepenedAct): DeepenedActValidationResult {
+  const issues: DeepenedActValidationIssue[] = [];
+
+  if (deepened.slots.length !== original.slots.length) {
+    issues.push({
+      code: "slot-count-changed",
+      message: `Deepening changed slot count from ${original.slots.length} to ${deepened.slots.length} — §4.4 refines slots, it does not add or remove them`
+    });
+  }
+
+  for (const slot of deepened.slots) {
+    for (const beat of slot.beats) {
+      if (!isClaimShaped(beat.claim)) {
+        issues.push({
+          code: "beat-not-claim-shaped",
+          message: `Refined beat is topic-shaped, not claim-shaped: "${beat.claim}"`
+        });
+      }
+    }
+  }
+
+  if (deepened.introduction.trim().length === 0) {
+    issues.push({ code: "introduction-missing", message: "Deepened act has no introduction" });
+  }
+  if (deepened.exit.trim().length === 0) {
+    issues.push({ code: "exit-missing", message: "Deepened act has no exit" });
+  }
+
+  return { valid: issues.length === 0, issues };
+}
+
 /** Flattened counting helpers — §3's budgets are stated in acts/slots/items
  * (item === beat at spine granularity; §4.5-4.7 is what turns a beat into a
  * playable item, but the count target is set here). */

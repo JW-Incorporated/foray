@@ -941,6 +941,12 @@ const BACKEND_FLOORS = {
      single spine-level voice all actually hold), plus InvalidSpineError
      on a deliberately broken builder. Kanban card t_96a97be9. */
   "test/buildSpine.test.ts": 6,
+  /* §4.4 end to end (kanban card t_c963701a): deepenActs() fans out
+     builder.deepenAct() once per act IN PARALLEL, always passing the
+     FULL spine. Covers shape/count correctness, the full-spine-context
+     regression guard, genuine-parallelism proof, and explicit
+     failure-isolation (one retry per act, then fail the whole build). */
+  "test/deepenActs.test.ts": 10,
 };
 
 /* `it(` as well as `test(`: backend's suites use both spellings. */
