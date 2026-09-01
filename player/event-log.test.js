@@ -82,6 +82,24 @@ test("several append() calls in one tick schedule exactly one flush", () => {
   assert.equal(scheduled, 1, "a burst inside one tick must cost one flush, not three");
 });
 
+test("requestIdleCallback is given a deadline, so a busy page cannot defer the flush indefinitely", () => {
+  const calls = [];
+  const savedRIC = globalThis.requestIdleCallback;
+  globalThis.requestIdleCallback = (fn, opts) => { calls.push(opts); return 1; };
+  try {
+    // No scheduleFlush override here — this exercises the module's OWN default
+    // scheduler selection, the thing the bug lived in.
+    const log = createEventLog({ indexedDB: null, flushDelayMs: 75 });
+    log.append({ type: "a", payload: {} });
+    assert.equal(calls.length, 1);
+    assert.ok(calls[0] && typeof calls[0].timeout === "number", "requestIdleCallback must be called with a numeric timeout");
+    assert.equal(calls[0].timeout, 75, "the timeout must be flushDelayMs, the same bound the setTimeout fallback uses");
+  } finally {
+    if (savedRIC === undefined) delete globalThis.requestIdleCallback;
+    else globalThis.requestIdleCallback = savedRIC;
+  }
+});
+
 /* ---------- against the real IndexedDB adapter shape ---------- */
 
 test("unsynced() flushes buffered rows before reading, so a caller sees its own just-logged event", async () => {
@@ -260,6 +278,263 @@ test("RETENTION: applies across BOTH the durable rows and the memory ring combin
   const idbLeft = [...factory.db.stores.get(STORE_NAME).data.values()];
   assert.equal(remaining.length, 0);
   assert.equal(idbLeft.length, 2, "the two most recent durable rows must survive the combined cap");
+});
+
+test("RETENTION: a durable write that starts failing mid-session forces a real recheck, not a stale estimate (round-4 codex finding)", async () => {
+  /* The bug this guards: idbCountEstimate tracks idb's count as an ESTIMATE
+     and is only corrected by a real scan. If idb has been healthy and near
+     the cap (so idbCountEstimate ~= retention), then starts failing (quota,
+     eviction, a private-browsing session closing the door), every new event
+     lands in the ring instead — which self-caps at `retention` on its own,
+     completely independent of idb's count. Without forcing a fresh scan on
+     the failure itself, the sum-based trigger keeps using the stale idb
+     estimate, and the ring can also climb to `retention` before ITS OWN cap
+     kicks in — so the combined store can sit near 2x retention with no
+     automatic prune ever firing, because nothing after the failure ever
+     re-reads the real idb count. */
+  const factory = new FakeFactory();
+  const log = createEventLog({ indexedDB: factory, retention: 10, scheduleFlush: () => {} });
+  const base = Date.parse("2026-01-01T00:00:00.000Z");
+  // Fill idb to exactly retention via healthy writes, establishing an
+  // idbCountEstimate baseline at (or near) the cap.
+  for (let i = 0; i < 10; i++) {
+    log.append({ ts: new Date(base + i * 1000).toISOString(), type: "idb", payload: { i } });
+  }
+  await log.unsynced(); // flush — all healthy, all land in idb
+  // Now idb starts failing for every subsequent write (quota exhaustion).
+  factory.putError = quotaError();
+  for (let i = 0; i < 30; i++) {
+    log.append({ ts: new Date(base + (100 + i) * 1000).toISOString(), type: "ring", payload: { i } });
+    await log.unsynced(); // each append's own flush must recheck, not trust a stale estimate
+  }
+  const idbLeft = [...factory.db.stores.get(STORE_NAME).data.values()];
+  const all = await log.unsynced();
+  assert.ok(
+    idbLeft.length + all.length <= 10 + 5, // retention + a small, fixed margin — not ~2x retention
+    `combined store grew to ${idbLeft.length} idb + ${all.length} ring rows with retention=10 after idb started failing — the estimate must not go stale across a failure`
+  );
+});
+
+test("RETENTION: the cap holds even when nothing is ever synced (offline / sync never succeeds)", async () => {
+  /* The bug this guards: the app's own pruneToRetention() call sits in
+     trySyncEvents(), AFTER a successful upload. An offline device, or a
+     server that is down, never reaches that call — so if pruning only
+     happened there, the store would grow without bound for as long as sync
+     kept failing, which is worse than the old localStorage write (always
+     capped on every write, sync or no sync). This module must not depend on
+     the caller's sync ever succeeding to keep its own promise: flushing
+     alone — never marking anything synced, never calling pruneToRetention
+     directly — has to be enough. */
+  const factory = new FakeFactory();
+  const log = createEventLog({ indexedDB: factory, retention: 50, scheduleFlush: () => {} });
+  for (let i = 0; i < 200; i++) log.append({ type: "t", payload: { i } });
+  // Only ever flush (via unsynced()) — never markSynced, never pruneToRetention.
+  // A real offline client's trySyncEvents() bails before either of those.
+  await log.unsynced();
+  const left = [...factory.db.stores.get(STORE_NAME).data.values()];
+  assert.ok(
+    left.length <= 50,
+    `the store grew to ${left.length} rows with retention=50 and nothing ever synced — ` +
+    `the cap must not depend on a successful sync`
+  );
+});
+
+test("RETENTION: append()'s own scheduled flush enforces the cap, not just an explicit unsynced()/pruneToRetention() call", async () => {
+  const flushes = [];
+  // A real scheduler, not a no-op — so append() itself drives the flush this
+  // test is checking, the same as it would in a browser. No IndexedDB here
+  // (the ring path) — the cap must hold on that path too, not just idb's.
+  const log = createEventLog({
+    indexedDB: null,
+    retention: 20,
+    scheduleFlush: (fn) => { flushes.push(fn); return true; },
+  });
+  for (let i = 0; i < 100; i++) log.append({ type: "t", payload: { i } });
+  // append() coalesces a burst into ONE scheduled flush; run it, as the real
+  // scheduler eventually would.
+  assert.equal(flushes.length, 1, "a burst of appends must schedule exactly one flush");
+  await flushes[0]();
+  assert.ok(
+    log.health().ringSize <= 20,
+    `the ring grew to ${log.health().ringSize} rows after the scheduled flush alone, with retention=20`
+  );
+});
+
+test("RETENTION: a small idb flush does not re-scan the whole store every time (round-2 codex finding)", async () => {
+  /* The first fix (prune on every flush) was functionally correct but scanned
+     the whole store on every flush — a real perf regression Codex's own
+     re-review caught. This proves the throttled version: once the first
+     flush's mandatory check has run, further small flushes cost exactly the
+     ONE getAll() `unsynced()` itself always needs to answer the caller — not
+     a second one from pruning underneath it. */
+  const factory = new FakeFactory();
+  let getAllCalls = 0;
+  const realGetAll = FakeObjectStore.prototype.getAll;
+  FakeObjectStore.prototype.getAll = function (...args) { getAllCalls += 1; return realGetAll.apply(this, args); };
+  try {
+    const log = createEventLog({ indexedDB: factory, retention: 5000, scheduleFlush: () => {} });
+    // The FIRST flush of a session always checks once (catches any backlog
+    // left over from a prior session) — so this call costs TWO getAll()s: the
+    // prune's own scan, plus unsynced()'s own read of the result.
+    log.append({ type: "t", payload: {} });
+    await log.unsynced();
+    assert.equal(getAllCalls, 2, "the first flush's mandatory prune check adds one scan on top of unsynced()'s own read");
+    // Several more small flushes, well under PRUNE_CHECK_INTERVAL (250 for a
+    // 5000 retention) writes total — each should cost exactly ONE getAll(),
+    // from unsynced() itself, with no extra scan from pruning underneath it.
+    for (let batch = 0; batch < 5; batch++) {
+      const before = getAllCalls;
+      log.append({ type: "t", payload: {} });
+      await log.unsynced();
+      assert.equal(getAllCalls, before + 1, "a small flush under the check interval must cost exactly one scan, not two");
+    }
+  } finally {
+    FakeObjectStore.prototype.getAll = realGetAll;
+  }
+});
+
+test("RETENTION: the combined store never overshoots the cap by more than a small fixed margin, however many small flushes land (round-3 codex finding #1)", async () => {
+  /* Codex round 3: a naive write-count throttle (prune every N writes) lets
+     the store overshoot by up to N-1 rows on ordinary small flushes — with
+     retention=20 and a fixed interval of 50, 49 one-row flushes after the
+     first check left 69 durable rows, more than 3x the cap. This proves the
+     estimate-based trigger instead bounds the overshoot to a small margin
+     (retention * 0.1, floor 5, ceiling 50) regardless of how many small
+     flushes land between real scans. */
+  const factory = new FakeFactory();
+  const log = createEventLog({ indexedDB: factory, retention: 20, scheduleFlush: () => {} });
+  for (let i = 0; i < 200; i++) {
+    log.append({ type: "t", payload: { i } });
+    await log.unsynced(); // one row at a time — the worst case for a write-count throttle
+  }
+  const left = [...factory.db.stores.get(STORE_NAME).data.values()];
+  const margin = Math.max(5, Math.min(50, Math.ceil(20 * 0.1))); // mirrors PRUNE_MARGIN's own formula
+  assert.ok(
+    left.length <= 20 + margin,
+    `expected at most ${20 + margin} rows (cap 20 + margin ${margin}), found ${left.length} after 200 one-row flushes`
+  );
+});
+
+test("RETENTION: durable-write failures diverting into the ring do not let the combined size grow past the margin (round-3 codex finding #2)", async () => {
+  /* Codex round 3: a write-count throttle only counted SUCCESSFUL idb writes,
+     so once idb was near the cap and a run of quota errors started diverting
+     writes into the ring, the check was never re-triggered — the combined
+     total could climb toward roughly double the cap. This proves the
+     estimate now includes `ring.length` directly (always exact, no counting
+     needed), so a ring-only failure run is caught by the same trigger. */
+  const factory = new FakeFactory();
+  const log = createEventLog({ indexedDB: factory, retention: 20, scheduleFlush: () => {} });
+  // Get idb close to the cap first, healthy.
+  for (let i = 0; i < 18; i++) log.append({ type: "idb", payload: { i } });
+  await log.unsynced();
+  const idbBefore = [...factory.db.stores.get(STORE_NAME).data.values()].length;
+  assert.ok(idbBefore <= 20, "sanity: idb itself must already be at/under the cap before the failure run starts");
+  // Now every durable write fails — everything from here lands in the ring.
+  factory.putError = quotaError();
+  for (let i = 0; i < 40; i++) {
+    log.append({ type: "ring", payload: { i } });
+    await log.unsynced();
+  }
+  const idbLeft = [...factory.db.stores.get(STORE_NAME).data.values()];
+  const combined = idbLeft.length + log.health().ringSize;
+  const margin = Math.max(5, Math.min(50, Math.ceil(20 * 0.1)));
+  assert.ok(
+    combined <= 20 + margin,
+    `expected the COMBINED total to stay near the cap (<= ${20 + margin}), found idb=${idbLeft.length} + ring=${log.health().ringSize} = ${combined}`
+  );
+});
+
+test("RETENTION: a failed retention scan does not establish a false empty baseline (round-4 codex finding)", async () => {
+  /* Codex round 4: readIdbAll() returns [] both when the store is genuinely
+     empty AND when the read itself failed — pruneNow() was treating those as
+     the same fact, so a transient read failure near the cap could record
+     `idbCountEstimate = 0`. Every write after that would be trusted against
+     a false baseline, letting the store grow by up to another
+     `retention + PRUNE_MARGIN` rows before anything rescanned. This proves a
+     failed scan leaves the estimate `null` (unknown) instead, so the very
+     next flush is forced to scan for real rather than trusting a guess. */
+  const factory = new FakeFactory();
+  const log = createEventLog({ indexedDB: factory, retention: 20, scheduleFlush: () => {} });
+  // Get idb near the cap, healthy, establishing a real baseline first.
+  for (let i = 0; i < 18; i++) log.append({ type: "t", payload: { i } });
+  await log.unsynced();
+  const before = [...factory.db.stores.get(STORE_NAME).data.values()].length;
+  assert.ok(before <= 20, "sanity: idb must be at/under the cap before the read failure");
+  // Make the NEXT read (the retention scan's getAll) fail transiently.
+  const realGetAll = FakeObjectStore.prototype.getAll;
+  let failNextRead = true;
+  FakeObjectStore.prototype.getAll = function (...args) {
+    if (failNextRead) {
+      failNextRead = false;
+      const req = new FakeRequest();
+      this.tx._failWith(new Error("transient read failure"));
+      req._fail(this.tx.error);
+      return req;
+    }
+    return realGetAll.apply(this, args);
+  };
+  try {
+    // This append pushes idb to/near the margin trigger; its flush's prune
+    // check hits the failing getAll() above.
+    for (let i = 0; i < 5; i++) log.append({ type: "t", payload: { i } });
+    await log.unsynced();
+    assert.ok(log.health().faults.some((f) => f.op === "read"), "the failed scan must be recorded as a fault, not silently treated as success");
+  } finally {
+    FakeObjectStore.prototype.getAll = realGetAll;
+  }
+  // The estimate must now be untrusted (null), so the VERY NEXT flush forces
+  // a real scan rather than accumulating on a false-zero baseline. Push a
+  // large batch and confirm the combined store is still bounded near the cap
+  // rather than having grown unchecked on a trusted-but-wrong estimate.
+  for (let i = 0; i < 50; i++) log.append({ type: "t", payload: { i } });
+  await log.unsynced();
+  const left = [...factory.db.stores.get(STORE_NAME).data.values()];
+  const margin = Math.max(5, Math.min(50, Math.ceil(20 * 0.1)));
+  assert.ok(
+    left.length <= 20 + margin,
+    `expected the store to stay near the cap after the read failure cleared (<= ${20 + margin}), found ${left.length}`
+  );
+});
+
+test("RETENTION: writes from another tab are eventually caught by time-based reconciliation (round-4 codex finding)", async () => {
+  /* Codex round 4: idbCountEstimate only tracks writes THIS instance made.
+     foray_events is one shared IndexedDB database, so a second tab writing
+     directly to the same store is invisible to this instance's estimate —
+     the write-count trigger alone would never fire. This proves the
+     wall-clock fallback (MAX_ESTIMATE_AGE_MS) forces a real scan once enough
+     time has passed, regardless of what the local estimate believes,
+     catching drift from writers this instance can't see. */
+  const factory = new FakeFactory();
+  let clockMs = Date.parse("2026-01-01T00:00:00.000Z");
+  const log = createEventLog({
+    indexedDB: factory,
+    retention: 20,
+    scheduleFlush: () => {},
+    now: () => new Date(clockMs).toISOString(),
+  });
+  // Establish a real, low baseline.
+  log.append({ type: "t", payload: {} });
+  await log.unsynced();
+  // Simulate another tab writing directly into the shared store — bypassing
+  // this instance entirely, so idbCountEstimate has no idea it happened.
+  const store = factory.db.stores.get(STORE_NAME);
+  for (let i = 0; i < 30; i++) {
+    const key = store._next++;
+    store.data.set(key, { id: key, ts: new Date(clockMs).toISOString(), type: "other-tab", synced: false, payload: { i } });
+  }
+  // Advance the clock past MAX_ESTIMATE_AGE_MS and let one more (tiny) local
+  // append's flush run — its own write-count estimate alone would consider
+  // this a no-op (well under retention + margin), so only the time-based
+  // fallback can explain a scan firing here.
+  clockMs += 61_000;
+  log.append({ type: "t", payload: {} });
+  await log.unsynced();
+  const left = [...factory.db.stores.get(STORE_NAME).data.values()];
+  const margin = Math.max(5, Math.min(50, Math.ceil(20 * 0.1)));
+  assert.ok(
+    left.length <= 20 + margin,
+    `expected the other tab's 30 rows to be caught by time-based reconciliation (<= ${20 + margin}), found ${left.length}`
+  );
 });
 
 /* ---------- health() shape ---------- */
