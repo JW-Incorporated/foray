@@ -85,6 +85,18 @@ describe("isClaimShaped", () => {
   it("accepts a claim using an inflected content verb", () => {
     expect(isClaimShaped("Ford dealerships sold briquettes alongside cars")).toBe(true);
   });
+
+  it("accepts ordinary verbs outside any fixed allowlist via subject agreement", () => {
+    // "controls"/"dominates" carry no closed-class auxiliary and are not
+    // enumerated anywhere — this must pass on the -s + preceding-subject
+    // structural signal alone, proving the check isn't just a verb list.
+    expect(isClaimShaped("Kingsford controls most of the briquette market")).toBe(true);
+    expect(isClaimShaped("Ford dominates every early account of this story")).toBe(true);
+  });
+
+  it("accepts an irregular simple-past verb not in any -ed/-s pattern", () => {
+    expect(isClaimShaped("Ford ran the briquette operation for two decades")).toBe(true);
+  });
 });
 
 describe("countActs / countSlots / countBeats / allBeats", () => {

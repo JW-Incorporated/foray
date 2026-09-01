@@ -128,12 +128,35 @@ export function countBeats(spine: Spine): number {
 
 /**
  * Claim-shape check (§4.3's own bar). A claim asserts something about its
- * subject; a topic just names it. Heuristic, but a real check rather than
- * a cosmetic one: reject anything under three words outright (no room for
- * a subject + predicate), then require either a recognizable finite
- * auxiliary/linking/modal verb, or a content word inflected as a finite
- * verb (past tense -ed / progressive -ing, excluding the first word so a
- * leading gerund-as-noun like "Farming" alone doesn't pass on shape only).
+ * subject; a topic just names it.
+ *
+ * This is deliberately NOT a flat verb allowlist — no fixed list of verbs
+ * can be complete for arbitrary LLM-generated English, and an incomplete
+ * list means an ordinary sentence with an unlisted verb ("Ford ran the
+ * operation", "Kingsford controls the market") gets wrongly rejected,
+ * which can fail an entire 80-110-beat long-tier spine over one
+ * unlisted verb. Instead this combines:
+ *
+ *   1. A small CLOSED class of auxiliary/modal/copula verbs
+ *      (`FINITE_AUX_VERBS`) — genuinely closed in English, safe to
+ *      enumerate exhaustively.
+ *   2. Subject-agreement morphology: a present-tense 3rd-person-singular
+ *      verb ("controls", "dominates", "shapes") is detected structurally
+ *      — a word ending in -s/-es, not the first token, immediately
+ *      preceded by something that looks like a subject (a capitalized
+ *      word, i.e. a likely proper noun, or a common subject pronoun) —
+ *      rather than by checking it against a verb list at all.
+ *   3. Regular past-tense/progressive morphology (-ed / a progressive
+ *      "-ing" directly after a be-auxiliary), which covers the large
+ *      regular-verb class without enumerating it.
+ *   4. A short list of common IRREGULAR past-tense verbs as a final
+ *      supplement, since (2) and (3) miss irregular simple pasts
+ *      ("ran", "wrote", "sold") that carry no -s/-ed/-ing signal at all.
+ *
+ * None of these signals need to be exhaustive on their own — a claim
+ * only needs to satisfy the false-negative-prone case if the other
+ * three miss it, so completeness improves multiplicatively, not by one
+ * ever-growing list.
  */
 const FINITE_AUX_VERBS = new Set([
   "is",
@@ -158,90 +181,108 @@ const FINITE_AUX_VERBS = new Set([
   "should",
   "may",
   "might",
-  "must",
-  "became",
-  "becomes",
-  "become",
-  "makes",
-  "made",
-  "gave",
-  "gives",
-  "took",
-  "takes",
-  "means",
-  "meant",
-  "led",
-  "leads",
-  "caused",
-  "causes",
-  "began",
-  "begins",
-  "started",
-  "starts",
-  "ended",
-  "ends",
-  "killed",
-  "kills",
-  "changed",
-  "changes",
-  "turned",
-  "turns",
-  "sold",
-  "sells",
-  "bought",
-  "buys",
-  "brought",
-  "brings",
-  "built",
-  "builds",
-  "found",
-  "finds",
-  "wrote",
-  "writes",
-  "said",
-  "says",
+  "must"
+]);
+
+/** Supplements (2)/(3) above for common IRREGULAR simple-past verbs that
+ * carry no -ed/-s/-ing signal at all. Deliberately small and explicitly
+ * a supplement, not the primary detection mechanism — see the doc
+ * comment on `isClaimShaped`. */
+const COMMON_IRREGULAR_PAST_VERBS = new Set([
+  "ran",
   "went",
-  "goes",
-  "kept",
-  "keeps",
-  "held",
-  "holds",
-  "won",
-  "wins",
-  "lost",
-  "loses",
+  "came",
+  "saw",
+  "knew",
+  "thought",
+  "took",
+  "gave",
+  "found",
+  "told",
+  "wrote",
+  "spoke",
+  "broke",
+  "chose",
   "grew",
-  "grows",
+  "threw",
+  "drove",
+  "rode",
+  "flew",
+  "fell",
+  "held",
+  "kept",
+  "left",
+  "lost",
+  "meant",
+  "met",
+  "paid",
+  "sold",
+  "sent",
+  "set",
+  "shot",
+  "sang",
+  "sat",
+  "stood",
+  "won",
+  "began",
+  "became",
+  "brought",
+  "bought",
+  "built",
+  "caught",
+  "led",
+  "made",
+  "understood",
+  "spent",
   "spread",
-  "shaped",
-  "shapes",
-  "forced",
-  "forces",
-  "revealed",
-  "reveals",
-  "proved",
-  "proves",
-  "disputed",
-  "disputes",
-  "attribute",
-  "attributes",
-  "attributed",
-  "surprised",
-  "surprises",
-  "explains",
-  "explained",
-  "matters",
-  "mattered",
-  "dismissed",
-  "dismisses"
+  "swam",
+  "taught",
+  "woke",
+  "wore"
+]);
+
+/** Common subject pronouns — used only to license the subject-agreement
+ * check for present-tense -s/-es verbs (2), never as a verb signal
+ * itself. */
+const SUBJECT_PRONOUNS = new Set(["it", "he", "she", "they", "this", "that", "these", "those", "we", "you"]);
+
+/** Words that are near-universally used as nouns even though they carry
+ * an -s suffix (plural nouns), to keep the subject-agreement check from
+ * treating "the two Fords' rivals fought" style plurals as verbs. Kept
+ * deliberately small — it only needs to catch common false positives,
+ * not be exhaustive, since it only gates one of several signals. */
+const PLURAL_NOUN_EXCEPTIONS = new Set([
+  "years",
+  "decades",
+  "episodes",
+  "listeners",
+  "companies",
+  "dealerships",
+  "briquettes",
+  "reports",
+  "sources",
+  "records",
+  "documents",
+  "items",
+  "beats",
+  "acts",
+  "slots"
 ]);
 
 /** Words that are near-universally used as nouns/adjectives even though
- * they carry an -ing/-ed suffix (e.g. "manufacturing", "marketing",
- * "advertised" as an adjective is rarer, so this list is deliberately
- * short and biased toward -ing gerund-as-noun false positives, the
- * dominant failure mode of a bare suffix check). */
+ * they carry an -ing suffix (gerund-as-noun), e.g. "manufacturing",
+ * "marketing" — a short, clearly-labeled exception list, not the
+ * primary detection mechanism. */
 const GERUND_NOUN_EXCEPTIONS = new Set(["manufacturing", "marketing", "engineering", "farming", "advertising", "branding", "packaging"]);
+
+function looksLikeSubjectToken(rawWord: string): boolean {
+  if (rawWord.length === 0) return false;
+  const lower = rawWord.toLowerCase();
+  if (SUBJECT_PRONOUNS.has(lower)) return true;
+  // A capitalized token (proper noun heuristic) that isn't itself a
+  // sentence-initial common word is treated as a likely subject.
+  return /^[A-Z]/.test(rawWord);
+}
 
 export function isClaimShaped(text: string): boolean {
   const trimmed = text.trim();
@@ -250,16 +291,41 @@ export function isClaimShaped(text: string): boolean {
   if (rawWords.length < 3) return false;
 
   const words = rawWords.map((w) => w.toLowerCase().replace(/[^a-z0-9']/g, ""));
+
+  // (1) Closed-class auxiliary/modal/copula.
   if (words.some((w) => FINITE_AUX_VERBS.has(w))) return true;
 
-  // A content word (not the first token, and not a known gerund-as-noun)
-  // inflected as a finite past-tense verb is accepted as evidence of an
-  // assertion, e.g. "Ford disposed of briquette waste through dealerships"
-  // ("disposed"). Progressive -ing is excluded from this fallback entirely
-  // — "manufacturing", "marketing" etc. are common sentence-final gerund
-  // nouns that would otherwise produce false positives on bare topics like
-  // "charcoal briquette manufacturing".
-  return words.some((w, i) => i > 0 && w.length > 4 && w.endsWith("ed") && !GERUND_NOUN_EXCEPTIONS.has(w));
+  for (let i = 1; i < words.length; i++) {
+    const word = words[i]!;
+    if (word.length === 0) continue;
+
+    // (4) Common irregular simple past.
+    if (COMMON_IRREGULAR_PAST_VERBS.has(word)) return true;
+
+    // (3a) Regular past tense.
+    if (word.length > 4 && word.endsWith("ed") && !GERUND_NOUN_EXCEPTIONS.has(word)) return true;
+
+    // (3b) Progressive: "-ing" directly preceded by a be-auxiliary, e.g.
+    // "is reshaping", "was disputing" — this excludes bare sentence-final
+    // gerund nouns like "...briquette manufacturing" because there is no
+    // preceding auxiliary there.
+    if (word.length > 4 && word.endsWith("ing") && !GERUND_NOUN_EXCEPTIONS.has(word)) {
+      const prev = words[i - 1];
+      if (prev && (prev === "is" || prev === "are" || prev === "was" || prev === "were" || prev === "been" || prev === "being")) {
+        return true;
+      }
+    }
+
+    // (2) Present-tense 3rd-person-singular via subject agreement:
+    // word ends in -s/-es, isn't a known plural-noun exception, and the
+    // immediately preceding token looks like a subject.
+    if (word.length > 3 && (word.endsWith("es") || word.endsWith("s")) && !PLURAL_NOUN_EXCEPTIONS.has(word)) {
+      const prevRaw = rawWords[i - 1];
+      if (prevRaw && looksLikeSubjectToken(prevRaw)) return true;
+    }
+  }
+
+  return false;
 }
 
 export interface SpineValidationIssue {

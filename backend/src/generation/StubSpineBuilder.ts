@@ -161,17 +161,18 @@ function actTitleFor(subject: string, actIndex: number, seed: number): string {
   return capitalize(frame);
 }
 
-/** Claim templates guaranteed to pass `isClaimShaped` (each carries a
- * finite verb from the same list `isClaimShaped` checks against, or a
- * clearly inflected past-tense/progressive content word). Deterministic
- * per (subject, label, index) so the stub is reproducible across runs. */
+/** Claim templates guaranteed to pass `isClaimShaped`'s structural checks
+ * (a closed-class auxiliary, an unambiguous irregular past-tense verb, or
+ * regular -ed morphology directly following the subject/object it
+ * modifies). Deterministic per (subject, label, index) so the stub is
+ * reproducible across runs. */
 const CLAIM_TEMPLATES = [
   (subject: string, label: string) => `${capitalize(label)} is a documented part of the history of ${subject}.`,
   (subject: string, label: string) => `${capitalize(label)} changed how researchers understood ${subject}.`,
   (subject: string, label: string) => `Early accounts of ${subject} disputed the role that ${label} actually played.`,
   (subject: string, label: string) => `${capitalize(label)} began as a minor detail before it reshaped ${subject}.`,
   (subject: string, label: string) => `${capitalize(subject)} could not have taken its current form without ${label}.`,
-  (subject: string, label: string) => `Historians attribute a key turn in ${subject} to ${label}.`,
+  (subject: string, label: string) => `Historians attributed a key turn in ${subject} to ${label}.`,
   (subject: string, label: string) => `${capitalize(label)} was dismissed for years before ${subject} experts took it seriously.`,
   (subject: string, label: string) => `The connection between ${label} and ${subject} surprised even specialists.`
 ];
@@ -181,7 +182,7 @@ const CLAIM_TEMPLATES = [
  * literally ask for (§4.3's exploration-budget definition). */
 const EXPLORATION_TEMPLATES = [
   (subject: string, label: string) => `A tangent from ${label} led researchers to a discovery unrelated to ${subject} at first glance.`,
-  (subject: string, label: string) => `${capitalize(label)} also explains a quirk many listeners notice about ${subject} without knowing why.`,
+  (subject: string, label: string) => `${capitalize(label)}, oddly, was what explained a quirk many listeners notice about ${subject}.`,
   (subject: string, label: string) => `Few people asking about ${subject} expect ${label} to matter, but it does.`
 ];
 

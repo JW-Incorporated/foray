@@ -116,6 +116,13 @@ function buildSpinePrompt(intent: IntentUnderstanding, researchShape: ResearchSh
       (s) =>
         `- ${s.label} (${s.source}, tape: ${s.tape.signal}, ${s.tape.itemCount} items${
           s.controversies.length > 0 ? `; controversies: ${s.controversies.join("; ")}` : ""
+        }${
+          // §4.2's external research is only invoked for a genuine catalogue
+          // gap and is the most expensive collaborator in that stage — its
+          // findings must actually reach this prompt, or the paid call has
+          // no effect on the Foray's shape and the gap subtopic gets
+          // invented from its bare label alone.
+          s.externallyResearched && s.externalNotes ? `; external research: ${s.externalNotes}` : ""
         })`
     )
     .join("\n");
