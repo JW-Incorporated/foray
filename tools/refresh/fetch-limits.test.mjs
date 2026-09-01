@@ -18,17 +18,33 @@ function headerResponse(headers) {
 
 /* ---------- checkDeclaredLength ---------- */
 
-test("checkDeclaredLength allows a plausible size", () => {
-  assert.equal(checkDeclaredLength(headerResponse({ "content-length": "1000" }), 5000), null);
+test("checkDeclaredLength allows a plausible size", async () => {
+  const controller = new AbortController();
+  assert.equal(await checkDeclaredLength(headerResponse({ "content-length": "1000" }), controller, 5000), null);
+  assert.equal(controller.signal.aborted, false);
 });
 
-test("checkDeclaredLength rejects an implausible size before download", () => {
-  const err = checkDeclaredLength(headerResponse({ "content-length": "99999999" }), 5000);
+test("checkDeclaredLength rejects an implausible size before download, and aborts the connection", async () => {
+  const controller = new AbortController();
+  const res = headerResponse({ "content-length": "99999999" });
+  const err = await checkDeclaredLength(res, controller, 5000);
   assert.match(err, /exceeds 5000 byte limit/);
+  assert.equal(controller.signal.aborted, true, "must abort rather than leave the connection open");
 });
 
-test("checkDeclaredLength allows a missing Content-Length (unknown, not rejected up front)", () => {
-  assert.equal(checkDeclaredLength(headerResponse({}), 5000), null);
+test("checkDeclaredLength cancels the response body when rejecting, if one is present", async () => {
+  const controller = new AbortController();
+  let cancelled = false;
+  const res = headerResponse({ "content-length": "99999999" });
+  res.body = { cancel: async () => { cancelled = true; } };
+  await checkDeclaredLength(res, controller, 5000);
+  assert.equal(cancelled, true);
+});
+
+test("checkDeclaredLength allows a missing Content-Length (unknown, not rejected up front)", async () => {
+  const controller = new AbortController();
+  assert.equal(await checkDeclaredLength(headerResponse({}), controller, 5000), null);
+  assert.equal(controller.signal.aborted, false);
 });
 
 /* ---------- readBodyCapped: streamed ceiling ---------- */

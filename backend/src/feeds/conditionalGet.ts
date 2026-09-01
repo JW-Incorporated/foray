@@ -134,11 +134,20 @@ export async function fetchFeedConditional(
     // Guard 1: reject an implausible declared size before downloading
     // anything. A publisher lying about Content-Length can't be trusted,
     // but a HONEST oversized declaration is exactly the case we want to
-    // short-circuit fastest.
+    // short-circuit fastest. Abort the connection rather than just walking
+    // away from it — otherwise the socket/stream stays open on the far end
+    // for the timeout duration, which a scan running against hundreds of
+    // feeds cannot afford to leak on every rejection.
     const declaredLength = res.headers.get("content-length");
     if (declaredLength !== null) {
       const declared = Number(declaredLength);
       if (Number.isFinite(declared) && declared > maxBytes) {
+        controller.abort();
+        try {
+          await res.body?.cancel?.();
+        } catch {
+          // best-effort; the abort above is what actually stops the network
+        }
         return {
           status: res.status,
           notModified: false,

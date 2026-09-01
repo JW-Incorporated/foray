@@ -82,12 +82,14 @@ describe("fetchFeedConditional", () => {
     expect(result.body).toBeNull();
   });
 
-  it("rejects a response whose declared Content-Length exceeds the byte ceiling, without reading the body", async () => {
+  it("rejects a response whose declared Content-Length exceeds the byte ceiling, without reading the body, and aborts the connection", async () => {
     let bodyRead = false;
+    let bodyCancelled = false;
     const res = {
       status: 200,
       ok: true,
       headers: { get: (k: string) => (k.toLowerCase() === "content-length" ? "999999" : null) },
+      body: { cancel: async () => { bodyCancelled = true; } },
       text: async () => {
         bodyRead = true;
         return "<rss></rss>";
@@ -105,6 +107,12 @@ describe("fetchFeedConditional", () => {
     expect(result.error).toMatch(/Content-Length/);
     expect(result.error).toMatch(/exceeds/);
     expect(bodyRead).toBe(false);
+    expect(bodyCancelled).toBe(true);
+    // The signal passed to fetch must have been aborted rather than just
+    // left dangling until the elapsed-time timeout — otherwise the
+    // connection stays open on the far end for no reason.
+    const signalPassed = fetchImpl.mock.calls[0]![1].signal as AbortSignal;
+    expect(signalPassed.aborted).toBe(true);
   });
 
   it("aborts a chunked/endless response once it crosses the byte ceiling, even with no Content-Length", async () => {

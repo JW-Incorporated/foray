@@ -12,12 +12,18 @@ export const MAX_FEED_BYTES = 20 * 1024 * 1024; // 20 MB — generous for RSS/At
 export const MAX_ITEMS_PER_FEED = 2000; // defense in depth, after parsing.
 
 /** Guard 1: reject an implausible declared Content-Length before downloading
-    anything. Returns an error string, or null when fine to proceed. */
-export function checkDeclaredLength(res, maxBytes = MAX_FEED_BYTES) {
+    anything. Returns an error string, or null when fine to proceed. Aborts
+    the connection when rejecting (via the passed AbortController) so the
+    socket/stream doesn't stay open on the far end for the timeout duration —
+    a nightly scan running against hundreds of feeds can't afford to leak
+    one per rejection. */
+export async function checkDeclaredLength(res, controller, maxBytes = MAX_FEED_BYTES) {
   const declared = res.headers.get("content-length");
   if (declared == null) return null;
   const n = Number(declared);
   if (Number.isFinite(n) && n > maxBytes) {
+    controller.abort();
+    try { await res.body?.cancel?.(); } catch (_) { /* best-effort */ }
     return `declared Content-Length ${n} exceeds ${maxBytes} byte limit`;
   }
   return null;
@@ -81,7 +87,7 @@ export async function fetchFeedCapped(url, opts = {}) {
     const res = await fetchImpl(url, { headers, redirect: "follow", signal: controller.signal });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
-    const lengthError = checkDeclaredLength(res, maxBytes);
+    const lengthError = await checkDeclaredLength(res, controller, maxBytes);
     if (lengthError) throw new Error(lengthError);
 
     return await readBodyCapped(res, controller, maxBytes);

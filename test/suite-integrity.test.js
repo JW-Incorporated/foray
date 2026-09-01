@@ -614,7 +614,7 @@ const FLOORS = {
      crossed (the chunked/endless-response case that a Content-Length check
      alone cannot catch), and cap the item count after parsing — plus the
      end-to-end wiring through fetchFeedCapped. */
-  "tools/refresh/fetch-limits.test.mjs": 13,
+  "tools/refresh/fetch-limits.test.mjs": 14,
 
   "tools/refresh/enclosure.test.mjs": 18,
   /* Per-episode topics (#292). ZERO SLACK. This suite is the only thing between
