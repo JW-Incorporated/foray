@@ -91,6 +91,19 @@
    `tools/ci/generate-manifest.mjs`. This name is only the family every
    generation cache and the pointer cache are drawn from. */
 const CACHE_PREFIX = "foray-gen-";
+
+/* BUILD_ID exists for exactly one reason and is read by nothing below: a
+   browser only re-runs `install()` (and therefore only re-reads
+   `deploy-manifest.json`) when the fetched `sw.js` bytes differ, byte for
+   byte, from the previously registered copy. Every OTHER file this file's
+   `precache()` depends on can change on a deploy — `index.html`, `app.js`,
+   `player/*.js`, every `data/*.json` — while `sw.js` itself stays
+   byte-identical, and a browser that sees identical bytes skips `install()`
+   entirely and never notices the new manifest exists. `tools/ci/generate-
+   manifest.mjs --write` stamps this string to the freshly computed
+   `deploy_id` on every run, so a real content change always changes sw.js's
+   own bytes too, and `--check` fails if the two ever drift apart. */
+const BUILD_ID = "91a79640f365ba22";
 const POINTER_CACHE = "foray-pointer";
 const PENDING_CACHE = "foray-pending";
 /* Cache keys are Requests/URLs, so a plain string needs a URL of its own to be
@@ -98,6 +111,10 @@ const PENDING_CACHE = "foray-pending";
    keys for a one-line Response body. */
 const POINTER_KEY = "https://foray.invalid/__generation-pointer__";
 const PENDING_KEY = "https://foray.invalid/__pending-generation__";
+/* Recorded inside EVERY generation cache, alongside its files, at install
+   time — see cachePut()'s header for why a generation cache needs its own
+   manifest snapshot available at runtime, not only during install. */
+const GEN_MANIFEST_KEY = "https://foray.invalid/__manifest__";
 
 const MANIFEST_URL = "deploy-manifest.json";
 
@@ -185,6 +202,28 @@ async function precache() {
       return Promise.all(puts);
     })
   );
+  /* The manifest itself is stored INSIDE the generation cache too, not only
+     read during install — `cachePut` needs it at runtime to tell a
+     manifest-tracked file (which must never be silently overwritten by an
+     unverified live response — see its header) from an untracked one. Keyed
+     by the SAME resolved absolute URL every cache entry above was actually
+     stored under (path resolved against this worker's own script URL, query
+     stripped — matching what every runtime request resolves to), not the raw
+     manifest path string, so a runtime lookup is a direct object-key hit
+     rather than re-deriving how a relative path resolves. */
+  const resolvedHashes = {};
+  for (const path of paths) {
+    const resolvedUrl = new URL(path, self.location.href);
+    resolvedHashes[resolvedUrl.origin + resolvedUrl.pathname] = files[path];
+  }
+  /* "./" is a distinct cache key from "index.html" (same bytes, see the PUT
+     above) and therefore needs its own tracked-hash entry, or a live
+     navigation response could overwrite it unchecked. */
+  if (files["index.html"]) {
+    const rootUrl = new URL("./", self.location.href);
+    resolvedHashes[rootUrl.origin + rootUrl.pathname] = files["index.html"];
+  }
+  await genCache.put(GEN_MANIFEST_KEY, new Response(JSON.stringify(resolvedHashes)));
 
   /* Record what `activate` should promote. Written last, after every file is
      verified AND staged, so a crash here still leaves nothing pending. */
@@ -365,6 +404,23 @@ function fromOrigin(request, env) {
  * never a retained-but-superseded one — so a page running today's code keeps
  * getting a cheap revalidation on the next load without disturbing whatever an
  * older, still-pinned page is reading from its own retained generation.
+ *
+ * A generation cache is not free to accept anything, though: every file
+ * `precache()` staged there was verified against `deploy-manifest.json`'s
+ * sha256 at install time, and that is the whole basis for `handleData`'s
+ * "the tagged generation is authoritative" rule. A stray write from an ORDINARY
+ * runtime fetch — no manifest check, no atomic promotion — must not be able to
+ * silently replace one of those verified bytes with something that came from
+ * the origin mid-rollout (a real risk: an old, still-active worker can still be
+ * answering requests for pages pinned to it while a NEW deploy is already
+ * propagating on the origin, so "the origin answered" is not "the origin
+ * answered with THIS generation's bytes"). So a manifest-tracked path is only
+ * ever overwritten if the incoming bytes re-verify against the SAME hash the
+ * generation was installed with; anything that fails that check is silently
+ * dropped, and the generation keeps the copy install already proved correct.
+ * A path the manifest never tracked (there are none today, but the check
+ * costs nothing and keeps this correct if one is ever added) is cached as
+ * before — there is no verified copy for it to corrupt.
  */
 async function cachePut(request, response) {
   /* Deliberately NOT every URL that ever answered. `?_fdid=<id>` (and, before
@@ -378,8 +434,26 @@ async function cachePut(request, response) {
   if (!current) return;
   try {
     const cache = await caches.open(CACHE_PREFIX + current);
-    await cache.put(stripQuery(request), response);
+    const key = stripQuery(request);
+    const expected = await trackedHash(cache, key.url);
+    if (expected) {
+      const buf = await response.clone().arrayBuffer();
+      const digest = await sha256Hex(buf);
+      if (digest !== expected) return; // does not match this generation; drop it, keep the verified copy
+    }
+    await cache.put(key, response);
   } catch (_) { /* a full or evicted cache is a slower page, not a broken one */ }
+}
+
+/** The manifest-recorded sha256 for `url` inside `cache`, or null if this
+    generation's manifest does not track that URL at all. */
+async function trackedHash(cache, url) {
+  const manifestRes = await cache.match(GEN_MANIFEST_KEY);
+  if (!manifestRes) return null;
+  const hashes = await manifestRes.json();
+  const u = new URL(url);
+  const hash = hashes[u.origin + u.pathname];
+  return hash ? String(hash).replace(/^sha256:/, "") : null;
 }
 
 /* ---------- talking to the page ---------- */
@@ -439,16 +513,55 @@ async function handleShell(request, env, pin) {
      same way here. Serve the last-known copy from whichever generation still
      has it, and if this was code, tell the page which generation it is now
      running: from here on, ITS data requests must carry that generation's id,
-     never today's. The page keeps that pin itself (a JS variable that a reload
-     clears); the worker keeps none of it. */
+     never today's.
+
+     THE PIN MUST NOT DEPEND ON THE `stale-shell` MESSAGE ARRIVING IN TIME. A
+     review caught this: `handleShell`'s decision for app.js's OWN fetch is
+     made and returned before app.js has executed a single line, so a
+     `postMessage` sent from here can race app.js's `addEventListener` and be
+     lost — events do not queue for a listener that attaches after they fire.
+     So for a CODE fallback the pin is instead baked directly into the
+     response BYTES the browser is about to execute/parse, synchronously,
+     before any of that file's own code runs: a `self.__forayPinnedDeployId =
+     "<id>";` statement prepended to a `.js` fallback (valid as a top-level
+     statement in both classic scripts and ES modules), or a
+     `<meta name="foray-pin-deploy-id" content="<id>">` tag inserted into a
+     navigation's `<head>` (parsed before any script tag runs). app.js reads
+     `self.__forayPinnedDeployId` — falling back to the meta tag when it is a
+     fresh navigation load — as the FIRST thing it does, before `init()`. The
+     `stale-shell` postMessage is sent too, unchanged, purely for the reload
+     notice; it is no longer what establishes the pin. */
   const fallback = await cachedShellFallback(request);
   if (pin && env.clientId && fallback) {
     env.waitUntil(tellClient(env.clientId, "stale-shell", { deployId: fallback.deployId }));
   } else if (pin && env.clientId) {
     env.waitUntil(tellClient(env.clientId, "stale-shell", { deployId: null }));
   }
-  if (fallback) return fallback.response;
-  return res || unavailable(request);
+  if (!fallback) return res || unavailable(request);
+  if (!pin) return fallback.response;
+  return stampPin(request, fallback.response, fallback.deployId);
+}
+
+/**
+ * Bakes `deployId` into a CODE fallback response's own bytes, synchronously
+ * readable by that file's very first statement — see `handleShell`'s header
+ * for why this exists instead of relying solely on postMessage timing.
+ */
+async function stampPin(request, response, deployId) {
+  const url = new URL(request.url);
+  const isHtml = isNavigation(request) || /\.html$/.test(url.pathname);
+  const body = await response.text();
+  const stamped = isHtml
+    ? body.replace(
+        /<head(\s[^>]*)?>/i,
+        (m) => `${m}\n<meta name="foray-pin-deploy-id" content="${escapeHtmlAttr(deployId)}">`
+      )
+    : `self.__forayPinnedDeployId=${JSON.stringify(deployId)};\n${body}`;
+  return new Response(stamped, { status: response.status, headers: response.headers });
+}
+
+function escapeHtmlAttr(s) {
+  return String(s).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
 }
 
 /**

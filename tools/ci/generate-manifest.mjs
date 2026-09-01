@@ -55,6 +55,8 @@ import path from "node:path";
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const MANIFEST_PATH = path.join(ROOT, "deploy-manifest.json");
+const SW_PATH = path.join(ROOT, "sw.js");
+const BUILD_ID_RE = /const BUILD_ID = "[^"]*";/;
 
 /* The app shell sw.js precaches on install. Kept explicit, same reasoning as
    prepare-dist.mjs's SHELL: a new root-level file must be added here
@@ -143,6 +145,7 @@ function main() {
 
   if (mode === "write") {
     writeFileSync(MANIFEST_PATH, JSON.stringify(computed, null, 2) + "\n");
+    stampBuildId(computed.deploy_id);
     console.log(`deploy-manifest.json written — deploy_id ${computed.deploy_id}, ${Object.keys(computed.files).length} files`);
     return;
   }
@@ -170,7 +173,49 @@ function main() {
     if (removed.length) console.error(`  files removed: ${removed.join(", ")}`);
     process.exit(1);
   }
+
+  const stampedId = readStampedBuildId();
+  if (stampedId !== committed.deploy_id) {
+    console.error(
+      "FATAL: sw.js's BUILD_ID does not match deploy-manifest.json's deploy_id — " +
+        "a manifest-only content change would ship with byte-identical sw.js bytes, " +
+        "so browsers would never notice the new generation exists. Run " +
+        "`node tools/ci/generate-manifest.mjs --write` and commit both files."
+    );
+    console.error(`  sw.js BUILD_ID:      ${stampedId}`);
+    console.error(`  deploy-manifest.json: ${committed.deploy_id}`);
+    process.exit(1);
+  }
+
   console.log(`deploy-manifest.json is up to date — deploy_id ${committed.deploy_id}, ${committedFiles.length} files`);
+}
+
+/* Stamps sw.js's BUILD_ID with the freshly computed deploy_id. This is the
+   half of the fix that makes a manifest-only content change (a data file, a
+   player module, app.js — none of which are sw.js itself) still change
+   sw.js's OWN bytes: browsers compare a service worker's fetched script
+   byte-for-byte against the previously registered copy and skip `install()`
+   (and therefore skip ever reading the new manifest) when nothing differs.
+   Without this stamp, an app.js-only deploy would leave every existing
+   client's pointer on the old generation indefinitely. */
+function stampBuildId(deployId) {
+  const src = readFileSync(SW_PATH, "utf8");
+  if (!BUILD_ID_RE.test(src)) {
+    console.error("FATAL: sw.js's BUILD_ID constant could not be located — cannot stamp the deploy id.");
+    process.exit(1);
+  }
+  const stamped = src.replace(BUILD_ID_RE, `const BUILD_ID = "${deployId}";`);
+  writeFileSync(SW_PATH, stamped);
+}
+
+function readStampedBuildId() {
+  const src = readFileSync(SW_PATH, "utf8");
+  const m = BUILD_ID_RE.exec(src);
+  if (!m) {
+    console.error("FATAL: sw.js's BUILD_ID constant could not be located.");
+    process.exit(1);
+  }
+  return /const BUILD_ID = "([^"]*)";/.exec(m[0])[1];
 }
 
 main();

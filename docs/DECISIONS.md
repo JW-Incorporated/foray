@@ -1187,3 +1187,30 @@ its reasoning.
   cross-check this change added to that script (a Vercel deploy would have
   404'd on all four). Pre-existing gap, unrelated to M4's own scope, fixed
   in the same change because the new tooling is what surfaced it.
+- **Codex review (PR #404) found three real holes in the first draft, all fixed
+  before merge:**
+  1. A manifest-only content change (no `sw.js` edit) would leave `sw.js`'s
+     own bytes unchanged, and browsers skip `install()` when a service
+     worker's fetched script is byte-identical to what is registered —
+     existing clients would never notice the new generation. Fixed with
+     `BUILD_ID`, a constant `tools/ci/generate-manifest.mjs --write` stamps
+     to the fresh `deploy_id` on every run; `--check` fails if the stamp and
+     the manifest ever drift apart.
+  2. `cachePut`'s ordinary runtime revalidation write could silently
+     overwrite a hash-verified generation-cache entry with unverified bytes
+     from an old, still-active worker mid-rollout — defeating the whole
+     integrity guarantee for exactly the files `handleData`'s `_fdid` tagging
+     treats as authoritative. Fixed: every generation cache now also stores
+     its own manifest snapshot; a runtime write to a manifest-tracked path is
+     only accepted if it re-hashes to the SAME value the generation was
+     installed with.
+  3. The `stale-shell` postMessage establishing the per-page pin could race
+     app.js's own `addEventListener`, which only attaches after `init()` has
+     already started fetching — a lost message meant unpinned data requests
+     paired with stale code. Fixed: `handleShell` now bakes the pinned
+     generation id directly into the fallback response's own bytes (a
+     `self.__forayPinnedDeployId = "<id>";` statement prepended to a `.js`
+     fallback, or a `<meta name="foray-pin-deploy-id">` tag inserted into a
+     navigation's `<head>`), read by app.js as the very first thing it does,
+     before `init()` runs. The postMessage is unchanged and still drives the
+     reload notice, but no longer establishes the pin.

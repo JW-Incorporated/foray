@@ -266,6 +266,14 @@ const sub = (url) => ({ url: abs(url), method: "GET", mode: "same-origin" });
 const ok = (body) => new Response(body, { status: 200 });
 const offline = () => { throw new Error("network unreachable"); };
 
+/** Strips the `self.__forayPinnedDeployId=...;\n` line `handleShell` prepends
+    to a CODE fallback response — see sw.js's stampPin(). Tests that assert on
+    a fallback's original body text use this so the assertion is about the
+    file's CONTENT, not the pin mechanism (which has its own dedicated tests). */
+function unstampPin(text) {
+  return text.replace(/^self\.__forayPinnedDeployId=.*?;\n/, "");
+}
+
 /* A minimal shell: manifest.json isn't required by sw.js's logic (only the
    files IT names are fetched), so tests define their own small file sets. */
 function networkFor(manifest, files, { hangOn = [], failOn = [], mismatchOn = [] } = {}) {
@@ -314,7 +322,7 @@ test("THE #233 REPRODUCTION: a page served cached code is not handed fresh data"
   });
 
   const code = await h.fetch(sub("app.js"), { clientId: "page-1" });
-  assert.equal(await code.text(), "APP@1", "the page is running last-known code");
+  assert.equal(unstampPin(await code.text()), "APP@1", "the page is running last-known code");
   await h.settle();
   assert.deepEqual(h.posted, [{ id: "page-1", message: { source: "foray-sw", reason: "stale-shell", deployId: "1" } }]);
 
@@ -363,7 +371,7 @@ test("one code file that does not answer pins the whole page, not just itself", 
 
   assert.equal(await (await h.fetch(sub("app.js"), { clientId: "page-1" })).text(), "APP@2");
   const moduleRes = await h.fetch(sub("player/client.js"), { clientId: "page-1" });
-  assert.equal(await moduleRes.text(), "MODULE@1");
+  assert.equal(unstampPin(await moduleRes.text()), "MODULE@1");
   await h.settle();
   assert.deepEqual(h.posted, [{ id: "page-1", message: { source: "foray-sw", reason: "stale-shell", deployId: "1" } }]);
 
@@ -825,7 +833,7 @@ test("a hanging origin is bounded: the last-known copy is served instead", async
     pending.then((r) => r.text()),
     new Promise((r) => setTimeout(() => r("never answered"), 500)),
   ]);
-  assert.equal(served, "APP@1");
+  assert.equal(unstampPin(served), "APP@1");
 
   const data = await h.fetch(sub(`${FORAYS}?_fdid=1`), { clientId: "page-1" });
   assert.equal(await data.text(), '{"forays":["grilling-history-1"]}');
@@ -844,13 +852,122 @@ test("a response that lands after the timeout still warms the CURRENT generation
     pending.then((r) => r.text()),
     new Promise((r) => setTimeout(() => r("never answered"), 500)),
   ]);
-  assert.equal(served, "APP@1");
+  assert.equal(unstampPin(served), "APP@1");
 
   release();
   await new Promise((r) => setTimeout(r, 0));
   await new Promise((r) => setTimeout(r, 0));
   await new Promise((r) => setTimeout(r, 0));
   assert.equal(h.cachedBody("app.js", "foray-gen-1"), "APP@2");
+});
+
+test("RUNTIME WRITE INTEGRITY: a live origin answer for a manifest-tracked file cannot silently overwrite it with different bytes", async () => {
+  /* Reproduces the exact hole a review found: an old, still-active worker can
+     keep answering requests for pages pinned to it while a NEW deploy is
+     already propagating on the origin. If cachePut wrote whatever the origin
+     answered with, unchecked, that write would replace a hash-VERIFIED byte
+     with an unverified one inside the same generation cache that
+     `handleData`'s `_fdid` tagging treats as authoritative — silently
+     defeating the whole guarantee. A real install/verify/promote cycle is
+     used here (not hand-seeded generations) so the manifest is genuinely
+     recorded inside the generation cache, exactly as production does it. */
+  const files = { "app.js": "APP@1-VERIFIED" };
+  const h = loadWorker({ network: networkFor(manifestFor("1", files), files) });
+  await h.lifecycle("install");
+  await h.lifecycle("activate");
+  assert.equal(h.pointerDeployId(), "1");
+  assert.equal(h.cachedBody("app.js", "foray-gen-1"), "APP@1-VERIFIED");
+
+  // The origin now answers with bytes that do NOT match generation 1's manifest.
+  h.setNetwork(() => ok("APP@ROLLING-OUT-DEPLOY-2-UNVERIFIED"));
+  await h.fetch(sub("app.js"), { clientId: "page-1" });
+  await h.settle();
+
+  assert.equal(
+    h.cachedBody("app.js", "foray-gen-1"),
+    "APP@1-VERIFIED",
+    "the verified generation must keep its proven bytes, not whatever the origin answered with"
+  );
+});
+
+test("RUNTIME WRITE INTEGRITY: a live origin answer that DOES match the manifest hash is still cached (ordinary revalidation)", async () => {
+  /* The complementary direction: the integrity check must not turn every
+     runtime write into a no-op. An origin answer that genuinely re-serves the
+     SAME bytes the generation was installed with (an ordinary 304-shaped
+     revalidation) still updates the cache — proving the check verifies
+     content, not merely refusing all writes. */
+  const files = { "app.js": "APP@1-VERIFIED" };
+  const h = loadWorker({ network: networkFor(manifestFor("1", files), files) });
+  await h.lifecycle("install");
+  await h.lifecycle("activate");
+
+  h.setNetwork(() => ok("APP@1-VERIFIED")); // identical bytes
+  await h.fetch(sub("app.js"), { clientId: "page-1" });
+  await h.settle();
+
+  assert.equal(h.cachedBody("app.js", "foray-gen-1"), "APP@1-VERIFIED");
+});
+
+test("RUNTIME WRITE INTEGRITY: a manifest-untracked path (e.g. data/*.json — refreshed independently of deploys) is cached unconditionally", async () => {
+  /* data/*.json files ARE in the manifest today, so this test uses a path
+     that genuinely is not — proving trackedHash's null path (an untracked
+     file) still caches normally, since there is no verified copy for an
+     unconditional write to corrupt. */
+  const files = { "app.js": "APP@1" };
+  const h = loadWorker({ network: networkFor(manifestFor("1", files), files) });
+  await h.lifecycle("install");
+  await h.lifecycle("activate");
+
+  h.setNetwork((url) => (url.endsWith("app.js") ? ok("APP@1") : ok('{"forays":["fresh"]}')));
+  await h.fetch(sub(FORAYS), { clientId: "page-1" });
+  await h.settle();
+
+  assert.equal(h.cachedBody(FORAYS, "foray-gen-1"), '{"forays":["fresh"]}');
+});
+
+/* ------------------------------------------------- synchronous generation pin */
+
+test("SYNCHRONOUS PIN: a stale .js fallback is stamped with the generation id as its first statement", async () => {
+  /* Reproduces the second review finding: `postMessage` can race a page's own
+     `addEventListener`, so the pin must not depend on message timing at all.
+     sw.js instead prepends a synchronously-executable statement to the
+     fallback bytes themselves. */
+  const h = loadWorker({
+    generations: { "1": { "app.js": "APP@1" } },
+    pointer: "1",
+    network: offline,
+  });
+  const res = await h.fetch(sub("app.js"), { clientId: "page-1" });
+  const text = await res.text();
+  assert.match(text, /^self\.__forayPinnedDeployId="1";\n/, "the pin statement is the very first line");
+  assert.equal(unstampPin(text), "APP@1", "the original file content follows, unmodified");
+});
+
+test("SYNCHRONOUS PIN: a stale navigation is stamped with a <head> meta tag, before any <script>", async () => {
+  const h = loadWorker({
+    generations: { "1": { "./": "<!doctype html><html><head><title>4a</title></head><body><script src=\"app.js\"></script></body></html>" } },
+    pointer: "1",
+    network: offline,
+  });
+  const res = await h.fetch(nav("./"), { resultingClientId: "page-1" });
+  const html = await res.text();
+  assert.match(html, /<head>\n<meta name="foray-pin-deploy-id" content="1">/, "the meta tag lands immediately after <head>, before anything else");
+  const headIdx = html.indexOf('<meta name="foray-pin-deploy-id"');
+  const scriptIdx = html.indexOf("<script");
+  assert.ok(headIdx > -1 && headIdx < scriptIdx, "the pin meta tag is parsed before any <script> tag runs");
+});
+
+test("SYNCHRONOUS PIN: styles/icons (non-code fallbacks) are never stamped", async () => {
+  /* Only CODE (isCode() -> pin=true) gets stamped; a stylesheet fallback must
+     come back byte-identical, since nothing reads a pin off it and stamping
+     it would just be corrupting an asset for no reason. */
+  const h = loadWorker({
+    generations: { "1": { "styles.css": "CSS@1" } },
+    pointer: "1",
+    network: offline,
+  });
+  const res = await h.fetch(sub("styles.css"), { clientId: "page-1" });
+  assert.equal(await res.text(), "CSS@1");
 });
 
 /* -------------------------------------------------- what is not intercepted */
@@ -935,8 +1052,12 @@ function makeDocument() {
   };
 }
 
-/** Evaluate the real app.js and hand back its service-worker message listener. */
-function loadPage() {
+/** Evaluate the real app.js and hand back its service-worker message listener.
+    `stampedDeployId` simulates sw.js having prepended
+    `self.__forayPinnedDeployId = "<id>";` to this file's own bytes before the
+    browser ran it — set BEFORE `vm.runInContext` executes APP_SRC, exactly as
+    a real prepended statement would run before anything below it. */
+function loadPage({ stampedDeployId = null } = {}) {
   const document = makeDocument();
   const store = new Map();
   const messages = [];
@@ -972,8 +1093,10 @@ function loadPage() {
     setTimeout: (fn, ms) => { const t = setTimeout(fn, ms); if (t && t.unref) t.unref(); return t; },
     encodeURIComponent, decodeURIComponent,
   };
+  if (stampedDeployId) ctx.__forayPinnedDeployId = stampedDeployId;
   ctx.window = ctx;
   ctx.globalThis = ctx;
+  ctx.self = ctx;
   vm.createContext(ctx);
   vm.runInContext(APP_SRC, ctx, { filename: "app.js" });
 
@@ -989,6 +1112,27 @@ function loadPage() {
     body: document.body,
   };
 }
+
+test("SYNCHRONOUS PIN: app.js reads a pre-stamped self.__forayPinnedDeployId and tags its own data fetches with it", async () => {
+  /* Simulates sw.js having prepended `self.__forayPinnedDeployId = "gen-7";`
+     to THIS file's bytes (the CODE-fell-back case) — read synchronously at
+     the top of app.js, before init() ever runs, closing the race a review
+     found in relying on postMessage alone. */
+  const page = loadPage({ stampedDeployId: "gen-7" });
+  // init() runs synchronously up to its first await (fetchJson("data/session.json"))
+  assert.ok(
+    page.fetchedUrls.some((u) => u.includes("data/session.json") && u.includes("_fdid=gen-7")),
+    `init()'s very first data fetch must already carry the pin — got: ${JSON.stringify(page.fetchedUrls)}`
+  );
+});
+
+test("SYNCHRONOUS PIN: with no stamp, app.js's data fetches carry no _fdid at all", async () => {
+  const page = loadPage();
+  assert.ok(
+    page.fetchedUrls.some((u) => u.includes("data/session.json") && !u.includes("_fdid")),
+    `an unpinned load must not invent a pin — got: ${JSON.stringify(page.fetchedUrls)}`
+  );
+});
 
 test("the worker's stale-shell message puts a reload control on the page", async () => {
   const page = loadPage();
