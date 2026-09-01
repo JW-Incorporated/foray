@@ -2,11 +2,18 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
 /**
  * env.ts computes `env.dailyBudgetUsd` at module-import time by reading
- * process.env directly (not via a loaded .env file in this test — we set
- * process.env before each import). Each test must reset the module
- * registry and re-import so the module top-level runs fresh with the
- * process.env values this test set.
+ * process.env directly. Its top-level side effect also calls
+ * `dotenv.config()` against the repo-root/backend .env files if they
+ * exist — on a real developer machine those files may set
+ * DAILY_BUDGET_USD (see .env.example), which would silently leak into
+ * these tests and make them depend on local filesystem state instead of
+ * the process.env values each test explicitly sets. Mock dotenv.config
+ * to a no-op so these tests are fully isolated from any real .env file.
  */
+vi.mock("dotenv", () => ({
+  default: { config: vi.fn() },
+  config: vi.fn()
+}));
 
 const ORIGINAL_ENV = { ...process.env };
 
