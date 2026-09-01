@@ -158,4 +158,3 @@ public class PlaybackKeepAliveServiceTest {
         assertTrue(PlaybackKeepAliveService.isSessionActive());
     }
 }
-

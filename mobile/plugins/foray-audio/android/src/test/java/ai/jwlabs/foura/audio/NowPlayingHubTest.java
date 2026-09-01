@@ -72,17 +72,17 @@ public class NowPlayingHubTest {
         // This is the exact race the class comment calls out: an Activity
         // recreation's new instance registers before the old one tears down, and
         // clearListener must not unregister a DIFFERENT (newer) listener.
+        AtomicInteger callCount = new AtomicInteger();
         NowPlayingHub.Listener stale = np -> { };
-        NowPlayingHub.Listener fresh = np -> { };
+        NowPlayingHub.Listener fresh = np -> callCount.incrementAndGet();
         NowPlayingHub.setListener(stale);
         NowPlayingHub.setListener(fresh); // simulate the newer instance registering first
         NowPlayingHub.clearListener(stale); // the old instance's teardown, arriving late
 
-        AtomicInteger callCount = new AtomicInteger();
-        NowPlayingHub.setListener(np -> callCount.incrementAndGet());
         NowPlayingHub.set(NowPlaying.from(payload()));
         Shadows.shadowOf(android.os.Looper.getMainLooper()).idle();
-        assertEquals(1, callCount.get());
+        assertEquals("clearListener(stale) must not have unregistered the newer 'fresh' listener",
+            1, callCount.get());
     }
 
     @Test
@@ -107,16 +107,16 @@ public class NowPlayingHubTest {
 
     @Test
     public void clearSink_isIdentityChecked() {
-        NowPlayingHub.TransportSink stale = (a, p, o) -> { };
-        NowPlayingHub.TransportSink fresh = (a, p, o) -> { };
-        NowPlayingHub.setSink(stale);
-        NowPlayingHub.setSink(fresh);
-        NowPlayingHub.clearSink(stale);
-
         AtomicReference<String> action = new AtomicReference<>();
-        NowPlayingHub.setSink((a, p, o) -> action.set(a));
+        NowPlayingHub.TransportSink stale = (a, p, o) -> { };
+        NowPlayingHub.TransportSink fresh = (a, p, o) -> action.set(a);
+        NowPlayingHub.setSink(stale);
+        NowPlayingHub.setSink(fresh); // simulate the newer instance registering first
+        NowPlayingHub.clearSink(stale); // the old instance's teardown, arriving late
+
         NowPlayingHub.dispatch("pause", 0L, 0L);
-        assertEquals("pause", action.get());
+        assertEquals("clearSink(stale) must not have unregistered the newer 'fresh' sink",
+            "pause", action.get());
     }
 
     @Test

@@ -65,7 +65,7 @@ final class PlayerQueueManagerTests: XCTestCase {
         XCTAssertTrue(backend.calls.isEmpty, "an out-of-range play() must not touch the backend at all")
     }
 
-    func testSkipToNextLoadsTheNextItemAndSavesPositionFirst() async {
+    func testSkipToNextLoadsTheNextItemAndSavesPositionFirst() async throws {
         let backend = FakePlayerBackend()
         backend.currentTime = CMTime(seconds: 42, preferredTimescale: 600)
         let positionStore = FakePositionStore()
@@ -81,7 +81,8 @@ final class PlayerQueueManagerTests: XCTestCase {
         // ordering the manager's own comments call load-bearing (targetIndex vs
         // currentIndex split), verified here via the position store's write and
         // the backend's second load call.
-        XCTAssertEqual(positionStore.loadPosition(itemID: "episode-a"), 42, accuracy: 0.001)
+        let savedA = try XCTUnwrap(positionStore.loadPosition(itemID: "episode-a"))
+        XCTAssertEqual(savedA, 42, accuracy: 0.001)
         XCTAssertEqual(backend.calls.last, .load(url: itemB.localURL, startOffset: .zero))
     }
 
@@ -179,7 +180,7 @@ final class PlayerQueueManagerTests: XCTestCase {
         XCTAssertTrue(backend.calls.contains(.play))
     }
 
-    func testStopClearsPlaybackAndSavesPosition() async {
+    func testStopClearsPlaybackAndSavesPosition() async throws {
         let backend = FakePlayerBackend()
         backend.currentTime = CMTime(seconds: 10, preferredTimescale: 600)
         let positionStore = FakePositionStore()
@@ -190,7 +191,8 @@ final class PlayerQueueManagerTests: XCTestCase {
 
         await manager.stop()
 
-        XCTAssertEqual(positionStore.loadPosition(itemID: "episode-a"), 10, accuracy: 0.001)
+        let saved = try XCTUnwrap(positionStore.loadPosition(itemID: "episode-a"))
+        XCTAssertEqual(saved, 10, accuracy: 0.001)
         XCTAssertTrue(backend.calls.contains(.pause))
     }
 
