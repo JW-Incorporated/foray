@@ -1,6 +1,7 @@
 import * as path from "path";
 import * as fs from "fs";
 import * as dotenv from "dotenv";
+import { z } from "zod";
 
 /**
  * Central env access. Loads the repo-root `.env` (one level up from backend/)
@@ -34,11 +35,41 @@ function readString(name: string): string | undefined {
   return trimmed.length === 0 ? undefined : trimmed;
 }
 
-function readNumber(name: string, fallback: number): number {
-  const raw = readString(name);
-  if (raw === undefined) return fallback;
-  const n = Number(raw);
-  return Number.isFinite(n) ? n : fallback;
+/**
+ * Upper bound for DAILY_BUDGET_USD. This is a spend-control cap, not a
+ * technical limit — anything above this is almost certainly a typo (e.g. a
+ * missing decimal point) and must fail startup rather than silently letting
+ * every paid operation run unmetered.
+ */
+const MAX_DAILY_BUDGET_USD = 1000;
+
+const dailyBudgetSchema = z
+  .number({ invalid_type_error: "DAILY_BUDGET_USD" })
+  .finite({ message: "DAILY_BUDGET_USD" })
+  .nonnegative({ message: "DAILY_BUDGET_USD" })
+  .max(MAX_DAILY_BUDGET_USD, { message: "DAILY_BUDGET_USD" });
+
+/**
+ * Reads a required, schema-validated numeric budget/spend-control value.
+ *
+ * Unlike a generic "read with fallback", this never silently substitutes a
+ * default for malformed input: a genuinely *unset* variable uses `fallback`,
+ * but a variable that is present — including an empty/whitespace-only string
+ * — and fails the schema (negative, NaN, empty, or over the configured max)
+ * throws and fails startup fast. The error message names only the variable
+ * NAME — never the offending value — per this file's never-log-values
+ * convention.
+ */
+function readBoundedNumber(name: string, fallback: number, schema: z.ZodNumber): number {
+  const present = process.env[name];
+  if (present === undefined) return fallback;
+  const raw = present.trim();
+  const n = raw.length === 0 ? NaN : Number(raw);
+  const result = schema.safeParse(n);
+  if (!result.success) {
+    throw new Error(`Invalid value for environment variable ${name}`);
+  }
+  return result.data;
 }
 
 export interface Env {
@@ -58,7 +89,7 @@ export const env: Env = {
   anthropicApiKey: readString("ANTHROPIC_API_KEY"),
   podcastIndexApiKey: readString("PODCASTINDEX_API_KEY"),
   podcastIndexApiSecret: readString("PODCASTINDEX_API_SECRET"),
-  dailyBudgetUsd: readNumber("DAILY_BUDGET_USD", 2.0),
+  dailyBudgetUsd: readBoundedNumber("DAILY_BUDGET_USD", 2.0, dailyBudgetSchema),
   databaseUrl: readString("DATABASE_URL"),
   userAgent: "Foray/0.1 (personal podcast client; contact wjduvall@gmail.com)",
   get anthropicDryRun(): boolean {
