@@ -7,6 +7,34 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
+### M3: event log off synchronous localStorage onto IndexedDB (2026-09-01) — `t_c7199b13/event-log-idb`
+
+- **What:** Finding M3 (approved design). Client event logging (`logEvent()` /
+  `trySyncEvents()`) moved off a synchronous per-call `cp_events` localStorage
+  JSON rewrite onto a new batched, IndexedDB-backed queue,
+  `player/event-log.js`. `cp_events`/`cp_synced_ts` are retired — the queue is
+  outbound state, not resumable per-user state, so retiring the key orphans
+  nothing. No caller-visible change to `logEvent(type, payload)`'s signature.
+- **Branch:** `t_c7199b13/event-log-idb` — PR only, never main; PR pending
+  review.
+- **Owned/new files:** `player/event-log.js`, `player/event-log.test.js`.
+- **Shared files it touches:** `app.js` (`logEvent()`, `trySyncEvents()`, a
+  pre-module event buffer mirroring the existing `waitForStorage()` pattern),
+  `player/client.js` (constructs the event-log module the same way it already
+  constructs `durable-store.js`, publishes `window.forayEventLog`),
+  `docs/legal/privacy-policy.md` §1/§2 (the `cp_events`/`cp_synced_ts` rows
+  retired, a note added on the new queue), `test/suite-integrity.test.js` (one
+  new floor, one count updated 23→21 for the retired keys),
+  `test/data-deletion.test.js` (key-family count and seeds updated),
+  `test/diagnostics-surface.test.js`, `test/playlist-durability.test.js`,
+  `player/foray-playback.test.js`, `player/foray-progress.test.js` (all
+  updated from asserting against `cp_events`/localStorage to a synchronous
+  `window.forayEventLog` test double, reusing the fake IDBFactory pattern from
+  `player/idb-tier.test.js`/`durable-store.test.js`).
+- **Explicitly out of scope:** anything about the REMOTE `events` table or
+  `toEventRow()`'s mapping — unchanged. `cp_diag`/`player/diagnostic-log.js`
+  — unrelated ring, untouched.
+
 ### "Up Next" listening queue, Stage 1 (2026-08-31) — `t_f4da81f5/up-next-stage1`
 
 - **What:** `docs/listening-queue-plan.md` Stage 1, PR pending. New `cp_queue`

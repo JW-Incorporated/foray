@@ -98,6 +98,13 @@ const FLOORS = {
      rendering, and a listener's place quietly stops surviving the week. */
   "player/durable-store.test.js": 74,
   "player/idb-tier.test.js": 23,
+  /* New with M3 (kanban card t_c7199b13): the event queue moved off a
+     synchronous `cp_events` localStorage rewrite into its own IndexedDB
+     database. Covers append/flush never throwing, batching, the two id
+     spaces (durable + fallback ring), and the two behaviours the design
+     calls out by name — quota exhaustion (not lost, surfaced via health(),
+     never thrown) and the 5,000-row retention cap. */
+  "player/event-log.test.js": 20,
   /* 83 -> 87 with #225: the page's two failure guards now reach the field record.
      Two of the four exist to keep the instrument from becoming the outage it was
      built to explain — one pins that the message is on screen BEFORE the record is

@@ -1093,6 +1093,12 @@ async function mountForayPage({
      which this harness cannot load (it is a module that builds DOM at import). */
   const durableTier = durable ? fakeDurableTier(durableRows) : null;
   const forayStorage = durable ? createDurableStore({ localStorage: localStorageShim, idbTier: durableTier }) : null;
+  /* app.js's `logEvent` calls through `window.forayEventLog` now (M3), never
+     `cp_events` directly — see `event-log.js`. A synchronous fake here mirrors
+     the module's shape (`append`/`unsynced`/`markSynced`/`pruneToRetention`)
+     without any of the IndexedDB plumbing `event-log.test.js` exists to cover;
+     `eventLog.rows` is what this harness's assertions read. */
+  const eventLog = fakeEventLog();
 
   const ctx = {
     console: { ...console, warn() {}, error() {} },
@@ -1103,6 +1109,7 @@ async function mountForayPage({
        be told through, which is the honest answer for a page where the player
        module never loaded. */
     ...(forayStorage ? { forayStorage } : {}),
+    forayEventLog: eventLog,
     document: {
       body: dom.body,
       documentElement: dom.body,
@@ -1157,9 +1164,33 @@ async function mountForayPage({
     );
   }
   return {
-    dom, bridge, ctx, resolved, store, forayStorage, durableTier,
+    dom, bridge, ctx, resolved, store, forayStorage, durableTier, eventLog,
     setFailLocal: (on) => { failLocal = on; },
     html: dom.el("view").innerHTML,
+  };
+}
+
+/** A synchronous stand-in for `player/event-log.js`'s public surface — see the
+    comment where this is constructed in `mountForayPage`. `append` pushes
+    straight onto `rows` rather than batching, because these tests assert on
+    the row a moment after the call that logged it and have no reason to
+    exercise the real module's scheduling (that is `event-log.test.js`'s job). */
+function fakeEventLog() {
+  let nextId = 1;
+  const rows = [];
+  return {
+    rows,
+    append(row) { rows.push({ id: nextId++, synced: false, ...row }); },
+    async unsynced() { return rows.filter((r) => !r.synced); },
+    async markSynced(ids) {
+      const set = new Set(ids);
+      for (const r of rows) if (set.has(r.id)) r.synced = true;
+    },
+    async pruneToRetention(cap) {
+      const excess = rows.length - cap;
+      if (excess > 0) rows.splice(0, excess);
+    },
+    health() { return { ok: true, backend: "memory", pending: 0, ringSize: rows.length, faults: [] }; },
   };
 }
 
@@ -1805,7 +1836,7 @@ test("a thumbs-up records a vote — the binder that actually threw", async () =
   // bindFeedback is where the ReferenceError lived. It runs before the transport
   // is bound, so this assertion and the ones above fail together on that bug —
   // deliberately, because either symptom alone is enough to catch it.
-  const { dom, store, resolved } = await mountForayPage();
+  const { dom, eventLog, resolved, store } = await mountForayPage();
   const up = dom.thumbs.find((t) => t.dataset.thumb === "up");
   await up.click();
 
@@ -1814,7 +1845,7 @@ test("a thumbs-up records a vote — the binder that actually threw", async () =
   assert.equal(saved[first.segment_id]?.direction, "up");
   assert.ok(up.classList.contains("on"), "the control must show the vote it just took");
 
-  const events = JSON.parse(store.get("cp_events") ?? "[]").filter((e) => e.type === "thumbs");
+  const events = eventLog.rows.filter((e) => e.type === "thumbs");
   assert.equal(events.length, 1);
   assert.equal(events[0].payload.node_id, first.topic, "the learning job keys on the taxonomy node");
   assert.equal(events[0].payload.direction, "up");
@@ -1889,12 +1920,12 @@ test("a stored position makes the cold press a resume, and Start over clears it"
 test("a source credit is bound, so the outbound click is measured", async () => {
   // Publisher credit is the one surface with a business reason to be
   // instrumented — this is how we see the traffic we send them.
-  const { dom, resolved, store } = await mountForayPage();
+  const { dom, resolved, eventLog } = await mountForayPage();
   assert.ok(dom.srcLinks.length > 0, "the harness has no credit rows to bind");
   const link = dom.srcLinks.find((a) => a.dataset.srcShow === resolved.shows[0]) ?? dom.srcLinks[0];
   assert.ok(link.listeners("click") > 0, "a credit link that logs nothing sends the publisher no measurable traffic");
   await link.click();
-  const opened = JSON.parse(store.get("cp_events") ?? "[]").filter((e) => e.type === "source_opened");
+  const opened = eventLog.rows.filter((e) => e.type === "source_opened");
   assert.equal(opened.length, 1);
   assert.equal(opened[0].payload.foray_id, FORAY_ID);
 });
@@ -2063,7 +2094,6 @@ test("DELETING EVERYTHING leaves the page interactive, and resume works again af
       [progressKey(FORAY_ID)]: row,
       cp_interests: '{"food/grilling-bbq":0.82}',
       "cp_pos:ep-1": '{"seconds":12,"updated_at":"2026-08-17T00:00:00.000Z"}',
-      cp_events: "[]",
     },
     resume: { elapsedSec: 1180, index: 9, remainingSec: 2493, percent: 32, finished: false, drift: "exact", label: "42 min left", clock: "19:40" },
   });
@@ -2137,7 +2167,7 @@ test("a drifted resume is recorded as an event; a clean one is not", async () =>
   const drifted = await mountForayPage({
     resume: { elapsedSec: 900, index: 3, remainingSec: 2773, percent: 24, finished: false, drift: "moved", label: "46 min left", clock: "15:00" },
   });
-  const events = JSON.parse(drifted.store.get("cp_events") ?? "[]").filter((e) => e.type === "foray_progress_drift");
+  const events = drifted.eventLog.rows.filter((e) => e.type === "foray_progress_drift");
   assert.equal(events.length, 1);
   assert.equal(events[0].payload.drift, "moved");
   assert.equal(events[0].payload.foray_id, FORAY_ID);
@@ -2145,7 +2175,7 @@ test("a drifted resume is recorded as an event; a clean one is not", async () =>
   const clean = await mountForayPage({
     resume: { elapsedSec: 900, index: 3, remainingSec: 2773, percent: 24, finished: false, drift: "exact", label: "46 min left", clock: "15:00" },
   });
-  assert.equal(JSON.parse(clean.store.get("cp_events") ?? "[]").filter((e) => e.type === "foray_progress_drift").length, 0);
+  assert.equal(clean.eventLog.rows.filter((e) => e.type === "foray_progress_drift").length, 0);
 });
 
 test("an older player module that cannot answer the drift question does not break the page", async () => {

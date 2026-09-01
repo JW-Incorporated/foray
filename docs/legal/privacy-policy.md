@@ -101,12 +101,21 @@ The app also asks the browser to mark its storage as persistent
 | `cp_autoadvance` | Up Next auto-advance on/off — a local per-device preference for whether finishing an episode played from your Up Next list starts the next queued item. Off by default | **No** (but see `autoadvance_pref` in §2) |
 | `cp_intro_dismissed` | Whether you dismissed the intro card | **No** |
 | `cp_foray_feedback` | Your per-segment thumbs: direction, reason codes, any note you typed, timestamp | **Yes, via `thumbs`** — see §2 |
-| `cp_events` | A rolling buffer of the last 5,000 events | **Partly** — 5 of the 19 event types are sent; see §2 |
-| `cp_synced_ts` | A bookmark recording which events have already been sent | **No** |
 | `cp_profile_id` | A random local id (e.g. `p-a1b2c3d4...`) generated on this device | **No** — it is stamped on local events but is **not** included in anything sent |
 | `cp_sb_session` | The access and refresh token for your anonymous account, and its user id | It **is** your credential for our database — see §3 |
 | `cp_storage_health` | A diagnostic record of storage failures, for troubleshooting | **No** |
 | `cp_diag` | A playback diagnostic record, capped at the most recent 200 entries: how long each seam between two segments took, the load deadline in force, out-point overshoot, stops (a lost audio route, an interruption), which resume point was written and read back, when the app went to the background and for how long, and any press of a play or transport control that failed — with the *class* of the error (for example `NotAllowedError`, meaning your browser held the audio back), never its message, and with a count when the same press fails repeatedly. It holds no audio, no URLs, no account id and no device names — when it records that a known audio route came back, it records only *that* one was recognised, never which | **No** — it is never transmitted; the drawer's **Playback diagnostics** shows it and lets you copy or clear it |
+
+**The event queue is not a `cp_` key.** Until 2026-09, the buffer of events
+waiting to be sent lived at `cp_events` (with a `cp_synced_ts` bookmark) inside
+the same two-tier store as everything above. It is now its own IndexedDB
+database (`foray_events`, object store `events`, `player/event-log.js`),
+outside the `cp_` namespace and outside "Delete my data"'s enumeration —
+deliberately, because it is an OUTBOUND QUEUE, not resumable state about you: a
+row that fails to sync is retried, and once sent (or once it ages past the
+5,000-row cap) it is deleted from the device, never resurrected. **Delete my
+data** deliberately does not log an event for the deletion itself (see §7), so
+there is nothing about the deletion for this queue to hold.
 
 The web app also keeps a Cache Storage bucket named `foray-v5` holding the app
 shell and the catalogue JSON files, so the app renders in a dead zone (`sw.js`).
@@ -115,10 +124,9 @@ request that is not to our own origin.
 
 ## 2. What leaves your device, exactly
 
-The app buffers events locally and periodically sends some of them to our
-database (Supabase — see §3). **Sixteen of the twenty-one event types the app
-records never leave the device.** The buffer is trimmed to the most recent 5,000
-entries.
+The app buffers events locally (in the event queue described above) and
+periodically sends some of them to our database (Supabase — see §3). **Sixteen of the twenty-one event types the app records never leave the device.** The
+buffer is trimmed to the most recent 5,000 entries.
 
 **Sent** (`app.js:toEventRow()`). Every row carries your anonymous account id
 and a timestamp:
