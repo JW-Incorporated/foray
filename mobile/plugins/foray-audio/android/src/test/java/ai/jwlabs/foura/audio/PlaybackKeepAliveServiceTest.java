@@ -113,7 +113,11 @@ public class PlaybackKeepAliveServiceTest {
                 org.robolectric.RuntimeEnvironment.getApplication(), PlaybackKeepAliveService.class)
             .setAction("ai.jwlabs.foura.audio.TRANSPORT")
             .putExtra("action", "pause");
-        controller.startCommand(transportIntent, 0, 0);
+        // Robolectric 4.14.1 (pinned in build.gradle) does not have the
+        // startCommand(Intent, int, int) overload added in later releases —
+        // withIntent(...).startCommand(flags, startId) is the version-portable
+        // way to deliver a specific Intent into onStartCommand.
+        controller.withIntent(transportIntent).startCommand(0, 0);
 
         assertEquals("pause", seenAction.get());
     }

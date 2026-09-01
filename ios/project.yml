@@ -47,6 +47,14 @@ targets:
       - package: ForayKit
         product: ForayKit
     info:
+      # AUDIT (resolved 2026-09-01, PR #402 CI run on the real macOS/xcodegen
+      # 2.46.0 runner): `path` is NOT optional in this XcodeGen version —
+      # omitting it fails project generation outright with the unhelpful
+      # "Decoding failed at \"path\": Nothing found" (see
+      # https://github.com/yonaskolb/XcodeGen/issues/1201). Writing the
+      # generated Info.plist under App/ keeps it alongside the target's own
+      # sources and out of the repo (git-ignored, like Foray.xcodeproj).
+      path: App/Info.plist
       properties:
         CFBundleDisplayName: Foray
         UILaunchScreen: {}
