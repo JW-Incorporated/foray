@@ -1117,3 +1117,34 @@ its reasoning.
   at all. Reversible: relabelling or re-hiding this control later is a
   one-line change: it costs whatever confusion the interim copy causes, not
   data or architecture.
+
+## 2026-09-01 (Generation pipeline §4.0-4.1: prompt capture surface, kanban card t_825eee4c)
+
+- **§4.0's capture surface is a founder-run CLI (`npm run generate-foray`),
+  not a drawer/UI addition.** Phase 1 generation is founder-only (§1.3) and
+  the existing frontend (`app.js`) has no server call into `backend/` at
+  all today — every other backend pipeline stage (`build-session`,
+  `build-ladder`, `ingest-fixtures`, `learn-interests`) is already a
+  founder-run CLI, not a web surface. Building a drawer entry plus an HTTP
+  bridge to reach this backend would be scope past this section's own
+  boundary ("prompt capture + safety/clarify/intent"). Revisit when phase 2
+  (§1.3) opens generation to any user — that is the point a real web
+  capture surface earns its cost, and `understandPrompt()`'s call shape is
+  already what an HTTP handler would call directly.
+- **§4.1's safety check is co-occurrence-gated, not single-keyword.** Each
+  forbidden-topics rule (`backend/src/generation/safetyCheck.ts`) requires a
+  subject-matter term AND an intent/action term to both match, so
+  "Roman siege weapons" and "the history of nuclear weapons policy" pass
+  cleanly while "how to build a bomb" is caught. A bare-keyword approach
+  would misfire on the doc's own worked example. This is phase-1,
+  founder-only tooling (§1.3), so a false negative is still caught by the
+  founder reviewing before publish (§4.9); a false positive costs a
+  confusing, un-appealable rejection with no recourse, so the rule leans
+  conservative in that direction.
+- **§9.4's "prompts are discarded" ruling is enforced structurally, not by
+  convention.** `understandPrompt()` and its collaborators are pure
+  functions with no persistence primitive anywhere in
+  `backend/src/generation/` — no file write, no DB call, no localStorage.
+  `backend/test/promptNoPersistence.test.ts` greps the module source for
+  persistence calls and proves a full run touches no file on disk, per the
+  task's own acceptance bar for "the strongest version of this check."
