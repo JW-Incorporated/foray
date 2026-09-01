@@ -233,12 +233,14 @@ final class PlayerQueueManagerTests: XCTestCase {
         backend.calls.removeAll()
 
         backend.simulateItemDidPlayToEnd()
-        // Allow the manager's detached Task { await self.handleBackendItemEnded() }
-        // to run before asserting.
-        await Task.yield()
-        try? await Task.sleep(nanoseconds: 50_000_000)
-
-        XCTAssertTrue(backend.calls.contains(.load(url: episodeB.localURL, startOffset: .zero)))
+        // The manager handles this via a detached `Task { await
+        // self.handleBackendItemEnded() }`, so poll with a timeout instead of a
+        // single fixed sleep — deterministic on a fast machine, resilient to a
+        // busy/throttled CI runner.
+        let sawLoad = await waitUntil {
+            backend.calls.contains(.load(url: episodeB.localURL, startOffset: .zero))
+        }
+        XCTAssertTrue(sawLoad, "expected a load of episode-b, calls=\(backend.calls)")
     }
 
     func testItemEndedWithBridgePlaysTheTransitionTTSFirst() async {
@@ -252,11 +254,13 @@ final class PlayerQueueManagerTests: XCTestCase {
         backend.calls.removeAll()
 
         backend.simulateItemDidPlayToEnd()
-        try? await Task.sleep(nanoseconds: 50_000_000)
 
         // The bridge TTS should be loaded (and, per playTransitionBridge, played)
         // before the real next episode.
-        XCTAssertTrue(backend.calls.contains(.load(url: bridgeTTS.localURL, startOffset: .zero)))
+        let sawBridgeLoad = await waitUntil {
+            backend.calls.contains(.load(url: bridgeTTS.localURL, startOffset: .zero))
+        }
+        XCTAssertTrue(sawBridgeLoad, "expected a load of the bridge TTS, calls=\(backend.calls)")
     }
 
     func testTransitionBridgeLoadFailureAdvancesPastItRatherThanStalling() async {
@@ -272,12 +276,30 @@ final class PlayerQueueManagerTests: XCTestCase {
         backend.nextLoadError = FakePlayerBackendError.missingFile
         backend.calls.removeAll()
         backend.simulateItemDidPlayToEnd()
-        try? await Task.sleep(nanoseconds: 100_000_000)
 
         // Per the manager's advancePastTransitionFailure: a missing/corrupt bridge
         // asset must never stall the whole queue — it should skip straight to the
         // real next item.
-        XCTAssertTrue(backend.calls.contains(.load(url: episodeB.localURL, startOffset: .zero)),
+        let sawFallthroughLoad = await waitUntil {
+            backend.calls.contains(.load(url: episodeB.localURL, startOffset: .zero))
+        }
+        XCTAssertTrue(sawFallthroughLoad,
             "a failed bridge load must fall through to the next real item, calls=\(backend.calls)")
+    }
+
+    /// Polls `condition` up to `timeoutSeconds`, yielding between checks, so
+    /// assertions on work done by a manager-internal detached `Task` are
+    /// deterministic instead of racing a single fixed `Task.sleep`. Returns as
+    /// soon as `condition` is true, or `false` once the timeout elapses.
+    private func waitUntil(
+        timeoutSeconds: Double = 2.0,
+        _ condition: @Sendable () -> Bool
+    ) async -> Bool {
+        let deadline = Date().addingTimeInterval(timeoutSeconds)
+        while Date() < deadline {
+            if condition() { return true }
+            try? await Task.sleep(nanoseconds: 5_000_000) // 5ms
+        }
+        return condition()
     }
 }
