@@ -280,6 +280,41 @@ test("RETENTION: applies across BOTH the durable rows and the memory ring combin
   assert.equal(idbLeft.length, 2, "the two most recent durable rows must survive the combined cap");
 });
 
+test("RETENTION: a durable write that starts failing mid-session forces a real recheck, not a stale estimate (round-4 codex finding)", async () => {
+  /* The bug this guards: idbCountEstimate tracks idb's count as an ESTIMATE
+     and is only corrected by a real scan. If idb has been healthy and near
+     the cap (so idbCountEstimate ~= retention), then starts failing (quota,
+     eviction, a private-browsing session closing the door), every new event
+     lands in the ring instead — which self-caps at `retention` on its own,
+     completely independent of idb's count. Without forcing a fresh scan on
+     the failure itself, the sum-based trigger keeps using the stale idb
+     estimate, and the ring can also climb to `retention` before ITS OWN cap
+     kicks in — so the combined store can sit near 2x retention with no
+     automatic prune ever firing, because nothing after the failure ever
+     re-reads the real idb count. */
+  const factory = new FakeFactory();
+  const log = createEventLog({ indexedDB: factory, retention: 10, scheduleFlush: () => {} });
+  const base = Date.parse("2026-01-01T00:00:00.000Z");
+  // Fill idb to exactly retention via healthy writes, establishing an
+  // idbCountEstimate baseline at (or near) the cap.
+  for (let i = 0; i < 10; i++) {
+    log.append({ ts: new Date(base + i * 1000).toISOString(), type: "idb", payload: { i } });
+  }
+  await log.unsynced(); // flush — all healthy, all land in idb
+  // Now idb starts failing for every subsequent write (quota exhaustion).
+  factory.putError = quotaError();
+  for (let i = 0; i < 30; i++) {
+    log.append({ ts: new Date(base + (100 + i) * 1000).toISOString(), type: "ring", payload: { i } });
+    await log.unsynced(); // each append's own flush must recheck, not trust a stale estimate
+  }
+  const idbLeft = [...factory.db.stores.get(STORE_NAME).data.values()];
+  const all = await log.unsynced();
+  assert.ok(
+    idbLeft.length + all.length <= 10 + 5, // retention + a small, fixed margin — not ~2x retention
+    `combined store grew to ${idbLeft.length} idb + ${all.length} ring rows with retention=10 after idb started failing — the estimate must not go stale across a failure`
+  );
+});
+
 test("RETENTION: the cap holds even when nothing is ever synced (offline / sync never succeeds)", async () => {
   /* The bug this guards: the app's own pruneToRetention() call sits in
      trySyncEvents(), AFTER a successful upload. An offline device, or a
@@ -406,6 +441,58 @@ test("RETENTION: durable-write failures diverting into the ring do not let the c
   assert.ok(
     combined <= 20 + margin,
     `expected the COMBINED total to stay near the cap (<= ${20 + margin}), found idb=${idbLeft.length} + ring=${log.health().ringSize} = ${combined}`
+  );
+});
+
+test("RETENTION: a failed retention scan does not establish a false empty baseline (round-4 codex finding)", async () => {
+  /* Codex round 4: readIdbAll() returns [] both when the store is genuinely
+     empty AND when the read itself failed — pruneNow() was treating those as
+     the same fact, so a transient read failure near the cap could record
+     `idbCountEstimate = 0`. Every write after that would be trusted against
+     a false baseline, letting the store grow by up to another
+     `retention + PRUNE_MARGIN` rows before anything rescanned. This proves a
+     failed scan leaves the estimate `null` (unknown) instead, so the very
+     next flush is forced to scan for real rather than trusting a guess. */
+  const factory = new FakeFactory();
+  const log = createEventLog({ indexedDB: factory, retention: 20, scheduleFlush: () => {} });
+  // Get idb near the cap, healthy, establishing a real baseline first.
+  for (let i = 0; i < 18; i++) log.append({ type: "t", payload: { i } });
+  await log.unsynced();
+  const before = [...factory.db.stores.get(STORE_NAME).data.values()].length;
+  assert.ok(before <= 20, "sanity: idb must be at/under the cap before the read failure");
+  // Make the NEXT read (the retention scan's getAll) fail transiently.
+  const realGetAll = FakeObjectStore.prototype.getAll;
+  let failNextRead = true;
+  FakeObjectStore.prototype.getAll = function (...args) {
+    if (failNextRead) {
+      failNextRead = false;
+      const req = new FakeRequest();
+      this.tx._failWith(new Error("transient read failure"));
+      req._fail(this.tx.error);
+      return req;
+    }
+    return realGetAll.apply(this, args);
+  };
+  try {
+    // This append pushes idb to/near the margin trigger; its flush's prune
+    // check hits the failing getAll() above.
+    for (let i = 0; i < 5; i++) log.append({ type: "t", payload: { i } });
+    await log.unsynced();
+    assert.ok(log.health().faults.some((f) => f.op === "read"), "the failed scan must be recorded as a fault, not silently treated as success");
+  } finally {
+    FakeObjectStore.prototype.getAll = realGetAll;
+  }
+  // The estimate must now be untrusted (null), so the VERY NEXT flush forces
+  // a real scan rather than accumulating on a false-zero baseline. Push a
+  // large batch and confirm the combined store is still bounded near the cap
+  // rather than having grown unchecked on a trusted-but-wrong estimate.
+  for (let i = 0; i < 50; i++) log.append({ type: "t", payload: { i } });
+  await log.unsynced();
+  const left = [...factory.db.stores.get(STORE_NAME).data.values()];
+  const margin = Math.max(5, Math.min(50, Math.ceil(20 * 0.1)));
+  assert.ok(
+    left.length <= 20 + margin,
+    `expected the store to stay near the cap after the read failure cleared (<= ${20 + margin}), found ${left.length}`
   );
 });
 

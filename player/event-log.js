@@ -268,13 +268,24 @@ export function createEventLog({
    * estimate's drift, not just to delete rows.
    */
   async function pruneNow(cap) {
-    const idbRows = await readIdbAll();
+    const idbReadOk = { ok: true };
+    const idbRows = await readIdbAll(idbReadOk);
     const combined = [
       ...idbRows.filter(Boolean).map((r) => ({ ...r, _backend: "idb" })),
       ...ring.map((r) => ({ ...r, _backend: "ring" })),
     ];
     if (combined.length <= cap) {
-      idbCountEstimate = idbRows.filter(Boolean).length; // exact, corrects any drift
+      // Only trust this as an exact baseline if the read actually succeeded.
+      // readIdbAll() returns [] on a FAILED read too (see its own comment),
+      // and a failed read is not the same fact as "the store is empty" — if
+      // it were near `cap` before this transient failure, recording 0 here
+      // would let up to another `retention + PRUNE_MARGIN` writes through
+      // before the next scan even fires, letting the store approach roughly
+      // double the cap. Leaving the estimate `null` on a failed read means
+      // the very next flush forces another real scan instead of trusting a
+      // guess — the same "when in doubt, rescan" rule flushBuffered already
+      // applies to its own fallback-to-ring case above.
+      idbCountEstimate = idbReadOk.ok ? idbRows.filter(Boolean).length : null;
       return;
     }
     const excess = combined.length - cap;
@@ -305,18 +316,19 @@ export function createEventLog({
         fault("prune", err);
       }
     }
-    // Exact, whether or not the delete above succeeded: idbRows is what was
-    // actually read from the store just now, idbDeleted is what we confirmed
-    // we removed from it (0 if the delete transaction itself failed).
-    idbCountEstimate = idbRows.filter(Boolean).length - idbDeleted;
+    // Exact, whether or not the delete above succeeded, PROVIDED the read
+    // that produced idbRows itself succeeded — see the `<= cap` branch above
+    // for why a failed read must not be trusted as "found 0 rows".
+    idbCountEstimate = idbReadOk.ok ? (idbRows.filter(Boolean).length - idbDeleted) : null;
   }
 
-  async function readIdbAll() {
+  async function readIdbAll(readStatus) {
     if (!hasIdb) return [];
     try {
       return (await withStore(open, STORE_NAME, "readonly", (s) => s.getAll())) || [];
     } catch (err) {
       fault("read", err);
+      if (readStatus) readStatus.ok = false;
       return [];
     }
   }
