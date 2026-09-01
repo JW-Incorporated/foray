@@ -124,6 +124,18 @@ describe("isClaimShaped", () => {
     // be found without relying on subject-position capitalization at all.
     expect(isClaimShaped("Charcoal production shapes modern grilling culture")).toBe(true);
   });
+
+  it("accepts a claim whose only verb is an invariant-form irregular (hurt/cut/put)", () => {
+    // The exact case cited in review: "hurt" has no -ed and isn't a
+    // vowel-change irregular past — it needs its own enumerated list.
+    expect(isClaimShaped("The policy hurt workers throughout the recession")).toBe(true);
+  });
+
+  it("accepts a claim via clause-adjunct corroboration even with an unrecognized verb", () => {
+    // No morphological signal and not on any list — only the "because"
+    // clause-adjunct evidence should carry this one.
+    expect(isClaimShaped("Sales dropped because supply chains buckled")).toBe(true);
+  });
 });
 
 describe("countActs / countSlots / countBeats / allBeats", () => {

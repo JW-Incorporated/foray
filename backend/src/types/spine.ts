@@ -254,6 +254,65 @@ const COMMON_IRREGULAR_PAST_VERBS = new Set([
   "wore"
 ]);
 
+/** Verbs whose past-tense form is IDENTICAL to their base form (no -ed,
+ * no vowel change signal) — "hurt", "cut", "put" etc. These carry
+ * absolutely no morphological signal in either tense, so unlike a
+ * regular verb or even most irregulars they can never be caught by any
+ * suffix rule; they can only be enumerated. Kept as an explicitly
+ * separate, small, genuinely closed list (there are only a couple dozen
+ * such verbs in English) rather than folded into the general irregular
+ * list, since it exists for a different structural reason. */
+const INVARIANT_FORM_VERBS = new Set([
+  "hurt",
+  "cut",
+  "put",
+  "cost",
+  "hit",
+  "shut",
+  "let",
+  "bet",
+  "burst",
+  "quit",
+  "split",
+  "shed",
+  "spread",
+  "upset",
+  "forecast",
+  "broadcast",
+  "read",
+  "reset",
+  "offset",
+  "cast"
+]);
+
+/** Subordinating/adjunct words that overwhelmingly introduce a clause
+ * built around a predicate ("...hurt workers THROUGHOUT the
+ * recession", "...changed BECAUSE the market shifted") rather than
+ * appearing inside a bare noun phrase. This is a SUPPLEMENTARY signal,
+ * not a verb-detection mechanism by itself: combined with a minimum
+ * sentence length, its presence is treated as corroborating evidence
+ * that the sentence has clause structure (and therefore very likely a
+ * predicate/verb) even when the verb itself resists every morphological
+ * rule above — precisely the words the earlier verb-list-based rounds
+ * of this heuristic kept missing (see the doc comment on
+ * `isClaimShaped` for why false-reject is the costlier failure mode
+ * here). */
+const CLAUSE_ADJUNCT_WORDS = new Set([
+  "throughout",
+  "during",
+  "because",
+  "despite",
+  "although",
+  "since",
+  "while",
+  "when",
+  "after",
+  "before",
+  "unless",
+  "until",
+  "whereas"
+]);
+
 /** Words that are near-universally used as nouns even though they carry
  * an -s suffix (plural nouns), to keep the present-tense-agreement check
  * from treating an obvious plural noun as a verb. Kept deliberately
@@ -323,6 +382,7 @@ const NON_VERB_SECOND_WORDS = new Set([
 function looksLikeInflectedVerb(word: string): boolean {
   if (FINITE_AUX_VERBS.has(word)) return true;
   if (COMMON_IRREGULAR_PAST_VERBS.has(word)) return true;
+  if (INVARIANT_FORM_VERBS.has(word)) return true;
   if (word.length > 4 && word.endsWith("ed") && !GERUND_NOUN_EXCEPTIONS.has(word)) return true;
   if (word.length > 3 && (word.endsWith("es") || word.endsWith("s")) && !PLURAL_NOUN_EXCEPTIONS.has(word)) return true;
   return false;
@@ -381,6 +441,20 @@ export function isClaimShaped(text: string): boolean {
     !looksLikeInflectedVerb(secondWord) &&
     !/^[A-Z]/.test(rawWords[1] ?? "")
   ) {
+    return true;
+  }
+
+  // (6) Clause-adjunct corroboration: a subordinating/adjunct word
+  // ("throughout", "because", "during", ...) is near-exclusively used to
+  // attach a clause to a predicate ("The policy hurt workers THROUGHOUT
+  // the recession") rather than inside a bare noun phrase. Every verb
+  // signal above depends on some morphological marker or an enumerated
+  // list; this catches the residual case where the finite verb itself
+  // has NEITHER (an invariant-form verb not yet added to that list, or
+  // simply one this heuristic hasn't seen) but the sentence still
+  // exhibits real clause structure. Gated on a minimum length so it
+  // doesn't fire on a short adjunct-containing noun phrase alone.
+  if (rawWords.length >= 5 && words.some((w) => CLAUSE_ADJUNCT_WORDS.has(w))) {
     return true;
   }
 
