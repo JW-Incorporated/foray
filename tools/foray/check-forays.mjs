@@ -60,7 +60,16 @@ import {
   narrationDuration,
   NARRATION_CHARS_PER_SEC,
   DURATION_MEASURED,
+  JINGLE_DURATION_SEC,
 } from "../../player/foray-queue.js";
+
+/* The six narration modes, imported from check-narration.mjs rather than
+ * re-declared. That file already carries the enum (and the char bands each
+ * mode budgets to) as `MODE_CHAR_BANDS`; a second copy of the six keys here
+ * is exactly the kind of drift `copyRules` above exists to prevent — two
+ * lists of "the modes" that could disagree about a seventh. */
+import { MODE_CHAR_BANDS } from "./check-narration.mjs";
+const NARRATION_MODES = new Set(Object.keys(MODE_CHAR_BANDS));
 
 const { BANNED, wordCount, MAX_WHY_LINE_WORDS } = copyRules;
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
@@ -208,6 +217,34 @@ export function maxStartsInWindow(starts, windowSec = D1_WINDOW_SEC) {
 
 /* ------------------------------------------------------------------ check */
 
+/* §7 item 5 / §4.7's "impossible to publish without it" disclosure gate.
+ *
+ * WHAT FLAGS A FORAY AS GENERATED. §3's input schema stamps `author_id` and
+ * `visibility` on every generation REQUEST, but neither survives onto the
+ * published `data/forays.json` record today, and inferring "generated" from
+ * shape (e.g. "has any narration item") would misclassify the admin-authored
+ * backdoor §1.2 explicitly keeps legal: a curated Foray may carry narration
+ * too. So this checker requires an explicit, additive marker — `generated:
+ * true` on the Foray object — rather than guessing from other fields. None of
+ * the four committed Forays carry it, so none of the checks below can fire on
+ * them; the day the pipeline in §4 lands, its publish step (§4.9) is what sets
+ * this bit, on purpose, once.
+ *
+ * WHY THIS GATE IS NARROWER THAN "any narration item exists": the admin
+ * backdoor (§1.2) is real narration, on a foray nobody generated, and must
+ * not be held to §4.7's disclosure requirement or §2.1's mode enum — an
+ * admin's own pre-rendered voice line has no "mode" in the generation sense.
+ */
+const isGeneratedForay = (foray) => foray?.generated === true;
+
+/* §4.7's exact required template, verbatim, with the one variable slot
+ * (`<subject>`) as a wildcard. Matched as a whole line so a generated Foray
+ * cannot ship a paraphrase that drifts from what legal signed off on — "It
+ * should be impossible to publish without it" is a statement about the exact
+ * words, not the gist. */
+const DISCLOSURE_RX =
+  /^This is a Foray about .+\. Much of what you'll hear is written by AI\. We work hard to get the facts right, but AI gets things wrong — so take it as a starting point, not a source\.$/;
+
 const isPlainObject = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 /** Same predicate `player/foray-queue.js` uses to decide an asset is present, so
     the two cannot disagree about whether an item will play. */
@@ -317,6 +354,20 @@ export function checkForays(files) {
 
     if (!Array.isArray(foray.items) || foray.items.length === 0) { E("`items` must be a non-empty ordered array"); continue; }
 
+    /* §7 item 5, clause 3 / §4.7: "a generated Foray whose first item is not
+     * the disclosure fails validation. It should be impossible to publish
+     * without it." Checked on the raw first item, ahead of and independent
+     * of the resolve loop below — a malformed disclosure item must not be
+     * able to hide behind `itemsOk` reporting a different failure first, and
+     * this is cheap enough to always run before anything else touches
+     * `foray.items`. */
+    if (isGeneratedForay(foray)) {
+      const first = foray.items[0];
+      if (!isPlainObject(first) || first.type !== "narration" || typeof first.script !== "string" || !DISCLOSURE_RX.test(first.script.trim())) {
+        E("items[0] is not the required disclosure — generation-architecture.md §4.7's exact template must be the first narration item's `script` in every generated Foray");
+      }
+    }
+
     const slotIds = Array.isArray(foray.slots) ? foray.slots.map((s) => s?.id) : [];
     if (new Set(slotIds).size !== slotIds.length) E("`slots` has duplicate ids");
 
@@ -329,6 +380,13 @@ export function checkForays(files) {
      * Foray PLAYBACK" and a bridge is playback. */
     const timeline = [];
     const narrations = [];
+    /** Every jingle, tallied the same shallow way `narrations` is — its own
+        list rather than folded into `narrations`, because a jingle is not
+        narration (§7 item 4's whole point) and `narrations.length` feeds
+        directly into `report.forays[].narration_items`, which must keep
+        meaning "narrator lines", not "narrator lines and brand marks". */
+    let jingleCount = 0;
+    let jingleRuntime = 0;
     /** Authored bridges that have no audio yet, so the player drops them and they
         are excluded from the clock. Counted so the "did not resolve" tally below
         does not blame the ordinary pre-audio state for a failure. */
@@ -378,6 +436,36 @@ export function checkForays(files) {
           continue;
         }
         const hasScript = typeof item.script === "string" && item.script.trim().length > 0;
+        /* §7 item 5, clause 1: "A narration item has either script or asset
+         * (never neither)." Gated as a hard failure ONLY for a generated
+         * Foray (`isGeneratedForay`, defined above) — an admin-authored
+         * bridge with neither yet is the ordinary in-progress state the
+         * `unvoiced` warning below already covers, and #134/§1.2 never asked
+         * for that path to get stricter. A generated Foray has no such
+         * in-progress state: §4.9 is its only route to `data/forays.json`,
+         * and by the time an item reaches this file the pipeline has either
+         * written a script, attached a rendered asset, or the item should
+         * not have been emitted at all. */
+        const hasAsset = nonEmptyString(item.audio_url) || nonEmptyString(item.asset);
+        if (isGeneratedForay(foray) && !hasScript && !hasAsset) {
+          E(`${where} has neither a \`script\` nor an \`asset\` — a generated Foray's narrator must always say something`);
+          itemsOk = false;
+          continue;
+        }
+        /* §7 item 5, clause 2: a `mode` is checked against the six-mode enum
+         * whenever it is PRESENT, on any Foray — this cannot retroactively
+         * fail the four admin-authored Forays because none of them sets the
+         * field, and a typo'd mode is a real defect worth catching wherever
+         * it shows up. Requiring the field to EXIST is narrower and applies
+         * only to a generated Foray (`docs/curation/narration-craft.md`'s
+         * six modes are how the pipeline picks a budget for every narration
+         * beat it writes — §2.1 — so a generated item missing one is a
+         * pipeline defect, not an admin's choice not to use the concept). */
+        if (item.mode !== undefined && !NARRATION_MODES.has(item.mode)) {
+          E(`${where} has \`mode\` ${JSON.stringify(item.mode)}, not one of the six modes in narration-craft.md §0 (${[...NARRATION_MODES].join(", ")})`);
+        } else if (isGeneratedForay(foray) && item.mode === undefined) {
+          E(`${where} has no \`mode\` — every narration item in a generated Foray must declare one of the six modes (narration-craft.md §0)`);
+        }
         if (item.duration_sec === undefined && !hasScript) {
           E(
             `${where} has neither a \`duration_sec\` nor a \`script\`, so nothing can say how ` +
@@ -493,6 +581,26 @@ export function checkForays(files) {
         timeline.push({ kind: "narration", duration: dur.sec });
         continue;
       }
+      if (item.type === "jingle") {
+        /* §7 item 4: the jingle is a fixed, always-valid asset (see
+         * `player/foray-queue.js`'s `JINGLE_ASSET_URL`/`JINGLE_DURATION_SEC`)
+         * — there is no script, mode or per-item audio to validate, so this
+         * gate is intentionally thin. It still occupies the listener's
+         * clock exactly like a narration bridge (§4.8: "the jingle marks a
+         * change of tape", the same job narration's silence-vs-marker rule
+         * describes), so it joins `timeline` for D1's 600 s window but is
+         * NOT a segment start — the same reasoning §7 item 5's narration
+         * block gives at length below for why a bridge isn't a cut. */
+        if (item.id !== undefined) {
+          if (typeof item.id !== "string" || !item.id) { E(`${at}: a jingle's \`id\`, if present, must be a non-empty string`); itemsOk = false; continue; }
+          if (seenNarrationIds.has(item.id)) E(`${at}: id "${item.id}" appears twice in one Foray`);
+          seenNarrationIds.add(item.id);
+        }
+        timeline.push({ kind: "jingle", duration: JINGLE_DURATION_SEC });
+        jingleCount += 1;
+        jingleRuntime += JINGLE_DURATION_SEC;
+        continue;
+      }
       if (item.type !== "segment") { E(`${at}: unknown item type ${JSON.stringify(item.type)}`); itemsOk = false; continue; }
 
       const seg = segments.get(item.segment_id);
@@ -547,7 +655,7 @@ export function checkForays(files) {
       /* `played` is tape only, so subtracting it from the whole item list
        * counted every perfectly good narration item as a failure — including an
        * unvoiced one, which is the state this file goes out of its way to bless. */
-      W(`${foray.items.length - played.length - narrations.length - unvoiced} item(s) did not resolve; every rule below is judged on the ${played.length} that did, so these verdicts are partial`);
+      W(`${foray.items.length - played.length - narrations.length - unvoiced - jingleCount} item(s) did not resolve; every rule below is judged on the ${played.length} that did, so these verdicts are partial`);
     }
 
     /* ---- derived: TWO clocks, and keeping them apart is the whole fix
@@ -558,17 +666,19 @@ export function checkForays(files) {
      * share is one episode's seconds over all episodes' seconds, and narration
      * belongs to no episode.
      *
-     * `runtime` is the listener's clock — tape plus narration — and it is what
-     * the Foray IS. It sets D1's budget band (§5c bands are by "total Foray
-     * duration"), it is what `runtime_sec` in the data file must agree with, and
-     * it is the number the player's `forayRuntimeSec` now returns.
+     * `runtime` is the listener's clock — tape plus narration plus jingles —
+     * and it is what the Foray IS. It sets D1's budget band (§5c bands are by
+     * "total Foray duration"), it is what `runtime_sec` in the data file must
+     * agree with, and it is the number the player's `forayRuntimeSec` now
+     * returns (`itemRuntimeSec` reads `duration_sec` for a jingle exactly as
+     * it does for narration — see `foray-queue.js`).
      *
-     * With zero narration authored the two are identical, which is why nothing
-     * in the committed data moves. */
+     * With zero narration or jingles authored the three are identical, which
+     * is why nothing in the committed data moves. */
     const durations = played.map((p) => p.duration);
     const tapeRuntime = durations.reduce((a, b) => a + b, 0);
     const narrationRuntime = narrations.reduce((a, n) => a + n.sec, 0);
-    const runtime = tapeRuntime + narrationRuntime;
+    const runtime = tapeRuntime + narrationRuntime + jingleRuntime;
     const mean = tapeRuntime / durations.length;
 
     /* ---- D1's start list, on the listener's clock ------------------------
@@ -810,6 +920,12 @@ export function checkForays(files) {
          not exist. */
       narration_unvoiced: unvoiced,
       narration_sec: +narrationRuntime.toFixed(2),
+      /* §7 item 4: reported alongside narration for the same reason —
+         a report that omits jingles entirely would understate what the
+         listener hears, and callers already read `narration_items` /
+         `narration_sec` as "the non-tape items", which a jingle also is. */
+      jingle_items: jingleCount,
+      jingle_sec: +jingleRuntime.toFixed(2),
       /* narration-craft.md §0's whole-Foray share. Reported, not gated: the
          target (25 %) and ceiling (35 %) are that document's own invention and
          it says the ratio is "a symptom, not a budget" — a Foray over it is

@@ -1913,6 +1913,151 @@ test("the CLI exits 1 on a bridge nothing can time", () => {
   assert.match(stderr, /has neither a `duration_sec` nor a `script`/);
 });
 
+/* ============================================================================
+   5. §7 items 4-5 — the jingle, and generated-Foray narration validation
+   ========================================================================= */
+
+/** The exact §4.7 disclosure template, with a subject filled in. Any generated
+    Foray's items[0] must be a narration item carrying this verbatim. */
+const DISCLOSURE_SCRIPT =
+  "This is a Foray about grilling. Much of what you'll hear is written by AI. We work hard to " +
+  "get the facts right, but AI gets things wrong — so take it as a starting point, not a source.";
+
+/** A minimal `generated: true` Foray built from the boundary fixture: the
+    disclosure spliced in as items[0], with every narration item on it given a
+    valid mode and a script so the baseline is clean. Callers mutate a clone. */
+function generatedFixture() {
+  const f = fx();
+  const foray = boundary(f);
+  foray.generated = true;
+  const firstSlot = Array.isArray(foray.slots) && foray.slots.length ? foray.slots[0].id : undefined;
+  foray.items.unshift({
+    type: "narration", id: "disclosure", mode: "marker", script: DISCLOSURE_SCRIPT,
+    ...(firstSlot !== undefined ? { slot: firstSlot } : {}),
+  });
+  if (typeof foray.runtime_sec === "number") {
+    foray.runtime_sec = +(foray.runtime_sec + Math.round((DISCLOSURE_SCRIPT.length / 17) * 1000) / 1000).toFixed(2);
+  }
+  return f;
+}
+
+test("a well-formed generated Foray — disclosure first, moded narration — passes clean", () => {
+  assert.deepEqual(errorsFor(generatedFixture()), []);
+});
+
+test("a generated Foray whose first item is not the disclosure is rejected", () => {
+  const f = generatedFixture();
+  boundary(f).items[0].script = "Welcome to today's Foray about grilling!";
+  assert.match(errorsFor(f).join("\n"), /items\[0\] is not the required disclosure/);
+});
+
+test("a generated Foray with no narration item first is rejected the same way", () => {
+  const f = generatedFixture();
+  boundary(f).items.shift(); // drop the disclosure; a segment now opens the Foray
+  assert.match(errorsFor(f).join("\n"), /items\[0\] is not the required disclosure/);
+});
+
+test("an admin-authored (non-generated) Foray needs no disclosure at all", () => {
+  // The boundary fixture itself opens on a plain segment and carries no
+  // `generated` flag — it must stay clean, which is what proves the check is
+  // scoped to `generated: true` rather than firing on every Foray.
+  assert.deepEqual(errorsFor(fx()), []);
+});
+
+test("a generated Foray's narration item with neither script nor asset is rejected", () => {
+  const f = generatedFixture();
+  boundary(f).items.splice(1, 0, { type: "narration", id: "nar-empty", mode: "hinge" });
+  assert.match(errorsFor(f).join("\n"), /neither a `script` nor an `asset`/);
+});
+
+test("the same script-less, asset-less item is only a WARNING on a non-generated Foray", () => {
+  // This is the existing #236 "unvoiced bridge" behaviour, unchanged — #7
+  // item 5's new rule must not retroactively tighten the admin path. A
+  // `duration_sec` is required to reach the unvoiced-warning path at all
+  // (an item with neither `duration_sec` nor `script` is the older, always-
+  // fatal "nothing can say how long it is" rejection above).
+  const f = fx();
+  boundary(f).items.splice(1, 0, { type: "narration", id: "nar-empty", duration_sec: 8 });
+  const { errors, warnings } = checkForays(f);
+  assert.deepEqual(errors, []);
+  assert.match(warnings.join("\n"), /has no usable `audio_url`\/`asset`\/`script`/);
+});
+
+test("a generated Foray's narration item needs a `mode` from the six-mode enum", () => {
+  const f = generatedFixture();
+  boundary(f).items.splice(1, 0, bridge({ id: "nar-nomode", mode: undefined }));
+  assert.match(errorsFor(f).join("\n"), /has no `mode`/);
+});
+
+test("an invalid `mode` value is rejected on ANY Foray, generated or not", () => {
+  const generated = generatedFixture();
+  boundary(generated).items.splice(1, 0, bridge({ id: "nar-badmode", mode: "essay" }));
+  assert.match(errorsFor(generated).join("\n"), /not one of the six modes/);
+
+  const admin = fx();
+  boundary(admin).items.splice(1, 0, bridge({ id: "nar-badmode", mode: "essay" }));
+  assert.match(errorsFor(admin).join("\n"), /not one of the six modes/);
+});
+
+test("a valid mode on a non-generated Foray is accepted — the enum check isn't generation-gated", () => {
+  const f = withBridges([{ at: 1, item: bridge({ id: "nar-moded", mode: "patch" }) }]);
+  assert.deepEqual(errorsFor(f), []);
+});
+
+test("the four committed admin-authored Forays still pass with zero errors before and after this change", () => {
+  // #7 item 5's own acceptance criterion, run directly against the live data
+  // rather than the fixture, so a regression here is caught even if the
+  // fixture drifts.
+  assert.deepEqual(checkForays(loadFiles(REPO_ROOT)).errors, []);
+});
+
+/* ---- the jingle (§7 item 4) --------------------------------------------- */
+
+test("a jingle item is accepted with just a type and passes through untouched", () => {
+  const f = fx();
+  const foray = boundary(f);
+  foray.items.splice(1, 0, { type: "jingle", id: "jingle-1" });
+  if (typeof foray.runtime_sec === "number") foray.runtime_sec = +(foray.runtime_sec + 1.5).toFixed(2);
+  assert.deepEqual(errorsFor(f), []);
+});
+
+test("a jingle needs no id at all", () => {
+  const f = fx();
+  const foray = boundary(f);
+  foray.items.splice(1, 0, { type: "jingle" });
+  if (typeof foray.runtime_sec === "number") foray.runtime_sec = +(foray.runtime_sec + 1.5).toFixed(2);
+  assert.deepEqual(errorsFor(f), []);
+});
+
+test("a jingle is not a segment start for D1 purposes", () => {
+  // Splicing a jingle next to an existing segment start must not change D1's
+  // max-starts-in-window verdict — only `player/foray-queue.js`'s SEGMENT
+  // items are starts.
+  const before = checkForays(fx()).report.forays[0];
+  const f = fx();
+  const foray = boundary(f);
+  foray.items.splice(1, 0, { type: "jingle", id: "jingle-1" });
+  if (typeof foray.runtime_sec === "number") foray.runtime_sec = +(foray.runtime_sec + 1.5).toFixed(2);
+  const after = checkForays(f).report.forays[0];
+  assert.equal(after.d1_max_starts_in_window, before.d1_max_starts_in_window);
+});
+
+test("a jingle's `id`, when present, must be unique in the Foray", () => {
+  const f = fx();
+  const foray = boundary(f);
+  foray.items.splice(1, 0, { type: "jingle", id: "dup" }, { type: "jingle", id: "dup" });
+  if (typeof foray.runtime_sec === "number") foray.runtime_sec = +(foray.runtime_sec + 3).toFixed(2);
+  assert.match(errorsFor(f).join("\n"), /id "dup" appears twice/);
+});
+
+test("`runtime_sec` must account for a jingle's duration, exactly like narration", () => {
+  const f = fx();
+  const foray = boundary(f);
+  foray.items.splice(1, 0, { type: "jingle", id: "jingle-1" });
+  // runtime_sec deliberately NOT restated — the mismatch must be caught.
+  assert.match(errorsFor(f).join("\n"), /`runtime_sec` says/);
+});
+
 /* ----------------------------------------------------------------- helpers */
 
 /** Put the held-back segment back where the fixture cut it from: the first slot,
