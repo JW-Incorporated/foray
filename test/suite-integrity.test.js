@@ -607,6 +607,15 @@ const FLOORS = {
      answered `running: true` and the fake was the only place the code worked. */
   "tools/mobile/webview-probe.test.mjs": 15,
 
+  /* M1 (full-repo review 2026-08-31): the byte-ceiling guards shared by
+     scan.mjs and refresh-feeds.mjs. Covers all three defenses named in the
+     finding — reject an implausible declared Content-Length before
+     download, abort mid-stream once the decompressed byte ceiling is
+     crossed (the chunked/endless-response case that a Content-Length check
+     alone cannot catch), and cap the item count after parsing — plus the
+     end-to-end wiring through fetchFeedCapped. */
+  "tools/refresh/fetch-limits.test.mjs": 13,
+
   "tools/refresh/enclosure.test.mjs": 18,
   /* Per-episode topics (#292). ZERO SLACK. This suite is the only thing between
      the catalogue and a return to show-level labelling — 77 of the 99 shows with
@@ -863,7 +872,7 @@ const BACKEND_FLOORS = {
   "test/archetypes.test.ts": 7,
   "test/budgetGuard.test.ts": 6,
   "test/candidateExtractor.test.ts": 8,
-  "test/conditionalGet.test.ts": 6,
+  "test/conditionalGet.test.ts": 9,
   "test/copyRules.test.ts": 3,
   "test/createEnricher.test.ts": 1,
   /* Generation pipeline §4.0-4.1 (kanban card t_825eee4c). */

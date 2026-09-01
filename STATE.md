@@ -7,6 +7,22 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
+### M1: cap feed download size before whole-body XML parsing (2026-09-01) — `foray/t_fc2c5f95`
+
+- **What:** Review finding M1. Fetch paths bound elapsed time but not response
+  bytes. Adds a pre-download `Content-Length` sanity check plus a streamed
+  decompressed-byte ceiling (abort mid-stream) to `backend/src/feeds/conditionalGet.ts`,
+  and a new shared helper `tools/refresh/fetch-limits.mjs` (same checks, plus an
+  item-count cap after parsing) used by `tools/refresh/scan.mjs`.
+- **Branch:** `foray/t_fc2c5f95` — PR only, never main.
+- **New files:** `tools/refresh/fetch-limits.mjs` (+ `.test.mjs`).
+- **Shared files it touches:** `backend/src/feeds/conditionalGet.ts` (+ its
+  test), `tools/refresh/scan.mjs`, `test/suite-integrity.test.js` (two floors).
+- **M6 landed first (PR #393):** `tools/refresh-feeds.mjs` is now a thin
+  wrapper that re-execs `scan.mjs`, so this card's original scope of also
+  patching `refresh-feeds.mjs`'s own fetch path is moot — fixing `scan.mjs`
+  covers both entry points. `refresh-feeds.mjs` itself is untouched here.
+
 ### "Up Next" listening queue, Stage 1 (2026-08-31) — `t_f4da81f5/up-next-stage1`
 
 - **What:** `docs/listening-queue-plan.md` Stage 1, PR pending. New `cp_queue`
