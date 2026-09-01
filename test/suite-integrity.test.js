@@ -931,6 +931,16 @@ const BACKEND_FLOORS = {
     for a genuine catalogue gap) against an injected no-tape fixture so the
     assertion doesn't drift as the real catalogue grows. */
   "test/researchShape.test.ts": 11,
+  /* §4.3's spine types: SpineSchema (strict, no per-act voice field),
+     isClaimShaped (claim- vs topic-shaped beats), and validateSpine
+     (§3's shape budgets with ±15% tolerance, the ~30% exploration
+     floor). Kanban card t_96a97be9. */
+  "test/spineTypes.test.ts": 26,
+  /* §4.3 end to end: buildSpine() against StubSpineBuilder for every
+     duration tier (shape budgets, claim-shape, exploration floor,
+     single spine-level voice all actually hold), plus InvalidSpineError
+     on a deliberately broken builder. Kanban card t_96a97be9. */
+  "test/buildSpine.test.ts": 6,
 };
 
 /* `it(` as well as `test(`: backend's suites use both spellings. */
