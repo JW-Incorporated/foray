@@ -82,6 +82,24 @@ test("several append() calls in one tick schedule exactly one flush", () => {
   assert.equal(scheduled, 1, "a burst inside one tick must cost one flush, not three");
 });
 
+test("requestIdleCallback is given a deadline, so a busy page cannot defer the flush indefinitely", () => {
+  const calls = [];
+  const savedRIC = globalThis.requestIdleCallback;
+  globalThis.requestIdleCallback = (fn, opts) => { calls.push(opts); return 1; };
+  try {
+    // No scheduleFlush override here — this exercises the module's OWN default
+    // scheduler selection, the thing the bug lived in.
+    const log = createEventLog({ indexedDB: null, flushDelayMs: 75 });
+    log.append({ type: "a", payload: {} });
+    assert.equal(calls.length, 1);
+    assert.ok(calls[0] && typeof calls[0].timeout === "number", "requestIdleCallback must be called with a numeric timeout");
+    assert.equal(calls[0].timeout, 75, "the timeout must be flushDelayMs, the same bound the setTimeout fallback uses");
+  } finally {
+    if (savedRIC === undefined) delete globalThis.requestIdleCallback;
+    else globalThis.requestIdleCallback = savedRIC;
+  }
+});
+
 /* ---------- against the real IndexedDB adapter shape ---------- */
 
 test("unsynced() flushes buffered rows before reading, so a caller sees its own just-logged event", async () => {
@@ -260,6 +278,51 @@ test("RETENTION: applies across BOTH the durable rows and the memory ring combin
   const idbLeft = [...factory.db.stores.get(STORE_NAME).data.values()];
   assert.equal(remaining.length, 0);
   assert.equal(idbLeft.length, 2, "the two most recent durable rows must survive the combined cap");
+});
+
+test("RETENTION: the cap holds even when nothing is ever synced (offline / sync never succeeds)", async () => {
+  /* The bug this guards: the app's own pruneToRetention() call sits in
+     trySyncEvents(), AFTER a successful upload. An offline device, or a
+     server that is down, never reaches that call — so if pruning only
+     happened there, the store would grow without bound for as long as sync
+     kept failing, which is worse than the old localStorage write (always
+     capped on every write, sync or no sync). This module must not depend on
+     the caller's sync ever succeeding to keep its own promise: flushing
+     alone — never marking anything synced, never calling pruneToRetention
+     directly — has to be enough. */
+  const factory = new FakeFactory();
+  const log = createEventLog({ indexedDB: factory, retention: 50, scheduleFlush: () => {} });
+  for (let i = 0; i < 200; i++) log.append({ type: "t", payload: { i } });
+  // Only ever flush (via unsynced()) — never markSynced, never pruneToRetention.
+  // A real offline client's trySyncEvents() bails before either of those.
+  await log.unsynced();
+  const left = [...factory.db.stores.get(STORE_NAME).data.values()];
+  assert.ok(
+    left.length <= 50,
+    `the store grew to ${left.length} rows with retention=50 and nothing ever synced — ` +
+    `the cap must not depend on a successful sync`
+  );
+});
+
+test("RETENTION: append()'s own scheduled flush enforces the cap, not just an explicit unsynced()/pruneToRetention() call", async () => {
+  const flushes = [];
+  // A real scheduler, not a no-op — so append() itself drives the flush this
+  // test is checking, the same as it would in a browser. No IndexedDB here
+  // (the ring path) — the cap must hold on that path too, not just idb's.
+  const log = createEventLog({
+    indexedDB: null,
+    retention: 20,
+    scheduleFlush: (fn) => { flushes.push(fn); return true; },
+  });
+  for (let i = 0; i < 100; i++) log.append({ type: "t", payload: { i } });
+  // append() coalesces a burst into ONE scheduled flush; run it, as the real
+  // scheduler eventually would.
+  assert.equal(flushes.length, 1, "a burst of appends must schedule exactly one flush");
+  await flushes[0]();
+  assert.ok(
+    log.health().ringSize <= 20,
+    `the ring grew to ${log.health().ringSize} rows after the scheduled flush alone, with retention=20`
+  );
 });
 
 /* ---------- health() shape ---------- */

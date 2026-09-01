@@ -162,29 +162,88 @@ export function createEventLog({
 
   function scheduleFlushNow() {
     if (flushTimer !== null) return;
+    // A timeout matters as much as the callback itself: with no timeout,
+    // requestIdleCallback is free to defer this indefinitely on a busy page,
+    // and rows sit only in memory (pendingRows) until this fires — a page
+    // close/navigation in that window loses them. flushDelayMs is both "how
+    // long a burst may coalesce" and the hard ceiling on that risk window.
     const schedule = scheduleFlush
       || (typeof requestIdleCallback === "function"
-        ? (fn) => requestIdleCallback(fn)
+        ? (fn) => requestIdleCallback(fn, { timeout: flushDelayMs })
         : (fn) => setTimeout(fn, flushDelayMs));
     flushTimer = schedule(() => { flushTimer = null; flushBuffered(); }) ?? true;
   }
 
-  /** Write whatever is buffered. Never throws — a failed write demotes its
-      batch to the ring rather than losing it (see header). */
+  /** Write whatever is buffered, then enforce retention. Never throws — a
+      failed write demotes its batch to the ring rather than losing it (see
+      header). Retention runs here, on every flush, rather than only from the
+      caller's post-sync path: `trySyncEvents()` only prunes after a
+      successful upload, so an offline device or a down server would
+      otherwise let the store grow past `retention` for as long as sync kept
+      failing — worse than the old localStorage write, which capped on every
+      write regardless of sync state. Pruning on every flush restores that
+      guarantee unconditionally. */
   async function flushBuffered() {
-    if (!pendingRows.length) return;
-    const batch = pendingRows.splice(0, pendingRows.length);
-    if (!hasIdb) {
-      for (const row of batch) pushRing(row);
-      return;
+    if (pendingRows.length) {
+      const batch = pendingRows.splice(0, pendingRows.length);
+      if (!hasIdb) {
+        for (const row of batch) pushRing(row);
+      } else {
+        try {
+          await withStore(open, STORE_NAME, "readwrite", (s) => {
+            for (const row of batch) s.add(row);
+          });
+        } catch (err) {
+          fault("flush", err);
+          for (const row of batch) pushRing(row); // not lost — see header
+        }
+      }
     }
-    try {
-      await withStore(open, STORE_NAME, "readwrite", (s) => {
-        for (const row of batch) s.add(row);
-      });
-    } catch (err) {
-      fault("flush", err);
-      for (const row of batch) pushRing(row); // not lost — see header
+    await pruneNow(retention);
+  }
+
+  /**
+   * Enforce the retention cap across BOTH backends combined: delete the
+   * oldest SYNCED rows first (an unsynced row is the one copy of something
+   * not yet delivered, so it survives longer), and only reach into unsynced
+   * rows, oldest first, if trimming synced rows alone is not enough. Does
+   * NOT flush first — callers that need buffered rows counted call
+   * `flushBuffered()` (which calls this itself) or `pruneToRetention()`
+   * below, which does flush; this raw form exists so `flushBuffered()` can
+   * call it without recursing into itself.
+   */
+  async function pruneNow(cap) {
+    const idbRows = await readIdbAll();
+    const combined = [
+      ...idbRows.filter(Boolean).map((r) => ({ ...r, _backend: "idb" })),
+      ...ring.map((r) => ({ ...r, _backend: "ring" })),
+    ];
+    if (combined.length <= cap) return;
+    const excess = combined.length - cap;
+    const byAge = combined.slice().sort((a, b) => (a.ts < b.ts ? -1 : a.ts > b.ts ? 1 : 0));
+    const toDelete = [];
+    for (const r of byAge) { if (r.synced && toDelete.length < excess) toDelete.push(r); }
+    if (toDelete.length < excess) {
+      for (const r of byAge) {
+        if (toDelete.length >= excess) break;
+        if (!toDelete.includes(r)) toDelete.push(r);
+      }
+    }
+    const idbIdsToDelete = toDelete.filter((r) => r._backend === "idb").map((r) => r.id);
+    const ringIdsToDelete = new Set(toDelete.filter((r) => r._backend === "ring").map((r) => r.id));
+    if (ringIdsToDelete.size) {
+      for (let i = ring.length - 1; i >= 0; i--) {
+        if (ringIdsToDelete.has(ring[i].id)) ring.splice(i, 1);
+      }
+    }
+    if (idbIdsToDelete.length && hasIdb) {
+      try {
+        await withStore(open, STORE_NAME, "readwrite", (s) => {
+          for (const id of idbIdsToDelete) s.delete(id);
+        });
+      } catch (err) {
+        fault("prune", err);
+      }
     }
   }
 
@@ -269,45 +328,15 @@ export function createEventLog({
     },
 
     /**
-     * Enforce the retention cap across BOTH backends combined: delete the
-     * oldest SYNCED rows first (an unsynced row is the one copy of something
-     * not yet delivered, so it survives longer), and only reach into unsynced
-     * rows, oldest first, if trimming synced rows alone is not enough.
+     * The public, explicit form: flush first (so just-buffered rows are
+     * counted), then enforce the cap. `flushBuffered()` above already calls
+     * `pruneNow()` on every flush, so this mostly matters for a caller that
+     * wants the cap enforced right now without waiting for the next flush
+     * (e.g. `trySyncEvents()`, after a batch it just marked synced).
      */
     async pruneToRetention(cap = retention) {
       await flushBuffered();
-      const idbRows = await readIdbAll();
-      const combined = [
-        ...idbRows.filter(Boolean).map((r) => ({ ...r, _backend: "idb" })),
-        ...ring.map((r) => ({ ...r, _backend: "ring" })),
-      ];
-      if (combined.length <= cap) return;
-      const excess = combined.length - cap;
-      const byAge = combined.slice().sort((a, b) => (a.ts < b.ts ? -1 : a.ts > b.ts ? 1 : 0));
-      const toDelete = [];
-      for (const r of byAge) { if (r.synced && toDelete.length < excess) toDelete.push(r); }
-      if (toDelete.length < excess) {
-        for (const r of byAge) {
-          if (toDelete.length >= excess) break;
-          if (!toDelete.includes(r)) toDelete.push(r);
-        }
-      }
-      const idbIdsToDelete = toDelete.filter((r) => r._backend === "idb").map((r) => r.id);
-      const ringIdsToDelete = new Set(toDelete.filter((r) => r._backend === "ring").map((r) => r.id));
-      if (ringIdsToDelete.size) {
-        for (let i = ring.length - 1; i >= 0; i--) {
-          if (ringIdsToDelete.has(ring[i].id)) ring.splice(i, 1);
-        }
-      }
-      if (idbIdsToDelete.length && hasIdb) {
-        try {
-          await withStore(open, STORE_NAME, "readwrite", (s) => {
-            for (const id of idbIdsToDelete) s.delete(id);
-          });
-        } catch (err) {
-          fault("prune", err);
-        }
-      }
+      await pruneNow(cap);
     },
 
     /** The failure record — same convention as `durable-store.js`'s
