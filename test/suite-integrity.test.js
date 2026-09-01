@@ -187,6 +187,10 @@ const FLOORS = {
      its size is worth a second look. */
   "test/episode-row-links.test.js": 5,
   "test/first-time-onboarding.test.js": 10,
+  /* Duplicate-ID guard for HUMAN-ACTIONS.md's own numbering rule (full-repo
+     review finding L3, 2026-08-31). Two tests: the file has numbered items,
+     and no numeric ID repeats. */
+  "test/human-actions-integrity.test.js": 2,
   /* "Delete my data" (#42). Zero slack, like media-session above and for the same
      reason: what this suite guards is a PROMISE — both tiers cleared, the server
      rows really deleted, no success message over a failure, and a confirmation a
