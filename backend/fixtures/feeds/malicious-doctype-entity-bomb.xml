@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Adversarial regression fixture for GHSA-8r6m-32jq-jx6q (fast-xml-parser
+     DoS: repeated DOCTYPE declarations reset the library's internal
+     entity-expansion limit, allowing a malicious feed to force unbounded
+     entity expansion). This is NOT a real publisher feed — it's a
+     hand-crafted "billion laughs"-style payload with several repeated
+     DOCTYPE blocks, each redefining a chain of nested entities. It exists
+     purely so test/parser.test.ts can assert parseFeed() stays fast and
+     bounded (or fails safely) on a patched fast-xml-parser instead of
+     hanging/crashing the process. See fixtures/feeds/README.md. -->
+<!DOCTYPE rss [
+  <!ENTITY lol0 "lol">
+  <!ENTITY lol1 "&lol0;&lol0;&lol0;&lol0;&lol0;&lol0;&lol0;&lol0;&lol0;&lol0;">
+  <!ENTITY lol2 "&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;">
+  <!ENTITY lol3 "&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;">
+]>
+<!DOCTYPE rss [
+  <!ENTITY lol0 "lol">
+  <!ENTITY lol1 "&lol0;&lol0;&lol0;&lol0;&lol0;&lol0;&lol0;&lol0;&lol0;&lol0;">
+  <!ENTITY lol2 "&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;">
+  <!ENTITY lol3 "&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;">
+]>
+<!DOCTYPE rss [
+  <!ENTITY lol0 "lol">
+  <!ENTITY lol1 "&lol0;&lol0;&lol0;&lol0;&lol0;&lol0;&lol0;&lol0;&lol0;&lol0;">
+  <!ENTITY lol2 "&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;">
+  <!ENTITY lol3 "&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;">
+]>
+<rss version="2.0">
+  <channel>
+    <title>Adversarial DOCTYPE Bomb Feed</title>
+    <link>https://example.invalid/feed</link>
+    <description>Regression fixture: repeated DOCTYPE + nested entity declarations (GHSA-8r6m-32jq-jx6q).</description>
+    <item>
+      <title>Entity bomb episode &lol3;</title>
+      <guid>https://example.invalid/ep1</guid>
+      <enclosure url="https://example.invalid/ep1.mp3" length="1000" type="audio/mpeg" />
+      <itunes:duration>00:10:00</itunes:duration>
+      <pubDate>Mon, 01 Sep 2025 00:00:00 GMT</pubDate>
+      <description>Regression episode used only to confirm the parser stays bounded.</description>
+    </item>
+  </channel>
+</rss>

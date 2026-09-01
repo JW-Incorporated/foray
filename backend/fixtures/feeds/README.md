@@ -17,6 +17,7 @@ set of 8 varied hosts; grow it as new weirdness turns up in real usage.
 | `fall-of-civilizations.xml` | Fall of Civilizations | Anchor/Spotify-for-Podcasters | small (21 items, ~58 KB) |
 | `cleantechies.xml` | CleanTechies Podcast | Substack | HTML-in-CDATA show notes |
 | `cbc-ideas.xml` | CBC Ideas | CBC's own podcasting CMS | |
+| `malicious-doctype-entity-bomb.xml` | n/a — hand-crafted | n/a | **not a real feed.** Adversarial regression fixture for GHSA-8r6m-32jq-jx6q (fast-xml-parser DOCTYPE/entity-expansion DoS); see `test/parser.test.ts`'s dedicated "security regression" describe block. |
 
 ## Truncation (corner case 7: enormous back catalogs)
 

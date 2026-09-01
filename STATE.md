@@ -7,6 +7,23 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
+### fast-xml-parser security bump (GHSA-8r6m-32jq-jx6q) (2026-09-01) — `fix-fastxmlparser-t_b3f33dfa`
+
+- **What:** Bumping `fast-xml-parser` from `^5.9.3` to `>=5.10.1` in
+  `backend/package.json`/`package-lock.json` (fixes a DOS advisory: repeated
+  DOCTYPE declarations reset entity-expansion limits). Pure dependency bump +
+  a new adversarial regression fixture in `backend/test/parser.test.ts` /
+  `backend/fixtures/feeds/`. No behavior/API changes intended.
+- **Touches:** `backend/package.json`, `backend/package-lock.json`,
+  `backend/test/parser.test.ts`, `backend/fixtures/feeds/` (new fixture).
+  `tools/refresh/scan.mjs` requires `fast-xml-parser` via
+  `backend/package.json`'s node_modules, so it picks up the bump for free —
+  no separate change needed there.
+- **Branch:** `fix-fastxmlparser-t_b3f33dfa` — PR only, never main
+  (merge_authority: human).
+- **Explicitly out of scope:** any new functionality beyond the version bump
+  + regression test.
+
 ### "Up Next" listening queue, Stage 1 (2026-08-31) — `t_f4da81f5/up-next-stage1`
 
 - **What:** `docs/listening-queue-plan.md` Stage 1, PR pending. New `cp_queue`
