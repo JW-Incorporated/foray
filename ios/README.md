@@ -93,7 +93,7 @@ Then in Xcode:
    controls, and the load-failure/bridge-TTS advancement paths are
    exercised with no real AVPlayer or audio session. Requires the
    generated Xcode project (`xcodegen`, above); run from Xcode's Test
-   navigator or:
+   navigator or, picking any installed simulator:
    ```bash
    xcodebuild test -project ios/Foray.xcodeproj -scheme Foray \
      -destination 'platform=iOS Simulator,name=iPhone 15'
