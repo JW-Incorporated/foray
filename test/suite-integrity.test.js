@@ -909,6 +909,17 @@ const BACKEND_FLOORS = {
      in that order, with no retry loop on rejection and never more than one
      clarify round. */
   "test/understandPrompt.test.ts": 7,
+  /* §4.2's catalogue lookup: concept matching against the semantic index and
+    tape-availability counting against discover.json/item-tags.json, both
+    proven against a small deterministic fixture catalogue (not the real
+    one, so a future catalogue-content change can't silently pass or fail
+    this suite). */
+  "test/catalogueLookup.test.ts": 9,
+  /* §4.2 end to end: buildResearchShape against the REAL catalogue for tape
+    accuracy, and the cheap-first ordering (external research fires ONLY
+    for a genuine catalogue gap) against an injected no-tape fixture so the
+    assertion doesn't drift as the real catalogue grows. */
+  "test/researchShape.test.ts": 11,
 };
 
 /* `it(` as well as `test(`: backend's suites use both spellings. */
