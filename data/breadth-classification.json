@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-31T16:18:47.662Z",
+  "built_at": "2026-09-01T08:19:08.659Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-31-16c7b28c",
+    "last_batch_id": "fresh-2026-09-01-b76a0b98",
     "last_batch_tier": 1,
     "transcript_labels": "descriptive cost label, never an eligibility test — see tools/classify/labels.mjs"
   },
@@ -82952,10 +82952,39 @@
     },
     "1459692574": {
       "topics": [
-        "comedy/interviews"
+        "medicine",
+        "health/alternative"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/alternative",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focuses on medicine content.",
+      "display_title": "In The Moement",
+      "blurb": "There’s a MOEment in everything and everything is a MOEment.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-01-b76a0b98",
+      "classified_at": "2026-09-01T08:18:35.219Z"
     },
     "1459803110": {
       "topics": [
@@ -83264,11 +83293,44 @@
     },
     "1460402166": {
       "topics": [
+        "business/founders",
         "business/startups",
-        "business/founders"
+        "economics/markets"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/founders",
+          "confidence": 0.75
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.7
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about founders.",
+      "display_title": "Carlos Inspire Show",
+      "blurb": "Carlos Inspire Show | AI · Technology · Enterprise Sales · Mindset · Wealth Protection & Legacy.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-01-b76a0b98",
+      "classified_at": "2026-09-01T08:19:08.659Z"
     },
     "1460438143": {
       "topics": [
@@ -83407,7 +83469,31 @@
         "automotive"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focuses on automotive content.",
+      "display_title": "The Collector Car Podcast",
+      "blurb": "The Collector Car Podcast, presented by Broad Arrow Auctions, is the home for automotive enthusiasts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-01-b76a0b98",
+      "classified_at": "2026-09-01T08:18:35.219Z"
     },
     "1460773975": {
       "topics": [
@@ -83689,10 +83775,49 @@
     },
     "1461771083": {
       "topics": [
-        "medicine"
+        "health/fitness",
+        "medicine",
+        "news/daily",
+        "health/alternative"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.85
+        },
+        {
+          "node": "medicine",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.7
+        },
+        {
+          "node": "health/alternative",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focuses on fitness content.",
+      "display_title": "Paul Saladino MD podcast",
+      "blurb": "Throughout my training and practice as a physician I have come to one very disappointing conclusion: Western medicine isn’t helping people lead better lives.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-01-b76a0b98",
+      "classified_at": "2026-09-01T08:18:35.219Z"
     },
     "1461786022": {
       "topics": [
@@ -83722,7 +83847,31 @@
         "fiction/sci-fi"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focuses on science fiction content.",
+      "display_title": "VAST Horizon",
+      "blurb": "Nolira is an agronomist tasked with establishing agriculture in a new solar system, but when she wakes up on a now- empty colony ship, the whole of her plan disappears.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-01-b76a0b98",
+      "classified_at": "2026-09-01T08:18:35.219Z"
     },
     "1462051732": {
       "topics": [
@@ -83823,10 +83972,49 @@
     },
     "1462324602": {
       "topics": [
-        "culture/design"
+        "culture/design",
+        "health/fitness",
+        "medicine",
+        "health/alternative"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/design",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.85
+        },
+        {
+          "node": "medicine",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/alternative",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focuses on design content.",
+      "display_title": "Nice Try!",
+      "blurb": "Nice Try's second season, Interior, is all about the lifestyle products that have been sold to us over and over, and the promises of domestic self improvement they have made,.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-01-b76a0b98",
+      "classified_at": "2026-09-01T08:18:35.219Z"
     },
     "1462336009": {
       "topics": [
@@ -83977,10 +84165,34 @@
     },
     "1462643107": {
       "topics": [
-        "kids-family/education"
+        "kids-family/stories"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about stories for kids.",
+      "display_title": "【民話朗読】おばあちゃんの日本昔ばなし",
+      "blurb": "怪談朗読でおなじみのヤマネコギンが、日本各地に古くから残る民話・伝説・言い伝えを囲炉裏で語りかけるように読んでいきます。 大人も子供も一緒に楽しんでいただけると嬉しいです。 お便りは、wildcatgin@gmail.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-01-b76a0b98",
+      "classified_at": "2026-09-01T08:19:08.659Z"
     },
     "1462656660": {
       "topics": [
@@ -84072,7 +84284,31 @@
         "automotive"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focuses on automotive content.",
+      "display_title": "The Collecting Cars Podcast with Chris Harris",
+      "blurb": "The Collecting Cars Podcast is hosted by founder and motoring enthusiast Edward Lovett and Motoring’s Chris Harris, in conversation with a stellar cast of car loving guests.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-01-b76a0b98",
+      "classified_at": "2026-09-01T08:18:35.219Z"
     },
     "1462809170": {
       "topics": [
@@ -84171,10 +84407,47 @@
     },
     "1463054544": {
       "topics": [
-        "health/fitness"
+        "health/fitness",
+        "medicine",
+        "health/alternative"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.85
+        },
+        {
+          "node": "medicine",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/alternative",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Focuses on fitness content.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /delve/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-01-b76a0b98",
+      "classified_at": "2026-09-01T08:18:35.219Z"
     },
     "1463060534": {
       "topics": [
@@ -84200,10 +84473,39 @@
     },
     "1463204309": {
       "topics": [
-        "aviation"
+        "aviation",
+        "health/fitness"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focuses on aviation content.",
+      "display_title": "The Thermal Podcast",
+      "blurb": "The Thermal is a monthly podcast devoted to the sport of gliding.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-01-b76a0b98",
+      "classified_at": "2026-09-01T08:18:35.219Z"
     },
     "1463229926": {
       "topics": [
@@ -84238,10 +84540,44 @@
     },
     "1463447461": {
       "topics": [
+        "business/startups",
+        "business/founders",
         "craft"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.8
+        },
+        {
+          "node": "business/founders",
+          "confidence": 0.7
+        },
+        {
+          "node": "craft",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focuses on startups & deep tech content.",
+      "display_title": "Craft A Life You Love",
+      "blurb": "Join craft maven and creative coach Amy Tangerine as she extracts juicy wisdom from tastemakers, experts, and entrepreneurs.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-01-b76a0b98",
+      "classified_at": "2026-09-01T08:18:35.219Z"
     },
     "1463527666": {
       "topics": [
@@ -84325,11 +84661,34 @@
     },
     "1463676492": {
       "topics": [
-        "news",
-        "business"
+        "news/daily"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focuses on daily news content.",
+      "display_title": "The Morning Drive",
+      "blurb": "Interviews on The Morning Drive with Kurt and Anthony, NewsTalk WVMT.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-01-b76a0b98",
+      "classified_at": "2026-09-01T08:18:35.219Z"
     },
     "1463861548": {
       "topics": [
@@ -84368,7 +84727,35 @@
         "comedy/casual-hangs"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about casual hangs.",
+      "display_title": "Quick Question with Soren and Daniel",
+      "blurb": "Quick Question with Soren and Daniel is a comedy podcast from the former editors of Cracked.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 24,
+        "transcript_types": {
+          "application/x-subrip": 8,
+          "text/plain": 8,
+          "text/vtt": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-01-b76a0b98",
+      "classified_at": "2026-09-01T08:19:08.659Z"
     },
     "1464086460": {
       "topics": [
@@ -84682,10 +85069,39 @@
     },
     "1465112521": {
       "topics": [
-        "nature/pets"
+        "nature/pets",
+        "health/fitness"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/pets",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focuses on pets & animals content.",
+      "display_title": "DogSpeak: Redefining Dog Training",
+      "blurb": "Understand your dog better with DogSpeak founder, Nikki Ivey--a professional Canine Behavior Specialist, trainer and Family Dog Mediator.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-01-b76a0b98",
+      "classified_at": "2026-09-01T08:18:35.219Z"
     },
     "1465176074": {
       "topics": [
@@ -84697,18 +85113,84 @@
     },
     "1465180254": {
       "topics": [
+        "business/startups",
         "economics/markets",
-        "business"
+        "business/founders"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.8
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.75
+        },
+        {
+          "node": "business/founders",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focuses on startups & deep tech content.",
+      "display_title": "Ken McElroy Show",
+      "blurb": "The Ken McElroy Show is your weekly meet-up where real estate entrepreneur and CEO Ken McElroy shares his personal experiences and the strategies he’s implemented throughout his career, from his.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 24,
+        "transcript_types": {
+          "application/x-subrip": 8,
+          "text/plain": 8,
+          "text/vtt": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-01-b76a0b98",
+      "classified_at": "2026-09-01T08:18:35.219Z"
     },
     "1465181848": {
       "topics": [
-        "fiction/sci-fi"
+        "economics/markets",
+        "fiction"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.8
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about markets.",
+      "display_title": "Harry Potter and The Methods of Rationality Audiobook",
+      "blurb": "All rights belong to J.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-01-b76a0b98",
+      "classified_at": "2026-09-01T08:19:08.659Z"
     },
     "1465273008": {
       "topics": [
@@ -84850,7 +85332,34 @@
         "sports/baseball"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/baseball",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Focuses on baseball content.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 10w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-01-b76a0b98",
+      "classified_at": "2026-09-01T08:18:35.219Z"
     },
     "1465673770": {
       "topics": [
@@ -85457,11 +85966,38 @@
     },
     "1468122673": {
       "topics": [
-        "sports",
-        "news"
+        "health/fitness"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focuses on fitness content.",
+      "display_title": "Defending The Kingdom",
+      "blurb": "Voice of the Chiefs Mitch Holthus and Chiefs Reporter Matt McMullen - plus various special guests - break down the latest news and storylines in Chiefs Kingdom.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 24,
+        "transcript_types": {
+          "application/srt": 8,
+          "text/vtt": 8,
+          "text/plain": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-01-b76a0b98",
+      "classified_at": "2026-09-01T08:18:35.219Z"
     },
     "1468175423": {
       "topics": [
@@ -85614,10 +86150,43 @@
     "1468518223": {
       "topics": [
         "nature/earth-science",
-        "science"
+        "health/fitness",
+        "engineering/energy-grid"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering/energy-grid",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focuses on earth science content.",
+      "display_title": "Watts Up",
+      "blurb": "Renewable energy and sustainability news is nothing short of a rollercoaster with changes by the day.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-01-b76a0b98",
+      "classified_at": "2026-09-01T08:18:35.219Z"
     },
     "1468527982": {
       "topics": [
@@ -85985,7 +86554,31 @@
         "gaming"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focuses on gaming content.",
+      "display_title": "Every F'n FF",
+      "blurb": "A FINAL FANTASY bookclub podcast with sassy and classy host boys Curtis, Karl, and Alex.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-01-b76a0b98",
+      "classified_at": "2026-09-01T08:18:35.219Z"
     },
     "1469394914": {
       "topics": [
@@ -86089,7 +86682,31 @@
         "kids-family/parenting"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focuses on parenting content.",
+      "display_title": "The Nacho Kids Podcast: Blended Family Lifesaver",
+      "blurb": "Stepfamilies and blended families are very challenging.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-01-b76a0b98",
+      "classified_at": "2026-09-01T08:18:35.219Z"
     },
     "1469643813": {
       "topics": [
@@ -86383,10 +87000,34 @@
     },
     "1470561691": {
       "topics": [
-        "tv-film/reviews"
+        "personal-journals"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "personal-journals",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show about personal journals.",
+      "display_title": "展开讲讲",
+      "blurb": "「展开讲讲」是一档专题式讨论好内容的播客。 每期我们会试图以一个主题串联起多部作品，包括电影、电视剧、综艺和小说等多种形式，但都有共同的特点：有深度，有关联，能让我们有触动，有想法，值得我们努力“展开讲讲”。 东亚三国剧集、Netflix、韩国综艺、HBO、任天堂、迪士尼等等都是我们的关注对象，我们希望寻找这些内容之间令人兴奋的关联和 世界范围内最新的叙事潮流。.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-01-b76a0b98",
+      "classified_at": "2026-09-01T08:19:08.659Z"
     },
     "1470580939": {
       "topics": [
@@ -86576,10 +87217,34 @@
     },
     "1470905204": {
       "topics": [
-        "sports/cricket"
+        "sports"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show about sports.",
+      "display_title": "The Miracle of '99",
+      "blurb": "The Miracle of '99, presented by Fox Cricket, is a series that takes you inside the dressing room for Australia's miraculous run in the 1999 Cricket World Cup.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 5,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-01-b76a0b98",
+      "classified_at": "2026-09-01T08:19:08.659Z"
     },
     "1470936865": {
       "topics": [
@@ -86774,11 +87439,34 @@
     },
     "1471679636": {
       "topics": [
-        "music",
-        "history"
+        "fiction"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show about fiction & audio drama.",
+      "display_title": "Bizarre Albums",
+      "blurb": "Tony Thaxton  the weirder side of music, celebrating and telling the story behind those strange albums that make you wonder how and why they exist.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-01-b76a0b98",
+      "classified_at": "2026-09-01T08:19:08.659Z"
     },
     "1471693356": {
       "topics": [
@@ -86909,10 +87597,34 @@
     },
     "1472211163": {
       "topics": [
-        "culture/fashion"
+        "personal-journals"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "personal-journals",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show about personal journals.",
+      "display_title": "Gloss Angeles",
+      "blurb": "Co-hosts and longtime beauty journalists Kirbie Johnson and Sara Tan give their perspective on all things makeup, skincare, and wellness at the intersection of pop culture and entertainment.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-01-b76a0b98",
+      "classified_at": "2026-09-01T08:19:08.659Z"
     },
     "1472282344": {
       "topics": [
@@ -86932,10 +87644,34 @@
     },
     "1472308069": {
       "topics": [
-        "religion/buddhism"
+        "fiction"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show about fiction & audio drama.",
+      "display_title": "Shaolin Chi Mantis Traditional Buddhist Kung Fu Podcast",
+      "blurb": "Shaolin Chi Mantis was founded in 1992 to teach traditional northern Shaolin Kung Fu, Taoist Tai Chi Chuan and Confucian strategy in a maximum security prison in Utah.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-01-b76a0b98",
+      "classified_at": "2026-09-01T08:19:08.659Z"
     },
     "1472392291": {
       "topics": [
@@ -87121,18 +87857,65 @@
     },
     "1473089556": {
       "topics": [
-        "comedy/stand-up"
+        "fiction"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show about fiction & audio drama.",
+      "display_title": "The Mugg Off",
+      "blurb": "Mugged Off - to have to piss taken from, to be disrespected, unfairly treated etc.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-01-b76a0b98",
+      "classified_at": "2026-09-01T08:19:08.659Z"
     },
     "1473130627": {
       "topics": [
-        "business/startups",
-        "business/founders"
+        "business/startups"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about startups & deep tech.",
+      "display_title": "Truck N' Hustle",
+      "blurb": "Truck N’ Hustle is the leading platform for transportation, logistics, and supply chain professionals.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-01-b76a0b98",
+      "classified_at": "2026-09-01T08:19:08.659Z"
     },
     "1473150244": {
       "topics": [
@@ -87143,10 +87926,34 @@
     },
     "1473205884": {
       "topics": [
-        "religion/judaism"
+        "personal-journals"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "personal-journals",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show about personal journals.",
+      "display_title": "Chitas for Kids Audio",
+      "blurb": "Listen to the daily Chitas!",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-01-b76a0b98",
+      "classified_at": "2026-09-01T08:19:08.659Z"
     },
     "1473211960": {
       "topics": [
@@ -87209,11 +88016,37 @@
     },
     "1473597295": {
       "topics": [
-        "news/tech",
-        "computing"
+        "news/daily"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Focuses on daily news content.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-01-b76a0b98",
+      "classified_at": "2026-09-01T08:18:35.219Z"
     },
     "1473621869": {
       "topics": [
@@ -87633,10 +88466,39 @@
     },
     "1474948728": {
       "topics": [
-        "kids-family/education"
+        "nature/earth-science",
+        "engineering/energy-grid"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering/energy-grid",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about earth science.",
+      "display_title": "The Week Junior Show",
+      "blurb": "The Week Junior Show takes you behind the scenes of the award-winning magazine for 8 to 14-year-olds.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-01-b76a0b98",
+      "classified_at": "2026-09-01T08:19:08.659Z"
     },
     "1474978235": {
       "topics": [
@@ -87649,8 +88511,35 @@
       "topics": [
         "kids-family/education"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/education",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show about education for kids.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-01-b76a0b98",
+      "classified_at": "2026-09-01T08:19:08.659Z"
     },
     "1475038335": {
       "topics": [
@@ -87746,10 +88635,36 @@
     },
     "1475378148": {
       "topics": [
-        "business/careers"
+        "comedy/casual-hangs"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show about casual hangs.",
+      "display_title": "The Former Lawyer Podcast",
+      "blurb": "Do you hate working as a lawyer? Are you an unhappy lawyer who wants to leave the law, but isn't sure what to do next? Do your family and friends.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 5,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 5,
+        "transcript_types": {
+          "text/html": 5
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-01-b76a0b98",
+      "classified_at": "2026-09-01T08:19:08.659Z"
     },
     "1475412003": {
       "topics": [
@@ -88335,10 +89250,34 @@
     },
     "1476878124": {
       "topics": [
-        "sports/tennis"
+        "economics/markets"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about markets.",
+      "display_title": "Shankcast - A Tennis Banter Podcast",
+      "blurb": "The ultimate audio podcast for passionate tennis players who are looking to have fun and improve! Get your weekly dose of tennis entertainment, inspiration, and enlightenment all in one place:.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-01-b76a0b98",
+      "classified_at": "2026-09-01T08:19:08.659Z"
     },
     "1476944546": {
       "topics": [
@@ -88557,11 +89496,34 @@
     },
     "1477467491": {
       "topics": [
-        "space",
-        "science"
+        "personal-journals"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "personal-journals",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show about personal journals.",
+      "display_title": "Evrim Ağacı ile Bilime Dair Her Şey!",
+      "blurb": "Bu yayın listemizde, Evrim Ağacı'nda yayınladığımız içeriklerden seçilmiş yazılarımızı yazarlarımızın kendileri, diğer yazarlarımız veya ses sanatçıları seslendirerek, sizlerin kulaklarına ulaştırıyor.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-01-b76a0b98",
+      "classified_at": "2026-09-01T08:19:08.659Z"
     },
     "1477483749": {
       "topics": [
@@ -88787,18 +89749,65 @@
     },
     "1477757732": {
       "topics": [
-        "space",
-        "science"
+        "craft"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focuses on craft & making content.",
+      "display_title": "Your Space Journey",
+      "blurb": "Welcome to \"Your Space Journey,\" an interview series that takes you on an exhilarating voyage through the vast realm of space exploration.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-01-b76a0b98",
+      "classified_at": "2026-09-01T08:18:35.219Z"
     },
     "1477773466": {
       "topics": [
-        "true-crime"
+        "personal-journals"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "personal-journals",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show about personal journals.",
+      "display_title": "Big Mad True Crime",
+      "blurb": "Tackling big cases, lesser known cases, and everything in between.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-01-b76a0b98",
+      "classified_at": "2026-09-01T08:19:08.659Z"
     },
     "1477778533": {
       "topics": [
@@ -88915,10 +89924,34 @@
     },
     "1477994760": {
       "topics": [
-        "music"
+        "personal-journals"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "personal-journals",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show about personal journals.",
+      "display_title": "Something for Nothing: A RUSH Fancast",
+      "blurb": "Two lifelong friends discuss the albums of their favorite band, RUSH.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-01-b76a0b98",
+      "classified_at": "2026-09-01T08:19:08.659Z"
     },
     "1477999442": {
       "topics": [
@@ -88971,10 +90004,39 @@
     },
     "1478026758": {
       "topics": [
-        "relationships"
+        "medicine",
+        "health/alternative"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/alternative",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focuses on medicine content.",
+      "display_title": "Were You Raised By Wolves?",
+      "blurb": "Editors’ Notes: “I want to give everybody the tools to solve their own etiquette problems,” says Nick Leighton, cohost and producer of Were You Raised by Wolves?, a weekly podcast.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-01-b76a0b98",
+      "classified_at": "2026-09-01T08:18:35.219Z"
     },
     "1478042678": {
       "topics": [
@@ -88993,11 +90055,34 @@
     },
     "1478052803": {
       "topics": [
-        "sports",
-        "news"
+        "health/fitness"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focuses on fitness content.",
+      "display_title": "Halas Intrigue",
+      "blurb": "The latest Chicago Bears news and analysis from the Chicago Sun-Times and WBEZ.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-01-b76a0b98",
+      "classified_at": "2026-09-01T08:18:35.219Z"
     },
     "1478129934": {
       "topics": [
@@ -89048,10 +90133,39 @@
     },
     "1478199454": {
       "topics": [
-        "tv-film/reviews"
+        "personal-journals"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "personal-journals",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show about personal journals.",
+      "display_title": "Queens of Reality TV",
+      "blurb": "Crude, lewd, and with even more attitude, the Queens of NC-17 are now also your Queens of Reality TV! Join us as we walk you through the most hilarious and.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 5,
+        "episodes_with_timed_transcript": 5,
+        "transcript_tags": 20,
+        "transcript_types": {
+          "text/html": 5,
+          "application/json": 5,
+          "application/x-subrip": 5,
+          "text/vtt": 5
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-01-b76a0b98",
+      "classified_at": "2026-09-01T08:19:08.659Z"
     },
     "1478211900": {
       "topics": [
@@ -89144,10 +90258,34 @@
     },
     "1478296139": {
       "topics": [
-        "sports/basketball"
+        "sports"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show about sports.",
+      "display_title": "Sources Say Podcast",
+      "blurb": "KSR’s Jack Pilgrim is joined by Shawn Smith of Go Big Blue Country to break down all things Kentucky basketball and the latest in recruiting.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-01-b76a0b98",
+      "classified_at": "2026-09-01T08:19:08.659Z"
     },
     "1478303230": {
       "topics": [
@@ -89239,10 +90377,44 @@
     },
     "1478573357": {
       "topics": [
-        "culture/art"
+        "medicine",
+        "craft",
+        "health/alternative"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.8
+        },
+        {
+          "node": "craft",
+          "confidence": 0.7
+        },
+        {
+          "node": "health/alternative",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focuses on medicine content.",
+      "display_title": "Wildlife Photo Chat",
+      "blurb": "Ray Hennessy has a new guest on each episode to discuss what they are currently working on and how they are trying to be creative with their wildlife photography.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-01-b76a0b98",
+      "classified_at": "2026-09-01T08:18:35.219Z"
     },
     "1478580185": {
       "topics": [
@@ -89533,10 +90705,34 @@
     },
     "1479092574": {
       "topics": [
-        "fiction/drama"
+        "economics/markets"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about markets.",
+      "display_title": "MOONFACE",
+      "blurb": "A fiction show about a Korean American son (Joel Kim Booster) who wants to come out to his mom (Esther Moon), but can't because they don't speak the same language.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-01-b76a0b98",
+      "classified_at": "2026-09-01T08:19:08.659Z"
     },
     "1479124505": {
       "topics": [
@@ -89788,10 +90984,34 @@
     },
     "1479534250": {
       "topics": [
-        "religion/buddhism"
+        "personal-journals"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "personal-journals",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show about personal journals.",
+      "display_title": "หลวงพ่อธัมมชโย นำนั่งสมาธิ",
+      "blurb": "หลวงพ่อธัมมชโย นำนั่งสมาธิ เพื่อเข้าถึงวิชชาธรรมกาย 🌙 นำนั่งประกอบเสียง หริ่งหรีดเรไรช่วงกลางคืน ⛰️ นำนั่งประกอบเสียง ลมเบาๆ เย็นๆ เหมือนยอดเขา 🌌 นำนั่งประกอบเสียง ดนตรีอวกาศเวิ้งว้าง 🌊 นำนั่งประกอบเสียงคลื่นริมน้ำ 🌧️ นำนั่งประกอบเสียงฝนตกกระทบหลังคา 𝛂 นำนั่งประกอบเสียง alpha wave 🙏🏻 สัมมาอะระหัง ต่อเนื่อง Daily update 🧘😇.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-01-b76a0b98",
+      "classified_at": "2026-09-01T08:19:08.659Z"
     },
     "1479554969": {
       "topics": [
@@ -89968,11 +91188,34 @@
     },
     "1479698334": {
       "topics": [
-        "sports/endurance",
         "health/fitness"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focuses on fitness content.",
+      "display_title": "\"The Dirt\" Trailrunning Podcast",
+      "blurb": "Ornery Mule Racing - The OMR team shares coaching, community and race recap shows about the run, trail and ultra distance community.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-01-b76a0b98",
+      "classified_at": "2026-09-01T08:18:35.219Z"
     },
     "1479709811": {
       "topics": [
@@ -90142,15 +91385,66 @@
       "topics": [
         "nature/pets"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/pets",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show about pets & animals.",
+      "display_title": "The Aquarium Guys",
+      "blurb": "Your favorite aquarium podcast that dives deep into your favorite hobby, keeping pet fish.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 16,
+        "transcript_types": {
+          "text/vtt": 8,
+          "text/html": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-01-b76a0b98",
+      "classified_at": "2026-09-01T08:19:08.659Z"
     },
     "1480041703": {
       "topics": [
-        "religion/judaism"
+        "music"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show about music.",
+      "display_title": "Central Synagogue Podcast",
+      "blurb": "This is the podcast/audio archive of Manhattan's historic Central Synagogue- featuring sermons, music, lectures and conversations.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-01-b76a0b98",
+      "classified_at": "2026-09-01T08:19:08.659Z"
     },
     "1480053861": {
       "topics": [
@@ -90206,10 +91500,34 @@
     },
     "1480101719": {
       "topics": [
-        "comedy/stand-up"
+        "personal-journals"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "personal-journals",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show about personal journals.",
+      "display_title": "鬼故事《大圣鬼话》",
+      "blurb": "大家好我是主播孙宇孙大圣！为您讲述发生在您身边而您并不曾听说过的故事！大圣鬼话每天晚上与您不见不散！！.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-01-b76a0b98",
+      "classified_at": "2026-09-01T08:19:08.659Z"
     },
     "1480127734": {
       "topics": [
@@ -90221,10 +91539,34 @@
     },
     "1480157950": {
       "topics": [
-        "religion/buddhism"
+        "personal-journals"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "personal-journals",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show about personal journals.",
+      "display_title": "Pali audio",
+      "blurb": "A selection of English translations of the suttas from the Pali canon which have been professionally read and recorded.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-01-b76a0b98",
+      "classified_at": "2026-09-01T08:19:08.659Z"
     },
     "1480167042": {
       "topics": [
@@ -90294,10 +91636,34 @@
     },
     "1480257700": {
       "topics": [
-        "sports/hockey"
+        "sports"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show about sports.",
+      "display_title": "The Ray & Dregs Hockey Podcast",
+      "blurb": "Ray Ferraro & Darren Dreger, two of the biggest names in the game join forces for The Ray & Dregs Hockey Podcast.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-01-b76a0b98",
+      "classified_at": "2026-09-01T08:19:08.659Z"
     },
     "1480262657": {
       "topics": [
@@ -90476,10 +91842,37 @@
     },
     "1480605660": {
       "topics": [
-        "sports/hockey"
+        "sports"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show about sports.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 10w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-01-b76a0b98",
+      "classified_at": "2026-09-01T08:19:08.659Z"
     },
     "1480615007": {
       "topics": [
@@ -90511,10 +91904,44 @@
     },
     "1480657973": {
       "topics": [
-        "sports/golf"
+        "health/fitness",
+        "medicine",
+        "health/alternative"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.85
+        },
+        {
+          "node": "medicine",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/alternative",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focuses on fitness content.",
+      "display_title": "Pro-Fit Golf Conditioning Podcast",
+      "blurb": "At last a Podcast for the everyday golfer.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-01-b76a0b98",
+      "classified_at": "2026-09-01T08:18:35.219Z"
     },
     "1480674640": {
       "topics": [
