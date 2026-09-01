@@ -125,8 +125,7 @@ request that is not to our own origin.
 ## 2. What leaves your device, exactly
 
 The app buffers events locally (in the event queue described above) and
-periodically sends some of them to our database (Supabase — see §3). **Sixteen
-of the twenty-one event types the app records never leave the device.** The
+periodically sends some of them to our database (Supabase — see §3). **Sixteen of the twenty-one event types the app records never leave the device.** The
 buffer is trimmed to the most recent 5,000 entries.
 
 **Sent** (`app.js:toEventRow()`). Every row carries your anonymous account id
