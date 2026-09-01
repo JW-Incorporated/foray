@@ -1214,3 +1214,20 @@ its reasoning.
      navigation's `<head>`), read by app.js as the very first thing it does,
      before `init()` runs. The postMessage is unchanged and still drives the
      reload notice, but no longer establishes the pin.
+- **A second review pass (same PR, after the fixes above) found two more real
+  holes, both fixed:**
+  4. `handleData` fell through to the LIVE, untagged path when a `_fdid` named
+     a generation that had aged out of the 2-generation retention window —
+     exactly the failure mode the whole tagging mechanism exists to prevent,
+     since a page open across two deploys would then start reading CURRENT
+     data against its own OLD, still-pinned code. Fixed: an unresolvable tag
+     now fails visibly (`unavailable(request)`, the same 504 an untagged
+     request gets with nothing cached) instead of silently degrading to live
+     data.
+  5. `activate` deleted the pending-generation marker BEFORE the atomic
+     pointer write, so a transient CacheStorage/quota failure on that write
+     would strand a fully verified, fully staged generation with no durable
+     record it was ever meant to be promoted — no later `activate` would
+     retry it. Fixed: the marker is now cleared only after the pointer write
+     succeeds, making a failed promotion attempt retryable on the next
+     activation instead of silently stuck.

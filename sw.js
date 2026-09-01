@@ -242,7 +242,6 @@ self.addEventListener("activate", (e) => {
     const pendingRes = await pendingCache.match(PENDING_KEY);
     if (!pendingRes) return; // nothing to promote (e.g. re-activation with no new install)
     const newDeployId = (await pendingRes.text()).trim();
-    await pendingCache.delete(PENDING_KEY);
 
     const pointerCache = await caches.open(POINTER_CACHE);
     const previousRes = await pointerCache.match(POINTER_KEY);
@@ -252,6 +251,15 @@ self.addEventListener("activate", (e) => {
        after this write does `isCurrent()`/`currentDeployId()` report the new
        generation. */
     await pointerCache.put(POINTER_KEY, new Response(newDeployId));
+    /* Only cleared AFTER the pointer write above succeeds. Deleting it
+       earlier (a review caught this) would drop the durable "this needs
+       promoting" marker if the pointer write itself then failed — a
+       transient CacheStorage/quota error between the two would leave a fully
+       verified, fully staged generation with no record that it was ever
+       meant to be promoted, and no later activate would retry it. Leaving
+       the marker in place until promotion is confirmed makes a failed
+       promotion retryable on the next activate instead of silently stuck. */
+    await pendingCache.delete(PENDING_KEY);
 
     /* Bounded retention: current + previous. Anything older, and any
        non-generation cache name (a prior architecture's leftovers), is
@@ -575,10 +583,18 @@ function escapeHtmlAttr(s) {
  * independently of a deploy (the nightly content pipeline), so "the tagged
  * generation is also current" does not mean "today's origin answer is safe".
  *
- * If the tagged generation has aged out of retention, or the tag is unknown,
- * this falls back to treating the request as untagged — the same fail-safe an
- * ordinary first-time visitor gets, rather than a hard refusal for a client id
- * nothing can resolve any more.
+ * A tagged request whose generation has aged out of retention (or was never
+ * valid) FAILS VISIBLY rather than silently falling through to the live,
+ * untagged path — a review correctly named this as the failure mode the
+ * whole feature exists to prevent. A page can stay open across two
+ * subsequent deploys (RETAIN_GENERATIONS keeps only the current and
+ * immediately-previous one), and if its tagged generation is deleted by then,
+ * quietly serving it CURRENT data would recreate exactly the mismatched
+ * code/data pair #233 was about — the tag exists specifically so that never
+ * happens silently. `unavailable(request)` is the same 504 an untagged
+ * request gets when nothing is cached at all: it surfaces as "Couldn't load
+ * forays right now", recoverable by the reload control the stale-shell
+ * notice already offers, rather than a silently wrong pairing.
  */
 async function handleData(request, env) {
   const url = new URL(request.url);
@@ -587,7 +603,7 @@ async function handleData(request, env) {
   if (taggedId) {
     const pinned = await matchGeneration(taggedId, request);
     if (pinned) return pinned;
-    /* Aged out or unknown: fall through to the untagged path below. */
+    return unavailable(request);
   }
 
   const res = await fromOrigin(request, env);

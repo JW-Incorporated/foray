@@ -153,6 +153,10 @@ function loadWorker({ network, generations = {}, pointer = null, windows = [] } 
   };
   const cacheFor = (name) => ({
     async put(request, response) {
+      if (name === POINTER_CACHE_NAME && breakPointerPutOnce.armed) {
+        breakPointerPutOnce.armed = false;
+        throw new Error("simulated CacheStorage/quota failure on pointer write");
+      }
       bucket(name).set(keyFor(name, request), { body: await response.text(), status: response.status });
     },
     async match(request) {
@@ -163,6 +167,8 @@ function loadWorker({ network, generations = {}, pointer = null, windows = [] } 
       return bucket(name).delete(keyFor(name, request));
     },
   });
+  const POINTER_CACHE_NAME = "foray-pointer";
+  const breakPointerPutOnce = { armed: false };
 
   const client = (id) => ({ id, postMessage: (message) => posted.push({ id, message }) });
 
@@ -255,6 +261,14 @@ function loadWorker({ network, generations = {}, pointer = null, windows = [] } 
       const hit = bucket("foray-pointer").get(keyFor("foray-pointer", "https://foray.invalid/__generation-pointer__"));
       return hit ? hit.body : null;
     },
+    pendingDeployId: () => {
+      const hit = bucket("foray-pending").get(keyFor("foray-pending", "https://foray.invalid/__pending-generation__"));
+      return hit ? hit.body : null;
+    },
+    /** Makes the NEXT write to the pointer cache throw once, then behave
+        normally — for testing that a promotion failure between the pointer
+        write and the pending-marker delete is retryable. */
+    breakPointerPutOnce: () => { breakPointerPutOnce.armed = true; },
     posted,
     claims: () => claims,
     skipped: () => skipped,
@@ -542,6 +556,27 @@ test("a first-ever install announces nothing — there is no version to be behin
   assert.deepEqual(h.posted, [], "telling somebody's first page load that it updated is a lie");
 });
 
+test("PROMOTION ORDERING: the pending marker survives a failed pointer write, so a retry can still promote", async () => {
+  /* A review caught the earlier version of this: the pending marker was
+     deleted BEFORE the pointer write, so a transient CacheStorage/quota error
+     on the pointer write itself would strand a fully verified, fully staged
+     generation with no record it was ever meant to be promoted. Reproduced
+     here by making the pointer cache's `put` throw exactly once. */
+  const files = { "app.js": "APP@1" };
+  const h = loadWorker({ network: networkFor(manifestFor("1", files), files) });
+  await h.lifecycle("install");
+
+  h.breakPointerPutOnce();
+  await assert.rejects(() => h.lifecycle("activate"), "the broken pointer write must surface, not be swallowed");
+  assert.equal(h.pointerDeployId(), null, "nothing was promoted on the failed attempt");
+  assert.equal(h.pendingDeployId(), "1", "the pending marker must still be there for a retry to find");
+
+  // A later activation (the retry) succeeds normally, because the marker survived.
+  await h.lifecycle("activate");
+  assert.equal(h.pointerDeployId(), "1", "the retry promotes the generation install already verified");
+  assert.equal(h.pendingDeployId(), null, "and only now is the marker cleared");
+});
+
 /* --------------------------------------------------- retention and rollback */
 
 test("retention keeps exactly the current and previous generation, deletes older", async () => {
@@ -744,7 +779,15 @@ test("WORKER RESTART MID-REQUEST: a freshly loaded worker (zero in-memory state)
   assert.equal(await res.text(), '{"forays":["gen-1-data"]}', "served from generation 1, not the current pointer (2)");
 });
 
-test("WORKER RESTART MID-REQUEST: an aged-out or unknown _fdid fails open to the ordinary untagged path", async () => {
+test("WORKER RESTART MID-REQUEST: an aged-out or unknown _fdid FAILS VISIBLY rather than silently serving live/current data", async () => {
+  /* A review caught the earlier version of this test pinning the WRONG
+     behavior: falling through to "live" for an unresolvable tag would let a
+     page that stayed open across two deploys (so its own generation aged out
+     of the 2-generation retention window) silently start reading CURRENT
+     data against its own OLD, still-pinned code — recreating the exact
+     mismatched pair #233 exists to prevent. The correct behavior is a visible
+     504, recoverable via the reload control the stale-shell notice already
+     offers. */
   const h = loadWorker({
     generations: { "2": { [FORAYS]: '{"forays":["gen-2-data"]}' } },
     pointer: "2",
@@ -752,9 +795,9 @@ test("WORKER RESTART MID-REQUEST: an aged-out or unknown _fdid fails open to the
   });
   // _fdid=0 names a generation this worker (this browser install, even) has
   // never heard of — aged out past retention, or from a browser profile that
-  // was reset. Treated as an ordinary visitor, not a hard refusal.
+  // was reset.
   const res = await h.fetch(sub(`${FORAYS}?_fdid=0`), { clientId: "page-1" });
-  assert.equal(await res.text(), '{"forays":["live-data"]}', "falls through to the live, untagged path");
+  assert.equal(res.status, 504, "an unresolvable tag must fail, never silently read live/current data");
 });
 
 /* -------------------------------------------------------------- offline shell */
