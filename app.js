@@ -22,7 +22,7 @@
  *      statement, before anything below it.
  *   2. A `<meta name="foray-pin-deploy-id" content="<id>">` tag sw.js
  *      inserts into `index.html`'s `<head>` when the NAVIGATION fell back
- *      (parsed by the browser before any `<script>` tag runs, including this
+ *      (parsed by the browser before any script tag runs, including this
  *      one) — covers the case where index.html/search-engine.js fell back but
  *      this file's own fetch was fresh.
  * Either establishes the pin synchronously; no message race is possible for
@@ -32,9 +32,19 @@
  * sw.js's header; closing it would mean blocking every page load on that
  * module, which the founding "survive a dead zone" constraint rules out. */
 let pinnedDeployId = (typeof self !== "undefined" && self.__forayPinnedDeployId) || null;
-if (!pinnedDeployId && typeof document !== "undefined" && document.querySelector) {
+if (!pinnedDeployId && typeof document !== "undefined" && typeof document.querySelector === "function") {
+  /* Defensive on `metaPin` itself, not just `document.querySelector`'s
+     existence: several test harnesses in this repo (episode-page.test.js,
+     first-time-onboarding.test.js, others) stub `document.querySelector` as
+     an always-truthy shape with no real selector matching and no
+     `getAttribute`, to keep those harnesses minimal. A real DOM's
+     `querySelector` correctly returns `null` for a tag that is not there;
+     this reads the attribute only when the returned object actually offers
+     one, so neither shape can throw. */
   const metaPin = document.querySelector('meta[name="foray-pin-deploy-id"]');
-  if (metaPin) pinnedDeployId = metaPin.getAttribute("content") || null;
+  if (metaPin && typeof metaPin.getAttribute === "function") {
+    pinnedDeployId = metaPin.getAttribute("content") || null;
+  }
 }
 
 const state = {
