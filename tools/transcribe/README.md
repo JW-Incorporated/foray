@@ -22,12 +22,19 @@ This is rung 4 of [ADR 0004 — Transcript Acquisition Ladder](../../docs/adr/00
 wires into the ingest pipeline — this spike only answers "is self-hosting
 fast enough to be the default, or is it the fallback?"
 
-Two paths are documented: the **CPU path** (verified end-to-end here) and the
+Three paths are documented: the **CPU path** (verified end-to-end here), the
 **CUDA path** (written for the GPU machine in
 [#118 / T7](https://github.com/JW-Incorporated/foray/issues/118) — *not* verified
-here, because this machine has no discrete GPU). The benchmark harness
-`bench.py` takes `--device` and `--model` as arguments precisely so the two sets
-of numbers are directly comparable.
+here, because this machine has no discrete GPU), and the **AMD GPU / Vulkan
+path** (§3b, added for Joey's RX 6700 XT — also not verified here, no AMD GPU
+in this sandbox either). **#118/T7's own text assumed an NVIDIA card** — it
+predates anyone in this project owning an AMD GPU, and every number/flag it
+references (`nvidia-cublas-cu12`, `--device cuda`) is NVIDIA-specific. That
+assumption is now known wrong for at least one machine (Joey's) and §3b is
+the correction, not a new unrelated feature. The benchmark harnesses
+(`bench.py` for CPU/CUDA, `bench_whispercpp.py` for AMD/Vulkan) both take
+`--device` and `--model` as arguments and print the same result schema
+precisely so all three sets of numbers are directly comparable.
 
 ---
 
@@ -300,6 +307,146 @@ Note there is **no `.en` variant of `large-v3`** — the large models are
 multilingual only. For an English-only catalogue that is a small waste of
 capacity, which is part of why `medium.en` is often the better pick than
 `large-v3` for us even when the card can hold both.
+
+---
+
+## 3b. AMD GPU path (RX 6700 XT and other Radeon cards — NOT verified on real AMD hardware here)
+
+**This is a different engine, not a flag on the CUDA path above.** Section 3's
+`ctranslate2`/`faster-whisper` stack has no AMD support at all — no ROCm
+backend, no Vulkan backend, nothing. `ctranslate2.get_cuda_device_count()`
+only ever knows about NVIDIA. There is no `--device amd` to pass; the
+package genuinely cannot drive an AMD card.
+
+The fix is **[whisper.cpp](https://github.com/ggml-org/whisper.cpp)** built
+with its **Vulkan** backend. Vulkan is a cross-vendor GPU API (not an
+AMD-specific or NVIDIA-specific one), and whisper.cpp's Vulkan build runs on
+any GPU with a Vulkan 1.3+ driver — AMD, NVIDIA, or Intel — with no ROCm
+install and no vendor SDK required to *use* a prebuilt binary. This repo
+ships `bench_whispercpp.py`, a second harness (not a modified `bench.py`)
+that drives `whisper-cli` and reshapes its output into the same JSON schema
+`bench.py` prints, so a GPU number from this path and a CPU number from
+`bench.py` land in the same results file and are directly comparable.
+
+### Why this and not ROCm
+
+AMD's own ROCm toolkit *can* accelerate Whisper (see
+[lemonade-sdk/whisper.cpp-amd](https://github.com/lemonade-sdk/whisper.cpp-amd)
+for a ROCm-enabled whisper.cpp build), but the RX 6700 XT is RDNA2
+(`gfx1031`), which is **not on ROCm's officially supported GPU list** — the
+supported RDNA dGPU tier starts at RDNA3 (RX 7000-series, `gfx110X`) and
+RDNA4 (RX 9000-series). Community `HSA_OVERRIDE_GFX_VERSION` workarounds
+exist to force RDNA2 cards to run anyway, but that is exactly the kind of
+"needs Joey to debug an unsupported config" fragility `CLAUDE.md`'s
+non-coder guidance says to avoid, and ROCm's Windows support has
+historically lagged Linux besides. **Vulkan needs none of that** — it is the
+one path confirmed (by whisper.cpp's own maintainers and multiple
+independent prebuilt-binary projects) to run on an RX 6700 XT specifically,
+without a driver override, on Windows. That is why it is the recommendation
+here, not a second-best fallback.
+
+### Setup, exactly (Windows, RX 6700 XT)
+
+**1. Get a Vulkan-enabled `whisper-cli.exe`.** Two options, in order of
+least trouble:
+
+- **Prebuilt (recommended — no compiler needed).** Download a
+  `whisper.cpp-windows-vulkan.zip` build, e.g. from
+  [jerryshell/whisper.cpp-windows-vulkan-bin](https://github.com/jerryshell/whisper.cpp-windows-vulkan-bin/releases/latest)
+  (unofficial, third-party build — verify the release you grab is recent
+  before trusting its whisper.cpp version). Extract it anywhere, e.g.
+  `D:\scratch\foray-transcribe\whispercpp\`. You should end up with
+  `whisper-cli.exe` plus several `ggml-*.dll` / `whisper.dll` files sitting
+  next to it — **keep them together**, `whisper-cli.exe` will not run
+  without its DLLs alongside it.
+- **Build from source**, only if the prebuilt above doesn't work: requires
+  Git, CMake, Visual Studio Build Tools 2022+ ("Desktop development with
+  C++"), and the [Vulkan SDK](https://vulkan.lunarg.com/sdk/home).
+  ```powershell
+  git clone https://github.com/ggml-org/whisper.cpp
+  cd whisper.cpp
+  cmake -B build -DGGML_VULKAN=ON -DCMAKE_BUILD_TYPE=Release
+  cmake --build build --config Release --target whisper-cli
+  ```
+  The binary lands in `build\bin\Release\whisper-cli.exe`.
+
+**2. Get a model.** whisper.cpp uses **GGML** model files
+(`ggml-base.en.bin` etc.) — **these are a different format from the
+CTranslate2 weights the CPU/CUDA path above downloads automatically**; you
+cannot reuse those. Grab one from Hugging Face, e.g.:
+
+```powershell
+curl -L -o ggml-base.en.bin https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.en.bin
+```
+
+Model choice follows the same size/quality tradeoff as §1 — start with
+`base.en` to confirm the GPU path works, then move up.
+
+**3. Run the benchmark harness.**
+
+```powershell
+venv\Scripts\python.exe tools\transcribe\bench_whispercpp.py `
+    D:\scratch\audio\episode.mp3 `
+    --model D:\scratch\foray-transcribe\whispercpp\ggml-base.en.bin `
+    --whisper-cli D:\scratch\foray-transcribe\whispercpp\whisper-cli.exe `
+    --device vulkan `
+    --out D:\scratch\foray-transcribe\results\base.en-vulkan.json
+```
+
+`--device vulkan` here is a **label for the results file**, not a switch
+that changes how `whisper-cli.exe` runs — GPU-on is whisper-cli's default,
+and which backend it actually uses (Vulkan vs. CPU-only) was fixed at build
+time by which `whisper-cli.exe` you downloaded/built in step 1. To confirm
+the GPU is actually being used rather than silently falling back to CPU,
+look for a line early in the run's stderr like:
+
+```
+ggml_vulkan: Found 1 Vulkan devices:
+ggml_vulkan: 0 = AMD Radeon RX 6700 XT (...) | ...
+```
+
+If that line is missing and you see only CPU device info, the GPU is not
+engaged — re-check step 1 (a CPU-only build was downloaded/built by
+mistake) before trusting any timing.
+
+**4. `bench_whispercpp.py` needs only `av`** (already pinned in
+`requirements.txt` for the CPU/CUDA path) — it does not import
+`faster-whisper` or `ctranslate2` at all, so it works even in a venv that
+has neither installed. It requires Python's stdlib `subprocess` to shell
+out to `whisper-cli.exe`; no other new dependency.
+
+### What is and is not verified
+
+**Verified in this repo's own sandbox (2026-09-01, no AMD GPU available
+here):** whisper.cpp builds cleanly from source on CPU, `whisper-cli`
+produces a correct transcript (JFK sample, word-level timestamps sane), and
+`bench_whispercpp.py` drives it end-to-end and reshapes its JSON output into
+`bench.py`'s schema correctly — this is the same "CPU path verified,
+GPU path is not, here is exactly why" honesty §3 already uses for CUDA.
+
+**NOT verified — no AMD GPU exists in any environment this repo's automation
+has access to.** Everything about actual RX 6700 XT throughput is
+**expected, not measured**: Vulkan compute is broadly reported to
+accelerate whisper.cpp on AMD cards (including specific reports of RDNA2
+GPUs; see the whisper.cpp project's own issue tracker and third-party
+build READMEs), but no number in this section should be treated as
+measured until Joey runs it and reports back. See `HUMAN-ACTIONS.md` item
+28.
+
+### Comparing the two paths
+
+Both harnesses print the same final-line JSON schema
+(`realtime_multiple`, `audio_duration_sec`, `wall_clock_sec`, `words`,
+`word_times_suspect`, etc.), with two AMD-path-specific differences worth
+knowing before comparing numbers side by side:
+- `compute_type`, `cpu_time_sec`, and `effective_threads` are always `null`
+  from `bench_whispercpp.py` — whisper.cpp does not expose the CPU-thread
+  accounting `bench.py` gets from `time.process_time()`, and its quantized
+  model files don't have a `faster-whisper`-style `--compute-type` knob.
+- `engine` (`"whisper.cpp"` vs. absent/`faster-whisper` implied) is a new
+  field so a reader scanning a combined results file can tell which
+  harness produced which row without guessing from the model filename
+  extension.
 
 ---
 
