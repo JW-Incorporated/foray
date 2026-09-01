@@ -496,6 +496,47 @@ test("RETENTION: a failed retention scan does not establish a false empty baseli
   );
 });
 
+test("RETENTION: writes from another tab are eventually caught by time-based reconciliation (round-4 codex finding)", async () => {
+  /* Codex round 4: idbCountEstimate only tracks writes THIS instance made.
+     foray_events is one shared IndexedDB database, so a second tab writing
+     directly to the same store is invisible to this instance's estimate —
+     the write-count trigger alone would never fire. This proves the
+     wall-clock fallback (MAX_ESTIMATE_AGE_MS) forces a real scan once enough
+     time has passed, regardless of what the local estimate believes,
+     catching drift from writers this instance can't see. */
+  const factory = new FakeFactory();
+  let clockMs = Date.parse("2026-01-01T00:00:00.000Z");
+  const log = createEventLog({
+    indexedDB: factory,
+    retention: 20,
+    scheduleFlush: () => {},
+    now: () => new Date(clockMs).toISOString(),
+  });
+  // Establish a real, low baseline.
+  log.append({ type: "t", payload: {} });
+  await log.unsynced();
+  // Simulate another tab writing directly into the shared store — bypassing
+  // this instance entirely, so idbCountEstimate has no idea it happened.
+  const store = factory.db.stores.get(STORE_NAME);
+  for (let i = 0; i < 30; i++) {
+    const key = store._next++;
+    store.data.set(key, { id: key, ts: new Date(clockMs).toISOString(), type: "other-tab", synced: false, payload: { i } });
+  }
+  // Advance the clock past MAX_ESTIMATE_AGE_MS and let one more (tiny) local
+  // append's flush run — its own write-count estimate alone would consider
+  // this a no-op (well under retention + margin), so only the time-based
+  // fallback can explain a scan firing here.
+  clockMs += 61_000;
+  log.append({ type: "t", payload: {} });
+  await log.unsynced();
+  const left = [...factory.db.stores.get(STORE_NAME).data.values()];
+  const margin = Math.max(5, Math.min(50, Math.ceil(20 * 0.1)));
+  assert.ok(
+    left.length <= 20 + margin,
+    `expected the other tab's 30 rows to be caught by time-based reconciliation (<= ${20 + margin}), found ${left.length}`
+  );
+});
+
 /* ---------- health() shape ---------- */
 
 test("health() is always readable and never throws, even with a dead store", async () => {

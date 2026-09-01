@@ -173,6 +173,22 @@ export function createEventLog({
   const PRUNE_MARGIN = Math.max(5, Math.min(50, Math.ceil(retention * 0.1)));
   let idbCountEstimate = null; // null until the first real scan establishes a baseline
 
+  /* Cross-tab drift (round-4 codex finding): `idbCountEstimate` only tracks
+     writes THIS instance made. `foray_events` is one shared IndexedDB
+     database, so a second tab (or a second worker) can be appending to the
+     same store concurrently, and its writes are invisible to this instance's
+     estimate — the sum-based trigger above never sees them, so it can stay
+     "confidently" under `retention + PRUNE_MARGIN` forever while the real,
+     shared store climbs well past the cap. A one-shot cross-context wakeup
+     is not reliable (there is no cheap "the other tab wrote a row" signal
+     without a BroadcastChannel handshake this module deliberately does not
+     take on), so instead: force a real scan periodically by wall-clock time,
+     independent of the write-count estimate, so a store growing entirely
+     from OTHER tabs still gets corrected within a bounded window rather than
+     never. */
+  const MAX_ESTIMATE_AGE_MS = 60_000;
+  let lastScanAt = 0;
+
   function pushRing(row) {
     ring.push({ ...row, id: `mem:${nextRingId++}` });
     while (ring.length > retention) ring.shift(); // oldest first — see header
@@ -249,7 +265,11 @@ export function createEventLog({
         }
       }
     }
-    if (hasIdb && (idbCountEstimate === null || idbCountEstimate + ring.length >= retention + PRUNE_MARGIN)) {
+    if (hasIdb && (
+      idbCountEstimate === null
+      || idbCountEstimate + ring.length >= retention + PRUNE_MARGIN
+      || Date.parse(now()) - lastScanAt >= MAX_ESTIMATE_AGE_MS
+    )) {
       await pruneNow(retention);
     }
   }
@@ -286,6 +306,7 @@ export function createEventLog({
       // guess — the same "when in doubt, rescan" rule flushBuffered already
       // applies to its own fallback-to-ring case above.
       idbCountEstimate = idbReadOk.ok ? idbRows.filter(Boolean).length : null;
+      if (idbReadOk.ok) lastScanAt = Date.parse(now());
       return;
     }
     const excess = combined.length - cap;
@@ -320,6 +341,7 @@ export function createEventLog({
     // that produced idbRows itself succeeded — see the `<= cap` branch above
     // for why a failed read must not be trusted as "found 0 rows".
     idbCountEstimate = idbReadOk.ok ? (idbRows.filter(Boolean).length - idbDeleted) : null;
+    if (idbReadOk.ok) lastScanAt = Date.parse(now());
   }
 
   async function readIdbAll(readStatus) {
