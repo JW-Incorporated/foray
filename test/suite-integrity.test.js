@@ -947,6 +947,12 @@ const BACKEND_FLOORS = {
      regression guard, genuine-parallelism proof, and explicit
      failure-isolation (one retry per act, then fail the whole build). */
   "test/deepenActs.test.ts": 10,
+  /* §4.5-4.6 end to end (kanban card t_648fbae7): sourceBeats() resolves
+     every beat to a tier-1 segments.json hit, a tier-2 transcript-archive
+     extraction, a tier-3 transcription-queue-candidate narration fallback,
+     or a Patch/Carry narration assignment — never changing which beats
+     exist, and never fetching/persisting any audio bytes. */
+  "test/sourceBeats.test.ts": 8,
 };
 
 /* `it(` as well as `test(`: backend's suites use both spellings. */
