@@ -189,6 +189,24 @@ export function createEventLog({
   const MAX_ESTIMATE_AGE_MS = 60_000;
   let lastScanAt = 0;
 
+  /* Serialize flush/prune (round-6 codex finding): `flushBuffered()` and
+     `pruneNow()` both read-then-write `idbCountEstimate`/`ring`/the idb
+     store across `await` points. Two overlapping calls — the scheduled
+     auto-flush still mid-flight while `unsynced()` or `pruneToRetention()`
+     starts another — can interleave: a scan that STARTED first but reads
+     from IndexedDB after a concurrent write commits can still FINISH last,
+     overwriting `idbCountEstimate` with a stale, smaller count and silently
+     erasing the concurrently-committed batch from the estimate. Every
+     mutating entry point below is routed through this single chain so at
+     most one is ever in flight at a time — same shape as
+     `durable-store.js`'s `_queue`. */
+  let opQueue = Promise.resolve();
+  function enqueue(fn) {
+    const settled = opQueue.then(fn, fn);
+    opQueue = settled.then(() => {}, () => {}); // never let one failure wedge the chain
+    return settled;
+  }
+
   function pushRing(row) {
     ring.push({ ...row, id: `mem:${nextRingId++}` });
     while (ring.length > retention) ring.shift(); // oldest first — see header
@@ -229,8 +247,18 @@ export function createEventLog({
       upload, so an offline device or a down server would otherwise let the
       store grow past `retention` for as long as sync kept failing — worse
       than the old localStorage write, which capped on every write regardless
-      of sync state. Checking here restores that guarantee unconditionally. */
-  async function flushBuffered() {
+      of sync state. Checking here restores that guarantee unconditionally.
+      Takes `cap` (defaulting to the configured `retention`) so a caller like
+      `pruneToRetention(cap)` with a cap OTHER than `retention` doesn't have
+      its own flush silently enforce the wrong, smaller number first —
+      Codex round 5: `pruneToRetention(10000)` on a log configured with the
+      default 5,000-row retention used to call this with no cap argument,
+      auto-pruning to 5,000 before the caller's own, larger cap ever ran. */
+  async function flushBuffered(cap = retention) {
+    return enqueue(() => flushBufferedImpl(cap));
+  }
+
+  async function flushBufferedImpl(cap) {
     if (pendingRows.length) {
       const batch = pendingRows.splice(0, pendingRows.length);
       if (!hasIdb) {
@@ -267,11 +295,13 @@ export function createEventLog({
     }
     if (hasIdb && (
       idbCountEstimate === null
-      || idbCountEstimate + ring.length >= retention + PRUNE_MARGIN
+      || idbCountEstimate + ring.length >= cap + PRUNE_MARGIN
       || Date.parse(now()) - lastScanAt >= MAX_ESTIMATE_AGE_MS
     )) {
-      await pruneNow(retention);
+      await pruneNowImpl(cap);
+      return true; // signals the caller a real scan already ran with this cap
     }
+    return false;
   }
 
   /**
@@ -288,6 +318,10 @@ export function createEventLog({
    * estimate's drift, not just to delete rows.
    */
   async function pruneNow(cap) {
+    return enqueue(() => pruneNowImpl(cap));
+  }
+
+  async function pruneNowImpl(cap) {
     const idbReadOk = { ok: true };
     const idbRows = await readIdbAll(idbReadOk);
     const combined = [
@@ -427,14 +461,20 @@ export function createEventLog({
 
     /**
      * The public, explicit form: flush first (so just-buffered rows are
-     * counted), then enforce the cap. `flushBuffered()` above already calls
-     * `pruneNow()` on every flush, so this mostly matters for a caller that
-     * wants the cap enforced right now without waiting for the next flush
-     * (e.g. `trySyncEvents()`, after a batch it just marked synced).
+     * counted), then enforce the cap — UNLESS the flush itself already ran
+     * a real scan with this exact cap (round-7 codex finding: calling
+     * `pruneNow(cap)` unconditionally after `flushBuffered(cap)` meant
+     * every threshold-triggered flush paid for two full-store `getAll()`
+     * scans in a row, the same O(n)-per-call cost round-2's review flagged
+     * in the first place). `flushBuffered()` returns whether it pruned;
+     * only scan again when it didn't, so a caller like `trySyncEvents()`
+     * (which wants the cap enforced right now, after marking a batch
+     * synced, even when the estimate alone wouldn't have triggered it yet)
+     * still gets a guaranteed prune, but never two back-to-back ones.
      */
     async pruneToRetention(cap = retention) {
-      await flushBuffered();
-      await pruneNow(cap);
+      const alreadyPruned = await flushBuffered(cap);
+      if (!alreadyPruned) await pruneNow(cap);
     },
 
     /** The failure record — same convention as `durable-store.js`'s

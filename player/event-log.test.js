@@ -537,6 +537,77 @@ test("RETENTION: writes from another tab are eventually caught by time-based rec
   );
 });
 
+test("RETENTION: pruneToRetention(cap) with cap > configured retention is not clobbered by the auto-prune inside its own flush (round-5 codex finding)", async () => {
+  /* Codex round 5: flushBuffered() used to always auto-prune to the
+     CONFIGURED `retention`, with no way to know a caller's pruneToRetention()
+     wanted a bigger cap. pruneToRetention(10000) on a log configured with
+     the default 5,000-row retention would call flushBuffered() first (no cap
+     argument), which would prune down to 5,000 BEFORE pruneToRetention's own
+     pruneNow(10000) ever ran — silently keeping only half of what the caller
+     asked to retain. This proves the requested cap now reaches the auto-prune
+     inside the flush itself, not just the second explicit prune call. */
+  const factory = new FakeFactory();
+  const log = createEventLog({ indexedDB: factory, retention: 5000, scheduleFlush: () => {} });
+  const base = Date.parse("2026-01-01T00:00:00.000Z");
+  for (let i = 0; i < 8000; i++) {
+    log.append({ ts: new Date(base + i * 1000).toISOString(), type: "t", payload: { i } });
+  }
+  await log.pruneToRetention(10000); // a cap ABOVE the configured retention
+  const left = [...factory.db.stores.get(STORE_NAME).data.values()];
+  assert.equal(left.length, 8000, `expected all 8000 rows to survive a pruneToRetention(10000) call, found ${left.length}`);
+});
+
+test("RETENTION: overlapping flush/prune calls are serialized, so a slower scan cannot clobber a concurrently-committed batch (round-6 codex finding)", async () => {
+  /* Codex round 6: flushBuffered() and pruneNow() both read-then-write
+     idbCountEstimate/ring/the idb store across await points. Without
+     serialization, two overlapping calls — e.g. the scheduled auto-flush
+     still mid-flight while unsynced() starts another — can interleave: a
+     scan that reads before a concurrent write commits can still finish
+     LAST, overwriting idbCountEstimate with a stale, smaller count and
+     silently making the newer batch invisible to the estimate. This drives
+     many overlapping unsynced()/append() calls concurrently (via
+     Promise.all, no serialization on the CALLER's side) and asserts the
+     module's own internal queue keeps the final store consistent: nothing
+     lost, cap still respected. */
+  const factory = new FakeFactory();
+  const log = createEventLog({ indexedDB: factory, retention: 200, scheduleFlush: () => {} });
+  const calls = [];
+  for (let i = 0; i < 50; i++) {
+    log.append({ type: "t", payload: { i } });
+    calls.push(log.unsynced()); // fire without awaiting — deliberately overlapping
+  }
+  await Promise.all(calls);
+  await log.unsynced(); // final settle
+  const idbLeft = [...factory.db.stores.get(STORE_NAME).data.values()];
+  assert.equal(idbLeft.length, 50, `expected all 50 concurrently-flushed rows to survive, found ${idbLeft.length}`);
+});
+
+test("RETENTION: pruneToRetention does not re-scan when the triggered flush already pruned with the same cap (round-7 codex finding)", async () => {
+  /* Codex round 7: pruneToRetention(cap) called flushBuffered(cap) then
+     unconditionally pruneNow(cap) again — when the flush's own threshold
+     trigger already ran a full getAll() scan for this exact cap, the second
+     call repeated the same O(n) scan for nothing, right back to the
+     per-call full-scan cost round-2's review flagged. Count real scans via
+     getAll() call count and confirm a flush that already pruned is not
+     immediately followed by a second one. */
+  const factory = new FakeFactory();
+  const log = createEventLog({ indexedDB: factory, retention: 10, scheduleFlush: () => {} });
+  // Push well past cap + margin so the triggered flush inside
+  // pruneToRetention is guaranteed to run pruneNowImpl itself.
+  for (let i = 0; i < 30; i++) log.append({ type: "t", payload: { i } });
+  let getAllCalls = 0;
+  const realGetAll = FakeObjectStore.prototype.getAll;
+  FakeObjectStore.prototype.getAll = function (...args) { getAllCalls += 1; return realGetAll.apply(this, args); };
+  try {
+    await log.pruneToRetention(10);
+  } finally {
+    FakeObjectStore.prototype.getAll = realGetAll;
+  }
+  assert.equal(getAllCalls, 1, `expected exactly one getAll() scan when the flush's own trigger already pruned, found ${getAllCalls}`);
+  const left = [...factory.db.stores.get(STORE_NAME).data.values()];
+  assert.ok(left.length <= 10 + Math.max(5, Math.min(50, Math.ceil(10 * 0.1))), `cap still enforced, found ${left.length}`);
+});
+
 /* ---------- health() shape ---------- */
 
 test("health() is always readable and never throws, even with a dead store", async () => {
