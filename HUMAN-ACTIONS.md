@@ -1939,6 +1939,60 @@ summary page, and you can say where the two backups are without looking.
 **Status:** OPEN
 
 ---
+
+### 28. Run the new AMD/Vulkan transcription path on your actual RX 6700 XT and report the numbers
+
+**Tag:** `[BLOCKING]` for AMD-GPU throughput numbers · **Time:** ~20 minutes (mostly download/setup) · **Owner:** Joey (his machine, his GPU)
+
+**Why this exists.** `tools/transcribe` §3 only ever worked for NVIDIA cards
+— CUDA is NVIDIA-proprietary, and `faster-whisper`/`ctranslate2` (the whole
+CPU/CUDA stack) has no AMD support at all, not even a slow one. Your RX 6700
+XT could not use the GPU path that existed before this change; it would
+either error outright or (worse) silently run CPU speed while claiming
+`--device cuda`. §3b adds a real second engine — whisper.cpp with a Vulkan
+backend — chosen specifically because Vulkan runs on AMD cards including
+RDNA2 (your 6700 XT) without AMD's own ROCm toolkit, which does not
+officially support the 6700 XT at all.
+
+**What is proven vs. not.** This sandbox has no AMD GPU (it has no GPU of
+any kind), so everything that could be checked here *was* checked: the new
+`bench_whispercpp.py` script and a from-source CPU build of whisper.cpp
+were run end-to-end against a real audio sample, produced a correct
+transcript, and printed the same JSON shape `bench.py` already produces —
+so the code path itself is not broken. **What was not, and could not be,
+checked here:** whether the Vulkan backend actually engages your GPU, and
+how fast it runs. Every throughput number anyone gives you for this path
+until you run it yourself is a claim from someone else's card, not a
+measurement of yours.
+
+**Steps.**
+
+1. Follow `tools/transcribe/README.md` §3b exactly — download a
+   Vulkan-enabled `whisper-cli.exe` (prebuilt, no compiling needed for most
+   people), grab one `ggml-base.en.bin` model file, and run
+   `bench_whispercpp.py` against one podcast episode (any episode already on
+   your machine from earlier testing works, or fetch one the same way §1
+   describes).
+2. **Confirm the GPU actually engaged.** The run's console output should
+   show a line like `ggml_vulkan: 0 = AMD Radeon RX 6700 XT (...)` near the
+   top. If you only see CPU info, stop and say so — that means the setup
+   grabbed a CPU-only build by mistake, not that the GPU path doesn't work.
+3. Paste the JSON line the script prints at the end (starts with
+   `{"audio": ...`) into a comment on this repo's kanban board or wherever
+   you're reporting back. That line alone has everything needed to update
+   §3b's "expected, not measured" numbers with real ones.
+4. If it errors, paste the exact error — most likely failure modes are (a)
+   `whisper-cli.exe` can't find its DLLs (they must sit next to the .exe,
+   not just be downloaded), or (b) an old/mismatched GPU driver not
+   supporting Vulkan 1.3 (a driver update from AMD's site fixes this).
+
+**Worked if:** you have a real `realtime_multiple` number for your RX 6700
+XT on at least one model size, and the Vulkan device line confirms the GPU
+(not the CPU) produced it.
+
+**Status:** OPEN
+
+---
 ## DONE
 
 *(Nothing filed yet. Finished items move here with the date they were done and
