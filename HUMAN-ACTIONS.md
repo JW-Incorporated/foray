@@ -708,7 +708,10 @@ Read those three together, because two of them can lie on their own:
 
 The click matters: nothing is written until something happens.
 
-**Status:** OPEN
+**Status:** DONE — 2026-09-01. The `foray-v5` bump merged in #241 and `sw.js`
+on `main` confirms it (`sw.js:82-85`); nothing about it is waiting on a
+founder. The `forayStorageHealth()` console check above is a manual spot-check
+a founder can still run at leisure, not a gate on this item.
 
 ---
 
@@ -1888,7 +1891,14 @@ or on its own store URL.
 ---
 ---
 
-### 26. Back up the Android upload key, and install its three secrets
+### 30. Back up the Android upload key, and install its three secrets
+
+> **Renumbered from #26, 2026-09-01.** #26 was already in use for "Publish the
+> Play Store listing" (above); item numbers are stable IDs and are never
+> reused (see the rule at the top of this file), so this action — added later
+> under the same number by mistake — takes the next unused ID instead. Any
+> reference elsewhere in the repo to "HUMAN-ACTIONS.md #26" meaning the
+> upload-key backup has been updated to #30.
 
 **Tag:** `[BLOCKING]` for any Play upload · **Time:** ~10 minutes · **Owner:** Wyatt (he holds the key)
 
