@@ -95,7 +95,7 @@ final class PlayerQueueManagerTests: XCTestCase {
         let itemA = makeItem(id: "episode-a")
         await manager.loadQueue([itemA])
         await manager.play(itemAt: 0)
-        backend.calls.removeAll()
+        backend.clearCalls()
 
         await manager.skipToNext()
 
@@ -114,7 +114,7 @@ final class PlayerQueueManagerTests: XCTestCase {
         let item = makeItem(id: "episode-a", startOffset: CMTime(seconds: 300, preferredTimescale: 600))
         await manager.loadQueue([item])
         await manager.play(itemAt: 0)
-        backend.calls.removeAll()
+        backend.clearCalls()
 
         await manager.skipToPrevious()
 
@@ -173,12 +173,12 @@ final class PlayerQueueManagerTests: XCTestCase {
         let item = makeItem(id: "episode-a")
         await manager.loadQueue([item])
         await manager.play(itemAt: 0)
-        backend.calls.removeAll()
+        backend.clearCalls()
 
         await manager.pause()
         XCTAssertEqual(backend.calls, [.pause])
 
-        backend.calls.removeAll()
+        backend.clearCalls()
         await manager.resume()
         // Resume re-primes the load per PlayerQueueState's design note 2 (does not
         // assume the backend kept the asset warm) then starts playback again.
@@ -235,7 +235,7 @@ final class PlayerQueueManagerTests: XCTestCase {
         let episodeB = makeItem(id: "episode-b")
         await manager.loadQueue([episodeA, episodeB])
         await manager.play(itemAt: 0)
-        backend.calls.removeAll()
+        backend.clearCalls()
 
         backend.simulateItemDidPlayToEnd()
         // The manager handles this via a detached `Task { await
@@ -256,7 +256,7 @@ final class PlayerQueueManagerTests: XCTestCase {
         let episodeB = makeItem(id: "episode-b")
         await manager.loadQueue([episodeA, bridgeTTS, episodeB])
         await manager.play(itemAt: 0)
-        backend.calls.removeAll()
+        backend.clearCalls()
 
         backend.simulateItemDidPlayToEnd()
 
@@ -279,7 +279,7 @@ final class PlayerQueueManagerTests: XCTestCase {
 
         // Arm the NEXT load (the bridge's) to fail.
         backend.nextLoadError = FakePlayerBackendError.missingFile
-        backend.calls.removeAll()
+        backend.clearCalls()
         backend.simulateItemDidPlayToEnd()
 
         // Per the manager's advancePastTransitionFailure: a missing/corrupt bridge
