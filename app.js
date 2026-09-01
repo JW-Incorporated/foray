@@ -3413,7 +3413,7 @@ function openDrawer(open) {
         account instead of re-attaching to the old one. What stays behind is a row
         with no name, email, phone number or password — and `app_users` plus the
         events keyed to it are deleted, so it is an empty shell. Removing the
-        shell is `HUMAN-ACTIONS.md` #16.
+        shell is `HUMAN-ACTIONS.md` #14.
      4. NOT THE PUBLISHER AND ATTRIBUTION HOSTS. Playing a segment points an
         `<audio>` element at the publisher's own URL, so 43 first-hop hosts —
         several of them ad-attribution prefixes the publisher put there — saw

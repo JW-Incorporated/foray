@@ -187,6 +187,10 @@ const FLOORS = {
      its size is worth a second look. */
   "test/episode-row-links.test.js": 5,
   "test/first-time-onboarding.test.js": 10,
+  /* Duplicate-ID guard for HUMAN-ACTIONS.md's own numbering rule (full-repo
+     review finding L3, 2026-08-31). Two tests: the file has numbered items,
+     and no numeric ID repeats. */
+  "test/human-actions-integrity.test.js": 2,
   /* "Delete my data" (#42). Zero slack, like media-session above and for the same
      reason: what this suite guards is a PROMISE — both tiers cleared, the server
      rows really deleted, no success message over a failure, and a confirmation a
@@ -909,6 +913,17 @@ const BACKEND_FLOORS = {
      in that order, with no retry loop on rejection and never more than one
      clarify round. */
   "test/understandPrompt.test.ts": 7,
+  /* §4.2's catalogue lookup: concept matching against the semantic index and
+    tape-availability counting against discover.json/item-tags.json, both
+    proven against a small deterministic fixture catalogue (not the real
+    one, so a future catalogue-content change can't silently pass or fail
+    this suite). */
+  "test/catalogueLookup.test.ts": 9,
+  /* §4.2 end to end: buildResearchShape against the REAL catalogue for tape
+    accuracy, and the cheap-first ordering (external research fires ONLY
+    for a genuine catalogue gap) against an injected no-tape fixture so the
+    assertion doesn't drift as the real catalogue grows. */
+  "test/researchShape.test.ts": 11,
 };
 
 /* `it(` as well as `test(`: backend's suites use both spellings. */
