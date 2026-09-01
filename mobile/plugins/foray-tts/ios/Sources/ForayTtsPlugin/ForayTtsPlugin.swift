@@ -99,6 +99,24 @@ public class ForayTtsPlugin: CAPPlugin, CAPBridgedPlugin, AVSpeechSynthesizerDel
             utterance.volume = Float(volume)
         }
 
+        /* Explicitly claim the shared AVAudioSession before speaking --
+           docs/research/on-device-tts.md §9.1/§9.4. AVSpeechSynthesizer's
+           `usesApplicationAudioSession` defaults to true, meaning it plays
+           through the app's shared session rather than a private one, but
+           Apple's own WWDC20 wording is "will use," not "will configure": the
+           synthesizer never activates or categorizes that session itself. A
+           narration-only Foray (no concurrent <audio> element already
+           holding the session open, per generation-architecture.md §1.2)
+           cannot rely on some other code path having already done this, so
+           it is done here -- the same category/mode PlayerQueueManager.swift
+           line 555 already sets for the (currently unused) Swift player, and
+           the same one WebKit sets automatically for <audio>. `try?`
+           matches this plugin's own "every method resolves, none reject"
+           rule stated in the class header: a failure to configure the
+           session should not turn into a rejected promise mid-narration. */
+        try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .spokenAudio, options: [])
+        try? AVAudioSession.sharedInstance().setActive(true)
+
         synthesizer.speak(utterance)
 
         var result = JSObject()
