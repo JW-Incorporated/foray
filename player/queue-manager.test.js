@@ -117,6 +117,7 @@ function make(opts = {}) {
   const m = new PlayerQueueManager({
     backend, positionStore, telemetry: (t) => log.push(t), strategy: opts.strategy,
     scheduler, seamGapSec: opts.seamGapSec, onSeamGapChange: opts.onSeamGapChange,
+    rate: opts.rate, tts: opts.tts,
   });
   return { m, backend, saved, log, scheduler };
 }
@@ -637,6 +638,109 @@ test("narration between segments plays as an ordinary TTS item at 1.0x", async (
   assert.ok(backend.calls.includes("load:nar-1@0"));
   assert.ok(backend.calls.includes("rate:1"));
   assert.ok(!backend.calls.some((c) => c.startsWith("outPoint:")), "narration has no out-point");
+});
+
+/* ---------- §7 item 1: script-only narration plays via the on-device plugin ----------
+
+   generation-architecture.md §7 items 1-2. The fake bridge below is the same
+   shape `mobile/plugins/foray-tts/web/foray-tts.js`'s real `speak()` exports:
+   `async speak(text, opts) -> { ok, reason? }`, never throwing on its own —
+   see that module's own header for why. Real synthesis is NOT exercised by
+   this suite (no iOS/Android runtime in this sandbox); everything here is
+   queue LOGIC — does a script-only item route to the plugin instead of being
+   dropped, and at what rate. */
+
+function fakeTts() {
+  const calls = [];
+  return {
+    calls,
+    async speak(text, opts = {}) {
+      calls.push({ text, rate: opts.rate });
+      return { ok: true };
+    },
+  };
+}
+
+test("a script-only narration item is not dropped and never reaches backend.load", async () => {
+  const tts = fakeTts();
+  const { m, backend } = make({ tts });
+  await m.playForay(foray([
+    { type: "narration", id: "nar-1", script: "the history of grilling starts with fire" },
+    fseg(),
+  ]), { resolveItem });
+
+  assert.equal(tts.calls.length, 1);
+  assert.equal(tts.calls[0].text, "the history of grilling starts with fire");
+  assert.ok(!backend.loads().includes("nar-1"), "nothing was loaded into the backend for this item — it was spoken");
+  assert.equal(m.state.type, "playing", "the item is treated as playable, not skipped or errored");
+  // Advancing past a spoken item on its own needs to KNOW when the utterance
+  // finishes (§7 item 3, explicitly out of scope) — but a listener-driven
+  // skip must still work, exactly as it does for any other item.
+  await m.skipToNext();
+  assert.ok(backend.calls.includes("load:foray-1#1@100"), `got ${backend.calls}`);
+});
+
+test("a script-only narration item speaks at the LISTENER'S current rate, not a hardcoded 1.0x", async () => {
+  // §7 item 2: rate is a property of the utterance for a synthesizer, so the
+  // stored/chosen speed rides into speak() itself rather than being forced to
+  // 1.0x and deferred the way a rendered bridge's rate is.
+  const tts = fakeTts();
+  const { m } = make({ tts, rate: 1.5 });
+  await m.playForay(foray([
+    { type: "narration", id: "nar-1", script: "a script spoken at the chosen speed" },
+    fseg(),
+  ]), { resolveItem });
+
+  assert.equal(tts.calls[0].rate, 1.5);
+});
+
+test("resetRateForTTS/restoreRate never touch backend.setRate for a synth item", async () => {
+  // A rendered bridge forces backend.setRate(1.0) then restores it; a synth
+  // item has no media element under it at all, so neither effect should emit
+  // a rate call for it — the plugin already got the right rate at speak().
+  const tts = fakeTts();
+  const { m, backend } = make({ tts, rate: 2 });
+  await m.playForay(foray([
+    { type: "narration", id: "nar-1", script: "spoken, not played" },
+    fseg(),
+  ]), { resolveItem });
+
+  assert.ok(!backend.calls.some((c) => c.startsWith("rate:")), `no rate call expected, got ${backend.calls}`);
+});
+
+test("an item with both script and asset still prefers the asset and never calls the plugin", async () => {
+  // §1.2's precedence, exercised at the manager layer: even with a TTS
+  // plugin wired, an admin-authored asset must win — the backdoor path must
+  // not regress just because on-device narration now exists.
+  const tts = fakeTts();
+  const { m, backend } = make({ tts });
+  await m.playForay(foray([
+    { type: "narration", id: "nar-1", asset: "narration/fire-1.mp3", script: "ignored" },
+    fseg(),
+  ]), { resolveItem });
+
+  assert.equal(tts.calls.length, 0, "the plugin must not be consulted when an asset exists");
+  assert.ok(backend.calls.includes("load:nar-1@0"));
+});
+
+test("a script-only item with NO plugin wired fails to load and does not stall the Foray", async () => {
+  // Corner case #12's spirit: exactly like a missing bridge asset today, a
+  // script-only item with nothing to speak it must not block the rest of the
+  // Foray — it is reported and the load fails cleanly (the manager has no
+  // duration signal to auto-advance on regardless — see the test above — so
+  // what proves "did not stall" here is that the failure is a clean, single
+  // `error` transition rather than a hang or an exception escaping `play()`).
+  const { m, log } = make(); // no `tts` option — `_tts` is null
+  await m.playForay(foray([
+    { type: "narration", id: "nar-1", script: "nobody can speak this" },
+    fseg(),
+  ]), { resolveItem });
+
+  assert.equal(m.state.type, "idle", "a failed load lands in idle, same as any other backend.load rejection");
+  assert.ok(
+    log.some((l) => l.includes("no on-device TTS plugin wired")),
+    `expected a named failure reason in telemetry, got ${JSON.stringify(log)}`
+  );
 });
 
 /* ---------- the listener's speed (§12) ----------

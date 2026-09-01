@@ -153,6 +153,8 @@ import { normalizeRate, isRate, DEFAULT_RATE } from "./playback-rate.js";
 
 const POSITION_INTERVAL_MS = 15_000;
 
+const nonEmptyStr = (s) => typeof s === "string" && s.trim().length > 0;
+
 /** Wall clock for the seam beat. Injected so the suite drives the beat by hand
     instead of sleeping: a test that asserts "2 s elapsed" is a test that goes
     red when the box is busy, and this repo has already paid for that once
@@ -191,11 +193,19 @@ export class PlayerQueueManager {
    *   applied: a constructor that reached into the backend would make building a
    *   manager audible. `setRate()` is what applies it, and `client.js` calls it
    *   once at boot with the stored value.
+   * @param {object}   [opts.tts]  the on-device narration bridge
+   *   (`mobile/plugins/foray-tts/web/foray-tts.js`'s `speak()`, or a fake with
+   *   the same shape: `async speak(text, { rate }) -> { ok, reason? }`).
+   *   generation-architecture.md §7 items 1-2: a narration item with a
+   *   `script` and no `audio_url`/`asset` is spoken through this rather than
+   *   dropped. `null` (the default) means no plugin is wired — a script-only
+   *   item then fails to load exactly like a missing bridge asset always has
+   *   (corner case #12: reported, and the Foray moves on).
    */
   constructor({
     backend, positionStore = null, strategy = SINGLE_ITEM, telemetry = null, allowMultiple = false,
     seamGapSec: gapSec = SEAM_GAP_SEC, scheduler = REAL_SCHEDULER, onSeamGapChange = null,
-    rate = DEFAULT_RATE,
+    rate = DEFAULT_RATE, tts = null,
   } = {}) {
     if (!backend) throw new Error("PlayerQueueManager requires a backend");
     if (liveInstance && !allowMultiple) {
@@ -244,6 +254,14 @@ export class PlayerQueueManager {
         element, `setPositionState`, a label — ever sees a value off the
         ladder. */
     this._rate = normalizeRate(rate);
+
+    /** The on-device TTS bridge (§7 item 1-2 of generation-architecture.md),
+        or `null` when none is wired — see the constructor doc above. */
+    this._tts = tts && typeof tts.speak === "function" ? tts : null;
+    /** True when the item `_loadedId` refers to was spoken via `_tts` rather
+        than loaded into `backend` — nothing in `backend` is playing it, so
+        the rate/playback effects below must not touch the backend for it. */
+    this._loadedIsSynth = false;
 
     /* ---- the seam beat (see §10 in the header) ----
        `_gapUntil` is an ABSOLUTE deadline, stamped when the out-point fires,
@@ -678,6 +696,13 @@ export class PlayerQueueManager {
       this._emit(`reconcile.skipped.applying why=${why}`);
       return false;
     }
+    // A synth narration item is "playing" from the reducer's point of view
+    // the instant `_speakNarration` resolves, but nothing in `backend` is
+    // producing audio for it (§7 item 1) — the element is exactly as paused
+    // as it was before this item, and always will be for one. Reading that
+    // as an external stop would interrupt every script-only line the moment
+    // a surface's visibilitychange handler ran.
+    if (this._loadedIsSynth) return false;
     // The element agrees with us. Nothing to correct, and asking cost nothing.
     if (this.backend.paused !== true) return false;
     // It ran out rather than being taken away — `onItemEnded` owns that, and
@@ -719,9 +744,15 @@ export class PlayerQueueManager {
         return this._loadItem(effect.item);
 
       case "startPlayback":
+        // A synth narration item has nothing loaded into `backend` — see
+        // `_isSynthNarration` — so there is nothing here for `backend.play()`
+        // to start. `_speakNarration` already asked the plugin to speak, in
+        // `_loadItem`, before this effect ever runs.
+        if (this._loadedIsSynth) return;
         return this.backend.play();
 
       case "pausePlayback":
+        if (this._loadedIsSynth) return;
         return this.backend.pause();
 
       case "savePosition":
@@ -754,6 +785,17 @@ export class PlayerQueueManager {
         // Corner case #18. Deliberately the literal 1.0 and NOT `this._rate`:
         // narration is our own line at a pace we chose, and this effect exists
         // to override the listener's speed rather than to consult it.
+        //
+        // EXCEPT for a synth item (§7 item 2 of generation-architecture.md).
+        // There is no rendered file and no media element under it — nothing
+        // for `backend.setRate` to mean anything about — and forcing 1.0x here
+        // would be a no-op on the wrong object, not a safe default. A
+        // synthesizer's rate is a property of the UTTERANCE, so it is already
+        // set — to the listener's own `this._rate`, not 1.0x, because a
+        // synthesized bridge does not carry the same "our pace, not yours"
+        // argument a rendered narration file does — at the `speak()` call
+        // inside `_loadItem`/`_speakNarration`, before this effect ever runs.
+        if (this._loadedIsSynth) return;
         return this.backend.setRate(1.0);
 
       case "restoreRate":
@@ -774,6 +816,9 @@ export class PlayerQueueManager {
            key, its own control and its own decision about precedence; it does not
            get to arrive by accident through a vestigial field. Retiring the Swift
            copy is #28. */
+        // Same reasoning as `resetRateForTTS` above: a synth item leaves
+        // `backend` untouched, so there is nothing here to restore a rate on.
+        if (this._loadedIsSynth) return;
         return this.backend.setRate(this._rate);
 
       case "playTransitionTTS":
@@ -847,8 +892,23 @@ export class PlayerQueueManager {
     if (idx >= 0) this.currentIndex = idx;
 
     try {
-      await this.backend.load(item, { startOffset });
-      this._loadedId = item.id;
+      if (this._isSynthNarration(item)) {
+        /* §7 item 1: a script-only narration item has no file for the backend
+           to load at all — it is spoken, not played. §7 item 2: the rate
+           passed here is the listener's CURRENT preference, read at the
+           moment of the call, not a hardcoded 1.0x — see `_speakNarration`.
+           Ending/advancing past a spoken item — knowing WHEN the utterance
+           finishes, so the queue can move on — needs the utterance's own
+           duration, which is §7 item 3 and explicitly out of scope for this
+           card; nothing here builds that. */
+        await this._speakNarration(item);
+        this._loadedId = item.id;
+        this._loadedIsSynth = true;
+      } else {
+        await this.backend.load(item, { startOffset });
+        this._loadedId = item.id;
+        this._loadedIsSynth = false;
+      }
       // The ladder's rung 3 runs HERE and nowhere earlier: this is the first
       // moment the duration of the copy the listener actually received exists.
       const gate = this._segmentGate(item);
@@ -874,6 +934,56 @@ export class PlayerQueueManager {
       // would sit out for up to two seconds for no reason.
       this._endSeamGap("loadFailed");
       await this._handle(E.error(`loadItem(${ref.id}) failed: ${err?.message ?? err}`));
+    }
+  }
+
+  /** Is this a §7-item-1 script-only narration item — TTS-kind, a non-empty
+      `script`, and no file for the backend to load? `foray-queue.js` already
+      normalises a present-but-empty `audio_url` to `null` and prefers `asset`
+      over `script` when both exist (§1.2), so `!item.audio_url` here is the
+      one check this method needs; it does not re-decide that precedence. */
+  _isSynthNarration(item) {
+    return item?.kind === TTS && !item.audio_url && nonEmptyStr(item.script);
+  }
+
+  /** Speak a script-only narration item through the on-device plugin (§7
+      items 1-2). Mirrors `backend.load`'s contract — resolves when the item
+      is ready to be "audible", throws on a hard failure — so `_loadItem`
+      can treat the two paths identically apart from the branch that picks
+      between them.
+
+      THE RATE IS READ HERE, AT CALL TIME, not cached at construction and not
+      the hardcoded 1.0x `resetRateForTTS` forces on a rendered bridge. §7
+      item 2 is explicit that this is the mechanism that has to change: "rate
+      is a property of the utterance, not the media element" for a
+      synthesizer, so the listener's current speed (`this._rate`, the same
+      value `cp_rate` seeded — see playback-rate.js) is passed straight into
+      the plugin's own `speak()` call instead of being applied to a media
+      element that, for this item, does not exist.
+
+      A refusal (`{ ok: false }`) or a thrown rejection is NOT this method's
+      failure to swallow — `foray-tts.js`'s own `speak()` already never
+      throws, by its own contract, so a throw here can only be a genuinely
+      broken injected plugin. Either way this method lets it propagate: the
+      caller's `catch` is the existing "a load failed" path, which is exactly
+      what "the plugin could not speak this line" means for the queue.
+
+      WHAT THIS METHOD DELIBERATELY DOES NOT DO: know when the utterance
+      finishes. `ForayTtsPlugin.swift` resolves `speak()` on ACCEPT, not on
+      completion (see its own comment on this) — Android's contract is no
+      better documented — so nothing this card can build learns when a
+      listener stops hearing the line. That is §7 item 3
+      ("duration is unknown before speaking"), explicitly out of scope here.
+      The practical consequence, stated rather than hidden: today a
+      script-only item is spoken and the queue does not yet advance past it
+      on its own — a follow-up card owns building that signal (or an
+      estimate-driven timer off the `duration_sec` this queue item already
+      carries) once §7 item 3 is scoped. */
+  async _speakNarration(item) {
+    if (!this._tts) throw new Error(`no on-device TTS plugin wired for ${item.id}`);
+    const result = await this._tts.speak(item.script, { rate: this._rate });
+    if (result && result.ok === false) {
+      throw new Error(`foray-tts: ${result.reason ?? "speak() refused"}`);
     }
   }
 
@@ -1114,7 +1224,23 @@ export class PlayerQueueManager {
     const bIdx = this.queue.findIndex((i) => i.id === bridge.id);
     if (bIdx >= 0) this.currentIndex = bIdx;
     try {
-      await this.backend.load(bridge, { startOffset: 0 });
+      /* §7 item 1: a mid-Foray bridge is EXACTLY the shape a script-only
+         narration item takes today (`next.item.kind === TTS` is what makes
+         the reducer choose this path over `_loadItem`'s), so a bridge with a
+         script and no asset must speak rather than fail the same load
+         `_loadItem` no longer fails on. Splitting on `_isSynthNarration`
+         here, rather than routing every TTS item through one shared helper,
+         keeps `_loadItem`'s and this method's own bookkeeping — currentIndex,
+         `_targetIndex`, the bridge-specific "always starts at zero" — exactly
+         as each already had it. */
+      if (this._isSynthNarration(bridge)) {
+        await this._speakNarration(bridge);
+        this._loadedIsSynth = true;
+      } else {
+        await this.backend.load(bridge, { startOffset: 0 });
+        this._loadedIsSynth = false;
+        this.backend.play();
+      }
       /* THE BRIDGE IS WHAT THE ELEMENT IS HOLDING, so it has to say so (#263).
          `_loadItem` sets this on its own success path and this method is the
          other way audio gets loaded — the omission was invisible while
@@ -1129,7 +1255,6 @@ export class PlayerQueueManager {
          down. Set after the load resolves, like `_loadItem`, so it is never
          true of audio the element does not yet have. */
       this._loadedId = bridge.id;
-      this.backend.play();
     } catch (err) {
       this._emit(`transitionTTS.loadFailed: ${err?.message ?? err}`);
       await this._advancePastBridgeFailure();
@@ -1219,6 +1344,11 @@ export class PlayerQueueManager {
     // episode, and `_loadItem` ignores saved positions for bounded items
     // anyway. Writing one is pure localStorage litter plus a cp_events row.
     if (boundsOf(item)) return;
+    // A synth narration item has nothing loaded into `backend` (§7 item 1) —
+    // `backend.currentTime` at this instant is stale, left over from whatever
+    // played before it, and would stamp this item's id with someone else's
+    // playhead. There is no position to persist for an utterance anyway.
+    if (this._loadedIsSynth && item.id === this._loadedId) return;
     const seconds = this.backend.currentTime;
     if (typeof seconds !== "number" || !Number.isFinite(seconds)) return;
     this.positionStore.save(item.id, seconds, { duration: this.backend.duration ?? null });

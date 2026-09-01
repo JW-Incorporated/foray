@@ -209,10 +209,21 @@ export function buildForayQueue(foray, opts = {}) {
     if (!raw || typeof raw !== "object") return drop("not an object");
 
     if (raw.type === NARRATION) {
+      /* generation-architecture.md §1.2: a narration item may carry `script`,
+         `asset`, or both, and the player prefers `asset` when present. `url`
+         is checked FIRST and UNCONDITIONALLY, before script is even read, so
+         an admin-authored Foray that carries both a pre-rendered asset and a
+         script (the curated-Foray backdoor) always plays the asset — script
+         is never consulted when a file exists. */
       const url = raw.audio_url ?? raw.asset ?? null;
-      // A missing narration line must not stall the Foray — the same rule the
-      // manager already applies to a missing TTS bridge (corner case #12).
-      if (!nonEmpty(url)) return drop("narration has no asset");
+      const script = typeof raw.script === "string" ? raw.script.trim() : "";
+      /* §7 item 1: on-device narration inverts the old assumption — the
+         common case is SCRIPT, NO ASSET, and the queue must treat a script as
+         a playable item rather than dropping it. A missing narration line
+         must still not stall the Foray — the same rule the manager already
+         applies to a missing TTS bridge (corner case #12) — so this only
+         drops when NEITHER a file nor a script exists to speak. */
+      if (!nonEmpty(url) && script.length === 0) return drop("narration has no asset or script");
       /* The duration is resolved HERE, once, and carried on the queue item. The
          alternative — every consumer calling `narrationDuration` on the authored
          record — puts the precedence rule in five places and guarantees that one
@@ -225,7 +236,12 @@ export function buildForayQueue(foray, opts = {}) {
         );
       }
       items.push({
-        id: uniqueId(raw.id), ord: index, kind: "tts", audio_url: url,
+        id: uniqueId(raw.id), ord: index, kind: "tts",
+        // `null`, not `""`, when no file exists: `PlayerQueueManager
+        // ._isSynthNarration` (and every other `nonEmpty`/`??` consumer of
+        // this field) reads an absent asset as "speak the script", and an
+        // empty string must read the same way rather than as a third state.
+        audio_url: nonEmpty(url) ? url : null,
         title: raw.title ?? "", script: raw.script ?? "",
         duration_sec: dur.sec, duration_source: dur.source,
       });
