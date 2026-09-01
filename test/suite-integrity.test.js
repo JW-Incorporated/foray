@@ -866,6 +866,8 @@ const BACKEND_FLOORS = {
   "test/conditionalGet.test.ts": 6,
   "test/copyRules.test.ts": 3,
   "test/createEnricher.test.ts": 1,
+  /* Generation pipeline §4.0-4.1 (kanban card t_825eee4c). */
+  "test/createPromptUnderstander.test.ts": 1,
   "test/dataSchemaCompliance.test.ts": 8,
   "test/dedup.test.ts": 17,
   "test/duration.test.ts": 12,
@@ -882,6 +884,11 @@ const BACKEND_FLOORS = {
   "test/podcastIndex.test.ts": 3,
   "test/politeness.test.ts": 9,
   "test/poolIntegrity.test.ts": 6,
+  /* Generation pipeline §4.0-4.1 (kanban card t_825eee4c): §9.4's ruling
+     ("prompts are discarded") enforced structurally — this suite scans the
+     generation-stage source for persistence primitives and proves a full
+     understand-prompt run touches no file on disk. */
+  "test/promptNoPersistence.test.ts": 3,
   "test/property/dedup.property.test.ts": 5,
   "test/property/duration.property.test.ts": 5,
   "test/property/html.property.test.ts": 4,
@@ -891,6 +898,17 @@ const BACKEND_FLOORS = {
   "test/sessionBuilder.test.ts": 12,
   "test/stubEnricher.test.ts": 6,
   "test/userInterests.test.ts": 17,
+  /* Generation pipeline §4.0-4.1 (kanban card t_825eee4c): §3's input
+     schema, `author_id` required and carried from day one per §1.3. */
+  "test/generationRequest.test.ts": 5,
+  /* Generation pipeline §4.1's safety-first module: forbidden-topics
+     checker, unit-tested and committed rather than a system prompt, per
+     the doc's own explicit requirement. */
+  "test/safetyCheck.test.ts": 11,
+  /* Generation pipeline §4.1 end to end: safety, then clarity, then intent,
+     in that order, with no retry loop on rejection and never more than one
+     clarify round. */
+  "test/understandPrompt.test.ts": 7,
 };
 
 /* `it(` as well as `test(`: backend's suites use both spellings. */

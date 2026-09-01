@@ -15,6 +15,7 @@
     "mutation": "stryker run",
     "build-session": "tsx src/cli/buildSession.ts",
     "build-ladder": "tsx src/cli/buildLadder.ts",
+    "generate-foray": "tsx src/cli/generateForay.ts",
     "ingest-fixtures": "tsx src/cli/ingestFixtures.ts",
     "migrate": "tsx src/cli/migrate.ts",
     "learn-interests": "tsx src/cli/learnInterests.ts"
