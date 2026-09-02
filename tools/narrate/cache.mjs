@@ -161,6 +161,38 @@ export function cacheKey(spec = {}) {
 }
 
 /**
+ * The PRE-2026-09-02 four-field digest — exactly what `cacheKey()` computed
+ * before `padSecPerItem` was added to the key. An index built before this
+ * change has every entry under this digest, not `cacheKey()`'s current one.
+ *
+ * This exists ONLY so `NarrationCache` can recognize an old entry on read and
+ * treat it as a hit (see `NarrationCache.plan`/`has`/`get`) instead of the
+ * whole index going cold in one release and re-billing every cached script —
+ * the exact regression a codex review round on PR #420 caught. Padding is
+ * always `DEFAULT_PAD_SEC_PER_ITEM` in every entry this repo has ever
+ * written (see `createAdapter()`'s guard in `adapter.mjs`; nothing else has
+ * ever been recordable), so an old four-field entry and today's five-field
+ * default entry are provably describing the same audio — recognizing the old
+ * digest is not a compatibility shortcut that risks serving wrong bytes.
+ *
+ * Do not add new fields here. This is a fixed historical shape, not a second
+ * general-purpose key function.
+ *
+ * @param {object} spec  same shape as `cacheKey`
+ * @returns {string} 64-char hex
+ */
+export function legacyCacheKey(spec = {}) {
+  const h = createHash("sha256");
+  const field = (name, value) => {
+    const v = String(value ?? "");
+    h.update(`${name}:${Buffer.byteLength(v, "utf8")}:${v}`);
+  };
+  field("text", billableText(spec.text));
+  for (const name of ["voiceId", "modelId", "outputFormat"]) field(name, spec[name]);
+  return h.digest("hex");
+}
+
+/**
  * An in-memory cache index. `load`/`dump` make it persistable as JSON by a
  * caller; this module deliberately does no file IO, so it stays testable and
  * so nothing here can write to the repo by accident.
@@ -178,6 +210,26 @@ export class NarrationCache {
   get(key) { return this.entries.get(key) ?? null; }
 
   /**
+   * Look an entry up by SPEC rather than by a precomputed key, trying the
+   * current key first and falling back to `legacyCacheKey()` so an index
+   * written before `padSecPerItem` joined the key is not treated as cold.
+   * `plan()` uses this instead of a bare `has(cacheKey(spec))` for exactly
+   * that reason.
+   *
+   * @param {object} spec
+   * @returns {{key: string, entry: object|null}} the key ACTUALLY hit (current
+   *   or legacy) and its entry, or the current key with a null entry on a
+   *   genuine miss
+   */
+  lookup(spec) {
+    const key = cacheKey(spec);
+    if (this.entries.has(key)) return { key, entry: this.entries.get(key) };
+    const legacy = legacyCacheKey(spec);
+    if (this.entries.has(legacy)) return { key: legacy, entry: this.entries.get(legacy) };
+    return { key, entry: null };
+  }
+
+  /**
    * Decide, for one script, whether a generation would be billed.
    *
    * This is the function the whole file exists for: `billable: false` means a
@@ -187,8 +239,8 @@ export class NarrationCache {
    * @returns {{key: string, cached: boolean, billable: boolean, chars: number, billedChars: number}}
    */
   plan(spec) {
-    const key = cacheKey(spec);
-    const cached = this.has(key);
+    const { key, entry } = this.lookup(spec);
+    const cached = entry !== null;
     const chars = countChars(spec.text);
     /* Deliberately PURE -- no hit/miss counters. It used to keep them and they
        were wrong: `plan()` is a query callers legitimately run more than once for

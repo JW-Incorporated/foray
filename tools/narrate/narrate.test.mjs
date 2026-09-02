@@ -25,7 +25,7 @@ import {
   billableText, countChars, nonAsciiChars, estimateDurationSec,
   charsForDurationSec, mp3Bytes, CHARS_PER_MIN_MEASURED,
 } from "./billable.mjs";
-import { cacheKey, assertKeyInputsComplete, NarrationCache, KEY_INPUTS } from "./cache.mjs";
+import { cacheKey, legacyCacheKey, assertKeyInputsComplete, NarrationCache, KEY_INPUTS } from "./cache.mjs";
 import {
   createAdapter, buildRequest, costOf, byteCountOf, pricingBucketFor, MODEL_PRICING_BUCKET,
   FLASH_TURBO, MULTILINGUAL, DEFAULT_MODEL_ID, DEFAULT_OUTPUT_FORMAT, DEFAULT_PAD_SEC_PER_ITEM,
@@ -168,6 +168,31 @@ test("an omitted padSecPerItem normalizes to the default, so legacy four-field c
   );
   // And a real, non-default value must still diverge from both.
   assert.notEqual(cacheKey(fourField), cacheKey({ ...fourField, padSecPerItem: 0.5 }));
+});
+
+test("a cache index written before padSecPerItem joined the key is still a hit, not a wholesale miss", () => {
+  /* Codex review (PR #420, round 3) required proof against an ACTUAL old
+     digest, not just two calls to the new algorithm agreeing with each
+     other. legacyCacheKey() reproduces exactly the pre-2026-09-02 four-field
+     hash; a NarrationCache built from an index keyed that way must still
+     report the script as cached under today's five-field cacheKey() lookup,
+     via NarrationCache.plan() (which is what the adapter actually calls). */
+  const specNow = { text: "an old script", voiceId: "v1", modelId: "m1", outputFormat: "mp3_44100_64" };
+  const oldDigest = legacyCacheKey(specNow);
+  assert.notEqual(oldDigest, cacheKey(specNow), "the two algorithms must genuinely differ for this to be a real test");
+
+  const cache = new NarrationCache({
+    entries: { [oldDigest]: { chars: 13, voiceId: "v1", modelId: "m1", outputFormat: "mp3_44100_64" } },
+  });
+  const plan = cache.plan(specNow);
+  assert.equal(plan.cached, true, "an old four-field entry must be recognized as cached");
+  assert.equal(plan.billable, false);
+  assert.equal(plan.billedChars, 0);
+  assert.equal(plan.key, oldDigest, "plan() must report the digest actually hit, for a caller re-recording under it");
+
+  // A script that was genuinely never generated must still miss, old key or new.
+  const missPlan = cache.plan({ ...specNow, text: "a different, never-cached script" });
+  assert.equal(missPlan.cached, false);
 });
 
 test("createAdapter refuses a non-default padSecPerItem until padding synthesis exists", () => {

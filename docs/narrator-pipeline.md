@@ -664,7 +664,11 @@ by exactly those five, each of which genuinely produces different audio:
    `createAdapter()` refuses any non-default `padSecPerItem` outright (see
    `adapter.mjs`), so this field is always the default today — the fix
    above is the key-shape correctness fix for the day synthesis lands, not
-   a claim that padding is already audible.
+   a claim that padding is already audible. An index written before this
+   field existed is not treated as cold: `NarrationCache.plan()` falls back
+   to `legacyCacheKey()` (the exact pre-fix four-field digest) on a miss, so
+   old entries are recognized as hits rather than triggering a wholesale
+   re-generation.
 
 **And nothing else.** Re-running the pipeline, re-ordering beats, renaming a beat,
 re-titling the Foray, editing a `why` line, moving a script between Forays, or
