@@ -364,7 +364,7 @@ const FLOORS = {
      half is the literal reproduction of Joey's bug report -- deleting either
      would let the thin-anchor gate regress silently the way the original
      bug shipped silently. Every test names the mutation that kills it. */
-  "test/search-thin-anchor.test.js": 9,
+  "test/search-thin-anchor.test.js": 10,
   /* One generation per page load (#233). Floored because the thing it guards is
      invisible in the product: a mismatched code/data pair renders, it just
      renders the wrong program's reading of today's document. Every test in there

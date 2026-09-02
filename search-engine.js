@@ -504,7 +504,22 @@ function interpretQuery(q, ctx) {
      ~a few percent) so it only catches tokens with essentially no
      catalogue footprint, not merely uncommon ones. See
      test/search-thin-anchor.test.js for the calibration cases this value
-     must keep passing. */
+     must keep passing.
+
+     THE MARGIN JUST ABOVE THE CUTOFF IS THINNER THAN "far below rare but
+     real" implies, and it is not hypothetical: "ornithology" sits at
+     corpusDF ~0.0021, one hundredth of a percentage point over 0.002, with
+     no concept expansion either -- so thin=false and it gets none of this
+     protection. "Ornithology History Explained" then returns status:sparse
+     whose top pick matches only on the broad co-token "history"; the
+     query's actual subject contributes nothing to its own top result. The
+     honesty floor in classifyResults still reports this as sparse rather
+     than a false-confident ok/rich set, so it is not user-facing-broken --
+     but a token can clear this threshold by a hair and still get outvoted
+     exactly like a THIN_ANCHOR_DF-protected one would, just without the
+     protection. Don't read the 0.002 constant as a wide safety margin from
+     the boundary; a real, unremarkable-looking word can land right next to
+     it. (Kanban t_dda8ca5b, filed from Fable-fleet red-team t_711dce13.) */
   const thinAnchorCount = primaryGroups.filter(g => g.thin).length;
 
   return {
