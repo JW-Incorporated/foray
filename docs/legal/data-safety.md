@@ -41,7 +41,7 @@ every answer below:
    `cp_` prefix; db `foray`, store `kv`). Two of the 23 are diagnostics rather
    than a listener's data — `cp_storage_health` and `cp_diag` — and neither is
    transmitted.
-2. **Exactly 5 of 21 event types are transmitted**, to one endpoint
+2. **Exactly 5 of 23 event types are transmitted**, to one endpoint
    (`https://qjdllvqdcgacvujhclny.supabase.co`), keyed to an anonymous account.
    Mapping: `app.js:toEventRow()` — the five `case` arms that return a row are
    the whole transmitted set, and every other type falls to `return null`.
