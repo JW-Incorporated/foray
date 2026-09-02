@@ -445,10 +445,26 @@ const INVARIANT_S_NOUNS = new Set([
   "focus", "consensus", "corpus", "campus", "virus", "cactus",
   "plus", "minus", "bus",
 ]);
+
+/* SENSE_LOCKED_PLURALS: a bounded, named set of plural query tokens
+   whose bare-s-stripped "singular" is a REAL WORD but the WRONG SENSE
+   -- same failure shape as SENSE_LOCKED_STEMS/#248 above (a term can be
+   a genuine inflection of the wrong sense of an ambiguous stem), just
+   surfaced through this helper's despluralize branch instead of
+   hitText's inflection suffix. Measured case (codex review round 7,
+   direct repro): "marines" (the military branch/service members) bare-
+   s-strips to "marine", which data/semantic-index.json indexes under
+   the OCEAN concept ("marine biology") -- so a "marines" query picked
+   up ocean vocabulary and topic boosts despite the catalogue's own
+   military content. This blocks despluralize only for the exact listed
+   token (not a general "don't strip near military words" rule, which
+   would be unbounded); pluralize is unaffected, same directional
+   split as INVARIANT_S_NOUNS above. */
+const SENSE_LOCKED_PLURALS = new Set(["marines"]);
 function lemmaVariants(tok) {
   const out = new Set();
   let despluralized = false;
-  const invariant = INVARIANT_S_NOUNS.has(tok);
+  const invariant = INVARIANT_S_NOUNS.has(tok) || SENSE_LOCKED_PLURALS.has(tok);
   if (!invariant) {
     if (/[^aeiou]ies$/.test(tok) && tok.length > 4) {
       /* Same ambiguity as the "es" branch below, one letter over: real
@@ -480,7 +496,19 @@ function lemmaVariants(tok) {
       out.add(tok.slice(0, -1));
       despluralized = true;
     } else if (/s$/.test(tok) && !/ss$/.test(tok) && tok.length > 3) {
+      /* Same ambiguity family as the two branches above, for the plainest
+         shape: "cats" -> "cat" is correct, but a handful of real
+         SINGULAR nouns also end in a bare "s" whose actual plural adds
+         "es" rather than being the despluralized guess's inverse --
+         "lens" (photography/optics) is not itself a plural of "len"; its
+         real plural is "lenses" (codex review round 7, direct repro:
+         data/semantic-index.json's photography concept lists "lenses"
+         but not "lens"). Emitting both the despluralize guess (harmless
+         fragment when wrong) and the tok+"es" pluralize candidate closes
+         this without a dictionary, same pattern as the ies/es branches
+         above. */
       out.add(tok.slice(0, -1));
+      out.add(tok + "es");
       despluralized = true;
     }
   }

@@ -112,6 +112,10 @@ const PAIRS = [
      y-strip mangled "movies" to "movy", missing the real singular
      "movie" entirely. */
   ["movie", "movies"],
+  /* lens/lenses -- codex review round 7: "lens" is a real singular
+     whose plural adds "es" rather than inverting a bare-s strip; the
+     "photography" concept indexes only "lenses". */
+  ["lens", "lenses"],
 ];
 
 for (const [singular, plural] of PAIRS) {
@@ -130,14 +134,15 @@ test("lemmaVariants is a bounded, named transform -- not a general stemmer", () 
      narrow scope. "training"/"trained" must NOT be touched (the card's
      scope explicitly excludes -ing/-ed; that is a verb-sense ambiguity,
      not a singular/plural relationship). */
-  assert.deepEqual([...SE.lemmaVariants("satellites")], ["satellite"]);
+  assert.deepEqual([...SE.lemmaVariants("satellites")], ["satellite", "satelliteses"],
+    "bare-s despluralize (codex review round 7) also emits the +es pluralize candidate ('satelliteses' is a harmless unused fragment) so real singular-s-plus-es words like 'lens'/'lenses' aren't missed");
   assert.deepEqual([...SE.lemmaVariants("satellite")], ["satellites"]);
   assert.deepEqual([...SE.lemmaVariants("energies")], ["energy", "energie"],
     "y<->ies plurals (codex review round 6) also emit the bare-s-strip fragment ('energie' is harmless) so a silent-ie singular like 'movie'/'cookie' isn't missed by the same branch");
   assert.deepEqual([...SE.lemmaVariants("energy")], ["energies"]);
   assert.deepEqual([...SE.lemmaVariants("glasses")], ["glass", "glasse"],
     "silent-e plurals (case: 'glasse' is a harmless fragment) also emit the real singular 'glass' -- codex review P2 fix");
-  assert.deepEqual([...SE.lemmaVariants("warriors")], ["warrior"]);
+  assert.deepEqual([...SE.lemmaVariants("warriors")], ["warrior", "warriorses"]);
   assert.deepEqual([...SE.lemmaVariants("training")], ["trainings"],
     "training is treated as a bare noun (pluralize-only), never de-verbed to \"train\"");
   assert.deepEqual([...SE.lemmaVariants("trained")], ["traineds"],
@@ -154,5 +159,30 @@ test("lemmaVariants is a bounded, named transform -- not a general stemmer", () 
     const v = [...SE.lemmaVariants(invariant)];
     assert.deepEqual(v, [invariant + "es"],
       `"${invariant}" must not be despluralized (no bare-s strip) but must still offer its "+es" pluralize candidate -- got ${JSON.stringify(v)}`);
+  }
+  /* SENSE_LOCKED_PLURALS, codex review round 7 direct repro: "marines"
+     (military) bare-s-strips to "marine", which the semantic index
+     indexes under the OCEAN concept ("marine biology") -- a real word,
+     but the wrong sense entirely. Must never despluralize; pluralize
+     (never fires for an already-plural-shaped word here, so this stays
+     empty, matching the pre-fix "no variants" baseline for this one
+     named exception). */
+  assert.deepEqual([...SE.lemmaVariants("marines")], ["marineses"],
+    "\"marines\" must never bare-s-strip to \"marine\" (wrong sense: ocean, not military) -- codex review round 7");
+});
+
+test("\"marines\" (military) never picks up the unrelated ocean concept's vocabulary", () => {
+  /* MUTATION: removing "marines" from SENSE_LOCKED_PLURALS reproduces
+     the round-7 finding exactly -- "marines" bare-s-strips to "marine",
+     which IS a term of the "ocean" concept (data/semantic-index.json),
+     so hasConceptExpansion flips true and the group's terms gain the
+     ocean concept's full vocabulary (sea, maritime, marine-biology,
+     ...), corrupting a military-topic query with marine-biology
+     content and topic boosts it never asked for. */
+  const interp = SE.interpretQuery("marines", ctx);
+  const group = interp.groups.find(g => g.token === "marines");
+  const oceanOnlyTerms = ["marine-biology", "maritime", "sea", "seas"];
+  for (const t of oceanOnlyTerms) {
+    assert.ok(!group.terms.has(t), `"marines" query picked up ocean-only term "${t}" via the wrong-sense despluralize guess`);
   }
 });
