@@ -1165,9 +1165,65 @@ function showNameLink(showName) {
   return showId ? `<a class="show-link" href="#/show/${esc(showId)}">${label}</a>` : label;
 }
 
+/* A3.2 — tapping a chip goes to "shows in this category" (renderCategory),
+   reusing taxonomy_node_ids overlap across the existing 220-show curated
+   catalogue. Zero new data needed: the join is entirely against fields
+   already fetched (state.taxonomy, state.catalog). Deliberately an <a>, not
+   a <button> wired through JS, so it is a normal navigable link (right-click
+   "open in new tab" etc. keep working, same reasoning as showNameLink). */
 function taxonomyChip(nodeId) {
   const node = (state.taxonomy?.nodes || []).find(n => n.id === nodeId);
-  return `<span class="fy-chip">${esc(node?.label || nodeId)}</span>`;
+  const label = esc(node?.label || nodeId);
+  return `<a class="fy-chip" href="#/category/${esc(encodeURIComponent(nodeId))}">${label}</a>`;
+}
+
+/* Every catalogue show whose taxonomy_node_ids includes nodeId — the exact
+   overlap check A3.2 calls for. Once Stage 3b's breadth catalogue becomes
+   client-searchable this should extend to it too (separate card); for now
+   it reads only state.catalog, the curated 220-show set. */
+function showsForCategory(nodeId) {
+  return (state.catalog?.shows || []).filter(s => (s.taxonomy_node_ids || []).includes(nodeId));
+}
+
+/* Shared shell for both the category list (A3.2) and the all-shows index
+   (A3.3) — same "back, heading, sub, list-of-show-result-rows" shape
+   renderShow/renderPlaylistDetail already use, and reuses showResultRow so a
+   row here looks and behaves exactly like a Shows-search result. */
+function renderShowIndexPage(title, subtitle, shows) {
+  document.body.className = "view-page";
+  $("#view").innerHTML = `
+    <div class="page">
+      <div class="page-head">
+        <a class="back" href="#/">‹</a>
+        <div>
+          <h2>${esc(title)}</h2>
+          <p class="sub">${esc(subtitle)}</p>
+        </div>
+      </div>
+      ${shows.length
+        ? `<div class="show-results">${shows.map(showResultRow).join("")}</div>`
+        : `<p class="note">No shows here yet.</p>`}
+    </div>`;
+}
+
+/* A3.2's landing page. An unknown nodeId still renders — same "absence is a
+   real state, not an error" rule renderShow's not-found guard follows —
+   falling back to the raw id as its own label, and an empty result list
+   getting the shared "No shows here yet" copy rather than a dead end. */
+function renderCategory(nodeId) {
+  const node = (state.taxonomy?.nodes || []).find(n => n.id === nodeId);
+  const label = node?.label || nodeId;
+  const shows = showsForCategory(nodeId).slice().sort((a, b) => a.title.localeCompare(b.title));
+  renderShowIndexPage(label, `${shows.length} show${shows.length === 1 ? "" : "s"} in 4a's catalogue`, shows);
+}
+
+/* A3.3 — the all-shows browsable index. A-Z over the full curated catalogue;
+   category grouping is the Shows-search tab's job already (browse by
+   category lives one tap away via any show's taxonomy chips), so this stays
+   a single flat alphabetical list rather than duplicating that navigation. */
+function renderAllShows() {
+  const shows = (state.catalog?.shows || []).slice().sort((a, b) => a.title.localeCompare(b.title));
+  renderShowIndexPage("All Shows", `${shows.length} shows in 4a's catalogue, A\u2013Z`, shows);
 }
 
 function renderShow(show_id) {
@@ -1586,6 +1642,7 @@ function setSearchTab(mode) {
   $("#sh-form").hidden = topics;
   $("#sh-note").hidden = topics || !$("#sh-note").textContent;
   $("#sh-results").hidden = topics || !$("#sh-results").innerHTML;
+  $("#browse-all-link").hidden = topics;
 }
 
 function renderHome() {
@@ -1613,6 +1670,7 @@ function renderHome() {
       </form>
       <p id="sh-note" class="note" hidden></p>
       <div id="sh-results" class="show-results" hidden></div>
+      <a id="browse-all-link" class="browse-all-link" href="#/shows" hidden>Browse all shows ›</a>
     </div>`;
 
   if (!showFirstTimeExplainerOnce()) showIntroPopupOnce();
@@ -4161,6 +4219,8 @@ function renderCurrentPage() {
   else if ((m = /^#\/subject\/(.+)$/.exec(h))) renderPlaylistDetail("subject-" + m[1]);
   else if ((m = /^#\/episode\/(.+)$/.exec(h))) renderEpisode(m[1]);
   else if ((m = /^#\/show\/(.+)$/.exec(h))) renderShow(decodeURIComponent(m[1]));
+  else if ((m = /^#\/category\/(.+)$/.exec(h))) renderCategory(decodeURIComponent(m[1]));
+  else if (h === "#/shows") renderAllShows();
   else if (h === "#/playlists") renderPlaylists();
   else if (h === "#/queue") renderQueue();
   else renderHome();
