@@ -1928,7 +1928,7 @@ function renderShowSearchResults(query) {
 
   paint(localShows);
 
-  fetchJson(`api/shows/search?q=${encodeURIComponent(query)}&limit=25`).then((data) => {
+  fetchApiJson(`api/shows/search?q=${encodeURIComponent(query)}&limit=25`).then((data) => {
     if (myToken !== showSearchToken) return; // superseded — drop this response
     const breadthShows = data?.shows || [];
     if (!breadthShows.length) return; // degrade silently: local-only results already painted
@@ -1941,7 +1941,7 @@ function renderShowSearchResults(query) {
       additions.push(s);
     }
     if (additions.length) paint(localShows.concat(additions));
-  }); // fetchJson already swallows network/parse errors and resolves null — no .catch needed
+  }); // fetchApiJson already swallows network/parse errors and resolves null — no .catch needed
 }
 
 function setSearchTab(mode) {
@@ -4584,6 +4584,26 @@ function route() {
 async function fetchJson(path) {
   try {
     const res = await fetch(pinnedUrl(path), { cache: "no-cache" });
+    return res.ok ? await res.json() : null;
+  } catch (_) { return null; }
+}
+
+/* A3.1/Q3: a plain, unpinned fetch for /api/* backend endpoints — deliberately
+   a separate helper from fetchJson, not a reuse of it. fetchJson pins every
+   call to the deploy generation (pinnedUrl) because data/*.json is a static,
+   versioned build artifact; /api/* is a live serverless function with no
+   deploy-generation concept to pin against. Keeping this a distinct function
+   (rather than making fetchJson conditionally skip pinning) also keeps
+   tools/mobile/prepare-webdir.mjs's runtimeDataFiles() derivation correct —
+   that scanner matches every literal fetchJson call against a data/*.json
+   path to build the native bundle's data-file manifest, and pointing that
+   same call at api/shows/search would incorrectly need to be either bundled
+   as data or special-cased out. Same swallow-errors-to-null contract as
+   fetchJson, so callers don't need their own try/catch for a down or
+   unreachable endpoint. */
+async function fetchApiJson(path) {
+  try {
+    const res = await fetch(path, { cache: "no-cache" });
     return res.ok ? await res.json() : null;
   } catch (_) { return null; }
 }
