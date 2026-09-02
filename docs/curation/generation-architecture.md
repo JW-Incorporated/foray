@@ -336,8 +336,11 @@ The spine contains:
   it; when generation is on schedule they are simply never inserted into the running order
   (produced, but unplayed). **This means the without-buffer running order — every act minus its
   deferrable beats — must, by itself, already land inside §3/§8's ±15% tolerance (both the
-  undershoot and overshoot bound), because it is exactly what plays when generation stays on
-  schedule and §8's publishability gate is checked against what actually played. On top of that,
+  undershoot and overshoot bound), and the same running order WITH every reserved deferrable beat
+  inserted must also land inside that tolerance. §4.9 validates both paths prospectively, before
+  §4.10 playback ever begins — publishability cannot depend on which path a given listening
+  session happens to take, since §6.3's time-shortfall decision is made live, per playback, after
+  the Foray has already published. On top of the baseline-alone requirement,
   the baseline must leave enough headroom below the +15% ceiling to accommodate the deferrable
   beats it carries: baseline runtime plus the reserved deferrable beats' runtime, together, must
   still fit within +15% of the target — deferrable beats only ever add runtime, so only the upper
@@ -788,6 +791,16 @@ given. This retained-field set is the general-case design, not a fallback — a 
 retained
 description or transcript excerpt) is a future improvement gated on a founder-approved schema
 change, not something assumed available today.
+
+**Flagged for founder clarification, not guessed: the similarity decision rule itself.** This
+ruling settles *what text* is compared (§9.4/§9.6 above) but does not — and should not, per line
+23's rule against inventing unreviewed decisions — pick the embedding model/version, the distance
+metric, or the similarity threshold that makes a prompt "very similar" to an existing Foray.
+Different choices trade off missed near-duplicates against false-positive interruptions asking the
+listener about an unrelated Foray; that is a product call, not something this document should
+settle unilaterally. Needed before implementation: one line from a founder naming the model,
+metric, and threshold (or delegating that choice to the implementer with an explicit tolerance for
+getting it wrong and tuning later).
 
 ---
 

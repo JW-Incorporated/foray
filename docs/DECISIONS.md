@@ -1280,6 +1280,14 @@ its reasoning.
   carves out that a held-back deferrable beat is a distinct, pre-authorized state the gate does not
   penalize, and only requires a recorded reason if a deferrable beat's production is cancelled
   outright (§6.3's cost-shortfall path) rather than held back as designed.
+- **Review round 11 fix: §9.6's dedup ruling declared similarity detection "buildable" without
+  naming the decision rule that makes it deterministic.** The ruling specifies what text is
+  compared (title/summary/topic/slot titles) but never the embedding model/version, distance
+  metric, or similarity threshold — a real product tradeoff (missed near-duplicates vs. false-
+  positive interruptions) this document should not invent unilaterally, per line 23's rule.
+  §9.6 now explicitly flags this as an open item needing one founder line (name the model/metric/
+  threshold, or explicitly delegate the choice to the implementer) before implementation, rather
+  than silently leaving it to whoever builds it to guess.
 
 ## 2026-09-01 (Fix M4: service worker — versioned manifest for atomic deploy generation, kanban card t_f143c31a)
 
