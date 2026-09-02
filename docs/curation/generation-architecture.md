@@ -335,16 +335,21 @@ The spine contains:
   while act N+1 finishes, filling reserved runtime that would otherwise sit unused, not adding to
   it; when generation is on schedule they are simply never inserted into the running order
   (produced, but unplayed). **This means the without-buffer running order — every act minus its
-  deferrable beats — must land far enough under §3/§8's ±15% ceiling to leave headroom for the
-  deferrable beats it carries: baseline runtime plus the reserved deferrable beats' runtime,
-  together, must still fit within ±15% of the target. A baseline that already sits at the ±15%
-  ceiling on its own has zero headroom and may carry no deferrable beats at all, regardless of act
-  length.** Each act's deferrable-beat count is capped by whatever headroom remains under that
+  deferrable beats — must, by itself, already land inside §3/§8's ±15% tolerance (both the
+  undershoot and overshoot bound), because it is exactly what plays when generation stays on
+  schedule and §8's publishability gate is checked against what actually played. On top of that,
+  the baseline must leave enough headroom below the +15% ceiling to accommodate the deferrable
+  beats it carries: baseline runtime plus the reserved deferrable beats' runtime, together, must
+  still fit within +15% of the target — deferrable beats only ever add runtime, so only the upper
+  bound is at risk from their insertion.** A baseline that already sits at the +15% ceiling on its
+  own has zero headroom and may carry no deferrable beats at all, regardless of act
+  length. Each act's deferrable-beat count is capped by whatever headroom remains under that
   ceiling after the act's other beats are sized, never by a flat allowance independent of how much
   of the tolerance the baseline already used. A Short Foray's small beat count (8–10 beats total,
   per §3's table) makes this bound binding in practice: the deepening stage (§4.4) computes, per
   act, the maximum number of deferrable beats (0, 1, or 2) whose combined runtime fits within the
-  headroom actually remaining under the act's ±15% ceiling, and marks exactly that many — never a
+  headroom actually remaining under the act's +15% ceiling — while also verifying the baseline
+  alone clears -15% on the low side — and marks exactly that many — never a
   fixed two regardless of budget, and never assuming the full 15% is available on top of an
   already-tight baseline. §6.3, when a time shortfall hits, inserts however many deferrable beats
   that act actually has (which may be fewer than two, or none, for a tightly-budgeted act) rather
@@ -718,9 +723,10 @@ Answer from Wyatt: Each prompt is discarded. the Foray is given a title on creat
 **Resolved (2026-09-02) — the apparent §9.6 collision does not require reopening this ruling.**
 §9.6's similarity check does not need the *incoming* prompt to be stored: it is embedded
 transiently, used once for the comparison, and discarded, per this ruling. The comparison side is
-each **existing Foray's own retained content** (its title, plus any description/transcript text
-already kept for the catalogue), not anyone's prompt — that content is already retained under this
-ruling and under the Foray's own catalogue lifecycle, so no new prompt-retention exception is
+each **existing Foray's own retained content** — `forays.json`'s existing `title` and `summary`
+fields, the only per-Foray text the schema retains today — not anyone's prompt; that content is
+already retained under this ruling and under the Foray's own catalogue lifecycle, so no new
+prompt-retention exception is
 needed. Whether an *embedding derived from* that retained content is itself cached or recomputed
 on demand is a separate storage/schema question this ruling does not decide — see §9.6, which
 answers it (recompute-on-demand is the schema-free default). `promptNoPersistence.test.ts`
@@ -743,18 +749,24 @@ to that Foray. If they decline, a new one is created.
 **Resolved (2026-09-02) — buildable without reopening §9.4; persistence question deferred to
 implementation.** "Similar to an existing Foray" is implemented as: embed the incoming prompt
 transiently (never persisted, consistent with §9.4), embed each existing Foray's own already-
-retained content (title, plus description/transcript text already kept for the catalogue — never
-another user's discarded prompt), and compare. This needs no new *prompt*-retention exception — the
-privacy question §9.4 raised is fully closed. **Whether the per-Foray comparison embedding itself
+retained content (`forays.json`'s existing `title` and `summary` fields — the only per-Foray text
+the schema retains today; not a hypothetical description/transcript field that does not exist, and
+never another user's discarded prompt), and compare. This needs no new *prompt*-retention exception
+and no schema change at all for the general case — the
+privacy question §9.4 raised is fully closed. A title+summary comparison is coarser than a full
+transcript would be, and is the honest general-case baseline until/unless a founder-approved schema
+addition (a retained description or transcript excerpt) improves it — that improvement is a
+separate, optional schema decision this ruling does not make for itself. **Whether the per-Foray
+comparison embedding itself
 is persisted (cached in `forays.json` or a sibling store) or recomputed on demand is a storage/
 schema decision this document does not make for itself** (line 23's rule again): recomputing
-on-the-fly from existing retained fields needs no schema change at all; caching it for performance
+on-the-fly from `title`+`summary` needs no schema change at all; caching it for performance
 would add a field to `forays.json` and must be surfaced as a proposed schema change for founder
 sign-off before being built, exactly as line 23 requires for any schema addition. Do not persist a
 new embedding field without that sign-off — recompute-on-demand is the safe default until it is
-given. A title-only comparison remains the fallback when per-Foray description/transcript text
-isn't available for older catalogue entries, and should be labeled as weaker in that case, but is
-not required as the general-case design.
+given. Title+summary is the general-case design, not a fallback — a richer comparison (a retained
+description or transcript excerpt) is a future improvement gated on a founder-approved schema
+change, not something assumed available today.
 
 ---
 

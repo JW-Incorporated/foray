@@ -1243,6 +1243,18 @@ its reasoning.
   had already removed that figure from the surrounding text, leaving a dangling reference. Replaced
   with a plain statement that an earlier draft's 40%-overshoot example implied a second, looser
   tolerance and was removed — ±15% is the only overshoot bound.
+- **Review round 7 fixes: two more real issues codex caught.** (1) The §4.3 headroom rule only
+  constrained baseline+insertion against the +15% ceiling, but said nothing about the baseline
+  alone against the -15% floor — a baseline could undershoot beyond -15% and still "pass," failing
+  §8's publishability gate the moment generation stays on schedule (the deferrable beats never
+  play, so what actually played is the baseline). §4.3 now requires the baseline alone to already
+  sit inside the full ±15% tolerance, with the headroom check against +15% layered on top only for
+  the insertion case. (2) §9.4/§9.6's dedup comparison cited "description/transcript text already
+  kept for the catalogue" as the comparison basis, but `forays.json`'s actual schema retains only
+  `title` and `summary` — no description or transcript field exists, so the comparison as written
+  depended on data that isn't there. Both sections now name `title`+`summary` as the actual,
+  already-available comparison basis, with a richer comparison explicitly deferred to a future
+  founder-approved schema addition rather than assumed available today.
 
 ## 2026-09-01 (Fix M4: service worker — versioned manifest for atomic deploy generation, kanban card t_f143c31a)
 
