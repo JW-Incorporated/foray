@@ -456,6 +456,22 @@ button.show-star.on { color: var(--gold); border-color: var(--gold); }
   font-size: 0.95rem;
 }
 
+/* ---------- browse-all-shows entry point (A3.3) ---------- */
+.browse-all-link {
+  display: block;
+  margin-top: 4px;
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text-dim);
+  text-align: center;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+.browse-all-link:active { background: var(--surface-2); }
+
 /* ---------- "this page is a version behind" bar (#233) ----------
    Fixed rather than in flow: the topbar is fixed and #view pads itself past it,
    so a bar in normal flow would sit underneath the topbar and be invisible.
@@ -708,6 +724,15 @@ body.fp-open.fp-expanded { padding-bottom: 340px; }
    the existing .fp-s-why, both already used by the player sheet. */
 .ep-art { width: 100%; max-width: 320px; display: block; border-radius: 10px; margin: 0 0 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
 .ep-actions { display: flex; align-items: center; gap: 12px; }
+/* A1.8 "More from this show" — same section-label language as .fy-slot h3. */
+.ep-more { margin: 24px 0 0; }
+.ep-more h3 {
+  margin: 0 0 8px;
+  font-family: var(--serif);
+  font-size: 0.86rem; font-weight: 700;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--text-dim);
+}
 
 .fp-scrub { width: 100%; accent-color: var(--accent); }
 .fp-times { display: flex; justify-content: space-between; font-size: 0.7rem; color: var(--text-dim); }
@@ -1174,12 +1199,14 @@ body.fy-sheet-open { overflow: hidden; }
 .fy-sheet-sub { margin: 0 0 14px; font-size: 0.8rem; color: var(--text-dim); }
 .fy-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
 .fy-chip {
+  display: inline-block;
   padding: 7px 12px;
   border-radius: 16px;
   border: 1px solid var(--line);
   background: var(--surface-2);
   color: var(--text-dim);
   font: inherit; font-size: 0.78rem;
+  text-decoration: none;
   cursor: pointer;
 }
 .fy-chip.on { border-color: var(--accent); color: var(--text); background: var(--surface); }

@@ -306,6 +306,7 @@ async function mount({
     // The home screen's own vocabulary, needed only under `boot`.
     "banner-slot", "pl-form", "pl-input", "pl-note",
     "tab-topics", "tab-shows", "sh-form", "sh-input", "sh-note", "sh-results",
+    "browse-all-link",
     "pl-remove", "banner-done"]) {
     const el = new El("div");
     el.id = id;
