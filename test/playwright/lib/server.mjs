@@ -66,6 +66,12 @@ export function startFixtureServer(initialFiles) {
      path it is still relying on staying hung. */
   const hungPaths = new Set();
   const failPaths = new Set();
+  /* Every socket this server has ever accepted, so close() can force them
+     shut. Plain server.close() waits for in-flight connections to end on
+     their own — and a hungOn() request never does, by design — which would
+     hang test cleanup (a `finally { await server.close() }`) forever on
+     exactly the tests that most need to close cleanly. */
+  const sockets = new Set();
 
   const server = http.createServer((req, res) => {
     const url = new URL(req.url, "http://localhost");
@@ -93,6 +99,10 @@ export function startFixtureServer(initialFiles) {
     }
     res.writeHead(404, { "content-type": "text/plain; charset=utf-8" });
     res.end("not found: " + p);
+  });
+  server.on("connection", (socket) => {
+    sockets.add(socket);
+    socket.on("close", () => sockets.delete(socket));
   });
 
   return new Promise((resolve) => {
@@ -135,6 +145,12 @@ export function startFixtureServer(initialFiles) {
           return manifestOverride || computeManifest(files);
         },
         close() {
+          // Force-destroy any sockets still open (a hungOn() request that
+          // never got a response) before closing, so a test that used
+          // hangOn() and forgot clearFaults() before close() still tears
+          // down instead of hanging the whole run — see the `sockets`
+          // comment above.
+          for (const socket of sockets) socket.destroy();
           return new Promise((r) => server.close(r));
         },
       });
