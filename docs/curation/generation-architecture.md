@@ -681,7 +681,11 @@ A generated Foray is publishable only if all of these hold:
   it carries a recorded reason (schema TBD, see §3) and an explicit narrated explanation. Overshoot
   has no exception at any margin (§3) — including a §6.3 time-buffer insertion pushing runtime past
   ±15%, which is a defect the generation lead must avoid by reserving room for the deferrable pair
-  within the maximum runtime rather than adding it on top (§6.3).
+  within the maximum runtime rather than adding it on top (§6.3). This check runs at publish time
+  (§4.9), before playback (§4.10) ever begins, so both the without-buffer running order and the
+  running order with every reserved deferrable beat inserted must independently pass — §6.3's
+  actual insert-or-not decision happens live, per playback session, after the Foray is already
+  published (§4.3).
 - Narration share may be up to 100% (§9.3) — there is no ceiling. A Medium/Long Foray whose topic is
   too thin for real tape at the requested duration must take the §9.3 shortening path instead of
   padding with synthetic filler to raise or preserve narration share.

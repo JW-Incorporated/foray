@@ -1270,6 +1270,14 @@ its reasoning.
   not specify. §4.3 now surfaces this explicitly as a finding for founder sign-off, with a
   schema-free fallback (an act produces zero deferrable beats until the contract is approved) so
   the spec does not silently claim an unbuildable mechanism as already available.
+- **Review round 11 fix: §8's runtime gate was defined against "what actually played," which is
+  temporally impossible.** §4.9 (publish, validators run) happens before §4.10 (playback); whether
+  §6.3 inserts the reserved deferrable beats is decided live, per playback session, after
+  publication. A gate that only validates against actual playback could publish a Foray whose
+  runtime turns out invalid only after the fact. §3/§8/§4.3 now require BOTH the baseline running
+  order and the baseline-plus-every-deferrable-beat running order to independently pass the ±15%
+  tolerance at publish time (§4.9) — publishability no longer depends on which path any given
+  listening session happens to take.
 - **Review round 10 fix: §8's spine-beat completeness gate contradicted the normal on-schedule
   deferrable-beat path.** §8 required every spine beat to be "present, or explicitly dropped with
   a recorded reason," but §4.3/§6.3 (as corrected in rounds 6-9) specify that a deferrable beat is
