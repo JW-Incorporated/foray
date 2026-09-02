@@ -1170,6 +1170,63 @@ function taxonomyChip(nodeId) {
   return `<span class="fy-chip">${esc(node?.label || nodeId)}</span>`;
 }
 
+/* ---------- "used in these forays" (show page, requirements B3/Q6) ----------
+
+   The reverse of foraySourcesHtml's join: that surface starts from a resolved
+   Foray and asks "which shows is this made of"; this starts from a show and
+   asks "which forays draw on it". Same three documents
+   (data/forays.json -> data/segments.json -> data/segment-sources.json),
+   walked the other direction, entirely client-side over data already fetched
+   by init() — no new fetch, no player module dependency (the show page must
+   render this even if player/client.js is slow to load or absent).
+
+   Draft visibility mirrors forayCards()/unlockedForays(): an unpublished
+   Foray is named here only when the visitor unlocked it by id in the URL, for
+   the same reason player/foray-resolve.js's forayVisibility rule exists —
+   this page must not announce unpublished work either. */
+function foraysUsingShow(show) {
+  if (!show) return [];
+  const forays = state.forays?.forays;
+  const segments = state.segments?.segments;
+  const sources = state.segmentSources?.sources;
+  if (!Array.isArray(forays) || !Array.isArray(segments) || !Array.isArray(sources)) return [];
+
+  const wanted = new Set([show.title, TITLE_ALIASES[show.title]].filter(Boolean));
+  const segById = new Map(segments.filter(s => s && s.id).map(s => [s.id, s]));
+  const srcById = new Map(sources.filter(s => s && s.id).map(s => [s.id, s]));
+  const unlocked = unlockedForays();
+
+  return forays.filter(f => {
+    if (!f || typeof f !== "object") return false;
+    const visible = f.status === "published" || (typeof f.id === "string" && f.id && unlocked.includes(f.id));
+    if (!visible) return false;
+    const items = Array.isArray(f.items) ? f.items : [];
+    return items.some(it => {
+      if (!it || it.type !== "segment") return false;
+      const seg = segById.get(it.segment_id);
+      if (!seg) return false;
+      const src = srcById.get(seg.item_id);
+      return !!src && wanted.has(src.show);
+    });
+  });
+}
+
+/* Deliberately its own <footer>, never mixed into the episode list above it —
+   requirements doc's B1 rule (forays stay visually distinct from episodes
+   everywhere) applies here too: this is 4a's own cross-reference, not
+   anything the show itself published. */
+function showForaysHtml(show) {
+  const forays = foraysUsingShow(show);
+  if (!forays.length) return "";
+  return `<footer class="show-forays">
+    <h3 class="show-forays-h">Used in the following forays</h3>
+    <p class="show-forays-note">Not part of ${esc(show.title)}'s own catalogue — 4a stitched a clip from it into these.</p>
+    ${forays.map(f => `<a class="show-forays-row" href="#/foray/${esc(f.id)}">
+      <span class="show-forays-title">${esc(f.title)}</span>${f.status === "published" ? "" : `<span class="show-forays-draft">draft</span>`}
+    </a>`).join("")}
+  </footer>`;
+}
+
 function renderShow(show_id) {
   document.body.className = "view-page";
   const show = showById(show_id);
@@ -1194,6 +1251,7 @@ function renderShow(show_id) {
       ${eps.length
         ? eps.map((item, i) => epRow(item, i, ctx, -1)).join("")
         : `<p class="note">No episodes from this show are in 4a's catalogue right now.</p>`}
+      ${showForaysHtml(show)}
     </div>`;
 
   bindPickLogging($("#view"));
@@ -2328,11 +2386,12 @@ function foraySourcesHtml(r, player) {
   const clips = (n) => `${esc(String(n))} clip${n === 1 ? "" : "s"}`;
   const rows = credits.map(c => `
     <div class="fy-src">
-      <a class="fy-src-head" href="${esc(safeUrl(c.link))}" target="_blank" rel="noopener"
-         data-src-show="${esc(c.show)}">
-        <span class="fy-src-show">${esc(c.show)} ↗</span>
+      <div class="fy-src-head">
+        <span class="fy-src-show">${showNameLink(c.show)}</span>
+        <a class="fy-src-out" href="${esc(safeUrl(c.link))}" target="_blank" rel="noopener"
+           data-src-show="${esc(c.show)}" aria-label="Open ${esc(c.show)} on Apple Podcasts">↗</a>
         <span class="fy-src-meta">${clips(c.clips)} · ${esc(player.fmtSpan(c.seconds))}</span>
-      </a>
+      </div>
       <ul class="fy-src-eps">${c.episodes.map(e =>
         `<li>${esc(e.title)} <span>${clips(e.clips)}</span></li>`).join("")}</ul>
     </div>`).join("");
