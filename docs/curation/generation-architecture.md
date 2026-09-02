@@ -611,26 +611,16 @@ published Foray, and whether rejected prompts are kept.
 
 Answer from Wyatt: Each prompt is discarded. the Foray is given a title on creation, which is retained.
 
-**Flagged for founder clarification (2026-09-02) — collides with §9.6.** §9.6's dedup ruling
-requires detecting "when a prompt is very similar to an existing Foray," which needs the original
-prompt text (or a vector derived from it) to compare against; a retained title is not a working
-substitute — titles are short, editorial, and not written to be prompt-similarity-preserving.
-`backend/test/promptNoPersistence.test.ts` (kanban t_825eee4c, merged) currently enforces this
-stage's *literal* no-persistence behaviour — it scans the §4.0-4.1 source for a fixed set of direct
-persistence calls (`fs.write*`, `localStorage`, SQL/`Pool`/`localforage` calls) and confirms the
-returned intent object carries no field literally named `prompt` or `rawPrompt`. It does not, as
-written, catch every possible route to persisting a *derived* value (an embedding stored through an
-unlisted API, or returned under a different field name) — so it is a real but partial safeguard,
-not a guarantee that would need "relaxing." Resolving §9.4 vs §9.6 is still a real product/privacy
-tradeoff, not a wording ambiguity to default past. **One line needed from Wyatt (+ legal per this
-section's own owner line):** is a one-way prompt embedding (not the raw text, never displayed,
-unrecoverable to the original wording) an acceptable exception to "each prompt is discarded,"
-solely to power §9.6 dedup? If yes, §9.6 is implemented against that embedding and
-`promptNoPersistence.test.ts` is extended — not merely relaxed — to explicitly allow and verify
-exactly that one derived artifact (asserting what it stores and does not store) rather than being
-silently satisfied by omission. If no, §9.6 must be re-scoped to title-similarity only (a
-materially weaker dedup, which should be said explicitly rather than implied) — do not build the
-embedding path until this line is answered.
+**Resolved (2026-09-02) — the apparent §9.6 collision does not require reopening this ruling.**
+§9.6's similarity check does not need the *incoming* prompt to be stored: it is embedded
+transiently, used once for the comparison, and discarded, per this ruling. What does need to be
+persisted is the comparison side — an embedding derived from each **existing Foray's own retained
+content** (its title, plus any description/transcript text already kept for the catalogue), not
+from anyone's prompt. That content is already retained under this ruling and under the Foray's own
+catalogue lifecycle, so no new prompt-retention exception is needed. `promptNoPersistence.test.ts`
+(t_825eee4c) does not need to change: it guards the §4.0-4.1 prompt-understanding stage, and this
+comparison happens downstream, against already-catalogued Foray content, never against a persisted
+prompt. See §9.6.
 
 **9.5 — What does a listener do with a bad Foray?**
 No feedback path is specified. This matters more in phase 2, and it is also the raw material for
@@ -644,11 +634,16 @@ fills with near-duplicates.
 Answer: when a prompt is very similar to an existing Foray, the user is asked if they want to listen
 to that Foray. If they decline, a new one is created.
 
-**Not fully buildable yet — depends on §9.4.** The similarity comparison this ruling requires needs
-a stored representation of the prompt to compare against (see §9.4's flagged founder
-clarification). Do not implement the similarity check until §9.4 answers whether a one-way
-embedding is permitted; until then, at most a title-similarity check can ship, and it should be
-labeled in code and UI copy as approximate, not as the dedup this ruling describes.
+**Resolved (2026-09-02) — buildable without reopening §9.4.** "Similar to an existing Foray" is
+implemented as: embed the incoming prompt transiently (never persisted, consistent with §9.4),
+embed each existing Foray from its own retained content (title, plus description/transcript text
+already kept for the catalogue — never from another user's discarded prompt), and compare. Only the
+per-Foray comparison embeddings are persisted, derived from content the catalogue already retains
+for other reasons, so this needs no new prompt-retention exception and does not touch
+`promptNoPersistence.test.ts`'s scope (that test guards the §4.0-4.1 stage; this comparison runs
+downstream, against catalogue content). A title-only comparison remains the fallback if per-Foray
+description/transcript text isn't available for older catalogue entries, and should be labeled as
+weaker in that case, but is not required as the general-case design.
 
 ---
 

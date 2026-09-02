@@ -1198,22 +1198,20 @@ its reasoning.
   be *recorded* and *narrated*, and explicitly defer the schema question
   (existing field vs. proposed addition) to whoever implements §9.3's
   shortening path.
-- **§9.4 (prompts discarded) vs §9.6 (dedup by prompt similarity) is a real
-  founder-decision gap, not a wording fix — flagged rather than guessed.**
-  §9.6's similarity check needs a stored representation of the prompt (raw
-  text or a derived vector); §9.4's retained title is not a working proxy.
-  `backend/test/promptNoPersistence.test.ts` (t_825eee4c, merged) already
-  enforces this stage's literal no-persistence behaviour, but only against a
-  fixed set of direct persistence calls and a check for literally-named
-  `prompt`/`rawPrompt` fields — it is a real but partial safeguard, not a
-  guarantee an embedding path would need "relaxing" to bypass. Added a
-  flagged founder clarification to §9.4 asking whether a one-way,
-  never-displayed prompt embedding is an acceptable narrow exception to
-  "each prompt is discarded," solely to power §9.6 dedup — and noted in
-  §9.6 that until that question is answered, only an approximate
-  title-similarity check (labeled as such) can ship; the described dedup
-  cannot be implemented yet.
+- **§9.4 (prompts discarded) vs §9.6 (dedup by prompt similarity) resolved
+  without reopening either ruling — a reviewer caught that our first pass
+  wrongly assumed dedup needed a persisted prompt representation.** §9.6's
+  similarity check embeds the incoming prompt transiently (discarded per
+  §9.4) and compares it against embeddings derived from each **existing
+  Foray's own retained content** (title, description/transcript already
+  kept for the catalogue) — never from another user's prompt. No new
+  prompt-retention exception is needed, and `promptNoPersistence.test.ts`
+  (t_825eee4c, merged) is unaffected: it guards the §4.0-4.1 stage, and
+  this comparison runs downstream against already-catalogued content. Our
+  first pass at this fix (now superseded) proposed a one-way prompt
+  embedding as a founder+legal decision; that path is unnecessary and was
+  dropped once the actual comparison target was corrected.
 - No implementation changed in this pass — spec-only correction per the
-  task's scope. Flagged item (§9.4/§9.6) needs one founder + legal line
-  before the dedup stage can be built; everything else in this pass was a
-  concrete fix, not a re-opened question.
+  task's scope. All four contradictions in the finding are now resolved
+  outright, with no remaining founder/legal decision pending; every fix in
+  this pass was a concrete rule change, not a re-opened question.
