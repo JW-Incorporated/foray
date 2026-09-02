@@ -176,3 +176,38 @@ jobs:
         run: node tools/validate-semantic-index.mjs
       - name: Search-quality battery
         run: node tools/test-search.mjs
+
+  playwright:
+    # Real-Chromium browser-integration coverage for sw.js's M4 deploy-
+    # manifest promotion logic (kanban card t_504fd5fd), on top of (never
+    # replacing) the fast node:vm-based test/sw-generation.test.js suite the
+    # `data-and-site` job above already runs — see test/playwright/README.md
+    # for the full split.
+    #
+    # ADVISORY-ONLY ON FIRST LANDING, DELIBERATELY. protect-main's required
+    # checks are matched BY NAME (`backend`, `data-and-site`) — see this
+    # file's own `workflow_dispatch` comment above for that mechanism — so
+    # this job is simply never added to that list; nothing else is needed to
+    # keep it non-blocking. The reason is flakiness risk, not runtime: a
+    # brand-new real-browser suite has had zero CI runs to prove it is
+    # stable, and gating every PR on an unproven suite the first time it
+    # exists would be a self-inflicted destabilization exactly like
+    # `android-build.yml`'s own argument against becoming a required check.
+    # Revisit after one full cycle of green (or reliably explicable) runs —
+    # promote it into protect-main's required-checks list at that point,
+    # rather than leaving it advisory forever.
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: test/playwright
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: test/playwright/package-lock.json
+      - run: npm ci
+      - name: Install Chromium (with OS deps)
+        run: npx playwright install --with-deps chromium
+      - run: npm test
