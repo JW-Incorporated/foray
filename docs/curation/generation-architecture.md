@@ -342,6 +342,16 @@ Search order:
 > not totally preferred." **Growing and cataloguing the transcript archive is not a side task; it is
 > the difference between 4a and a podcast-shaped chatbot.** Treat it as a parallel workstream with
 > its own plan, not as a prerequisite that quietly blocks this one. Note that Joey is focusing heavily on this problem at the moment.
+>
+> **This is a third, distinct workstream** — separate from both this generation pipeline and from
+> `docs/catalog-growth-plan.md`'s catalogue breadth/promotion work (growing the *transcript/segment
+> archive* that feeds §4.5's search order, not the number of shows 4a lists or how many of them have
+> a working feed). Its measurement and planning live in
+> `docs/curation/transcription-scale-plan.md` (transcription cost/route analysis and breadth-sweep
+> yield) and `docs/adr/0004-transcript-acquisition-ladder.md` (where transcripts come from). A show
+> promoted to "playable" in the catalogue plan does not produce a transcript or a segment by itself —
+> see `docs/curation/segment-extraction-pipeline.md` for what actually turns a transcript into a
+> usable segment.
 
 When no tape exists, the beat becomes narration — usually a **Patch** or a **Carry**.
 
