@@ -959,7 +959,7 @@ const BACKEND_FLOORS = {
      proven with a spy test), the exact check-forays.mjs-compatible
      disclosure template, and decideConnectiveNarration()'s seam-position
      table for tape-adjacent beats needing short connective narration. */
-  "test/writeNarration.test.ts": 25,
+  "test/writeNarration.test.ts": 19,
 };
 
 /* `it(` as well as `test(`: backend's suites use both spellings. */
