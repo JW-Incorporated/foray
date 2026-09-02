@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-09-01T16:22:19.201Z",
+  "built_at": "2026-09-02T00:18:21.643Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-09-01-69cf02bd",
+    "last_batch_id": "fresh-2026-09-02-0b745ef3",
     "last_batch_tier": 1,
     "transcript_labels": "descriptive cost label, never an eligibility test — see tools/classify/labels.mjs"
   },
@@ -101054,10 +101054,42 @@
     },
     "1495103557": {
       "topics": [
-        "travel"
+        "travel",
+        "adventure"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.85
+        },
+        {
+          "node": "adventure",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Armchair Explorer focuses on Travel & Places; content aligns with taxonomy.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /deep[\\s-]dive/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-0b745ef3",
+      "classified_at": "2026-09-02T00:18:21.643Z"
     },
     "1495112369": {
       "topics": [
@@ -101076,10 +101108,44 @@
     },
     "1495193639": {
       "topics": [
-        "health/fitness"
+        "science",
+        "health/fitness",
+        "medicine"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.75
+        },
+        {
+          "node": "medicine",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Lab Report focuses on Science; content aligns with taxonomy.",
+      "display_title": "The Lab Report",
+      "blurb": "The world of medicine can be challenging Clinicians and patients are always looking for more options, more effective treatments… and in the end, more answers",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-0b745ef3",
+      "classified_at": "2026-09-02T00:18:21.643Z"
     },
     "1495250344": {
       "topics": [
@@ -101148,10 +101214,54 @@
     },
     "1495403653": {
       "topics": [
-        "tv-film/after-shows"
+        "tv-film/after-shows",
+        "true-crime",
+        "comedy",
+        "education",
+        "tv-film/interviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/after-shows",
+          "confidence": 0.85
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.8
+        },
+        {
+          "node": "education",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The McMillion$ Podcast focuses on After Shows; content aligns with taxonomy.",
+      "display_title": "The McMillion$ Podcast",
+      "blurb": "The official podcast of the new HBO documentary series McMillion$, from Unrealistic Ideas and Fun Meter",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-0b745ef3",
+      "classified_at": "2026-09-02T00:18:21.643Z"
     },
     "1495463421": {
       "topics": [
@@ -101188,7 +101298,35 @@
         "history"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/history",
+          "confidence": 0.8
+        },
+        {
+          "node": "history",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Vintage Video focuses on Film History; content aligns with taxonomy.",
+      "display_title": "Vintage Video",
+      "blurb": "Re-watching the 80&#039;s, so you don&#039;t have to",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-0b745ef3",
+      "classified_at": "2026-09-02T00:18:21.643Z"
     },
     "1495557562": {
       "topics": [
@@ -101337,7 +101475,31 @@
         "tv-film/after-shows"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/after-shows",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Love After Lockup, mmkay focuses on After Shows; content aligns with taxonomy.",
+      "display_title": "Love After Lockup, mmkay",
+      "blurb": "Your favorite teachers are online for another podcast This time, we'll be going through the new season of Love after Lockup",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-0b745ef3",
+      "classified_at": "2026-09-02T00:18:21.643Z"
     },
     "1495941921": {
       "topics": [
@@ -101555,10 +101717,59 @@
     },
     "1496425948": {
       "topics": [
-        "nature"
+        "computing",
+        "science",
+        "nature",
+        "history",
+        "education",
+        "medicine/biology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "science",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature",
+          "confidence": 0.8
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "education",
+          "confidence": 0.8
+        },
+        {
+          "node": "medicine/biology",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "The Mushroom Hour Podcast focuses on Computing; content aligns with taxonomy.",
+      "display_title": "The Mushroom Hour Podcast",
+      "blurb": "Hi there welcome to Mushroom Hour",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-0b745ef3",
+      "classified_at": "2026-09-02T00:18:21.643Z"
     },
     "1496428378": {
       "topics": [
@@ -101630,10 +101841,39 @@
     },
     "1496465405": {
       "topics": [
-        "sports/rugby"
+        "tv-film/after-shows",
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/after-shows",
+          "confidence": 0.85
+        },
+        {
+          "node": "education",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "The Canadian Ruck focuses on After Shows; content aligns with taxonomy.",
+      "display_title": "The Canadian Ruck",
+      "blurb": "These podcasts will be about rugby in Canada We will look at the game nationally, provincially, at the high school and rookie rugby levels",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-0b745ef3",
+      "classified_at": "2026-09-02T00:18:21.643Z"
     },
     "1496469073": {
       "topics": [
@@ -102022,11 +102262,51 @@
     },
     "1497037638": {
       "topics": [
-        "nature/earth-science",
-        "science"
+        "computing",
+        "engineering/ai-robotics",
+        "science",
+        "nature"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.8
+        },
+        {
+          "node": "science",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Genome Insider focuses on Computing; content aligns with taxonomy.",
+      "display_title": "Genome Insider",
+      "blurb": "Stories where genes and genomes are key to solving energy and environmental challenges Hear diverse voices in science talk about their JGI-supported research to better understand — and harness —",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 5,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 5,
+        "transcript_types": {
+          "text/html": 5
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-0b745ef3",
+      "classified_at": "2026-09-02T00:18:21.643Z"
     },
     "1497104043": {
       "topics": [
@@ -102059,11 +102339,39 @@
     },
     "1497165058": {
       "topics": [
-        "adventure/exploration",
-        "nature"
+        "travel",
+        "adventure"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.85
+        },
+        {
+          "node": "adventure",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Hiker Trash Radio focuses on Travel & Places; content aligns with taxonomy.",
+      "display_title": "Hiker Trash Radio",
+      "blurb": "Join Doc and his guests on Hiker Trash Radio, the outdoor adventure podcast that takes you on a myriad of trails",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-0b745ef3",
+      "classified_at": "2026-09-02T00:18:21.643Z"
     },
     "1497168845": {
       "topics": [
@@ -102075,10 +102383,54 @@
     },
     "1497168868": {
       "topics": [
-        "kids-family/stories"
+        "computing",
+        "engineering/ai-robotics",
+        "history",
+        "history/military-ancient",
+        "history/military-modern"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.8
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.6
+        },
+        {
+          "node": "history/military-modern",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Stoopkid Stories focuses on Computing; content aligns with taxonomy.",
+      "display_title": "Stoopkid Stories",
+      "blurb": "Stoopkid Stories is a compilation of fun and exciting stories written by Melissa Victor We follow 7 characters every episode as they face a new adventure and will have to",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-0b745ef3",
+      "classified_at": "2026-09-02T00:18:21.643Z"
     },
     "1497356808": {
       "topics": [
@@ -102301,10 +102653,34 @@
     },
     "1497683396": {
       "topics": [
-        "sports/hockey"
+        "news"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Tip of the Ice-Burgh Podcast focuses on News & Current Affairs; content aligns with taxonomy.",
+      "display_title": "Tip of the Ice-Burgh Podcast",
+      "blurb": "Your home of the Pittsburgh Penguins news and analysis Hosted by Nick Belsky and Nick Horwat",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-0b745ef3",
+      "classified_at": "2026-09-02T00:18:21.643Z"
     },
     "1497698127": {
       "topics": [
@@ -102335,11 +102711,44 @@
     },
     "1497704723": {
       "topics": [
-        "adventure/exploration",
+        "health/fitness",
+        "science",
         "nature"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.8
+        },
+        {
+          "node": "science",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "The Flush Podcast - Stories from the field focuses on Fitness; content aligns with taxonomy.",
+      "display_title": "The Flush Podcast - Stories from the field",
+      "blurb": "The Flush Podcast hunts down the greatest upland bird hunting stories ever told Award-winning television host & producer, Travis Frank, goes behind the camera lens of the bird hunting TV",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-0b745ef3",
+      "classified_at": "2026-09-02T00:18:21.643Z"
     },
     "1497740360": {
       "topics": [
@@ -102507,10 +102916,44 @@
     },
     "1498142155": {
       "topics": [
-        "business/marketing"
+        "business",
+        "economics/markets"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.75
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "This Can't Be That Hard focuses on Business; content aligns with taxonomy.",
+      "display_title": "This Can't Be That Hard",
+      "blurb": "You love photography, but running a business That's a different story",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 32,
+        "transcript_types": {
+          "text/html": 8,
+          "application/json": 8,
+          "application/x-subrip": 8,
+          "text/vtt": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-0b745ef3",
+      "classified_at": "2026-09-02T00:18:21.643Z"
     },
     "1498155864": {
       "topics": [
@@ -102616,11 +103059,49 @@
     },
     "1498270180": {
       "topics": [
-        "news/tech",
-        "computing"
+        "travel",
+        "business/startups",
+        "computing",
+        "engineering/ai-robotics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.85
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "StrictlyVC Download focuses on Travel & Places; content aligns with taxonomy.",
+      "display_title": "StrictlyVC Download",
+      "blurb": "Each week TechCrunch Editor-in-Chief Connie Loizos, and Alex Gove, a former journalist, VC and operating exec who today runs StrictlyVC, interview a mover and shaker in the world of tech",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-0b745ef3",
+      "classified_at": "2026-09-02T00:18:21.643Z"
     },
     "1498344993": {
       "topics": [
@@ -102667,10 +103148,39 @@
     },
     "1498387060": {
       "topics": [
-        "food"
+        "travel",
+        "history"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "The Bourbon Life focuses on Travel & Places; content aligns with taxonomy.",
+      "display_title": "The Bourbon Life",
+      "blurb": "The Bourbon Life is your source for all things Bourbon Reviews | Events | Interviews | Lifestyle",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-0b745ef3",
+      "classified_at": "2026-09-02T00:18:21.643Z"
     },
     "1498396103": {
       "topics": [
@@ -102806,10 +103316,34 @@
     },
     "1498560252": {
       "topics": [
-        "sports/hockey"
+        "news"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Locked On Lightning - Daily Podcast On The Tampa Bay Lightning focuses on News & Current Affairs; co",
+      "display_title": "Locked On Lightning - Daily Podcast On The",
+      "blurb": "Locked On Lightning is your DAILY source for all things Tampa Bay Lightning Featuring the latest Bolts news, analysis, and insider info, hosts Nick Morgan and Greg Stephen bring you",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-0b745ef3",
+      "classified_at": "2026-09-02T00:18:21.643Z"
     },
     "1498561450": {
       "topics": [
@@ -103083,11 +103617,34 @@
     },
     "1499355853": {
       "topics": [
-        "business/startups",
-        "business/founders"
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Sales Logic - Selling Strategies That Work focuses on Education; content aligns with taxonomy.",
+      "display_title": "Sales Logic - Selling Strategies That Work",
+      "blurb": "Hosted by sales experts Mark Hunter and Meridith Elliott Powell, Sales Logic answers today's toughest selling questions with logical answers that will help you win more deals and make more",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-0b745ef3",
+      "classified_at": "2026-09-02T00:18:21.643Z"
     },
     "1499409058": {
       "topics": [
@@ -103157,10 +103714,39 @@
     },
     "1499565720": {
       "topics": [
-        "kids-family/education"
+        "education",
+        "music"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.8
+        },
+        {
+          "node": "music",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "The Story Seeds Podcast focuses on Education; content aligns with taxonomy.",
+      "display_title": "The Story Seeds Podcast",
+      "blurb": "Our Webby Award-nominated show matches kids ages 6-12 and their story ideas with diverse, beloved children's authors",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-0b745ef3",
+      "classified_at": "2026-09-02T00:18:21.643Z"
     },
     "1499566932": {
       "topics": [
@@ -103214,10 +103800,34 @@
     },
     "1499631337": {
       "topics": [
-        "fiction/sci-fi"
+        "true-crime"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Terrores Nocturnos focuses on True Crime; content aligns with taxonomy.",
+      "display_title": "Terrores Nocturnos",
+      "blurb": "Historias de terror, misterio, casos reales, hechos inexplicables Cada martes te traemos una nueva historia que no te dejará dormir y cada domingo un crimen real",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-0b745ef3",
+      "classified_at": "2026-09-02T00:18:21.643Z"
     },
     "1499633749": {
       "topics": [
@@ -103304,10 +103914,44 @@
     },
     "1499760048": {
       "topics": [
-        "health/alternative"
+        "tv-film/after-shows",
+        "education",
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/after-shows",
+          "confidence": 0.85
+        },
+        {
+          "node": "education",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Vitality Radio Podcast with Jared St. Clair focuses on After Shows; content aligns with taxonomy.",
+      "display_title": "Vitality Radio Podcast with Jared St. Clair",
+      "blurb": "What is the best supplement for me What potency is right",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-0b745ef3",
+      "classified_at": "2026-09-02T00:18:21.643Z"
     },
     "1499785732": {
       "topics": [
@@ -103390,11 +104034,39 @@
     },
     "1500126155": {
       "topics": [
-        "music",
-        "history"
+        "history",
+        "music"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "music",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "DJ Just Dizle Mixcast focuses on History; content aligns with taxonomy.",
+      "display_title": "DJ Just Dizle Mixcast",
+      "blurb": "Good music for your ears, enjoy this podcast full of unexpected playlists Make sure you follow @justdizle on social media",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-0b745ef3",
+      "classified_at": "2026-09-02T00:18:21.643Z"
     },
     "1500150078": {
       "topics": [
@@ -103405,17 +104077,80 @@
     },
     "1500155339": {
       "topics": [
-        "craft"
+        "tv-film/after-shows",
+        "history"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/after-shows",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Beer In Front focuses on After Shows; content aligns with taxonomy.",
+      "display_title": "Beer In Front",
+      "blurb": "I'm Dave, a regular Chicago Beer Guy with a podcast about some old school beers and new classics",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-0b745ef3",
+      "classified_at": "2026-09-02T00:18:21.643Z"
     },
     "1500157502": {
       "topics": [
-        "comedy/casual-hangs"
+        "true-crime",
+        "comedy",
+        "music"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.8
+        },
+        {
+          "node": "music",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "World Record Podcast with Brendon Walsh focuses on True Crime; content aligns with taxonomy.",
+      "display_title": "World Record Podcast with Brendon Walsh",
+      "blurb": "The World Record Podcast is the third and final award winning podcast created and hosted by Brendon Walsh (“The Bone Zone” & “Do You Know Who Jason Segel Is",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-0b745ef3",
+      "classified_at": "2026-09-02T00:18:21.643Z"
     },
     "1500165757": {
       "topics": [
@@ -103476,11 +104211,72 @@
     },
     "1500326560": {
       "topics": [
-        "nature/earth-science",
-        "science"
+        "travel",
+        "tv-film/after-shows",
+        "science",
+        "science/chemistry",
+        "history",
+        "education",
+        "history/military-ancient",
+        "history/military-modern"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.85
+        },
+        {
+          "node": "tv-film/after-shows",
+          "confidence": 0.85
+        },
+        {
+          "node": "science",
+          "confidence": 0.8
+        },
+        {
+          "node": "science/chemistry",
+          "confidence": 0.8
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "education",
+          "confidence": 0.8
+        },
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.6
+        },
+        {
+          "node": "history/military-modern",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Forestcast focuses on Travel & Places; content aligns with taxonomy.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-0b745ef3",
+      "classified_at": "2026-09-02T00:18:21.643Z"
     },
     "1500338916": {
       "topics": [
@@ -103657,11 +104453,54 @@
     },
     "1500652478": {
       "topics": [
-        "business/startups",
-        "business/founders"
+        "computing",
+        "engineering/ai-robotics",
+        "education",
+        "business",
+        "economics/markets"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.8
+        },
+        {
+          "node": "education",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.75
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Fullerton Unfiltered focuses on Computing; content aligns with taxonomy.",
+      "display_title": "Fullerton Unfiltered",
+      "blurb": "A podcast show dedicated to those who are determined to take their business and their life to the next level",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-0b745ef3",
+      "classified_at": "2026-09-02T00:18:21.643Z"
     },
     "1500667648": {
       "topics": [
@@ -103719,11 +104558,34 @@
     },
     "1500782760": {
       "topics": [
-        "sports/endurance",
-        "health/fitness"
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "The Gill Athletics Track and Field Connections Podcast focuses on Business; content aligns with taxo",
+      "display_title": "The Gill Athletics Track and Field Connections Podcast",
+      "blurb": "Unlock the world of track & field coaching with The Gill Connections Podcast Host Mike Cunningham brings you inspiring stories, real conversations, and coaching insights from leaders at every level",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-0b745ef3",
+      "classified_at": "2026-09-02T00:18:21.643Z"
     },
     "1500799839": {
       "topics": [
@@ -104116,11 +104978,49 @@
     },
     "1501544101": {
       "topics": [
-        "news/tech",
-        "computing"
+        "science",
+        "nature",
+        "education",
+        "news"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature",
+          "confidence": 0.8
+        },
+        {
+          "node": "education",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Cool Stuff Daily focuses on Science; content aligns with taxonomy.",
+      "display_title": "Cool Stuff Daily",
+      "blurb": "Cool Stuff Daily covers the most interesting and coolest stories in the world of science, progress, life-hacks, memes, exciting art, and hope",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-0b745ef3",
+      "classified_at": "2026-09-02T00:18:21.643Z"
     },
     "1501545678": {
       "topics": [
@@ -104173,12 +105073,34 @@
     },
     "1501718135": {
       "topics": [
-        "medicine/biology",
-        "science",
-        "nature"
+        "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Biotalk Podcast | پادکست فارسی زیست شناسی بیوتاک focuses on Science; content aligns with taxonomy.",
+      "display_title": "Biotalk Podcast | پادکست فارسی زیست شناسی بیوتاک",
+      "blurb": "A Podcast Focused on Life Science پادکستی برای گپ‌های زیستی",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 5,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-0b745ef3",
+      "classified_at": "2026-09-02T00:18:21.643Z"
     },
     "1501754955": {
       "topics": [
@@ -104270,10 +105192,39 @@
     },
     "1501911064": {
       "topics": [
-        "sports/wrestling"
+        "nature",
+        "news"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Getting Over: Wrestling Podcast focuses on Nature; content aligns with taxonomy.",
+      "display_title": "Getting Over: Wrestling Podcast",
+      "blurb": "Award-winning analysis of pro wrestling with breakdowns of WWE, NXT, AEW and beyond Plus, instant analysis of pay-per-views, news coverage and major interviews",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-0b745ef3",
+      "classified_at": "2026-09-02T00:18:21.643Z"
     },
     "1501929208": {
       "topics": [
@@ -104299,10 +105250,49 @@
     },
     "1501986299": {
       "topics": [
-        "comedy/stand-up"
+        "comedy/stand-up",
+        "true-crime",
+        "education",
+        "news"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/stand-up",
+          "confidence": 0.85
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.85
+        },
+        {
+          "node": "education",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Tom Kelly Show focuses on Stand-Up; content aligns with taxonomy.",
+      "display_title": "Tom Kelly Show",
+      "blurb": "\"Get Back To The Fun\" Tom Kelly is a stand-up comedian who has worked with almost every celebrity imaginable",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-0b745ef3",
+      "classified_at": "2026-09-02T00:18:21.643Z"
     },
     "1501998875": {
       "topics": [
@@ -104336,11 +105326,34 @@
     },
     "1502040576": {
       "topics": [
-        "health/nutrition",
-        "food"
+        "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Lean With Plants focuses on Science; content aligns with taxonomy.",
+      "display_title": "Lean With Plants",
+      "blurb": "Calling all overweight plant based women This is a podcast for FRUSTRATED vegan gal's who can’t shift the fat, all while eating a healthy vegan diet",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-0b745ef3",
+      "classified_at": "2026-09-02T00:18:21.643Z"
     },
     "1502130959": {
       "topics": [
@@ -104412,10 +105425,59 @@
     },
     "1502260943": {
       "topics": [
-        "culture/fashion"
+        "history",
+        "music",
+        "business",
+        "economics/markets",
+        "history/military-ancient",
+        "history/military-modern"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "music",
+          "confidence": 0.75
+        },
+        {
+          "node": "business",
+          "confidence": 0.75
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.6
+        },
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.6
+        },
+        {
+          "node": "history/military-modern",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Pair of Kings: A Fashion and Culture Podcast focuses on History; content aligns with taxonomy.",
+      "display_title": "Pair of Kings: A Fashion and Culture Podcast",
+      "blurb": "Pair of Kings is the men's fashion and culture podcast for the next generation of style",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-0b745ef3",
+      "classified_at": "2026-09-02T00:18:21.643Z"
     },
     "1502261081": {
       "topics": [
@@ -104546,11 +105608,46 @@
     },
     "1502491952": {
       "topics": [
-        "health/nutrition",
-        "food"
+        "science",
+        "nature",
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature",
+          "confidence": 0.8
+        },
+        {
+          "node": "education",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Holistic GLP-1 Podcast with Elizabeth McGann focuses on Science; content aligns with taxonomy.",
+      "display_title": "The Holistic GLP-1 Podcast with Elizabeth McGann",
+      "blurb": "Stop doing GLP-1s wrong Discover how to microdose, release weight and actually heal your body — on the world&#39;s #1-ranked podcast for holistic GLP-1 weight loss",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 6,
+        "episodes_with_timed_transcript": 6,
+        "transcript_tags": 6,
+        "transcript_types": {
+          "text/vtt": 6
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-0b745ef3",
+      "classified_at": "2026-09-02T00:18:21.643Z"
     },
     "1502548378": {
       "topics": [
@@ -104633,11 +105730,54 @@
     },
     "1502718875": {
       "topics": [
+        "tv-film/after-shows",
+        "science",
+        "education",
         "education/language-learning",
-        "linguistics/language"
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/after-shows",
+          "confidence": 0.85
+        },
+        {
+          "node": "science",
+          "confidence": 0.8
+        },
+        {
+          "node": "education",
+          "confidence": 0.8
+        },
+        {
+          "node": "education/language-learning",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Confident Business English focuses on After Shows; content aligns with taxonomy.",
+      "display_title": "Confident Business English",
+      "blurb": "Are you a senior manager who lacks confidence communicating in English at work Accredited Neurolanguage Coach® Anna Connelly brings professionals like you, who already need to use English in their",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-0b745ef3",
+      "classified_at": "2026-09-02T00:18:21.643Z"
     },
     "1502728938": {
       "topics": [
@@ -104691,10 +105831,39 @@
     },
     "1502769552": {
       "topics": [
+        "travel",
         "nature"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.85
+        },
+        {
+          "node": "nature",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Trent Loos Podcast focuses on Travel & Places; content aligns with taxonomy.",
+      "display_title": "Trent Loos Podcast",
+      "blurb": "As a 6th generation U S",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-0b745ef3",
+      "classified_at": "2026-09-02T00:18:21.643Z"
     },
     "1502771083": {
       "topics": [
@@ -104849,10 +106018,44 @@
     },
     "1502888044": {
       "topics": [
-        "religion/buddhism"
+        "nature",
+        "education",
+        "music"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.8
+        },
+        {
+          "node": "education",
+          "confidence": 0.8
+        },
+        {
+          "node": "music",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Listen focuses on Nature; content aligns with taxonomy.",
+      "display_title": "Listen",
+      "blurb": "All our recent dharma talks and Question & Answer sessions within the Plum Village tradition can now also be found on your favourite podcast platform",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-0b745ef3",
+      "classified_at": "2026-09-02T00:18:21.643Z"
     },
     "1502888066": {
       "topics": [
@@ -104906,10 +106109,44 @@
     },
     "1503007208": {
       "topics": [
+        "business/startups",
+        "science",
         "science/physics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.8
+        },
+        {
+          "node": "science",
+          "confidence": 0.8
+        },
+        {
+          "node": "science/physics",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "The Quantum Awakening Podcast focuses on Startups & deep tech; content aligns with taxonomy.",
+      "display_title": "The Quantum Awakening Podcast",
+      "blurb": "Welcome to my podcast My content is quite a combination of topics",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 1,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-0b745ef3",
+      "classified_at": "2026-09-02T00:18:21.643Z"
     },
     "1503017924": {
       "topics": [
@@ -105524,17 +106761,85 @@
     "1504001443": {
       "topics": [
         "tv-film/history",
-        "history"
+        "history",
+        "history/military-ancient",
+        "history/military-modern"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/history",
+          "confidence": 0.8
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.6
+        },
+        {
+          "node": "history/military-modern",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "The Laurel & Hardy Podcast focuses on Film History; content aligns with taxonomy.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /deep[\\s-]dive/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-0b745ef3",
+      "classified_at": "2026-09-02T00:18:21.643Z"
     },
     "1504020473": {
       "topics": [
-        "sports/golf"
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Athletic Motion Golf- The Podcast focuses on Education; content aligns with taxonomy.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /deep[\\s-]dive/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-0b745ef3",
+      "classified_at": "2026-09-02T00:18:21.643Z"
     },
     "1504140597": {
       "topics": [
@@ -105622,11 +106927,44 @@
     },
     "1504291776": {
       "topics": [
-        "nature/earth-science",
-        "science"
+        "tv-film/after-shows",
+        "nature",
+        "music"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/after-shows",
+          "confidence": 0.85
+        },
+        {
+          "node": "nature",
+          "confidence": 0.8
+        },
+        {
+          "node": "music",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Alexa Firmenich // Nature's Gifts focuses on After Shows; content aligns with taxonomy.",
+      "display_title": "Alexa Firmenich // Nature's Gifts",
+      "blurb": "A series of meditations and reflections on our kinship with the beyond-human world",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 2,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-0b745ef3",
+      "classified_at": "2026-09-02T00:18:21.643Z"
     },
     "1504300940": {
       "topics": [
@@ -106273,10 +107611,53 @@
     },
     "1505330814": {
       "topics": [
-        "sports/golf"
+        "tv-film/after-shows",
+        "computing",
+        "engineering/ai-robotics",
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/after-shows",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.8
+        },
+        {
+          "node": "education",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "The Fire Pit Podcast focuses on After Shows; content aligns with taxonomy.",
+      "display_title": "The Fire Pit Podcast",
+      "blurb": "In the 25 years of covering golf, the development of the game, courses and the camaraderie that’s core to the culture, it was time for Matt to share some of",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 24,
+        "transcript_types": {
+          "application/srt": 8,
+          "text/vtt": 8,
+          "text/plain": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-0b745ef3",
+      "classified_at": "2026-09-02T00:18:21.643Z"
     },
     "1505337177": {
       "topics": [
@@ -106452,10 +107833,34 @@
     },
     "1505639009": {
       "topics": [
-        "religion/spirituality"
+        "tv-film/after-shows"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/after-shows",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Hacking The Afterlife podcast focuses on After Shows; content aligns with taxonomy.",
+      "display_title": "Hacking The Afterlife podcast",
+      "blurb": "Richard Martini is a best selling author of books/films about the flipside (RichardMartini",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-0b745ef3",
+      "classified_at": "2026-09-02T00:18:21.643Z"
     },
     "1505640020": {
       "topics": [
@@ -106643,10 +108048,42 @@
     },
     "1505993848": {
       "topics": [
-        "news/daily"
+        "music",
+        "news"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.75
+        },
+        {
+          "node": "news",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Apokalypse & Filterkaffee focuses on Music; content aligns with taxonomy.",
+      "display_title": "Apokalypse & Filterkaffee",
+      "blurb": "Die frisch gebrühten Schlagzeilen des Tages, serviert von Micky Beisenherz Micky wühlt sich für uns durch die wichtigsten Aufmacher, Titelthemen, Leitartikel und Tweets des Tages und serviert daraus - gemeinsam",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 1,
+        "episodes_with_timed_transcript": 1,
+        "transcript_tags": 2,
+        "transcript_types": {
+          "application/json": 1,
+          "text/vtt": 1
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-0b745ef3",
+      "classified_at": "2026-09-02T00:18:21.643Z"
     },
     "1506017781": {
       "topics": [
@@ -106687,11 +108124,39 @@
     },
     "1506050278": {
       "topics": [
-        "adventure/exploration",
-        "nature"
+        "tv-film/after-shows",
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/after-shows",
+          "confidence": 0.85
+        },
+        {
+          "node": "education",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "The Mobile Hunter Podcast focuses on After Shows; content aligns with taxonomy.",
+      "display_title": "The Mobile Hunter Podcast",
+      "blurb": "Providing quality education to the everyday outdoorsman",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-0b745ef3",
+      "classified_at": "2026-09-02T00:18:21.643Z"
     },
     "1506063411": {
       "topics": [
