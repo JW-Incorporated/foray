@@ -1,5 +1,24 @@
 # 02 — Listener Market Research
 
+> **Name change since this memo — 2026-08-21.** This memo was researched
+> against a working name, "CommutePilot," which is not the shipped
+> product: the founder chose **4a** as the app name (`foray` now names
+> only the stitched-audio unit 4a assembles — see `06-naming-study.md`,
+> `docs/DECISIONS.md`). Read every "CommutePilot" below as "4a."
+> **Applicability:** the market-sizing data, listener behavior research,
+> and pricing benchmarks below hold regardless of app name and still
+> apply as-is. **One finding needs an explicit flag, not just a name
+> swap:** this memo's own §"Implications" leans on car/commute framing as
+> the primary wedge even though its own data (line below) shows only
+> **11% of listening happens in cars** vs. 67% at home. That tension was
+> carried forward into the "CommutePilot" name itself and into
+> `04-personas-retention.md`'s persona ordering — it is not resolved by
+> this banner. `00-MARKET-BRIEF.md`'s positioning section already
+> corrects for it ("the commute is the wedge and the founding ritual —
+> not the product's identity"); treat that later document, not this
+> memo's own commute-heavy framing, as the current word on how central
+> commute framing should be.
+
 Desk: Marketing / Market Research. Date: 2026-07-07. Product under study:
 **CommutePilot** — a personal AI podcast curator, 4-card curated commute menu,
 curiosity/learning-focused, anti-echo-chamber, iOS-first RSS client, single-user today

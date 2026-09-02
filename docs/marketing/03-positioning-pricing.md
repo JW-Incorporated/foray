@@ -1,5 +1,22 @@
 # Positioning, Brand Language & Pricing — research for CommutePilot
 
+> **Name change since this memo — 2026-08-21.** This memo was researched
+> against a working name, "CommutePilot," which is not the shipped
+> product: the founder chose **4a** (`foray` now names only the
+> stitched-audio unit — see `06-naming-study.md`, `docs/DECISIONS.md`).
+> Read every "CommutePilot" below as "4a." **Applicability:** the
+> brand-language case studies, ritual mechanics, and pricing-benchmark
+> research still apply as-is. Two items do NOT transfer without
+> reinterpretation and should not be read as current: (1) §"Name
+> collision scan for CommutePilot" and its trademark-adjacency discussion
+> of "Copilot" are moot for the shipped name "4a" — see
+> `06-naming-study.md`'s own 2026-09-02 closing note for 4a's actual,
+> still-unchecked collision risk (a plausible trademark-adjacent overlap
+> with Google's "Pixel 4a" line); (2) the recommended one-line
+> positioning statement literally naming "CommutePilot" is superseded by
+> `00-MARKET-BRIEF.md`'s positioning section ("your personal podcast
+> curator").
+
 Purpose: ground brand voice, category framing, and pricing architecture in what actually
 works for recommendation products, ritual products, and curation-led apps — not vibes.
 Read alongside `docs/brief/03_CURATION_SPEC.md` (the mechanics this brand language has to
