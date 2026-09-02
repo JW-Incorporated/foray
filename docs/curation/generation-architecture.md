@@ -708,11 +708,13 @@ Answer from Wyatt: Each prompt is discarded. the Foray is given a title on creat
 
 **Resolved (2026-09-02) — the apparent §9.6 collision does not require reopening this ruling.**
 §9.6's similarity check does not need the *incoming* prompt to be stored: it is embedded
-transiently, used once for the comparison, and discarded, per this ruling. What does need to be
-persisted is the comparison side — an embedding derived from each **existing Foray's own retained
-content** (its title, plus any description/transcript text already kept for the catalogue), not
-from anyone's prompt. That content is already retained under this ruling and under the Foray's own
-catalogue lifecycle, so no new prompt-retention exception is needed. `promptNoPersistence.test.ts`
+transiently, used once for the comparison, and discarded, per this ruling. The comparison side is
+each **existing Foray's own retained content** (its title, plus any description/transcript text
+already kept for the catalogue), not anyone's prompt — that content is already retained under this
+ruling and under the Foray's own catalogue lifecycle, so no new prompt-retention exception is
+needed. Whether an *embedding derived from* that retained content is itself cached or recomputed
+on demand is a separate storage/schema question this ruling does not decide — see §9.6, which
+answers it (recompute-on-demand is the schema-free default). `promptNoPersistence.test.ts`
 (t_825eee4c) does not need to change: it guards the §4.0-4.1 prompt-understanding stage, and this
 comparison happens downstream, against already-catalogued Foray content, never against a persisted
 prompt. See §9.6.

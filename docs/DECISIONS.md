@@ -1225,6 +1225,12 @@ its reasoning.
   stage, with a schema-free default already specified so it does not block
   anything. Every fix in this pass was a concrete rule change, not a
   re-opened question.
+- **Review round 5 fix: §9.4's note wrongly asserted the comparison-side embedding "does need to
+  be persisted," contradicting §9.6's own (correct) treatment of persist-vs-recompute as a
+  deferred schema question.** §9.4 now describes only the underlying *retained Foray content*
+  (title/description/transcript, already kept for the catalogue) as the comparison basis, and
+  defers the persist-vs-recompute question for any embedding derived from it entirely to §9.6 —
+  one source of truth instead of two disagreeing ones.
 
 ## 2026-09-01 (Fix M4: service worker — versioned manifest for atomic deploy generation, kanban card t_f143c31a)
 
