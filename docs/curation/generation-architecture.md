@@ -230,8 +230,9 @@ A generation request is:
 
 Treat these as budgets the planner must hit, not as outputs to measure afterwards. Overshoot is
 never justified — a Foray that overshoots at all beyond §8's ±15% tolerance is a defect, because the
-duration option is the listener saying how much time they have (the 40% figure above is a
-motivating example of how bad an overshoot can get, not a separate, looser tolerance).
+duration option is the listener saying how much time they have. (An earlier draft of this document
+cited a 40%-overshoot example as a motivating case; that framing implied a second, looser tolerance
+and has been removed — ±15% is the one and only overshoot bound.)
 
 **Undershoot has exactly one sanctioned exception: §9.3's thin-topic ruling.** A topic too thin for
 real tape at the requested duration is allowed to come in short, provided the Foray records why and
@@ -334,14 +335,20 @@ The spine contains:
   while act N+1 finishes, filling reserved runtime that would otherwise sit unused, not adding to
   it; when generation is on schedule they are simply never inserted into the running order
   (produced, but unplayed). **This means the without-buffer running order — every act minus its
-  deferrable beats — must itself land inside §3/§8's ±15% tolerance on its own; each act's
-  deferrable-beat count is capped by that same 15% margin, never more.** A Short Foray's small beat
-  count (8–10 beats total, per §3's table) makes this bound binding in practice: the deepening
-  stage (§4.4) computes, per act, the maximum number of deferrable beats (0, 1, or 2) whose combined
-  runtime fits within the act's 15% margin, and marks exactly that many — never a fixed two
-  regardless of budget. §6.3, when a time shortfall hits, inserts however many deferrable beats that
-  act actually has (which may be fewer than two, or none, for a tightly-budgeted act) rather than
-  assuming two are always available. A **cost**-cutting pass
+  deferrable beats — must land far enough under §3/§8's ±15% ceiling to leave headroom for the
+  deferrable beats it carries: baseline runtime plus the reserved deferrable beats' runtime,
+  together, must still fit within ±15% of the target. A baseline that already sits at the ±15%
+  ceiling on its own has zero headroom and may carry no deferrable beats at all, regardless of act
+  length.** Each act's deferrable-beat count is capped by whatever headroom remains under that
+  ceiling after the act's other beats are sized, never by a flat allowance independent of how much
+  of the tolerance the baseline already used. A Short Foray's small beat count (8–10 beats total,
+  per §3's table) makes this bound binding in practice: the deepening stage (§4.4) computes, per
+  act, the maximum number of deferrable beats (0, 1, or 2) whose combined runtime fits within the
+  headroom actually remaining under the act's ±15% ceiling, and marks exactly that many — never a
+  fixed two regardless of budget, and never assuming the full 15% is available on top of an
+  already-tight baseline. §6.3, when a time shortfall hits, inserts however many deferrable beats
+  that act actually has (which may be fewer than two, or none, for a tightly-budgeted act) rather
+  than assuming two are always available. A **cost**-cutting pass
   instead cancels the deferrable pair's production outright before §4.5, same effect as never
   needing them. Neither path is ever counted against the required ~30% floor (§8): the floor is
   computed only over the beats that were always inside it, so a deferrable beat's insertion,
@@ -581,7 +588,8 @@ Then decide what happens when generation falls behind, because it will. Options,
 - Degrade the remaining acts to a cheaper, faster pipeline — quality cliff, but no silence.
 
 **Recommendation: the reserved deferrable beats.** §4.3 has each act produce up to two exploration
-beats (fewer if the act's 15% margin doesn't fit two) through the normal pipeline, held back from
+beats (fewer, or none, if the act's baseline already used most of its ±15% headroom) through the
+normal pipeline, held back from
 the act's running order rather than left unmade, marked "deferrable," with their runtime reserved
 inside the act's planned duration rather than added on top of it. They serve two different
 pressures and never both at once: a **time** shortfall (this section) inserts whichever deferrable
@@ -590,8 +598,9 @@ sit unused, which is what actually buys the extra minutes act N+1 needs, since b
 the instant they're needed is the entire point of producing them ahead of the shortfall rather than
 during it, and reserving their runtime up front is what stops that insertion from becoming an
 overshoot §3/§8 would reject. On schedule, an act simply never inserts them; they exist but are
-unplayed, and the act runs slightly under its planned duration rather than at it. An act with zero
-deferrable beats (its 15% margin was too tight to fit even one) contributes nothing to this buffer,
+unplayed, and the act runs slightly under its planned duration rather than at it. An act whose
+baseline already consumed its ±15% headroom carries zero deferrable beats and contributes nothing
+to this buffer,
 which is why the invariant above must be measured per-act, not assumed uniform. A **cost** shortfall
 (a cutting pass trimming spend, not a live time deficit) instead cancels their production before
 §4.5, same net effect as never needing them. Either way, they are never counted against the

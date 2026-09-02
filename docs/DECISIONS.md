@@ -1231,6 +1231,18 @@ its reasoning.
   (title/description/transcript, already kept for the catalogue) as the comparison basis, and
   defers the persist-vs-recompute question for any embedding derived from it entirely to §9.6 —
   one source of truth instead of two disagreeing ones.
+- **Review round 6 fixes: two more real issues codex caught in §3/§4.3/§6.3's duration-buffer
+  language.** (1) The deferrable-beat headroom rule previously required only that a baseline
+  running order independently pass the same ±15% tolerance as the full Foray — which does not
+  guarantee that *inserting* the reserved deferrable beats keeps the Foray inside tolerance (a
+  baseline already at the ±15% ceiling has no room left for any insertion). §3/§4.3/§6.3 now
+  require the baseline to leave headroom *equal to* the deferrable beats it carries, so baseline +
+  insertion together must fit within ±15% — an act whose baseline already used its headroom carries
+  zero deferrable beats, not "up to two capped only by a flat 15% allowance." (2) §3's discussion of
+  the overshoot tolerance referenced "the 40% figure above" after an earlier fix in this same pass
+  had already removed that figure from the surrounding text, leaving a dangling reference. Replaced
+  with a plain statement that an earlier draft's 40%-overshoot example implied a second, looser
+  tolerance and was removed — ±15% is the only overshoot bound.
 
 ## 2026-09-01 (Fix M4: service worker — versioned manifest for atomic deploy generation, kanban card t_f143c31a)
 
