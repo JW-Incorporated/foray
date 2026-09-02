@@ -994,6 +994,14 @@ const BACKEND_FLOORS = {
   "test/smoothSeam.test.ts": 8,
   "test/stitchAct.test.ts": 9,
   "test/stitchForay.test.ts": 4,
+  /* §4.9 end to end (kanban card t_0b1729d6): finalizeForay() validates
+     a candidate against the real check-forays.mjs/check-narration.mjs
+     and only returns a writable record on a clean pass; stageTiming.ts
+     is §6.3's minimal batch-pipeline scope (real per-stage wall-clock
+     timing, nothing speculative — see that module's own doc comment for
+     why no live-generation-lead monitoring is built here). */
+  "test/finalizeForay.test.ts": 5,
+  "test/stageTiming.test.ts": 5,
 };
 
 /* `it(` as well as `test(`: backend's suites use both spellings. */
