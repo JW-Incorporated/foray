@@ -1304,3 +1304,66 @@ its reasoning.
   item #32 (2026-07-08 marketing-corpus freeze: still OPEN as of this
   writing — that item asks whether the corpus is even editable right now,
   a distinct founder call this entry does not resolve or bypass).
+
+## 2026-09-02 (show-pages Stage 3b — full per-show RSS ingestion, kanban card t_567b570f)
+
+- **Stage 3's data source: 3b (full per-show RSS ingestion), not 3a
+  (derive-only).** `docs/show-pages-plan.md` §4 flagged this as the one
+  founder decision Stage 3 needed. Joey's answer, in writing on the
+  marked-up requirements doc (`t_73389a0d`): *"3b: true full catalogue.
+  Just because we haven't curated it or fully transcribed it doesn't mean
+  that it shouldn't be accessible to the users."* Separately, explicit
+  instruction: *"Remove any plan to link out if we don't have the podcast
+  in the app. We should be able to play all podcasts from the app."* This
+  entry records the data-model consequence of that decision per CLAUDE.md
+  workflow rule 4 (expensive-to-reverse choices get a DECISIONS.md entry
+  before implementation) — full design posted as a kanban comment on
+  `t_567b570f` and reviewed there before the bulk of the code was written.
+- **New shared tables, not the existing `shows`/`episodes` pair.**
+  `backend/migrations/0016_catalog_show_episodes.sql` adds
+  `catalog_show_episodes` and `catalog_show_feed_state`, service-role-owned,
+  no RLS (shared public catalogue data, not personal). The existing
+  `shows`/`episodes` tables (0002/0003) are per-user tracked feeds
+  (`unique(user_id, feed_url)`) — the wrong shape for one catalogue every
+  visitor reads identically across curated (220) and breadth (~10k) shows.
+- **Fetch-on-demand backend endpoint, not a client bundle.**
+  `data/catalog-client.json`'s single-shipped-JSON pattern (Stage 1) does
+  not scale to full per-show episode lists across ~10k shows. A new Vercel
+  serverless function (`api/shows/[show_id]/episodes.ts`) serves per-show
+  episode lists on page load, cache-first (24h TTL) from Postgres, falling
+  back to `fetchFeedConditional()` (the already-implemented ADR-0001
+  conditional-GET/politeness primitive) plus the existing `parser.ts` on a
+  cache miss. A fetch failure degrades to the last-good cached rows (or an
+  explicit "couldn't load" state) — never a blank page or link-out.
+- **This is the first Vercel serverless function in this repo.**
+  `vercel.json` was previously static-build-only by deliberate choice (see
+  the 2026-07-xx entry above declining to stand up a live backend for
+  session-serving, which named this exact class of decision "Wyatt's call,
+  not bundled into a chat-aside delegation"). Joey's "3b" approval covers
+  the WHAT; it does not by itself authorize new deployed infra, which is
+  architecture/infra under `docs/roles.md` — Wyatt's lane. A Fable
+  architecture consult was attempted for this specific point and found
+  unreachable in the implementing session's sandbox (OOM at every heap
+  size tried, including a trivial 1-word prompt — an infra ceiling, not a
+  Fable-side problem; see the comment thread on `t_567b570f`). Proceeding
+  on the lowest-new-infra option available (reuses the existing Vercel
+  project/deploy and the already-provisioned Supabase service-role
+  connection, no new hosting account or secrets) with the decision named
+  explicitly in the PR description for Wyatt's review — `merge_authority`
+  on this card is `human` regardless, so the actual authorization point
+  was never bypassed, only routed through the PR review instead of a
+  pre-code sign-off.
+- **RSS chapters: pointer now, body fetched lazily per-episode.**
+  `parser.ts` already captured `<podcast:chapters url>` as a pointer but
+  never fetched the JSON it points to. Fetching it during the bulk
+  per-show ingestion pass would add one extra request per episode (a
+  400-episode show = 400 extra fetches on one page load). The pointer is
+  stored on every episode row now; the chapters JSON body is fetched only
+  when a listener opens that specific episode (sibling episode-page card's
+  job) — matches Joey's Q5 answer ("worth it for parity," a genuinely
+  separate mechanism from foray segments, not a replacement).
+- **Out of scope for this card.** Wiring the player/removing link-out UI
+  belongs to the sibling "universal in-app playability" card, which
+  depends on this card's `audio_url` output. No audio bytes are ever
+  touched here — every `audio_url` is the original enclosure pointer
+  (ADR-0007 / product principle #3 hold unchanged).

@@ -91,6 +91,12 @@ episodes" for an active daily/weekly show). That gap is Stage 3, see below.
 
 ### Stage 3 — full episode list per show
 
+**Decided 2026-09-02 (kanban card t_567b570f, `docs/DECISIONS.md`): 3b.**
+Full per-show RSS ingestion shipped — `backend/src/catalog/`,
+`backend/migrations/0016_catalog_show_episodes.sql`,
+`api/shows/[show_id]/episodes.ts`. The two-path framing below is kept for
+the historical record of what was weighed; 3a is no longer the live path.
+
 This is where the founder decision in §4 gates the approach. Two paths:
 
 - **3a (derive-only, no new infra):** accept that "all known episodes" means

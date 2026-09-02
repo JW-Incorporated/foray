@@ -266,6 +266,16 @@ const FLOORS = {
      and nothing else in the repo would notice. Every test names its mutation;
      see the suite header for the full list of what each test pins. */
   "test/show-page.test.js": 9,
+  /* Stage 3b of docs/show-pages-plan.md — full per-show RSS ingestion
+     (kanban card t_567b570f): renders the curated pool synchronously so
+     the page is never blank while the endpoint fetch is in flight, swaps
+     in the full-catalogue list on success, degrades to the curated pool
+     on any fetch failure (never blank), proves every full-catalogue
+     episode is in-app playable (real audio_url, no link-out), and surfaces
+     a stale-cache note rather than hiding it. Client wiring only — see
+     backend/test/showEpisodesStore.test.ts and ingestShowFeed.test.ts for
+     the ingestion/storage side. */
+  "test/show-pages-3b-full-catalogue.test.js": 7,
   /* Stage 2 of docs/show-pages-plan.md — show search (kanban card
      t_1c9afc67): SearchEngine.searchShows against the real catalogue,
      scope-boundary proof that the topic scorer is untouched, and the
@@ -960,6 +970,17 @@ const BACKEND_FLOORS = {
      disclosure template, and decideConnectiveNarration()'s seam-position
      table for tape-adjacent beats needing short connective narration. */
   "test/writeNarration.test.ts": 19,
+  /* Stage 3b (kanban t_567b570f, docs/show-pages-plan.md §Stage 3): shared
+     catalogue store CRUD (scoping by show_id, upsert-not-duplicate on
+     (show_id, guid), published_at ordering, feed-state round-trip). */
+  "test/showEpisodesStore.test.ts": 5,
+  /* Stage 3b end to end: fetches+parses+upserts through the real parser,
+     proves the chapters JSON body is never dereferenced during ingestion
+     (only the pointer is stored), TTL cache-hit/expiry behavior, and the
+     never-blank-page degrade contract (cached_stale / no_cache_error) on a
+     feed fetch failure — plus that a missing enclosure never fabricates an
+     audio_url. */
+  "test/ingestShowFeed.test.ts": 8,
 };
 
 /* `it(` as well as `test(`: backend's suites use both spellings. */
