@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-09-02T08:17:12.857Z",
+  "built_at": "2026-09-02T16:19:10.894Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-09-02-5f45acce",
+    "last_batch_id": "fresh-2026-09-02-e1fd67de",
     "last_batch_tier": 1,
     "transcript_labels": "descriptive cost label, never an eligibility test — see tools/classify/labels.mjs"
   },
@@ -116481,7 +116481,39 @@
         "linguistics/language"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.95
+        },
+        {
+          "node": "linguistics/language",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "French language instruction podcast for beginners with conversation practice.",
+      "display_title": "Speak French Avec Moi",
+      "blurb": "French lessons for beginners covering vocabulary, grammar, and conversation through real audio.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 1,
+        "transcript_tags": 10,
+        "transcript_types": {
+          "application/x-subrip": 1,
+          "text/plain": 8,
+          "text/vtt": 1
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-e1fd67de",
+      "classified_at": "2026-09-02T16:17:53.733Z"
     },
     "1519878239": {
       "topics": [
@@ -116565,14 +116597,71 @@
         "sports/fantasy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/fantasy",
+          "confidence": 0.92
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fantasy football analysis and draft strategy advice.",
+      "display_title": "Ron Stewart on Youtube Podcast",
+      "blurb": "Fantasy football rankings, draft guides, and strategy for competitive leagues.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-e1fd67de",
+      "classified_at": "2026-09-02T16:17:53.733Z"
     },
     "1520080073": {
       "topics": [
-        "music"
+        "music",
+        "comedy/interviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy/interviews",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hip hop personality interviews artists, producers, and cultural figures.",
+      "display_title": "The Bootleg Kev Podcast",
+      "blurb": "Hip hop interviews with artists, producers, and music industry figures.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 24,
+        "transcript_types": {
+          "application/srt": 8,
+          "text/vtt": 8,
+          "text/plain": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-e1fd67de",
+      "classified_at": "2026-09-02T16:17:53.733Z"
     },
     "1520102889": {
       "topics": [
@@ -116720,14 +116809,67 @@
         "fiction/sci-fi"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Atmospheric science fiction audio drama series with original music.",
+      "display_title": "Beyond the Dark",
+      "blurb": "Sci-fi audio dramas set in cyberpunk, post-apocalyptic, and alien worlds.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-e1fd67de",
+      "classified_at": "2026-09-02T16:17:53.733Z"
     },
     "1520318017": {
       "topics": [
-        "culture/books"
+        "culture/books",
+        "education/self-improvement"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.85
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Writing guidance podcast helping authors overcome resistance and finish first drafts.",
+      "display_title": "The First Draft Club",
+      "blurb": "Weekly writing support for novelists and memoirists navigating revisions and craft.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-e1fd67de",
+      "classified_at": "2026-09-02T16:17:53.733Z"
     },
     "1520335129": {
       "topics": [
@@ -116792,11 +116934,39 @@
     },
     "1520464284": {
       "topics": [
-        "news",
-        "business"
+        "news/commentary",
+        "news/politics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.88
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weekly discussion of Florida politics, environment, economy, and culture.",
+      "display_title": "The Florida Roundup",
+      "blurb": "Regional news and politics discussion covering Florida's current events.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-e1fd67de",
+      "classified_at": "2026-09-02T16:17:53.733Z"
     },
     "1520478046": {
       "topics": [
@@ -117023,7 +117193,31 @@
         "automotive"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Automotive podcast discussing car culture, enthusiasts, and design.",
+      "display_title": "Respect The Drive",
+      "blurb": "Automotive discussions with collectors and enthusiasts about cars and car culture.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-e1fd67de",
+      "classified_at": "2026-09-02T16:17:53.733Z"
     },
     "1521108629": {
       "topics": [
@@ -117203,7 +117397,31 @@
         "kids-family/stories"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Children's stories from Thomas Tank Engine universe read by professional narrators.",
+      "display_title": "Thomas & Friends Storytime",
+      "blurb": "Children's stories from the Thomas universe with fairy tales and engine adventures.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-e1fd67de",
+      "classified_at": "2026-09-02T16:17:53.733Z"
     },
     "1521470438": {
       "topics": [
@@ -117268,10 +117486,39 @@
     },
     "1521543122": {
       "topics": [
-        "religion/hinduism"
+        "religion/hinduism",
+        "education/self-improvement"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/hinduism",
+          "confidence": 0.88
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sanskrit philosophy teachings on Yoga Sutras by Hindu religious scholar.",
+      "display_title": "Yoga Sutra Archives",
+      "blurb": "Sanskrit philosophy teachings on the Yoga Sutras by Swami Tadatmananda.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-e1fd67de",
+      "classified_at": "2026-09-02T16:17:53.733Z"
     },
     "1521544115": {
       "topics": [
@@ -117389,7 +117636,33 @@
         "sports/rugby"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/rugby",
+          "confidence": 0.92
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Rugby podcast featuring interviews with legendary players and coaches.",
+      "display_title": "Rugby Hive",
+      "blurb": "Rugby interviews with legendary players and coaches sharing their stories.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 5,
+        "episodes_with_timed_transcript": 5,
+        "transcript_tags": 5,
+        "transcript_types": {
+          "application/x-subrip": 5
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-e1fd67de",
+      "classified_at": "2026-09-02T16:17:53.733Z"
     },
     "1521758802": {
       "topics": [
@@ -117745,10 +118018,34 @@
     },
     "1522375678": {
       "topics": [
-        "comedy/stand-up"
+        "comedy/casual-hangs"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Casual comedy podcast featuring three hosts in relaxed conversation.",
+      "display_title": "3's a Party",
+      "blurb": "Casual hang comedy show with three hosts discussing life and culture.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-e1fd67de",
+      "classified_at": "2026-09-02T16:17:53.733Z"
     },
     "1522378503": {
       "topics": [
@@ -117781,10 +118078,39 @@
     },
     "1522412155": {
       "topics": [
-        "kids-family/stories"
+        "kids-family/stories",
+        "religion/islam"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.9
+        },
+        {
+          "node": "religion/islam",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Islamic bedtime stories for children teaching moral values through storytelling.",
+      "display_title": "Once Upon A Crescent",
+      "blurb": "Islamic bedtime stories for children teaching moral values and faith principles.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-e1fd67de",
+      "classified_at": "2026-09-02T16:17:53.733Z"
     },
     "1522424162": {
       "topics": [
@@ -117795,10 +118121,39 @@
     },
     "1522443805": {
       "topics": [
-        "nature"
+        "nature",
+        "nature/earth-science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.88
+        },
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "German forest conservation podcast about ecosystems and climate.",
+      "display_title": "Peter und der Wald",
+      "blurb": "German forest science podcast discussing climate protection and biodiversity.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-e1fd67de",
+      "classified_at": "2026-09-02T16:19:10.894Z"
     },
     "1522512043": {
       "topics": [
@@ -117914,10 +118269,39 @@
     },
     "1522629407": {
       "topics": [
-        "business/marketing"
+        "business/marketing",
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/marketing",
+          "confidence": 0.9
+        },
+        {
+          "node": "business",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Business marketing strategy podcast sharing tactical advice and founder stories.",
+      "display_title": "The Smart Marketer Podcast",
+      "blurb": "Marketing and business strategy tips from experienced entrepreneurs and educators.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-e1fd67de",
+      "classified_at": "2026-09-02T16:17:53.733Z"
     },
     "1522707363": {
       "topics": [
@@ -117957,7 +118341,31 @@
         "kids-family/parenting"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.92
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Pregnancy and motherhood support podcast with hypnobirthing instruction.",
+      "display_title": "Positive Pregnancy & Motherhood",
+      "blurb": "Pregnancy and motherhood guidance covering birth preparation and postpartum wellness.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-e1fd67de",
+      "classified_at": "2026-09-02T16:17:53.733Z"
     },
     "1522738259": {
       "topics": [
@@ -118259,10 +118667,39 @@
     },
     "1523229361": {
       "topics": [
-        "craft"
+        "craft",
+        "hobbies"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.85
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fiber arts and homesteading podcast about yarn, dyeing, knitting, and farm life.",
+      "display_title": "The Flying Goat Farm",
+      "blurb": "Fiber arts and natural dyeing podcast for yarn enthusiasts and homesteaders.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-e1fd67de",
+      "classified_at": "2026-09-02T16:17:53.733Z"
     },
     "1523253391": {
       "topics": [
@@ -118292,7 +118729,31 @@
         "religion/buddhism"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/buddhism",
+          "confidence": 0.92
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Buddhist meditation retreat center teaching dharma and meditation techniques.",
+      "display_title": "Gaia House",
+      "blurb": "Buddhist dharma talks and guided meditation instruction from retreat center teachers.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-e1fd67de",
+      "classified_at": "2026-09-02T16:17:53.733Z"
     },
     "1523312400": {
       "topics": [
@@ -118422,10 +118883,41 @@
     },
     "1523382406": {
       "topics": [
-        "news/commentary"
+        "news/politics",
+        "religion/christianity"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.85
+        },
+        {
+          "node": "religion/christianity",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Christian commentary on politics and culture from evangelical pastor perspective.",
+      "display_title": "CrossPolitic Show",
+      "blurb": "Christian perspective on politics and culture from pastor and filmmaker hosts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 8,
+        "transcript_types": {
+          "text/plain": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-e1fd67de",
+      "classified_at": "2026-09-02T16:17:53.733Z"
     },
     "1523414560": {
       "topics": [
@@ -118452,10 +118944,39 @@
     },
     "1523505575": {
       "topics": [
-        "craft"
+        "craft",
+        "computing"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.75
+        },
+        {
+          "node": "computing",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Free software and creative making podcast discussing open source tools and culture.",
+      "display_title": "FOSS and Crafts",
+      "blurb": "Free software and making podcast about open source tools and collaborative creation.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-e1fd67de",
+      "classified_at": "2026-09-02T16:17:53.733Z"
     },
     "1523507379": {
       "topics": [
@@ -118492,7 +119013,35 @@
         "true-crime"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "True crime podcast investigating university murders with expert analysis.",
+      "display_title": "The Idaho Massacre",
+      "blurb": "True crime investigation of a 2022 university murder case with new developments.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 24,
+        "transcript_types": {
+          "application/srt": 8,
+          "text/vtt": 8,
+          "text/plain": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-e1fd67de",
+      "classified_at": "2026-09-02T16:17:53.733Z"
     },
     "1523577007": {
       "topics": [
@@ -118514,7 +119063,31 @@
         "gaming"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Video game podcast reviewing games, industry news, and gaming trends.",
+      "display_title": "Kinda Funny Gamescast",
+      "blurb": "Video game reviews, previews, and industry analysis across all major platforms.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-e1fd67de",
+      "classified_at": "2026-09-02T16:17:53.733Z"
     },
     "1523682676": {
       "topics": [
@@ -118862,10 +119435,39 @@
     },
     "1524216377": {
       "topics": [
-        "nature"
+        "nature",
+        "nature/animal-cognition"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.85
+        },
+        {
+          "node": "nature/animal-cognition",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Zoo and aquarium podcast discussing animal conservation and management.",
+      "display_title": "Rossifari Podcast - Zoos, Aquariums, and Animal Conservation",
+      "blurb": "Zoo and aquarium podcast covering animal conservation and development.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-e1fd67de",
+      "classified_at": "2026-09-02T16:19:10.894Z"
     },
     "1524246467": {
       "topics": [
@@ -119190,10 +119792,34 @@
     },
     "1524730109": {
       "topics": [
-        "sports/fantasy"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sports podcast focused on professional golf daily fantasy strategy.",
+      "display_title": "Stokastic PGA DFS",
+      "blurb": "PGA golf daily fantasy sports analysis and strategy.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-e1fd67de",
+      "classified_at": "2026-09-02T16:19:10.894Z"
     },
     "1524757694": {
       "topics": [
@@ -119234,10 +119860,39 @@
     },
     "1524980018": {
       "topics": [
-        "religion/hinduism"
+        "religion/hinduism",
+        "education/courses"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/hinduism",
+          "confidence": 0.88
+        },
+        {
+          "node": "education/courses",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hindu philosophy teaching on Mahabharata scripture from scholar.",
+      "display_title": "Mahabharata Teaching Archives - Arsha Bodha Center",
+      "blurb": "Sanskrit teachings on the Mahabharata Hindu epic scripture.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-e1fd67de",
+      "classified_at": "2026-09-02T16:19:10.894Z"
     },
     "1524980091": {
       "topics": [
@@ -119293,10 +119948,39 @@
     },
     "1525050646": {
       "topics": [
-        "craft"
+        "craft",
+        "hobbies"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.9
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Quilting craft podcast sharing techniques and maker interviews.",
+      "display_title": "Quilting Stories podcast",
+      "blurb": "Quilting craft podcast with techniques and stories makers.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-e1fd67de",
+      "classified_at": "2026-09-02T16:19:10.894Z"
     },
     "1525087545": {
       "topics": [
@@ -119579,10 +120263,34 @@
     },
     "1525432576": {
       "topics": [
-        "comedy/interviews"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sports podcast focused on golf discussion and sports analysis.",
+      "display_title": "The Bubba Army Podcast",
+      "blurb": "Golf and sports podcast with focus on professional golf.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-e1fd67de",
+      "classified_at": "2026-09-02T16:19:10.894Z"
     },
     "1525433226": {
       "topics": [
@@ -119674,10 +120382,39 @@
     },
     "1525459182": {
       "topics": [
-        "news/daily"
+        "food",
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Food industry podcast covering restaurant management and hospitality.",
+      "display_title": "Restaurant Daily",
+      "blurb": "Restaurant industry news and management for service professionals.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-e1fd67de",
+      "classified_at": "2026-09-02T16:19:10.894Z"
     },
     "1525467255": {
       "topics": [
@@ -119840,10 +120577,44 @@
     },
     "1525643497": {
       "topics": [
-        "music"
+        "food",
+        "hobbies"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.8
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Food science and cooking podcast about meat, technique, culture.",
+      "display_title": "Chewing the Gristle with Greg Koch",
+      "blurb": "Food science podcast discussing meat, cooking technique, culinary.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 32,
+        "transcript_types": {
+          "text/html": 8,
+          "application/json": 8,
+          "application/x-subrip": 8,
+          "text/vtt": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-e1fd67de",
+      "classified_at": "2026-09-02T16:19:10.894Z"
     },
     "1525652021": {
       "topics": [
@@ -120009,11 +120780,34 @@
     },
     "1525931356": {
       "topics": [
-        "fiction/comedy",
-        "comedy"
+        "gaming/design"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming/design",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Warhammer 40K tabletop RPG actual play campaign.",
+      "display_title": "The Valentyne Heresy: A Warhammer 40K RPG",
+      "blurb": "Warhammer 40K tabletop RPG actual play campaign.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-e1fd67de",
+      "classified_at": "2026-09-02T16:19:10.894Z"
     },
     "1525933414": {
       "topics": [
@@ -120211,17 +121005,70 @@
     },
     "1526245986": {
       "topics": [
-        "tv-film/after-shows"
+        "tv-film",
+        "culture/pop-culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "TV recap podcast analyzing episodes of 90 Day Fiancé.",
+      "display_title": "RHAP: We Know 90 Day Fiance",
+      "blurb": "90 Day Fiancé reality TV show recap and analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-e1fd67de",
+      "classified_at": "2026-09-02T16:19:10.894Z"
     },
     "1526253158": {
       "topics": [
-        "sports/golf"
+        "society"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Civics and social improvement podcast about leaving communities better.",
+      "display_title": "Better Than I Found It",
+      "blurb": "Community civics podcast about improving society and responsibility.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-e1fd67de",
+      "classified_at": "2026-09-02T16:19:10.894Z"
     },
     "1526304852": {
       "topics": [
@@ -120254,10 +121101,39 @@
     },
     "1526436522": {
       "topics": [
-        "tv-film/animation"
+        "culture/pop-culture",
+        "gaming"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.8
+        },
+        {
+          "node": "gaming",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Japanese pop culture podcast covering anime, games, collectibles.",
+      "display_title": "Gashapon",
+      "blurb": "Japanese pop culture podcast covering anime, games, hobbies.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 5,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-e1fd67de",
+      "classified_at": "2026-09-02T16:19:10.894Z"
     },
     "1526467894": {
       "topics": [
@@ -120748,10 +121624,34 @@
     },
     "1527006090": {
       "topics": [
-        "sports/volleyball"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Volleyball coaching podcast with techniques and athlete development.",
+      "display_title": "Volleyball Coaches Corner",
+      "blurb": "Volleyball coaching podcast sharing techniques and training strategies.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-e1fd67de",
+      "classified_at": "2026-09-02T16:19:10.894Z"
     },
     "1527007748": {
       "topics": [
@@ -120847,7 +121747,35 @@
         "linguistics/language"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.92
+        },
+        {
+          "node": "linguistics/language",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Italian language learning podcast for intermediate students.",
+      "display_title": "Italiano con Amore",
+      "blurb": "Italian language instruction podcast for intermediate learners conversations.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-e1fd67de",
+      "classified_at": "2026-09-02T16:19:10.894Z"
     },
     "1527123481": {
       "topics": [
@@ -121414,10 +122342,34 @@
     },
     "1528258939": {
       "topics": [
-        "sports/basketball"
+        "comedy/casual-hangs"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedy hang podcast with casual conversation among comedians.",
+      "display_title": "The Strickland Podcast Network",
+      "blurb": "Comedy podcast with host and guest comedians conversing.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-e1fd67de",
+      "classified_at": "2026-09-02T16:19:10.894Z"
     },
     "1528267426": {
       "topics": [
@@ -121517,11 +122469,41 @@
     },
     "1528535502": {
       "topics": [
-        "economics/markets",
-        "business"
+        "economics",
+        "news"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics",
+          "confidence": 0.85
+        },
+        {
+          "node": "news",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Financial markets and economics podcast discussing investment and economy.",
+      "display_title": "Market Mondays",
+      "blurb": "Financial markets and economic news analysis for investors.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 8,
+        "transcript_types": {
+          "text/vtt": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-e1fd67de",
+      "classified_at": "2026-09-02T16:19:10.894Z"
     },
     "1528551729": {
       "topics": [
@@ -121620,10 +122602,39 @@
     },
     "1528612502": {
       "topics": [
+        "science",
         "science/physics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.88
+        },
+        {
+          "node": "science/physics",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Astrophysics and space science podcast exploring universe astronomy.",
+      "display_title": "For the love of Astrophysics",
+      "blurb": "Astrophysics and astronomy podcast explaining the universe.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-e1fd67de",
+      "classified_at": "2026-09-02T16:19:10.894Z"
     },
     "1528622068": {
       "topics": [
@@ -121925,10 +122936,39 @@
     },
     "1528990170": {
       "topics": [
-        "kids-family/parenting"
+        "kids-family/parenting",
+        "comedy/casual-hangs"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Parenting comedy podcast with humor about raising children.",
+      "display_title": "Have Kids, They Said…",
+      "blurb": "Parenting comedy podcast with humor and honest discussion.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-e1fd67de",
+      "classified_at": "2026-09-02T16:19:10.894Z"
     },
     "1528998697": {
       "topics": [
@@ -122047,10 +123087,42 @@
     },
     "1529056523": {
       "topics": [
-        "kids-family/education"
+        "kids-family/education",
+        "health/mental"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/education",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Children podcast about ADHD experience and coping strategies.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-e1fd67de",
+      "classified_at": "2026-09-02T16:19:10.894Z"
     },
     "1529103794": {
       "topics": [
@@ -122243,10 +123315,42 @@
     },
     "1529357266": {
       "topics": [
-        "tv-film/reviews"
+        "tv-film/reviews",
+        "culture/pop-culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "TV recap podcast analyzing Buffy and Gilmore Girls episodes.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 10w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-e1fd67de",
+      "classified_at": "2026-09-02T16:19:10.894Z"
     },
     "1529359232": {
       "topics": [
@@ -122311,18 +123415,70 @@
     },
     "1529604634": {
       "topics": [
-        "music",
-        "history"
+        "culture/books",
+        "music"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.75
+        },
+        {
+          "node": "music",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Music history podcast exploring stories and cultural context behind songs.",
+      "display_title": "Ghost Notes",
+      "blurb": "Music history podcast exploring cultural stories and context.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-e1fd67de",
+      "classified_at": "2026-09-02T16:19:10.894Z"
     },
     "1529617900": {
       "topics": [
-        "culture/books"
+        "psychology"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Psychology podcast discussing mind, consciousness, and behavior.",
+      "display_title": "CEREBRO",
+      "blurb": "Psychology podcast discussing the mind, behavior, consciousness.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-e1fd67de",
+      "classified_at": "2026-09-02T16:19:10.894Z"
     },
     "1529628558": {
       "topics": [
@@ -122379,10 +123535,39 @@
     },
     "1529692998": {
       "topics": [
-        "tv-film/reviews"
+        "sports/endurance"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.88
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Running and endurance sports podcast for runners and athletes.",
+      "display_title": "Run for Your Lives Podcast",
+      "blurb": "Running podcast covering endurance training and running culture.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 32,
+        "transcript_types": {
+          "text/html": 8,
+          "application/json": 8,
+          "application/x-subrip": 8,
+          "text/vtt": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-e1fd67de",
+      "classified_at": "2026-09-02T16:19:10.894Z"
     },
     "1529702544": {
       "topics": [
@@ -122453,7 +123638,31 @@
         "sports/soccer"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/soccer",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Soccer podcast focused on US Men National Team coverage.",
+      "display_title": "Stars and Stripes USMNT Podcast",
+      "blurb": "Soccer podcast focused on US Men National Team.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 1,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-e1fd67de",
+      "classified_at": "2026-09-02T16:19:10.894Z"
     },
     "1529847511": {
       "topics": [
@@ -122637,10 +123846,39 @@
     },
     "1530093214": {
       "topics": [
-        "comedy/casual-hangs"
+        "comedy/casual-hangs",
+        "culture/performing-arts"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedy and improvisation podcast critiquing and discussing performance.",
+      "display_title": "Improv is Dead",
+      "blurb": "Comedy podcast discussing improvisation, performance, and culture.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-e1fd67de",
+      "classified_at": "2026-09-02T16:19:10.894Z"
     },
     "1530094769": {
       "topics": [
@@ -122718,10 +123956,44 @@
     },
     "1530376032": {
       "topics": [
-        "tv-film/after-shows"
+        "tv-film",
+        "culture/pop-culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "TV recap podcast analyzing 90s shows and cultural lessons.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 19w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 8,
+        "transcript_types": {
+          "text/vtt": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-e1fd67de",
+      "classified_at": "2026-09-02T16:19:10.894Z"
     },
     "1530427467": {
       "topics": [
@@ -122750,7 +124022,34 @@
         "sports/rugby"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/rugby",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Rugby podcast focused on French rugby team and culture.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-e1fd67de",
+      "classified_at": "2026-09-02T16:19:10.894Z"
     },
     "1530430766": {
       "topics": [
@@ -123018,10 +124317,34 @@
     },
     "1530720437": {
       "topics": [
-        "sports/cricket"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sports podcast with analysis and discussion of various sports.",
+      "display_title": "ThinkSports podcast",
+      "blurb": "Sports podcast with analysis and discussion of sports.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-e1fd67de",
+      "classified_at": "2026-09-02T16:19:10.894Z"
     },
     "1530757200": {
       "topics": [
@@ -123201,10 +124524,44 @@
     },
     "1531062307": {
       "topics": [
-        "travel"
+        "travel",
+        "hobbies"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.9
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Travel planning podcast focused on Swiss vacation destinations.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 10w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 8,
+        "transcript_types": {
+          "text/html": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-e1fd67de",
+      "classified_at": "2026-09-02T16:19:10.894Z"
     },
     "1531104730": {
       "topics": [
@@ -123335,10 +124692,39 @@
     },
     "1531367495": {
       "topics": [
-        "culture/books"
+        "culture/books",
+        "tv-film"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.85
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Book and entertainment podcast discussing novels, TV, fiction.",
+      "display_title": "Friends & Fiction",
+      "blurb": "Book and entertainment podcast discussing fiction, TV, culture.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-e1fd67de",
+      "classified_at": "2026-09-02T16:19:10.894Z"
     },
     "1531416289": {
       "topics": [
