@@ -10,6 +10,17 @@ other. Planning only — no implementation in this change.*
 always a **foray**. Nothing here touches `data/forays.json`, the segment
 pool, or narration.
 
+**Related but distinct workstream:** growing the *transcript/segment
+archive* that the generation pipeline sources tape from
+(`docs/curation/generation-architecture.md` §4.5) is a different problem
+from the catalogue breadth/promotion staged here. Promoting a show to
+"playable" (a working feed URL, polled for episode metadata) does not
+produce a transcript or an extractable segment — that requires the
+separate transcription/anchoring work planned in
+`docs/curation/transcription-scale-plan.md` and
+`docs/adr/0004-transcript-acquisition-ladder.md`. Do not read this plan's
+promotion waves as progress on generation quality; they are orthogonal.
+
 ## 0. What's stale in `docs/CATALOG-PIPELINE.md` vs. still accurate
 
 Read in full first, per the card. It's from 2026-07-09/2026-08-16 range.
