@@ -31,3 +31,10 @@ a spine, and the iOS 14-day audio-spike timebox starts.
 
 Also queued for you, unchanged: register **foray.fm**, and start the Apple Developer +
 CarPlay entitlement application this week.
+
+> **Note — 2026-09-02.** The "register foray.fm" item is stale: the app shipped as
+> **4a**, not "Foray" (`docs/DECISIONS.md`, 2026-08-21), and the naming study's own
+> domain/handle/filing directives have been struck through as moot in
+> `docs/marketing/06-naming-study.md` §5. No purchase is needed on this line unless the
+> founders make a fresh, on-the-record decision to acquire it anyway. The Apple
+> Developer + CarPlay entitlement item is unaffected and still stands.
