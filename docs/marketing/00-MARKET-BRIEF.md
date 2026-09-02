@@ -1,5 +1,15 @@
 # Foray — Market Brief (CMO synthesis)
 
+> **Name change since this memo — 2026-08-21.** At the time this brief was
+> written the app itself was called "Foray" (hence the title above); the
+> founder later renamed the app **4a**, and "foray" was repurposed to mean
+> only the stitched-audio unit 4a assembles (see `docs/DECISIONS.md`,
+> 2026-08-21 entry, and `06-naming-study.md`). **The underlying market
+> research and positioning conclusions below still apply as-is to 4a** —
+> this is a naming change only, not a repositioning; read every "Foray" in
+> the prose below as "4a" unless it is describing the stitched-audio unit
+> specifically.
+
 *Synthesized 2026-07-08 from desks 01–07. One page of conclusions; evidence lives in the numbered memos. Product principles (curiosity-first, anti-echo-chamber, no dark patterns, legally boring) supersede every finding here.*
 
 ## The one-paragraph read

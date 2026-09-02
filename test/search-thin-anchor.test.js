@@ -298,6 +298,49 @@ const SYSTEMIC_SPOT_CHECKS = [
   "transistor history explained",
 ];
 
+/* Kanban t_dda8ca5b (filed from Fable-fleet red-team t_711dce13): the
+   documented "far below rare but real" framing for THIN_ANCHOR_DF implies
+   a wide safety margin above the cutoff, but a real word can sit right
+   next to it. "ornithology" is corpusDF ~0.0021 -- ~0.0001 over the 0.002
+   line -- and carries no concept expansion, so thin=false and it gets
+   none of the #209 protection: a broad co-token ("history") can carry the
+   whole query while "ornithology" itself contributes to none of the top
+   picks. This is NOT a bug -- classifyResults' honesty floor still reports
+   `sparse`, not a false-confident `ok`/`rich` set -- this test pins that
+   honest-degrade behaviour so a future THIN_ANCHOR_DF retune is forced to
+   notice this boundary case rather than silently changing its shape. */
+test("boundary case just above THIN_ANCHOR_DF (\"ornithology\", corpusDF ~0.0021): thin=false, and status honestly degrades to sparse rather than faking a confident match", () => {
+  /* MUTATION: this is a documentation/pin test, not a correctness gate --
+     if this starts failing because THIN_ANCHOR_DF's calibration moved or
+     the catalogue's df for "ornithology" shifted enough to cross 0.002 in
+     either direction, that is expected and worth a fresh look (see the
+     kanban card), not an automatic revert. What it must never regress to
+     is `thin=true` with unrelated `status=ok`/`rich` -- i.e. a confident-
+     looking result set built entirely from the broad co-token. */
+  const ctx = { semantic: liveSemantic, itemTags: liveItemTags, discover: liveDiscover };
+  const query = "Ornithology History Explained";
+  const interp = SE.interpretQuery(query, ctx);
+  const byToken = Object.fromEntries(interp.groups.map(g => [g.token, g]));
+  /* Only assert while "ornithology" is still sitting in the JUST-ABOVE-cutoff
+     window this test exists to pin (0.002 <= df < 0.003, i.e. within 50% of
+     THIN_ANCHOR_DF above the line). If a catalogue refresh drops it below
+     0.002 (it would then correctly read thin=true -- a different case, not
+     a regression) or pushes it well clear of the boundary (no longer the
+     scenario this test documents), skip rather than assert something this
+     test was never designed to check. */
+  if (!byToken.ornithology || byToken.ornithology.df < 0.002 || byToken.ornithology.df >= 0.003) {
+    return; // catalogue snapshot moved ornithology's df away from the just-above-cutoff boundary window
+  }
+  assert.ok(!byToken.ornithology.thin,
+    "this pins the CURRENT boundary shape: corpusDF just above 0.002 reads thin=false, unprotected");
+  const results = liveRank(query);
+  const cls = SE.classifyResults(results, {});
+  assert.notEqual(cls.status, "ok",
+    "an unprotected boundary token being fully outvoted by a broad co-token must never present as a confident 'ok' match");
+  assert.notEqual(cls.status, "rich",
+    "an unprotected boundary token being fully outvoted by a broad co-token must never present as a confident 'rich' match");
+});
+
 test("spot-check: other thin-anchor-shaped queries do not fabricate relevance from a common co-token", () => {
   for (const query of SYSTEMIC_SPOT_CHECKS) {
     const ctx = { semantic: liveSemantic, itemTags: liveItemTags, discover: liveDiscover };
