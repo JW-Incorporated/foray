@@ -978,6 +978,16 @@ const BACKEND_FLOORS = {
      disclosure template, and decideConnectiveNarration()'s seam-position
      table for tape-adjacent beats needing short connective narration. */
   "test/writeNarration.test.ts": 19,
+  /* §4.8 end to end (kanban card t_7f410ffc): within-act stitching rules
+     (silence bridge, jingle marks cuts, measured cadence, coverage
+     hard-gate), the forward-only cross-act continuity Builder (§6.2),
+     forayItems.ts's mapping to the real data/forays.json schema (with
+     an internal-field-leak guard), and the cadence-measurement CLI. */
+  "test/forayItems.test.ts": 7,
+  "test/measureCadence.test.ts": 3,
+  "test/smoothSeam.test.ts": 8,
+  "test/stitchAct.test.ts": 9,
+  "test/stitchForay.test.ts": 4,
 };
 
 /* `it(` as well as `test(`: backend's suites use both spellings. */
