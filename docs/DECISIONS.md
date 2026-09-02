@@ -1266,6 +1266,18 @@ its reasoning.
   runtime-check language that round 14 correctly superseded, contradicting §4.9's per-act gate as
   the sole timing authority.** §6.2 now points at §4.9's per-act runtime gate instead of restating
   a competing (and later-timed) check at the continuity checkpoint.
+- **Review round 17 fix: §4.8's "coverage is checked before flow" rule still used the old
+  two-state (present / dropped-with-reason) framing, contradicting the three-state deferrable-beat
+  rule §8's publishability gate already uses.** As written, every on-schedule act carrying a
+  held-back §4.3 deferrable beat would fail §4.8's own coverage check even though §8 explicitly
+  does not penalize that state. §4.8 now names the same three states §8 uses — present, held-back
+  deferrable (unplayed because on schedule), or dropped-with-reason — so the two sections agree.
+- **Review round 17 fix: §4.9's whole-Foray gate description still listed a "narration-share check"
+  among what `check-forays.mjs`/`check-narration.mjs` validate, contradicting §8/§9.3's ruling that
+  narration share has no ceiling and is never gated.** Leaving that wording in §4.9 risked an
+  implementer adding back the exact ceiling §8/§9.3 removed. §4.9 now states narration share is
+  reported by the validators (useful telemetry) but never gated — there is no threshold to fail
+  against.
 - **Review round 16 fix: §4.9's new per-act gate assumed a progressive-write storage mechanism
   ("appended to the running order the player can reach") that does not exist.** `data/forays.json`
   is written once, in full, at whole-Foray publish — there is no per-act append path and no player

@@ -24,7 +24,9 @@ generator needs a schema change, that is a finding to surface, not a liberty to 
 
 **Your job when handed this document:** turn a named section into a spec with acceptance criteria,
 or implement a section that already has one. Do not implement across section boundaries in one PR.
-Anything in §9 is unresolved and must not be built until it is ruled on.
+Anything in §9 marked **Open** is unresolved and must not be built until it is ruled on. An item
+marked **Resolved** below (with a dated ruling) has been ruled on and is buildable against that
+ruling — §9's own "Resolved" notes say so explicitly where they apply.
 
 ---
 
@@ -498,9 +500,11 @@ design is far beyond scope, but a jingle or a beat of silence roughly every few 
 ear a boundary to rest on. Propose a cadence, measure it against a real long Foray, and write down
 what you measured — do not ship a number that was guessed.
 
-**Coverage is checked before flow.** Every beat in the spine is either present or explicitly
-dropped with a reason. A silently missing beat is the failure mode that makes a Foray feel like it
-was about nothing.
+**Coverage is checked before flow.** Every beat in the spine is either present, held back as a
+§4.3 deferrable beat that stayed unplayed because generation was on schedule, or explicitly dropped
+with a reason — the same three-state rule §8's publishability gate uses. A silently missing beat
+(one that is neither present, a held-back deferrable, nor dropped-with-reason) is the failure mode
+that makes a Foray feel like it was about nothing.
 
 ### 4.9 — Finalize and publish
 
@@ -534,7 +538,8 @@ let Act 1 (and every act after it) reach the player before anything actually val
   storage contract exists.
 - **Whole-Foray gate — runs once the last act is written.** Validate against `check-forays.mjs` and
   `check-narration.mjs` (the full §8 quality-bar suite, including the aggregate exploration-budget
-  and narration-share checks that only make sense once the whole Foray exists). Write
+  check that only makes sense once the whole Foray exists — narration share, per §8/§9.3, is
+  reported by these validators but is never gated: there is no ceiling to fail against). Write
   `data/forays.json`. In phase 1 this is a PR a founder reviews; in phase 2 it is an automated
   publish and the validators are the only gate that exists — which is the reason to make them
   strict now, while a human is still in the loop to notice what they miss.
