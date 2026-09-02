@@ -30,6 +30,8 @@ Per-user-day at current API prices, cheap-first cascade working as designed:
 
 Net: marginal cost ≈ **$1.50–4.50/user-month** (local Whisper, shared enrichment) vs $4.99 price → viable but thin at the personal phase, improving with every user because enrichment amortizes. The pre-mortem's sharper question stands: whether menu quality *worth paying for* exists inside this envelope at all — that's what the blind test (REQUIREMENTS-DELTA R1) exists to answer.
 
+**⚠️ Stale scope — needs recomputation before any pricing decision or Phase 2 (2026-09-02).** This sketch prices a *curation-only* product: metadata classification, session building, and short (~1.2k character) TTS intros per session. It predates the AI-generation feature's separate per-Foray cost ceiling — per `docs/curation/generation-architecture.md` §9.2, Joey set a generous ~$5–10/Foray ceiling for full episode generation (research, spine-building, per-act deepening, per-beat writing, independent fact-verification), which is a fundamentally different, additive cost shape (potentially tens of thousands of characters of TTS/LLM generation per Foray, not a 1.2k-character intro). If any material share of users generate custom Forays, this $1.50–4.50/user-month envelope and the $4.99 anchor it's checked against no longer capture the full marginal cost. **Do not finalize a pricing decision or schedule Phase 2 (any-user generation) without recomputing this envelope using the $5–10/Foray ceiling as an additive input.**
+
 ## Risks (rank-ordered by the pre-mortem, P × damage)
 
 1. Signal sparsity starves the learning loop → descope trigger pre-committed (delta R4).
