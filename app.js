@@ -3,6 +3,50 @@
    playlist builder), playlists list, playlist detail. Hash routing.
    The semantic layer (compiled concepts + tags) powers playlist building. */
 
+/* THE GENERATION PIN, READ BEFORE ANYTHING ELSE IN THIS FILE (#233/M4).
+ *
+ * sw.js's `handleShell` bakes a fallen-back generation's id directly into
+ * whichever CODE file it served stale, synchronously, so it is readable
+ * before that file's own logic runs — never only via `postMessage`, which a
+ * review correctly flagged as racy: a message sent before this file's own
+ * `addEventListener("message", ...)` attaches (further down this file, after
+ * `init()` has already started fetching) is simply lost, and `init()`'s first
+ * `data/*.json` fetches would go out unpinned even though the code they are
+ * paired with is stale.
+ *
+ * Two places this id can arrive from, checked in the order a real page load
+ * can produce them:
+ *   1. `self.__forayPinnedDeployId` — set by a `self.__forayPinnedDeployId =
+ *      "<id>";` statement sw.js prepends to THIS file's own bytes, when
+ *      app.js itself is what fell back. Executes as this file's very first
+ *      statement, before anything below it.
+ *   2. A `<meta name="foray-pin-deploy-id" content="<id>">` tag sw.js
+ *      inserts into `index.html`'s `<head>` when the NAVIGATION fell back
+ *      (parsed by the browser before any script tag runs, including this
+ *      one) — covers the case where index.html/search-engine.js fell back but
+ *      this file's own fetch was fresh.
+ * Either establishes the pin synchronously; no message race is possible for
+ * either path. The one residual gap — `player/client.js`, a DEFERRED module
+ * that can still be discovered stale after `init()`'s own fetches have
+ * already gone out — is unchanged from the original design and is named in
+ * sw.js's header; closing it would mean blocking every page load on that
+ * module, which the founding "survive a dead zone" constraint rules out. */
+let pinnedDeployId = (typeof self !== "undefined" && self.__forayPinnedDeployId) || null;
+if (!pinnedDeployId && typeof document !== "undefined" && typeof document.querySelector === "function") {
+  /* Defensive on `metaPin` itself, not just `document.querySelector`'s
+     existence: several test harnesses in this repo (episode-page.test.js,
+     first-time-onboarding.test.js, others) stub `document.querySelector` as
+     an always-truthy shape with no real selector matching and no
+     `getAttribute`, to keep those harnesses minimal. A real DOM's
+     `querySelector` correctly returns `null` for a tag that is not there;
+     this reads the attribute only when the returned object actually offers
+     one, so neither shape can throw. */
+  const metaPin = document.querySelector('meta[name="foray-pin-deploy-id"]');
+  if (metaPin && typeof metaPin.getAttribute === "function") {
+    pinnedDeployId = metaPin.getAttribute("content") || null;
+  }
+}
+
 const state = {
   session: null,
   validated: null,
@@ -4132,7 +4176,7 @@ function route() {
 
 async function fetchJson(path) {
   try {
-    const res = await fetch(path, { cache: "no-cache" });
+    const res = await fetch(pinnedUrl(path), { cache: "no-cache" });
     return res.ok ? await res.json() : null;
   } catch (_) { return null; }
 }
@@ -4299,6 +4343,26 @@ const SHELL_NOTICE = {
   "generation-changed": "4a updated in the background, so this page is one version behind.",
 };
 
+/* THE PAGE'S HALF OF THE GENERATION PIN (#233/M4, sw.js's `handleShell`).
+ *
+ * The worker no longer remembers which pages are running last-known code —
+ * that lived in an in-memory `Set` that a browser-initiated worker eviction
+ * silently emptied, which failed a pinned page OPEN the next time it asked for
+ * data. The pin now lives here instead, in this page's own JS state (set
+ * synchronously at the TOP of this file — see that comment for why it cannot
+ * depend solely on this message listener, which attaches only after `init()`
+ * has already started fetching), which cannot be evicted independently of the
+ * page itself. Every `data/*.json` fetch carries `?_fdid=<that id>` so sw.js's
+ * `handleData` keeps reading the SAME generation rather than whatever today's
+ * pointer names. A reload clears this by simply being a new document — there
+ * is nothing to clear on purpose.
+ */
+function pinnedUrl(path) {
+  if (!pinnedDeployId) return path;
+  const sep = path.includes("?") ? "&" : "?";
+  return `${path}${sep}_fdid=${encodeURIComponent(pinnedDeployId)}`;
+}
+
 function showShellNotice(reason) {
   /* Own properties only. A plain object literal answers `SHELL_NOTICE["constructor"]`
      with a function, and `SHELL_NOTICE["toString"]` with another one, so a bare
@@ -4345,7 +4409,19 @@ if ("serviceWorker" in navigator && shouldRegisterServiceWorker(window)) {
   if (typeof navigator.serviceWorker.addEventListener === "function") {
     navigator.serviceWorker.addEventListener("message", (e) => {
       const msg = e && e.data;
-      if (msg && msg.source === "foray-sw") showShellNotice(msg.reason);
+      if (!msg || msg.source !== "foray-sw") return;
+      /* By the time this fires, `pinnedDeployId` is already set synchronously
+         (see the top of this file) if this load fell back at all — this
+         assignment is now a REDUNDANT confirmation, not the establishing
+         write, kept only as a safety net for a message that legitimately
+         arrives with a different id than the synchronous read found (there is
+         no such path today, but it costs nothing and a future one should not
+         have to remember this). A `deployId` of null (an unretained/unknown
+         generation on the worker's side) intentionally does not clear an
+         already-set pin — see sw.js's `handleData` fail-safe for the matching
+         reasoning. */
+      if (msg.reason === "stale-shell" && msg.deployId) pinnedDeployId = msg.deployId;
+      showShellNotice(msg.reason);
     });
   }
 }

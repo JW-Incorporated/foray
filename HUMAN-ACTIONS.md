@@ -2053,6 +2053,90 @@ completion with the screen locked — same reporting bar item #11 already set fo
 **Status:** OPEN
 
 ---
+### 31. Before phase 2 is scheduled: build the four App Store Guideline 1.2 UGC-moderation requirements
+
+**Tag:** `[BLOCKING]` for scheduling phase 2 (any-user prompting) · **Time:** its own future engineering card, not a quick action · **Owner:** Joey/Wyatt (decision to schedule phase 2), engineering (the build)
+
+**Why it matters.** `docs/curation/generation-architecture.md` §1.3 already says this in
+the engineering docs: *"The moment a stranger's prompt produces content other users can
+hear, 4a hosts user-generated content and App Store Guideline 1.2 applies: content
+filtering, a mechanism to report objectionable content, a way to block abusive users, and
+published developer contact information. None of the four exist. This is a
+submission-blocking discovery for phase 2 and it belongs in `HUMAN-ACTIONS.md` the day
+phase 2 is scheduled — not the day it ships."* A 2026-09-02 review confirmed none of the
+11 marketing/legal documents (including `docs/marketing/05-legal-risk-memo.md`, the
+dedicated legal-risk-scoping memo) named this gap either, so it existed only in one
+engineering doc where a founder scheduling phase 2 from the marketing/legal corpus alone
+would not see it. `05-legal-risk-memo.md` §2 now carries the same four-item list (added
+2026-09-02) — this item is the corresponding founder-facing tripwire.
+
+**Today (phase 1, founder-prompted, founder-reviewed before publish): not applicable.**
+4a is not hosting UGC in Apple's sense yet — do not build the moderation system now.
+
+**The moment phase 2 (any user's prompt reaching the shared catalogue) is scheduled**,
+this item blocks it: all four of content filtering, a report-content mechanism, a
+user-blocking mechanism, and published developer contact info must exist before that
+build reaches App Review, or it is an expected rejection. When phase 2 is scheduled,
+open the engineering card for the moderation system itself against this item.
+
+**Status:** OPEN — dormant until phase 2 is scheduled; re-read this item the day that decision is made.
+
+---
+
+### 32. Rule on the 2026-07-08 marketing-corpus freeze: still in effect, needs a formal exception process, or should be lifted
+
+**Tag:** `[BLOCKING]` for further marketing-corpus work · **Time:** ~5 minutes · **Owner:** the owner (founder strategic call)
+
+**Why it matters.** `07-premortem.md` and `08-REQUIREMENTS-DELTA.md` (both
+2026-07-08) issued a standing order: "Marketing corpus is frozen until
+there's a retention curve for it to describe." (also recorded in
+`docs/DECISIONS.md`, 2026-07-08 "night 2" entry.) A Fable-driven review on
+2026-09-02 found the freeze has been repeatedly worked around without
+founder sign-off:
+
+- `docs/marketing/09-product-feature-review.md` (dated 2026-07-08, edited
+  2026-08-21 per its own banner) extends the corpus with R13-R23 and
+  self-grants a freeze exception ("R14 — narrow, justified") instead of
+  requesting one, and locks App Store listing copy into CI via R23.
+- `docs/marketing/10-category-coverage.md` (dated 2026-07-09, numbered
+  after both freeze documents) issues new curation orders with no freeze
+  acknowledgment.
+- `docs/marketing/06-naming-study.md` was edited 2026-08-21 without citing
+  a freeze exception.
+- A live Google Play store listing was drafted and captured
+  (`docs/store/play/`, captured 2026-08-25) — new external go-to-market
+  surface, well after the freeze. (Separately tracked for publication at
+  item #26 above — that item assumes the corpus is publishable; this item
+  is the prior question of whether it should be.)
+
+Per Fable ruling FR-t_437143f8-1 (classification-only consult, recorded on
+kanban card t_437143f8, board=foray): this is an explicit founder-issued
+strategic gate (CLAUDE.md: "Humans make strategic decisions; AI executes")
+with no local written exception process, so it is human-only
+(`explicit_project_human_gates`) — Fable cannot resolve it, only certify
+that it needs you. Per the ruling, all further marketing-corpus work stays
+paused pending your call.
+
+**The decision (pick one).**
+- **A — freeze still stands.** Nothing above was authorized; the
+  self-granted exceptions get flagged/reverted as needed and
+  marketing-corpus work stays paused until an explicit retention curve
+  exists.
+- **B — define a formal exception process.** State who can grant an
+  exception and on what grounds (e.g. legal/safety corrections should
+  probably always be exempt) so future narrow needs don't require a full
+  freeze lift.
+- **C — lift the freeze.** Work has already continued past it in
+  practice; formally end it and let marketing-corpus work resume under
+  normal review, not freeze rules.
+
+**Worked if:** you record A, B, or C (and, for B, the exception rule) as a
+dated entry in `docs/DECISIONS.md`, and this item is marked `DONE`.
+
+**Status:** OPEN
+
+---
+
 ## DONE
 
 *(Nothing filed yet. Finished items move here with the date they were done and

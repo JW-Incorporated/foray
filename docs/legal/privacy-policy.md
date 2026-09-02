@@ -117,8 +117,10 @@ row that fails to sync is retried, and once sent (or once it ages past the
 data** deliberately does not log an event for the deletion itself (see §7), so
 there is nothing about the deletion for this queue to hold.
 
-The web app also keeps a Cache Storage bucket named `foray-v5` holding the app
-shell and the catalogue JSON files, so the app renders in a dead zone (`sw.js`).
+The web app also keeps Cache Storage buckets named `foray-gen-<deploy_id>` (one
+per retained deploy — up to two at a time), `foray-pointer` (which one is
+current) and `foray-pending` (used only mid-install), holding the app shell and
+the catalogue JSON files, so the app renders in a dead zone (`sw.js`).
 **It never caches podcast audio**, because the service worker ignores every
 request that is not to our own origin.
 
@@ -406,9 +408,9 @@ browser's settings for the origin the web app is served from,
 removes the local copies but **not** the server rows, for the reason in the
 paragraph above.
 
-The `foray-v5` Cache Storage bucket is not touched by the button: it holds the
-app shell and the catalogue files (§1), which are the same for every listener and
-say nothing about you.
+The `foray-gen-<deploy_id>` Cache Storage buckets are not touched by the
+button: they hold the app shell and the catalogue files (§1), which are the
+same for every listener and say nothing about you.
 
 > TODO(founder): publish a **data-deletion URL** for the store listings. The
 > in-app control answers Play's "can users request deletion" question, but the

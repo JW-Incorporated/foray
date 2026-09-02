@@ -8,6 +8,23 @@
 > **app** is `4a`; the word **foray** survives in the product as the name of the
 > stitched-audio unit, not as the name of the app. See #302 and
 > `docs/legal/privacy-policy.md`.
+>
+> **Closing note — 2026-09-02.** "4a" was never run through this study's own
+> gates (speakability, "Hey Siri" test, spell-on-first-hearing, App Store
+> collision, RDAP/trademark scan), and it plainly would not clear several of
+> them on its face: it is ambiguous as a spoken utterance ("four-A"? "forty"?),
+> it is a weak/short App Store search term, and there is a plausible
+> trademark-adjacent collision with Google's "Pixel 4a" line — none of that has
+> been checked or waived on the record. That is not a defect in this study:
+> `docs/DECISIONS.md`'s 2026-08-21 entry ("the app is 4a; the stitched-audio
+> unit is still a foray") records "4a" as a **founder instruction**, i.e. a
+> deliberate override of this study's process rather than an output of it, and
+> no further validation of "4a" against these gates is planned or needed. This
+> closing note exists only so a reader doesn't mistake the absence of a "4a"
+> row in §2–§3 for an oversight. See §5 below for the disposition of this
+> study's now-moot execution directives, and §3/§4 for a flagged scoring issue
+> on "Foray" itself, which remains live in the product as the stitched-audio
+> unit's name.
 
 Date: July 2026. Builds on `docs/marketing/03-positioning-pricing.md` §4, which rules out
 "-pilot"/"Co-" morphemes and "AI [noun]" category framing, and sketches six naming
@@ -93,7 +110,7 @@ Scale 1–5 (5 best). "TM risk" is the quick-scan read only (5 = low apparent ri
 
 | Name | Speakability | Fit to soul | Distinctiveness | Domain avail. | App Store clear | TM risk (low=5) | Notes |
 |------|:---:|:---:|:---:|:---:|:---:|:---:|-------|
-| **Foray** | 4 | 5 | 5 | 4 (.fm) | 5 | 4 | Winner |
+| **Foray** | 4 | 5 | 5 | 4 (.fm) | 5 | **4 — flagged 2026-09-02, see note** | Winner |
 | **Whim** | 5 | 4 | 3 | 4 (.fm) | 3 | 4 | Runner-up |
 | **Tangent** | 4 | 5 | 4 | 1 | 5 | 4 | Runner-up (domain problem) |
 | Magpie | 4 | 4 | 3 | 1 | 3 | 3 | Loved it; domains + crowding kill it |
@@ -105,6 +122,24 @@ Scale 1–5 (5 best). "TM risk" is the quick-scan read only (5 = low apparent ri
 | Fourcast | 2 | 4 | 2 | 4 (.fm) | 4 | 2 | Channel 4 podcast + homophone |
 | Sift | 4 | 4 | 2 | 1 | 2 | 2 | Sift Inc. marks; news-curation app exists |
 | Hark | 5 | 5 | — | — | 0 | 1 | Hark Audio = same category. Dead on arrival |
+
+**Scoring-methodology flag — added 2026-09-02, not part of the original July 2026
+scan.** Foray's TM-risk score of 4/5 ("low apparent risk") is rated against
+"Foray Technologies," whose foray.com/.app registrations are cited above as
+belonging to a "distant class unlikely to conflict." That reasoning is only
+half right: Foray Technologies is forensic evidence software for law
+enforcement, and this product would file (per §5 below, if filing ever
+happens) in **USPTO Class 9 (downloadable software)** — the *same class* as
+Foray Technologies' own software offering, not a distant one. "Distant
+category" (forensics vs. consumer audio) is a real mitigating fact for
+likelihood-of-confusion analysis, but it does not make this a same-class-safe
+4/5; a formal clearance search (§5 item 4, never commissioned — see below)
+would need to weigh the same-class registration explicitly rather than treat
+category distance alone as sufficient. This does not change the study's
+historical recommendation (superseded regardless, see banner above), but it
+matters now because **"foray" (lowercase) is still the shipped, live
+in-product name of the stitched-audio unit** — so the clearance question this
+score under-stated is not moot just because the app itself shipped as "4a."
 
 ---
 
@@ -166,25 +201,39 @@ podcast-app/podcast-name confusion this study was told to screen out.
 
 ## 5. How to secure it
 
-1. **Register foray.fm now** (and whim.fm as the fallback — combined carrying cost is
+> **MOOT — 2026-09-02.** The app shipped as **4a**, not "Foray" (founder
+> instruction, `docs/DECISIONS.md` 2026-08-21), so the app-identity directives
+> below (register the domain, reserve store/social handles as the *app* name,
+> file for the *app* mark) never applied to begin with and were never
+> executed — no domain purchase, handle reservation, or USPTO filing for
+> "Foray" as a product/app name is on record anywhere in this repo or in
+> `HUMAN-ACTIONS.md`. They are struck through so nobody reads this section as
+> live spending guidance. Separately, "foray" (lowercase) remains the shipped
+> name of the stitched-audio unit inside 4a — if that in-product term is ever
+> judged to need its own trademark clearance (distinct from an app-identity
+> filing), that is a new decision for the founders to make on the record, not
+> a resumption of the directives below, and it should weigh the same-class
+> scoring flag added in §3 above.
+
+~~1. **Register foray.fm now** (and whim.fm as the fallback — combined carrying cost is
    trivial vs. losing them). `.fm` is a premium ccTLD (Micronesia, operated by BRS
    Media): expect roughly **$70–100/yr** at Porkbun or Namecheap, sometimes more at
    first-year promo variance. Cloudflare Registrar sells at-cost but does **not**
    currently support `.fm`, so use **Porkbun** (clean UX, free WHOIS privacy) or
    **101domain/Namecheap** for the .fm, and keep Cloudflare Registrar in mind for any
    supporting `.com` (e.g., a defensive `getforay.com` / `forayapp.com`, ~$10–12/yr
-   at cost) since foray.com itself is held by Foray Technologies.
-2. **Reserve the handles the same day**: App Store Connect app name "Foray" (claimable
+   at cost) since foray.com itself is held by Foray Technologies.~~
+~~2. **Reserve the handles the same day**: App Store Connect app name "Foray" (claimable
    at first app submission — names aren't reservable indefinitely, so don't dawdle once
    an Apple Developer account exists), plus @foray / @foray.fm on the socials that
-   matter.
-3. **USPTO filing is optional at this stage** — common-law rights begin with use, and
+   matter.~~
+~~3. **USPTO filing is optional at this stage** — common-law rights begin with use, and
    the budget-conscious path is to file an intent-to-use application (TEAS Plus,
    **$350/class**) in Class 9 (downloadable software) and/or Class 42 (SaaS) once the
-   name survives step 4. Not urgent pre-launch; cheap insurance pre-marketing-spend.
-4. **Commission the formal clearance search before public launch**: USPTO TESS +
+   name survives step 4. Not urgent pre-launch; cheap insurance pre-marketing-spend.~~
+~~4. **Commission the formal clearance search before public launch**: USPTO TESS +
    state marks + live App Store/Play Store listings for "Foray" in software/audio
-   classes. This study is a collision scan, not clearance (see disclaimer at top).
+   classes. This study is a collision scan, not clearance (see disclaimer at top).~~
 
 ---
 

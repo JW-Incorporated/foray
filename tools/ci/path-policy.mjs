@@ -98,7 +98,16 @@ export const DENIED_PREFIXES = [
  *                    ci.yml (refs, dupes, taxonomy, audio scheme, tokened-URL
  *                    leaks, DAI flags) + copy rules
  *   T2 docs/         low blast radius; governance paths denied above
- *   T3 player/ tools/ test/   covered by node --test suites in ci.yml
+ *   T3 player/ tools/ test/   covered by node --test suites in ci.yml, with
+ *                    one documented exception: test/playwright/ (kanban card
+ *                    t_504fd5fd) is real-Chromium coverage run by its own
+ *                    `playwright` CI job, not node --test, and that job is
+ *                    ADVISORY-ONLY (see ci.yml's own comment on it) — a bad
+ *                    change there cannot block a merge or reach production,
+ *                    only turn a non-required check red. Still additive/
+ *                    test-only in the same sense as backend/test/ below, so
+ *                    it stays inside test/'s existing T3 allowance rather
+ *                    than needing its own entry.
  *   T4 app.js styles.css search-engine.js
  *                    covered by test/app-security.test.js (esc/safeUrl
  *                    behaviour + CSP/href static invariants) and node --check
