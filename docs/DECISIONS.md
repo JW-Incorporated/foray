@@ -1255,6 +1255,13 @@ its reasoning.
   depended on data that isn't there. Both sections now name `title`+`summary` as the actual,
   already-available comparison basis, with a richer comparison explicitly deferred to a future
   founder-approved schema addition rather than assumed available today.
+- **Review round 8 fix: §9.4/§9.6's dedup comparison undersold what `forays.json` actually
+  retains.** The round-7 fix said only `title`+`summary` are retained, but the schema also keeps
+  `topic` and per-slot `title`s — real signal for similarity matching that the round-7 wording
+  wrongly deferred behind a hypothetical schema change. Both sections now name the full existing
+  retained-field set (`title`, `summary`, `topic`, slot `title`s) as the comparison basis, with a
+  richer comparison (description/transcript text) still correctly deferred to a future
+  founder-approved schema addition.
 
 ## 2026-09-01 (Fix M4: service worker — versioned manifest for atomic deploy generation, kanban card t_f143c31a)
 

@@ -723,8 +723,9 @@ Answer from Wyatt: Each prompt is discarded. the Foray is given a title on creat
 **Resolved (2026-09-02) — the apparent §9.6 collision does not require reopening this ruling.**
 §9.6's similarity check does not need the *incoming* prompt to be stored: it is embedded
 transiently, used once for the comparison, and discarded, per this ruling. The comparison side is
-each **existing Foray's own retained content** — `forays.json`'s existing `title` and `summary`
-fields, the only per-Foray text the schema retains today — not anyone's prompt; that content is
+each **existing Foray's own retained text fields** — `forays.json`'s `title`, `summary`, `topic`,
+and slot `title`s, the per-Foray/per-slot text the schema retains today — not anyone's prompt;
+that content is
 already retained under this ruling and under the Foray's own catalogue lifecycle, so no new
 prompt-retention exception is
 needed. Whether an *embedding derived from* that retained content is itself cached or recomputed
@@ -749,22 +750,24 @@ to that Foray. If they decline, a new one is created.
 **Resolved (2026-09-02) — buildable without reopening §9.4; persistence question deferred to
 implementation.** "Similar to an existing Foray" is implemented as: embed the incoming prompt
 transiently (never persisted, consistent with §9.4), embed each existing Foray's own already-
-retained content (`forays.json`'s existing `title` and `summary` fields — the only per-Foray text
-the schema retains today; not a hypothetical description/transcript field that does not exist, and
-never another user's discarded prompt), and compare. This needs no new *prompt*-retention exception
+retained text fields (`forays.json`'s `title`, `summary`, `topic`, and slot `title`s — the
+per-Foray and per-slot text the schema retains today; not a hypothetical description/transcript
+field that does not exist, and never another user's discarded prompt), and compare. This needs no
+new *prompt*-retention exception
 and no schema change at all for the general case — the
-privacy question §9.4 raised is fully closed. A title+summary comparison is coarser than a full
+privacy question §9.4 raised is fully closed. This retained-field set is coarser than a full
 transcript would be, and is the honest general-case baseline until/unless a founder-approved schema
 addition (a retained description or transcript excerpt) improves it — that improvement is a
 separate, optional schema decision this ruling does not make for itself. **Whether the per-Foray
 comparison embedding itself
 is persisted (cached in `forays.json` or a sibling store) or recomputed on demand is a storage/
 schema decision this document does not make for itself** (line 23's rule again): recomputing
-on-the-fly from `title`+`summary` needs no schema change at all; caching it for performance
+on-the-fly from these existing retained fields needs no schema change at all; caching it for performance
 would add a field to `forays.json` and must be surfaced as a proposed schema change for founder
 sign-off before being built, exactly as line 23 requires for any schema addition. Do not persist a
 new embedding field without that sign-off — recompute-on-demand is the safe default until it is
-given. Title+summary is the general-case design, not a fallback — a richer comparison (a retained
+given. This retained-field set is the general-case design, not a fallback — a richer comparison (a
+retained
 description or transcript excerpt) is a future improvement gated on a founder-approved schema
 change, not something assumed available today.
 
