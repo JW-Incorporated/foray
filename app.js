@@ -556,6 +556,98 @@ function upNextBtn(id) {
     aria-label="${on ? "In Up Next" : "Add to Up Next"}">${on ? "✓ Up Next" : "+ Up Next"}</button>`;
 }
 
+/* ---------- starred shows (follow-lite) ----------
+
+   Requirement A2.4 / Joey's Q2 answer: "yes, add starred shows, and a
+   section for all of your starred shows. It is not the home page but is
+   somewhat easily accessible." Deliberately NOT subscribe semantics — no
+   notifications, no auto-download, no algorithmic surfacing — just a
+   lightweight marker, mirroring the existing episode star (`cp_saved`)
+   pattern exactly, keyed on show_id instead of episode id. Same "state
+   observed, never declared" principle: starring a show changes nothing
+   about what the app recommends or fetches. */
+function starredShowsMap() { return lsGet("cp_starred_shows", {}); }
+function isShowStarred(id) { return id in starredShowsMap(); }
+
+function toggleShowStar(id) {
+  const starred = starredShowsMap();
+  if (starred[id]) {
+    delete starred[id];
+    logEvent("show_unstarred", { show_id: id });
+  } else {
+    const show = showById(id);
+    if (!show) return;
+    starred[id] = {
+      show_id: show.show_id,
+      title: show.title,
+      artwork_url: show.artwork_url || null,
+      starred_at: new Date().toISOString(),
+    };
+    logEvent("show_starred", { show_id: id });
+  }
+  lsSet("cp_starred_shows", starred);
+  document.querySelectorAll(`[data-show-star="${CSS.escape(id)}"]`).forEach(b => {
+    b.textContent = isShowStarred(id) ? "★ Starred" : "☆ Star this show";
+    b.classList.toggle("on", isShowStarred(id));
+  });
+}
+
+/* Text label, not a bare glyph like starBtn -- this button sits alone in a
+   page header rather than beside a play control in a dense row, so it needs
+   to read on its own. */
+function showStarBtn(show_id) {
+  const on = isShowStarred(show_id);
+  return `<button class="show-star ${on ? "on" : ""}" data-show-star="${esc(show_id)}" aria-label="${on ? "Unstar show" : "Star show"}">${on ? "★ Starred" : "☆ Star this show"}</button>`;
+}
+
+function bindShowStars(scope) {
+  scope.querySelectorAll("[data-show-star]").forEach(btn => {
+    if (btn._bound) return;
+    btn._bound = true;
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      toggleShowStar(btn.dataset.showStar);
+    });
+  });
+}
+
+/* ---------- Starred Shows page (#/starred-shows) ----------
+
+   Reachable from the drawer, deliberately NOT on the home screen (Joey's
+   framing: "somewhat easily accessible" but distinct from home). Renders
+   exactly what cp_starred_shows holds -- no fetch, no ranking, no
+   algorithmic surfacing. An empty state is a real, renderable state, same
+   convention as every other page in the app. Reuses showResultRow's visual
+   language (artwork + title, no play/star/duration controls -- a show,
+   not a playable item) rather than inventing a second show-card shape. */
+function starredShowRow(entry) {
+  return `<a class="show-result" href="#/show/${encodeURIComponent(entry.show_id)}">
+    ${entry.artwork_url ? `<img class="show-result-art" src="${esc(safeUrl(entry.artwork_url))}" alt="">` : `<span class="show-result-art show-result-art-blank"></span>`}
+    <span class="show-result-title">${esc(entry.title)}</span>
+  </a>`;
+}
+
+function renderStarredShows() {
+  document.body.className = "view-page";
+  const starred = Object.values(starredShowsMap())
+    .sort((a, b) => (b.starred_at || "").localeCompare(a.starred_at || ""));
+
+  $("#view").innerHTML = `
+    <div class="page">
+      <div class="page-head">
+        <a class="back" href="#/">‹</a>
+        <div>
+          <h2>Starred Shows</h2>
+          <p class="sub">${starred.length} show${starred.length === 1 ? "" : "s"} you've starred</p>
+        </div>
+      </div>
+      ${starred.length
+        ? `<div class="show-results">${starred.map(starredShowRow).join("")}</div>`
+        : `<p class="note">No starred shows yet — star a show from its page to see it here.</p>`}
+    </div>`;
+}
+
 /* ---------- the four suggestions ---------- */
 
 function pickedHistory() { return lsGet("cp_history", []); }
@@ -1189,6 +1281,7 @@ function renderShow(show_id) {
         </div>
       </div>
       ${show.artwork_url ? `<img class="show-art" src="${esc(safeUrl(show.artwork_url))}" alt="">` : ""}
+      ${showStarBtn(show.show_id)}
       ${show.editorial_note ? `<p class="note">${esc(show.editorial_note)}</p>` : ""}
       ${chips ? `<div class="fy-chips">${chips}</div>` : ""}
       ${eps.length
@@ -1198,6 +1291,7 @@ function renderShow(show_id) {
 
   bindPickLogging($("#view"));
   bindStars($("#view"));
+  bindShowStars($("#view"));
   bindUpNext($("#view"));
   bindPlay($("#view"));
 }
@@ -4163,6 +4257,7 @@ function renderCurrentPage() {
   else if ((m = /^#\/show\/(.+)$/.exec(h))) renderShow(decodeURIComponent(m[1]));
   else if (h === "#/playlists") renderPlaylists();
   else if (h === "#/queue") renderQueue();
+  else if (h === "#/starred-shows") renderStarredShows();
   else renderHome();
 }
 
