@@ -27,6 +27,27 @@ export class BudgetExceededError extends Error {
   }
 }
 
+/**
+ * Thrown when a single Foray's generation run (scoped by `sessionId`) would
+ * spend past the founder-approved per-Foray ceiling (docs/curation/
+ * generation-architecture.md §9.2, ~$5-10/Foray, default env.episodeBudgetUsd).
+ * Distinct from BudgetExceededError (the daily per-user cap) — a call can
+ * trip either, both, or neither independently.
+ */
+export class EpisodeBudgetExceededError extends Error {
+  constructor(
+    public readonly sessionId: string,
+    public readonly spentUsd: number,
+    public readonly attemptedUsd: number,
+    public readonly capUsd: number
+  ) {
+    super(
+      `Per-Foray budget exceeded for session ${sessionId}: spent $${spentUsd.toFixed(4)} + attempted $${attemptedUsd.toFixed(4)} > cap $${capUsd.toFixed(4)}`
+    );
+    this.name = "EpisodeBudgetExceededError";
+  }
+}
+
 /** Fraction of the daily budget each tier is allowed to consume before it gets cut off. */
 const TIER_CUTOFF_FRACTION: Record<0 | 1 | 2, number> = {
   0: Number.POSITIVE_INFINITY, // ingestion / metadata-only: never budget-gated
@@ -37,7 +58,8 @@ const TIER_CUTOFF_FRACTION: Record<0 | 1 | 2, number> = {
 export class BudgetGuard {
   constructor(
     private readonly sink: CostEventSink = defaultCostEventSink,
-    private readonly dailyBudgetUsd: number = env.dailyBudgetUsd
+    private readonly dailyBudgetUsd: number = env.dailyBudgetUsd,
+    private readonly episodeBudgetUsd: number = env.episodeBudgetUsd
   ) {}
 
   private tierOf(operation: string): 0 | 1 | 2 {
@@ -51,8 +73,13 @@ export class BudgetGuard {
 
   /**
    * Throws BudgetExceededError if recording `estimatedUsd` would push
-   * today's spend for this operation's tier past its cutoff. On success,
-   * records the cost event and returns it.
+   * today's spend for this operation's tier past its cutoff, or
+   * EpisodeBudgetExceededError if `input.sessionId` is set and recording
+   * would push that single Foray's generation-run spend past
+   * `episodeBudgetUsd` (docs/curation/generation-architecture.md §9.2).
+   * The episode check is purely additive: callers that never pass
+   * `sessionId`, or a sink that doesn't implement `sumUsdBySession`, see
+   * no behavior change from before this check existed.
    */
   async checkAndRecord(input: CostEventInput) {
     const tier = this.tierOf(input.operation);
@@ -62,6 +89,13 @@ export class BudgetGuard {
 
     if (Number.isFinite(cap) && spent + input.estimatedUsd > cap) {
       throw new BudgetExceededError(tier, spent, input.estimatedUsd, cap);
+    }
+
+    if (input.sessionId && this.sink.sumUsdBySession && Number.isFinite(this.episodeBudgetUsd)) {
+      const spentThisEpisode = await this.sink.sumUsdBySession(input.sessionId);
+      if (spentThisEpisode + input.estimatedUsd > this.episodeBudgetUsd) {
+        throw new EpisodeBudgetExceededError(input.sessionId, spentThisEpisode, input.estimatedUsd, this.episodeBudgetUsd);
+      }
     }
 
     return this.sink.record(input);
@@ -75,10 +109,16 @@ export class BudgetGuard {
     const spent = await this.spentToday(userId);
     return Math.max(0, this.dailyBudgetUsd - spent);
   }
+
+  /** Spend so far for a single Foray's generation run, or 0 if the sink can't scope by session. */
+  async spentThisEpisode(sessionId: string): Promise<number> {
+    if (!this.sink.sumUsdBySession) return 0;
+    return this.sink.sumUsdBySession(sessionId);
+  }
 }
 
 /** Process-wide default guard, wired to the default in-memory sink and env budget. */
-export const defaultBudgetGuard = new BudgetGuard(defaultCostEventSink, env.dailyBudgetUsd);
+export const defaultBudgetGuard = new BudgetGuard(defaultCostEventSink, env.dailyBudgetUsd, env.episodeBudgetUsd);
 
 // re-export so call sites can `import { costEvents } from "../cost/budgetGuard"` if preferred
 export { costEvents };

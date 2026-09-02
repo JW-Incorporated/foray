@@ -159,7 +159,7 @@ const PAGE_IDS = [
   "view", "drawer", "drawer-overlay", "drawer-playlists", "family-toggle",
   "player-toggle", "menu-btn", "refresh-btn", "banner-slot", "pl-form",
   "pl-input", "pl-note", "tab-topics", "tab-shows", "sh-form", "sh-input",
-  "sh-note", "sh-results",
+  "sh-note", "sh-results", "browse-all-link",
 ];
 
 function mount({ seed = {} } = {}) {

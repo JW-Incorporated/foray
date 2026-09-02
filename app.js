@@ -1165,9 +1165,65 @@ function showNameLink(showName) {
   return showId ? `<a class="show-link" href="#/show/${esc(showId)}">${label}</a>` : label;
 }
 
+/* A3.2 — tapping a chip goes to "shows in this category" (renderCategory),
+   reusing taxonomy_node_ids overlap across the existing 220-show curated
+   catalogue. Zero new data needed: the join is entirely against fields
+   already fetched (state.taxonomy, state.catalog). Deliberately an <a>, not
+   a <button> wired through JS, so it is a normal navigable link (right-click
+   "open in new tab" etc. keep working, same reasoning as showNameLink). */
 function taxonomyChip(nodeId) {
   const node = (state.taxonomy?.nodes || []).find(n => n.id === nodeId);
-  return `<span class="fy-chip">${esc(node?.label || nodeId)}</span>`;
+  const label = esc(node?.label || nodeId);
+  return `<a class="fy-chip" href="#/category/${esc(encodeURIComponent(nodeId))}">${label}</a>`;
+}
+
+/* Every catalogue show whose taxonomy_node_ids includes nodeId — the exact
+   overlap check A3.2 calls for. Once Stage 3b's breadth catalogue becomes
+   client-searchable this should extend to it too (separate card); for now
+   it reads only state.catalog, the curated 220-show set. */
+function showsForCategory(nodeId) {
+  return (state.catalog?.shows || []).filter(s => (s.taxonomy_node_ids || []).includes(nodeId));
+}
+
+/* Shared shell for both the category list (A3.2) and the all-shows index
+   (A3.3) — same "back, heading, sub, list-of-show-result-rows" shape
+   renderShow/renderPlaylistDetail already use, and reuses showResultRow so a
+   row here looks and behaves exactly like a Shows-search result. */
+function renderShowIndexPage(title, subtitle, shows) {
+  document.body.className = "view-page";
+  $("#view").innerHTML = `
+    <div class="page">
+      <div class="page-head">
+        <a class="back" href="#/">‹</a>
+        <div>
+          <h2>${esc(title)}</h2>
+          <p class="sub">${esc(subtitle)}</p>
+        </div>
+      </div>
+      ${shows.length
+        ? `<div class="show-results">${shows.map(showResultRow).join("")}</div>`
+        : `<p class="note">No shows here yet.</p>`}
+    </div>`;
+}
+
+/* A3.2's landing page. An unknown nodeId still renders — same "absence is a
+   real state, not an error" rule renderShow's not-found guard follows —
+   falling back to the raw id as its own label, and an empty result list
+   getting the shared "No shows here yet" copy rather than a dead end. */
+function renderCategory(nodeId) {
+  const node = (state.taxonomy?.nodes || []).find(n => n.id === nodeId);
+  const label = node?.label || nodeId;
+  const shows = showsForCategory(nodeId).slice().sort((a, b) => a.title.localeCompare(b.title));
+  renderShowIndexPage(label, `${shows.length} show${shows.length === 1 ? "" : "s"} in 4a's catalogue`, shows);
+}
+
+/* A3.3 — the all-shows browsable index. A-Z over the full curated catalogue;
+   category grouping is the Shows-search tab's job already (browse by
+   category lives one tap away via any show's taxonomy chips), so this stays
+   a single flat alphabetical list rather than duplicating that navigation. */
+function renderAllShows() {
+  const shows = (state.catalog?.shows || []).slice().sort((a, b) => a.title.localeCompare(b.title));
+  renderShowIndexPage("All Shows", `${shows.length} shows in 4a's catalogue, A\u2013Z`, shows);
 }
 
 /* Stage 3b (docs/show-pages-plan.md §Stage 3, kanban t_567b570f): full
@@ -1655,6 +1711,7 @@ function setSearchTab(mode) {
   $("#sh-form").hidden = topics;
   $("#sh-note").hidden = topics || !$("#sh-note").textContent;
   $("#sh-results").hidden = topics || !$("#sh-results").innerHTML;
+  $("#browse-all-link").hidden = topics;
 }
 
 function renderHome() {
@@ -1682,6 +1739,7 @@ function renderHome() {
       </form>
       <p id="sh-note" class="note" hidden></p>
       <div id="sh-results" class="show-results" hidden></div>
+      <a id="browse-all-link" class="browse-all-link" href="#/shows" hidden>Browse all shows ›</a>
     </div>`;
 
   if (!showFirstTimeExplainerOnce()) showIntroPopupOnce();
@@ -1895,12 +1953,41 @@ function resolveEpisode(id) {
   return pool[id] || savedMap()[id] || null;
 }
 
+/* A1.8: "More from this show" — display-only, no new data (the join already
+   exists as episodesForShow, docs/requirements audit note). item.show is only
+   ever a name string here (discover.json/itemIndex never carry show_id — the
+   same gap showNameLink already works around), so this resolves the show
+   record the same way showNameLink does (showIdForShowName -> showById) before
+   reusing episodesForShow/epRow exactly as renderShow does. Independent of
+   Stage 3b ingestion: works fine on today's curated pool and just grows once
+   that lands, per the card's own framing. Renders nothing (not an empty
+   section) when there is no show match or no other episodes — absence is a
+   real state, matching every other join on this page. */
+function moreFromShow(item) {
+  const showId = showIdForShowName(item.show);
+  const show = showId ? showById(showId) : null;
+  if (!show) return "";
+  const eps = episodesForShow(show).filter(e => e.id !== item.id).slice(0, 8);
+  if (!eps.length) return "";
+  const ctx = "episode-more-" + item.id;
+  return `<section class="ep-more">
+    <h3>More from this show</h3>
+    ${eps.map((e, i) => epRow(e, i, ctx, -1)).join("")}
+  </section>`;
+}
+
 function renderEpisode(id) {
   document.body.className = "view-page";
   const item = resolveEpisode(id);
   if (!item) {
     $("#view").innerHTML = `<div class="page"><p class="note">Episode not found.</p></div>`;
     return;
+  }
+  // populate itemIndex/poolIds so "more from this show" rows can play in-app;
+  // never throws — no catalogue yet is a reason to skip that row's play button,
+  // not to lose the whole page (same rule hydrationPool already follows).
+  if (state.session && state.session.episodes) {
+    try { fullPool(); } catch (_) { /* catalogue not really there yet */ }
   }
   $("#view").innerHTML = `
     <div class="page">
@@ -1915,7 +2002,9 @@ function renderEpisode(id) {
       ${item.hook ? `<p class="fp-s-why">${esc(item.hook)}</p>` : ""}
       <div class="ep-actions">${item.audio_url ? playBtn(item) : `<a class="go" href="${esc(safeUrl(playLink(item)))}" target="_blank" rel="noopener"
         data-ev="picked" data-ep="${esc(item.id)}" data-ctx="episode-page">Listen in your podcast app ↗</a>`}${starBtn(item.id)}${upNextBtn(item.id)}</div>
+      ${moreFromShow(item)}
     </div>`;
+  bindPickLogging($("#view"));
   bindStars($("#view"));
   bindUpNext($("#view"));
   bindPlay($("#view"));
@@ -4230,6 +4319,8 @@ function renderCurrentPage() {
   else if ((m = /^#\/subject\/(.+)$/.exec(h))) renderPlaylistDetail("subject-" + m[1]);
   else if ((m = /^#\/episode\/(.+)$/.exec(h))) renderEpisode(m[1]);
   else if ((m = /^#\/show\/(.+)$/.exec(h))) renderShow(decodeURIComponent(m[1]));
+  else if ((m = /^#\/category\/(.+)$/.exec(h))) renderCategory(decodeURIComponent(m[1]));
+  else if (h === "#/shows") renderAllShows();
   else if (h === "#/playlists") renderPlaylists();
   else if (h === "#/queue") renderQueue();
   else renderHome();
