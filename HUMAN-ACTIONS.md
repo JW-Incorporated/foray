@@ -2083,7 +2083,7 @@ open the engineering card for the moderation system itself against this item.
 
 ---
 
-### 30. Rule on the 2026-07-08 marketing-corpus freeze: still in effect, needs a formal exception process, or should be lifted
+### 32. Rule on the 2026-07-08 marketing-corpus freeze: still in effect, needs a formal exception process, or should be lifted
 
 **Tag:** `[BLOCKING]` for further marketing-corpus work · **Time:** ~5 minutes · **Owner:** the owner (founder strategic call)
 
