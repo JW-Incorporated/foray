@@ -109,8 +109,8 @@ function lowercaseMode(mode: string): ForayNarrationMode {
  * codebase's `copyRules`/`NARRATION_CHARS_PER_SEC` cross-checks exist to
  * prevent). Exposed for tests and any future caller that wants the
  * number without re-deriving it. */
-export function estimateScriptSeconds(script: string): number {
-  return Math.round((script.length / NARRATION_CHARS_PER_SEC) * 1000) / 1000;
+export function estimateScriptSeconds(chars: number): number {
+  return Math.round((chars / NARRATION_CHARS_PER_SEC) * 1000) / 1000;
 }
 
 /** Maps ONE `StitchedItem` to its `data/forays.json`-shaped equivalent.
