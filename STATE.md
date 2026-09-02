@@ -7,6 +7,21 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
+### SECURITY: Supabase linter findings — RLS/SECURITY DEFINER/policy scoping (2026-09-02) — `fix/supabase-linter-rls`
+
+- **What:** t_58c99c73. Enables RLS (deny-all, no policies) on
+  `public.schema_migrations` and `public.learning_cursor` (the 2 linter
+  ERRORs); revokes `anon`/`authenticated` EXECUTE on the two
+  `SECURITY DEFINER` auth-trigger functions; rescopes the 8 `own_rows_*`
+  policies to `TO authenticated` explicitly. Founder-approved spec on the
+  card, PR only.
+- **Branch:** `fix/supabase-linter-rls` — PR only, never main.
+- **Owned/new files:** `backend/migrations/supabase/0002_linter_findings.sql`.
+- **Shared files it touches:** `HUMAN-ACTIONS.md` (new item logging the
+  leaked-password-protection dashboard toggle, which no worker can click).
+- **Explicitly out of scope:** anything else in `backend/migrations/` —
+  no other portable migration files touched.
+
 ### M3: event log off synchronous localStorage onto IndexedDB (2026-09-01) — `t_c7199b13/event-log-idb`
 
 - **What:** Finding M3 (approved design). Client event logging (`logEvent()` /

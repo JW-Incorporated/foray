@@ -2133,7 +2133,30 @@ paused pending your call.
 **Worked if:** you record A, B, or C (and, for B, the exception rule) as a
 dated entry in `docs/DECISIONS.md`, and this item is marked `DONE`.
 
-**Status:** OPEN
+**Status:** DONE
+
+---
+
+### 33. Enable leaked-password protection in Supabase Auth settings
+
+**Tag:** `[UPGRADE]` · **Time:** ~2 minutes · **Owner:** the owner (dashboard-only toggle)
+
+**Why it matters.** The Supabase database linter flagged that leaked-password
+protection (the HaveIBeenPwned check on new/changed passwords) is off. This is
+a toggle in the Supabase dashboard's Authentication settings — not a database
+migration, so no worker/agent can apply it.
+
+**Steps.**
+1. Open the Supabase dashboard for this project.
+2. Go to **Authentication** → **Settings** (Auth providers/Policies page,
+   named "Password Security" or similar depending on dashboard version).
+3. Enable **"Leaked password protection"** (the HaveIBeenPwned check).
+4. Save.
+
+**Worked if:** the toggle shows enabled, and the Supabase linter no longer
+lists this WARN on a re-run of Advisors → Security.
+
+**Status:** open
 
 ---
 
