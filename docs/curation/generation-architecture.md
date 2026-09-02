@@ -259,12 +259,18 @@ The spine contains:
   pressure. They are the one and only §6.3 time-buffer valve: on a **time** shortfall they get
   inserted, already-prepared, to genuinely extend the act while act N+1 finishes, filling reserved
   runtime that would otherwise sit unused, not adding to it; when generation is on schedule they
-  are simply never inserted into the running order (produced, but unplayed, and the act runs
-  slightly under its budget rather than over). A **cost**-cutting pass instead cancels their
-  production outright before §4.5, same effect as never needing them. Neither path is ever counted
-  against the required ~30% floor (§8):
-  the floor is computed only over the beats that were always inside it, so a deferrable beat's
-  insertion, non-insertion, or cancellation cannot move that number in either direction.
+  are simply never inserted into the running order (produced, but unplayed). **This means the
+  without-buffer running order — every act minus its two deferrable beats — must itself land inside
+  §3/§8's ±15% tolerance on its own; the deferrable pair's reserved runtime is capped at the same
+  15% the without-buffer order is allowed to sit under, never more.** A Short Foray's small beat
+  count (8–10 beats total, per §3's table) makes this bound binding in practice: the deepening
+  stage (§4.4) must size a deferrable pair's runtime against the act's actual budget rather than
+  against a fixed beat count, and an act too short to fit two deferrable beats within that 15%
+  margin marks fewer than two, or none, rather than overrunning the bound. A **cost**-cutting pass
+  instead cancels the deferrable pair's production outright before §4.5, same effect as never
+  needing them. Neither path is ever counted against the required ~30% floor (§8): the floor is
+  computed only over the beats that were always inside it, so a deferrable beat's insertion,
+  non-insertion, or cancellation cannot move that number in either direction.
 
 **The spine is frozen before playback begins.** See §6.
 
@@ -634,16 +640,21 @@ fills with near-duplicates.
 Answer: when a prompt is very similar to an existing Foray, the user is asked if they want to listen
 to that Foray. If they decline, a new one is created.
 
-**Resolved (2026-09-02) — buildable without reopening §9.4.** "Similar to an existing Foray" is
-implemented as: embed the incoming prompt transiently (never persisted, consistent with §9.4),
-embed each existing Foray from its own retained content (title, plus description/transcript text
-already kept for the catalogue — never from another user's discarded prompt), and compare. Only the
-per-Foray comparison embeddings are persisted, derived from content the catalogue already retains
-for other reasons, so this needs no new prompt-retention exception and does not touch
-`promptNoPersistence.test.ts`'s scope (that test guards the §4.0-4.1 stage; this comparison runs
-downstream, against catalogue content). A title-only comparison remains the fallback if per-Foray
-description/transcript text isn't available for older catalogue entries, and should be labeled as
-weaker in that case, but is not required as the general-case design.
+**Resolved (2026-09-02) — buildable without reopening §9.4; persistence question deferred to
+implementation.** "Similar to an existing Foray" is implemented as: embed the incoming prompt
+transiently (never persisted, consistent with §9.4), embed each existing Foray's own already-
+retained content (title, plus description/transcript text already kept for the catalogue — never
+another user's discarded prompt), and compare. This needs no new *prompt*-retention exception — the
+privacy question §9.4 raised is fully closed. **Whether the per-Foray comparison embedding itself
+is persisted (cached in `forays.json` or a sibling store) or recomputed on demand is a storage/
+schema decision this document does not make for itself** (line 23's rule again): recomputing
+on-the-fly from existing retained fields needs no schema change at all; caching it for performance
+would add a field to `forays.json` and must be surfaced as a proposed schema change for founder
+sign-off before being built, exactly as line 23 requires for any schema addition. Do not persist a
+new embedding field without that sign-off — recompute-on-demand is the safe default until it is
+given. A title-only comparison remains the fallback when per-Foray description/transcript text
+isn't available for older catalogue entries, and should be labeled as weaker in that case, but is
+not required as the general-case design.
 
 ---
 

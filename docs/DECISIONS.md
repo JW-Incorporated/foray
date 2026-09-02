@@ -1174,21 +1174,24 @@ its reasoning.
 - **§4.3/§6.3/§8's exploration-budget language now describes one consistent
   policy instead of three conflicting ones, with the per-act deferrable
   pair pre-generated (not built under live shortfall pressure), never
-  counted toward or against the required floor, and — per a reviewer
-  catch — reserved *within* the act's existing duration budget so
-  inserting them cannot push runtime past §3/§8's ±15% tolerance.** The
-  ~30% floor (product principle #1) is computed only over the beats that
-  were always inside it. On top of it, each act produces two additional
-  "deferrable" beats through the normal pipeline (§4.4-§4.7) — written and
-  sourced ahead of time so they're ready to play instantly, with their
-  runtime reserved inside the act's planned duration rather than added on
-  top of it — but held back from the act's running order. A **time**
-  shortfall (§6.3) inserts them, already-prepared, filling that reserved
-  runtime to genuinely extend the act while act N+1 finishes; on schedule
-  they are simply never inserted, and the act runs slightly under its
-  budget instead. A **cost** shortfall instead cancels their production
-  before §4.5. §8's "exploration budget survived" check is unaffected by
-  any of these three outcomes, since the floor's denominator never
+  counted toward or against the required floor, reserved *within* the
+  act's existing duration budget, and — per a second reviewer catch —
+  explicitly bounded so the normal (without-buffer) running order still
+  clears §3/§8's ±15% tolerance on its own.** The ~30% floor (product
+  principle #1) is computed only over the beats that were always inside it.
+  On top of it, each act produces two additional "deferrable" beats through
+  the normal pipeline (§4.4-§4.7) — written and sourced ahead of time so
+  they're ready to play instantly, with their runtime capped at the same
+  15% margin the without-buffer act must already sit under — but held back
+  from the act's running order. A **time** shortfall (§6.3) inserts them,
+  already-prepared, filling that reserved runtime to genuinely extend the
+  act while act N+1 finishes; on schedule they are simply never inserted.
+  A **cost** shortfall instead cancels their production before §4.5. A
+  Short Foray (8-10 beats total) is small enough that this bound is
+  binding in practice: §4.4 sizes the deferrable pair against the act's
+  actual budget, and an act too short to fit two within the 15% margin
+  marks fewer, or none. §8's "exploration budget survived" check remains
+  unaffected by any of these outcomes, since the floor's denominator never
   included the deferrable pair to begin with.
 - **§3's undershoot-reason requirement no longer prescribes an
   undocumented schema field.** A reviewer correctly flagged
@@ -1207,11 +1210,20 @@ its reasoning.
   kept for the catalogue) — never from another user's prompt. No new
   prompt-retention exception is needed, and `promptNoPersistence.test.ts`
   (t_825eee4c, merged) is unaffected: it guards the §4.0-4.1 stage, and
-  this comparison runs downstream against already-catalogued content. Our
+  this comparison runs downstream against already-catalogued content.
+  A second reviewer catch: whether the per-Foray comparison embedding is
+  itself *cached* (a new `forays.json` field) vs. recomputed on demand is
+  a separate schema decision this document does not make for itself —
+  §9.6 now defers that to a founder-approved schema change if caching is
+  wanted, with recompute-on-demand as the schema-free safe default. Our
   first pass at this fix (now superseded) proposed a one-way prompt
   embedding as a founder+legal decision; that path is unnecessary and was
   dropped once the actual comparison target was corrected.
 - No implementation changed in this pass — spec-only correction per the
   task's scope. All four contradictions in the finding are now resolved
-  outright, with no remaining founder/legal decision pending; every fix in
-  this pass was a concrete rule change, not a re-opened question.
+  outright, with no remaining founder/legal decision pending on the
+  substance; one small, genuinely optional schema question (caching the
+  §9.6 comparison embedding) is explicitly deferred to whoever builds that
+  stage, with a schema-free default already specified so it does not block
+  anything. Every fix in this pass was a concrete rule change, not a
+  re-opened question.
