@@ -86,7 +86,7 @@ user, not just a founder, can prompt a Foray:
 |---|---|---|---|
 | synthesis cost at 10,000 user Forays | `on-device-tts.md` §6.1: **$9,900–$59,100**, recurring on every re-narration | **~$0** (electricity), per `self-hosted-tts.md` §3 | **$0**, always |
 | hosting/egress cost | `on-device-tts.md` §6.1: real audio files, egress ceiling hit by *play* volume, not just creation count | same as ElevenLabs — Kokoro still renders a server-side audio file | **$0** — ~20 KB of script text ships in data already bundled, per `on-device-tts.md` §5 |
-| pronunciation control | Documented, per `narrator-voice.md` §3.2 (pinned voice ID) | Documented, per `self-hosted-tts.md` §2.1 (misaki inline IPA) | Documented on iOS (`AVSpeechSynthesisIPANotationAttribute`, `on-device-tts.md` §1); undocumented on Android (`on-device-tts.md` §2) — closed by the acceptance fixture in §9.4 below, not by this ruling |
+| pronunciation control | Documented, per `narrator-voice.md` §3.2 (pinned voice ID) | Documented, per `self-hosted-tts.md` §2.1 (misaki inline IPA) | Documented on iOS (`AVSpeechSynthesisIPANotationAttribute`, `on-device-tts.md` §1); undocumented on Android (`on-device-tts.md` §2) — closed by the acceptance fixture in `on-device-tts.md` §9.4, not by this ruling |
 | voice-identity risk | Vendor can retire the pinned voice class (ElevenLabs did, Dec 2026 Default retirement, `narrator-voice.md` §3.2) | None — Joey owns the weights file | None for user-created content — every listener hearing their own device's voice is the expected behaviour for a personal narration feature, not a defect (`on-device-tts.md` §4) |
 | review gate | Requires per-beat human listening before it ships (`narrator-pipeline.md`, `self-hosted-tts.md` §4) | Same | Not possible to review per-listener-device output before playback — and, per `on-device-tts.md` §5, that review step was never staffable at "unlimited user-created" volume regardless of engine, so this is not a regression the ruling introduces |
 
@@ -100,8 +100,9 @@ different question (which paid/self-hosted voice to buy) that this ruling supers
 
 **(b) The designated fallback if §9.1 fails.**
 
-If the native-plugin locked-screen measurement in §9.4 below comes back negative (narration
-audibly stops when the screen locks and the audio-session fix in §9.4 does not resolve it), the
+If the native-plugin locked-screen measurement in `on-device-tts.md` §9.4 comes back negative
+(narration audibly stops when the screen locks and the audio-session fix in that section does not
+resolve it), the
 fallback is **self-hosted Kokoro-82M — not ElevenLabs.** This is not a new call; it is the
 conclusion `on-device-tts.md` §6.2 already reached and this ruling adopts it explicitly: Kokoro
 is the only alternative with both a comparable documented pronunciation-control mechanism
@@ -513,10 +514,16 @@ acts are still being written — a single whole-Foray check run only after the l
 let Act 1 (and every act after it) reach the player before anything actually validates it.
 
 - **Per-act runtime gate — runs the instant each act finishes writing (§4.7–§4.8), before that act
-  is appended to the running order the player can reach.** Checks that act's actual written
-  duration — both without its deferrable beats and with every reserved deferrable beat inserted —
-  against that act's planned per-beat budget from the frozen spine (§4.3/§6.1). A failure here (a
-  beat ran long in the writing) blocks that act from entering the running order; for Act 1 this is
+  is appended to the running order the player can reach.** Checks that act's written duration —
+  both without its deferrable beats and with every reserved deferrable beat inserted — against
+  that act's planned per-beat budget from the frozen spine (§4.3/§6.1). Per §7.3, an act
+  containing on-device narration has no exact duration before it is spoken; this gate checks the
+  same characters-per-minute ESTIMATE §7.3 already identifies as the only pre-playback duration
+  signal available, not a measured value — its accuracy is bounded by whatever error bars that
+  estimator's own measurement (§7.3, itself an open finding) establishes, and a founder-approved
+  error margin folded into the ±15% tolerance is a follow-on decision this gate does not make for
+  itself. A failure here (the estimate exceeds tolerance) blocks that act from entering the
+  running order; for Act 1 this is
   what makes §6.1's "spine frozen before playback" actually enforce a runtime bound rather than
   only a planning-time one, and for every later act it is what §3/§8's ±15% tolerance is checked
   against in practice, since progressive generation means an act can already be playing while the
@@ -819,8 +826,9 @@ fills with near-duplicates.
 Answer: when a prompt is very similar to an existing Foray, the user is asked if they want to listen
 to that Foray. If they decline, a new one is created.
 
-**Resolved (2026-09-02) — buildable without reopening §9.4; persistence question deferred to
-implementation.** "Similar to an existing Foray" is implemented as: embed the incoming prompt
+**Partially resolved (2026-09-02) — the comparison-basis question is settled and buildable now;
+the similarity decision rule remains open and blocks implementation.** "Similar to an existing
+Foray" is implemented as: embed the incoming prompt
 transiently (never persisted, consistent with §9.4), embed each existing Foray's own already-
 retained text fields (`forays.json`'s `title`, `summary`, `topic`, and slot `title`s — the
 per-Foray and per-slot text the schema retains today; not a hypothetical description/transcript
@@ -843,7 +851,9 @@ retained
 description or transcript excerpt) is a future improvement gated on a founder-approved schema
 change, not something assumed available today.
 
-**Flagged for founder clarification, not guessed: the similarity decision rule itself.** This
+**Flagged for founder clarification, not guessed: the similarity decision rule itself. §9.6 as a
+whole remains Open — do not build the similarity check until this is answered (per the document
+header's "do not build past these" rule).** This
 ruling settles *what text* is compared (§9.4/§9.6 above) but does not — and should not, per line
 23's rule against inventing unreviewed decisions — pick the embedding model/version, the distance
 metric, or the similarity threshold that makes a prompt "very similar" to an existing Foray.
@@ -851,7 +861,9 @@ Different choices trade off missed near-duplicates against false-positive interr
 listener about an unrelated Foray; that is a product call, not something this document should
 settle unilaterally. Needed before implementation: one line from a founder naming the model,
 metric, and threshold (or delegating that choice to the implementer with an explicit tolerance for
-getting it wrong and tuning later).
+getting it wrong and tuning later). The comparison-basis work above (which fields to embed, no new
+prompt-retention exception) is settled and may be implemented once the decision rule is given —
+it does not itself need to wait on the threshold choice, only the actual similarity comparison does.
 
 ---
 
