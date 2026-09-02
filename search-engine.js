@@ -414,12 +414,26 @@ function corpusDF(term, ctx) {
    manufactures an unrelated token (news -> new is the review-caught
    case: a "news" query would then also match anything containing "new",
    flipping thin/broad status on a fabricated word). Named and bounded
-   like SENSE_LOCKED_STEMS above, not a general dictionary check. */
+   like SENSE_LOCKED_STEMS above, not a general dictionary check.
+   Extended (codex review round 4) with possessive pronouns (ours,
+   yours, hers, theirs -- "our"/"your"/"her"/"their" are unrelated,
+   extremely common words, the worst case for a fabricated bare-s strip)
+   and common "-us"/"-as" singular nouns that are not plurals of
+   anything (status, bias, canvas, atlas, gas, census, bonus, focus,
+   consensus, corpus, campus, virus, cactus, plus, minus, bus, plus the
+   already-covered "-ics" family above). A general "don't strip before
+   us/as" rule was considered and rejected: it would also block real
+   +s plurals of the same shape (areas -> area, ideas -> idea, pizzas ->
+   pizza), so this stays a named list rather than a suffix rule. */
 const INVARIANT_S_NOUNS = new Set([
   "news", "series", "species", "means", "outskirts", "measles",
   "mathematics", "physics", "statistics", "economics", "politics",
   "athletics", "gymnastics", "electronics", "graphics", "ethics",
   "aerobics", "logistics", "genetics", "ceramics",
+  "ours", "yours", "hers", "theirs",
+  "status", "bias", "canvas", "atlas", "gas", "census", "bonus",
+  "focus", "consensus", "corpus", "campus", "virus", "cactus",
+  "plus", "minus", "bus",
 ]);
 function lemmaVariants(tok) {
   const out = new Set();

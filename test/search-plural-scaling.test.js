@@ -133,4 +133,8 @@ test("lemmaVariants is a bounded, named transform -- not a general stemmer", () 
     "training is treated as a bare noun (pluralize-only), never de-verbed to \"train\"");
   assert.deepEqual([...SE.lemmaVariants("trained")], ["traineds"],
     "no -ed participle stripping -- out of scope for a singular/plural helper");
+  for (const invariant of ["news", "ours", "status", "bias", "canvas", "virus"]) {
+    assert.deepEqual([...SE.lemmaVariants(invariant)], [],
+      `"${invariant}" is an invariant/non-plural noun ending in "s" -- must not be stripped (codex review round 4)`);
+  }
 });
