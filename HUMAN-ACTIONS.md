@@ -2156,7 +2156,7 @@ migration, so no worker/agent can apply it.
 **Worked if:** the toggle shows enabled, and the Supabase linter no longer
 lists this WARN on a re-run of Advisors → Security.
 
-**Status:** open
+**Status:** OPEN
 
 ---
 
