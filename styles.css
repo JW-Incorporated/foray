@@ -1338,10 +1338,10 @@ body.fy-sheet-open { overflow: hidden; }
 .fy-src-head {
   display: flex; justify-content: space-between; align-items: baseline; gap: 10px;
   color: var(--text);
-  text-decoration: none;
 }
-.fy-src-head:hover .fy-src-show { color: var(--accent); }
 .fy-src-show { font-family: var(--serif); font-size: 0.94rem; font-weight: 700; }
+.fy-src-out { flex: none; color: var(--text-dim); text-decoration: none; }
+.fy-src-out:hover { color: var(--accent); }
 .fy-src-meta { flex: none; font-size: 0.72rem; color: var(--text-dim); }
 .fy-src-eps { margin: 8px 0 0; padding: 0 0 0 14px; list-style: none; }
 .fy-src-eps li {
@@ -1354,6 +1354,39 @@ body.fy-sheet-open { overflow: hidden; }
   content: "·"; position: absolute; left: -12px; color: var(--line);
 }
 .fy-src-eps li span { color: var(--text-dim); opacity: 0.75; white-space: nowrap; }
+
+/* ---------- show page: "used in the following forays" (requirements B3/Q6) ----------
+   A footer band, deliberately separated from the episode list above it by a
+   rule + heading + explanatory note, so it reads as 4a's own cross-reference
+   rather than anything the show published — same "forays stay visually
+   distinct from episodes" rule the sources block above already keeps. */
+.show-forays {
+  margin: 30px 0 0;
+  padding: 16px 0 0;
+  border-top: 1px solid var(--line);
+}
+.show-forays-h {
+  margin: 0 0 4px;
+  font-family: var(--serif);
+  font-size: 0.86rem; font-weight: 700;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--text-dim);
+}
+.show-forays-note { margin: 0 0 10px; font-size: 0.76rem; color: var(--text-dim); }
+.show-forays-row {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 10px;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+  color: var(--text);
+  text-decoration: none;
+}
+.show-forays-row:first-of-type { border-top: none; }
+.show-forays-row:hover .show-forays-title { color: var(--accent); }
+.show-forays-title { font-family: var(--serif); font-size: 0.92rem; font-weight: 700; }
+.show-forays-draft {
+  flex: none; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.04em;
+  text-transform: uppercase; color: var(--text-dim);
+}
 
 /* ---------- playback diagnostics (#264) ----------
    Reuses the same sheet shell as the two below. Only three decisions here, and all

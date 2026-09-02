@@ -92,7 +92,7 @@
      node tools/segments/rank-breadth.mjs --report        # priors, no output file
 */
 
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync, existsSync, openSync, readSync, closeSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, join, resolve as resolvePath } from "node:path";
 
@@ -146,34 +146,40 @@ export function hostKeyOf(feedUrl) {
 export function hostPriors(availabilities) {
   const list = Array.isArray(availabilities) ? availabilities : [availabilities];
   const hosts = new Map();
-  let shows = 0, hits = 0, hitRateSum = 0;
+  const totals = { shows: 0, hits: 0, hitRateSum: 0 };
 
   for (const av of list) {
-    for (const s of av?.shows || []) {
-      if (s.status !== "ok") continue;
-      const key = hostKeyOf(s.feed_url);
-      const h = hosts.get(key) || { host: key, shows: 0, shows_with_timed: 0, episodes: 0, timed: 0, rate_sum: 0 };
-      h.shows++;
-      h.episodes += s.episodes_total || 0;
-      h.timed += s.episodes_with_timed_transcript || 0;
-      shows++;
-      if ((s.episodes_with_timed_transcript || 0) > 0) {
-        h.shows_with_timed++;
-        hits++;
-        // Within-show timed fraction, averaged over HITTING shows only. A show
-        // with 3 transcribed episodes out of 900 and one with 900 out of 900
-        // are both hits, and only this separates them.
-        const r = s.episodes_total ? s.episodes_with_timed_transcript / s.episodes_total : 0;
-        h.rate_sum += r;
-        hitRateSum += r;
-      }
-      hosts.set(key, h);
-    }
+    for (const s of av?.shows || []) accumulateHostPrior(hosts, s, totals);
   }
 
-  const global_hit_rate = shows ? hits / shows : 0;
-  const global_timed_fraction = hits ? hitRateSum / hits : 0;
-  return { shows, hits, global_hit_rate, global_timed_fraction, hosts };
+  const global_hit_rate = totals.shows ? totals.hits / totals.shows : 0;
+  const global_timed_fraction = totals.hits ? totals.hitRateSum / totals.hits : 0;
+  return { shows: totals.shows, hits: totals.hits, global_hit_rate, global_timed_fraction, hosts };
+}
+
+/** One show's worth of `hostPriors`' math, factored out so the streaming path
+    (`reduceAvailabilities`, below) computes byte-identical priors from an
+    ITERABLE of show records instead of an in-memory `{shows:[...]}` document
+    — same math, same rounding, same order of accumulation, verified equal in
+    `rank-breadth.test.mjs`. This is what makes "identical output" a property
+    of the code sharing one accumulator rather than a claim to re-verify by
+    hand every time either path changes. */
+function accumulateHostPrior(hosts, s, totals) {
+  if (s.status !== "ok") return;
+  const key = hostKeyOf(s.feed_url);
+  const h = hosts.get(key) || { host: key, shows: 0, shows_with_timed: 0, episodes: 0, timed: 0, rate_sum: 0 };
+  h.shows++;
+  h.episodes += s.episodes_total || 0;
+  h.timed += s.episodes_with_timed_transcript || 0;
+  totals.shows++;
+  if ((s.episodes_with_timed_transcript || 0) > 0) {
+    h.shows_with_timed++;
+    totals.hits++;
+    const r = s.episodes_total ? s.episodes_with_timed_transcript / s.episodes_total : 0;
+    h.rate_sum += r;
+    totals.hitRateSum += r;
+  }
+  hosts.set(key, h);
 }
 
 /** A host's shrunk probability that a show on it publishes ANY timed
@@ -254,22 +260,11 @@ function round(n, places) {
 export function daiRatesFrom(availabilities, { strength = SHOW_PRIOR_STRENGTH } = {}) {
   const list = Array.isArray(availabilities) ? availabilities : [availabilities];
   const hosts = new Map();
-  let n = 0, nonDai = 0;
+  const totals = { n: 0, nonDai: 0 };
   for (const av of list) {
-    for (const s of av?.shows || []) {
-      if (s.status !== "ok" || s.dai_suspected == null) continue;
-      const key = hostKeyOf(s.feed_url);
-      const h = hosts.get(key) || { n: 0, nonDai: 0 };
-      h.n++;
-      n++;
-      if (s.dai_suspected === false) {
-        h.nonDai++;
-        nonDai++;
-      }
-      hosts.set(key, h);
-    }
+    for (const s of av?.shows || []) accumulateDai(hosts, s, totals);
   }
-  const global = n ? nonDai / n : 0;
+  const global = totals.n ? totals.nonDai / totals.n : 0;
   return {
     global,
     hosts,
@@ -278,6 +273,21 @@ export function daiRatesFrom(availabilities, { strength = SHOW_PRIOR_STRENGTH } 
       return ((h ? h.nonDai : 0) + strength * global) / ((h ? h.n : 0) + strength);
     },
   };
+}
+
+/** One show's worth of `daiRatesFrom`'s math — see `accumulateHostPrior` for
+    why this is factored out rather than duplicated in the streaming path. */
+function accumulateDai(hosts, s, totals) {
+  if (s.status !== "ok" || s.dai_suspected == null) return;
+  const key = hostKeyOf(s.feed_url);
+  const h = hosts.get(key) || { n: 0, nonDai: 0 };
+  h.n++;
+  totals.n++;
+  if (s.dai_suspected === false) {
+    h.nonDai++;
+    totals.nonDai++;
+  }
+  hosts.set(key, h);
 }
 
 /* ------------------------------------------------------------- eligibility */
@@ -310,11 +320,15 @@ export function sweptFeedUrls(availabilities) {
   const list = Array.isArray(availabilities) ? availabilities : [availabilities];
   const out = new Set();
   for (const av of list) {
-    for (const s of av?.shows || []) {
-      if (s.feed_url) out.add(String(s.feed_url).trim().toLowerCase());
-    }
+    for (const s of av?.shows || []) accumulateSweptUrl(out, s);
   }
   return out;
+}
+
+/** One show's worth of `sweptFeedUrls`' logic — see `accumulateHostPrior` for
+    why this is factored out rather than duplicated in the streaming path. */
+function accumulateSweptUrl(out, s) {
+  if (s.feed_url) out.add(String(s.feed_url).trim().toLowerCase());
 }
 
 /* -------------------------------------------------------------- the tranche */
@@ -478,6 +492,184 @@ function readJson(path) {
   return JSON.parse(readFileSync(path, "utf8"));
 }
 
+/** Streams the top-level array found at `"<key>":[ ... ]` in a JSON FILE
+    without ever holding the whole file (or the whole array) in memory —
+    only the current chunk plus whatever text belongs to the ONE element
+    currently being assembled.
+
+    WHY THIS EXISTS. `catalog-breadth.json` (12.4MB) and
+    `transcript-availability.json` (7.6MB) both loaded whole via
+    `JSON.parse(readFileSync(...))` before this file did anything else, which
+    alone blew a ~64MB sandbox memory cap before a single show was ranked.
+    Both files share the same shape this ranker actually needs — a top-level
+    object with one array-valued key holding the show records — so one
+    generator covers both call sites.
+
+    HAND-ROLLED RATHER THAN A DEPENDENCY. `tools/` is deliberately
+    dependency-free (see the root `package.json` header); a hand-rolled
+    scanner is ~60 lines here and is exercised directly against fixtures
+    below, so it does not trade a memory bug for a supply-chain surface.
+
+    WHAT IT DOES NOT DO. It is not a general JSON scanner: it looks for
+    `key` as a STRING at depth 1 of the root object (i.e. a direct property
+    of the top-level object), and only switches into array mode when that
+    key's value opens with `[`. A `key` that occurs deeper in the document,
+    or as a value rather than a property name, is correctly ignored — a
+    plain depth counter, not a JSON grammar, is what tells them apart:
+    strings are tracked (with escaping) so a `"key"` occurring INSIDE a
+    string value is never mistaken for the property name.
+
+    Each array element is handed to `JSON.parse` individually once its own
+    braces balance back to zero, so the element itself is still parsed by
+    the real, correct JSON parser — only the outer array is streamed. */
+export function* streamJsonArray(filePath, key) {
+  const fd = openSync(filePath, "r");
+  const CHUNK_BYTES = 64 * 1024;
+  const chunk = Buffer.alloc(CHUNK_BYTES);
+  const decoder = new TextDecoder("utf-8", { fatal: false });
+
+  // Pre-array scanning state: looking for `"<key>":` as a direct property
+  // of the root object (depth === 1), then for the `[` that starts its value.
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+  let stringBuf = "";
+  let sawMatchingKey = false;
+  let afterMatchingColon = false;
+
+  // In-array state: assembling one element at a time. Rather than
+  // concatenating one character at a time (which produces a huge number of
+  // short-lived intermediate strings under repeated `+=` and was measured
+  // pushing RSS well past the whole-file-load baseline it was meant to beat),
+  // element text is accumulated as SLICES of each chunk — `pieces` holds full
+  // chunk-boundary slices, `segStart` marks where the current unflushed slice
+  // began in `text` — and only joined into one string once, when the element
+  // is complete. One join per element, not one concatenation per character.
+  let inArray = false;
+  let elementDepth = 0;
+  let pieces = [];
+  let segStart = -1;
+  let done = false;
+
+  const flushSegment = (text, endIdx) => {
+    if (segStart >= 0 && endIdx > segStart) pieces.push(text.slice(segStart, endIdx));
+    segStart = -1;
+  };
+
+  try {
+    while (!done) {
+      const bytesRead = readSync(fd, chunk, 0, CHUNK_BYTES, null);
+      const text = bytesRead === 0 ? decoder.decode() : decoder.decode(chunk.subarray(0, bytesRead), { stream: true });
+      if (bytesRead === 0 && text === "") break;
+
+      if (inArray && segStart === -1 && text.length) segStart = 0;
+
+      for (let i = 0; i < text.length && !done; i++) {
+        const ch = text[i];
+
+        if (inArray) {
+          if (inString) {
+            if (escape) escape = false;
+            else if (ch === "\\") escape = true;
+            else if (ch === '"') inString = false;
+            continue;
+          }
+          if (ch === '"') {
+            if (segStart === -1) segStart = i;
+            inString = true;
+            continue;
+          }
+          if (ch === "{" || ch === "[") {
+            if (segStart === -1) segStart = i;
+            elementDepth++;
+            continue;
+          }
+          if (ch === "}") {
+            elementDepth--;
+            if (elementDepth === 0) {
+              flushSegment(text, i + 1);
+              yield JSON.parse(pieces.join(""));
+              pieces = [];
+              segStart = -1;
+            }
+            continue;
+          }
+          if (ch === "]") {
+            if (elementDepth === 0) {
+              flushSegment(text, i);
+              done = true;
+              break;
+            }
+            elementDepth--;
+            continue;
+          }
+          if (ch === "," && elementDepth === 0) {
+            flushSegment(text, i);
+            pieces = [];
+            segStart = -1;
+            continue;
+          }
+          if (elementDepth === 0 && segStart === -1 && /\s/.test(ch)) continue;
+          if (segStart === -1) segStart = i;
+          continue;
+        }
+
+        // Not yet inside the target array: scanning for the key.
+        if (inString) {
+          stringBuf += ch;
+          if (escape) escape = false;
+          else if (ch === "\\") escape = true;
+          else if (ch === '"') {
+            inString = false;
+            sawMatchingKey = depth === 1 && stringBuf.slice(1, -1) === key;
+            stringBuf = "";
+          }
+          continue;
+        }
+        if (ch === '"') {
+          inString = true;
+          stringBuf = '"';
+          continue;
+        }
+        if (ch === ":" && sawMatchingKey) {
+          afterMatchingColon = true;
+          sawMatchingKey = false;
+          continue;
+        }
+        if (afterMatchingColon) {
+          if (/\s/.test(ch)) continue;
+          afterMatchingColon = false;
+          if (ch === "[") {
+            inArray = true;
+            elementDepth = 0;
+            pieces = [];
+            segStart = i + 1 < text.length ? i + 1 : -1;
+            continue;
+          }
+          // The matched key's value was not an array (e.g. a nested object or
+          // scalar) — fall through to normal depth tracking for this char so
+          // depth stays correct for whatever comes next.
+        }
+        if (ch === "{" || ch === "[") {
+          depth++;
+          continue;
+        }
+        if (ch === "}" || ch === "]") {
+          depth--;
+          sawMatchingKey = false;
+          afterMatchingColon = false;
+          continue;
+        }
+      }
+
+      if (inArray) flushSegment(text, text.length);
+      if (bytesRead === 0) break;
+    }
+  } finally {
+    closeSync(fd);
+  }
+}
+
 /** Reads every availability index, and REFUSES A PATH THAT IS NOT THERE.
 
     THIS SILENTLY COST A TRANCHE. The previous line was
@@ -504,6 +696,92 @@ export function readAvailabilities(paths, { exists = existsSync, read = readJson
     );
   }
   return paths.map(read);
+}
+
+/* --------------------------------------------------------------- streaming */
+
+/** The streaming equivalent of `readAvailabilities` + `hostPriors` +
+    `daiRatesFrom` + `sweptFeedUrls` combined into ONE pass per file, so
+    `transcript-availability.json` (7.6MB, and up to ~2MB for a single show's
+    `episodes` array — see `data/transcript-availability.json`'s Lex Fridman
+    row) is never parsed into one JS object. Each show is parsed on its own
+    via `streamJsonArray`, folded into the three accumulators immediately, and
+    then eligible for GC — so the resident set is bounded by one element's
+    JSON text plus the accumulators, not by the file.
+
+    SAME FATAL-ON-MISSING BEHAVIOUR AS `readAvailabilities`, for the same
+    reason (see that function's header): a silently-skipped index re-sweeps
+    feeds already read and ranks on priors that never saw them. */
+export function reduceAvailabilities(paths, { exists = existsSync, streamArray = streamJsonArray } = {}) {
+  const missing = paths.filter((p) => !exists(p));
+  if (missing.length) {
+    throw new Error(
+      `availability index not found: ${missing.join(", ")} — ranking on the indexes that DID load would ` +
+        `re-sweep feeds already read and rank them on stale priors, so this is fatal rather than skipped`,
+    );
+  }
+
+  const hostHosts = new Map();
+  const hostTotals = { shows: 0, hits: 0, hitRateSum: 0 };
+  const daiHosts = new Map();
+  const daiTotals = { n: 0, nonDai: 0 };
+  const swept = new Set();
+
+  for (const p of paths) {
+    for (const s of streamArray(p, "shows")) {
+      accumulateHostPrior(hostHosts, s, hostTotals);
+      accumulateDai(daiHosts, s, daiTotals);
+      accumulateSweptUrl(swept, s);
+    }
+  }
+
+  const global_hit_rate = hostTotals.shows ? hostTotals.hits / hostTotals.shows : 0;
+  const global_timed_fraction = hostTotals.hits ? hostTotals.hitRateSum / hostTotals.hits : 0;
+  const priors = { shows: hostTotals.shows, hits: hostTotals.hits, global_hit_rate, global_timed_fraction, hosts: hostHosts };
+
+  const daiGlobal = daiTotals.n ? daiTotals.nonDai / daiTotals.n : 0;
+  const dai = {
+    global: daiGlobal,
+    hosts: daiHosts,
+    nonDaiRate(hostKey) {
+      const h = daiHosts.get(hostKey);
+      return ((h ? h.nonDai : 0) + SHOW_PRIOR_STRENGTH * daiGlobal) / ((h ? h.n : 0) + SHOW_PRIOR_STRENGTH);
+    },
+  };
+
+  return { priors, dai, sweptFeeds: swept };
+}
+
+/** The streaming equivalent of `eligibleShows`, reading the breadth catalogue
+    show-by-show instead of holding all 19,787 parsed rows (with fields this
+    ranker never uses — `artwork_url`, `apple_genre_ids`, `harvested_at`, ...)
+    in memory at once. Each kept row is trimmed to exactly the fields
+    `rankShows`/`trancheCatalog`/`sweep-transcripts.mjs` read, which is what
+    keeps the retained ~19,373-row pool itself small rather than just moving
+    the whole-file cost from "parse" to "retain". Same eligibility rule as
+    `eligibleShows`: has a feed URL, not curated, not a feed we've already
+    seen in this pass or in `alreadySweptFeeds`. */
+export function eligibleShowsStreaming(breadthPath, { alreadySweptFeeds = new Set(), streamArray = streamJsonArray } = {}) {
+  const seen = new Set();
+  const out = [];
+  let total = 0;
+  for (const s of streamArray(breadthPath, "shows")) {
+    total++;
+    if (!s.feed_url || s.in_curated) continue;
+    const key = String(s.feed_url).trim().toLowerCase();
+    if (!key || seen.has(key) || alreadySweptFeeds.has(key)) continue;
+    seen.add(key);
+    out.push({
+      apple_collection_id: s.apple_collection_id,
+      title: s.title,
+      feed_url: s.feed_url,
+      apple_genre: s.apple_genre ?? null,
+      chart_rank: s.chart_rank ?? null,
+      episode_count: s.episode_count ?? null,
+      in_curated: s.in_curated ?? false,
+    });
+  }
+  return { pool: out, total };
 }
 
 function parseArgs(argv) {
@@ -536,14 +814,11 @@ function main() {
     ? args.availability.map((p) => resolvePath(process.cwd(), p))
     : [join(ROOT, "data", "transcript-availability.json")];
 
-  // No length check follows: `readAvailabilities` either throws naming the path or
-  // returns one entry per path, and `avPaths` always holds at least the default.
-  const availabilities = readAvailabilities(avPaths);
+  // No length check follows: `reduceAvailabilities` either throws naming the path or
+  // returns priors/dai/swept-feeds folded from one streaming pass per path.
+  const { priors, dai, sweptFeeds } = reduceAvailabilities(avPaths);
 
-  const priors = hostPriors(availabilities);
-  const dai = daiRatesFrom(availabilities);
-  const breadth = readJson(breadthPath).shows || [];
-  const pool = eligibleShows(breadth, { alreadySweptFeeds: sweptFeedUrls(availabilities) });
+  const { pool, total: breadthTotal } = eligibleShowsStreaming(breadthPath, { alreadySweptFeeds: sweptFeeds });
 
   console.log(
     `priors: ${priors.shows} swept show(s), ${priors.hits} with a timed transcript ` +
@@ -556,7 +831,7 @@ function main() {
         `p=${hostHitRate(priors, h.host).toFixed(3)}  timed_frac=${hostTimedFraction(priors, h.host).toFixed(3)}`,
     );
   }
-  console.log(`pool: ${pool.length} eligible uncurated feed(s) of ${breadth.length} breadth row(s)`);
+  console.log(`pool: ${pool.length} eligible uncurated feed(s) of ${breadthTotal} breadth row(s)`);
 
   const ranked = rankShows(pool, priors, { daiRates: dai });
   if (args.report) {

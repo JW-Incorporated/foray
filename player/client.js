@@ -96,6 +96,7 @@ import { itemRuntimeSec } from "./foray-queue.js";
 import {
   resolveForay, indexSegments, indexSources, findForay, listableForays,
   forayElapsed, segmentAtElapsed, fmtClock, fmtSpan, progressSegments,
+  foraysReferencingShow,
 } from "./foray-resolve.js";
 import {
   ForayProgressStore, resumePoint, remainingLabel, percentDone,
@@ -1417,6 +1418,17 @@ const ForayPlayer = {
   /** Which Forays may be listed for this visitor (drafts only when named). */
   listForays(foraysDoc, { unlocked = [] } = {}) {
     return listableForays(foraysDoc, { unlocked });
+  },
+
+  /** The reverse of `resolve`: which Forays draw on a given show (show page,
+      requirements B3/Q6). See foray-resolve.js's foraysReferencingShow for
+      why this must live here rather than in app.js. */
+  foraysUsingShow(foraysDoc, showNames, { segmentsDoc, sourcesDoc, unlocked = [] } = {}) {
+    return foraysReferencingShow(foraysDoc, showNames, {
+      segments: indexSegments(segmentsDoc),
+      sources: indexSources(sourcesDoc),
+      unlocked,
+    });
   },
 
   fmtClock,
