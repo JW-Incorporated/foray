@@ -469,6 +469,25 @@ const INVARIANT_S_NOUNS = new Set([
    this helper, but a real cross-sense concept pickup, the same failure
    shape as "marines"/ocean. */
 const SENSE_LOCKED_PLURALS = new Set(["marines", "glasses"]);
+
+/* SENSE_LOCKED_SINGULARS: the mirror image of SENSE_LOCKED_PLURALS --
+   a bounded, named set of SINGULAR query tokens whose only PLURALIZE
+   fallback (used when the exact singular has no concept of its own,
+   see hasExactConceptMatch below) lands on a concept that models a
+   different, common sense of the same short word. Measured cases
+   (codex review round 9, direct repro): "rock" (music) has no concept
+   of its own, but "rocks" is a term of BOTH the "science/materials"
+   (rocks/geology) and "earth-science" concepts -- a music query gains
+   earthquakes/volcanoes/drilling vocabulary. Same for "stock" (any
+   generic sense) landing on "markets"/"economics" via "stocks", and
+   "bug" (an insect, or any non-software sense) landing on
+   "programming" via "bugs"/"software-bugs". This blocks the
+   lookupKeys widening (concept-membership fallback) for the exact
+   listed singular only; the literal-term fallback and the max-corpusDF
+   broad/thin computation are UNAFFECTED (those never pull in a
+   concept's vocabulary, only the bare variant string itself, so they
+   carry none of this risk). */
+const SENSE_LOCKED_SINGULARS = new Set(["rock", "stock", "bug"]);
 function lemmaVariants(tok) {
   const out = new Set();
   let despluralized = false;
@@ -582,8 +601,18 @@ function interpretQuery(q, ctx) {
        from ~200ms to a cache-warmed corpusDF's usual cost once other
        concept-backed tokens stop paying for variants they never use. */
     const fallbackVariants = hasExactConceptMatch ? [] : [...lemmaVariants(tok)];
+    /* See SENSE_LOCKED_SINGULARS above: a NARROWER gate than
+       hasExactConceptMatch, scoped only to lookupKeys (the concept-
+       membership widening) -- the literal addTerm fallback and the
+       broad/thin corpusDF computation below still use the full,
+       unrestricted fallbackVariants, because those never pull in a
+       concept's vocabulary and carry none of the cross-sense risk this
+       guards against. */
+    const conceptFallbackAllowed = !SENSE_LOCKED_SINGULARS.has(tok);
     const lookupKeys = new Set(exactKeys);
-    for (const v of fallbackVariants) lookupKeys.add(v);
+    if (conceptFallbackAllowed) {
+      for (const v of fallbackVariants) lookupKeys.add(v);
+    }
 
     /* term -> {w, source}. source "own" = the token's literal text, its
        aliases, or its concept's *own* terms (full scoring weight, eligible
