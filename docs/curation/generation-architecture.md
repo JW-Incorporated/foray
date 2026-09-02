@@ -344,8 +344,10 @@ The spine contains:
   it; when generation is on schedule they are simply never inserted into the running order
   (produced, but unplayed). **This means the without-buffer running order — every act minus its
   deferrable beats — must, by itself, already land inside §3/§8's ±15% tolerance (both the
-  undershoot and overshoot bound), and the same running order WITH every reserved deferrable beat
-  inserted must also land inside that tolerance. This is validated against the spine's PLANNED
+  undershoot and overshoot bound, except a spine intentionally shortened under §9.3's thin-topic
+  exception — see below), and the same running order WITH every reserved deferrable beat
+  inserted must also land inside that tolerance (subject to the same §9.3 exception). This is
+  validated against the spine's PLANNED
   per-beat runtime budgets when the spine is frozen (§4.3, enforced by §6.1 before Act 1 — and
   therefore any act — ever plays). Progressive generation (§6) means a later act's written
   duration (an ESTIMATE for on-device narration until it is spoken, per §7.3 — not a measured
@@ -355,7 +357,12 @@ The spine contains:
   the player can reach until it passes — before Act 1 specifically, this is also what §6.1 means by
   "before playback begins." An act whose estimated duration fails this re-check is a defect caught at
   that act's own gate, never discovered only after the whole Foray has finished and published via
-  §4.9's separate whole-Foray gate (see §4.9 for both).** On top of the baseline-alone requirement,
+  §4.9's separate whole-Foray gate (see §4.9 for both). **§9.3 carve-out:** when the spine itself was
+  deliberately shortened under §9.3's thin-topic exception (a recorded reason plus an explicit
+  narrated explanation, per §3/§8), both the spine-freeze validation and §4.9's per-act gate check
+  the spine's OWN shortened planned budget, not the original pre-shortening target — the exception
+  is taken once, at spine-freeze time, and every downstream check validates against the
+  already-exempted plan rather than re-litigating the exception per act.** On top of the baseline-alone requirement,
   the baseline must leave enough headroom below the +15% ceiling to accommodate the deferrable
   beats it carries: baseline runtime plus the reserved deferrable beats' runtime, together, must
   still fit within +15% of the target — deferrable beats only ever add runtime, so only the upper

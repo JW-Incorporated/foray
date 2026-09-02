@@ -1266,6 +1266,17 @@ its reasoning.
   runtime-check language that round 14 correctly superseded, contradicting §4.9's per-act gate as
   the sole timing authority.** §6.2 now points at §4.9's per-act runtime gate instead of restating
   a competing (and later-timed) check at the continuity checkpoint.
+- **Review round 21 fix: §4.3's spine-freeze runtime validation and §4.9's per-act gate were both
+  written as unconditional ±15% checks with no reference to §9.3's own undershoot exception,
+  contradicting §8's already-correct carve-out for the same check.** §8's runtime-tolerance bullet
+  has always correctly exempted a §9.3 thin-topic undershoot from the ±15% bound, but §4.3's
+  spine-freeze text and its restatement in §8's own duration-check description described the
+  planning-time and per-act validations as unconditional, which would make the one case the
+  founders explicitly authorized to break the duration contract unable to pass its own spine
+  validation. §4.3 now states explicitly that a spine deliberately shortened under §9.3 is
+  validated against its own already-shortened planned budget at every downstream checkpoint
+  (spine-freeze and §4.9's per-act gate) — the exception is taken once, at spine-freeze, not
+  re-litigated per act.
 - **Review round 20 fix: §4.1 still marked "whether a rejected or clarified prompt is stored" as
   an Open question, contradicting §9.4's own resolved ruling that every prompt is discarded.** An
   implementer reading §4.1 in isolation would think prompt-retention behavior was still undecided
