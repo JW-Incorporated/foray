@@ -217,9 +217,21 @@ function expansionBucket(df) {
   return df > TAG_DF_TOO_BROAD ? "drop" : df > TAG_DF_COMMON ? "0.4x" : "full";
 }
 
+/* Hard ceiling on a single token's length before it can ever reach
+   longTermPattern()/shortTermPattern(), which interpolate the raw token into a
+   RegExp source string. V8 throws "Invalid regular expression: too large" once
+   the compiled pattern's internal representation exceeds an engine limit --
+   confirmed empirically at ~50,000 repeated identical chars (30,000 is fine).
+   No real search term is anywhere near this long; 64 is already generous headroom
+   over anything a person would type, and it is enforced here -- inside the
+   module's own tokenizer -- so the guarantee holds for every current and future
+   caller of interpretQuery, not just callers that happen to share the UI's
+   maxlength="120" convention (see H-severity red-team finding, 2026-09-02). */
+const MAX_TOKEN_LENGTH = 64;
+
 function tokenize(q) {
   return q.toLowerCase().split(/[^a-z0-9]+/)
-    .filter(w => w.length > 1 && !STOPWORDS.has(w) && !GENERIC_WORDS.has(w));
+    .filter(w => w.length > 1 && w.length <= MAX_TOKEN_LENGTH && !STOPWORDS.has(w) && !GENERIC_WORDS.has(w));
 }
 
 /* ---------- corpus stats (memoized per ctx, same pattern for both) ---------- */
@@ -648,7 +660,22 @@ function interpretQuery(q, ctx) {
      ~a few percent) so it only catches tokens with essentially no
      catalogue footprint, not merely uncommon ones. See
      test/search-thin-anchor.test.js for the calibration cases this value
-     must keep passing. */
+     must keep passing.
+
+     THE MARGIN JUST ABOVE THE CUTOFF IS THINNER THAN "far below rare but
+     real" implies, and it is not hypothetical: "ornithology" sits at
+     corpusDF ~0.0021, one hundredth of a percentage point over 0.002, with
+     no concept expansion either -- so thin=false and it gets none of this
+     protection. "Ornithology History Explained" then returns status:sparse
+     whose top pick matches only on the broad co-token "history"; the
+     query's actual subject contributes nothing to its own top result. The
+     honesty floor in classifyResults still reports this as sparse rather
+     than a false-confident ok/rich set, so it is not user-facing-broken --
+     but a token can clear this threshold by a hair and still get outvoted
+     exactly like a THIN_ANCHOR_DF-protected one would, just without the
+     protection. Don't read the 0.002 constant as a wide safety margin from
+     the boundary; a real, unremarkable-looking word can land right next to
+     it. (Kanban t_dda8ca5b, filed from Fable-fleet red-team t_711dce13.) */
   const thinAnchorCount = primaryGroups.filter(g => g.thin).length;
 
   return {
@@ -972,12 +999,13 @@ function scoreMatch(item, interp, itemTags) {
     if ((item.topics || []).includes(tb)) sum += 2;
   }
 
-  /* Full-phrase show-name RESCUE: a multi-word query where every token
-     appears as a whole word in the show name is almost certainly a direct
-     show/host search ("lex fridman", "huberman lab"). Those often can't
-     cross the normal per-term threshold on their own -- the only real
-     signal is a flat +1 show-field hit per term, deliberately capped low
-     since a single show-word hit alone is weak evidence.
+  /* Full-phrase show-name RESCUE: a query where every token appears as a
+     whole word in the show name is almost certainly a direct show/host
+     search ("lex fridman", "huberman lab" -- or, single-token, "volts",
+     "radiolab" typed straight into the topic box). Those often can't cross
+     the normal per-term threshold on their own -- the only real signal is
+     a flat +1 show-field hit per term, deliberately capped low since a
+     single show-word hit alone is weak evidence.
 
      Gated on `!wouldPassGate`: only items that would otherwise be EXCLUDED
      get this treatment. An early version applied it unconditionally and
@@ -990,11 +1018,20 @@ function scoreMatch(item, interp, itemTags) {
      of the "strong" set even though nothing about THEIR relevance
      changed. Gating on "would otherwise be excluded" makes this a pure
      rescue for the recall gap it targets, with zero effect on any query
-     that already worked -- verified via the full battery. */
+     that already worked -- verified via the full battery.
+
+     `groups.length >= 1` (not `>= 2`): a single-token query is the exact
+     same shape as the multi-word case -- someone typing just a show's
+     name into the topic box -- and the original `>= 2` gate excluded it
+     outright regardless of score, so a one-word show name could never
+     reach this rescue at all (#see H bug: "volts"/"radiolab"/etc. all
+     flat `empty` despite a real, well-covered show sitting in the pool).
+     Nothing here changes for multi-word queries; `!wouldPassGate` still
+     does the same "only rescue genuine misses" work either way. */
   const wouldPassGate = interp.properNounQuery
     ? primaryMatched === interp.primaryGroupCount
     : (interp.hasPrimary ? primaryMatched > 0 : matchedGroups > 0);
-  if (!wouldPassGate && interp.groups.length >= 2) {
+  if (!wouldPassGate && interp.groups.length >= 1) {
     const allTokensInShow = interp.groups.every(g => new RegExp("\\b" + g.token + "\\b").test(show));
     if (allTokensInShow) {
       sum += 8;
