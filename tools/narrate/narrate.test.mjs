@@ -28,7 +28,7 @@ import {
 import { cacheKey, assertKeyInputsComplete, NarrationCache, KEY_INPUTS } from "./cache.mjs";
 import {
   createAdapter, buildRequest, costOf, byteCountOf, pricingBucketFor, MODEL_PRICING_BUCKET,
-  FLASH_TURBO, MULTILINGUAL, DEFAULT_MODEL_ID, DEFAULT_OUTPUT_FORMAT,
+  FLASH_TURBO, MULTILINGUAL, DEFAULT_MODEL_ID, DEFAULT_OUTPUT_FORMAT, DEFAULT_PAD_SEC_PER_ITEM,
 } from "./adapter.mjs";
 import { projectForay, tierFor, SPINE } from "./projection.mjs";
 import { reportScripts, reportProjection, PRICING } from "./narrate.mjs";
@@ -62,7 +62,7 @@ function capturingTransport() {
 }
 
 const spec = (text, over = {}) => ({
-  text, voiceId: "v1", modelId: "m1", outputFormat: "mp3_44100_64", ...over,
+  text, voiceId: "v1", modelId: "m1", outputFormat: "mp3_44100_64", padSecPerItem: 1.0, ...over,
 });
 
 /* ---------- billable text: the payload definition ---------- */
@@ -135,18 +135,19 @@ test("mp3 bytes track bitrate linearly and a minute at 64 kbps is ~480 kB", () =
 
 /* ---------- the cache: the idempotence rule ---------- */
 
-test("the cache key changes for each of the four inputs and for nothing else", () => {
+test("the cache key changes for each of the five inputs and for nothing else", () => {
   /* This IS the invalidation rule, asserted rather than described. A key that
-     missed one of these would serve the OLD narrator from cache forever — the
-     failure that costs nothing and ships the wrong product.
+     missed one of these would serve the OLD narrator (or stale padding) from
+     cache forever — the failure that costs nothing and ships the wrong product.
      MUTATION THAT KILLS THIS: delete any one field from the loop in cacheKey()
-     (e.g. drop "voiceId"), and its assertion below fails. */
+     (e.g. drop "voiceId" or "padSecPerItem"), and its assertion below fails. */
   const base = spec("the same words");
   const key = cacheKey(base);
   assert.notEqual(key, cacheKey({ ...base, text: "the same words." }), "a script edit must invalidate");
   assert.notEqual(key, cacheKey({ ...base, voiceId: "v2" }), "a voice change must invalidate");
   assert.notEqual(key, cacheKey({ ...base, modelId: "m2" }), "a model change must invalidate");
   assert.notEqual(key, cacheKey({ ...base, outputFormat: "mp3_44100_128" }), "a format change must invalidate");
+  assert.notEqual(key, cacheKey({ ...base, padSecPerItem: 0.5 }), "a padding change must invalidate");
   // And stable across calls, or nothing is ever a hit.
   assert.equal(key, cacheKey({ ...base }));
 });
@@ -169,7 +170,7 @@ test("an unknown generation parameter is a loud error, not a silently dropped ke
   assert.throws(() => assertKeyInputsComplete({ text: "t", stability: 0.5 }), /stability/);
   assert.throws(() => cacheKey(spec("t", { speakerBoost: true })), /speakerBoost/);
   assert.doesNotThrow(() => assertKeyInputsComplete(spec("t")));
-  assert.deepEqual(KEY_INPUTS, ["text", "voiceId", "modelId", "outputFormat"]);
+  assert.deepEqual(KEY_INPUTS, ["text", "voiceId", "modelId", "outputFormat", "padSecPerItem"]);
 });
 
 test("a re-run of an unchanged script bills zero characters", () => {
@@ -747,7 +748,10 @@ test("cache.plan is a pure query and keeps no hit counters", () => {
   // The honest number, from a single pass.
   const adapter = createAdapter({ cache, voiceId: "v1" });
   const beats = [{ id: "a", text: "aaa" }, { id: "b", text: "bbb" }];
-  const key = cacheKey({ text: "aaa", voiceId: "v1", modelId: DEFAULT_MODEL_ID, outputFormat: DEFAULT_OUTPUT_FORMAT });
+  const key = cacheKey({
+    text: "aaa", voiceId: "v1", modelId: DEFAULT_MODEL_ID, outputFormat: DEFAULT_OUTPUT_FORMAT,
+    padSecPerItem: DEFAULT_PAD_SEC_PER_ITEM,
+  });
   cache.record(key, { chars: 3 });
   assert.equal(adapter.planForay(beats).totals.cachedBeats, 1);
   assert.equal(adapter.planForay(beats).totals.cachedBeats, 1, "and it must not drift on a second pass");
@@ -1073,7 +1077,10 @@ test("the CLI honours --cache, so a re-run of an unchanged script bills nothing"
 
   // An index recording that exact generation.
   const cache = new NarrationCache();
-  const key = cacheKey({ text, voiceId: voice, modelId: DEFAULT_MODEL_ID, outputFormat: DEFAULT_OUTPUT_FORMAT });
+  const key = cacheKey({
+    text, voiceId: voice, modelId: DEFAULT_MODEL_ID, outputFormat: DEFAULT_OUTPUT_FORMAT,
+    padSecPerItem: DEFAULT_PAD_SEC_PER_ITEM,
+  });
   cache.record(key, { chars: 49 });
   const idx = path.join(TMP, "cache-cli-index.json");
   fs.writeFileSync(idx, JSON.stringify(cache.dump()));

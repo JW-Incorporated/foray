@@ -47,6 +47,16 @@ import { NarrationCache } from "./cache.mjs";
 export const DEFAULT_MODEL_ID = "eleven_flash_v2_5";
 export const DEFAULT_OUTPUT_FORMAT = "mp3_44100_64";
 
+/** Default padding baked around each item's audio, in seconds (leading +
+ *  trailing silence encoded into the file — see `cache.mjs`'s KEY_INPUTS
+ *  comment and `docs/narrator-pipeline.md` §1 item 4). Mirrors
+ *  `projection.mjs`'s `BUDGETS.padSecPerItem`; duplicated here rather than
+ *  imported because `projection.mjs` already imports `costOf` from this
+ *  file, and importing back would be a cycle. `HUMAN-ACTIONS.md` #3 still
+ *  has the actual value as an open founder decision — this is only the
+ *  fallback used when no caller overrides it. */
+export const DEFAULT_PAD_SEC_PER_ITEM = 1.0;
+
 /** The published base. Transcribed, never called. */
 export const API_BASE = "https://api.elevenlabs.io/v1";
 
@@ -125,12 +135,19 @@ export function createAdapter(opts = {}) {
     voiceId = "VOICE_ID_UNSET",
     modelId = DEFAULT_MODEL_ID,
     outputFormat = DEFAULT_OUTPUT_FORMAT,
+    padSecPerItem = DEFAULT_PAD_SEC_PER_ITEM,
   } = opts;
 
   const dryRun = !apiKey;
 
-  /** The cache spec for a script — exactly the four hashed inputs, no more. */
-  const specFor = (text) => ({ text, voiceId, modelId, outputFormat });
+  /** The cache spec for a script — exactly the five hashed inputs, no more.
+      `padSecPerItem` never reaches `buildRequest()`'s body (the provider is
+      never told about it — the padding is added after the fact, encoding
+      silence around the returned audio), but it changes the bytes we keep
+      just as surely as a voice or model change does, so it belongs in the
+      cache spec even though it is absent from the HTTP request. See
+      `cache.mjs`'s KEY_INPUTS comment. */
+  const specFor = (text) => ({ text, voiceId, modelId, outputFormat, padSecPerItem });
 
   /**
    * Plan one script. Never calls anything, key or no key.
@@ -306,7 +323,7 @@ export function createAdapter(opts = {}) {
     // Recorded ONLY after a generation that demonstrably produced audio. A dry
     // run must never write here either -- see `cache.record`'s comment.
     cache.record(p.key, {
-      chars: p.chars, voiceId, modelId, outputFormat, asset: result?.asset ?? null,
+      chars: p.chars, voiceId, modelId, outputFormat, padSecPerItem, asset: result?.asset ?? null,
     });
     return { ...p, bytes, asset: result?.asset ?? null };
   }

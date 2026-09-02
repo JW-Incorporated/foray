@@ -9,8 +9,9 @@
      2. the voice id
      3. the model id
      4. the output format (bitrate/sample rate)
+     5. the padding seconds baked around each item's audio (`padSecPerItem`)
 
-   So an entry is INVALIDATED by exactly four things, and each one genuinely
+   So an entry is INVALIDATED by exactly five things, and each one genuinely
    produces different audio:
 
      - **a script edit** — including a single character of punctuation, because
@@ -19,6 +20,10 @@
      - **a model change** — a different engine reading the same words, and per
        `pricing.json` a different price per character
      - **an output-format change** — 64 kbps and 128 kbps are different files
+     - **a padding change** — the leading/trailing silence is encoded directly
+       into the audio bytes (`docs/narrator-pipeline.md` §1 item 4), so a
+       different `padSecPerItem` is a different file even though the TTS
+       provider is never told about it and it never appears in the request body
 
    And it is NOT invalidated by anything else, which is the half that saves
    money. Re-running the pipeline, re-ordering beats within a Foray, renaming a
@@ -56,8 +61,21 @@ import { createHash } from "node:crypto";
 import { billableText, countChars } from "./billable.mjs";
 
 /** Every input that changes the bytes we get back, and therefore every input
-    that belongs in the key. Order is fixed so the hash is stable. */
-export const KEY_INPUTS = Object.freeze(["text", "voiceId", "modelId", "outputFormat"]);
+    that belongs in the key. Order is fixed so the hash is stable.
+
+    `padSecPerItem` is here alongside the four TTS-request inputs even though
+    it never reaches `buildRequest()`'s HTTP body: `projection.mjs` and
+    `docs/narrator-pipeline.md` §1 item 4 are explicit that the padding is
+    ENCODED INTO THE AUDIO FILE (leading/trailing silence baked around the
+    item), so a padding-value change produces different bytes exactly like a
+    voice or model change does, even though the TTS provider is never told
+    about it. Leaving it out of the key is Leak 2 from this file's header —
+    "a key that omits an input that changes the audio" — and it is not
+    hypothetical: `HUMAN-ACTIONS.md` #3 records the padding value as still
+    undecided, so the first time it is set (or later revised), every existing
+    cache entry would otherwise silently serve stale-padding audio under an
+    unchanged key. */
+export const KEY_INPUTS = Object.freeze(["text", "voiceId", "modelId", "outputFormat", "padSecPerItem"]);
 
 /**
  * Guard against a caller passing a generation parameter that would change the
@@ -90,6 +108,9 @@ export function assertKeyInputsComplete(spec) {
  * @param {string} spec.voiceId
  * @param {string} spec.modelId
  * @param {string} spec.outputFormat
+ * @param {number} [spec.padSecPerItem] seconds of silence baked around the
+ *   item's audio (leading + trailing). Part of the key because it is baked
+ *   into the bytes, not merely a request parameter — see KEY_INPUTS' comment.
  * @returns {string} 64-char hex
  */
 export function cacheKey(spec = {}) {
@@ -114,7 +135,7 @@ export function cacheKey(spec = {}) {
   // The TEXT is hashed canonicalised, so a line-ending or trailing-space change
   // is a hit rather than a re-bill. See "Leak 1" in the header.
   field("text", billableText(spec.text));
-  for (const name of ["voiceId", "modelId", "outputFormat"]) field(name, spec[name]);
+  for (const name of ["voiceId", "modelId", "outputFormat", "padSecPerItem"]) field(name, spec[name]);
   return h.digest("hex");
 }
 
@@ -180,6 +201,7 @@ export class NarrationCache {
       voiceId: record.voiceId ?? null,
       modelId: record.modelId ?? null,
       outputFormat: record.outputFormat ?? null,
+      padSecPerItem: record.padSecPerItem ?? null,
       asset: record.asset ?? null,
       generated_at: record.generated_at ?? new Date().toISOString(),
     });
