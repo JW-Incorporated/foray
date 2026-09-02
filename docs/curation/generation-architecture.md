@@ -339,13 +339,14 @@ The spine contains:
   undershoot and overshoot bound), and the same running order WITH every reserved deferrable beat
   inserted must also land inside that tolerance. This is validated against the spine's PLANNED
   per-beat runtime budgets when the spine is frozen (§4.3, enforced by §6.1 before Act 1 — and
-  therefore any act — ever plays), not deferred to §4.9's later publish gate: progressive
-  generation (§6) means Act 1 can already be playing while later acts are still being written, so
-  a check that waited for §4.9's final actual-duration pass would run too late to prevent an
-  in-tolerance-looking Foray from becoming a defect mid-playback. §4.9 then re-validates using each
-  act's actual written duration once it exists, as a confirmation that the planned budget held —
-  a hard failure at that point (a beat ran long in the writing) is caught before that act publishes,
-  even if an earlier act in the same Foray is already playing.** On top of the baseline-alone requirement,
+  therefore any act — ever plays). Progressive generation (§6) means a later act's ACTUAL written
+  duration is not yet known at that point, so it cannot wait for a single whole-Foray check: each
+  act's actual duration is re-validated against its own planned budget at that act's boundary
+  checkpoint — the same per-act checkpoint §6.2's continuity agent already runs at, before the
+  next act is allowed to start (and, for Act 1, before playback is allowed to begin at all, per
+  §6.1). An act whose actual duration fails this re-check is a defect caught at that act's own
+  boundary, never discovered only after the whole Foray has finished and published via §4.9 (which
+  remains the final whole-Foray write/validate step, not the per-act one).** On top of the baseline-alone requirement,
   the baseline must leave enough headroom below the +15% ceiling to accommodate the deferrable
   beats it carries: baseline runtime plus the reserved deferrable beats' runtime, together, must
   still fit within +15% of the target — deferrable beats only ever add runtime, so only the upper
@@ -591,7 +592,11 @@ The work that pass was doing has to move:
   has been heard.
 - **The continuity agent becomes forward-only.** It runs at each act boundary and may adjust the
   act about to be built, never the one already played. Act 4 adapts to what act 3 actually said;
-  act 3 does not get fixed.
+  act 3 does not get fixed. This same act-boundary checkpoint is also where §3/§8's runtime
+  tolerance is re-validated against the act just finished — its actual written duration checked
+  against the planned budget the spine committed to at freeze time (§4.3/§6.1) — since progressive
+  playback means there is no later whole-Foray moment to catch an act that ran long before it has
+  already played.
 - **A late-discovered gap becomes act N+1's problem**, or it is dropped with a reason. It is never a
   retroactive patch.
 
@@ -688,10 +693,11 @@ A generated Foray is publishable only if all of these hold:
   ±15%, which is a defect the generation lead must avoid by reserving room for the deferrable pair
   within the maximum runtime rather than adding it on top (§6.3). Both paths (baseline alone, and
   baseline plus every reserved deferrable beat) are validated against the spine's planned
-  per-beat budgets when the spine freezes (§4.3/§6.1), before Act 1 or any act plays; §4.9
-  re-validates each act's actual written duration against that same planned budget once the act
-  is written, per act, since progressive generation (§6) means later acts are still being written
-  while earlier ones already play.
+  per-beat budgets when the spine freezes (§4.3/§6.1), before Act 1 or any act plays; each act's
+  ACTUAL written duration is then re-validated against that same planned budget at that act's own
+  boundary checkpoint (§6.2), not deferred to §4.9's final whole-Foray publish step, since
+  progressive generation (§6) means later acts are still being written while earlier ones already
+  play.
 - Narration share may be up to 100% (§9.3) — there is no ceiling. A Medium/Long Foray whose topic is
   too thin for real tape at the requested duration must take the §9.3 shortening path instead of
   padding with synthetic filler to raise or preserve narration share.

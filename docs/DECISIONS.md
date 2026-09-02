@@ -1288,6 +1288,14 @@ its reasoning.
   any act plays; §4.9 then re-validates each act's ACTUAL written duration against that same
   planned budget once the act is written, per act, catching a beat that ran long in the writing
   before that specific act publishes — not waiting for the whole Foray to finish.
+- **Review round 13 fix: round 12's fix still pointed the actual-duration re-check at §4.9, which
+  is the final whole-Foray publish step, not a per-act checkpoint that exists before each act
+  plays.** §6.2 already defines a per-act-boundary checkpoint (the continuity agent, forward-only)
+  that runs before the next act starts and, for Act 1, before playback begins at all (§6.1). §3/§8
+  now assign the actual-duration re-validation to that existing checkpoint instead of inventing a
+  new stage or misassigning it to §4.9 — an act that ran long is caught at its own boundary, before
+  it has already played, which §4.9's whole-Foray-at-the-end timing cannot do under progressive
+  generation (§6).
 - **Review round 10 fix: §8's spine-beat completeness gate contradicted the normal on-schedule
   deferrable-beat path.** §8 required every spine beat to be "present, or explicitly dropped with
   a recorded reason," but §4.3/§6.3 (as corrected in rounds 6-9) specify that a deferrable beat is
