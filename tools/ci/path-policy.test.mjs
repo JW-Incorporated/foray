@@ -193,6 +193,19 @@ test("STATE.md and HUMAN-ACTIONS.md are allowlisted", () => {
   assert.equal(pathPolicy(["HUMAN-ACTIONS.md"]).allowed.length, 1);
 });
 
+test("tools/events-server.mjs is denied even though tools/ is allowed", () => {
+  // scripts/events-server.vbs runs `node tools/events-server.mjs` at every
+  // Windows login on the founder's always-on workstation, with the
+  // founder's real user privileges, in the checkout that also holds the
+  // root .env and data-local/. No test suite covers it, so it must stay
+  // off the auto-merge allow path (kanban t_5663c62a / t_85e1b1ba).
+  assert.ok(ALLOWED_PREFIXES.includes("tools/"));
+  assert.ok(DENIED_PREFIXES.includes("tools/events-server.mjs"));
+  const p = pathPolicy(["tools/events-server.mjs"]);
+  assert.equal(p.denied.length, 1);
+  assert.equal(p.denied[0].prefix, "tools/events-server.mjs");
+});
+
 /* --------------------------------------------------------- pathPolicy() */
 
 test("denied wins over allowed, always", () => {

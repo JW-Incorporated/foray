@@ -91,6 +91,18 @@ export const DENIED_PREFIXES = [
   // a new gate script cannot acquire this exposure silently.
   "tools/test-search.mjs",
   "tools/validate-semantic-index.mjs",
+  // scripts/events-server.vbs runs `node tools/events-server.mjs` at every
+  // Windows login on the founder's always-on workstation (Startup folder),
+  // with the founder's real user privileges, in the checkout that also holds
+  // the root `.env` and `data-local/`. `tools/` is allowlisted and no test
+  // suite executes this file, so without this entry a bot-authored PR
+  // touching only this file would auto-merge unread — the exact risk
+  // DENIED_PREFIXES exists to prevent, except the machine executing the
+  // unread code is a founder's own workstation, not a CI runner. Found by
+  // the Fable-driven CI/release-pipeline audit (kanban t_5663c62a /
+  // t_85e1b1ba). Same trade as the two entries above: near-zero change
+  // frequency, occasional human merge.
+  "tools/events-server.mjs",
 ];
 
 /* Paths a bot run may touch, by tier (docs/curation/... § auto-merge):
