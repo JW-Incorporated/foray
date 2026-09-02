@@ -433,6 +433,136 @@ test("renderEpisode links its show-name text to #/show/:show_id when the show jo
   );
 });
 
+/* ==================================================================== */
+/* 6. A2.5 — "SIMILAR SHOWS" ROW (taxonomy_node_ids overlap)             */
+/* ==================================================================== */
+
+test("similarShows ranks by shared taxonomy_node_ids count, against the real catalogue", async () => {
+  /* lex-fridman-podcast (engineering/energy-fusion only) against the real
+     220-show catalogue, not a synthetic fixture — proves the join works on
+     what's actually shipped. omega-tau shares 1 node with lex (energy-fusion)
+     same as titans-of-nuclear, but this only pins that every returned show
+     actually shares at least one node — the mixed-count ranking is pinned
+     with a synthetic fixture below where the counts are controlled.
+
+     MUTATION: change `.filter(x => x.shared > 0)` to admit shared === 0.
+     The "every result must overlap" assertion below fails immediately. */
+  const m = await mountBooted();
+  const catalog = readJson("data/catalog-client.json");
+  const show = catalog.shows.find((s) => s.show_id === "lex-fridman-podcast");
+  m.state.catalog = catalog;
+  const results = m.ctx.similarShows(show);
+  assert.ok(results.length > 0, "fixture assumption: lex-fridman-podcast must have real overlapping shows");
+  const wanted = new Set(show.taxonomy_node_ids);
+  for (const r of results) {
+    assert.ok(r.show_id !== show.show_id, "must never include the show itself");
+    assert.ok((r.taxonomy_node_ids || []).some((id) => wanted.has(id)), `${r.show_id} must share at least one taxonomy node`);
+  }
+});
+
+test("similarShows ranks higher shared-count above lower, ties broken by show_id", () => {
+  /* Synthetic fixture, counts fully controlled: B shares 2 nodes (higher),
+     C shares 1, D shares 0 (must be excluded entirely, not padded in at the
+     bottom — the "honest empty beats padding" rule).
+
+     MUTATION: sort by insertion order instead of `b.shared - a.shared`. B
+     and C swap position and the strict order assertion fails.
+     MUTATION 2: drop the `x.shared > 0` filter. D appears in the output and
+     the length assertion fails. */
+  const m = mount();
+  const A = { show_id: "show-a", taxonomy_node_ids: ["x", "y"] };
+  const B = { show_id: "show-b", taxonomy_node_ids: ["x", "y"] };
+  const C = { show_id: "show-c", taxonomy_node_ids: ["x"] };
+  const D = { show_id: "show-d", taxonomy_node_ids: ["z"] };
+  m.state.catalog = { shows: [A, B, C, D] };
+  const result = m.ctx.similarShows(A);
+  assert.deepStrictEqual(result.map((s) => s.show_id), ["show-b", "show-c"], "must rank by shared-count descending and exclude zero-overlap shows");
+});
+
+test("similarShows ties broken by show_id for a stable, pinnable order", () => {
+  /* Two shows with an identical shared count must not depend on catalog
+     array order — the exact failure mode a naive stable-sort-on-insertion
+     approach would hide until the catalogue's own order shifted.
+
+     MUTATION: drop the `|| a.show.show_id.localeCompare(b.show.show_id)`
+     tiebreaker. This test still passes by accident with today's array order,
+     so it is paired with the reversed-order variant below to actually catch it. */
+  const m = mount();
+  const A = { show_id: "show-a", taxonomy_node_ids: ["x"] };
+  const Z = { show_id: "show-z", taxonomy_node_ids: ["x"] };
+  const M = { show_id: "show-m", taxonomy_node_ids: ["x"] };
+  m.state.catalog = { shows: [Z, M] }; // reversed insertion order on purpose
+  const result = m.ctx.similarShows(A);
+  assert.deepStrictEqual(result.map((s) => s.show_id), ["show-m", "show-z"], "equal-score ties must sort by show_id, independent of catalog array order");
+});
+
+test("similarShows returns [] for a show with no taxonomy_node_ids of its own", () => {
+  /* There is nothing to overlap against — this must be an empty result, not
+     a crash and not every-other-show-by-default.
+
+     MUTATION: change `if (!nodeIds.size) return [];` to fall through. This
+     throws or returns the whole catalogue instead of []. */
+  const m = mount();
+  const bare = { show_id: "bare-show" };
+  m.state.catalog = { shows: [bare, { show_id: "other", taxonomy_node_ids: ["x"] }] };
+  assert.strictEqual(m.ctx.similarShows(bare).length, 0);
+});
+
+test("similarShows caps at 6 results even with more overlapping shows available", () => {
+  /* Card scope: "top 4-6 shown", not every show that shares a node —
+     unbounded output would defeat the point of a curated row.
+
+     MUTATION: remove the `.slice(0, limit)` call. The length assertion
+     below fails because all 9 overlapping shows are returned. */
+  const m = mount();
+  const A = { show_id: "show-a", taxonomy_node_ids: ["x"] };
+  const others = Array.from({ length: 9 }, (_, i) => ({ show_id: `show-${i}`, taxonomy_node_ids: ["x"] }));
+  m.state.catalog = { shows: [A, ...others] };
+  assert.strictEqual(m.ctx.similarShows(A).length, 6);
+});
+
+test("renderShow renders a 'Similar shows' section linking to each match, via the real catalogue", async () => {
+  /* End-to-end through renderShow itself, against real committed data, not
+     just similarShows() in isolation — proves the section is actually wired
+     into the page and each link is a real, navigable show-result row
+     (reusing showResultRow, so it carries no play/star controls — this is a
+     show link, not a playable item, same rule as the shows-search results).
+
+     MUTATION: delete `${similarShowsSection(show)}` from renderShow's
+     template. The heading and href assertions both fail. */
+  const m = await mountBooted();
+  const catalog = readJson("data/catalog-client.json");
+  const show = catalog.shows.find((s) => s.show_id === "lex-fridman-podcast");
+  m.ctx.renderShow("lex-fridman-podcast");
+  const html = m.view();
+  assert.ok(html.includes("Similar shows"), "must render the 'Similar shows' heading");
+  const expected = m.ctx.similarShows(show);
+  assert.ok(expected.length > 0, "fixture assumption: lex-fridman-podcast must have real similar shows");
+  for (const s of expected) {
+    assert.ok(html.includes(`href="#/show/${encodeURIComponent(s.show_id)}"`), `must link to ${s.show_id}`);
+  }
+});
+
+test("renderShow renders no 'Similar shows' section when no other show overlaps", () => {
+  /* Absence is a real, renderable state — matches moreFromShow's own rule
+     ("Renders nothing (not an empty section)") and renderShow's existing
+     "no episodes" branch. A show with taxonomy_node_ids that share nothing
+     with the rest of the catalogue must not get an empty heading.
+
+     MUTATION: return a `""`-guard-less section unconditionally. The
+     "must not include" assertion fails because the heading appears anyway. */
+  const m = mount();
+  const lonely = { show_id: "lonely-show", title: "Lonely Show", taxonomy_node_ids: ["unique/node"] };
+  const other = { show_id: "other-show", title: "Other Show", taxonomy_node_ids: ["different/node"] };
+  m.state.catalog = { shows: [lonely, other] };
+  m.state.discover = { items: [] };
+  m.state.taxonomy = { nodes: [] };
+  m.state.session = { session_id: "s-1", builder: "test", episodes: {}, cards: [] };
+  m.ctx.renderShow("lonely-show");
+  const html = m.view();
+  assert.ok(!html.includes("Similar shows"), "must not render an empty 'Similar shows' section");
+});
+
 test("catalog-client.json is measurably smaller than catalog.json (the gzip claim is real)", () => {
   /* Not a byte-exact pin (catalog.json changes nightly) — just proves the
      projection is doing real work, so the PR's "measured, not assumed" claim
