@@ -499,10 +499,20 @@ function interpretQuery(q, ctx) {
        (a real, well-covered concept reachable only from its other
        spelling). */
     const hasExactConceptMatch = Object.values(concepts).some(c => c.terms?.some(t => exactKeys.has(t)));
+    /* Computed once and reused everywhere below (lookupKeys, addTerm,
+       broad/thin) -- avoids recomputing lemmaVariants(tok) three separate
+       times and, more importantly, avoids the corpusDF scans it feeds
+       into for a token whose variants are never actually going to be
+       used for matching. When the exact token already owns a concept,
+       the fallback set is empty: this is what makes the fallback GATE
+       (not just the final addTerm/lookupKeys use) actually skip the
+       catalog-scanning corpusDF(variant) calls flagged in codex review
+       round 3 -- a fresh "culture"/"cultures" interpretQuery() dropped
+       from ~200ms to a cache-warmed corpusDF's usual cost once other
+       concept-backed tokens stop paying for variants they never use. */
+    const fallbackVariants = hasExactConceptMatch ? [] : [...lemmaVariants(tok)];
     const lookupKeys = new Set(exactKeys);
-    if (!hasExactConceptMatch) {
-      for (const v of lemmaVariants(tok)) lookupKeys.add(v);
-    }
+    for (const v of fallbackVariants) lookupKeys.add(v);
 
     /* term -> {w, source}. source "own" = the token's literal text, its
        aliases, or its concept's *own* terms (full scoring weight, eligible
@@ -544,7 +554,7 @@ function interpretQuery(q, ctx) {
        neither inflection has ANY concept, so hasExactConceptMatch is
        false and this still fires exactly as intended). */
     if (!hasExactConceptMatch) {
-      for (const v of lemmaVariants(tok)) addTerm(v, 1, "own");
+      for (const v of fallbackVariants) addTerm(v, 1, "own");
     }
 
     const others = contentTokens.filter(o => o !== tok);
@@ -581,24 +591,27 @@ function interpretQuery(q, ctx) {
       token: tok,
       terms,
       /* Both `broad` and `thin` read the MAX corpusDF across the token and
-         its lemma variants (see lemmaVariants above), not just the bare
-         typed spelling. Without this, a lemma pair where NEITHER
-         inflection has concept coverage (e.g. culture/cultures -- no
-         concept or modifier carries either) but the OTHER inflection is
-         common in the catalogue text (culture: corpusDF ~3.9%) would still
-         read the untried inflection ("cultures") as thin purely because
-         its own bare spelling has zero literal corpus hits, even though
-         the addTerm() call above already added "culture" as a same-weight
+         its lemma variants (see lemmaVariants above, reused via
+         fallbackVariants -- computed once above, not re-derived here, so
+         a concept-backed token's variants are never scanned at all, per
+         codex review round 3's latency finding), not just the bare typed
+         spelling. Without this, a lemma pair where NEITHER inflection has
+         concept coverage (e.g. culture/cultures -- no concept or modifier
+         carries either) but the OTHER inflection is common in the
+         catalogue text (culture: corpusDF ~3.9%) would still read the
+         untried inflection ("cultures") as thin purely because its own
+         bare spelling has zero literal corpus hits, even though the
+         addTerm() call above already added "culture" as a same-weight
          literal term that WILL match. Taking the max keeps thin/broad
          honest about what this group can actually match, independent of
          which inflection the query happened to type. */
-      broad: Math.max(corpusDF(tok, ctx), ...[...lemmaVariants(tok)].map(v => corpusDF(v, ctx))) >= BROAD_DF_THRESHOLD,
+      broad: Math.max(corpusDF(tok, ctx), ...fallbackVariants.map(v => corpusDF(v, ctx))) >= BROAD_DF_THRESHOLD,
       df: tagDF(tok, ctx),
       hasConceptExpansion,
       /* See THIN_ANCHOR_DF below -- a specific, real word the taxonomy has
          not modeled AND the catalogue barely mentions. */
       thin: !hasConceptExpansion &&
-        Math.max(corpusDF(tok, ctx), ...[...lemmaVariants(tok)].map(v => corpusDF(v, ctx))) < THIN_ANCHOR_DF,
+        Math.max(corpusDF(tok, ctx), ...fallbackVariants.map(v => corpusDF(v, ctx))) < THIN_ANCHOR_DF,
     };
   });
 
