@@ -104,6 +104,10 @@ const PAIRS = [
   /* Silent-e plural, codex review P2: "cases" -> "case" must reach the
      right singular fragment, not just "cas". */
   ["case", "cases"],
+  /* Invariant-s noun that IS indexed only by its plural, codex review
+     round 5: "bias" must still reach the "biases" concept (decision-
+     making) even though "bias" itself must never be despluralized. */
+  ["bias", "biases"],
 ];
 
 for (const [singular, plural] of PAIRS) {
@@ -134,7 +138,16 @@ test("lemmaVariants is a bounded, named transform -- not a general stemmer", () 
   assert.deepEqual([...SE.lemmaVariants("trained")], ["traineds"],
     "no -ed participle stripping -- out of scope for a singular/plural helper");
   for (const invariant of ["news", "ours", "status", "bias", "canvas", "virus"]) {
-    assert.deepEqual([...SE.lemmaVariants(invariant)], [],
-      `"${invariant}" is an invariant/non-plural noun ending in "s" -- must not be stripped (codex review round 4)`);
+    /* Round 4 pinned "must not be stripped"; round 5 corrected that to
+       "must not be stripped, but MAY still pluralize" -- bias/biases is
+       the real card gap: the taxonomy indexes only the plural, so
+       blocking pluralize too would silently keep the exact asymmetry
+       this fix exists to remove, just for a different word class. The
+       pluralized form is a harmless namespaced fragment for the ones
+       with no real plural (newses, ourses) and the real correct plural
+       for the ones that do have one (biases, statuses, viruses). */
+    const v = [...SE.lemmaVariants(invariant)];
+    assert.deepEqual(v, [invariant + "es"],
+      `"${invariant}" must not be despluralized (no bare-s strip) but must still offer its "+es" pluralize candidate -- got ${JSON.stringify(v)}`);
   }
 });

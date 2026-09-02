@@ -424,7 +424,17 @@ function corpusDF(term, ctx) {
    already-covered "-ics" family above). A general "don't strip before
    us/as" rule was considered and rejected: it would also block real
    +s plurals of the same shape (areas -> area, ideas -> idea, pizzas ->
-   pizza), so this stays a named list rather than a suffix rule. */
+   pizza), so this stays a named list rather than a suffix rule.
+
+   Directional (codex review round 5): membership in this set only
+   blocks the DESPLURALIZE branches (stripping a trailing s/es to guess
+   a shorter, likely-wrong singular). It must NOT also block the
+   PLURALIZE branch -- an invariant word can still be a real singular
+   that the taxonomy indexes only by its plural, same as any other
+   concept (measured case: data/semantic-index.json's decision-making
+   concept lists "biases" but not "bias"). Blocking pluralize too would
+   silently preserve the exact asymmetry this whole fix exists to
+   remove, just for a different word class. */
 const INVARIANT_S_NOUNS = new Set([
   "news", "series", "species", "means", "outskirts", "measles",
   "mathematics", "physics", "statistics", "economics", "politics",
@@ -438,30 +448,30 @@ const INVARIANT_S_NOUNS = new Set([
 function lemmaVariants(tok) {
   const out = new Set();
   let despluralized = false;
-  if (INVARIANT_S_NOUNS.has(tok)) {
-    return out;
-  }
-  if (/[^aeiou]ies$/.test(tok) && tok.length > 4) {
-    out.add(tok.slice(0, -3) + "y");
-    despluralized = true;
-  } else if (/(?:s|x|z|ch|sh)es$/.test(tok) && tok.length > 4) {
-    /* Ambiguous without a dictionary: "kisses"/"boxes"/"buzzes"/"catches"/
-       "dishes" genuinely take +es (singular strips 2 chars: kiss, box,
-       buzz, catch, dish), but "cases"/"houses"/"mazes"/"sizes" are a
-       silent-e singular ("case", "house", "maze", "size") that only ever
-       added a bare "s" -- stripping 2 chars from those yields a nonsense
-       fragment ("cas", "hous") that fails every concept/corpus lookup and
-       silently drops the systemic fix for this common noun class (codex
-       review P2, t_fe968b47). Emit BOTH candidates rather than guessing:
-       the wrong one is harmless (a fragment string no real concept or
-       corpus text will ever contain), and the right one is now always
-       present. */
-    out.add(tok.slice(0, -2));
-    out.add(tok.slice(0, -1));
-    despluralized = true;
-  } else if (/s$/.test(tok) && !/ss$/.test(tok) && tok.length > 3) {
-    out.add(tok.slice(0, -1));
-    despluralized = true;
+  const invariant = INVARIANT_S_NOUNS.has(tok);
+  if (!invariant) {
+    if (/[^aeiou]ies$/.test(tok) && tok.length > 4) {
+      out.add(tok.slice(0, -3) + "y");
+      despluralized = true;
+    } else if (/(?:s|x|z|ch|sh)es$/.test(tok) && tok.length > 4) {
+      /* Ambiguous without a dictionary: "kisses"/"boxes"/"buzzes"/"catches"/
+         "dishes" genuinely take +es (singular strips 2 chars: kiss, box,
+         buzz, catch, dish), but "cases"/"houses"/"mazes"/"sizes" are a
+         silent-e singular ("case", "house", "maze", "size") that only ever
+         added a bare "s" -- stripping 2 chars from those yields a nonsense
+         fragment ("cas", "hous") that fails every concept/corpus lookup and
+         silently drops the systemic fix for this common noun class (codex
+         review P2, t_fe968b47). Emit BOTH candidates rather than guessing:
+         the wrong one is harmless (a fragment string no real concept or
+         corpus text will ever contain), and the right one is now always
+         present. */
+      out.add(tok.slice(0, -2));
+      out.add(tok.slice(0, -1));
+      despluralized = true;
+    } else if (/s$/.test(tok) && !/ss$/.test(tok) && tok.length > 3) {
+      out.add(tok.slice(0, -1));
+      despluralized = true;
+    }
   }
   /* Only try to PLURALIZE tok when none of the branches above already
      recognized it as a plural shape -- otherwise an already-plural token
