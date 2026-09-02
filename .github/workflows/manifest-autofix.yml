@@ -1,0 +1,104 @@
+# Auto-regenerate deploy-manifest.json on a PR instead of requiring a human
+# (or an agent) to notice the `data-and-site` failure and run
+# `node tools/ci/generate-manifest.mjs --write` by hand.
+#
+# WHY (kanban t_7ab59ada). Since PR #404 (M4, versioned deploy manifest)
+# landed, every PR touching a manifest-tracked file (app.js, styles.css,
+# player/*, data/*.json, ...) fails the required `data-and-site` check with
+# "deploy-manifest.json is stale" until someone runs --write and commits the
+# result. That happened on #426 and #428 in one session alone. The manifest
+# system itself is not broken — nothing was regenerating it automatically.
+#
+# WHY A SEPARATE AUTO-FIX COMMIT, NOT A BUILD-STEP FOLD-IN (option 3 in the
+# card). `tools/web/prepare-dist.mjs` assembles the deploy artifact at DEPLOY
+# time, from whatever is already committed to `main`. Folding manifest
+# generation in there would make `dist/` self-consistent but does nothing for
+# the actual problem, which is upstream of that: `data-and-site`'s
+# `generate-manifest.mjs --check` gate runs on the PR BEFORE anything is
+# merged, against the tree as the PR left it. A build step can't un-fail a
+# check that already ran against a stale committed file.
+#
+# WHY THIS SHAPE (option 1) MATCHES THE EXISTING CONVENTION. This repo
+# already has exactly this pattern for exactly this reason in
+# `pr-hygiene.yml`'s `update-branch` action: a job with `contents: write`
+# pushes a fix to the PR's own head branch with the automatic GITHUB_TOKEN,
+# then re-dispatches `ci.yml` on that ref — because GitHub's anti-recursion
+# rule means a GITHUB_TOKEN push does not itself trigger a new workflow run,
+# so without the paired dispatch the PR's new head SHA would sit forever at
+# "Expected — waiting for status to be reported". See pr-hygiene.yml's own
+# header comment for the full mechanism; this file reuses it rather than
+# inventing a second way to solve the same problem.
+#
+# SAME-REPO ONLY, same reason pr-hygiene guards on it: a `pull_request` event
+# from a fork gets a read-only GITHUB_TOKEN, so pushing a fixup commit to the
+# fork's branch is impossible from here. A fork PR still fails loudly and a
+# human runs `--write` by hand for that one case — status quo, not a
+# regression.
+#
+# NOT A GOVERNED-PATH BYPASS. This job never touches `tools/ci/` or any other
+# DENIED_PREFIXES path (see `tools/ci/path-policy.mjs`) — it only ever writes
+# `deploy-manifest.json` and stamps `sw.js`'s BUILD_ID, exactly the two files
+# `generate-manifest.mjs --write` itself is defined to touch, and only when
+# `--check` already proved they were the sole drift.
+
+name: manifest-autofix
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: write # push the fixup commit to the PR head branch
+  actions: write # dispatch-ci pairing, same permission pr-hygiene needs for it
+
+concurrency:
+  # Per-PR, not global: unlike pr-hygiene's single-writer comment invariant,
+  # there is nothing here that two concurrent runs on DIFFERENT PRs could step
+  # on. Per-PR still avoids two runs on the SAME PR (e.g. opened + a fast
+  # synchronize) racing to push conflicting commits to the same branch.
+  group: manifest-autofix-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  autofix:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Regenerate deploy-manifest.json (and stamp sw.js's BUILD_ID)
+        run: node tools/ci/generate-manifest.mjs --write
+
+      - name: Commit and push the fix, if anything actually drifted
+        id: commit
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- deploy-manifest.json sw.js; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "deploy-manifest.json already current — nothing to do"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add deploy-manifest.json sw.js
+          git commit -m "chore: auto-regenerate deploy-manifest.json"
+          git push origin "HEAD:${{ github.event.pull_request.head.ref }}"
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+
+      # THE PAIRING — see this file's header. Without it the PR's new head SHA
+      # gets no check runs at all and can never satisfy protect-main.
+      - name: Re-dispatch CI on the fixed head
+        if: steps.commit.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh workflow run ci.yml \
+            --repo "${{ github.repository }}" \
+            --ref "${{ github.event.pull_request.head.ref }}"
