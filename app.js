@@ -424,6 +424,13 @@ function snapshot(id, src) {
     audio_bytes: src.audio_bytes ?? null,
     duration_sec: src.duration_sec ?? null,
     dai_suspected: src.dai_suspected ?? false,
+    // Explicit-content flag (kanban card t_02c6bb0b): already ingested at the
+    // source (tools/refresh/merge.mjs), but this whitelist projection dropped
+    // it on the floor before the badge existed to read it — every pool item
+    // (the vast majority of what epRow/renderEpisode actually render) would
+    // otherwise silently lose the flag here, one snapshot() call after the
+    // caller thought it kept it.
+    explicit: src.explicit ?? null,
   };
   state.itemIndex[id] = snap;
   return snap;
@@ -488,6 +495,18 @@ function poolFiltered() {
   const pool = fullPool();
   if (!familyMode()) return pool;
   return pool.filter(i => i.explicit !== true && branchOf(i) !== "comedy");
+}
+
+/* The visible half of the same flag Family Mode has quietly filtered on since
+   corner-case 28 (kanban card t_02c6bb0b): every mainstream podcast app shows
+   an "E" next to explicit content, and 4a never did, even though the
+   publisher's <itunes:explicit> flag was captured all along. Additive only —
+   Family Mode's `i.explicit !== true` filter above is untouched, this just
+   makes the same field visible when Family Mode is off. Strict `=== true`
+   because the field is tri-state (true/false/null) at both the episode and
+   show level; false and null both mean "no badge", not "unknown = flag it". */
+function explicitBadge(isExplicit) {
+  return isExplicit === true ? `<span class="explicit-badge" title="Explicit content" aria-label="Explicit">E</span>` : "";
 }
 
 function fmtDur(min) {
@@ -1369,7 +1388,7 @@ function renderShow(show_id) {
       <div class="page-head">
         <a class="back" href="#/">‹</a>
         <div>
-          <h2>${esc(show.title)}</h2>
+          <h2>${esc(show.title)}${explicitBadge(show.explicit)}</h2>
           <p class="sub">${eps.length} episode${eps.length === 1 ? "" : "s"} in 4a's catalogue</p>
         </div>
       </div>
@@ -1940,7 +1959,7 @@ function epRow(item, idx, ctx, nextIdx) {
   return `<div class="ep-row">
     <span class="q-num ${idx === nextIdx ? "next" : ""}">${idx + 1}</span>
     <div class="info">
-      <div class="t"><a class="ep-title-link" href="#/episode/${esc(encodeURIComponent(item.id))}">${esc(item.title)}</a></div>
+      <div class="t"><a class="ep-title-link" href="#/episode/${esc(encodeURIComponent(item.id))}">${esc(item.title)}</a>${explicitBadge(item.explicit)}</div>
       <div class="s">${showNameLink(item.show)} · ${fmtDur(item.duration_min)}</div>
     </div>
     ${inApp}${starBtn(item.id)}${upNextBtn(item.id)}${external}
@@ -1983,7 +2002,7 @@ function archivedRow(item, idx, ctx) {
   return `<div class="ep-row gone">
     <span class="q-num">${idx + 1}</span>
     <div class="info">
-      <div class="t">${named ? `<a class="ep-title-link" href="#/episode/${esc(encodeURIComponent(item.id))}">${esc(item.title)}</a>` : "Part no longer in the catalogue"}</div>
+      <div class="t">${named ? `<a class="ep-title-link" href="#/episode/${esc(encodeURIComponent(item.id))}">${esc(item.title)}</a>${explicitBadge(item.explicit)}` : "Part no longer in the catalogue"}</div>
       <div class="s">${named
         ? `${showNameLink(item.show)}${item.duration_min ? ` · ${fmtDur(item.duration_min)}` : ""} · not in 4a's catalogue right now`
         : "Saved before 4a kept episode details"}</div>
@@ -2121,7 +2140,7 @@ function renderEpisode(id) {
       <div class="page-head">
         <a class="back" href="#/">‹</a>
         <div>
-          <h2 class="fp-s-title">${esc(item.title)}</h2>
+          <h2 class="fp-s-title">${esc(item.title)}${explicitBadge(item.explicit)}</h2>
           <p class="fp-s-show">${item.show ? showNameLink(item.show) : ""}${item.duration_min ? ` · ${fmtDur(item.duration_min)}` : ""}</p>
         </div>
       </div>
