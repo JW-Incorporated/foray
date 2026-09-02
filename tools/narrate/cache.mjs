@@ -178,6 +178,11 @@ export function cacheKey(spec = {}) {
  * Do not add new fields here. This is a fixed historical shape, not a second
  * general-purpose key function.
  *
+ * CAUTION FOR THE DAY PADDING SYNTHESIS LANDS: at that point this fallback
+ * (and the default-key entries recorded before that point) must stop being
+ * treated as equivalent to a post-synthesis default-padding request — see
+ * the note in `adapter.mjs`'s `createAdapter()` guard.
+ *
  * @param {object} spec  same shape as `cacheKey`
  * @returns {string} 64-char hex
  */

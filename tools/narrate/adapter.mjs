@@ -152,9 +152,19 @@ export function createAdapter(opts = {}) {
      real, billed re-generation) for audio bytes that are IDENTICAL to what is
      already cached — the exact waste `cache.mjs`'s header calls Leak 2 in
      spirit, just pointed the other direction. So this is refused loudly
-     rather than silently allowed to happen. Once padding synthesis lands,
-     delete this guard; the cache-key plumbing below is already correct and
-     needs no further change. */
+     rather than silently allowed to happen.
+
+     WHEN PADDING SYNTHESIS LANDS: this guard must be replaced with real
+     synthesis, not simply deleted, AND every entry recorded before that
+     point must stop being treated as a hit — `cache.mjs`'s `legacyCacheKey`
+     fallback and the current default-key entries alike were all generated
+     with NO padding baked in, so once synthesis exists they no longer
+     describe the same bytes a `padSecPerItem: DEFAULT_PAD_SEC_PER_ITEM`
+     request means (codex review, PR #420 round 5). The straightforward fix
+     at that time: bump a schema/version marker into `KEY_INPUTS` (or the
+     dumped index's `version` field in `NarrationCache.dump`) so pre-synthesis
+     entries stop matching post-synthesis lookups, rather than assuming an
+     unpadded legacy asset already contains the default padding. */
   if (padSecPerItem !== DEFAULT_PAD_SEC_PER_ITEM) {
     throw new Error(
       `createAdapter: padSecPerItem override (${padSecPerItem}) rejected — padding synthesis is not ` +
