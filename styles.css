@@ -328,6 +328,22 @@ button.star {
 }
 button.star.on { color: var(--gold); }
 
+/* ---------- starred shows (follow-lite) ---------- */
+
+button.show-star {
+  display: block;
+  margin: 10px 0 14px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+button.show-star.on { color: var(--gold); border-color: var(--gold); }
+
 #pl-form {
   flex: none;
   display: flex; gap: 8px;
