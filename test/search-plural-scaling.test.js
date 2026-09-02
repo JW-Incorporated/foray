@@ -101,6 +101,9 @@ const PAIRS = [
   ["computer", "computers"],
   ["soldier", "soldiers"],
   ["recipe", "recipes"],
+  /* Silent-e plural, codex review P2: "cases" -> "case" must reach the
+     right singular fragment, not just "cas". */
+  ["case", "cases"],
 ];
 
 for (const [singular, plural] of PAIRS) {
@@ -123,7 +126,8 @@ test("lemmaVariants is a bounded, named transform -- not a general stemmer", () 
   assert.deepEqual([...SE.lemmaVariants("satellite")], ["satellites"]);
   assert.deepEqual([...SE.lemmaVariants("energies")], ["energy"]);
   assert.deepEqual([...SE.lemmaVariants("energy")], ["energies"]);
-  assert.deepEqual([...SE.lemmaVariants("glasses")], ["glass"]);
+  assert.deepEqual([...SE.lemmaVariants("glasses")], ["glass", "glasse"],
+    "silent-e plurals (case: 'glasse' is a harmless fragment) also emit the real singular 'glass' -- codex review P2 fix");
   assert.deepEqual([...SE.lemmaVariants("warriors")], ["warrior"]);
   assert.deepEqual([...SE.lemmaVariants("training")], ["trainings"],
     "training is treated as a bare noun (pluralize-only), never de-verbed to \"train\"");

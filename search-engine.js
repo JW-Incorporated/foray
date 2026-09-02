@@ -431,7 +431,19 @@ function lemmaVariants(tok) {
     out.add(tok.slice(0, -3) + "y");
     despluralized = true;
   } else if (/(?:s|x|z|ch|sh)es$/.test(tok) && tok.length > 4) {
+    /* Ambiguous without a dictionary: "kisses"/"boxes"/"buzzes"/"catches"/
+       "dishes" genuinely take +es (singular strips 2 chars: kiss, box,
+       buzz, catch, dish), but "cases"/"houses"/"mazes"/"sizes" are a
+       silent-e singular ("case", "house", "maze", "size") that only ever
+       added a bare "s" -- stripping 2 chars from those yields a nonsense
+       fragment ("cas", "hous") that fails every concept/corpus lookup and
+       silently drops the systemic fix for this common noun class (codex
+       review P2, t_fe968b47). Emit BOTH candidates rather than guessing:
+       the wrong one is harmless (a fragment string no real concept or
+       corpus text will ever contain), and the right one is now always
+       present. */
     out.add(tok.slice(0, -2));
+    out.add(tok.slice(0, -1));
     despluralized = true;
   } else if (/s$/.test(tok) && !/ss$/.test(tok) && tok.length > 3) {
     out.add(tok.slice(0, -1));
