@@ -1266,6 +1266,14 @@ its reasoning.
   runtime-check language that round 14 correctly superseded, contradicting §4.9's per-act gate as
   the sole timing authority.** §6.2 now points at §4.9's per-act runtime gate instead of restating
   a competing (and later-timed) check at the continuity checkpoint.
+- **Review round 16 fix: §4.9's new per-act gate assumed a progressive-write storage mechanism
+  ("appended to the running order the player can reach") that does not exist.** `data/forays.json`
+  is written once, in full, at whole-Foray publish — there is no per-act append path and no player
+  contract for reading a still-growing Foray. Per line 23's rule, §4.9 now surfaces this explicitly
+  as a schema/player gap needing founder sign-off (a mutable per-Foray working record, or an
+  equivalent streaming contract) rather than assuming it is already buildable, with a schema-free
+  fallback: phase 1 does not attempt progressive playback in practice until that contract exists —
+  Act 1 becomes playable only once the whole Foray publishes.
 - **Review round 9 fix: the deferrable-beat mechanism itself needed a surfaced schema/player gap,
   per the document's own line-23 rule, not silent treatment as already buildable.** `forays.json`
   represents a Foray as one static ordered `items` list today, and the player has no concept of a

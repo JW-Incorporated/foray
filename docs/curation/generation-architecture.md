@@ -518,6 +518,20 @@ let Act 1 (and every act after it) reach the player before anything actually val
   against in practice, since progressive generation means an act can already be playing while the
   next one is written. This is a narrow, fast check (duration only) — it does not require a
   separate founder review step.
+
+  **Storage/player gap surfaced, not resolved here (line 23's own rule).** "Appended to the running
+  order the player can reach" describes a progressive-write mechanism that does not exist today:
+  `data/forays.json` is written once, in full, by the whole-Foray gate below — there is no
+  per-act append path, and the player has no way to read a Foray whose `items` list is still
+  growing. Making Act 1 playable while later acts are written therefore needs either a schema/
+  storage mechanism (e.g. a separate, mutable per-Foray working record the player can poll or
+  subscribe to, promoted to the final `forays.json` entry only at whole-Foray publish) or an
+  equivalent player-side streaming contract, neither of which this document specifies. Per line
+  23's rule, that is a finding for founder sign-off before implementation, not a liberty taken
+  here. Until that contract is designed and approved, phase 1 generation does not attempt
+  progressive playback in practice — Act 1 becomes playable only once the whole Foray is written
+  and published — even though §6 describes progressive playback as the target design once the
+  storage contract exists.
 - **Whole-Foray gate — runs once the last act is written.** Validate against `check-forays.mjs` and
   `check-narration.mjs` (the full §8 quality-bar suite, including the aggregate exploration-budget
   and narration-share checks that only make sense once the whole Foray exists). Write
