@@ -1270,6 +1270,16 @@ its reasoning.
   not specify. §4.3 now surfaces this explicitly as a finding for founder sign-off, with a
   schema-free fallback (an act produces zero deferrable beats until the contract is approved) so
   the spec does not silently claim an unbuildable mechanism as already available.
+- **Review round 10 fix: §8's spine-beat completeness gate contradicted the normal on-schedule
+  deferrable-beat path.** §8 required every spine beat to be "present, or explicitly dropped with
+  a recorded reason," but §4.3/§6.3 (as corrected in rounds 6-9) specify that a deferrable beat is
+  produced and sourced like any other beat and, on the common on-schedule path, is simply never
+  inserted into the running order — "produced, but unplayed," a third state that is neither
+  "present" nor a "drop with a recorded reason." As written, every Foray carrying any deferrable
+  beats would fail its own publishability gate the moment generation stays on schedule. §8 now
+  carves out that a held-back deferrable beat is a distinct, pre-authorized state the gate does not
+  penalize, and only requires a recorded reason if a deferrable beat's production is cancelled
+  outright (§6.3's cost-shortfall path) rather than held back as designed.
 
 ## 2026-09-01 (Fix M4: service worker — versioned manifest for atomic deploy generation, kanban card t_f143c31a)
 

@@ -662,7 +662,13 @@ Concrete gaps. Each is a finding, not a decision.
 
 A generated Foray is publishable only if all of these hold:
 
-- Every spine beat is present, or explicitly dropped with a recorded reason.
+- Every spine beat is present, or explicitly dropped with a recorded reason — except a §4.3
+  deferrable beat that was never inserted into the running order because generation stayed on
+  schedule. That beat was produced and sourced like any other, so it is neither missing nor
+  dropped; it is a third, pre-authorized state ("produced, but unplayed") that this gate does not
+  penalize and does not require a recorded reason for. A deferrable beat only needs a recorded
+  reason if it is dropped outright rather than held back as designed (e.g. its production is
+  cancelled under §6.3's cost-shortfall path).
 - Every factual claim in narration has a recorded source, and a verifier other than the writer
   has checked it.
 - The disclosure is the first item.
