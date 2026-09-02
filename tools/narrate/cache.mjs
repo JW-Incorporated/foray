@@ -20,10 +20,13 @@
      - **a model change** — a different engine reading the same words, and per
        `pricing.json` a different price per character
      - **an output-format change** — 64 kbps and 128 kbps are different files
-     - **a padding change** — the leading/trailing silence is encoded directly
-       into the audio bytes (`docs/narrator-pipeline.md` §1 item 4), so a
-       different `padSecPerItem` is a different file even though the TTS
-       provider is never told about it and it never appears in the request body
+     - **a padding change** — once padding synthesis exists (it does not yet,
+       see `adapter.mjs`'s guard and `docs/narrator-pipeline.md` §1 item 4),
+       the leading/trailing silence will be encoded directly into the audio
+       bytes, so a different `padSecPerItem` will be a different file even
+       though the TTS provider is never told about it and it never appears in
+       the request body. Until then `createAdapter()` refuses any non-default
+       value, so this field is always the default in practice today.
 
    And it is NOT invalidated by anything else, which is the half that saves
    money. Re-running the pipeline, re-ordering beats within a Foray, renaming a

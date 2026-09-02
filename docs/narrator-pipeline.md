@@ -652,14 +652,19 @@ by exactly those five, each of which genuinely produces different audio:
 2. **the voice id**
 3. **the model id**
 4. **the output format** (bitrate / sample rate)
-5. **the padding seconds baked around each item** (`padSecPerItem`) — the
-   ~0.5 s silence from §1 item 4 is encoded directly into the audio bytes,
-   so a padding change is a different file even though the TTS provider is
+5. **the padding seconds baked around each item** (`padSecPerItem`) — once
+   padding synthesis is implemented (§1 item 4 records that it is not, yet),
+   the ~0.5 s silence will be encoded directly into the audio bytes, so a
+   padding change will be a different file even though the TTS provider is
    never told about it and it never reaches the request body. Fixed
-   2026-09-02: this field was previously missing from the key, which meant
-   the still-undecided padding value (`HUMAN-ACTIONS.md` #3) could be set
-   or revised and silently serve stale-padding audio from cache under an
-   unchanged key.
+   2026-09-02: this field was previously missing from the key, which would
+   have meant the still-undecided padding value (`HUMAN-ACTIONS.md` #3)
+   could be set or revised and silently serve stale-padding audio from cache
+   under an unchanged key once synthesis existed. Until synthesis exists,
+   `createAdapter()` refuses any non-default `padSecPerItem` outright (see
+   `adapter.mjs`), so this field is always the default today — the fix
+   above is the key-shape correctness fix for the day synthesis lands, not
+   a claim that padding is already audible.
 
 **And nothing else.** Re-running the pipeline, re-ordering beats, renaming a beat,
 re-titling the Foray, editing a `why` line, moving a script between Forays, or

@@ -152,6 +152,24 @@ test("the cache key changes for each of the five inputs and for nothing else", (
   assert.equal(key, cacheKey({ ...base }));
 });
 
+test("createAdapter refuses a non-default padSecPerItem until padding synthesis exists", () => {
+  /* cacheKey() correctly treats padSecPerItem as a real invalidating input
+     (above), but nothing in this module actually bakes padding into the
+     returned audio yet (docs/narrator-pipeline.md §1 item 4) -- so today, two
+     different padSecPerItem values produce byte-IDENTICAL audio while being
+     billed and cached as if they differed. Until synthesis exists, an
+     override is refused loudly rather than silently causing wasted re-billed
+     generations for no output change. */
+  assert.throws(
+    () => createAdapter({ voiceId: "v1", padSecPerItem: 0.5 }),
+    /padSecPerItem/,
+    "a non-default padSecPerItem must be rejected while padding synthesis is unimplemented"
+  );
+  // The default itself, or omitting the option entirely, must both be fine.
+  assert.doesNotThrow(() => createAdapter({ voiceId: "v1", padSecPerItem: DEFAULT_PAD_SEC_PER_ITEM }));
+  assert.doesNotThrow(() => createAdapter({ voiceId: "v1" }));
+});
+
 test("fields cannot collide by swapping values between them", () => {
   /* A naive key that concatenated values would make voice "a"/model "b"
      identical to voice "ab"/model "". The field names are in the hash to stop it.

@@ -140,13 +140,35 @@ export function createAdapter(opts = {}) {
 
   const dryRun = !apiKey;
 
+  /* Padding is NOT YET baked into any returned audio anywhere in this module —
+     `docs/narrator-pipeline.md` §1 item 4 records that as still unimplemented,
+     with the actual value itself still an open founder decision
+     (`HUMAN-ACTIONS.md` #3). Until that synthesis step exists, a caller
+     passing anything other than the default would force a cache miss (and a
+     real, billed re-generation) for audio bytes that are IDENTICAL to what is
+     already cached — the exact waste `cache.mjs`'s header calls Leak 2 in
+     spirit, just pointed the other direction. So this is refused loudly
+     rather than silently allowed to happen. Once padding synthesis lands,
+     delete this guard; the cache-key plumbing below is already correct and
+     needs no further change. */
+  if (padSecPerItem !== DEFAULT_PAD_SEC_PER_ITEM) {
+    throw new Error(
+      `createAdapter: padSecPerItem override (${padSecPerItem}) rejected — padding synthesis is not ` +
+      `implemented yet (docs/narrator-pipeline.md §1 item 4), so a non-default value would only force ` +
+      `unnecessary cache misses and re-billing for byte-identical audio. Pass no override (or ` +
+      `DEFAULT_PAD_SEC_PER_ITEM) until padding is actually baked into generated assets.`
+    );
+  }
+
   /** The cache spec for a script — exactly the five hashed inputs, no more.
       `padSecPerItem` never reaches `buildRequest()`'s body (the provider is
-      never told about it — the padding is added after the fact, encoding
-      silence around the returned audio), but it changes the bytes we keep
-      just as surely as a voice or model change does, so it belongs in the
-      cache spec even though it is absent from the HTTP request. See
-      `cache.mjs`'s KEY_INPUTS comment. */
+      never told about it — once padding synthesis exists it will be added
+      after the fact, encoding silence around the returned audio), but it
+      will change the bytes we keep just as surely as a voice or model change
+      does, so it belongs in the cache spec even though it is absent from the
+      HTTP request. See `cache.mjs`'s KEY_INPUTS comment. Until padding
+      synthesis lands (see the guard above), this field is always the
+      default. */
   const specFor = (text) => ({ text, voiceId, modelId, outputFormat, padSecPerItem });
 
   /**
