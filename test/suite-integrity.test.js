@@ -265,7 +265,7 @@ const FLOORS = {
      entry renders zero episodes rather than an error, on one specific show,
      and nothing else in the repo would notice. Every test names its mutation;
      see the suite header for the full list of what each test pins. */
-  "test/show-page.test.js": 9,
+  "test/show-page.test.js": 24,
   /* Requirements A3.2/A3.3 — category browse + all-shows index (kanban card
      "Build: category browse — linkify taxonomy chips + all-shows index"):
      the taxonomy-chip link itself, the showsForCategory overlap join against

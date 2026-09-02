@@ -575,3 +575,160 @@ test("catalog-client.json is measurably smaller than catalog.json (the gzip clai
   const clientBytes = fs.statSync(path.join(ROOT, "data", "catalog-client.json")).size;
   assert.ok(clientBytes < fullBytes * 0.8, `catalog-client.json (${clientBytes} B) should be well under catalog.json (${fullBytes} B)`);
 });
+
+/* ==================================================================== */
+/* 7. A3.5 — "SHOWS WE VOUCH FOR" (editorial_note home-screen row)       */
+/* ==================================================================== */
+
+test("showsWeVouchFor only ever returns shows with a non-empty editorial_note", () => {
+  /* MUTATION: drop the `.filter(s => s.editorial_note && ...)` line. The
+     "must exclude the blank show" assertion fails because show-blank appears
+     in the output. */
+  const m = mount();
+  m.state.catalog = {
+    shows: [
+      { show_id: "show-a", editorial_note: "A real note." },
+      { show_id: "show-blank", editorial_note: "" },
+      { show_id: "show-none" },
+    ],
+  };
+  const result = m.ctx.showsWeVouchFor(8, new Date("2026-09-02T00:00:00Z"));
+  assert.ok(result.every((s) => s.editorial_note && s.editorial_note.trim()), "every result must carry a real editorial_note");
+  assert.ok(!result.some((s) => s.show_id === "show-blank"), "must exclude a show with an empty editorial_note");
+  assert.ok(!result.some((s) => s.show_id === "show-none"), "must exclude a show with no editorial_note field at all");
+});
+
+test("showsWeVouchFor caps at the given limit even with more eligible shows available", () => {
+  /* MUTATION: remove the `.slice(0, limit)` call. The length assertion fails
+     because all 20 eligible shows are returned instead of 8. */
+  const m = mount();
+  const shows = Array.from({ length: 20 }, (_, i) => ({ show_id: `show-${i}`, editorial_note: `Note ${i}.` }));
+  m.state.catalog = { shows };
+  const result = m.ctx.showsWeVouchFor(8, new Date("2026-09-02T00:00:00Z"));
+  assert.strictEqual(result.length, 8);
+});
+
+test("showsWeVouchFor returns [] (not a crash) when the catalogue has zero editorially-noted shows", () => {
+  /* MUTATION: drop the `if (!shows.length) return [];` guard. This would
+     otherwise still return [] here by construction, so the mutation that
+     actually kills this test is dropping the whole filter+guard pair such
+     that an unfiltered empty array is passed to seededShuffle and slice --
+     asserting the empty-input contract directly rather than relying on that
+     side effect. */
+  const m = mount();
+  m.state.catalog = { shows: [{ show_id: "no-note-show" }] };
+  const result = m.ctx.showsWeVouchFor(8, new Date("2026-09-02T00:00:00Z"));
+  assert.strictEqual(result.length, 0, "must return an empty array for a catalogue with no editorially-noted shows");
+});
+
+test("showsWeVouchFor is deterministic for a fixed day: same day, same input, same output twice", () => {
+  /* Same calendar day must produce the exact same set and order on repeated
+     calls — a visitor refreshing mid-day, or two renders in the same
+     session, must not see the row reshuffle under them.
+
+     MUTATION: seed with Math.random() instead of dayOfYearSeed(now). Two
+     calls diverge and the deepStrictEqual below fails (non-deterministically,
+     which is itself the failure mode this guards against). */
+  const m = mount();
+  const shows = Array.from({ length: 30 }, (_, i) => ({ show_id: `show-${i}`, editorial_note: `Note ${i}.` }));
+  m.state.catalog = { shows };
+  const now = new Date("2026-09-02T14:00:00Z");
+  const a = m.ctx.showsWeVouchFor(8, now).map((s) => s.show_id);
+  const b = m.ctx.showsWeVouchFor(8, now).map((s) => s.show_id);
+  assert.deepStrictEqual(a, b, "the same calendar day must yield the identical set and order");
+});
+
+test("showsWeVouchFor changes its sample across two different calendar days", () => {
+  /* Proves the "day-rotating" half of the design, not just the "stable
+     within a day" half — otherwise a seed that silently ignored `now`
+     entirely would still pass the determinism test above.
+
+     MUTATION: hardcode dayOfYearSeed to always return the same value
+     regardless of `now`. Both days produce byte-identical output and this
+     assertion (which allows either a different set OR a different order)
+     fails. */
+  const m = mount();
+  const shows = Array.from({ length: 40 }, (_, i) => ({ show_id: `show-${i}`, editorial_note: `Note ${i}.` }));
+  m.state.catalog = { shows };
+  const day1 = m.ctx.showsWeVouchFor(8, new Date("2026-09-02T00:00:00Z")).map((s) => s.show_id);
+  const day2 = m.ctx.showsWeVouchFor(8, new Date("2026-11-17T00:00:00Z")).map((s) => s.show_id);
+  assert.notDeepStrictEqual(day1, day2, "different calendar days should not always produce the identical sampled set/order");
+});
+
+test("showsWeVouchFor's base order is show_id-sorted before shuffling, independent of catalog array order", () => {
+  /* Mirrors similarShows' own tie-breaking discipline: the result must not
+     depend on the order shows happen to sit in state.catalog.shows.
+
+     MUTATION: skip the `.sort((a, b) => a.show_id.localeCompare(b.show_id))`
+     step. Feeding the same shows in two different array orders would then
+     produce two different outputs for the identical day, and this fails. */
+  const m = mount();
+  const shows = Array.from({ length: 10 }, (_, i) => ({ show_id: `show-${i}`, editorial_note: `Note ${i}.` }));
+  const reversed = shows.slice().reverse();
+  const now = new Date("2026-09-02T00:00:00Z");
+  m.state.catalog = { shows };
+  const forward = m.ctx.showsWeVouchFor(8, now).map((s) => s.show_id);
+  m.state.catalog = { shows: reversed };
+  const backward = m.ctx.showsWeVouchFor(8, now).map((s) => s.show_id);
+  assert.deepStrictEqual(forward, backward, "catalog array order must not change the sampled result");
+});
+
+test("vouchForHtml renders the 'Shows we vouch for' heading and a real link for every sampled show", async () => {
+  /* End-to-end through vouchForHtml itself, against real committed data, not
+     just showsWeVouchFor() in isolation — proves the section is actually
+     wired and each link is a real, navigable show-result row (reusing
+     showResultRow, so it carries no play/star controls — a show link, not a
+     playable item, same rule similarShowsSection and the shows-search
+     results already follow).
+
+     MUTATION: delete `${vouchForHtml()}` from renderHome's template. The
+     heading and href assertions both fail. */
+  const m = await mountBooted();
+  const shows = m.ctx.showsWeVouchFor();
+  assert.ok(shows.length > 0, "fixture assumption: the real 220-show catalogue must have editorially-noted shows");
+  m.ctx.renderHome();
+  const html = m.view();
+  assert.ok(html.includes("Shows we vouch for"), "must render the 'Shows we vouch for' heading");
+  for (const s of shows) {
+    assert.ok(html.includes(`href="#/show/${encodeURIComponent(s.show_id)}"`), `must link to ${s.show_id}`);
+  }
+});
+
+test("vouchForHtml renders nothing when the catalogue has zero editorially-noted shows", () => {
+  /* Absence is a real, renderable state — matches similarShowsSection's,
+     moreFromShow's and renderShow's own "no episodes" rule.
+
+     MUTATION: return the section markup unconditionally without the
+     `if (!shows.length) return "";` guard. The "must not include" assertion
+     fails because the heading appears anyway with an empty list under it. */
+  const m = mount();
+  m.state.catalog = { shows: [{ show_id: "no-note-show" }] };
+  const html = m.ctx.vouchForHtml();
+  assert.ok(!html.includes("Shows we vouch for"), "must not render an empty 'Shows we vouch for' section");
+});
+
+test("vouchForHtml's row is separate from the topic cards and forays, per the B1 separation rule", () => {
+  /* Product requirement B1: an editorial surface must be its own
+     distinctly-labeled section, never blended into episode or foray
+     markup. Pins the actual DOM shape: its own <section>, its own <h3>
+     heading text distinct from any card/foray label, using the show-results
+     row markup (not ep-row, not fy-home-row).
+
+     MUTATION: merge the vouch-for shows into the cards4 grid or the fy-home
+     foray list instead of a standalone section. The section/heading
+     assertions fail because "Shows we vouch for" no longer sits inside its
+     own <section class="ep-more fy-vouch">. */
+  const m = mount();
+  m.state.catalog = {
+    shows: [
+      { show_id: "vouch-a", editorial_note: "A real note." },
+      { show_id: "vouch-b", editorial_note: "Another real note." },
+    ],
+  };
+  const html = m.ctx.vouchForHtml();
+  assert.ok(html.includes('<section class="ep-more fy-vouch">'), "must render its own distinctly-classed section");
+  assert.ok(html.includes("<h3>Shows we vouch for</h3>"), "must render its own distinct heading");
+  assert.ok(html.includes('class="show-result"'), "must reuse the show-result row markup, not ep-row or fy-home-row");
+  assert.ok(!html.includes('class="ep-row'), "must not render as episode rows");
+  assert.ok(!html.includes('class="fy-home-row'), "must not render as foray rows");
+});

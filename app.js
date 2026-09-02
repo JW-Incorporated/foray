@@ -1740,6 +1740,69 @@ function showResultRow(show) {
   </a>`;
 }
 
+/* A3.5: "Shows we vouch for" — a show-level editorial row (requirements audit
+   note: 220/220 catalog.json shows already carry `editorial_note`, unused as a
+   browse surface until now — only the four topic-based subject cards
+   (buildCards/cards4) and forays (forayHomeHtml) serve as an editorial front
+   door today, and both are episode/topic-shaped, not show-shaped). Per the
+   requirements doc's B1 separation rule this is its own distinctly-labeled
+   section, never blended into an episode row or a foray row — it reuses
+   showResultRow verbatim (same "names a SHOW, not a playable item" rule
+   similarShowsSection already follows) rather than inventing a second
+   show-card markup.
+
+   Every show qualifies (all 220 carry a non-empty editorial_note), so
+   "curated" here means a deterministic day-rotating sample rather than a
+   hand-maintained allow-list — a fixed set would either need constant
+   upkeep as the catalogue grows or go stale immediately. Seeded by calendar
+   day (UTC `YYYY-MM-DD` of `now`), NOT Math.random: every visitor and every
+   render on the same day sees the same set (no layout jitter from a refresh),
+   and a test can pin the exact output by passing a fixed `now` rather than
+   stubbing global Date. Base order is show_id-sorted before the seeded
+   shuffle runs, so the result is never insertion-order-dependent (same
+   tie-breaking discipline similarShows uses). */
+function dayOfYearSeed(now) {
+  const key = now.toISOString().slice(0, 10); // UTC YYYY-MM-DD
+  let h = 0;
+  for (let i = 0; i < key.length; i++) h = (Math.imul(h, 31) + key.charCodeAt(i)) >>> 0;
+  return h >>> 0;
+}
+
+/* A linear-congruential shuffle (Fisher-Yates driven by an LCG), not
+   Math.random — the whole point of dayOfYearSeed is a result a test can
+   reproduce by passing the same `now`, and Math.random cannot be seeded. */
+function seededShuffle(arr, seed) {
+  const a = arr.slice();
+  let s = seed >>> 0;
+  for (let i = a.length - 1; i > 0; i--) {
+    s = (Math.imul(s, 1103515245) + 12345) >>> 0;
+    const j = s % (i + 1);
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function showsWeVouchFor(limit = 8, now = new Date()) {
+  const shows = (state.catalog?.shows || [])
+    .filter(s => s.editorial_note && s.editorial_note.trim())
+    .slice()
+    .sort((a, b) => a.show_id.localeCompare(b.show_id));
+  if (!shows.length) return [];
+  return seededShuffle(shows, dayOfYearSeed(now)).slice(0, limit);
+}
+
+/* Renders nothing (not an empty section) when there is no editorially-noted
+   show in the catalogue — matches similarShowsSection's and moreFromShow's
+   own absence rule. */
+function vouchForHtml() {
+  const shows = showsWeVouchFor();
+  if (!shows.length) return "";
+  return `<section class="ep-more fy-vouch">
+    <h3>Shows we vouch for</h3>
+    <div class="show-results">${shows.map(showResultRow).join("")}</div>
+  </section>`;
+}
+
 /* ---------- Shows search (Stage 2, docs/show-pages-plan.md) ----------
 
    A separate affordance from #pl-form's topic playlist builder, on purpose
@@ -1787,6 +1850,7 @@ function renderHome() {
       ${jumpBackInHtml(resumeRows)}
       ${forayHomeHtml()}
       <div class="cards4">${state.cardSlots.map(miniCard).join("")}</div>
+      ${vouchForHtml()}
       <div class="search-tabs" role="tablist">
         <button type="button" id="tab-topics" class="search-tab on" role="tab" aria-pressed="true">Playlists</button>
         <button type="button" id="tab-shows" class="search-tab" role="tab" aria-pressed="false">Shows</button>
