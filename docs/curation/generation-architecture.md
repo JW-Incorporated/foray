@@ -158,7 +158,14 @@ A generation request is:
 
 Treat these as budgets the planner must hit, not as outputs to measure afterwards. A Foray that
 overshoots its duration by 40% is a defect, because the duration option is the listener saying how
-much time they have.
+much time they have — overshoot is never justified and the ±40%/±15% figures (§8) always apply to
+it as written.
+
+**Undershoot has exactly one sanctioned exception: §9.3's thin-topic ruling.** A topic too thin for
+real tape at the requested duration is allowed to come in short, provided the Foray records why
+(a `duration_shortened_reason` field on the published item) and says so in an explicit narrated
+beat — never padded with filler to hit the requested duration (§9.3). An undershoot with no
+recorded reason and no narrated explanation is a defect on the same terms as any overshoot.
 
 ---
 
@@ -232,8 +239,12 @@ The spine contains:
   inventing one.
 - **The exploration budget.** Product principle #1 keeps a ~30% floor. In a generated Foray this
   means: at least ~30% of beats should go somewhere the prompt did not literally ask for but a
-  curious listener would be glad to have been taken. Mark these in the spine. They are the first
-  thing a cost-cutting pass will delete and the last thing that should be deleted.
+  curious listener would be glad to have been taken. Mark these in the spine, and within them
+  pre-mark exactly **two per act as "deferrable"** — this pre-marked pair, and only this pair, is
+  the §6.3 time-buffer valve (see §6.3). Every other exploration beat, including the rest of the
+  ~30% floor, is the last thing any cutting pass — cost or time — should delete: it is what the
+  floor exists to protect and what makes a generated Foray something other than a straight answer
+  to the prompt.
 
 **The spine is frozen before playback begins.** See §6.
 
@@ -454,10 +465,15 @@ Then decide what happens when generation falls behind, because it will. Options,
 - Extend the current act with a pre-planned optional beat — needs the spine to carry spares.
 - Degrade the remaining acts to a cheaper, faster pipeline — quality cliff, but no silence.
 
-**Recommendation: pre-planned spare beats.** The spine already knows the exploration beats; marking
-two per act as "deferrable, playable if needed" costs nothing at plan time and turns a stall into a
-digression the listener cannot detect. Whatever is chosen, a silent stall mid-commute is the worst
-outcome and the one to design against.
+**Recommendation: pre-planned spare beats.** The spine already knows the exploration beats;
+§4.3 has each act pre-mark exactly two of them as "deferrable, playable if needed" — this pair, and
+only this pair, is what falling behind is allowed to spend. It costs nothing at plan time and turns
+a stall into a digression the listener cannot detect. The rest of the ~30% exploration floor is not
+touched by this mechanism; §8's "exploration budget survived" check passes as long as the floor
+holds net of the deferred pair, and a generation lead that needs to cut beyond the pre-marked pair
+has run out of the one buffer this document authorizes and must fall back to one of the other two
+options above. Whatever is chosen, a silent stall mid-commute is the worst outcome and the one to
+design against.
 
 ---
 
@@ -498,11 +514,16 @@ A generated Foray is publishable only if all of these hold:
   has checked it.
 - The disclosure is the first item.
 - Copy rules pass: hooks ≤ 16 words, why-lines ≤ 18, no banned phrasing.
-- Runtime is within tolerance of the requested duration. Pick the tolerance; ±15% is a defensible
-  starting point.
-- Narration share is below the ceiling set in §9.3.
+- Runtime is within tolerance of the requested duration: ±15% (a defensible starting point), except
+  an undershoot made under §9.3's thin-topic exception, which is exempt from the tolerance provided
+  it carries a recorded `duration_shortened_reason` and an explicit narrated explanation (§3).
+  Overshoot has no exception at any margin (§3).
+- Narration share may be up to 100% (§9.3) — there is no ceiling. A Medium/Long Foray whose topic is
+  too thin for real tape at the requested duration must take the §9.3 shortening path instead of
+  padding with synthetic filler to raise or preserve narration share.
 - The exploration budget survived — the ~30% of beats marked as exploration in the spine are still
-  there.
+  there, net of at most the two per-act beats pre-marked "deferrable" and actually deferred under
+  §6.3.
 - `check-forays.mjs` and `check-narration.mjs` pass.
 
 ---
@@ -543,12 +564,32 @@ on a topic too thin for real tape (the doc's own example: a 3-hour Foray on the 
 never padded with filler to hit the requested duration. Reshaping-toward-tape and outright refusal
 were both explicitly rejected in favor of this.
 
+**Resolved (2026-09-02):** there is no narration-share ceiling; §8's quality bar and §3's duration
+contract have been corrected to state this directly rather than pointing back here for a number
+that was never set. The undershoot this ruling authorizes is the one sanctioned exception to §3's
+duration-tolerance rule — see §3 and §8.
+
 **9.4 — Are prompts stored, and are they public?** *Owner: Wyatt + legal.*
 Prompts are a strong behavioural signal and a privacy liability. In phase 2 a published Foray
 implicitly exposes what someone asked for. Needed: retention, whether the prompt is shown on the
 published Foray, and whether rejected prompts are kept.
 
 Answer from Wyatt: Each prompt is discarded. the Foray is given a title on creation, which is retained.
+
+**Flagged for founder clarification (2026-09-02) — collides with §9.6.** §9.6's dedup ruling
+requires detecting "when a prompt is very similar to an existing Foray," which needs the original
+prompt text (or a vector derived from it) to compare against; a retained title is not a working
+substitute — titles are short, editorial, and not written to be prompt-similarity-preserving.
+`backend/test/promptNoPersistence.test.ts` (kanban t_825eee4c, merged) already enforces the
+strongest reading of this ruling: zero persistence of the prompt in any form, including derived
+data. Resolving this is a real product/privacy tradeoff, not a wording ambiguity we can default our
+way out of — it decides whether shipped code (the no-persistence test) has to be relaxed. **One
+line needed from Wyatt (+ legal per this section's own owner line):** is a one-way prompt embedding
+(not the raw text, never displayed, unrecoverable to the original wording) an acceptable exception
+to "each prompt is discarded," solely to power §9.6 dedup? If yes, §9.6 is implemented against that
+embedding and `promptNoPersistence.test.ts` is updated to permit exactly that one derived artifact.
+If no, §9.6 must be re-scoped to title-similarity only (a materially weaker dedup, which should be
+said explicitly rather than implied) — do not build the embedding path until this line is answered.
 
 **9.5 — What does a listener do with a bad Foray?**
 No feedback path is specified. This matters more in phase 2, and it is also the raw material for
@@ -559,7 +600,14 @@ same mechanism or a different one.
 existing Foray, or generate a variant? Affects cost, catalogue quality, and whether the catalogue
 fills with near-duplicates.
 
-Answer: when a prompt is very similar to an existing Foray, the user is asked if they want to listen to that Foray. If they decline, a new one is created.
+Answer: when a prompt is very similar to an existing Foray, the user is asked if they want to listen
+to that Foray. If they decline, a new one is created.
+
+**Not fully buildable yet — depends on §9.4.** The similarity comparison this ruling requires needs
+a stored representation of the prompt to compare against (see §9.4's flagged founder
+clarification). Do not implement the similarity check until §9.4 answers whether a one-way
+embedding is permitted; until then, at most a title-similarity check can ship, and it should be
+labeled in code and UI copy as approximate, not as the dedup this ruling describes.
 
 ---
 

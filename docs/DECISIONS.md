@@ -1148,3 +1148,44 @@ its reasoning.
   `backend/test/promptNoPersistence.test.ts` greps the module source for
   persistence calls and proves a full run touches no file on disk, per the
   task's own acceptance bar for "the strongest version of this check."
+
+## 2026-09-02 (spec-correction pass: generation-architecture.md self-contradictions, kanban card t_7f85beab)
+
+- **§8's narration-share "ceiling" pointed at a number §9.3's own ruling
+  deleted.** §9.3 (Joey, 2026-08-31) permits 100% AI narration with no
+  ceiling; §8 has been corrected to say so directly instead of forwarding to
+  §9.3 for a figure that was never set. `check-forays.mjs`/
+  `check-narration.mjs` must not gate on narration share at all.
+- **§9.3's authorized undershoot is now an explicit, narrow exception to
+  §3's duration contract, not an unstated collision with it.** §3 (the
+  40%-overshoot-is-a-defect framing) and §8 (±15% tolerance) now both state
+  that overshoot has no exception, while an undershoot taken under §9.3's
+  thin-topic ruling is exempt from the tolerance *only* when it carries a
+  recorded `duration_shortened_reason` field and an explicit narrated
+  explanation — matching §9.3's own "never padded with filler" language.
+  An unexplained undershoot remains a defect like any overshoot.
+- **§4.3/§6.3/§8's exploration-budget language now describes one consistent
+  policy instead of three conflicting ones.** The ~30% exploration floor
+  (product principle #1) is the thing every cutting pass protects; within
+  it, the spine pre-marks exactly two beats per act as "deferrable" — and
+  only that pre-marked pair is what §6.3's generation-lead buffer is allowed
+  to spend when generation falls behind. §8's "exploration budget survived"
+  check now explicitly nets out at most that pre-marked, actually-deferred
+  pair, and a generation lead needing more than that pair has exhausted the
+  one buffer this document authorizes and must fall back to §6.3's other two
+  options (stall or degrade), not to cutting further into the floor.
+- **§9.4 (prompts discarded) vs §9.6 (dedup by prompt similarity) is a real
+  founder-decision gap, not a wording fix — flagged rather than guessed.**
+  §9.6's similarity check needs a stored representation of the prompt (raw
+  text or a derived vector); §9.4's retained title is not a working proxy.
+  `backend/test/promptNoPersistence.test.ts` (t_825eee4c, merged) already
+  enforces zero persistence of the prompt in any form. Added a flagged
+  founder clarification to §9.4 asking whether a one-way, never-displayed
+  prompt embedding is an acceptable narrow exception to "each prompt is
+  discarded," solely to power §9.6 dedup — and noted in §9.6 that until that
+  question is answered, only an approximate title-similarity check (labeled
+  as such) can ship; the described dedup cannot be implemented yet.
+- No implementation changed in this pass — spec-only correction per the
+  task's scope. Flagged item (§9.4/§9.6) needs one founder + legal line
+  before the dedup stage can be built; everything else in this pass was a
+  concrete fix, not a re-opened question.
