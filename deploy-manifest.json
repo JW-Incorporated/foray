@@ -1,7 +1,7 @@
 {
-  "deploy_id": "d1e2629651b41b20",
+  "deploy_id": "67a42bdc5bce2df4",
   "files": {
-    "app.js": "sha256:3632a416963d49aad8dbb00f887e7858db302760c083d66bb0d17716fcbafc9c",
+    "app.js": "sha256:75532587981b8e454544d30c6d615e812a4dbfaf4f1d42e916f8b682a955bbf3",
     "data/catalog-client.json": "sha256:83a6a83d4633326dbc422c57677a78438a41c69f3055439a0010d2057aec8864",
     "data/dai-classification.json": "sha256:321fb915e4289a098cbd30ec7cc8e8503345a1c6cadb6cda2803ff656162a545",
     "data/discover.json": "sha256:b59b6eb591be1c74c629841a26a568a29cb564fa058bc874aba108f5f62c733f",
