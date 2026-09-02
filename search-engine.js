@@ -406,10 +406,27 @@ function corpusDF(term, ctx) {
    Deliberately excluded, same reasoning as LONG_INFLECTIONS/#248: "ing"
    (verb-sense ambiguity, e.g. train/training) and "ed" (participle noise)
    -- neither is a singular/plural relationship, so neither belongs to a
-   helper scoped to that one gap. */
+   helper scoped to that one gap.
+
+   INVARIANT_S_NOUNS: bare-"s" stripping (e.g. cats -> cat) is a real
+   guess, and it is wrong for a bounded, named set of words that are
+   already singular/mass nouns despite ending in "s" -- stripping them
+   manufactures an unrelated token (news -> new is the review-caught
+   case: a "news" query would then also match anything containing "new",
+   flipping thin/broad status on a fabricated word). Named and bounded
+   like SENSE_LOCKED_STEMS above, not a general dictionary check. */
+const INVARIANT_S_NOUNS = new Set([
+  "news", "series", "species", "means", "outskirts", "measles",
+  "mathematics", "physics", "statistics", "economics", "politics",
+  "athletics", "gymnastics", "electronics", "graphics", "ethics",
+  "aerobics", "logistics", "genetics", "ceramics",
+]);
 function lemmaVariants(tok) {
   const out = new Set();
   let despluralized = false;
+  if (INVARIANT_S_NOUNS.has(tok)) {
+    return out;
+  }
   if (/[^aeiou]ies$/.test(tok) && tok.length > 4) {
     out.add(tok.slice(0, -3) + "y");
     despluralized = true;
@@ -451,13 +468,29 @@ function interpretQuery(q, ctx) {
 
   const groups = contentTokens.map(tok => {
     const aliasesOf = ALIASES[tok] || [];
-    const lookupKeys = new Set([tok, ...aliasesOf]);
+    const exactKeys = new Set([tok, ...aliasesOf]);
     /* See lemmaVariants above -- bridges a query token to a concept that
        only lists the OTHER inflection (singular/plural) of the same
        lemma. Concept-membership lookup only; does not add scoring terms
        or change what literal text this token's own addTerm() calls
-       match. */
-    for (const v of lemmaVariants(tok)) lookupKeys.add(v);
+       match.
+
+       FALLBACK ONLY, never additive to an exact match: the semantic
+       index deliberately assigns different senses to different
+       inflections in places (e.g. "transmission" -> energy-grid,
+       "transmissions" -> motorsport). If the exact typed token already
+       resolves to a concept, lemma variants are held back entirely --
+       merging both senses into one query would silently blend two
+       concepts the taxonomy intentionally kept apart. Only when the
+       exact token has NO concept of its own do we widen the lookup to
+       the other inflection, which is the actual bug this card describes
+       (a real, well-covered concept reachable only from its other
+       spelling). */
+    const hasExactConceptMatch = Object.values(concepts).some(c => c.terms?.some(t => exactKeys.has(t)));
+    const lookupKeys = new Set(exactKeys);
+    if (!hasExactConceptMatch) {
+      for (const v of lemmaVariants(tok)) lookupKeys.add(v);
+    }
 
     /* term -> {w, source}. source "own" = the token's literal text, its
        aliases, or its concept's *own* terms (full scoring weight, eligible
@@ -484,7 +517,13 @@ function interpretQuery(q, ctx) {
        a query maps backward onto a shorter surface form. Adding the
        lemma variant as its own additional literal term (same "own"
        weight as the typed token itself) closes that gap without
-       touching hitText's matcher or LONG_INFLECTIONS at all. */
+       touching hitText's matcher or LONG_INFLECTIONS at all.
+       Unconditional (not gated on hasExactConceptMatch): this is bare
+       literal text matching, not concept-sense merging, so it carries
+       none of the cross-concept-blend risk the lookupKeys gate above
+       guards against -- "transmission" still only adds the literal term
+       "transmissions" here, it does not pull in the motorsport concept's
+       other vocabulary. */
     for (const v of lemmaVariants(tok)) addTerm(v, 1, "own");
 
     const others = contentTokens.filter(o => o !== tok);
