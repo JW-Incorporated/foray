@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import { env } from "../config/env";
 import { defaultBudgetGuard, type BudgetGuard } from "../cost/budgetGuard";
+import { parseLastJsonBlock } from "./parseWithRetry";
 import type { ExternalResearcher, ExternalResearchContext, ExternalResearchResult } from "./ExternalResearcher";
 
 /**
@@ -37,13 +38,16 @@ export class AnthropicExternalResearcher implements ExternalResearcher {
   readonly providerName = "anthropic";
   private readonly client: Anthropic;
 
-  constructor(private readonly budgetGuard: BudgetGuard = defaultBudgetGuard) {
-    if (env.anthropicDryRun) {
+  /** `client` is an optional injection point for tests — see
+   * AnthropicEnricher.ts's constructor doc comment for the full rationale;
+   * the same pattern applies identically here. */
+  constructor(private readonly budgetGuard: BudgetGuard = defaultBudgetGuard, client?: Anthropic) {
+    if (!client && env.anthropicDryRun) {
       throw new Error(
         "AnthropicExternalResearcher constructed without ANTHROPIC_API_KEY set — use createExternalResearcher() so it falls back to StubExternalResearcher instead."
       );
     }
-    this.client = new Anthropic({ apiKey: env.anthropicApiKey });
+    this.client = client ?? new Anthropic({ apiKey: env.anthropicApiKey });
   }
 
   async research(topic: string, ctx: ExternalResearchContext): Promise<ExternalResearchResult> {
@@ -77,26 +81,10 @@ export class AnthropicExternalResearcher implements ExternalResearcher {
     const textBlock = response.content.find((b: Anthropic.ContentBlock): b is Anthropic.TextBlock => b.type === "text");
     if (!textBlock) throw new Error("Anthropic external-research response had no text block");
 
-    return parseWithRetry(ResearchSchema, textBlock.text);
+    return parseLastJsonBlock(ResearchSchema, textBlock.text, "External research output");
   }
 }
 
-function parseWithRetry<T>(schema: z.ZodType<T>, raw: string): T {
-  // The model may wrap the final JSON answer in prose around its web-search
-  // tool calls; take the last fenced or bare JSON object in the text.
-  const fenced = raw.match(/```(?:json)?\s*([\s\S]*?)```/g);
-  const candidate = fenced && fenced.length > 0
-    ? fenced[fenced.length - 1]!.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/i, "")
-    : raw;
-  const cleaned = candidate.trim();
-  try {
-    return schema.parse(JSON.parse(cleaned));
-  } catch (err) {
-    throw new Error(`External research output failed schema validation (no retry available in this build): ${(err as Error).message}`, {
-      cause: err
-    });
-  }
-}
 
 function buildResearchPrompt(topic: string): string {
   return [
