@@ -252,6 +252,17 @@ const FLOORS = {
      either without reading #301 would take the only record of a hazard the
      battery can see only as an unrelated-looking status regression. */
   "test/search-tiering.test.js": 13,
+  /* The full-phrase show-name RESCUE's single-token gate (see the H bug
+     kanban t_0eb5f4e1, filed from the t_711dce13 red-team fleet): a
+     one-word show-name query in the topic box (e.g. "volts", "radiolab")
+     could never reach the rescue because it was gated on
+     `interp.groups.length >= 2`. Floored because the live-catalogue battery
+     alone regressed silently -- the bug shipped on main with every existing
+     suite green. Pins the loosened `>= 1` gate, that `wouldPassGate` still
+     short-circuits the rescue for items that already qualify normally (the
+     n=1 analogue of the existing "crime junkie" invariant), and the
+     11-of-23 one-word shows the bug report measured against real data. */
+  "test/search-showname-rescue.test.js": 7,
   /* Saved playlists must not decay (#276). Floored with ZERO SLACK, like
      data-deletion above and for the same reason: what it guards is a set of
      decisions each one line from its opposite, on a failure that is invisible on
@@ -353,7 +364,7 @@ const FLOORS = {
      half is the literal reproduction of Joey's bug report -- deleting either
      would let the thin-anchor gate regress silently the way the original
      bug shipped silently. Every test names the mutation that kills it. */
-  "test/search-thin-anchor.test.js": 9,
+  "test/search-thin-anchor.test.js": 10,
   "test/search-plural-scaling.test.js": 4,
   /* One generation per page load (#233). Floored because the thing it guards is
      invisible in the product: a mismatched code/data pair renders, it just
