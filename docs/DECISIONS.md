@@ -1172,27 +1172,25 @@ its reasoning.
   looser tolerance sitting alongside §8's ±15% — §3 now says so explicitly
   to close a gap a reviewer correctly flagged as implementation-ambiguous.
 - **§4.3/§6.3/§8's exploration-budget language now describes one consistent
-  policy instead of three conflicting ones, with the per-act deferrable
-  pair pre-generated (not built under live shortfall pressure), never
-  counted toward or against the required floor, reserved *within* the
-  act's existing duration budget, and — per a second reviewer catch —
-  explicitly bounded so the normal (without-buffer) running order still
-  clears §3/§8's ±15% tolerance on its own.** The ~30% floor (product
-  principle #1) is computed only over the beats that were always inside it.
-  On top of it, each act produces two additional "deferrable" beats through
-  the normal pipeline (§4.4-§4.7) — written and sourced ahead of time so
-  they're ready to play instantly, with their runtime capped at the same
-  15% margin the without-buffer act must already sit under — but held back
-  from the act's running order. A **time** shortfall (§6.3) inserts them,
-  already-prepared, filling that reserved runtime to genuinely extend the
-  act while act N+1 finishes; on schedule they are simply never inserted.
-  A **cost** shortfall instead cancels their production before §4.5. A
-  Short Foray (8-10 beats total) is small enough that this bound is
-  binding in practice: §4.4 sizes the deferrable pair against the act's
-  actual budget, and an act too short to fit two within the 15% margin
-  marks fewer, or none. §8's "exploration budget survived" check remains
-  unaffected by any of these outcomes, since the floor's denominator never
-  included the deferrable pair to begin with.
+  policy instead of three conflicting ones, with the deferrable pair
+  pre-generated (not built under live shortfall pressure), never counted
+  toward or against the required floor, reserved *within* the act's
+  existing duration budget, bounded to §3/§8's ±15% margin, and — per a
+  third reviewer catch — given a per-act count (0, 1, or 2) instead of a
+  fixed "exactly two" that a short act's 15% margin cannot always fit.**
+  The ~30% floor (product principle #1) is computed only over the beats
+  that were always inside it. On top of it, each act produces **up to**
+  two additional "deferrable" beats through the normal pipeline
+  (§4.4-§4.7) — two is the target but §4.4 computes, per act, the maximum
+  count whose combined runtime fits the act's 15% margin — written and
+  sourced ahead of time so they're ready to play instantly, but held back
+  from the act's running order. A **time** shortfall (§6.3) inserts
+  whichever deferrable beats that act actually has (which may be fewer
+  than two, or zero); on schedule they are simply never inserted. A
+  **cost** shortfall instead cancels their production before §4.5. §8's
+  "exploration budget survived" check remains unaffected by any of these
+  outcomes, since the floor's denominator never included deferrable beats
+  to begin with.
 - **§3's undershoot-reason requirement no longer prescribes an
   undocumented schema field.** A reviewer correctly flagged
   `duration_shortened_reason` as a new persisted field asserted without
