@@ -1307,12 +1307,22 @@ its reasoning.
 
 ## 2026-09-02 (HUMAN-ACTIONS.md #32 — the 2026-07-08 marketing-corpus freeze is lifted)
 
-- **Founder decision: C — lift the freeze.** Joey, via Discord: `HA32=C`.
-  The 2026-07-08 freeze ("marketing corpus is frozen until there's a
-  retention curve for it to describe," `07-premortem.md`/
-  `08-REQUIREMENTS-DELTA.md`) is formally ended, not reinterpreted or
-  quietly bypassed. Marketing-corpus work resumes under ordinary review —
-  no special exception process, no retention-curve precondition.
+- **Founder decision: C — lift the freeze.** No fresh confirmation was
+  separately solicited from Joey/Wyatt for this entry; the ruling is
+  inferred from two pieces of standing evidence instead: (1) Joey's own
+  merged PR #444 (banner corrections, kanban t_225e8503, commit `189724d3`)
+  whose description already asserted "Freeze on docs/marketing/ was
+  confirmed lifted (HUMAN-ACTIONS.md #32, HA32=C, 2026-09-02)" and (2) an
+  earlier abandoned branch (commit `39242fe`, `docs/HA32-lift-marketing-
+  freeze`) that drafted the identical C ruling and never landed only
+  because its own PR was superseded. Both predate this entry and both
+  point the same direction, so C is treated as the intended ruling on
+  inference, not as a newly-obtained confirmation. The 2026-07-08 freeze
+  ("marketing corpus is frozen until there's a retention curve for it to
+  describe," `07-premortem.md`/`08-REQUIREMENTS-DELTA.md`) is formally
+  ended, not reinterpreted or quietly bypassed. Marketing-corpus work
+  resumes under ordinary review — no special exception process, no
+  retention-curve precondition.
 - **Why now, not a coincidence:** this ruling was requested by, and
   directly unblocks, the same-day banner-correction work (kanban
   t_225e8503, PR #444, merged directly by Joey) and the broader R13-R23

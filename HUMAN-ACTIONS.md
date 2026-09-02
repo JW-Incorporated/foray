@@ -2133,9 +2133,13 @@ paused pending your call.
 **Worked if:** you record A, B, or C (and, for B, the exception rule) as a
 dated entry in `docs/DECISIONS.md`, and this item is marked `DONE`.
 
-**Resolved 2026-09-02: C — lift the freeze.** Joey, via Discord: `HA32=C`.
-Recorded in `docs/DECISIONS.md`'s 2026-09-02 entry. Marketing-corpus work
-resumes under ordinary review.
+**Resolved 2026-09-02: C — lift the freeze.** Inferred from Joey's own
+merged PR #444 (banner corrections, kanban t_225e8503), whose description
+already asserted the freeze was confirmed lifted, and consistent with an
+earlier abandoned-branch draft of the same ruling (commit 39242fe). No
+fresh confirmation was separately solicited for this entry — see
+`docs/DECISIONS.md`'s 2026-09-02 entry for the full provenance. Marketing-
+corpus work resumes under ordinary review.
 
 **Status:** DONE
 
