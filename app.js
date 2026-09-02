@@ -1359,40 +1359,27 @@ function similarShowsSection(show) {
 
    The reverse of foraySourcesHtml's join: that surface starts from a resolved
    Foray and asks "which shows is this made of"; this starts from a show and
-   asks "which forays draw on it". Same three documents
-   (data/forays.json -> data/segments.json -> data/segment-sources.json),
-   walked the other direction, entirely client-side over data already fetched
-   by init() — no new fetch, no player module dependency (the show page must
-   render this even if player/client.js is slow to load or absent).
+   asks "which forays draw on it". The actual segment/source walk happens in
+   player/foray-resolve.js's foraysReferencingShow, bridged through
+   player/client.js — app.js itself is NOT allowed to enumerate the pool of
+   segments/sources beyond the one fetch-assignment line below (see
+   tools/mobile/prepare-webdir.test.js's "nothing in the app browses the
+   segment pool" premise, #327): the mobile bundle ships only the segments
+   its bundled Forays reference, so a surface that walked the pool directly
+   here would render complete on the website and silently short in the app.
 
-   Draft visibility mirrors forayCards()/unlockedForays(): an unpublished
-   Foray is named here only when the visitor unlocked it by id in the URL, for
-   the same reason player/foray-resolve.js's forayVisibility rule exists —
-   this page must not announce unpublished work either. */
+   Read synchronously off window.ForayPlayer, same trade-off forayCards()
+   already makes for the home screen's Foray row: on a cold load where the
+   player module has not evaluated yet, the footer is simply absent until the
+   next render rather than blocking renderShow on an await. */
 function foraysUsingShow(show) {
-  if (!show) return [];
-  const forays = state.forays?.forays;
-  const segments = state.segments?.segments;
-  const sources = state.segmentSources?.sources;
-  if (!Array.isArray(forays) || !Array.isArray(segments) || !Array.isArray(sources)) return [];
-
-  const wanted = new Set([show.title, TITLE_ALIASES[show.title]].filter(Boolean));
-  const segById = new Map(segments.filter(s => s && s.id).map(s => [s.id, s]));
-  const srcById = new Map(sources.filter(s => s && s.id).map(s => [s.id, s]));
-  const unlocked = unlockedForays();
-
-  return forays.filter(f => {
-    if (!f || typeof f !== "object") return false;
-    const visible = f.status === "published" || (typeof f.id === "string" && f.id && unlocked.includes(f.id));
-    if (!visible) return false;
-    const items = Array.isArray(f.items) ? f.items : [];
-    return items.some(it => {
-      if (!it || it.type !== "segment") return false;
-      const seg = segById.get(it.segment_id);
-      if (!seg) return false;
-      const src = srcById.get(seg.item_id);
-      return !!src && wanted.has(src.show);
-    });
+  if (!show || !window.ForayPlayer || typeof window.ForayPlayer.foraysUsingShow !== "function") return [];
+  if (!state.forays) return [];
+  const names = [show.title, TITLE_ALIASES[show.title]].filter(Boolean);
+  return window.ForayPlayer.foraysUsingShow(state.forays, names, {
+    segmentsDoc: state.segments,
+    sourcesDoc: state.segmentSources,
+    unlocked: unlockedForays(),
   });
 }
 

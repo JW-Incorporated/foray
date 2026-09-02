@@ -774,6 +774,34 @@ function seedForaysFixture(m) {
       },
     ],
   };
+
+  /* renderShow's foraysUsingShow() reads window.ForayPlayer.foraysUsingShow
+     rather than walking state.segments/state.segmentSources itself (app.js is
+     not allowed to enumerate the segment pool directly — see
+     tools/mobile/prepare-webdir.test.js's "nothing in the app browses the
+     segment pool" premise, #327). This stub is a faithful, minimal
+     re-implementation of player/foray-resolve.js's foraysReferencingShow, so
+     these tests exercise the same contract app.js actually calls through
+     player/client.js's bridge without pulling in the real ES module (app.js's
+     own harness runs it as a classic script — see this file's header). */
+  m.ctx.window.ForayPlayer = {
+    foraysUsingShow(foraysDoc, showNames, { segmentsDoc, sourcesDoc, unlocked = [] } = {}) {
+      const wanted = new Set((Array.isArray(showNames) ? showNames : [showNames]).filter(Boolean));
+      const segById = new Map((segmentsDoc?.segments || []).map((s) => [s.id, s]));
+      const srcById = new Map((sourcesDoc?.sources || []).map((s) => [s.id, s]));
+      return (foraysDoc?.forays || []).filter((f) => {
+        const visible = f.status === "published" || unlocked.includes(f.id);
+        if (!visible) return false;
+        return (f.items || []).some((it) => {
+          if (it.type !== "segment") return false;
+          const seg = segById.get(it.segment_id);
+          if (!seg) return false;
+          const src = srcById.get(seg.item_id);
+          return !!src && wanted.has(src.show);
+        });
+      });
+    },
+  };
 }
 
 test("a show used by a published Foray gets a separate, clearly-labeled forays footer", () => {
