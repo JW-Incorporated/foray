@@ -108,6 +108,10 @@ const PAIRS = [
      round 5: "bias" must still reach the "biases" concept (decision-
      making) even though "bias" itself must never be despluralized. */
   ["bias", "biases"],
+  /* Silent-ie plural, codex review round 6: the "ies" branch's naive
+     y-strip mangled "movies" to "movy", missing the real singular
+     "movie" entirely. */
+  ["movie", "movies"],
 ];
 
 for (const [singular, plural] of PAIRS) {
@@ -128,7 +132,8 @@ test("lemmaVariants is a bounded, named transform -- not a general stemmer", () 
      not a singular/plural relationship). */
   assert.deepEqual([...SE.lemmaVariants("satellites")], ["satellite"]);
   assert.deepEqual([...SE.lemmaVariants("satellite")], ["satellites"]);
-  assert.deepEqual([...SE.lemmaVariants("energies")], ["energy"]);
+  assert.deepEqual([...SE.lemmaVariants("energies")], ["energy", "energie"],
+    "y<->ies plurals (codex review round 6) also emit the bare-s-strip fragment ('energie' is harmless) so a silent-ie singular like 'movie'/'cookie' isn't missed by the same branch");
   assert.deepEqual([...SE.lemmaVariants("energy")], ["energies"]);
   assert.deepEqual([...SE.lemmaVariants("glasses")], ["glass", "glasse"],
     "silent-e plurals (case: 'glasse' is a harmless fragment) also emit the real singular 'glass' -- codex review P2 fix");

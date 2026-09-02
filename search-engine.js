@@ -451,7 +451,18 @@ function lemmaVariants(tok) {
   const invariant = INVARIANT_S_NOUNS.has(tok);
   if (!invariant) {
     if (/[^aeiou]ies$/.test(tok) && tok.length > 4) {
+      /* Same ambiguity as the "es" branch below, one letter over: real
+         y<->ies plurals (city -> cities, gladiator query set: entry ->
+         entries) genuinely strip to "...y", but a singular that already
+         ends in silent "ie" (movie, cookie, zombie) only ever added a
+         bare "s" -- movies/cookies/zombies are NOT y-pluralized, so
+         stripping "ies"->"y" mangles them to "movy"/"cooky"/"zomby"
+         (codex review round 6, direct repro). Emit both candidates, same
+         "wrong one is harmless" reasoning as the es-branch fix: strip
+         "ies"->"y" for the real y-plural case, and separately strip only
+         the bare "s" for the silent-ie case (movies -> movie). */
       out.add(tok.slice(0, -3) + "y");
+      out.add(tok.slice(0, -1));
       despluralized = true;
     } else if (/(?:s|x|z|ch|sh)es$/.test(tok) && tok.length > 4) {
       /* Ambiguous without a dictionary: "kisses"/"boxes"/"buzzes"/"catches"/
