@@ -1321,3 +1321,49 @@ its reasoning.
   `HUMAN-ACTIONS.md` #34. The actual App Store Connect submission field can
   only be typed in by a human with dashboard access; tracked as
   `HUMAN-ACTIONS.md` #34, not done by this entry.
+
+## 2026-09-02 (show search reaches the full breadth catalogue, kanban card t_8d1a6a58)
+
+- **Founder answer (Joey, A3.1/Q3): "yes, the user should never notice any
+  limitations based on our own limited curation or transcriptions. We need
+  to meet table stakes, then the additional features are what
+  differentiate."** Show search (`SearchEngine.searchShows`) was previously
+  scoped only to the 220-show curated `catalog-client.json`. The ~10k-show
+  breadth catalogue (`data/catalog-breadth.json`) exists server-side but
+  `docs/CATALOG-PIPELINE.md` §5 deliberately never ships it to the client.
+- **Decision: a new backend endpoint, not a client bundle.** Added
+  `GET /api/shows/search?q=&limit=` (a second function in the `api/`
+  directory `api/shows/[show_id]/episodes.ts`, kanban t_567b570f, already
+  opened for Vercel serverless — no new infra decision here, this reuses
+  that surface) backed by `backend/src/catalog/breadthCatalog.ts` (merges
+  curated `data/catalog.json` + breadth `data/catalog-breadth.json`,
+  deduping `in_curated` breadth rows against their curated counterpart) and
+  `backend/src/catalog/searchBreadthShows.ts` (same exact/prefix/substring
+  ranking rule as the client's `SearchEngine.searchShows`, reimplemented
+  server-side — no shared-module boundary exists between the classic
+  browser script `search-engine.js` and a TS backend module without adding
+  a build step neither side has today). `CATALOG-PIPELINE.md` §5's "client
+  isolation" rule still holds: only this backend module reads the breadth
+  file directly; the client never fetches it, only a thin per-query
+  result list.
+- **Client wiring: curated-first, breadth-appended.** `renderShowSearchResults`
+  in `app.js` still runs `SearchEngine.searchShows` against the local
+  curated catalogue first (instant, no network) and paints immediately,
+  then queries `/api/shows/search` in parallel and appends any non-
+  duplicate breadth-tier results once they land. A failed/slow fetch
+  degrades silently to the curated-only results — never a broken or blank
+  state, matching this repo's existing "absence is a real state" rule.
+- **Breadth-tier show pages degrade honestly pending Stage 3b.** A show
+  found only in the breadth tier has zero `discover.json` episodes by
+  construction (that file only ever holds the curated 220's hand-picked
+  episodes). `renderShow()` now distinguishes that from a curated show that
+  genuinely has none: a breadth-tier show with no episodes shows "Fetching
+  this show's episodes… check back soon" rather than the curated tier's
+  "No episodes from this show are in 4a's catalogue right now" copy, which
+  would incorrectly imply the show is empty. This is intentionally the
+  degrade path, not the fix — Stage 3b (kanban t_567b570f, per-show RSS
+  ingestion) is the card that wires a real per-show episode list into this
+  same slot; as of this entry that card's PR (#429) is implemented and
+  under human review, not yet merged. Once it lands, `renderShow()`'s
+  breadth-tier branch should be revisited as a small fast-follow to call
+  its episode endpoint instead of showing the fetching message indefinitely.

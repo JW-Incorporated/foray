@@ -994,6 +994,13 @@ const BACKEND_FLOORS = {
   "test/smoothSeam.test.ts": 8,
   "test/stitchAct.test.ts": 9,
   "test/stitchForay.test.ts": 4,
+  /* A3.1/Q3 (kanban t_8d1a6a58): backend/src/catalog/breadthCatalog.ts +
+     searchBreadthShows.ts — show search over the FULL breadth catalogue
+     (curated + ~10k breadth tier), not just the 220 curated shows the
+     client ships. Fixture-based ranking tests plus real-catalogue
+     integration checks (merge/dedupe correctness against the committed
+     data/catalog.json + data/catalog-breadth.json). */
+  "test/breadthCatalog.test.ts": 11,
   /* §4.9 end to end (kanban card t_0b1729d6): finalizeForay() validates
      a candidate against the real check-forays.mjs/check-narration.mjs
      and only returns a writable record on a clean pass; stageTiming.ts

@@ -59,6 +59,7 @@ const state = {
   segments: null,           // data/segments.json
   segmentSources: null,     // data/segment-sources.json
   catalog: null,            // data/catalog-client.json — show-level records, #/show/:id (Stage 1)
+  breadthShowCache: {},     // show_id -> minimal show record from /api/shows/search (A3.1/Q3), see showById
   foray: null,              // the resolved Foray currently on screen
   forayResume: null,        // its stored resume point, or null — see paintForay
   forayPlaying: null,       // id of the Foray the player is inside, or null
@@ -1228,8 +1229,14 @@ const TITLE_ALIASES = {
   "Lingthusiasm - A podcast that's enthusiastic about linguistics": "Lingthusiasm",
 };
 
+/* A3.1/Q3: the curated 220-show catalogue first, then the breadth-search
+   cache (populated by renderShow when a show_id isn't in the curated set —
+   see there) so a show page for a breadth-tier show found via Shows search
+   still resolves once its record has been fetched once this session. */
 function showById(id) {
-  return (state.catalog?.shows || []).find(s => s.show_id === id) || null;
+  return (state.catalog?.shows || []).find(s => s.show_id === id)
+    || state.breadthShowCache[id]
+    || null;
 }
 
 /* Every discover-pool episode belonging to a show, joined by show_id first and
@@ -1426,6 +1433,20 @@ function renderShow(show_id) {
   const eps = episodesForShow(show);
   const ctx = "show-" + show.show_id;
   const chips = (show.taxonomy_node_ids || []).map(taxonomyChip).join("");
+  /* A3.1/Q3: a breadth-tier show (found via the full-catalogue search
+     endpoint, never curated) has zero discover-pool episodes by construction
+     — discover.json only ever holds the curated 220's hand-picked episodes.
+     That is not the same as "this show genuinely has none" (the curated-tier
+     empty state below), so it gets its own honest, non-alarming copy instead
+     of implying the show is empty. Stage 3b (kanban t_567b570f) is the card
+     that wires a real per-show episode list in here; until it lands (or once
+     it has, for a fast-follow to this card) this stays the safe degrade. */
+  const isBreadthTier = show.tier === "breadth";
+  const episodesSection = eps.length
+    ? eps.map((item, i) => epRow(item, i, ctx, -1)).join("")
+    : isBreadthTier
+      ? `<p class="note">Fetching this show's episodes — 4a is adding full episode lists for shows outside its curated picks. Check back soon.</p>`
+      : `<p class="note">No episodes from this show are in 4a's catalogue right now.</p>`;
 
   $("#view").innerHTML = `
     <div class="page">
@@ -1433,16 +1454,14 @@ function renderShow(show_id) {
         <a class="back" href="#/">‹</a>
         <div>
           <h2>${esc(show.title)}${explicitBadge(show.explicit)}</h2>
-          <p class="sub">${eps.length} episode${eps.length === 1 ? "" : "s"} in 4a's catalogue</p>
+          <p class="sub">${isBreadthTier && !eps.length ? "4a's wider catalogue" : `${eps.length} episode${eps.length === 1 ? "" : "s"} in 4a's catalogue`}</p>
         </div>
       </div>
       ${show.artwork_url ? `<img class="show-art" src="${esc(safeUrl(show.artwork_url))}" alt="">` : ""}
       ${showStarBtn(show.show_id)}
       ${show.editorial_note ? `<p class="note">${esc(show.editorial_note)}</p>` : ""}
       ${chips ? `<div class="fy-chips">${chips}</div>` : ""}
-      ${eps.length
-        ? eps.map((item, i) => epRow(item, i, ctx, -1)).join("")
-        : `<p class="note">No episodes from this show are in 4a's catalogue right now.</p>`}
+      ${episodesSection}
       ${similarShowsSection(show)}
       ${showForaysHtml(show)}
     </div>`;
@@ -1873,21 +1892,56 @@ function vouchForHtml() {
    (plan §2, kanban card scope): the two ask different questions ("what
    should I listen to" vs "does this show exist here") and are never merged
    into one result list or one search mode. Toggled by two tab buttons that
-   show/hide their own form+results block; only one is visible at a time. */
+   show/hide their own form+results block; only one is visible at a time.
+
+   A3.1/Q3: this must reach 4a's FULL breadth catalogue, not just the 220
+   curated shows shipped in data/catalog-client.json — "the user should
+   never notice any limitations based on our own limited curation." The
+   curated set is searched locally first (instant, no network) as the fast
+   first pass; the full-breadth backend endpoint (kanban t_8d1a6a58,
+   backend/src/catalog/searchBreadthShows.ts) is queried in parallel and its
+   results are appended once they land, deduped against what's already
+   showing. A network failure degrades to the curated-only results silently
+   — never a broken/blank state (matches showsForCategory's and renderShow's
+   own "absence is a real state, not an error" rule). */
+let showSearchToken = 0; // guards a slow in-flight fetch from clobbering a newer query's results
+
 function renderShowSearchResults(query) {
+  const myToken = ++showSearchToken;
   const note = $("#sh-note");
   const results = $("#sh-results");
-  const shows = SearchEngine.searchShows(query, state.catalog?.shows || []);
-  if (!shows.length) {
-    results.innerHTML = "";
-    results.hidden = true;
-    note.textContent = `No shows match "${query}" in 4a's catalogue.`;
-    note.hidden = false;
-    return;
-  }
-  note.hidden = true;
-  results.innerHTML = shows.map(showResultRow).join("");
-  results.hidden = false;
+  const localShows = SearchEngine.searchShows(query, state.catalog?.shows || []);
+
+  const paint = (shows) => {
+    if (myToken !== showSearchToken) return; // a newer query already superseded this one
+    if (!shows.length) {
+      results.innerHTML = "";
+      results.hidden = true;
+      note.textContent = `No shows match "${query}" in 4a's catalogue.`;
+      note.hidden = false;
+      return;
+    }
+    note.hidden = true;
+    results.innerHTML = shows.map(showResultRow).join("");
+    results.hidden = false;
+  };
+
+  paint(localShows);
+
+  fetchApiJson(`api/shows/search?q=${encodeURIComponent(query)}&limit=25`).then((data) => {
+    if (myToken !== showSearchToken) return; // superseded — drop this response
+    const breadthShows = data?.shows || [];
+    if (!breadthShows.length) return; // degrade silently: local-only results already painted
+    const seen = new Set(localShows.map((s) => s.show_id));
+    const additions = [];
+    for (const s of breadthShows) {
+      if (seen.has(s.show_id)) continue;
+      seen.add(s.show_id);
+      state.breadthShowCache[s.show_id] = s; // so showById can resolve it once a result is tapped
+      additions.push(s);
+    }
+    if (additions.length) paint(localShows.concat(additions));
+  }); // fetchApiJson already swallows network/parse errors and resolves null — no .catch needed
 }
 
 function setSearchTab(mode) {
@@ -4530,6 +4584,26 @@ function route() {
 async function fetchJson(path) {
   try {
     const res = await fetch(pinnedUrl(path), { cache: "no-cache" });
+    return res.ok ? await res.json() : null;
+  } catch (_) { return null; }
+}
+
+/* A3.1/Q3: a plain, unpinned fetch for /api/* backend endpoints — deliberately
+   a separate helper from fetchJson, not a reuse of it. fetchJson pins every
+   call to the deploy generation (pinnedUrl) because data/*.json is a static,
+   versioned build artifact; /api/* is a live serverless function with no
+   deploy-generation concept to pin against. Keeping this a distinct function
+   (rather than making fetchJson conditionally skip pinning) also keeps
+   tools/mobile/prepare-webdir.mjs's runtimeDataFiles() derivation correct —
+   that scanner matches every literal fetchJson call against a data/*.json
+   path to build the native bundle's data-file manifest, and pointing that
+   same call at api/shows/search would incorrectly need to be either bundled
+   as data or special-cased out. Same swallow-errors-to-null contract as
+   fetchJson, so callers don't need their own try/catch for a down or
+   unreachable endpoint. */
+async function fetchApiJson(path) {
+  try {
+    const res = await fetch(path, { cache: "no-cache" });
     return res.ok ? await res.json() : null;
   } catch (_) { return null; }
 }
