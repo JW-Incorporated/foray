@@ -1266,6 +1266,17 @@ its reasoning.
   runtime-check language that round 14 correctly superseded, contradicting §4.9's per-act gate as
   the sole timing authority.** §6.2 now points at §4.9's per-act runtime gate instead of restating
   a competing (and later-timed) check at the continuity checkpoint.
+- **Review round 18 fix: two broken cross-references and one overclaimed \"Resolved\" label.**
+  (1) §1.2's fallback path pointed a reader at "§9.4 below" — inside this document, that section
+  is the prompt-retention ruling, not a TTS locked-screen test. Both occurrences (the pronunciation
+  table row and the fallback-trigger paragraph) now correctly point to `on-device-tts.md` §9.4,
+  matching the reference the rest of §1.2 already uses. (2) §9.6 was labelled "Resolved" even
+  though the same section's own round-11 fix explicitly leaves the similarity model/metric/
+  threshold undecided — an implementer skimming for "Resolved" items could build an underspecified
+  similarity check. §9.6's comparison-basis sub-answer is now labelled "Partially resolved," and
+  the founder-clarification paragraph states explicitly that §9.6 as a whole remains Open under the
+  document's own "do not build past these" rule until the decision rule is given, while noting the
+  comparison-basis work itself does not need to wait.
 - **Review round 17 fix: §4.8's "coverage is checked before flow" rule still used the old
   two-state (present / dropped-with-reason) framing, contradicting the three-state deferrable-beat
   rule §8's publishability gate already uses.** As written, every on-schedule act carrying a
