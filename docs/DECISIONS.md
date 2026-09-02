@@ -1262,6 +1262,14 @@ its reasoning.
   retained-field set (`title`, `summary`, `topic`, slot `title`s) as the comparison basis, with a
   richer comparison (description/transcript text) still correctly deferred to a future
   founder-approved schema addition.
+- **Review round 9 fix: the deferrable-beat mechanism itself needed a surfaced schema/player gap,
+  per the document's own line-23 rule, not silent treatment as already buildable.** `forays.json`
+  represents a Foray as one static ordered `items` list today, and the player has no concept of a
+  held-back item spliced in mid-playback — §4.3/§6.3's "deferrable, inserted on a time shortfall"
+  design needs either a schema addition or an equivalent player mechanism that this document does
+  not specify. §4.3 now surfaces this explicitly as a finding for founder sign-off, with a
+  schema-free fallback (an act produces zero deferrable beats until the contract is approved) so
+  the spec does not silently claim an unbuildable mechanism as already available.
 
 ## 2026-09-01 (Fix M4: service worker — versioned manifest for atomic deploy generation, kanban card t_f143c31a)
 

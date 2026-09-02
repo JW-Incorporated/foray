@@ -359,6 +359,18 @@ The spine contains:
   computed only over the beats that were always inside it, so a deferrable beat's insertion,
   non-insertion, or cancellation cannot move that number in either direction.
 
+  **Storage/player gap surfaced, not resolved here (line 23's own rule).** `forays.json` today
+  represents a Foray as one static ordered `items` list, and the player has no concept of an
+  unplayed, held-back item that can be spliced into a still-playing act mid-session. Marking beats
+  "deferrable" and inserting them live under §6.3 is therefore not buildable against the schema and
+  player as they exist today — it needs either a schema addition (e.g. a `deferred: true` item flag
+  the player knows to skip unless inserted) or an equivalent player-side mechanism, neither of
+  which this document specifies. Per line 23's rule, that is a finding to surface for founder
+  sign-off before implementation, not a liberty this document takes for itself. Until that
+  schema/player contract is designed and approved, an act that would otherwise be marked with
+  deferrable beats produces zero of them (falls back to the required ~30% floor beats only) rather
+  than an unbuildable design being treated as already specified.
+
 **The spine is frozen before playback begins.** See §6.
 
 ### 4.4 — Deepen each act
