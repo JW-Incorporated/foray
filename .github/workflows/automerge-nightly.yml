@@ -77,12 +77,31 @@
 #    reached by the 6-hourly sweep in `pr-hygiene.yml`, which disarms every open
 #    PR whose decision is NOT ARMED. That is what makes the kill switch a kill
 #    switch rather than a "stop arming new ones" switch.
+#
+# 5. THE SWEEP IS NOW SYMMETRIC TOO (t_a25ea475, 2026-09-02). Point 4 fixed
+#    disarm; arm had the identical hole in the other direction. A PR can become
+#    "the policy would approve it" — freeze cleared, `hold` removed, retargeted
+#    to `main` — while `autoMergeEnabled` is still false, and until this change
+#    nothing ever re-armed it: the arming half of `pr-triage.mjs` only ever ran
+#    when a PR was ALREADY armed. `planMergeability` now also arms a settled
+#    MERGEABLE PR the policy approves, and `pr-hygiene.yml`'s executor treats
+#    GitHub's "Pull request is in clean status" arming rejection (a documented
+#    response when a PR is already mergeable with no further checks pending) as
+#    a signal to merge directly instead of leaving a red, unretried step.
 
 name: automerge-nightly
 
 on:
   pull_request:
-    types: [opened, reopened, synchronize, labeled, unlabeled, ready_for_review]
+    # `edited` is here (t_a25ea475) so a base-branch retarget re-decides. A PR
+    # opened against the wrong base and later pointed at `main` used to fire no
+    # event this workflow listens for — a real re-decision (base now `main`,
+    # checks already green) simply never happened, and the PR sat CLEAN and
+    # unarmed forever. Renaming or retitling a PR also fires `edited` and is a
+    # harmless no-op re-decision: automergeDecision() does not look at the
+    # title, so it reaches the same answer and (dis)arms nothing that was not
+    # already (dis)armed.
+    types: [opened, reopened, synchronize, labeled, unlabeled, ready_for_review, edited]
 
 permissions:
   contents: write
