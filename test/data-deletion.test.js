@@ -427,11 +427,16 @@ test("the shipped source names exactly the 21 cp_ key families the audit found",
      its own IndexedDB database (`player/event-log.js`) — it is not resumable
      per-user state, so it was never the kind of key this enumeration exists to
      protect, and it no longer names a `cp_` string anywhere in the shipped
-     source. See `docs/legal/privacy-policy.md` §1's note on the queue. */
+     source. See `docs/legal/privacy-policy.md` §1's note on the queue.
+
+     21 -> 22 on 2026-09-02: `cp_starred_shows`, the starred-shows list
+     (Q2's follow-lite answer, kanban card t_7cc5eaa5) — a per-device map of
+     starred show ids, same storage pattern as every other resumable-state
+     key here. */
   const families = [...keyFamiliesInSource().keys()].sort();
   assert.strictEqual(
-    families.length, 21,
-    `expected 21 cp_ key families, found ${families.length}:\n${families.join("\n")}`
+    families.length, 22,
+    `expected 22 cp_ key families, found ${families.length}:\n${families.join("\n")}`
   );
   assert.ok(families.includes("cp_foray:"), "the patterned Foray resume key must be found as a family");
   assert.ok(families.includes("cp_pos:"), "the patterned episode-position key must be found as a family");

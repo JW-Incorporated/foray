@@ -425,6 +425,13 @@ function snapshot(id, src) {
     audio_bytes: src.audio_bytes ?? null,
     duration_sec: src.duration_sec ?? null,
     dai_suspected: src.dai_suspected ?? false,
+    // Explicit-content flag (kanban card t_02c6bb0b): already ingested at the
+    // source (tools/refresh/merge.mjs), but this whitelist projection dropped
+    // it on the floor before the badge existed to read it — every pool item
+    // (the vast majority of what epRow/renderEpisode actually render) would
+    // otherwise silently lose the flag here, one snapshot() call after the
+    // caller thought it kept it.
+    explicit: src.explicit ?? null,
   };
   state.itemIndex[id] = snap;
   return snap;
@@ -491,6 +498,18 @@ function poolFiltered() {
   return pool.filter(i => i.explicit !== true && branchOf(i) !== "comedy");
 }
 
+/* The visible half of the same flag Family Mode has quietly filtered on since
+   corner-case 28 (kanban card t_02c6bb0b): every mainstream podcast app shows
+   an "E" next to explicit content, and 4a never did, even though the
+   publisher's <itunes:explicit> flag was captured all along. Additive only —
+   Family Mode's `i.explicit !== true` filter above is untouched, this just
+   makes the same field visible when Family Mode is off. Strict `=== true`
+   because the field is tri-state (true/false/null) at both the episode and
+   show level; false and null both mean "no badge", not "unknown = flag it". */
+function explicitBadge(isExplicit) {
+  return isExplicit === true ? `<span class="explicit-badge" title="Explicit content" aria-label="Explicit">E</span>` : "";
+}
+
 function fmtDur(min) {
   if (!min) return "";
   return min >= 60 ? `${Math.floor(min / 60)}h ${min % 60}m` : `${min} min`;
@@ -555,6 +574,98 @@ function upNextBtn(id) {
   const on = isQueued(id);
   return `<button class="up-next ${on ? "on" : ""}" data-upnext="${esc(id)}"
     aria-label="${on ? "In Up Next" : "Add to Up Next"}">${on ? "✓ Up Next" : "+ Up Next"}</button>`;
+}
+
+/* ---------- starred shows (follow-lite) ----------
+
+   Requirement A2.4 / Joey's Q2 answer: "yes, add starred shows, and a
+   section for all of your starred shows. It is not the home page but is
+   somewhat easily accessible." Deliberately NOT subscribe semantics — no
+   notifications, no auto-download, no algorithmic surfacing — just a
+   lightweight marker, mirroring the existing episode star (`cp_saved`)
+   pattern exactly, keyed on show_id instead of episode id. Same "state
+   observed, never declared" principle: starring a show changes nothing
+   about what the app recommends or fetches. */
+function starredShowsMap() { return lsGet("cp_starred_shows", {}); }
+function isShowStarred(id) { return id in starredShowsMap(); }
+
+function toggleShowStar(id) {
+  const starred = starredShowsMap();
+  if (starred[id]) {
+    delete starred[id];
+    logEvent("show_unstarred", { show_id: id });
+  } else {
+    const show = showById(id);
+    if (!show) return;
+    starred[id] = {
+      show_id: show.show_id,
+      title: show.title,
+      artwork_url: show.artwork_url || null,
+      starred_at: new Date().toISOString(),
+    };
+    logEvent("show_starred", { show_id: id });
+  }
+  lsSet("cp_starred_shows", starred);
+  document.querySelectorAll(`[data-show-star="${CSS.escape(id)}"]`).forEach(b => {
+    b.textContent = isShowStarred(id) ? "★ Starred" : "☆ Star this show";
+    b.classList.toggle("on", isShowStarred(id));
+  });
+}
+
+/* Text label, not a bare glyph like starBtn -- this button sits alone in a
+   page header rather than beside a play control in a dense row, so it needs
+   to read on its own. */
+function showStarBtn(show_id) {
+  const on = isShowStarred(show_id);
+  return `<button class="show-star ${on ? "on" : ""}" data-show-star="${esc(show_id)}" aria-label="${on ? "Unstar show" : "Star show"}">${on ? "★ Starred" : "☆ Star this show"}</button>`;
+}
+
+function bindShowStars(scope) {
+  scope.querySelectorAll("[data-show-star]").forEach(btn => {
+    if (btn._bound) return;
+    btn._bound = true;
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      toggleShowStar(btn.dataset.showStar);
+    });
+  });
+}
+
+/* ---------- Starred Shows page (#/starred-shows) ----------
+
+   Reachable from the drawer, deliberately NOT on the home screen (Joey's
+   framing: "somewhat easily accessible" but distinct from home). Renders
+   exactly what cp_starred_shows holds -- no fetch, no ranking, no
+   algorithmic surfacing. An empty state is a real, renderable state, same
+   convention as every other page in the app. Reuses showResultRow's visual
+   language (artwork + title, no play/star/duration controls -- a show,
+   not a playable item) rather than inventing a second show-card shape. */
+function starredShowRow(entry) {
+  return `<a class="show-result" href="#/show/${encodeURIComponent(entry.show_id)}">
+    ${entry.artwork_url ? `<img class="show-result-art" src="${esc(safeUrl(entry.artwork_url))}" alt="">` : `<span class="show-result-art show-result-art-blank"></span>`}
+    <span class="show-result-title">${esc(entry.title)}</span>
+  </a>`;
+}
+
+function renderStarredShows() {
+  document.body.className = "view-page";
+  const starred = Object.values(starredShowsMap())
+    .sort((a, b) => (b.starred_at || "").localeCompare(a.starred_at || ""));
+
+  $("#view").innerHTML = `
+    <div class="page">
+      <div class="page-head">
+        <a class="back" href="#/">‹</a>
+        <div>
+          <h2>Starred Shows</h2>
+          <p class="sub">${starred.length} show${starred.length === 1 ? "" : "s"} you've starred</p>
+        </div>
+      </div>
+      ${starred.length
+        ? `<div class="show-results">${starred.map(starredShowRow).join("")}</div>`
+        : `<p class="note">No starred shows yet — star a show from its page to see it here.</p>`}
+    </div>`;
 }
 
 /* ---------- the four suggestions ---------- */
@@ -1233,6 +1344,43 @@ function renderAllShows() {
   renderShowIndexPage("All Shows", `${shows.length} shows in 4a's catalogue, A\u2013Z`, shows);
 }
 
+/* A2.5: "Similar shows" — deterministic taxonomy-overlap similarity, zero new
+   data needed (docs/product requirements audit note: taxonomy_node_ids
+   already sits on every catalog.json show record, unused for this purpose
+   until now). Score = count of taxonomy_node_ids shared with `show`; a show
+   sharing none is not "weakly similar", it is unrelated, so it is filtered
+   out rather than padded in (same "honest sparse/empty beats padding" rule
+   buildPlaylist's tiering already follows). Ties broken by show_id so the
+   order is stable and pinnable in a test, not accidentally date- or
+   insertion-order-dependent. Returns [] (never throws) for a show with no
+   taxonomy_node_ids of its own — there is nothing to overlap against. */
+function similarShows(show, limit = 6) {
+  const nodeIds = new Set(show?.taxonomy_node_ids || []);
+  if (!nodeIds.size) return [];
+  const all = state.catalog?.shows || [];
+  return all
+    .filter(s => s.show_id !== show.show_id)
+    .map(s => ({ show: s, shared: (s.taxonomy_node_ids || []).filter(id => nodeIds.has(id)).length }))
+    .filter(x => x.shared > 0)
+    .sort((a, b) => b.shared - a.shared || a.show.show_id.localeCompare(b.show.show_id))
+    .slice(0, limit)
+    .map(x => x.show);
+}
+
+/* Reuses showResultRow verbatim (same "names a SHOW, not a playable item"
+   rule the shows-search results already follow) rather than inventing a
+   second show-card markup for the same kind of link. Renders nothing (not
+   an empty section) when there is no overlap — matches every other join on
+   this page (moreFromShow, the "no episodes" branch above). */
+function similarShowsSection(show) {
+  const shows = similarShows(show);
+  if (!shows.length) return "";
+  return `<section class="ep-more">
+    <h3>Similar shows</h3>
+    <div class="show-results">${shows.map(showResultRow).join("")}</div>
+  </section>`;
+}
+
 function renderShow(show_id) {
   document.body.className = "view-page";
   const show = showById(show_id);
@@ -1261,18 +1409,21 @@ function renderShow(show_id) {
       <div class="page-head">
         <a class="back" href="#/">‹</a>
         <div>
-          <h2>${esc(show.title)}</h2>
+          <h2>${esc(show.title)}${explicitBadge(show.explicit)}</h2>
           <p class="sub">${isBreadthTier && !eps.length ? "4a's wider catalogue" : `${eps.length} episode${eps.length === 1 ? "" : "s"} in 4a's catalogue`}</p>
         </div>
       </div>
       ${show.artwork_url ? `<img class="show-art" src="${esc(safeUrl(show.artwork_url))}" alt="">` : ""}
+      ${showStarBtn(show.show_id)}
       ${show.editorial_note ? `<p class="note">${esc(show.editorial_note)}</p>` : ""}
       ${chips ? `<div class="fy-chips">${chips}</div>` : ""}
       ${episodesSection}
+      ${similarShowsSection(show)}
     </div>`;
 
   bindPickLogging($("#view"));
   bindStars($("#view"));
+  bindShowStars($("#view"));
   bindUpNext($("#view"));
   bindPlay($("#view"));
 }
@@ -1627,6 +1778,69 @@ function showResultRow(show) {
   </a>`;
 }
 
+/* A3.5: "Shows we vouch for" — a show-level editorial row (requirements audit
+   note: 220/220 catalog.json shows already carry `editorial_note`, unused as a
+   browse surface until now — only the four topic-based subject cards
+   (buildCards/cards4) and forays (forayHomeHtml) serve as an editorial front
+   door today, and both are episode/topic-shaped, not show-shaped). Per the
+   requirements doc's B1 separation rule this is its own distinctly-labeled
+   section, never blended into an episode row or a foray row — it reuses
+   showResultRow verbatim (same "names a SHOW, not a playable item" rule
+   similarShowsSection already follows) rather than inventing a second
+   show-card markup.
+
+   Every show qualifies (all 220 carry a non-empty editorial_note), so
+   "curated" here means a deterministic day-rotating sample rather than a
+   hand-maintained allow-list — a fixed set would either need constant
+   upkeep as the catalogue grows or go stale immediately. Seeded by calendar
+   day (UTC `YYYY-MM-DD` of `now`), NOT Math.random: every visitor and every
+   render on the same day sees the same set (no layout jitter from a refresh),
+   and a test can pin the exact output by passing a fixed `now` rather than
+   stubbing global Date. Base order is show_id-sorted before the seeded
+   shuffle runs, so the result is never insertion-order-dependent (same
+   tie-breaking discipline similarShows uses). */
+function dayOfYearSeed(now) {
+  const key = now.toISOString().slice(0, 10); // UTC YYYY-MM-DD
+  let h = 0;
+  for (let i = 0; i < key.length; i++) h = (Math.imul(h, 31) + key.charCodeAt(i)) >>> 0;
+  return h >>> 0;
+}
+
+/* A linear-congruential shuffle (Fisher-Yates driven by an LCG), not
+   Math.random — the whole point of dayOfYearSeed is a result a test can
+   reproduce by passing the same `now`, and Math.random cannot be seeded. */
+function seededShuffle(arr, seed) {
+  const a = arr.slice();
+  let s = seed >>> 0;
+  for (let i = a.length - 1; i > 0; i--) {
+    s = (Math.imul(s, 1103515245) + 12345) >>> 0;
+    const j = s % (i + 1);
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function showsWeVouchFor(limit = 8, now = new Date()) {
+  const shows = (state.catalog?.shows || [])
+    .filter(s => s.editorial_note && s.editorial_note.trim())
+    .slice()
+    .sort((a, b) => a.show_id.localeCompare(b.show_id));
+  if (!shows.length) return [];
+  return seededShuffle(shows, dayOfYearSeed(now)).slice(0, limit);
+}
+
+/* Renders nothing (not an empty section) when there is no editorially-noted
+   show in the catalogue — matches similarShowsSection's and moreFromShow's
+   own absence rule. */
+function vouchForHtml() {
+  const shows = showsWeVouchFor();
+  if (!shows.length) return "";
+  return `<section class="ep-more fy-vouch">
+    <h3>Shows we vouch for</h3>
+    <div class="show-results">${shows.map(showResultRow).join("")}</div>
+  </section>`;
+}
+
 /* ---------- Shows search (Stage 2, docs/show-pages-plan.md) ----------
 
    A separate affordance from #pl-form's topic playlist builder, on purpose
@@ -1709,6 +1923,7 @@ function renderHome() {
       ${jumpBackInHtml(resumeRows)}
       ${forayHomeHtml()}
       <div class="cards4">${state.cardSlots.map(miniCard).join("")}</div>
+      ${vouchForHtml()}
       <div class="search-tabs" role="tablist">
         <button type="button" id="tab-topics" class="search-tab on" role="tab" aria-pressed="true">Playlists</button>
         <button type="button" id="tab-shows" class="search-tab" role="tab" aria-pressed="false">Shows</button>
@@ -1798,7 +2013,7 @@ function epRow(item, idx, ctx, nextIdx) {
   return `<div class="ep-row">
     <span class="q-num ${idx === nextIdx ? "next" : ""}">${idx + 1}</span>
     <div class="info">
-      <div class="t"><a class="ep-title-link" href="#/episode/${esc(encodeURIComponent(item.id))}">${esc(item.title)}</a></div>
+      <div class="t"><a class="ep-title-link" href="#/episode/${esc(encodeURIComponent(item.id))}">${esc(item.title)}</a>${explicitBadge(item.explicit)}</div>
       <div class="s">${showNameLink(item.show)} · ${fmtDur(item.duration_min)}</div>
     </div>
     ${inApp}${starBtn(item.id)}${upNextBtn(item.id)}${external}
@@ -1841,7 +2056,7 @@ function archivedRow(item, idx, ctx) {
   return `<div class="ep-row gone">
     <span class="q-num">${idx + 1}</span>
     <div class="info">
-      <div class="t">${named ? `<a class="ep-title-link" href="#/episode/${esc(encodeURIComponent(item.id))}">${esc(item.title)}</a>` : "Part no longer in the catalogue"}</div>
+      <div class="t">${named ? `<a class="ep-title-link" href="#/episode/${esc(encodeURIComponent(item.id))}">${esc(item.title)}</a>${explicitBadge(item.explicit)}` : "Part no longer in the catalogue"}</div>
       <div class="s">${named
         ? `${showNameLink(item.show)}${item.duration_min ? ` · ${fmtDur(item.duration_min)}` : ""} · not in 4a's catalogue right now`
         : "Saved before 4a kept episode details"}</div>
@@ -1979,7 +2194,7 @@ function renderEpisode(id) {
       <div class="page-head">
         <a class="back" href="#/">‹</a>
         <div>
-          <h2 class="fp-s-title">${esc(item.title)}</h2>
+          <h2 class="fp-s-title">${esc(item.title)}${explicitBadge(item.explicit)}</h2>
           <p class="fp-s-show">${item.show ? showNameLink(item.show) : ""}${item.duration_min ? ` · ${fmtDur(item.duration_min)}` : ""}</p>
         </div>
       </div>
@@ -4308,6 +4523,7 @@ function renderCurrentPage() {
   else if (h === "#/shows") renderAllShows();
   else if (h === "#/playlists") renderPlaylists();
   else if (h === "#/queue") renderQueue();
+  else if (h === "#/starred-shows") renderStarredShows();
   else renderHome();
 }
 

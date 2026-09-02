@@ -1305,6 +1305,23 @@ its reasoning.
   writing — that item asks whether the corpus is even editable right now,
   a distinct founder call this entry does not resolve or bypass).
 
+## 2026-09-02 (App Store listing name changed to avoid a name collision)
+
+- **App Store Connect "Name" field changes from `4a` to `4a: Podcast
+  Curator`.** Founder decision (Discord), triggered by Apple rejecting the
+  bare-`4a` submission as already taken by another app/reservation. Scope
+  is narrow and explicit: only the App Store "Name" metadata field changes.
+  The app's home-screen display name (`CFBundleDisplayName`) stays `4a`,
+  and the app/`foray` naming convention is unaffected everywhere else in
+  the product and docs. Updated `docs/marketing/09-product-feature-review.md`
+  §5 (the locked R23 listing draft) to record the new name and the scope
+  note in place. Google Play's separate listing name (`docs/store/play/`)
+  was not the app that hit this collision and is left as `4a` pending a
+  founder call on cross-store consistency — flagged, not decided, in
+  `HUMAN-ACTIONS.md` #34. The actual App Store Connect submission field can
+  only be typed in by a human with dashboard access; tracked as
+  `HUMAN-ACTIONS.md` #34, not done by this entry.
+
 ## 2026-09-02 (show search reaches the full breadth catalogue, kanban card t_8d1a6a58)
 
 - **Founder answer (Joey, A3.1/Q3): "yes, the user should never notice any

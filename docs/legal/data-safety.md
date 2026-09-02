@@ -41,7 +41,7 @@ every answer below:
    `cp_` prefix; db `foray`, store `kv`). Two of the 23 are diagnostics rather
    than a listener's data — `cp_storage_health` and `cp_diag` — and neither is
    transmitted.
-2. **Exactly 5 of 21 event types are transmitted**, to one endpoint
+2. **Exactly 5 of 23 event types are transmitted**, to one endpoint
    (`https://qjdllvqdcgacvujhclny.supabase.co`), keyed to an anonymous account.
    Mapping: `app.js:toEventRow()` — the five `case` arms that return a row are
    the whole transmitted set, and every other type falls to `return null`.
@@ -336,14 +336,31 @@ Applies to **User ID**, **Product Interaction** and **Other User Content**.
 - **Rule 5.1.2 / third-party AI disclosure.** The legal memo treats this as a
   live obligation. **On the current code it is not:** no user data reaches an AI
   provider from the app, and `connect-src` would block a call from the device. AI
-  runs in our **build pipeline** on public podcast metadata, off-device. Do not
-  build a consent screen naming an AI vendor for a data flow that does not exist.
+  runs in our **build pipeline**, off-device, in two places: (1) the ingest/build
+  stage, on public podcast metadata; and (2) the generation pipeline's §4.1
+  prompt-understanding stage (`backend/src/generation/AnthropicPromptUnderstander.ts`,
+  invoked via `backend/src/cli/generateForay.ts`, plus its siblings
+  `AnthropicSpineBuilder.ts`, `AnthropicDeepenActBuilder.ts`, and
+  `AnthropicExternalResearcher.ts`), which sends the founder's free-text creation
+  prompt to Anthropic (`claude-haiku-4-5`) for clarity/intent extraction. Today's
+  actual sender for (2) is the founder, not a listener — Phase 1 generation is
+  founder-only (§1.3, run from a CLI by Wyatt and Joey) — and that prompt text is
+  provably not persisted anywhere (`backend/test/promptNoPersistence.test.ts`
+  structurally greps the whole `generation/` stage for persistence primitives).
+  Do not build a consent screen naming an AI vendor for a data flow that does not
+  exist for a real listener today.
   - **But it is one env var away, not one feature away.** The pipeline already
     has a prompt field for listener context and it is currently fed a placeholder;
     see the `userInterestsProvider` row in § What would change these answers. If
     that is ever wired up, 5.1.2 applies and the memo's checklist item becomes
     live. Re-check this before every submission rather than trusting this
     paragraph.
+  - **A second, independent tripwire: generation opening to non-founder users.**
+    The day Phase 2 lets a real listener (not the founder) submit the free-text
+    creation prompt described above, their prompt text reaching Anthropic becomes
+    a live Rule 5.1.2 disclosure obligation on its own — regardless of whether
+    `userInterestsProvider` is ever wired up. Re-check this document at that point
+    too, not just the listener-context field.
 - **Account deletion (App Store guideline 5.1.1(v)).** Applies to apps that let
   you *create an account*. 4a creates an anonymous account with no user
   action, which is arguably outside the rule — but the safe posture is the same

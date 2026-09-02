@@ -92,6 +92,7 @@ The app also asks the browser to mark its storage as persistent
 | `cp_playlists` | Playlists you built, including the text you typed to build them. Since 2026-08-19 each part also keeps a copy of the episode's own details — its id, title, show name, length, Apple Podcasts ids and topic ids — so a playlist still lists what is in it after the episode leaves 4a's catalogue. It deliberately does **not** copy the audio URL or the artwork URL | **No** |
 | `cp_quests` | A legacy key, migrated once into `cp_playlists` | **No** |
 | `cp_queue` | Your Up Next list — an ordered array of episode ids you added from any episode row's "+ Up Next" control. Separate from `cp_playlists`; does not copy episode details, only the id | **No** |
+| `cp_starred_shows` | A per-device map of shows you starred from a show page — a lightweight favorite, separate from episode saves (`cp_saved`). No notifications, no auto-download, and starring a show never changes what 4a surfaces to you elsewhere | **No** |
 | `cp_recent_branches` | Which topic branches you recently came from | **No** |
 | `cp_foray:<id>` | Where you are inside a given foray, and which segment you were in | **No** |
 | `cp_pos:<id>` | Your position in seconds inside an individual episode | **No** |
@@ -127,7 +128,7 @@ request that is not to our own origin.
 ## 2. What leaves your device, exactly
 
 The app buffers events locally (in the event queue described above) and
-periodically sends some of them to our database (Supabase — see §3). **Sixteen of the twenty-one event types the app records never leave the device.** The
+periodically sends some of them to our database (Supabase — see §3). **Eighteen of the twenty-three event types the app records never leave the device.** The
 buffer is trimmed to the most recent 5,000 entries.
 
 **Sent** (`app.js:toEventRow()`). Every row carries your anonymous account id
@@ -148,7 +149,8 @@ minute per episode — `player/position-store.js:save()`), `foray_play`,
 `unsaved`, `playlist_built`, `playlist_removed`, `player_pref`, `family_mode`,
 `autoadvance_pref` (toggling Up Next auto-advance on or off), `refreshed_all`,
 `storage_fault`, `queued` and its counterpart `unqueued`
-(added to your Up Next list, or removed from it).
+(added to your Up Next list, or removed from it), `show_starred` and its
+counterpart `show_unstarred` (starring a show, or removing a star).
 
 **The `picked` row's two labels are narrower than they sound**, and we would
 rather say so than let the field names imply more collection than happens:

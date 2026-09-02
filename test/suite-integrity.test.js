@@ -193,6 +193,12 @@ const FLOORS = {
      suite (title link + PR #357 unchanged-controls checks), so any change to
      its size is worth a second look. */
   "test/episode-row-links.test.js": 5,
+  /* Visible explicit-content ("E") badge (kanban card t_02c6bb0b):
+     explicitBadge() itself, its four call sites (epRow, archivedRow,
+     renderEpisode, renderShow at both episode- and show-level), and a check
+     that Family Mode's pre-existing poolFiltered() filter still fires
+     unchanged — the badge is additive, not a replacement for that filter. */
+  "test/explicit-badge.test.js": 9,
   "test/first-time-onboarding.test.js": 10,
   /* Duplicate-ID guard for HUMAN-ACTIONS.md's own numbering rule (full-repo
      review finding L3, 2026-08-31). Two tests: the file has numbered items,
@@ -265,7 +271,7 @@ const FLOORS = {
      entry renders zero episodes rather than an error, on one specific show,
      and nothing else in the repo would notice. Every test names its mutation;
      see the suite header for the full list of what each test pins. */
-  "test/show-page.test.js": 9,
+  "test/show-page.test.js": 24,
   /* Requirements A3.2/A3.3 — category browse + all-shows index (kanban card
      "Build: category browse — linkify taxonomy chips + all-shows index"):
      the taxonomy-chip link itself, the showsForCategory overlap join against
@@ -283,6 +289,15 @@ const FLOORS = {
      its mutation; see the suite header for the full list of what each
      test pins. */
   "test/show-search.test.js": 11,
+  /* Starred shows (follow-lite), requirement A2.4 / Joey's Q2 answer.
+     Kanban card "Build: starred shows (follow-lite) + dedicated Starred
+     Shows page". Floored because this is exactly the #276/show-pages
+     shape: a per-device marker whose decay (a dropped guard, a wrong
+     storage key, a missing route branch) is silently wrong rather than a
+     crash, and nothing else in the repo would notice. Every test names
+     its mutation; see the suite header for the full list of what each
+     test pins. */
+  "test/starred-shows.test.js": 8,
   /* "Up Next" listening queue, Stage 1 of docs/listening-queue-plan.md
      (kanban card t_f4da81f5). Floored because the queue's own decay path
      (an id ageing out of the pool, or the queue emptying) is exactly the
@@ -969,6 +984,16 @@ const BACKEND_FLOORS = {
      disclosure template, and decideConnectiveNarration()'s seam-position
      table for tape-adjacent beats needing short connective narration. */
   "test/writeNarration.test.ts": 19,
+  /* §4.8 end to end (kanban card t_7f410ffc): within-act stitching rules
+     (silence bridge, jingle marks cuts, measured cadence, coverage
+     hard-gate), the forward-only cross-act continuity Builder (§6.2),
+     forayItems.ts's mapping to the real data/forays.json schema (with
+     an internal-field-leak guard), and the cadence-measurement CLI. */
+  "test/forayItems.test.ts": 7,
+  "test/measureCadence.test.ts": 3,
+  "test/smoothSeam.test.ts": 8,
+  "test/stitchAct.test.ts": 9,
+  "test/stitchForay.test.ts": 4,
   /* A3.1/Q3 (kanban t_8d1a6a58): backend/src/catalog/breadthCatalog.ts +
      searchBreadthShows.ts — show search over the FULL breadth catalogue
      (curated + ~10k breadth tier), not just the 220 curated shows the
