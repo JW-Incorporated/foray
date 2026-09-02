@@ -162,10 +162,15 @@ duration option is the listener saying how much time they have (the 40% figure a
 motivating example of how bad an overshoot can get, not a separate, looser tolerance).
 
 **Undershoot has exactly one sanctioned exception: §9.3's thin-topic ruling.** A topic too thin for
-real tape at the requested duration is allowed to come in short, provided the Foray records why
-(a `duration_shortened_reason` field on the published item) and says so in an explicit narrated
-beat — never padded with filler to hit the requested duration (§9.3). An undershoot with no
-recorded reason and no narrated explanation is a defect on the same terms as any overshoot.
+real tape at the requested duration is allowed to come in short, provided the Foray records why and
+says so in an explicit narrated beat — never padded with filler to hit the requested duration
+(§9.3). An undershoot with no recorded reason and no narrated explanation is a defect on the same
+terms as any overshoot. **Recording the reason needs a schema decision this document does not make
+for itself** (per line 23's own rule: a schema change is a finding to surface, not a liberty to
+take) — whoever implements §9.3's shortening path must first check whether an existing
+`forays.json` field can carry it (the narrated explanation beat itself may already satisfy the
+"recorded" requirement without any new field) and, only if not, surface the addition as a proposed
+schema change for founder sign-off rather than silently emitting an undocumented field.
 
 ---
 
@@ -243,17 +248,21 @@ The spine contains:
   publishability check regardless of how generation goes — it is what makes a generated Foray
   something other than a straight answer to the prompt, and no cutting pass, cost- or time-driven,
   may take it below ~30%.
-  Separately, on top of the required floor and **outside the act's planned runtime budget**, mark
-  exactly **two additional exploration beats per act as "deferrable."** These are written and
-  sourced through the normal pipeline (§4.4–§4.7) right alongside every other beat, so their
-  narration/tape is ready to play the instant they're needed — only their *inclusion in the act's
-  running order* is held back, not their generation, which is what makes them usable as a live
-  time buffer rather than something that has to be produced under shortfall pressure. They are the
-  one and only §6.3 time-buffer valve: on a **time** shortfall they get inserted, already-prepared,
-  to genuinely extend the act while act N+1 finishes, which is the recovery buffer §6.3 needs; when
-  generation is on schedule they are simply never inserted into the running order (produced, but
-  unplayed). A **cost**-cutting pass instead cancels their production outright before §4.5, same
-  effect as never needing them. Neither path is ever counted against the required ~30% floor (§8):
+  Separately, on top of the required floor, mark exactly **two additional exploration beats per
+  act as "deferrable."** Their runtime is reserved *within* the act's planned duration budget
+  (§3), not added on top of it — the planner sizes the act's other beats assuming the deferrable
+  pair may or may not play, so their insertion never pushes the Foray past §3/§8's ±15% tolerance.
+  They are written and sourced through the normal pipeline (§4.4–§4.7) right alongside every other
+  beat, so their narration/tape is ready to play the instant they're needed — only their
+  *inclusion in the act's running order* is held back, not their generation, which is what makes
+  them usable as a live time buffer rather than something that has to be produced under shortfall
+  pressure. They are the one and only §6.3 time-buffer valve: on a **time** shortfall they get
+  inserted, already-prepared, to genuinely extend the act while act N+1 finishes, filling reserved
+  runtime that would otherwise sit unused, not adding to it; when generation is on schedule they
+  are simply never inserted into the running order (produced, but unplayed, and the act runs
+  slightly under its budget rather than over). A **cost**-cutting pass instead cancels their
+  production outright before §4.5, same effect as never needing them. Neither path is ever counted
+  against the required ~30% floor (§8):
   the floor is computed only over the beats that were always inside it, so a deferrable beat's
   insertion, non-insertion, or cancellation cannot move that number in either direction.
 
@@ -474,24 +483,29 @@ Pick X, measure it, write it down.
 Then decide what happens when generation falls behind, because it will. Options, none free:
 
 - Stall with a spoken line — honest, and terrible in a car.
-- Insert the current act's two reserved deferrable beats (§4.3) — already written and sourced, held
-  back from the running order — to genuinely extend the act while act N+1 finishes writing.
+- Insert the current act's two reserved deferrable beats (§4.3) — already written and sourced,
+  their runtime already reserved inside the act's duration budget — to extend the act while act
+  N+1 finishes writing, without pushing the Foray past §3/§8's tolerance.
 - Degrade the remaining acts to a cheaper, faster pipeline — quality cliff, but no silence.
 
 **Recommendation: the reserved deferrable pair.** §4.3 has each act produce two exploration beats
 through the normal pipeline, held back from the act's running order rather than left unmade, marked
-"deferrable." They serve two different pressures and never both at once: a **time** shortfall (this
-section) inserts them, already-prepared, into the act — which is what actually buys the extra
-minutes act N+1 needs, since being ready to play the instant they're needed is the entire point of
-producing them ahead of the shortfall rather than during it. On schedule, an act simply never
-inserts them; they exist but are unplayed. A **cost** shortfall (a cutting pass trimming spend, not
-a live time deficit) instead cancels their production before §4.5, same net effect as never needing
-them. Either way, they are never counted against the required ~30% floor — §8's "exploration budget
-survived" check is computed only over the beats that were always inside the floor, so inserting,
-not inserting, or cancelling the deferrable pair cannot move that number. A generation lead that is
-both behind on time and needs to cut beyond the reserved pair has exhausted the one buffer this
-document authorizes and must fall back to one of the other two options above. Whatever is chosen, a
-silent stall mid-commute is the worst outcome and the one to design against.
+"deferrable," with their runtime reserved inside the act's planned duration rather than added on
+top of it. They serve two different pressures and never both at once: a **time** shortfall (this
+section) inserts them, already-prepared, into the act — filling reserved runtime that would
+otherwise sit unused, which is what actually buys the extra minutes act N+1 needs, since being
+ready to play the instant they're needed is the entire point of producing them ahead of the
+shortfall rather than during it, and reserving their runtime up front is what stops that insertion
+from becoming an overshoot §3/§8 would reject. On schedule, an act simply never inserts them; they
+exist but are unplayed, and the act runs slightly under its planned duration rather than at it. A
+**cost** shortfall (a cutting pass trimming spend, not a live time deficit) instead cancels their
+production before §4.5, same net effect as never needing them. Either way, they are never counted
+against the required ~30% floor — §8's "exploration budget survived" check is computed only over
+the beats that were always inside the floor, so inserting, not inserting, or cancelling the
+deferrable pair cannot move that number. A generation lead that is both behind on time and needs to
+cut beyond the reserved pair has exhausted the one buffer this document authorizes and must fall
+back to one of the other two options above. Whatever is chosen, a silent stall mid-commute is the
+worst outcome and the one to design against.
 
 ---
 
@@ -534,8 +548,10 @@ A generated Foray is publishable only if all of these hold:
 - Copy rules pass: hooks ≤ 16 words, why-lines ≤ 18, no banned phrasing.
 - Runtime is within tolerance of the requested duration: ±15% (a defensible starting point), except
   an undershoot made under §9.3's thin-topic exception, which is exempt from the tolerance provided
-  it carries a recorded `duration_shortened_reason` and an explicit narrated explanation (§3).
-  Overshoot has no exception at any margin (§3).
+  it carries a recorded reason (schema TBD, see §3) and an explicit narrated explanation. Overshoot
+  has no exception at any margin (§3) — including a §6.3 time-buffer insertion pushing runtime past
+  ±15%, which is a defect the generation lead must avoid by reserving room for the deferrable pair
+  within the maximum runtime rather than adding it on top (§6.3).
 - Narration share may be up to 100% (§9.3) — there is no ceiling. A Medium/Long Foray whose topic is
   too thin for real tape at the requested duration must take the §9.3 shortening path instead of
   padding with synthetic filler to raise or preserve narration share.

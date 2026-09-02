@@ -1173,18 +1173,31 @@ its reasoning.
   to close a gap a reviewer correctly flagged as implementation-ambiguous.
 - **§4.3/§6.3/§8's exploration-budget language now describes one consistent
   policy instead of three conflicting ones, with the per-act deferrable
-  pair pre-generated (not built under live shortfall pressure) and never
-  counted toward or against the required floor.** The ~30% floor (product
-  principle #1) is computed only over the beats that were always inside it.
-  On top of it, each act produces two additional "deferrable" beats through
-  the normal pipeline (§4.4-§4.7) — written and sourced ahead of time so
-  they're ready to play instantly — but held back from the act's running
-  order. A **time** shortfall (§6.3) inserts them, already-prepared, to
-  genuinely extend the act while act N+1 finishes; on schedule they are
-  simply never inserted. A **cost** shortfall instead cancels their
-  production before §4.5. §8's "exploration budget survived" check is
-  unaffected by any of these three outcomes, since the floor's denominator
-  never included the deferrable pair to begin with.
+  pair pre-generated (not built under live shortfall pressure), never
+  counted toward or against the required floor, and — per a reviewer
+  catch — reserved *within* the act's existing duration budget so
+  inserting them cannot push runtime past §3/§8's ±15% tolerance.** The
+  ~30% floor (product principle #1) is computed only over the beats that
+  were always inside it. On top of it, each act produces two additional
+  "deferrable" beats through the normal pipeline (§4.4-§4.7) — written and
+  sourced ahead of time so they're ready to play instantly, with their
+  runtime reserved inside the act's planned duration rather than added on
+  top of it — but held back from the act's running order. A **time**
+  shortfall (§6.3) inserts them, already-prepared, filling that reserved
+  runtime to genuinely extend the act while act N+1 finishes; on schedule
+  they are simply never inserted, and the act runs slightly under its
+  budget instead. A **cost** shortfall instead cancels their production
+  before §4.5. §8's "exploration budget survived" check is unaffected by
+  any of these three outcomes, since the floor's denominator never
+  included the deferrable pair to begin with.
+- **§3's undershoot-reason requirement no longer prescribes an
+  undocumented schema field.** A reviewer correctly flagged
+  `duration_shortened_reason` as a new persisted field asserted without
+  going through this document's own "surface a schema change, don't take
+  it as a liberty" rule (line 23). §3/§8 now require only that the reason
+  be *recorded* and *narrated*, and explicitly defer the schema question
+  (existing field vs. proposed addition) to whoever implements §9.3's
+  shortening path.
 - **§9.4 (prompts discarded) vs §9.6 (dedup by prompt similarity) is a real
   founder-decision gap, not a wording fix — flagged rather than guessed.**
   §9.6's similarity check needs a stored representation of the prompt (raw
