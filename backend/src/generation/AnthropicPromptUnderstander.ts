@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import { env } from "../config/env";
 import { defaultBudgetGuard, type BudgetGuard } from "../cost/budgetGuard";
+import { parseWithRetry } from "./parseWithRetry";
 import type { ClarityResult, IntentUnderstanding } from "../types/generation";
 import type { PromptUnderstander, PromptUnderstandContext } from "./PromptUnderstander";
 
@@ -41,13 +42,16 @@ export class AnthropicPromptUnderstander implements PromptUnderstander {
   readonly providerName = "anthropic";
   private readonly client: Anthropic;
 
-  constructor(private readonly budgetGuard: BudgetGuard = defaultBudgetGuard) {
-    if (env.anthropicDryRun) {
+  /** `client` is an optional injection point for tests — see
+   * AnthropicEnricher.ts's constructor doc comment for the full rationale;
+   * the same pattern applies identically here. */
+  constructor(private readonly budgetGuard: BudgetGuard = defaultBudgetGuard, client?: Anthropic) {
+    if (!client && env.anthropicDryRun) {
       throw new Error(
         "AnthropicPromptUnderstander constructed without ANTHROPIC_API_KEY set — use createPromptUnderstander() so it falls back to StubPromptUnderstander instead."
       );
     }
-    this.client = new Anthropic({ apiKey: env.anthropicApiKey });
+    this.client = client ?? new Anthropic({ apiKey: env.anthropicApiKey });
   }
 
   async assessClarity(prompt: string, ctx: PromptUnderstandContext): Promise<ClarityResult> {
@@ -71,7 +75,7 @@ export class AnthropicPromptUnderstander implements PromptUnderstander {
     const textBlock = response.content.find((b: Anthropic.ContentBlock): b is Anthropic.TextBlock => b.type === "text");
     if (!textBlock) throw new Error("Anthropic clarity response had no text block");
 
-    return parseWithRetry(ClaritySchema, textBlock.text);
+    return parseWithRetry(ClaritySchema, textBlock.text, "Anthropic clarity output");
   }
 
   async extractIntent(prompt: string, ctx: PromptUnderstandContext): Promise<IntentUnderstanding> {
@@ -95,20 +99,10 @@ export class AnthropicPromptUnderstander implements PromptUnderstander {
     const textBlock = response.content.find((b: Anthropic.ContentBlock): b is Anthropic.TextBlock => b.type === "text");
     if (!textBlock) throw new Error("Anthropic intent response had no text block");
 
-    return parseWithRetry(IntentSchema, textBlock.text);
+    return parseWithRetry(IntentSchema, textBlock.text, "Anthropic intent output");
   }
 }
 
-function parseWithRetry<T>(schema: z.ZodType<T>, raw: string): T {
-  const cleaned = raw.trim().replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/i, "");
-  try {
-    return schema.parse(JSON.parse(cleaned));
-  } catch (err) {
-    throw new Error(`LLM output failed schema validation (no retry available in this build): ${(err as Error).message}`, {
-      cause: err
-    });
-  }
-}
 
 function buildClarityPrompt(prompt: string): string {
   return [

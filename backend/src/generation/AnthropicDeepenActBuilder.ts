@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import { env } from "../config/env";
 import { defaultBudgetGuard, type BudgetGuard } from "../cost/budgetGuard";
+import { parseWithRetry } from "./parseWithRetry";
 import type { Act, DeepenedAct, Spine } from "../types/spine";
 import type { DeepenActBuilder, DeepenActContext } from "./DeepenActBuilder";
 
@@ -40,13 +41,16 @@ export class AnthropicDeepenActBuilder implements DeepenActBuilder {
   readonly providerName = "anthropic";
   private readonly client: Anthropic;
 
-  constructor(private readonly budgetGuard: BudgetGuard = defaultBudgetGuard) {
-    if (env.anthropicDryRun) {
+  /** `client` is an optional injection point for tests — see
+   * AnthropicEnricher.ts's constructor doc comment for the full rationale;
+   * the same pattern applies identically here. */
+  constructor(private readonly budgetGuard: BudgetGuard = defaultBudgetGuard, client?: Anthropic) {
+    if (!client && env.anthropicDryRun) {
       throw new Error(
         "AnthropicDeepenActBuilder constructed without ANTHROPIC_API_KEY set — use createDeepenActBuilder() so it falls back to StubDeepenActBuilder instead."
       );
     }
-    this.client = new Anthropic({ apiKey: env.anthropicApiKey });
+    this.client = client ?? new Anthropic({ apiKey: env.anthropicApiKey });
   }
 
   async deepenAct(fullSpine: Spine, targetAct: Act, targetActIndex: number, ctx: DeepenActContext): Promise<DeepenedAct> {
@@ -70,20 +74,10 @@ export class AnthropicDeepenActBuilder implements DeepenActBuilder {
     const textBlock = response.content.find((b: Anthropic.ContentBlock): b is Anthropic.TextBlock => b.type === "text");
     if (!textBlock) throw new Error("Anthropic deepen-act response had no text block");
 
-    return parseWithRetry(RawDeepenedActSchema, textBlock.text);
+    return parseWithRetry(RawDeepenedActSchema, textBlock.text, "Anthropic deepen-act output");
   }
 }
 
-function parseWithRetry<T>(schema: z.ZodType<T>, raw: string): T {
-  const cleaned = raw.trim().replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/i, "");
-  try {
-    return schema.parse(JSON.parse(cleaned));
-  } catch (err) {
-    throw new Error(`LLM output failed schema validation (no retry available in this build): ${(err as Error).message}`, {
-      cause: err
-    });
-  }
-}
 
 function buildDeepenActPrompt(spine: Spine, targetAct: Act, targetActIndex: number): string {
   const otherActsSummary = spine.acts
