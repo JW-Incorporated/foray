@@ -13,11 +13,14 @@ test.describe("PARTIAL CACHE POPULATION (real browser)", () => {
       "player/client.js": "export const VALUE = 1;",
       "data/forays.json": '{"forays":["v1"]}',
     });
-    // computeManifest() hashes whatever `files` currently holds — so to get
-    // a manifest that disagrees with what the origin actually serves, take
-    // the manifest snapshot BEFORE mutating index.html, then let the origin
-    // serve the mutated (unhashed) bytes.
-    const manifest = server.currentManifest();
+    // Freeze the manifest to what index.html currently hashes to, THEN
+    // change what the origin actually serves for it — simulating GitHub
+    // Pages mid-propagation, where the manifest was generated against one
+    // set of bytes and the origin is still (or already) answering with
+    // another. Without freezeManifestNow() the live-computed manifest would
+    // simply follow the mutated content and never disagree with it — see
+    // server.mjs's own header on this.
+    server.freezeManifestNow();
     server.setFiles({ "index.html": "<!doctype html><title>tampered, not what was hashed</title>" });
 
     // register() itself resolves; the fetch handler inside sw.js keeps the
@@ -34,8 +37,8 @@ test.describe("PARTIAL CACHE POPULATION (real browser)", () => {
       return (await c.match("https://foray.invalid/__generation-pointer__")) ? "has-pointer" : "no-pointer";
     });
     expect(pointerRes).toBe("no-pointer");
-    void manifest; // documents intent above; no direct assertion needed on it
 
+    server.unfreezeManifest();
     await server.close();
   });
 

@@ -46,6 +46,17 @@ function contentType(p) {
  */
 export function startFixtureServer(initialFiles) {
   let files = { ...initialFiles };
+  /* Normally deploy-manifest.json is computed LIVE from `files` on every
+     request — see the header above. That makes an ordinary setFiles() call
+     unable to produce a genuine hash mismatch: the manifest and the file
+     content always change together, self-consistently, no matter what a
+     test mutates. freezeManifestNow() snapshots the CURRENT computed
+     manifest and serves that snapshot from then on, so a test can change
+     `files` afterward (a torn deploy: the origin now answers with bytes
+     that do not match what the frozen manifest recorded) without the
+     manifest silently following along. unfreezeManifest() returns to the
+     normal live-computed behaviour. */
+  let manifestOverride = null;
   /* Paths currently hung (request never answers — MODULE LOAD TIMEOUT) or
      forced to fail (a plain connection reset — PARTIAL CACHE POPULATION's
      "mid-manifest fetch failure" case). Both keyed by root-relative path,
@@ -70,7 +81,7 @@ export function startFixtureServer(initialFiles) {
       return;
     }
     if (p === "deploy-manifest.json") {
-      const manifest = computeManifest(files);
+      const manifest = manifestOverride || computeManifest(files);
       res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
       res.end(JSON.stringify(manifest));
       return;
@@ -110,8 +121,18 @@ export function startFixtureServer(initialFiles) {
           hungPaths.clear();
           failPaths.clear();
         },
+        /** Snapshot the CURRENT live manifest and keep serving that snapshot
+            regardless of later setFiles()/replaceFiles() calls — see this
+            function's header for why an ordinary mutation can't produce a
+            real hash mismatch on its own. */
+        freezeManifestNow() {
+          manifestOverride = computeManifest(files);
+        },
+        unfreezeManifest() {
+          manifestOverride = null;
+        },
         currentManifest() {
-          return computeManifest(files);
+          return manifestOverride || computeManifest(files);
         },
         close() {
           return new Promise((r) => server.close(r));

@@ -11,6 +11,7 @@ import { startServer, registerAndActivate, cacheNames } from "../lib/harness.mjs
 
 test.describe("MODULE LOAD TIMEOUT (real browser)", () => {
   test("player/client.js hanging during install aborts the whole install", async ({ page }) => {
+    test.setTimeout(45_000);
     const server = await startServer({
       "player/client.js": "export const VALUE = 1;",
       "data/forays.json": '{"forays":["v1"]}',
@@ -19,25 +20,23 @@ test.describe("MODULE LOAD TIMEOUT (real browser)", () => {
 
     try {
       await page.goto(server.baseUrl);
-      // register() resolves once the registration exists, not once install
-      // finishes — the real analogue of test/sw-generation.test.js racing
-      // install() against setImmediate: we assert install/activate never
-      // completes within a bounded window instead.
-      const reg = await page.evaluate(() => navigator.serviceWorker.register("sw.js"));
-      const settledInTime = await page.evaluate(async () => {
+      // register() itself resolves once the registration is queued, not once
+      // install finishes — the hung fetch inside precache() (sw.js) has no
+      // bound of its own at install time (only runtime fetches go through
+      // NET_TIMEOUT_MS), so the real assertion is what install never
+      // produces, not a race against its own completion. A fixed wait plus a
+      // cache-state check is what test/sw-generation.test.js's node:vm
+      // version asserts too, just via a `setTimeout` recorder instead of a
+      // wall clock.
+      await page.evaluate(() => navigator.serviceWorker.register("sw.js"));
+      await page.waitForTimeout(5000);
+
+      const state = await page.evaluate(async () => {
         const reg = await navigator.serviceWorker.getRegistration();
         const worker = reg && (reg.installing || reg.waiting || reg.active);
-        if (!worker) return "no-worker";
-        return Promise.race([
-          new Promise((resolve) => {
-            worker.addEventListener("statechange", () => {
-              if (worker.state === "activated" || worker.state === "redundant") resolve(worker.state);
-            });
-          }),
-          new Promise((resolve) => setTimeout(() => resolve("still-installing"), 4000)),
-        ]);
+        return worker ? worker.state : "no-worker";
       });
-      expect(settledInTime).toBe("still-installing");
+      expect(state).toBe("installing");
 
       const names = await cacheNames(page);
       expect(names.some((n) => n.startsWith("foray-gen-"))).toBe(false);
