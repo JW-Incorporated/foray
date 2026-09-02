@@ -2133,7 +2133,7 @@ paused pending your call.
 **Worked if:** you record A, B, or C (and, for B, the exception rule) as a
 dated entry in `docs/DECISIONS.md`, and this item is marked `DONE`.
 
-**Status:** DONE
+**Status:** OPEN
 
 ---
 

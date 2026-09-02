@@ -23,7 +23,10 @@ revoke execute on function public.handle_user_linked() from anon, authenticated,
 --    (9 WARNs; low real risk since anon has no auth.uid() and matches zero
 --    rows either way, but the linter wants explicit intent). Recreated
 --    rather than altered since `alter policy` cannot add a TO clause to a
---    policy that has none.
+--    policy that has none. Also wraps `auth.uid()` as `(select auth.uid())`
+--    so Postgres evaluates it once (an initplan) instead of once per row —
+--    same result, but avoids the linter's separate `auth_rls_initplan`
+--    performance WARN and repeated re-evaluation on large tables.
 --
 --    Note on the linter's 9th related WARN, an `own_rows_sessions` policy
 --    it associates with `auth.sessions`: this repo has never created any
@@ -44,8 +47,8 @@ begin
       create policy %I on public.%I
         for all
         to authenticated
-        using (auth.uid() = %s)
-        with check (auth.uid() = %s);
+        using ((select auth.uid()) = %s)
+        with check ((select auth.uid()) = %s);
     $p$,
       'own_rows_' || t, t,
       'user_id',
