@@ -1884,12 +1884,41 @@ function resolveEpisode(id) {
   return pool[id] || savedMap()[id] || null;
 }
 
+/* A1.8: "More from this show" — display-only, no new data (the join already
+   exists as episodesForShow, docs/requirements audit note). item.show is only
+   ever a name string here (discover.json/itemIndex never carry show_id — the
+   same gap showNameLink already works around), so this resolves the show
+   record the same way showNameLink does (showIdForShowName -> showById) before
+   reusing episodesForShow/epRow exactly as renderShow does. Independent of
+   Stage 3b ingestion: works fine on today's curated pool and just grows once
+   that lands, per the card's own framing. Renders nothing (not an empty
+   section) when there is no show match or no other episodes — absence is a
+   real state, matching every other join on this page. */
+function moreFromShow(item) {
+  const showId = showIdForShowName(item.show);
+  const show = showId ? showById(showId) : null;
+  if (!show) return "";
+  const eps = episodesForShow(show).filter(e => e.id !== item.id).slice(0, 8);
+  if (!eps.length) return "";
+  const ctx = "episode-more-" + item.id;
+  return `<section class="ep-more">
+    <h3>More from this show</h3>
+    ${eps.map((e, i) => epRow(e, i, ctx, -1)).join("")}
+  </section>`;
+}
+
 function renderEpisode(id) {
   document.body.className = "view-page";
   const item = resolveEpisode(id);
   if (!item) {
     $("#view").innerHTML = `<div class="page"><p class="note">Episode not found.</p></div>`;
     return;
+  }
+  // populate itemIndex/poolIds so "more from this show" rows can play in-app;
+  // never throws — no catalogue yet is a reason to skip that row's play button,
+  // not to lose the whole page (same rule hydrationPool already follows).
+  if (state.session && state.session.episodes) {
+    try { fullPool(); } catch (_) { /* catalogue not really there yet */ }
   }
   $("#view").innerHTML = `
     <div class="page">
@@ -1904,7 +1933,9 @@ function renderEpisode(id) {
       ${item.hook ? `<p class="fp-s-why">${esc(item.hook)}</p>` : ""}
       <div class="ep-actions">${item.audio_url ? playBtn(item) : `<a class="go" href="${esc(safeUrl(playLink(item)))}" target="_blank" rel="noopener"
         data-ev="picked" data-ep="${esc(item.id)}" data-ctx="episode-page">Listen in your podcast app ↗</a>`}${starBtn(item.id)}${upNextBtn(item.id)}</div>
+      ${moreFromShow(item)}
     </div>`;
+  bindPickLogging($("#view"));
   bindStars($("#view"));
   bindUpNext($("#view"));
   bindPlay($("#view"));
