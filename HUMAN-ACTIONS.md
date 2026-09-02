@@ -2133,7 +2133,11 @@ paused pending your call.
 **Worked if:** you record A, B, or C (and, for B, the exception rule) as a
 dated entry in `docs/DECISIONS.md`, and this item is marked `DONE`.
 
-**Status:** OPEN
+**Resolved 2026-09-02: C — lift the freeze.** Joey, via Discord: `HA32=C`.
+Recorded in `docs/DECISIONS.md`'s 2026-09-02 entry. Marketing-corpus work
+resumes under ordinary review.
+
+**Status:** DONE
 
 ---
 
