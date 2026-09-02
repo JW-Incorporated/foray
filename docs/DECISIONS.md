@@ -1304,3 +1304,28 @@ its reasoning.
   item #32 (2026-07-08 marketing-corpus freeze: still OPEN as of this
   writing — that item asks whether the corpus is even editable right now,
   a distinct founder call this entry does not resolve or bypass).
+
+## 2026-09-02 (HUMAN-ACTIONS.md #32 — the 2026-07-08 marketing-corpus freeze is lifted)
+
+- **Founder decision: C — lift the freeze.** Joey, via Discord: `HA32=C`.
+  The 2026-07-08 freeze ("marketing corpus is frozen until there's a
+  retention curve for it to describe," `07-premortem.md`/
+  `08-REQUIREMENTS-DELTA.md`) is formally ended, not reinterpreted or
+  quietly bypassed. Marketing-corpus work resumes under ordinary review —
+  no special exception process, no retention-curve precondition.
+- **Why now, not a coincidence:** this ruling was requested by, and
+  directly unblocks, the same-day decision above (D1=A — retire "never AI
+  podcast app," own the generation positioning). That rewrite requires
+  editing the same 11 memos and the Play Store listing the freeze covers;
+  formally lifting the freeze is what makes the rewrite work authorized
+  rather than one more self-granted exception in the pattern
+  `HUMAN-ACTIONS.md` #32 itself was filed to stop.
+- **What this does NOT retroactively bless.** The freeze workarounds
+  found by the 2026-09-02 Fable review (`09-product-feature-review.md`'s
+  self-granted "R14" exception, `10-category-coverage.md`'s unacknowledged
+  new orders, `06-naming-study.md`'s uncredited edit) happened while the
+  freeze was still open and were out of process at the time. Lifting the
+  freeze now ends the *restriction*, not a finding that those edits were
+  fine when made — no action is required on them retroactively; they are
+  simply no longer blocked going forward.
+- **`HUMAN-ACTIONS.md` #32 is marked DONE**, citing this entry.
