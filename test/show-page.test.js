@@ -732,3 +732,135 @@ test("vouchForHtml's row is separate from the topic cards and forays, per the B1
   assert.ok(!html.includes('class="ep-row'), "must not render as episode rows");
   assert.ok(!html.includes('class="fy-home-row'), "must not render as foray rows");
 });
+
+/* ==================================================================== */
+/* 8. "USED IN THE FOLLOWING FORAYS" (requirements B3/Q6)                */
+/* ==================================================================== */
+
+function seedForaysFixture(m) {
+  m.state.catalog = { shows: [{ show_id: "grill-show", title: "Grill Show" }, { show_id: "other-show", title: "Other Show" }, { show_id: "unused-show", title: "Unused Show" }] };
+  m.state.discover = { items: [] };
+  m.state.taxonomy = { nodes: [] };
+  m.state.session = { session_id: "s-1", builder: "test", episodes: {}, cards: [] };
+  m.state.segments = {
+    segments: [
+      { id: "seg-a", item_id: "ep-a" },
+      { id: "seg-b", item_id: "ep-b" },
+    ],
+  };
+  m.state.segmentSources = {
+    sources: [
+      { id: "ep-a", show: "Grill Show" },
+      { id: "ep-b", show: "Other Show" },
+    ],
+  };
+  m.state.forays = {
+    forays: [
+      {
+        id: "published-foray", title: "Published Foray", status: "published",
+        items: [{ type: "segment", segment_id: "seg-a" }],
+      },
+      {
+        id: "draft-foray-unlocked", title: "Draft Foray (unlocked)", status: "draft",
+        items: [{ type: "segment", segment_id: "seg-a" }],
+      },
+      {
+        id: "draft-foray-hidden", title: "Draft Foray (hidden)", status: "draft",
+        items: [{ type: "segment", segment_id: "seg-a" }],
+      },
+      {
+        id: "unrelated-foray", title: "Unrelated Foray", status: "published",
+        items: [{ type: "segment", segment_id: "seg-b" }],
+      },
+    ],
+  };
+}
+
+test("a show used by a published Foray gets a separate, clearly-labeled forays footer", () => {
+  /* MUTATION: delete the `${showForaysHtml(show)}` call from renderShow's
+     template. This assertion fails because no "show-forays" section, heading
+     or link to the published Foray appears at all. */
+  const m = mount();
+  seedForaysFixture(m);
+  m.ctx.location = { ...m.ctx.location, search: "" };
+
+  m.ctx.renderShow("grill-show");
+  const html = m.view();
+  assert.ok(html.includes('class="show-forays"'), "must render a distinct forays footer section");
+  assert.ok(html.includes("Used in the following forays"), "must carry the exact requirements-doc label");
+  assert.ok(html.includes('href="#/foray/published-foray"'), "must link the published Foray by id");
+  assert.ok(!html.includes("Unrelated Foray"), "a Foray that does not use this show must not be listed");
+});
+
+test("an unpublished (draft) Foray that draws on the show is never named unless unlocked by id", () => {
+  /* Mirrors forayCards()/unlockedForays()'s own draft-visibility rule
+     (player/foray-resolve.js's forayVisibility) — this footer must not leak
+     unpublished work either.
+
+     MUTATION: drop the `f.status === "published"` visibility check inside
+     foraysUsingShow. The hidden-draft assertion below fails because the
+     draft Foray's title would appear even with no unlock in the URL. */
+  const m = mount();
+  seedForaysFixture(m);
+  m.ctx.location = { ...m.ctx.location, search: "" };
+
+  m.ctx.renderShow("grill-show");
+  const html = m.view();
+  assert.ok(!html.includes("Draft Foray (hidden)"), "an unpublished, non-unlocked Foray must not be named");
+});
+
+test("an unpublished Foray IS named once the visitor unlocked it by id (?foray=)", () => {
+  /* Same rule, the other direction — a founder testing a draft by its own
+     link must still see the cross-reference, exactly like the Foray home
+     screen's own "Jump back in"/list rows already do.
+
+     MUTATION: ignore unlockedForays() entirely in foraysUsingShow. This
+     assertion fails because the unlocked draft never appears even with the
+     right query string. */
+  const m = mount();
+  seedForaysFixture(m);
+  m.ctx.location = { ...m.ctx.location, search: "?foray=draft-foray-unlocked" };
+
+  m.ctx.renderShow("grill-show");
+  const html = m.view();
+  assert.ok(html.includes("Draft Foray (unlocked)"), "an unlocked draft Foray must be named");
+  assert.ok(html.includes('show-forays-draft'), "an unpublished entry must carry a visible draft marker");
+});
+
+test("a show used by no Foray renders no forays footer at all", () => {
+  /* Absence is a real, renderable state (Stage 1's own rule, reused here) —
+     a show page must not render an empty "Used in the following forays"
+     band.
+
+     MUTATION: drop the `if (!forays.length) return \"\";` guard in
+     showForaysHtml. This assertion fails because an empty section (heading,
+     no rows) would still appear. */
+  const m = mount();
+  seedForaysFixture(m);
+  m.ctx.location = { ...m.ctx.location, search: "" };
+
+  m.ctx.renderShow("unused-show");
+  const html = m.view();
+  assert.ok(!html.includes('class="show-forays"'), "no Foray uses Unused Show, so no footer section may render");
+});
+
+test("the forays footer never interleaves with the episode list above it", () => {
+  /* Pins B1's rule literally: the last ep-row must close before the
+     show-forays section opens, never nested inside or between rows.
+
+     MUTATION: move showForaysHtml's call to before the eps.map(...) line in
+     renderShow's template. This assertion fails because the footer's index
+     would then be lower than at least one ep-row's index. */
+  const m = mount();
+  seedForaysFixture(m);
+  m.state.discover = { items: [{ id: "ep-x", title: "X", show: "Grill Show", duration_min: 5 }] };
+  m.ctx.location = { ...m.ctx.location, search: "" };
+  m.state.itemIndex = {};
+  m.state.poolIds = new Set();
+
+  m.ctx.renderShow("grill-show");
+  const html = m.view();
+  const lastEpRow = html.lastIndexOf('class="ep-row');
+  const foraysSection = html.indexOf('class="show-forays"');
+  assert.ok(lastEpRow >= 0 && foraysSection > lastEpRow, "the forays footer must come after every episode row, never interleaved");
+});
