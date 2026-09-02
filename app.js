@@ -1170,6 +1170,43 @@ function taxonomyChip(nodeId) {
   return `<span class="fy-chip">${esc(node?.label || nodeId)}</span>`;
 }
 
+/* A2.5: "Similar shows" — deterministic taxonomy-overlap similarity, zero new
+   data needed (docs/product requirements audit note: taxonomy_node_ids
+   already sits on every catalog.json show record, unused for this purpose
+   until now). Score = count of taxonomy_node_ids shared with `show`; a show
+   sharing none is not "weakly similar", it is unrelated, so it is filtered
+   out rather than padded in (same "honest sparse/empty beats padding" rule
+   buildPlaylist's tiering already follows). Ties broken by show_id so the
+   order is stable and pinnable in a test, not accidentally date- or
+   insertion-order-dependent. Returns [] (never throws) for a show with no
+   taxonomy_node_ids of its own — there is nothing to overlap against. */
+function similarShows(show, limit = 6) {
+  const nodeIds = new Set(show?.taxonomy_node_ids || []);
+  if (!nodeIds.size) return [];
+  const all = state.catalog?.shows || [];
+  return all
+    .filter(s => s.show_id !== show.show_id)
+    .map(s => ({ show: s, shared: (s.taxonomy_node_ids || []).filter(id => nodeIds.has(id)).length }))
+    .filter(x => x.shared > 0)
+    .sort((a, b) => b.shared - a.shared || a.show.show_id.localeCompare(b.show.show_id))
+    .slice(0, limit)
+    .map(x => x.show);
+}
+
+/* Reuses showResultRow verbatim (same "names a SHOW, not a playable item"
+   rule the shows-search results already follow) rather than inventing a
+   second show-card markup for the same kind of link. Renders nothing (not
+   an empty section) when there is no overlap — matches every other join on
+   this page (moreFromShow, the "no episodes" branch above). */
+function similarShowsSection(show) {
+  const shows = similarShows(show);
+  if (!shows.length) return "";
+  return `<section class="ep-more">
+    <h3>Similar shows</h3>
+    <div class="show-results">${shows.map(showResultRow).join("")}</div>
+  </section>`;
+}
+
 function renderShow(show_id) {
   document.body.className = "view-page";
   const show = showById(show_id);
@@ -1194,6 +1231,7 @@ function renderShow(show_id) {
       ${eps.length
         ? eps.map((item, i) => epRow(item, i, ctx, -1)).join("")
         : `<p class="note">No episodes from this show are in 4a's catalogue right now.</p>`}
+      ${similarShowsSection(show)}
     </div>`;
 
   bindPickLogging($("#view"));
