@@ -216,6 +216,17 @@ export class NarrationCache {
    * `plan()` uses this instead of a bare `has(cacheKey(spec))` for exactly
    * that reason.
    *
+   * The fallback is ONLY attempted when the requested `padSecPerItem` is the
+   * default (or omitted, which `cacheKey()` also normalizes to the
+   * default): every entry a legacy four-field index could contain was
+   * generated with the default padding, since nothing else was ever
+   * recordable before this fix. A caller asking for a genuinely different
+   * padding must NOT match a legacy entry — that would serve the wrong
+   * audio the moment padding synthesis exists and this guard's sibling in
+   * `adapter.mjs` is lifted, which is exactly the correctness this whole
+   * change exists to protect. `assertKeyInputsComplete`'s validation via
+   * `cacheKey()` already ran by the time this executes.
+   *
    * @param {object} spec
    * @returns {{key: string, entry: object|null}} the key ACTUALLY hit (current
    *   or legacy) and its entry, or the current key with a null entry on a
@@ -224,8 +235,11 @@ export class NarrationCache {
   lookup(spec) {
     const key = cacheKey(spec);
     if (this.entries.has(key)) return { key, entry: this.entries.get(key) };
-    const legacy = legacyCacheKey(spec);
-    if (this.entries.has(legacy)) return { key: legacy, entry: this.entries.get(legacy) };
+    const requestedPad = spec.padSecPerItem ?? DEFAULT_PAD_SEC_PER_ITEM;
+    if (requestedPad === DEFAULT_PAD_SEC_PER_ITEM) {
+      const legacy = legacyCacheKey(spec);
+      if (this.entries.has(legacy)) return { key: legacy, entry: this.entries.get(legacy) };
+    }
     return { key, entry: null };
   }
 

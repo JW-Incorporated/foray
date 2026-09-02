@@ -195,6 +195,28 @@ test("a cache index written before padSecPerItem joined the key is still a hit, 
   assert.equal(missPlan.cached, false);
 });
 
+test("the legacy fallback never matches a request for non-default padding", () => {
+  /* Codex review (PR #420, round 4) correctly flagged that the legacy
+     fallback must not become a universal escape hatch: a legacy four-field
+     entry was necessarily generated with DEFAULT_PAD_SEC_PER_ITEM (nothing
+     else was ever recordable before this fix), so it must only satisfy a
+     lookup for that same default. Once padding synthesis exists and
+     adapter.mjs's guard is lifted, a caller asking for real, non-default
+     padding must re-generate rather than silently receive unpadded legacy
+     audio. `createAdapter()` refuses non-default padSecPerItem today, so
+     this exercises NarrationCache directly, one layer below that guard. */
+  const specNow = { text: "an old script", voiceId: "v1", modelId: "m1", outputFormat: "mp3_44100_64" };
+  const oldDigest = legacyCacheKey(specNow);
+  const cache = new NarrationCache({
+    entries: { [oldDigest]: { chars: 13, voiceId: "v1", modelId: "m1", outputFormat: "mp3_44100_64" } },
+  });
+  const planDefault = cache.plan(specNow);
+  assert.equal(planDefault.cached, true, "sanity: the default request still hits the legacy entry");
+
+  const planDifferentPad = cache.plan({ ...specNow, padSecPerItem: 0.5 });
+  assert.equal(planDifferentPad.cached, false, "a non-default padding request must NOT match a legacy (default-padded) entry");
+});
+
 test("createAdapter refuses a non-default padSecPerItem until padding synthesis exists", () => {
   /* cacheKey() correctly treats padSecPerItem as a real invalidating input
      (above), but nothing in this module actually bakes padding into the
