@@ -397,7 +397,8 @@ function corpusDF(term, ctx) {
    variant concept match is still correctly thin. Three bounded, named
    transforms, chosen for measured coverage of the repro set (not a
    stemmer): strip/add bare "s", strip/add sibilant "es"
-   (glass/glasses-shaped), and swap "y"<->"ies" (energy/energies-shaped --
+   (coach/coaches, crash/crashes -- "glass"/"glasses" is now
+   SENSE_LOCKED_PLURALS-excluded below, see round 8), and swap "y"<->"ies" (energy/energies-shaped --
    deliberately in scope HERE even though the hitText comment above rules
    y<->ies OUT for catalogue-text matching: that guard is about not
    mutating a TERM's regex to match unpredictable TEXT, a materially
@@ -459,8 +460,15 @@ const INVARIANT_S_NOUNS = new Set([
    military content. This blocks despluralize only for the exact listed
    token (not a general "don't strip near military words" rule, which
    would be unbounded); pluralize is unaffected, same directional
-   split as INVARIANT_S_NOUNS above. */
-const SENSE_LOCKED_PLURALS = new Set(["marines"]);
+   split as INVARIANT_S_NOUNS above.
+
+   "glasses" added (codex review round 8, direct repro): eyewear
+   "glasses" bare-s-strips to "glass", which data/semantic-index.json
+   indexes under the "materials" concept (glass/materials-science) --
+   not just a harmless unused fragment like most despluralize misses in
+   this helper, but a real cross-sense concept pickup, the same failure
+   shape as "marines"/ocean. */
+const SENSE_LOCKED_PLURALS = new Set(["marines", "glasses"]);
 function lemmaVariants(tok) {
   const out = new Set();
   let despluralized = false;

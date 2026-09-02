@@ -140,8 +140,8 @@ test("lemmaVariants is a bounded, named transform -- not a general stemmer", () 
   assert.deepEqual([...SE.lemmaVariants("energies")], ["energy", "energie"],
     "y<->ies plurals (codex review round 6) also emit the bare-s-strip fragment ('energie' is harmless) so a silent-ie singular like 'movie'/'cookie' isn't missed by the same branch");
   assert.deepEqual([...SE.lemmaVariants("energy")], ["energies"]);
-  assert.deepEqual([...SE.lemmaVariants("glasses")], ["glass", "glasse"],
-    "silent-e plurals (case: 'glasse' is a harmless fragment) also emit the real singular 'glass' -- codex review P2 fix");
+  assert.deepEqual([...SE.lemmaVariants("glasses")], ["glasseses"],
+    "\"glasses\" (eyewear) must never bare-s-strip to \"glass\" -- that IS a real word but the wrong sense (materials concept), same cross-sense contamination as \"marines\"/ocean -- codex review round 8. The pluralize-only fallback ('glasseses') is a harmless unused fragment.");
   assert.deepEqual([...SE.lemmaVariants("warriors")], ["warrior", "warriorses"]);
   assert.deepEqual([...SE.lemmaVariants("training")], ["trainings"],
     "training is treated as a bare noun (pluralize-only), never de-verbed to \"train\"");
@@ -184,5 +184,18 @@ test("\"marines\" (military) never picks up the unrelated ocean concept's vocabu
   const oceanOnlyTerms = ["marine-biology", "maritime", "sea", "seas"];
   for (const t of oceanOnlyTerms) {
     assert.ok(!group.terms.has(t), `"marines" query picked up ocean-only term "${t}" via the wrong-sense despluralize guess`);
+  }
+});
+
+test("\"glasses\" (eyewear) never picks up the unrelated materials concept's vocabulary", () => {
+  /* MUTATION: removing "glasses" from SENSE_LOCKED_PLURALS reproduces
+     codex review round 8's finding -- "glasses" bare-s-strips to
+     "glass", a term of the "materials" concept, corrupting an eyewear
+     query with materials-science vocabulary and topic boosts. */
+  const interp = SE.interpretQuery("glasses", ctx);
+  const group = interp.groups.find(g => g.token === "glasses");
+  const materialsOnlyTerms = ["materials-science", "graphene", "polymers"];
+  for (const t of materialsOnlyTerms) {
+    assert.ok(!group.terms.has(t), `"glasses" query picked up materials-only term "${t}" via the wrong-sense despluralize guess`);
   }
 });
