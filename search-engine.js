@@ -217,9 +217,21 @@ function expansionBucket(df) {
   return df > TAG_DF_TOO_BROAD ? "drop" : df > TAG_DF_COMMON ? "0.4x" : "full";
 }
 
+/* Hard ceiling on a single token's length before it can ever reach
+   longTermPattern()/shortTermPattern(), which interpolate the raw token into a
+   RegExp source string. V8 throws "Invalid regular expression: too large" once
+   the compiled pattern's internal representation exceeds an engine limit --
+   confirmed empirically at ~50,000 repeated identical chars (30,000 is fine).
+   No real search term is anywhere near this long; 64 is already generous headroom
+   over anything a person would type, and it is enforced here -- inside the
+   module's own tokenizer -- so the guarantee holds for every current and future
+   caller of interpretQuery, not just callers that happen to share the UI's
+   maxlength="120" convention (see H-severity red-team finding, 2026-09-02). */
+const MAX_TOKEN_LENGTH = 64;
+
 function tokenize(q) {
   return q.toLowerCase().split(/[^a-z0-9]+/)
-    .filter(w => w.length > 1 && !STOPWORDS.has(w) && !GENERIC_WORDS.has(w));
+    .filter(w => w.length > 1 && w.length <= MAX_TOKEN_LENGTH && !STOPWORDS.has(w) && !GENERIC_WORDS.has(w));
 }
 
 /* ---------- corpus stats (memoized per ctx, same pattern for both) ---------- */
