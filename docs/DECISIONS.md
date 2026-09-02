@@ -1314,6 +1314,11 @@ its reasoning.
   finding) and any resulting tolerance-margin adjustment left as a follow-on decision this gate
   does not make for itself — consistent with how every other schema/measurement gap in this pass
   was surfaced rather than silently assumed away.
+- **Review round 19 fix: two mirrored §3/§8 passages still called the per-act gate's input "ACTUAL
+  written duration" after round 18 correctly reworded §4.9 itself to call it an estimate.**
+  Terminology now matches consistently across §3, §8, and §4.9: on-device narration duration is a
+  characters-per-minute estimate until spoken (§7.3), never a measured "actual" value, everywhere
+  this document references the per-act runtime gate's input.
 - **Review round 9 fix: the deferrable-beat mechanism itself needed a surfaced schema/player gap,
   per the document's own line-23 rule, not silent treatment as already buildable.** `forays.json`
   represents a Foray as one static ordered `items` list today, and the player has no concept of a

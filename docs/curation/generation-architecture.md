@@ -342,12 +342,13 @@ The spine contains:
   undershoot and overshoot bound), and the same running order WITH every reserved deferrable beat
   inserted must also land inside that tolerance. This is validated against the spine's PLANNED
   per-beat runtime budgets when the spine is frozen (§4.3, enforced by §6.1 before Act 1 — and
-  therefore any act — ever plays). Progressive generation (§6) means a later act's ACTUAL written
-  duration is not yet known at that point, so it cannot wait for a single whole-Foray check: each
-  act's actual duration is re-validated against its own planned budget by §4.9's per-act gate,
+  therefore any act — ever plays). Progressive generation (§6) means a later act's written
+  duration (an ESTIMATE for on-device narration until it is spoken, per §7.3 — not a measured
+  value) is not yet known at that point, so it cannot wait for a single whole-Foray check: each
+  act's estimated duration is re-validated against its own planned budget by §4.9's per-act gate,
   which runs the instant that act finishes writing and blocks it from entering the running order
   the player can reach until it passes — before Act 1 specifically, this is also what §6.1 means by
-  "before playback begins." An act whose actual duration fails this re-check is a defect caught at
+  "before playback begins." An act whose estimated duration fails this re-check is a defect caught at
   that act's own gate, never discovered only after the whole Foray has finished and published via
   §4.9's separate whole-Foray gate (see §4.9 for both).** On top of the baseline-alone requirement,
   the baseline must leave enough headroom below the +15% ceiling to accommodate the deferrable
@@ -734,7 +735,8 @@ A generated Foray is publishable only if all of these hold:
   within the maximum runtime rather than adding it on top (§6.3). Both paths (baseline alone, and
   baseline plus every reserved deferrable beat) are validated against the spine's planned
   per-beat budgets when the spine freezes (§4.3/§6.1), before Act 1 or any act plays; each act's
-  ACTUAL written duration is then re-validated against that same planned budget by §4.9's per-act
+  written duration (a characters-per-minute ESTIMATE for on-device narration, not a measured
+  value — §7.3) is then re-validated against that same planned budget by §4.9's per-act
   gate the moment that act finishes writing, not deferred to §4.9's separate final whole-Foray
   gate, since progressive generation (§6) means later acts are still being written while earlier
   ones already play.
