@@ -530,13 +530,22 @@ function interpretQuery(q, ctx) {
        lemma variant as its own additional literal term (same "own"
        weight as the typed token itself) closes that gap without
        touching hitText's matcher or LONG_INFLECTIONS at all.
-       Unconditional (not gated on hasExactConceptMatch): this is bare
-       literal text matching, not concept-sense merging, so it carries
-       none of the cross-concept-blend risk the lookupKeys gate above
-       guards against -- "transmission" still only adds the literal term
-       "transmissions" here, it does not pull in the motorsport concept's
-       other vocabulary. */
-    for (const v of lemmaVariants(tok)) addTerm(v, 1, "own");
+
+       GATED on hasExactConceptMatch, same as the lookupKeys widening
+       above (codex review round 2, P2): even as bare literal text, an
+       own-weight term is eligible for tag/topic bonuses via
+       expansionBucket below, so unconditionally adding the variant let a
+       "transmissions" (motorsport) query's own-weight "transmission"
+       term still match energy-grid items that spell the singular --
+       the same sense-blend the lookupKeys gate exists to prevent, just
+       reached through the literal-term path instead of the concept-
+       membership path. Skipping it when the exact token already owns a
+       concept costs nothing for the real fix target (culture/cultures:
+       neither inflection has ANY concept, so hasExactConceptMatch is
+       false and this still fires exactly as intended). */
+    if (!hasExactConceptMatch) {
+      for (const v of lemmaVariants(tok)) addTerm(v, 1, "own");
+    }
 
     const others = contentTokens.filter(o => o !== tok);
     const otherKeys = others.map(o => new Set([o, ...(ALIASES[o] || [])]));
