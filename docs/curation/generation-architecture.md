@@ -82,7 +82,7 @@ user, not just a founder, can prompt a Foray:
 
 | | cloud ElevenLabs | self-hosted Kokoro | on-device |
 |---|---|---|---|
-| synthesis cost at 10,000 user Forays | `narrator-voice.md`/`self-hosted-tts.md` §6.1: **$9,900–$59,100**, recurring on every re-narration | **~$0** (electricity), per `self-hosted-tts.md` §3 | **$0**, always |
+| synthesis cost at 10,000 user Forays | `on-device-tts.md` §6.1: **$9,900–$59,100**, recurring on every re-narration | **~$0** (electricity), per `self-hosted-tts.md` §3 | **$0**, always |
 | hosting/egress cost | `on-device-tts.md` §6.1: real audio files, egress ceiling hit by *play* volume, not just creation count | same as ElevenLabs — Kokoro still renders a server-side audio file | **$0** — ~20 KB of script text ships in data already bundled, per `on-device-tts.md` §5 |
 | pronunciation control | Documented, per `narrator-voice.md` §3.2 (pinned voice ID) | Documented, per `self-hosted-tts.md` §2.1 (misaki inline IPA) | Documented on iOS (`AVSpeechSynthesisIPANotationAttribute`, `on-device-tts.md` §1); undocumented on Android (`on-device-tts.md` §2) — closed by the acceptance fixture in §9.4 below, not by this ruling |
 | voice-identity risk | Vendor can retire the pinned voice class (ElevenLabs did, Dec 2026 Default retirement, `narrator-voice.md` §3.2) | None — Joey owns the weights file | None for user-created content — every listener hearing their own device's voice is the expected behaviour for a personal narration feature, not a defect (`on-device-tts.md` §4) |
