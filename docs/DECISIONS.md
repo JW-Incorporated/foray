@@ -1307,6 +1307,13 @@ its reasoning.
   since those rulings are explicitly meant to be implementable. Both instructions now distinguish
   **Open** items (still forbidden) from **Resolved** items (dated ruling recorded, buildable
   against it), matching how §9's own entries are already labeled.
+- **Review round 18 fix: §4.9's per-act gate claimed to check an act's "actual written duration,"
+  but §7.3 already establishes that on-device narration has no exact duration before it is
+  spoken — only a characters-per-minute estimate.** The gate now explicitly checks that same
+  estimate (not a measured value), with the estimator's own error bars (§7.3, itself an open
+  finding) and any resulting tolerance-margin adjustment left as a follow-on decision this gate
+  does not make for itself — consistent with how every other schema/measurement gap in this pass
+  was surfaced rather than silently assumed away.
 - **Review round 9 fix: the deferrable-beat mechanism itself needed a surfaced schema/player gap,
   per the document's own line-23 rule, not silent treatment as already buildable.** `forays.json`
   represents a Foray as one static ordered `items` list today, and the player has no concept of a
