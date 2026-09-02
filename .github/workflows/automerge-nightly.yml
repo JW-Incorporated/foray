@@ -230,9 +230,30 @@ jobs:
         # --match-head-commit binds the arming to the commit that was actually
         # judged. Without it, arming is open-ended: a later push could land any
         # diff at all on an approval given for a different one.
+        #
+        # LEG 2 OF t_a25ea475: this is the step the original finding names
+        # directly (a founder removes `hold` -> `unlabeled` fires -> this job
+        # re-decides ARMED -> `gh pr merge --auto` here rejects with GitHub's
+        # documented "Pull request is in clean status" error when the PR has
+        # nothing left to wait on). Erroring here left the PR right back in
+        # the same stuck state this whole change exists to fix, with a red,
+        # unretried step and nothing else watching it. Same fallback as
+        # pr-hygiene.yml's `enable-auto` action: on that one rejection, merge
+        # directly instead of failing.
         run: |
-          gh pr merge "$PR" --repo "$REPO" --squash --auto --delete-branch \
-            --match-head-commit "$HEAD_SHA"
+          set -uo pipefail
+          out=$(gh pr merge "$PR" --repo "$REPO" --squash --auto --delete-branch \
+                  --match-head-commit "$HEAD_SHA" 2>&1) && echo "$out" || {
+            if grep -qi "clean status" <<<"$out"; then
+              echo "$out"
+              echo "#$PR is already clean — merging directly instead of arming"
+              gh pr merge "$PR" --repo "$REPO" --squash --delete-branch \
+                --match-head-commit "$HEAD_SHA"
+            else
+              echo "$out" >&2
+              false
+            fi
+          }
 
       - name: Disarm auto-merge
         if: steps.decide.outputs.armed != 'true'
