@@ -321,8 +321,15 @@ test("boundary case just above THIN_ANCHOR_DF (\"ornithology\", corpusDF ~0.0021
   const query = "Ornithology History Explained";
   const interp = SE.interpretQuery(query, ctx);
   const byToken = Object.fromEntries(interp.groups.map(g => [g.token, g]));
-  if (!byToken.ornithology || byToken.ornithology.df >= 0.002) {
-    return; // catalogue snapshot moved ornithology's df away from the boundary; nothing to assert here today
+  /* Only assert while "ornithology" is still sitting in the JUST-ABOVE-cutoff
+     window this test exists to pin (0.002 <= df < 0.003, i.e. within 50% of
+     THIN_ANCHOR_DF above the line). If a catalogue refresh drops it below
+     0.002 (it would then correctly read thin=true -- a different case, not
+     a regression) or pushes it well clear of the boundary (no longer the
+     scenario this test documents), skip rather than assert something this
+     test was never designed to check. */
+  if (!byToken.ornithology || byToken.ornithology.df < 0.002 || byToken.ornithology.df >= 0.003) {
+    return; // catalogue snapshot moved ornithology's df away from the just-above-cutoff boundary window
   }
   assert.ok(!byToken.ornithology.thin,
     "this pins the CURRENT boundary shape: corpusDF just above 0.002 reads thin=false, unprotected");
