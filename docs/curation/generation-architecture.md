@@ -337,14 +337,19 @@ The spine contains:
   (produced, but unplayed). **This means the without-buffer running order — every act minus its
   deferrable beats — must, by itself, already land inside §3/§8's ±15% tolerance (both the
   undershoot and overshoot bound), and the same running order WITH every reserved deferrable beat
-  inserted must also land inside that tolerance. §4.9 validates both paths prospectively, before
-  §4.10 playback ever begins — publishability cannot depend on which path a given listening
-  session happens to take, since §6.3's time-shortfall decision is made live, per playback, after
-  the Foray has already published. On top of the baseline-alone requirement,
+  inserted must also land inside that tolerance. This is validated against the spine's PLANNED
+  per-beat runtime budgets when the spine is frozen (§4.3, enforced by §6.1 before Act 1 — and
+  therefore any act — ever plays), not deferred to §4.9's later publish gate: progressive
+  generation (§6) means Act 1 can already be playing while later acts are still being written, so
+  a check that waited for §4.9's final actual-duration pass would run too late to prevent an
+  in-tolerance-looking Foray from becoming a defect mid-playback. §4.9 then re-validates using each
+  act's actual written duration once it exists, as a confirmation that the planned budget held —
+  a hard failure at that point (a beat ran long in the writing) is caught before that act publishes,
+  even if an earlier act in the same Foray is already playing.** On top of the baseline-alone requirement,
   the baseline must leave enough headroom below the +15% ceiling to accommodate the deferrable
   beats it carries: baseline runtime plus the reserved deferrable beats' runtime, together, must
   still fit within +15% of the target — deferrable beats only ever add runtime, so only the upper
-  bound is at risk from their insertion.** A baseline that already sits at the +15% ceiling on its
+  bound is at risk from their insertion. A baseline that already sits at the +15% ceiling on its
   own has zero headroom and may carry no deferrable beats at all, regardless of act
   length. Each act's deferrable-beat count is capped by whatever headroom remains under that
   ceiling after the act's other beats are sized, never by a flat allowance independent of how much
@@ -681,11 +686,12 @@ A generated Foray is publishable only if all of these hold:
   it carries a recorded reason (schema TBD, see §3) and an explicit narrated explanation. Overshoot
   has no exception at any margin (§3) — including a §6.3 time-buffer insertion pushing runtime past
   ±15%, which is a defect the generation lead must avoid by reserving room for the deferrable pair
-  within the maximum runtime rather than adding it on top (§6.3). This check runs at publish time
-  (§4.9), before playback (§4.10) ever begins, so both the without-buffer running order and the
-  running order with every reserved deferrable beat inserted must independently pass — §6.3's
-  actual insert-or-not decision happens live, per playback session, after the Foray is already
-  published (§4.3).
+  within the maximum runtime rather than adding it on top (§6.3). Both paths (baseline alone, and
+  baseline plus every reserved deferrable beat) are validated against the spine's planned
+  per-beat budgets when the spine freezes (§4.3/§6.1), before Act 1 or any act plays; §4.9
+  re-validates each act's actual written duration against that same planned budget once the act
+  is written, per act, since progressive generation (§6) means later acts are still being written
+  while earlier ones already play.
 - Narration share may be up to 100% (§9.3) — there is no ceiling. A Medium/Long Foray whose topic is
   too thin for real tape at the requested duration must take the §9.3 shortening path instead of
   padding with synthetic filler to raise or preserve narration share.

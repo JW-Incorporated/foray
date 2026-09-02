@@ -1278,6 +1278,16 @@ its reasoning.
   order and the baseline-plus-every-deferrable-beat running order to independently pass the ±15%
   tolerance at publish time (§4.9) — publishability no longer depends on which path any given
   listening session happens to take.
+- **Review round 12 fix: round 11's fix wrongly deferred the runtime-tolerance check to §4.9's
+  final publish gate, which is unreachable in time.** Progressive generation (§6) means Act 1 can
+  already be playing while later acts are still being written — a check that waited for §4.9's
+  final actual-duration validation on the WHOLE Foray would run after playback of early acts had
+  already begun, too late to prevent an in-tolerance-looking Foray from becoming a defect
+  mid-playback. §3/§8/§4.3 now validate both the baseline and baseline-plus-deferrables paths
+  against the spine's PLANNED per-beat runtime budgets when the spine freezes (§4.3/§6.1), before
+  any act plays; §4.9 then re-validates each act's ACTUAL written duration against that same
+  planned budget once the act is written, per act, catching a beat that ran long in the writing
+  before that specific act publishes — not waiting for the whole Foray to finish.
 - **Review round 10 fix: §8's spine-beat completeness gate contradicted the normal on-schedule
   deferrable-beat path.** §8 required every spine beat to be "present, or explicitly dropped with
   a recorded reason," but §4.3/§6.3 (as corrected in rounds 6-9) specify that a deferrable beat is
