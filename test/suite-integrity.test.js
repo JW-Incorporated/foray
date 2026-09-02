@@ -266,6 +266,15 @@ const FLOORS = {
      and nothing else in the repo would notice. Every test names its mutation;
      see the suite header for the full list of what each test pins. */
   "test/show-page.test.js": 9,
+  /* Requirements A3.2/A3.3 — category browse + all-shows index (kanban card
+     "Build: category browse — linkify taxonomy chips + all-shows index"):
+     the taxonomy-chip link itself, the showsForCategory overlap join against
+     the real catalogue, renderCategory/renderAllShows (including honest
+     unknown-category/empty-catalogue states), the two new routes, and the
+     "Browse all shows" nav entry point's visibility toggle. Every test names
+     its mutation; see the suite header for the full list of what each test
+     pins. */
+  "test/category-browse.test.js": 11,
   /* Stage 2 of docs/show-pages-plan.md — show search (kanban card
      t_1c9afc67): SearchEngine.searchShows against the real catalogue,
      scope-boundary proof that the topic scorer is untouched, and the
@@ -274,6 +283,15 @@ const FLOORS = {
      its mutation; see the suite header for the full list of what each
      test pins. */
   "test/show-search.test.js": 11,
+  /* Starred shows (follow-lite), requirement A2.4 / Joey's Q2 answer.
+     Kanban card "Build: starred shows (follow-lite) + dedicated Starred
+     Shows page". Floored because this is exactly the #276/show-pages
+     shape: a per-device marker whose decay (a dropped guard, a wrong
+     storage key, a missing route branch) is silently wrong rather than a
+     crash, and nothing else in the repo would notice. Every test names
+     its mutation; see the suite header for the full list of what each
+     test pins. */
+  "test/starred-shows.test.js": 8,
   /* "Up Next" listening queue, Stage 1 of docs/listening-queue-plan.md
      (kanban card t_f4da81f5). Floored because the queue's own decay path
      (an id ageing out of the pool, or the queue emptying) is exactly the

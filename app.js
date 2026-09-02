@@ -556,6 +556,98 @@ function upNextBtn(id) {
     aria-label="${on ? "In Up Next" : "Add to Up Next"}">${on ? "✓ Up Next" : "+ Up Next"}</button>`;
 }
 
+/* ---------- starred shows (follow-lite) ----------
+
+   Requirement A2.4 / Joey's Q2 answer: "yes, add starred shows, and a
+   section for all of your starred shows. It is not the home page but is
+   somewhat easily accessible." Deliberately NOT subscribe semantics — no
+   notifications, no auto-download, no algorithmic surfacing — just a
+   lightweight marker, mirroring the existing episode star (`cp_saved`)
+   pattern exactly, keyed on show_id instead of episode id. Same "state
+   observed, never declared" principle: starring a show changes nothing
+   about what the app recommends or fetches. */
+function starredShowsMap() { return lsGet("cp_starred_shows", {}); }
+function isShowStarred(id) { return id in starredShowsMap(); }
+
+function toggleShowStar(id) {
+  const starred = starredShowsMap();
+  if (starred[id]) {
+    delete starred[id];
+    logEvent("show_unstarred", { show_id: id });
+  } else {
+    const show = showById(id);
+    if (!show) return;
+    starred[id] = {
+      show_id: show.show_id,
+      title: show.title,
+      artwork_url: show.artwork_url || null,
+      starred_at: new Date().toISOString(),
+    };
+    logEvent("show_starred", { show_id: id });
+  }
+  lsSet("cp_starred_shows", starred);
+  document.querySelectorAll(`[data-show-star="${CSS.escape(id)}"]`).forEach(b => {
+    b.textContent = isShowStarred(id) ? "★ Starred" : "☆ Star this show";
+    b.classList.toggle("on", isShowStarred(id));
+  });
+}
+
+/* Text label, not a bare glyph like starBtn -- this button sits alone in a
+   page header rather than beside a play control in a dense row, so it needs
+   to read on its own. */
+function showStarBtn(show_id) {
+  const on = isShowStarred(show_id);
+  return `<button class="show-star ${on ? "on" : ""}" data-show-star="${esc(show_id)}" aria-label="${on ? "Unstar show" : "Star show"}">${on ? "★ Starred" : "☆ Star this show"}</button>`;
+}
+
+function bindShowStars(scope) {
+  scope.querySelectorAll("[data-show-star]").forEach(btn => {
+    if (btn._bound) return;
+    btn._bound = true;
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      toggleShowStar(btn.dataset.showStar);
+    });
+  });
+}
+
+/* ---------- Starred Shows page (#/starred-shows) ----------
+
+   Reachable from the drawer, deliberately NOT on the home screen (Joey's
+   framing: "somewhat easily accessible" but distinct from home). Renders
+   exactly what cp_starred_shows holds -- no fetch, no ranking, no
+   algorithmic surfacing. An empty state is a real, renderable state, same
+   convention as every other page in the app. Reuses showResultRow's visual
+   language (artwork + title, no play/star/duration controls -- a show,
+   not a playable item) rather than inventing a second show-card shape. */
+function starredShowRow(entry) {
+  return `<a class="show-result" href="#/show/${encodeURIComponent(entry.show_id)}">
+    ${entry.artwork_url ? `<img class="show-result-art" src="${esc(safeUrl(entry.artwork_url))}" alt="">` : `<span class="show-result-art show-result-art-blank"></span>`}
+    <span class="show-result-title">${esc(entry.title)}</span>
+  </a>`;
+}
+
+function renderStarredShows() {
+  document.body.className = "view-page";
+  const starred = Object.values(starredShowsMap())
+    .sort((a, b) => (b.starred_at || "").localeCompare(a.starred_at || ""));
+
+  $("#view").innerHTML = `
+    <div class="page">
+      <div class="page-head">
+        <a class="back" href="#/">‹</a>
+        <div>
+          <h2>Starred Shows</h2>
+          <p class="sub">${starred.length} show${starred.length === 1 ? "" : "s"} you've starred</p>
+        </div>
+      </div>
+      ${starred.length
+        ? `<div class="show-results">${starred.map(starredShowRow).join("")}</div>`
+        : `<p class="note">No starred shows yet — star a show from its page to see it here.</p>`}
+    </div>`;
+}
+
 /* ---------- the four suggestions ---------- */
 
 function pickedHistory() { return lsGet("cp_history", []); }
@@ -1165,9 +1257,65 @@ function showNameLink(showName) {
   return showId ? `<a class="show-link" href="#/show/${esc(showId)}">${label}</a>` : label;
 }
 
+/* A3.2 — tapping a chip goes to "shows in this category" (renderCategory),
+   reusing taxonomy_node_ids overlap across the existing 220-show curated
+   catalogue. Zero new data needed: the join is entirely against fields
+   already fetched (state.taxonomy, state.catalog). Deliberately an <a>, not
+   a <button> wired through JS, so it is a normal navigable link (right-click
+   "open in new tab" etc. keep working, same reasoning as showNameLink). */
 function taxonomyChip(nodeId) {
   const node = (state.taxonomy?.nodes || []).find(n => n.id === nodeId);
-  return `<span class="fy-chip">${esc(node?.label || nodeId)}</span>`;
+  const label = esc(node?.label || nodeId);
+  return `<a class="fy-chip" href="#/category/${esc(encodeURIComponent(nodeId))}">${label}</a>`;
+}
+
+/* Every catalogue show whose taxonomy_node_ids includes nodeId — the exact
+   overlap check A3.2 calls for. Once Stage 3b's breadth catalogue becomes
+   client-searchable this should extend to it too (separate card); for now
+   it reads only state.catalog, the curated 220-show set. */
+function showsForCategory(nodeId) {
+  return (state.catalog?.shows || []).filter(s => (s.taxonomy_node_ids || []).includes(nodeId));
+}
+
+/* Shared shell for both the category list (A3.2) and the all-shows index
+   (A3.3) — same "back, heading, sub, list-of-show-result-rows" shape
+   renderShow/renderPlaylistDetail already use, and reuses showResultRow so a
+   row here looks and behaves exactly like a Shows-search result. */
+function renderShowIndexPage(title, subtitle, shows) {
+  document.body.className = "view-page";
+  $("#view").innerHTML = `
+    <div class="page">
+      <div class="page-head">
+        <a class="back" href="#/">‹</a>
+        <div>
+          <h2>${esc(title)}</h2>
+          <p class="sub">${esc(subtitle)}</p>
+        </div>
+      </div>
+      ${shows.length
+        ? `<div class="show-results">${shows.map(showResultRow).join("")}</div>`
+        : `<p class="note">No shows here yet.</p>`}
+    </div>`;
+}
+
+/* A3.2's landing page. An unknown nodeId still renders — same "absence is a
+   real state, not an error" rule renderShow's not-found guard follows —
+   falling back to the raw id as its own label, and an empty result list
+   getting the shared "No shows here yet" copy rather than a dead end. */
+function renderCategory(nodeId) {
+  const node = (state.taxonomy?.nodes || []).find(n => n.id === nodeId);
+  const label = node?.label || nodeId;
+  const shows = showsForCategory(nodeId).slice().sort((a, b) => a.title.localeCompare(b.title));
+  renderShowIndexPage(label, `${shows.length} show${shows.length === 1 ? "" : "s"} in 4a's catalogue`, shows);
+}
+
+/* A3.3 — the all-shows browsable index. A-Z over the full curated catalogue;
+   category grouping is the Shows-search tab's job already (browse by
+   category lives one tap away via any show's taxonomy chips), so this stays
+   a single flat alphabetical list rather than duplicating that navigation. */
+function renderAllShows() {
+  const shows = (state.catalog?.shows || []).slice().sort((a, b) => a.title.localeCompare(b.title));
+  renderShowIndexPage("All Shows", `${shows.length} shows in 4a's catalogue, A\u2013Z`, shows);
 }
 
 /* A2.5: "Similar shows" — deterministic taxonomy-overlap similarity, zero new
@@ -1226,6 +1374,7 @@ function renderShow(show_id) {
         </div>
       </div>
       ${show.artwork_url ? `<img class="show-art" src="${esc(safeUrl(show.artwork_url))}" alt="">` : ""}
+      ${showStarBtn(show.show_id)}
       ${show.editorial_note ? `<p class="note">${esc(show.editorial_note)}</p>` : ""}
       ${chips ? `<div class="fy-chips">${chips}</div>` : ""}
       ${eps.length
@@ -1236,6 +1385,7 @@ function renderShow(show_id) {
 
   bindPickLogging($("#view"));
   bindStars($("#view"));
+  bindShowStars($("#view"));
   bindUpNext($("#view"));
   bindPlay($("#view"));
 }
@@ -1624,6 +1774,7 @@ function setSearchTab(mode) {
   $("#sh-form").hidden = topics;
   $("#sh-note").hidden = topics || !$("#sh-note").textContent;
   $("#sh-results").hidden = topics || !$("#sh-results").innerHTML;
+  $("#browse-all-link").hidden = topics;
 }
 
 function renderHome() {
@@ -1651,6 +1802,7 @@ function renderHome() {
       </form>
       <p id="sh-note" class="note" hidden></p>
       <div id="sh-results" class="show-results" hidden></div>
+      <a id="browse-all-link" class="browse-all-link" href="#/shows" hidden>Browse all shows ›</a>
     </div>`;
 
   if (!showFirstTimeExplainerOnce()) showIntroPopupOnce();
@@ -4230,8 +4382,11 @@ function renderCurrentPage() {
   else if ((m = /^#\/subject\/(.+)$/.exec(h))) renderPlaylistDetail("subject-" + m[1]);
   else if ((m = /^#\/episode\/(.+)$/.exec(h))) renderEpisode(m[1]);
   else if ((m = /^#\/show\/(.+)$/.exec(h))) renderShow(decodeURIComponent(m[1]));
+  else if ((m = /^#\/category\/(.+)$/.exec(h))) renderCategory(decodeURIComponent(m[1]));
+  else if (h === "#/shows") renderAllShows();
   else if (h === "#/playlists") renderPlaylists();
   else if (h === "#/queue") renderQueue();
+  else if (h === "#/starred-shows") renderStarredShows();
   else renderHome();
 }
 
