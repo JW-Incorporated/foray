@@ -41,13 +41,20 @@ const SHELL = [
   "styles.css",
   "sw.js",
   "manifest.json",
+  "deploy-manifest.json",
   "icon-180.png",
   "icon-512.png",
 ];
 
 /* Exactly what app.js fetches at runtime — verified against its init(). Adding
    a fetch without adding it here means a 404 in production and a working
-   localhost, which is the worst failure shape. */
+   localhost, which is the worst failure shape.
+
+   `forays.json`, `segments.json`, `segment-sources.json` and
+   `catalog-client.json` were missing from this list until M4 (#233
+   remainder): `tools/ci/generate-manifest.mjs`'s cross-check against
+   `dist/` (see below) caught that a Vercel deploy of this bundle would 404 on
+   every one of them, since `app.js`'s `init()` fetches all four. */
 const RUNTIME_DATA = [
   "session.json",
   "taxonomy.json",
@@ -55,6 +62,10 @@ const RUNTIME_DATA = [
   "semantic-index.json",
   "item-tags.json",
   "validated-links.json",
+  "forays.json",
+  "segments.json",
+  "segment-sources.json",
+  "catalog-client.json",
   // Not fetched by app.js today, but small and already used by the backend
   // curation path; harmless to ship and avoids a redeploy when the client
   // starts reading them (personas surfacing, ladders — #25 and the R14 work).
@@ -127,37 +138,44 @@ if (missing.length) {
   console.warn("WARN not found (skipped): " + missing.map((m) => m.rel).join(", "));
 }
 
-/* Stamp the service-worker cache name with a content hash.
+/* Stamp deploy-manifest.json's deploy_id, freshly, against what dist ACTUALLY
+   contains.
 
-   sw.js is cache-first for the app shell and only invalidates when the CACHE
-   constant changes — which was a manual edit nobody remembers. Consequence,
-   observed live on 2026-07-29: app.js changes deployed fine, the network served
-   the new file, and every existing client kept executing the old one from
-   `foray-v3`. In-app playback was invisible to anyone who had loaded the site
-   before, and no amount of redeploying would have fixed it.
+   Before M4 (#233 remainder) sw.js's `CACHE` name was hand-bumped and the
+   Vercel build stamped a content hash into it directly, because there was no
+   other place to put a version. sw.js now derives its generation identity
+   entirely from `deploy-manifest.json` (see tools/ci/generate-manifest.mjs and
+   sw.js's header), which is generated from the SOURCE tree and already
+   committed — normally that committed copy is exactly right, since dist is a
+   byte-identical copy of the same files it hashes.
 
-   Hashing the shell means every real change busts the cache automatically and
-   an unchanged deploy does not, so cache-first speed is kept. sw.js already
-   calls skipWaiting() + clients.claim(), so the new worker takes over on the
-   next load rather than waiting for every tab to close. */
+   This step exists for the one case where it would not be: this script's own
+   allowlist can omit or rename something relative to what generate-manifest.mjs
+   listed, and a manifest that describes files dist does not actually contain
+   would let sw.js's install-time verification fail against production, not
+   locally. So dist gets its OWN manifest, recomputed from what actually landed
+   in dist, rather than trusting the copy that shipped from the source tree. */
 {
-  const swPath = join(OUT, "sw.js");
-  const hashed = ["index.html", "app.js", "search-engine.js", "styles.css", ...playerSources()];
-  const h = createHash("sha256");
-  for (const rel of hashed) {
-    const f = join(OUT, rel);
-    if (existsSync(f)) h.update(readFileSync(f));
-  }
-  const build = h.digest("hex").slice(0, 12);
-  const sw = readFileSync(swPath, "utf8");
-  const stamped = sw.replace(/const CACHE = "[^"]*";/, `const CACHE = "foray-${build}";`);
-  if (stamped === sw) {
-    console.error("FATAL: could not stamp the sw.js cache name — the CACHE constant did not match. " +
-      "Without this, shell changes never reach existing clients.");
+  const distManifestPath = join(OUT, "deploy-manifest.json");
+  if (!existsSync(distManifestPath)) {
+    console.error("FATAL: deploy-manifest.json missing from dist — cannot verify deploy identity.");
     process.exit(1);
   }
-  writeFileSync(swPath, stamped);
-  console.log(`sw cache: foray-${build}`);
+  const sourceManifest = JSON.parse(readFileSync(join(ROOT, "deploy-manifest.json"), "utf8"));
+  const distFiles = {};
+  for (const rel of Object.keys(sourceManifest.files)) {
+    const f = join(OUT, rel);
+    if (!existsSync(f)) {
+      console.error(`FATAL: deploy-manifest.json names ${rel}, which is not in dist. ` +
+        `Add it to prepare-dist.mjs's allowlist or regenerate the manifest.`);
+      process.exit(1);
+    }
+    distFiles[rel] = "sha256:" + createHash("sha256").update(readFileSync(f)).digest("hex");
+  }
+  const lines = Object.keys(distFiles).sort().map((p) => `${p}:${distFiles[p]}`).join("\n") + "\n";
+  const distDeployId = createHash("sha256").update(lines).digest("hex").slice(0, 16);
+  writeFileSync(distManifestPath, JSON.stringify({ deploy_id: distDeployId, files: distFiles }, null, 2) + "\n");
+  console.log(`deploy manifest: ${distDeployId} (${Object.keys(distFiles).length} files, verified against dist)`);
 }
 
 if (mb > MAX_MB) {

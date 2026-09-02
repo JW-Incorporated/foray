@@ -610,17 +610,22 @@ test("ci.yml's ios-kit job is untouched and still compiles ForayKit", () => {
   assert.match(CI, /runs-on: macos-latest/);
 });
 
-test("ci.yml still declares exactly its three jobs, and #38 added none", () => {
+test("ci.yml still declares exactly its four jobs, and #38 added none", () => {
   /* NOT a check on the `protect-main` ruleset — that lives in GitHub's settings
      and nothing in this repo can read it. What this asserts is narrower and still
-     worth having: `ci.yml` has the same three jobs it had before #38, so the two
+     worth having: `ci.yml` has the same jobs it had before #38, so the two
      REQUIRED contexts (`backend`, `data-and-site`) are still produced by the job
-     names they were produced by, and #38 did not quietly add a fourth. */
+     names they were produced by, and #38 did not quietly add another.
+
+     Raised from three to four jobs by kanban card t_504fd5fd (M4's real-Chromium
+     `playwright` job, advisory-only — see android-workflow.test.mjs's matching
+     assertion and ci.yml's own comment on that job for why this does not touch
+     the "two required contexts" argument). */
   const jobs = block(CI, "jobs")
     .split(/\r?\n/)
     .filter((l) => /^ {2}[a-z][\w-]*:/.test(l))
     .map((l) => l.trim().replace(":", ""));
-  assert.deepEqual(jobs.sort(), ["backend", "data-and-site", "ios-kit"]);
+  assert.deepEqual(jobs.sort(), ["backend", "data-and-site", "ios-kit", "playwright"]);
 });
 
 /* ───────────────────────────── the cost claim ────────────────────────────── */

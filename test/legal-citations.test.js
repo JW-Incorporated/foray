@@ -770,34 +770,42 @@ test("policy §2's \"Not sent\" list is exactly the local-only set", () => {
 
 /* ================= 3. the cache bucket name ================================== */
 
-/** The bucket `sw.js` actually ships. */
-function shippedCacheName() {
-  const m = /const CACHE = "([^"]+)"/.exec(read("sw.js"));
-  assert.ok(m, "sw.js's CACHE constant could not be located");
+/** The cache-name prefix sw.js actually ships. Unlike the old hand-bumped
+    `foray-vN`, there is no longer one fixed literal name to pin — the suffix is
+    a content-derived deploy id that changes with every real deploy (see
+    tools/ci/generate-manifest.mjs). What CAN be pinned, and is the actual
+    drift risk (#233 bumped `foray-v4` to `foray-v5` and left the old name in
+    three places across the docs for nine weeks), is the family PREFIX: if that
+    ever changes, every doc quoting the old one goes stale at once. */
+function shippedCachePrefix() {
+  const m = /CACHE_PREFIX\s*=\s*"([^"]+)"/.exec(read("sw.js"));
+  assert.ok(m, "sw.js's CACHE_PREFIX constant could not be located");
   return m[1];
 }
 
-test("both legal documents name the cache bucket sw.js actually ships", () => {
+test("both legal documents name the cache bucket FAMILY sw.js actually ships", () => {
   /* THE DRIFT THIS PIN EXISTS FOR: #233 bumped `sw.js` to `foray-v5` and left
      `foray-v4` in three places across the two documents, for nine weeks, with
      `test/sw-generation.test.js` green the whole time — it pins the name inside
-     `sw.js` and has no idea the documents quote it.
+     `sw.js` and has no idea the documents quote it. M4 replaced the single
+     hand-bumped name with a family prefix (`foray-gen-`) plus a per-deploy
+     suffix that changes on every real deploy, so the fixed thing to pin moved
+     from "the exact name" to "the family prefix, quoted as `foray-gen-<deploy_id>`".
 
-     MUTATION THAT KILLS THIS: change `sw.js` to `const CACHE = "foray-v6";`.
-     Ran it — red on both documents. The next bump cannot land in `sw.js` alone. */
-  const name = shippedCacheName();
+     MUTATION THAT KILLS THIS: change `sw.js`'s `CACHE_PREFIX` to
+     `"foray-generation-"`. Ran it — red on both documents: neither still
+     quotes a prefix the code actually uses. */
+  const prefix = shippedCachePrefix();
   for (const rel of DOCS) {
     const doc = read(rel);
     assert.ok(
-      doc.includes(`\`${name}\``),
-      `${rel} never names the shipped cache bucket \`${name}\``
+      doc.includes(`\`${prefix}<deploy_id>\``),
+      `${rel} never names the shipped cache family \`${prefix}<deploy_id>\``
     );
-    const stale = [...doc.matchAll(/`(foray-v\d+)`/g)]
-      .map((m) => m[1])
-      .filter((v) => v !== name);
+    const stale = [...doc.matchAll(/`(foray-v\d+)`/g)].map((m) => m[1]);
     assert.deepStrictEqual(
       [...new Set(stale)], [],
-      `${rel} still names a cache bucket the app does not use: ${stale.join(", ")}`
+      `${rel} still names the retired single-version cache bucket format: ${stale.join(", ")}`
     );
   }
 });

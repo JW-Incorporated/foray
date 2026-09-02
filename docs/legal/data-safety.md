@@ -369,7 +369,7 @@ are the answers that will actually be submitted.
 | Aspect | Web | Native shell | Effect on the declarations |
 |---|---|---|---|
 | Event sync to Supabase | Yes | **Yes — unchanged.** The shell keeps `connect-src … supabase.co` in its CSP. | **None.** Every "Yes" above still applies. |
-| Service worker / `foray-v5` cache | Registered | **Not registered** — `shouldRegisterServiceWorker()` returns false for `capacitor:`/`ionic:` origins and native platforms | None (that cache was never declarable — same-origin app shell). |
+| Service worker / `foray-gen-<deploy_id>` caches | Registered | **Not registered** — `shouldRegisterServiceWorker()` returns false for `capacitor:`/`ionic:` origins and native platforms | None (that cache family was never declarable — same-origin app shell). |
 | Catalogue JSON | Fetched from GitHub Pages | **Bundled in the app** (`tools/mobile/prepare-webdir.mjs`) | Slightly *fewer* third parties: GitHub no longer sees catalogue requests. |
 | App origin | `https://…github.io` | `capacitor://localhost` (iOS) / `https://localhost` (Android) | None. It is why the shell widens `img-src` to include `'self'`. |
 | Audio from publisher CDNs | Direct | **Direct — unchanged** | §A6 applies identically. |
