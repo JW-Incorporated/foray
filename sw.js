@@ -122,7 +122,11 @@ const CACHE_PREFIX = "foray-gen-";
    manifest.mjs --write` stamps this string to the freshly computed
    `deploy_id` on every run, so a real content change always changes sw.js's
    own bytes too, and `--check` fails if the two ever drift apart. */
-const BUILD_ID = "0eb6b8e7f0cc4626";
+<<<<<<< HEAD
+const BUILD_ID = "c212e9369d4c304c";
+=======
+const BUILD_ID = "7c9176e5b2a2bcfe";
+>>>>>>> origin/main
 const POINTER_CACHE = "foray-pointer";
 const PENDING_CACHE = "foray-pending";
 /* Cache keys are Requests/URLs, so a plain string needs a URL of its own to be

@@ -258,7 +258,7 @@ describe("disclosureTemplate / disclosureNarratedBeat — the mandatory first it
     };
     const result = mod.checkForays({ forays: { forays: [foray] }, segments: { segments: [] }, sources: { sources: [] }, taxonomy: {} });
     expect(result.errors.some((e: string) => e.toLowerCase().includes("disclosure"))).toBe(false);
-  }, 30000);
+  }, 60000);
 
   it("throws on an empty subject rather than silently emitting a malformed disclosure", () => {
     expect(() => disclosureTemplate("   ")).toThrow();

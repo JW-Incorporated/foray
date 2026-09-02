@@ -557,6 +557,19 @@ button.show-star.on { color: var(--gold); border-color: var(--gold); }
 .ep-row .s, .pl-row .s { font-size: 0.78rem; color: var(--text-dim); margin-top: 2px; }
 .ep-title-link { color: inherit; text-decoration: none; }
 .ep-title-link:active { text-decoration: underline; }
+/* Publisher-set explicit-content marker (kanban card t_02c6bb0b), matching the
+   small square "E" every mainstream podcast app puts next to a title —
+   deliberately not a color-only signal (text label, not a dot) so it still
+   reads for a colorblind listener. Sits inline right after the title text it
+   is quietly filtered on (see poolFiltered's Family Mode), on ep-rows,
+   the episode page, and the show page (renderShow's h2). */
+.explicit-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 15px; height: 15px; margin-left: 6px;
+  font-size: 0.62rem; font-weight: 700; line-height: 1;
+  color: var(--text-dim); border: 1px solid var(--text-dim); border-radius: 3px;
+  vertical-align: middle; flex: none;
+}
 .show-link { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
 .fp-s-show .show-link { color: inherit; }
 .pl-row .chev { color: var(--text-dim); font-size: 1.3rem; flex: none; }
