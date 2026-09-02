@@ -1154,8 +1154,11 @@ its reasoning.
 - **§8's narration-share "ceiling" pointed at a number §9.3's own ruling
   deleted.** §9.3 (Joey, 2026-08-31) permits 100% AI narration with no
   ceiling; §8 has been corrected to say so directly instead of forwarding to
-  §9.3 for a figure that was never set. `check-forays.mjs`/
-  `check-narration.mjs` must not gate on narration share at all.
+  §9.3 for a figure that was never set. §4.5 carried the same stray "Open:
+  acceptable ceiling on narration share" note pointing at §9.3 — also
+  resolved, since it told implementers the opposite of §8's corrected gate.
+  `check-forays.mjs`/`check-narration.mjs` must not gate on narration share
+  at all.
 - **§9.3's authorized undershoot is now an explicit, narrow exception to
   §3's duration contract, not an unstated collision with it.** §3 (the
   40%-overshoot-is-a-defect framing) and §8 (±15% tolerance) now both state
@@ -1164,15 +1167,24 @@ its reasoning.
   recorded `duration_shortened_reason` field and an explicit narrated
   explanation — matching §9.3's own "never padded with filler" language.
   An unexplained undershoot remains a defect like any overshoot.
+- **§3's overshoot tolerance is now unambiguous: ±15% only.** The 40%
+  figure in §3 was a motivating example of a bad overshoot, not a second,
+  looser tolerance sitting alongside §8's ±15% — §3 now says so explicitly
+  to close a gap a reviewer correctly flagged as implementation-ambiguous.
 - **§4.3/§6.3/§8's exploration-budget language now describes one consistent
-  policy instead of three conflicting ones.** The ~30% exploration floor
-  (product principle #1) is required and untouched by any pass. On top of
-  it, the spine carries two additional "deferrable" beats per act that serve
-  two distinct pressures without touching the floor: a **time** shortfall
-  plays them as scheduled (their presence is the buffer); a **cost**
-  shortfall is the one case that drops them. §8's "exploration budget
-  survived" check nets out at most an actual cost-driven drop of that pair —
-  playing them, or spending them on a time shortfall, is not a deduction.
+  policy instead of three conflicting ones, with the per-act deferrable
+  pair pre-generated (not built under live shortfall pressure) and never
+  counted toward or against the required floor.** The ~30% floor (product
+  principle #1) is computed only over the beats that were always inside it.
+  On top of it, each act produces two additional "deferrable" beats through
+  the normal pipeline (§4.4-§4.7) — written and sourced ahead of time so
+  they're ready to play instantly — but held back from the act's running
+  order. A **time** shortfall (§6.3) inserts them, already-prepared, to
+  genuinely extend the act while act N+1 finishes; on schedule they are
+  simply never inserted. A **cost** shortfall instead cancels their
+  production before §4.5. §8's "exploration budget survived" check is
+  unaffected by any of these three outcomes, since the floor's denominator
+  never included the deferrable pair to begin with.
 - **§9.4 (prompts discarded) vs §9.6 (dedup by prompt similarity) is a real
   founder-decision gap, not a wording fix — flagged rather than guessed.**
   §9.6's similarity check needs a stored representation of the prompt (raw

@@ -156,10 +156,10 @@ A generation request is:
 | Medium | ~60 min | 3–4 | 5–7 | 28–36 | The proven shape |
 | Long | up to ~180 min | 5–7 | 12–18 | 80–110 | Unproven at every layer |
 
-Treat these as budgets the planner must hit, not as outputs to measure afterwards. A Foray that
-overshoots its duration by 40% is a defect, because the duration option is the listener saying how
-much time they have — overshoot is never justified and the ±40%/±15% figures (§8) always apply to
-it as written.
+Treat these as budgets the planner must hit, not as outputs to measure afterwards. Overshoot is
+never justified — a Foray that overshoots at all beyond §8's ±15% tolerance is a defect, because the
+duration option is the listener saying how much time they have (the 40% figure above is a
+motivating example of how bad an overshoot can get, not a separate, looser tolerance).
 
 **Undershoot has exactly one sanctioned exception: §9.3's thin-topic ruling.** A topic too thin for
 real tape at the requested duration is allowed to come in short, provided the Foray records why
@@ -244,13 +244,18 @@ The spine contains:
   something other than a straight answer to the prompt, and no cutting pass, cost- or time-driven,
   may take it below ~30%.
   Separately, on top of the required floor and **outside the act's planned runtime budget**, mark
-  exactly **two additional exploration beats per act as "deferrable."** These are held in reserve,
-  not scheduled into the act's normal running time, and are the one and only §6.3 time-buffer
-  valve: on a **time** shortfall they get inserted to genuinely extend the act while act N+1
-  finishes, which is the recovery buffer §6.3 needs; when generation is on schedule they are simply
-  never generated or played. A **cost**-cutting pass drops them outright, same effect as never
-  needing them. Because they sit outside the required floor and outside the runtime budget either
-  way, neither path touches the number §8 checks or the duration §3 budgets.
+  exactly **two additional exploration beats per act as "deferrable."** These are written and
+  sourced through the normal pipeline (§4.4–§4.7) right alongside every other beat, so their
+  narration/tape is ready to play the instant they're needed — only their *inclusion in the act's
+  running order* is held back, not their generation, which is what makes them usable as a live
+  time buffer rather than something that has to be produced under shortfall pressure. They are the
+  one and only §6.3 time-buffer valve: on a **time** shortfall they get inserted, already-prepared,
+  to genuinely extend the act while act N+1 finishes, which is the recovery buffer §6.3 needs; when
+  generation is on schedule they are simply never inserted into the running order (produced, but
+  unplayed). A **cost**-cutting pass instead cancels their production outright before §4.5, same
+  effect as never needing them. Neither path is ever counted against the required ~30% floor (§8):
+  the floor is computed only over the beats that were always inside it, so a deferrable beat's
+  insertion, non-insertion, or cancellation cannot move that number in either direction.
 
 **The spine is frozen before playback begins.** See §6.
 
@@ -469,22 +474,24 @@ Pick X, measure it, write it down.
 Then decide what happens when generation falls behind, because it will. Options, none free:
 
 - Stall with a spoken line — honest, and terrible in a car.
-- Insert the current act's two reserved deferrable beats (§4.3) to genuinely extend the act while
-  act N+1 finishes writing — needs the spine to carry them, which it already does.
+- Insert the current act's two reserved deferrable beats (§4.3) — already written and sourced, held
+  back from the running order — to genuinely extend the act while act N+1 finishes writing.
 - Degrade the remaining acts to a cheaper, faster pipeline — quality cliff, but no silence.
 
-**Recommendation: the reserved deferrable pair.** §4.3 has each act carry two exploration beats
-held in reserve, outside the act's normal runtime budget, marked "deferrable." They serve two
-different pressures and never both at once: a **time** shortfall (this section) inserts them into
-the act, which is what actually buys the extra minutes act N+1 needs — since they are not part of
-the act's planned run when on schedule, an on-time act never generates or plays them at all. A
-**cost** shortfall (a cutting pass trimming spend, not a live time deficit) drops them outright,
-same effect as never needing them — §8's "exploration budget survived" check nets out at most this
-reserved pair being actually dropped for cost; the rest of the ~30% floor is never touched by
-either pressure. A generation lead that is both behind on time and needs to cut beyond the reserved
-pair has exhausted the one buffer this document authorizes and must fall back to one of the other
-two options above. Whatever is chosen, a silent stall mid-commute is the worst outcome and the one
-to design against.
+**Recommendation: the reserved deferrable pair.** §4.3 has each act produce two exploration beats
+through the normal pipeline, held back from the act's running order rather than left unmade, marked
+"deferrable." They serve two different pressures and never both at once: a **time** shortfall (this
+section) inserts them, already-prepared, into the act — which is what actually buys the extra
+minutes act N+1 needs, since being ready to play the instant they're needed is the entire point of
+producing them ahead of the shortfall rather than during it. On schedule, an act simply never
+inserts them; they exist but are unplayed. A **cost** shortfall (a cutting pass trimming spend, not
+a live time deficit) instead cancels their production before §4.5, same net effect as never needing
+them. Either way, they are never counted against the required ~30% floor — §8's "exploration budget
+survived" check is computed only over the beats that were always inside the floor, so inserting,
+not inserting, or cancelling the deferrable pair cannot move that number. A generation lead that is
+both behind on time and needs to cut beyond the reserved pair has exhausted the one buffer this
+document authorizes and must fall back to one of the other two options above. Whatever is chosen, a
+silent stall mid-commute is the worst outcome and the one to design against.
 
 ---
 
@@ -532,10 +539,10 @@ A generated Foray is publishable only if all of these hold:
 - Narration share may be up to 100% (§9.3) — there is no ceiling. A Medium/Long Foray whose topic is
   too thin for real tape at the requested duration must take the §9.3 shortening path instead of
   padding with synthetic filler to raise or preserve narration share.
-- The exploration budget survived — the required ~30% floor (§4.3) is untouched, net of at most the
-  two per-act "deferrable" beats actually dropped by a §6.3 cost-cutting pass. Those two beats
-  being inserted for a time shortfall, or simply never generated because the act stayed on
-  schedule, are not deductions against the floor; only an actual cost-driven drop is.
+- The exploration budget survived — the required ~30% floor (§4.3) is computed only over the beats
+  that were always inside it and is unaffected by the per-act "deferrable" pair either way: whether
+  that pair was inserted (time shortfall), stayed unplayed (on schedule), or had its production
+  cancelled (cost shortfall), none of those outcomes counts toward or against the floor.
 - `check-forays.mjs` and `check-narration.mjs` pass.
 
 ---
