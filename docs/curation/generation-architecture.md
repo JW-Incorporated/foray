@@ -744,7 +744,9 @@ A generated Foray is publishable only if all of these hold:
 
 ## 9. Open questions
 
-Unresolved. Do not build past these; surface them.
+Each item below is either **Open** (unresolved — do not build past it; surface it) or **Resolved**
+(ruled on, with a dated founder/owner decision recorded — buildable against that ruling, per the
+document header). An item with no "Resolved" note beneath its answer is still Open.
 
 **9.1 — Does on-device speech survive a locked screen?** *Owner: engineering. Blocks §1.2.*
 The whole product is locked-screen listening in a car. CI measured that a plain `<audio>` element

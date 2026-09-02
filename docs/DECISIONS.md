@@ -1286,6 +1286,16 @@ its reasoning.
   equivalent streaming contract) rather than assuming it is already buildable, with a schema-free
   fallback: phase 1 does not attempt progressive playback in practice until that contract exists —
   Act 1 becomes playable only once the whole Foray publishes.
+- **Review round 17 fixes: two more real issues.** (1) §4.9's whole-Foray gate still described the
+  validators as running an "aggregate narration-share check," directly contradicting §8/§9.3's "no
+  ceiling" ruling — an implementer following §4.9 alone could add a rejecting check that breaks
+  valid 100%-narration Forays. Reworded to state narration share is reported, never gated. (2) The
+  document's global instruction ("Anything in §9 is unresolved and must not be built") and §9's own
+  header ("Unresolved. Do not build past these.") blanket-forbade implementing ANY §9 item,
+  including the ones this very task's rulings resolved (§9.3, §9.4, §9.6) — self-contradictory
+  since those rulings are explicitly meant to be implementable. Both instructions now distinguish
+  **Open** items (still forbidden) from **Resolved** items (dated ruling recorded, buildable
+  against it), matching how §9's own entries are already labeled.
 - **Review round 9 fix: the deferrable-beat mechanism itself needed a surfaced schema/player gap,
   per the document's own line-23 rule, not silent treatment as already buildable.** `forays.json`
   represents a Foray as one static ordered `items` list today, and the player has no concept of a
