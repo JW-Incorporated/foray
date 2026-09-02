@@ -374,6 +374,69 @@ function corpusDF(term, ctx) {
 
 /* ---------- query interpreter ---------- */
 
+/* QUERY-SIDE LEMMA NORMALIZATION (bare plural/singular mismatch, systemic
+   thin-anchor class -- kanban t_fe968b47, filed from t_711dce13).
+
+   data/semantic-index.json's concept term lists carry only ONE of
+   {singular, plural} for most lemmas (measured: 305 of 1,364 concept terms
+   have a plural-present/singular-absent gap; 848 are singular-only with no
+   plural at all). LONG_INFLECTIONS above only widens what a catalogue TERM
+   matches in item TEXT -- it does nothing for this step, which is the
+   query's typed token being looked up against those same dictionary KEYS
+   in interpretQuery's `concepts`/`mods` maps. A query using the "wrong"
+   (unlisted) inflection of a real, well-covered concept therefore gets
+   hasConceptExpansion=false and, if its own bare corpusDF is also under
+   THIN_ANCHOR_DF, reads `thin` -- collapsing an honest, well-covered topic
+   to status "empty" on roughly a coin flip (singular vs. plural phrasing).
+
+   This is query-side normalization only: it widens the SET OF KEYS a typed
+   token is looked up under before dictionary membership tests, and changes
+   nothing about hitText/hitText's catalogue-text matching, scoring, or the
+   thin-anchor GATE itself (still exactly `!hasConceptExpansion && corpusDF
+   < THIN_ANCHOR_DF`) -- a token that has neither a direct nor a lemma-
+   variant concept match is still correctly thin. Three bounded, named
+   transforms, chosen for measured coverage of the repro set (not a
+   stemmer): strip/add bare "s", strip/add sibilant "es"
+   (glass/glasses-shaped), and swap "y"<->"ies" (energy/energies-shaped --
+   deliberately in scope HERE even though the hitText comment above rules
+   y<->ies OUT for catalogue-text matching: that guard is about not
+   mutating a TERM's regex to match unpredictable TEXT, a materially
+   different and riskier operation than an exact-string dictionary lookup
+   on a bounded, reviewable transform of the QUERY token itself).
+   Deliberately excluded, same reasoning as LONG_INFLECTIONS/#248: "ing"
+   (verb-sense ambiguity, e.g. train/training) and "ed" (participle noise)
+   -- neither is a singular/plural relationship, so neither belongs to a
+   helper scoped to that one gap. */
+function lemmaVariants(tok) {
+  const out = new Set();
+  let despluralized = false;
+  if (/[^aeiou]ies$/.test(tok) && tok.length > 4) {
+    out.add(tok.slice(0, -3) + "y");
+    despluralized = true;
+  } else if (/(?:s|x|z|ch|sh)es$/.test(tok) && tok.length > 4) {
+    out.add(tok.slice(0, -2));
+    despluralized = true;
+  } else if (/s$/.test(tok) && !/ss$/.test(tok) && tok.length > 3) {
+    out.add(tok.slice(0, -1));
+    despluralized = true;
+  }
+  /* Only try to PLURALIZE tok when none of the branches above already
+     recognized it as a plural shape -- otherwise an already-plural token
+     ending in a sibilant (e.g. "warriors") falls into the `es` branch here
+     too and manufactures a nonsense double-plural ("warriorses") on top of
+     the correct singular already added above. Singularization and
+     pluralization are mutually exclusive views of the same token. */
+  if (despluralized) return out;
+  if (/[^aeiou]y$/.test(tok) && tok.length > 3) {
+    out.add(tok.slice(0, -1) + "ies");
+  } else if (/(?:s|x|z|ch|sh)$/.test(tok)) {
+    out.add(tok + "es");
+  } else if (!/s$/.test(tok)) {
+    out.add(tok + "s");
+  }
+  return out;
+}
+
 function interpretQuery(q, ctx) {
   const tokens = tokenize(q);
   const filters = [];
@@ -389,6 +452,12 @@ function interpretQuery(q, ctx) {
   const groups = contentTokens.map(tok => {
     const aliasesOf = ALIASES[tok] || [];
     const lookupKeys = new Set([tok, ...aliasesOf]);
+    /* See lemmaVariants above -- bridges a query token to a concept that
+       only lists the OTHER inflection (singular/plural) of the same
+       lemma. Concept-membership lookup only; does not add scoring terms
+       or change what literal text this token's own addTerm() calls
+       match. */
+    for (const v of lemmaVariants(tok)) lookupKeys.add(v);
 
     /* term -> {w, source}. source "own" = the token's literal text, its
        aliases, or its concept's *own* terms (full scoring weight, eligible
@@ -405,6 +474,18 @@ function interpretQuery(q, ctx) {
     };
     addTerm(tok, 1, "own");
     aliasesOf.forEach(a => addTerm(a, 0.9, "own"));
+    /* Bare literal fallback for the corpus-text-only case (no concept
+       covers either inflection at all, e.g. culture/cultures below): a
+       token's own hitText pattern is built FROM that exact string, and
+       LONG_INFLECTIONS only APPENDS a suffix, so a plural query token's
+       literal pattern ("cultures(?:s|es|ing)?") can never match catalogue
+       text that only ever spells the concept's singular ("culture") --
+       inflection allowance widens what a term matches forward, not what
+       a query maps backward onto a shorter surface form. Adding the
+       lemma variant as its own additional literal term (same "own"
+       weight as the typed token itself) closes that gap without
+       touching hitText's matcher or LONG_INFLECTIONS at all. */
+    for (const v of lemmaVariants(tok)) addTerm(v, 1, "own");
 
     const others = contentTokens.filter(o => o !== tok);
     const otherKeys = others.map(o => new Set([o, ...(ALIASES[o] || [])]));
@@ -439,12 +520,25 @@ function interpretQuery(q, ctx) {
     return {
       token: tok,
       terms,
-      broad: corpusDF(tok, ctx) >= BROAD_DF_THRESHOLD,
+      /* Both `broad` and `thin` read the MAX corpusDF across the token and
+         its lemma variants (see lemmaVariants above), not just the bare
+         typed spelling. Without this, a lemma pair where NEITHER
+         inflection has concept coverage (e.g. culture/cultures -- no
+         concept or modifier carries either) but the OTHER inflection is
+         common in the catalogue text (culture: corpusDF ~3.9%) would still
+         read the untried inflection ("cultures") as thin purely because
+         its own bare spelling has zero literal corpus hits, even though
+         the addTerm() call above already added "culture" as a same-weight
+         literal term that WILL match. Taking the max keeps thin/broad
+         honest about what this group can actually match, independent of
+         which inflection the query happened to type. */
+      broad: Math.max(corpusDF(tok, ctx), ...[...lemmaVariants(tok)].map(v => corpusDF(v, ctx))) >= BROAD_DF_THRESHOLD,
       df: tagDF(tok, ctx),
       hasConceptExpansion,
       /* See THIN_ANCHOR_DF below -- a specific, real word the taxonomy has
          not modeled AND the catalogue barely mentions. */
-      thin: !hasConceptExpansion && corpusDF(tok, ctx) < THIN_ANCHOR_DF,
+      thin: !hasConceptExpansion &&
+        Math.max(corpusDF(tok, ctx), ...[...lemmaVariants(tok)].map(v => corpusDF(v, ctx))) < THIN_ANCHOR_DF,
     };
   });
 
@@ -1331,6 +1425,7 @@ const SearchEngine = {
   TAG_DF_TOO_BROAD, TAG_DF_COMMON, TAG_DF_RARE,
   STRONG_RATIO, RICH_MIN, DEFAULT_CAP, PER_SHOW_CAP, LISTENED_PENALTY, SENSE_LOCKED_STEMS,
   tokenize, branchOf, tagCount, tagDF, dfMultiplier, expansionBucket, corpusDF, hitText, hitTag,
+  lemmaVariants,
   interpretQuery, passesFilters, scoreMatch, searchWithRelaxation, classifyResults, diversify,
   strongPrefix,
   suggestAdjacentTopics, prettyConceptLabel,
