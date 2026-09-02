@@ -1,5 +1,27 @@
 # 04 — Personas & Retention: Audience Insights for CommutePilot
 
+> **Name change since this memo — 2026-08-21.** This memo was researched
+> against a working name, "CommutePilot," which is not the shipped
+> product: the founder chose **4a** (`foray` now names only the
+> stitched-audio unit — see `06-naming-study.md`, `docs/DECISIONS.md`).
+> Read every "CommutePilot" below as "4a." **Applicability:** the
+> persona research, retention/churn findings, and trust-in-AI evidence
+> below still apply as-is. **Two items need explicit reinterpretation,
+> not just a name swap:** (1) implication #10 below ("do not expand
+> toward AI-hosted or AI-narrated content") is now superseded — per
+> `docs/DECISIONS.md`'s 2026-09-02 entry (founder D1=A, kanban card
+> `t_54913003`), 4a is adding AI-generated audio (a "foray") as a
+> disclosed second capability alongside curation, so this memo's TTS
+> scope boundary no longer holds as written; the underlying trust
+> research (disclosure risk, AI fatigue, listeners preferring a human
+> host) is still real and should inform *how* generation is disclosed,
+> just not *whether* to ship it. (2) this memo's persona ordering and
+> "Read for CommutePilot" framing lean on commute-centric context even
+> though Edison Research data (also cited in `02-listener-market.md`)
+> shows only ~11% of listening happens in cars — see
+> `00-MARKET-BRIEF.md`'s positioning section for the corrected framing
+> ("the commute is the wedge... not the product's identity").
+
 Research desk memo. Scope: jobs-to-be-done for podcast discovery, evidence-based personas, churn/retention patterns in podcast apps, trust in AI recommendations, and what the research says about our own second user (a friend testing on Android). Sources are cited inline; where a search returned no citable primary source (e.g., an early query on Spotify AI DJ user sentiment returned no attributable links), the claim was dropped rather than presented as sourced.
 
 **Method note.** Research ran across WebSearch (App Store/Play Store review synthesis, Reddit threads, industry surveys) and WebFetch (deep reads on the highest-value hits) in July 2026. Reddit's own search index returned few directly quotable threads on r/podcasts for this pass — the discovery-frustration evidence below leans more heavily on Spotify Community forum threads, App Store review language, and industry commentary (MIDiA Research, Edison Research) than on raw subreddit quotes. Flagged explicitly wherever a claim rests on secondary synthesis rather than a primary quote.

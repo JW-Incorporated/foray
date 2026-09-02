@@ -1,5 +1,26 @@
 # Legal / Compliance Risk-Scoping Memo — CommutePilot
 
+> **Name change since this memo — 2026-08-21.** This memo was researched
+> against a working name, "CommutePilot," which is not the shipped
+> product: the founder chose **4a** (`foray` now names only the
+> stitched-audio unit — see `06-naming-study.md`, `docs/DECISIONS.md`).
+> Read every "CommutePilot" below as "4a." This memo also cites
+> `01_PROMPT.md` and `05_CORNER_CASES.md` — files foreign to this corpus
+> that are not present in this repo; treat those citations as pointing
+> to an earlier planning document set this memo was written against, not
+> to anything in `docs/`. **Applicability, item by item:** the
+> RSS-client legal baseline (§1), App Store guideline analysis (§App
+> Store), and third-party-AI-disclosure requirement (§5.1.2) are
+> name-independent and still apply as-is to 4a. **One section does NOT
+> transfer and must be redone, not just renamed:** §"Name clearance" —
+> its trademark-adjacency finding (no registered mark for "CommutePilot,"
+> low collision risk with "Copilot") clears a name 4a doesn't use. It is
+> not a trademark clearance for "4a." Per `06-naming-study.md`'s
+> 2026-09-02 closing note, "4a" has never been run through a clearance
+> search and has a plausible unaddressed collision with Google's "Pixel
+> 4a" line — that is open work, not covered by this memo's now-moot
+> CommutePilot clearance.
+
 **Author:** legal/compliance desk (non-lawyer, risk-scoping only) · **Date:** 2026-07-07
 
 > This is a risk-scoping memo, not legal advice. I'm not a lawyer and this isn't a substitute for one. It's meant to flag where CommutePilot's current design sits relative to known precedent, App Store rules, and applicable statutes, with sources, so a solo developer can prioritize. Treat every "LOW" below as "low given current scope," not "cleared forever" — re-check at monetization.
