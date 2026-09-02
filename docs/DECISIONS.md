@@ -1266,6 +1266,12 @@ its reasoning.
   runtime-check language that round 14 correctly superseded, contradicting §4.9's per-act gate as
   the sole timing authority.** §6.2 now points at §4.9's per-act runtime gate instead of restating
   a competing (and later-timed) check at the continuity checkpoint.
+- **Review round 20 fix: §4.1 still marked "whether a rejected or clarified prompt is stored" as
+  an Open question, contradicting §9.4's own resolved ruling that every prompt is discarded.** An
+  implementer reading §4.1 in isolation would think prompt-retention behavior was still undecided
+  for rejected/clarified prompts specifically. §4.1 now states plainly that §9.4's "each prompt is
+  discarded" ruling is not scoped to accepted prompts only — it covers rejected and clarified
+  prompts too — closing the privacy posture question §4.1 previously left dangling.
 - **Review round 18 fix: two broken cross-references and one overclaimed \"Resolved\" label.**
   (1) §1.2's fallback path pointed a reader at "§9.4 below" — inside this document, that section
   is the prompt-retention ruling, not a TTS locked-screen test. Both occurrences (the pronunciation

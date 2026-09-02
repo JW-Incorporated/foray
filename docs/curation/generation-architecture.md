@@ -281,8 +281,13 @@ The bar for asking is high. "Roman siege weapons" is not ambiguous. "Mercury" is
 probably already knows, and what would make this Foray a disappointment. That last field is worth
 more than the other three — it is what the final coherence check tests against.
 
-**Open:** whether a rejected or clarified prompt is stored. It is a behavioural signal and it is
-also a record of what people asked 4a for. Privacy posture is unresolved (§9.4).
+**Resolved (2026-09-02) — §9.4 covers this, including the rejected/clarified case.** Wyatt's §9.4
+ruling ("Each prompt is discarded") is not scoped to accepted prompts only — it covers every prompt
+this stage sees, including one that is rejected by the safety check or one that goes through a
+clarification round. None of them are stored. What *is* retained, per §9.4/§9.6, is the resulting
+Foray's own title/summary/topic/slot titles once a Foray is actually generated from an accepted
+prompt — there is no separate retention path for a rejected prompt or an intermediate clarification
+turn to fall into. Privacy posture is therefore closed, not open; see §9.4.
 
 ### 4.2 — Research to establish the shape
 
