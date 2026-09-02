@@ -1166,25 +1166,28 @@ its reasoning.
   An unexplained undershoot remains a defect like any overshoot.
 - **§4.3/§6.3/§8's exploration-budget language now describes one consistent
   policy instead of three conflicting ones.** The ~30% exploration floor
-  (product principle #1) is the thing every cutting pass protects; within
-  it, the spine pre-marks exactly two beats per act as "deferrable" — and
-  only that pre-marked pair is what §6.3's generation-lead buffer is allowed
-  to spend when generation falls behind. §8's "exploration budget survived"
-  check now explicitly nets out at most that pre-marked, actually-deferred
-  pair, and a generation lead needing more than that pair has exhausted the
-  one buffer this document authorizes and must fall back to §6.3's other two
-  options (stall or degrade), not to cutting further into the floor.
+  (product principle #1) is required and untouched by any pass. On top of
+  it, the spine carries two additional "deferrable" beats per act that serve
+  two distinct pressures without touching the floor: a **time** shortfall
+  plays them as scheduled (their presence is the buffer); a **cost**
+  shortfall is the one case that drops them. §8's "exploration budget
+  survived" check nets out at most an actual cost-driven drop of that pair —
+  playing them, or spending them on a time shortfall, is not a deduction.
 - **§9.4 (prompts discarded) vs §9.6 (dedup by prompt similarity) is a real
   founder-decision gap, not a wording fix — flagged rather than guessed.**
   §9.6's similarity check needs a stored representation of the prompt (raw
   text or a derived vector); §9.4's retained title is not a working proxy.
   `backend/test/promptNoPersistence.test.ts` (t_825eee4c, merged) already
-  enforces zero persistence of the prompt in any form. Added a flagged
-  founder clarification to §9.4 asking whether a one-way, never-displayed
-  prompt embedding is an acceptable narrow exception to "each prompt is
-  discarded," solely to power §9.6 dedup — and noted in §9.6 that until that
-  question is answered, only an approximate title-similarity check (labeled
-  as such) can ship; the described dedup cannot be implemented yet.
+  enforces this stage's literal no-persistence behaviour, but only against a
+  fixed set of direct persistence calls and a check for literally-named
+  `prompt`/`rawPrompt` fields — it is a real but partial safeguard, not a
+  guarantee an embedding path would need "relaxing" to bypass. Added a
+  flagged founder clarification to §9.4 asking whether a one-way,
+  never-displayed prompt embedding is an acceptable narrow exception to
+  "each prompt is discarded," solely to power §9.6 dedup — and noted in
+  §9.6 that until that question is answered, only an approximate
+  title-similarity check (labeled as such) can ship; the described dedup
+  cannot be implemented yet.
 - No implementation changed in this pass — spec-only correction per the
   task's scope. Flagged item (§9.4/§9.6) needs one founder + legal line
   before the dedup stage can be built; everything else in this pass was a

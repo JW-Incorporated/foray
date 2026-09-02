@@ -239,12 +239,16 @@ The spine contains:
   inventing one.
 - **The exploration budget.** Product principle #1 keeps a ~30% floor. In a generated Foray this
   means: at least ~30% of beats should go somewhere the prompt did not literally ask for but a
-  curious listener would be glad to have been taken. Mark these in the spine, and within them
-  pre-mark exactly **two per act as "deferrable"** — this pre-marked pair, and only this pair, is
-  the §6.3 time-buffer valve (see §6.3). Every other exploration beat, including the rest of the
-  ~30% floor, is the last thing any cutting pass — cost or time — should delete: it is what the
-  floor exists to protect and what makes a generated Foray something other than a straight answer
-  to the prompt.
+  curious listener would be glad to have been taken. This floor is required and counts toward §8's
+  publishability check regardless of how generation goes — it is what makes a generated Foray
+  something other than a straight answer to the prompt, and no cutting pass, cost- or time-driven,
+  may take it below ~30%.
+  Separately, on top of the required floor, mark exactly **two additional exploration beats per
+  act as "deferrable."** These are the one and only §6.3 time-buffer valve: normally scheduled and
+  played, they are the first thing dropped if a cost-cutting pass needs savings, and — the opposite
+  direction — they are what §6.3's "extend the current act" option plays *more* of, verbatim or
+  lightly extended, to buy time when generation is running behind. Being outside the required floor
+  is what makes them safe to flex in either direction without touching the number §8 checks.
 
 **The spine is frozen before playback begins.** See §6.
 
@@ -462,16 +466,20 @@ Pick X, measure it, write it down.
 Then decide what happens when generation falls behind, because it will. Options, none free:
 
 - Stall with a spoken line — honest, and terrible in a car.
-- Extend the current act with a pre-planned optional beat — needs the spine to carry spares.
+- Play the current act's two pre-marked deferrable beats (§4.3) as scheduled, buying writing time
+  without the listener detecting anything — needs the spine to carry them, which it already does.
 - Degrade the remaining acts to a cheaper, faster pipeline — quality cliff, but no silence.
 
-**Recommendation: pre-planned spare beats.** The spine already knows the exploration beats;
-§4.3 has each act pre-mark exactly two of them as "deferrable, playable if needed" — this pair, and
-only this pair, is what falling behind is allowed to spend. It costs nothing at plan time and turns
-a stall into a digression the listener cannot detect. The rest of the ~30% exploration floor is not
-touched by this mechanism; §8's "exploration budget survived" check passes as long as the floor
-holds net of the deferred pair, and a generation lead that needs to cut beyond the pre-marked pair
-has run out of the one buffer this document authorizes and must fall back to one of the other two
+**Recommendation: the pre-marked deferrable pair.** §4.3 has each act carry two exploration beats
+marked "deferrable," on top of the required ~30% floor. They serve two different pressures and
+never both at once: a **time** shortfall (this section) plays them as normal, on schedule — their
+presence in the act is itself the buffer, since a generation lead that is not behind never needed
+to touch them, and an act that reaches them naturally on time plays them exactly as any other beat.
+A **cost** shortfall (a cutting pass trimming spend, not a live time deficit) is the one case that
+drops them, and only them — §8's "exploration budget survived" check nets out at most this
+pre-marked, actually-dropped pair; the rest of the ~30% floor is never touched by either pressure.
+A generation lead that is both behind on time and needs to cut beyond the pre-marked pair has
+exhausted the one buffer this document authorizes and must fall back to one of the other two
 options above. Whatever is chosen, a silent stall mid-commute is the worst outcome and the one to
 design against.
 
@@ -521,9 +529,10 @@ A generated Foray is publishable only if all of these hold:
 - Narration share may be up to 100% (§9.3) — there is no ceiling. A Medium/Long Foray whose topic is
   too thin for real tape at the requested duration must take the §9.3 shortening path instead of
   padding with synthetic filler to raise or preserve narration share.
-- The exploration budget survived — the ~30% of beats marked as exploration in the spine are still
-  there, net of at most the two per-act beats pre-marked "deferrable" and actually deferred under
-  §6.3.
+- The exploration budget survived — the required ~30% floor (§4.3) is untouched, net of at most the
+  two per-act "deferrable" beats actually dropped by a §6.3 cost-cutting pass. Those two beats
+  being played (the normal case, and the case when §6.3 spends them on a time shortfall instead) is
+  not a deduction against the floor; only an actual cost-driven drop is.
 - `check-forays.mjs` and `check-narration.mjs` pass.
 
 ---
@@ -580,16 +589,22 @@ Answer from Wyatt: Each prompt is discarded. the Foray is given a title on creat
 requires detecting "when a prompt is very similar to an existing Foray," which needs the original
 prompt text (or a vector derived from it) to compare against; a retained title is not a working
 substitute — titles are short, editorial, and not written to be prompt-similarity-preserving.
-`backend/test/promptNoPersistence.test.ts` (kanban t_825eee4c, merged) already enforces the
-strongest reading of this ruling: zero persistence of the prompt in any form, including derived
-data. Resolving this is a real product/privacy tradeoff, not a wording ambiguity we can default our
-way out of — it decides whether shipped code (the no-persistence test) has to be relaxed. **One
-line needed from Wyatt (+ legal per this section's own owner line):** is a one-way prompt embedding
-(not the raw text, never displayed, unrecoverable to the original wording) an acceptable exception
-to "each prompt is discarded," solely to power §9.6 dedup? If yes, §9.6 is implemented against that
-embedding and `promptNoPersistence.test.ts` is updated to permit exactly that one derived artifact.
-If no, §9.6 must be re-scoped to title-similarity only (a materially weaker dedup, which should be
-said explicitly rather than implied) — do not build the embedding path until this line is answered.
+`backend/test/promptNoPersistence.test.ts` (kanban t_825eee4c, merged) currently enforces this
+stage's *literal* no-persistence behaviour — it scans the §4.0-4.1 source for a fixed set of direct
+persistence calls (`fs.write*`, `localStorage`, SQL/`Pool`/`localforage` calls) and confirms the
+returned intent object carries no field literally named `prompt` or `rawPrompt`. It does not, as
+written, catch every possible route to persisting a *derived* value (an embedding stored through an
+unlisted API, or returned under a different field name) — so it is a real but partial safeguard,
+not a guarantee that would need "relaxing." Resolving §9.4 vs §9.6 is still a real product/privacy
+tradeoff, not a wording ambiguity to default past. **One line needed from Wyatt (+ legal per this
+section's own owner line):** is a one-way prompt embedding (not the raw text, never displayed,
+unrecoverable to the original wording) an acceptable exception to "each prompt is discarded,"
+solely to power §9.6 dedup? If yes, §9.6 is implemented against that embedding and
+`promptNoPersistence.test.ts` is extended — not merely relaxed — to explicitly allow and verify
+exactly that one derived artifact (asserting what it stores and does not store) rather than being
+silently satisfied by omission. If no, §9.6 must be re-scoped to title-similarity only (a
+materially weaker dedup, which should be said explicitly rather than implied) — do not build the
+embedding path until this line is answered.
 
 **9.5 — What does a listener do with a bad Foray?**
 No feedback path is specified. This matters more in phase 2, and it is also the raw material for
