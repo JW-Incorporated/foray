@@ -953,6 +953,13 @@ const BACKEND_FLOORS = {
      or a Patch/Carry narration assignment — never changing which beats
      exist, and never fetching/persisting any audio bytes. */
   "test/sourceBeats.test.ts": 8,
+  /* §4.7 end to end (kanban card t_5a8b77c3): writeNarration() writes one
+     page per narration beat (mode budgets, per-claim sources array),
+     always through a genuinely separate verifier call (never the writer —
+     proven with a spy test), the exact check-forays.mjs-compatible
+     disclosure template, and decideConnectiveNarration()'s seam-position
+     table for tape-adjacent beats needing short connective narration. */
+  "test/writeNarration.test.ts": 25,
 };
 
 /* `it(` as well as `test(`: backend's suites use both spellings. */
