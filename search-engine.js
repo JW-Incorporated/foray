@@ -828,12 +828,13 @@ function scoreMatch(item, interp, itemTags) {
     if ((item.topics || []).includes(tb)) sum += 2;
   }
 
-  /* Full-phrase show-name RESCUE: a multi-word query where every token
-     appears as a whole word in the show name is almost certainly a direct
-     show/host search ("lex fridman", "huberman lab"). Those often can't
-     cross the normal per-term threshold on their own -- the only real
-     signal is a flat +1 show-field hit per term, deliberately capped low
-     since a single show-word hit alone is weak evidence.
+  /* Full-phrase show-name RESCUE: a query where every token appears as a
+     whole word in the show name is almost certainly a direct show/host
+     search ("lex fridman", "huberman lab" -- or, single-token, "volts",
+     "radiolab" typed straight into the topic box). Those often can't cross
+     the normal per-term threshold on their own -- the only real signal is
+     a flat +1 show-field hit per term, deliberately capped low since a
+     single show-word hit alone is weak evidence.
 
      Gated on `!wouldPassGate`: only items that would otherwise be EXCLUDED
      get this treatment. An early version applied it unconditionally and
@@ -846,11 +847,20 @@ function scoreMatch(item, interp, itemTags) {
      of the "strong" set even though nothing about THEIR relevance
      changed. Gating on "would otherwise be excluded" makes this a pure
      rescue for the recall gap it targets, with zero effect on any query
-     that already worked -- verified via the full battery. */
+     that already worked -- verified via the full battery.
+
+     `groups.length >= 1` (not `>= 2`): a single-token query is the exact
+     same shape as the multi-word case -- someone typing just a show's
+     name into the topic box -- and the original `>= 2` gate excluded it
+     outright regardless of score, so a one-word show name could never
+     reach this rescue at all (#see H bug: "volts"/"radiolab"/etc. all
+     flat `empty` despite a real, well-covered show sitting in the pool).
+     Nothing here changes for multi-word queries; `!wouldPassGate` still
+     does the same "only rescue genuine misses" work either way. */
   const wouldPassGate = interp.properNounQuery
     ? primaryMatched === interp.primaryGroupCount
     : (interp.hasPrimary ? primaryMatched > 0 : matchedGroups > 0);
-  if (!wouldPassGate && interp.groups.length >= 2) {
+  if (!wouldPassGate && interp.groups.length >= 1) {
     const allTokensInShow = interp.groups.every(g => new RegExp("\\b" + g.token + "\\b").test(show));
     if (allTokensInShow) {
       sum += 8;
