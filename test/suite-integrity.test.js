@@ -98,6 +98,13 @@ const FLOORS = {
      rendering, and a listener's place quietly stops surviving the week. */
   "player/durable-store.test.js": 74,
   "player/idb-tier.test.js": 23,
+  /* New with M3 (kanban card t_c7199b13): the event queue moved off a
+     synchronous `cp_events` localStorage rewrite into its own IndexedDB
+     database. Covers append/flush never throwing, batching, the two id
+     spaces (durable + fallback ring), and the two behaviours the design
+     calls out by name — quota exhaustion (not lost, surfaced via health(),
+     never thrown) and the 5,000-row retention cap. */
+  "player/event-log.test.js": 20,
   /* 83 -> 87 with #225: the page's two failure guards now reach the field record.
      Two of the four exist to keep the instrument from becoming the outage it was
      built to explain — one pins that the message is on screen BEFORE the record is
@@ -924,6 +931,28 @@ const BACKEND_FLOORS = {
     for a genuine catalogue gap) against an injected no-tape fixture so the
     assertion doesn't drift as the real catalogue grows. */
   "test/researchShape.test.ts": 11,
+  /* §4.3's spine types: SpineSchema (strict, no per-act voice field),
+     isClaimShaped (claim- vs topic-shaped beats), and validateSpine
+     (§3's shape budgets with ±15% tolerance, the ~30% exploration
+     floor). Kanban card t_96a97be9. */
+  "test/spineTypes.test.ts": 26,
+  /* §4.3 end to end: buildSpine() against StubSpineBuilder for every
+     duration tier (shape budgets, claim-shape, exploration floor,
+     single spine-level voice all actually hold), plus InvalidSpineError
+     on a deliberately broken builder. Kanban card t_96a97be9. */
+  "test/buildSpine.test.ts": 6,
+  /* §4.4 end to end (kanban card t_c963701a): deepenActs() fans out
+     builder.deepenAct() once per act IN PARALLEL, always passing the
+     FULL spine. Covers shape/count correctness, the full-spine-context
+     regression guard, genuine-parallelism proof, and explicit
+     failure-isolation (one retry per act, then fail the whole build). */
+  "test/deepenActs.test.ts": 10,
+  /* §4.5-4.6 end to end (kanban card t_648fbae7): sourceBeats() resolves
+     every beat to a tier-1 segments.json hit, a tier-2 transcript-archive
+     extraction, a tier-3 transcription-queue-candidate narration fallback,
+     or a Patch/Carry narration assignment — never changing which beats
+     exist, and never fetching/persisting any audio bytes. */
+  "test/sourceBeats.test.ts": 8,
 };
 
 /* `it(` as well as `test(`: backend's suites use both spellings. */

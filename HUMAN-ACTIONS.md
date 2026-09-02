@@ -2053,6 +2053,36 @@ completion with the screen locked — same reporting bar item #11 already set fo
 **Status:** OPEN
 
 ---
+### 31. Before phase 2 is scheduled: build the four App Store Guideline 1.2 UGC-moderation requirements
+
+**Tag:** `[BLOCKING]` for scheduling phase 2 (any-user prompting) · **Time:** its own future engineering card, not a quick action · **Owner:** Joey/Wyatt (decision to schedule phase 2), engineering (the build)
+
+**Why it matters.** `docs/curation/generation-architecture.md` §1.3 already says this in
+the engineering docs: *"The moment a stranger's prompt produces content other users can
+hear, 4a hosts user-generated content and App Store Guideline 1.2 applies: content
+filtering, a mechanism to report objectionable content, a way to block abusive users, and
+published developer contact information. None of the four exist. This is a
+submission-blocking discovery for phase 2 and it belongs in `HUMAN-ACTIONS.md` the day
+phase 2 is scheduled — not the day it ships."* A 2026-09-02 review confirmed none of the
+11 marketing/legal documents (including `docs/marketing/05-legal-risk-memo.md`, the
+dedicated legal-risk-scoping memo) named this gap either, so it existed only in one
+engineering doc where a founder scheduling phase 2 from the marketing/legal corpus alone
+would not see it. `05-legal-risk-memo.md` §2 now carries the same four-item list (added
+2026-09-02) — this item is the corresponding founder-facing tripwire.
+
+**Today (phase 1, founder-prompted, founder-reviewed before publish): not applicable.**
+4a is not hosting UGC in Apple's sense yet — do not build the moderation system now.
+
+**The moment phase 2 (any user's prompt reaching the shared catalogue) is scheduled**,
+this item blocks it: all four of content filtering, a report-content mechanism, a
+user-blocking mechanism, and published developer contact info must exist before that
+build reaches App Review, or it is an expected rejection. When phase 2 is scheduled,
+open the engineering card for the moderation system itself against this item.
+
+**Status:** OPEN — dormant until phase 2 is scheduled; re-read this item the day that decision is made.
+
+---
+
 ## DONE
 
 *(Nothing filed yet. Finished items move here with the date they were done and

@@ -59,10 +59,82 @@ This supersedes the assumption in `docs/narrator-pipeline.md` that narration is 
 ElevenLabs audio on Supabase. That document's cost work stays valid for the backdoor path; its
 premise that narration audio must exist before a Foray can play does not.
 
-> **This ruling has a hard technical dependency that is not yet settled — see §9.1.** The Web
+> **This ruling has a hard technical dependency that is not yet settled — see §9.1. The Web
 > Speech API is not the `<audio>` element, and the measurement that proved backgrounded audio
 > survives on iOS says nothing about `speechSynthesis`. Treat on-device narration as **blocked on a
 > native TTS plugin** until someone measures it with the screen locked.
+
+#### 1.2.1 Reconciliation note (2026-09-02) — why on-device wins over the two alternatives, and the fallback if §9.1 fails
+
+Three sibling documents each surveyed a different narrator-voice strategy —
+`docs/research/narrator-voice.md` (paid cloud, recommends ElevenLabs `eleven_v3`),
+`docs/research/self-hosted-tts.md` (self-hosted, recommends Kokoro-82M on Joey's GPU), and
+`docs/research/on-device-tts.md` (the phone's own system voice via a native plugin) — without
+being read against each other or against this ruling. This note closes that gap.
+
+**(a) Why on-device is the default, given what each sibling doc actually found.**
+
+The decision axis that matters is not voice quality — none of the three candidates has a
+documented long-form (multi-minute) narration study; all three sibling docs say so explicitly
+and none of them closes it. The decision axis that actually separates the candidates is **cost
+at unlimited user-created volume**, because §1.3 commits this product to phase 2/3 where any
+user, not just a founder, can prompt a Foray:
+
+| | cloud ElevenLabs | self-hosted Kokoro | on-device |
+|---|---|---|---|
+| synthesis cost at 10,000 user Forays | `on-device-tts.md` §6.1: **$9,900–$59,100**, recurring on every re-narration | **~$0** (electricity), per `self-hosted-tts.md` §3 | **$0**, always |
+| hosting/egress cost | `on-device-tts.md` §6.1: real audio files, egress ceiling hit by *play* volume, not just creation count | same as ElevenLabs — Kokoro still renders a server-side audio file | **$0** — ~20 KB of script text ships in data already bundled, per `on-device-tts.md` §5 |
+| pronunciation control | Documented, per `narrator-voice.md` §3.2 (pinned voice ID) | Documented, per `self-hosted-tts.md` §2.1 (misaki inline IPA) | Documented on iOS (`AVSpeechSynthesisIPANotationAttribute`, `on-device-tts.md` §1); undocumented on Android (`on-device-tts.md` §2) — closed by the acceptance fixture in §9.4 below, not by this ruling |
+| voice-identity risk | Vendor can retire the pinned voice class (ElevenLabs did, Dec 2026 Default retirement, `narrator-voice.md` §3.2) | None — Joey owns the weights file | None for user-created content — every listener hearing their own device's voice is the expected behaviour for a personal narration feature, not a defect (`on-device-tts.md` §4) |
+| review gate | Requires per-beat human listening before it ships (`narrator-pipeline.md`, `self-hosted-tts.md` §4) | Same | Not possible to review per-listener-device output before playback — and, per `on-device-tts.md` §5, that review step was never staffable at "unlimited user-created" volume regardless of engine, so this is not a regression the ruling introduces |
+
+**On-device is the default because it is the only path with zero cost on both axes that
+actually scale (creation count and play count) at the volume §1.3 phase 2/3 requires**, and
+because its pronunciation-control story is, on iOS, first-party-documented at the same
+confidence level the cloud and self-hosted docs already treated as decisive. This does not mean
+ElevenLabs and Kokoro were wrong to recommend what they recommended — both were scoped to a
+different question (which paid/self-hosted voice to buy) that this ruling supersedes as the
+*default* path, not as an available option.
+
+**(b) The designated fallback if §9.1 fails.**
+
+If the native-plugin locked-screen measurement in §9.4 below comes back negative (narration
+audibly stops when the screen locks and the audio-session fix in §9.4 does not resolve it), the
+fallback is **self-hosted Kokoro-82M — not ElevenLabs.** This is not a new call; it is the
+conclusion `on-device-tts.md` §6.2 already reached and this ruling adopts it explicitly: Kokoro
+is the only alternative with both a comparable documented pronunciation-control mechanism
+(`self-hosted-tts.md` §2.1) and near-zero marginal cost at the volume phase 2/3 requires.
+ElevenLabs remains available, but only for the admin-authored backdoor path (§1.2 above), where
+volume is founder-bounded and the review gate already exists — not as the fallback default for
+unlimited user-created narration, because §6.1 of `on-device-tts.md` shows its cost at that
+volume is $10k–$59k rather than a rounding error.
+
+**Pre-answered, so a §9.1 failure does not also trigger a fresh research cycle:**
+
+- **GPL exposure for Kokoro, if the fallback is taken.** Kokoro's own weights are Apache-2.0
+  (`self-hosted-tts.md` §2.2); the GPLv3 exposure is `espeak-ng`, a dependency of Kokoro's
+  `misaki` G2P front end used before any IPA override is authored. GPL's copyleft obligations
+  attach on *distribution* of the covered code — since Kokoro would run server-side (rendering
+  an audio asset the same way ElevenLabs does today, per the hosting-cost row above), `espeak-ng`
+  is never shipped inside the iOS/Android app bundle or distributed to end users; it stays a
+  build-time/server-time dependency only. Treat this as the working assumption for planning, not
+  as legal sign-off — confirm with an actual license review before the Kokoro fallback ships, the
+  same gate any GPL dependency gets regardless of this note.
+- **Voice-pinning risk for ElevenLabs, if it is used for the admin-authored backdoor path.**
+  Per `narrator-voice.md` §3.2, pin the voice by ID, not name, and confirm at selection time that
+  the chosen voice is **not** one of the Default-class voices retiring December 2026 — select
+  from the paid persistent voice library instead. Record the pinned voice ID in the repo next to
+  the backdoor-asset code path. Because the backdoor is founder-bounded (§1.3 phase 1), a future
+  retirement event affects a small, re-recordable catalogue rather than an unlimited
+  user-generated one — bounded risk, not a reason to avoid the backdoor.
+
+**What this note does not re-litigate.** `on-device-tts.md` §9 (added 2026-09-01, before this
+note) already answered the locked-screen-survival gap this task was filed to flag: it found the
+native path has a documented session-inheritance mechanism the Web Speech API lacks, checked the
+actually-built `mobile/plugins/foray-tts/` plugin's source directly, found it does not yet set
+its own `AVAudioSession` category (a five-minute fix, not a design flaw), and specified the exact
+locked-device test in its §9.4 (tracked as `HUMAN-ACTIONS.md` #29). That work stands; this note
+only adds the cross-document reconciliation §9 did not attempt.
 
 ### 1.3 Day 1 is admin-authored. On-demand-and-published follows early.
 
@@ -270,6 +342,16 @@ Search order:
 > not totally preferred." **Growing and cataloguing the transcript archive is not a side task; it is
 > the difference between 4a and a podcast-shaped chatbot.** Treat it as a parallel workstream with
 > its own plan, not as a prerequisite that quietly blocks this one. Note that Joey is focusing heavily on this problem at the moment.
+>
+> **This is a third, distinct workstream** — separate from both this generation pipeline and from
+> `docs/catalog-growth-plan.md`'s catalogue breadth/promotion work (growing the *transcript/segment
+> archive* that feeds §4.5's search order, not the number of shows 4a lists or how many of them have
+> a working feed). Its measurement and planning live in
+> `docs/curation/transcription-scale-plan.md` (transcription cost/route analysis and breadth-sweep
+> yield) and `docs/adr/0004-transcript-acquisition-ladder.md` (where transcripts come from). A show
+> promoted to "playable" in the catalogue plan does not produce a transcript or a segment by itself —
+> see `docs/curation/segment-extraction-pipeline.md` for what actually turns a transcript into a
+> usable segment.
 
 When no tape exists, the beat becomes narration — usually a **Patch** or a **Carry**.
 
