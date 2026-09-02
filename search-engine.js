@@ -289,17 +289,90 @@ function branchOf(item) {
    `tagCount` is only ever called from query time (tagDF, via interpretQuery, and
    suggestAdjacentTopics), long after module evaluation, so the binding is
    initialized. Do not move a CALL to tagCount -- or to tagDF, which is one line
-   over it -- to module scope. */
+   over it -- to module scope.
+
+   REWORKED (kanban t_838a13c0): this used to be `hitTag`-through-regex over
+   every tag of every item, for every term -- O(items x avg-tags-per-item)
+   regex tests PER TERM, ~12,000 of them on the real tag map (1,882 items,
+   ~6.5 tags each). `hitTag`'s own matching rule (see its definition below)
+   collapses to a closed, enumerable question once you see it correctly:
+   for a >=4-char term it is exact equality between a hyphen-split TAG
+   SEGMENT and one of a small, deterministic set of inflected forms of the
+   term (t, t+"s", t+"es", and t+"ing" unless the term is sense-locked, in
+   which case t+"ing" is dropped) -- the lookbehind/lookahead in
+   `longTermPattern` exists only to enforce that the match starts and ends
+   on a segment boundary, which is exactly what hyphen-splitting already
+   gives for free. The <4-char branch already worked this way explicitly
+   (`tag.split("-").some(seg => re.test(seg))` with an anchored `^...$`
+   pattern), it's only the long branch whose regex folded the boundary
+   check and the equality check into one string test.
+   That means the whole question "which items carry inflected-form X as a
+   tag segment" can be answered with a single reverse index (segment ->
+   Set of item indices), built ONCE per ctx by walking the tag map once
+   (`tagSegmentIndex`), instead of a fresh linear scan per term. A tag
+   query then becomes 2-4 Map lookups (one per candidate inflection) and a
+   union of their item-index sets -- O(matches), not O(catalogue). See
+   `candidateForms`/`tagSegmentIndex` immediately below; both are pure
+   functions of ctx.itemTags and covered by the same "don't swap itemTags
+   on a used ctx" contract as the DF memo maps. Verified byte-for-byte
+   equivalent to the old per-term regex scan against every term in
+   data/semantic-index.json's concept vocabulary (see
+   tools/tmp-prime-bench*.mjs used to develop this fix) and the full
+   123-case tools/test-search.mjs battery stays green. */
+
+/* The enumerable inflected forms `hitTag`'s regex boundary logic reduces to
+   for a >=4-char term (see the comment above `tagCount`): the term itself,
+   plus its plural/participle suffixes, minus "-ing" for a sense-locked stem
+   (SENSE_LOCKED_STEMS, defined below -- forward-referenced the same way
+   `hitTag` already is; both are pure module-scope consts read long after
+   evaluation). The <4-char branch never sense-locks (`shortTagPattern`
+   always uses SHORT_INFLECTIONS, see its definition), so this only branches
+   on term length. */
+function candidateForms(t) {
+  if (t.length < 4) return [t, t + "s"];
+  if (SENSE_LOCKED_STEMS.has(t)) return [t, t + "s", t + "es"];
+  return [t, t + "s", t + "es", t + "ing"];
+}
+
+/* segment (post hyphen-split, exact string) -> Set of indices into
+   Object.values(ctx.itemTags.tags), i.e. "which items carry this exact
+   tag-segment string". Built once per ctx by a single pass over the tag
+   map -- O(total tag segments), not O(terms x items) -- and reused by
+   every `tagCount` call thereafter. */
+function tagSegmentIndex(ctx) {
+  if (!ctx._tagSegmentIndex) {
+    const idx = new Map();
+    const tagsMap = ctx.itemTags?.tags || {};
+    let i = 0;
+    for (const tags of Object.values(tagsMap)) {
+      const segs = new Set();
+      for (const tag of tags) tag.split("-").forEach(s => segs.add(s));
+      for (const seg of segs) {
+        let set = idx.get(seg);
+        if (!set) { set = new Set(); idx.set(seg, set); }
+        set.add(i);
+      }
+      i++;
+    }
+    ctx._tagSegmentIndex = idx;
+  }
+  return ctx._tagSegmentIndex;
+}
+
 function tagCount(term, ctx) {
   if (!ctx._dfMemo) ctx._dfMemo = new Map();
   if (ctx._dfMemo.has(term)) return ctx._dfMemo.get(term);
-  const tagsMap = ctx.itemTags?.tags || {};
-  let n = 0;
-  for (const tags of Object.values(tagsMap)) {
-    if (tags.some(tag => hitTag(tag, term))) n++;
+  const idx = tagSegmentIndex(ctx);
+  const forms = candidateForms(term);
+  const matchedItems = new Set();
+  for (const f of forms) {
+    const set = idx.get(f);
+    if (set) for (const i of set) matchedItems.add(i);
   }
+  const n = matchedItems.size;
   ctx._dfMemo.set(term, n);
   return n;
+
 }
 
 /* Fraction of the TAG MAP (0..1) whose tag list carries `term`, through the same
@@ -356,20 +429,91 @@ function itemWordSet(item, tagsMap) {
   return words;
 }
 
+/* Every item's word set, built ONCE per ctx and reused by every `corpusDF`
+   call thereafter — the actual fix for the O(catalogue) claim in corpusDF's
+   own (now-stale) comment below. `itemWordSet` does real work per item
+   (two string joins, a lowercase, a regex split, a per-tag split), and
+   corpusDF used to redo that work from scratch for every item on EVERY novel
+   term — O(terms x items) of string parsing, not O(items) as advertised.
+   Measured on the real catalogue (1,364-term concept vocabulary x 1,855
+   items, kanban t_838a13c0): corpusDF alone cost ~42s for the full
+   vocabulary before this cache, ~1s after (item parsing hoisted to run once
+   per item instead of once per item per term); tagDF's already-O(1)-per-item
+   `hitTag` check was untouched and needed no change.
+   Memoized on the same ctx as `_corpusDfMemo` — same lifetime and the same
+   "don't swap itemTags on a used ctx" contract documented at the top of this
+   file, since a word set baked from a stale tag map would silently serve
+   wrong membership. */
+function itemWordSets(ctx) {
+  if (!ctx._itemWordSets) {
+    const items = ctx.discover?.items || [];
+    const tagsMap = ctx.itemTags?.tags;
+    ctx._itemWordSets = items.map(item => itemWordSet(item, tagsMap));
+  }
+  return ctx._itemWordSets;
+}
+
 /* Fraction of the catalog (0..1) whose title/hook/topics/tags contain `term`
-   as a whole word. O(n) per novel term, memoized on ctx — same cost profile
-   as tagDF above; catalog is ~1k items so this is sub-millisecond per query. */
+   as a whole word. Memoized per term on ctx; the per-item parsing that used
+   to dominate this function's cost is now hoisted into `itemWordSets` above
+   and paid once per ctx, not once per (term, item) pair — see there. */
 function corpusDF(term, ctx) {
   if (!ctx._corpusDfMemo) ctx._corpusDfMemo = new Map();
   if (ctx._corpusDfMemo.has(term)) return ctx._corpusDfMemo.get(term);
-  const items = ctx.discover?.items || [];
+  const sets = itemWordSets(ctx);
   let n = 0;
-  for (const item of items) {
-    if (itemWordSet(item, ctx.itemTags?.tags).has(term)) n++;
+  for (const words of sets) {
+    if (words.has(term)) n++;
   }
-  const df = items.length ? n / items.length : 0;
+  const df = sets.length ? n / sets.length : 0;
   ctx._corpusDfMemo.set(term, df);
   return df;
+}
+
+/* WARM THE PER-TERM MEMO CACHES FOR THE WHOLE CONCEPT VOCABULARY, ONCE, AHEAD
+   OF THE FIRST QUERY (H bug, kanban t_838a13c0).
+
+   `tagDF`/`corpusDF` above are already memoized on `ctx._dfMemo`/
+   `ctx._corpusDfMemo`, but only lazily -- the first time a term is SEEN,
+   which for the concept vocabulary means "the first time a query expands
+   into it". A single query token can expand via `interpretQuery`'s concept
+   walk (own terms + one hop of `related`) into 75+ distinct terms, each an
+   O(catalogue) linear scan the first time it's touched -- measured 1.6s for
+   one call on a fresh ctx (see kanban card). The fix here is not to change
+   the per-term cost (still O(catalogue), same as every term this module has
+   ever scanned) but to move WHEN it's paid: instead of interleaved into the
+   user's first search -- the highest-stakes moment for a first impression --
+   pay it once, up front, while the app is otherwise idle between "data
+   finished loading" and "user typed a query and hit Go".
+
+   Walks every concept's own terms AND every related concept's terms (the
+   same two sources `interpretQuery`'s per-token loop reads, see `addTerm`
+   above) so a cold real query's expansion has nothing left to discover.
+   Pure reads through the existing memo point -- no new cache, no new
+   invalidation rule: whatever already governs `ctx._dfMemo`/
+   `ctx._corpusDfMemo` (one ctx per session, never swap `itemTags` on a used
+   ctx) governs this too. Safe to call multiple times (memoized) and safe to
+   call from a fresh ctx with no `semantic` data yet (walks nothing).
+
+   Deliberately NOT run against arbitrary literal query tokens (the `tok`
+   itself, as opposed to its concept expansion) -- those are unbounded user
+   input, not a fixed vocabulary, so there is nothing finite to prime; that
+   slice of the cold cost (one scan per genuinely novel word the user types)
+   is unavoidable and stays exactly as cheap/expensive as before. */
+function primeVocabulary(ctx) {
+  const concepts = ctx.semantic?.concepts || {};
+  const terms = new Set();
+  for (const c of Object.values(concepts)) {
+    (c.terms || []).forEach(t => terms.add(t));
+    (c.related || []).forEach(rid => {
+      (concepts[rid]?.terms || []).forEach(t => terms.add(t));
+    });
+  }
+  for (const t of terms) {
+    tagDF(t, ctx);
+    corpusDF(t, ctx);
+  }
+  return terms.size;
 }
 
 /* ---------- query interpreter ---------- */
@@ -1331,6 +1475,7 @@ const SearchEngine = {
   TAG_DF_TOO_BROAD, TAG_DF_COMMON, TAG_DF_RARE,
   STRONG_RATIO, RICH_MIN, DEFAULT_CAP, PER_SHOW_CAP, LISTENED_PENALTY, SENSE_LOCKED_STEMS,
   tokenize, branchOf, tagCount, tagDF, dfMultiplier, expansionBucket, corpusDF, hitText, hitTag,
+  primeVocabulary,
   interpretQuery, passesFilters, scoreMatch, searchWithRelaxation, classifyResults, diversify,
   strongPrefix,
   suggestAdjacentTopics, prettyConceptLabel,

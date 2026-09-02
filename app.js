@@ -388,6 +388,14 @@ function nudgeTopics(topics, amount) {
     }
   });
   saveInterests();
+  /* Bumps the repeated-query cache key (see buildPlaylist's `searchCache`) so
+     a playlist rebuild after a pick/play/thumbs nudge re-scores instead of
+     silently serving a stale ranking. interestScore (used as
+     searchWithRelaxation's zero-content-token rankFallback, e.g. a bare
+     "comedy"/"something short" query) reads state.interests, so this is the
+     one thing besides the query text and family-mode flag that can change
+     what buildPlaylist should return for the exact same typed query. */
+  state._interestsGen = (state._interestsGen || 0) + 1;
 }
 
 function boostTopics(topics, amount) { nudgeTopics(topics, amount); }
@@ -1491,15 +1499,46 @@ function listenedShows() {
   return new Set(pickedHistory().map(id => state.itemIndex[id]?.show).filter(Boolean));
 }
 
+/* Repeated-query cache (H bug, kanban t_838a13c0): a typo fix, back button, or
+   re-tap resubmits the exact same query text against a ctx/pool that has not
+   changed, and scoreMatch() was re-scanning and re-scoring the whole
+   ~1,880-item pool from scratch every time -- 3.4-6s even fully warm (see the
+   card's fleet-2 measurement). `interpretQuery` + `searchWithRelaxation`'s
+   output (everything through ranking, BEFORE classifyResults) is a pure
+   function of (query text, family-mode flag, interests weights) given a pool
+   that is otherwise fixed for the session -- state.discover/state.session are
+   fetched once in init() and never reassigned, so the pool a query scores
+   against cannot change mid-session; the one thing that visibly changes
+   without a page reload is `state.interests` (nudgeTopics, on every
+   pick/play/thumbs), which is why `state._interestsGen` is bumped there and
+   folded into this key. Deliberately CACHES BEFORE classifyResults, not
+   after: classifyResults reads `listenedShows()`, which changes on every pick
+   independent of the query -- caching past that point would serve a stale
+   listened-show penalty. classifyResults itself is O(results), not
+   O(catalogue), so leaving it uncached costs nothing.
+   Same bounded-eviction spirit as search-engine.js's PATTERN_CACHE_MAX /
+   patternCache (a session tab is long-lived and every distinct query text is
+   a new key) -- clearing wholesale on overflow is fine since every entry is a
+   pure function of its key and cheap to rebuild. */
+const SEARCH_CACHE_MAX = 200;
+const searchCache = new Map();
+
 function buildPlaylist(query) {
   const ctx = searchCtx();
   const interp = SearchEngine.interpretQuery(query, ctx);
   if (!interp.groups.length && !interp.filters.length) {
     return { status: "empty", suggestions: [] };
   }
-  const pool = poolFiltered();
-  const { results } = SearchEngine.searchWithRelaxation(pool, interp, 2, state.itemTags, interestScore);
-  const { status, picks } = SearchEngine.classifyResults(results, { listenedShows: listenedShows() });
+  const pool = poolFiltered(); // also refreshes state.itemIndex/state.poolIds (side effect)
+  const cacheKey = JSON.stringify([query, familyMode(), state._interestsGen || 0]);
+  let cached = searchCache.get(cacheKey);
+  if (!cached) {
+    const { results } = SearchEngine.searchWithRelaxation(pool, interp, 2, state.itemTags, interestScore);
+    cached = { interp, results };
+    if (searchCache.size >= SEARCH_CACHE_MAX) searchCache.clear();
+    searchCache.set(cacheKey, cached);
+  }
+  const { status, picks } = SearchEngine.classifyResults(cached.results, { listenedShows: listenedShows() });
 
   if (status === "empty") {
     return { status: "empty", suggestions: SearchEngine.suggestAdjacentTopics(interp, ctx) };
@@ -1524,6 +1563,60 @@ function buildPlaylist(query) {
     return { status: "unsaved", suggestions: [] };
   }
   return { status, playlist };
+}
+
+/* Loading-state guard around #pl-form's submit (H bug, kanban t_838a13c0):
+   buildPlaylist() is synchronous and, in the worst case (a fresh session's
+   first query, or any query that misses the repeated-query cache above), can
+   take 1.3-8s on the real catalogue — with nothing before this change to
+   tell the listener their tap registered. Two form instances share this
+   handler (renderHome and renderPlaylists both mount a `#pl-form`), so it is
+   defined once here rather than duplicated.
+
+   THE SETTIMEOUT(0) IS LOAD-BEARING, not decoration: disabling the button and
+   swapping its label only becomes visible to the user if the browser gets a
+   chance to paint before the synchronous, CPU-bound buildPlaylist() call
+   blocks the main thread. Setting `disabled`/`textContent` and calling
+   buildPlaylist() in the same tick produces a frozen-looking button for the
+   whole stall — no paint happens until the synchronous work yields — which is
+   the exact defect this guard exists to fix, just moved one line over. A
+   0ms timeout is enough because the browser only needs a task-queue turn to
+   flush the pending style/paint, not any particular delay.
+   `finally` restores the button whether buildPlaylist ran clean, threw
+   (unexpected but real user data — never let an exception leave the button
+   stuck disabled), or returned early. */
+function bindPlaylistFormSubmit(e) {
+  e.preventDefault();
+  const form = e.currentTarget;
+  const input = form.querySelector("input[type='text']");
+  const btn = form.querySelector("button");
+  const query = input.value.trim();
+  if (!query) return;
+  const originalLabel = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = "Building…";
+  setTimeout(() => {
+    try {
+      const result = buildPlaylist(query);
+      logEvent("playlist_built", { query, status: result.status, found: result.playlist ? result.playlist.items.length : 0 });
+      if (result.status === "ok" || result.status === "sparse") {
+        location.hash = "#/playlist/" + result.playlist.id;
+      } else {
+        const note = $("#pl-note");
+        note.textContent = result.status === "unsaved"
+          /* Says what happened and what to do, and does not blame the listener for
+             a device that is out of room. */
+          ? "That playlist could not be saved — this device has no storage space left. Removing a playlist you have finished with frees enough for a new one."
+          : result.suggestions.length
+            ? `Not much on "${query}" yet — try ${result.suggestions.map(s => s.label).join(", ")} instead.`
+            : `Not much on "${query}" yet — try different words.`;
+        note.hidden = false;
+      }
+    } finally {
+      btn.disabled = false;
+      btn.textContent = originalLabel;
+    }
+  }, 0);
 }
 
 /* ---------- shared wiring ---------- */
@@ -2018,26 +2111,7 @@ function renderHome() {
     renderShowSearchResults(query);
   });
 
-  $("#pl-form").addEventListener("submit", (e) => {
-    e.preventDefault();
-    const query = $("#pl-input").value.trim();
-    if (!query) return;
-    const result = buildPlaylist(query);
-    logEvent("playlist_built", { query, status: result.status, found: result.playlist ? result.playlist.items.length : 0 });
-    if (result.status === "ok" || result.status === "sparse") {
-      location.hash = "#/playlist/" + result.playlist.id;
-    } else {
-      const note = $("#pl-note");
-      note.textContent = result.status === "unsaved"
-        /* Says what happened and what to do, and does not blame the listener for
-           a device that is out of room. */
-        ? "That playlist could not be saved — this device has no storage space left. Removing a playlist you have finished with frees enough for a new one."
-        : result.suggestions.length
-          ? `Not much on "${query}" yet — try ${result.suggestions.map(s => s.label).join(", ")} instead.`
-          : `Not much on "${query}" yet — try different words.`;
-      note.hidden = false;
-    }
-  });
+  $("#pl-form").addEventListener("submit", bindPlaylistFormSubmit);
 
   sizeProgressBars($("#view"));
   bindPickLogging($("#view"));
@@ -2384,24 +2458,7 @@ function renderPlaylists() {
       : `<p class="note">No playlists yet — type above to build your first one.</p>`}
     </div>`;
 
-  $("#pl-form").addEventListener("submit", (e) => {
-    e.preventDefault();
-    const query = $("#pl-input").value.trim();
-    if (!query) return;
-    const result = buildPlaylist(query);
-    logEvent("playlist_built", { query, status: result.status, found: result.playlist ? result.playlist.items.length : 0 });
-    if (result.status === "ok" || result.status === "sparse") {
-      location.hash = "#/playlist/" + result.playlist.id;
-    } else {
-      const note = $("#pl-note");
-      note.textContent = result.status === "unsaved"
-        ? "That playlist could not be saved — this device has no storage space left. Removing a playlist you have finished with frees enough for a new one."
-        : result.suggestions.length
-          ? `Not much on "${query}" yet — try ${result.suggestions.map(s => s.label).join(", ")} instead.`
-          : `Not much on "${query}" yet — try different words.`;
-      note.hidden = false;
-    }
-  });
+  $("#pl-form").addEventListener("submit", bindPlaylistFormSubmit);
 }
 
 /* ---------- Forays (#128) ----------
@@ -4652,6 +4709,26 @@ async function init() {
   route();
   logEvent("session_shown", { session_id: state.session.session_id });
   trySyncEvents();
+
+  /* Warm the concept-vocabulary DF caches now, while the app is idle between
+     "data finished loading" and "user typed a query and hit Go", instead of
+     paying it interleaved into the FIRST real playlist search (H bug, kanban
+     t_838a13c0 — a fresh session's first query measured 6.6-8.1s before this
+     fix). Deliberately scheduled via requestIdleCallback (falling back to a
+     0ms timeout where it's unavailable, e.g. older WebKit/the native shell)
+     rather than called inline here: `route()` above has already painted the
+     first screen, and priming is pure CPU with no UI of its own, so it must
+     not compete with that paint or with an impatient user who taps into the
+     playlist search within the first second. searchCtx() builds the same ctx
+     this call warms, so a query that arrives before priming finishes just
+     resumes the memoization mid-way — nothing is wasted or redone. */
+  const primeSearchVocab = () => {
+    if (typeof SearchEngine !== "undefined" && SearchEngine.primeVocabulary) {
+      SearchEngine.primeVocabulary(searchCtx());
+    }
+  };
+  if (typeof requestIdleCallback === "function") requestIdleCallback(primeSearchVocab, { timeout: 2000 });
+  else setTimeout(primeSearchVocab, 0);
 
   /* Up Next auto-advance's wiring (docs/listening-queue-plan.md §4 addendum).
      Fire-and-forget: a player that never loads (module failure, test
