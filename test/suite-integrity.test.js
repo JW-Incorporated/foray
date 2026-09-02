@@ -969,6 +969,13 @@ const BACKEND_FLOORS = {
      disclosure template, and decideConnectiveNarration()'s seam-position
      table for tape-adjacent beats needing short connective narration. */
   "test/writeNarration.test.ts": 19,
+  /* A3.1/Q3 (kanban t_8d1a6a58): backend/src/catalog/breadthCatalog.ts +
+     searchBreadthShows.ts — show search over the FULL breadth catalogue
+     (curated + ~10k breadth tier), not just the 220 curated shows the
+     client ships. Fixture-based ranking tests plus real-catalogue
+     integration checks (merge/dedupe correctness against the committed
+     data/catalog.json + data/catalog-breadth.json). */
+  "test/breadthCatalog.test.ts": 11,
 };
 
 /* `it(` as well as `test(`: backend's suites use both spellings. */

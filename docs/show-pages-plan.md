@@ -89,6 +89,17 @@ episodes" for an active daily/weekly show). That gap is Stage 3, see below.
   show search, per CLAUDE.md's "a green test is not evidence" section —
   name the one-line mutation that breaks each new assertion.
 
+**Update, 2026-09-02 (kanban card t_8d1a6a58, requirement A3.1/Q3):**
+Stage 2 as originally shipped matched only the curated 220-show catalogue —
+per Joey's requirements-doc answer ("the user should never notice any
+limitations based on our own limited curation"), that is now table stakes,
+not the finished feature. Show search reaches the full ~10k-show breadth
+catalogue via a new backend endpoint (`GET /api/shows/search`,
+`backend/src/catalog/searchBreadthShows.ts`); the curated-catalogue match
+above still runs first as the fast local pass, with breadth results
+appended once the network call resolves. See `docs/DECISIONS.md`'s
+2026-09-02 entry for the full design and the client-degrade rule.
+
 ### Stage 3 — full episode list per show
 
 This is where the founder decision in §4 gates the approach. Two paths:

@@ -212,6 +212,55 @@ test("an unknown show_id renders 'Show not found', not a crash", () => {
   assert.strictEqual(rowCount(html), 0, "must render zero episode rows for an unknown show");
 });
 
+/* ==================================================================== */
+/* 2b. A3.1/Q3 — BREADTH-TIER SHOW PAGE DEGRADES HONESTLY (no Stage 3b   */
+/*     episode list wired in yet — see kanban t_567b570f)                */
+/* ==================================================================== */
+
+test("a breadth-tier show (found via search, zero curated episodes) shows an honest 'fetching' state, not an empty/broken page", () => {
+  /* MUTATION: drop the `isBreadthTier` branch from renderShow so a breadth
+     show with zero discover-pool episodes falls through to the curated-tier
+     "No episodes... right now" copy. That copy implies the show is empty,
+     which is false for a breadth-tier show whose real episode list Stage 3b
+     (t_567b570f) hasn't wired in yet — this test pins the distinct, honest
+     copy the card's own constraint requires. */
+  const m = mount();
+  m.state.catalog = { shows: [] }; // not in the curated set
+  m.state.discover = { items: [] };
+  m.state.taxonomy = { nodes: [] };
+  m.state.session = { session_id: "s-1", builder: "test", episodes: {}, cards: [] };
+  m.state.breadthShowCache = {
+    "999999": { show_id: "999999", title: "Deep Sea Engineering Hour", tier: "breadth", artwork_url: null, taxonomy_node_ids: [], editorial_note: null },
+  };
+
+  assert.doesNotThrow(() => m.ctx.renderShow("999999"));
+  const html = m.view();
+  assert.ok(html.includes("Deep Sea Engineering Hour"), "must render the breadth show's title");
+  assert.ok(!html.includes("Show not found"), "a breadth-tier show_id must resolve, not 404");
+  assert.ok(!html.includes("No episodes from this show are in 4a's catalogue right now"), "must NOT use the curated-tier empty copy, which implies the show has none");
+  assert.ok(html.toLowerCase().includes("fetching"), "must show an honest in-progress state instead");
+  assert.strictEqual(rowCount(html), 0, "no episode rows yet — Stage 3b (t_567b570f) wires the real list in separately");
+});
+
+test("a curated-tier show with genuinely zero discover-pool episodes keeps its original empty-state copy (regression guard)", () => {
+  /* MUTATION: remove the `isBreadthTier` condition entirely so EVERY
+     zero-episode show gets the breadth "fetching" copy. This test catches
+     that regression: a curated show is not "still loading," it genuinely
+     has none, and must keep saying so. */
+  const m = mount();
+  m.state.catalog = {
+    shows: [{ show_id: "curated-no-eps", title: "Curated No Episodes Show", artwork_url: null, taxonomy_node_ids: [], editorial_note: null }],
+  };
+  m.state.discover = { items: [] };
+  m.state.taxonomy = { nodes: [] };
+  m.state.session = { session_id: "s-1", builder: "test", episodes: {}, cards: [] };
+
+  m.ctx.renderShow("curated-no-eps");
+  const html = m.view();
+  assert.ok(html.includes("No episodes from this show are in 4a's catalogue right now"), "curated-tier zero-episode state must be unchanged");
+  assert.ok(!html.toLowerCase().includes("fetching"), "must not show the breadth-tier in-progress copy for a curated show");
+});
+
 test("route() dispatches #/show/:id to renderShow, matching the #/playlist/:id pattern", () => {
   /* Pins the wiring itself, not just renderShow in isolation — a route()
      regex that stops matching would leave renderShow correct and unreachable.
