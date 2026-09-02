@@ -1253,3 +1253,54 @@ its reasoning.
      and one narrowed-but-disclosed; the exposure is unchanged from the
      original design's own stated limit (a stale PLAYER, never a stale reader
      of `data/*.json`, which is what #233 was actually about).
+
+## 2026-09-02 (positioning vs. AI-generation pipeline — founder call, kanban card t_54913003)
+
+- **"Never an AI podcast app" positioning is retired; 4a's story now
+  explicitly includes the AI-generation feature.** A Fable-driven
+  marketing/go-to-market review found the marketing corpus (11 memos in
+  `docs/marketing/`, `00-MARKET-BRIEF.md` through `10-category-coverage.md`,
+  plus the Google Play listing draft in `docs/store/play/`) repeatedly
+  locks in "your personal podcast curator, never an AI podcast app" as the
+  core positioning and competitive moat — while `docs/curation/
+  generation-architecture.md` specifies, and the codebase is actively
+  shipping (pipeline stages 4.3–4.6 landed the week of 2026-09-01), a
+  feature that takes a free-text prompt and produces a full AI-generated,
+  AI-narrated episode (a **foray**, in this project's terminology; the app
+  itself remains **4a**). No document in the corpus reconciled the two
+  before this decision; `09-product-feature-review.md` §5's CI-gated store
+  copy (R23: "Real shows, real hosts," "your personal podcast curator")
+  would have gone literally false the day generation reached any
+  user-visible surface.
+- **Founder decision (Joey, via Discord, D1=A on kanban card t_54913003):
+  revise positioning to include generation rather than hide or silently
+  contradict it.** Directional framing: **"curator first, and can also
+  build you something new"** — curation remains the primary identity and
+  the anchor of the trust argument (the 78%-vs-42% human-vs-AI trust gap
+  cited in `03-positioning-pricing.md` §1 does not disappear just because
+  4a now also generates); AI-generation is added as a second, clearly
+  disclosed capability rather than folded in silently or marketed as the
+  main event. This formally supersedes: `00-MARKET-BRIEF.md`'s "never AI
+  podcast app" category rule, `04-personas-retention.md` implication #10
+  ("do not expand toward AI-narrated content"), the "isn't that" framing
+  in `07-premortem.md`'s low-risk rating for synthetic audio, and R23's
+  locked store copy in `09-product-feature-review.md` §5.
+- **Rejected alternatives, for the record.** (B) Ship generation
+  hidden/opt-in and never mention it in store copy — rejected because
+  generation-architecture.md §1.3 already plans a phase 2 open to any
+  user, which a permanently-hidden feature can't grow into, and because it
+  leaves the underlying contradiction merely unmarketed rather than
+  resolved. (C) Formally retire the R7/R23 rule with no replacement
+  positioning — rejected as leaving the moat argument (and the "we called
+  this toxic, then built it" discovery risk) unaddressed, just unlocked
+  instead of enforced.
+- **Scope of this entry.** This records the founder decision only, per
+  this card's explicit scope ("audit and route only — no marketing copy
+  should be written here"). No memo in `docs/marketing/`, the Play listing
+  draft, or the R23 CI-gated copy string is edited by this entry. The
+  actual rewrite of the 11 memos, the Play listing, and R23's locked copy
+  to reflect this new position is follow-up work for a dedicated card, and
+  should also account for the separate, still-open `HUMAN-ACTIONS.md`
+  item #32 (2026-07-08 marketing-corpus freeze: still OPEN as of this
+  writing — that item asks whether the corpus is even editable right now,
+  a distinct founder call this entry does not resolve or bypass).
