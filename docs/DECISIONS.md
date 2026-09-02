@@ -1262,6 +1262,10 @@ its reasoning.
   retained-field set (`title`, `summary`, `topic`, slot `title`s) as the comparison basis, with a
   richer comparison (description/transcript text) still correctly deferred to a future
   founder-approved schema addition.
+- **Review round 15 fix: §6.2's continuity-agent bullet still duplicated the round-13 act-boundary
+  runtime-check language that round 14 correctly superseded, contradicting §4.9's per-act gate as
+  the sole timing authority.** §6.2 now points at §4.9's per-act runtime gate instead of restating
+  a competing (and later-timed) check at the continuity checkpoint.
 - **Review round 9 fix: the deferrable-beat mechanism itself needed a surfaced schema/player gap,
   per the document's own line-23 rule, not silent treatment as already buildable.** `forays.json`
   represents a Foray as one static ordered `items` list today, and the player has no concept of a

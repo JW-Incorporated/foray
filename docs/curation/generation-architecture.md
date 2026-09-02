@@ -608,11 +608,9 @@ The work that pass was doing has to move:
   has been heard.
 - **The continuity agent becomes forward-only.** It runs at each act boundary and may adjust the
   act about to be built, never the one already played. Act 4 adapts to what act 3 actually said;
-  act 3 does not get fixed. This same act-boundary checkpoint is also where §3/§8's runtime
-  tolerance is re-validated against the act just finished — its actual written duration checked
-  against the planned budget the spine committed to at freeze time (§4.3/§6.1) — since progressive
-  playback means there is no later whole-Foray moment to catch an act that ran long before it has
-  already played.
+  act 3 does not get fixed. (Runtime validation for the act just finished is a separate, earlier
+  check — §4.9's per-act runtime gate, which runs the instant that act finishes writing and before
+  it is appended to the reachable running order, not at this continuity checkpoint.)
 - **A late-discovered gap becomes act N+1's problem**, or it is dropped with a reason. It is never a
   retroactive patch.
 
