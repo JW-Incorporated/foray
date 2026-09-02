@@ -41,7 +41,7 @@
 */
 
 import { billableText, countChars, estimateDurationSec, nonAsciiChars, CHARS_PER_MIN_MEASURED } from "./billable.mjs";
-import { NarrationCache } from "./cache.mjs";
+import { NarrationCache, DEFAULT_PAD_SEC_PER_ITEM } from "./cache.mjs";
 
 /** Defaults chosen in `pricing.json` — see `recommended_for_narration`. */
 export const DEFAULT_MODEL_ID = "eleven_flash_v2_5";
@@ -49,13 +49,17 @@ export const DEFAULT_OUTPUT_FORMAT = "mp3_44100_64";
 
 /** Default padding baked around each item's audio, in seconds (leading +
  *  trailing silence encoded into the file — see `cache.mjs`'s KEY_INPUTS
- *  comment and `docs/narrator-pipeline.md` §1 item 4). Mirrors
- *  `projection.mjs`'s `BUDGETS.padSecPerItem`; duplicated here rather than
- *  imported because `projection.mjs` already imports `costOf` from this
- *  file, and importing back would be a cycle. `HUMAN-ACTIONS.md` #3 still
- *  has the actual value as an open founder decision — this is only the
- *  fallback used when no caller overrides it. */
-export const DEFAULT_PAD_SEC_PER_ITEM = 1.0;
+ *  comment and `docs/narrator-pipeline.md` §1 item 4). Defined in
+ *  `cache.mjs` (so `cacheKey()` can normalize an omitted `padSecPerItem` to
+ *  it without an import cycle back from `projection.mjs`, which already
+ *  imports `costOf` from this file) and re-exported here for callers that
+ *  only import from `adapter.mjs`. Mirrors `projection.mjs`'s
+ *  `BUDGETS.padSecPerItem`. `HUMAN-ACTIONS.md` #3 still has the actual value
+ *  as an open founder decision — this is only the fallback used when no
+ *  caller overrides it (and, per the guard in `createAdapter()` below, no
+ *  caller may override it with anything else until padding synthesis
+ *  exists). */
+export { DEFAULT_PAD_SEC_PER_ITEM };
 
 /** The published base. Transcribed, never called. */
 export const API_BASE = "https://api.elevenlabs.io/v1";

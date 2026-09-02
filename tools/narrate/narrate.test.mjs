@@ -152,6 +152,24 @@ test("the cache key changes for each of the five inputs and for nothing else", (
   assert.equal(key, cacheKey({ ...base }));
 });
 
+test("an omitted padSecPerItem normalizes to the default, so legacy four-field callers still hit", () => {
+  /* Codex review (PR #420) flagged that a caller following the documented
+     `[spec.padSecPerItem]` OPTIONAL contract, or a pre-existing cache index
+     built before this field existed, must not silently start missing on
+     every entry. cacheKey() normalizes an omitted value to
+     DEFAULT_PAD_SEC_PER_ITEM, so the historical four-field call shape and
+     today's explicit-default five-field shape must be the SAME key. */
+  const fourField = { text: "the same words", voiceId: "v1", modelId: "m1", outputFormat: "mp3_44100_64" };
+  const fiveFieldDefault = { ...fourField, padSecPerItem: DEFAULT_PAD_SEC_PER_ITEM };
+  assert.equal(
+    cacheKey(fourField),
+    cacheKey(fiveFieldDefault),
+    "omitting padSecPerItem must hash identically to passing the default explicitly"
+  );
+  // And a real, non-default value must still diverge from both.
+  assert.notEqual(cacheKey(fourField), cacheKey({ ...fourField, padSecPerItem: 0.5 }));
+});
+
 test("createAdapter refuses a non-default padSecPerItem until padding synthesis exists", () => {
   /* cacheKey() correctly treats padSecPerItem as a real invalidating input
      (above), but nothing in this module actually bakes padding into the

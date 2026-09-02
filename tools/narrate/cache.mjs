@@ -80,6 +80,17 @@ import { billableText, countChars } from "./billable.mjs";
     unchanged key. */
 export const KEY_INPUTS = Object.freeze(["text", "voiceId", "modelId", "outputFormat", "padSecPerItem"]);
 
+/** Canonical default for `padSecPerItem`, defined here (not in `adapter.mjs`)
+    so `cacheKey()` can normalize an omitted value to it without an import
+    cycle — `adapter.mjs` already imports from this file, and the reverse
+    would be circular. `adapter.mjs` re-exports this under the same name for
+    callers that only import from there. Mirrors `projection.mjs`'s
+    `BUDGETS.padSecPerItem`; `HUMAN-ACTIONS.md` #3 still has the actual value
+    as an open founder decision — this is only the fallback used when no
+    caller overrides it (and, per `adapter.mjs`'s guard, no caller may
+    override it with anything else until padding synthesis exists). */
+export const DEFAULT_PAD_SEC_PER_ITEM = 1.0;
+
 /**
  * Guard against a caller passing a generation parameter that would change the
  * audio but that this module would silently drop out of the key.
@@ -114,6 +125,9 @@ export function assertKeyInputsComplete(spec) {
  * @param {number} [spec.padSecPerItem] seconds of silence baked around the
  *   item's audio (leading + trailing). Part of the key because it is baked
  *   into the bytes, not merely a request parameter — see KEY_INPUTS' comment.
+ *   Omitted or `undefined` normalizes to `DEFAULT_PAD_SEC_PER_ITEM`, so a
+ *   caller that never mentions padding hashes identically to one that passes
+ *   the default explicitly — the two must be the same cache entry.
  * @returns {string} 64-char hex
  */
 export function cacheKey(spec = {}) {
@@ -138,7 +152,11 @@ export function cacheKey(spec = {}) {
   // The TEXT is hashed canonicalised, so a line-ending or trailing-space change
   // is a hit rather than a re-bill. See "Leak 1" in the header.
   field("text", billableText(spec.text));
-  for (const name of ["voiceId", "modelId", "outputFormat", "padSecPerItem"]) field(name, spec[name]);
+  for (const name of ["voiceId", "modelId", "outputFormat"]) field(name, spec[name]);
+  // Normalized separately from the loop above: an omitted padSecPerItem must
+  // hash exactly like the explicit default, not like the empty string
+  // `field()`'s `?? ""` would otherwise produce for it.
+  field("padSecPerItem", spec.padSecPerItem ?? DEFAULT_PAD_SEC_PER_ITEM);
   return h.digest("hex");
 }
 
