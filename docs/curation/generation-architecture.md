@@ -341,12 +341,12 @@ The spine contains:
   per-beat runtime budgets when the spine is frozen (§4.3, enforced by §6.1 before Act 1 — and
   therefore any act — ever plays). Progressive generation (§6) means a later act's ACTUAL written
   duration is not yet known at that point, so it cannot wait for a single whole-Foray check: each
-  act's actual duration is re-validated against its own planned budget at that act's boundary
-  checkpoint — the same per-act checkpoint §6.2's continuity agent already runs at, before the
-  next act is allowed to start (and, for Act 1, before playback is allowed to begin at all, per
-  §6.1). An act whose actual duration fails this re-check is a defect caught at that act's own
-  boundary, never discovered only after the whole Foray has finished and published via §4.9 (which
-  remains the final whole-Foray write/validate step, not the per-act one).** On top of the baseline-alone requirement,
+  act's actual duration is re-validated against its own planned budget by §4.9's per-act gate,
+  which runs the instant that act finishes writing and blocks it from entering the running order
+  the player can reach until it passes — before Act 1 specifically, this is also what §6.1 means by
+  "before playback begins." An act whose actual duration fails this re-check is a defect caught at
+  that act's own gate, never discovered only after the whole Foray has finished and published via
+  §4.9's separate whole-Foray gate (see §4.9 for both).** On top of the baseline-alone requirement,
   the baseline must leave enough headroom below the +15% ceiling to accommodate the deferrable
   beats it carries: baseline runtime plus the reserved deferrable beats' runtime, together, must
   still fit within +15% of the target — deferrable beats only ever add runtime, so only the upper
@@ -504,10 +504,26 @@ was about nothing.
 
 ### 4.9 — Finalize and publish
 
-Validate against `check-forays.mjs` and `check-narration.mjs`. Write `data/forays.json`. In phase 1
-this is a PR a founder reviews; in phase 2 it is an automated publish and the validators are the
-only gate that exists — which is the reason to make them strict now, while a human is still in the
-loop to notice what they miss.
+Two gates, at two granularities, because §6/§1.4 already require Act 1 to start playing while later
+acts are still being written — a single whole-Foray check run only after the last act finishes would
+let Act 1 (and every act after it) reach the player before anything actually validates it.
+
+- **Per-act runtime gate — runs the instant each act finishes writing (§4.7–§4.8), before that act
+  is appended to the running order the player can reach.** Checks that act's actual written
+  duration — both without its deferrable beats and with every reserved deferrable beat inserted —
+  against that act's planned per-beat budget from the frozen spine (§4.3/§6.1). A failure here (a
+  beat ran long in the writing) blocks that act from entering the running order; for Act 1 this is
+  what makes §6.1's "spine frozen before playback" actually enforce a runtime bound rather than
+  only a planning-time one, and for every later act it is what §3/§8's ±15% tolerance is checked
+  against in practice, since progressive generation means an act can already be playing while the
+  next one is written. This is a narrow, fast check (duration only) — it does not require a
+  separate founder review step.
+- **Whole-Foray gate — runs once the last act is written.** Validate against `check-forays.mjs` and
+  `check-narration.mjs` (the full §8 quality-bar suite, including the aggregate exploration-budget
+  and narration-share checks that only make sense once the whole Foray exists). Write
+  `data/forays.json`. In phase 1 this is a PR a founder reviews; in phase 2 it is an automated
+  publish and the validators are the only gate that exists — which is the reason to make them
+  strict now, while a human is still in the loop to notice what they miss.
 
 ### 4.10 — Play
 
@@ -694,10 +710,10 @@ A generated Foray is publishable only if all of these hold:
   within the maximum runtime rather than adding it on top (§6.3). Both paths (baseline alone, and
   baseline plus every reserved deferrable beat) are validated against the spine's planned
   per-beat budgets when the spine freezes (§4.3/§6.1), before Act 1 or any act plays; each act's
-  ACTUAL written duration is then re-validated against that same planned budget at that act's own
-  boundary checkpoint (§6.2), not deferred to §4.9's final whole-Foray publish step, since
-  progressive generation (§6) means later acts are still being written while earlier ones already
-  play.
+  ACTUAL written duration is then re-validated against that same planned budget by §4.9's per-act
+  gate the moment that act finishes writing, not deferred to §4.9's separate final whole-Foray
+  gate, since progressive generation (§6) means later acts are still being written while earlier
+  ones already play.
 - Narration share may be up to 100% (§9.3) — there is no ceiling. A Medium/Long Foray whose topic is
   too thin for real tape at the requested duration must take the §9.3 shortening path instead of
   padding with synthetic filler to raise or preserve narration share.

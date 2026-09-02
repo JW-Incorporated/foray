@@ -1296,6 +1296,16 @@ its reasoning.
   new stage or misassigning it to §4.9 — an act that ran long is caught at its own boundary, before
   it has already played, which §4.9's whole-Foray-at-the-end timing cannot do under progressive
   generation (§6).
+- **Review round 14 fix: round 13's fix pointed the actual-duration re-check at §6.2's continuity
+  agent, but §6.2 only ever specifies content/coherence adjustments — it defines no duration or
+  runtime validation step, so the reference was still to a checkpoint that does not do this check.**
+  §4.9 ("Finalize and publish") is now split into two explicit gates instead of one: a **per-act
+  runtime gate** that runs the instant each act finishes writing and blocks that act from entering
+  the running order until its actual duration (baseline and baseline-plus-deferrables) passes
+  against the frozen spine's planned budget, and the existing **whole-Foray gate**
+  (`check-forays.mjs`/`check-narration.mjs`, `data/forays.json`, founder PR review in phase 1) that
+  runs once the last act is written. §3/§8's runtime-tolerance text now points at §4.9's per-act
+  gate by name instead of an existing section that was never a validation checkpoint.
 - **Review round 10 fix: §8's spine-beat completeness gate contradicted the normal on-schedule
   deferrable-beat path.** §8 required every spine beat to be "present, or explicitly dropped with
   a recorded reason," but §4.3/§6.3 (as corrected in rounds 6-9) specify that a deferrable beat is
