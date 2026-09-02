@@ -28,7 +28,17 @@ test.describe("MODULE LOAD TIMEOUT (real browser)", () => {
       // cache-state check is what test/sw-generation.test.js's node:vm
       // version asserts too, just via a `setTimeout` recorder instead of a
       // wall clock.
-      await page.evaluate(() => navigator.serviceWorker.register("sw.js"));
+      //
+      // Deliberately NOT awaited: some browsers keep register()'s own
+      // returned promise pending until the install microtask queue settles,
+      // which here never happens (that's the whole point of the hang) — a
+      // real observed CI failure. Firing it and moving on, then polling
+      // getRegistration() separately, is what actually exercises "install
+      // never completes" instead of blocking the test on the same hang it's
+      // trying to observe.
+      await page.evaluate(() => {
+        navigator.serviceWorker.register("sw.js").catch(() => {});
+      });
       await page.waitForTimeout(5000);
 
       const state = await page.evaluate(async () => {
