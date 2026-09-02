@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-09-02T08:14:22.231Z",
+  "built_at": "2026-09-02T16:12:26.700Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-09-02-2f4a67d2",
+    "last_batch_id": "fresh-2026-09-02-7f876dcf",
     "last_batch_tier": 1
   },
   "entries": {
@@ -61914,11 +61914,29 @@
     },
     "1499566932": {
       "topics": [
-        "craft/diy-home"
+        "craft/diy-home",
+        "hobbies"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.85
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Lifestyle podcast emphasizing home aesthetics and making daily life beautiful.",
+      "display_title": "Homemaker Chic",
+      "blurb": "Making home, work, and life more beautiful through intentional living.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-7f876dcf",
+      "classified_at": "2026-09-02T16:12:26.700Z"
     },
     "1499587701": {
       "topics": [
@@ -61936,11 +61954,24 @@
     },
     "1499630556": {
       "topics": [
-        "religion"
+        "religion/spirituality"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Spiritual teachings from Supreme Master Ching Hai.",
+      "display_title": "EdenRules.com (Audio)",
+      "blurb": "Spiritual teachings and interviews on meditation and inner development.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-7f876dcf",
+      "classified_at": "2026-09-02T16:12:26.700Z"
     },
     "1499631337": {
       "topics": [
@@ -62018,11 +62049,29 @@
     },
     "1499880546": {
       "topics": [
-        "education"
+        "news/commentary",
+        "philosophy/ideas"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.75
+        },
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Political and philosophical commentary on critical theory and ideology.",
+      "display_title": "New Discourses",
+      "blurb": "Political commentary analyzing ideology, theory, and contemporary issues.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-7f876dcf",
+      "classified_at": "2026-09-02T16:12:26.700Z"
     },
     "1499897111": {
       "topics": [
@@ -62138,11 +62187,29 @@
     },
     "1500338916": {
       "topics": [
-        "business/non-profit"
+        "business/non-profit",
+        "society"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/non-profit",
+          "confidence": 0.8
+        },
+        {
+          "node": "society",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Nonprofit work combining faith, awareness, and support against trafficking.",
+      "display_title": "Elijah Rising",
+      "blurb": "Anti-trafficking organization stories combining faith, awareness, and support.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-7f876dcf",
+      "classified_at": "2026-09-02T16:12:26.700Z"
     },
     "1500354709": {
       "topics": [
@@ -62278,8 +62345,21 @@
         "religion/buddhism"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/buddhism",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Buddhist teachings and practices from Vajrayana tradition.",
+      "display_title": "Buddhism for Beginners",
+      "blurb": "Buddhist teachings introducing meditation and Vajrayana practice principles.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-7f876dcf",
+      "classified_at": "2026-09-02T16:12:26.700Z"
     },
     "1500697965": {
       "topics": [
@@ -62435,11 +62515,29 @@
     },
     "1501352070": {
       "topics": [
-        "education/how-to"
+        "education/how-to",
+        "education/courses"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/how-to",
+          "confidence": 0.85
+        },
+        {
+          "node": "education/courses",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast for teachers discussing classroom practice and innovation.",
+      "display_title": "Brave New Teaching",
+      "blurb": "Teachers sharing strategies for classroom innovation and growth.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-7f876dcf",
+      "classified_at": "2026-09-02T16:12:26.700Z"
     },
     "1501366983": {
       "topics": [
@@ -62459,9 +62557,22 @@
       "topics": [
         "fiction"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Original horror fiction with professional narration and sound design.",
+      "display_title": "Scary Horror Stories by Dr. NoSleep",
+      "blurb": "Original horror fiction with professional narration and sound effects.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-7f876dcf",
+      "classified_at": "2026-09-02T16:12:26.700Z"
     },
     "1501433969": {
       "topics": [
@@ -62643,11 +62754,29 @@
     },
     "1501964274": {
       "topics": [
-        "society/government"
+        "news/commentary",
+        "news/politics"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.75
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Conspiracy-focused commentary on government and current events.",
+      "display_title": "Macroaggressions",
+      "blurb": "Political commentary with conspiracy theory perspectives on government.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-7f876dcf",
+      "classified_at": "2026-09-02T16:12:26.700Z"
     },
     "1501975271": {
       "topics": [
@@ -62703,11 +62832,29 @@
     },
     "1502178774": {
       "topics": [
-        "society"
+        "history",
+        "news/politics"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Historical dives into American foreign policy and Cold War geopolitics.",
+      "display_title": "Blowback",
+      "blurb": "Historical examination of American foreign policy and geopolitics.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-7f876dcf",
+      "classified_at": "2026-09-02T16:12:26.700Z"
     },
     "1502193756": {
       "topics": [
@@ -62873,19 +63020,58 @@
     },
     "1502728938": {
       "topics": [
-        "history"
+        "history",
+        "education"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.9
+        },
+        {
+          "node": "education",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Historical analysis of pivotal American moments shaping contemporary politics.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /deep[\\s-]dive/i"
+      ],
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-7f876dcf",
+      "classified_at": "2026-09-02T16:12:26.700Z"
     },
     "1502739330": {
       "topics": [
-        "psychology"
+        "news/commentary",
+        "paranormal"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.6
+        },
+        {
+          "node": "paranormal",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Conspiracy and fringe topics about current events and alternative theories.",
+      "display_title": "Dangerous World Podcast",
+      "blurb": "Conspiracy-focused discussion of current events and alternative topics.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-7f876dcf",
+      "classified_at": "2026-09-02T16:12:26.700Z"
     },
     "1502765577": {
       "topics": [
@@ -62957,12 +63143,28 @@
     "1502853894": {
       "topics": [
         "hobbies",
-        "nature",
         "nature/ocean-science"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.85
+        },
+        {
+          "node": "nature/ocean-science",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Saltwater fishing techniques, conservation, and destination guides.",
+      "display_title": "Saltwater Edge Podcast",
+      "blurb": "Saltwater fishing instruction and conservation coverage.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-7f876dcf",
+      "classified_at": "2026-09-02T16:12:26.700Z"
     },
     "1502871393": {
       "topics": [
@@ -63006,9 +63208,22 @@
       "topics": [
         "religion/judaism"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Interviews with notable Jewish figures and community leaders.",
+      "display_title": "Meaningful People",
+      "blurb": "Interviews with influential Jewish personalities and community leaders.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-7f876dcf",
+      "classified_at": "2026-09-02T16:12:26.700Z"
     },
     "1502954097": {
       "topics": [
@@ -63275,9 +63490,22 @@
       "topics": [
         "sports/cricket"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/cricket",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily cricket analysis, history, and expert commentary.",
+      "display_title": "Good Areas Podcast",
+      "blurb": "Daily cricket analysis with expert commentary and sport history.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-7f876dcf",
+      "classified_at": "2026-09-02T16:12:26.700Z"
     },
     "1503887245": {
       "topics": [
@@ -63288,11 +63516,29 @@
     },
     "1503897906": {
       "topics": [
-        "science"
+        "health/fitness",
+        "health/nutrition"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/nutrition",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Women's health education covering hormones, nutrition, and metabolism.",
+      "display_title": "Live Like a Girl with Dr. Mindy Pelz",
+      "blurb": "Women's health guidance on hormones, nutrition, and wellness.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-7f876dcf",
+      "classified_at": "2026-09-02T16:12:26.700Z"
     },
     "1503902212": {
       "topics": [
@@ -63312,12 +63558,29 @@
     },
     "1503931590": {
       "topics": [
-        "education/how-to",
-        "craft/photography"
+        "craft/photography",
+        "education/how-to"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/photography",
+          "confidence": 0.9
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Wildlife and nature photography education covering techniques.",
+      "display_title": "The Wild Photographer",
+      "blurb": "Photography instruction for wildlife, landscape, and nature.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-7f876dcf",
+      "classified_at": "2026-09-02T16:12:26.700Z"
     },
     "1503951481": {
       "topics": [
@@ -63466,11 +63729,24 @@
     },
     "1504562652": {
       "topics": [
-        "religion"
+        "religion/christianity"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily Christian prayer and devotional focused on national concerns.",
+      "display_title": "Give Him 15 Plus | Insights with Dutch",
+      "blurb": "Daily Christian prayer devotional addressing national concerns.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-7f876dcf",
+      "classified_at": "2026-09-02T16:12:26.700Z"
     },
     "1504592760": {
       "topics": [
@@ -63601,12 +63877,24 @@
     },
     "1505007720": {
       "topics": [
-        "tv-film/reviews",
-        "tv-film"
+        "tv-film/reviews"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Scene-by-scene horror film reviews with analysis and commentary.",
+      "display_title": "Pod Mortem: A Horror Podcast",
+      "blurb": "Detailed horror film reviews with analysis and expert commentary.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-7f876dcf",
+      "classified_at": "2026-09-02T16:12:26.700Z"
     },
     "1505049559": {
       "topics": [
@@ -64221,11 +64509,29 @@
     },
     "1506519162": {
       "topics": [
-        "nature"
+        "science",
+        "medicine/biology"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.8
+        },
+        {
+          "node": "medicine/biology",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Science podcast examining epidemics, vaccines, and public health.",
+      "display_title": "Pandemia",
+      "blurb": "Science podcast exploring epidemics, vaccines, and global health.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-7f876dcf",
+      "classified_at": "2026-09-02T16:12:26.700Z"
     },
     "1506525179": {
       "topics": [
@@ -64379,9 +64685,22 @@
       "topics": [
         "kids-family/stories"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Children's stories from Thomas & Friends franchise.",
+      "display_title": "Thomas & Friends™ Storytime (US)",
+      "blurb": "Stories from Thomas & Friends featuring adventure and lessons.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-7f876dcf",
+      "classified_at": "2026-09-02T16:12:26.700Z"
     },
     "1506832307": {
       "topics": [
@@ -64848,12 +65167,28 @@
     "1508122332": {
       "topics": [
         "education/courses",
-        "philosophy",
         "psychology"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/courses",
+          "confidence": 0.9
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "University-level course on psychoanalysis and personality psychology.",
+      "display_title": "Philosophy of Psychoanalysis",
+      "blurb": "Tertiary education course on psychoanalytic theory and psychology.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-7f876dcf",
+      "classified_at": "2026-09-02T16:12:26.700Z"
     },
     "1508135544": {
       "topics": [
@@ -64968,11 +65303,29 @@
     },
     "1508450538": {
       "topics": [
-        "business/careers"
+        "business/careers",
+        "health/mental"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/careers",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Leadership and workplace culture for HR professionals and leaders.",
+      "display_title": "Workday Playdate",
+      "blurb": "Leadership podcast emphasizing workplace culture and human connection.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-7f876dcf",
+      "classified_at": "2026-09-02T16:12:26.700Z"
     },
     "1508522747": {
       "topics": [
@@ -64997,11 +65350,29 @@
     },
     "1508567250": {
       "topics": [
-        "psychology"
+        "philosophy/ideas",
+        "society/government"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.75
+        },
+        {
+          "node": "society/government",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Farsi-language political philosophy discussion on republic.",
+      "display_title": "Res publica/Demos/جمهور/ دموس",
+      "blurb": "Political philosophy discussion on republic and governance.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-7f876dcf",
+      "classified_at": "2026-09-02T16:12:26.700Z"
     },
     "1508572777": {
       "topics": [
@@ -65068,11 +65439,29 @@
     },
     "1508892492": {
       "topics": [
-        "space"
+        "space",
+        "science"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.85
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Astronomy podcast covering celestial objects and space topics.",
+      "display_title": "The Actual Astronomy Podcast",
+      "blurb": "Astronomy podcast discussing space, celestial objects, and science.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-7f876dcf",
+      "classified_at": "2026-09-02T16:12:26.700Z"
     },
     "1508898501": {
       "topics": [
@@ -65512,11 +65901,29 @@
     },
     "1510254570": {
       "topics": [
-        "nature"
+        "nature",
+        "hobbies"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.7
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast about ranch life, animals, and rural agriculture.",
+      "display_title": "6 Ranch Podcast",
+      "blurb": "Ranch life and rural lifestyle podcast.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-7f876dcf",
+      "classified_at": "2026-09-02T16:12:26.700Z"
     },
     "1510255547": {
       "topics": [
@@ -65543,11 +65950,29 @@
     },
     "1510288662": {
       "topics": [
-        "culture"
+        "true-crime",
+        "paranormal"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.65
+        },
+        {
+          "node": "paranormal",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "True ghost stories and paranormal documentary storytelling.",
+      "display_title": "Ghost Tales by the Fireside",
+      "blurb": "True ghost stories presented as paranormal documentary tales.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-7f876dcf",
+      "classified_at": "2026-09-02T16:12:26.700Z"
     },
     "1510289401": {
       "topics": [
@@ -65596,12 +66021,24 @@
     },
     "1510471758": {
       "topics": [
-        "sports/tennis",
-        "economics/markets"
+        "sports/tennis"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/tennis",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Tennis instruction, analysis, and commentary on the sport.",
+      "display_title": "Second Serve Tennis",
+      "blurb": "Tennis instruction and analysis of the sport.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-7f876dcf",
+      "classified_at": "2026-09-02T16:12:26.700Z"
     },
     "1510472957": {
       "topics": [
@@ -65643,19 +66080,50 @@
     },
     "1510623480": {
       "topics": [
-        "food"
+        "food/cooking-science",
+        "culture"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food/cooking-science",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Food and cooking podcast with cultural and culinary focus.",
+      "display_title": "Biscuits & Jam",
+      "blurb": "Food and cooking podcast with culinary discussion.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-7f876dcf",
+      "classified_at": "2026-09-02T16:12:26.700Z"
     },
     "1510638084": {
       "topics": [
         "tv-film/interviews"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Film discussion featuring cinematographer Roger Deakins.",
+      "display_title": "Team Deakins",
+      "blurb": "Film interviews and discussion with cinematographer perspectives.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-7f876dcf",
+      "classified_at": "2026-09-02T16:12:26.700Z"
     },
     "1510639391": {
       "topics": [
@@ -65974,9 +66442,22 @@
       "topics": [
         "religion/buddhism"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/buddhism",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily Buddhist teachings and dharma discussions.",
+      "display_title": "The Daily Dharma",
+      "blurb": "Daily Buddhist teachings and dharma practice guidance.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-7f876dcf",
+      "classified_at": "2026-09-02T16:12:26.700Z"
     },
     "1511646621": {
       "topics": [
@@ -66042,11 +66523,29 @@
     },
     "1511827218": {
       "topics": [
-        "culture/fashion"
+        "culture/fashion",
+        "health/alternative"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/fashion",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/alternative",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Fashion and beauty podcast with lifestyle topics.",
+      "display_title": "The blondEST",
+      "blurb": "Fashion and beauty podcast with lifestyle discussion.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-7f876dcf",
+      "classified_at": "2026-09-02T16:12:26.700Z"
     },
     "1511919057": {
       "topics": [
@@ -66166,11 +66665,29 @@
     },
     "1512702672": {
       "topics": [
-        "education/self-improvement"
+        "education/self-improvement",
+        "health/mental"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.75
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Self-improvement and personal development podcast.",
+      "display_title": "Quality Queen Control",
+      "blurb": "Self-improvement and personal development guidance.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-7f876dcf",
+      "classified_at": "2026-09-02T16:12:26.700Z"
     },
     "1512721188": {
       "topics": [
@@ -66266,11 +66783,29 @@
     },
     "1513102098": {
       "topics": [
-        "education/courses"
+        "education/courses",
+        "health"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/courses",
+          "confidence": 0.8
+        },
+        {
+          "node": "health",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Course on emergency medical services and healthcare.",
+      "display_title": "EMS 20/20",
+      "blurb": "Educational course on emergency medical services.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-7f876dcf",
+      "classified_at": "2026-09-02T16:12:26.700Z"
     },
     "1513139424": {
       "topics": [
@@ -66305,11 +66840,29 @@
     },
     "1513178238": {
       "topics": [
-        "religion"
+        "religion",
+        "society"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.8
+        },
+        {
+          "node": "society",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Spiritual podcast by Lee C. Camp on faith and society.",
+      "display_title": "No Small Endeavor with Lee C. Camp",
+      "blurb": "Spiritual discussion on faith and social issues.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-7f876dcf",
+      "classified_at": "2026-09-02T16:12:26.700Z"
     },
     "1513213967": {
       "topics": [
@@ -66365,11 +66918,29 @@
     },
     "1513369812": {
       "topics": [
-        "business"
+        "news/commentary",
+        "economics/markets"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.8
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Japanese business news and economic commentary.",
+      "display_title": "辛坊治郎 ズーム そこまで言うか！【最新回のみ】",
+      "blurb": "Japanese business news and economic commentary.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-7f876dcf",
+      "classified_at": "2026-09-02T16:12:26.700Z"
     },
     "1513391500": {
       "topics": [
@@ -66402,12 +66973,24 @@
     },
     "1513430808": {
       "topics": [
-        "religion",
         "religion/christianity"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Seventh-day Adventist Christian education podcast.",
+      "display_title": "3ABN Sabbath School Panel",
+      "blurb": "Christian religious education panel discussion.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-7f876dcf",
+      "classified_at": "2026-09-02T16:12:26.700Z"
     },
     "1513477929": {
       "topics": [
@@ -67096,11 +67679,32 @@
     },
     "1515786216": {
       "topics": [
-        "computing"
+        "education/self-improvement",
+        "philosophy/ideas"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.8
+        },
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Deep questions about technology, meaning, and personal growth.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-7f876dcf",
+      "classified_at": "2026-09-02T16:12:26.700Z"
     },
     "1515799529": {
       "topics": [
@@ -67160,11 +67764,29 @@
     },
     "1515932214": {
       "topics": [
-        "culture"
+        "philosophy/ideas",
+        "religion"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.75
+        },
+        {
+          "node": "religion",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Documentary on heresy and religious ideas with Andrew Gold.",
+      "display_title": "heretics. | andrew gold",
+      "blurb": "Documentary exploration of heresy and religious ideas.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-7f876dcf",
+      "classified_at": "2026-09-02T16:12:26.700Z"
     },
     "1515943362": {
       "topics": [
@@ -67269,11 +67891,29 @@
     },
     "1516104108": {
       "topics": [
-        "sports/endurance"
+        "sports/endurance",
+        "health/fitness"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Swimming instruction, technique, and athletic discussion.",
+      "display_title": "Stories from the Water",
+      "blurb": "Swimming instruction and athletic discussion.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-7f876dcf",
+      "classified_at": "2026-09-02T16:12:26.700Z"
     },
     "1516180720": {
       "topics": [
@@ -67333,8 +67973,21 @@
         "tv-film/animation"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/animation",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Anime and manga discussion and criticism.",
+      "display_title": "Shonen Flop",
+      "blurb": "Anime and manga discussion and analysis.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-7f876dcf",
+      "classified_at": "2026-09-02T16:12:26.700Z"
     },
     "1516336058": {
       "topics": [
@@ -67575,11 +68228,29 @@
     },
     "1517092086": {
       "topics": [
-        "business/non-profit"
+        "business/non-profit",
+        "society"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/non-profit",
+          "confidence": 0.8
+        },
+        {
+          "node": "society",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast for automotive trade association.",
+      "display_title": "AAMVAcast",
+      "blurb": "Automotive industry and regulatory discussion.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-7f876dcf",
+      "classified_at": "2026-09-02T16:12:26.700Z"
     },
     "1517116280": {
       "topics": [
@@ -67893,11 +68564,29 @@
     },
     "1518326010": {
       "topics": [
-        "education/how-to"
+        "education/how-to",
+        "craft"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/how-to",
+          "confidence": 0.85
+        },
+        {
+          "node": "craft",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Construction education and building techniques.",
+      "display_title": "Elevate Construction",
+      "blurb": "Construction education and building techniques instruction.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-7f876dcf",
+      "classified_at": "2026-09-02T16:12:26.700Z"
     },
     "1518376121": {
       "topics": [
@@ -67908,12 +68597,29 @@
     },
     "1518409554": {
       "topics": [
-        "society/government",
+        "education/how-to",
         "society/law"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/how-to",
+          "confidence": 0.85
+        },
+        {
+          "node": "society/law",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Legal education for Virginia law enforcement officers.",
+      "display_title": "Law for VA LEOs",
+      "blurb": "Legal guidance and education for law enforcement.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-7f876dcf",
+      "classified_at": "2026-09-02T16:12:26.700Z"
     },
     "1518475264": {
       "topics": [
@@ -68137,9 +68843,22 @@
       "topics": [
         "news/tech"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hebrew-language technology and news podcast.",
+      "display_title": "בזמן שעבדתם",
+      "blurb": "Technology and news discussion.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-7f876dcf",
+      "classified_at": "2026-09-02T16:12:26.700Z"
     },
     "1519234952": {
       "topics": [
@@ -68188,9 +68907,22 @@
       "topics": [
         "true-crime"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "True crime storytelling and cases discussion.",
+      "display_title": "Serialously with Annie Elise",
+      "blurb": "True crime storytelling and case analysis.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-7f876dcf",
+      "classified_at": "2026-09-02T16:12:26.700Z"
     },
     "1519458581": {
       "topics": [
@@ -68271,9 +69003,26 @@
         "society/government",
         "news/politics"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society/government",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Democracy and government theory discussion.",
+      "display_title": "Democracy Paradox",
+      "blurb": "Democracy and governance theory discussion.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-7f876dcf",
+      "classified_at": "2026-09-02T16:12:26.700Z"
     },
     "1519708675": {
       "topics": [
@@ -68433,11 +69182,29 @@
     },
     "1520189814": {
       "topics": [
-        "nature/pets"
+        "nature/pets",
+        "education/how-to"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/pets",
+          "confidence": 0.85
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Dog training and behavior instruction from Susan Garrett.",
+      "display_title": "Shaped by Dog with Susan Garrett",
+      "blurb": "Dog training and behavior instruction.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-7f876dcf",
+      "classified_at": "2026-09-02T16:12:26.700Z"
     },
     "1520209791": {
       "topics": [
@@ -68475,8 +69242,21 @@
         "culture/performing-arts"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Poetry discussion and performing arts.",
+      "display_title": "The Poetry Cafe",
+      "blurb": "Poetry discussion and performing arts.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-7f876dcf",
+      "classified_at": "2026-09-02T16:12:26.700Z"
     },
     "1520304490": {
       "topics": [
@@ -68566,11 +69346,29 @@
     },
     "1520679444": {
       "topics": [
-        "nature"
+        "nature",
+        "hobbies"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.75
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Outdoor recreation and nature exploration podcast.",
+      "display_title": "CREEK DEVIL",
+      "blurb": "Outdoor recreation and nature exploration.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-7f876dcf",
+      "classified_at": "2026-09-02T16:12:26.700Z"
     },
     "1520702541": {
       "topics": [
@@ -68706,12 +69504,24 @@
     },
     "1521164316": {
       "topics": [
-        "sports/volleyball",
-        "culture/design"
+        "sports/volleyball"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/volleyball",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Volleyball instruction and design discussion.",
+      "display_title": "The Volleyball By Design Podcast",
+      "blurb": "Volleyball instruction and design discussion.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-7f876dcf",
+      "classified_at": "2026-09-02T16:12:26.700Z"
     },
     "1521180246": {
       "topics": [
@@ -68806,11 +69616,29 @@
     },
     "1521483126": {
       "topics": [
-        "nature"
+        "nature",
+        "hobbies"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.8
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Gamekeeper and wildlife management podcast.",
+      "display_title": "Gamekeeper Podcast",
+      "blurb": "Gamekeeper and wildlife management discussion.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-7f876dcf",
+      "classified_at": "2026-09-02T16:12:26.700Z"
     },
     "1521502684": {
       "topics": [
@@ -68880,11 +69708,24 @@
     },
     "1521578868": {
       "topics": [
-        "comedy"
+        "comedy/casual-hangs"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedy podcast with casual conversation and humor.",
+      "display_title": "SmartLess",
+      "blurb": "Comedy podcast with celebrity interviews and humor.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-7f876dcf",
+      "classified_at": "2026-09-02T16:12:26.700Z"
     },
     "1521589583": {
       "topics": [
@@ -68946,11 +69787,29 @@
     },
     "1521758802": {
       "topics": [
-        "science/physics"
+        "science/physics",
+        "philosophy/ideas"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/physics",
+          "confidence": 0.85
+        },
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Physics theory and scientific inquiry discussion.",
+      "display_title": "Theories of Everything with Curt Jaimungal",
+      "blurb": "Physics theory and scientific inquiry discussion.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-7f876dcf",
+      "classified_at": "2026-09-02T16:12:26.700Z"
     },
     "1521795741": {
       "topics": [
@@ -69112,9 +69971,22 @@
       "topics": [
         "culture/fashion"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/fashion",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fashion and beauty discussion podcast.",
+      "display_title": "Skin Anarchy",
+      "blurb": "Fashion and beauty discussion and analysis.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-7f876dcf",
+      "classified_at": "2026-09-02T16:12:26.700Z"
     },
     "1522215911": {
       "topics": [
@@ -69533,11 +70405,28 @@
     "1523312400": {
       "topics": [
         "science/physics",
-        "space"
+        "philosophy/ideas"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/physics",
+          "confidence": 0.8
+        },
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Physics and cosmology exploration and theory.",
+      "display_title": "Why This Universe?",
+      "blurb": "Physics and cosmology exploration.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-7f876dcf",
+      "classified_at": "2026-09-02T16:12:26.700Z"
     },
     "1523318778": {
       "topics": [
@@ -69627,11 +70516,29 @@
     },
     "1523486568": {
       "topics": [
-        "kids-family"
+        "kids-family/education",
+        "education/self-improvement"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/education",
+          "confidence": 0.85
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Financial education podcast for children.",
+      "display_title": "Million Bazillion",
+      "blurb": "Financial education podcast for children and families.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-09-02-7f876dcf",
+      "classified_at": "2026-09-02T16:12:26.700Z"
     },
     "1523505575": {
       "topics": [
