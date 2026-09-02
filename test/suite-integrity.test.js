@@ -193,6 +193,12 @@ const FLOORS = {
      suite (title link + PR #357 unchanged-controls checks), so any change to
      its size is worth a second look. */
   "test/episode-row-links.test.js": 5,
+  /* Visible explicit-content ("E") badge (kanban card t_02c6bb0b):
+     explicitBadge() itself, its four call sites (epRow, archivedRow,
+     renderEpisode, renderShow at both episode- and show-level), and a check
+     that Family Mode's pre-existing poolFiltered() filter still fires
+     unchanged — the badge is additive, not a replacement for that filter. */
+  "test/explicit-badge.test.js": 9,
   "test/first-time-onboarding.test.js": 10,
   /* Duplicate-ID guard for HUMAN-ACTIONS.md's own numbering rule (full-repo
      review finding L3, 2026-08-31). Two tests: the file has numbered items,
