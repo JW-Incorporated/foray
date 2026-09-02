@@ -1,5 +1,5 @@
 {
-  "deploy_id": "a307621bc29cf942",
+  "deploy_id": "bbd70ac2e688a71e",
   "files": {
     "app.js": "sha256:07f34f482d98c41b4c743429909bccee3dff637508df699feab900a25ed357ba",
     "data/catalog-client.json": "sha256:83a6a83d4633326dbc422c57677a78438a41c69f3055439a0010d2057aec8864",
@@ -39,7 +39,7 @@
     "player/seek-policy.js": "sha256:248ca07cef5c5c7c09bd5967b1e86d8a3254493033aec77bb8e3d4b8f25e350c",
     "player/segment-strip.js": "sha256:676635df83d78be8708cd1a788aba828dd430a7fa9ef1d283c1c489a4886006a",
     "player/strip-scrub-gesture.js": "sha256:88415f256049ee1ac96c6738651819d3b1c76161f6fe685dc6eaeab71b0d487e",
-    "search-engine.js": "sha256:aa300f1bbcb4e3d3325dc27bff3861c2c0c2e2a7b04f0cfa2f0f168b5d3c8b1d",
+    "search-engine.js": "sha256:580d41603b97da9130d1248946c64436252ac76913cccc5537b37f6a7245c75b",
     "styles.css": "sha256:7a76f8443a99ebce296c09d5ba065e895689a5b897e7228673a255e48d42a312"
   }
 }
