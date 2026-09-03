@@ -45,6 +45,16 @@ public protocol PlayerBackend: AnyObject, Sendable {
     /// Total duration of the active item, if known yet (AVPlayerItem's
     /// duration can be indefinite/unknown briefly after load starts).
     var currentDuration: CMTime? { get }
+
+    /// Fired when the currently-loaded item finishes playing on its own
+    /// (`AVPlayerItemDidPlayToEndTime` in the real backend). `PlayerQueueManager`
+    /// sets this once, in `registerNotificationsIfNeeded()`, and translates it
+    /// into `PlayerEvent.itemEnded`. Part of the protocol (not just
+    /// `AVPlayerBackend`) so a fake backend used in tests can simulate an item
+    /// ending without `PlayerQueueManager` needing to downcast to a concrete
+    /// type — a downcast would silently no-op this wiring for any other
+    /// `PlayerBackend` conformer, fake or otherwise.
+    var onItemDidPlayToEnd: (@Sendable () -> Void)? { get set }
 }
 
 /// Real AVPlayer-backed implementation. Owns exactly ONE `AVPlayer`

@@ -178,3 +178,73 @@ test("renderEpisode renders the Stage 2 fallback link, not a play button, when a
   assert.match(html, /Listen in your podcast app ↗/, "an honest external fallback replaces the ▶ button");
   assert.match(html, /class="star /, "star toggle still renders");
 });
+
+/* ---------- A1.8: "More from this show" ---------- */
+
+test("renderEpisode lists other episodes from the same show via episodesForShow, using epRow", () => {
+  // Mutation: drop the moreFromShow() call from renderEpisode's template.
+  // This assertion fails because neither sibling title appears.
+  const app = loadApp();
+  app._state(`
+    state.catalog = { shows: [{ show_id: "show-1", title: "Great Show" }] };
+    state.discover = { items: [
+      { id: "ep-3", title: "Deep Dive Title", show: "Great Show", duration_min: 42, audio_url: "https://example.com/a.mp3" },
+      { id: "ep-sib-1", title: "Sibling One", show: "Great Show", duration_min: 20, audio_url: "https://example.com/b.mp3" },
+      { id: "ep-sib-2", title: "Sibling Two", show: "Great Show", duration_min: 15 },
+      { id: "ep-other", title: "Other Show Episode", show: "Other Show", duration_min: 5 },
+    ] };
+    state.session = { episodes: {} };
+    state.itemIndex["ep-3"] = {
+      id: "ep-3", title: "Deep Dive Title", show: "Great Show",
+      duration_min: 42, hook: "A description hook", audio_url: "https://example.com/a.mp3",
+    };
+  `);
+  app.renderEpisode("ep-3");
+  const html = app._view.innerHTML;
+  assert.match(html, /More from this show/, "section heading must render");
+  assert.match(html, /Sibling One/, "must list another episode from the same show");
+  assert.match(html, /Sibling Two/, "must list every sibling episode, not just the first");
+  assert.doesNotMatch(html, /Other Show Episode/, "must not list an episode from a different show");
+  assert.doesNotMatch(html, />Deep Dive Title<\/a>.*>Deep Dive Title</s, "must not list the episode itself among its own siblings");
+});
+
+test("renderEpisode omits the 'More from this show' section when there are no other episodes", () => {
+  // Mutation: drop the `if (!eps.length) return ""` guard in moreFromShow.
+  // This would then render an empty <section class="ep-more"> heading with
+  // no rows, which this test catches.
+  const app = loadApp();
+  app._state(`
+    state.catalog = { shows: [{ show_id: "show-1", title: "Great Show" }] };
+    state.discover = { items: [
+      { id: "ep-3", title: "Deep Dive Title", show: "Great Show", duration_min: 42, audio_url: "https://example.com/a.mp3" },
+    ] };
+    state.session = { episodes: {} };
+    state.itemIndex["ep-3"] = {
+      id: "ep-3", title: "Deep Dive Title", show: "Great Show",
+      duration_min: 42, audio_url: "https://example.com/a.mp3",
+    };
+  `);
+  app.renderEpisode("ep-3");
+  const html = app._view.innerHTML;
+  assert.doesNotMatch(html, /More from this show/, "no section when the show has no other episodes");
+});
+
+test("renderEpisode omits the 'More from this show' section when the show does not join catalog.json", () => {
+  // Mutation: make moreFromShow fall back to a raw filter over state.discover
+  // by name without going through showIdForShowName/showById. This test
+  // still passes for that mutation only if a show truly has no siblings;
+  // paired with the sibling test above it pins the real join path.
+  const app = loadApp();
+  app._state(`
+    state.catalog = { shows: [] };
+    state.discover = { items: [] };
+    state.session = { episodes: {} };
+    state.itemIndex["ep-3"] = {
+      id: "ep-3", title: "Deep Dive Title", show: "Unlisted Show",
+      duration_min: 42, audio_url: "https://example.com/a.mp3",
+    };
+  `);
+  app.renderEpisode("ep-3");
+  const html = app._view.innerHTML;
+  assert.doesNotMatch(html, /More from this show/, "no section when the show has no catalog.json record");
+});

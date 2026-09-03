@@ -1,5 +1,15 @@
 # Foray — Market Brief (CMO synthesis)
 
+> **Name change since this memo — 2026-08-21.** At the time this brief was
+> written the app itself was called "Foray" (hence the title above); the
+> founder later renamed the app **4a**, and "foray" was repurposed to mean
+> only the stitched-audio unit 4a assembles (see `docs/DECISIONS.md`,
+> 2026-08-21 entry, and `06-naming-study.md`). **The underlying market
+> research and positioning conclusions below still apply as-is to 4a** —
+> this is a naming change only, not a repositioning; read every "Foray" in
+> the prose below as "4a" unless it is describing the stitched-audio unit
+> specifically.
+
 *Synthesized 2026-07-08 from desks 01–07. One page of conclusions; evidence lives in the numbered memos. Product principles (curiosity-first, anti-echo-chamber, no dark patterns, legally boring) supersede every finding here.*
 
 ## The one-paragraph read
@@ -29,6 +39,8 @@ Per-user-day at current API prices, cheap-first cascade working as designed:
 - Tier-2 transcription is the cost cliff: API Whisper ≈ $0.36/ep-hour. At 1 gated episode/day it dominates everything (**~$0.36**); on the always-on workstation it's ~$0. **The workstation-Whisper option is load-bearing for the economics — treat it as architecture, not a nice-to-have.**
 
 Net: marginal cost ≈ **$1.50–4.50/user-month** (local Whisper, shared enrichment) vs $4.99 price → viable but thin at the personal phase, improving with every user because enrichment amortizes. The pre-mortem's sharper question stands: whether menu quality *worth paying for* exists inside this envelope at all — that's what the blind test (REQUIREMENTS-DELTA R1) exists to answer.
+
+**⚠️ Stale scope — needs recomputation before any pricing decision or Phase 2 (2026-09-02).** This sketch prices a *curation-only* product: metadata classification, session building, and short (~1.2k character) TTS intros per session. It predates the AI-generation feature's separate per-Foray cost ceiling — per `docs/curation/generation-architecture.md` §9.2, Joey set a generous ~$5–10/Foray ceiling for full episode generation (research, spine-building, per-act deepening, per-beat writing, independent fact-verification), which is a fundamentally different, additive cost shape (potentially tens of thousands of characters of TTS/LLM generation per Foray, not a 1.2k-character intro). If any material share of users generate custom Forays, this $1.50–4.50/user-month envelope and the $4.99 anchor it's checked against no longer capture the full marginal cost. **Do not finalize a pricing decision or schedule Phase 2 (any-user generation) without recomputing this envelope using the $5–10/Foray ceiling as an additive input.**
 
 ## Risks (rank-ordered by the pre-mortem, P × damage)
 

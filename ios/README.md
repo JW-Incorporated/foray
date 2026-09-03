@@ -12,23 +12,32 @@
 >   --package-path ios/ForayKit` on a macOS runner, so this package really does
 >   compile and pass. `IntentGrammar.swift` (the Tier-1 voice grammar) exists
 >   **only** here — there is no JavaScript equivalent anywhere in the repo.
+>   The same `ios-kit` job also generates `ios/Foray.xcodeproj` (`xcodegen`) and
+>   runs `xcodebuild test`, which compiles and runs `ios/AppTests/` against
+>   `PlayerQueueManager` — see "What's implemented vs. stubbed" below.
 > - **Two files are mirrored in JavaScript and must be changed together.**
 >   `ForayKit/Sources/ForayKit/PlayerQueueState.swift` ↔ `player/queue-state.js`,
 >   and `App/Player/PlayerQueueManager.swift` ↔ `player/queue-manager.js`. The
 >   port was deliberate and the two are meant to stay diffable by eye — see the
 >   header of `player/queue-state.js`. **Where they differ in status:**
 >   `PlayerQueueState` is tested on both sides (`PlayerQueueStateTests` here,
->   `player/queue-state.test.js` there); `PlayerQueueManager` is tested **only** in
->   JavaScript, and writing that port is what surfaced two real position bugs —
->   which PR **#50** then fixed in this Swift (see AUDIT item 9 below, which cites
->   issue #33, the port). So the Swift is not currently known-wrong; it is
->   uncompiled by CI, which is a different and more permanent problem.
-> - **Nothing under `App/` is compiled by CI.** More decisively than any of the
->   above: the machinery the product actually runs on — `foray-resolve`,
->   `foray-queue`, `seam-gap`, `seek-policy`, `html-audio-backend`,
->   `durable-store` — has **no Swift counterpart at all**. That, not the duplicated
->   state machine, is why the web player is the host. Whether the Swift copies get
->   retired belongs to **#28**.
+>   `player/queue-state.test.js` there); `PlayerQueueManager` was tested
+>   **only** in JavaScript until this change (`ios/AppTests/PlayerQueueManagerTests.swift`
+>   now covers the Swift side too, against a fake `PlayerBackend`), and writing
+>   the original JS port is what surfaced two real position bugs — which PR
+>   **#50** then fixed in this Swift (see AUDIT item 9 below, which cites
+>   issue #33, the port). So the Swift was not known-wrong; it was uncompiled
+>   by CI, which is what this change fixes.
+> - **Nothing under `App/` was compiled by CI until this change.** More
+>   decisively than any of the above: the machinery the product actually runs
+>   on — `foray-resolve`, `foray-queue`, `seam-gap`, `seek-policy`,
+>   `html-audio-backend`, `durable-store` — has **no Swift counterpart at
+>   all**. That, not the duplicated state machine, is why the web player is
+>   the host. Whether the Swift copies get retired belongs to **#28**. As of
+>   this change `ios/AppTests/` compiles and runs `PlayerQueueManager` (see
+>   "What's implemented vs. stubbed" below) — but the rest of `App/`
+>   (`ForayApp.swift`, the `Views/`, `SessionStore.swift`) is still exercised
+>   by nothing beyond `xcodebuild`'s own compile step.
 > - **Do not point `cap add ios` at this directory.** Capacitor's default output
 >   path is `ios`, which is why `mobile/capacitor.config.json` sets `ios.path`
 >   explicitly and `tools/mobile/shell-invariants.test.mjs` fails if the two ever
@@ -76,6 +85,21 @@ Then in Xcode:
    The `swift test` path requires no Xcode project at all and is the
    fastest way to check the core logic changed correctly — it has zero
    AVFoundation/UIKit dependency by design.
+5. `AppTests` (`ios/AppTests/`) covers `PlayerQueueManager` — the
+   AVFoundation-facing glue `ForayKitTests` above cannot reach, since it
+   only compiles `ForayKit`. It runs against `FakePlayerBackend`, a test
+   double for the `PlayerBackend` protocol (see that file's own doc
+   comment on why the seam exists), so queue management, transport
+   controls, and the load-failure/bridge-TTS advancement paths are
+   exercised with no real AVPlayer or audio session. Requires the
+   generated Xcode project (`xcodegen`, above); run from Xcode's Test
+   navigator or, picking any installed simulator:
+   ```bash
+   xcodebuild test -project ios/Foray.xcodeproj -scheme Foray \
+     -destination 'platform=iOS Simulator,name=iPhone 15'
+   ```
+   CI's `ios-kit` job (`.github/workflows/ci.yml`) runs this on every
+   push/PR, alongside `swift test --package-path ios/ForayKit`.
 
 Re-run `xcodegen` from `ios/` any time `project.yml` or the file layout
 under `App/`/`ForayKit/` changes; the generated `.xcodeproj` is a
@@ -107,6 +131,10 @@ ios/
       SessionStore.swift       Loads the bundled sample session (stand-in for a backend)
     Resources/
       sample_session.json      Copy of data/session.json
+  AppTests/                    XCTest target for the App-level glue (PlayerQueueManager)
+    FakePlayerBackend.swift    Test double for the PlayerBackend protocol
+    FakePositionStore.swift    In-memory PositionStore, no UserDefaults/disk I/O
+    PlayerQueueManagerTests.swift
   project.yml                  XcodeGen spec
   README.md                    This file
 ```
@@ -135,14 +163,19 @@ ios/
   Ordinals always beat fuzzy matches; low-confidence/no-match input
   returns `.unrecognized` rather than guessing.
 
-**Implemented but unverified on real hardware (App target):**
+**Implemented, with App-level orchestration now unit tested (App target):**
 - `PlayerBackend.swift` / `PlayerQueueManager.swift` — a real
   `AVPlayer`-backed actor wired to the state machine above, with
   AVAudioSession category/mode setup, interruption + route-change
   notification handling, position persistence (15s timer + event-driven),
-  and MPNowPlayingInfoCenter/MPRemoteCommandCenter. This is the code that
-  needs the M0 spike acceptance testing below — see every `// AUDIT:`
-  comment in these two files first.
+  and MPNowPlayingInfoCenter/MPRemoteCommandCenter. `ios/AppTests/`
+  (`PlayerQueueManagerTests.swift`, against `FakePlayerBackend`) now
+  exercises the manager's own orchestration — queue management, transport
+  controls, cold-launch restore, and the bridge-TTS/load-failure
+  advancement paths — in CI. What it does **not** cover, and still needs
+  the M0 spike acceptance testing below: the real `AVPlayerBackend`'s
+  actual AVFoundation/AVAudioSession behaviour on a device or simulator —
+  see every `// AUDIT:` comment in these two files.
 - `TodayView.swift` — 4-card picker, big tap targets, reads the bundled
   sample session.
 - `NowPlayingView.swift` — explicitly a **skeleton** per the task brief:

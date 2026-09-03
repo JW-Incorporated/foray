@@ -156,7 +156,7 @@ const prose = (rel) => {
    WHY THIS MATCHES ON CASE AND NOT ON THE WORD. The word "foray" must survive
    in these documents. It is the stitched-audio unit ("inside a given foray",
    "the assembled forays"), and it is inside identifiers the documents are
-   obliged to name verbatim: `cp_foray:<id>`, `cp_foray_feedback`, `foray-v5`,
+   obliged to name verbatim: `cp_foray:<id>`, `cp_foray_feedback`, `foray-gen-`,
    the IndexedDB database `foray`, the `foray_play` / `foray_restart` /
    `foray_progress_drift` event types, and the Pages URL. So this cannot assert
    the word is absent. What it CAN assert is the capitalisation: the unit is a
@@ -677,7 +677,7 @@ test("no Android string capitalises the unit, and none of them says the old app 
    pinned above. What is left is not a gap in shipped UI:
 
    ON PURPOSE, FOREVER -- identifiers, verified byte-identical by this PR:
-   `foray-v5`, `cp_foray:`, `cp_foray_feedback`, the IndexedDB database `foray`,
+   `foray-gen-`, `cp_foray:`, `cp_foray_feedback`, the IndexedDB database `foray`,
    the `foray_play` / `foray_restart` / `foray_progress_drift` event types, the
    `?foray=` parameter, the Pages URL, both
    User-Agents (`Foray/0.1`, the client's, and `ForayBot/0.1`, the audio

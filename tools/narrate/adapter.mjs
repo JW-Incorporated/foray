@@ -41,11 +41,25 @@
 */
 
 import { billableText, countChars, estimateDurationSec, nonAsciiChars, CHARS_PER_MIN_MEASURED } from "./billable.mjs";
-import { NarrationCache } from "./cache.mjs";
+import { NarrationCache, DEFAULT_PAD_SEC_PER_ITEM } from "./cache.mjs";
 
 /** Defaults chosen in `pricing.json` — see `recommended_for_narration`. */
 export const DEFAULT_MODEL_ID = "eleven_flash_v2_5";
 export const DEFAULT_OUTPUT_FORMAT = "mp3_44100_64";
+
+/** Default padding baked around each item's audio, in seconds (leading +
+ *  trailing silence encoded into the file — see `cache.mjs`'s KEY_INPUTS
+ *  comment and `docs/narrator-pipeline.md` §1 item 4). Defined in
+ *  `cache.mjs` (so `cacheKey()` can normalize an omitted `padSecPerItem` to
+ *  it without an import cycle back from `projection.mjs`, which already
+ *  imports `costOf` from this file) and re-exported here for callers that
+ *  only import from `adapter.mjs`. Mirrors `projection.mjs`'s
+ *  `BUDGETS.padSecPerItem`. `HUMAN-ACTIONS.md` #3 still has the actual value
+ *  as an open founder decision — this is only the fallback used when no
+ *  caller overrides it (and, per the guard in `createAdapter()` below, no
+ *  caller may override it with anything else until padding synthesis
+ *  exists). */
+export { DEFAULT_PAD_SEC_PER_ITEM };
 
 /** The published base. Transcribed, never called. */
 export const API_BASE = "https://api.elevenlabs.io/v1";
@@ -125,12 +139,51 @@ export function createAdapter(opts = {}) {
     voiceId = "VOICE_ID_UNSET",
     modelId = DEFAULT_MODEL_ID,
     outputFormat = DEFAULT_OUTPUT_FORMAT,
+    padSecPerItem = DEFAULT_PAD_SEC_PER_ITEM,
   } = opts;
 
   const dryRun = !apiKey;
 
-  /** The cache spec for a script — exactly the four hashed inputs, no more. */
-  const specFor = (text) => ({ text, voiceId, modelId, outputFormat });
+  /* Padding is NOT YET baked into any returned audio anywhere in this module —
+     `docs/narrator-pipeline.md` §1 item 4 records that as still unimplemented,
+     with the actual value itself still an open founder decision
+     (`HUMAN-ACTIONS.md` #3). Until that synthesis step exists, a caller
+     passing anything other than the default would force a cache miss (and a
+     real, billed re-generation) for audio bytes that are IDENTICAL to what is
+     already cached — the exact waste `cache.mjs`'s header calls Leak 2 in
+     spirit, just pointed the other direction. So this is refused loudly
+     rather than silently allowed to happen.
+
+     WHEN PADDING SYNTHESIS LANDS: this guard must be replaced with real
+     synthesis, not simply deleted, AND every entry recorded before that
+     point must stop being treated as a hit — `cache.mjs`'s `legacyCacheKey`
+     fallback and the current default-key entries alike were all generated
+     with NO padding baked in, so once synthesis exists they no longer
+     describe the same bytes a `padSecPerItem: DEFAULT_PAD_SEC_PER_ITEM`
+     request means (codex review, PR #420 round 5). The straightforward fix
+     at that time: bump a schema/version marker into `KEY_INPUTS` (or the
+     dumped index's `version` field in `NarrationCache.dump`) so pre-synthesis
+     entries stop matching post-synthesis lookups, rather than assuming an
+     unpadded legacy asset already contains the default padding. */
+  if (padSecPerItem !== DEFAULT_PAD_SEC_PER_ITEM) {
+    throw new Error(
+      `createAdapter: padSecPerItem override (${padSecPerItem}) rejected — padding synthesis is not ` +
+      `implemented yet (docs/narrator-pipeline.md §1 item 4), so a non-default value would only force ` +
+      `unnecessary cache misses and re-billing for byte-identical audio. Pass no override (or ` +
+      `DEFAULT_PAD_SEC_PER_ITEM) until padding is actually baked into generated assets.`
+    );
+  }
+
+  /** The cache spec for a script — exactly the five hashed inputs, no more.
+      `padSecPerItem` never reaches `buildRequest()`'s body (the provider is
+      never told about it — once padding synthesis exists it will be added
+      after the fact, encoding silence around the returned audio), but it
+      will change the bytes we keep just as surely as a voice or model change
+      does, so it belongs in the cache spec even though it is absent from the
+      HTTP request. See `cache.mjs`'s KEY_INPUTS comment. Until padding
+      synthesis lands (see the guard above), this field is always the
+      default. */
+  const specFor = (text) => ({ text, voiceId, modelId, outputFormat, padSecPerItem });
 
   /**
    * Plan one script. Never calls anything, key or no key.
@@ -306,7 +359,7 @@ export function createAdapter(opts = {}) {
     // Recorded ONLY after a generation that demonstrably produced audio. A dry
     // run must never write here either -- see `cache.record`'s comment.
     cache.record(p.key, {
-      chars: p.chars, voiceId, modelId, outputFormat, asset: result?.asset ?? null,
+      chars: p.chars, voiceId, modelId, outputFormat, padSecPerItem, asset: result?.asset ?? null,
     });
     return { ...p, bytes, asset: result?.asset ?? null };
   }

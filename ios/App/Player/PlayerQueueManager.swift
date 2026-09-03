@@ -596,11 +596,15 @@ public actor PlayerQueueManager {
             Task { await self.handleRouteChangeNotification(notification) }
         }
 
-        if let avPlayerBackend = backend as? AVPlayerBackend {
-            avPlayerBackend.onItemDidPlayToEnd = { [weak self] in
-                guard let self else { return }
-                Task { await self.handleBackendItemEnded() }
-            }
+        // Assigned through the `PlayerBackend` protocol, not a downcast to the
+        // concrete `AVPlayerBackend` type — see that property's doc comment on
+        // `PlayerBackend`. A downcast here would silently never wire this for
+        // `FakePlayerBackend` (or any other conformer), which is exactly the bug
+        // a source-shape check cannot see: `ios/AppTests` would compile and its
+        // item-ended tests would simply time out forever.
+        backend.onItemDidPlayToEnd = { [weak self] in
+            guard let self else { return }
+            Task { await self.handleBackendItemEnded() }
         }
     }
 

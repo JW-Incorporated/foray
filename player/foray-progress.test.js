@@ -139,7 +139,7 @@ test("clear removes the row", () => {
 
 test("listProgress returns only cp_foray rows, ignoring the rest of localStorage", () => {
   const s = new FakeStorage({
-    cp_saved: "{}", cp_events: "[]", "cp_pos:some-episode": "{}", cp_interests: "{}",
+    cp_saved: "{}", cp_diag: "[]", "cp_pos:some-episode": "{}", cp_interests: "{}",
   });
   writeProgress(s, record());
   const list = listProgress(s, { now: Date.parse("2026-08-16T11:00:00.000Z") });

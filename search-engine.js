@@ -217,9 +217,21 @@ function expansionBucket(df) {
   return df > TAG_DF_TOO_BROAD ? "drop" : df > TAG_DF_COMMON ? "0.4x" : "full";
 }
 
+/* Hard ceiling on a single token's length before it can ever reach
+   longTermPattern()/shortTermPattern(), which interpolate the raw token into a
+   RegExp source string. V8 throws "Invalid regular expression: too large" once
+   the compiled pattern's internal representation exceeds an engine limit --
+   confirmed empirically at ~50,000 repeated identical chars (30,000 is fine).
+   No real search term is anywhere near this long; 64 is already generous headroom
+   over anything a person would type, and it is enforced here -- inside the
+   module's own tokenizer -- so the guarantee holds for every current and future
+   caller of interpretQuery, not just callers that happen to share the UI's
+   maxlength="120" convention (see H-severity red-team finding, 2026-09-02). */
+const MAX_TOKEN_LENGTH = 64;
+
 function tokenize(q) {
   return q.toLowerCase().split(/[^a-z0-9]+/)
-    .filter(w => w.length > 1 && !STOPWORDS.has(w) && !GENERIC_WORDS.has(w));
+    .filter(w => w.length > 1 && w.length <= MAX_TOKEN_LENGTH && !STOPWORDS.has(w) && !GENERIC_WORDS.has(w));
 }
 
 /* ---------- corpus stats (memoized per ctx, same pattern for both) ---------- */
@@ -289,17 +301,90 @@ function branchOf(item) {
    `tagCount` is only ever called from query time (tagDF, via interpretQuery, and
    suggestAdjacentTopics), long after module evaluation, so the binding is
    initialized. Do not move a CALL to tagCount -- or to tagDF, which is one line
-   over it -- to module scope. */
+   over it -- to module scope.
+
+   REWORKED (kanban t_838a13c0): this used to be `hitTag`-through-regex over
+   every tag of every item, for every term -- O(items x avg-tags-per-item)
+   regex tests PER TERM, ~12,000 of them on the real tag map (1,882 items,
+   ~6.5 tags each). `hitTag`'s own matching rule (see its definition below)
+   collapses to a closed, enumerable question once you see it correctly:
+   for a >=4-char term it is exact equality between a hyphen-split TAG
+   SEGMENT and one of a small, deterministic set of inflected forms of the
+   term (t, t+"s", t+"es", and t+"ing" unless the term is sense-locked, in
+   which case t+"ing" is dropped) -- the lookbehind/lookahead in
+   `longTermPattern` exists only to enforce that the match starts and ends
+   on a segment boundary, which is exactly what hyphen-splitting already
+   gives for free. The <4-char branch already worked this way explicitly
+   (`tag.split("-").some(seg => re.test(seg))` with an anchored `^...$`
+   pattern), it's only the long branch whose regex folded the boundary
+   check and the equality check into one string test.
+   That means the whole question "which items carry inflected-form X as a
+   tag segment" can be answered with a single reverse index (segment ->
+   Set of item indices), built ONCE per ctx by walking the tag map once
+   (`tagSegmentIndex`), instead of a fresh linear scan per term. A tag
+   query then becomes 2-4 Map lookups (one per candidate inflection) and a
+   union of their item-index sets -- O(matches), not O(catalogue). See
+   `candidateForms`/`tagSegmentIndex` immediately below; both are pure
+   functions of ctx.itemTags and covered by the same "don't swap itemTags
+   on a used ctx" contract as the DF memo maps. Verified byte-for-byte
+   equivalent to the old per-term regex scan against every term in
+   data/semantic-index.json's concept vocabulary (see
+   tools/tmp-prime-bench*.mjs used to develop this fix) and the full
+   123-case tools/test-search.mjs battery stays green. */
+
+/* The enumerable inflected forms `hitTag`'s regex boundary logic reduces to
+   for a >=4-char term (see the comment above `tagCount`): the term itself,
+   plus its plural/participle suffixes, minus "-ing" for a sense-locked stem
+   (SENSE_LOCKED_STEMS, defined below -- forward-referenced the same way
+   `hitTag` already is; both are pure module-scope consts read long after
+   evaluation). The <4-char branch never sense-locks (`shortTagPattern`
+   always uses SHORT_INFLECTIONS, see its definition), so this only branches
+   on term length. */
+function candidateForms(t) {
+  if (t.length < 4) return [t, t + "s"];
+  if (SENSE_LOCKED_STEMS.has(t)) return [t, t + "s", t + "es"];
+  return [t, t + "s", t + "es", t + "ing"];
+}
+
+/* segment (post hyphen-split, exact string) -> Set of indices into
+   Object.values(ctx.itemTags.tags), i.e. "which items carry this exact
+   tag-segment string". Built once per ctx by a single pass over the tag
+   map -- O(total tag segments), not O(terms x items) -- and reused by
+   every `tagCount` call thereafter. */
+function tagSegmentIndex(ctx) {
+  if (!ctx._tagSegmentIndex) {
+    const idx = new Map();
+    const tagsMap = ctx.itemTags?.tags || {};
+    let i = 0;
+    for (const tags of Object.values(tagsMap)) {
+      const segs = new Set();
+      for (const tag of tags) tag.split("-").forEach(s => segs.add(s));
+      for (const seg of segs) {
+        let set = idx.get(seg);
+        if (!set) { set = new Set(); idx.set(seg, set); }
+        set.add(i);
+      }
+      i++;
+    }
+    ctx._tagSegmentIndex = idx;
+  }
+  return ctx._tagSegmentIndex;
+}
+
 function tagCount(term, ctx) {
   if (!ctx._dfMemo) ctx._dfMemo = new Map();
   if (ctx._dfMemo.has(term)) return ctx._dfMemo.get(term);
-  const tagsMap = ctx.itemTags?.tags || {};
-  let n = 0;
-  for (const tags of Object.values(tagsMap)) {
-    if (tags.some(tag => hitTag(tag, term))) n++;
+  const idx = tagSegmentIndex(ctx);
+  const forms = candidateForms(term);
+  const matchedItems = new Set();
+  for (const f of forms) {
+    const set = idx.get(f);
+    if (set) for (const i of set) matchedItems.add(i);
   }
+  const n = matchedItems.size;
   ctx._dfMemo.set(term, n);
   return n;
+
 }
 
 /* Fraction of the TAG MAP (0..1) whose tag list carries `term`, through the same
@@ -356,23 +441,276 @@ function itemWordSet(item, tagsMap) {
   return words;
 }
 
+/* Every item's word set, built ONCE per ctx and reused by every `corpusDF`
+   call thereafter — the actual fix for the O(catalogue) claim in corpusDF's
+   own (now-stale) comment below. `itemWordSet` does real work per item
+   (two string joins, a lowercase, a regex split, a per-tag split), and
+   corpusDF used to redo that work from scratch for every item on EVERY novel
+   term — O(terms x items) of string parsing, not O(items) as advertised.
+   Measured on the real catalogue (1,364-term concept vocabulary x 1,855
+   items, kanban t_838a13c0): corpusDF alone cost ~42s for the full
+   vocabulary before this cache, ~1s after (item parsing hoisted to run once
+   per item instead of once per item per term); tagDF's already-O(1)-per-item
+   `hitTag` check was untouched and needed no change.
+   Memoized on the same ctx as `_corpusDfMemo` — same lifetime and the same
+   "don't swap itemTags on a used ctx" contract documented at the top of this
+   file, since a word set baked from a stale tag map would silently serve
+   wrong membership. */
+function itemWordSets(ctx) {
+  if (!ctx._itemWordSets) {
+    const items = ctx.discover?.items || [];
+    const tagsMap = ctx.itemTags?.tags;
+    ctx._itemWordSets = items.map(item => itemWordSet(item, tagsMap));
+  }
+  return ctx._itemWordSets;
+}
+
 /* Fraction of the catalog (0..1) whose title/hook/topics/tags contain `term`
-   as a whole word. O(n) per novel term, memoized on ctx — same cost profile
-   as tagDF above; catalog is ~1k items so this is sub-millisecond per query. */
+   as a whole word. Memoized per term on ctx; the per-item parsing that used
+   to dominate this function's cost is now hoisted into `itemWordSets` above
+   and paid once per ctx, not once per (term, item) pair — see there. */
 function corpusDF(term, ctx) {
   if (!ctx._corpusDfMemo) ctx._corpusDfMemo = new Map();
   if (ctx._corpusDfMemo.has(term)) return ctx._corpusDfMemo.get(term);
-  const items = ctx.discover?.items || [];
+  const sets = itemWordSets(ctx);
   let n = 0;
-  for (const item of items) {
-    if (itemWordSet(item, ctx.itemTags?.tags).has(term)) n++;
+  for (const words of sets) {
+    if (words.has(term)) n++;
   }
-  const df = items.length ? n / items.length : 0;
+  const df = sets.length ? n / sets.length : 0;
   ctx._corpusDfMemo.set(term, df);
   return df;
 }
 
+/* WARM THE PER-TERM MEMO CACHES FOR THE WHOLE CONCEPT VOCABULARY, ONCE, AHEAD
+   OF THE FIRST QUERY (H bug, kanban t_838a13c0).
+
+   `tagDF`/`corpusDF` above are already memoized on `ctx._dfMemo`/
+   `ctx._corpusDfMemo`, but only lazily -- the first time a term is SEEN,
+   which for the concept vocabulary means "the first time a query expands
+   into it". A single query token can expand via `interpretQuery`'s concept
+   walk (own terms + one hop of `related`) into 75+ distinct terms, each an
+   O(catalogue) linear scan the first time it's touched -- measured 1.6s for
+   one call on a fresh ctx (see kanban card). The fix here is not to change
+   the per-term cost (still O(catalogue), same as every term this module has
+   ever scanned) but to move WHEN it's paid: instead of interleaved into the
+   user's first search -- the highest-stakes moment for a first impression --
+   pay it once, up front, while the app is otherwise idle between "data
+   finished loading" and "user typed a query and hit Go".
+
+   Walks every concept's own terms AND every related concept's terms (the
+   same two sources `interpretQuery`'s per-token loop reads, see `addTerm`
+   above) so a cold real query's expansion has nothing left to discover.
+   Pure reads through the existing memo point -- no new cache, no new
+   invalidation rule: whatever already governs `ctx._dfMemo`/
+   `ctx._corpusDfMemo` (one ctx per session, never swap `itemTags` on a used
+   ctx) governs this too. Safe to call multiple times (memoized) and safe to
+   call from a fresh ctx with no `semantic` data yet (walks nothing).
+
+   Deliberately NOT run against arbitrary literal query tokens (the `tok`
+   itself, as opposed to its concept expansion) -- those are unbounded user
+   input, not a fixed vocabulary, so there is nothing finite to prime; that
+   slice of the cold cost (one scan per genuinely novel word the user types)
+   is unavoidable and stays exactly as cheap/expensive as before. */
+function primeVocabulary(ctx) {
+  const concepts = ctx.semantic?.concepts || {};
+  const terms = new Set();
+  for (const c of Object.values(concepts)) {
+    (c.terms || []).forEach(t => terms.add(t));
+    (c.related || []).forEach(rid => {
+      (concepts[rid]?.terms || []).forEach(t => terms.add(t));
+    });
+  }
+  for (const t of terms) {
+    tagDF(t, ctx);
+    corpusDF(t, ctx);
+  }
+  return terms.size;
+}
+
 /* ---------- query interpreter ---------- */
+
+/* QUERY-SIDE LEMMA NORMALIZATION (bare plural/singular mismatch, systemic
+   thin-anchor class -- kanban t_fe968b47, filed from t_711dce13).
+
+   data/semantic-index.json's concept term lists carry only ONE of
+   {singular, plural} for most lemmas (measured: 305 of 1,364 concept terms
+   have a plural-present/singular-absent gap; 848 are singular-only with no
+   plural at all). LONG_INFLECTIONS above only widens what a catalogue TERM
+   matches in item TEXT -- it does nothing for this step, which is the
+   query's typed token being looked up against those same dictionary KEYS
+   in interpretQuery's `concepts`/`mods` maps. A query using the "wrong"
+   (unlisted) inflection of a real, well-covered concept therefore gets
+   hasConceptExpansion=false and, if its own bare corpusDF is also under
+   THIN_ANCHOR_DF, reads `thin` -- collapsing an honest, well-covered topic
+   to status "empty" on roughly a coin flip (singular vs. plural phrasing).
+
+   This is query-side normalization only: it widens the SET OF KEYS a typed
+   token is looked up under before dictionary membership tests, and changes
+   nothing about hitText/hitText's catalogue-text matching, scoring, or the
+   thin-anchor GATE itself (still exactly `!hasConceptExpansion && corpusDF
+   < THIN_ANCHOR_DF`) -- a token that has neither a direct nor a lemma-
+   variant concept match is still correctly thin. Three bounded, named
+   transforms, chosen for measured coverage of the repro set (not a
+   stemmer): strip/add bare "s", strip/add sibilant "es"
+   (coach/coaches, crash/crashes -- "glass"/"glasses" is now
+   SENSE_LOCKED_PLURALS-excluded below, see round 8), and swap "y"<->"ies" (energy/energies-shaped --
+   deliberately in scope HERE even though the hitText comment above rules
+   y<->ies OUT for catalogue-text matching: that guard is about not
+   mutating a TERM's regex to match unpredictable TEXT, a materially
+   different and riskier operation than an exact-string dictionary lookup
+   on a bounded, reviewable transform of the QUERY token itself).
+   Deliberately excluded, same reasoning as LONG_INFLECTIONS/#248: "ing"
+   (verb-sense ambiguity, e.g. train/training) and "ed" (participle noise)
+   -- neither is a singular/plural relationship, so neither belongs to a
+   helper scoped to that one gap.
+
+   INVARIANT_S_NOUNS: bare-"s" stripping (e.g. cats -> cat) is a real
+   guess, and it is wrong for a bounded, named set of words that are
+   already singular/mass nouns despite ending in "s" -- stripping them
+   manufactures an unrelated token (news -> new is the review-caught
+   case: a "news" query would then also match anything containing "new",
+   flipping thin/broad status on a fabricated word). Named and bounded
+   like SENSE_LOCKED_STEMS above, not a general dictionary check.
+   Extended (codex review round 4) with possessive pronouns (ours,
+   yours, hers, theirs -- "our"/"your"/"her"/"their" are unrelated,
+   extremely common words, the worst case for a fabricated bare-s strip)
+   and common "-us"/"-as" singular nouns that are not plurals of
+   anything (status, bias, canvas, atlas, gas, census, bonus, focus,
+   consensus, corpus, campus, virus, cactus, plus, minus, bus, plus the
+   already-covered "-ics" family above). A general "don't strip before
+   us/as" rule was considered and rejected: it would also block real
+   +s plurals of the same shape (areas -> area, ideas -> idea, pizzas ->
+   pizza), so this stays a named list rather than a suffix rule.
+
+   Directional (codex review round 5): membership in this set only
+   blocks the DESPLURALIZE branches (stripping a trailing s/es to guess
+   a shorter, likely-wrong singular). It must NOT also block the
+   PLURALIZE branch -- an invariant word can still be a real singular
+   that the taxonomy indexes only by its plural, same as any other
+   concept (measured case: data/semantic-index.json's decision-making
+   concept lists "biases" but not "bias"). Blocking pluralize too would
+   silently preserve the exact asymmetry this whole fix exists to
+   remove, just for a different word class. */
+const INVARIANT_S_NOUNS = new Set([
+  "news", "series", "species", "means", "outskirts", "measles",
+  "mathematics", "physics", "statistics", "economics", "politics",
+  "athletics", "gymnastics", "electronics", "graphics", "ethics",
+  "aerobics", "logistics", "genetics", "ceramics",
+  "ours", "yours", "hers", "theirs",
+  "status", "bias", "canvas", "atlas", "gas", "census", "bonus",
+  "focus", "consensus", "corpus", "campus", "virus", "cactus",
+  "plus", "minus", "bus",
+]);
+
+/* SENSE_LOCKED_PLURALS: a bounded, named set of plural query tokens
+   whose bare-s-stripped "singular" is a REAL WORD but the WRONG SENSE
+   -- same failure shape as SENSE_LOCKED_STEMS/#248 above (a term can be
+   a genuine inflection of the wrong sense of an ambiguous stem), just
+   surfaced through this helper's despluralize branch instead of
+   hitText's inflection suffix. Measured case (codex review round 7,
+   direct repro): "marines" (the military branch/service members) bare-
+   s-strips to "marine", which data/semantic-index.json indexes under
+   the OCEAN concept ("marine biology") -- so a "marines" query picked
+   up ocean vocabulary and topic boosts despite the catalogue's own
+   military content. This blocks despluralize only for the exact listed
+   token (not a general "don't strip near military words" rule, which
+   would be unbounded); pluralize is unaffected, same directional
+   split as INVARIANT_S_NOUNS above.
+
+   "glasses" added (codex review round 8, direct repro): eyewear
+   "glasses" bare-s-strips to "glass", which data/semantic-index.json
+   indexes under the "materials" concept (glass/materials-science) --
+   not just a harmless unused fragment like most despluralize misses in
+   this helper, but a real cross-sense concept pickup, the same failure
+   shape as "marines"/ocean. */
+const SENSE_LOCKED_PLURALS = new Set(["marines", "glasses"]);
+
+/* SENSE_LOCKED_SINGULARS: the mirror image of SENSE_LOCKED_PLURALS --
+   a bounded, named set of SINGULAR query tokens whose only PLURALIZE
+   fallback (used when the exact singular has no concept of its own,
+   see hasExactConceptMatch below) lands on a concept that models a
+   different, common sense of the same short word. Measured cases
+   (codex review round 9, direct repro): "rock" (music) has no concept
+   of its own, but "rocks" is a term of BOTH the "science/materials"
+   (rocks/geology) and "earth-science" concepts -- a music query gains
+   earthquakes/volcanoes/drilling vocabulary. Same for "stock" (any
+   generic sense) landing on "markets"/"economics" via "stocks", and
+   "bug" (an insect, or any non-software sense) landing on
+   "programming" via "bugs"/"software-bugs". This blocks the
+   lookupKeys widening (concept-membership fallback) for the exact
+   listed singular only; the literal-term fallback and the max-corpusDF
+   broad/thin computation are UNAFFECTED (those never pull in a
+   concept's vocabulary, only the bare variant string itself, so they
+   carry none of this risk). */
+const SENSE_LOCKED_SINGULARS = new Set(["rock", "stock", "bug"]);
+function lemmaVariants(tok) {
+  const out = new Set();
+  let despluralized = false;
+  const invariant = INVARIANT_S_NOUNS.has(tok) || SENSE_LOCKED_PLURALS.has(tok);
+  if (!invariant) {
+    if (/[^aeiou]ies$/.test(tok) && tok.length > 4) {
+      /* Same ambiguity as the "es" branch below, one letter over: real
+         y<->ies plurals (city -> cities, gladiator query set: entry ->
+         entries) genuinely strip to "...y", but a singular that already
+         ends in silent "ie" (movie, cookie, zombie) only ever added a
+         bare "s" -- movies/cookies/zombies are NOT y-pluralized, so
+         stripping "ies"->"y" mangles them to "movy"/"cooky"/"zomby"
+         (codex review round 6, direct repro). Emit both candidates, same
+         "wrong one is harmless" reasoning as the es-branch fix: strip
+         "ies"->"y" for the real y-plural case, and separately strip only
+         the bare "s" for the silent-ie case (movies -> movie). */
+      out.add(tok.slice(0, -3) + "y");
+      out.add(tok.slice(0, -1));
+      despluralized = true;
+    } else if (/(?:s|x|z|ch|sh)es$/.test(tok) && tok.length > 4) {
+      /* Ambiguous without a dictionary: "kisses"/"boxes"/"buzzes"/"catches"/
+         "dishes" genuinely take +es (singular strips 2 chars: kiss, box,
+         buzz, catch, dish), but "cases"/"houses"/"mazes"/"sizes" are a
+         silent-e singular ("case", "house", "maze", "size") that only ever
+         added a bare "s" -- stripping 2 chars from those yields a nonsense
+         fragment ("cas", "hous") that fails every concept/corpus lookup and
+         silently drops the systemic fix for this common noun class (codex
+         review P2, t_fe968b47). Emit BOTH candidates rather than guessing:
+         the wrong one is harmless (a fragment string no real concept or
+         corpus text will ever contain), and the right one is now always
+         present. */
+      out.add(tok.slice(0, -2));
+      out.add(tok.slice(0, -1));
+      despluralized = true;
+    } else if (/s$/.test(tok) && !/ss$/.test(tok) && tok.length > 3) {
+      /* Same ambiguity family as the two branches above, for the plainest
+         shape: "cats" -> "cat" is correct, but a handful of real
+         SINGULAR nouns also end in a bare "s" whose actual plural adds
+         "es" rather than being the despluralized guess's inverse --
+         "lens" (photography/optics) is not itself a plural of "len"; its
+         real plural is "lenses" (codex review round 7, direct repro:
+         data/semantic-index.json's photography concept lists "lenses"
+         but not "lens"). Emitting both the despluralize guess (harmless
+         fragment when wrong) and the tok+"es" pluralize candidate closes
+         this without a dictionary, same pattern as the ies/es branches
+         above. */
+      out.add(tok.slice(0, -1));
+      out.add(tok + "es");
+      despluralized = true;
+    }
+  }
+  /* Only try to PLURALIZE tok when none of the branches above already
+     recognized it as a plural shape -- otherwise an already-plural token
+     ending in a sibilant (e.g. "warriors") falls into the `es` branch here
+     too and manufactures a nonsense double-plural ("warriorses") on top of
+     the correct singular already added above. Singularization and
+     pluralization are mutually exclusive views of the same token. */
+  if (despluralized) return out;
+  if (/[^aeiou]y$/.test(tok) && tok.length > 3) {
+    out.add(tok.slice(0, -1) + "ies");
+  } else if (/(?:s|x|z|ch|sh)$/.test(tok)) {
+    out.add(tok + "es");
+  } else if (!/s$/.test(tok)) {
+    out.add(tok + "s");
+  }
+  return out;
+}
 
 function interpretQuery(q, ctx) {
   const tokens = tokenize(q);
@@ -388,7 +726,49 @@ function interpretQuery(q, ctx) {
 
   const groups = contentTokens.map(tok => {
     const aliasesOf = ALIASES[tok] || [];
-    const lookupKeys = new Set([tok, ...aliasesOf]);
+    const exactKeys = new Set([tok, ...aliasesOf]);
+    /* See lemmaVariants above -- bridges a query token to a concept that
+       only lists the OTHER inflection (singular/plural) of the same
+       lemma. Concept-membership lookup only; does not add scoring terms
+       or change what literal text this token's own addTerm() calls
+       match.
+
+       FALLBACK ONLY, never additive to an exact match: the semantic
+       index deliberately assigns different senses to different
+       inflections in places (e.g. "transmission" -> energy-grid,
+       "transmissions" -> motorsport). If the exact typed token already
+       resolves to a concept, lemma variants are held back entirely --
+       merging both senses into one query would silently blend two
+       concepts the taxonomy intentionally kept apart. Only when the
+       exact token has NO concept of its own do we widen the lookup to
+       the other inflection, which is the actual bug this card describes
+       (a real, well-covered concept reachable only from its other
+       spelling). */
+    const hasExactConceptMatch = Object.values(concepts).some(c => c.terms?.some(t => exactKeys.has(t)));
+    /* Computed once and reused everywhere below (lookupKeys, addTerm,
+       broad/thin) -- avoids recomputing lemmaVariants(tok) three separate
+       times and, more importantly, avoids the corpusDF scans it feeds
+       into for a token whose variants are never actually going to be
+       used for matching. When the exact token already owns a concept,
+       the fallback set is empty: this is what makes the fallback GATE
+       (not just the final addTerm/lookupKeys use) actually skip the
+       catalog-scanning corpusDF(variant) calls flagged in codex review
+       round 3 -- a fresh "culture"/"cultures" interpretQuery() dropped
+       from ~200ms to a cache-warmed corpusDF's usual cost once other
+       concept-backed tokens stop paying for variants they never use. */
+    const fallbackVariants = hasExactConceptMatch ? [] : [...lemmaVariants(tok)];
+    /* See SENSE_LOCKED_SINGULARS above: a NARROWER gate than
+       hasExactConceptMatch, scoped only to lookupKeys (the concept-
+       membership widening) -- the literal addTerm fallback and the
+       broad/thin corpusDF computation below still use the full,
+       unrestricted fallbackVariants, because those never pull in a
+       concept's vocabulary and carry none of the cross-sense risk this
+       guards against. */
+    const conceptFallbackAllowed = !SENSE_LOCKED_SINGULARS.has(tok);
+    const lookupKeys = new Set(exactKeys);
+    if (conceptFallbackAllowed) {
+      for (const v of fallbackVariants) lookupKeys.add(v);
+    }
 
     /* term -> {w, source}. source "own" = the token's literal text, its
        aliases, or its concept's *own* terms (full scoring weight, eligible
@@ -405,6 +785,33 @@ function interpretQuery(q, ctx) {
     };
     addTerm(tok, 1, "own");
     aliasesOf.forEach(a => addTerm(a, 0.9, "own"));
+    /* Bare literal fallback for the corpus-text-only case (no concept
+       covers either inflection at all, e.g. culture/cultures below): a
+       token's own hitText pattern is built FROM that exact string, and
+       LONG_INFLECTIONS only APPENDS a suffix, so a plural query token's
+       literal pattern ("cultures(?:s|es|ing)?") can never match catalogue
+       text that only ever spells the concept's singular ("culture") --
+       inflection allowance widens what a term matches forward, not what
+       a query maps backward onto a shorter surface form. Adding the
+       lemma variant as its own additional literal term (same "own"
+       weight as the typed token itself) closes that gap without
+       touching hitText's matcher or LONG_INFLECTIONS at all.
+
+       GATED on hasExactConceptMatch, same as the lookupKeys widening
+       above (codex review round 2, P2): even as bare literal text, an
+       own-weight term is eligible for tag/topic bonuses via
+       expansionBucket below, so unconditionally adding the variant let a
+       "transmissions" (motorsport) query's own-weight "transmission"
+       term still match energy-grid items that spell the singular --
+       the same sense-blend the lookupKeys gate exists to prevent, just
+       reached through the literal-term path instead of the concept-
+       membership path. Skipping it when the exact token already owns a
+       concept costs nothing for the real fix target (culture/cultures:
+       neither inflection has ANY concept, so hasExactConceptMatch is
+       false and this still fires exactly as intended). */
+    if (!hasExactConceptMatch) {
+      for (const v of fallbackVariants) addTerm(v, 1, "own");
+    }
 
     const others = contentTokens.filter(o => o !== tok);
     const otherKeys = others.map(o => new Set([o, ...(ALIASES[o] || [])]));
@@ -439,12 +846,28 @@ function interpretQuery(q, ctx) {
     return {
       token: tok,
       terms,
-      broad: corpusDF(tok, ctx) >= BROAD_DF_THRESHOLD,
+      /* Both `broad` and `thin` read the MAX corpusDF across the token and
+         its lemma variants (see lemmaVariants above, reused via
+         fallbackVariants -- computed once above, not re-derived here, so
+         a concept-backed token's variants are never scanned at all, per
+         codex review round 3's latency finding), not just the bare typed
+         spelling. Without this, a lemma pair where NEITHER inflection has
+         concept coverage (e.g. culture/cultures -- no concept or modifier
+         carries either) but the OTHER inflection is common in the
+         catalogue text (culture: corpusDF ~3.9%) would still read the
+         untried inflection ("cultures") as thin purely because its own
+         bare spelling has zero literal corpus hits, even though the
+         addTerm() call above already added "culture" as a same-weight
+         literal term that WILL match. Taking the max keeps thin/broad
+         honest about what this group can actually match, independent of
+         which inflection the query happened to type. */
+      broad: Math.max(corpusDF(tok, ctx), ...fallbackVariants.map(v => corpusDF(v, ctx))) >= BROAD_DF_THRESHOLD,
       df: tagDF(tok, ctx),
       hasConceptExpansion,
       /* See THIN_ANCHOR_DF below -- a specific, real word the taxonomy has
          not modeled AND the catalogue barely mentions. */
-      thin: !hasConceptExpansion && corpusDF(tok, ctx) < THIN_ANCHOR_DF,
+      thin: !hasConceptExpansion &&
+        Math.max(corpusDF(tok, ctx), ...fallbackVariants.map(v => corpusDF(v, ctx))) < THIN_ANCHOR_DF,
     };
   });
 
@@ -504,7 +927,22 @@ function interpretQuery(q, ctx) {
      ~a few percent) so it only catches tokens with essentially no
      catalogue footprint, not merely uncommon ones. See
      test/search-thin-anchor.test.js for the calibration cases this value
-     must keep passing. */
+     must keep passing.
+
+     THE MARGIN JUST ABOVE THE CUTOFF IS THINNER THAN "far below rare but
+     real" implies, and it is not hypothetical: "ornithology" sits at
+     corpusDF ~0.0021, one hundredth of a percentage point over 0.002, with
+     no concept expansion either -- so thin=false and it gets none of this
+     protection. "Ornithology History Explained" then returns status:sparse
+     whose top pick matches only on the broad co-token "history"; the
+     query's actual subject contributes nothing to its own top result. The
+     honesty floor in classifyResults still reports this as sparse rather
+     than a false-confident ok/rich set, so it is not user-facing-broken --
+     but a token can clear this threshold by a hair and still get outvoted
+     exactly like a THIN_ANCHOR_DF-protected one would, just without the
+     protection. Don't read the 0.002 constant as a wide safety margin from
+     the boundary; a real, unremarkable-looking word can land right next to
+     it. (Kanban t_dda8ca5b, filed from Fable-fleet red-team t_711dce13.) */
   const thinAnchorCount = primaryGroups.filter(g => g.thin).length;
 
   return {
@@ -828,12 +1266,13 @@ function scoreMatch(item, interp, itemTags) {
     if ((item.topics || []).includes(tb)) sum += 2;
   }
 
-  /* Full-phrase show-name RESCUE: a multi-word query where every token
-     appears as a whole word in the show name is almost certainly a direct
-     show/host search ("lex fridman", "huberman lab"). Those often can't
-     cross the normal per-term threshold on their own -- the only real
-     signal is a flat +1 show-field hit per term, deliberately capped low
-     since a single show-word hit alone is weak evidence.
+  /* Full-phrase show-name RESCUE: a query where every token appears as a
+     whole word in the show name is almost certainly a direct show/host
+     search ("lex fridman", "huberman lab" -- or, single-token, "volts",
+     "radiolab" typed straight into the topic box). Those often can't cross
+     the normal per-term threshold on their own -- the only real signal is
+     a flat +1 show-field hit per term, deliberately capped low since a
+     single show-word hit alone is weak evidence.
 
      Gated on `!wouldPassGate`: only items that would otherwise be EXCLUDED
      get this treatment. An early version applied it unconditionally and
@@ -846,11 +1285,20 @@ function scoreMatch(item, interp, itemTags) {
      of the "strong" set even though nothing about THEIR relevance
      changed. Gating on "would otherwise be excluded" makes this a pure
      rescue for the recall gap it targets, with zero effect on any query
-     that already worked -- verified via the full battery. */
+     that already worked -- verified via the full battery.
+
+     `groups.length >= 1` (not `>= 2`): a single-token query is the exact
+     same shape as the multi-word case -- someone typing just a show's
+     name into the topic box -- and the original `>= 2` gate excluded it
+     outright regardless of score, so a one-word show name could never
+     reach this rescue at all (#see H bug: "volts"/"radiolab"/etc. all
+     flat `empty` despite a real, well-covered show sitting in the pool).
+     Nothing here changes for multi-word queries; `!wouldPassGate` still
+     does the same "only rescue genuine misses" work either way. */
   const wouldPassGate = interp.properNounQuery
     ? primaryMatched === interp.primaryGroupCount
     : (interp.hasPrimary ? primaryMatched > 0 : matchedGroups > 0);
-  if (!wouldPassGate && interp.groups.length >= 2) {
+  if (!wouldPassGate && interp.groups.length >= 1) {
     const allTokensInShow = interp.groups.every(g => new RegExp("\\b" + g.token + "\\b").test(show));
     if (allTokensInShow) {
       sum += 8;
@@ -1331,6 +1779,8 @@ const SearchEngine = {
   TAG_DF_TOO_BROAD, TAG_DF_COMMON, TAG_DF_RARE,
   STRONG_RATIO, RICH_MIN, DEFAULT_CAP, PER_SHOW_CAP, LISTENED_PENALTY, SENSE_LOCKED_STEMS,
   tokenize, branchOf, tagCount, tagDF, dfMultiplier, expansionBucket, corpusDF, hitText, hitTag,
+  primeVocabulary,
+  lemmaVariants,
   interpretQuery, passesFilters, scoreMatch, searchWithRelaxation, classifyResults, diversify,
   strongPrefix,
   suggestAdjacentTopics, prettyConceptLabel,

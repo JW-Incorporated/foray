@@ -611,9 +611,17 @@ test("app.js is the only file in the bundle that registers a service worker", ()
   assert.deepEqual(offenders, [], "registration must stay in app.js, behind shouldRegisterServiceWorker()");
 });
 
-test("sw.js is still served to the web and still cache-first for the shell", () => {
+test("sw.js is still served to the web and still versions its generations", () => {
+  /* M4 (#233 remainder) replaced the hand-bumped `const CACHE = "foray-vN"`
+     with a content-derived deploy id read from deploy-manifest.json, staged
+     into a per-generation cache (`foray-gen-<deploy_id>`) and promoted through
+     a durable pointer cache — see sw.js's header and
+     tools/ci/generate-manifest.mjs. The invariant this test guards is
+     unchanged (the shell is still versioned, so a stale copy is still
+     detectable and replaceable), only the mechanism moved. */
   const sw = fs.readFileSync(path.join(ROOT, "sw.js"), "utf8");
-  assert.match(sw, /const CACHE = "foray-v\d+"/, "sw.js lost its versioned cache name.");
+  assert.match(sw, /CACHE_PREFIX\s*=\s*"foray-gen-"/, "sw.js lost its versioned-generation cache prefix.");
+  assert.match(sw, /POINTER_CACHE\s*=\s*"foray-pointer"/, "sw.js lost its atomic-promotion pointer cache.");
 });
 
 /* ────────────────────────── 4. the KeepRunning footgun ───────────────────── */
@@ -1098,7 +1106,19 @@ test("the Java package, the source layout, the Gradle namespace and the manifest
   const pkgDirRel = PLUGIN_REL + "/" + path.dirname(serviceRel);
   const ls = git(["ls-files", "--", PLUGIN_REL]);
   assert.equal(ls.status, 0, "could not read the git index; this half of the invariant is about what is COMMITTED");
-  const trackedJava = ls.stdout.split(/\r?\n/).map((l) => l.trim()).filter((f) => f.endsWith(".java"));
+  /* M5 (full-repo-review-report.md, 2026-08-31) added a real `src/test/java/...`
+     tree (Robolectric unit tests) alongside `src/main/java/...`. Those test
+     classes legitimately live under their own package directory outside
+     `src/main/java` — a second, separate JVM source root Gradle already knows
+     about, not a stray leftover from an incomplete rename. Scope this check to
+     production sources only (`src/main/java`) so it keeps catching the one
+     failure mode it exists for (an old src/main package tree left behind by a
+     half-finished `git mv`) without flagging every legitimate test file. */
+  const mainJavaRoot = PLUGIN_REL + "/android/src/main/java/";
+  const trackedJava = ls.stdout
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter((f) => f.endsWith(".java") && f.startsWith(mainJavaRoot));
   assert.ok(trackedJava.length >= 5, "expected at least five tracked .java files, found " + trackedJava.length);
   for (const f of trackedJava) {
     assert.ok(

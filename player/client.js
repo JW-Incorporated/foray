@@ -96,6 +96,7 @@ import { itemRuntimeSec } from "./foray-queue.js";
 import {
   resolveForay, indexSegments, indexSources, findForay, listableForays,
   forayElapsed, segmentAtElapsed, fmtClock, fmtSpan, progressSegments,
+  foraysReferencingShow,
 } from "./foray-resolve.js";
 import {
   ForayProgressStore, resumePoint, remainingLabel, percentDone,
@@ -114,6 +115,7 @@ import {
 } from "./strip-scrub-gesture.js";
 import { createDurableStore } from "./durable-store.js";
 import { makeIdbTier } from "./idb-tier.js";
+import { createEventLog } from "./event-log.js";
 import {
   createMediaSession, mediaSessionView, SEEK_BACKWARD_SEC, SEEK_FORWARD_SEC,
 } from "./media-session.js";
@@ -177,6 +179,25 @@ window.forayStorage = storage;
 window.forayStorageReady = storageReady;
 /** For a founder or a tester with a console open: the whole failure record. */
 window.forayStorageHealth = () => storage.health();
+
+/* ---------- the event queue (M3) ----------
+
+   Built the same way `storage` above is: at module evaluation, over the real
+   `indexedDB` where one exists, published on `window` because `app.js` is a
+   classic script and cannot import this module. `app.js`'s `logEvent()` is a
+   thin call to `append()` below; see `event-log.js`'s header for the queue
+   itself and why it replaces a synchronous localStorage rewrite. */
+const eventLog = createEventLog({
+  indexedDB: typeof indexedDB !== "undefined" ? indexedDB : null,
+  onFault: (fault) => {
+    // Same rule as the storage fault above: the player cannot fix a dead
+    // tier, but it must not hide one either.
+    console.warn("[event-log]", fault.op, fault.error);
+  },
+});
+window.forayEventLog = eventLog;
+/** For a founder or a tester with a console open, beside `forayStorageHealth`. */
+window.forayEventLogHealth = () => eventLog.health();
 
 /* Resume points are readable with nothing booted: the home screen asks for them
    before anything has been played, and booting an <audio> element to answer a
@@ -1397,6 +1418,17 @@ const ForayPlayer = {
   /** Which Forays may be listed for this visitor (drafts only when named). */
   listForays(foraysDoc, { unlocked = [] } = {}) {
     return listableForays(foraysDoc, { unlocked });
+  },
+
+  /** The reverse of `resolve`: which Forays draw on a given show (show page,
+      requirements B3/Q6). See foray-resolve.js's foraysReferencingShow for
+      why this must live here rather than in app.js. */
+  foraysUsingShow(foraysDoc, showNames, { segmentsDoc, sourcesDoc, unlocked = [] } = {}) {
+    return foraysReferencingShow(foraysDoc, showNames, {
+      segments: indexSegments(segmentsDoc),
+      sources: indexSources(sourcesDoc),
+      unlocked,
+    });
   },
 
   fmtClock,

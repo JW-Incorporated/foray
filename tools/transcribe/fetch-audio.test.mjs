@@ -207,6 +207,16 @@ test("the User-Agent is honest and carries contact info (corner case #8)", () =>
      the downloader sends Accept-Language, or Captivate 404s every enclosure
    Reverted. */
 test("the downloader sends Accept-Language, or Captivate 404s every enclosure", async () => {
+  /* minFreeBytes: 0 — this test is about the request header, not the disk
+     guard (that has its own direct tests above), and defaulting to
+     DEFAULT_MIN_FREE_BYTES (5 GiB) made it depend on how much real free space
+     happens to be on whatever machine runs the suite. Verified failing on a
+     host with a small tmpfs `/tmp` (a 512 MB `os.tmpdir()`, common in
+     container sandboxes) with the default: `DiskGuardError: only 504.2 MB
+     free, need 5.0 GB — refusing to start`, thrown from `fetchEpisode`'s own
+     assertFreeSpace() call before the header this test cares about was ever
+     inspected. Pinning minFreeBytes to 0 removes that dependency the same
+     way this suite already isolates itself from the network. */
   const seen = [];
   const real = globalThis.fetch;
   globalThis.fetch = async (url, init) => {
@@ -221,7 +231,7 @@ test("the downloader sends Accept-Language, or Captivate 404s every enclosure", 
       const url = "https://episodes.captivate.fm/episode/95c360e7.mp3";
       const got = await fetchEpisode(
         { id: "captivate--ep", audio_url: url, audio_bytes: 4096 },
-        { dir, checkpointPath: join(dir, "checkpoint.json") },
+        { dir, checkpointPath: join(dir, "checkpoint.json"), minFreeBytes: 0 },
       );
       assert.equal(got.bytes, 4096);
     });

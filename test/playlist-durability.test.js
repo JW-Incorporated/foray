@@ -90,7 +90,7 @@ const PAGE_IDS = [
   "view", "drawer", "drawer-overlay", "drawer-playlists", "family-toggle",
   "player-toggle", "autoadvance-toggle", "menu-btn", "refresh-btn", "banner-slot", "pl-form",
   "pl-input", "pl-note", "tab-topics", "tab-shows", "sh-form", "sh-input",
-  "sh-note", "sh-results",
+  "sh-note", "sh-results", "browse-all-link",
 ];
 
 /**
@@ -113,6 +113,14 @@ function mount({ seed = {}, boot = false } = {}) {
     return [id, el];
   }));
   const body = makeEl("body");
+  const eventLog = {
+    rows: [],
+    append(row) { this.rows.push(row); },
+    async unsynced() { return this.rows; },
+    async markSynced() {},
+    async pruneToRetention() {},
+    health() { return { ok: true, backend: "memory", pending: 0, ringSize: this.rows.length, faults: [] }; },
+  };
 
   const ctx = {
     console: { ...console, warn() {}, error() {} },
@@ -133,6 +141,10 @@ function mount({ seed = {}, boot = false } = {}) {
       setItem: (k, v) => { writes.push(k); store.set(k, String(v)); },
       removeItem: (k) => { store.delete(k); },
     },
+    /* `logEvent` (formerly `cp_events`) calls through `window.forayEventLog`
+       now (M3) — a plain synchronous fake, mirroring the real module's shape.
+       `eventLog.rows` is what this file's own assertion below reads. */
+    forayEventLog: eventLog,
     document: {
       body, documentElement: body, readyState: "complete",
       addEventListener() {}, createElement: (t) => makeEl(t),
@@ -162,7 +174,7 @@ function mount({ seed = {}, boot = false } = {}) {
      context can read it — that is how the harness reaches the pool. */
   const evalIn = (src) => vm.runInContext(src, ctx);
   return {
-    ctx, evalIn, store, writes, fetched, body,
+    ctx, evalIn, store, writes, fetched, body, eventLog,
     state: evalIn("state"),
     view: () => byId.get("view").innerHTML,
     playlistsRaw: () => JSON.parse(store.get("cp_playlists")),
@@ -850,7 +862,7 @@ test("opening an archived part still records the pick, so history and the played
 
   clickPick(m, { ep: "show-2--episode-2", ctx: "playlist-q1" });
 
-  const ev = JSON.parse(m.store.get("cp_events")).filter((e) => e.type === "picked").pop();
+  const ev = m.eventLog.rows.filter((e) => e.type === "picked").pop();
   assert.ok(ev, "the real handler logged no picked event");
   assert.strictEqual(ev.payload.episode_id, "show-2--episode-2");
   assert.deepStrictEqual(ev.payload.topics, ["science/physics"],
