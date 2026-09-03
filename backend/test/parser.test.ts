@@ -8,6 +8,7 @@ const FIXTURES_DIR = path.resolve(__dirname, "..", "fixtures", "feeds");
 const fixtureFiles = fs
   .readdirSync(FIXTURES_DIR)
   .filter((f) => f.endsWith(".xml"))
+  .filter((f) => f !== "malicious-doctype-entity-bomb.xml") // adversarial, not a real feed — see its own describe block below
   .sort();
 
 describe("parseFeed against real-world fixture corpus", () => {
@@ -316,3 +317,76 @@ describe("transcript format preference", () => {
     }
   });
 });
+
+describe("security regression: GHSA-8r6m-32jq-jx6q (fast-xml-parser DOCTYPE/entity-expansion DoS)", () => {
+  // malicious-doctype-entity-bomb.xml carries THREE repeated <!DOCTYPE rss [...]>
+  // blocks, each declaring a chain of nested entities (a classic "billion
+  // laughs" shape). On the vulnerable fast-xml-parser versions (<5.10.1),
+  // each repeated DOCTYPE block reset the library's internal entity-expansion
+  // counter, so a feed could carry unlimited repeated DOCTYPE blocks to
+  // bypass the expansion limit entirely and hang/crash the process. This
+  // test asserts the fix: parsing a feed shaped like that completes fast and
+  // never throws an uncaught error, regardless of how many DOCTYPE blocks
+  // it repeats.
+  const maliciousXml = fs.readFileSync(
+    path.join(FIXTURES_DIR, "malicious-doctype-entity-bomb.xml"),
+    "utf-8"
+  );
+
+  it("rejects the adversarial DOCTYPE-bomb fixture safely: no throw, empty feed, explicit warning", () => {
+    // fast-xml-parser >=5.10.1 itself now rejects a document with multiple
+    // <!DOCTYPE> declarations ("Multiple DOCTYPE declarations found") —
+    // exactly the hardening that closes GHSA-8r6m-32jq-jx6q (repeated
+    // DOCTYPE blocks used to reset the entity-expansion counter). parseFeed()
+    // catches that as a fatal parse error and returns a safe, empty feed
+    // instead of throwing or hanging — confirm that contract end to end.
+    let feed: ReturnType<typeof parseFeed> | undefined;
+    expect(() => {
+      feed = parseFeed(maliciousXml);
+    }).not.toThrow();
+    expect(feed!.episodes).toEqual([]);
+    expect(feed!.title).toBe("");
+    expect(feed!.warnings.join(" ")).toMatch(/doctype|fatal parse error/i);
+  });
+
+  it("rejects the adversarial DOCTYPE-bomb fixture in well under a second (no unbounded entity expansion)", () => {
+    const start = Date.now();
+    parseFeed(maliciousXml);
+    const elapsedMs = Date.now() - start;
+    expect(elapsedMs).toBeLessThan(1000);
+  });
+
+  it("a feed with many repeated DOCTYPE blocks (simulating a worse attack) is also rejected quickly, not hung", () => {
+    const repeatedDoctype = `<!DOCTYPE rss [
+  <!ENTITY lol0 "lol">
+  <!ENTITY lol1 "&lol0;&lol0;&lol0;&lol0;&lol0;&lol0;&lol0;&lol0;&lol0;&lol0;">
+]>\n`.repeat(500);
+    const xml =
+      `<?xml version="1.0" encoding="UTF-8"?>\n${repeatedDoctype}` +
+      `<rss version="2.0"><channel><title>t</title>` +
+      `<item><guid>g</guid><enclosure url="https://example.invalid/e.mp3" length="1" type="audio/mpeg" /></item>` +
+      `</channel></rss>`;
+
+    const start = Date.now();
+    let feed: ReturnType<typeof parseFeed> | undefined;
+    expect(() => {
+      feed = parseFeed(xml);
+    }).not.toThrow();
+    const elapsedMs = Date.now() - start;
+    expect(elapsedMs).toBeLessThan(2000);
+    expect(feed!.episodes).toEqual([]);
+  });
+
+  it("a well-formed feed with a single, ordinary DOCTYPE still parses normally (the fix doesn't break legitimate feeds)", () => {
+    const xml =
+      `<?xml version="1.0" encoding="UTF-8"?>\n` +
+      `<!DOCTYPE rss [ <!ENTITY pub "Foray Test Publisher"> ]>\n` +
+      `<rss version="2.0"><channel><title>Normal Feed by &pub;</title>` +
+      `<item><guid>g1</guid><enclosure url="https://example.invalid/e1.mp3" length="1" type="audio/mpeg" /></item>` +
+      `</channel></rss>`;
+    const feed = parseFeed(xml);
+    expect(feed.title).toContain("Normal Feed by");
+    expect(feed.episodes.length).toBe(1);
+  });
+});
+

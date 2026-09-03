@@ -103,6 +103,16 @@ export const DENIED_PREFIXES = [
   // t_85e1b1ba). Same trade as the two entries above: near-zero change
   // frequency, occasional human merge.
   "tools/events-server.mjs",
+  // android-release.yml runs this to wire the Android signing config into the
+  // Capacitor-generated Gradle project, then re-reads it with `--check`. The
+  // build step right after it receives FORAY_KEYSTORE_PASSWORD and
+  // ANDROID_KEY_ALIAS (from secrets) plus the decoded keystore on disk once
+  // ANDROID_KEYSTORE_B64 is installed. Today that secret is not installed and
+  // the exposure is latent; `tools/` is allowlisted, so an agent-authored
+  // change here would otherwise land unread. Found by extending this file's
+  // own gate-script scan to every workflow, not just ci.yml (kanban
+  // t_97e1c5f4) — deny it before the keystore secret exists, not after.
+  "tools/mobile/wire-signing.mjs",
 ];
 
 /* Paths a bot run may touch, by tier (docs/curation/... § auto-merge):
