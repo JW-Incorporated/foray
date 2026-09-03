@@ -941,6 +941,10 @@ const BACKEND_FLOORS = {
   "test/dataSchemaCompliance.test.ts": 8,
   "test/dedup.test.ts": 17,
   "test/duration.test.ts": 12,
+  /* DAILY_BUDGET_USD env parsing (L5): rejects negative / NaN / empty /
+     over-cap values at startup instead of silently substituting the
+     default, and leaves a genuinely unset variable on its fallback. */
+  "test/env.test.ts": 10,
   "test/events.test.ts": 15,
   "test/html.test.ts": 8,
   "test/interestLearning.test.ts": 30,
