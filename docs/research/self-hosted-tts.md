@@ -20,19 +20,28 @@ survey rests on entirely different sources (model repos, not vendor docs).
 Same convention as `narrator-voice.md` and `narrator-pipeline.md`:
 
 - **Measured** — a number this document produced by counting something in
-  this repo. None of that applies here; every technical claim below is
-  either Documented or Judgement.
+  this repo. At the time §1–§4 were filed, none of that applied — every
+  technical claim in those sections is either Documented or Judgement. That
+  changed on 2026-08-31: §4a below is a later addendum in which the
+  acceptance fixture was actually run, so *some* claims in this document
+  — those in §4a specifically, and only those — are Measured. Sections 1–4
+  remain Documented/Judgement only; do not read a "Measured" label anywhere
+  outside §4a.
 - **Documented** — somebody else asserts it, with a URL. Vendor/model-card
   claims are documented, not measured, even with numbers attached.
 - **Judgement** — an inference or recommendation, flagged so it can be
   argued with.
 
-**No model was run and no audio was heard to produce this document.** Every
-claim about how a self-hosted voice sounds is somebody else's documented
-claim (a benchmark, a model card, a blind-eval writeup) or an inference from
-it, labelled as such. Nothing here was fetched from `docs/research/corpus/` —
-this is a fresh survey against each project's own repo/model card, per the
-task's constraint to verify directly rather than off "vendor-adjacent blogs."
+**No model was run and no audio was heard to produce §1–§4 of this
+document.** Every claim about how a self-hosted voice sounds there is
+somebody else's documented claim (a benchmark, a model card, a blind-eval
+writeup) or an inference from it, labelled as such. Nothing there was
+fetched from `docs/research/corpus/` — that survey is fresh against each
+project's own repo/model card, per the task's constraint to verify directly
+rather than off "vendor-adjacent blogs." **§4a is the exception**: it is a
+later addendum (2026-08-31) in which Kokoro actually was run and audio
+actually was heard/measured — see that section for what was produced and
+how.
 
 ---
 
@@ -286,8 +295,13 @@ stated plainly rather than assumed:
   genuinely unsettled for both, and no amount of survey resolves it without
   the acceptance-fixture listening test §6.3 of narrator-voice.md already
   demanded.
-- **On licence, Kokoro is strictly clean** — Apache-2.0, vendor states
-  outright it is deployed in commercial products, no expiry, no key.
+- **On licence, Kokoro's weights are strictly clean** — Apache-2.0, vendor
+  states outright it is deployed in commercial products, no expiry, no key.
+  Its runtime dependency `espeak-ng` (used by the `misaki` G2P front end,
+  §2.1) is GPLv3, the same license class §2.2 demotes Piper's maintained
+  fork for — see §1.2.1 of `docs/curation/generation-architecture.md` for
+  why that dependency does not encumber shipped output when Kokoro runs
+  server-side, and confirm with an actual license review before shipping.
 
 **So "free wins by default" is explicitly not the finding here — it is
 close to true anyway, on the merits, not by assumption.** The one place

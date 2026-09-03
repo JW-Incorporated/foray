@@ -202,7 +202,27 @@ Instrument all three steps (`onboarding_seen`, `interests_seeded` with chip coun
 
 ## 5. App Store listing draft (M3; copy-rule compliant)
 
-- **Name:** 4a
+> **Listing-name update — 2026-09-02 (founder decision, Discord).** Apple
+> rejected the bare **`4a`** App Store Connect submission: the name is
+> already taken by another app/reservation and the "Name" field must be
+> globally unique across the store. Founder call: the **App Store listing
+> name** becomes **`4a: Podcast Curator`**. This changes ONLY the store
+> "Name" metadata field — it does **not** change the app's home-screen
+> display name (`CFBundleDisplayName`, still `4a`), the Subtitle line
+> below, or any internal branding/naming convention (app = `4a`, a
+> stitched-audio unit = a `foray`). See `HUMAN-ACTIONS.md` #34 for the
+> submission step (typing the name into App Store Connect is a human
+> action, not something committable to this repo).
+>
+> **Google Play's listing name is a separate namespace** (`docs/store/play/`)
+> and was not the app that hit this collision — flagging rather than
+> silently matching it: Play's "App name" field could plausibly stay the
+> bare `4a` if it isn't already taken there, or be changed to
+> `4a: Podcast Curator` for cross-store consistency. Left as `4a` in
+> `docs/store/play/README.md` pending a founder call; see
+> `HUMAN-ACTIONS.md` #34.
+
+- **Name:** `4a: Podcast Curator` (App Store Connect "Name" field; was `4a`, rejected as taken — see note above)
 - **Subtitle (29/30 chars):** `Your personal podcast curator`
 - **Promotional text (168/170 chars):** `Four picks a day, each with its reason. Real shows, real hosts, no infinite feed — a small menu built for your curiosity, with one wildcard you didn't see coming.`
 - **Description, first paragraph:** `4a deals you four podcast episodes a day and tells you why each one is on your menu. Not a feed, not a chart, not another app shouting its favorites — a personal curator that learns what you're curious about, keeps roughly a third of every menu deliberately outside your lane, and always says the reason out loud. When the menu's done, it's done: no autoplay chain, no endless scroll, nothing designed to keep you here longer than the listening deserves.`
@@ -242,7 +262,7 @@ Continuing from R12 in 08-REQUIREMENTS-DELTA.md. Tags: 🌐 web-test phase · �
 
 **R22 — Rejections recorded, with reasons.** Social/friend menus (graveyard cause #1; violates private-taste intimacy). Notes export to Obsidian/Notion (Snipd's lane; IRRELEVANT). Watch app (no persona evidence; unscheduled). New-episode push notifications (notification fatigue kills apps at 2–5/week; the pull ritual is the design). Video (fights the eyes-busy medium). [CONFLICTS-WITH-PRINCIPLES — noted, not recommended]: none of this round's candidates required a principles override; the only two engagement levers evidence supports elsewhere — streaks and clip feeds — stay rejected per 08.
 
-**R23 — App Store listing copy locked as drafted in §5.** 📱 Strings enter `data/` (or an equivalent copy file) so the CI copy-rules test gates them like all other user-facing copy; changes require re-review against R7.
+**R23 — App Store listing copy locked as drafted in §5.** 📱 Strings enter `data/` (or an equivalent copy file) so the CI copy-rules test gates them like all other user-facing copy; changes require re-review against R7. **Amended 2026-09-02:** the "Name" field changed from `4a` to `4a: Podcast Curator` (App Store Connect rejected the bare name as taken by another app/reservation) — see §5's 2026-09-02 note. No other locked string in §5 changed; the amendment is scoped to the store "Name" metadata field only. No `data/` copy fixture exists yet for this listing (R23's `data/` migration was never executed — the listing has not been submitted), so there is no CI fixture to update; `HUMAN-ACTIONS.md` #34 tracks the founder-side submission step.
 
 ### Ranked actions for the web-test phase (this month, in order)
 

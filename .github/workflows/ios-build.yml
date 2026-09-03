@@ -623,9 +623,33 @@ jobs:
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
           security list-keychains -d user -s "$KEYCHAIN"
 
+          # Install the profile in BOTH locations Xcode has used. The classic
+          # path is ~/Library/MobileDevice/Provisioning Profiles; Xcode 16+ reads
+          # ~/Library/Developer/Xcode/UserData/Provisioning Profiles instead, and
+          # the runner is on Xcode 26.6. Writing only the old one is invisible to
+          # a modern Xcode, and the resulting error names the *wrong* problem
+          # ("no profiles were found"), which is what run 33814319302 hit.
           PROFILES="$HOME/Library/MobileDevice/Provisioning Profiles"
           mkdir -p "$PROFILES"
           echo "$IOS_PROVISIONING_PROFILE_BASE64" | base64 --decode > "$PROFILES/foray.mobileprovision"
+
+          # Read the profile's own UUID rather than hardcoding it: the profile is
+          # a secret and it is reissued whenever the certificate is, so a literal
+          # here would go stale silently. `security cms -D` unwraps the CMS
+          # signature the .mobileprovision is wrapped in.
+          security cms -D -i "$PROFILES/foray.mobileprovision" > "${{ runner.temp }}/profile.plist"
+          # `export`, NOT `>> $GITHUB_ENV`. Everything here — install, archive,
+          # export, upload — is one `run:` block, and $GITHUB_ENV only reaches
+          # LATER steps. Written to $GITHUB_ENV this would be empty in the very
+          # node call and xcodebuild invocation below that need it, and an empty
+          # PROVISIONING_PROFILE_SPECIFIER fails the same way this fix repairs.
+          export PROFILE_UUID
+          PROFILE_UUID=$(/usr/libexec/PlistBuddy -c "Print :UUID" "${{ runner.temp }}/profile.plist")
+          echo "profile UUID: $PROFILE_UUID"
+
+          XC_PROFILES="$HOME/Library/Developer/Xcode/UserData/Provisioning Profiles"
+          mkdir -p "$XC_PROFILES"
+          cp "$PROFILES/foray.mobileprovision" "$XC_PROFILES/$PROFILE_UUID.mobileprovision"
 
           mkdir -p "$HOME/.appstoreconnect/private_keys"
           echo "$APP_STORE_CONNECT_PRIVATE_KEY_BASE64" | base64 --decode \
@@ -643,14 +667,36 @@ jobs:
               `<key>method</key><string>app-store-connect</string>` +
               `<key>teamID</key><string>${process.env.APPLE_TEAM_ID}</string>` +
               `<key>uploadSymbols</key><true/>` +
+              // Manual signing here too. -exportArchive re-signs, so if it is
+              // left to guess it repeats the archive step`s failure one stage
+              // later, and the profile has to be named per bundle id.
+              `<key>signingStyle</key><string>manual</string>` +
+              `<key>provisioningProfiles</key><dict>` +
+              `<key>${process.env.APP_ID}</key><string>${process.env.PROFILE_UUID}</string>` +
+              `</dict>` +
               `</dict></plist>\n`);
           ' "${{ runner.temp }}/ExportOptions.plist"
           plutil -lint "${{ runner.temp }}/ExportOptions.plist"
+          cat "${{ runner.temp }}/ExportOptions.plist"
 
+          # CODE_SIGN_STYLE=Manual is the fix for run 33814319302. Capacitor`s
+          # generated project ships CODE_SIGN_STYLE = Automatic, and automatic
+          # signing looks for a *Development* profile, cannot find one (we only
+          # install a distribution profile), and cannot mint one either because
+          # -allowProvisioningUpdates is not passed. The error it prints names
+          # the missing development profile, which reads like the distribution
+          # profile failed to install — it had not. Passing DEVELOPMENT_TEAM
+          # alone, as this step used to, does not switch the style.
+          #
+          # -allowProvisioningUpdates is deliberately NOT the fix: it would let
+          # CI mint certificates and profiles in the account on its own.
           xcodebuild "$XC_FLAG" "$XC_PATH" -scheme App -configuration Release \
             -sdk iphoneos -destination 'generic/platform=iOS' \
             -archivePath "${{ runner.temp }}/Foray.xcarchive" \
+            CODE_SIGN_STYLE=Manual \
             DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
+            PROVISIONING_PROFILE_SPECIFIER="$PROFILE_UUID" \
+            CODE_SIGN_IDENTITY="Apple Distribution" \
             archive | tail -20
           xcodebuild -exportArchive \
             -archivePath "${{ runner.temp }}/Foray.xcarchive" \

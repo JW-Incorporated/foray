@@ -22,6 +22,77 @@ docs/. Completed workstreams move to their plan doc's retro section.
   wrapper that re-execs `scan.mjs`, so this card's original scope of also
   patching `refresh-feeds.mjs`'s own fetch path is moot — fixing `scan.mjs`
   covers both entry points. `refresh-feeds.mjs` itself is untouched here.
+### Show-pages Stage 3b — full per-show RSS ingestion (2026-09-02) — `t_567b570f/show-pages-3b-rss-ingestion`
+
+- **What:** `docs/show-pages-plan.md` §Stage 3, decided path 3b (full
+  per-show RSS ingestion, no curated-subset ceiling — founder instruction:
+  "we should be able to play all podcasts from the app"). New shared
+  catalogue tables (`backend/migrations/0016_catalog_show_episodes.sql`),
+  ingestion module (`backend/src/catalog/`), and the first Vercel
+  serverless function in this repo (`api/shows/[show_id]/episodes.ts`) —
+  flagged explicitly for Wyatt's review, see `docs/DECISIONS.md`
+  2026-09-02 entry. Client (`renderShow()`) now fetches the full list on
+  demand, degrading to the curated pool on any fetch failure.
+- **Branch:** `t_567b570f/show-pages-3b-rss-ingestion` — PR only, never
+  main; `merge_authority: human` on this card regardless.
+- **Owned/new files:** `backend/migrations/0016_catalog_show_episodes.sql`,
+  `backend/src/catalog/showEpisodesStore.ts`,
+  `backend/src/catalog/ingestShowFeed.ts`,
+  `backend/test/showEpisodesStore.test.ts`,
+  `backend/test/ingestShowFeed.test.ts`, `api/shows/[show_id]/episodes.ts`,
+  `api/package.json`, `test/show-pages-3b-full-catalogue.test.js`.
+- **Shared files it touches:** `app.js` (`renderShow()`,
+  `fetchShowEpisodes()`, `fullCatalogueRowToEpRowItem()`), `vercel.json`
+  (installCommand), `test/suite-integrity.test.js` (two new floors),
+  `docs/show-pages-plan.md` (§Stage 3 decision recorded),
+  `docs/DECISIONS.md`.
+- **Explicitly out of scope:** wiring the player / removing link-out UI
+  (sibling "universal in-app playability" card, depends on this card's
+  `audio_url` output), fetching chapters JSON bodies (pointer stored now,
+  body fetched lazily per-episode by the episode-page card).
+
+### SECURITY: Supabase linter findings — RLS/SECURITY DEFINER/policy scoping (2026-09-02) — `fix/supabase-linter-rls`
+
+- **What:** t_58c99c73. Enables RLS (deny-all, no policies) on
+  `public.schema_migrations` and `public.learning_cursor` (the 2 linter
+  ERRORs); revokes `anon`/`authenticated` EXECUTE on the two
+  `SECURITY DEFINER` auth-trigger functions; rescopes the 8 `own_rows_*`
+  policies to `TO authenticated` explicitly. Founder-approved spec on the
+  card, PR only.
+- **Branch:** `fix/supabase-linter-rls` — PR only, never main.
+- **Owned/new files:** `backend/migrations/supabase/0002_linter_findings.sql`.
+- **Shared files it touches:** `HUMAN-ACTIONS.md` (new item logging the
+  leaked-password-protection dashboard toggle, which no worker can click).
+- **Explicitly out of scope:** anything else in `backend/migrations/` —
+  no other portable migration files touched.
+
+### M3: event log off synchronous localStorage onto IndexedDB (2026-09-01) — `t_c7199b13/event-log-idb`
+
+- **What:** Finding M3 (approved design). Client event logging (`logEvent()` /
+  `trySyncEvents()`) moved off a synchronous per-call `cp_events` localStorage
+  JSON rewrite onto a new batched, IndexedDB-backed queue,
+  `player/event-log.js`. `cp_events`/`cp_synced_ts` are retired — the queue is
+  outbound state, not resumable per-user state, so retiring the key orphans
+  nothing. No caller-visible change to `logEvent(type, payload)`'s signature.
+- **Branch:** `t_c7199b13/event-log-idb` — PR only, never main; PR pending
+  review.
+- **Owned/new files:** `player/event-log.js`, `player/event-log.test.js`.
+- **Shared files it touches:** `app.js` (`logEvent()`, `trySyncEvents()`, a
+  pre-module event buffer mirroring the existing `waitForStorage()` pattern),
+  `player/client.js` (constructs the event-log module the same way it already
+  constructs `durable-store.js`, publishes `window.forayEventLog`),
+  `docs/legal/privacy-policy.md` §1/§2 (the `cp_events`/`cp_synced_ts` rows
+  retired, a note added on the new queue), `test/suite-integrity.test.js` (one
+  new floor, one count updated 23→21 for the retired keys),
+  `test/data-deletion.test.js` (key-family count and seeds updated),
+  `test/diagnostics-surface.test.js`, `test/playlist-durability.test.js`,
+  `player/foray-playback.test.js`, `player/foray-progress.test.js` (all
+  updated from asserting against `cp_events`/localStorage to a synchronous
+  `window.forayEventLog` test double, reusing the fake IDBFactory pattern from
+  `player/idb-tier.test.js`/`durable-store.test.js`).
+- **Explicitly out of scope:** anything about the REMOTE `events` table or
+  `toEventRow()`'s mapping — unchanged. `cp_diag`/`player/diagnostic-log.js`
+  — unrelated ring, untouched.
 
 ### "Up Next" listening queue, Stage 1 (2026-08-31) — `t_f4da81f5/up-next-stage1`
 
@@ -98,7 +169,7 @@ docs/. Completed workstreams move to their plan doc's retro section.
   `tools/mobile/webview-probe.mjs` (+ test), `docs/android-release.md`.
 - **Shared files it touches:** `tools/mobile/android-workflow.test.mjs` (27 → 61
   tests, a whole new section for the second workflow),
-  `test/suite-integrity.test.js` (three floors), `HUMAN-ACTIONS.md` (#26 new; a
+  `test/suite-integrity.test.js` (three floors), `HUMAN-ACTIONS.md` (#30 new; a
   note on #18).
 - **Rulings, since they constrain future work:**
   - **`android-build.yml` is untouched and must stay so.** Its two pinned
