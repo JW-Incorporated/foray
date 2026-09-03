@@ -24,6 +24,42 @@ function crc32(buf) {
   return (c ^ 0xffffffff) >>> 0;
 }
 
+/* IHDR plus a `tRNS` presence flag, WITHOUT decoding any pixels.
+
+   Added for tools/mobile/inject-app-icon.mjs, and the reason it could not use
+   decode() is the whole point: decode() normalises colour type 2 to RGBA and
+   then reports `data` with an all-255 alpha channel, so the one question the
+   App Store rejects an icon over -- "does this file carry an alpha channel?" --
+   cannot be answered from its return value at all. It also throws on colour
+   types 0 and 3 before a caller can say anything useful about them, and it does
+   not look at `tRNS`, which adds transparency to a colour-type-2 image without
+   changing the colour type.
+
+   Deliberately a SECOND chunk walk rather than a refactor of decode(): decode's
+   single pass collects IHDR and IDAT together, and the committed icons are
+   byte-compared against its output by build-icons.test.mjs, so the cheap change
+   here is the one that cannot alter them. */
+export function header(buf) {
+  if (buf.length < 8 || !buf.subarray(0, 8).equals(SIG)) throw new Error("not a PNG");
+  let p = 8, ihdr = null, transparency = false;
+  while (p + 8 <= buf.length) {
+    const len = buf.readUInt32BE(p);
+    const type = buf.toString("ascii", p + 4, p + 8);
+    if (type === "IHDR") {
+      const d = buf.subarray(p + 8, p + 8 + len);
+      if (d.length < 13) throw new Error("truncated IHDR");
+      ihdr = {
+        width: d.readUInt32BE(0), height: d.readUInt32BE(4),
+        depth: d[8], colour: d[9], interlace: d[12],
+      };
+    } else if (type === "tRNS") transparency = true;
+    else if (type === "IEND") break;
+    p += 12 + len;
+  }
+  if (!ihdr) throw new Error("no IHDR");
+  return { ...ihdr, transparency };
+}
+
 export function decode(buf) {
   if (!buf.subarray(0, 8).equals(SIG)) throw new Error("not a PNG");
   let p = 8, ihdr = null;

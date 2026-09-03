@@ -563,10 +563,50 @@ const FLOORS = {
      list, that its path filter stays narrow (macOS runners bill at 10x), that
      every `xcodebuild ... build` stays unsigned so the job can run with no Apple
      credentials, and that `ci.yml`'s `ios-kit` — the repo's only compiled Swift —
-     is still there. Nothing else covers any of that. */
-  "tools/mobile/inject-background-audio.test.mjs": 26,
+     is still there. Nothing else covers any of that.
+
+     26 -> 41 ON 2026-09-03, when `inject-background-audio.mjs` gained the second
+     edit a generated Info.plist needs: `ITSAppUsesNonExemptEncryption`, the key
+     Apple named to the founder that stops App Store Connect asking the encryption
+     questions on every upload. Fifteen tests, and the one not to lose is "an
+     existing `true` is REFUSED, never quietly flipped to false" — every other edit
+     in that file MERGES with what it finds, because a background mode somebody
+     added is data. This value is not data, it is a legal statement about the
+     binary, and a script that overwrites it has made a false declaration in a
+     store submission on somebody's behalf. Two more have no other check anywhere:
+     the strict `--encryption` parse (JavaScript's truthiness turns `--encryption
+     fasle` into the OPPOSITE declaration, silently, on a green run) and the test
+     that asserts the REASONING for `false` is still written beside the key — the
+     only defence against the declaration outliving the facts that make it true.
+
+     34 -> 41 for `ios-workflow`, in the same change. Five of those seven are about
+     two steps that did not exist: the icon injection and the encryption
+     declaration. The one not to lose is "both generated-project edits happen AFTER
+     `cap add ios` and BEFORE any build" — nothing pinned that order before, and
+     both ways of getting it wrong are invisible in the build's own output.
+
+     `inject-app-icon` IS NEW, and floored at its exact count with no slack. A
+     build reached TestFlight on 2026-09-03 wearing Capacitor's placeholder icon,
+     because nothing wired 4a's icon into the generated asset catalog and nothing
+     ever looked. The three not to lose, because a reader would not guess at them:
+
+       - "--check compares BYTES, so Capacitor's placeholder does not satisfy it".
+         The placeholder sits at exactly the declared filename and is also
+         1024x1024, so every check shaped like `test -f` passes on the bug itself.
+       - "a catalog with no 1024 slot is REFUSED rather than partially filled".
+         Apple removed App Store Connect's icon upload in Xcode 14; the PUBLIC
+         LISTING icon is extracted from the uploaded binary's asset catalog. A
+         partial write ships a store page with no icon and cannot be fixed without
+         a new build.
+       - "REAL REPO: the committed icon-1024.png is what the App Store will
+         accept". It CANNOT FAIL ON TODAY'S FILE — CLAUDE.md's point 5 — and it is
+         the only thing between a future icon regeneration that reintroduces an
+         alpha channel and a submission Apple rejects after the upload and the
+         wait. */
+  "tools/mobile/inject-app-icon.test.mjs": 27,
+  "tools/mobile/inject-background-audio.test.mjs": 41,
   "tools/mobile/ios-ci.test.mjs": 89,
-  "tools/mobile/ios-workflow.test.mjs": 34,
+  "tools/mobile/ios-workflow.test.mjs": 41,
   "tools/mobile/probe/install-probe.test.mjs": 39,
   /* The one-shot that gets a newly curated show's back catalogue into the pipeline
      (#279). The floor matters because the whole script exists to make one silent

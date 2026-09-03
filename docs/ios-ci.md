@@ -49,17 +49,44 @@ column can change without anyone buying a laptop.
    `tools/mobile/inject-background-audio.mjs`. MP1 §7.3: this is the *entire* iOS
    background-audio requirement — WebKit sets the `AVAudioSession` category
    itself, so no plugin, no `AppDelegate` edit, no Swift.
-4. **Build for the simulator, unsigned.** Then **build for a real device's
+4. **Declare `ITSAppUsesNonExemptEncryption = false`** in the same plist, with
+   the same script (`--encryption false`). Apple, to the founder on 2026-09-03:
+   *"Since your build doesn't contain encryption, you can specify this in the
+   information property list (Info.plist) in your Xcode project to avoid
+   answering encryption questions with each app submission."* The answer is
+   legitimately "none" — the only crypto call in shipped code is
+   `crypto.subtle.digest("SHA-256", …)` in `sw.js`, a hash for cache integrity
+   using WebKit's implementation; HTTPS is the OS's; the root `package.json` has
+   zero dependencies. The reasoning lives beside the key in the script, and a
+   test asserts it is still there, because `false` stops being true the day the
+   app gains real crypto.
+5. **Write the real app icon into the generated `AppIcon.appiconset`** with
+   `tools/mobile/inject-app-icon.mjs`. Capacitor generates its own PLACEHOLDER
+   artwork and nothing replaced it, so a TestFlight build on 2026-09-03 shipped
+   wearing it. The script reads the catalog's own `Contents.json` for the
+   filenames rather than hardcoding one (that name is a Capacitor template
+   detail and has already changed between major versions), refuses a source icon
+   the App Store would reject (not 1024×1024, or carrying an alpha channel), and
+   refuses a catalog with no 1024 slot — because since Xcode 14 App Store
+   Connect **extracts the public listing icon from the uploaded binary's asset
+   catalog**, with no manual upload and no way to fix a build already sent.
+   `--check` compares BYTES, not existence: the placeholder is also 1024×1024,
+   so any `test -f` passes on the bug itself.
+6. **Build for the simulator, unsigned**, then assert the icon reached the
+   BUILT bundle (`Assets.car` exists, `CFBundleIconName` is `AppIcon`,
+   `assetutil --info` names it) — a different claim from step 5's, because
+   `actool` can leave an icon out for reasons no source-side check can see.
+   Then **build for a real device's
    architecture, unsigned** — arm64/Release, the configuration a TestFlight build
    would use. Two different compiles; the second is the one that would catch a
    Release-only or arch-specific failure.
-5. Boot a simulator, install a **probed copy** of the built app, and run the
+7. Boot a simulator, install a **probed copy** of the built app, and run the
    measurements in **two passes** (§3): the bridge + out-point probes, then a
    reinstall with `--phase seam` and the seam-transition probe. One container read
    at the end collects both, with the app never foregrounded in between.
-6. Report every verdict to the job summary, and upload logs, screenshots and the
+8. Report every verdict to the job summary, and upload logs, screenshots and the
    raw probe records as an artifact.
-7. **Gated on secrets that do not exist:** archive, export, upload to TestFlight.
+9. **Gated on secrets that do not exist:** archive, export, upload to TestFlight.
 
 ## 2. Three design decisions worth defending
 

@@ -126,6 +126,7 @@ jobs:
       APP_ID: ai.jwlabs.foura
       IOS_DIR: mobile/ios
       INFO_PLIST: mobile/ios/App/App/Info.plist
+      APPICONSET: mobile/ios/App/App/Assets.xcassets/AppIcon.appiconset
       # $XC_FLAG and $XC_PATH are NOT set here: what xcodebuild gets pointed at
       # depends on what `cap add ios` generated, and the first run of this workflow
       # is what established that Capacitor 8 uses Swift Package Manager and emits
@@ -231,7 +232,67 @@ jobs:
           /usr/libexec/PlistBuddy -c "Print :UIBackgroundModes" "$INFO_PLIST" | tee "$ART/uibackgroundmodes.txt"
           grep -q "audio" "$ART/uibackgroundmodes.txt"
           node tools/mobile/inject-background-audio.mjs "$INFO_PLIST" --check
+
+      - name: Declare no non-exempt encryption, and have Apple's parser check it
+        # Apple, to the founder, verbatim on 2026-09-03: "Since your build doesn't
+        # contain encryption, you can specify this in the information property list
+        # (Info.plist) in your Xcode project to avoid answering encryption questions
+        # with each app submission." This is that key.
+        #
+        # The answer is legitimately "none": the only crypto call in shipped code is
+        # `crypto.subtle.digest("SHA-256", ...)` in sw.js -- a HASH, for cache
+        # integrity, using WebKit's implementation -- HTTPS is the OS's, the root
+        # package.json declares zero dependencies, and nothing under mobile/ links a
+        # crypto library. The reasoning lives beside the key in
+        # tools/mobile/inject-background-audio.mjs, and a test asserts it is still
+        # there, because `false` stops being true the day the app gains real crypto.
+        #
+        # SAME THREE CONFIRMATIONS as the step above, for the same reason: the
+        # function re-parses its own output, `plutil -lint` says the file is still
+        # valid, and PlistBuddy -- Apple's own reader -- prints the value. `--check`
+        # then re-reads it through our parser. A missing key is not a build failure;
+        # it is a questionnaire that comes back on every upload, forever, with
+        # nothing anywhere saying why.
+        run: |
+          set -euo pipefail
+          node tools/mobile/inject-background-audio.mjs "$INFO_PLIST" --encryption false
+          plutil -lint "$INFO_PLIST"
+          /usr/libexec/PlistBuddy -c "Print :ITSAppUsesNonExemptEncryption" "$INFO_PLIST" \
+            | tee "$ART/its-app-uses-non-exempt-encryption.txt"
+          grep -qx "false" "$ART/its-app-uses-non-exempt-encryption.txt"
+          node tools/mobile/inject-background-audio.mjs "$INFO_PLIST" --check --encryption false
           cp "$INFO_PLIST" "$ART/Info.plist"
+
+      - name: Put the REAL app icon in the generated asset catalog
+        # WHY THIS STEP EXISTS. Nothing wired 4a's icon into the bundle: `cap add
+        # ios` generates Capacitor's placeholder AppIcon.appiconset and this
+        # workflow archived it as-is, so a build reached TestFlight on 2026-09-03
+        # wearing it. Capacitor has no config option for the icon, so something has
+        # to write into the generated project -- and that something is a unit-tested
+        # pure function (tools/mobile/inject-app-icon.test.mjs, all of it runnable
+        # on Windows with no Mac) rather than a `cp` to a filename that can stop
+        # matching in silence.
+        #
+        # IT IS ALSO THE STORE LISTING. Apple removed App Store Connect's
+        # icon-upload field in Xcode 14; the public product page's icon is now
+        # EXTRACTED from the uploaded binary's asset catalog. There is no dashboard
+        # fallback and no way to fix a build already uploaded, so a silent no-op
+        # here ships a listing with no icon of ours.
+        #
+        # `--check` IS NOT `test -f`, and that distinction is the whole step. The
+        # placeholder exists at exactly the declared filename and is also
+        # 1024x1024, so any existence check passes on the bug. `--check` compares
+        # bytes against icon-1024.png.
+        run: |
+          set -euo pipefail
+          test -d "$APPICONSET"
+          node tools/mobile/inject-app-icon.mjs "$APPICONSET"
+          # Apple's own parser as the second opinion on the manifest, exactly as
+          # PlistBuddy is on the Info.plist above. `plutil -lint` reads JSON too.
+          plutil -lint "$APPICONSET/Contents.json"
+          node tools/mobile/inject-app-icon.mjs "$APPICONSET" --check
+          cp "$APPICONSET/Contents.json" "$ART/AppIcon-Contents.json"
+          ls -l "$APPICONSET" | tee "$ART/appiconset.txt"
 
       - name: Build for the iOS Simulator (unsigned by construction)
         # The primary build verdict, and the artefact the probes run in. A
@@ -255,6 +316,36 @@ jobs:
           test -f "$APP/public/index.html"
           echo "app=$APP" >> "$GITHUB_OUTPUT"
           du -sh "$APP" | tee -a "$ART/app-size.txt"
+
+      - name: Assert the icon really reached the BUILT asset catalog
+        # THE SECOND OPINION ON THE ICON, and it is a different claim from the
+        # `--check` above. That one says our bytes are in the SOURCE catalog; this
+        # one says Xcode compiled them into the BUNDLE. Between the two sits
+        # `actool`, which can leave an icon out for reasons no source-side check can
+        # see -- a wrong ASSETCATALOG_COMPILER_APPICON_NAME, a catalog Xcode never
+        # looked at -- and every one of those failures produces a green build and a
+        # placeholder on the home screen and the store listing alike.
+        #
+        # NEVER EXECUTED before this PR, like everything else in this workflow that
+        # only a Mac can run. If it goes red on the first run, read
+        # $ART/assets-car.txt and $ART/built-info-plist-icon.txt before assuming the
+        # icon is missing -- the likelier fault is which key Xcode wrote.
+        run: |
+          set -euo pipefail
+          APP="${{ steps.build_sim.outputs.app }}"
+          # The compiled catalog itself. An .app whose Assets.car is missing has no
+          # icon at all, whatever the source directory said.
+          test -f "$APP/Assets.car"
+          # Xcode names the asset it took the icon from in the BUILT Info.plist.
+          # Both spellings are accepted because Xcode writes both and has moved
+          # between them; failing to find EITHER is still fatal.
+          NAME=$(/usr/libexec/PlistBuddy -c "Print :CFBundleIconName" "$APP/Info.plist" 2>/dev/null \
+            || /usr/libexec/PlistBuddy -c "Print :CFBundleIcons:CFBundlePrimaryIcon:CFBundleIconName" "$APP/Info.plist")
+          echo "$NAME" | tee "$ART/built-info-plist-icon.txt"
+          test "$NAME" = "AppIcon"
+          # And Apple's own catalog reader, as the equivalent of PlistBuddy above.
+          xcrun assetutil --info "$APP/Assets.car" | tee "$ART/assets-car.txt" > /dev/null
+          grep -qi "AppIcon" "$ART/assets-car.txt"
 
       - name: Build for a real device's architecture, unsigned
         id: build_dev
