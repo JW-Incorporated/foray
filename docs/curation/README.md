@@ -16,6 +16,16 @@ depth-based learning paths.
   filter spec, never to select content), the step-by-step recommender evolution,
   the right metrics, and the open decisions for the founders.
 
+- **[interest-survey-plan.md](interest-survey-plan.md)** — how to ask listeners
+  about **topics** ("true crime", "engineering") rather than shows, and how that
+  reconciles with the catalogue. Headline: the taxonomy already *is* a topical
+  category tree (41 top-level branches; `true-crime` and `engineering` are
+  literally node ids), so nothing needs restructuring — but the cold-start
+  interest model is flat enough that **29 of 38 branches tie at exactly 0.5000**
+  on a fresh install, and `loadInterests()` is leaf-only, so a category answer
+  has nowhere to be stored. Proposes one skippable chip screen, a bounded prior
+  worth ~4 finishes, and the leaf-only fix as a standalone defect repair.
+  **Awaiting a founder ruling — not a decided plan.**
 - **[persona-catalogue-fit.md](persona-catalogue-fit.md)** — preliminary check on
   Decision #2: candidate default personas and whether the catalogue actually
   serves them (finding: the taxonomy architecture fits; content is founder-skewed,
