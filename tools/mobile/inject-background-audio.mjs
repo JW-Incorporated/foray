@@ -41,8 +41,14 @@
  *   node tools/mobile/inject-background-audio.mjs <Info.plist>
  *   node tools/mobile/inject-background-audio.mjs <Info.plist> --check
  *   node tools/mobile/inject-background-audio.mjs <Info.plist> --mode audio
+ *   node tools/mobile/inject-background-audio.mjs <Info.plist> --encryption false
  * Any other argument is an error, not an ignored flag (same rule as
  * run-suites.mjs and prepare-webdir.mjs).
+ *
+ * `--encryption` is ADDITIVE: it does the background-audio edit as well, because
+ * that edit is idempotent and a plist that needs one of these needs both. See the
+ * export-compliance section below for what the flag declares and why the answer
+ * is "no encryption".
  */
 
 import fs from "node:fs";
@@ -345,16 +351,141 @@ export function injectBackgroundAudio(xml, mode = BACKGROUND_AUDIO_MODE) {
   return { xml: out, changed: true, reason, modes: assertModePresent(out, mode) };
 }
 
+/* ------------------------------------------- export-compliance declaration */
+
+/* WHY THIS IS HERE (2026-09-03)
+ * App Store Connect asks, on EVERY submission, what encryption the build
+ * implements. For 4a the answer is "none of the above": the only crypto the
+ * shipped code calls is `crypto.subtle.digest("SHA-256", …)` in `sw.js`, which
+ * is a HASH used to verify cached files against `deploy-manifest.json` — not
+ * encryption — and it is WebKit's implementation, not a bundled one. HTTPS is
+ * the OS's. The root `package.json` declares zero dependencies, and nothing
+ * under `mobile/` matches crypto/encrypt/cipher/AES/SecKey/CommonCrypto.
+ *
+ * Apple's own reply to that answer: "Since your build doesn't contain
+ * encryption, you can specify this in the information property list
+ * (Info.plist) in your Xcode project to avoid answering encryption questions
+ * with each app submission." This is that key.
+ *
+ * IT LIVES IN THIS FILE, WHOSE NAME NO LONGER FULLY DESCRIBES IT. The
+ * alternative was a second 400-line plist editor, or a `sed`. Both are worse:
+ * the parser here already refuses everything it does not understand and
+ * re-reads its own output, and that discipline is the entire value. Read the
+ * file as "the edits a generated Info.plist needs", and rename it the day a
+ * third one arrives.
+ *
+ * REVISIT IT IF THE APP GAINS REAL CRYPTO. The declaration is a legal
+ * statement about the binary, not a build setting to carry forward
+ * unexamined — adding an encryption library, or encrypting stored data
+ * ourselves, makes `false` untrue.
+ */
+export const NON_EXEMPT_ENCRYPTION_KEY = "ITSAppUsesNonExemptEncryption";
+
+/** The root dict's `ITSAppUsesNonExemptEncryption`, or null if it has none.
+ *  `true`/`false` are their own tags in a plist, so the value IS the tag name. */
+export function nonExemptEncryption(xml) {
+  const { entries } = rootEntries(xml);
+  const hits = entries.filter((e) => e.key === NON_EXEMPT_ENCRYPTION_KEY);
+  if (hits.length > 1) {
+    throw new PlistError(
+      `the root dict declares ${NON_EXEMPT_ENCRYPTION_KEY} ${hits.length} times. Plist readers ` +
+        `take the last one, so an edit to any other is invisible. Delete the duplicates by hand first.`
+    );
+  }
+  if (!hits.length) return null;
+  const name = hits[0].value.name;
+  if (name !== "true" && name !== "false") {
+    throw new PlistError(
+      `${NON_EXEMPT_ENCRYPTION_KEY} is a <${name}>, but Apple requires a boolean. ` +
+        `Fix the plist by hand — this script will not rewrite a value it did not write.`
+    );
+  }
+  return name === "true";
+}
+
+/** Assert the declaration really landed. Same reasoning as `assertModePresent`:
+ *  without it every failure below degrades to "returned the input unchanged and
+ *  said it worked". MUTATION: make this return unconditionally — the
+ *  "re-parses its own output" test fails. */
+export function assertEncryptionDeclared(xml, expected = false) {
+  const got = nonExemptEncryption(xml);
+  if (got !== expected) {
+    throw new PlistError(
+      `the edit did not take: ${NON_EXEMPT_ENCRYPTION_KEY} reads ${JSON.stringify(got)} after ` +
+        `injection, not ${JSON.stringify(expected)}. This is a bug in this script, not in the plist.`
+    );
+  }
+  return got;
+}
+
+/**
+ * Declare `ITSAppUsesNonExemptEncryption` in the root dict.
+ *
+ * Idempotent, like `injectBackgroundAudio`, because CI re-runs and `cap sync`
+ * regenerates. An existing value that DISAGREES is left alone and reported
+ * rather than overwritten: a human who wrote `true` there meant it, and
+ * silently flipping an export-compliance declaration is not a thing a script
+ * should do.
+ *
+ * @returns {{xml: string, changed: boolean, reason: string, value: boolean}}
+ */
+export function injectNonExemptEncryption(xml, value = false) {
+  if (typeof xml !== "string" || xml.trim() === "") {
+    throw new PlistError("empty plist source");
+  }
+  if (typeof value !== "boolean") {
+    throw new PlistError(`${NON_EXEMPT_ENCRYPTION_KEY} must be a boolean, got ${typeof value}`);
+  }
+
+  const existing = nonExemptEncryption(xml);
+  if (existing !== null) {
+    if (existing === value) {
+      return { xml, changed: false, reason: `${NON_EXEMPT_ENCRYPTION_KEY} already ${value}`, value };
+    }
+    throw new PlistError(
+      `${NON_EXEMPT_ENCRYPTION_KEY} is already ${existing}, and this script will not flip an ` +
+        `export-compliance declaration somebody else made. Change it by hand, deliberately.`
+    );
+  }
+
+  const { rootDict, entries } = rootEntries(xml);
+  const indent = rootIndent(xml, entries);
+  const block = `${indent}<key>${NON_EXEMPT_ENCRYPTION_KEY}</key>\n${indent}<${value}/>\n`;
+  let at = rootDict.closeStart;
+  while (at > 0 && (xml[at - 1] === " " || xml[at - 1] === "\t")) at--;
+  const out = xml.slice(0, at) + block + xml.slice(at);
+
+  assertEncryptionDeclared(out, value);
+  return { xml: out, changed: true, reason: `added ${NON_EXEMPT_ENCRYPTION_KEY} = ${value}`, value };
+}
+
 /* --------------------------------------------------------------------- main */
 
 const isMain =
   process.argv[1] && path.resolve(process.argv[1]) === path.resolve(fileURLToPath(import.meta.url));
+
+/** `--encryption <true|false>` -> a boolean, or null if it is neither.
+ *
+ *  STRICT ON PURPOSE, and `"0"`/`"no"`/`""` are in the test for it: this flag
+ *  writes a LEGAL DECLARATION about the binary into a file Apple reads, and
+ *  JavaScript's own idea of truthiness would turn a typo (`--encryption fasle`)
+ *  into `true` — the opposite statement, silently, in a green run. Exported so
+ *  the parse can be tested without spawning the CLI. */
+export function parseEncryptionFlag(raw) {
+  if (raw === "true") return true;
+  if (raw === "false") return false;
+  return null;
+}
+
+const USAGE =
+  "Usage: node tools/mobile/inject-background-audio.mjs <Info.plist> [--check] [--mode audio] [--encryption false]";
 
 if (isMain) {
   const argv = process.argv.slice(2);
   let file = null;
   let checkOnly = false;
   let mode = BACKGROUND_AUDIO_MODE;
+  let encryption = null;
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === "--check") checkOnly = true;
     else if (argv[i] === "--mode") {
@@ -365,15 +496,32 @@ if (isMain) {
         console.error(`--mode needs a value, got ${mode === undefined ? "nothing" : mode}`);
         process.exit(2);
       }
+    } else if (argv[i] === "--encryption") {
+      const raw = argv[++i];
+      /* Same "a flag is never a value" rule, and here it matters more: a swallowed
+         `--check` would both lose the check AND fail the strict parse below, which
+         is the loud outcome — but only because the parse is strict. */
+      if (raw === undefined || raw.startsWith("-")) {
+        console.error(`--encryption needs a value (true|false), got ${raw === undefined ? "nothing" : raw}`);
+        process.exit(2);
+      }
+      encryption = parseEncryptionFlag(raw);
+      if (encryption === null) {
+        console.error(
+          `--encryption must be exactly "true" or "false", got ${JSON.stringify(raw)}. ` +
+            `This writes an export-compliance declaration; it will not guess.`
+        );
+        process.exit(2);
+      }
     } else if (!argv[i].startsWith("-") && file === null) file = argv[i];
     else {
       console.error(`Unknown argument: ${argv[i]}`);
-      console.error("Usage: node tools/mobile/inject-background-audio.mjs <Info.plist> [--check] [--mode audio]");
+      console.error(USAGE);
       process.exit(2);
     }
   }
   if (!file) {
-    console.error("Usage: node tools/mobile/inject-background-audio.mjs <Info.plist> [--check] [--mode audio]");
+    console.error(USAGE);
     process.exit(2);
   }
 
@@ -386,10 +534,26 @@ if (isMain) {
         process.exit(1);
       }
       console.log(`${file}: UIBackgroundModes = ${JSON.stringify(modes)}`);
+      if (encryption !== null) {
+        const got = nonExemptEncryption(src);
+        if (got !== encryption) {
+          console.error(
+            `${file}: ${NON_EXEMPT_ENCRYPTION_KEY} is ${JSON.stringify(got)}, expected ${encryption}.`
+          );
+          process.exit(1);
+        }
+        console.log(`${file}: ${NON_EXEMPT_ENCRYPTION_KEY} = ${got}`);
+      }
     } else {
       const r = injectBackgroundAudio(src, mode);
-      if (r.changed) fs.writeFileSync(file, r.xml);
+      let xml = r.xml;
       console.log(`${file}: ${r.reason} -> ${JSON.stringify(r.modes)}`);
+      if (encryption !== null) {
+        const e = injectNonExemptEncryption(xml, encryption);
+        xml = e.xml;
+        console.log(`${file}: ${e.reason}`);
+      }
+      if (xml !== src) fs.writeFileSync(file, xml);
     }
   } catch (e) {
     console.error(`inject-background-audio failed: ${e.message}`);

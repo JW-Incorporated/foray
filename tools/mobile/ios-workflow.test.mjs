@@ -786,3 +786,122 @@ test("the artifact upload path is exactly the report directory, not all of RUNNE
   assert.match(pathLine, /path:\s*\$\{\{\s*runner\.temp\s*\}\}\/ios-ci\s*$/, `upload path is ${pathLine.trim()}`);
   assert.equal(/\*/.test(pathLine), false, "no glob in the upload path — it would sweep in $WORK");
 });
+
+/* ─────── the two edits Capacitor does not make, and CI used never to ─────── */
+
+test("the encryption declaration is injected by the tested script and read back by Apple's", () => {
+  /* Apple told the founder on 2026-09-03 that a build with no encryption can say
+     so in the Info.plist and stop answering the questionnaire on every upload.
+     The failure mode of getting this wrong is not a red build — it is a
+     questionnaire that keeps coming back with nothing anywhere saying why — so the
+     step needs the same three independent confirmations the background-audio one
+     has, and a `sed` would have none of them.
+     MUTATION: drop `--encryption false` from the injection line -> fails on the
+     first assertion. Replace the PlistBuddy line with a `grep` of the plist ->
+     fails on the second. RUN. */
+  const s = step(WF, "Declare no non-exempt encryption") ?? "";
+  assert.ok(s, "the encryption step is gone");
+  assert.match(s, /node tools\/mobile\/inject-background-audio\.mjs "\$INFO_PLIST" --encryption false/);
+  assert.match(s, /PlistBuddy -c "Print :ITSAppUsesNonExemptEncryption"/,
+    "Apple's own parser must be the second opinion on our output");
+  assert.match(s, /plutil -lint "\$INFO_PLIST"/);
+  assert.match(s, /--check --encryption false/, "the injection is never re-read through our own parser");
+  /* The grep must pin the VALUE. `grep -q false` on a file containing `true`
+     fails, but a bare `grep .` would pass on either — and `true` is the opposite
+     legal declaration. */
+  assert.match(s, /grep -qx "false"/, "the declared value is never checked, only its presence");
+  assert.equal(/sed -i/.test(s), false, "the plist must not be edited with sed");
+});
+
+test("the app icon is injected by the tested script, not copied to a guessed filename", () => {
+  /* THE BUG THIS STEP EXISTS FOR: `cap add ios` writes Capacitor's placeholder
+     AppIcon.appiconset and this workflow archived it, so a build reached
+     TestFlight wearing it. The obvious fix is
+     `cp icon-1024.png .../AppIcon-512@2x.png` — and that filename is a Capacitor
+     TEMPLATE detail that has already changed once between major versions. A copy
+     to a name the catalog no longer declares leaves the placeholder in place and
+     ships green.
+     MUTATION: replace the two `node tools/mobile/inject-app-icon.mjs` lines with
+     that `cp` -> fails on the first assertion and on the `--check` one. RUN. */
+  const s = step(WF, "Put the REAL app icon") ?? "";
+  assert.ok(s, "the app-icon step is gone");
+  assert.match(s, /node tools\/mobile\/inject-app-icon\.mjs "\$APPICONSET"/);
+  assert.match(s, /node tools\/mobile\/inject-app-icon\.mjs "\$APPICONSET" --check/,
+    "the write is never re-read");
+  assert.match(s, /plutil -lint "\$APPICONSET\/Contents\.json"/,
+    "Apple's own parser is not asked about the manifest we just read");
+  /* No line in the step may copy the icon into the catalog by hand. `cp` of
+     Contents.json OUT to the artifact directory is fine and is why this is scoped
+     to lines that mention the source icon. */
+  const byHand = s.split(/\r?\n/).filter((l) => /^\s*(cp|ditto|install|rsync)\b/.test(l) && /icon-1024/.test(l));
+  assert.deepEqual(byHand, [], `the icon is copied by hand rather than through the script:\n  ${byHand.join("\n  ")}`);
+});
+
+test("`APPICONSET` is inside the generated project, derived rather than retyped", () => {
+  /* A path pointing at a directory `cap add ios` did not generate makes
+     `inject-app-icon.mjs` fail loudly (it refuses a directory with no
+     Contents.json), which is the right outcome — but only if the path is wrong in
+     an obvious way. This pins it against $IOS_DIR, the same job env the rest of the
+     workflow addresses the generated project with, so the two cannot drift into
+     naming different checkouts.
+     MUTATION: change APPICONSET to `ios/App/App/Assets.xcassets/AppIcon.appiconset`
+     (the SwiftUI scaffold, which this workflow asserts Capacitor must never
+     generate into) -> fails. RUN. */
+  const iosDir = /^\s*IOS_DIR:\s*(\S+)\s*$/m.exec(WF)?.[1];
+  const appIconSet = /^\s*APPICONSET:\s*(\S+)\s*$/m.exec(WF)?.[1];
+  assert.ok(iosDir, "the workflow no longer sets IOS_DIR");
+  assert.ok(appIconSet, "the workflow no longer sets APPICONSET, but the icon step is given $APPICONSET");
+  assert.ok(
+    appIconSet.startsWith(`${iosDir}/`),
+    `APPICONSET is ${appIconSet}, which is not inside IOS_DIR (${iosDir})`
+  );
+  assert.match(appIconSet, /Assets\.xcassets\/AppIcon\.appiconset$/);
+});
+
+test("both generated-project edits happen AFTER `cap add ios` and BEFORE any build", () => {
+  /* THE ORDER IS THE WHOLE THING, and neither edit is visible in the build's
+     output when it is wrong. `npm run add:ios` GENERATES the project, so an edit
+     before it writes into a directory that is about to be replaced — or does not
+     exist. A build before the edits compiles the placeholder icon and a plist with
+     no background mode and no encryption declaration, and every check stays green.
+     Nothing in this file pinned the order until now.
+     MUTATION: move either edit step below "Build for the iOS Simulator" -> fails,
+     naming which one. RUN. */
+  const at = (fragment) => {
+    const i = WF.indexOf(`- name: ${fragment}`);
+    assert.ok(i > 0, `step not found: ${fragment}`);
+    return i;
+  };
+  const generate = at("Build the webDir and generate the iOS project");
+  const build = at("Build for the iOS Simulator");
+  for (const edit of [
+    "Add UIBackgroundModes -> audio",
+    "Declare no non-exempt encryption",
+    "Put the REAL app icon",
+  ]) {
+    assert.ok(at(edit) > generate, `"${edit}" runs before the project it edits is generated`);
+    assert.ok(at(edit) < build, `"${edit}" runs after the build that would have used it`);
+  }
+});
+
+test("the built bundle is checked for the icon, not only the source catalog", () => {
+  /* TWO DIFFERENT CLAIMS. `--check` says our bytes are in the SOURCE catalog;
+     this says `actool` compiled them into the BUNDLE. Between them sits a whole
+     class of failure no source-side check can see — a catalog Xcode never looked
+     at, a wrong ASSETCATALOG_COMPILER_APPICON_NAME — and each one produces a green
+     build with a placeholder on the home screen AND on the App Store product page,
+     which since Xcode 14 is extracted from this same catalog with no manual upload
+     available to fix it.
+     MUTATION: delete the `test -f "$APP/Assets.car"` line -> fails. RUN. */
+  const s = step(WF, "Assert the icon really reached the BUILT asset catalog") ?? "";
+  assert.ok(s, "nothing checks the built bundle for the icon");
+  assert.match(s, /test -f "\$APP\/Assets\.car"/, "the compiled asset catalog is never checked for");
+  assert.match(s, /PlistBuddy -c "Print :CFBundleIconName"/,
+    "the built Info.plist's icon name is never read with Apple's own parser");
+  assert.match(s, /assetutil --info/, "Apple's own catalog reader is never asked");
+  assert.equal(
+    /continue-on-error/.test(s),
+    false,
+    "the built-catalog assertion carries continue-on-error, so a missing icon would not fail the job"
+  );
+});

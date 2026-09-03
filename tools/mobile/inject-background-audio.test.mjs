@@ -15,13 +15,19 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
+import fs from "node:fs";
 
 import {
   BACKGROUND_AUDIO_MODE,
+  NON_EXEMPT_ENCRYPTION_KEY,
   PlistError,
+  assertEncryptionDeclared,
   assertModePresent,
   backgroundModes,
   injectBackgroundAudio,
+  injectNonExemptEncryption,
+  nonExemptEncryption,
+  parseEncryptionFlag,
   rootEntries,
 } from "./inject-background-audio.mjs";
 
@@ -345,4 +351,251 @@ test("assertModePresent is a real function, and it rejects what it should", () =
   );
   assert.throws(() => assertModePresent(withLocationOnly, "audio"), /does not include "audio"/);
   assert.deepEqual(assertModePresent(injectBackgroundAudio(CAPACITOR_PLIST).xml, "audio"), ["audio"]);
+});
+
+/* ═══════════════ the export-compliance declaration (2026-09-03) ═══════════════
+ *
+ * Apple, to the founder, verbatim: "Since your build doesn't contain encryption,
+ * you can specify this in the information property list (Info.plist) in your
+ * Xcode project to avoid answering encryption questions with each app
+ * submission." `ITSAppUsesNonExemptEncryption` is that key.
+ *
+ * These tests cover the SECOND edit this file makes, and they are deliberately
+ * shaped like the ones above rather than trimmed: the value is a boolean instead
+ * of an array, but every failure mode is the same one — a nested key read as a
+ * root key, two root keys where readers take the last, an edit that reports
+ * success and writes nothing.
+ *
+ * THE ONE THAT IS NOT SHAPED LIKE THE OTHERS is "an existing `true` is refused".
+ * `injectBackgroundAudio` MERGES with what it finds because a mode somebody added
+ * is data. A `true` here is not data, it is a legal statement about the binary,
+ * and a script that flips it to `false` because CI asked has made a false
+ * declaration in a store submission on somebody's behalf.
+ */
+
+test("a freshly generated plist declares no encryption either way", () => {
+  /* The premise. If Capacitor ever starts writing this key, the flag becomes a
+     no-op that should be deleted rather than left to disagree with them.
+     MUTATION: `if (!hits.length) return false;` in nonExemptEncryption -> fails
+     here (null vs false). RUN. */
+  assert.equal(nonExemptEncryption(CAPACITOR_PLIST), null);
+});
+
+test("the encryption key name is the one Apple documents", () => {
+  /* Pinned rather than inlined, exactly like BACKGROUND_AUDIO_MODE above: a typo
+     here is a key App Store Connect does not read, so the submission questionnaire
+     comes back on every upload and nothing anywhere says why.
+     MUTATION: drop the leading "ITS" -> fails. RUN. */
+  assert.equal(NON_EXEMPT_ENCRYPTION_KEY, "ITSAppUsesNonExemptEncryption");
+});
+
+test("injecting declares ITSAppUsesNonExemptEncryption = false", () => {
+  /* MUTATION: write `<${!value}/>` in the block template -> the re-parse inside
+     injectNonExemptEncryption throws "the edit did not take". RUN. */
+  const r = injectNonExemptEncryption(CAPACITOR_PLIST);
+  assert.equal(r.changed, true);
+  assert.equal(r.value, false);
+  assert.equal(nonExemptEncryption(r.xml), false);
+});
+
+test("`true` can be declared too, so the function is not a one-value special case", () => {
+  /* The app has no encryption today; if it ever gains some, the honest
+     declaration is this one and it must not require rewriting the script.
+     MUTATION: hardcode `false` in place of `value` in the block template -> fails. RUN. */
+  const r = injectNonExemptEncryption(CAPACITOR_PLIST, true);
+  assert.equal(nonExemptEncryption(r.xml), true);
+});
+
+test("the encryption edit leaves everything else byte-for-byte alone", () => {
+  /* Same argument as the UIBackgroundModes version above: `$(EXECUTABLE_NAME)`
+     and friends must survive, so the edit is a splice, not a reserialise.
+     MUTATION: rebuild the plist from a parsed model anywhere in the path -> fails. RUN. */
+  const r = injectNonExemptEncryption(CAPACITOR_PLIST);
+  const removed = r.xml.replace(
+    /\t<key>ITSAppUsesNonExemptEncryption<\/key>\n\t<false\/>\n/,
+    ""
+  );
+  assert.equal(removed, CAPACITOR_PLIST);
+});
+
+test("the inserted declaration matches the file's own indentation", () => {
+  /* MUTATION: return "\t" unconditionally from rootIndent -> the spaces half fails. RUN. */
+  const r = injectNonExemptEncryption(CAPACITOR_PLIST);
+  assert.match(r.xml, /\n\t<key>ITSAppUsesNonExemptEncryption<\/key>\n\t<false\/>\n<\/dict>/);
+  const spaces = CAPACITOR_PLIST.replace(/\t/g, "    ");
+  const rs = injectNonExemptEncryption(spaces);
+  assert.match(rs.xml, /\n    <key>ITSAppUsesNonExemptEncryption<\/key>\n    <false\/>\n<\/dict>/);
+});
+
+test("declaring it twice changes nothing the second time", () => {
+  /* CI re-runs and `cap sync` regenerates. A second declaration would be the
+     duplicate-key failure this file refuses two tests below.
+     MUTATION: delete the `existing === value` early return -> the second call
+     appends a second key and `nonExemptEncryption` throws "declares ... 2 times". RUN. */
+  const once = injectNonExemptEncryption(CAPACITOR_PLIST);
+  const twice = injectNonExemptEncryption(once.xml);
+  assert.equal(twice.changed, false);
+  assert.equal(twice.xml, once.xml);
+  assert.equal(twice.value, false);
+});
+
+test("an existing `true` is REFUSED, never quietly flipped to false", () => {
+  /* THE ONE THAT IS NOT LIKE THE OTHERS. `injectBackgroundAudio` MERGES with what
+     it finds, because a mode somebody added is data. A `true` here is not data, it
+     is a legal statement about the binary, and a script that overwrites it has
+     made a false declaration in a store submission on somebody's behalf. Refusing
+     IS the behaviour, and it is one `if` from its opposite.
+     MUTATION: replace the throw with a fall-through to the insertion -> fails. RUN. */
+  const declaredTrue = CAPACITOR_PLIST.replace(
+    "\t<key>UIViewControllerBasedStatusBarAppearance</key>",
+    "\t<key>ITSAppUsesNonExemptEncryption</key>\n\t<true/>\n\t<key>UIViewControllerBasedStatusBarAppearance</key>"
+  );
+  assert.equal(nonExemptEncryption(declaredTrue), true);
+  assert.throws(() => injectNonExemptEncryption(declaredTrue, false), /will not flip an/);
+  /* And the same in the other direction, so the rule is about DISAGREEMENT
+     rather than about the word "true". */
+  const declaredFalse = CAPACITOR_PLIST.replace(
+    "\t<key>UIViewControllerBasedStatusBarAppearance</key>",
+    "\t<key>ITSAppUsesNonExemptEncryption</key>\n\t<false/>\n\t<key>UIViewControllerBasedStatusBarAppearance</key>"
+  );
+  assert.throws(() => injectNonExemptEncryption(declaredFalse, true), /will not flip an/);
+  assert.equal(injectNonExemptEncryption(declaredFalse, false).changed, false);
+});
+
+test("a nested ITSAppUsesNonExemptEncryption is NOT mistaken for the root one", () => {
+  /* THE DECOY, for the same reason the UIBackgroundModes one exists:
+     `/ITSAppUsesNonExemptEncryption/.test(xml)` is true here, and a script that
+     trusted it would decide the declaration exists, write nothing, exit 0 — and
+     every submission would still ask the encryption questions, with CI green.
+     MUTATION: have nonExemptEncryption test the raw XML with a regex instead of
+     walking rootEntries -> fails on the first assertion. RUN. */
+  const nested = CAPACITOR_PLIST.replace(
+    "\t<key>UIViewControllerBasedStatusBarAppearance</key>",
+    "\t<key>NSAppTransportSecurity</key>\n" +
+      "\t<dict>\n" +
+      "\t\t<key>ITSAppUsesNonExemptEncryption</key>\n\t\t<true/>\n" +
+      "\t\t<key>NSAllowsArbitraryLoads</key>\n\t\t<false/>\n" +
+      "\t</dict>\n" +
+      "\t<key>UIViewControllerBasedStatusBarAppearance</key>"
+  );
+  assert.equal(nonExemptEncryption(nested), null, "a nested key was read as a root key");
+  const r = injectNonExemptEncryption(nested);
+  assert.equal(r.changed, true);
+  /* And it landed at the ROOT: the root dict gained exactly one key, and the
+     nested dict still has its two. */
+  const rootKeys = rootEntries(r.xml).entries.map((e) => e.key);
+  assert.ok(rootKeys.includes("ITSAppUsesNonExemptEncryption"));
+  assert.equal(rootKeys.length, 14);
+});
+
+test("two root-level encryption declarations are refused, not read as one", () => {
+  /* Plist readers, Apple's included, take the LAST. A `.find()` here would report
+     the first, agree with itself on re-parse, and describe a value nothing reads.
+     MUTATION: `hits.length > 2` -> fails. RUN. */
+  const twice = CAPACITOR_PLIST.replace(
+    "\t<key>UIViewControllerBasedStatusBarAppearance</key>",
+    "\t<key>ITSAppUsesNonExemptEncryption</key>\n\t<true/>\n" +
+      "\t<key>ITSAppUsesNonExemptEncryption</key>\n\t<false/>\n" +
+      "\t<key>UIViewControllerBasedStatusBarAppearance</key>"
+  );
+  assert.throws(() => nonExemptEncryption(twice), /declares ITSAppUsesNonExemptEncryption 2 times/);
+  assert.throws(() => injectNonExemptEncryption(twice), /2 times/);
+});
+
+test("a declaration that is not a boolean is refused, in both directions", () => {
+  /* `<string>false</string>` is the shape a hand-edit produces, and it is not a
+     boolean — App Store Connect does not read it as one. Reading it and writing it
+     must agree about that.
+     MUTATION: delete the tag-name check in nonExemptEncryption -> it returns
+     `"string" === "true"`, i.e. false, and both assertions fail. RUN. */
+  const wrong = CAPACITOR_PLIST.replace(
+    "\t<key>UIViewControllerBasedStatusBarAppearance</key>",
+    "\t<key>ITSAppUsesNonExemptEncryption</key>\n\t<string>false</string>\n\t<key>UIViewControllerBasedStatusBarAppearance</key>"
+  );
+  assert.throws(() => nonExemptEncryption(wrong), /Apple requires a boolean/);
+  assert.throws(() => injectNonExemptEncryption(wrong), /Apple requires a boolean/);
+});
+
+test("a non-boolean argument is refused rather than coerced", () => {
+  /* `injectNonExemptEncryption(xml, "false")` must not write `<false/>` by
+     accident of truthiness — same class of bug as the CLI parse below.
+
+     THE MESSAGE IS ASSERTED, NOT ONLY THE CLASS, AND A MUTATION ROUND IS WHY. With
+     the guard removed the call still throws PlistError, so `assert.throws(...,
+     PlistError)` passed and the mutation SURVIVED — but it throws from the
+     downstream re-parse, saying "the edit did not take ... This is a bug in this
+     script", i.e. it blames itself for the caller's argument, AFTER splicing
+     `<[object Object]/>` into the XML. Same class, wrong diagnosis, and the file
+     already touched.
+     MUTATION: drop the `typeof value !== "boolean"` guard -> fails on the message. RUN. */
+  for (const bad of ["false", "true", 0, 1, null, {}]) {
+    assert.throws(
+      () => injectNonExemptEncryption(CAPACITOR_PLIST, bad),
+      /must be a boolean, got/,
+      `accepted ${JSON.stringify(bad)}`
+    );
+    assert.throws(() => injectNonExemptEncryption(CAPACITOR_PLIST, bad), PlistError);
+  }
+  /* `undefined` is NOT in that list, deliberately: it takes the default
+     parameter, which is `false` — the one value this script is here to write. */
+  assert.equal(injectNonExemptEncryption(CAPACITOR_PLIST, undefined).value, false);
+  assert.throws(() => injectNonExemptEncryption("", false), /empty plist source/);
+});
+
+test("assertEncryptionDeclared is a real function, and it rejects what it should", () => {
+  /* THE ANTI-FAILS-GREEN GUARD, named and tested for the same reason
+     `assertModePresent` above is: the inline version of that one was replaced with
+     `if (false)` in this file's own history and every test stayed green, while its
+     comment says that without it every failure degrades to "returned the input
+     unchanged and said it worked".
+     MUTATION: `return got;` as the first line of assertEncryptionDeclared ->
+     the two `assert.throws` here fail. RUN. */
+  assert.throws(() => assertEncryptionDeclared(CAPACITOR_PLIST, false), /the edit did not take/);
+  const declaredTrue = CAPACITOR_PLIST.replace(
+    "\t<key>UIViewControllerBasedStatusBarAppearance</key>",
+    "\t<key>ITSAppUsesNonExemptEncryption</key>\n\t<true/>\n\t<key>UIViewControllerBasedStatusBarAppearance</key>"
+  );
+  assert.throws(() => assertEncryptionDeclared(declaredTrue, false), /reads true after/);
+  assert.equal(assertEncryptionDeclared(injectNonExemptEncryption(CAPACITOR_PLIST).xml, false), false);
+});
+
+test("--encryption parses ONLY the two exact words, and never guesses", () => {
+  /* THE CLI'S OWN HOLE, and worth a test because JavaScript's truthiness is
+     exactly wrong here: `Boolean("fasle")` is `true`, which is the OPPOSITE legal
+     declaration, written silently into a file Apple reads, on a green run. `"0"`,
+     `"no"` and `""` are in the list because a shell user will type them.
+     MUTATION: `return raw !== "false";` -> every case below except "false" comes
+     back true instead of null, and this fails. RUN. */
+  assert.equal(parseEncryptionFlag("false"), false);
+  assert.equal(parseEncryptionFlag("true"), true);
+  for (const bad of ["False", "TRUE", "0", "1", "no", "yes", "", " false", "false ", undefined]) {
+    assert.equal(parseEncryptionFlag(bad), null, `parsed ${JSON.stringify(bad)} as a boolean`);
+  }
+});
+
+test("the reason the answer is `false` is written down beside the key", () => {
+  /* NOT DECORATION, AND DELIBERATELY A TEST. `ITSAppUsesNonExemptEncryption` is a
+     legal statement about the binary, and what makes it true is a set of facts
+     about today's code: the only crypto call in shipped code is
+     `crypto.subtle.digest` in sw.js (a HASH for cache integrity, WebKit's
+     implementation), HTTPS is the OS's, the root package.json declares zero
+     dependencies, and nothing under mobile/ links a crypto library. Add an
+     encryption library tomorrow and `false` becomes untrue while every other test
+     in this file still passes — so the only defence is that the next reader finds
+     the reasoning attached to the key instead of having to reconstruct it.
+     MUTATION: delete the "WHY THIS IS HERE (2026-09-03)" block from
+     inject-background-audio.mjs -> fails. RUN. */
+  const src = fs.readFileSync(new URL("./inject-background-audio.mjs", import.meta.url), "utf8");
+  const why = src.slice(
+    src.indexOf("export-compliance declaration"),
+    src.indexOf("export const NON_EXEMPT_ENCRYPTION_KEY")
+  );
+  assert.match(why, /crypto\.subtle\.digest/, "the one crypto call in shipped code is not named");
+  assert.match(why, /sw\.js/);
+  assert.match(why, /zero dependencies/i);
+  assert.match(
+    why,
+    /REVISIT IT IF THE APP GAINS REAL CRYPTO/,
+    "nothing tells the next reader when this declaration stops being true"
+  );
 });
