@@ -2197,7 +2197,7 @@ use" submission error is gone.
 
 ---
 
-### 35. Label PR #450 `founder-approved` (touches the `tools/test-search.mjs` gate)
+### 36. Label PR #450 `founder-approved` (touches the `tools/test-search.mjs` gate)
 
 **Tag:** `[UPGRADE]` · **Time:** ~1 minute · **Owner:** Joey or Wyatt
 
@@ -2244,7 +2244,7 @@ the inline comments in the file for the exact numbers.
 
 ---
 
-### 36. Merge PR #429 (Stage 3b full-catalogue RSS ingestion) — first Vercel serverless function, needs Wyatt's architecture sign-off
+### 35. Merge PR #429 (Stage 3b full-catalogue RSS ingestion) — first Vercel serverless function, needs Wyatt's architecture sign-off
 
 **Tag:** `[BLOCKING]` for the "universal in-app playability" card · **Time:** ~10 minutes review · **Owner:** Wyatt (per `docs/roles.md` / registry `architecture_infra_ci_secrets` human gate)
 

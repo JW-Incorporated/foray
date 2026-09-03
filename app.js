@@ -1607,7 +1607,7 @@ function buildPlaylist(query) {
   let cached = searchCache.get(cacheKey);
   if (!cached) {
     const { results } = SearchEngine.searchWithRelaxation(pool, interp, 2, state.itemTags, interestScore);
-    cached = { interp, results };
+    cached = { results };
     if (searchCache.size >= SEARCH_CACHE_MAX) searchCache.clear();
     searchCache.set(cacheKey, cached);
   }
@@ -4418,9 +4418,15 @@ async function deleteMyData({ deviceOnly = false } = {}) {
        a resume rail and thumbs that no longer exist anywhere. Interests are reset
        to taxonomy defaults, which `loadInterests` does WITHOUT writing.
        `buildCards()` is deliberately not called: it writes `cp_recent_branches`
-       and `cp_seen`, which would put two of the 20 keys straight back. */
+       and `cp_seen`, which would put two of the 20 keys straight back.
+       Bump `_interestsGen` here too, same as nudgeTopics does on every
+       pick/play/thumbs — otherwise buildPlaylist's `searchCache` (keyed on
+       [query, familyMode, _interestsGen]) would happily serve back a
+       pre-wipe, interest-ranked result for the exact same query, silently
+       undercutting "reset personalization". */
     state.interests = {};
     loadInterests();
+    state._interestsGen = (state._interestsGen || 0) + 1;
     state.forayResume = null;
     state.forayPlaying = null;
     state.foray = null;
