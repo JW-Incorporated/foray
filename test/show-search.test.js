@@ -159,10 +159,10 @@ const PAGE_IDS = [
   "view", "drawer", "drawer-overlay", "drawer-playlists", "family-toggle",
   "player-toggle", "menu-btn", "refresh-btn", "banner-slot", "pl-form",
   "pl-input", "pl-note", "tab-topics", "tab-shows", "sh-form", "sh-input",
-  "sh-note", "sh-results",
+  "sh-note", "sh-results", "browse-all-link",
 ];
 
-function mount({ seed = {} } = {}) {
+function mount({ seed = {}, fetchImpl = () => new Promise(() => {}) } = {}) {
   const store = new Map(Object.entries(seed).map(([k, v]) => [k, String(v)]));
   const byId = new Map(PAGE_IDS.map((id) => {
     const el = makeEl("div");
@@ -174,7 +174,7 @@ function mount({ seed = {} } = {}) {
 
   const ctx = {
     console: { ...console, warn() {}, error() {} },
-    fetch: () => new Promise(() => {}),
+    fetch: fetchImpl,
     localStorage: {
       get length() { return store.size; },
       key: (i) => [...store.keys()][i] ?? null,
@@ -323,4 +323,127 @@ test("submitting a junk query in shows-search mode renders an honest empty state
   assert.strictEqual(results.hidden, true, "must not show a results block for a no-match query");
   assert.strictEqual(note.hidden, false, "must show the honest empty-state note");
   assert.ok(note.textContent.includes("zzz-nonsense-query-zzz"), "empty state must name the query, not generic filler text");
+});
+
+/* ==================================================================== */
+/* 4. A3.1/Q3 — REACHING THE FULL BREADTH CATALOGUE VIA /api/shows/search */
+/* ==================================================================== */
+
+function mockFetch(handler) {
+  return (url) => Promise.resolve(handler(String(url)));
+}
+function jsonResponse(body) {
+  return { ok: true, status: 200, json: async () => body };
+}
+
+test("a breadth-tier show absent from the curated catalogue is appended once the backend endpoint responds", async () => {
+  /* MUTATION: drop the `fetchJson(...).then(...)` call from
+     renderShowSearchResults (or its `additions` accumulation). The breadth
+     show's row would never appear, and this assertion fails. */
+  const m = mount({
+    fetchImpl: mockFetch((url) => {
+      if (url.startsWith("api/shows/search")) {
+        return jsonResponse({
+          query: "science",
+          shows: [{ show_id: "999999", title: "Science Friday", artwork_url: null, tier: "breadth" }],
+          degraded: false,
+        });
+      }
+      return { ok: false, status: 404, json: async () => null };
+    }),
+  });
+  m.state.catalog = { shows: [] }; // curated catalogue has nothing named "science" — forces the breadth path
+  m.state.discover = { items: [] };
+  m.state.cardSlots = [];
+  m.state.session = { session_id: "s-1", builder: "test", episodes: {}, cards: [] };
+  withClickable(m.byId.get("tab-topics"));
+  withClickable(m.byId.get("tab-shows"));
+  withSubmittable(m.byId.get("pl-form"));
+  const shForm = withSubmittable(m.byId.get("sh-form"));
+  m.byId.get("sh-input").value = "science";
+
+  m.ctx.renderHome();
+  shForm.submit();
+
+  // The curated-first pass paints synchronously with zero results (empty
+  // state); the breadth fetch resolves on a microtask, so give it one.
+  await new Promise((r) => setTimeout(r, 0));
+  await new Promise((r) => setTimeout(r, 0));
+
+  const results = m.byId.get("sh-results");
+  assert.strictEqual(results.hidden, false, "results block must become visible once the breadth result lands");
+  assert.ok(results.innerHTML.includes("Science Friday"), "must render the breadth-tier show's title");
+  assert.ok(results.innerHTML.includes('href="#/show/999999"'), "must link to the breadth show's #/show/:id page");
+});
+
+test("a breadth result is cached so showById can resolve it for the show page", () => {
+  /* MUTATION: remove the `state.breadthShowCache[s.show_id] = s` line —
+     showById would then fail to resolve a breadth-tier show_id, and
+     renderShow would render "Show not found" for a show the search just
+     surfaced, even though the search endpoint proved it exists. */
+  const m = mount();
+  m.state.breadthShowCache = { "555555": { show_id: "555555", title: "Deep Sea Hour", tier: "breadth" } };
+  const found = m.ctx.showById("555555");
+  assert.ok(found, "showById must resolve a show_id from the breadth cache");
+  assert.strictEqual(found.title, "Deep Sea Hour");
+});
+
+test("curated catalogue results still resolve first — the breadth fetch never overwrites an already-found curated match", () => {
+  /* MUTATION: change renderShowSearchResults to always overwrite results
+     with the breadth response instead of appending non-duplicate entries.
+     A curated show_id would then be replaced by a differently-shaped
+     breadth-endpoint record and this dedupe assertion fails. */
+  const m = mount({
+    fetchImpl: mockFetch((url) => {
+      if (url.startsWith("api/shows/search")) {
+        return jsonResponse({
+          query: "lex",
+          shows: [{ show_id: "lex-fridman-podcast", title: "Lex Fridman Podcast (breadth copy)", tier: "breadth" }],
+          degraded: false,
+        });
+      }
+      return { ok: false, status: 404, json: async () => null };
+    }),
+  });
+  m.state.catalog = { shows: [{ show_id: "lex-fridman-podcast", title: "Lex Fridman Podcast", artwork_url: null }] };
+  m.state.discover = { items: [] };
+  m.state.cardSlots = [];
+  m.state.session = { session_id: "s-1", builder: "test", episodes: {}, cards: [] };
+  withClickable(m.byId.get("tab-topics"));
+  withClickable(m.byId.get("tab-shows"));
+  withSubmittable(m.byId.get("pl-form"));
+  const shForm = withSubmittable(m.byId.get("sh-form"));
+  m.byId.get("sh-input").value = "lex";
+
+  m.ctx.renderHome();
+  shForm.submit();
+
+  const results = m.byId.get("sh-results");
+  assert.ok(results.innerHTML.includes("Lex Fridman Podcast"), "curated title must be present");
+  assert.ok(!results.innerHTML.includes("(breadth copy)"), "must not duplicate the same show_id from the breadth response");
+});
+
+test("a failed breadth fetch degrades silently to the curated-only results, never a crash or broken state", async () => {
+  /* MUTATION: remove fetchJson's internal try/catch (or add an unguarded
+     .catch-less chain here) — a rejected fetch would then produce an
+     unhandled rejection instead of leaving the curated results as-is. */
+  const m = mount({
+    fetchImpl: mockFetch(() => { throw new Error("network down"); }),
+  });
+  m.state.catalog = { shows: [{ show_id: "lex-fridman-podcast", title: "Lex Fridman Podcast", artwork_url: null }] };
+  m.state.discover = { items: [] };
+  m.state.cardSlots = [];
+  m.state.session = { session_id: "s-1", builder: "test", episodes: {}, cards: [] };
+  withClickable(m.byId.get("tab-topics"));
+  withClickable(m.byId.get("tab-shows"));
+  withSubmittable(m.byId.get("pl-form"));
+  const shForm = withSubmittable(m.byId.get("sh-form"));
+  m.byId.get("sh-input").value = "fridman";
+
+  m.ctx.renderHome();
+  assert.doesNotThrow(() => shForm.submit());
+
+  const results = m.byId.get("sh-results");
+  assert.strictEqual(results.hidden, false, "curated match must still render despite the breadth fetch failing");
+  assert.ok(results.innerHTML.includes("Lex Fridman Podcast"), "curated result must still be present");
 });

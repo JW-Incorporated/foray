@@ -32,6 +32,23 @@ export interface CostEventSink {
   record(input: CostEventInput): Promise<CostEventRecord>;
   sumUsdSince(userId: string, sinceIso: string): Promise<number>;
   sumUsdSinceByTier?(userId: string, sinceIso: string, operationPrefix: string): Promise<number>;
+  /**
+   * Sum of estimatedUsd for all cost events sharing the given sessionId,
+   * across all time. `sessionId` (not `episodeId`) is the id that scopes
+   * "one Foray's generation run" — the 4 generation-pipeline builders
+   * (AnthropicPromptUnderstander, AnthropicSpineBuilder,
+   * AnthropicDeepenActBuilder, AnthropicExternalResearcher) all populate
+   * `sessionId: ctx.sessionId` for exactly this purpose. `episodeId` is
+   * already a distinct, populated concept — the *catalogue* episode being
+   * enriched by the separate enrichment pipeline (enrich/AnthropicEnricher.ts,
+   * enrich/Enricher.ts) — so reusing it here would collide two unrelated
+   * ids. A Foray's generation run is bounded in wall-clock duration, so no
+   * "since" cutoff is needed the way the daily user cap needs one.
+   * Optional: sinks that don't implement this can't back the per-episode
+   * (per-Foray) budget path in BudgetGuard, which then degrades to a
+   * no-op for that path — existing daily-cap behavior is unaffected.
+   */
+  sumUsdBySession?(sessionId: string): Promise<number>;
   all(): Promise<CostEventRecord[]>;
 }
 
@@ -64,6 +81,10 @@ export class InMemoryCostEventSink implements CostEventSink {
         (e) => e.userId === userId && new Date(e.ts).getTime() >= since && e.operation.startsWith(operationPrefix)
       )
       .reduce((sum, e) => sum + e.estimatedUsd, 0);
+  }
+
+  async sumUsdBySession(sessionId: string): Promise<number> {
+    return this.events.filter((e) => e.sessionId === sessionId).reduce((sum, e) => sum + e.estimatedUsd, 0);
   }
 
   async all(): Promise<CostEventRecord[]> {

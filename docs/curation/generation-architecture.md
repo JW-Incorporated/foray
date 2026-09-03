@@ -24,7 +24,9 @@ generator needs a schema change, that is a finding to surface, not a liberty to 
 
 **Your job when handed this document:** turn a named section into a spec with acceptance criteria,
 or implement a section that already has one. Do not implement across section boundaries in one PR.
-Anything in §9 is unresolved and must not be built until it is ruled on.
+Anything in §9 marked **Open** is unresolved and must not be built until it is ruled on. An item
+marked **Resolved** below (with a dated ruling) has been ruled on and is buildable against that
+ruling — §9's own "Resolved" notes say so explicitly where they apply.
 
 ---
 
@@ -84,7 +86,7 @@ user, not just a founder, can prompt a Foray:
 |---|---|---|---|
 | synthesis cost at 10,000 user Forays | `on-device-tts.md` §6.1: **$9,900–$59,100**, recurring on every re-narration | **~$0** (electricity), per `self-hosted-tts.md` §3 | **$0**, always |
 | hosting/egress cost | `on-device-tts.md` §6.1: real audio files, egress ceiling hit by *play* volume, not just creation count | same as ElevenLabs — Kokoro still renders a server-side audio file | **$0** — ~20 KB of script text ships in data already bundled, per `on-device-tts.md` §5 |
-| pronunciation control | Documented, per `narrator-voice.md` §3.2 (pinned voice ID) | Documented, per `self-hosted-tts.md` §2.1 (misaki inline IPA) | Documented on iOS (`AVSpeechSynthesisIPANotationAttribute`, `on-device-tts.md` §1); undocumented on Android (`on-device-tts.md` §2) — closed by the acceptance fixture in §9.4 below, not by this ruling |
+| pronunciation control | Documented, per `narrator-voice.md` §3.2 (pinned voice ID) | Documented, per `self-hosted-tts.md` §2.1 (misaki inline IPA) | Documented on iOS (`AVSpeechSynthesisIPANotationAttribute`, `on-device-tts.md` §1); undocumented on Android (`on-device-tts.md` §2) — closed by the acceptance fixture in `on-device-tts.md` §9.4, not by this ruling |
 | voice-identity risk | Vendor can retire the pinned voice class (ElevenLabs did, Dec 2026 Default retirement, `narrator-voice.md` §3.2) | None — Joey owns the weights file | None for user-created content — every listener hearing their own device's voice is the expected behaviour for a personal narration feature, not a defect (`on-device-tts.md` §4) |
 | review gate | Requires per-beat human listening before it ships (`narrator-pipeline.md`, `self-hosted-tts.md` §4) | Same | Not possible to review per-listener-device output before playback — and, per `on-device-tts.md` §5, that review step was never staffable at "unlimited user-created" volume regardless of engine, so this is not a regression the ruling introduces |
 
@@ -98,8 +100,9 @@ different question (which paid/self-hosted voice to buy) that this ruling supers
 
 **(b) The designated fallback if §9.1 fails.**
 
-If the native-plugin locked-screen measurement in §9.4 below comes back negative (narration
-audibly stops when the screen locks and the audio-session fix in §9.4 does not resolve it), the
+If the native-plugin locked-screen measurement in `on-device-tts.md` §9.4 comes back negative
+(narration audibly stops when the screen locks and the audio-session fix in that section does not
+resolve it), the
 fallback is **self-hosted Kokoro-82M — not ElevenLabs.** This is not a new call; it is the
 conclusion `on-device-tts.md` §6.2 already reached and this ruling adopts it explicitly: Kokoro
 is the only alternative with both a comparable documented pronunciation-control mechanism
@@ -228,9 +231,22 @@ A generation request is:
 | Medium | ~60 min | 3–4 | 5–7 | 28–36 | The proven shape |
 | Long | up to ~180 min | 5–7 | 12–18 | 80–110 | Unproven at every layer |
 
-Treat these as budgets the planner must hit, not as outputs to measure afterwards. A Foray that
-overshoots its duration by 40% is a defect, because the duration option is the listener saying how
-much time they have.
+Treat these as budgets the planner must hit, not as outputs to measure afterwards. Overshoot is
+never justified — a Foray that overshoots at all beyond §8's ±15% tolerance is a defect, because the
+duration option is the listener saying how much time they have. (An earlier draft of this document
+cited a 40%-overshoot example as a motivating case; that framing implied a second, looser tolerance
+and has been removed — ±15% is the one and only overshoot bound.)
+
+**Undershoot has exactly one sanctioned exception: §9.3's thin-topic ruling.** A topic too thin for
+real tape at the requested duration is allowed to come in short, provided the Foray records why and
+says so in an explicit narrated beat — never padded with filler to hit the requested duration
+(§9.3). An undershoot with no recorded reason and no narrated explanation is a defect on the same
+terms as any overshoot. **Recording the reason needs a schema decision this document does not make
+for itself** (per line 23's own rule: a schema change is a finding to surface, not a liberty to
+take) — whoever implements §9.3's shortening path must first check whether an existing
+`forays.json` field can carry it (the narrated explanation beat itself may already satisfy the
+"recorded" requirement without any new field) and, only if not, surface the addition as a proposed
+schema change for founder sign-off rather than silently emitting an undocumented field.
 
 ---
 
@@ -265,8 +281,13 @@ The bar for asking is high. "Roman siege weapons" is not ambiguous. "Mercury" is
 probably already knows, and what would make this Foray a disappointment. That last field is worth
 more than the other three — it is what the final coherence check tests against.
 
-**Open:** whether a rejected or clarified prompt is stored. It is a behavioural signal and it is
-also a record of what people asked 4a for. Privacy posture is unresolved (§9.4).
+**Resolved (2026-09-02) — §9.4 covers this, including the rejected/clarified case.** Wyatt's §9.4
+ruling ("Each prompt is discarded") is not scoped to accepted prompts only — it covers every prompt
+this stage sees, including one that is rejected by the safety check or one that goes through a
+clarification round. None of them are stored. What *is* retained, per §9.4/§9.6, is the resulting
+Foray's own title/summary/topic/slot titles once a Foray is actually generated from an accepted
+prompt — there is no separate retention path for a rejected prompt or an intermediate clarification
+turn to fall into. Privacy posture is therefore closed, not open; see §9.4.
 
 ### 4.2 — Research to establish the shape
 
@@ -304,8 +325,76 @@ The spine contains:
   inventing one.
 - **The exploration budget.** Product principle #1 keeps a ~30% floor. In a generated Foray this
   means: at least ~30% of beats should go somewhere the prompt did not literally ask for but a
-  curious listener would be glad to have been taken. Mark these in the spine. They are the first
-  thing a cost-cutting pass will delete and the last thing that should be deleted.
+  curious listener would be glad to have been taken. This floor is required and counts toward §8's
+  publishability check regardless of how generation goes — it is what makes a generated Foray
+  something other than a straight answer to the prompt, and no cutting pass, cost- or time-driven,
+  may take it below ~30%.
+  Separately, on top of the required floor, mark **up to two additional exploration beats per act
+  as "deferrable"** — two is the target, but the actual count for a given act is set by the 15%
+  runtime bound below, and can be one or zero for a short act. Their runtime is reserved *within*
+  the act's planned duration budget (§3), not added on top of it — the planner sizes the act's
+  other beats assuming the deferrable ones may or may not play, so their insertion never pushes the
+  Foray past §3/§8's ±15% tolerance. They are written and sourced through the normal pipeline
+  (§4.4–§4.7) right alongside every other beat, so their narration/tape is ready to play the
+  instant they're needed — only their *inclusion in the act's running order* is held back, not
+  their generation, which is what makes them usable as a live time buffer rather than something
+  that has to be produced under shortfall pressure. They are the one and only §6.3 time-buffer
+  valve: on a **time** shortfall they get inserted, already-prepared, to genuinely extend the act
+  while act N+1 finishes, filling reserved runtime that would otherwise sit unused, not adding to
+  it; when generation is on schedule they are simply never inserted into the running order
+  (produced, but unplayed). **This means the without-buffer running order — every act minus its
+  deferrable beats — must, by itself, already land inside §3/§8's ±15% tolerance (both the
+  undershoot and overshoot bound, except a spine intentionally shortened under §9.3's thin-topic
+  exception — see below), and the same running order WITH every reserved deferrable beat
+  inserted must also land inside that tolerance (subject to the same §9.3 exception). This is
+  validated against the spine's PLANNED
+  per-beat runtime budgets when the spine is frozen (§4.3, enforced by §6.1 before Act 1 — and
+  therefore any act — ever plays). Progressive generation (§6) means a later act's written
+  duration (an ESTIMATE for on-device narration until it is spoken, per §7.3 — not a measured
+  value) is not yet known at that point, so it cannot wait for a single whole-Foray check: each
+  act's estimated duration is re-validated against its own planned budget by §4.9's per-act gate,
+  which runs the instant that act finishes writing and blocks it from entering the running order
+  the player can reach until it passes — before Act 1 specifically, this is also what §6.1 means by
+  "before playback begins." An act whose estimated duration fails this re-check is a defect caught at
+  that act's own gate, never discovered only after the whole Foray has finished and published via
+  §4.9's separate whole-Foray gate (see §4.9 for both). **§9.3 carve-out:** when the spine itself was
+  deliberately shortened under §9.3's thin-topic exception (a recorded reason plus an explicit
+  narrated explanation, per §3/§8), both the spine-freeze validation and §4.9's per-act gate check
+  the spine's OWN shortened planned budget, not the original pre-shortening target — the exception
+  is taken once, at spine-freeze time, and every downstream check validates against the
+  already-exempted plan rather than re-litigating the exception per act.** On top of the baseline-alone requirement,
+  the baseline must leave enough headroom below the +15% ceiling to accommodate the deferrable
+  beats it carries: baseline runtime plus the reserved deferrable beats' runtime, together, must
+  still fit within +15% of the target — deferrable beats only ever add runtime, so only the upper
+  bound is at risk from their insertion. A baseline that already sits at the +15% ceiling on its
+  own has zero headroom and may carry no deferrable beats at all, regardless of act
+  length. Each act's deferrable-beat count is capped by whatever headroom remains under that
+  ceiling after the act's other beats are sized, never by a flat allowance independent of how much
+  of the tolerance the baseline already used. A Short Foray's small beat count (8–10 beats total,
+  per §3's table) makes this bound binding in practice: the deepening stage (§4.4) computes, per
+  act, the maximum number of deferrable beats (0, 1, or 2) whose combined runtime fits within the
+  headroom actually remaining under the act's +15% ceiling — while also verifying the baseline
+  alone clears -15% on the low side — and marks exactly that many — never a
+  fixed two regardless of budget, and never assuming the full 15% is available on top of an
+  already-tight baseline. §6.3, when a time shortfall hits, inserts however many deferrable beats
+  that act actually has (which may be fewer than two, or none, for a tightly-budgeted act) rather
+  than assuming two are always available. A **cost**-cutting pass
+  instead cancels the deferrable pair's production outright before §4.5, same effect as never
+  needing them. Neither path is ever counted against the required ~30% floor (§8): the floor is
+  computed only over the beats that were always inside it, so a deferrable beat's insertion,
+  non-insertion, or cancellation cannot move that number in either direction.
+
+  **Storage/player gap surfaced, not resolved here (line 23's own rule).** `forays.json` today
+  represents a Foray as one static ordered `items` list, and the player has no concept of an
+  unplayed, held-back item that can be spliced into a still-playing act mid-session. Marking beats
+  "deferrable" and inserting them live under §6.3 is therefore not buildable against the schema and
+  player as they exist today — it needs either a schema addition (e.g. a `deferred: true` item flag
+  the player knows to skip unless inserted) or an equivalent player-side mechanism, neither of
+  which this document specifies. Per line 23's rule, that is a finding to surface for founder
+  sign-off before implementation, not a liberty this document takes for itself. Until that
+  schema/player contract is designed and approved, an act that would otherwise be marked with
+  deferrable beats produces zero of them (falls back to the required ~30% floor beats only) rather
+  than an unbuildable design being treated as already specified.
 
 **The spine is frozen before playback begins.** See §6.
 
@@ -355,8 +444,9 @@ Search order:
 
 When no tape exists, the beat becomes narration — usually a **Patch** or a **Carry**.
 
-**Open:** the acceptable ceiling on narration share before a Foray is refused or reshaped
-(§9.3).
+**Resolved (§9.3, 2026-09-02):** there is no ceiling on narration share and no refusal path. A
+Medium/Long Foray too thin for real tape at the requested duration gets shorter instead, per §9.3
+and §3's undershoot exception — it is never reshaped-toward-tape or refused.
 
 ### 4.6 — Resolve the tape
 
@@ -424,16 +514,55 @@ design is far beyond scope, but a jingle or a beat of silence roughly every few 
 ear a boundary to rest on. Propose a cadence, measure it against a real long Foray, and write down
 what you measured — do not ship a number that was guessed.
 
-**Coverage is checked before flow.** Every beat in the spine is either present or explicitly
-dropped with a reason. A silently missing beat is the failure mode that makes a Foray feel like it
-was about nothing.
+**Coverage is checked before flow.** Every beat in the spine is either present, held back as a
+§4.3 deferrable beat that stayed unplayed because generation was on schedule, or explicitly dropped
+with a reason — the same three-state rule §8's publishability gate uses. A silently missing beat
+(one that is neither present, a held-back deferrable, nor dropped-with-reason) is the failure mode
+that makes a Foray feel like it was about nothing.
 
 ### 4.9 — Finalize and publish
 
-Validate against `check-forays.mjs` and `check-narration.mjs`. Write `data/forays.json`. In phase 1
-this is a PR a founder reviews; in phase 2 it is an automated publish and the validators are the
-only gate that exists — which is the reason to make them strict now, while a human is still in the
-loop to notice what they miss.
+Two gates, at two granularities, because §6/§1.4 already require Act 1 to start playing while later
+acts are still being written — a single whole-Foray check run only after the last act finishes would
+let Act 1 (and every act after it) reach the player before anything actually validates it.
+
+- **Per-act runtime gate — runs the instant each act finishes writing (§4.7–§4.8), before that act
+  is appended to the running order the player can reach.** Checks that act's written duration —
+  both without its deferrable beats and with every reserved deferrable beat inserted — against
+  that act's planned per-beat budget from the frozen spine (§4.3/§6.1). Per §7.3, an act
+  containing on-device narration has no exact duration before it is spoken; this gate checks the
+  same characters-per-minute ESTIMATE §7.3 already identifies as the only pre-playback duration
+  signal available, not a measured value — its accuracy is bounded by whatever error bars that
+  estimator's own measurement (§7.3, itself an open finding) establishes, and a founder-approved
+  error margin folded into the ±15% tolerance is a follow-on decision this gate does not make for
+  itself. A failure here (the estimate exceeds tolerance) blocks that act from entering the
+  running order; for Act 1 this is
+  what makes §6.1's "spine frozen before playback" actually enforce a runtime bound rather than
+  only a planning-time one, and for every later act it is what §3/§8's ±15% tolerance is checked
+  against in practice, since progressive generation means an act can already be playing while the
+  next one is written. This is a narrow, fast check (duration only) — it does not require a
+  separate founder review step.
+
+  **Storage/player gap surfaced, not resolved here (line 23's own rule).** "Appended to the running
+  order the player can reach" describes a progressive-write mechanism that does not exist today:
+  `data/forays.json` is written once, in full, by the whole-Foray gate below — there is no
+  per-act append path, and the player has no way to read a Foray whose `items` list is still
+  growing. Making Act 1 playable while later acts are written therefore needs either a schema/
+  storage mechanism (e.g. a separate, mutable per-Foray working record the player can poll or
+  subscribe to, promoted to the final `forays.json` entry only at whole-Foray publish) or an
+  equivalent player-side streaming contract, neither of which this document specifies. Per line
+  23's rule, that is a finding for founder sign-off before implementation, not a liberty taken
+  here. Until that contract is designed and approved, phase 1 generation does not attempt
+  progressive playback in practice — Act 1 becomes playable only once the whole Foray is written
+  and published — even though §6 describes progressive playback as the target design once the
+  storage contract exists.
+- **Whole-Foray gate — runs once the last act is written.** Validate against `check-forays.mjs` and
+  `check-narration.mjs` (the full §8 quality-bar suite, including the aggregate exploration-budget
+  check that only makes sense once the whole Foray exists — narration share, per §8/§9.3, is
+  reported by these validators but is never gated: there is no ceiling to fail against). Write
+  `data/forays.json`. In phase 1 this is a PR a founder reviews; in phase 2 it is an automated
+  publish and the validators are the only gate that exists — which is the reason to make them
+  strict now, while a human is still in the loop to notice what they miss.
 
 ### 4.10 — Play
 
@@ -518,7 +647,9 @@ The work that pass was doing has to move:
   has been heard.
 - **The continuity agent becomes forward-only.** It runs at each act boundary and may adjust the
   act about to be built, never the one already played. Act 4 adapts to what act 3 actually said;
-  act 3 does not get fixed.
+  act 3 does not get fixed. (Runtime validation for the act just finished is a separate, earlier
+  check — §4.9's per-act runtime gate, which runs the instant that act finishes writing and before
+  it is appended to the reachable running order, not at this continuity checkpoint.)
 - **A late-discovered gap becomes act N+1's problem**, or it is dropped with a reason. It is never a
   retroactive patch.
 
@@ -533,12 +664,34 @@ Pick X, measure it, write it down.
 Then decide what happens when generation falls behind, because it will. Options, none free:
 
 - Stall with a spoken line — honest, and terrible in a car.
-- Extend the current act with a pre-planned optional beat — needs the spine to carry spares.
+- Insert as many of the current act's reserved deferrable beats (§4.3, up to two, possibly fewer or
+  none for a tightly-budgeted act) as it has — already written and sourced, their runtime already
+  reserved inside the act's duration budget — to extend the act while act N+1 finishes writing,
+  without pushing the Foray past §3/§8's tolerance.
 - Degrade the remaining acts to a cheaper, faster pipeline — quality cliff, but no silence.
 
-**Recommendation: pre-planned spare beats.** The spine already knows the exploration beats; marking
-two per act as "deferrable, playable if needed" costs nothing at plan time and turns a stall into a
-digression the listener cannot detect. Whatever is chosen, a silent stall mid-commute is the worst
+**Recommendation: the reserved deferrable beats.** §4.3 has each act produce up to two exploration
+beats (fewer, or none, if the act's baseline already used most of its ±15% headroom) through the
+normal pipeline, held back from
+the act's running order rather than left unmade, marked "deferrable," with their runtime reserved
+inside the act's planned duration rather than added on top of it. They serve two different
+pressures and never both at once: a **time** shortfall (this section) inserts whichever deferrable
+beats that act has, already-prepared, into the act — filling reserved runtime that would otherwise
+sit unused, which is what actually buys the extra minutes act N+1 needs, since being ready to play
+the instant they're needed is the entire point of producing them ahead of the shortfall rather than
+during it, and reserving their runtime up front is what stops that insertion from becoming an
+overshoot §3/§8 would reject. On schedule, an act simply never inserts them; they exist but are
+unplayed, and the act runs slightly under its planned duration rather than at it. An act whose
+baseline already consumed its ±15% headroom carries zero deferrable beats and contributes nothing
+to this buffer,
+which is why the invariant above must be measured per-act, not assumed uniform. A **cost** shortfall
+(a cutting pass trimming spend, not a live time deficit) instead cancels their production before
+§4.5, same net effect as never needing them. Either way, they are never counted against the
+required ~30% floor — §8's "exploration budget survived" check is computed only over the beats that
+were always inside the floor, so inserting, not inserting, or cancelling any deferrable beat cannot
+move that number. A generation lead that is both behind on time and needs more buffer than an act's
+deferrable beats provide has exhausted the one buffer this document authorizes and must fall back
+to one of the other two options above. Whatever is chosen, a silent stall mid-commute is the worst
 outcome and the one to design against.
 
 ---
@@ -575,23 +728,46 @@ Concrete gaps. Each is a finding, not a decision.
 
 A generated Foray is publishable only if all of these hold:
 
-- Every spine beat is present, or explicitly dropped with a recorded reason.
+- Every spine beat is present, or explicitly dropped with a recorded reason — except a §4.3
+  deferrable beat that was never inserted into the running order because generation stayed on
+  schedule. That beat was produced and sourced like any other, so it is neither missing nor
+  dropped; it is a third, pre-authorized state ("produced, but unplayed") that this gate does not
+  penalize and does not require a recorded reason for. A deferrable beat only needs a recorded
+  reason if it is dropped outright rather than held back as designed (e.g. its production is
+  cancelled under §6.3's cost-shortfall path).
 - Every factual claim in narration has a recorded source, and a verifier other than the writer
   has checked it.
 - The disclosure is the first item.
 - Copy rules pass: hooks ≤ 16 words, why-lines ≤ 18, no banned phrasing.
-- Runtime is within tolerance of the requested duration. Pick the tolerance; ±15% is a defensible
-  starting point.
-- Narration share is below the ceiling set in §9.3.
-- The exploration budget survived — the ~30% of beats marked as exploration in the spine are still
-  there.
+- Runtime is within tolerance of the requested duration: ±15% (a defensible starting point), except
+  an undershoot made under §9.3's thin-topic exception, which is exempt from the tolerance provided
+  it carries a recorded reason (schema TBD, see §3) and an explicit narrated explanation. Overshoot
+  has no exception at any margin (§3) — including a §6.3 time-buffer insertion pushing runtime past
+  ±15%, which is a defect the generation lead must avoid by reserving room for the deferrable pair
+  within the maximum runtime rather than adding it on top (§6.3). Both paths (baseline alone, and
+  baseline plus every reserved deferrable beat) are validated against the spine's planned
+  per-beat budgets when the spine freezes (§4.3/§6.1), before Act 1 or any act plays; each act's
+  written duration (a characters-per-minute ESTIMATE for on-device narration, not a measured
+  value — §7.3) is then re-validated against that same planned budget by §4.9's per-act
+  gate the moment that act finishes writing, not deferred to §4.9's separate final whole-Foray
+  gate, since progressive generation (§6) means later acts are still being written while earlier
+  ones already play.
+- Narration share may be up to 100% (§9.3) — there is no ceiling. A Medium/Long Foray whose topic is
+  too thin for real tape at the requested duration must take the §9.3 shortening path instead of
+  padding with synthetic filler to raise or preserve narration share.
+- The exploration budget survived — the required ~30% floor (§4.3) is computed only over the beats
+  that were always inside it and is unaffected by an act's "deferrable" beats either way: whether
+  they were inserted (time shortfall), stayed unplayed (on schedule), or had their production
+  cancelled (cost shortfall), none of those outcomes counts toward or against the floor.
 - `check-forays.mjs` and `check-narration.mjs` pass.
 
 ---
 
 ## 9. Open questions
 
-Unresolved. Do not build past these; surface them.
+Each item below is either **Open** (unresolved — do not build past it; surface it) or **Resolved**
+(ruled on, with a dated founder/owner decision recorded — buildable against that ruling, per the
+document header). An item with no "Resolved" note beneath its answer is still Open.
 
 **9.1 — Does on-device speech survive a locked screen?** *Owner: engineering. Blocks §1.2.*
 The whole product is locked-screen listening in a car. CI measured that a plain `<audio>` element
@@ -625,12 +801,32 @@ on a topic too thin for real tape (the doc's own example: a 3-hour Foray on the 
 never padded with filler to hit the requested duration. Reshaping-toward-tape and outright refusal
 were both explicitly rejected in favor of this.
 
+**Resolved (2026-09-02):** there is no narration-share ceiling; §8's quality bar and §3's duration
+contract have been corrected to state this directly rather than pointing back here for a number
+that was never set. The undershoot this ruling authorizes is the one sanctioned exception to §3's
+duration-tolerance rule — see §3 and §8.
+
 **9.4 — Are prompts stored, and are they public?** *Owner: Wyatt + legal.*
 Prompts are a strong behavioural signal and a privacy liability. In phase 2 a published Foray
 implicitly exposes what someone asked for. Needed: retention, whether the prompt is shown on the
 published Foray, and whether rejected prompts are kept.
 
 Answer from Wyatt: Each prompt is discarded. the Foray is given a title on creation, which is retained.
+
+**Resolved (2026-09-02) — the apparent §9.6 collision does not require reopening this ruling.**
+§9.6's similarity check does not need the *incoming* prompt to be stored: it is embedded
+transiently, used once for the comparison, and discarded, per this ruling. The comparison side is
+each **existing Foray's own retained text fields** — `forays.json`'s `title`, `summary`, `topic`,
+and slot `title`s, the per-Foray/per-slot text the schema retains today — not anyone's prompt;
+that content is
+already retained under this ruling and under the Foray's own catalogue lifecycle, so no new
+prompt-retention exception is
+needed. Whether an *embedding derived from* that retained content is itself cached or recomputed
+on demand is a separate storage/schema question this ruling does not decide — see §9.6, which
+answers it (recompute-on-demand is the schema-free default). `promptNoPersistence.test.ts`
+(t_825eee4c) does not need to change: it guards the §4.0-4.1 prompt-understanding stage, and this
+comparison happens downstream, against already-catalogued Foray content, never against a persisted
+prompt. See §9.6.
 
 **9.5 — What does a listener do with a bad Foray?**
 No feedback path is specified. This matters more in phase 2, and it is also the raw material for
@@ -641,7 +837,47 @@ same mechanism or a different one.
 existing Foray, or generate a variant? Affects cost, catalogue quality, and whether the catalogue
 fills with near-duplicates.
 
-Answer: when a prompt is very similar to an existing Foray, the user is asked if they want to listen to that Foray. If they decline, a new one is created.
+Answer: when a prompt is very similar to an existing Foray, the user is asked if they want to listen
+to that Foray. If they decline, a new one is created.
+
+**Partially resolved (2026-09-02) — the comparison-basis question is settled and buildable now;
+the similarity decision rule remains open and blocks implementation.** "Similar to an existing
+Foray" is implemented as: embed the incoming prompt
+transiently (never persisted, consistent with §9.4), embed each existing Foray's own already-
+retained text fields (`forays.json`'s `title`, `summary`, `topic`, and slot `title`s — the
+per-Foray and per-slot text the schema retains today; not a hypothetical description/transcript
+field that does not exist, and never another user's discarded prompt), and compare. This needs no
+new *prompt*-retention exception
+and no schema change at all for the general case — the
+privacy question §9.4 raised is fully closed. This retained-field set is coarser than a full
+transcript would be, and is the honest general-case baseline until/unless a founder-approved schema
+addition (a retained description or transcript excerpt) improves it — that improvement is a
+separate, optional schema decision this ruling does not make for itself. **Whether the per-Foray
+comparison embedding itself
+is persisted (cached in `forays.json` or a sibling store) or recomputed on demand is a storage/
+schema decision this document does not make for itself** (line 23's rule again): recomputing
+on-the-fly from these existing retained fields needs no schema change at all; caching it for performance
+would add a field to `forays.json` and must be surfaced as a proposed schema change for founder
+sign-off before being built, exactly as line 23 requires for any schema addition. Do not persist a
+new embedding field without that sign-off — recompute-on-demand is the safe default until it is
+given. This retained-field set is the general-case design, not a fallback — a richer comparison (a
+retained
+description or transcript excerpt) is a future improvement gated on a founder-approved schema
+change, not something assumed available today.
+
+**Flagged for founder clarification, not guessed: the similarity decision rule itself. §9.6 as a
+whole remains Open — do not build the similarity check until this is answered (per the document
+header's "do not build past these" rule).** This
+ruling settles *what text* is compared (§9.4/§9.6 above) but does not — and should not, per line
+23's rule against inventing unreviewed decisions — pick the embedding model/version, the distance
+metric, or the similarity threshold that makes a prompt "very similar" to an existing Foray.
+Different choices trade off missed near-duplicates against false-positive interruptions asking the
+listener about an unrelated Foray; that is a product call, not something this document should
+settle unilaterally. Needed before implementation: one line from a founder naming the model,
+metric, and threshold (or delegating that choice to the implementer with an explicit tolerance for
+getting it wrong and tuning later). The comparison-basis work above (which fields to embed, no new
+prompt-retention exception) is settled and may be implemented once the decision rule is given —
+it does not itself need to wait on the threshold choice, only the actual similarity comparison does.
 
 ---
 

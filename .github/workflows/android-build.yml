@@ -317,6 +317,26 @@ jobs:
           test -d ../plugins/foray-audio/android/src/main/java \
             || { echo "the plugin's Java sources are missing from the checkout — see mobile/.gitignore's anchoring note"; exit 1; }
 
+      - name: foray-audio native unit tests (Robolectric — actually RUNS the plugin/service code)
+        # M5 (full-repo-review-report.md, 2026-08-31): everything above this step
+        # proves the plugin's SOURCES survived regeneration and that the APK
+        # compiles; nothing runs a line of `ForayAudioPlugin`,
+        # `PlaybackKeepAliveService`, `NowPlayingHub` or `NowPlaying`. These are JVM
+        # unit tests (`:foray-audio:testDebugUnitTest`) under Robolectric — no
+        # emulator, no device — that drive the real service lifecycle
+        # (onCreate/onStartCommand/onDestroy), the hub's cross-thread dispatch, and
+        # the `setNowPlaying` payload parsing that the class's own AUDIT comments
+        # warn can crash Media3 on the main thread with a malformed payload.
+        working-directory: mobile/android
+        run: |
+          set -euo pipefail
+          if ! ./gradlew :foray-audio:testDebugUnitTest --no-daemon --console=plain \
+              > "$ART/gradle-foray-audio-test.log" 2>&1; then
+            echo "::group::foray-audio unit test log tail"; tail -300 "$ART/gradle-foray-audio-test.log"; echo "::endgroup::"
+            exit 1
+          fi
+          grep -E "^BUILD (SUCCESSFUL|FAILED)" "$ART/gradle-foray-audio-test.log" | tail -1 || true
+
       - name: assembleDebug
         # The primary verdict, and the artefact a founder can actually install.
         # `--no-daemon` because a runner is a single-shot machine and a daemon

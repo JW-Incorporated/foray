@@ -299,6 +299,26 @@ surfaces rather than makes:
    mean." Flagged, not decided.
 6. **Harvester/promotion re-run cadence** (§4 Stage 4) and whether it
    joins the existing `tools/refresh/` nightly pipeline.
+7. **Stage 4 reverses §0's own "deliberate" client-isolation rule, and
+   that reversal has never been named as a decision.** §0 affirms the
+   breadth files (~141k+ shows) are "never fetched by `app.js`" as a
+   deliberate isolation rule, kept there specifically so the client
+   payload stays small. Stage 4 ("full promotion + ongoing re-harvest
+   cadence," §4) promotes shows "until the English-detected breadth
+   backlog is exhausted" into `catalog.json` — which **is** client-fetched
+   — meaning Stage 4's own end state is promoting on the order of 100k
+   rows into the exact file the isolation rule exists to keep small, a
+   ~500x growth over today's 220 curated shows. Stage 2's acceptance
+   criteria (§4) only ask for a "bundle-size budget re-measurement" after
+   one bounded batch — a check that a single promotion wave didn't blow
+   the budget, not a design answer for what happens once waves repeat
+   until the backlog (not a batch) is exhausted. Recommend this plan is
+   not read as authorizing Stage 4's end state: **promotion volume past
+   Stage 2's bounded batches needs an explicit founder call** on whether
+   `catalog.json` is still the right destination at that scale, or
+   whether large-scale promotion needs its own client-fetch path (e.g.
+   paginated/on-demand) so the isolation rule's original purpose survives
+   growth instead of being quietly grown out of. Not decided here.
 
 ## 6. Product principle #3 restated for this pipeline
 
