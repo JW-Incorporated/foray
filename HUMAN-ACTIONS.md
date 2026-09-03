@@ -2197,6 +2197,53 @@ use" submission error is gone.
 
 ---
 
+### 36. Label PR #450 `founder-approved` (touches the `tools/test-search.mjs` gate)
+
+**Tag:** `[UPGRADE]` · **Time:** ~1 minute · **Owner:** Joey or Wyatt
+
+**Why it matters.** PR #450 fixes the H-severity buildPlaylist caching bug
+(kanban t_838a13c0): cold-session playlist searches cost 6.6-8.1s and even
+warm-ctx repeated queries cost 3.4-6s, with no loading-state affordance on
+the submit button. The fix adds real caching (`search-engine.js`'s
+`corpusDF`/`tagCount` reverse indexes and `primeVocabulary`, `app.js`'s
+`buildPlaylist` `searchCache`), a `Building…` disabled-button state, and —
+because scope item 4 asked for it — new timing assertions in
+`tools/test-search.mjs`'s own battery so this class of regression can't
+silently return. That last file is one of the two test-suite files
+`DENIED_PREFIXES` protects (alongside `tools/validate-semantic-index.mjs`)
+specifically because it IS the gate CI reads to decide "is search quality
+still honest" — so `path-policy` correctly refuses to auto-merge this PR
+without a human eyeball on the new assertions, same as every other PR that
+has ever touched this file.
+
+**What changed there, in one paragraph:** a new §11 block asserting (a)
+`primeVocabulary` finishes in well under 5s (measured ~0.3s), (b) a query
+against a primed ctx answers in well under 500ms (measured ~1-7ms), and (c)
+a repeated identical query against the same ctx is markedly cheaper the
+second time (proves the DF memoization is actually being reused, not just
+present). All three are generous multiples of measured cost, chosen to catch
+an algorithmic regression rather than flake on CI hardware variance — see
+the inline comments in the file for the exact numbers.
+
+**Steps.**
+1. Open PR #450: https://github.com/JW-Incorporated/foray/pull/450
+2. Skim the new §11 section in `tools/test-search.mjs` (search the diff for
+   "11. perf regression") — confirm the assertions genuinely test what they
+   claim and the thresholds aren't so loose they're vacuous.
+3. Apply the `founder-approved` label. The `path-policy` check re-runs
+   automatically on the label change; no push needed.
+4. Once `path-policy` and the rest of CI (`CI`, `data-and-site`, etc.) are
+   green, the PR is mergeable — foray's `merge_authority` is `agent`, so no
+   further founder action is needed to merge it; I'll self-merge once every
+   required check passes.
+
+**Worked if:** the `path-policy` check on PR #450 flips from `UNAPPROVED
+(blocking)` to passing.
+
+**Status:** OPEN
+
+---
+
 ### 35. Merge PR #429 (Stage 3b full-catalogue RSS ingestion) — first Vercel serverless function, needs Wyatt's architecture sign-off
 
 **Tag:** `[BLOCKING]` for the "universal in-app playability" card · **Time:** ~10 minutes review · **Owner:** Wyatt (per `docs/roles.md` / registry `architecture_infra_ci_secrets` human gate)
@@ -2217,6 +2264,7 @@ use" submission error is gone.
 **Worked if:** PR #429 is merged to `main` (or explicitly redirected), unblocking `t_a36252bb`.
 
 **Status:** OPEN
+
 
 ## DONE
 

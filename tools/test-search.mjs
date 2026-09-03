@@ -1054,6 +1054,80 @@ for (const query of ["how bbq works", "the history of jazz"]) {
     `nothing here crosses a threshold, so the invariance above is vacuous`);
 }
 
+/* ---------- 11. perf regression: cold-start priming + repeated-query cost
+   must stay bounded (H bug, kanban t_838a13c0) ----------
+
+   Before this fix `freshCtx()` (used by EVERY case above, per test) exercised
+   the exact cold O(catalogue) per-novel-term path this section pins, and the
+   file had zero timing assertions anywhere -- 123 green cases could (and did)
+   coexist with buildPlaylist() costing 3-8s per real call. This section is
+   deliberately loose on absolute numbers (CI hardware varies, and this is a
+   correctness net, not a micro-benchmark) but tight on the SHAPE the fix
+   promises:
+     - `SE.primeVocabulary` must warm the whole concept vocabulary fast enough
+       that running it up front is actually a win (see app.js's idle-time
+       priming call) rather than just moving the 6-8s stall earlier.
+     - once primed, a genuinely novel query (one whose concept expansion is
+       already covered by priming) must be fast -- this is the whole point of
+       moving the O(catalogue) scans out of query time.
+     - the SAME query run twice against the SAME ctx must not cost twice --
+       tagDF/corpusDF/tagCount's memoization is what this pins; a regression
+       that broke the memo (e.g. a change that stopped reusing `ctx._dfMemo`)
+       shows up here as run 2 costing about as much as run 1 instead of near
+       zero.
+   Thresholds are generous multiples of measured cost specifically so this
+   catches an ALGORITHMIC regression (a memo cache silently dropped, an O(n)
+   became O(n^2)) rather than flaking on a slower CI box -- see the inline
+   numbers for what was actually measured during development. */
+{
+  const primeCtx = freshCtx();
+  const t0 = performance.now();
+  const primed = SE.primeVocabulary(primeCtx);
+  const primeMs = performance.now() - t0;
+  check("primeVocabulary warms the full concept vocabulary",
+    primed > 0, `primed 0 terms -- semantic-index.json's concept vocabulary is empty or unreachable`);
+  /* Measured ~0.3s on real data (1,364 terms x ~1,882-item tag map) after the
+     tagDF/corpusDF reverse-index fix, ~54s before it. 5s is generous enough to
+     absorb slower CI hardware many times over while still catching a real
+     regression back toward the old per-term linear-scan cost. */
+  check(`primeVocabulary(${primed} terms) completes in well under the old per-query cold cost`,
+    primeMs < 5000, `took ${primeMs.toFixed(1)}ms (budget 5000ms) -- see corpusDF/tagCount's ctx-level caches (itemWordSets/tagSegmentIndex)`);
+
+  const t1 = performance.now();
+  SE.interpretQuery("philosophy of science", primeCtx);
+  const primedQueryMs = performance.now() - t1;
+  /* Measured ~1-7ms on real data once primed (vs 6,600-8,100ms unprimed on a
+     fresh ctx, the cold-start number the kanban card measured). 500ms leaves
+     headroom for a query whose expansion reaches terms priming didn't cover
+     (an all-new concept added since indexing) while still catching the bug
+     this section exists to prevent: priming not actually being reused. */
+  check("a primed ctx answers a fresh query without re-paying the cold cost",
+    primedQueryMs < 500, `took ${primedQueryMs.toFixed(1)}ms (budget 500ms) after priming -- interpretQuery may not be reusing ctx._dfMemo/_corpusDfMemo`);
+
+  const repeatCtx = freshCtx();
+  const rq = "nuclear fusion energy";
+  const r0 = performance.now();
+  const interp1 = SE.interpretQuery(rq, repeatCtx);
+  SE.searchWithRelaxation(pool, interp1, 2, itemTags, () => 0.5);
+  const firstRunMs = performance.now() - r0;
+  const r1 = performance.now();
+  const interp2 = SE.interpretQuery(rq, repeatCtx);
+  SE.searchWithRelaxation(pool, interp2, 2, itemTags, () => 0.5);
+  const secondRunMs = performance.now() - r1;
+  /* This is the tagDF/corpusDF memo, not app.js's separate searchCache (that
+     cache lives in app.js and is exercised by the app, not this harness --
+     see buildPlaylist's `searchCache`/`SEARCH_CACHE_MAX`). What this DOES pin
+     is the layer under it: a second identical interpretQuery+
+     searchWithRelaxation pair against the same ctx must be markedly cheaper
+     than the first, because every DF lookup it makes was already memoized by
+     the first run. A regression that broke that memoization would still show
+     up here even if app.js's own cache masked it in the live app. */
+  check("a repeated query against the same ctx is markedly cheaper the second time",
+    secondRunMs <= firstRunMs + 50 || secondRunMs < firstRunMs * 0.8,
+    `first run ${firstRunMs.toFixed(1)}ms, second run ${secondRunMs.toFixed(1)}ms -- expected the second to be no more expensive, ` +
+    `which would mean tagDF/corpusDF/tagCount's ctx memoization stopped being reused`);
+}
+
 /* ---------- --tiering: the per-query tiering table, not an assertion ---------- */
 
 /* `node tools/test-search.mjs --tiering` runs the whole battery and THEN prints

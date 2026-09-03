@@ -372,6 +372,14 @@ button.show-star.on { color: var(--gold); border-color: var(--gold); }
   cursor: pointer;
   box-shadow: var(--shadow);
 }
+/* Building-state guard (H bug, kanban t_838a13c0): buildPlaylist() has a
+   measured 1.3-8s worst case (cold-session term expansion, or a catalogue
+   this large scoring against a query with no repeated-query cache hit yet —
+   see app.js's searchCache), and the submit was fully synchronous with no
+   visible affordance for that stall. Same idiom as .fy-btn:disabled a few
+   sections up: dim + no pointer, not hidden, so the label ("Building…") stays
+   legible as an explanation rather than the control just vanishing. */
+#pl-form button:disabled { opacity: 0.6; cursor: default; box-shadow: none; }
 .note { color: var(--text-dim); font-size: 0.85rem; margin: 0; flex: none; }
 
 /* ---------- Shows search tabs (Stage 2, docs/show-pages-plan.md) ----------
