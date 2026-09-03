@@ -179,13 +179,13 @@ test("the comment says it is the only one and names the label that clears itself
 });
 
 test("the conflict label is removed once the PR is mergeable again", () => {
-  const { actions } = planMergeability([pr({ labels: [CONFLICT_LABEL] })]);
+  const { actions } = planMergeability([pr({ autoMergeEnabled: true, labels: [CONFLICT_LABEL] })]);
   assert.deepEqual(kinds(actions), ["remove-label"]);
   assert.equal(actions[0].label, CONFLICT_LABEL);
 });
 
-test("a clean unlabelled PR produces no actions at all", () => {
-  assert.deepEqual(planMergeability([pr()]).actions, []);
+test("a clean unlabelled PR that is already armed produces no actions at all", () => {
+  assert.deepEqual(planMergeability([pr({ autoMergeEnabled: true })]).actions, []);
 });
 
 /* ---------------------------------------------------------- auto-update */
@@ -290,6 +290,59 @@ test("REST's auto_merge object and GraphQL's autoMergeRequest both read as armed
   assert.equal(normalizePr({}).autoMergeEnabled, false);
 });
 
+/* ------------------------------------------------------------- arming */
+// t_a25ea475: the sweep was disarm-only. A PR the policy would approve, with
+// autoMergeEnabled still false, was never re-decided by anything unless a
+// qualifying `pull_request` event fired — making "CLEAN + unarmed" an
+// absorbing state. These pin the arm-on-clean symmetry that closes it.
+
+test("a mergeable, policy-approved PR that was never armed gets armed", () => {
+  const { actions } = planMergeability([pr({ autoMergeEnabled: false })]);
+  assert.ok(kinds(actions).includes("enable-auto"));
+  const action = actions.find((a) => a.kind === "enable-auto");
+  assert.equal(action.pr, 1);
+  assert.equal(action.headSha, "");
+});
+
+test("enable-auto carries the head SHA so arming binds to the judged commit", () => {
+  const { actions } = planMergeability([pr({ autoMergeEnabled: false, headSha: "abc123" })]);
+  const action = actions.find((a) => a.kind === "enable-auto");
+  assert.equal(action.headSha, "abc123");
+});
+
+test("a mergeable PR the policy would reject (hold) is not armed", () => {
+  const { actions } = planMergeability([pr({ autoMergeEnabled: false, labels: ["hold"] })]);
+  assert.equal(kinds(actions).includes("enable-auto"), false);
+});
+
+test("a mergeable PR touching a governed path is not armed", () => {
+  const { actions } = planMergeability([
+    pr({ autoMergeEnabled: false, files: ["data/x.json", ".github/workflows/evil.yml"] }),
+  ]);
+  assert.equal(kinds(actions).includes("enable-auto"), false);
+});
+
+test("freeze prevents arming a not-yet-armed PR too — no half-a-kill-switch", () => {
+  const { actions } = planMergeability([pr({ autoMergeEnabled: false })], { freeze: "1" });
+  assert.equal(kinds(actions).includes("enable-auto"), false);
+});
+
+test("CONFLICTING PRs are never armed, even though they read MERGEABLE=false not true", () => {
+  const { actions } = planMergeability([pr({ autoMergeEnabled: false, mergeable: "CONFLICTING", state: "dirty" })]);
+  assert.equal(kinds(actions).includes("enable-auto"), false);
+});
+
+test("UNKNOWN mergeability is never armed — ask again next sweep, never assume fine", () => {
+  const { actions } = planMergeability([pr({ autoMergeEnabled: false, mergeable: "UNKNOWN", state: "unknown" })]);
+  assert.equal(kinds(actions).includes("enable-auto"), false);
+});
+
+test("an already-armed, still-approved PR is not re-armed (no duplicate enable-auto)", () => {
+  const { actions } = planMergeability([pr({ autoMergeEnabled: true })]);
+  assert.equal(kinds(actions).includes("enable-auto"), false);
+  assert.equal(kinds(actions).includes("disable-auto"), false);
+});
+
 /* ------------------------------------------------- checks-missing self-heal */
 
 const OLD = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString();
@@ -298,8 +351,10 @@ test("a stale head with none of the required checks is re-dispatched on the swee
   // The backstop for a lost dispatch after an auto-update: without it, one lost
   // race strands the PR at "Expected — waiting for status to be reported"
   // forever, because it is no longer `behind` and nothing looks again.
+  // `autoMergeEnabled: true` isolates this from the (separate) arm-on-clean
+  // path above: this test is about the self-heal dispatch, not arming.
   const { actions, notes } = planMergeability(
-    [pr({ checkNames: [], updatedAt: OLD })],
+    [pr({ autoMergeEnabled: true, checkNames: [], updatedAt: OLD })],
     { sweep: true }
   );
   assert.deepEqual(kinds(actions), ["dispatch-ci"]);
@@ -307,13 +362,13 @@ test("a stale head with none of the required checks is re-dispatched on the swee
 });
 
 test("the self-heal never fires outside the scheduled sweep", () => {
-  const { actions } = planMergeability([pr({ checkNames: [], updatedAt: OLD })]);
+  const { actions } = planMergeability([pr({ autoMergeEnabled: true, checkNames: [], updatedAt: OLD })]);
   assert.deepEqual(actions, []);
 });
 
 test("a freshly-updated PR is not re-dispatched into its own CI run", () => {
   const { actions } = planMergeability(
-    [pr({ checkNames: [], updatedAt: new Date().toISOString() })],
+    [pr({ autoMergeEnabled: true, checkNames: [], updatedAt: new Date().toISOString() })],
     { sweep: true }
   );
   assert.deepEqual(actions, []);
@@ -321,7 +376,7 @@ test("a freshly-updated PR is not re-dispatched into its own CI run", () => {
 
 test("a head with even one required check is left alone", () => {
   const { actions } = planMergeability(
-    [pr({ checkNames: ["backend"], updatedAt: OLD })],
+    [pr({ autoMergeEnabled: true, checkNames: ["backend"], updatedAt: OLD })],
     { sweep: true }
   );
   assert.deepEqual(actions, []);
@@ -329,7 +384,7 @@ test("a head with even one required check is left alone", () => {
 
 test("the self-heal does not touch forks, whose branches we cannot dispatch on", () => {
   const { actions } = planMergeability(
-    [pr({ checkNames: [], updatedAt: OLD, crossRepo: true })],
+    [pr({ autoMergeEnabled: true, checkNames: [], updatedAt: OLD, crossRepo: true })],
     { sweep: true }
   );
   assert.deepEqual(actions, []);
@@ -656,7 +711,7 @@ test("CLI plan writes one JSON line per action", () => {
 });
 
 test("CLI plan writes an empty actions file when there is nothing to do", () => {
-  const h = harness({ f: JSON.stringify([pr()]) });
+  const h = harness({ f: JSON.stringify([pr({ autoMergeEnabled: true })]) });
   runCli(["plan", "--from", "f", "--actions", "A"], h.io);
   assert.equal(h.written.A, "");
 });
