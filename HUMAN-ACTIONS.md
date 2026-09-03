@@ -2240,7 +2240,12 @@ the inline comments in the file for the exact numbers.
 **Worked if:** the `path-policy` check on PR #450 flips from `UNAPPROVED
 (blocking)` to passing.
 
-**Status:** OPEN
+**Decision (2026-09-03, founder):** done — reviewed §11 assertions in
+`tools/test-search.mjs`, thresholds are generous multiples of measured
+cost (not vacuous), applied `founder-approved`, `path-policy` and all
+other CI went green, PR #450 auto-merged to `main` (`db25f8b`).
+
+**Status:** DONE (2026-09-03)
 
 ---
 
