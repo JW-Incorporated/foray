@@ -39,9 +39,12 @@ body {
    to fit one viewport with no internal scroll, but on iOS Safari a page with
    no scrollable overflow anywhere also has no rubber-band bounce, which reads
    as "unresponsive" / "is this frozen" on first touch, not "intentionally
-   fixed". Letting the body scroll normally (there is nothing to scroll TO on
-   home, so it always snaps back) keeps the one-screen layout while restoring
-   the felt responsiveness of an ordinary webpage. */
+   fixed". Letting the body scroll normally keeps the one-screen layout while
+   restoring the felt responsiveness of an ordinary webpage. (Before #433 there
+   was nothing to scroll TO on home, so it always snapped back. `.home-below`
+   now parks the "Shows we vouch for" row under the fold, and the absence of
+   `overflow: hidden` here is exactly what keeps that row reachable — so do not
+   reintroduce it without moving that content somewhere else first.) */
 
 /* ---------- top bar ---------- */
 .topbar {
@@ -165,7 +168,8 @@ body {
   cursor: pointer;
 }
 
-/* ---------- home: one screen, no scroll ---------- */
+/* ---------- home: one screen (`.home`), plus anything deliberately below
+   the fold (`.home-below`) ---------- */
 #view { padding-top: calc(var(--topbar-h) + env(safe-area-inset-top)); }
 
 .home {
@@ -192,6 +196,21 @@ body {
   padding: 8px 10px calc(10px + env(safe-area-inset-bottom));
   max-width: 680px;
   margin: 0 auto;
+}
+
+/* Anything that belongs to the home screen but must NOT compete with the four
+   cards for space. `.home` is a fixed-height flex column whose only `flex: 1`
+   child is `.cards4`, so a tall sibling added inside it silently starves the
+   cards to zero height and they overflow on top of whatever follows — which is
+   what "Shows we vouch for" (#433) did, at every viewport including desktop:
+   `.cards4` measured 0 px and each card 26 px. Content placed here sits after
+   `.home` instead, so it is reached by scrolling and the cards keep the
+   viewport. Mirrors `.home`'s own width and horizontal padding so the two read
+   as one column. */
+.home-below {
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 0 10px calc(10px + env(safe-area-inset-bottom));
 }
 
 .banner {
