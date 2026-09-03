@@ -3,6 +3,50 @@
    playlist builder), playlists list, playlist detail. Hash routing.
    The semantic layer (compiled concepts + tags) powers playlist building. */
 
+/* THE GENERATION PIN, READ BEFORE ANYTHING ELSE IN THIS FILE (#233/M4).
+ *
+ * sw.js's `handleShell` bakes a fallen-back generation's id directly into
+ * whichever CODE file it served stale, synchronously, so it is readable
+ * before that file's own logic runs — never only via `postMessage`, which a
+ * review correctly flagged as racy: a message sent before this file's own
+ * `addEventListener("message", ...)` attaches (further down this file, after
+ * `init()` has already started fetching) is simply lost, and `init()`'s first
+ * `data/*.json` fetches would go out unpinned even though the code they are
+ * paired with is stale.
+ *
+ * Two places this id can arrive from, checked in the order a real page load
+ * can produce them:
+ *   1. `self.__forayPinnedDeployId` — set by a `self.__forayPinnedDeployId =
+ *      "<id>";` statement sw.js prepends to THIS file's own bytes, when
+ *      app.js itself is what fell back. Executes as this file's very first
+ *      statement, before anything below it.
+ *   2. A `<meta name="foray-pin-deploy-id" content="<id>">` tag sw.js
+ *      inserts into `index.html`'s `<head>` when the NAVIGATION fell back
+ *      (parsed by the browser before any script tag runs, including this
+ *      one) — covers the case where index.html/search-engine.js fell back but
+ *      this file's own fetch was fresh.
+ * Either establishes the pin synchronously; no message race is possible for
+ * either path. The one residual gap — `player/client.js`, a DEFERRED module
+ * that can still be discovered stale after `init()`'s own fetches have
+ * already gone out — is unchanged from the original design and is named in
+ * sw.js's header; closing it would mean blocking every page load on that
+ * module, which the founding "survive a dead zone" constraint rules out. */
+let pinnedDeployId = (typeof self !== "undefined" && self.__forayPinnedDeployId) || null;
+if (!pinnedDeployId && typeof document !== "undefined" && typeof document.querySelector === "function") {
+  /* Defensive on `metaPin` itself, not just `document.querySelector`'s
+     existence: several test harnesses in this repo (episode-page.test.js,
+     first-time-onboarding.test.js, others) stub `document.querySelector` as
+     an always-truthy shape with no real selector matching and no
+     `getAttribute`, to keep those harnesses minimal. A real DOM's
+     `querySelector` correctly returns `null` for a tag that is not there;
+     this reads the attribute only when the returned object actually offers
+     one, so neither shape can throw. */
+  const metaPin = document.querySelector('meta[name="foray-pin-deploy-id"]');
+  if (metaPin && typeof metaPin.getAttribute === "function") {
+    pinnedDeployId = metaPin.getAttribute("content") || null;
+  }
+}
+
 const state = {
   session: null,
   validated: null,
@@ -15,6 +59,7 @@ const state = {
   segments: null,           // data/segments.json
   segmentSources: null,     // data/segment-sources.json
   catalog: null,            // data/catalog-client.json — show-level records, #/show/:id (Stage 1)
+  breadthShowCache: {},     // show_id -> minimal show record from /api/shows/search (A3.1/Q3), see showById
   foray: null,              // the resolved Foray currently on screen
   forayResume: null,        // its stored resume point, or null — see paintForay
   forayPlaying: null,       // id of the Foray the player is inside, or null
@@ -160,11 +205,37 @@ function profileId() {
   return id;
 }
 
+/* Buffers rows logged before `player/client.js` has evaluated and published
+   `window.forayEventLog` — the same bridging pattern `waitForStorage()` above
+   uses for `cp_` keys, and for the same reason: `app.js` is a classic script
+   parsed before the deferred module below it, so a `logEvent` call made
+   during `init()`'s own early work (a `refreshed_all` on first paint, say)
+   must not be silently dropped just because the module has not arrived yet.
+   Drained by `flushBufferedEvents()`, called once the module is confirmed
+   present (mirroring `storageReady()`'s one-shot handoff). */
+let _bufferedEvents = [];
+
 function logEvent(type, payload) {
-  const events = lsGet("cp_events", []);
-  const builder = state.session?.builder || "unknown";
-  events.push({ ts: new Date().toISOString(), type, builder, profile: profileId(), payload });
-  lsSet("cp_events", events.slice(-5000));
+  const row = { ts: new Date().toISOString(), type, builder: state.session?.builder || "unknown", profile: profileId(), payload };
+  if (window.forayEventLog && typeof window.forayEventLog.append === "function") {
+    flushBufferedEvents();
+    window.forayEventLog.append(row);
+  } else {
+    _bufferedEvents.push(row);
+  }
+}
+
+/** Hand the pre-module buffer to `window.forayEventLog` the moment it exists.
+    Called from `logEvent` itself (the module may have arrived between two
+    calls) and once from `init()` after `waitForStorage()` settles, matching
+    how `player/client.js` publishes both bridges off the same
+    `forayplayer:ready` event. */
+function flushBufferedEvents() {
+  if (!_bufferedEvents.length) return;
+  if (!window.forayEventLog || typeof window.forayEventLog.append !== "function") return;
+  const rows = _bufferedEvents;
+  _bufferedEvents = [];
+  for (const row of rows) window.forayEventLog.append(row);
 }
 
 /* Durable telemetry: flush the buffered events to Supabase (ADR-0005 +
@@ -210,9 +281,10 @@ async function ensureAnonSession() {
   return null;
 }
 
-/* Map a buffered cp_events entry to a canonical events-table row, or null for
-   local-only types (see the client-integration spec §3). episode_id/session_id
-   stay null; durable ids ride in payload as episode_slug/session_key. */
+/* Map a buffered event-log row (window.forayEventLog, formerly `cp_events`) to
+   a canonical events-table row, or null for local-only types (see the
+   client-integration spec §3). episode_id/session_id stay null; durable ids
+   ride in payload as episode_slug/session_key. */
 const SB_ARCHETYPES = new Set(["deep-learn", "stretch", "narrative", "comfort", "continue"]);
 /* The player (player/client.js) is an ES module and cannot import from this
    classic script, so the event pipeline is handed over explicitly rather than
@@ -259,15 +331,19 @@ function toEventRow(e, userId) {
 
 async function trySyncEvents() {
   try {
-    const events = lsGet("cp_events", []);
-    const since = lsGet("cp_synced_ts", "");
-    const unsynced = events.filter(e => e.ts > since);
+    if (!window.forayEventLog || typeof window.forayEventLog.unsynced !== "function") return;
+    flushBufferedEvents();
+    const unsynced = await window.forayEventLog.unsynced();
     if (!unsynced.length) return;
     const s = await ensureAnonSession();
     if (!s) return; // offline / auth unavailable — buffer persists, retry next time
-    const lastTs = unsynced[unsynced.length - 1].ts;
     const rows = unsynced.map(e => toEventRow(e, s.user_id)).filter(Boolean);
-    if (!rows.length) { lsSet("cp_synced_ts", lastTs); return; } // all local-only
+    const syncedIds = unsynced.map(e => e.id);
+    if (!rows.length) {
+      await window.forayEventLog.markSynced(syncedIds); // all local-only
+      await window.forayEventLog.pruneToRetention(5000);
+      return;
+    }
     for (let i = 0; i < rows.length; i += 500) {
       const res = await fetch(SB_URL + "/rest/v1/events", {
         method: "POST",
@@ -281,7 +357,8 @@ async function trySyncEvents() {
       });
       if (!res.ok) return; // don't advance the cursor — retry the whole batch next time
     }
-    lsSet("cp_synced_ts", lastTs);
+    await window.forayEventLog.markSynced(syncedIds);
+    await window.forayEventLog.pruneToRetention(5000);
   } catch (_) { /* buffer persists, retry next time */ }
 }
 
@@ -311,6 +388,14 @@ function nudgeTopics(topics, amount) {
     }
   });
   saveInterests();
+  /* Bumps the repeated-query cache key (see buildPlaylist's `searchCache`) so
+     a playlist rebuild after a pick/play/thumbs nudge re-scores instead of
+     silently serving a stale ranking. interestScore (used as
+     searchWithRelaxation's zero-content-token rankFallback, e.g. a bare
+     "comedy"/"something short" query) reads state.interests, so this is the
+     one thing besides the query text and family-mode flag that can change
+     what buildPlaylist should return for the exact same typed query. */
+  state._interestsGen = (state._interestsGen || 0) + 1;
 }
 
 function boostTopics(topics, amount) { nudgeTopics(topics, amount); }
@@ -348,6 +433,13 @@ function snapshot(id, src) {
     audio_bytes: src.audio_bytes ?? null,
     duration_sec: src.duration_sec ?? null,
     dai_suspected: src.dai_suspected ?? false,
+    // Explicit-content flag (kanban card t_02c6bb0b): already ingested at the
+    // source (tools/refresh/merge.mjs), but this whitelist projection dropped
+    // it on the floor before the badge existed to read it — every pool item
+    // (the vast majority of what epRow/renderEpisode actually render) would
+    // otherwise silently lose the flag here, one snapshot() call after the
+    // caller thought it kept it.
+    explicit: src.explicit ?? null,
   };
   state.itemIndex[id] = snap;
   return snap;
@@ -414,6 +506,18 @@ function poolFiltered() {
   return pool.filter(i => i.explicit !== true && branchOf(i) !== "comedy");
 }
 
+/* The visible half of the same flag Family Mode has quietly filtered on since
+   corner-case 28 (kanban card t_02c6bb0b): every mainstream podcast app shows
+   an "E" next to explicit content, and 4a never did, even though the
+   publisher's <itunes:explicit> flag was captured all along. Additive only —
+   Family Mode's `i.explicit !== true` filter above is untouched, this just
+   makes the same field visible when Family Mode is off. Strict `=== true`
+   because the field is tri-state (true/false/null) at both the episode and
+   show level; false and null both mean "no badge", not "unknown = flag it". */
+function explicitBadge(isExplicit) {
+  return isExplicit === true ? `<span class="explicit-badge" title="Explicit content" aria-label="Explicit">E</span>` : "";
+}
+
 function fmtDur(min) {
   if (!min) return "";
   return min >= 60 ? `${Math.floor(min / 60)}h ${min % 60}m` : `${min} min`;
@@ -478,6 +582,98 @@ function upNextBtn(id) {
   const on = isQueued(id);
   return `<button class="up-next ${on ? "on" : ""}" data-upnext="${esc(id)}"
     aria-label="${on ? "In Up Next" : "Add to Up Next"}">${on ? "✓ Up Next" : "+ Up Next"}</button>`;
+}
+
+/* ---------- starred shows (follow-lite) ----------
+
+   Requirement A2.4 / Joey's Q2 answer: "yes, add starred shows, and a
+   section for all of your starred shows. It is not the home page but is
+   somewhat easily accessible." Deliberately NOT subscribe semantics — no
+   notifications, no auto-download, no algorithmic surfacing — just a
+   lightweight marker, mirroring the existing episode star (`cp_saved`)
+   pattern exactly, keyed on show_id instead of episode id. Same "state
+   observed, never declared" principle: starring a show changes nothing
+   about what the app recommends or fetches. */
+function starredShowsMap() { return lsGet("cp_starred_shows", {}); }
+function isShowStarred(id) { return id in starredShowsMap(); }
+
+function toggleShowStar(id) {
+  const starred = starredShowsMap();
+  if (starred[id]) {
+    delete starred[id];
+    logEvent("show_unstarred", { show_id: id });
+  } else {
+    const show = showById(id);
+    if (!show) return;
+    starred[id] = {
+      show_id: show.show_id,
+      title: show.title,
+      artwork_url: show.artwork_url || null,
+      starred_at: new Date().toISOString(),
+    };
+    logEvent("show_starred", { show_id: id });
+  }
+  lsSet("cp_starred_shows", starred);
+  document.querySelectorAll(`[data-show-star="${CSS.escape(id)}"]`).forEach(b => {
+    b.textContent = isShowStarred(id) ? "★ Starred" : "☆ Star this show";
+    b.classList.toggle("on", isShowStarred(id));
+  });
+}
+
+/* Text label, not a bare glyph like starBtn -- this button sits alone in a
+   page header rather than beside a play control in a dense row, so it needs
+   to read on its own. */
+function showStarBtn(show_id) {
+  const on = isShowStarred(show_id);
+  return `<button class="show-star ${on ? "on" : ""}" data-show-star="${esc(show_id)}" aria-label="${on ? "Unstar show" : "Star show"}">${on ? "★ Starred" : "☆ Star this show"}</button>`;
+}
+
+function bindShowStars(scope) {
+  scope.querySelectorAll("[data-show-star]").forEach(btn => {
+    if (btn._bound) return;
+    btn._bound = true;
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      toggleShowStar(btn.dataset.showStar);
+    });
+  });
+}
+
+/* ---------- Starred Shows page (#/starred-shows) ----------
+
+   Reachable from the drawer, deliberately NOT on the home screen (Joey's
+   framing: "somewhat easily accessible" but distinct from home). Renders
+   exactly what cp_starred_shows holds -- no fetch, no ranking, no
+   algorithmic surfacing. An empty state is a real, renderable state, same
+   convention as every other page in the app. Reuses showResultRow's visual
+   language (artwork + title, no play/star/duration controls -- a show,
+   not a playable item) rather than inventing a second show-card shape. */
+function starredShowRow(entry) {
+  return `<a class="show-result" href="#/show/${encodeURIComponent(entry.show_id)}">
+    ${entry.artwork_url ? `<img class="show-result-art" src="${esc(safeUrl(entry.artwork_url))}" alt="">` : `<span class="show-result-art show-result-art-blank"></span>`}
+    <span class="show-result-title">${esc(entry.title)}</span>
+  </a>`;
+}
+
+function renderStarredShows() {
+  document.body.className = "view-page";
+  const starred = Object.values(starredShowsMap())
+    .sort((a, b) => (b.starred_at || "").localeCompare(a.starred_at || ""));
+
+  $("#view").innerHTML = `
+    <div class="page">
+      <div class="page-head">
+        <a class="back" href="#/">‹</a>
+        <div>
+          <h2>Starred Shows</h2>
+          <p class="sub">${starred.length} show${starred.length === 1 ? "" : "s"} you've starred</p>
+        </div>
+      </div>
+      ${starred.length
+        ? `<div class="show-results">${starred.map(starredShowRow).join("")}</div>`
+        : `<p class="note">No starred shows yet — star a show from its page to see it here.</p>`}
+    </div>`;
 }
 
 /* ---------- the four suggestions ---------- */
@@ -682,9 +878,10 @@ function prettyTitle(query) {
    naming rather than rounding away: the largest single part is 468 B, and 50
    playlists of the ten longest-titled episodes in the catalogue come to ~252 KB.
    A blanket self-sufficient copy would be ~861 B a part — ~430 KB — for the worse
-   failure mode above. This lands in DurableStore's localStorage tier, where
-   `cp_events` (5,000 entries) is already several times any of these figures, so it
-   is not the largest thing in there; and lsSet reports a refused write rather than
+   failure mode above. This lands in DurableStore's localStorage tier — the event
+   queue (M3) moved off it into IndexedDB, so it is no longer the comparison point
+   here, but the playlist bytes above are still well inside what that tier already
+   held; and lsSet reports a refused write rather than
    swallowing it, which buildPlaylist now ACTS on rather than discarding. All four
    figures are asserted against the real catalogue in
    test/playlist-durability.test.js, so widening the whitelist turns CI red rather
@@ -1040,8 +1237,14 @@ const TITLE_ALIASES = {
   "Lingthusiasm - A podcast that's enthusiastic about linguistics": "Lingthusiasm",
 };
 
+/* A3.1/Q3: the curated 220-show catalogue first, then the breadth-search
+   cache (populated by renderShow when a show_id isn't in the curated set —
+   see there) so a show page for a breadth-tier show found via Shows search
+   still resolves once its record has been fetched once this session. */
 function showById(id) {
-  return (state.catalog?.shows || []).find(s => s.show_id === id) || null;
+  return (state.catalog?.shows || []).find(s => s.show_id === id)
+    || state.breadthShowCache[id]
+    || null;
 }
 
 /* Every discover-pool episode belonging to a show, joined by show_id first and
@@ -1088,41 +1291,267 @@ function showNameLink(showName) {
   return showId ? `<a class="show-link" href="#/show/${esc(showId)}">${label}</a>` : label;
 }
 
+/* A3.2 — tapping a chip goes to "shows in this category" (renderCategory),
+   reusing taxonomy_node_ids overlap across the existing 220-show curated
+   catalogue. Zero new data needed: the join is entirely against fields
+   already fetched (state.taxonomy, state.catalog). Deliberately an <a>, not
+   a <button> wired through JS, so it is a normal navigable link (right-click
+   "open in new tab" etc. keep working, same reasoning as showNameLink). */
 function taxonomyChip(nodeId) {
   const node = (state.taxonomy?.nodes || []).find(n => n.id === nodeId);
-  return `<span class="fy-chip">${esc(node?.label || nodeId)}</span>`;
+  const label = esc(node?.label || nodeId);
+  return `<a class="fy-chip" href="#/category/${esc(encodeURIComponent(nodeId))}">${label}</a>`;
+}
+
+/* Every catalogue show whose taxonomy_node_ids includes nodeId — the exact
+   overlap check A3.2 calls for. Once Stage 3b's breadth catalogue becomes
+   client-searchable this should extend to it too (separate card); for now
+   it reads only state.catalog, the curated 220-show set. */
+function showsForCategory(nodeId) {
+  return (state.catalog?.shows || []).filter(s => (s.taxonomy_node_ids || []).includes(nodeId));
+}
+
+/* Shared shell for both the category list (A3.2) and the all-shows index
+   (A3.3) — same "back, heading, sub, list-of-show-result-rows" shape
+   renderShow/renderPlaylistDetail already use, and reuses showResultRow so a
+   row here looks and behaves exactly like a Shows-search result. */
+function renderShowIndexPage(title, subtitle, shows) {
+  document.body.className = "view-page";
+  $("#view").innerHTML = `
+    <div class="page">
+      <div class="page-head">
+        <a class="back" href="#/">‹</a>
+        <div>
+          <h2>${esc(title)}</h2>
+          <p class="sub">${esc(subtitle)}</p>
+        </div>
+      </div>
+      ${shows.length
+        ? `<div class="show-results">${shows.map(showResultRow).join("")}</div>`
+        : `<p class="note">No shows here yet.</p>`}
+    </div>`;
+}
+
+/* A3.2's landing page. An unknown nodeId still renders — same "absence is a
+   real state, not an error" rule renderShow's not-found guard follows —
+   falling back to the raw id as its own label, and an empty result list
+   getting the shared "No shows here yet" copy rather than a dead end. */
+function renderCategory(nodeId) {
+  const node = (state.taxonomy?.nodes || []).find(n => n.id === nodeId);
+  const label = node?.label || nodeId;
+  const shows = showsForCategory(nodeId).slice().sort((a, b) => a.title.localeCompare(b.title));
+  renderShowIndexPage(label, `${shows.length} show${shows.length === 1 ? "" : "s"} in 4a's catalogue`, shows);
+}
+
+/* A3.3 — the all-shows browsable index. A-Z over the full curated catalogue;
+   category grouping is the Shows-search tab's job already (browse by
+   category lives one tap away via any show's taxonomy chips), so this stays
+   a single flat alphabetical list rather than duplicating that navigation. */
+function renderAllShows() {
+  const shows = (state.catalog?.shows || []).slice().sort((a, b) => a.title.localeCompare(b.title));
+  renderShowIndexPage("All Shows", `${shows.length} shows in 4a's catalogue, A\u2013Z`, shows);
+}
+
+/* Stage 3b (docs/show-pages-plan.md §Stage 3, kanban t_567b570f): full
+   per-show episode list, fetched on demand from the backend endpoint rather
+   than the curated discover-pool ceiling `episodesForShow` gives (median 7
+   episodes). Maps a full-catalogue row into the same shape `snapshot()`
+   already knows how to normalize (id/title/hook/show/audio_url/duration_min)
+   and seeds it into `state.itemIndex` — bindPlay/toggleStar both read
+   `state.itemIndex[id]` first, so a full-catalogue row plays and stars
+   exactly like a curated one. No new row UI needed; every episode gets a
+   real, playable audio_url straight from the endpoint, never a link-out. */
+function fullCatalogueRowToEpRowItem(show, ep) {
+  const id = `${show.show_id}--${ep.guid}`;
+  return snapshot(id, {
+    show: show.title,
+    title: ep.title,
+    hook: ep.description_text || "",
+    audio_url: ep.audio_url,
+    duration_min: ep.duration_seconds ? Math.round(ep.duration_seconds / 60) : null,
+    duration_sec: ep.duration_seconds ?? null,
+    topics: [],
+  });
+}
+
+async function fetchShowEpisodes(show_id) {
+  try {
+    const res = await fetch(pinnedUrl(`api/shows/${encodeURIComponent(show_id)}/episodes`), { cache: "no-cache" });
+    if (!res.ok) return { episodes: null, error: `status ${res.status}` };
+    const body = await res.json();
+    return { episodes: body.episodes || [], stale: !!body.stale, error: body.error || null };
+  } catch (e) {
+    return { episodes: null, error: e && e.message || "network error" };
+  }
+}
+
+/* A2.5: "Similar shows" — deterministic taxonomy-overlap similarity, zero new
+   data needed (docs/product requirements audit note: taxonomy_node_ids
+   already sits on every catalog.json show record, unused for this purpose
+   until now). Score = count of taxonomy_node_ids shared with `show`; a show
+   sharing none is not "weakly similar", it is unrelated, so it is filtered
+   out rather than padded in (same "honest sparse/empty beats padding" rule
+   buildPlaylist's tiering already follows). Ties broken by show_id so the
+   order is stable and pinnable in a test, not accidentally date- or
+   insertion-order-dependent. Returns [] (never throws) for a show with no
+   taxonomy_node_ids of its own — there is nothing to overlap against. */
+function similarShows(show, limit = 6) {
+  const nodeIds = new Set(show?.taxonomy_node_ids || []);
+  if (!nodeIds.size) return [];
+  const all = state.catalog?.shows || [];
+  return all
+    .filter(s => s.show_id !== show.show_id)
+    .map(s => ({ show: s, shared: (s.taxonomy_node_ids || []).filter(id => nodeIds.has(id)).length }))
+    .filter(x => x.shared > 0)
+    .sort((a, b) => b.shared - a.shared || a.show.show_id.localeCompare(b.show.show_id))
+    .slice(0, limit)
+    .map(x => x.show);
+}
+
+/* Reuses showResultRow verbatim (same "names a SHOW, not a playable item"
+   rule the shows-search results already follow) rather than inventing a
+   second show-card markup for the same kind of link. Renders nothing (not
+   an empty section) when there is no overlap — matches every other join on
+   this page (moreFromShow, the "no episodes" branch above). */
+function similarShowsSection(show) {
+  const shows = similarShows(show);
+  if (!shows.length) return "";
+  return `<section class="ep-more">
+    <h3>Similar shows</h3>
+    <div class="show-results">${shows.map(showResultRow).join("")}</div>
+  </section>`;
+}
+
+/* ---------- "used in these forays" (show page, requirements B3/Q6) ----------
+
+   The reverse of foraySourcesHtml's join: that surface starts from a resolved
+   Foray and asks "which shows is this made of"; this starts from a show and
+   asks "which forays draw on it". The actual segment/source walk happens in
+   player/foray-resolve.js's foraysReferencingShow, bridged through
+   player/client.js — app.js itself is NOT allowed to enumerate the pool of
+   segments/sources beyond the one fetch-assignment line below (see
+   tools/mobile/prepare-webdir.test.js's "nothing in the app browses the
+   segment pool" premise, #327): the mobile bundle ships only the segments
+   its bundled Forays reference, so a surface that walked the pool directly
+   here would render complete on the website and silently short in the app.
+
+   Read synchronously off window.ForayPlayer, same trade-off forayCards()
+   already makes for the home screen's Foray row: on a cold load where the
+   player module has not evaluated yet, the footer is simply absent until the
+   next render rather than blocking renderShow on an await. */
+function foraysUsingShow(show) {
+  if (!show || !window.ForayPlayer || typeof window.ForayPlayer.foraysUsingShow !== "function") return [];
+  if (!state.forays) return [];
+  const names = [show.title, TITLE_ALIASES[show.title]].filter(Boolean);
+  return window.ForayPlayer.foraysUsingShow(state.forays, names, {
+    segmentsDoc: state.segments,
+    sourcesDoc: state.segmentSources,
+    unlocked: unlockedForays(),
+  });
+}
+
+/* Deliberately its own <footer>, never mixed into the episode list above it —
+   requirements doc's B1 rule (forays stay visually distinct from episodes
+   everywhere) applies here too: this is 4a's own cross-reference, not
+   anything the show itself published. */
+function showForaysHtml(show) {
+  const forays = foraysUsingShow(show);
+  if (!forays.length) return "";
+  return `<footer class="show-forays">
+    <h3 class="show-forays-h">Used in the following forays</h3>
+    <p class="show-forays-note">Not part of ${esc(show.title)}'s own catalogue — 4a stitched a clip from it into these.</p>
+    ${forays.map(f => `<a class="show-forays-row" href="#/foray/${esc(f.id)}">
+      <span class="show-forays-title">${esc(f.title)}</span>${f.status === "published" ? "" : `<span class="show-forays-draft">draft</span>`}
+    </a>`).join("")}
+  </footer>`;
 }
 
 function renderShow(show_id) {
   document.body.className = "view-page";
   const show = showById(show_id);
   if (!show) { $("#view").innerHTML = `<div class="page"><p class="note">Show not found.</p></div>`; return; }
-  fullPool(); // populate itemIndex/poolIds so episode rows can play in-app
-  const eps = episodesForShow(show);
+  fullPool(); // populate itemIndex/poolIds so curated-pool episode rows can play in-app
+  const curatedEps = episodesForShow(show);
   const ctx = "show-" + show.show_id;
   const chips = (show.taxonomy_node_ids || []).map(taxonomyChip).join("");
+  /* A3.1/Q3: a breadth-tier show (found via the full-catalogue search
+     endpoint, never curated) has zero discover-pool episodes by construction
+     — discover.json only ever holds the curated 220's hand-picked episodes.
+     That is not the same as "this show genuinely has none" (the curated-tier
+     empty state below), so it gets its own honest, non-alarming copy instead
+     of implying the show is empty. Stage 3b's async fetch below (kanban
+     t_567b570f) supersedes this once it resolves; until then this stays the
+     safe degrade for the curated-pool-only render. */
+  const isBreadthTier = show.tier === "breadth";
 
-  $("#view").innerHTML = `
-    <div class="page">
-      <div class="page-head">
-        <a class="back" href="#/">‹</a>
-        <div>
-          <h2>${esc(show.title)}</h2>
-          <p class="sub">${eps.length} episode${eps.length === 1 ? "" : "s"} in 4a's catalogue</p>
-        </div>
+  const head = `
+    <div class="page-head">
+      <a class="back" href="#/">‹</a>
+      <div>
+        <h2>${esc(show.title)}${explicitBadge(show.explicit)}</h2>
+        <p class="sub" data-show-count>${curatedEps.length
+          ? `${curatedEps.length} episode${curatedEps.length === 1 ? "" : "s"} in 4a's catalogue — loading full episode list…`
+          : isBreadthTier
+            ? "4a's wider catalogue — loading full episode list…"
+            : "Loading full episode list…"}</p>
       </div>
-      ${show.artwork_url ? `<img class="show-art" src="${esc(safeUrl(show.artwork_url))}" alt="">` : ""}
-      ${show.editorial_note ? `<p class="note">${esc(show.editorial_note)}</p>` : ""}
-      ${chips ? `<div class="fy-chips">${chips}</div>` : ""}
-      ${eps.length
-        ? eps.map((item, i) => epRow(item, i, ctx, -1)).join("")
-        : `<p class="note">No episodes from this show are in 4a's catalogue right now.</p>`}
-    </div>`;
+    </div>
+    ${show.artwork_url ? `<img class="show-art" src="${esc(safeUrl(show.artwork_url))}" alt="">` : ""}
+    ${showStarBtn(show.show_id)}
+    ${show.editorial_note ? `<p class="note">${esc(show.editorial_note)}</p>` : ""}
+    ${chips ? `<div class="fy-chips">${chips}</div>` : ""}`;
 
+  // Render immediately with the curated pool so the page is never blank
+  // while the full-catalogue fetch is in flight.
+  $("#view").innerHTML = `<div class="page">${head}<div data-show-episodes>
+    ${curatedEps.length
+      ? curatedEps.map((item, i) => epRow(item, i, ctx, -1)).join("")
+      : isBreadthTier
+        ? `<p class="note">Fetching this show's episodes — 4a is adding full episode lists for shows outside its curated picks. Check back soon.</p>`
+        : `<p class="note">No episodes from this show are in 4a's catalogue right now.</p>`}
+  </div>
+  ${similarShowsSection(show)}
+  ${showForaysHtml(show)}
+  </div>`;
   bindPickLogging($("#view"));
   bindStars($("#view"));
+  bindShowStars($("#view"));
   bindUpNext($("#view"));
   bindPlay($("#view"));
+
+  fetchShowEpisodes(show.show_id).then(({ episodes, stale, error }) => {
+    const container = $("#view [data-show-episodes]");
+    const countLabel = $("#view [data-show-count]");
+    if (!container) return; // navigated away before the fetch resolved
+
+    if (episodes === null) {
+      // Fetch failed outright and there's nothing better than the curated
+      // pool already rendered above — never a blank page, per Stage 3's
+      // acceptance criterion (docs/show-pages-plan.md).
+      if (countLabel) countLabel.textContent = curatedEps.length
+        ? `${curatedEps.length} episode${curatedEps.length === 1 ? "" : "s"} in 4a's catalogue (couldn't load the full list)`
+        : `Couldn't load this show's episodes right now.`;
+      return;
+    }
+
+    if (episodes.length === 0) {
+      if (countLabel) countLabel.textContent = curatedEps.length
+        ? `${curatedEps.length} episode${curatedEps.length === 1 ? "" : "s"} in 4a's catalogue`
+        : `No episodes found for this show.`;
+      return;
+    }
+
+    const rows = episodes.map((ep) => fullCatalogueRowToEpRowItem(show, ep));
+    if (countLabel) {
+      countLabel.textContent = `${rows.length} episode${rows.length === 1 ? "" : "s"}` +
+        (stale ? " (showing the last saved list — couldn't refresh just now)" : "");
+    }
+    container.innerHTML = rows.map((item, i) => epRow(item, i, ctx, -1)).join("");
+    bindPickLogging(container);
+    bindStars(container);
+    bindUpNext(container);
+    bindPlay(container);
+  });
 }
 
 function touchPlaylistPlayed(id) {
@@ -1143,15 +1572,46 @@ function listenedShows() {
   return new Set(pickedHistory().map(id => state.itemIndex[id]?.show).filter(Boolean));
 }
 
+/* Repeated-query cache (H bug, kanban t_838a13c0): a typo fix, back button, or
+   re-tap resubmits the exact same query text against a ctx/pool that has not
+   changed, and scoreMatch() was re-scanning and re-scoring the whole
+   ~1,880-item pool from scratch every time -- 3.4-6s even fully warm (see the
+   card's fleet-2 measurement). `interpretQuery` + `searchWithRelaxation`'s
+   output (everything through ranking, BEFORE classifyResults) is a pure
+   function of (query text, family-mode flag, interests weights) given a pool
+   that is otherwise fixed for the session -- state.discover/state.session are
+   fetched once in init() and never reassigned, so the pool a query scores
+   against cannot change mid-session; the one thing that visibly changes
+   without a page reload is `state.interests` (nudgeTopics, on every
+   pick/play/thumbs), which is why `state._interestsGen` is bumped there and
+   folded into this key. Deliberately CACHES BEFORE classifyResults, not
+   after: classifyResults reads `listenedShows()`, which changes on every pick
+   independent of the query -- caching past that point would serve a stale
+   listened-show penalty. classifyResults itself is O(results), not
+   O(catalogue), so leaving it uncached costs nothing.
+   Same bounded-eviction spirit as search-engine.js's PATTERN_CACHE_MAX /
+   patternCache (a session tab is long-lived and every distinct query text is
+   a new key) -- clearing wholesale on overflow is fine since every entry is a
+   pure function of its key and cheap to rebuild. */
+const SEARCH_CACHE_MAX = 200;
+const searchCache = new Map();
+
 function buildPlaylist(query) {
   const ctx = searchCtx();
   const interp = SearchEngine.interpretQuery(query, ctx);
   if (!interp.groups.length && !interp.filters.length) {
     return { status: "empty", suggestions: [] };
   }
-  const pool = poolFiltered();
-  const { results } = SearchEngine.searchWithRelaxation(pool, interp, 2, state.itemTags, interestScore);
-  const { status, picks } = SearchEngine.classifyResults(results, { listenedShows: listenedShows() });
+  const pool = poolFiltered(); // also refreshes state.itemIndex/state.poolIds (side effect)
+  const cacheKey = JSON.stringify([query, familyMode(), state._interestsGen || 0]);
+  let cached = searchCache.get(cacheKey);
+  if (!cached) {
+    const { results } = SearchEngine.searchWithRelaxation(pool, interp, 2, state.itemTags, interestScore);
+    cached = { results };
+    if (searchCache.size >= SEARCH_CACHE_MAX) searchCache.clear();
+    searchCache.set(cacheKey, cached);
+  }
+  const { status, picks } = SearchEngine.classifyResults(cached.results, { listenedShows: listenedShows() });
 
   if (status === "empty") {
     return { status: "empty", suggestions: SearchEngine.suggestAdjacentTopics(interp, ctx) };
@@ -1176,6 +1636,60 @@ function buildPlaylist(query) {
     return { status: "unsaved", suggestions: [] };
   }
   return { status, playlist };
+}
+
+/* Loading-state guard around #pl-form's submit (H bug, kanban t_838a13c0):
+   buildPlaylist() is synchronous and, in the worst case (a fresh session's
+   first query, or any query that misses the repeated-query cache above), can
+   take 1.3-8s on the real catalogue — with nothing before this change to
+   tell the listener their tap registered. Two form instances share this
+   handler (renderHome and renderPlaylists both mount a `#pl-form`), so it is
+   defined once here rather than duplicated.
+
+   THE SETTIMEOUT(0) IS LOAD-BEARING, not decoration: disabling the button and
+   swapping its label only becomes visible to the user if the browser gets a
+   chance to paint before the synchronous, CPU-bound buildPlaylist() call
+   blocks the main thread. Setting `disabled`/`textContent` and calling
+   buildPlaylist() in the same tick produces a frozen-looking button for the
+   whole stall — no paint happens until the synchronous work yields — which is
+   the exact defect this guard exists to fix, just moved one line over. A
+   0ms timeout is enough because the browser only needs a task-queue turn to
+   flush the pending style/paint, not any particular delay.
+   `finally` restores the button whether buildPlaylist ran clean, threw
+   (unexpected but real user data — never let an exception leave the button
+   stuck disabled), or returned early. */
+function bindPlaylistFormSubmit(e) {
+  e.preventDefault();
+  const form = e.currentTarget;
+  const input = form.querySelector("input[type='text']");
+  const btn = form.querySelector("button");
+  const query = input.value.trim();
+  if (!query) return;
+  const originalLabel = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = "Building…";
+  setTimeout(() => {
+    try {
+      const result = buildPlaylist(query);
+      logEvent("playlist_built", { query, status: result.status, found: result.playlist ? result.playlist.items.length : 0 });
+      if (result.status === "ok" || result.status === "sparse") {
+        location.hash = "#/playlist/" + result.playlist.id;
+      } else {
+        const note = $("#pl-note");
+        note.textContent = result.status === "unsaved"
+          /* Says what happened and what to do, and does not blame the listener for
+             a device that is out of room. */
+          ? "That playlist could not be saved — this device has no storage space left. Removing a playlist you have finished with frees enough for a new one."
+          : result.suggestions.length
+            ? `Not much on "${query}" yet — try ${result.suggestions.map(s => s.label).join(", ")} instead.`
+            : `Not much on "${query}" yet — try different words.`;
+        note.hidden = false;
+      }
+    } finally {
+      btn.disabled = false;
+      btn.textContent = originalLabel;
+    }
+  }, 0);
 }
 
 /* ---------- shared wiring ---------- */
@@ -1475,27 +1989,125 @@ function showResultRow(show) {
   </a>`;
 }
 
+/* A3.5: "Shows we vouch for" — a show-level editorial row (requirements audit
+   note: 220/220 catalog.json shows already carry `editorial_note`, unused as a
+   browse surface until now — only the four topic-based subject cards
+   (buildCards/cards4) and forays (forayHomeHtml) serve as an editorial front
+   door today, and both are episode/topic-shaped, not show-shaped). Per the
+   requirements doc's B1 separation rule this is its own distinctly-labeled
+   section, never blended into an episode row or a foray row — it reuses
+   showResultRow verbatim (same "names a SHOW, not a playable item" rule
+   similarShowsSection already follows) rather than inventing a second
+   show-card markup.
+
+   Every show qualifies (all 220 carry a non-empty editorial_note), so
+   "curated" here means a deterministic day-rotating sample rather than a
+   hand-maintained allow-list — a fixed set would either need constant
+   upkeep as the catalogue grows or go stale immediately. Seeded by calendar
+   day (UTC `YYYY-MM-DD` of `now`), NOT Math.random: every visitor and every
+   render on the same day sees the same set (no layout jitter from a refresh),
+   and a test can pin the exact output by passing a fixed `now` rather than
+   stubbing global Date. Base order is show_id-sorted before the seeded
+   shuffle runs, so the result is never insertion-order-dependent (same
+   tie-breaking discipline similarShows uses). */
+function dayOfYearSeed(now) {
+  const key = now.toISOString().slice(0, 10); // UTC YYYY-MM-DD
+  let h = 0;
+  for (let i = 0; i < key.length; i++) h = (Math.imul(h, 31) + key.charCodeAt(i)) >>> 0;
+  return h >>> 0;
+}
+
+/* A linear-congruential shuffle (Fisher-Yates driven by an LCG), not
+   Math.random — the whole point of dayOfYearSeed is a result a test can
+   reproduce by passing the same `now`, and Math.random cannot be seeded. */
+function seededShuffle(arr, seed) {
+  const a = arr.slice();
+  let s = seed >>> 0;
+  for (let i = a.length - 1; i > 0; i--) {
+    s = (Math.imul(s, 1103515245) + 12345) >>> 0;
+    const j = s % (i + 1);
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function showsWeVouchFor(limit = 8, now = new Date()) {
+  const shows = (state.catalog?.shows || [])
+    .filter(s => s.editorial_note && s.editorial_note.trim())
+    .slice()
+    .sort((a, b) => a.show_id.localeCompare(b.show_id));
+  if (!shows.length) return [];
+  return seededShuffle(shows, dayOfYearSeed(now)).slice(0, limit);
+}
+
+/* Renders nothing (not an empty section) when there is no editorially-noted
+   show in the catalogue — matches similarShowsSection's and moreFromShow's
+   own absence rule. */
+function vouchForHtml() {
+  const shows = showsWeVouchFor();
+  if (!shows.length) return "";
+  return `<section class="ep-more fy-vouch">
+    <h3>Shows we vouch for</h3>
+    <div class="show-results">${shows.map(showResultRow).join("")}</div>
+  </section>`;
+}
+
 /* ---------- Shows search (Stage 2, docs/show-pages-plan.md) ----------
 
    A separate affordance from #pl-form's topic playlist builder, on purpose
    (plan §2, kanban card scope): the two ask different questions ("what
    should I listen to" vs "does this show exist here") and are never merged
    into one result list or one search mode. Toggled by two tab buttons that
-   show/hide their own form+results block; only one is visible at a time. */
+   show/hide their own form+results block; only one is visible at a time.
+
+   A3.1/Q3: this must reach 4a's FULL breadth catalogue, not just the 220
+   curated shows shipped in data/catalog-client.json — "the user should
+   never notice any limitations based on our own limited curation." The
+   curated set is searched locally first (instant, no network) as the fast
+   first pass; the full-breadth backend endpoint (kanban t_8d1a6a58,
+   backend/src/catalog/searchBreadthShows.ts) is queried in parallel and its
+   results are appended once they land, deduped against what's already
+   showing. A network failure degrades to the curated-only results silently
+   — never a broken/blank state (matches showsForCategory's and renderShow's
+   own "absence is a real state, not an error" rule). */
+let showSearchToken = 0; // guards a slow in-flight fetch from clobbering a newer query's results
+
 function renderShowSearchResults(query) {
+  const myToken = ++showSearchToken;
   const note = $("#sh-note");
   const results = $("#sh-results");
-  const shows = SearchEngine.searchShows(query, state.catalog?.shows || []);
-  if (!shows.length) {
-    results.innerHTML = "";
-    results.hidden = true;
-    note.textContent = `No shows match "${query}" in 4a's catalogue.`;
-    note.hidden = false;
-    return;
-  }
-  note.hidden = true;
-  results.innerHTML = shows.map(showResultRow).join("");
-  results.hidden = false;
+  const localShows = SearchEngine.searchShows(query, state.catalog?.shows || []);
+
+  const paint = (shows) => {
+    if (myToken !== showSearchToken) return; // a newer query already superseded this one
+    if (!shows.length) {
+      results.innerHTML = "";
+      results.hidden = true;
+      note.textContent = `No shows match "${query}" in 4a's catalogue.`;
+      note.hidden = false;
+      return;
+    }
+    note.hidden = true;
+    results.innerHTML = shows.map(showResultRow).join("");
+    results.hidden = false;
+  };
+
+  paint(localShows);
+
+  fetchApiJson(`api/shows/search?q=${encodeURIComponent(query)}&limit=25`).then((data) => {
+    if (myToken !== showSearchToken) return; // superseded — drop this response
+    const breadthShows = data?.shows || [];
+    if (!breadthShows.length) return; // degrade silently: local-only results already painted
+    const seen = new Set(localShows.map((s) => s.show_id));
+    const additions = [];
+    for (const s of breadthShows) {
+      if (seen.has(s.show_id)) continue;
+      seen.add(s.show_id);
+      state.breadthShowCache[s.show_id] = s; // so showById can resolve it once a result is tapped
+      additions.push(s);
+    }
+    if (additions.length) paint(localShows.concat(additions));
+  }); // fetchApiJson already swallows network/parse errors and resolves null — no .catch needed
 }
 
 function setSearchTab(mode) {
@@ -1509,12 +2121,19 @@ function setSearchTab(mode) {
   $("#sh-form").hidden = topics;
   $("#sh-note").hidden = topics || !$("#sh-note").textContent;
   $("#sh-results").hidden = topics || !$("#sh-results").innerHTML;
+  $("#browse-all-link").hidden = topics;
 }
 
 function renderHome() {
   document.body.className = "view-home";
   if (!state.cardSlots.length) buildCards();
   const resumeRows = forayResumeRows();
+  /* Rendered OUTSIDE `.home`, below the fold — see the `.home-below` note in
+     styles.css. `.home` is a fixed-height flex column and `.cards4` is its only
+     `flex: 1` child, so any tall sibling inside it starves the four cards to
+     zero. Computed once here rather than called inline twice: the sample is
+     seeded by day-of-year, so a second call is deterministic but wasted. */
+  const vouch = vouchForHtml();
   $("#view").innerHTML = `
     <div class="home">
       <div id="banner-slot">${bannerHtml()}</div>
@@ -1536,7 +2155,9 @@ function renderHome() {
       </form>
       <p id="sh-note" class="note" hidden></p>
       <div id="sh-results" class="show-results" hidden></div>
-    </div>`;
+      <a id="browse-all-link" class="browse-all-link" href="#/shows" hidden>Browse all shows ›</a>
+    </div>
+    ${vouch ? `<div class="home-below">${vouch}</div>` : ""}`;
 
   if (!showFirstTimeExplainerOnce()) showIntroPopupOnce();
 
@@ -1569,26 +2190,7 @@ function renderHome() {
     renderShowSearchResults(query);
   });
 
-  $("#pl-form").addEventListener("submit", (e) => {
-    e.preventDefault();
-    const query = $("#pl-input").value.trim();
-    if (!query) return;
-    const result = buildPlaylist(query);
-    logEvent("playlist_built", { query, status: result.status, found: result.playlist ? result.playlist.items.length : 0 });
-    if (result.status === "ok" || result.status === "sparse") {
-      location.hash = "#/playlist/" + result.playlist.id;
-    } else {
-      const note = $("#pl-note");
-      note.textContent = result.status === "unsaved"
-        /* Says what happened and what to do, and does not blame the listener for
-           a device that is out of room. */
-        ? "That playlist could not be saved — this device has no storage space left. Removing a playlist you have finished with frees enough for a new one."
-        : result.suggestions.length
-          ? `Not much on "${query}" yet — try ${result.suggestions.map(s => s.label).join(", ")} instead.`
-          : `Not much on "${query}" yet — try different words.`;
-      note.hidden = false;
-    }
-  });
+  $("#pl-form").addEventListener("submit", bindPlaylistFormSubmit);
 
   sizeProgressBars($("#view"));
   bindPickLogging($("#view"));
@@ -1609,7 +2211,7 @@ function epRow(item, idx, ctx, nextIdx) {
   return `<div class="ep-row">
     <span class="q-num ${idx === nextIdx ? "next" : ""}">${idx + 1}</span>
     <div class="info">
-      <div class="t"><a class="ep-title-link" href="#/episode/${esc(encodeURIComponent(item.id))}">${esc(item.title)}</a></div>
+      <div class="t"><a class="ep-title-link" href="#/episode/${esc(encodeURIComponent(item.id))}">${esc(item.title)}</a>${explicitBadge(item.explicit)}</div>
       <div class="s">${showNameLink(item.show)} · ${fmtDur(item.duration_min)}</div>
     </div>
     ${inApp}${starBtn(item.id)}${upNextBtn(item.id)}${external}
@@ -1652,7 +2254,7 @@ function archivedRow(item, idx, ctx) {
   return `<div class="ep-row gone">
     <span class="q-num">${idx + 1}</span>
     <div class="info">
-      <div class="t">${named ? `<a class="ep-title-link" href="#/episode/${esc(encodeURIComponent(item.id))}">${esc(item.title)}</a>` : "Part no longer in the catalogue"}</div>
+      <div class="t">${named ? `<a class="ep-title-link" href="#/episode/${esc(encodeURIComponent(item.id))}">${esc(item.title)}</a>${explicitBadge(item.explicit)}` : "Part no longer in the catalogue"}</div>
       <div class="s">${named
         ? `${showNameLink(item.show)}${item.duration_min ? ` · ${fmtDur(item.duration_min)}` : ""} · not in 4a's catalogue right now`
         : "Saved before 4a kept episode details"}</div>
@@ -1749,6 +2351,29 @@ function resolveEpisode(id) {
   return pool[id] || savedMap()[id] || null;
 }
 
+/* A1.8: "More from this show" — display-only, no new data (the join already
+   exists as episodesForShow, docs/requirements audit note). item.show is only
+   ever a name string here (discover.json/itemIndex never carry show_id — the
+   same gap showNameLink already works around), so this resolves the show
+   record the same way showNameLink does (showIdForShowName -> showById) before
+   reusing episodesForShow/epRow exactly as renderShow does. Independent of
+   Stage 3b ingestion: works fine on today's curated pool and just grows once
+   that lands, per the card's own framing. Renders nothing (not an empty
+   section) when there is no show match or no other episodes — absence is a
+   real state, matching every other join on this page. */
+function moreFromShow(item) {
+  const showId = showIdForShowName(item.show);
+  const show = showId ? showById(showId) : null;
+  if (!show) return "";
+  const eps = episodesForShow(show).filter(e => e.id !== item.id).slice(0, 8);
+  if (!eps.length) return "";
+  const ctx = "episode-more-" + item.id;
+  return `<section class="ep-more">
+    <h3>More from this show</h3>
+    ${eps.map((e, i) => epRow(e, i, ctx, -1)).join("")}
+  </section>`;
+}
+
 function renderEpisode(id) {
   document.body.className = "view-page";
   const item = resolveEpisode(id);
@@ -1756,12 +2381,18 @@ function renderEpisode(id) {
     $("#view").innerHTML = `<div class="page"><p class="note">Episode not found.</p></div>`;
     return;
   }
+  // populate itemIndex/poolIds so "more from this show" rows can play in-app;
+  // never throws — no catalogue yet is a reason to skip that row's play button,
+  // not to lose the whole page (same rule hydrationPool already follows).
+  if (state.session && state.session.episodes) {
+    try { fullPool(); } catch (_) { /* catalogue not really there yet */ }
+  }
   $("#view").innerHTML = `
     <div class="page">
       <div class="page-head">
         <a class="back" href="#/">‹</a>
         <div>
-          <h2 class="fp-s-title">${esc(item.title)}</h2>
+          <h2 class="fp-s-title">${esc(item.title)}${explicitBadge(item.explicit)}</h2>
           <p class="fp-s-show">${item.show ? showNameLink(item.show) : ""}${item.duration_min ? ` · ${fmtDur(item.duration_min)}` : ""}</p>
         </div>
       </div>
@@ -1769,7 +2400,9 @@ function renderEpisode(id) {
       ${item.hook ? `<p class="fp-s-why">${esc(item.hook)}</p>` : ""}
       <div class="ep-actions">${item.audio_url ? playBtn(item) : `<a class="go" href="${esc(safeUrl(playLink(item)))}" target="_blank" rel="noopener"
         data-ev="picked" data-ep="${esc(item.id)}" data-ctx="episode-page">Listen in your podcast app ↗</a>`}${starBtn(item.id)}${upNextBtn(item.id)}</div>
+      ${moreFromShow(item)}
     </div>`;
+  bindPickLogging($("#view"));
   bindStars($("#view"));
   bindUpNext($("#view"));
   bindPlay($("#view"));
@@ -1904,24 +2537,7 @@ function renderPlaylists() {
       : `<p class="note">No playlists yet — type above to build your first one.</p>`}
     </div>`;
 
-  $("#pl-form").addEventListener("submit", (e) => {
-    e.preventDefault();
-    const query = $("#pl-input").value.trim();
-    if (!query) return;
-    const result = buildPlaylist(query);
-    logEvent("playlist_built", { query, status: result.status, found: result.playlist ? result.playlist.items.length : 0 });
-    if (result.status === "ok" || result.status === "sparse") {
-      location.hash = "#/playlist/" + result.playlist.id;
-    } else {
-      const note = $("#pl-note");
-      note.textContent = result.status === "unsaved"
-        ? "That playlist could not be saved — this device has no storage space left. Removing a playlist you have finished with frees enough for a new one."
-        : result.suggestions.length
-          ? `Not much on "${query}" yet — try ${result.suggestions.map(s => s.label).join(", ")} instead.`
-          : `Not much on "${query}" yet — try different words.`;
-      note.hidden = false;
-    }
-  });
+  $("#pl-form").addEventListener("submit", bindPlaylistFormSubmit);
 }
 
 /* ---------- Forays (#128) ----------
@@ -2220,11 +2836,12 @@ function foraySourcesHtml(r, player) {
   const clips = (n) => `${esc(String(n))} clip${n === 1 ? "" : "s"}`;
   const rows = credits.map(c => `
     <div class="fy-src">
-      <a class="fy-src-head" href="${esc(safeUrl(c.link))}" target="_blank" rel="noopener"
-         data-src-show="${esc(c.show)}">
-        <span class="fy-src-show">${esc(c.show)} ↗</span>
+      <div class="fy-src-head">
+        <span class="fy-src-show">${showNameLink(c.show)}</span>
+        <a class="fy-src-out" href="${esc(safeUrl(c.link))}" target="_blank" rel="noopener"
+           data-src-show="${esc(c.show)}" aria-label="Open ${esc(c.show)} on Apple Podcasts">↗</a>
         <span class="fy-src-meta">${clips(c.clips)} · ${esc(player.fmtSpan(c.seconds))}</span>
-      </a>
+      </div>
       <ul class="fy-src-eps">${c.episodes.map(e =>
         `<li>${esc(e.title)} <span>${clips(e.clips)}</span></li>`).join("")}</ul>
     </div>`).join("");
@@ -3413,7 +4030,7 @@ function openDrawer(open) {
         account instead of re-attaching to the old one. What stays behind is a row
         with no name, email, phone number or password — and `app_users` plus the
         events keyed to it are deleted, so it is an empty shell. Removing the
-        shell is `HUMAN-ACTIONS.md` #16.
+        shell is `HUMAN-ACTIONS.md` #14.
      4. NOT THE PUBLISHER AND ATTRIBUTION HOSTS. Playing a segment points an
         `<audio>` element at the publisher's own URL, so 43 first-hop hosts —
         several of them ad-attribution prefixes the publisher put there — saw
@@ -3807,9 +4424,15 @@ async function deleteMyData({ deviceOnly = false } = {}) {
        a resume rail and thumbs that no longer exist anywhere. Interests are reset
        to taxonomy defaults, which `loadInterests` does WITHOUT writing.
        `buildCards()` is deliberately not called: it writes `cp_recent_branches`
-       and `cp_seen`, which would put two of the 20 keys straight back. */
+       and `cp_seen`, which would put two of the 20 keys straight back.
+       Bump `_interestsGen` here too, same as nudgeTopics does on every
+       pick/play/thumbs — otherwise buildPlaylist's `searchCache` (keyed on
+       [query, familyMode, _interestsGen]) would happily serve back a
+       pre-wipe, interest-ranked result for the exact same query, silently
+       undercutting "reset personalization". */
     state.interests = {};
     loadInterests();
+    state._interestsGen = (state._interestsGen || 0) + 1;
     state.forayResume = null;
     state.forayPlaying = null;
     state.foray = null;
@@ -4084,8 +4707,11 @@ function renderCurrentPage() {
   else if ((m = /^#\/subject\/(.+)$/.exec(h))) renderPlaylistDetail("subject-" + m[1]);
   else if ((m = /^#\/episode\/(.+)$/.exec(h))) renderEpisode(m[1]);
   else if ((m = /^#\/show\/(.+)$/.exec(h))) renderShow(decodeURIComponent(m[1]));
+  else if ((m = /^#\/category\/(.+)$/.exec(h))) renderCategory(decodeURIComponent(m[1]));
+  else if (h === "#/shows") renderAllShows();
   else if (h === "#/playlists") renderPlaylists();
   else if (h === "#/queue") renderQueue();
+  else if (h === "#/starred-shows") renderStarredShows();
   else renderHome();
 }
 
@@ -4098,6 +4724,26 @@ function route() {
 /* ---------- init ---------- */
 
 async function fetchJson(path) {
+  try {
+    const res = await fetch(pinnedUrl(path), { cache: "no-cache" });
+    return res.ok ? await res.json() : null;
+  } catch (_) { return null; }
+}
+
+/* A3.1/Q3: a plain, unpinned fetch for /api/* backend endpoints — deliberately
+   a separate helper from fetchJson, not a reuse of it. fetchJson pins every
+   call to the deploy generation (pinnedUrl) because data/*.json is a static,
+   versioned build artifact; /api/* is a live serverless function with no
+   deploy-generation concept to pin against. Keeping this a distinct function
+   (rather than making fetchJson conditionally skip pinning) also keeps
+   tools/mobile/prepare-webdir.mjs's runtimeDataFiles() derivation correct —
+   that scanner matches every literal fetchJson call against a data/*.json
+   path to build the native bundle's data-file manifest, and pointing that
+   same call at api/shows/search would incorrectly need to be either bundled
+   as data or special-cased out. Same swallow-errors-to-null contract as
+   fetchJson, so callers don't need their own try/catch for a down or
+   unreachable endpoint. */
+async function fetchApiJson(path) {
   try {
     const res = await fetch(path, { cache: "no-cache" });
     return res.ok ? await res.json() : null;
@@ -4148,6 +4794,26 @@ async function init() {
   route();
   logEvent("session_shown", { session_id: state.session.session_id });
   trySyncEvents();
+
+  /* Warm the concept-vocabulary DF caches now, while the app is idle between
+     "data finished loading" and "user typed a query and hit Go", instead of
+     paying it interleaved into the FIRST real playlist search (H bug, kanban
+     t_838a13c0 — a fresh session's first query measured 6.6-8.1s before this
+     fix). Deliberately scheduled via requestIdleCallback (falling back to a
+     0ms timeout where it's unavailable, e.g. older WebKit/the native shell)
+     rather than called inline here: `route()` above has already painted the
+     first screen, and priming is pure CPU with no UI of its own, so it must
+     not compete with that paint or with an impatient user who taps into the
+     playlist search within the first second. searchCtx() builds the same ctx
+     this call warms, so a query that arrives before priming finishes just
+     resumes the memoization mid-way — nothing is wasted or redone. */
+  const primeSearchVocab = () => {
+    if (typeof SearchEngine !== "undefined" && SearchEngine.primeVocabulary) {
+      SearchEngine.primeVocabulary(searchCtx());
+    }
+  };
+  if (typeof requestIdleCallback === "function") requestIdleCallback(primeSearchVocab, { timeout: 2000 });
+  else setTimeout(primeSearchVocab, 0);
 
   /* Up Next auto-advance's wiring (docs/listening-queue-plan.md §4 addendum).
      Fire-and-forget: a player that never loads (module failure, test
@@ -4266,6 +4932,26 @@ const SHELL_NOTICE = {
   "generation-changed": "4a updated in the background, so this page is one version behind.",
 };
 
+/* THE PAGE'S HALF OF THE GENERATION PIN (#233/M4, sw.js's `handleShell`).
+ *
+ * The worker no longer remembers which pages are running last-known code —
+ * that lived in an in-memory `Set` that a browser-initiated worker eviction
+ * silently emptied, which failed a pinned page OPEN the next time it asked for
+ * data. The pin now lives here instead, in this page's own JS state (set
+ * synchronously at the TOP of this file — see that comment for why it cannot
+ * depend solely on this message listener, which attaches only after `init()`
+ * has already started fetching), which cannot be evicted independently of the
+ * page itself. Every `data/*.json` fetch carries `?_fdid=<that id>` so sw.js's
+ * `handleData` keeps reading the SAME generation rather than whatever today's
+ * pointer names. A reload clears this by simply being a new document — there
+ * is nothing to clear on purpose.
+ */
+function pinnedUrl(path) {
+  if (!pinnedDeployId) return path;
+  const sep = path.includes("?") ? "&" : "?";
+  return `${path}${sep}_fdid=${encodeURIComponent(pinnedDeployId)}`;
+}
+
 function showShellNotice(reason) {
   /* Own properties only. A plain object literal answers `SHELL_NOTICE["constructor"]`
      with a function, and `SHELL_NOTICE["toString"]` with another one, so a bare
@@ -4312,7 +4998,19 @@ if ("serviceWorker" in navigator && shouldRegisterServiceWorker(window)) {
   if (typeof navigator.serviceWorker.addEventListener === "function") {
     navigator.serviceWorker.addEventListener("message", (e) => {
       const msg = e && e.data;
-      if (msg && msg.source === "foray-sw") showShellNotice(msg.reason);
+      if (!msg || msg.source !== "foray-sw") return;
+      /* By the time this fires, `pinnedDeployId` is already set synchronously
+         (see the top of this file) if this load fell back at all — this
+         assignment is now a REDUNDANT confirmation, not the establishing
+         write, kept only as a safety net for a message that legitimately
+         arrives with a different id than the synchronous read found (there is
+         no such path today, but it costs nothing and a future one should not
+         have to remember this). A `deployId` of null (an unretained/unknown
+         generation on the worker's side) intentionally does not clear an
+         already-set pin — see sw.js's `handleData` fail-safe for the matching
+         reasoning. */
+      if (msg.reason === "stale-shell" && msg.deployId) pinnedDeployId = msg.deployId;
+      showShellNotice(msg.reason);
     });
   }
 }

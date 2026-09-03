@@ -1,0 +1,13 @@
+{
+  "name": "foray-playwright",
+  "private": true,
+  "type": "module",
+  "description": "Real-browser (Playwright/Chromium) integration coverage for sw.js's M4 deploy-manifest promotion logic (kanban card t_504fd5fd). See README.md for why this lives outside tools/ci/run-suites.mjs's discovery.",
+  "scripts": {
+    "pretest": "node copy-sw.mjs",
+    "test": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.62.1"
+  }
+}

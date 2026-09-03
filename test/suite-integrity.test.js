@@ -98,6 +98,13 @@ const FLOORS = {
      rendering, and a listener's place quietly stops surviving the week. */
   "player/durable-store.test.js": 74,
   "player/idb-tier.test.js": 23,
+  /* New with M3 (kanban card t_c7199b13): the event queue moved off a
+     synchronous `cp_events` localStorage rewrite into its own IndexedDB
+     database. Covers append/flush never throwing, batching, the two id
+     spaces (durable + fallback ring), and the two behaviours the design
+     calls out by name — quota exhaustion (not lost, surfaced via health(),
+     never thrown) and the 5,000-row retention cap. */
+  "player/event-log.test.js": 20,
   /* 83 -> 87 with #225: the page's two failure guards now reach the field record.
      Two of the four exist to keep the instrument from becoming the outage it was
      built to explain — one pins that the message is on screen BEFORE the record is
@@ -186,7 +193,17 @@ const FLOORS = {
      suite (title link + PR #357 unchanged-controls checks), so any change to
      its size is worth a second look. */
   "test/episode-row-links.test.js": 5,
+  /* Visible explicit-content ("E") badge (kanban card t_02c6bb0b):
+     explicitBadge() itself, its four call sites (epRow, archivedRow,
+     renderEpisode, renderShow at both episode- and show-level), and a check
+     that Family Mode's pre-existing poolFiltered() filter still fires
+     unchanged — the badge is additive, not a replacement for that filter. */
+  "test/explicit-badge.test.js": 9,
   "test/first-time-onboarding.test.js": 10,
+  /* Duplicate-ID guard for HUMAN-ACTIONS.md's own numbering rule (full-repo
+     review finding L3, 2026-08-31). Two tests: the file has numbered items,
+     and no numeric ID repeats. */
+  "test/human-actions-integrity.test.js": 2,
   /* "Delete my data" (#42). Zero slack, like media-session above and for the same
      reason: what this suite guards is a PROMISE — both tiers cleared, the server
      rows really deleted, no success message over a failure, and a confirmation a
@@ -235,6 +252,17 @@ const FLOORS = {
      either without reading #301 would take the only record of a hazard the
      battery can see only as an unrelated-looking status regression. */
   "test/search-tiering.test.js": 13,
+  /* The full-phrase show-name RESCUE's single-token gate (see the H bug
+     kanban t_0eb5f4e1, filed from the t_711dce13 red-team fleet): a
+     one-word show-name query in the topic box (e.g. "volts", "radiolab")
+     could never reach the rescue because it was gated on
+     `interp.groups.length >= 2`. Floored because the live-catalogue battery
+     alone regressed silently -- the bug shipped on main with every existing
+     suite green. Pins the loosened `>= 1` gate, that `wouldPassGate` still
+     short-circuits the rescue for items that already qualify normally (the
+     n=1 analogue of the existing "crime junkie" invariant), and the
+     11-of-23 one-word shows the bug report measured against real data. */
+  "test/search-showname-rescue.test.js": 7,
   /* Saved playlists must not decay (#276). Floored with ZERO SLACK, like
      data-deletion above and for the same reason: what it guards is a set of
      decisions each one line from its opposite, on a failure that is invisible on
@@ -254,7 +282,29 @@ const FLOORS = {
      entry renders zero episodes rather than an error, on one specific show,
      and nothing else in the repo would notice. Every test names its mutation;
      see the suite header for the full list of what each test pins. */
-  "test/show-page.test.js": 9,
+  "test/show-page.test.js": 39,
+
+  /* Stage 3b of docs/show-pages-plan.md — full per-show RSS ingestion
+     (kanban card t_567b570f): renders the curated pool synchronously so
+     the page is never blank while the endpoint fetch is in flight, swaps
+     in the full-catalogue list on success, degrades to the curated pool
+     on any fetch failure (never blank), proves every full-catalogue
+     episode is in-app playable (real audio_url, no link-out), and surfaces
+     a stale-cache note rather than hiding it. Client wiring only — see
+     backend/test/showEpisodesStore.test.ts and ingestShowFeed.test.ts for
+     the ingestion/storage side. */
+  "test/show-pages-3b-full-catalogue.test.js": 7,
+
+  /* Requirements A3.2/A3.3 — category browse + all-shows index (kanban card
+     "Build: category browse — linkify taxonomy chips + all-shows index"):
+     the taxonomy-chip link itself, the showsForCategory overlap join against
+     the real catalogue, renderCategory/renderAllShows (including honest
+     unknown-category/empty-catalogue states), the two new routes, and the
+     "Browse all shows" nav entry point's visibility toggle. Every test names
+     its mutation; see the suite header for the full list of what each test
+     pins. */
+  "test/category-browse.test.js": 11,
+
   /* Stage 2 of docs/show-pages-plan.md — show search (kanban card
      t_1c9afc67): SearchEngine.searchShows against the real catalogue,
      scope-boundary proof that the topic scorer is untouched, and the
@@ -263,6 +313,15 @@ const FLOORS = {
      its mutation; see the suite header for the full list of what each
      test pins. */
   "test/show-search.test.js": 11,
+  /* Starred shows (follow-lite), requirement A2.4 / Joey's Q2 answer.
+     Kanban card "Build: starred shows (follow-lite) + dedicated Starred
+     Shows page". Floored because this is exactly the #276/show-pages
+     shape: a per-device marker whose decay (a dropped guard, a wrong
+     storage key, a missing route branch) is silently wrong rather than a
+     crash, and nothing else in the repo would notice. Every test names
+     its mutation; see the suite header for the full list of what each
+     test pins. */
+  "test/starred-shows.test.js": 8,
   /* "Up Next" listening queue, Stage 1 of docs/listening-queue-plan.md
      (kanban card t_f4da81f5). Floored because the queue's own decay path
      (an id ageing out of the pool, or the queue emptying) is exactly the
@@ -318,7 +377,8 @@ const FLOORS = {
      half is the literal reproduction of Joey's bug report -- deleting either
      would let the thin-anchor gate regress silently the way the original
      bug shipped silently. Every test names the mutation that kills it. */
-  "test/search-thin-anchor.test.js": 9,
+  "test/search-thin-anchor.test.js": 10,
+  "test/search-plural-scaling.test.js": 4,
   /* One generation per page load (#233). Floored because the thing it guards is
      invisible in the product: a mismatched code/data pair renders, it just
      renders the wrong program's reading of today's document. Every test in there
@@ -860,6 +920,16 @@ const SCANNED_DIRS = ["player", "test", "tools"];
  * Separate from FLOORS because these are `.test.ts`, run by the `backend` job
  * via `npm test` in backend/, not by tools/ci/run-suites.mjs. */
 const BACKEND_FLOORS = {
+  /* Anthropic provider error-path coverage (kanban card t_550d289f): mock-client
+     tests for the constructor dry-run guard, budget-guard call-site wiring, and
+     malformed-JSON/no-text-block error paths across all 5 real provider classes,
+     plus the shared parseWithRetry helper extracted from their copy-pasted
+     private implementations. */
+  "test/AnthropicDeepenActBuilder.test.ts": 7,
+  "test/AnthropicEnricher.test.ts": 10,
+  "test/AnthropicExternalResearcher.test.ts": 9,
+  "test/AnthropicPromptUnderstander.test.ts": 9,
+  "test/AnthropicSpineBuilder.test.ts": 8,
   "test/archetypes.test.ts": 7,
   "test/budgetGuard.test.ts": 6,
   "test/candidateExtractor.test.ts": 8,
@@ -871,6 +941,10 @@ const BACKEND_FLOORS = {
   "test/dataSchemaCompliance.test.ts": 8,
   "test/dedup.test.ts": 17,
   "test/duration.test.ts": 12,
+  /* DAILY_BUDGET_USD env parsing (L5): rejects negative / NaN / empty /
+     over-cap values at startup instead of silently substituting the
+     default, and leaves a genuinely unset variable on its fallback. */
+  "test/env.test.ts": 10,
   "test/events.test.ts": 15,
   "test/html.test.ts": 8,
   "test/interestLearning.test.ts": 30,
@@ -879,6 +953,10 @@ const BACKEND_FLOORS = {
   "test/ladderIntegrity.test.ts": 11,
   "test/ladderProgress.test.ts": 8,
   "test/learningJob.test.ts": 4,
+  /* Anthropic provider error-path coverage (kanban card t_550d289f): the
+     shared parseWithRetry/parseLastJsonBlock helper extracted from the 5
+     real Anthropic provider classes' identical private copies. */
+  "test/parseWithRetry.test.ts": 9,
   "test/parser.test.ts": 29,
   "test/personas.test.ts": 6,
   "test/podcastIndex.test.ts": 3,
@@ -909,6 +987,82 @@ const BACKEND_FLOORS = {
      in that order, with no retry loop on rejection and never more than one
      clarify round. */
   "test/understandPrompt.test.ts": 7,
+  /* §4.2's catalogue lookup: concept matching against the semantic index and
+    tape-availability counting against discover.json/item-tags.json, both
+    proven against a small deterministic fixture catalogue (not the real
+    one, so a future catalogue-content change can't silently pass or fail
+    this suite). */
+  "test/catalogueLookup.test.ts": 9,
+  /* §4.2 end to end: buildResearchShape against the REAL catalogue for tape
+    accuracy, and the cheap-first ordering (external research fires ONLY
+    for a genuine catalogue gap) against an injected no-tape fixture so the
+    assertion doesn't drift as the real catalogue grows. */
+  "test/researchShape.test.ts": 11,
+  /* §4.3's spine types: SpineSchema (strict, no per-act voice field),
+     isClaimShaped (claim- vs topic-shaped beats), and validateSpine
+     (§3's shape budgets with ±15% tolerance, the ~30% exploration
+     floor). Kanban card t_96a97be9. */
+  "test/spineTypes.test.ts": 26,
+  /* §4.3 end to end: buildSpine() against StubSpineBuilder for every
+     duration tier (shape budgets, claim-shape, exploration floor,
+     single spine-level voice all actually hold), plus InvalidSpineError
+     on a deliberately broken builder. Kanban card t_96a97be9. */
+  "test/buildSpine.test.ts": 6,
+  /* §4.4 end to end (kanban card t_c963701a): deepenActs() fans out
+     builder.deepenAct() once per act IN PARALLEL, always passing the
+     FULL spine. Covers shape/count correctness, the full-spine-context
+     regression guard, genuine-parallelism proof, and explicit
+     failure-isolation (one retry per act, then fail the whole build). */
+  "test/deepenActs.test.ts": 10,
+  /* §4.5-4.6 end to end (kanban card t_648fbae7): sourceBeats() resolves
+     every beat to a tier-1 segments.json hit, a tier-2 transcript-archive
+     extraction, a tier-3 transcription-queue-candidate narration fallback,
+     or a Patch/Carry narration assignment — never changing which beats
+     exist, and never fetching/persisting any audio bytes. */
+  "test/sourceBeats.test.ts": 8,
+  /* §4.7 end to end (kanban card t_5a8b77c3): writeNarration() writes one
+     page per narration beat (mode budgets, per-claim sources array),
+     always through a genuinely separate verifier call (never the writer —
+     proven with a spy test), the exact check-forays.mjs-compatible
+     disclosure template, and decideConnectiveNarration()'s seam-position
+     table for tape-adjacent beats needing short connective narration. */
+  "test/writeNarration.test.ts": 19,
+  /* Stage 3b (kanban t_567b570f, docs/show-pages-plan.md §Stage 3): shared
+     catalogue store CRUD (scoping by show_id, upsert-not-duplicate on
+     (show_id, guid), published_at ordering, feed-state round-trip). */
+  "test/showEpisodesStore.test.ts": 5,
+  /* Stage 3b end to end: fetches+parses+upserts through the real parser,
+     proves the chapters JSON body is never dereferenced during ingestion
+     (only the pointer is stored), TTL cache-hit/expiry behavior, and the
+     never-blank-page degrade contract (cached_stale / no_cache_error) on a
+     feed fetch failure — plus that a missing enclosure never fabricates an
+     audio_url. */
+  "test/ingestShowFeed.test.ts": 8,
+  /* §4.8 end to end (kanban card t_7f410ffc): within-act stitching rules
+     (silence bridge, jingle marks cuts, measured cadence, coverage
+     hard-gate), the forward-only cross-act continuity Builder (§6.2),
+     forayItems.ts's mapping to the real data/forays.json schema (with
+     an internal-field-leak guard), and the cadence-measurement CLI. */
+  "test/forayItems.test.ts": 7,
+  "test/measureCadence.test.ts": 3,
+  "test/smoothSeam.test.ts": 8,
+  "test/stitchAct.test.ts": 9,
+  "test/stitchForay.test.ts": 4,
+  /* A3.1/Q3 (kanban t_8d1a6a58): backend/src/catalog/breadthCatalog.ts +
+     searchBreadthShows.ts — show search over the FULL breadth catalogue
+     (curated + ~10k breadth tier), not just the 220 curated shows the
+     client ships. Fixture-based ranking tests plus real-catalogue
+     integration checks (merge/dedupe correctness against the committed
+     data/catalog.json + data/catalog-breadth.json). */
+  "test/breadthCatalog.test.ts": 11,
+  /* §4.9 end to end (kanban card t_0b1729d6): finalizeForay() validates
+     a candidate against the real check-forays.mjs/check-narration.mjs
+     and only returns a writable record on a clean pass; stageTiming.ts
+     is §6.3's minimal batch-pipeline scope (real per-stage wall-clock
+     timing, nothing speculative — see that module's own doc comment for
+     why no live-generation-lead monitoring is built here). */
+  "test/finalizeForay.test.ts": 5,
+  "test/stageTiming.test.ts": 5,
 };
 
 /* `it(` as well as `test(`: backend's suites use both spellings. */

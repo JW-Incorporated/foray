@@ -134,6 +134,7 @@ function mount({
     // The home screen's own vocabulary, needed only under `boot`.
     "banner-slot", "pl-form", "pl-input", "pl-note",
     "tab-topics", "tab-shows", "sh-form", "sh-input", "sh-note", "sh-results",
+    "browse-all-link",
     "pl-remove", "banner-done"]) {
     const el = new El("div");
     el.id = id;
@@ -162,6 +163,21 @@ function mount({
       setItem: (k, v) => { store.set(k, String(v)); },
       removeItem: (k) => { store.delete(k); },
     },
+    /* `logEvent` (formerly `cp_events`) calls through `window.forayEventLog`
+       now (M3) — a plain synchronous fake here, since this file's own
+       assertions are about the record NOT reaching it, not about the queue's
+       own batching/IndexedDB behaviour (`event-log.test.js`'s job). */
+    forayEventLog: (() => {
+      const rows = [];
+      return {
+        rows,
+        append(row) { rows.push(row); },
+        async unsynced() { return rows; },
+        async markSynced() {},
+        async pruneToRetention() {},
+        health() { return { ok: true, backend: "memory", pending: 0, ringSize: rows.length, faults: [] }; },
+      };
+    })(),
     document: {
       body,
       documentElement: body,
@@ -441,14 +457,14 @@ test("opening, copying and clearing the record make NO request", async () => {
   );
 });
 
-test("nothing about the record enters cp_events", () => {
+test("nothing about the record enters the event log", () => {
   /* MUTATION: call `logEvent("diagnostics_opened", …)` from `openDiagSheet` — the
      obvious "let us see if anyone uses it" change. It would be a NEW event type in
      an ungated pipeline, and this fails. */
-  const { ui, store } = mount({ report: "ROWS" });
+  const { ctx, ui } = mount({ report: "ROWS" });
   ui.open.click();
   ui.close.click();
-  const events = store.get("cp_events") ?? "[]";
+  const events = JSON.stringify(ctx.window.forayEventLog.rows);
   assert.ok(
     !/diag/i.test(events),
     `the diagnostics surface wrote to the transmitted buffer:\n${events}`

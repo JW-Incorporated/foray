@@ -229,6 +229,39 @@ function spanOf(seg) {
     : 0;
 }
 
+/* ---------- reverse lookup: which Forays draw on a given show ----------
+
+   Show pages (#/show/:id, requirements B3/Q6) need this reverse of the join
+   above: given a show, which Forays play a segment sourced from it. Lives
+   here rather than in app.js because app.js is not allowed to enumerate the
+   segment/source pool directly — the mobile bundle ships ONLY the segments
+   its bundled Forays reference (tools/mobile/prepare-webdir.mjs, #327), so
+   any surface that walks the whole pool renders complete on the website and
+   silently short in the app. Doing the walk here keeps that constraint true:
+   this module (plus client.js, the bridge) is the one place allowed to read
+   `segments`/`sources` beyond an id lookup.
+
+   Same draft-visibility rule as `listableForays`/`findForay`: an unpublished
+   Foray is included only when the visitor named it explicitly. */
+export function foraysReferencingShow(foraysDoc, showNames, { segments, sources, unlocked = [] } = {}) {
+  const wanted = new Set(Array.isArray(showNames) ? showNames.filter(nonEmpty) : [showNames].filter(nonEmpty));
+  if (!wanted.size) return [];
+  const segIndex = asMap(segments);
+  const srcIndex = asMap(sources);
+
+  return allForays(foraysDoc).filter((f) => {
+    if (!forayVisibility(f, { unlocked }).visible) return false;
+    const items = Array.isArray(f.items) ? f.items : [];
+    return items.some((it) => {
+      if (!it || it.type !== SEGMENT) return false;
+      const seg = segIndex.get(it.segment_id);
+      if (!seg) return false;
+      const src = srcIndex.get(seg.item_id);
+      return !!src && wanted.has(src.show);
+    });
+  });
+}
+
 /* ---------- the whole thing ---------- */
 
 /**

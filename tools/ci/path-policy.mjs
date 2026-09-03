@@ -91,6 +91,18 @@ export const DENIED_PREFIXES = [
   // a new gate script cannot acquire this exposure silently.
   "tools/test-search.mjs",
   "tools/validate-semantic-index.mjs",
+  // scripts/events-server.vbs runs `node tools/events-server.mjs` at every
+  // Windows login on the founder's always-on workstation (Startup folder),
+  // with the founder's real user privileges, in the checkout that also holds
+  // the root `.env` and `data-local/`. `tools/` is allowlisted and no test
+  // suite executes this file, so without this entry a bot-authored PR
+  // touching only this file would auto-merge unread — the exact risk
+  // DENIED_PREFIXES exists to prevent, except the machine executing the
+  // unread code is a founder's own workstation, not a CI runner. Found by
+  // the Fable-driven CI/release-pipeline audit (kanban t_5663c62a /
+  // t_85e1b1ba). Same trade as the two entries above: near-zero change
+  // frequency, occasional human merge.
+  "tools/events-server.mjs",
 ];
 
 /* Paths a bot run may touch, by tier (docs/curation/... § auto-merge):
@@ -98,7 +110,16 @@ export const DENIED_PREFIXES = [
  *                    ci.yml (refs, dupes, taxonomy, audio scheme, tokened-URL
  *                    leaks, DAI flags) + copy rules
  *   T2 docs/         low blast radius; governance paths denied above
- *   T3 player/ tools/ test/   covered by node --test suites in ci.yml
+ *   T3 player/ tools/ test/   covered by node --test suites in ci.yml, with
+ *                    one documented exception: test/playwright/ (kanban card
+ *                    t_504fd5fd) is real-Chromium coverage run by its own
+ *                    `playwright` CI job, not node --test, and that job is
+ *                    ADVISORY-ONLY (see ci.yml's own comment on it) — a bad
+ *                    change there cannot block a merge or reach production,
+ *                    only turn a non-required check red. Still additive/
+ *                    test-only in the same sense as backend/test/ below, so
+ *                    it stays inside test/'s existing T3 allowance rather
+ *                    than needing its own entry.
  *   T4 app.js styles.css search-engine.js
  *                    covered by test/app-security.test.js (esc/safeUrl
  *                    behaviour + CSP/href static invariants) and node --check

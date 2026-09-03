@@ -708,7 +708,10 @@ Read those three together, because two of them can lie on their own:
 
 The click matters: nothing is written until something happens.
 
-**Status:** OPEN
+**Status:** DONE — 2026-09-01. The `foray-v5` bump merged in #241 and `sw.js`
+on `main` confirms it (`sw.js:82-85`); nothing about it is waiting on a
+founder. The `forayStorageHealth()` console check above is a manual spot-check
+a founder can still run at leisure, not a gate on this item.
 
 ---
 
@@ -1029,9 +1032,16 @@ letter, so a `4a` segment will not build — `ai` does, because it starts with a
 2. Reply either **"confirmed"**, or with the id you want instead.
 3. If you want a different one, a session changes the id itself in **three** places — that file, the pinned assertion in `tools/mobile/shell-invariants.test.mjs` ("the app id is pinned, because it is permanent once published"), and `APP_ID` in `.github/workflows/ios-build.yml`, which is what `simctl` is given. This item said "exactly two" through two renames; `APP_ID` was the third all along, kept in sync by hand each time, and as of 2026-08-25 a test derives it from the config so a miss cannot be quiet. **A change to the reverse-DNS *prefix* is bigger than two lines**, because the Android plugin's Java package shares it: the 2026-08-25 move to `ai.jwlabs` touched 19 files, including a `git mv` of the Java source tree, `APP_ID` in `.github/workflows/ios-build.yml` and two fully-qualified needles in `.github/workflows/android-build.yml`. Still cheap, still not two lines.
 
+**CONFIRMED BY WYATT 2026-09-03.** Asked directly, while assembling the App Store
+submission kit, whether `ai.jwlabs.foura` is the id to publish under forever: *"bundle
+ID is correct"*. That is the reply step 2 asks for, so this item is closed. Nothing in
+`mobile/capacitor.config.json` changed — the value was already right; what was missing
+was the ruling on it. The App ID registration in #19 can now proceed against
+`ai.jwlabs.foura`, and that registration is the irreversible step.
+
 **Worked if:** the status below says DONE and `mobile/capacitor.config.json`'s `appId` is the id you intend to publish under, forever.
 
-**Status:** OPEN
+**Status:** DONE (2026-09-03)
 
 ---
 
@@ -1888,7 +1898,14 @@ or on its own store URL.
 ---
 ---
 
-### 26. Back up the Android upload key, and install its three secrets
+### 30. Back up the Android upload key, and install its three secrets
+
+> **Renumbered from #26, 2026-09-01.** #26 was already in use for "Publish the
+> Play Store listing" (above); item numbers are stable IDs and are never
+> reused (see the rule at the top of this file), so this action — added later
+> under the same number by mistake — takes the next unused ID instead. Any
+> reference elsewhere in the repo to "HUMAN-ACTIONS.md #26" meaning the
+> upload-key backup has been updated to #30.
 
 **Tag:** `[BLOCKING]` for any Play upload · **Time:** ~10 minutes · **Owner:** Wyatt (he holds the key)
 
@@ -2043,6 +2060,224 @@ completion with the screen locked — same reporting bar item #11 already set fo
 **Status:** OPEN
 
 ---
+### 31. Before phase 2 is scheduled: build the four App Store Guideline 1.2 UGC-moderation requirements
+
+**Tag:** `[BLOCKING]` for scheduling phase 2 (any-user prompting) · **Time:** its own future engineering card, not a quick action · **Owner:** Joey/Wyatt (decision to schedule phase 2), engineering (the build)
+
+**Why it matters.** `docs/curation/generation-architecture.md` §1.3 already says this in
+the engineering docs: *"The moment a stranger's prompt produces content other users can
+hear, 4a hosts user-generated content and App Store Guideline 1.2 applies: content
+filtering, a mechanism to report objectionable content, a way to block abusive users, and
+published developer contact information. None of the four exist. This is a
+submission-blocking discovery for phase 2 and it belongs in `HUMAN-ACTIONS.md` the day
+phase 2 is scheduled — not the day it ships."* A 2026-09-02 review confirmed none of the
+11 marketing/legal documents (including `docs/marketing/05-legal-risk-memo.md`, the
+dedicated legal-risk-scoping memo) named this gap either, so it existed only in one
+engineering doc where a founder scheduling phase 2 from the marketing/legal corpus alone
+would not see it. `05-legal-risk-memo.md` §2 now carries the same four-item list (added
+2026-09-02) — this item is the corresponding founder-facing tripwire.
+
+**Today (phase 1, founder-prompted, founder-reviewed before publish): not applicable.**
+4a is not hosting UGC in Apple's sense yet — do not build the moderation system now.
+
+**The moment phase 2 (any user's prompt reaching the shared catalogue) is scheduled**,
+this item blocks it: all four of content filtering, a report-content mechanism, a
+user-blocking mechanism, and published developer contact info must exist before that
+build reaches App Review, or it is an expected rejection. When phase 2 is scheduled,
+open the engineering card for the moderation system itself against this item.
+
+**Status:** OPEN — dormant until phase 2 is scheduled; re-read this item the day that decision is made.
+
+---
+
+### 32. Rule on the 2026-07-08 marketing-corpus freeze: still in effect, needs a formal exception process, or should be lifted
+
+**Tag:** `[BLOCKING]` for further marketing-corpus work · **Time:** ~5 minutes · **Owner:** the owner (founder strategic call)
+
+**Why it matters.** `07-premortem.md` and `08-REQUIREMENTS-DELTA.md` (both
+2026-07-08) issued a standing order: "Marketing corpus is frozen until
+there's a retention curve for it to describe." (also recorded in
+`docs/DECISIONS.md`, 2026-07-08 "night 2" entry.) A Fable-driven review on
+2026-09-02 found the freeze has been repeatedly worked around without
+founder sign-off:
+
+- `docs/marketing/09-product-feature-review.md` (dated 2026-07-08, edited
+  2026-08-21 per its own banner) extends the corpus with R13-R23 and
+  self-grants a freeze exception ("R14 — narrow, justified") instead of
+  requesting one, and locks App Store listing copy into CI via R23.
+- `docs/marketing/10-category-coverage.md` (dated 2026-07-09, numbered
+  after both freeze documents) issues new curation orders with no freeze
+  acknowledgment.
+- `docs/marketing/06-naming-study.md` was edited 2026-08-21 without citing
+  a freeze exception.
+- A live Google Play store listing was drafted and captured
+  (`docs/store/play/`, captured 2026-08-25) — new external go-to-market
+  surface, well after the freeze. (Separately tracked for publication at
+  item #26 above — that item assumes the corpus is publishable; this item
+  is the prior question of whether it should be.)
+
+Per Fable ruling FR-t_437143f8-1 (classification-only consult, recorded on
+kanban card t_437143f8, board=foray): this is an explicit founder-issued
+strategic gate (CLAUDE.md: "Humans make strategic decisions; AI executes")
+with no local written exception process, so it is human-only
+(`explicit_project_human_gates`) — Fable cannot resolve it, only certify
+that it needs you. Per the ruling, all further marketing-corpus work stays
+paused pending your call.
+
+**The decision (pick one).**
+- **A — freeze still stands.** Nothing above was authorized; the
+  self-granted exceptions get flagged/reverted as needed and
+  marketing-corpus work stays paused until an explicit retention curve
+  exists.
+- **B — define a formal exception process.** State who can grant an
+  exception and on what grounds (e.g. legal/safety corrections should
+  probably always be exempt) so future narrow needs don't require a full
+  freeze lift.
+- **C — lift the freeze.** Work has already continued past it in
+  practice; formally end it and let marketing-corpus work resume under
+  normal review, not freeze rules.
+
+**Worked if:** you record A, B, or C (and, for B, the exception rule) as a
+dated entry in `docs/DECISIONS.md`, and this item is marked `DONE`.
+
+**Status:** OPEN
+
+---
+
+### 33. Enable leaked-password protection in Supabase Auth settings
+
+**Tag:** `[UPGRADE]` · **Time:** ~2 minutes · **Owner:** the owner (dashboard-only toggle)
+
+**Why it matters.** The Supabase database linter flagged that leaked-password
+protection (the HaveIBeenPwned check on new/changed passwords) is off. This is
+a toggle in the Supabase dashboard's Authentication settings — not a database
+migration, so no worker/agent can apply it.
+
+**Steps.**
+1. Open the Supabase dashboard for this project.
+2. Go to **Authentication** → **Settings** (Auth providers/Policies page,
+   named "Password Security" or similar depending on dashboard version).
+3. Enable **"Leaked password protection"** (the HaveIBeenPwned check).
+4. Save.
+
+**Worked if:** the toggle shows enabled, and the Supabase linter no longer
+lists this WARN on a re-run of Advisors → Security.
+
+**Status:** OPEN
+
+---
+
+### 34. Type the new App Store Connect listing name into Apple's dashboard
+
+**Tag:** `[BLOCKING]` for App Store submission · **Time:** ~2 minutes · **Owner:** Joey or Wyatt (App Store Connect access)
+
+**Why it matters.** Apple rejected the App Store Connect submission because the
+bare name **`4a`** is already taken by another app/reservation (App Store
+"Name" must be globally unique). Founder decision, 2026-09-02 (Discord): the
+listing name becomes **`4a: Podcast Curator`**. This is an App Store Connect
+web-dashboard field — it is not stored anywhere in this repo (no `ios/`
+project or `Info.plist` exists here yet), so no agent can type it in. The repo
+side of this (the listing-copy draft in
+`docs/marketing/09-product-feature-review.md` §5, R23) has already been
+updated to record the new name and note the scope explicitly: this does
+**not** change the app's home-screen display name (`CFBundleDisplayName`,
+stays `4a`) or any internal `4a`/`foray` naming convention — only the store
+"Name" metadata field.
+
+**Steps.**
+1. Open App Store Connect → My Apps → (the 4a app record) → App Information.
+2. In the **Name** field, enter exactly: `4a: Podcast Curator`
+3. Save.
+
+**Also flagging, not deciding:** Google Play's separate listing name field
+(`docs/store/play/README.md` §1, Play Console → Grow → Store presence → Main
+store listing → App name) currently says plain `4a` and was not the app that
+hit Apple's collision. Left as-is pending a founder call on whether it should
+match (`4a: Podcast Curator`) for cross-store consistency or stay `4a` since
+Play has no known naming conflict. If you want it changed, say so and it's a
+one-line dashboard edit, same as this item.
+
+**Worked if:** App Store Connect shows the new name and the "name already in
+use" submission error is gone.
+
+**Status:** OPEN
+
+---
+
+### 36. Label PR #450 `founder-approved` (touches the `tools/test-search.mjs` gate)
+
+**Tag:** `[UPGRADE]` · **Time:** ~1 minute · **Owner:** Joey or Wyatt
+
+**Why it matters.** PR #450 fixes the H-severity buildPlaylist caching bug
+(kanban t_838a13c0): cold-session playlist searches cost 6.6-8.1s and even
+warm-ctx repeated queries cost 3.4-6s, with no loading-state affordance on
+the submit button. The fix adds real caching (`search-engine.js`'s
+`corpusDF`/`tagCount` reverse indexes and `primeVocabulary`, `app.js`'s
+`buildPlaylist` `searchCache`), a `Building…` disabled-button state, and —
+because scope item 4 asked for it — new timing assertions in
+`tools/test-search.mjs`'s own battery so this class of regression can't
+silently return. That last file is one of the two test-suite files
+`DENIED_PREFIXES` protects (alongside `tools/validate-semantic-index.mjs`)
+specifically because it IS the gate CI reads to decide "is search quality
+still honest" — so `path-policy` correctly refuses to auto-merge this PR
+without a human eyeball on the new assertions, same as every other PR that
+has ever touched this file.
+
+**What changed there, in one paragraph:** a new §11 block asserting (a)
+`primeVocabulary` finishes in well under 5s (measured ~0.3s), (b) a query
+against a primed ctx answers in well under 500ms (measured ~1-7ms), and (c)
+a repeated identical query against the same ctx is markedly cheaper the
+second time (proves the DF memoization is actually being reused, not just
+present). All three are generous multiples of measured cost, chosen to catch
+an algorithmic regression rather than flake on CI hardware variance — see
+the inline comments in the file for the exact numbers.
+
+**Steps.**
+1. Open PR #450: https://github.com/JW-Incorporated/foray/pull/450
+2. Skim the new §11 section in `tools/test-search.mjs` (search the diff for
+   "11. perf regression") — confirm the assertions genuinely test what they
+   claim and the thresholds aren't so loose they're vacuous.
+3. Apply the `founder-approved` label. The `path-policy` check re-runs
+   automatically on the label change; no push needed.
+4. Once `path-policy` and the rest of CI (`CI`, `data-and-site`, etc.) are
+   green, the PR is mergeable — foray's `merge_authority` is `agent`, so no
+   further founder action is needed to merge it; I'll self-merge once every
+   required check passes.
+
+**Worked if:** the `path-policy` check on PR #450 flips from `UNAPPROVED
+(blocking)` to passing.
+
+**Decision (2026-09-03, founder):** done — reviewed §11 assertions in
+`tools/test-search.mjs`, thresholds are generous multiples of measured
+cost (not vacuous), applied `founder-approved`, `path-policy` and all
+other CI went green, PR #450 auto-merged to `main` (`db25f8b`).
+
+**Status:** DONE (2026-09-03)
+
+---
+
+### 35. Merge PR #429 (Stage 3b full-catalogue RSS ingestion) — first Vercel serverless function, needs Wyatt's architecture sign-off
+
+**Tag:** `[BLOCKING]` for the "universal in-app playability" card · **Time:** ~10 minutes review · **Owner:** Wyatt (per `docs/roles.md` / registry `architecture_infra_ci_secrets` human gate)
+
+**Why it matters.** `t_a36252bb` ("remove the listen-elsewhere link-out, play everything in-app") depends on `t_567b570f` shipping real `audio_url`s at scale. That work is done and reviewed (round 3, 216/216 local tests pass, GitHub CI green) in PR #429, but it is genuinely gated on a human decision, not just a routine merge:
+
+- PR #429 adds **the first Vercel serverless function** in this repo (`api/shows/[show_id]/episodes.ts`). `vercel.json` was previously static-build-only by deliberate choice (see `docs/DECISIONS.md`, 2026-07-xx entry naming "standing up a live backend" as reserved for Wyatt).
+- The implementing worker could not reach Fable for an architecture consult on this point (sandbox OOM at every heap size tried) and proceeded on the lowest-new-infra option: reuses the existing Vercel project, reuses the existing Supabase service-role connection (no new secrets), scoped its own minimal `api/package.json`.
+- Registry `merge_authority` is `agent` for the foray project generally, but `human_gates` explicitly includes `architecture_infra_ci_secrets` — this PR is exactly that case.
+- GitHub also currently blocks auto-merge on this PR with a `needs-founder` label and a failing `path-policy` check (expected — it's a governed path awaiting the founder-approved label), so nothing merges without your action either way.
+
+**Steps.**
+1. Read the "For Wyatt: one thing to look at specifically" section at the top of PR #429: https://github.com/JW-Incorporated/foray/pull/429
+2. Decide: is reusing the existing Vercel project + existing Supabase service-role connection an acceptable way to stand up the first live backend endpoint, or do you want a different shape?
+3. If acceptable: add the `founder-approved` label (or ask Hermes to add it) and merge (or authorize Hermes to merge) the PR.
+4. If not acceptable: say what should change; the implementing lane will revise.
+
+**Worked if:** PR #429 is merged to `main` (or explicitly redirected), unblocking `t_a36252bb`.
+
+**Status:** OPEN
+
+
 ## DONE
 
 *(Nothing filed yet. Finished items move here with the date they were done and

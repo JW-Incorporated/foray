@@ -35,6 +35,20 @@ function readString(name: string): string | undefined {
   return trimmed.length === 0 ? undefined : trimmed;
 }
 
+/* Unvalidated numeric read with a silent fallback. This branch had removed
+ * it (readBoundedNumber replaced its only caller), but main added a new one
+ * for EPISODE_BUDGET_USD while this PR was open, so it is restored verbatim
+ * rather than either side being changed. EPISODE_BUDGET_USD therefore still
+ * has exactly the lenient parsing this PR fixes for DAILY_BUDGET_USD — a
+ * deliberate scope boundary, not an oversight: picking its upper bound is a
+ * spend-control call, not a merge decision. Follow-up, not this PR. */
+function readNumber(name: string, fallback: number): number {
+  const raw = readString(name);
+  if (raw === undefined) return fallback;
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : fallback;
+}
+
 /**
  * Upper bound for DAILY_BUDGET_USD. This is a spend-control cap, not a
  * technical limit — anything above this is almost certainly a typo (e.g. a
@@ -77,6 +91,15 @@ export interface Env {
   podcastIndexApiKey: string | undefined;
   podcastIndexApiSecret: string | undefined;
   dailyBudgetUsd: number;
+  /**
+   * Per-Foray (per-generation-episode) spend ceiling (docs/curation/
+   * generation-architecture.md §9.2, founder decision 2026-08-31: "Set
+   * generous now (~$5-10/Foray)"). Defaults to the top of that
+   * founder-approved range. Enforced by BudgetGuard.checkAndRecord only
+   * when a caller passes an episodeId/sessionId — purely additive, does
+   * not change behavior for callers that don't scope by episode.
+   */
+  episodeBudgetUsd: number;
   databaseUrl: string | undefined;
   userAgent: string;
   /** true when no ANTHROPIC_API_KEY is configured -> StubEnricher must be used */
@@ -90,6 +113,7 @@ export const env: Env = {
   podcastIndexApiKey: readString("PODCASTINDEX_API_KEY"),
   podcastIndexApiSecret: readString("PODCASTINDEX_API_SECRET"),
   dailyBudgetUsd: readBoundedNumber("DAILY_BUDGET_USD", 2.0, dailyBudgetSchema),
+  episodeBudgetUsd: readNumber("EPISODE_BUDGET_USD", 10.0),
   databaseUrl: readString("DATABASE_URL"),
   userAgent: "Foray/0.1 (personal podcast client; contact wjduvall@gmail.com)",
   get anthropicDryRun(): boolean {
