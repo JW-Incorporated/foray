@@ -241,6 +241,29 @@ None of these blocked the rebuild. All of them would strengthen items 3 and 4.
    character and rebuild. This is the highest-value open item and it costs one
    lookup, because item 4 is what a reviewer checks by eye against a database
    field.
+
+   > **DO NOT ACT ON APPLE'S STRING HERE — read this before changing `ORG`.**
+   > Enrollment has since succeeded, and the Apple Distribution certificate
+   > issued 2026-09-03 (Team ID `D9N628AFHS`) names the organisation
+   > **`JW Labs Limited Liability Company`**, not `JW Labs LLC`. It is on the
+   > certificate (`O=`, `CN=Apple Distribution: …`) and on the provisioning
+   > profile (`TeamName`), and because Apple's terms say the legal entity name
+   > appears as the seller, **the App Store listing will show that expanded
+   > form.**
+   >
+   > That is **not** evidence about the D-U-N-S string and **must not** be
+   > copied into `ORG`. Per the founder (2026-09-03): Apple's program already
+   > had a different `JW Labs LLC` on file, so Apple disambiguated this account
+   > by spelling the suffix out. The expansion is an Apple-side collision
+   > rename. The registered entity is unchanged, `jwlabs.ai` saying
+   > `JW Labs LLC` is correct, and rewriting every masthead and footer to match
+   > a certificate would introduce the exact class of error §5's item 15 warns
+   > about — a name nobody checked.
+   >
+   > This paragraph exists because the certificate is the first place a future
+   > session will look for "the exact legal name", and it gives a confident
+   > wrong answer. The lookup this item asks for is still the California
+   > Secretary of State / D&B record, and it is still open.
 2. **Whether the founders' names may be published.** A named officer is a strong
    association signal and Apple runs a binding-authority check on a named person
    anyway. The site currently says "two founders" without naming them, because
@@ -276,8 +299,17 @@ None of these blocked the rebuild. All of them would strengthen items 3 and 4.
 
 ## 5. Remaining rejection risks, honestly
 
-- **The exact D&B name string is unconfirmed.** See §4.1. Highest-value
-  unresolved item.
+- **Enrollment SUCCEEDED — this whole section is now history, not live risk.**
+  A signing certificate and an App Store provisioning profile for
+  `ai.jwlabs.foura` were issued to Team ID `D9N628AFHS` on 2026-09-03, which is
+  not possible without an approved Apple Developer Program membership. The
+  rejection this file was written against is closed. The items below are kept
+  because they remain true about the site and because a second review is always
+  possible, not because anything is currently pending.
+- **The exact D&B name string is unconfirmed.** See §4.1. Still unresolved, and
+  **Apple's `JW Labs Limited Liability Company` is not the answer to it** — that
+  is an Apple-side rename around a name collision in their own program. §4.1 has
+  the full warning; do not shortcut it.
 - **The GitHub organisation is named `JW-Incorporated`.** Every link from this
   site to the app's source — the public repository, the deployed web app at
   `jw-incorporated.github.io` — carries that string in the URL, so a reviewer who
