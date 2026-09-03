@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-09-03T08:12:02.541Z",
+  "built_at": "2026-09-03T16:11:03.722Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-09-03-22e2cf7f",
+    "last_batch_id": "fresh-2026-09-03-89793fdf",
     "last_batch_tier": 1
   },
   "entries": {
@@ -79147,11 +79147,30 @@
     },
     "1545886584": {
       "topics": [
-        "sports/endurance"
+        "sports/endurance",
+        "health/fitness"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.65
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Endurance-focused podcast covering multiple topics.",
+      "display_title": "Abcdefghijklmnopqrstuvwxyz",
+      "blurb": "WHAT I LEARNT FROM PODCAST.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-89793fdf",
+      "classified_at": "2026-09-03T16:11:03.722Z"
     },
     "1545953110": {
       "topics": [
@@ -90415,11 +90434,120 @@
     },
     "1580221548": {
       "topics": [
-        "relationships"
+        "relationships",
+        "kids-family/stories",
+        "kids-family/parenting",
+        "health/sexuality",
+        "music",
+        "space",
+        "health",
+        "health/fitness",
+        "culture/art",
+        "adventure/exploration",
+        "kids-family",
+        "aviation",
+        "espionage",
+        "history",
+        "culture",
+        "adventure",
+        "automotive",
+        "personal-journals",
+        "engineering",
+        "medicine"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.85
+        },
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.85
+        },
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/sexuality",
+          "confidence": 0.8
+        },
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "space",
+          "confidence": 0.8
+        },
+        {
+          "node": "health",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.8
+        },
+        {
+          "node": "kids-family",
+          "confidence": 0.8
+        },
+        {
+          "node": "aviation",
+          "confidence": 0.8
+        },
+        {
+          "node": "espionage",
+          "confidence": 0.8
+        },
+        {
+          "node": "history",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture",
+          "confidence": 0.75
+        },
+        {
+          "node": "adventure",
+          "confidence": 0.75
+        },
+        {
+          "node": "automotive",
+          "confidence": 0.75
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.7
+        },
+        {
+          "node": "medicine",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Relationships-focused podcast covering multiple topics.",
+      "display_title": "Mark Narrations - Reddit Stories",
+      "blurb": "Welcome to the Mark Narrations Reddit Podcast where we cover a whole host of reddit stories.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-89793fdf",
+      "classified_at": "2026-09-03T16:11:03.722Z"
     },
     "1580240316": {
       "topics": [
@@ -91011,11 +91139,95 @@
     },
     "1582945782": {
       "topics": [
-        "health/sexuality"
+        "relationships",
+        "health/sexuality",
+        "space",
+        "culture/fashion",
+        "culture/art",
+        "travel",
+        "gaming",
+        "tv-film",
+        "kids-family",
+        "history",
+        "sports",
+        "culture",
+        "adventure",
+        "personal-journals",
+        "engineering"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/sexuality",
+          "confidence": 0.8
+        },
+        {
+          "node": "space",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/fashion",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        },
+        {
+          "node": "travel",
+          "confidence": 0.8
+        },
+        {
+          "node": "gaming",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.8
+        },
+        {
+          "node": "kids-family",
+          "confidence": 0.8
+        },
+        {
+          "node": "history",
+          "confidence": 0.75
+        },
+        {
+          "node": "sports",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture",
+          "confidence": 0.75
+        },
+        {
+          "node": "adventure",
+          "confidence": 0.75
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Relationships-focused podcast covering multiple topics.",
+      "display_title": "The Swing Nation - A Sex Positive Swingers",
+      "blurb": "The Swing Nation is a podcast by swingers, for swingers, where we look to shed a positive light on the underground world of swinging, push back against the negative stigmas.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-89793fdf",
+      "classified_at": "2026-09-03T16:11:03.722Z"
     },
     "1583070458": {
       "topics": [
@@ -91119,11 +91331,80 @@
     },
     "1583654148": {
       "topics": [
-        "education/courses"
+        "linguistics/language",
+        "music",
+        "tv-film",
+        "aviation",
+        "linguistics",
+        "society/law",
+        "history",
+        "computing",
+        "psychology",
+        "adventure",
+        "engineering",
+        "computing/history"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "linguistics/language",
+          "confidence": 0.85
+        },
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.8
+        },
+        {
+          "node": "aviation",
+          "confidence": 0.8
+        },
+        {
+          "node": "linguistics",
+          "confidence": 0.8
+        },
+        {
+          "node": "society/law",
+          "confidence": 0.8
+        },
+        {
+          "node": "history",
+          "confidence": 0.75
+        },
+        {
+          "node": "computing",
+          "confidence": 0.75
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.75
+        },
+        {
+          "node": "adventure",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.7
+        },
+        {
+          "node": "computing/history",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Language-focused podcast covering multiple topics.",
+      "display_title": "The Search & Seizure Show",
+      "blurb": "Attend these weekly podcasts for latest legal updates, search and seizure law, and open question session.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-89793fdf",
+      "classified_at": "2026-09-03T16:11:03.722Z"
     },
     "1583657464": {
       "topics": [
@@ -91349,11 +91630,64 @@
     "1584511326": {
       "topics": [
         "religion/christianity",
-        "religion"
+        "music",
+        "tv-film",
+        "religion",
+        "society/law",
+        "history",
+        "tv-film/history",
+        "engineering",
+        "history/military-modern"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.85
+        },
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.8
+        },
+        {
+          "node": "religion",
+          "confidence": 0.8
+        },
+        {
+          "node": "society/law",
+          "confidence": 0.8
+        },
+        {
+          "node": "history",
+          "confidence": 0.75
+        },
+        {
+          "node": "tv-film/history",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.7
+        },
+        {
+          "node": "history/military-modern",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Christianity-focused podcast covering multiple topics.",
+      "display_title": "GSMC Classics: The Catholic Hour",
+      "blurb": "The Catholic Hour was produced in co-operation with The National Council Of Catholic Men.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-89793fdf",
+      "classified_at": "2026-09-03T16:11:03.722Z"
     },
     "1584511531": {
       "topics": [
@@ -91386,11 +91720,100 @@
     },
     "1584572406": {
       "topics": [
-        "health/sexuality"
+        "relationships",
+        "health/sexuality",
+        "health",
+        "health/mental",
+        "culture/books",
+        "culture/art",
+        "travel",
+        "aviation",
+        "espionage",
+        "history",
+        "craft",
+        "education",
+        "culture",
+        "adventure",
+        "espionage/cold-war-tech",
+        "engineering"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/sexuality",
+          "confidence": 0.8
+        },
+        {
+          "node": "health",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        },
+        {
+          "node": "travel",
+          "confidence": 0.8
+        },
+        {
+          "node": "aviation",
+          "confidence": 0.8
+        },
+        {
+          "node": "espionage",
+          "confidence": 0.8
+        },
+        {
+          "node": "history",
+          "confidence": 0.75
+        },
+        {
+          "node": "craft",
+          "confidence": 0.75
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture",
+          "confidence": 0.75
+        },
+        {
+          "node": "adventure",
+          "confidence": 0.75
+        },
+        {
+          "node": "espionage/cold-war-tech",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Relationships-focused podcast covering multiple topics.",
+      "display_title": "Lala's Bedtime Tales: Erotic Stories",
+      "blurb": "Welcome to Lala’s Bedtime Tales Podcast.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-89793fdf",
+      "classified_at": "2026-09-03T16:11:03.722Z"
     },
     "1584575897": {
       "topics": [
@@ -91793,11 +92216,120 @@
     },
     "1586205696": {
       "topics": [
-        "nature"
+        "news",
+        "news/daily",
+        "culture/books",
+        "culture/art",
+        "adventure/exploration",
+        "math",
+        "math/puzzles",
+        "science",
+        "history",
+        "craft",
+        "sports",
+        "news/commentary",
+        "education",
+        "education/self-improvement",
+        "culture",
+        "adventure",
+        "personal-journals",
+        "engineering",
+        "history/military-modern",
+        "fiction"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.8
+        },
+        {
+          "node": "math",
+          "confidence": 0.8
+        },
+        {
+          "node": "math/puzzles",
+          "confidence": 0.8
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        },
+        {
+          "node": "history",
+          "confidence": 0.75
+        },
+        {
+          "node": "craft",
+          "confidence": 0.75
+        },
+        {
+          "node": "sports",
+          "confidence": 0.75
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.75
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture",
+          "confidence": 0.75
+        },
+        {
+          "node": "adventure",
+          "confidence": 0.75
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.7
+        },
+        {
+          "node": "history/military-modern",
+          "confidence": 0.7
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "News & Current Affairs-focused podcast covering multiple topics.",
+      "display_title": "Smoke N' Science",
+      "blurb": "Smokenol™ Inc.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-89793fdf",
+      "classified_at": "2026-09-03T16:11:03.722Z"
     },
     "1586269186": {
       "topics": [
@@ -91882,11 +92414,135 @@
     },
     "1586443998": {
       "topics": [
+        "relationships",
+        "linguistics/language",
+        "health/sexuality",
+        "medicine/neuroscience",
+        "news",
+        "news/politics",
+        "education/language-learning",
+        "culture/books",
+        "travel",
+        "religion",
+        "philosophy",
+        "philosophy/ideas",
+        "linguistics",
+        "science",
+        "history",
+        "psychology",
+        "education",
+        "culture",
+        "culture/design",
+        "automotive",
+        "personal-journals",
+        "engineering",
         "society"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.85
+        },
+        {
+          "node": "linguistics/language",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/sexuality",
+          "confidence": 0.8
+        },
+        {
+          "node": "medicine/neuroscience",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.8
+        },
+        {
+          "node": "education/language-learning",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.8
+        },
+        {
+          "node": "travel",
+          "confidence": 0.8
+        },
+        {
+          "node": "religion",
+          "confidence": 0.8
+        },
+        {
+          "node": "philosophy",
+          "confidence": 0.8
+        },
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.8
+        },
+        {
+          "node": "linguistics",
+          "confidence": 0.8
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        },
+        {
+          "node": "history",
+          "confidence": 0.75
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.75
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture/design",
+          "confidence": 0.75
+        },
+        {
+          "node": "automotive",
+          "confidence": 0.75
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.7
+        },
+        {
+          "node": "society",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Relationships-focused podcast covering multiple topics.",
+      "display_title": "The Death Studies Podcast",
+      "blurb": "The Death Studies Podcast is a platform for the diversity of voices in, around and contributing to the academic field of Death Studies.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-89793fdf",
+      "classified_at": "2026-09-03T16:11:03.722Z"
     },
     "1586474831": {
       "topics": [
@@ -91992,11 +92648,105 @@
     },
     "1586988360": {
       "topics": [
-        "gaming"
+        "space",
+        "education/how-to",
+        "culture/art",
+        "gaming",
+        "gaming/design",
+        "tv-film",
+        "history",
+        "craft",
+        "sports",
+        "computing",
+        "education",
+        "culture",
+        "culture/design",
+        "hobbies",
+        "engineering",
+        "history/military-modern",
+        "architecture"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.8
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        },
+        {
+          "node": "gaming",
+          "confidence": 0.8
+        },
+        {
+          "node": "gaming/design",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.8
+        },
+        {
+          "node": "history",
+          "confidence": 0.75
+        },
+        {
+          "node": "craft",
+          "confidence": 0.75
+        },
+        {
+          "node": "sports",
+          "confidence": 0.75
+        },
+        {
+          "node": "computing",
+          "confidence": 0.75
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture/design",
+          "confidence": 0.75
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.7
+        },
+        {
+          "node": "history/military-modern",
+          "confidence": 0.7
+        },
+        {
+          "node": "architecture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Space-focused podcast covering multiple topics.",
+      "display_title": "The Poorhammer Podcast",
+      "blurb": "The Poorhammer Podcast covers a variety of content for Warhammer games and the surrounding hobbies, covering a variety of content from in-game strategy to army building to collecting and painting.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-89793fdf",
+      "classified_at": "2026-09-03T16:11:03.722Z"
     },
     "1586992412": {
       "topics": [
@@ -92253,11 +93003,200 @@
     },
     "1587954336": {
       "topics": [
-        "computing"
+        "nature/ocean-science",
+        "nature/pets",
+        "news",
+        "news/daily",
+        "news/tech",
+        "health",
+        "culture/art",
+        "culture/pop-culture",
+        "travel",
+        "aviation",
+        "aviation/accidents",
+        "espionage",
+        "society/law",
+        "science",
+        "history",
+        "craft",
+        "nature",
+        "nature/animal-cognition",
+        "computing",
+        "economics/markets",
+        "food",
+        "news/commentary",
+        "education",
+        "culture",
+        "culture/design",
+        "adventure",
+        "automotive",
+        "espionage/cold-war-tech",
+        "engineering",
+        "medicine",
+        "history/military-modern",
+        "computing/history",
+        "economics",
+        "food/cooking-science",
+        "architecture",
+        "history/technology"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/ocean-science",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature/pets",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.8
+        },
+        {
+          "node": "health",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.8
+        },
+        {
+          "node": "travel",
+          "confidence": 0.8
+        },
+        {
+          "node": "aviation",
+          "confidence": 0.8
+        },
+        {
+          "node": "aviation/accidents",
+          "confidence": 0.8
+        },
+        {
+          "node": "espionage",
+          "confidence": 0.8
+        },
+        {
+          "node": "society/law",
+          "confidence": 0.8
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        },
+        {
+          "node": "history",
+          "confidence": 0.75
+        },
+        {
+          "node": "craft",
+          "confidence": 0.75
+        },
+        {
+          "node": "nature",
+          "confidence": 0.75
+        },
+        {
+          "node": "nature/animal-cognition",
+          "confidence": 0.75
+        },
+        {
+          "node": "computing",
+          "confidence": 0.75
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.75
+        },
+        {
+          "node": "food",
+          "confidence": 0.75
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.75
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture/design",
+          "confidence": 0.75
+        },
+        {
+          "node": "adventure",
+          "confidence": 0.75
+        },
+        {
+          "node": "automotive",
+          "confidence": 0.75
+        },
+        {
+          "node": "espionage/cold-war-tech",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.7
+        },
+        {
+          "node": "medicine",
+          "confidence": 0.7
+        },
+        {
+          "node": "history/military-modern",
+          "confidence": 0.7
+        },
+        {
+          "node": "computing/history",
+          "confidence": 0.7
+        },
+        {
+          "node": "economics",
+          "confidence": 0.7
+        },
+        {
+          "node": "food/cooking-science",
+          "confidence": 0.7
+        },
+        {
+          "node": "architecture",
+          "confidence": 0.7
+        },
+        {
+          "node": "history/technology",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Ocean Science-focused podcast covering multiple topics.",
+      "display_title": "Data Science With Sam",
+      "blurb": "This is an educational podcast focused on bringing academia and industry experts together in a common forum and initiate discussion geared towards data science, artificial intelligence, actuarial science and scientific.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-89793fdf",
+      "classified_at": "2026-09-03T16:11:03.722Z"
     },
     "1587969593": {
       "topics": [
@@ -92342,11 +93281,80 @@
     },
     "1588401030": {
       "topics": [
-        "sports"
+        "sports/football",
+        "news",
+        "culture/art",
+        "gaming",
+        "math",
+        "math/puzzles",
+        "sports",
+        "news/commentary",
+        "culture",
+        "adventure",
+        "engineering",
+        "business"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/football",
+          "confidence": 0.85
+        },
+        {
+          "node": "news",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        },
+        {
+          "node": "gaming",
+          "confidence": 0.8
+        },
+        {
+          "node": "math",
+          "confidence": 0.8
+        },
+        {
+          "node": "math/puzzles",
+          "confidence": 0.8
+        },
+        {
+          "node": "sports",
+          "confidence": 0.75
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture",
+          "confidence": 0.75
+        },
+        {
+          "node": "adventure",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.7
+        },
+        {
+          "node": "business",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Football-focused podcast covering multiple topics.",
+      "display_title": "On Texas Football",
+      "blurb": "Welcome to On Texas Football, the number one channel for in-depth analysis and discussion about Texas Longhorns football.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-89793fdf",
+      "classified_at": "2026-09-03T16:11:03.722Z"
     },
     "1588405417": {
       "topics": [
@@ -92488,11 +93496,100 @@
     },
     "1589014884": {
       "topics": [
-        "education/courses"
+        "news",
+        "news/politics",
+        "news/tech",
+        "culture/art",
+        "travel",
+        "tv-film",
+        "math",
+        "society/law",
+        "craft",
+        "computing",
+        "culture",
+        "adventure",
+        "automotive",
+        "engineering",
+        "computing/history",
+        "economics"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        },
+        {
+          "node": "travel",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.8
+        },
+        {
+          "node": "math",
+          "confidence": 0.8
+        },
+        {
+          "node": "society/law",
+          "confidence": 0.8
+        },
+        {
+          "node": "craft",
+          "confidence": 0.75
+        },
+        {
+          "node": "computing",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture",
+          "confidence": 0.75
+        },
+        {
+          "node": "adventure",
+          "confidence": 0.75
+        },
+        {
+          "node": "automotive",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.7
+        },
+        {
+          "node": "computing/history",
+          "confidence": 0.7
+        },
+        {
+          "node": "economics",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "News & Current Affairs-focused podcast covering multiple topics.",
+      "display_title": "Earmark Podcast | Earn Free Accounting CPE",
+      "blurb": "The Earmark Podcast is where accounting and tax professionals hear directly from the people shaping the future of the profession.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-89793fdf",
+      "classified_at": "2026-09-03T16:11:03.722Z"
     },
     "1589018435": {
       "topics": [
@@ -92669,11 +93766,125 @@
     },
     "1589938734": {
       "topics": [
-        "society"
+        "kids-family/stories",
+        "kids-family/parenting",
+        "music",
+        "culture/art",
+        "culture/mythology",
+        "travel",
+        "true-crime",
+        "kids-family",
+        "paranormal",
+        "science",
+        "music/theory-production",
+        "sports",
+        "computing",
+        "culture",
+        "culture/design",
+        "adventure",
+        "personal-journals",
+        "engineering",
+        "computing/history",
+        "fiction",
+        "architecture"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.85
+        },
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.85
+        },
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/mythology",
+          "confidence": 0.8
+        },
+        {
+          "node": "travel",
+          "confidence": 0.8
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.8
+        },
+        {
+          "node": "kids-family",
+          "confidence": 0.8
+        },
+        {
+          "node": "paranormal",
+          "confidence": 0.8
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        },
+        {
+          "node": "music/theory-production",
+          "confidence": 0.75
+        },
+        {
+          "node": "sports",
+          "confidence": 0.75
+        },
+        {
+          "node": "computing",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture/design",
+          "confidence": 0.75
+        },
+        {
+          "node": "adventure",
+          "confidence": 0.75
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.7
+        },
+        {
+          "node": "computing/history",
+          "confidence": 0.7
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.7
+        },
+        {
+          "node": "architecture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Stories for Kids-focused podcast covering multiple topics.",
+      "display_title": "Uncanny",
+      "blurb": "From ghostly phantoms to UFOs, Danny Robins investigates real-life stories of paranormal encounters.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-89793fdf",
+      "classified_at": "2026-09-03T16:11:03.722Z"
     },
     "1589952385": {
       "topics": [
@@ -92775,11 +93986,80 @@
     },
     "1590521934": {
       "topics": [
-        "religion"
+        "education/courses",
+        "culture/books",
+        "culture/art",
+        "tv-film",
+        "kids-family",
+        "history",
+        "psychology",
+        "education",
+        "culture",
+        "tv-film/history",
+        "history/military-modern",
+        "society"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/courses",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.8
+        },
+        {
+          "node": "kids-family",
+          "confidence": 0.8
+        },
+        {
+          "node": "history",
+          "confidence": 0.75
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.75
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture",
+          "confidence": 0.75
+        },
+        {
+          "node": "tv-film/history",
+          "confidence": 0.75
+        },
+        {
+          "node": "history/military-modern",
+          "confidence": 0.7
+        },
+        {
+          "node": "society",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Courses-focused podcast covering multiple topics.",
+      "display_title": "Andrew Rappaport's Rapp Report",
+      "blurb": "The Rapp Report with Andrew Rappaport is a podcast providing Biblical interpretations and applications for the Christian life.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-89793fdf",
+      "classified_at": "2026-09-03T16:11:03.722Z"
     },
     "1590538894": {
       "topics": [
@@ -92830,11 +94110,120 @@
     },
     "1590573108": {
       "topics": [
-        "sports/hockey"
+        "relationships",
+        "sports/hockey",
+        "linguistics/language",
+        "space",
+        "culture/pop-culture",
+        "gaming",
+        "tv-film",
+        "kids-family",
+        "espionage",
+        "linguistics",
+        "history",
+        "craft",
+        "sports",
+        "culture",
+        "adventure",
+        "personal-journals",
+        "cities",
+        "engineering",
+        "history/military-modern",
+        "society"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports/hockey",
+          "confidence": 0.85
+        },
+        {
+          "node": "linguistics/language",
+          "confidence": 0.85
+        },
+        {
+          "node": "space",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.8
+        },
+        {
+          "node": "gaming",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.8
+        },
+        {
+          "node": "kids-family",
+          "confidence": 0.8
+        },
+        {
+          "node": "espionage",
+          "confidence": 0.8
+        },
+        {
+          "node": "linguistics",
+          "confidence": 0.8
+        },
+        {
+          "node": "history",
+          "confidence": 0.75
+        },
+        {
+          "node": "craft",
+          "confidence": 0.75
+        },
+        {
+          "node": "sports",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture",
+          "confidence": 0.75
+        },
+        {
+          "node": "adventure",
+          "confidence": 0.75
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.75
+        },
+        {
+          "node": "cities",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.7
+        },
+        {
+          "node": "history/military-modern",
+          "confidence": 0.7
+        },
+        {
+          "node": "society",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Relationships-focused podcast covering multiple topics.",
+      "display_title": "After The Whistle",
+      "blurb": "After The Whistle is a hockey podcast for everyone.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-89793fdf",
+      "classified_at": "2026-09-03T16:11:03.722Z"
     },
     "1590606658": {
       "topics": [
@@ -92862,11 +94251,150 @@
     },
     "1590692352": {
       "topics": [
-        "craft"
+        "music",
+        "space",
+        "culture/books",
+        "culture/art",
+        "travel",
+        "tv-film",
+        "tv-film/interviews",
+        "science",
+        "history",
+        "craft",
+        "music/theory-production",
+        "sports",
+        "computing",
+        "education",
+        "culture",
+        "culture/design",
+        "adventure",
+        "automotive",
+        "tv-film/history",
+        "personal-journals",
+        "engineering",
+        "history/military-modern",
+        "business",
+        "computing/history",
+        "architecture",
+        "society"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "space",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        },
+        {
+          "node": "travel",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.8
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        },
+        {
+          "node": "history",
+          "confidence": 0.75
+        },
+        {
+          "node": "craft",
+          "confidence": 0.75
+        },
+        {
+          "node": "music/theory-production",
+          "confidence": 0.75
+        },
+        {
+          "node": "sports",
+          "confidence": 0.75
+        },
+        {
+          "node": "computing",
+          "confidence": 0.75
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture/design",
+          "confidence": 0.75
+        },
+        {
+          "node": "adventure",
+          "confidence": 0.75
+        },
+        {
+          "node": "automotive",
+          "confidence": 0.75
+        },
+        {
+          "node": "tv-film/history",
+          "confidence": 0.75
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.7
+        },
+        {
+          "node": "history/military-modern",
+          "confidence": 0.7
+        },
+        {
+          "node": "business",
+          "confidence": 0.7
+        },
+        {
+          "node": "computing/history",
+          "confidence": 0.7
+        },
+        {
+          "node": "architecture",
+          "confidence": 0.7
+        },
+        {
+          "node": "society",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Music-focused podcast covering multiple topics.",
+      "display_title": "Not Your Granny's Quilt Show",
+      "blurb": "A slightly chaotic podcast about all things quilting.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-89793fdf",
+      "classified_at": "2026-09-03T16:11:03.722Z"
     },
     "1590777335": {
       "topics": [
@@ -93380,11 +94908,170 @@
     },
     "1592984136": {
       "topics": [
-        "personal-journals"
+        "relationships",
+        "religion/christianity",
+        "religion/judaism",
+        "kids-family/stories",
+        "comedy",
+        "craft/woodworking",
+        "news",
+        "news/daily",
+        "culture/books",
+        "culture/art",
+        "tv-film",
+        "religion",
+        "kids-family",
+        "espionage",
+        "science",
+        "history",
+        "craft",
+        "computing",
+        "education",
+        "culture",
+        "culture/design",
+        "tv-film/history",
+        "personal-journals",
+        "espionage/cold-war-tech",
+        "engineering",
+        "history/military-modern",
+        "comedy/interviews",
+        "computing/history",
+        "architecture",
+        "society"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.85
+        },
+        {
+          "node": "religion/christianity",
+          "confidence": 0.85
+        },
+        {
+          "node": "religion/judaism",
+          "confidence": 0.85
+        },
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.8
+        },
+        {
+          "node": "craft/woodworking",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.8
+        },
+        {
+          "node": "religion",
+          "confidence": 0.8
+        },
+        {
+          "node": "kids-family",
+          "confidence": 0.8
+        },
+        {
+          "node": "espionage",
+          "confidence": 0.8
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        },
+        {
+          "node": "history",
+          "confidence": 0.75
+        },
+        {
+          "node": "craft",
+          "confidence": 0.75
+        },
+        {
+          "node": "computing",
+          "confidence": 0.75
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture/design",
+          "confidence": 0.75
+        },
+        {
+          "node": "tv-film/history",
+          "confidence": 0.75
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.75
+        },
+        {
+          "node": "espionage/cold-war-tech",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.7
+        },
+        {
+          "node": "history/military-modern",
+          "confidence": 0.7
+        },
+        {
+          "node": "comedy/interviews",
+          "confidence": 0.7
+        },
+        {
+          "node": "computing/history",
+          "confidence": 0.7
+        },
+        {
+          "node": "architecture",
+          "confidence": 0.7
+        },
+        {
+          "node": "society",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Relationships-focused podcast covering multiple topics.",
+      "display_title": "Things Fell Apart",
+      "blurb": "If you've ever yelled at someone on social media about, say, cancel culture or mask-wearing, then you are a soldier in the culture wars - those everyday battles for dominance.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-89793fdf",
+      "classified_at": "2026-09-03T16:11:03.722Z"
     },
     "1593015320": {
       "topics": [
@@ -93485,12 +95172,125 @@
     },
     "1593442890": {
       "topics": [
+        "nature/pets",
+        "space",
+        "health",
+        "culture/art",
+        "travel",
+        "aviation",
+        "history",
+        "craft",
+        "craft/diy-home",
+        "sports",
         "nature",
-        "nature/pets"
+        "nature/animal-cognition",
+        "education",
+        "culture",
+        "adventure",
+        "automotive",
+        "transport",
+        "engineering",
+        "medicine",
+        "history/military-modern",
+        "society"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/pets",
+          "confidence": 0.8
+        },
+        {
+          "node": "space",
+          "confidence": 0.8
+        },
+        {
+          "node": "health",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        },
+        {
+          "node": "travel",
+          "confidence": 0.8
+        },
+        {
+          "node": "aviation",
+          "confidence": 0.8
+        },
+        {
+          "node": "history",
+          "confidence": 0.75
+        },
+        {
+          "node": "craft",
+          "confidence": 0.75
+        },
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.75
+        },
+        {
+          "node": "sports",
+          "confidence": 0.75
+        },
+        {
+          "node": "nature",
+          "confidence": 0.75
+        },
+        {
+          "node": "nature/animal-cognition",
+          "confidence": 0.75
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture",
+          "confidence": 0.75
+        },
+        {
+          "node": "adventure",
+          "confidence": 0.75
+        },
+        {
+          "node": "automotive",
+          "confidence": 0.75
+        },
+        {
+          "node": "transport",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.7
+        },
+        {
+          "node": "medicine",
+          "confidence": 0.7
+        },
+        {
+          "node": "history/military-modern",
+          "confidence": 0.7
+        },
+        {
+          "node": "society",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Pets & Animals-focused podcast covering multiple topics.",
+      "display_title": "Amazing Wildlife: A San Diego Zoo Podcast",
+      "blurb": "Did you know that in the world of elephants the females are the ones in charge.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-89793fdf",
+      "classified_at": "2026-09-03T16:11:03.722Z"
     },
     "1593458926": {
       "topics": [
@@ -93524,11 +95324,105 @@
     },
     "1593723018": {
       "topics": [
-        "tv-film"
+        "news",
+        "news/politics",
+        "news/daily",
+        "culture/art",
+        "true-crime",
+        "tv-film",
+        "aviation",
+        "history",
+        "news/commentary",
+        "education",
+        "culture",
+        "culture/design",
+        "automotive",
+        "engineering",
+        "history/military-modern",
+        "architecture",
+        "society"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.8
+        },
+        {
+          "node": "aviation",
+          "confidence": 0.8
+        },
+        {
+          "node": "history",
+          "confidence": 0.75
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.75
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture/design",
+          "confidence": 0.75
+        },
+        {
+          "node": "automotive",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.7
+        },
+        {
+          "node": "history/military-modern",
+          "confidence": 0.7
+        },
+        {
+          "node": "architecture",
+          "confidence": 0.7
+        },
+        {
+          "node": "society",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "News & Current Affairs-focused podcast covering multiple topics.",
+      "display_title": "Bo Snerdley's Rush Hour",
+      "blurb": "James Golden, aka “Bo Snerdley,” is on the air every weekday on 77 WABC.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-89793fdf",
+      "classified_at": "2026-09-03T16:11:03.722Z"
     },
     "1593726950": {
       "topics": [
@@ -93741,12 +95635,135 @@
     },
     "1594930776": {
       "topics": [
+        "kids-family/stories",
+        "music",
+        "space",
+        "culture/art",
+        "culture/mythology",
+        "culture/performing-arts",
+        "travel",
+        "adventure/exploration",
+        "tv-film",
+        "tv-film/interviews",
+        "kids-family",
+        "aviation",
         "history",
-        "music"
+        "craft",
+        "craft/diy-home",
+        "culture",
+        "adventure",
+        "automotive",
+        "tv-film/history",
+        "personal-journals",
+        "engineering",
+        "history/military-modern",
+        "history/technology"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.85
+        },
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "space",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/mythology",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.8
+        },
+        {
+          "node": "travel",
+          "confidence": 0.8
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.8
+        },
+        {
+          "node": "kids-family",
+          "confidence": 0.8
+        },
+        {
+          "node": "aviation",
+          "confidence": 0.8
+        },
+        {
+          "node": "history",
+          "confidence": 0.75
+        },
+        {
+          "node": "craft",
+          "confidence": 0.75
+        },
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture",
+          "confidence": 0.75
+        },
+        {
+          "node": "adventure",
+          "confidence": 0.75
+        },
+        {
+          "node": "automotive",
+          "confidence": 0.75
+        },
+        {
+          "node": "tv-film/history",
+          "confidence": 0.75
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.7
+        },
+        {
+          "node": "history/military-modern",
+          "confidence": 0.7
+        },
+        {
+          "node": "history/technology",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Stories for Kids-focused podcast covering multiple topics.",
+      "display_title": "Takin' A Walk - Music History with Buzz",
+      "blurb": "Takin' A Walk with Buzz Knight is your gateway to music history and creative journeys featuring iconic and indie musicians.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-89793fdf",
+      "classified_at": "2026-09-03T16:11:03.722Z"
     },
     "1595000278": {
       "topics": [
@@ -93779,11 +95796,135 @@
     },
     "1595376102": {
       "topics": [
-        "health/sexuality"
+        "relationships",
+        "comedy",
+        "health/sexuality",
+        "space",
+        "health",
+        "health/mental",
+        "culture/art",
+        "automotive/racing",
+        "tv-film",
+        "kids-family",
+        "aviation",
+        "espionage",
+        "math",
+        "history",
+        "food",
+        "culture",
+        "automotive",
+        "espionage/cold-war-tech",
+        "engineering",
+        "medicine",
+        "history/military-modern",
+        "comedy/interviews",
+        "food/cooking-science"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/sexuality",
+          "confidence": 0.8
+        },
+        {
+          "node": "space",
+          "confidence": 0.8
+        },
+        {
+          "node": "health",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        },
+        {
+          "node": "automotive/racing",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.8
+        },
+        {
+          "node": "kids-family",
+          "confidence": 0.8
+        },
+        {
+          "node": "aviation",
+          "confidence": 0.8
+        },
+        {
+          "node": "espionage",
+          "confidence": 0.8
+        },
+        {
+          "node": "math",
+          "confidence": 0.8
+        },
+        {
+          "node": "history",
+          "confidence": 0.75
+        },
+        {
+          "node": "food",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture",
+          "confidence": 0.75
+        },
+        {
+          "node": "automotive",
+          "confidence": 0.75
+        },
+        {
+          "node": "espionage/cold-war-tech",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.7
+        },
+        {
+          "node": "medicine",
+          "confidence": 0.7
+        },
+        {
+          "node": "history/military-modern",
+          "confidence": 0.7
+        },
+        {
+          "node": "comedy/interviews",
+          "confidence": 0.7
+        },
+        {
+          "node": "food/cooking-science",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Relationships-focused podcast covering multiple topics.",
+      "display_title": "Dr. Sex Fairy",
+      "blurb": "Did you ever realize that improved sexual health is a key ingredient to happiness and general wellness.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-89793fdf",
+      "classified_at": "2026-09-03T16:11:03.722Z"
     },
     "1595408601": {
       "topics": [
@@ -93994,11 +96135,100 @@
     },
     "1596609186": {
       "topics": [
-        "tv-film/reviews"
+        "relationships",
+        "music",
+        "space",
+        "news",
+        "culture/art",
+        "religion",
+        "kids-family",
+        "aviation",
+        "paranormal",
+        "history",
+        "psychology",
+        "culture",
+        "automotive",
+        "cities",
+        "engineering",
+        "business"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.85
+        },
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "space",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        },
+        {
+          "node": "religion",
+          "confidence": 0.8
+        },
+        {
+          "node": "kids-family",
+          "confidence": 0.8
+        },
+        {
+          "node": "aviation",
+          "confidence": 0.8
+        },
+        {
+          "node": "paranormal",
+          "confidence": 0.8
+        },
+        {
+          "node": "history",
+          "confidence": 0.75
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture",
+          "confidence": 0.75
+        },
+        {
+          "node": "automotive",
+          "confidence": 0.75
+        },
+        {
+          "node": "cities",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.7
+        },
+        {
+          "node": "business",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Relationships-focused podcast covering multiple topics.",
+      "display_title": "Sister Wives: Love Should Be Multiplied Not Divided",
+      "blurb": "A husband and his (only) wife give a weekly breakdown to the newest season of the TLC sinking ship, known as, \"Sister Wives.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-89793fdf",
+      "classified_at": "2026-09-03T16:11:03.722Z"
     },
     "1596647470": {
       "topics": [
@@ -94129,11 +96359,40 @@
     },
     "1597229142": {
       "topics": [
-        "religion/christianity"
+        "religion/christianity",
+        "religion/islam",
+        "religion",
+        "engineering"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.85
+        },
+        {
+          "node": "religion/islam",
+          "confidence": 0.85
+        },
+        {
+          "node": "religion",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Christianity-focused podcast covering multiple topics.",
+      "display_title": "The Bryce Crawford Podcast",
+      "blurb": "Bryce Crawford's Christian podcast where he talks about Christ and major topics concerning Christianity and the world.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-89793fdf",
+      "classified_at": "2026-09-03T16:11:03.722Z"
     },
     "1597385678": {
       "topics": [
@@ -94236,12 +96495,85 @@
     },
     "1597828386": {
       "topics": [
+        "relationships",
         "religion/christianity",
-        "history"
+        "health",
+        "culture/fashion",
+        "culture/art",
+        "religion",
+        "aviation",
+        "history",
+        "culture",
+        "culture/design",
+        "automotive",
+        "engineering",
+        "medicine"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.85
+        },
+        {
+          "node": "religion/christianity",
+          "confidence": 0.85
+        },
+        {
+          "node": "health",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/fashion",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        },
+        {
+          "node": "religion",
+          "confidence": 0.8
+        },
+        {
+          "node": "aviation",
+          "confidence": 0.8
+        },
+        {
+          "node": "history",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture/design",
+          "confidence": 0.75
+        },
+        {
+          "node": "automotive",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.7
+        },
+        {
+          "node": "medicine",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Relationships-focused podcast covering multiple topics.",
+      "display_title": "Catholic Saints",
+      "blurb": "Have you ever wanted to learn more about the men and women the Catholic Church officially recognize as saints.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-89793fdf",
+      "classified_at": "2026-09-03T16:11:03.722Z"
     },
     "1597957237": {
       "topics": [
@@ -94344,11 +96676,95 @@
     },
     "1598413266": {
       "topics": [
-        "education/courses"
+        "religion/christianity",
+        "linguistics/language",
+        "culture/art",
+        "fiction/drama",
+        "religion",
+        "religion/spirituality",
+        "kids-family",
+        "linguistics",
+        "math",
+        "society/law",
+        "culture",
+        "adventure",
+        "engineering",
+        "medicine",
+        "fiction"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.85
+        },
+        {
+          "node": "linguistics/language",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        },
+        {
+          "node": "fiction/drama",
+          "confidence": 0.8
+        },
+        {
+          "node": "religion",
+          "confidence": 0.8
+        },
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.8
+        },
+        {
+          "node": "kids-family",
+          "confidence": 0.8
+        },
+        {
+          "node": "linguistics",
+          "confidence": 0.8
+        },
+        {
+          "node": "math",
+          "confidence": 0.8
+        },
+        {
+          "node": "society/law",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture",
+          "confidence": 0.75
+        },
+        {
+          "node": "adventure",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.7
+        },
+        {
+          "node": "medicine",
+          "confidence": 0.7
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Christianity-focused podcast covering multiple topics.",
+      "display_title": "Sight To The Blind",
+      "blurb": "The unapologetic truth to remedy spiritual blindness, Welcome, to SIGHT TO THE BLIND.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-89793fdf",
+      "classified_at": "2026-09-03T16:11:03.722Z"
     },
     "1598492649": {
       "topics": [
@@ -94741,11 +97157,115 @@
     },
     "1601329812": {
       "topics": [
-        "society"
+        "relationships",
+        "kids-family/stories",
+        "kids-family/parenting",
+        "education/courses",
+        "culture/books",
+        "culture/art",
+        "kids-family",
+        "aviation",
+        "math",
+        "history",
+        "computing",
+        "education",
+        "education/self-improvement",
+        "culture",
+        "automotive",
+        "personal-journals",
+        "engineering",
+        "medicine",
+        "history/military-modern"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.85
+        },
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.85
+        },
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.85
+        },
+        {
+          "node": "education/courses",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        },
+        {
+          "node": "kids-family",
+          "confidence": 0.8
+        },
+        {
+          "node": "aviation",
+          "confidence": 0.8
+        },
+        {
+          "node": "math",
+          "confidence": 0.8
+        },
+        {
+          "node": "history",
+          "confidence": 0.75
+        },
+        {
+          "node": "computing",
+          "confidence": 0.75
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture",
+          "confidence": 0.75
+        },
+        {
+          "node": "automotive",
+          "confidence": 0.75
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.7
+        },
+        {
+          "node": "medicine",
+          "confidence": 0.7
+        },
+        {
+          "node": "history/military-modern",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Relationships-focused podcast covering multiple topics.",
+      "display_title": "Storytime",
+      "blurb": "Storytime Daily Podcast where you can find all the best internet stories.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-89793fdf",
+      "classified_at": "2026-09-03T16:11:03.722Z"
     },
     "1601461282": {
       "topics": [
@@ -95239,11 +97759,140 @@
     },
     "1604034708": {
       "topics": [
-        "education/self-improvement"
+        "relationships",
+        "nature/ocean-science",
+        "space",
+        "news",
+        "news/daily",
+        "health",
+        "health/mental",
+        "education/how-to",
+        "culture/fashion",
+        "culture/art",
+        "aviation",
+        "science",
+        "craft",
+        "craft/diy-home",
+        "nature",
+        "psychology",
+        "education",
+        "culture",
+        "automotive",
+        "engineering",
+        "medicine",
+        "business",
+        "fiction",
+        "society"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.85
+        },
+        {
+          "node": "nature/ocean-science",
+          "confidence": 0.8
+        },
+        {
+          "node": "space",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.8
+        },
+        {
+          "node": "health",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.8
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/fashion",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        },
+        {
+          "node": "aviation",
+          "confidence": 0.8
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        },
+        {
+          "node": "craft",
+          "confidence": 0.75
+        },
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.75
+        },
+        {
+          "node": "nature",
+          "confidence": 0.75
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.75
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture",
+          "confidence": 0.75
+        },
+        {
+          "node": "automotive",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.7
+        },
+        {
+          "node": "medicine",
+          "confidence": 0.7
+        },
+        {
+          "node": "business",
+          "confidence": 0.7
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.7
+        },
+        {
+          "node": "society",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Relationships-focused podcast covering multiple topics.",
+      "display_title": "Busy, Yet Pretty",
+      "blurb": "Are you busy, setting goals to achieve your dream life.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-89793fdf",
+      "classified_at": "2026-09-03T16:11:03.722Z"
     },
     "1604148772": {
       "topics": [
@@ -95513,12 +98162,135 @@
     },
     "1605628278": {
       "topics": [
+        "relationships",
+        "kids-family/parenting",
+        "medicine/neuroscience",
+        "health",
+        "health/mental",
+        "culture/art",
+        "culture/performing-arts",
+        "travel",
+        "tv-film",
+        "tv-film/interviews",
+        "kids-family",
+        "math",
+        "math/puzzles",
+        "science",
+        "history",
+        "craft",
         "psychology",
-        "society"
+        "culture",
+        "adventure",
+        "automotive",
+        "engineering",
+        "medicine",
+        "history/military-modern"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.85
+        },
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.85
+        },
+        {
+          "node": "medicine/neuroscience",
+          "confidence": 0.8
+        },
+        {
+          "node": "health",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.8
+        },
+        {
+          "node": "travel",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.8
+        },
+        {
+          "node": "kids-family",
+          "confidence": 0.8
+        },
+        {
+          "node": "math",
+          "confidence": 0.8
+        },
+        {
+          "node": "math/puzzles",
+          "confidence": 0.8
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        },
+        {
+          "node": "history",
+          "confidence": 0.75
+        },
+        {
+          "node": "craft",
+          "confidence": 0.75
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture",
+          "confidence": 0.75
+        },
+        {
+          "node": "adventure",
+          "confidence": 0.75
+        },
+        {
+          "node": "automotive",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.7
+        },
+        {
+          "node": "medicine",
+          "confidence": 0.7
+        },
+        {
+          "node": "history/military-modern",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Relationships-focused podcast covering multiple topics.",
+      "display_title": "Psychology, Actually",
+      "blurb": "🎙️ Psychology, Actually with Dr Marianne Trent is a podcast about what’s really going on beneath the surface of our lives.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-89793fdf",
+      "classified_at": "2026-09-03T16:11:03.722Z"
     },
     "1605640330": {
       "topics": [
@@ -95595,11 +98367,50 @@
     },
     "1605869346": {
       "topics": [
-        "relationships"
+        "music",
+        "culture/pop-culture",
+        "espionage",
+        "computing",
+        "culture",
+        "society"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.8
+        },
+        {
+          "node": "espionage",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture",
+          "confidence": 0.75
+        },
+        {
+          "node": "society",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Music-focused podcast covering multiple topics.",
+      "display_title": "Brooke and Connor Make A Podcast",
+      "blurb": "The Internet’s favorite dynamic duo, Brooke Averick and Connor Wood, make a podcast — and they’re not holding back.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-89793fdf",
+      "classified_at": "2026-09-03T16:11:03.722Z"
     },
     "1605877822": {
       "topics": [
@@ -95617,12 +98428,140 @@
     },
     "1606000644": {
       "topics": [
-        "sports/endurance",
-        "health/fitness"
+        "kids-family/parenting",
+        "linguistics/language",
+        "music",
+        "health",
+        "health/fitness",
+        "health/nutrition",
+        "education/how-to",
+        "education/courses",
+        "culture/art",
+        "travel",
+        "automotive/racing",
+        "kids-family",
+        "aviation",
+        "linguistics",
+        "society/law",
+        "history",
+        "sports",
+        "food",
+        "education",
+        "culture",
+        "adventure",
+        "automotive",
+        "engineering",
+        "history/military-modern"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.85
+        },
+        {
+          "node": "linguistics/language",
+          "confidence": 0.85
+        },
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "health",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/nutrition",
+          "confidence": 0.8
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.8
+        },
+        {
+          "node": "education/courses",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        },
+        {
+          "node": "travel",
+          "confidence": 0.8
+        },
+        {
+          "node": "automotive/racing",
+          "confidence": 0.8
+        },
+        {
+          "node": "kids-family",
+          "confidence": 0.8
+        },
+        {
+          "node": "aviation",
+          "confidence": 0.8
+        },
+        {
+          "node": "linguistics",
+          "confidence": 0.8
+        },
+        {
+          "node": "society/law",
+          "confidence": 0.8
+        },
+        {
+          "node": "history",
+          "confidence": 0.75
+        },
+        {
+          "node": "sports",
+          "confidence": 0.75
+        },
+        {
+          "node": "food",
+          "confidence": 0.75
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture",
+          "confidence": 0.75
+        },
+        {
+          "node": "adventure",
+          "confidence": 0.75
+        },
+        {
+          "node": "automotive",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.7
+        },
+        {
+          "node": "history/military-modern",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Parenting-focused podcast covering multiple topics.",
+      "display_title": "That Triathlon Life Podcast",
+      "blurb": "Pro Triathletes Eric Lagerstrom, and Paula Findlay, team up with their friend and amateur triathlete Nick Goldston to hang out and answer questions about triathlon.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-89793fdf",
+      "classified_at": "2026-09-03T16:11:03.722Z"
     },
     "1606051811": {
       "topics": [
@@ -95633,11 +98572,150 @@
     },
     "1606088310": {
       "topics": [
-        "sports/volleyball"
+        "relationships",
+        "sports/volleyball",
+        "music",
+        "space",
+        "medicine/neuroscience",
+        "news",
+        "news/daily",
+        "news/tech",
+        "culture/books",
+        "culture/art",
+        "culture/mythology",
+        "travel",
+        "adventure/exploration",
+        "gaming",
+        "math",
+        "math/puzzles",
+        "science",
+        "history",
+        "sports",
+        "psychology",
+        "news/commentary",
+        "education",
+        "culture",
+        "adventure",
+        "personal-journals",
+        "engineering"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports/volleyball",
+          "confidence": 0.85
+        },
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "space",
+          "confidence": 0.8
+        },
+        {
+          "node": "medicine/neuroscience",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/mythology",
+          "confidence": 0.8
+        },
+        {
+          "node": "travel",
+          "confidence": 0.8
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.8
+        },
+        {
+          "node": "gaming",
+          "confidence": 0.8
+        },
+        {
+          "node": "math",
+          "confidence": 0.8
+        },
+        {
+          "node": "math/puzzles",
+          "confidence": 0.8
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        },
+        {
+          "node": "history",
+          "confidence": 0.75
+        },
+        {
+          "node": "sports",
+          "confidence": 0.75
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.75
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.75
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture",
+          "confidence": 0.75
+        },
+        {
+          "node": "adventure",
+          "confidence": 0.75
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Relationships-focused podcast covering multiple topics.",
+      "display_title": "Talking Volleyball",
+      "blurb": "Two coaches, some guests and YouTube audience questions.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-89793fdf",
+      "classified_at": "2026-09-03T16:11:03.722Z"
     },
     "1606200107": {
       "topics": [
@@ -96143,11 +99221,94 @@
     "1607763438": {
       "topics": [
         "medicine/neuroscience",
-        "education/how-to"
+        "news",
+        "news/tech",
+        "culture/art",
+        "kids-family",
+        "math",
+        "math/puzzles",
+        "history",
+        "psychology",
+        "psychology/decision-making",
+        "education",
+        "culture",
+        "engineering",
+        "history/military-modern",
+        "society"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine/neuroscience",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        },
+        {
+          "node": "kids-family",
+          "confidence": 0.8
+        },
+        {
+          "node": "math",
+          "confidence": 0.8
+        },
+        {
+          "node": "math/puzzles",
+          "confidence": 0.8
+        },
+        {
+          "node": "history",
+          "confidence": 0.75
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.75
+        },
+        {
+          "node": "psychology/decision-making",
+          "confidence": 0.75
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.7
+        },
+        {
+          "node": "history/military-modern",
+          "confidence": 0.7
+        },
+        {
+          "node": "society",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Neuroscience-focused podcast covering multiple topics.",
+      "display_title": "Filter It Through a Brain Cell",
+      "blurb": "Can you recognize bad thinking, manipulative advertising and tricky arguments when you see them.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-89793fdf",
+      "classified_at": "2026-09-03T16:11:03.722Z"
     },
     "1607778827": {
       "topics": [
@@ -96247,11 +99408,140 @@
     },
     "1608040662": {
       "topics": [
-        "gaming"
+        "relationships",
+        "kids-family/stories",
+        "kids-family/parenting",
+        "music",
+        "space",
+        "culture/books",
+        "culture/art",
+        "gaming",
+        "true-crime",
+        "tv-film",
+        "religion",
+        "kids-family",
+        "society/law",
+        "history",
+        "craft",
+        "sports",
+        "education",
+        "culture",
+        "automotive",
+        "tv-film/history",
+        "personal-journals",
+        "cities",
+        "engineering",
+        "architecture"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.85
+        },
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.85
+        },
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.85
+        },
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "space",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        },
+        {
+          "node": "gaming",
+          "confidence": 0.8
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.8
+        },
+        {
+          "node": "religion",
+          "confidence": 0.8
+        },
+        {
+          "node": "kids-family",
+          "confidence": 0.8
+        },
+        {
+          "node": "society/law",
+          "confidence": 0.8
+        },
+        {
+          "node": "history",
+          "confidence": 0.75
+        },
+        {
+          "node": "craft",
+          "confidence": 0.75
+        },
+        {
+          "node": "sports",
+          "confidence": 0.75
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture",
+          "confidence": 0.75
+        },
+        {
+          "node": "automotive",
+          "confidence": 0.75
+        },
+        {
+          "node": "tv-film/history",
+          "confidence": 0.75
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.75
+        },
+        {
+          "node": "cities",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.7
+        },
+        {
+          "node": "architecture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Relationships-focused podcast covering multiple topics.",
+      "display_title": "Nerd of Mouth",
+      "blurb": "The Nerds got their Revenge, now what.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-89793fdf",
+      "classified_at": "2026-09-03T16:11:03.722Z"
     },
     "1608051004": {
       "topics": [
@@ -96263,11 +99553,140 @@
     },
     "1608064632": {
       "topics": [
-        "nature/earth-science"
+        "relationships",
+        "space",
+        "news",
+        "news/daily",
+        "news/tech",
+        "culture/art",
+        "travel",
+        "tv-film",
+        "aviation",
+        "paranormal",
+        "science",
+        "history",
+        "craft",
+        "craft/diy-home",
+        "sports",
+        "psychology",
+        "culture",
+        "culture/design",
+        "adventure",
+        "tv-film/history",
+        "personal-journals",
+        "engineering",
+        "history/military-modern",
+        "history/military-ancient"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.85
+        },
+        {
+          "node": "space",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        },
+        {
+          "node": "travel",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.8
+        },
+        {
+          "node": "aviation",
+          "confidence": 0.8
+        },
+        {
+          "node": "paranormal",
+          "confidence": 0.8
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        },
+        {
+          "node": "history",
+          "confidence": 0.75
+        },
+        {
+          "node": "craft",
+          "confidence": 0.75
+        },
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.75
+        },
+        {
+          "node": "sports",
+          "confidence": 0.75
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture/design",
+          "confidence": 0.75
+        },
+        {
+          "node": "adventure",
+          "confidence": 0.75
+        },
+        {
+          "node": "tv-film/history",
+          "confidence": 0.75
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.7
+        },
+        {
+          "node": "history/military-modern",
+          "confidence": 0.7
+        },
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Relationships-focused podcast covering multiple topics.",
+      "display_title": "Bedrock: Earth's Earliest History",
+      "blurb": "This podcast starts at the beginning of Earth's prehistory and works forward through time.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-89793fdf",
+      "classified_at": "2026-09-03T16:11:03.722Z"
     },
     "1608107305": {
       "topics": [
@@ -96278,12 +99697,170 @@
     },
     "1608109038": {
       "topics": [
+        "nature/ocean-science",
+        "nature/pets",
+        "news",
+        "news/politics",
+        "news/daily",
+        "news/tech",
+        "health",
+        "health/nutrition",
+        "culture/books",
+        "culture/art",
+        "culture/mythology",
+        "travel",
+        "society/law",
+        "science",
+        "history",
+        "craft",
         "craft/diy-home",
-        "education/how-to"
+        "nature",
+        "nature/animal-cognition",
+        "food",
+        "news/commentary",
+        "health/alternative",
+        "culture",
+        "adventure",
+        "automotive",
+        "personal-journals",
+        "engineering",
+        "medicine",
+        "society",
+        "history/technology"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/ocean-science",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature/pets",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.8
+        },
+        {
+          "node": "health",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/nutrition",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/mythology",
+          "confidence": 0.8
+        },
+        {
+          "node": "travel",
+          "confidence": 0.8
+        },
+        {
+          "node": "society/law",
+          "confidence": 0.8
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        },
+        {
+          "node": "history",
+          "confidence": 0.75
+        },
+        {
+          "node": "craft",
+          "confidence": 0.75
+        },
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.75
+        },
+        {
+          "node": "nature",
+          "confidence": 0.75
+        },
+        {
+          "node": "nature/animal-cognition",
+          "confidence": 0.75
+        },
+        {
+          "node": "food",
+          "confidence": 0.75
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.75
+        },
+        {
+          "node": "health/alternative",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture",
+          "confidence": 0.75
+        },
+        {
+          "node": "adventure",
+          "confidence": 0.75
+        },
+        {
+          "node": "automotive",
+          "confidence": 0.75
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.7
+        },
+        {
+          "node": "medicine",
+          "confidence": 0.7
+        },
+        {
+          "node": "society",
+          "confidence": 0.7
+        },
+        {
+          "node": "history/technology",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Ocean Science-focused podcast covering multiple topics.",
+      "display_title": "Gubba Homestead Podcast",
+      "blurb": "Would you like to learn how to nurture a garden, raise farm animals, cook recipes from scratch, and preserve food for SHTF.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-89793fdf",
+      "classified_at": "2026-09-03T16:11:03.722Z"
     },
     "1608110280": {
       "topics": [
@@ -96353,11 +99930,110 @@
     },
     "1608442752": {
       "topics": [
-        "nature"
+        "relationships",
+        "craft/woodworking",
+        "nature/ocean-science",
+        "nature/pets",
+        "culture/books",
+        "culture/art",
+        "math",
+        "math/puzzles",
+        "history",
+        "craft",
+        "craft/diy-home",
+        "nature",
+        "nature/animal-cognition",
+        "nature/earth-science",
+        "nature/weather",
+        "culture",
+        "engineering",
+        "fiction"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.85
+        },
+        {
+          "node": "craft/woodworking",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature/ocean-science",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature/pets",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        },
+        {
+          "node": "math",
+          "confidence": 0.8
+        },
+        {
+          "node": "math/puzzles",
+          "confidence": 0.8
+        },
+        {
+          "node": "history",
+          "confidence": 0.75
+        },
+        {
+          "node": "craft",
+          "confidence": 0.75
+        },
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.75
+        },
+        {
+          "node": "nature",
+          "confidence": 0.75
+        },
+        {
+          "node": "nature/animal-cognition",
+          "confidence": 0.75
+        },
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.75
+        },
+        {
+          "node": "nature/weather",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.7
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Relationships-focused podcast covering multiple topics.",
+      "display_title": "Golden State Naturalist",
+      "blurb": "Golden State Naturalist is a love letter to California's ecological past, present, and future.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-89793fdf",
+      "classified_at": "2026-09-03T16:11:03.722Z"
     },
     "1608600918": {
       "topics": [
@@ -97045,11 +100721,150 @@
     },
     "1611134496": {
       "topics": [
-        "nature"
+        "music",
+        "nature/ocean-science",
+        "space",
+        "news",
+        "news/politics",
+        "culture/art",
+        "culture/mythology",
+        "travel",
+        "automotive/racing",
+        "transport/maritime",
+        "science",
+        "history",
+        "craft",
+        "sports",
+        "nature",
+        "nature/weather",
+        "psychology",
+        "psychology/decision-making",
+        "news/commentary",
+        "culture",
+        "adventure",
+        "automotive",
+        "personal-journals",
+        "cities",
+        "transport",
+        "engineering"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature/ocean-science",
+          "confidence": 0.8
+        },
+        {
+          "node": "space",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/mythology",
+          "confidence": 0.8
+        },
+        {
+          "node": "travel",
+          "confidence": 0.8
+        },
+        {
+          "node": "automotive/racing",
+          "confidence": 0.8
+        },
+        {
+          "node": "transport/maritime",
+          "confidence": 0.8
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        },
+        {
+          "node": "history",
+          "confidence": 0.75
+        },
+        {
+          "node": "craft",
+          "confidence": 0.75
+        },
+        {
+          "node": "sports",
+          "confidence": 0.75
+        },
+        {
+          "node": "nature",
+          "confidence": 0.75
+        },
+        {
+          "node": "nature/weather",
+          "confidence": 0.75
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.75
+        },
+        {
+          "node": "psychology/decision-making",
+          "confidence": 0.75
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture",
+          "confidence": 0.75
+        },
+        {
+          "node": "adventure",
+          "confidence": 0.75
+        },
+        {
+          "node": "automotive",
+          "confidence": 0.75
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.75
+        },
+        {
+          "node": "cities",
+          "confidence": 0.75
+        },
+        {
+          "node": "transport",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Music-focused podcast covering multiple topics.",
+      "display_title": "About Sustainability…",
+      "blurb": "About Sustainability… is a podcast presented by the Institute for Global Environmental Strategies, featuring IGES staff and guests having in-depth discussions about sustainability-related topics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-89793fdf",
+      "classified_at": "2026-09-03T16:11:03.722Z"
     },
     "1611168630": {
       "topics": [
@@ -97075,12 +100890,90 @@
     },
     "1611226020": {
       "topics": [
+        "education/how-to",
+        "culture/art",
+        "tv-film",
+        "craft",
+        "craft/diy-home",
         "economics/markets",
-        "education/how-to"
+        "education",
+        "culture",
+        "adventure",
+        "automotive",
+        "engineering",
+        "business",
+        "economics",
+        "fiction"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/how-to",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.8
+        },
+        {
+          "node": "craft",
+          "confidence": 0.75
+        },
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.75
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.75
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture",
+          "confidence": 0.75
+        },
+        {
+          "node": "adventure",
+          "confidence": 0.75
+        },
+        {
+          "node": "automotive",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.7
+        },
+        {
+          "node": "business",
+          "confidence": 0.7
+        },
+        {
+          "node": "economics",
+          "confidence": 0.7
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "How To-focused podcast covering multiple topics.",
+      "display_title": "The Educated HomeBuyer | First Time Home Buyer",
+      "blurb": "Buying a home is the biggest financial decision of your life — and most buyers do it without a real guide.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-89793fdf",
+      "classified_at": "2026-09-03T16:11:03.722Z"
     },
     "1611237647": {
       "topics": [
@@ -97863,11 +101756,140 @@
     },
     "1614166584": {
       "topics": [
-        "business/non-profit"
+        "relationships",
+        "religion/judaism",
+        "religion/islam",
+        "kids-family/stories",
+        "kids-family/parenting",
+        "comedy",
+        "space",
+        "culture/books",
+        "culture/art",
+        "travel",
+        "tv-film",
+        "religion",
+        "kids-family",
+        "kids-family/education",
+        "society/law",
+        "craft",
+        "food",
+        "education",
+        "education/self-improvement",
+        "culture",
+        "adventure",
+        "personal-journals",
+        "engineering",
+        "comedy/interviews"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.85
+        },
+        {
+          "node": "religion/judaism",
+          "confidence": 0.85
+        },
+        {
+          "node": "religion/islam",
+          "confidence": 0.85
+        },
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.85
+        },
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.8
+        },
+        {
+          "node": "space",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        },
+        {
+          "node": "travel",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.8
+        },
+        {
+          "node": "religion",
+          "confidence": 0.8
+        },
+        {
+          "node": "kids-family",
+          "confidence": 0.8
+        },
+        {
+          "node": "kids-family/education",
+          "confidence": 0.8
+        },
+        {
+          "node": "society/law",
+          "confidence": 0.8
+        },
+        {
+          "node": "craft",
+          "confidence": 0.75
+        },
+        {
+          "node": "food",
+          "confidence": 0.75
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture",
+          "confidence": 0.75
+        },
+        {
+          "node": "adventure",
+          "confidence": 0.75
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.7
+        },
+        {
+          "node": "comedy/interviews",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Relationships-focused podcast covering multiple topics.",
+      "display_title": "Talking Away the Taboo with Dr. Aimee Baron",
+      "blurb": "Talking Away the Taboo is the podcast for anyone in the Jewish community struggling to have a child and is seeking a place for emotional support and comfort.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-89793fdf",
+      "classified_at": "2026-09-03T16:11:03.722Z"
     },
     "1614173699": {
       "topics": [
@@ -97962,11 +101984,85 @@
     },
     "1614354774": {
       "topics": [
-        "society"
+        "comedy",
+        "health/sexuality",
+        "space",
+        "culture/art",
+        "automotive/racing",
+        "true-crime",
+        "history",
+        "culture",
+        "automotive",
+        "personal-journals",
+        "cities",
+        "engineering",
+        "comedy/interviews"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/sexuality",
+          "confidence": 0.8
+        },
+        {
+          "node": "space",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        },
+        {
+          "node": "automotive/racing",
+          "confidence": 0.8
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.8
+        },
+        {
+          "node": "history",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture",
+          "confidence": 0.75
+        },
+        {
+          "node": "automotive",
+          "confidence": 0.75
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.75
+        },
+        {
+          "node": "cities",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.7
+        },
+        {
+          "node": "comedy/interviews",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedy-focused podcast covering multiple topics.",
+      "display_title": "What It Was Like",
+      "blurb": "Conversations with people who have lived through extreme events.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-89793fdf",
+      "classified_at": "2026-09-03T16:11:03.722Z"
     },
     "1614365087": {
       "topics": [
@@ -97985,20 +102081,182 @@
     },
     "1614458454": {
       "topics": [
-        "sports/soccer"
+        "sports/soccer",
+        "space",
+        "gaming",
+        "sports",
+        "economics/markets",
+        "engineering",
+        "business",
+        "sports/biomechanics",
+        "economics"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/soccer",
+          "confidence": 0.85
+        },
+        {
+          "node": "space",
+          "confidence": 0.8
+        },
+        {
+          "node": "gaming",
+          "confidence": 0.8
+        },
+        {
+          "node": "sports",
+          "confidence": 0.75
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.7
+        },
+        {
+          "node": "business",
+          "confidence": 0.7
+        },
+        {
+          "node": "sports/biomechanics",
+          "confidence": 0.7
+        },
+        {
+          "node": "economics",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Soccer-focused podcast covering multiple topics.",
+      "display_title": "Call It What You Want: A CBS Sports",
+      "blurb": "The CBS Sports Golazo Network presents Call It What You Want, a weekly podcast where Jimmy Conrad, Charlie Davies and Tony Meola cover all things USMNT and the state of.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-89793fdf",
+      "classified_at": "2026-09-03T16:11:03.722Z"
     },
     "1614480816": {
       "topics": [
-        "culture/mythology",
-        "personal-journals"
+        "music",
+        "medicine/neuroscience",
+        "news",
+        "news/tech",
+        "education/courses",
+        "travel",
+        "true-crime",
+        "religion",
+        "paranormal",
+        "society/law",
+        "history",
+        "psychology",
+        "education",
+        "adventure",
+        "automotive",
+        "personal-journals",
+        "cities",
+        "engineering",
+        "history/military-modern",
+        "history/technology"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "medicine/neuroscience",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.8
+        },
+        {
+          "node": "education/courses",
+          "confidence": 0.8
+        },
+        {
+          "node": "travel",
+          "confidence": 0.8
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.8
+        },
+        {
+          "node": "religion",
+          "confidence": 0.8
+        },
+        {
+          "node": "paranormal",
+          "confidence": 0.8
+        },
+        {
+          "node": "society/law",
+          "confidence": 0.8
+        },
+        {
+          "node": "history",
+          "confidence": 0.75
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.75
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        },
+        {
+          "node": "adventure",
+          "confidence": 0.75
+        },
+        {
+          "node": "automotive",
+          "confidence": 0.75
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.75
+        },
+        {
+          "node": "cities",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.7
+        },
+        {
+          "node": "history/military-modern",
+          "confidence": 0.7
+        },
+        {
+          "node": "history/technology",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Music-focused podcast covering multiple topics.",
+      "display_title": "The Paranormal 60 Network",
+      "blurb": "Welcome to The Paranormal 60 Network—where the unexplained meets unforgettable storytelling.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-89793fdf",
+      "classified_at": "2026-09-03T16:11:03.722Z"
     },
     "1614519794": {
       "topics": [
@@ -98055,11 +102313,115 @@
     },
     "1614666546": {
       "topics": [
-        "fiction/sci-fi"
+        "kids-family/stories",
+        "kids-family/parenting",
+        "music",
+        "space",
+        "culture/art",
+        "culture/pop-culture",
+        "travel",
+        "kids-family",
+        "espionage",
+        "science",
+        "history",
+        "sports",
+        "psychology",
+        "education",
+        "culture",
+        "adventure",
+        "personal-journals",
+        "engineering",
+        "history/military-modern"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.85
+        },
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.85
+        },
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "space",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.8
+        },
+        {
+          "node": "travel",
+          "confidence": 0.8
+        },
+        {
+          "node": "kids-family",
+          "confidence": 0.8
+        },
+        {
+          "node": "espionage",
+          "confidence": 0.8
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        },
+        {
+          "node": "history",
+          "confidence": 0.75
+        },
+        {
+          "node": "sports",
+          "confidence": 0.75
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.75
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture",
+          "confidence": 0.75
+        },
+        {
+          "node": "adventure",
+          "confidence": 0.75
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.7
+        },
+        {
+          "node": "history/military-modern",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Stories for Kids-focused podcast covering multiple topics.",
+      "display_title": "Spyology Squad",
+      "blurb": "Welcome to \"Spyology Squad,\" the thrilling kids podcast where science meets espionage in a world of \"spyience-fiction\".",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-89793fdf",
+      "classified_at": "2026-09-03T16:11:03.722Z"
     },
     "1614688505": {
       "topics": [
@@ -98277,11 +102639,90 @@
     },
     "1615637724": {
       "topics": [
-        "true-crime"
+        "relationships",
+        "kids-family/stories",
+        "music",
+        "adventure/exploration",
+        "tv-film",
+        "tv-film/reviews",
+        "kids-family",
+        "espionage",
+        "math",
+        "sports",
+        "adventure",
+        "personal-journals",
+        "espionage/cold-war-tech",
+        "engineering"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.85
+        },
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.85
+        },
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.8
+        },
+        {
+          "node": "kids-family",
+          "confidence": 0.8
+        },
+        {
+          "node": "espionage",
+          "confidence": 0.8
+        },
+        {
+          "node": "math",
+          "confidence": 0.8
+        },
+        {
+          "node": "sports",
+          "confidence": 0.75
+        },
+        {
+          "node": "adventure",
+          "confidence": 0.75
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.75
+        },
+        {
+          "node": "espionage/cold-war-tech",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Relationships-focused podcast covering multiple topics.",
+      "display_title": "Betrayal Weekly",
+      "blurb": "Betrayal Weekly is back for a new season.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-89793fdf",
+      "classified_at": "2026-09-03T16:11:03.722Z"
     },
     "1615662974": {
       "topics": [
@@ -98685,12 +103126,145 @@
     },
     "1617861030": {
       "topics": [
+        "space/rockets",
+        "kids-family/stories",
+        "kids-family/parenting",
+        "linguistics/language",
+        "space",
+        "health",
+        "education/courses",
+        "culture/art",
+        "travel",
+        "adventure/exploration",
+        "gaming",
+        "kids-family",
+        "aviation",
+        "linguistics",
+        "history",
+        "sports",
+        "education",
+        "culture",
+        "adventure",
+        "automotive",
+        "engineering",
+        "medicine",
         "history/military-modern",
-        "society/government"
+        "business",
+        "economics"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space/rockets",
+          "confidence": 0.85
+        },
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.85
+        },
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.85
+        },
+        {
+          "node": "linguistics/language",
+          "confidence": 0.85
+        },
+        {
+          "node": "space",
+          "confidence": 0.8
+        },
+        {
+          "node": "health",
+          "confidence": 0.8
+        },
+        {
+          "node": "education/courses",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        },
+        {
+          "node": "travel",
+          "confidence": 0.8
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.8
+        },
+        {
+          "node": "gaming",
+          "confidence": 0.8
+        },
+        {
+          "node": "kids-family",
+          "confidence": 0.8
+        },
+        {
+          "node": "aviation",
+          "confidence": 0.8
+        },
+        {
+          "node": "linguistics",
+          "confidence": 0.8
+        },
+        {
+          "node": "history",
+          "confidence": 0.75
+        },
+        {
+          "node": "sports",
+          "confidence": 0.75
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture",
+          "confidence": 0.75
+        },
+        {
+          "node": "adventure",
+          "confidence": 0.75
+        },
+        {
+          "node": "automotive",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.7
+        },
+        {
+          "node": "medicine",
+          "confidence": 0.7
+        },
+        {
+          "node": "history/military-modern",
+          "confidence": 0.7
+        },
+        {
+          "node": "business",
+          "confidence": 0.7
+        },
+        {
+          "node": "economics",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Rockets-focused podcast covering multiple topics.",
+      "display_title": "Military OneSource Podcast",
+      "blurb": "Military OneSource podcasts are a simple way to connect to your best MilLife.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-89793fdf",
+      "classified_at": "2026-09-03T16:11:03.722Z"
     },
     "1617869971": {
       "topics": [
@@ -98964,11 +103538,140 @@
     },
     "1619401632": {
       "topics": [
-        "education/how-to"
+        "relationships",
+        "space",
+        "medicine/neuroscience",
+        "health",
+        "health/mental",
+        "education/courses",
+        "culture/art",
+        "travel",
+        "tv-film",
+        "kids-family",
+        "kids-family/education",
+        "history",
+        "craft",
+        "psychology",
+        "psychology/decision-making",
+        "education",
+        "education/self-improvement",
+        "culture",
+        "adventure",
+        "automotive",
+        "personal-journals",
+        "engineering",
+        "medicine",
+        "architecture"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.85
+        },
+        {
+          "node": "space",
+          "confidence": 0.8
+        },
+        {
+          "node": "medicine/neuroscience",
+          "confidence": 0.8
+        },
+        {
+          "node": "health",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.8
+        },
+        {
+          "node": "education/courses",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        },
+        {
+          "node": "travel",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.8
+        },
+        {
+          "node": "kids-family",
+          "confidence": 0.8
+        },
+        {
+          "node": "kids-family/education",
+          "confidence": 0.8
+        },
+        {
+          "node": "history",
+          "confidence": 0.75
+        },
+        {
+          "node": "craft",
+          "confidence": 0.75
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.75
+        },
+        {
+          "node": "psychology/decision-making",
+          "confidence": 0.75
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture",
+          "confidence": 0.75
+        },
+        {
+          "node": "adventure",
+          "confidence": 0.75
+        },
+        {
+          "node": "automotive",
+          "confidence": 0.75
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.7
+        },
+        {
+          "node": "medicine",
+          "confidence": 0.7
+        },
+        {
+          "node": "architecture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Relationships-focused podcast covering multiple topics.",
+      "display_title": "The Resilient Teacher Podcast",
+      "blurb": "Welcome to the Resilient Teacher Podcast - the show that will give overwhelmed educators the support, tools, and mindset to reduce teacher burnout and keep teaching sustainable.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-89793fdf",
+      "classified_at": "2026-09-03T16:11:03.722Z"
     },
     "1619408631": {
       "topics": [
@@ -99069,11 +103772,90 @@
     },
     "1619978406": {
       "topics": [
-        "history"
+        "relationships",
+        "kids-family/stories",
+        "music",
+        "religion",
+        "kids-family",
+        "aviation",
+        "history",
+        "music/theory-production",
+        "sports",
+        "adventure",
+        "automotive",
+        "personal-journals",
+        "cities",
+        "engineering"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.85
+        },
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.85
+        },
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "religion",
+          "confidence": 0.8
+        },
+        {
+          "node": "kids-family",
+          "confidence": 0.8
+        },
+        {
+          "node": "aviation",
+          "confidence": 0.8
+        },
+        {
+          "node": "history",
+          "confidence": 0.75
+        },
+        {
+          "node": "music/theory-production",
+          "confidence": 0.75
+        },
+        {
+          "node": "sports",
+          "confidence": 0.75
+        },
+        {
+          "node": "adventure",
+          "confidence": 0.75
+        },
+        {
+          "node": "automotive",
+          "confidence": 0.75
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.75
+        },
+        {
+          "node": "cities",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Relationships-focused podcast covering multiple topics.",
+      "display_title": "History Tea Time",
+      "blurb": "I'm Lindsay Holiday and I'm spilling the Tea on history.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-89793fdf",
+      "classified_at": "2026-09-03T16:11:03.722Z"
     },
     "1620034368": {
       "topics": [
@@ -99189,11 +103971,115 @@
     },
     "1620275436": {
       "topics": [
-        "history"
+        "kids-family/stories",
+        "medicine/neuroscience",
+        "health",
+        "health/nutrition",
+        "true-crime",
+        "tv-film",
+        "kids-family",
+        "kids-family/education",
+        "paranormal",
+        "history",
+        "computing",
+        "psychology",
+        "education",
+        "tv-film/history",
+        "personal-journals",
+        "engineering",
+        "medicine",
+        "history/military-ancient",
+        "computing/history"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.85
+        },
+        {
+          "node": "medicine/neuroscience",
+          "confidence": 0.8
+        },
+        {
+          "node": "health",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/nutrition",
+          "confidence": 0.8
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.8
+        },
+        {
+          "node": "kids-family",
+          "confidence": 0.8
+        },
+        {
+          "node": "kids-family/education",
+          "confidence": 0.8
+        },
+        {
+          "node": "paranormal",
+          "confidence": 0.8
+        },
+        {
+          "node": "history",
+          "confidence": 0.75
+        },
+        {
+          "node": "computing",
+          "confidence": 0.75
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.75
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        },
+        {
+          "node": "tv-film/history",
+          "confidence": 0.75
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.7
+        },
+        {
+          "node": "medicine",
+          "confidence": 0.7
+        },
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.7
+        },
+        {
+          "node": "computing/history",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Stories for Kids-focused podcast covering multiple topics.",
+      "display_title": "Calm History (not A.I.)",
+      "blurb": "Enjoy calming sleep stories about history to help you relax at bedtime.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-89793fdf",
+      "classified_at": "2026-09-03T16:11:03.722Z"
     },
     "1620281360": {
       "topics": [
@@ -99348,11 +104234,115 @@
     },
     "1621031568": {
       "topics": [
-        "tv-film"
+        "kids-family/parenting",
+        "space",
+        "health",
+        "health/fitness",
+        "health/nutrition",
+        "culture/art",
+        "travel",
+        "adventure/exploration",
+        "tv-film",
+        "kids-family",
+        "aviation",
+        "society/law",
+        "psychology",
+        "psychology/decision-making",
+        "culture",
+        "adventure",
+        "personal-journals",
+        "engineering",
+        "medicine"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.85
+        },
+        {
+          "node": "space",
+          "confidence": 0.8
+        },
+        {
+          "node": "health",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/nutrition",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        },
+        {
+          "node": "travel",
+          "confidence": 0.8
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.8
+        },
+        {
+          "node": "kids-family",
+          "confidence": 0.8
+        },
+        {
+          "node": "aviation",
+          "confidence": 0.8
+        },
+        {
+          "node": "society/law",
+          "confidence": 0.8
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.75
+        },
+        {
+          "node": "psychology/decision-making",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture",
+          "confidence": 0.75
+        },
+        {
+          "node": "adventure",
+          "confidence": 0.75
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.7
+        },
+        {
+          "node": "medicine",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Parenting-focused podcast covering multiple topics.",
+      "display_title": "Digging Up the Duggars",
+      "blurb": "We're taking it allll the way back to the very first Discovery special.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-89793fdf",
+      "classified_at": "2026-09-03T16:11:03.722Z"
     },
     "1621073052": {
       "topics": [
@@ -99542,11 +104532,150 @@
     },
     "1622316426": {
       "topics": [
-        "medicine"
+        "kids-family/parenting",
+        "space",
+        "health",
+        "health/mental",
+        "health/fitness",
+        "health/nutrition",
+        "culture/art",
+        "culture/mythology",
+        "automotive/racing",
+        "tv-film",
+        "kids-family",
+        "kids-family/education",
+        "math",
+        "society/law",
+        "science",
+        "history",
+        "craft",
+        "psychology",
+        "psychology/decision-making",
+        "education",
+        "culture",
+        "automotive",
+        "engineering",
+        "medicine",
+        "history/military-modern",
+        "fiction"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.85
+        },
+        {
+          "node": "space",
+          "confidence": 0.8
+        },
+        {
+          "node": "health",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/nutrition",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/mythology",
+          "confidence": 0.8
+        },
+        {
+          "node": "automotive/racing",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.8
+        },
+        {
+          "node": "kids-family",
+          "confidence": 0.8
+        },
+        {
+          "node": "kids-family/education",
+          "confidence": 0.8
+        },
+        {
+          "node": "math",
+          "confidence": 0.8
+        },
+        {
+          "node": "society/law",
+          "confidence": 0.8
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        },
+        {
+          "node": "history",
+          "confidence": 0.75
+        },
+        {
+          "node": "craft",
+          "confidence": 0.75
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.75
+        },
+        {
+          "node": "psychology/decision-making",
+          "confidence": 0.75
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture",
+          "confidence": 0.75
+        },
+        {
+          "node": "automotive",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.7
+        },
+        {
+          "node": "medicine",
+          "confidence": 0.7
+        },
+        {
+          "node": "history/military-modern",
+          "confidence": 0.7
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Parenting-focused podcast covering multiple topics.",
+      "display_title": "The Dr. Gabrielle Lyon Show",
+      "blurb": "The Dr.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-89793fdf",
+      "classified_at": "2026-09-03T16:11:03.722Z"
     },
     "1622371412": {
       "topics": [
@@ -99929,11 +105058,110 @@
     },
     "1624715532": {
       "topics": [
-        "kids-family/stories"
+        "kids-family/stories",
+        "comedy",
+        "music",
+        "education/courses",
+        "culture/art",
+        "tv-film",
+        "religion",
+        "kids-family",
+        "kids-family/education",
+        "aviation",
+        "craft",
+        "food",
+        "education",
+        "culture",
+        "automotive",
+        "tv-film/history",
+        "personal-journals",
+        "engineering"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.8
+        },
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "education/courses",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.8
+        },
+        {
+          "node": "religion",
+          "confidence": 0.8
+        },
+        {
+          "node": "kids-family",
+          "confidence": 0.8
+        },
+        {
+          "node": "kids-family/education",
+          "confidence": 0.8
+        },
+        {
+          "node": "aviation",
+          "confidence": 0.8
+        },
+        {
+          "node": "craft",
+          "confidence": 0.75
+        },
+        {
+          "node": "food",
+          "confidence": 0.75
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture",
+          "confidence": 0.75
+        },
+        {
+          "node": "automotive",
+          "confidence": 0.75
+        },
+        {
+          "node": "tv-film/history",
+          "confidence": 0.75
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Stories for Kids-focused podcast covering multiple topics.",
+      "display_title": "VeggieTales: Very Veggie Silly Stories",
+      "blurb": "The Very Veggie Silly Stories podcast is led by hosts Bob the Tomato and Larry the Cucumber.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-89793fdf",
+      "classified_at": "2026-09-03T16:11:03.722Z"
     },
     "1624716757": {
       "topics": [
@@ -99959,12 +105187,110 @@
     },
     "1624801326": {
       "topics": [
+        "kids-family/parenting",
+        "health",
         "health/mental",
-        "education/courses"
+        "health/fitness",
+        "education/courses",
+        "tv-film",
+        "kids-family",
+        "kids-family/education",
+        "history",
+        "sports",
+        "psychology",
+        "education",
+        "adventure",
+        "automotive",
+        "engineering",
+        "medicine",
+        "society",
+        "history/technology"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.85
+        },
+        {
+          "node": "health",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.8
+        },
+        {
+          "node": "education/courses",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.8
+        },
+        {
+          "node": "kids-family",
+          "confidence": 0.8
+        },
+        {
+          "node": "kids-family/education",
+          "confidence": 0.8
+        },
+        {
+          "node": "history",
+          "confidence": 0.75
+        },
+        {
+          "node": "sports",
+          "confidence": 0.75
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.75
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        },
+        {
+          "node": "adventure",
+          "confidence": 0.75
+        },
+        {
+          "node": "automotive",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.7
+        },
+        {
+          "node": "medicine",
+          "confidence": 0.7
+        },
+        {
+          "node": "society",
+          "confidence": 0.7
+        },
+        {
+          "node": "history/technology",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Parenting-focused podcast covering multiple topics.",
+      "display_title": "Play Therapy Podcast",
+      "blurb": "Your source for centered and focused Play Therapy coaching.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-89793fdf",
+      "classified_at": "2026-09-03T16:11:03.722Z"
     },
     "1624926130": {
       "topics": [
@@ -100007,11 +105333,115 @@
     },
     "1624981488": {
       "topics": [
-        "education/language-learning"
+        "relationships",
+        "linguistics/language",
+        "comedy",
+        "education/courses",
+        "culture/art",
+        "travel",
+        "tv-film",
+        "religion",
+        "aviation",
+        "linguistics",
+        "history",
+        "computing",
+        "education",
+        "culture",
+        "culture/design",
+        "adventure",
+        "engineering",
+        "comedy/interviews",
+        "history/technology"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.85
+        },
+        {
+          "node": "linguistics/language",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.8
+        },
+        {
+          "node": "education/courses",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        },
+        {
+          "node": "travel",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.8
+        },
+        {
+          "node": "religion",
+          "confidence": 0.8
+        },
+        {
+          "node": "aviation",
+          "confidence": 0.8
+        },
+        {
+          "node": "linguistics",
+          "confidence": 0.8
+        },
+        {
+          "node": "history",
+          "confidence": 0.75
+        },
+        {
+          "node": "computing",
+          "confidence": 0.75
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture/design",
+          "confidence": 0.75
+        },
+        {
+          "node": "adventure",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.7
+        },
+        {
+          "node": "comedy/interviews",
+          "confidence": 0.7
+        },
+        {
+          "node": "history/technology",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Relationships-focused podcast covering multiple topics.",
+      "display_title": "Easy French",
+      "blurb": "Bienvenue les amis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-89793fdf",
+      "classified_at": "2026-09-03T16:11:03.722Z"
     },
     "1624991716": {
       "topics": [
@@ -100216,11 +105646,130 @@
     },
     "1626527232": {
       "topics": [
-        "tv-film/history"
+        "relationships",
+        "kids-family/stories",
+        "music",
+        "nature/ocean-science",
+        "nature/pets",
+        "news",
+        "news/politics",
+        "travel",
+        "true-crime",
+        "tv-film",
+        "tv-film/interviews",
+        "kids-family",
+        "history",
+        "craft",
+        "nature",
+        "adventure",
+        "tv-film/history",
+        "personal-journals",
+        "cities",
+        "engineering",
+        "history/military-modern",
+        "society"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.85
+        },
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.85
+        },
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature/ocean-science",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature/pets",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.8
+        },
+        {
+          "node": "travel",
+          "confidence": 0.8
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.8
+        },
+        {
+          "node": "kids-family",
+          "confidence": 0.8
+        },
+        {
+          "node": "history",
+          "confidence": 0.75
+        },
+        {
+          "node": "craft",
+          "confidence": 0.75
+        },
+        {
+          "node": "nature",
+          "confidence": 0.75
+        },
+        {
+          "node": "adventure",
+          "confidence": 0.75
+        },
+        {
+          "node": "tv-film/history",
+          "confidence": 0.75
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.75
+        },
+        {
+          "node": "cities",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.7
+        },
+        {
+          "node": "history/military-modern",
+          "confidence": 0.7
+        },
+        {
+          "node": "society",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Relationships-focused podcast covering multiple topics.",
+      "display_title": "The Wire at 20",
+      "blurb": "Few shows are as beloved as the HBO Original Series The Wire.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-89793fdf",
+      "classified_at": "2026-09-03T16:11:03.722Z"
     },
     "1626573489": {
       "topics": [
@@ -100261,11 +105810,120 @@
     },
     "1626876180": {
       "topics": [
-        "nature"
+        "music",
+        "culture/books",
+        "culture/art",
+        "tv-film",
+        "tv-film/interviews",
+        "science",
+        "history",
+        "business/startups",
+        "food",
+        "education",
+        "culture",
+        "automotive",
+        "tv-film/history",
+        "personal-journals",
+        "engineering",
+        "medicine",
+        "history/military-modern",
+        "business",
+        "food/cooking-science",
+        "history/technology"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.8
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        },
+        {
+          "node": "history",
+          "confidence": 0.75
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.75
+        },
+        {
+          "node": "food",
+          "confidence": 0.75
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture",
+          "confidence": 0.75
+        },
+        {
+          "node": "automotive",
+          "confidence": 0.75
+        },
+        {
+          "node": "tv-film/history",
+          "confidence": 0.75
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.7
+        },
+        {
+          "node": "medicine",
+          "confidence": 0.7
+        },
+        {
+          "node": "history/military-modern",
+          "confidence": 0.7
+        },
+        {
+          "node": "business",
+          "confidence": 0.7
+        },
+        {
+          "node": "food/cooking-science",
+          "confidence": 0.7
+        },
+        {
+          "node": "history/technology",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Music-focused podcast covering multiple topics.",
+      "display_title": "Flavour Talks",
+      "blurb": "Welcome to the Flavour Talks podcast, where our hosts speak to people for whom the chemical senses — smell and taste — are at the heart of their professional lives.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-89793fdf",
+      "classified_at": "2026-09-03T16:11:03.722Z"
     },
     "1626878388": {
       "topics": [
@@ -100313,19 +105971,152 @@
     },
     "1627069896": {
       "topics": [
-        "tv-film/history"
+        "relationships",
+        "linguistics/language",
+        "news",
+        "news/daily",
+        "news/tech",
+        "health",
+        "health/fitness",
+        "education/courses",
+        "travel",
+        "tv-film",
+        "aviation",
+        "linguistics",
+        "math",
+        "math/puzzles",
+        "history",
+        "sports",
+        "education",
+        "tv-film/history",
+        "engineering",
+        "history/military-modern"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.85
+        },
+        {
+          "node": "linguistics/language",
+          "confidence": 0.85
+        },
+        {
+          "node": "news",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.8
+        },
+        {
+          "node": "health",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.8
+        },
+        {
+          "node": "education/courses",
+          "confidence": 0.8
+        },
+        {
+          "node": "travel",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.8
+        },
+        {
+          "node": "aviation",
+          "confidence": 0.8
+        },
+        {
+          "node": "linguistics",
+          "confidence": 0.8
+        },
+        {
+          "node": "math",
+          "confidence": 0.8
+        },
+        {
+          "node": "math/puzzles",
+          "confidence": 0.8
+        },
+        {
+          "node": "history",
+          "confidence": 0.75
+        },
+        {
+          "node": "sports",
+          "confidence": 0.75
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        },
+        {
+          "node": "tv-film/history",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.7
+        },
+        {
+          "node": "history/military-modern",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Relationships-focused podcast covering multiple topics.",
+      "display_title": "The Video Archives Podcast with Quentin Tarantino &",
+      "blurb": "FULL, AD FREE EPISODES ON PATREON.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-89793fdf",
+      "classified_at": "2026-09-03T16:11:03.722Z"
     },
     "1627248534": {
       "topics": [
-        "sports"
+        "news",
+        "news/commentary",
+        "adventure"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.75
+        },
+        {
+          "node": "adventure",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "News & Current Affairs-focused podcast covering multiple topics.",
+      "display_title": "All Steelers Talk",
+      "blurb": "The latest Pittsburgh Steelers news, analysis, interviews, and more.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-89793fdf",
+      "classified_at": "2026-09-03T16:11:03.722Z"
     },
     "1627302406": {
       "topics": [
@@ -100380,12 +106171,80 @@
     },
     "1627795524": {
       "topics": [
+        "relationships",
         "religion/christianity",
-        "education/courses"
+        "education/courses",
+        "culture/books",
+        "culture/art",
+        "religion",
+        "kids-family",
+        "history",
+        "education",
+        "culture",
+        "engineering",
+        "fiction"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.85
+        },
+        {
+          "node": "religion/christianity",
+          "confidence": 0.85
+        },
+        {
+          "node": "education/courses",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        },
+        {
+          "node": "religion",
+          "confidence": 0.8
+        },
+        {
+          "node": "kids-family",
+          "confidence": 0.8
+        },
+        {
+          "node": "history",
+          "confidence": 0.75
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.7
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Relationships-focused podcast covering multiple topics.",
+      "display_title": "Theology of the Body 101",
+      "blurb": "Prof.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-89793fdf",
+      "classified_at": "2026-09-03T16:11:03.722Z"
     },
     "1627813804": {
       "topics": [
@@ -100444,11 +106303,45 @@
     },
     "1628030958": {
       "topics": [
-        "education/self-improvement"
+        "relationships",
+        "craft",
+        "psychology",
+        "personal-journals",
+        "engineering"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.85
+        },
+        {
+          "node": "craft",
+          "confidence": 0.75
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.75
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Relationships-focused podcast covering multiple topics.",
+      "display_title": "Successful",
+      "blurb": "Do you want to change and improve your life.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-89793fdf",
+      "classified_at": "2026-09-03T16:11:03.722Z"
     },
     "1628064459": {
       "topics": [
