@@ -1352,6 +1352,39 @@ function renderAllShows() {
   renderShowIndexPage("All Shows", `${shows.length} shows in 4a's catalogue, A\u2013Z`, shows);
 }
 
+/* Stage 3b (docs/show-pages-plan.md §Stage 3, kanban t_567b570f): full
+   per-show episode list, fetched on demand from the backend endpoint rather
+   than the curated discover-pool ceiling `episodesForShow` gives (median 7
+   episodes). Maps a full-catalogue row into the same shape `snapshot()`
+   already knows how to normalize (id/title/hook/show/audio_url/duration_min)
+   and seeds it into `state.itemIndex` — bindPlay/toggleStar both read
+   `state.itemIndex[id]` first, so a full-catalogue row plays and stars
+   exactly like a curated one. No new row UI needed; every episode gets a
+   real, playable audio_url straight from the endpoint, never a link-out. */
+function fullCatalogueRowToEpRowItem(show, ep) {
+  const id = `${show.show_id}--${ep.guid}`;
+  return snapshot(id, {
+    show: show.title,
+    title: ep.title,
+    hook: ep.description_text || "",
+    audio_url: ep.audio_url,
+    duration_min: ep.duration_seconds ? Math.round(ep.duration_seconds / 60) : null,
+    duration_sec: ep.duration_seconds ?? null,
+    topics: [],
+  });
+}
+
+async function fetchShowEpisodes(show_id) {
+  try {
+    const res = await fetch(pinnedUrl(`api/shows/${encodeURIComponent(show_id)}/episodes`), { cache: "no-cache" });
+    if (!res.ok) return { episodes: null, error: `status ${res.status}` };
+    const body = await res.json();
+    return { episodes: body.episodes || [], stale: !!body.stale, error: body.error || null };
+  } catch (e) {
+    return { episodes: null, error: e && e.message || "network error" };
+  }
+}
+
 /* A2.5: "Similar shows" — deterministic taxonomy-overlap similarity, zero new
    data needed (docs/product requirements audit note: taxonomy_node_ids
    already sits on every catalog.json show record, unused for this purpose
@@ -1437,8 +1470,8 @@ function renderShow(show_id) {
   document.body.className = "view-page";
   const show = showById(show_id);
   if (!show) { $("#view").innerHTML = `<div class="page"><p class="note">Show not found.</p></div>`; return; }
-  fullPool(); // populate itemIndex/poolIds so episode rows can play in-app
-  const eps = episodesForShow(show);
+  fullPool(); // populate itemIndex/poolIds so curated-pool episode rows can play in-app
+  const curatedEps = episodesForShow(show);
   const ctx = "show-" + show.show_id;
   const chips = (show.taxonomy_node_ids || []).map(taxonomyChip).join("");
   /* A3.1/Q3: a breadth-tier show (found via the full-catalogue search
@@ -1446,39 +1479,79 @@ function renderShow(show_id) {
      — discover.json only ever holds the curated 220's hand-picked episodes.
      That is not the same as "this show genuinely has none" (the curated-tier
      empty state below), so it gets its own honest, non-alarming copy instead
-     of implying the show is empty. Stage 3b (kanban t_567b570f) is the card
-     that wires a real per-show episode list in here; until it lands (or once
-     it has, for a fast-follow to this card) this stays the safe degrade. */
+     of implying the show is empty. Stage 3b's async fetch below (kanban
+     t_567b570f) supersedes this once it resolves; until then this stays the
+     safe degrade for the curated-pool-only render. */
   const isBreadthTier = show.tier === "breadth";
-  const episodesSection = eps.length
-    ? eps.map((item, i) => epRow(item, i, ctx, -1)).join("")
-    : isBreadthTier
-      ? `<p class="note">Fetching this show's episodes — 4a is adding full episode lists for shows outside its curated picks. Check back soon.</p>`
-      : `<p class="note">No episodes from this show are in 4a's catalogue right now.</p>`;
 
-  $("#view").innerHTML = `
-    <div class="page">
-      <div class="page-head">
-        <a class="back" href="#/">‹</a>
-        <div>
-          <h2>${esc(show.title)}${explicitBadge(show.explicit)}</h2>
-          <p class="sub">${isBreadthTier && !eps.length ? "4a's wider catalogue" : `${eps.length} episode${eps.length === 1 ? "" : "s"} in 4a's catalogue`}</p>
-        </div>
+  const head = `
+    <div class="page-head">
+      <a class="back" href="#/">‹</a>
+      <div>
+        <h2>${esc(show.title)}${explicitBadge(show.explicit)}</h2>
+        <p class="sub" data-show-count>${curatedEps.length
+          ? `${curatedEps.length} episode${curatedEps.length === 1 ? "" : "s"} in 4a's catalogue — loading full episode list…`
+          : isBreadthTier
+            ? "4a's wider catalogue — loading full episode list…"
+            : "Loading full episode list…"}</p>
       </div>
-      ${show.artwork_url ? `<img class="show-art" src="${esc(safeUrl(show.artwork_url))}" alt="">` : ""}
-      ${showStarBtn(show.show_id)}
-      ${show.editorial_note ? `<p class="note">${esc(show.editorial_note)}</p>` : ""}
-      ${chips ? `<div class="fy-chips">${chips}</div>` : ""}
-      ${episodesSection}
-      ${similarShowsSection(show)}
-      ${showForaysHtml(show)}
-    </div>`;
+    </div>
+    ${show.artwork_url ? `<img class="show-art" src="${esc(safeUrl(show.artwork_url))}" alt="">` : ""}
+    ${showStarBtn(show.show_id)}
+    ${show.editorial_note ? `<p class="note">${esc(show.editorial_note)}</p>` : ""}
+    ${chips ? `<div class="fy-chips">${chips}</div>` : ""}`;
 
+  // Render immediately with the curated pool so the page is never blank
+  // while the full-catalogue fetch is in flight.
+  $("#view").innerHTML = `<div class="page">${head}<div data-show-episodes>
+    ${curatedEps.length
+      ? curatedEps.map((item, i) => epRow(item, i, ctx, -1)).join("")
+      : isBreadthTier
+        ? `<p class="note">Fetching this show's episodes — 4a is adding full episode lists for shows outside its curated picks. Check back soon.</p>`
+        : `<p class="note">No episodes from this show are in 4a's catalogue right now.</p>`}
+  </div>
+  ${similarShowsSection(show)}
+  ${showForaysHtml(show)}
+  </div>`;
   bindPickLogging($("#view"));
   bindStars($("#view"));
   bindShowStars($("#view"));
   bindUpNext($("#view"));
   bindPlay($("#view"));
+
+  fetchShowEpisodes(show.show_id).then(({ episodes, stale, error }) => {
+    const container = $("#view [data-show-episodes]");
+    const countLabel = $("#view [data-show-count]");
+    if (!container) return; // navigated away before the fetch resolved
+
+    if (episodes === null) {
+      // Fetch failed outright and there's nothing better than the curated
+      // pool already rendered above — never a blank page, per Stage 3's
+      // acceptance criterion (docs/show-pages-plan.md).
+      if (countLabel) countLabel.textContent = curatedEps.length
+        ? `${curatedEps.length} episode${curatedEps.length === 1 ? "" : "s"} in 4a's catalogue (couldn't load the full list)`
+        : `Couldn't load this show's episodes right now.`;
+      return;
+    }
+
+    if (episodes.length === 0) {
+      if (countLabel) countLabel.textContent = curatedEps.length
+        ? `${curatedEps.length} episode${curatedEps.length === 1 ? "" : "s"} in 4a's catalogue`
+        : `No episodes found for this show.`;
+      return;
+    }
+
+    const rows = episodes.map((ep) => fullCatalogueRowToEpRowItem(show, ep));
+    if (countLabel) {
+      countLabel.textContent = `${rows.length} episode${rows.length === 1 ? "" : "s"}` +
+        (stale ? " (showing the last saved list — couldn't refresh just now)" : "");
+    }
+    container.innerHTML = rows.map((item, i) => epRow(item, i, ctx, -1)).join("");
+    bindPickLogging(container);
+    bindStars(container);
+    bindUpNext(container);
+    bindPlay(container);
+  });
 }
 
 function touchPlaylistPlayed(id) {
