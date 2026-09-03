@@ -530,6 +530,188 @@ function primeVocabulary(ctx) {
 
 /* ---------- query interpreter ---------- */
 
+/* QUERY-SIDE LEMMA NORMALIZATION (bare plural/singular mismatch, systemic
+   thin-anchor class -- kanban t_fe968b47, filed from t_711dce13).
+
+   data/semantic-index.json's concept term lists carry only ONE of
+   {singular, plural} for most lemmas (measured: 305 of 1,364 concept terms
+   have a plural-present/singular-absent gap; 848 are singular-only with no
+   plural at all). LONG_INFLECTIONS above only widens what a catalogue TERM
+   matches in item TEXT -- it does nothing for this step, which is the
+   query's typed token being looked up against those same dictionary KEYS
+   in interpretQuery's `concepts`/`mods` maps. A query using the "wrong"
+   (unlisted) inflection of a real, well-covered concept therefore gets
+   hasConceptExpansion=false and, if its own bare corpusDF is also under
+   THIN_ANCHOR_DF, reads `thin` -- collapsing an honest, well-covered topic
+   to status "empty" on roughly a coin flip (singular vs. plural phrasing).
+
+   This is query-side normalization only: it widens the SET OF KEYS a typed
+   token is looked up under before dictionary membership tests, and changes
+   nothing about hitText/hitText's catalogue-text matching, scoring, or the
+   thin-anchor GATE itself (still exactly `!hasConceptExpansion && corpusDF
+   < THIN_ANCHOR_DF`) -- a token that has neither a direct nor a lemma-
+   variant concept match is still correctly thin. Three bounded, named
+   transforms, chosen for measured coverage of the repro set (not a
+   stemmer): strip/add bare "s", strip/add sibilant "es"
+   (coach/coaches, crash/crashes -- "glass"/"glasses" is now
+   SENSE_LOCKED_PLURALS-excluded below, see round 8), and swap "y"<->"ies" (energy/energies-shaped --
+   deliberately in scope HERE even though the hitText comment above rules
+   y<->ies OUT for catalogue-text matching: that guard is about not
+   mutating a TERM's regex to match unpredictable TEXT, a materially
+   different and riskier operation than an exact-string dictionary lookup
+   on a bounded, reviewable transform of the QUERY token itself).
+   Deliberately excluded, same reasoning as LONG_INFLECTIONS/#248: "ing"
+   (verb-sense ambiguity, e.g. train/training) and "ed" (participle noise)
+   -- neither is a singular/plural relationship, so neither belongs to a
+   helper scoped to that one gap.
+
+   INVARIANT_S_NOUNS: bare-"s" stripping (e.g. cats -> cat) is a real
+   guess, and it is wrong for a bounded, named set of words that are
+   already singular/mass nouns despite ending in "s" -- stripping them
+   manufactures an unrelated token (news -> new is the review-caught
+   case: a "news" query would then also match anything containing "new",
+   flipping thin/broad status on a fabricated word). Named and bounded
+   like SENSE_LOCKED_STEMS above, not a general dictionary check.
+   Extended (codex review round 4) with possessive pronouns (ours,
+   yours, hers, theirs -- "our"/"your"/"her"/"their" are unrelated,
+   extremely common words, the worst case for a fabricated bare-s strip)
+   and common "-us"/"-as" singular nouns that are not plurals of
+   anything (status, bias, canvas, atlas, gas, census, bonus, focus,
+   consensus, corpus, campus, virus, cactus, plus, minus, bus, plus the
+   already-covered "-ics" family above). A general "don't strip before
+   us/as" rule was considered and rejected: it would also block real
+   +s plurals of the same shape (areas -> area, ideas -> idea, pizzas ->
+   pizza), so this stays a named list rather than a suffix rule.
+
+   Directional (codex review round 5): membership in this set only
+   blocks the DESPLURALIZE branches (stripping a trailing s/es to guess
+   a shorter, likely-wrong singular). It must NOT also block the
+   PLURALIZE branch -- an invariant word can still be a real singular
+   that the taxonomy indexes only by its plural, same as any other
+   concept (measured case: data/semantic-index.json's decision-making
+   concept lists "biases" but not "bias"). Blocking pluralize too would
+   silently preserve the exact asymmetry this whole fix exists to
+   remove, just for a different word class. */
+const INVARIANT_S_NOUNS = new Set([
+  "news", "series", "species", "means", "outskirts", "measles",
+  "mathematics", "physics", "statistics", "economics", "politics",
+  "athletics", "gymnastics", "electronics", "graphics", "ethics",
+  "aerobics", "logistics", "genetics", "ceramics",
+  "ours", "yours", "hers", "theirs",
+  "status", "bias", "canvas", "atlas", "gas", "census", "bonus",
+  "focus", "consensus", "corpus", "campus", "virus", "cactus",
+  "plus", "minus", "bus",
+]);
+
+/* SENSE_LOCKED_PLURALS: a bounded, named set of plural query tokens
+   whose bare-s-stripped "singular" is a REAL WORD but the WRONG SENSE
+   -- same failure shape as SENSE_LOCKED_STEMS/#248 above (a term can be
+   a genuine inflection of the wrong sense of an ambiguous stem), just
+   surfaced through this helper's despluralize branch instead of
+   hitText's inflection suffix. Measured case (codex review round 7,
+   direct repro): "marines" (the military branch/service members) bare-
+   s-strips to "marine", which data/semantic-index.json indexes under
+   the OCEAN concept ("marine biology") -- so a "marines" query picked
+   up ocean vocabulary and topic boosts despite the catalogue's own
+   military content. This blocks despluralize only for the exact listed
+   token (not a general "don't strip near military words" rule, which
+   would be unbounded); pluralize is unaffected, same directional
+   split as INVARIANT_S_NOUNS above.
+
+   "glasses" added (codex review round 8, direct repro): eyewear
+   "glasses" bare-s-strips to "glass", which data/semantic-index.json
+   indexes under the "materials" concept (glass/materials-science) --
+   not just a harmless unused fragment like most despluralize misses in
+   this helper, but a real cross-sense concept pickup, the same failure
+   shape as "marines"/ocean. */
+const SENSE_LOCKED_PLURALS = new Set(["marines", "glasses"]);
+
+/* SENSE_LOCKED_SINGULARS: the mirror image of SENSE_LOCKED_PLURALS --
+   a bounded, named set of SINGULAR query tokens whose only PLURALIZE
+   fallback (used when the exact singular has no concept of its own,
+   see hasExactConceptMatch below) lands on a concept that models a
+   different, common sense of the same short word. Measured cases
+   (codex review round 9, direct repro): "rock" (music) has no concept
+   of its own, but "rocks" is a term of BOTH the "science/materials"
+   (rocks/geology) and "earth-science" concepts -- a music query gains
+   earthquakes/volcanoes/drilling vocabulary. Same for "stock" (any
+   generic sense) landing on "markets"/"economics" via "stocks", and
+   "bug" (an insect, or any non-software sense) landing on
+   "programming" via "bugs"/"software-bugs". This blocks the
+   lookupKeys widening (concept-membership fallback) for the exact
+   listed singular only; the literal-term fallback and the max-corpusDF
+   broad/thin computation are UNAFFECTED (those never pull in a
+   concept's vocabulary, only the bare variant string itself, so they
+   carry none of this risk). */
+const SENSE_LOCKED_SINGULARS = new Set(["rock", "stock", "bug"]);
+function lemmaVariants(tok) {
+  const out = new Set();
+  let despluralized = false;
+  const invariant = INVARIANT_S_NOUNS.has(tok) || SENSE_LOCKED_PLURALS.has(tok);
+  if (!invariant) {
+    if (/[^aeiou]ies$/.test(tok) && tok.length > 4) {
+      /* Same ambiguity as the "es" branch below, one letter over: real
+         y<->ies plurals (city -> cities, gladiator query set: entry ->
+         entries) genuinely strip to "...y", but a singular that already
+         ends in silent "ie" (movie, cookie, zombie) only ever added a
+         bare "s" -- movies/cookies/zombies are NOT y-pluralized, so
+         stripping "ies"->"y" mangles them to "movy"/"cooky"/"zomby"
+         (codex review round 6, direct repro). Emit both candidates, same
+         "wrong one is harmless" reasoning as the es-branch fix: strip
+         "ies"->"y" for the real y-plural case, and separately strip only
+         the bare "s" for the silent-ie case (movies -> movie). */
+      out.add(tok.slice(0, -3) + "y");
+      out.add(tok.slice(0, -1));
+      despluralized = true;
+    } else if (/(?:s|x|z|ch|sh)es$/.test(tok) && tok.length > 4) {
+      /* Ambiguous without a dictionary: "kisses"/"boxes"/"buzzes"/"catches"/
+         "dishes" genuinely take +es (singular strips 2 chars: kiss, box,
+         buzz, catch, dish), but "cases"/"houses"/"mazes"/"sizes" are a
+         silent-e singular ("case", "house", "maze", "size") that only ever
+         added a bare "s" -- stripping 2 chars from those yields a nonsense
+         fragment ("cas", "hous") that fails every concept/corpus lookup and
+         silently drops the systemic fix for this common noun class (codex
+         review P2, t_fe968b47). Emit BOTH candidates rather than guessing:
+         the wrong one is harmless (a fragment string no real concept or
+         corpus text will ever contain), and the right one is now always
+         present. */
+      out.add(tok.slice(0, -2));
+      out.add(tok.slice(0, -1));
+      despluralized = true;
+    } else if (/s$/.test(tok) && !/ss$/.test(tok) && tok.length > 3) {
+      /* Same ambiguity family as the two branches above, for the plainest
+         shape: "cats" -> "cat" is correct, but a handful of real
+         SINGULAR nouns also end in a bare "s" whose actual plural adds
+         "es" rather than being the despluralized guess's inverse --
+         "lens" (photography/optics) is not itself a plural of "len"; its
+         real plural is "lenses" (codex review round 7, direct repro:
+         data/semantic-index.json's photography concept lists "lenses"
+         but not "lens"). Emitting both the despluralize guess (harmless
+         fragment when wrong) and the tok+"es" pluralize candidate closes
+         this without a dictionary, same pattern as the ies/es branches
+         above. */
+      out.add(tok.slice(0, -1));
+      out.add(tok + "es");
+      despluralized = true;
+    }
+  }
+  /* Only try to PLURALIZE tok when none of the branches above already
+     recognized it as a plural shape -- otherwise an already-plural token
+     ending in a sibilant (e.g. "warriors") falls into the `es` branch here
+     too and manufactures a nonsense double-plural ("warriorses") on top of
+     the correct singular already added above. Singularization and
+     pluralization are mutually exclusive views of the same token. */
+  if (despluralized) return out;
+  if (/[^aeiou]y$/.test(tok) && tok.length > 3) {
+    out.add(tok.slice(0, -1) + "ies");
+  } else if (/(?:s|x|z|ch|sh)$/.test(tok)) {
+    out.add(tok + "es");
+  } else if (!/s$/.test(tok)) {
+    out.add(tok + "s");
+  }
+  return out;
+}
+
 function interpretQuery(q, ctx) {
   const tokens = tokenize(q);
   const filters = [];
@@ -544,7 +726,49 @@ function interpretQuery(q, ctx) {
 
   const groups = contentTokens.map(tok => {
     const aliasesOf = ALIASES[tok] || [];
-    const lookupKeys = new Set([tok, ...aliasesOf]);
+    const exactKeys = new Set([tok, ...aliasesOf]);
+    /* See lemmaVariants above -- bridges a query token to a concept that
+       only lists the OTHER inflection (singular/plural) of the same
+       lemma. Concept-membership lookup only; does not add scoring terms
+       or change what literal text this token's own addTerm() calls
+       match.
+
+       FALLBACK ONLY, never additive to an exact match: the semantic
+       index deliberately assigns different senses to different
+       inflections in places (e.g. "transmission" -> energy-grid,
+       "transmissions" -> motorsport). If the exact typed token already
+       resolves to a concept, lemma variants are held back entirely --
+       merging both senses into one query would silently blend two
+       concepts the taxonomy intentionally kept apart. Only when the
+       exact token has NO concept of its own do we widen the lookup to
+       the other inflection, which is the actual bug this card describes
+       (a real, well-covered concept reachable only from its other
+       spelling). */
+    const hasExactConceptMatch = Object.values(concepts).some(c => c.terms?.some(t => exactKeys.has(t)));
+    /* Computed once and reused everywhere below (lookupKeys, addTerm,
+       broad/thin) -- avoids recomputing lemmaVariants(tok) three separate
+       times and, more importantly, avoids the corpusDF scans it feeds
+       into for a token whose variants are never actually going to be
+       used for matching. When the exact token already owns a concept,
+       the fallback set is empty: this is what makes the fallback GATE
+       (not just the final addTerm/lookupKeys use) actually skip the
+       catalog-scanning corpusDF(variant) calls flagged in codex review
+       round 3 -- a fresh "culture"/"cultures" interpretQuery() dropped
+       from ~200ms to a cache-warmed corpusDF's usual cost once other
+       concept-backed tokens stop paying for variants they never use. */
+    const fallbackVariants = hasExactConceptMatch ? [] : [...lemmaVariants(tok)];
+    /* See SENSE_LOCKED_SINGULARS above: a NARROWER gate than
+       hasExactConceptMatch, scoped only to lookupKeys (the concept-
+       membership widening) -- the literal addTerm fallback and the
+       broad/thin corpusDF computation below still use the full,
+       unrestricted fallbackVariants, because those never pull in a
+       concept's vocabulary and carry none of the cross-sense risk this
+       guards against. */
+    const conceptFallbackAllowed = !SENSE_LOCKED_SINGULARS.has(tok);
+    const lookupKeys = new Set(exactKeys);
+    if (conceptFallbackAllowed) {
+      for (const v of fallbackVariants) lookupKeys.add(v);
+    }
 
     /* term -> {w, source}. source "own" = the token's literal text, its
        aliases, or its concept's *own* terms (full scoring weight, eligible
@@ -561,6 +785,33 @@ function interpretQuery(q, ctx) {
     };
     addTerm(tok, 1, "own");
     aliasesOf.forEach(a => addTerm(a, 0.9, "own"));
+    /* Bare literal fallback for the corpus-text-only case (no concept
+       covers either inflection at all, e.g. culture/cultures below): a
+       token's own hitText pattern is built FROM that exact string, and
+       LONG_INFLECTIONS only APPENDS a suffix, so a plural query token's
+       literal pattern ("cultures(?:s|es|ing)?") can never match catalogue
+       text that only ever spells the concept's singular ("culture") --
+       inflection allowance widens what a term matches forward, not what
+       a query maps backward onto a shorter surface form. Adding the
+       lemma variant as its own additional literal term (same "own"
+       weight as the typed token itself) closes that gap without
+       touching hitText's matcher or LONG_INFLECTIONS at all.
+
+       GATED on hasExactConceptMatch, same as the lookupKeys widening
+       above (codex review round 2, P2): even as bare literal text, an
+       own-weight term is eligible for tag/topic bonuses via
+       expansionBucket below, so unconditionally adding the variant let a
+       "transmissions" (motorsport) query's own-weight "transmission"
+       term still match energy-grid items that spell the singular --
+       the same sense-blend the lookupKeys gate exists to prevent, just
+       reached through the literal-term path instead of the concept-
+       membership path. Skipping it when the exact token already owns a
+       concept costs nothing for the real fix target (culture/cultures:
+       neither inflection has ANY concept, so hasExactConceptMatch is
+       false and this still fires exactly as intended). */
+    if (!hasExactConceptMatch) {
+      for (const v of fallbackVariants) addTerm(v, 1, "own");
+    }
 
     const others = contentTokens.filter(o => o !== tok);
     const otherKeys = others.map(o => new Set([o, ...(ALIASES[o] || [])]));
@@ -595,12 +846,28 @@ function interpretQuery(q, ctx) {
     return {
       token: tok,
       terms,
-      broad: corpusDF(tok, ctx) >= BROAD_DF_THRESHOLD,
+      /* Both `broad` and `thin` read the MAX corpusDF across the token and
+         its lemma variants (see lemmaVariants above, reused via
+         fallbackVariants -- computed once above, not re-derived here, so
+         a concept-backed token's variants are never scanned at all, per
+         codex review round 3's latency finding), not just the bare typed
+         spelling. Without this, a lemma pair where NEITHER inflection has
+         concept coverage (e.g. culture/cultures -- no concept or modifier
+         carries either) but the OTHER inflection is common in the
+         catalogue text (culture: corpusDF ~3.9%) would still read the
+         untried inflection ("cultures") as thin purely because its own
+         bare spelling has zero literal corpus hits, even though the
+         addTerm() call above already added "culture" as a same-weight
+         literal term that WILL match. Taking the max keeps thin/broad
+         honest about what this group can actually match, independent of
+         which inflection the query happened to type. */
+      broad: Math.max(corpusDF(tok, ctx), ...fallbackVariants.map(v => corpusDF(v, ctx))) >= BROAD_DF_THRESHOLD,
       df: tagDF(tok, ctx),
       hasConceptExpansion,
       /* See THIN_ANCHOR_DF below -- a specific, real word the taxonomy has
          not modeled AND the catalogue barely mentions. */
-      thin: !hasConceptExpansion && corpusDF(tok, ctx) < THIN_ANCHOR_DF,
+      thin: !hasConceptExpansion &&
+        Math.max(corpusDF(tok, ctx), ...fallbackVariants.map(v => corpusDF(v, ctx))) < THIN_ANCHOR_DF,
     };
   });
 
@@ -1513,6 +1780,7 @@ const SearchEngine = {
   STRONG_RATIO, RICH_MIN, DEFAULT_CAP, PER_SHOW_CAP, LISTENED_PENALTY, SENSE_LOCKED_STEMS,
   tokenize, branchOf, tagCount, tagDF, dfMultiplier, expansionBucket, corpusDF, hitText, hitTag,
   primeVocabulary,
+  lemmaVariants,
   interpretQuery, passesFilters, scoreMatch, searchWithRelaxation, classifyResults, diversify,
   strongPrefix,
   suggestAdjacentTopics, prettyConceptLabel,

@@ -2244,6 +2244,28 @@ the inline comments in the file for the exact numbers.
 
 ---
 
+### 36. Merge PR #429 (Stage 3b full-catalogue RSS ingestion) — first Vercel serverless function, needs Wyatt's architecture sign-off
+
+**Tag:** `[BLOCKING]` for the "universal in-app playability" card · **Time:** ~10 minutes review · **Owner:** Wyatt (per `docs/roles.md` / registry `architecture_infra_ci_secrets` human gate)
+
+**Why it matters.** `t_a36252bb` ("remove the listen-elsewhere link-out, play everything in-app") depends on `t_567b570f` shipping real `audio_url`s at scale. That work is done and reviewed (round 3, 216/216 local tests pass, GitHub CI green) in PR #429, but it is genuinely gated on a human decision, not just a routine merge:
+
+- PR #429 adds **the first Vercel serverless function** in this repo (`api/shows/[show_id]/episodes.ts`). `vercel.json` was previously static-build-only by deliberate choice (see `docs/DECISIONS.md`, 2026-07-xx entry naming "standing up a live backend" as reserved for Wyatt).
+- The implementing worker could not reach Fable for an architecture consult on this point (sandbox OOM at every heap size tried) and proceeded on the lowest-new-infra option: reuses the existing Vercel project, reuses the existing Supabase service-role connection (no new secrets), scoped its own minimal `api/package.json`.
+- Registry `merge_authority` is `agent` for the foray project generally, but `human_gates` explicitly includes `architecture_infra_ci_secrets` — this PR is exactly that case.
+- GitHub also currently blocks auto-merge on this PR with a `needs-founder` label and a failing `path-policy` check (expected — it's a governed path awaiting the founder-approved label), so nothing merges without your action either way.
+
+**Steps.**
+1. Read the "For Wyatt: one thing to look at specifically" section at the top of PR #429: https://github.com/JW-Incorporated/foray/pull/429
+2. Decide: is reusing the existing Vercel project + existing Supabase service-role connection an acceptable way to stand up the first live backend endpoint, or do you want a different shape?
+3. If acceptable: add the `founder-approved` label (or ask Hermes to add it) and merge (or authorize Hermes to merge) the PR.
+4. If not acceptable: say what should change; the implementing lane will revise.
+
+**Worked if:** PR #429 is merged to `main` (or explicitly redirected), unblocking `t_a36252bb`.
+
+**Status:** OPEN
+
+
 ## DONE
 
 *(Nothing filed yet. Finished items move here with the date they were done and

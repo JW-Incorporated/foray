@@ -365,6 +365,7 @@ const FLOORS = {
      would let the thin-anchor gate regress silently the way the original
      bug shipped silently. Every test names the mutation that kills it. */
   "test/search-thin-anchor.test.js": 10,
+  "test/search-plural-scaling.test.js": 4,
   /* One generation per page load (#233). Floored because the thing it guards is
      invisible in the product: a mismatched code/data pair renders, it just
      renders the wrong program's reading of today's document. Every test in there
@@ -906,6 +907,16 @@ const SCANNED_DIRS = ["player", "test", "tools"];
  * Separate from FLOORS because these are `.test.ts`, run by the `backend` job
  * via `npm test` in backend/, not by tools/ci/run-suites.mjs. */
 const BACKEND_FLOORS = {
+  /* Anthropic provider error-path coverage (kanban card t_550d289f): mock-client
+     tests for the constructor dry-run guard, budget-guard call-site wiring, and
+     malformed-JSON/no-text-block error paths across all 5 real provider classes,
+     plus the shared parseWithRetry helper extracted from their copy-pasted
+     private implementations. */
+  "test/AnthropicDeepenActBuilder.test.ts": 7,
+  "test/AnthropicEnricher.test.ts": 10,
+  "test/AnthropicExternalResearcher.test.ts": 9,
+  "test/AnthropicPromptUnderstander.test.ts": 9,
+  "test/AnthropicSpineBuilder.test.ts": 8,
   "test/archetypes.test.ts": 7,
   "test/budgetGuard.test.ts": 6,
   "test/candidateExtractor.test.ts": 8,
@@ -925,6 +936,10 @@ const BACKEND_FLOORS = {
   "test/ladderIntegrity.test.ts": 11,
   "test/ladderProgress.test.ts": 8,
   "test/learningJob.test.ts": 4,
+  /* Anthropic provider error-path coverage (kanban card t_550d289f): the
+     shared parseWithRetry/parseLastJsonBlock helper extracted from the 5
+     real Anthropic provider classes' identical private copies. */
+  "test/parseWithRetry.test.ts": 9,
   "test/parser.test.ts": 29,
   "test/personas.test.ts": 6,
   "test/podcastIndex.test.ts": 3,

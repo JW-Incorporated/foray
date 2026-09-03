@@ -365,13 +365,37 @@ for (const c of topicalCases) {
    2026-08-17 refresh's real NBA episode is tagged `nba`, not `basketball`,
    so it does not change this -- a tagging gap, deliberately left to the
    catalogue owner rather than patched from inside the oracle. */
-for (const query of ["the lakers", "warriors", "basketball"]) {
+for (const query of ["the lakers", "basketball"]) {
   const { status, picks } = search(query);
   /* The reason is "fewer than two catalog items name it", NOT "no such
      content exists" -- `basketball` names one. Stating the mechanism in the
      label is the whole lesson of the "nba" case below. */
   check(`"${query}" is honestly empty (fewer than two catalog items name it)`, status === "empty" && picks.length === 0,
     `got status=${status}, picks=${picks.length}`);
+}
+
+/* "warriors" LEFT this list on t_fe968b47 (query-side singular/plural lemma
+   bridge, see search-engine.js's lemmaVariants): before that fix, "warriors"
+   (plural, no concept coverage) could only literal-match catalog text
+   spelling the exact plural, which happened to be exactly one item
+   ("Scotland's First Warriors") -- one hit can never clear classifyResults'
+   two-strong floor, hence the old "honestly empty" claim.
+   lemmaVariants("warriors") now also adds "warrior" (singular) as a same-
+   weight literal query term -- the whole point of the fix is that a query's
+   inflection should not gate whether a real, on-topic catalog mention is
+   reachable. "Alita Contreras - Woman Warrior" genuinely says "Warrior" and
+   is about a person described as one; it is not filler dragged in by an
+   unrelated common co-token (the #209 failure mode this suite's other half
+   guards) -- it is the SAME lemma the user typed. That flips "warriors" from
+   empty (1 hit) to sparse (2 hits), which is correct, not a regression.
+   MUTATION: deleting the singularization branch of lemmaVariants (or its
+   addTerm call in interpretQuery) drops "warriors" back to empty/1 and this
+   assertion fails -- that is the tripwire for un-fixing t_fe968b47. */
+{
+  const { status, picks } = search("warriors");
+  check('"warriors" now honestly finds its singular-lemma match too (t_fe968b47)',
+    status === "sparse" && picks.length === 2 && picks.some((p) => p.i.id === "alpinist--alita-contreras-woman-warrior"),
+    `got status=${status}, picks=${picks.map((p) => p.i.id).join(", ")}`);
 }
 
 /* "nba" was in that list until the 2026-08-17 nightly refresh (+24 episodes,
