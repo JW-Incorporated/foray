@@ -489,6 +489,13 @@ three, and two are forced by rules that already gate the pipeline.
    | `grilling-history-2` (shipped) | 10 | 6 | **5** |
    | `capital-types-1` | 22 | 8 | **10** |
 
+   **Combined with §1 item 1 (zero narration items exist anywhere), every one
+   of these 31 gated seams is currently unmet — the shipped product is red
+   against X1 today, not merely pending it.** Recorded explicitly, with the
+   founder call on what to do about it, in `docs/DECISIONS.md`
+   2026-09-02 ("narrator-pipeline gate X1: shipped state is honestly red,
+   not silently unenforced").
+
 3. **Elision bridges — rule M6.** Line 955: *"elided span > 5 min ⇒ narration
    required, silence not sufficient"*, gate **yes**. **Counted as zero, and that
    is a known undercount** — the elision spans are not recorded in a form the
@@ -637,14 +644,31 @@ pipeline, not the credits.**
 
 `tools/narrate/cache.mjs`. A re-run must never re-bill for an unchanged script.
 
-**A cache entry is keyed by a sha256 of exactly four things**, and is invalidated
-by exactly those four, each of which genuinely produces different audio:
+**A cache entry is keyed by a sha256 of exactly five things**, and is invalidated
+by exactly those five, each of which genuinely produces different audio:
 
 1. **the script text**, canonicalised — a single character of punctuation counts,
    because punctuation is prosody to a TTS engine and is billed besides
 2. **the voice id**
 3. **the model id**
 4. **the output format** (bitrate / sample rate)
+5. **the padding seconds baked around each item** (`padSecPerItem`) — once
+   padding synthesis is implemented (§1 item 4 records that it is not, yet),
+   the ~0.5 s silence will be encoded directly into the audio bytes, so a
+   padding change will be a different file even though the TTS provider is
+   never told about it and it never reaches the request body. Fixed
+   2026-09-02: this field was previously missing from the key, which would
+   have meant the still-undecided padding value (`HUMAN-ACTIONS.md` #3)
+   could be set or revised and silently serve stale-padding audio from cache
+   under an unchanged key once synthesis existed. Until synthesis exists,
+   `createAdapter()` refuses any non-default `padSecPerItem` outright (see
+   `adapter.mjs`), so this field is always the default today — the fix
+   above is the key-shape correctness fix for the day synthesis lands, not
+   a claim that padding is already audible. An index written before this
+   field existed is not treated as cold: `NarrationCache.plan()` falls back
+   to `legacyCacheKey()` (the exact pre-fix four-field digest) on a miss, so
+   old entries are recognized as hits rather than triggering a wholesale
+   re-generation.
 
 **And nothing else.** Re-running the pipeline, re-ordering beats, renaming a beat,
 re-titling the Foray, editing a `why` line, moving a script between Forays, or

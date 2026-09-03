@@ -1504,6 +1504,45 @@ its reasoning.
      original design's own stated limit (a stale PLAYER, never a stale reader
      of `data/*.json`, which is what #233 was actually about).
 
+## 2026-09-02 (narrator-pipeline gate X1: shipped state is honestly red, not silently unenforced)
+
+- **Rule X1 ("cross-episode seam always carries narration," tier A, gate
+  yes — `docs/curation/segment-length-rules.md` line 956) is currently
+  failed by every shipped Foray, and that is now a recorded, explicit
+  fact rather than a silent gap.** `docs/narrator-pipeline.md` §1 item 1
+  already states plainly that zero narration items exist anywhere in
+  `data/forays.json`; §3.1 separately measures 5 cross-episode seams in
+  the shipped `grilling-history-2` (10 measured across all three Forays:
+  16 in `grilling-history-1`, 5 in `grilling-history-2`, 10 in
+  `capital-types-1`) against X1, but only for the cost inventory — it
+  never states the conclusion that follows from combining those two
+  facts: **every one of those 31 gated seams is currently unmet**, and
+  the shipped product plays through every cross-episode seam with no
+  narration, i.e. is red against a gate the same document calls
+  non-optional.
+- **Decision: X1 is not relaxed or removed.** It stays the correct rule
+  for a fully narrated Foray. What changes here is only that its current
+  failure state is now named instead of implicit. The gate cannot be
+  made green today without spending on narration generation, which is a
+  founder call `#247`/`docs/narrator-pipeline.md` already route through
+  `blocked-on-spend` — not a decision this entry makes or should make.
+  `check-forays.mjs` is intentionally NOT changed to hard-fail on X1
+  right now: doing so would immediately red every existing shipped
+  Foray's CI/validation state over a gap the founders already know about
+  and have not yet funded fixing, which is a worse signal-to-noise
+  outcome than the status quo of a document that states the gap plainly.
+  If a founder wants X1 enforced as a hard CI gate before narration
+  exists, that is a follow-on decision (would require either exempting
+  today's three Forays or blocking them from the catalogue), not implied
+  by this entry.
+- **Action taken:** none to the shipped Forays or to `check-forays.mjs`
+  in this pass — this entry is the "no silent gap" fix `docs/`
+  conventions require per CLAUDE.md workflow rule 4. Revisit once
+  narration generation is funded and `#247`'s dry-run pipeline
+  (`tools/narrate/`) is authorized to make its first real API call; at
+  that point X1 becomes checkable mechanically instead of only by
+  inventory measurement.
+
 ## 2026-09-02 (positioning vs. AI-generation pipeline — founder call, kanban card t_54913003)
 
 - **"Never an AI podcast app" positioning is retired; 4a's story now

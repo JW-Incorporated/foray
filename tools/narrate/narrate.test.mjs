@@ -25,10 +25,10 @@ import {
   billableText, countChars, nonAsciiChars, estimateDurationSec,
   charsForDurationSec, mp3Bytes, CHARS_PER_MIN_MEASURED,
 } from "./billable.mjs";
-import { cacheKey, assertKeyInputsComplete, NarrationCache, KEY_INPUTS } from "./cache.mjs";
+import { cacheKey, legacyCacheKey, assertKeyInputsComplete, NarrationCache, KEY_INPUTS } from "./cache.mjs";
 import {
   createAdapter, buildRequest, costOf, byteCountOf, pricingBucketFor, MODEL_PRICING_BUCKET,
-  FLASH_TURBO, MULTILINGUAL, DEFAULT_MODEL_ID, DEFAULT_OUTPUT_FORMAT,
+  FLASH_TURBO, MULTILINGUAL, DEFAULT_MODEL_ID, DEFAULT_OUTPUT_FORMAT, DEFAULT_PAD_SEC_PER_ITEM,
 } from "./adapter.mjs";
 import { projectForay, tierFor, SPINE } from "./projection.mjs";
 import { reportScripts, reportProjection, PRICING } from "./narrate.mjs";
@@ -62,7 +62,7 @@ function capturingTransport() {
 }
 
 const spec = (text, over = {}) => ({
-  text, voiceId: "v1", modelId: "m1", outputFormat: "mp3_44100_64", ...over,
+  text, voiceId: "v1", modelId: "m1", outputFormat: "mp3_44100_64", padSecPerItem: 1.0, ...over,
 });
 
 /* ---------- billable text: the payload definition ---------- */
@@ -135,20 +135,104 @@ test("mp3 bytes track bitrate linearly and a minute at 64 kbps is ~480 kB", () =
 
 /* ---------- the cache: the idempotence rule ---------- */
 
-test("the cache key changes for each of the four inputs and for nothing else", () => {
+test("the cache key changes for each of the five inputs and for nothing else", () => {
   /* This IS the invalidation rule, asserted rather than described. A key that
-     missed one of these would serve the OLD narrator from cache forever — the
-     failure that costs nothing and ships the wrong product.
+     missed one of these would serve the OLD narrator (or stale padding) from
+     cache forever — the failure that costs nothing and ships the wrong product.
      MUTATION THAT KILLS THIS: delete any one field from the loop in cacheKey()
-     (e.g. drop "voiceId"), and its assertion below fails. */
+     (e.g. drop "voiceId" or "padSecPerItem"), and its assertion below fails. */
   const base = spec("the same words");
   const key = cacheKey(base);
   assert.notEqual(key, cacheKey({ ...base, text: "the same words." }), "a script edit must invalidate");
   assert.notEqual(key, cacheKey({ ...base, voiceId: "v2" }), "a voice change must invalidate");
   assert.notEqual(key, cacheKey({ ...base, modelId: "m2" }), "a model change must invalidate");
   assert.notEqual(key, cacheKey({ ...base, outputFormat: "mp3_44100_128" }), "a format change must invalidate");
+  assert.notEqual(key, cacheKey({ ...base, padSecPerItem: 0.5 }), "a padding change must invalidate");
   // And stable across calls, or nothing is ever a hit.
   assert.equal(key, cacheKey({ ...base }));
+});
+
+test("an omitted padSecPerItem normalizes to the default, so legacy four-field callers still hit", () => {
+  /* Codex review (PR #420) flagged that a caller following the documented
+     `[spec.padSecPerItem]` OPTIONAL contract, or a pre-existing cache index
+     built before this field existed, must not silently start missing on
+     every entry. cacheKey() normalizes an omitted value to
+     DEFAULT_PAD_SEC_PER_ITEM, so the historical four-field call shape and
+     today's explicit-default five-field shape must be the SAME key. */
+  const fourField = { text: "the same words", voiceId: "v1", modelId: "m1", outputFormat: "mp3_44100_64" };
+  const fiveFieldDefault = { ...fourField, padSecPerItem: DEFAULT_PAD_SEC_PER_ITEM };
+  assert.equal(
+    cacheKey(fourField),
+    cacheKey(fiveFieldDefault),
+    "omitting padSecPerItem must hash identically to passing the default explicitly"
+  );
+  // And a real, non-default value must still diverge from both.
+  assert.notEqual(cacheKey(fourField), cacheKey({ ...fourField, padSecPerItem: 0.5 }));
+});
+
+test("a cache index written before padSecPerItem joined the key is still a hit, not a wholesale miss", () => {
+  /* Codex review (PR #420, round 3) required proof against an ACTUAL old
+     digest, not just two calls to the new algorithm agreeing with each
+     other. legacyCacheKey() reproduces exactly the pre-2026-09-02 four-field
+     hash; a NarrationCache built from an index keyed that way must still
+     report the script as cached under today's five-field cacheKey() lookup,
+     via NarrationCache.plan() (which is what the adapter actually calls). */
+  const specNow = { text: "an old script", voiceId: "v1", modelId: "m1", outputFormat: "mp3_44100_64" };
+  const oldDigest = legacyCacheKey(specNow);
+  assert.notEqual(oldDigest, cacheKey(specNow), "the two algorithms must genuinely differ for this to be a real test");
+
+  const cache = new NarrationCache({
+    entries: { [oldDigest]: { chars: 13, voiceId: "v1", modelId: "m1", outputFormat: "mp3_44100_64" } },
+  });
+  const plan = cache.plan(specNow);
+  assert.equal(plan.cached, true, "an old four-field entry must be recognized as cached");
+  assert.equal(plan.billable, false);
+  assert.equal(plan.billedChars, 0);
+  assert.equal(plan.key, oldDigest, "plan() must report the digest actually hit, for a caller re-recording under it");
+
+  // A script that was genuinely never generated must still miss, old key or new.
+  const missPlan = cache.plan({ ...specNow, text: "a different, never-cached script" });
+  assert.equal(missPlan.cached, false);
+});
+
+test("the legacy fallback never matches a request for non-default padding", () => {
+  /* Codex review (PR #420, round 4) correctly flagged that the legacy
+     fallback must not become a universal escape hatch: a legacy four-field
+     entry was necessarily generated with DEFAULT_PAD_SEC_PER_ITEM (nothing
+     else was ever recordable before this fix), so it must only satisfy a
+     lookup for that same default. Once padding synthesis exists and
+     adapter.mjs's guard is lifted, a caller asking for real, non-default
+     padding must re-generate rather than silently receive unpadded legacy
+     audio. `createAdapter()` refuses non-default padSecPerItem today, so
+     this exercises NarrationCache directly, one layer below that guard. */
+  const specNow = { text: "an old script", voiceId: "v1", modelId: "m1", outputFormat: "mp3_44100_64" };
+  const oldDigest = legacyCacheKey(specNow);
+  const cache = new NarrationCache({
+    entries: { [oldDigest]: { chars: 13, voiceId: "v1", modelId: "m1", outputFormat: "mp3_44100_64" } },
+  });
+  const planDefault = cache.plan(specNow);
+  assert.equal(planDefault.cached, true, "sanity: the default request still hits the legacy entry");
+
+  const planDifferentPad = cache.plan({ ...specNow, padSecPerItem: 0.5 });
+  assert.equal(planDifferentPad.cached, false, "a non-default padding request must NOT match a legacy (default-padded) entry");
+});
+
+test("createAdapter refuses a non-default padSecPerItem until padding synthesis exists", () => {
+  /* cacheKey() correctly treats padSecPerItem as a real invalidating input
+     (above), but nothing in this module actually bakes padding into the
+     returned audio yet (docs/narrator-pipeline.md §1 item 4) -- so today, two
+     different padSecPerItem values produce byte-IDENTICAL audio while being
+     billed and cached as if they differed. Until synthesis exists, an
+     override is refused loudly rather than silently causing wasted re-billed
+     generations for no output change. */
+  assert.throws(
+    () => createAdapter({ voiceId: "v1", padSecPerItem: 0.5 }),
+    /padSecPerItem/,
+    "a non-default padSecPerItem must be rejected while padding synthesis is unimplemented"
+  );
+  // The default itself, or omitting the option entirely, must both be fine.
+  assert.doesNotThrow(() => createAdapter({ voiceId: "v1", padSecPerItem: DEFAULT_PAD_SEC_PER_ITEM }));
+  assert.doesNotThrow(() => createAdapter({ voiceId: "v1" }));
 });
 
 test("fields cannot collide by swapping values between them", () => {
@@ -169,7 +253,7 @@ test("an unknown generation parameter is a loud error, not a silently dropped ke
   assert.throws(() => assertKeyInputsComplete({ text: "t", stability: 0.5 }), /stability/);
   assert.throws(() => cacheKey(spec("t", { speakerBoost: true })), /speakerBoost/);
   assert.doesNotThrow(() => assertKeyInputsComplete(spec("t")));
-  assert.deepEqual(KEY_INPUTS, ["text", "voiceId", "modelId", "outputFormat"]);
+  assert.deepEqual(KEY_INPUTS, ["text", "voiceId", "modelId", "outputFormat", "padSecPerItem"]);
 });
 
 test("a re-run of an unchanged script bills zero characters", () => {
@@ -747,7 +831,10 @@ test("cache.plan is a pure query and keeps no hit counters", () => {
   // The honest number, from a single pass.
   const adapter = createAdapter({ cache, voiceId: "v1" });
   const beats = [{ id: "a", text: "aaa" }, { id: "b", text: "bbb" }];
-  const key = cacheKey({ text: "aaa", voiceId: "v1", modelId: DEFAULT_MODEL_ID, outputFormat: DEFAULT_OUTPUT_FORMAT });
+  const key = cacheKey({
+    text: "aaa", voiceId: "v1", modelId: DEFAULT_MODEL_ID, outputFormat: DEFAULT_OUTPUT_FORMAT,
+    padSecPerItem: DEFAULT_PAD_SEC_PER_ITEM,
+  });
   cache.record(key, { chars: 3 });
   assert.equal(adapter.planForay(beats).totals.cachedBeats, 1);
   assert.equal(adapter.planForay(beats).totals.cachedBeats, 1, "and it must not drift on a second pass");
@@ -1073,7 +1160,10 @@ test("the CLI honours --cache, so a re-run of an unchanged script bills nothing"
 
   // An index recording that exact generation.
   const cache = new NarrationCache();
-  const key = cacheKey({ text, voiceId: voice, modelId: DEFAULT_MODEL_ID, outputFormat: DEFAULT_OUTPUT_FORMAT });
+  const key = cacheKey({
+    text, voiceId: voice, modelId: DEFAULT_MODEL_ID, outputFormat: DEFAULT_OUTPUT_FORMAT,
+    padSecPerItem: DEFAULT_PAD_SEC_PER_ITEM,
+  });
   cache.record(key, { chars: 49 });
   const idx = path.join(TMP, "cache-cli-index.json");
   fs.writeFileSync(idx, JSON.stringify(cache.dump()));
