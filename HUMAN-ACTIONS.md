@@ -1032,9 +1032,16 @@ letter, so a `4a` segment will not build — `ai` does, because it starts with a
 2. Reply either **"confirmed"**, or with the id you want instead.
 3. If you want a different one, a session changes the id itself in **three** places — that file, the pinned assertion in `tools/mobile/shell-invariants.test.mjs` ("the app id is pinned, because it is permanent once published"), and `APP_ID` in `.github/workflows/ios-build.yml`, which is what `simctl` is given. This item said "exactly two" through two renames; `APP_ID` was the third all along, kept in sync by hand each time, and as of 2026-08-25 a test derives it from the config so a miss cannot be quiet. **A change to the reverse-DNS *prefix* is bigger than two lines**, because the Android plugin's Java package shares it: the 2026-08-25 move to `ai.jwlabs` touched 19 files, including a `git mv` of the Java source tree, `APP_ID` in `.github/workflows/ios-build.yml` and two fully-qualified needles in `.github/workflows/android-build.yml`. Still cheap, still not two lines.
 
+**CONFIRMED BY WYATT 2026-09-03.** Asked directly, while assembling the App Store
+submission kit, whether `ai.jwlabs.foura` is the id to publish under forever: *"bundle
+ID is correct"*. That is the reply step 2 asks for, so this item is closed. Nothing in
+`mobile/capacitor.config.json` changed — the value was already right; what was missing
+was the ruling on it. The App ID registration in #19 can now proceed against
+`ai.jwlabs.foura`, and that registration is the irreversible step.
+
 **Worked if:** the status below says DONE and `mobile/capacitor.config.json`'s `appId` is the id you intend to publish under, forever.
 
-**Status:** OPEN
+**Status:** DONE (2026-09-03)
 
 ---
 
