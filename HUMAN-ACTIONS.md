@@ -2278,6 +2278,56 @@ other CI went green, PR #450 auto-merged to `main` (`db25f8b`).
 **Status:** OPEN
 
 
+### 37. Merge PR #443 by hand, and rule on the new nightly/deploy-manifest.json collision
+
+**Tag:** `[BLOCKING]` for this PR, `[UPGRADE]` for the recurring gap · **Time:** ~2 minutes now, longer to decide the fix · **Owner:** Joey or Wyatt
+
+**Why it matters.** `data-and-site` failed on
+[PR #443](https://github.com/JW-Incorporated/foray/pull/443) (a nightly-refresh
+recovery run, +91 episodes) because `deploy-manifest.json`'s per-file content
+hashes go stale whenever a shipped file changes, and the nightly always
+changes `data/discover.json` + `data/item-tags.json`, both of which are on the
+manifest's watched list. A `github-actions[bot]` auto-fix step regenerated
+`deploy-manifest.json` and `sw.js` (its `BUILD_ID` companion) and pushed
+directly to the PR branch — CI is green now. But `deploy-manifest.json` and
+`sw.js` are not on `ALLOWED_PREFIXES` in `tools/ci/path-policy.mjs`, so
+`path-policy` reports `NOT ARMED` / `UNLISTED_PATH` and auto-merge will not
+fire, even though every required check is green. Per `CLAUDE.md`'s note on
+"ungoverned" vs. "auto-mergeable": these two paths are on neither list, they
+fail safe to a human, and it's all-or-nothing — the whole PR waits, not just
+the two files.
+
+**The recurring part:** the manifest mechanism (`tools/ci/generate-manifest.mjs`,
+M4, landed 2026-08-31) means this will hit *every* future nightly-refresh PR
+the same way, not just this one — the bot's auto-fix will keep making CI
+green, but auto-merge will keep declining to act on it. `docs/agents/runner-prompts/foray-nightly.md`
+doesn't mention this at all yet.
+
+**Steps.**
+1. Open [PR #443](https://github.com/JW-Incorporated/foray/pull/443), confirm
+   `backend` + `data-and-site` are green (they were as of this writing), and
+   click **Merge**.
+2. Decide how nightly PRs should handle this going forward — options, not a
+   recommendation:
+   - Add `deploy-manifest.json` and `sw.js` to `ALLOWED_PREFIXES` (the
+     `tools/ci/path-policy.mjs` fix `#167`/`#168` used for `STATE.md`) so
+     these two land unread whenever a bot or nightly PR touches only them
+     alongside already-allowed paths.
+   - Or leave it governed and accept that every nightly-refresh PR now needs
+     a manual merge click, and update the runbook to say so.
+   - Or teach `tools/refresh/merge.mjs` to call `generate-manifest.mjs --write`
+     itself, so the manifest is never stale on the PR's first commit (does not
+     by itself fix the `ALLOWED_PREFIXES` question above).
+
+**Worked if:** PR #443 is merged, and a decision is recorded (in
+`docs/DECISIONS.md` per the workflow rule on anything expensive to reverse,
+or right here) on which of the three options above applies to future nightly
+PRs.
+
+**Status:** OPEN
+
+---
+
 ## DONE
 
 *(Nothing filed yet. Finished items move here with the date they were done and

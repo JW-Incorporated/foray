@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "built_at": "2026-08-30T11:52:34.565Z",
+  "built_at": "2026-09-02T12:01:00.144Z",
   "tags": {
     "lex-fridman-podcast--don-lincoln-physics": [
       "physics",
@@ -16067,6 +16067,681 @@
       "solar",
       "science",
       "space"
+    ],
+    "cbc-ideas--confronting-the-escalating-attacks-on-universities": [
+      "politics",
+      "policy",
+      "higher-education",
+      "canada",
+      "academia",
+      "government",
+      "funding"
+    ],
+    "cbc-ideas--should-homework-be-banned-for-students": [
+      "education",
+      "parenting",
+      "child-development",
+      "schools",
+      "canada",
+      "kids-family"
+    ],
+    "stuff-you-should-know--short-stuff-hisashi-ouchi": [
+      "nuclear",
+      "radiation",
+      "japan",
+      "science",
+      "medicine",
+      "history-of-science",
+      "safety"
+    ],
+    "stuff-you-should-know--terry-fox-greatest-canadian-hero": [
+      "canada",
+      "biography",
+      "history",
+      "running",
+      "sports",
+      "perseverance",
+      "medical-history"
+    ],
+    "the-rest-is-history--701-roman-civil-war-rise-of": [
+      "ancient-history",
+      "military-history",
+      "rome",
+      "biography",
+      "politics",
+      "empire"
+    ],
+    "conan-obrien-needs-a-friend--andy-daly-returns": [
+      "comedy",
+      "interview",
+      "conan-obrien",
+      "banter",
+      "stand-up",
+      "celebrities"
+    ],
+    "smartless--steve-zahn": [
+      "comedy",
+      "interview",
+      "celebrities",
+      "banter",
+      "hang",
+      "hollywood",
+      "acting"
+    ],
+    "my-brother-my-brother-and-me--mbmbam-829-content-basement": [
+      "comedy",
+      "banter",
+      "advice",
+      "absurdist",
+      "hang",
+      "podcasting"
+    ],
+    "making-chips--at-the-boring-bar-ai-automation": [
+      "manufacturing",
+      "ai",
+      "automation",
+      "machine-shop",
+      "engineering",
+      "technology",
+      "careers",
+      "panel"
+    ],
+    "engines-of-our-ingenuity--the-engines-of-our-ingenuity-2851": [
+      "history-of-technology",
+      "invention",
+      "engineering",
+      "business-history",
+      "design"
+    ],
+    "engines-of-our-ingenuity--the-engines-of-our-ingenuity-3404": [
+      "history-of-technology",
+      "education",
+      "business-history",
+      "invention",
+      "engineering"
+    ],
+    "founders--431-how-henry-singleton-worked": [
+      "business",
+      "founders",
+      "biography",
+      "business-history",
+      "investing",
+      "leadership",
+      "careers"
+    ],
+    "this-week-in-startups--are-ai-agents-forming-civilizations-or": [
+      "ai",
+      "startups",
+      "tech-industry",
+      "artificial-intelligence",
+      "venture-capital",
+      "news",
+      "technology"
+    ],
+    "techsurge-deep-tech-podcast--the-nobel-winner-behind-google-s": [
+      "quantum-computing",
+      "physics",
+      "startups",
+      "engineering",
+      "technology",
+      "semiconductors",
+      "interview"
+    ],
+    "twenty-minute-vc--20vc-the-ai-bubble-is-wrong": [
+      "ai",
+      "startups",
+      "venture-capital",
+      "business",
+      "tech-industry",
+      "markets",
+      "interview"
+    ],
+    "around-the-house-eric-g--save-big-this-fall-3-weekend": [
+      "home-improvement",
+      "diy",
+      "craft",
+      "construction",
+      "how-to"
+    ],
+    "wood-talk--it-s-too-long-and-bendy": [
+      "woodworking",
+      "craft",
+      "diy",
+      "tools",
+      "craftsmanship"
+    ],
+    "good-hang-amy-poehler--kenan-thompson": [
+      "comedy",
+      "interview",
+      "hollywood",
+      "celebrities",
+      "hang",
+      "banter"
+    ],
+    "fly-on-the-wall--jelly-roll-jed-york-and-jealousy": [
+      "comedy",
+      "interview",
+      "celebrities",
+      "banter",
+      "hang",
+      "music"
+    ],
+    "the-bbq-central-show--malcom-reed-has-a-new-knee": [
+      "bbq",
+      "grilling",
+      "food",
+      "cooking",
+      "interview",
+      "hang"
+    ],
+    "this-podcast-will-kill-you--ep-220-electroconvulsive-therapy-part-1": [
+      "medicine",
+      "mental-health",
+      "history-of-science",
+      "health",
+      "science"
+    ],
+    "science-for-sport-podcast--335-the-three-outcomes-that-define": [
+      "sports-science",
+      "training",
+      "coaching",
+      "athletes",
+      "health",
+      "performance"
+    ],
+    "switched-on-pop--questionably-country": [
+      "music",
+      "music-analysis",
+      "pop-culture",
+      "songwriting",
+      "culture"
+    ],
+    "99-percent-invisible--1-800-podcast": [
+      "design",
+      "history",
+      "infrastructure",
+      "storytelling",
+      "culture"
+    ],
+    "spit-and-twitches-animal-cognition--episode-31-season-3-episode-4": [
+      "nature",
+      "psychology",
+      "science",
+      "research",
+      "interview",
+      "careers"
+    ],
+    "ologies-with-alie-ward--deep-sea-microbiology-unseen-ocean-critters": [
+      "ocean",
+      "biology",
+      "science",
+      "research",
+      "interview",
+      "space"
+    ],
+    "spycast--japanese-surveillance-enslavement-and-experimentation-in": [
+      "history",
+      "world-war-2",
+      "espionage",
+      "china",
+      "japan",
+      "military-history"
+    ],
+    "advent-of-computing--episode-188-training-and-teaching-with": [
+      "computing",
+      "history-of-technology",
+      "education",
+      "engineering",
+      "technology"
+    ],
+    "software-engineering-daily--the-death-of-online-anonymity": [
+      "technology",
+      "internet-culture",
+      "privacy",
+      "policy",
+      "software",
+      "cybersecurity"
+    ],
+    "planet-money--love-in-the-time-of-palantir": [
+      "economics",
+      "business",
+      "technology",
+      "data",
+      "journalism",
+      "storytelling"
+    ],
+    "odd-lots--adam-posen-thinks-things-could-get": [
+      "economics",
+      "markets",
+      "policy",
+      "interview",
+      "finance",
+      "news"
+    ],
+    "odd-lots--richmond-fed-s-tom-barkin-on": [
+      "economics",
+      "markets",
+      "policy",
+      "interview",
+      "finance",
+      "news"
+    ],
+    "freakonomics-radio--how-to-run-an-institution-in": [
+      "culture",
+      "policy",
+      "leadership",
+      "interview",
+      "society",
+      "education"
+    ],
+    "hidden-brain--the-things-we-don-t-say": [
+      "psychology",
+      "communication",
+      "interview",
+      "science",
+      "relationships"
+    ],
+    "you-are-not-so-smart--347-under-alien-skies-phil-plait": [
+      "space",
+      "science",
+      "interview",
+      "psychology",
+      "ideas"
+    ],
+    "f1-beyond-the-grid--charles-leclerc-full-faith-in-ferrari": [
+      "formula-1",
+      "motorsport",
+      "racing",
+      "interview",
+      "sports"
+    ],
+    "the-race-f1-podcast--will-ferrari-s-engine-upgrade-give": [
+      "formula-1",
+      "motorsport",
+      "racing",
+      "panel",
+      "sports"
+    ],
+    "the-race-f1-podcast--is-norris-even-better-in-2026": [
+      "formula-1",
+      "motorsport",
+      "racing",
+      "panel",
+      "sports"
+    ],
+    "volts--how-to-respond-to-disinformation-about": [
+      "clean-energy",
+      "energy",
+      "policy",
+      "climate",
+      "interview"
+    ],
+    "energy-gang--demand-for-power-generation-and-grid": [
+      "energy",
+      "grid",
+      "ai",
+      "infrastructure",
+      "clean-energy",
+      "interview"
+    ],
+    "partially-examined-life--ep-399-dan-dennett-s-model": [
+      "philosophy",
+      "psychology",
+      "neuroscience",
+      "ideas",
+      "consciousness"
+    ],
+    "partially-examined-life--premium-pel-sunami-nightcap-august-2026": [
+      "philosophy",
+      "ideas",
+      "books",
+      "interview",
+      "culture"
+    ],
+    "unexplainable--stopping-the-science-that-could-stop": [
+      "science",
+      "ethics",
+      "biology",
+      "research",
+      "storytelling"
+    ],
+    "unexplainable--a-breakthrough-in-synthetic-life": [
+      "science",
+      "biology",
+      "research",
+      "interview",
+      "synthetic-biology"
+    ],
+    "how-i-built-this--late-july-snacks-nicole-bernard-dawes": [
+      "entrepreneurship",
+      "business",
+      "founders",
+      "food",
+      "interview"
+    ],
+    "business-wars--the-sweetener-wars-sweet-goes-sour": [
+      "business",
+      "business-history",
+      "food",
+      "storytelling",
+      "narrative"
+    ],
+    "masters-of-scale--when-ai-agents-do-your-shopping": [
+      "ai",
+      "business",
+      "startups",
+      "technology",
+      "interview",
+      "entrepreneurship"
+    ],
+    "we-have-ways-of-making-you-talk--british-band-of-brothers-disaster-at": [
+      "world-war-2",
+      "military-history",
+      "history",
+      "storytelling",
+      "britain"
+    ],
+    "unauthorized-history-pacific-war--birth-of-the-philippine-guerilla-movement": [
+      "world-war-2",
+      "military-history",
+      "pacific-war",
+      "history",
+      "interview"
+    ],
+    "history-of-wwii-podcast--episode-650-interview-w-peter-zablocki": [
+      "world-war-2",
+      "military-history",
+      "history",
+      "interview",
+      "japan"
+    ],
+    "strong-towns-podcast--chuck-s-engineering-lawsuit-finally-has": [
+      "urbanism",
+      "cities",
+      "law",
+      "policy",
+      "engineering"
+    ],
+    "tiny-matters--foraminifera-the-one-celled-predators-that": [
+      "science",
+      "paleontology",
+      "ocean",
+      "climate",
+      "biology"
+    ],
+    "the-sharp-end-podcast--ep-128-on-scene-during-a": [
+      "adventure",
+      "climbing",
+      "storytelling",
+      "outdoors",
+      "rescue"
+    ],
+    "huberman-lab--how-to-accelerate-learning-improve-education": [
+      "education",
+      "ai",
+      "neuroscience",
+      "interview",
+      "self-improvement"
+    ],
+    "the-matt-walker-podcast--the-night-ferryman-a-sleep-story": [
+      "sleep",
+      "health",
+      "storytelling",
+      "relaxation",
+      "wellbeing"
+    ],
+    "the-peter-attia-drive--406-migraine-cluster-headache-and-tension": [
+      "medicine",
+      "health",
+      "neuroscience",
+      "interview",
+      "longevity"
+    ],
+    "strict-scrutiny--scotus-greenlights-trump-s-ballroom": [
+      "law",
+      "supreme-court",
+      "politics",
+      "news",
+      "policy"
+    ],
+    "strict-scrutiny--is-scotus-letting-trump-meddle-in": [
+      "law",
+      "supreme-court",
+      "politics",
+      "news",
+      "policy"
+    ],
+    "weather-geeks--the-rise-of-marine-heat-waves": [
+      "weather",
+      "climate",
+      "ocean",
+      "science",
+      "interview"
+    ],
+    "physiology-endurance-running--your-guide-to-getting-lab-testing": [
+      "sports-science",
+      "endurance",
+      "running",
+      "training",
+      "health"
+    ],
+    "shipwrecks-and-sea-dogs--faded-luxury-the-sinking-of-the": [
+      "maritime",
+      "history",
+      "disaster",
+      "storytelling",
+      "italy"
+    ],
+    "mwa-woodworking--mwa622-gary-rogowski-at-handworks": [
+      "woodworking",
+      "craft",
+      "interview",
+      "craftsmanship",
+      "furniture"
+    ],
+    "twiml-ai--world-models-and-the-future-of": [
+      "ai",
+      "robotics",
+      "artificial-intelligence",
+      "technology",
+      "interview",
+      "machine-learning"
+    ],
+    "ten-percent-happier--the-science-of-habit-change-why": [
+      "psychology",
+      "habits",
+      "health",
+      "self-improvement",
+      "interview"
+    ],
+    "feel-better-live-more--how-to-find-purpose-in-an": [
+      "psychology",
+      "happiness",
+      "self-improvement",
+      "interview",
+      "philosophy"
+    ],
+    "sigma-nutrition-radio--618-how-wellness-optimisation-culture-can": [
+      "nutrition",
+      "health",
+      "science",
+      "evidence-based",
+      "wellbeing"
+    ],
+    "mel-robbins-podcast--a-doctor-s-gut-reset-4": [
+      "health",
+      "nutrition",
+      "medicine",
+      "interview",
+      "self-improvement"
+    ],
+    "armchair-expert--gal-gadot": [
+      "interview",
+      "hollywood",
+      "celebrities",
+      "acting",
+      "health"
+    ],
+    "this-past-weekend-theo-von--680-ultramarathoner-mark-dowdle": [
+      "endurance",
+      "sports",
+      "interview",
+      "running",
+      "self-improvement"
+    ],
+    "this-past-weekend-theo-von--679-luke-bryan": [
+      "music",
+      "interview",
+      "celebrities",
+      "country",
+      "hang"
+    ],
+    "comedy-bang-bang--jackman-backman-asif-ali-dan-lippert": [
+      "comedy",
+      "improv",
+      "banter",
+      "celebrities",
+      "hang"
+    ],
+    "2-bears-1-cave--breaking-down-the-barstool-brawl-2": [
+      "comedy",
+      "banter",
+      "hang",
+      "pop-culture",
+      "celebrities"
+    ],
+    "handsome--jon-lovett-asks-about-the-positives": [
+      "comedy",
+      "hang",
+      "banter",
+      "interview",
+      "friendship"
+    ],
+    "kill-tony--783-gary-owen-brian-simpson": [
+      "comedy",
+      "stand-up",
+      "celebrities",
+      "hang",
+      "live"
+    ],
+    "working-it-out-birbiglia--222-joe-list-how-to-survive": [
+      "comedy",
+      "stand-up",
+      "interview",
+      "celebrities",
+      "podcasting"
+    ],
+    "astonishing-legends--s2-ep33-the-inn-at-folck": [
+      "paranormal",
+      "history",
+      "storytelling",
+      "ghosts-hauntings",
+      "mystery"
+    ],
+    "lore--legends-87-cursive": [
+      "paranormal",
+      "history",
+      "folklore",
+      "storytelling",
+      "mythology"
+    ],
+    "morbid--the-stamford-bra-murders": [
+      "true-crime",
+      "history",
+      "investigation",
+      "cold-case",
+      "murder"
+    ],
+    "dateline--talking-dateline-conversations-at-crimecon-part": [
+      "true-crime",
+      "interview",
+      "journalism",
+      "investigation",
+      "podcasting"
+    ],
+    "dateline--a-promise-to-helene": [
+      "true-crime",
+      "cold-case",
+      "investigation",
+      "forensics",
+      "murder"
+    ],
+    "wicked-words--kimberly-sheeter-air-minded": [
+      "true-crime",
+      "history",
+      "biography",
+      "interview",
+      "aviation"
+    ],
+    "this-american-life--896-i-know-what-you-need": [
+      "storytelling",
+      "personal-journals",
+      "narrative",
+      "culture",
+      "radio"
+    ],
+    "ear-hustle--on-the-margins": [
+      "personal-journals",
+      "storytelling",
+      "society",
+      "prison",
+      "california"
+    ],
+    "where-should-we-begin--on-again-off-again": [
+      "relationships",
+      "psychology",
+      "mental-health",
+      "storytelling",
+      "therapy"
+    ],
+    "modern-love--in-24-hours-my-whole-life": [
+      "relationships",
+      "personal-journals",
+      "storytelling",
+      "health",
+      "narrative"
+    ],
+    "welcome-to-night-vale--293-the-boys-1946": [
+      "fiction",
+      "storytelling",
+      "audio-drama",
+      "drama",
+      "mystery"
+    ],
+    "welcome-to-night-vale--cecil-and-kevin-perform-more-from": [
+      "fiction",
+      "books",
+      "interview",
+      "audio-drama",
+      "storytelling"
+    ],
+    "dissect--rapsody-dissects-god-gotta-afro-gold": [
+      "music",
+      "music-analysis",
+      "interview",
+      "hip-hop",
+      "album"
+    ],
+    "broken-record--david-porter": [
+      "music",
+      "music-history",
+      "interview",
+      "songwriting",
+      "soul"
+    ],
+    "whiskycast--the-boys-are-back": [
+      "whiskey",
+      "food",
+      "interview",
+      "business",
+      "distilling"
+    ],
+    "bourbon-pursuit--whiskey-quickie-penelope-riviera-is-a": [
+      "whiskey",
+      "food",
+      "review",
+      "bourbon",
+      "tasting"
     ]
   }
 }
