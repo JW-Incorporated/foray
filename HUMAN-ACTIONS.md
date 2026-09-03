@@ -2160,6 +2160,43 @@ lists this WARN on a re-run of Advisors → Security.
 
 ---
 
+### 34. Type the new App Store Connect listing name into Apple's dashboard
+
+**Tag:** `[BLOCKING]` for App Store submission · **Time:** ~2 minutes · **Owner:** Joey or Wyatt (App Store Connect access)
+
+**Why it matters.** Apple rejected the App Store Connect submission because the
+bare name **`4a`** is already taken by another app/reservation (App Store
+"Name" must be globally unique). Founder decision, 2026-09-02 (Discord): the
+listing name becomes **`4a: Podcast Curator`**. This is an App Store Connect
+web-dashboard field — it is not stored anywhere in this repo (no `ios/`
+project or `Info.plist` exists here yet), so no agent can type it in. The repo
+side of this (the listing-copy draft in
+`docs/marketing/09-product-feature-review.md` §5, R23) has already been
+updated to record the new name and note the scope explicitly: this does
+**not** change the app's home-screen display name (`CFBundleDisplayName`,
+stays `4a`) or any internal `4a`/`foray` naming convention — only the store
+"Name" metadata field.
+
+**Steps.**
+1. Open App Store Connect → My Apps → (the 4a app record) → App Information.
+2. In the **Name** field, enter exactly: `4a: Podcast Curator`
+3. Save.
+
+**Also flagging, not deciding:** Google Play's separate listing name field
+(`docs/store/play/README.md` §1, Play Console → Grow → Store presence → Main
+store listing → App name) currently says plain `4a` and was not the app that
+hit Apple's collision. Left as-is pending a founder call on whether it should
+match (`4a: Podcast Curator`) for cross-store consistency or stay `4a` since
+Play has no known naming conflict. If you want it changed, say so and it's a
+one-line dashboard edit, same as this item.
+
+**Worked if:** App Store Connect shows the new name and the "name already in
+use" submission error is gone.
+
+**Status:** OPEN
+
+---
+
 ## DONE
 
 *(Nothing filed yet. Finished items move here with the date they were done and

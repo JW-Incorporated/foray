@@ -328,6 +328,22 @@ button.star {
 }
 button.star.on { color: var(--gold); }
 
+/* ---------- starred shows (follow-lite) ---------- */
+
+button.show-star {
+  display: block;
+  margin: 10px 0 14px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+button.show-star.on { color: var(--gold); border-color: var(--gold); }
+
 #pl-form {
   flex: none;
   display: flex; gap: 8px;
@@ -541,6 +557,19 @@ button.star.on { color: var(--gold); }
 .ep-row .s, .pl-row .s { font-size: 0.78rem; color: var(--text-dim); margin-top: 2px; }
 .ep-title-link { color: inherit; text-decoration: none; }
 .ep-title-link:active { text-decoration: underline; }
+/* Publisher-set explicit-content marker (kanban card t_02c6bb0b), matching the
+   small square "E" every mainstream podcast app puts next to a title —
+   deliberately not a color-only signal (text label, not a dot) so it still
+   reads for a colorblind listener. Sits inline right after the title text it
+   is quietly filtered on (see poolFiltered's Family Mode), on ep-rows,
+   the episode page, and the show page (renderShow's h2). */
+.explicit-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 15px; height: 15px; margin-left: 6px;
+  font-size: 0.62rem; font-weight: 700; line-height: 1;
+  color: var(--text-dim); border: 1px solid var(--text-dim); border-radius: 3px;
+  vertical-align: middle; flex: none;
+}
 .show-link { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
 .fp-s-show .show-link { color: inherit; }
 .pl-row .chev { color: var(--text-dim); font-size: 1.3rem; flex: none; }
@@ -1309,10 +1338,10 @@ body.fy-sheet-open { overflow: hidden; }
 .fy-src-head {
   display: flex; justify-content: space-between; align-items: baseline; gap: 10px;
   color: var(--text);
-  text-decoration: none;
 }
-.fy-src-head:hover .fy-src-show { color: var(--accent); }
 .fy-src-show { font-family: var(--serif); font-size: 0.94rem; font-weight: 700; }
+.fy-src-out { flex: none; color: var(--text-dim); text-decoration: none; }
+.fy-src-out:hover { color: var(--accent); }
 .fy-src-meta { flex: none; font-size: 0.72rem; color: var(--text-dim); }
 .fy-src-eps { margin: 8px 0 0; padding: 0 0 0 14px; list-style: none; }
 .fy-src-eps li {
@@ -1325,6 +1354,39 @@ body.fy-sheet-open { overflow: hidden; }
   content: "·"; position: absolute; left: -12px; color: var(--line);
 }
 .fy-src-eps li span { color: var(--text-dim); opacity: 0.75; white-space: nowrap; }
+
+/* ---------- show page: "used in the following forays" (requirements B3/Q6) ----------
+   A footer band, deliberately separated from the episode list above it by a
+   rule + heading + explanatory note, so it reads as 4a's own cross-reference
+   rather than anything the show published — same "forays stay visually
+   distinct from episodes" rule the sources block above already keeps. */
+.show-forays {
+  margin: 30px 0 0;
+  padding: 16px 0 0;
+  border-top: 1px solid var(--line);
+}
+.show-forays-h {
+  margin: 0 0 4px;
+  font-family: var(--serif);
+  font-size: 0.86rem; font-weight: 700;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--text-dim);
+}
+.show-forays-note { margin: 0 0 10px; font-size: 0.76rem; color: var(--text-dim); }
+.show-forays-row {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 10px;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+  color: var(--text);
+  text-decoration: none;
+}
+.show-forays-row:first-of-type { border-top: none; }
+.show-forays-row:hover .show-forays-title { color: var(--accent); }
+.show-forays-title { font-family: var(--serif); font-size: 0.92rem; font-weight: 700; }
+.show-forays-draft {
+  flex: none; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.04em;
+  text-transform: uppercase; color: var(--text-dim);
+}
 
 /* ---------- playback diagnostics (#264) ----------
    Reuses the same sheet shell as the two below. Only three decisions here, and all

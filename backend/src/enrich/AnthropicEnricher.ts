@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import { env } from "../config/env";
 import { defaultBudgetGuard, type BudgetGuard } from "../cost/budgetGuard";
+import { parseWithRetry } from "../generation/parseWithRetry";
 import type {
   ClassificationInput,
   ClassificationResult,
@@ -55,13 +56,22 @@ export class AnthropicEnricher implements Enricher {
   readonly providerName = "anthropic";
   private readonly client: Anthropic;
 
-  constructor(private readonly budgetGuard: BudgetGuard = defaultBudgetGuard) {
-    if (env.anthropicDryRun) {
+  /**
+   * `client` is an optional injection point for tests: a fake client
+   * returning canned `content` arrays exercises the no-text-block throw,
+   * fence-stripping, and the zod-failure wrapped error entirely offline —
+   * see backend/test/AnthropicEnricher.test.ts. When omitted (the only
+   * production path — createEnricher() never passes one), the dry-run
+   * guard below still fires exactly as before, so production code can
+   * never construct a live client without ANTHROPIC_API_KEY set.
+   */
+  constructor(private readonly budgetGuard: BudgetGuard = defaultBudgetGuard, client?: Anthropic) {
+    if (!client && env.anthropicDryRun) {
       throw new Error(
         "AnthropicEnricher constructed without ANTHROPIC_API_KEY set — use createEnricher() so it falls back to StubEnricher instead."
       );
     }
-    this.client = new Anthropic({ apiKey: env.anthropicApiKey });
+    this.client = client ?? new Anthropic({ apiKey: env.anthropicApiKey });
   }
 
   async classifyTier1(input: ClassificationInput, ctx: EnrichContext): Promise<ClassificationResult> {
@@ -99,7 +109,7 @@ export class AnthropicEnricher implements Enricher {
     // corner case 32: schema-validated JSON, retry once on failure, then throw
     // (caller is responsible for dead-lettering — this module only guarantees
     // "never return malformed data").
-    const parsed = parseWithRetry(ClassificationSchema, textBlock.text);
+    const parsed = parseWithRetry(ClassificationSchema, textBlock.text, "Anthropic classification output");
     return parsed;
   }
 
@@ -125,25 +135,10 @@ export class AnthropicEnricher implements Enricher {
     const textBlock = response.content.find((b: Anthropic.ContentBlock): b is Anthropic.TextBlock => b.type === "text");
     if (!textBlock) throw new Error("Anthropic why-line response had no text block");
 
-    return parseWithRetry(WhyLineSchema, textBlock.text);
+    return parseWithRetry(WhyLineSchema, textBlock.text, "Anthropic why-line output");
   }
 }
 
-function parseWithRetry<T>(schema: z.ZodType<T>, raw: string): T {
-  // Models occasionally wrap JSON in ```json fences despite instructions —
-  // strip them defensively before parsing.
-  const cleaned = raw.trim().replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/i, "");
-  try {
-    return schema.parse(JSON.parse(cleaned));
-  } catch (err) {
-    // Single retry point per corner case 32; in a full implementation this
-    // would re-invoke the model with the validation error appended. Here we
-    // surface a clear error for the caller's dead-letter handling.
-    throw new Error(`LLM output failed schema validation (no retry available in this build): ${(err as Error).message}`, {
-      cause: err
-    });
-  }
-}
 
 function buildClassificationPrompt(input: ClassificationInput): string {
   return [

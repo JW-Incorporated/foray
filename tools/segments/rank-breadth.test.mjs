@@ -17,21 +17,26 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import {
   RATE_PRIOR_STRENGTH,
   SHOW_PRIOR_STRENGTH,
   capByHost,
   daiRatesFrom,
   eligibleShows,
+  eligibleShowsStreaming,
   hostHitRate,
   hostKeyOf,
   hostPriors,
   hostTimedFraction,
   readAvailabilities,
+  reduceAvailabilities,
   rankShows,
   rng,
   scoreShow,
+  streamJsonArray,
   stratifiedTranche,
   sweptFeedUrls,
   trancheCatalog,
@@ -433,4 +438,145 @@ test("a missing availability index is fatal, not skipped", () => {
     (e) => e.message.includes("gone.json") && !e.message.includes("a.json"),
     "the error must name the path that is missing, and only that one",
   );
+});
+
+/* -------------------------------------------------------------- streaming */
+/* Tests for the memory-conscious loading path added to fix the ~64MB sandbox
+   OOM: `streamJsonArray` (a hand-rolled incremental JSON-array scanner) and
+   its two call sites, `reduceAvailabilities` and `eligibleShowsStreaming`,
+   which together replace `readAvailabilities` + `hostPriors` + `daiRatesFrom`
+   + `sweptFeedUrls` + `readJson(breadth).shows` in `main()`. The contract
+   these tests pin: for the SAME input file, the streaming path must produce
+   BYTE-IDENTICAL priors/dai/swept-set/pool as the original whole-file-load
+   functions — "faster and smaller" is worthless here if it is also
+   "different", because a different pool silently re-ranks the whole
+   catalogue. */
+
+const tmpJsonFile = (obj) => {
+  const dir = mkdtempSync(join(tmpdir(), "rank-breadth-test-"));
+  const p = join(dir, "doc.json");
+  writeFileSync(p, JSON.stringify(obj));
+  return p;
+};
+
+/* MUTATION: drop the `depth === 1` check in the key scanner (match `key` at
+   any depth). A `"shows"` property nested inside an episode record, or a
+   `"shows"` STRING VALUE elsewhere in the document, would then be mistaken
+   for the top-level array and the real one would never stream.
+   Verified failing. */
+test("streamJsonArray finds only the top-level key, not a same-named key nested deeper or a string value", () => {
+  const p = tmpJsonFile({
+    version: 1,
+    note: "the word shows appears right here as a plain string value",
+    nested: { shows: ["decoy-should-not-be-yielded"] },
+    shows: [{ id: 1 }, { id: 2 }, { id: 3 }],
+  });
+  const got = [...streamJsonArray(p, "shows")];
+  assert.deepEqual(got, [{ id: 1 }, { id: 2 }, { id: 3 }]);
+});
+
+/* MUTATION: drop the escape-tracking (`escape`) in the in-array string
+   scanner, or the `stringBuf` escape tracking in the pre-array scanner. A
+   `"` escaped as `\"` inside a title or feed_url would then be read as the
+   end of the string, corrupting brace/bracket depth tracking for everything
+   after it. Verified failing (produces a JSON.parse error or a truncated
+   element) when either escape flag is removed. */
+test("a quote or backslash inside a string value does not break element boundaries", () => {
+  const p = tmpJsonFile({
+    shows: [
+      { title: 'Say "hi" to me', note: "a\\backslash and \"quote\"", feed_url: "https://a.example/x" },
+      { title: "second, with a comma inside a string, right here", feed_url: "https://a.example/y" },
+    ],
+  });
+  const got = [...streamJsonArray(p, "shows")];
+  assert.equal(got.length, 2);
+  assert.equal(got[0].title, 'Say "hi" to me');
+  assert.equal(got[0].note, 'a\\backslash and "quote"');
+  assert.equal(got[1].feed_url, "https://a.example/y");
+});
+
+/* MUTATION: use a chunk size (`CHUNK_BYTES`) so small that an element or a
+   string literal spans a chunk boundary and the scanner does not carry state
+   across `read()` calls correctly (e.g. resetting `elementDepth` per chunk).
+   The real files this is built for are 7.6MB and 12.4MB, so a boundary
+   falling inside a JSON value it is not just possible, it is certain.
+   Verified failing against a mutation that resets scanner state per chunk. */
+test("an element spanning a chunk boundary is still parsed whole", () => {
+  // A title long enough to force at least one boundary crossing regardless of
+  // the implementation's chunk size, without hardcoding that size here.
+  const longTitle = "x".repeat(500_000);
+  const p = tmpJsonFile({
+    shows: [
+      { title: longTitle, feed_url: "https://a.example/big" },
+      { title: "short", feed_url: "https://a.example/small" },
+    ],
+  });
+  const got = [...streamJsonArray(p, "shows")];
+  assert.equal(got.length, 2);
+  assert.equal(got[0].title.length, 500_000);
+  assert.equal(got[1].feed_url, "https://a.example/small");
+});
+
+/* Pins that reduceAvailabilities' three accumulators (host priors, DAI rates,
+   swept-feed set) are byte-identical to running hostPriors/daiRatesFrom/
+   sweptFeedUrls over the SAME document loaded whole — the property that
+   makes the streaming rewrite safe to run unattended against the real
+   catalogue instead of a mutation-tested fixture alone. */
+test("reduceAvailabilities matches hostPriors + daiRatesFrom + sweptFeedUrls on the same document", () => {
+  const doc = {
+    shows: [
+      show("https://a.lucky.com/f", { timed: 5, total: 10 }),
+      ...Array.from({ length: 12 }, (_, i) => show(`https://a.solid.com/${i}`, { timed: i < 10 ? 80 : 0, total: 100, dai: i % 2 === 0 })),
+      show("https://a.dead.com/x", { status: "error" }),
+    ],
+  };
+  const p = tmpJsonFile(doc);
+
+  const wholePriors = hostPriors([doc]);
+  const wholeDai = daiRatesFrom([doc]);
+  const wholeSwept = sweptFeedUrls([doc]);
+
+  const { priors, dai, sweptFeeds } = reduceAvailabilities([p]);
+
+  assert.equal(priors.shows, wholePriors.shows);
+  assert.equal(priors.hits, wholePriors.hits);
+  assert.equal(priors.global_hit_rate, wholePriors.global_hit_rate);
+  assert.equal(priors.global_timed_fraction, wholePriors.global_timed_fraction);
+  assert.deepEqual([...priors.hosts.entries()].sort(), [...wholePriors.hosts.entries()].sort());
+
+  assert.equal(dai.global, wholeDai.global);
+  assert.deepEqual([...dai.hosts.entries()].sort(), [...wholeDai.hosts.entries()].sort());
+
+  assert.deepEqual([...sweptFeeds].sort(), [...wholeSwept].sort());
+});
+
+/* Pins that reduceAvailabilities is fatal on a missing path, same as
+   readAvailabilities — see that function's test and header for why silent
+   skipping is the specific bug this guards against. */
+test("reduceAvailabilities is fatal on a missing availability index", () => {
+  assert.throws(
+    () => reduceAvailabilities(["/does/not/exist.json"]),
+    (e) => e.message.includes("/does/not/exist.json"),
+  );
+});
+
+/* Pins that eligibleShowsStreaming produces the SAME pool, in the SAME order,
+   as eligibleShows given the same breadth document and swept-feed set. */
+test("eligibleShowsStreaming matches eligibleShows on the same document", () => {
+  const rows = [
+    { apple_collection_id: 1, feed_url: "https://h.example/a" },
+    { apple_collection_id: 2, feed_url: "https://H.EXAMPLE/a" },
+    { apple_collection_id: 3, feed_url: "https://h.example/b", in_curated: true },
+    { apple_collection_id: 4, feed_url: null },
+    { apple_collection_id: 5, feed_url: "https://h.example/c" },
+  ];
+  const p = tmpJsonFile({ shows: rows });
+  const swept = new Set(["https://h.example/c"]);
+
+  const wholePool = eligibleShows(rows, { alreadySweptFeeds: swept });
+  const { pool, total } = eligibleShowsStreaming(p, { alreadySweptFeeds: swept });
+
+  assert.equal(total, rows.length);
+  assert.deepEqual(pool.map((s) => s.apple_collection_id), wholePool.map((s) => s.apple_collection_id));
+  assert.deepEqual(pool.map((s) => s.apple_collection_id), [1]);
 });
