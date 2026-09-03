@@ -84,13 +84,14 @@ test("epRow's title links to #/episode/:id, on top of the unchanged ▶/star/ext
   assert.doesNotMatch(html, /class="go"/, "no external link-out control when audio_url exists — unchanged from before");
 });
 
-test("epRow falls back to the external listen-elsewhere link when no audio_url, title link still present", () => {
+test("epRow renders the honest not-playable note, not a link-out, when there is no audio_url", () => {
   const app = loadApp();
   const item = { id: "ep-noaudio", title: "No Audio", show: "Some Show", duration_min: 5 };
   const html = app.epRow(item, 0, "ctx-1", -1);
   assert.match(html, /<a class="ep-title-link" href="#\/episode\/ep-noaudio">No Audio<\/a>/);
-  assert.match(html, /class="go"[^>]*target="_blank"[^>]*>Listen in your podcast app ↗<\/a>/,
-    "external control must be unchanged: still target=_blank to playLink");
+  assert.doesNotMatch(html, /class="go"/, "no external link-out control any more (removed 2026-09-03)");
+  assert.doesNotMatch(html, /Listen in your podcast app/, "the old link-out copy must not appear anywhere");
+  assert.match(html, /class="not-playable"/, "an honest in-app note replaces the removed external control");
   assert.doesNotMatch(html, /class="play-btn"/, "no play button without audio_url — unchanged");
 });
 
@@ -106,8 +107,9 @@ test("archivedRow's title links to #/episode/:id for a named (still-catalogued-e
     /<a class="ep-title-link" href="#\/episode\/ep-y">Y Title<\/a>/,
     "archived row's episode title must link to #/episode/:id even though the part aged out of the live pool"
   );
-  assert.match(html, /class="go"[^>]*target="_blank"[^>]*>Listen in your podcast app ↗<\/a>/,
-    "external control unchanged: still links out via apple_collection_id");
+  assert.doesNotMatch(html, /class="go"/, "no external link-out control any more (removed 2026-09-03)");
+  assert.doesNotMatch(html, /Listen in your podcast app/, "the old link-out copy must not appear anywhere");
+  assert.match(html, /class="not-playable"/, "a named aged-out part gets the honest not-playable note, not a link elsewhere");
 });
 
 test("archivedRow's unnamed part has neither a title link nor a play/star/external control (unchanged)", () => {

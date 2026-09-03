@@ -2670,30 +2670,52 @@ function renderForays() {
   sizeProgressBars($("#view"));
 }
 
-/* One playable row = one play control, never two. An item with audio_url gets
-   the in-app ▶ button and nothing else plays it; only an item with NO
-   audio_url falls back to the external "Play" link-out. Before this a row
-   with audio_url rendered both — the ▶ button AND a text link that also said
-   "Play" — which is two controls doing the same job. */
+/* One playable row = one play control, never two — and there is no other
+   kind of control any more (product rule, 2026-09-02, Joey: "we should be
+   able to play all podcasts from the app. If we can't, let's fix that.").
+   The prior "Listen in your podcast app ↗" link-out is gone entirely: it is
+   not what a missing audio_url degrades to, it is deleted. An item with
+   audio_url gets the in-app ▶ button. An item WITHOUT one (a genuine
+   ingestion edge case — see notPlayableNote()) gets an honest inline note
+   instead of a fake button or an external hop — never both, never neither
+   silently. */
 function epRow(item, idx, ctx, nextIdx) {
   const inApp = playBtn(item);
-  const external = inApp ? "" : `<a class="go" href="${esc(safeUrl(playLink(item)))}" target="_blank" rel="noopener"
-       data-ev="picked" data-ep="${item.id}" data-ctx="${ctx}">Listen in your podcast app ↗</a>`;
+  const unavailable = inApp ? "" : notPlayableNote();
   return `<div class="ep-row">
     <span class="q-num ${idx === nextIdx ? "next" : ""}">${idx + 1}</span>
     <div class="info">
       <div class="t"><a class="ep-title-link" href="#/episode/${esc(encodeURIComponent(item.id))}">${esc(item.title)}</a>${explicitBadge(item.explicit)}</div>
       <div class="s">${showNameLink(item.show)} · ${fmtDur(item.duration_min)}</div>
     </div>
-    ${inApp}${starBtn(item.id)}${upNextBtn(item.id)}${external}
+    ${inApp}${starBtn(item.id)}${upNextBtn(item.id)}${unavailable}
   </div>`;
+}
+
+/* The only thing that fills the control slot when an episode genuinely has
+   no audio_url — never a link elsewhere. As of the Stage 3b RSS ingestion
+   (kanban t_567b570f), this is a rare, named edge case, not a routine
+   degrade: an episode never enters the catalogue without a real enclosure
+   (ingestShowFeed.ts drops any item with none), so this only fires for the
+   small number of pre-existing curated-pool items a one-off backfill could
+   not resolve — a members-only/paywalled episode absent from the public RSS
+   feed, or a video-only enclosure with no audio track (see
+   tools/refresh/backfill-audio.mjs's UNRESOLVED report: 8 of 1855+27 items,
+   0.43%, as of 2026-09-03). Plain text, no href, nothing to click — an
+   honest dead end beats a button that does nothing and a link that leaves
+   the app. */
+function notPlayableNote() {
+  return `<span class="not-playable" title="4a could not get a playable audio file for this episode">Not available to play</span>`;
 }
 
 /* A part the live pool no longer carries, rendered from what the playlist saved
    (#276). It keeps its number and its place, so the count above it stays true.
-   What it cannot offer is in-app playback — `audio_url` is the field deliberately
-   not persisted because it moves — so it links out instead, exactly the
-   degradation playBtn() already gives an item with no audio.
+   It has no in-app audio to play (`audio_url` is deliberately not persisted
+   because it moves) — as of 2026-09-03 there is no link-out fallback for
+   that any more, product rule: 4a plays everything itself or says so
+   honestly, it never sends a listener elsewhere. So an aged-out part gets
+   the same notPlayableNote() plain-text state epRow gives a genuine
+   ingestion edge case, not a link to another app.
 
    IT KEEPS ITS STAR, and that closes a loop rather than decorating the row:
    `cp_saved` holds whole snapshots, and hydratePlaylistParts reads it, so a
@@ -2701,27 +2723,10 @@ function epRow(item, idx, ctx, nextIdx) {
    episode is the one action that makes it permanently recoverable. It works
    because renderPlaylistDetail seeds the snapshot into `state.itemIndex`, which
    toggleStar requires; an `unnamed` part has no snapshot to store, so it gets no
-   star.
-
-   `apple_collection_id` is what a link-out needs, and an `unnamed` part has
-   neither that nor a title, so it gets no link rather than a link to
-   `.../idundefined`.
-
-   THE LINK STILL CARRIES `data-ev="picked"`, and it has to. Opening an archived
-   part in another app is the same act as opening a live one, so it must reach
-   bindPickLogging: otherwise it stops entering `cp_history`, and this playlist's
-   own "played" count and its next-up marker would go backwards the moment an
-   episode aged out — the same class of quiet regression as the one #276 is about.
-   That path reads `state.itemIndex` for the topics it reports, which is why
-   renderPlaylistDetail seeds the archived snapshot there and why `topics` is one
-   of the persisted fields. An `unnamed` part has no link and nothing to report,
-   so it logs nothing. */
+   star. */
 function archivedRow(item, idx, ctx) {
   const named = !!item.title;
-  const link = item.apple_collection_id
-    ? `<a class="go" href="${esc(safeUrl(playLink(item)))}" target="_blank" rel="noopener"
-         data-ev="picked" data-ep="${esc(item.id)}" data-ctx="${esc(ctx)}">Listen in your podcast app ↗</a>`
-    : "";
+  const unavailable = named ? notPlayableNote() : "";
   return `<div class="ep-row gone">
     <span class="q-num">${idx + 1}</span>
     <div class="info">
@@ -2730,7 +2735,7 @@ function archivedRow(item, idx, ctx) {
         ? `${showNameLink(item.show)}${item.duration_min ? ` · ${fmtDur(item.duration_min)}` : ""} · not in 4a's catalogue right now`
         : "Saved before 4a kept episode details"}</div>
     </div>
-    ${named ? starBtn(item.id) : ""}${named ? upNextBtn(item.id) : ""}${link}
+    ${named ? starBtn(item.id) : ""}${named ? upNextBtn(item.id) : ""}${unavailable}
   </div>`;
 }
 
@@ -2744,7 +2749,7 @@ function partsNote(rows) {
   const parts = [];
   if (archived) {
     const one = archived === 1;
-    parts.push(`${archived} part${one ? " is" : "s are"} not in 4a's catalogue right now, so ${one ? "it" : "they"} cannot play in the app — open ${one ? "it" : "them"} in your podcast app instead.`);
+    parts.push(`${archived} part${one ? " is" : "s are"} not in 4a's catalogue right now, so ${one ? "it" : "they"} cannot play — ${one ? "it stays listed" : "they stay listed"} so you can see where it fits in the playlist.`);
   }
   if (unnamed) {
     const one = unnamed === 1;
@@ -2883,8 +2888,7 @@ function renderEpisode(id) {
       </div>
       ${item.artwork_url ? `<img class="ep-art" src="${esc(safeUrl(item.artwork_url))}" alt="">` : ""}
       ${item.hook ? `<p class="fp-s-why">${esc(item.hook)}</p>` : ""}
-      <div class="ep-actions">${item.audio_url ? playBtn(item) : `<a class="go" href="${esc(safeUrl(playLink(item)))}" target="_blank" rel="noopener"
-        data-ev="picked" data-ep="${esc(item.id)}" data-ctx="episode-page">Listen in your podcast app ↗</a>`}${starBtn(item.id)}${upNextBtn(item.id)}</div>
+      <div class="ep-actions">${item.audio_url ? playBtn(item) : notPlayableNote()}${starBtn(item.id)}${upNextBtn(item.id)}</div>
       ${moreFromShow(item)}
     </div>`;
   bindPickLogging($("#view"));

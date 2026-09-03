@@ -632,9 +632,11 @@ test("an archived pick never becomes the continue banner, and cannot degrade a l
 });
 
 test("an archived part offers no in-app play button — the audio URL was deliberately not kept", () => {
-  /* A copied enclosure URL that has moved gives a play button that fails. The
-     row links out instead, which is the same degradation playBtn() already gives
-     an item with no audio.
+  /* A copied enclosure URL that has moved gives a play button that fails, so
+     the row offers no control at all — the same honest "not available to
+     play" note epRow gives a genuine no-audio_url edge case, not a link
+     elsewhere (product rule, 2026-09-03: 4a plays everything itself or says
+     so, it never sends a listener to another app).
 
      MUTATION: render an archived part through epRow. `data-play` appears for it
      (or, with no audio_url, a bare `Play` link built from a snapshot that has no
@@ -645,7 +647,9 @@ test("an archived part offers no in-app play button — the audio URL was delibe
   assert.strictEqual(plays, 1, "only the live part may offer in-app playback");
   assert.ok(html.includes(`data-play="show-1--episode-1"`), "and it must be the live one");
   assert.ok(!html.includes(`data-play="show-2--episode-2"`));
-  assert.ok(/Listen in your podcast app ↗<\/a>/.test(html), "the archived part must still be openable elsewhere");
+  assert.ok(!html.includes("class=\"go\""), "no external link-out control any more (removed 2026-09-03)");
+  assert.ok(!html.includes("Listen in your podcast app"), "the old link-out copy must not appear anywhere");
+  assert.ok(html.includes("class=\"not-playable\""), "the archived part gets the honest not-playable note instead");
 });
 
 test("a part with no snapshot behind it still holds its place, and links nowhere rather than to idundefined", () => {
@@ -742,7 +746,7 @@ test("the new copy follows the repo's rules: no exclamation, no blame, an actual
   assert.match(many, /2 parts were saved before/, `plural verb: ${many}`);
   assert.match(many, /if the episodes return to the catalogue/, `plural verb: ${many}`);
   assert.ok(!/episode return\b/.test(single), `"the episode return" is not English: ${single}`);
-  assert.match(many, /podcast app/, "an archived part must be given somewhere to go");
+  assert.match(many, /cannot play/, "an archived part must say plainly that it cannot play");
   /* And it must not promise something buildPlaylist does not do: rebuilding mints
      a NEW playlist and leaves this one alone, stubs included. */
   assert.ok(!/replaces/.test(many), `rebuilding does not replace this playlist: ${many}`);
@@ -755,45 +759,26 @@ test("an archived title is escaped, so a hostile feed cannot reach the page thro
      Storage is also a longer-lived injection vector than a fetch: this string was
      written weeks ago and is replayed on every visit.
 
-     Every interpolation in the new row is covered, not just the two obvious ones:
-     a mutation round found that dropping `esc()` from the href, from `data-ep` or
-     from `data-ctx` all survived the first draft, because the only assertions were
-     on title and show.
-
-     MUTATION 1: interpolate `item.title` or `item.show` raw in archivedRow.
-     MUTATION 2: drop `esc()` (or `safeUrl()`) from the row's `href`.
-     MUTATION 3: drop `esc()` from `data-ep` or `data-ctx`. */
+     MUTATION: interpolate `item.title` or `item.show` raw in archivedRow. */
   const m = mount();
   const html = withArchivedPart(m, { over: { title: `<img src=x onerror="alert(1)">`, show: `"><script>alert(2)</script>` } });
   assert.ok(!html.includes("<img src=x"), "raw markup from a stored title reached the page");
   assert.ok(!html.includes("<script>alert(2)"), "raw markup from a stored show name reached the page");
   assert.ok(html.includes("&lt;img src=x"), "the title should be there, escaped");
 
-  /* The href, `data-ep` and `data-ctx`. A stored `apple_collection_id` goes
-     straight into the Apple URL, so it is an attribute-breakout vector even though
-     it looks like a number, and the id reaches both `data-ep` and that URL. Only
-     the archived part carries these values, so the whole page is the right scope —
-     an `on…=` handler anywhere in it means one of them escaped. */
+  /* `data-ep` and `data-ctx` still guard the title link's href even though the
+     old external "go" link (and the apple_collection_id/id it interpolated
+     into an href) is gone (removed 2026-09-03). Only the title link's own
+     #/episode/:id href remains as an attribute-breakout vector. */
   const hostile = mount();
   const rowHtml = withArchivedPart(hostile, {
-    over: { id: `ep" onmouseover="alert(3)`, apple_collection_id: `9" onfocus="alert(4)` },
+    over: { id: `ep" onmouseover="alert(3)` },
   });
-  /* The payload text survives either way — what must NOT survive is a RAW quote
-     ending the attribute, so the check is for `onmouseover="` with a real `"`
-     rather than for the words. `onmouseover=&quot;` is inert. */
   assert.ok(!/onmouseover="/.test(rowHtml), `the id broke out of an attribute: ${rowHtml}`);
-  assert.ok(!/onfocus="/.test(rowHtml), `the collection id broke out of the href: ${rowHtml}`);
   assert.ok(rowHtml.includes("&quot; onmouseover=&quot;"), "the id should be there, escaped");
-  assert.ok(rowHtml.includes("&quot; onfocus=&quot;"), "and so should the collection id");
   /* And the star, which is the attribute this found the hard way: it interpolated
      `data-star` raw, and a playlist part is the first STORED id to reach it. */
   assert.match(rowHtml, /data-star="ep&quot; onmouseover=&quot;alert\(3\)"/, "data-star must be escaped");
-
-  /* NOT ASSERTED, and named so nobody writes a hollow test for it later: `safeUrl`
-     on this row cannot currently refuse anything, because `playLink` always builds
-     its own `https://` prefix, so no stored field can change the scheme. The
-     `safeUrl()` call is defensive against a future playLink, and a test pretending
-     to exercise it would pass with `safeUrl` deleted. */
 });
 
 test("an archived part keeps its star, and starring it makes it permanently recoverable", () => {
@@ -834,45 +819,24 @@ test("an archived part keeps its star, and starring it makes it permanently reco
   assert.strictEqual(p.items[0].title, "Episode 2 of something", "the star should have rescued it");
 });
 
-test("opening an archived part still records the pick, so history and the played count do not go backwards", () => {
-  /* Opening an aged-out part in another app is the same act as opening a live one.
-     If the row stopped carrying `data-ev="picked"` it would leave `cp_history`,
-     and this playlist's own played count and next-up marker would silently regress
-     the moment an episode rotated out — the same class of defect as #276 itself.
-     The topics it reports come from the seeded snapshot, which is the reachable
-     justification for persisting `topics`.
+test("an archived part offers no clickable action at all, so nothing false is ever logged for it", () => {
+  /* Before 2026-09-03 an archived part linked out to another app, and that link
+     still had to log a "picked" event so history/played-count didn't regress.
+     Now there is nowhere left to send a listener — 4a either plays it in-app
+     or says plainly that it cannot (product rule, Joey). A part with no
+     playback anywhere has no action to record, so archivedRow renders no
+     `data-ev="picked"` control at all for it, named or not.
 
-     Two halves, asserted separately because the DOM stub cannot parse innerHTML:
-     the MARKUP carries the right attributes, and the REAL bindPickLogging, driven
-     with those attributes, does the four things that matter. The first draft
-     hand-rolled a `logEvent` call and claimed it was the handler, which covered
-     nothing — `touchPlaylistPlayed` in particular had no coverage at all.
-
-     MUTATION 1: drop `data-ev="picked"` or `data-ep` from archivedRow's link. The
-     markup assertion fails.
-     MUTATION 2: drop `topics` from PLAYLIST_PART_FIELDS. The handler reports no
-     topics and that assertion fails.
-     MUTATION 3: delete the itemIndex seeding loop. Same — the handler has no
-     snapshot to read topics from.
-     MUTATION 4: remove the `touchPlaylistPlayed` call from bindPickLogging. The
-     `last_played_at` assertion fails. */
+     MUTATION: give archivedRow's not-playable note a `data-ev="picked"`/
+     `data-ep` pair anyway. The markup assertion below fails. */
   const m = mount();
   const html = withArchivedPart(m, { extraStub: true });
-  assert.ok(/data-ev="picked" data-ep="show-2--episode-2" data-ctx="playlist-q1"/.test(html),
-    "the archived row's link must be a logged pick");
-  /* The unnameable part has no link, so it must log nothing at all. */
+  assert.ok(!html.includes(`data-ev="picked" data-ep="show-2--episode-2"`),
+    "a named archived part with no playback must not claim to be a logged pick");
+  /* The unnameable part has no link either, so it must log nothing at all. */
   assert.ok(!html.includes(`data-ep="long-gone--episode"`), "there is nothing to open, so nothing to log");
-
-  clickPick(m, { ep: "show-2--episode-2", ctx: "playlist-q1" });
-
-  const ev = m.eventLog.rows.filter((e) => e.type === "picked").pop();
-  assert.ok(ev, "the real handler logged no picked event");
-  assert.strictEqual(ev.payload.episode_id, "show-2--episode-2");
-  assert.deepStrictEqual(ev.payload.topics, ["science/physics"],
-    "the topics come from the seeded snapshot — this is what `topics` is persisted for");
-  assert.deepStrictEqual(JSON.parse(m.store.get("cp_history")), ["show-2--episode-2"],
-    "an archived part must still enter cp_history, or the played count regresses");
-  assert.ok(m.playlistsRaw()[0].last_played_at, "and the playlist must be marked as played");
+  assert.deepStrictEqual(m.store.get("cp_history") ?? null, null,
+    "nothing was clicked, so history must be untouched by rendering alone");
 });
 
 test("the 'next' marker never lands on a part that cannot be opened in the app", () => {
