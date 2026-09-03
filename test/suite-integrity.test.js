@@ -282,7 +282,7 @@ const FLOORS = {
      entry renders zero episodes rather than an error, on one specific show,
      and nothing else in the repo would notice. Every test names its mutation;
      see the suite header for the full list of what each test pins. */
-  "test/show-page.test.js": 38,
+  "test/show-page.test.js": 39,
 
   /* Stage 3b of docs/show-pages-plan.md — full per-show RSS ingestion
      (kanban card t_567b570f): renders the curated pool synchronously so

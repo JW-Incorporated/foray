@@ -730,8 +730,9 @@ test("vouchForHtml renders the 'Shows we vouch for' heading and a real link for 
      playable item, same rule similarShowsSection and the shows-search
      results already follow).
 
-     MUTATION: delete `${vouchForHtml()}` from renderHome's template. The
-     heading and href assertions both fail. */
+     MUTATION: delete the `${vouch ? ... : ""}` tail from renderHome's
+     template (the section renders after `.home`, inside `.home-below` — see
+     the placement test below). The heading and href assertions both fail. */
   const m = await mountBooted();
   const shows = m.ctx.showsWeVouchFor();
   assert.ok(shows.length > 0, "fixture assumption: the real 220-show catalogue must have editorially-noted shows");
@@ -780,6 +781,49 @@ test("vouchForHtml's row is separate from the topic cards and forays, per the B1
   assert.ok(html.includes('class="show-result"'), "must reuse the show-result row markup, not ep-row or fy-home-row");
   assert.ok(!html.includes('class="ep-row'), "must not render as episode rows");
   assert.ok(!html.includes('class="fy-home-row'), "must not render as foray rows");
+});
+
+test("the vouch row renders below `.home`, never inside it, so it cannot starve the four cards", async () => {
+  /* The #433 regression, pinned. `.home` is a fixed-height flex column
+     (`height: calc(100svh - var(--topbar-h) - env(safe-area-inset-top))`)
+     whose only `flex: 1` child is `.cards4`. A ~611px section added as a
+     sibling INSIDE it starves the cards to nothing: measured over CDP at
+     440x956, 402x874, 390x844, 375x667 and 1440x900, `.cards4` was 0px and
+     every `.mini-card` 26px — at EVERY viewport, desktop included. Rendering
+     the section after `.home`'s closing tag (wrapped in `.home-below`)
+     restores all four cards to their exact pre-#433 heights.
+
+     This asserts source order rather than geometry, because source order is
+     what the flex starvation actually turns on and this harness has no
+     layout engine. The pixel evidence lives in the PR.
+
+     MUTATION: move `${vouch}` back inside the `.home` template, where
+     `${vouchForHtml()}` sat before the fix. `.home-below` then never renders,
+     so the first assertion fails; so does the last one, which is the
+     regression itself. */
+  const m = await mountBooted();
+  assert.ok(
+    m.ctx.showsWeVouchFor().length > 0,
+    "fixture assumption: the real catalogue must have editorially-noted shows, or there is no section to place"
+  );
+  m.ctx.renderHome();
+  const html = m.view();
+
+  const belowAt = html.indexOf('class="home-below"');
+  assert.ok(belowAt !== -1, "the vouch row must be wrapped in .home-below, outside .home");
+  assert.ok(
+    html.indexOf('class="ep-more fy-vouch"') > belowAt,
+    "the vouch section must render inside the .home-below wrapper"
+  );
+
+  /* Everything ahead of the wrapper is `.home`'s own subtree. */
+  const home = html.slice(0, belowAt);
+  assert.ok(home.includes('class="cards4"'), "sanity: .cards4 must still be inside .home");
+  assert.ok(home.includes('id="browse-all-link"'), "sanity: .home must still hold the whole search block");
+  assert.ok(
+    !home.includes("fy-vouch"),
+    "the vouch row must NOT be a flex sibling inside .home — that is exactly what collapsed the cards to 0px in #433"
+  );
 });
 
 /* ==================================================================== */

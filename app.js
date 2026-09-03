@@ -2128,13 +2128,18 @@ function renderHome() {
   document.body.className = "view-home";
   if (!state.cardSlots.length) buildCards();
   const resumeRows = forayResumeRows();
+  /* Rendered OUTSIDE `.home`, below the fold — see the `.home-below` note in
+     styles.css. `.home` is a fixed-height flex column and `.cards4` is its only
+     `flex: 1` child, so any tall sibling inside it starves the four cards to
+     zero. Computed once here rather than called inline twice: the sample is
+     seeded by day-of-year, so a second call is deterministic but wasted. */
+  const vouch = vouchForHtml();
   $("#view").innerHTML = `
     <div class="home">
       <div id="banner-slot">${bannerHtml()}</div>
       ${jumpBackInHtml(resumeRows)}
       ${forayHomeHtml()}
       <div class="cards4">${state.cardSlots.map(miniCard).join("")}</div>
-      ${vouchForHtml()}
       <div class="search-tabs" role="tablist">
         <button type="button" id="tab-topics" class="search-tab on" role="tab" aria-pressed="true">Playlists</button>
         <button type="button" id="tab-shows" class="search-tab" role="tab" aria-pressed="false">Shows</button>
@@ -2151,7 +2156,8 @@ function renderHome() {
       <p id="sh-note" class="note" hidden></p>
       <div id="sh-results" class="show-results" hidden></div>
       <a id="browse-all-link" class="browse-all-link" href="#/shows" hidden>Browse all shows ›</a>
-    </div>`;
+    </div>
+    ${vouch ? `<div class="home-below">${vouch}</div>` : ""}`;
 
   if (!showFirstTimeExplainerOnce()) showIntroPopupOnce();
 
