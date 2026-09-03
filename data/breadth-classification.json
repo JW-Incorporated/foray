@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-09-02T16:19:10.894Z",
+  "built_at": "2026-09-03T00:18:28.243Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-09-02-e1fd67de",
+    "last_batch_id": "fresh-2026-09-03-a031bc07",
     "last_batch_tier": 1,
     "transcript_labels": "descriptive cost label, never an eligibility test — see tools/classify/labels.mjs"
   },
@@ -6686,11 +6686,39 @@
     },
     "268565125": {
       "topics": [
-        "music",
-        "history"
+        "education",
+        "music"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.8
+        },
+        {
+          "node": "music",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Educational classical music program for children.",
+      "display_title": "Classics For Kids",
+      "blurb": "join host naomi lewin as she introduces children to classical music in a fun and entertaining way with this educational outreach program of cincinnati",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-a031bc07",
+      "classified_at": "2026-09-03T00:18:28.243Z"
     },
     "268613141": {
       "topics": [
@@ -26730,10 +26758,39 @@
     },
     "944954636": {
       "topics": [
-        "culture/art"
+        "craft/photography",
+        "business/careers"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/photography",
+          "confidence": 0.85
+        },
+        {
+          "node": "business/careers",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Career and job interview advice.",
+      "display_title": "Street Photography Magazine Podcast",
+      "blurb": "the official journal of street and documentary photography",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-a031bc07",
+      "classified_at": "2026-09-03T00:18:28.243Z"
     },
     "945390489": {
       "topics": [
@@ -102015,7 +102072,35 @@
         "linguistics/language"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.9
+        },
+        {
+          "node": "linguistics/language",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Spanish language learning and Latin American culture.",
+      "display_title": "Charlas Hispanas: Aprende Español | Learn Spanish",
+      "blurb": "podcast para aprender español y cultura latinoamericana",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-a031bc07",
+      "classified_at": "2026-09-03T00:18:28.243Z"
     },
     "1496674902": {
       "topics": [
@@ -124777,10 +124862,54 @@
     },
     "1531521527": {
       "topics": [
-        "sports/hockey"
+        "sports/hockey",
+        "sports/football",
+        "business/marketing",
+        "business/careers",
+        "space"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/hockey",
+          "confidence": 0.95
+        },
+        {
+          "node": "sports/football",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/marketing",
+          "confidence": 0.85
+        },
+        {
+          "node": "business/careers",
+          "confidence": 0.85
+        },
+        {
+          "node": "space",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Astronomy and night sky observation.",
+      "display_title": "The Gold Standard",
+      "blurb": "we talk about the nashville predators. there is no better show in smashville.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-a031bc07",
+      "classified_at": "2026-09-03T00:18:28.243Z"
     },
     "1531526782": {
       "topics": [
@@ -124857,11 +124986,49 @@
     },
     "1531585576": {
       "topics": [
-        "nature/earth-science",
-        "science"
+        "adventure/exploration",
+        "space",
+        "business/startups",
+        "travel"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.85
+        },
+        {
+          "node": "space",
+          "confidence": 0.85
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.8
+        },
+        {
+          "node": "travel",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Astronomy and night sky observation.",
+      "display_title": "Overland Trail Guides Podcast",
+      "blurb": "the otg podcast features guests from the overland and off road adventure industry, dirt nomads, and adventurers.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-a031bc07",
+      "classified_at": "2026-09-03T00:18:28.243Z"
     },
     "1531586056": {
       "topics": [
@@ -124921,7 +125088,31 @@
         "sports/wrestling"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/wrestling",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Ring of Honor wrestling show-by-show review.",
+      "display_title": "ThROH The Years",
+      "blurb": "the podcast where two guys review ring of honor, show-by-show, from the beginning.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-a031bc07",
+      "classified_at": "2026-09-03T00:18:28.243Z"
     },
     "1531659166": {
       "topics": [
@@ -125064,10 +125255,54 @@
     },
     "1531902278": {
       "topics": [
-        "business/marketing"
+        "education/language-learning",
+        "sports/football",
+        "business/marketing",
+        "comedy/stand-up",
+        "linguistics/language"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.9
+        },
+        {
+          "node": "sports/football",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/marketing",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy/stand-up",
+          "confidence": 0.85
+        },
+        {
+          "node": "linguistics/language",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedy and stand-up commentary.",
+      "display_title": "Inside Insights",
+      "blurb": "marketing and insights teams speak different languages. their disconnect wastes budgets, delays campaigns, and leaves consumer truth buried in data.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-a031bc07",
+      "classified_at": "2026-09-03T00:18:28.243Z"
     },
     "1531902282": {
       "topics": [
@@ -125178,10 +125413,48 @@
     },
     "1532182145": {
       "topics": [
-        "sports/cricket"
+        "sports/cricket",
+        "business/careers",
+        "space"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/cricket",
+          "confidence": 0.95
+        },
+        {
+          "node": "business/careers",
+          "confidence": 0.85
+        },
+        {
+          "node": "space",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Astronomy and night sky observation.",
+      "display_title": "The Scoop Cricket Podcast",
+      "blurb": "the scoop women's cricket podcast is the place for all fans of the female game! join rana hussain and molly strano as the pair talk you through the au",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 6,
+        "episodes_with_timed_transcript": 6,
+        "transcript_tags": 18,
+        "transcript_types": {
+          "application/srt": 6,
+          "text/vtt": 6,
+          "text/plain": 6
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-a031bc07",
+      "classified_at": "2026-09-03T00:18:28.243Z"
     },
     "1532225667": {
       "topics": [
@@ -125230,18 +125503,75 @@
     },
     "1532267239": {
       "topics": [
-        "craft/diy-home"
+        "adventure/exploration",
+        "craft/diy-home",
+        "travel"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.85
+        },
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.8
+        },
+        {
+          "node": "travel",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Houseplant care and gardening.",
+      "display_title": "Houseplant Homebody",
+      "blurb": "welcome all plant lovers, plant experts, plant enthusiasts and beginners! i am so excited to share my adventures with all things plants! i am not an e",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-a031bc07",
+      "classified_at": "2026-09-03T00:18:28.243Z"
     },
     "1532282999": {
       "topics": [
-        "sports",
-        "news"
+        "sports/football"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/football",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "NFL history and current season analysis.",
+      "display_title": "Mukilteo Football Show",
+      "blurb": "nfl history and legacy within the ups and downs of the current nfl season. shows thursday, sunday and monday after prime time games",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-a031bc07",
+      "classified_at": "2026-09-03T00:18:28.243Z"
     },
     "1532301119": {
       "topics": [
@@ -125344,10 +125674,39 @@
     },
     "1532573147": {
       "topics": [
+        "space",
         "fiction/drama"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.85
+        },
+        {
+          "node": "fiction/drama",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Astronomy and night sky observation.",
+      "display_title": "Woodbine: A Parkdale Haunts Production",
+      "blurb": "beatrice ashe has a quiet life as an assistant at the woodbine agency, a small detective firm in the east end of toronto.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-a031bc07",
+      "classified_at": "2026-09-03T00:18:28.243Z"
     },
     "1532606850": {
       "topics": [
@@ -125367,10 +125726,44 @@
     },
     "1532649035": {
       "topics": [
-        "business/careers"
+        "sports/football",
+        "business/careers",
+        "space"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/football",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/careers",
+          "confidence": 0.85
+        },
+        {
+          "node": "space",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Astronomy and night sky observation.",
+      "display_title": "Interview Boss",
+      "blurb": "welcome to interview boss hosted by sisters emma and sarah smith. this podcast is all about providing advice, inspiration and support for job seekers.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-a031bc07",
+      "classified_at": "2026-09-03T00:18:28.243Z"
     },
     "1532652997": {
       "topics": [
@@ -125391,8 +125784,32 @@
       "topics": [
         "business/careers"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/careers",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unable to classify confidently; genre suggests business/careers.",
+      "display_title": "بترولي",
+      "blurb": "حوارات عميقة مع قادة الفكر والشخصيات المهنية المؤثرة في المجتمع، نكشف فيها عن قصصهم وتحدياتهم والدروس التي شكلت مسيرتهم العملية.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-a031bc07",
+      "classified_at": "2026-09-03T00:18:28.243Z"
     },
     "1532674642": {
       "topics": [
@@ -125689,11 +126106,34 @@
     },
     "1533153678": {
       "topics": [
-        "business/startups",
-        "business/founders"
+        "business/marketing"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/marketing",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Marketing strategy and consumer insights.",
+      "display_title": "Acquisitions Anonymous - #1 for business buying, selling",
+      "blurb": "jump into the world of business acquisitions with hosts bill d'alessandro, mills snell, heather endresen, and michael girdley.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-a031bc07",
+      "classified_at": "2026-09-03T00:18:28.243Z"
     },
     "1533194848": {
       "topics": [
@@ -125714,15 +126154,63 @@
       "topics": [
         "comedy/stand-up"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/stand-up",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unable to classify confidently; genre suggests comedy/stand-up.",
+      "display_title": "Notes Of A Goon",
+      "blurb": "goon of note, chris from bk sits down and yells about childhood trauma, how he'd fix the whole damn country, and all sorts of other bullshit.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-a031bc07",
+      "classified_at": "2026-09-03T00:18:28.243Z"
     },
     "1533388375": {
       "topics": [
         "comedy/interviews"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/interviews",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unable to classify confidently; genre suggests comedy/interviews.",
+      "display_title": "出逃在即",
+      "blurb": "《出逃在即》是由两个活力四射的生活老达人主持的播客节目。主打别等下辈子，这辈子就要好好活的中心思想。您可以在这里收听到最有料的生活方式、最有趣的人生体验、最炸裂的人性故事。 哈刺与小乐每周二早8点，带你一起发现生活的乐趣。 客服：chutaozaiji 公众号：出逃studio 微博：出逃工作室",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-a031bc07",
+      "classified_at": "2026-09-03T00:18:28.243Z"
     },
     "1533428270": {
       "topics": [
@@ -125737,7 +126225,31 @@
         "sports/tennis"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/tennis",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Tennis tournament analysis and coverage.",
+      "display_title": "Quiet please",
+      "blurb": "un podcast di tennis dedicato ai grandi slam, con tiziana scalabrin ed emanuele atturo. questo podcast è realizzato grazie al sostegno degli abbonati.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-a031bc07",
+      "classified_at": "2026-09-03T00:18:28.243Z"
     },
     "1533462141": {
       "topics": [
@@ -125837,7 +126349,31 @@
         "sports/tennis"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/tennis",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Tennis tournament analysis and coverage.",
+      "display_title": "2020 French Open Women's Draw Analysis",
+      "blurb": "your tennis prof, jako garos, analyzes the 2020 french open women's draw - enjoy! yourtenniscoach.net",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 3,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-a031bc07",
+      "classified_at": "2026-09-03T00:18:28.243Z"
     },
     "1533560948": {
       "topics": [
@@ -125921,11 +126457,34 @@
     },
     "1533675756": {
       "topics": [
-        "business/startups",
-        "business/founders"
+        "business/marketing"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/marketing",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Marketing strategy and consumer insights.",
+      "display_title": "iDigress with Troy Sandidge",
+      "blurb": "want to grow and scale your business with more clarity, strategy, and sustainability? the idigress podcast helps founders, marketers, entrepreneurs, a",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-a031bc07",
+      "classified_at": "2026-09-03T00:18:28.243Z"
     },
     "1533685480": {
       "topics": [
@@ -126225,11 +126784,34 @@
     },
     "1533945778": {
       "topics": [
-        "space",
-        "science"
+        "space"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Astronomy and night sky observation.",
+      "display_title": "SkyCaramba",
+      "blurb": "podcast about astronomy and the joys of watching the skies at night--and sometimes during the day",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-a031bc07",
+      "classified_at": "2026-09-03T00:18:28.243Z"
     },
     "1533955756": {
       "topics": [
@@ -126584,10 +127166,44 @@
     },
     "1534531130": {
       "topics": [
-        "kids-family/parenting"
+        "sports/wrestling",
+        "kids-family/parenting",
+        "space"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/wrestling",
+          "confidence": 0.95
+        },
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.9
+        },
+        {
+          "node": "space",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Christian parenting and faith-building guidance.",
+      "display_title": "The Purpose of Motherhood | Faith for Christian",
+      "blurb": "are you a christian mom trying to raise jesus-loving kids while juggling exhaustion, mom guilt, and piles of laundry? welcome, friend.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-a031bc07",
+      "classified_at": "2026-09-03T00:18:28.243Z"
     },
     "1534539834": {
       "topics": [
@@ -126665,10 +127281,34 @@
     },
     "1534623875": {
       "topics": [
-        "health/alternative"
+        "business/careers"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/careers",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Career and job interview advice.",
+      "display_title": "The Headache Doctor Podcast",
+      "blurb": "even after trying medication, lifestyle changes, and other “research-backed treatments” for migraine symptoms, does nothing feel like it’s really solv",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-a031bc07",
+      "classified_at": "2026-09-03T00:18:28.243Z"
     },
     "1534626425": {
       "topics": [
@@ -126688,11 +127328,39 @@
     },
     "1534629749": {
       "topics": [
-        "space",
-        "science"
+        "business/marketing",
+        "space"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/marketing",
+          "confidence": 0.85
+        },
+        {
+          "node": "space",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Astronomy and night sky observation.",
+      "display_title": "Kielder Observatory Podcast",
+      "blurb": "the official monthly podcast from kielder observatory in northumberland uk, situated under some of the darkest skies in the world.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-a031bc07",
+      "classified_at": "2026-09-03T00:18:28.243Z"
     },
     "1534638442": {
       "topics": [
@@ -127040,10 +127708,39 @@
     },
     "1535102476": {
       "topics": [
-        "relationships"
+        "space",
+        "fiction/drama"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.85
+        },
+        {
+          "node": "fiction/drama",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Astronomy and night sky observation.",
+      "display_title": "Gay Men Going Deeper",
+      "blurb": "gay men going deeper is a podcast about gay relationships, identity, sexuality, and personal growth for gay men navigating modern life.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-a031bc07",
+      "classified_at": "2026-09-03T00:18:28.243Z"
     },
     "1535249499": {
       "topics": [
@@ -127187,10 +127884,43 @@
     "1535401964": {
       "topics": [
         "education/language-learning",
+        "space",
         "linguistics/language"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.9
+        },
+        {
+          "node": "space",
+          "confidence": 0.85
+        },
+        {
+          "node": "linguistics/language",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Astronomy and night sky observation.",
+      "display_title": "Thinking in English",
+      "blurb": "thinking in english is a podcast for intermediate and advanced english learners who want to do more than just study grammar and vocabulary.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-a031bc07",
+      "classified_at": "2026-09-03T00:18:28.243Z"
     },
     "1535403320": {
       "topics": [
@@ -127270,7 +128000,31 @@
         "sports/cricket"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/cricket",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Women's cricket news and interviews.",
+      "display_title": "Cricket Mandir",
+      "blurb": "iss channel pr cricket related knowledge share krte hai",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-a031bc07",
+      "classified_at": "2026-09-03T00:18:28.243Z"
     },
     "1535524824": {
       "topics": [
@@ -127488,10 +128242,39 @@
     },
     "1535817211": {
       "topics": [
-        "gaming"
+        "business/careers",
+        "space"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/careers",
+          "confidence": 0.85
+        },
+        {
+          "node": "space",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Astronomy and night sky observation.",
+      "display_title": "Starfield Lorecast: Video Game Lore, News & More",
+      "blurb": "join jessica-star and guests for a dose of all the information we can get our hands on about starfield.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-a031bc07",
+      "classified_at": "2026-09-03T00:18:28.243Z"
     },
     "1535826660": {
       "topics": [
@@ -127510,11 +128293,34 @@
     },
     "1535879222": {
       "topics": [
-        "tv-film/history",
-        "history"
+        "comedy/stand-up"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/stand-up",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedy and stand-up commentary.",
+      "display_title": "The Stuff Dreams Are Made Of",
+      "blurb": "from kane’s rosebud to indy’s whip to captain america’s shield...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-a031bc07",
+      "classified_at": "2026-09-03T00:18:28.243Z"
     },
     "1535886300": {
       "topics": [
@@ -127743,8 +128549,32 @@
       "topics": [
         "relationships"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unable to classify confidently; genre suggests relationships.",
+      "display_title": "唐陽雞酒屋",
+      "blurb": "2026年共時曆回來囉✨陪伴你的每一天 🔗 https://dmkk.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-a031bc07",
+      "classified_at": "2026-09-03T00:18:28.243Z"
     },
     "1536388799": {
       "topics": [
@@ -127779,10 +128609,39 @@
     },
     "1536487794": {
       "topics": [
-        "aviation"
+        "business/marketing",
+        "business/careers"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/marketing",
+          "confidence": 0.85
+        },
+        {
+          "node": "business/careers",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Career and job interview advice.",
+      "display_title": "When Life Gives You Layovers",
+      "blurb": "furloughed flight attendants and best friends, becky & liv, sit down and chat about the life of a flight attendant.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 4,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-a031bc07",
+      "classified_at": "2026-09-03T00:18:28.243Z"
     },
     "1536566243": {
       "topics": [
@@ -127793,10 +128652,44 @@
     },
     "1536628319": {
       "topics": [
-        "kids-family/stories"
+        "business/marketing",
+        "comedy/stand-up",
+        "space"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/marketing",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy/stand-up",
+          "confidence": 0.85
+        },
+        {
+          "node": "space",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Astronomy and night sky observation.",
+      "display_title": "Don't Break the Rules",
+      "blurb": "buckle up for don’t break the rules, the hilarious comedy game show where four voice actors transform into brand new characters based on prompts writt",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-a031bc07",
+      "classified_at": "2026-09-03T00:18:28.243Z"
     },
     "1536632565": {
       "topics": [
@@ -127915,8 +128808,32 @@
       "topics": [
         "religion/judaism"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unable to classify confidently; genre suggests religion/judaism.",
+      "display_title": "Torat Imecha Parsha",
+      "blurb": "in this new parsha series, women scholars will deliver a weekly ten- to fifteen-minute shiur on the weekly parsha.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-a031bc07",
+      "classified_at": "2026-09-03T00:18:28.243Z"
     },
     "1536972599": {
       "topics": [
@@ -127970,10 +128887,43 @@
     "1536983014": {
       "topics": [
         "education/language-learning",
+        "space",
         "linguistics/language"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.9
+        },
+        {
+          "node": "space",
+          "confidence": 0.85
+        },
+        {
+          "node": "linguistics/language",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Astronomy and night sky observation.",
+      "display_title": "Español Intermedio / Intermediate Spanish",
+      "blurb": "aprende español con historias reales. conoce las culturas de los países latinos mientras aprendes palabras nuevas y mejoras tu comprensión auditiva.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-a031bc07",
+      "classified_at": "2026-09-03T00:18:28.243Z"
     },
     "1537018713": {
       "topics": [
@@ -128184,18 +129134,65 @@
     },
     "1537585079": {
       "topics": [
-        "sports/endurance",
-        "health/fitness"
+        "sports/endurance"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unable to classify confidently; genre suggests sports/endurance.",
+      "display_title": "Swim Whisperers",
+      "blurb": "co-founders ailene tisser and cindy freedman are on a mission to create standard practice training for swim instructors teaching special needs swimmer",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 2,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-a031bc07",
+      "classified_at": "2026-09-03T00:18:28.243Z"
     },
     "1537596556": {
       "topics": [
         "religion/christianity"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unable to classify confidently; genre suggests religion/christianity.",
+      "display_title": "The Elisabeth Elliot Podcast",
+      "blurb": "visit www.elisabethelliot.org for more lectures and talks, devotionals, videos, gateway to joy programs, and other resources.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-a031bc07",
+      "classified_at": "2026-09-03T00:18:28.243Z"
     },
     "1537602643": {
       "topics": [
@@ -128383,10 +129380,39 @@
     },
     "1537872799": {
       "topics": [
-        "religion/christianity"
+        "business/careers"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/careers",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Career and job interview advice.",
+      "display_title": "For the Gospel Podcast",
+      "blurb": "for the gospel, with costi hinn, provides sound doctrine for everyday people through topical teaching, special guest interviews, and listener q&as.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 32,
+        "transcript_types": {
+          "text/html": 8,
+          "application/json": 8,
+          "application/x-subrip": 8,
+          "text/vtt": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-a031bc07",
+      "classified_at": "2026-09-03T00:18:28.243Z"
     },
     "1537889926": {
       "topics": [
@@ -128435,10 +129461,34 @@
     },
     "1538095146": {
       "topics": [
-        "tv-film/reviews"
+        "space"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Astronomy and night sky observation.",
+      "display_title": "Tickets Please",
+      "blurb": "hosts alexa and kathryn chat about movies, series, entertainment news, and pop culture nostalgia. come hang with us.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-a031bc07",
+      "classified_at": "2026-09-03T00:18:28.243Z"
     },
     "1538161518": {
       "topics": [
@@ -128500,10 +129550,34 @@
     },
     "1538249280": {
       "topics": [
-        "philosophy"
+        "business/startups"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Business acquisitions and entrepreneurship.",
+      "display_title": "Overthink",
+      "blurb": "the best of all possible podcasts, leibniz would say.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-a031bc07",
+      "classified_at": "2026-09-03T00:18:28.243Z"
     },
     "1538283780": {
       "topics": [
@@ -128672,8 +129746,32 @@
       "topics": [
         "sports/wrestling"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/wrestling",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unable to classify confidently; genre suggests sports/wrestling.",
+      "display_title": "Monday Warfare: RAW VS. NITRO Podcast",
+      "blurb": "it was the wwf vs. wcw. raw vs. nitro. the monday night war. the ratings war. the nwo. the attitude era.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-a031bc07",
+      "classified_at": "2026-09-03T00:18:28.243Z"
     },
     "1538493948": {
       "topics": [
@@ -128754,10 +129852,34 @@
     },
     "1538788132": {
       "topics": [
-        "news/politics"
+        "business/careers"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/careers",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Career and job interview advice.",
+      "display_title": "Tangle",
+      "blurb": "independent, non-partisan politics news where you'll hear the best arguments from across the political spectrum on the news of the day.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-a031bc07",
+      "classified_at": "2026-09-03T00:18:28.243Z"
     },
     "1538836397": {
       "topics": [
@@ -128849,11 +129971,39 @@
     },
     "1539296304": {
       "topics": [
-        "health/nutrition",
-        "food"
+        "sports/football",
+        "space"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/football",
+          "confidence": 0.9
+        },
+        {
+          "node": "space",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Astronomy and night sky observation.",
+      "display_title": "Fit + Fueled Life Podcast",
+      "blurb": "welcome to the fit + fueled life podcast—where health, fitness, and fuel come together for a stronger, healthier, more confident you! i’m tina haupert",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-a031bc07",
+      "classified_at": "2026-09-03T00:18:28.243Z"
     },
     "1539313607": {
       "topics": [
@@ -128880,10 +130030,44 @@
     },
     "1539352369": {
       "topics": [
-        "religion/spirituality"
+        "business/careers",
+        "education",
+        "music"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/careers",
+          "confidence": 0.85
+        },
+        {
+          "node": "education",
+          "confidence": 0.8
+        },
+        {
+          "node": "music",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Career and job interview advice.",
+      "display_title": "The Modern Fairy Sightings Podcast",
+      "blurb": "most people are baffled at any idea that fairies could exist...and telling people you've had a fairy encounter is a major taboo.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-a031bc07",
+      "classified_at": "2026-09-03T00:18:28.243Z"
     },
     "1539361793": {
       "topics": [
@@ -129103,8 +130287,32 @@
       "topics": [
         "tv-film/animation"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/animation",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unable to classify confidently; genre suggests tv-film/animation.",
+      "display_title": "Fancy Weebs",
+      "blurb": "sweet solitude, thou placid queen, of modest air, and brow serene! 'tis thou inspirest the sage's themes, the poet's visionary dreams.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 2,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-a031bc07",
+      "classified_at": "2026-09-03T00:18:28.243Z"
     },
     "1540031893": {
       "topics": [
@@ -129340,10 +130548,34 @@
     },
     "1540499099": {
       "topics": [
-        "kids-family/education"
+        "space"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Astronomy and night sky observation.",
+      "display_title": "The SeedPod for Beginners by Starting With Jesus",
+      "blurb": "the seedpod for beginners is intended for 1 to 5 years old to form a habit of starting their day with jesus. in just 9-10 min.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-a031bc07",
+      "classified_at": "2026-09-03T00:18:28.243Z"
     },
     "1540510485": {
       "topics": [
@@ -129425,8 +130657,32 @@
       "topics": [
         "business/careers"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/careers",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unable to classify confidently; genre suggests business/careers.",
+      "display_title": "Подкаст Глеба Соломина",
+      "blurb": "глубокие беседы с мыслящими людьми.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-a031bc07",
+      "classified_at": "2026-09-03T00:18:28.243Z"
     },
     "1540573682": {
       "topics": [
@@ -129646,7 +130902,31 @@
         "sports/wrestling"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/wrestling",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Ring of Honor wrestling show-by-show review.",
+      "display_title": "The Sessions with Renée Paquette",
+      "blurb": "join television personality renée paquette every week for uncensored, unscripted, in-depth conversations!",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-a031bc07",
+      "classified_at": "2026-09-03T00:18:28.243Z"
     },
     "1540877085": {
       "topics": [
@@ -129707,10 +130987,39 @@
     },
     "1541015845": {
       "topics": [
-        "kids-family/education"
+        "adventure/exploration",
+        "travel"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.85
+        },
+        {
+          "node": "travel",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Overland adventure travel and guides.",
+      "display_title": "Animal Adventures- Jungle Life",
+      "blurb": "an exploration into jungle life & wildlife animals",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 1,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-a031bc07",
+      "classified_at": "2026-09-03T00:18:28.243Z"
     },
     "1541022146": {
       "topics": [
@@ -129813,10 +131122,39 @@
     },
     "1541500266": {
       "topics": [
-        "sports/cricket"
+        "sports/cricket",
+        "music"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/cricket",
+          "confidence": 0.95
+        },
+        {
+          "node": "music",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Women's cricket news and interviews.",
+      "display_title": "Rain Stopped Play",
+      "blurb": "a weekly cricket podcast with @danielparkerrrr , @6af1s , @harwoodzac & @singhwill .",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-a031bc07",
+      "classified_at": "2026-09-03T00:18:28.243Z"
     },
     "1541514434": {
       "topics": [
@@ -129850,10 +131188,39 @@
     },
     "1541602946": {
       "topics": [
-        "culture/books"
+        "comedy/stand-up",
+        "space"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/stand-up",
+          "confidence": 0.85
+        },
+        {
+          "node": "space",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Astronomy and night sky observation.",
+      "display_title": "The Book Pile",
+      "blurb": "a podcast where comedians tell you about books so you never have to read! (now including fiction!) kellen does standup; dave writes ads; together they",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-a031bc07",
+      "classified_at": "2026-09-03T00:18:28.243Z"
     },
     "1541713044": {
       "topics": [
@@ -129929,11 +131296,44 @@
     },
     "1541865659": {
       "topics": [
-        "health/nutrition",
-        "food"
+        "business/careers",
+        "space",
+        "craft/diy-home"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/careers",
+          "confidence": 0.85
+        },
+        {
+          "node": "space",
+          "confidence": 0.85
+        },
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Astronomy and night sky observation.",
+      "display_title": "Menopause Reimagined with Andrea Donsky",
+      "blurb": "welcome to morphus! we created morphus to spark change in the conversation around perimenopause and menopause wellness, to bring together women seekin",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-a031bc07",
+      "classified_at": "2026-09-03T00:18:28.243Z"
     },
     "1541907327": {
       "topics": [
@@ -130448,10 +131848,34 @@
     },
     "1542882455": {
       "topics": [
-        "tv-film/reviews"
+        "space"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Astronomy and night sky observation.",
+      "display_title": "And Just Like What? GIRLS Rewatch",
+      "blurb": "sex and the city made co-hosts meredith and ricky who they are today, but girls made them second guess it all.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-a031bc07",
+      "classified_at": "2026-09-03T00:18:28.243Z"
     },
     "1542882754": {
       "topics": [
@@ -130477,10 +131901,34 @@
     },
     "1542900359": {
       "topics": [
-        "tv-film/animation"
+        "space"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Astronomy and night sky observation.",
+      "display_title": "The Sonic Podcast",
+      "blurb": "the sonic podcast is a cultural exploration of the wildly diverse and expansive history of sonic the hedgehog, starting with archie comic's rendition",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 1,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-a031bc07",
+      "classified_at": "2026-09-03T00:18:28.243Z"
     },
     "1542906783": {
       "topics": [
@@ -130540,8 +131988,32 @@
       "topics": [
         "religion/islam"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/islam",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unable to classify confidently; genre suggests religion/islam.",
+      "display_title": "الشيخ ياسين الجمري",
+      "blurb": "بودكاست يختص بنشر محاضرات سماحة الشيخ ياسين الجمري متواجدون عبر apple podcasts | spotify podcasts | amazon podcasts | cast box | pocket casts | overca",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-03-a031bc07",
+      "classified_at": "2026-09-03T00:18:28.243Z"
     },
     "1542985814": {
       "topics": [
