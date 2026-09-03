@@ -47,6 +47,46 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: swift test --package-path ios/ForayKit
+      # M5 (full-repo-review-report.md, 2026-08-31): ForayKit's `swift test` above
+      # is the pure state-machine floor and never compiles anything under `ios/App/`
+      # — PlayerQueueManager (the AVFoundation-facing glue) had NO CI coverage at
+      # all before this. `ios/AppTests/` exercises it against a fake `PlayerBackend`
+      # (see that file's own doc comment), and running it needs the generated
+      # `.xcodeproj` `ios-build.yml` already builds a shell from — this is the
+      # analogous step for the reference `ios/` scaffold, on the one Mac this repo
+      # already pays for in this same job. `bundle install`-free: xcodegen is the
+      # only new tool, and it is Homebrew-preinstalled on macOS runners in most
+      # images; falling back to `brew install` costs seconds on a cache hit.
+      - name: xcodegen (generate ios/Foray.xcodeproj)
+        working-directory: ios
+        run: |
+          set -euo pipefail
+          command -v xcodegen >/dev/null 2>&1 || brew install xcodegen
+          xcodegen
+          test -d Foray.xcodeproj
+      - name: xcodebuild test -scheme Foray (AppTests + ForayKitTests)
+        working-directory: ios
+        run: |
+          set -euo pipefail
+          # Pick whatever iOS simulator runtime the runner's Xcode image actually
+          # ships, rather than pinning a device name (e.g. "iPhone 15") that a
+          # future/rolling macos-latest image is not guaranteed to carry — a
+          # missing destination would fail before any test ran at all.
+          DEVICE_ID=$(xcrun simctl list devices available -j \
+            | node -e '
+                const data = JSON.parse(require("fs").readFileSync(0, "utf8"));
+                const devices = Object.values(data.devices).flat();
+                const iphone = devices.find(d => /^iPhone/.test(d.name));
+                if (!iphone) { console.error("no available iPhone simulator found"); process.exit(1); }
+                console.log(iphone.udid);
+              ')
+          echo "Using simulator: $DEVICE_ID"
+          xcodebuild test \
+            -project Foray.xcodeproj -scheme Foray \
+            -destination "platform=iOS Simulator,id=$DEVICE_ID" \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            | tee xcodebuild-test.log
+          grep -E "^\*\* TEST (SUCCEEDED|FAILED)" xcodebuild-test.log | tail -1 || true
 
   data-and-site:
     runs-on: ubuntu-latest

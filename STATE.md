@@ -7,6 +7,35 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
+### Show-pages Stage 3b — full per-show RSS ingestion (2026-09-02) — `t_567b570f/show-pages-3b-rss-ingestion`
+
+- **What:** `docs/show-pages-plan.md` §Stage 3, decided path 3b (full
+  per-show RSS ingestion, no curated-subset ceiling — founder instruction:
+  "we should be able to play all podcasts from the app"). New shared
+  catalogue tables (`backend/migrations/0016_catalog_show_episodes.sql`),
+  ingestion module (`backend/src/catalog/`), and the first Vercel
+  serverless function in this repo (`api/shows/[show_id]/episodes.ts`) —
+  flagged explicitly for Wyatt's review, see `docs/DECISIONS.md`
+  2026-09-02 entry. Client (`renderShow()`) now fetches the full list on
+  demand, degrading to the curated pool on any fetch failure.
+- **Branch:** `t_567b570f/show-pages-3b-rss-ingestion` — PR only, never
+  main; `merge_authority: human` on this card regardless.
+- **Owned/new files:** `backend/migrations/0016_catalog_show_episodes.sql`,
+  `backend/src/catalog/showEpisodesStore.ts`,
+  `backend/src/catalog/ingestShowFeed.ts`,
+  `backend/test/showEpisodesStore.test.ts`,
+  `backend/test/ingestShowFeed.test.ts`, `api/shows/[show_id]/episodes.ts`,
+  `api/package.json`, `test/show-pages-3b-full-catalogue.test.js`.
+- **Shared files it touches:** `app.js` (`renderShow()`,
+  `fetchShowEpisodes()`, `fullCatalogueRowToEpRowItem()`), `vercel.json`
+  (installCommand), `test/suite-integrity.test.js` (two new floors),
+  `docs/show-pages-plan.md` (§Stage 3 decision recorded),
+  `docs/DECISIONS.md`.
+- **Explicitly out of scope:** wiring the player / removing link-out UI
+  (sibling "universal in-app playability" card, depends on this card's
+  `audio_url` output), fetching chapters JSON bodies (pointer stored now,
+  body fetched lazily per-episode by the episode-page card).
+
 ### SECURITY: Supabase linter findings — RLS/SECURITY DEFINER/policy scoping (2026-09-02) — `fix/supabase-linter-rls`
 
 - **What:** t_58c99c73. Enables RLS (deny-all, no policies) on

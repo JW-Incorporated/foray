@@ -282,7 +282,19 @@ const FLOORS = {
      entry renders zero episodes rather than an error, on one specific show,
      and nothing else in the repo would notice. Every test names its mutation;
      see the suite header for the full list of what each test pins. */
-  "test/show-page.test.js": 24,
+  "test/show-page.test.js": 39,
+
+  /* Stage 3b of docs/show-pages-plan.md — full per-show RSS ingestion
+     (kanban card t_567b570f): renders the curated pool synchronously so
+     the page is never blank while the endpoint fetch is in flight, swaps
+     in the full-catalogue list on success, degrades to the curated pool
+     on any fetch failure (never blank), proves every full-catalogue
+     episode is in-app playable (real audio_url, no link-out), and surfaces
+     a stale-cache note rather than hiding it. Client wiring only — see
+     backend/test/showEpisodesStore.test.ts and ingestShowFeed.test.ts for
+     the ingestion/storage side. */
+  "test/show-pages-3b-full-catalogue.test.js": 7,
+
   /* Requirements A3.2/A3.3 — category browse + all-shows index (kanban card
      "Build: category browse — linkify taxonomy chips + all-shows index"):
      the taxonomy-chip link itself, the showsForCategory overlap join against
@@ -292,6 +304,7 @@ const FLOORS = {
      its mutation; see the suite header for the full list of what each test
      pins. */
   "test/category-browse.test.js": 11,
+
   /* Stage 2 of docs/show-pages-plan.md — show search (kanban card
      t_1c9afc67): SearchEngine.searchShows against the real catalogue,
      scope-boundary proof that the topic scorer is untouched, and the
@@ -907,6 +920,16 @@ const SCANNED_DIRS = ["player", "test", "tools"];
  * Separate from FLOORS because these are `.test.ts`, run by the `backend` job
  * via `npm test` in backend/, not by tools/ci/run-suites.mjs. */
 const BACKEND_FLOORS = {
+  /* Anthropic provider error-path coverage (kanban card t_550d289f): mock-client
+     tests for the constructor dry-run guard, budget-guard call-site wiring, and
+     malformed-JSON/no-text-block error paths across all 5 real provider classes,
+     plus the shared parseWithRetry helper extracted from their copy-pasted
+     private implementations. */
+  "test/AnthropicDeepenActBuilder.test.ts": 7,
+  "test/AnthropicEnricher.test.ts": 10,
+  "test/AnthropicExternalResearcher.test.ts": 9,
+  "test/AnthropicPromptUnderstander.test.ts": 9,
+  "test/AnthropicSpineBuilder.test.ts": 8,
   "test/archetypes.test.ts": 7,
   "test/budgetGuard.test.ts": 6,
   "test/candidateExtractor.test.ts": 8,
@@ -926,6 +949,10 @@ const BACKEND_FLOORS = {
   "test/ladderIntegrity.test.ts": 11,
   "test/ladderProgress.test.ts": 8,
   "test/learningJob.test.ts": 4,
+  /* Anthropic provider error-path coverage (kanban card t_550d289f): the
+     shared parseWithRetry/parseLastJsonBlock helper extracted from the 5
+     real Anthropic provider classes' identical private copies. */
+  "test/parseWithRetry.test.ts": 9,
   "test/parser.test.ts": 29,
   "test/personas.test.ts": 6,
   "test/podcastIndex.test.ts": 3,
@@ -996,6 +1023,17 @@ const BACKEND_FLOORS = {
      disclosure template, and decideConnectiveNarration()'s seam-position
      table for tape-adjacent beats needing short connective narration. */
   "test/writeNarration.test.ts": 19,
+  /* Stage 3b (kanban t_567b570f, docs/show-pages-plan.md §Stage 3): shared
+     catalogue store CRUD (scoping by show_id, upsert-not-duplicate on
+     (show_id, guid), published_at ordering, feed-state round-trip). */
+  "test/showEpisodesStore.test.ts": 5,
+  /* Stage 3b end to end: fetches+parses+upserts through the real parser,
+     proves the chapters JSON body is never dereferenced during ingestion
+     (only the pointer is stored), TTL cache-hit/expiry behavior, and the
+     never-blank-page degrade contract (cached_stale / no_cache_error) on a
+     feed fetch failure — plus that a missing enclosure never fabricates an
+     audio_url. */
+  "test/ingestShowFeed.test.ts": 8,
   /* §4.8 end to end (kanban card t_7f410ffc): within-act stitching rules
      (silence bridge, jingle marks cuts, measured cadence, coverage
      hard-gate), the forward-only cross-act continuity Builder (§6.2),

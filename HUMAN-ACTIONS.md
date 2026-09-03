@@ -1032,9 +1032,16 @@ letter, so a `4a` segment will not build — `ai` does, because it starts with a
 2. Reply either **"confirmed"**, or with the id you want instead.
 3. If you want a different one, a session changes the id itself in **three** places — that file, the pinned assertion in `tools/mobile/shell-invariants.test.mjs` ("the app id is pinned, because it is permanent once published"), and `APP_ID` in `.github/workflows/ios-build.yml`, which is what `simctl` is given. This item said "exactly two" through two renames; `APP_ID` was the third all along, kept in sync by hand each time, and as of 2026-08-25 a test derives it from the config so a miss cannot be quiet. **A change to the reverse-DNS *prefix* is bigger than two lines**, because the Android plugin's Java package shares it: the 2026-08-25 move to `ai.jwlabs` touched 19 files, including a `git mv` of the Java source tree, `APP_ID` in `.github/workflows/ios-build.yml` and two fully-qualified needles in `.github/workflows/android-build.yml`. Still cheap, still not two lines.
 
+**CONFIRMED BY WYATT 2026-09-03.** Asked directly, while assembling the App Store
+submission kit, whether `ai.jwlabs.foura` is the id to publish under forever: *"bundle
+ID is correct"*. That is the reply step 2 asks for, so this item is closed. Nothing in
+`mobile/capacitor.config.json` changed — the value was already right; what was missing
+was the ruling on it. The App ID registration in #19 can now proceed against
+`ai.jwlabs.foura`, and that registration is the irreversible step.
+
 **Worked if:** the status below says DONE and `mobile/capacitor.config.json`'s `appId` is the id you intend to publish under, forever.
 
-**Status:** OPEN
+**Status:** DONE (2026-09-03)
 
 ---
 
@@ -2197,7 +2204,81 @@ use" submission error is gone.
 
 ---
 
-### 35. Merge PR #443 by hand, and rule on the new nightly/deploy-manifest.json collision
+### 36. Label PR #450 `founder-approved` (touches the `tools/test-search.mjs` gate)
+
+**Tag:** `[UPGRADE]` · **Time:** ~1 minute · **Owner:** Joey or Wyatt
+
+**Why it matters.** PR #450 fixes the H-severity buildPlaylist caching bug
+(kanban t_838a13c0): cold-session playlist searches cost 6.6-8.1s and even
+warm-ctx repeated queries cost 3.4-6s, with no loading-state affordance on
+the submit button. The fix adds real caching (`search-engine.js`'s
+`corpusDF`/`tagCount` reverse indexes and `primeVocabulary`, `app.js`'s
+`buildPlaylist` `searchCache`), a `Building…` disabled-button state, and —
+because scope item 4 asked for it — new timing assertions in
+`tools/test-search.mjs`'s own battery so this class of regression can't
+silently return. That last file is one of the two test-suite files
+`DENIED_PREFIXES` protects (alongside `tools/validate-semantic-index.mjs`)
+specifically because it IS the gate CI reads to decide "is search quality
+still honest" — so `path-policy` correctly refuses to auto-merge this PR
+without a human eyeball on the new assertions, same as every other PR that
+has ever touched this file.
+
+**What changed there, in one paragraph:** a new §11 block asserting (a)
+`primeVocabulary` finishes in well under 5s (measured ~0.3s), (b) a query
+against a primed ctx answers in well under 500ms (measured ~1-7ms), and (c)
+a repeated identical query against the same ctx is markedly cheaper the
+second time (proves the DF memoization is actually being reused, not just
+present). All three are generous multiples of measured cost, chosen to catch
+an algorithmic regression rather than flake on CI hardware variance — see
+the inline comments in the file for the exact numbers.
+
+**Steps.**
+1. Open PR #450: https://github.com/JW-Incorporated/foray/pull/450
+2. Skim the new §11 section in `tools/test-search.mjs` (search the diff for
+   "11. perf regression") — confirm the assertions genuinely test what they
+   claim and the thresholds aren't so loose they're vacuous.
+3. Apply the `founder-approved` label. The `path-policy` check re-runs
+   automatically on the label change; no push needed.
+4. Once `path-policy` and the rest of CI (`CI`, `data-and-site`, etc.) are
+   green, the PR is mergeable — foray's `merge_authority` is `agent`, so no
+   further founder action is needed to merge it; I'll self-merge once every
+   required check passes.
+
+**Worked if:** the `path-policy` check on PR #450 flips from `UNAPPROVED
+(blocking)` to passing.
+
+**Decision (2026-09-03, founder):** done — reviewed §11 assertions in
+`tools/test-search.mjs`, thresholds are generous multiples of measured
+cost (not vacuous), applied `founder-approved`, `path-policy` and all
+other CI went green, PR #450 auto-merged to `main` (`db25f8b`).
+
+**Status:** DONE (2026-09-03)
+
+---
+
+### 35. Merge PR #429 (Stage 3b full-catalogue RSS ingestion) — first Vercel serverless function, needs Wyatt's architecture sign-off
+
+**Tag:** `[BLOCKING]` for the "universal in-app playability" card · **Time:** ~10 minutes review · **Owner:** Wyatt (per `docs/roles.md` / registry `architecture_infra_ci_secrets` human gate)
+
+**Why it matters.** `t_a36252bb` ("remove the listen-elsewhere link-out, play everything in-app") depends on `t_567b570f` shipping real `audio_url`s at scale. That work is done and reviewed (round 3, 216/216 local tests pass, GitHub CI green) in PR #429, but it is genuinely gated on a human decision, not just a routine merge:
+
+- PR #429 adds **the first Vercel serverless function** in this repo (`api/shows/[show_id]/episodes.ts`). `vercel.json` was previously static-build-only by deliberate choice (see `docs/DECISIONS.md`, 2026-07-xx entry naming "standing up a live backend" as reserved for Wyatt).
+- The implementing worker could not reach Fable for an architecture consult on this point (sandbox OOM at every heap size tried) and proceeded on the lowest-new-infra option: reuses the existing Vercel project, reuses the existing Supabase service-role connection (no new secrets), scoped its own minimal `api/package.json`.
+- Registry `merge_authority` is `agent` for the foray project generally, but `human_gates` explicitly includes `architecture_infra_ci_secrets` — this PR is exactly that case.
+- GitHub also currently blocks auto-merge on this PR with a `needs-founder` label and a failing `path-policy` check (expected — it's a governed path awaiting the founder-approved label), so nothing merges without your action either way.
+
+**Steps.**
+1. Read the "For Wyatt: one thing to look at specifically" section at the top of PR #429: https://github.com/JW-Incorporated/foray/pull/429
+2. Decide: is reusing the existing Vercel project + existing Supabase service-role connection an acceptable way to stand up the first live backend endpoint, or do you want a different shape?
+3. If acceptable: add the `founder-approved` label (or ask Hermes to add it) and merge (or authorize Hermes to merge) the PR.
+4. If not acceptable: say what should change; the implementing lane will revise.
+
+**Worked if:** PR #429 is merged to `main` (or explicitly redirected), unblocking `t_a36252bb`.
+
+**Status:** OPEN
+
+
+### 37. Merge PR #443 by hand, and rule on the new nightly/deploy-manifest.json collision
 
 **Tag:** `[BLOCKING]` for this PR, `[UPGRADE]` for the recurring gap · **Time:** ~2 minutes now, longer to decide the fix · **Owner:** Joey or Wyatt
 

@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import { env } from "../config/env";
 import { defaultBudgetGuard, type BudgetGuard } from "../cost/budgetGuard";
+import { parseWithRetry } from "./parseWithRetry";
 import type { IntentUnderstanding } from "../types/generation";
 import type { ResearchShape } from "../types/research";
 import { DURATION_SHAPE_BUDGETS, type DurationTier, type Spine } from "../types/spine";
@@ -51,13 +52,16 @@ export class AnthropicSpineBuilder implements SpineBuilder {
   readonly providerName = "anthropic";
   private readonly client: Anthropic;
 
-  constructor(private readonly budgetGuard: BudgetGuard = defaultBudgetGuard) {
-    if (env.anthropicDryRun) {
+  /** `client` is an optional injection point for tests — see
+   * AnthropicEnricher.ts's constructor doc comment for the full rationale;
+   * the same pattern applies identically here. */
+  constructor(private readonly budgetGuard: BudgetGuard = defaultBudgetGuard, client?: Anthropic) {
+    if (!client && env.anthropicDryRun) {
       throw new Error(
         "AnthropicSpineBuilder constructed without ANTHROPIC_API_KEY set — use createSpineBuilder() so it falls back to StubSpineBuilder instead."
       );
     }
-    this.client = new Anthropic({ apiKey: env.anthropicApiKey });
+    this.client = client ?? new Anthropic({ apiKey: env.anthropicApiKey });
   }
 
   async buildSpine(
@@ -86,7 +90,7 @@ export class AnthropicSpineBuilder implements SpineBuilder {
     const textBlock = response.content.find((b: Anthropic.ContentBlock): b is Anthropic.TextBlock => b.type === "text");
     if (!textBlock) throw new Error("Anthropic spine response had no text block");
 
-    const raw = parseWithRetry(RawSpineSchema, textBlock.text);
+    const raw = parseWithRetry(RawSpineSchema, textBlock.text, "Anthropic spine output");
     return {
       subject: intent.subject,
       angle: intent.angle,
@@ -98,16 +102,6 @@ export class AnthropicSpineBuilder implements SpineBuilder {
   }
 }
 
-function parseWithRetry<T>(schema: z.ZodType<T>, raw: string): T {
-  const cleaned = raw.trim().replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/i, "");
-  try {
-    return schema.parse(JSON.parse(cleaned));
-  } catch (err) {
-    throw new Error(`LLM output failed schema validation (no retry available in this build): ${(err as Error).message}`, {
-      cause: err
-    });
-  }
-}
 
 function buildSpinePrompt(intent: IntentUnderstanding, researchShape: ResearchShape, duration: DurationTier): string {
   const budget = DURATION_SHAPE_BUDGETS[duration];
