@@ -113,6 +113,19 @@ export const DENIED_PREFIXES = [
   // own gate-script scan to every workflow, not just ci.yml (kanban
   // t_97e1c5f4) — deny it before the keystore secret exists, not after.
   "tools/mobile/wire-signing.mjs",
+  // ios-build.yml runs this to write 4a's icon into the Capacitor-generated
+  // asset catalog, then re-reads it with `--check`. It is DENIED rather than
+  // acknowledged (unlike inject-background-audio.mjs beside it) because of what
+  // its silent failure ships: since Xcode 14 App Store Connect EXTRACTS the
+  // PUBLIC LISTING icon from the uploaded binary's asset catalog — there is no
+  // manual upload on iOS — so a one-line `process.exit(0)` here neuters the
+  // write AND the `--check` that proves it, leaves ios-build green, and puts
+  // Capacitor's placeholder on the App Store product page with no way to fix it
+  // short of another build. That is not a hypothetical: a TestFlight build
+  // shipped exactly that way on 2026-09-03, which is why this script exists.
+  // The trade is the one the entries above make — near-zero change frequency
+  // (this file moves when Capacitor's template does), occasional human merge.
+  "tools/mobile/inject-app-icon.mjs",
 ];
 
 /* Paths a bot run may touch, by tier (docs/curation/... § auto-merge):
