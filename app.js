@@ -1455,11 +1455,23 @@ function renderAllShows() {
       <a class="page-link-row" href="#/starred-shows">Starred shows \u203a</a>
       ${vouchForHtml()}`);
 
-  $("#sh-form").addEventListener("submit", (e) => {
+  /* The list filters as you type (founder, TestFlight, 2026-09-03: "it should
+     already filter the results live, I shouldn't need to hit go"). Each
+     keystroke runs the instant local pass at once and holds the breadth
+     request for SHOW_SEARCH_DEBOUNCE_MS, so typing a name does not send one
+     network request per letter. Go is kept: it is what the keyboard's return
+     key submits, and it runs the breadth pass NOW rather than after the
+     pause — so it still does something the live path does not. */
+  const form = $("#sh-form");
+  const input = $("#sh-input");
+  form.addEventListener("submit", (e) => {
     e.preventDefault();
-    const query = $("#sh-input").value.trim();
+    const query = input.value.trim();
     if (!query) return;
     renderShowSearchResults(query);
+  });
+  input.addEventListener("input", () => {
+    renderShowSearchResults(input.value.trim(), { breadthDelayMs: SHOW_SEARCH_DEBOUNCE_MS });
   });
 }
 
@@ -2186,11 +2198,27 @@ function vouchForHtml() {
    — never a broken/blank state (matches showsForCategory's and renderShow's
    own "absence is a real state, not an error" rule). */
 let showSearchToken = 0; // guards a slow in-flight fetch from clobbering a newer query's results
+let showSearchTimer = null; // the one pending (debounced) breadth request, if any
+/* How long typing has to pause before the breadth endpoint is asked. The
+   local pass never waits. 250 ms is under the gap between two words and over
+   the gap between two letters of one. */
+const SHOW_SEARCH_DEBOUNCE_MS = 250;
 
-function renderShowSearchResults(query) {
+function renderShowSearchResults(query, { breadthDelayMs = 0 } = {}) {
   const myToken = ++showSearchToken;
+  /* A newer query supersedes a pending breadth request outright — it is
+     cheaper never to send it than to send it and drop the response. */
+  if (showSearchTimer) { clearTimeout(showSearchTimer); showSearchTimer = null; }
   const note = $("#sh-note");
   const results = $("#sh-results");
+  if (!query) {
+    /* The box was emptied: back to the page as it was before typing — no
+       results, no "No shows match" for a query of nothing. */
+    results.innerHTML = "";
+    results.hidden = true;
+    note.hidden = true;
+    return;
+  }
   const localShows = SearchEngine.searchShows(query, state.catalog?.shows || []);
 
   const paint = (shows) => {
@@ -2207,22 +2235,34 @@ function renderShowSearchResults(query) {
     results.hidden = false;
   };
 
-  paint(localShows);
+  /* A local match paints at once. NO local match is not yet "no match": the
+     breadth catalogue may still hold the show, so the verdict waits for that
+     answer rather than flashing "No shows match" on every keystroke and
+     replacing it a moment later. The box just stays empty until then. */
+  if (localShows.length) paint(localShows);
+  else { results.innerHTML = ""; results.hidden = true; note.hidden = true; }
 
-  fetchApiJson(`api/shows/search?q=${encodeURIComponent(query)}&limit=25`).then((data) => {
-    if (myToken !== showSearchToken) return; // superseded — drop this response
-    const breadthShows = data?.shows || [];
-    if (!breadthShows.length) return; // degrade silently: local-only results already painted
-    const seen = new Set(localShows.map((s) => s.show_id));
-    const additions = [];
-    for (const s of breadthShows) {
-      if (seen.has(s.show_id)) continue;
-      seen.add(s.show_id);
-      state.breadthShowCache[s.show_id] = s; // so showById can resolve it once a result is tapped
-      additions.push(s);
-    }
-    if (additions.length) paint(localShows.concat(additions));
-  }); // fetchApiJson already swallows network/parse errors and resolves null — no .catch needed
+  const breadth = () => {
+    showSearchTimer = null;
+    if (myToken !== showSearchToken) return; // superseded while waiting — never sent
+    fetchApiJson(`api/shows/search?q=${encodeURIComponent(query)}&limit=25`).then((data) => {
+      if (myToken !== showSearchToken) return; // superseded — drop this response
+      const breadthShows = data?.shows || []; // null (down/unreachable) degrades to nothing new
+      const seen = new Set(localShows.map((s) => s.show_id));
+      const additions = [];
+      for (const s of breadthShows) {
+        if (seen.has(s.show_id)) continue;
+        seen.add(s.show_id);
+        state.breadthShowCache[s.show_id] = s; // so showById can resolve it once a result is tapped
+        additions.push(s);
+      }
+      /* Repaint when there is something new, or when nothing at all was
+         found and the held-back verdict is now due. */
+      if (additions.length || !localShows.length) paint(localShows.concat(additions));
+    }); // fetchApiJson already swallows network/parse errors and resolves null — no .catch needed
+  };
+  if (breadthDelayMs > 0) showSearchTimer = setTimeout(breadth, breadthDelayMs);
+  else breadth();
 }
 
 /* HOME IS THE FOUR SUBJECT CARDS AND THE RESUME BANNER. NOTHING ELSE.
@@ -2408,7 +2448,19 @@ function partsNote(rows) {
 function renderPlaylistDetail(id) {
   document.body.className = "view-page";
   const p = playlistById(id) || subjectQueueById(id);
-  if (!p) { $("#view").innerHTML = `<div class="page"><p class="note">Playlist not found.</p></div>`; return; }
+  /* A playlist that is gone still gets a page head: with ‹ going back one
+     step (see § in-app history), the entry for a just-removed playlist is one
+     step behind the list, so a "not found" with no ‹ would be a dead end. */
+  if (!p) {
+    $("#view").innerHTML = `<div class="page">
+      <div class="page-head">
+        <a class="back" href="#/playlists">‹</a>
+        <div><h2>Playlist</h2></div>
+      </div>
+      <p class="note">Playlist not found.</p>
+    </div>`;
+    return;
+  }
   fullPool(); // populate itemIndex
   const rows = resolveParts(p);
   /* An archived part goes into the snapshot cache under its own id so the rest of
@@ -2449,7 +2501,7 @@ function renderPlaylistDetail(id) {
   if (!p.isSubject) $("#pl-remove")?.addEventListener("click", () => {
     savePlaylists(playlists().filter(x => x.id !== p.id));
     logEvent("playlist_removed", { playlist_id: p.id });
-    location.hash = "#/playlists";
+    leaveRemovedPlaylist();
   });
   bindPickLogging($("#view"));
   bindStars($("#view"));
@@ -2630,6 +2682,69 @@ function bindUpNextReorder(scope) {
   });
 }
 
+/* Does one of the listener's OWN playlists answer to this query? Word-level:
+   the whole query at a word start of the title or the original request, or
+   any query word of two letters or more that starts (or is started by) a
+   word of them — "histor" finds "History of the Romans", "space" finds
+   "Space". The few words a request is built from ("the", "about", "with")
+   are not words to share: "about the romans" must find that playlist for
+   "romans", not every playlist with a "the" in it. Deliberately no scoring
+   and no stemming: this narrows a list of at most 50 things the listener
+   typed themselves, so "shares a word with" is the whole rule and it is easy
+   to say out loud. An empty query matches everything — the list as it was
+   before typing. */
+const PLAYLIST_MATCH_SKIP = new Set([
+  "a", "an", "the", "of", "on", "in", "to", "me", "my", "or", "and", "for",
+  "with", "about", "from", "that", "this", "some", "more", "into",
+]);
+
+function playlistMatchesQuery(p, query) {
+  const norm = (s) => String(s || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  const q = norm(query);
+  if (!q) return true;
+  const word = (w) => w.length >= 2 && !PLAYLIST_MATCH_SKIP.has(w);
+  const words = q.split(" ").filter(word);
+  if (!words.length) return false;   // "the", "about the": nothing to share
+  const hay = norm(`${p.title || ""} ${p.query || ""}`);
+  /* Anchored at a word start, so "ai" finds "AI safety" and not "brain". */
+  if ((" " + hay).includes(" " + q)) return true;
+  const hayWords = hay.split(" ").filter(word);
+  return words.some((w) => hayWords.some((hw) => hw.startsWith(w) || w.startsWith(hw)));
+}
+
+/* The list under the build box, narrowed to `query` (all of it when the box
+   is empty). Two honest empty states, never confused: no playlists at all is
+   "build your first one"; playlists that none match is a note naming the
+   query, with the same Go one tap away — because the next thing that person
+   does is build it. */
+function playlistListHtml(all, query) {
+  if (!all.length) return `<p class="note">No playlists yet — type above to build your first one.</p>`;
+  const matches = all.filter((p) => playlistMatchesQuery(p, query));
+  if (!matches.length) return `<p class="note">None of your playlists match "${esc(query)}" yet — Go builds one.</p>`;
+  return matches.map((p) => `
+        <a class="pl-row" href="#/playlist/${esc(p.id)}">
+          <div class="info">
+            <div class="t">${esc(p.title)}</div>
+            <div class="s">${resolveParts(p).length} parts${p.last_played_at ? ` · played ${new Date(p.last_played_at).toLocaleDateString()}` : ""}</div>
+          </div>
+          <span class="chev">›</span>
+        </a>`).join("");
+}
+
+/* THE PLAYLISTS PAGE SEARCHES WHAT YOU HAVE WHILE YOU TYPE WHAT YOU WANT.
+   (Founder, TestFlight, 2026-09-03: "when we search for playlists, it should
+   show similar playlists.") The box builds a NEW playlist on Go, as it always
+   has; as you type, the list of playlists already built on this device
+   narrows to the ones that share a word with the request, so someone about
+   to build "space" a second time sees the "Space" they built last week first.
+
+   That is the smallest reading of "similar" that is true today, and it is
+   the only one this app can honour: `cp_playlists` is per-device
+   localStorage, so there is no other listener's playlist to be similar to,
+   and no subject queue is a playlist. Whether "similar playlists" should
+   mean a SHARED pool of playlists, or the subject queues, is a product
+   decision and is not guessed at here — nothing below invents a playlist
+   nobody built. */
 function renderPlaylists() {
   document.body.className = "view-page";
   const all = playlists();
@@ -2644,18 +2759,18 @@ function renderPlaylists() {
         <button type="submit">Go</button>
       </form>
       <p id="pl-note" class="note" hidden></p>
-      ${all.length ? all.map(p => `
-        <a class="pl-row" href="#/playlist/${esc(p.id)}">
-          <div class="info">
-            <div class="t">${esc(p.title)}</div>
-            <div class="s">${resolveParts(p).length} parts${p.last_played_at ? ` · played ${new Date(p.last_played_at).toLocaleDateString()}` : ""}</div>
-          </div>
-          <span class="chev">›</span>
-        </a>`).join("")
-      : `<p class="note">No playlists yet — type above to build your first one.</p>`}
+      <div id="pl-list">${playlistListHtml(all, "")}</div>
     </div>`;
 
   $("#pl-form").addEventListener("submit", bindPlaylistFormSubmit);
+  const input = $("#pl-input");
+  input.addEventListener("input", () => {
+    /* `all` as rendered above: a successful build navigates away and a
+       return re-renders, so there is no way for the list to change under an
+       open page — and playlists() is a read that can write (it normalises
+       the store), which a keystroke has no business doing. */
+    $("#pl-list").innerHTML = playlistListHtml(all, input.value.trim());
+  });
 }
 
 /* ---------- Forays (#128) ----------
@@ -4826,6 +4941,11 @@ function renderCurrentPage() {
      next time someone reuses the sheet. */
   fbTarget = null;
   state.forayResume = null;
+  /* Likewise the Shows search: a breadth request still waiting out its
+     debounce, or in flight, would paint into a #sh-results that no longer
+     exists. Superseding the token retires both. */
+  showSearchToken++;
+  if (showSearchTimer) { clearTimeout(showSearchTimer); showSearchTimer = null; }
   const h = location.hash || "#/";
   const forayId = forayRouteId();
   let m;
@@ -4845,8 +4965,73 @@ function renderCurrentPage() {
 
 function route() {
   if (!state.ready) return;
+  noteNavigation(location.hash);
   openDrawer(false);
   renderCurrentPage();
+}
+
+/* ---------- in-app history: what the ‹ button does ----------
+
+   Every page head's back control is `<a class="back" href="#/">`. As a plain
+   link it always went Home, which on a phone reads as a broken back button:
+   Shows → a show → an episode → ‹ landed on the four cards, not on the show.
+   (Founder, TestFlight, 2026-09-03: "it should go back one step, not all the
+   way to the home page.")
+
+   The browser already holds the right answer. Routing is hash-only, every
+   navigation pushes one history entry, and `hashchange` re-renders on the
+   way back — so the fix is to call `history.back()` INSTEAD of following the
+   link whenever there is an in-app step to go back to, and to let the `#/`
+   href stand the rest of the time. That fallback is the cold-open case: a
+   deep link opened fresh (`#/show/x` from Messages, a `?foray=` link) has no
+   in-app history, and `history.back()` there would leave the app or do
+   nothing at all. Home is the right place to land.
+
+   "Is there a step to go back to" is tracked here rather than asked of the
+   browser: `history.length` counts entries from before the app loaded, and
+   the Navigation API's `canGoBack` is not on every WebKit we ship to. So
+   route() notes every hash it renders. A hash equal to the one BEFORE the
+   current one is a back-step (pop); anything else is a forward-step (push);
+   more than one entry means `history.back()` lands inside the app. Reloading
+   resets the stack, so after a reload ‹ goes Home — the cold-open answer
+   again. */
+const navStack = [];
+
+function noteNavigation(hash) {
+  backPending = false;
+  const h = hash || "#/";
+  if (navStack.length >= 2 && navStack[navStack.length - 2] === h) navStack.pop();
+  else if (navStack[navStack.length - 1] !== h) navStack.push(h);
+}
+
+function canGoBackInApp() { return navStack.length > 1; }
+
+/* `history.back()` is asynchronous: the hashchange that pops the stack lands
+   a beat later, and a second tap in that beat would see the same stack and
+   go back twice. One step per tap, until the step has actually happened. */
+let backPending = false;
+
+/* After "remove this playlist": back to the list. When the list is the step
+   behind this page (the usual way in), that is history.back(), so the removed
+   playlist's entry is left BEHIND the list rather than pushed in front of it
+   — otherwise the next ‹ would land on a playlist that no longer exists.
+   From anywhere else (the drawer's playlist links), go to the list. */
+function leaveRemovedPlaylist() {
+  if (navStack[navStack.length - 2] === "#/playlists") { backPending = true; history.back(); }
+  else location.hash = "#/playlists";
+}
+
+/* Delegated from #view (bound once in init), because every page rewrites
+   #view's innerHTML and a per-render binding would have to be repeated in
+   nine render functions. Only `a.back` is handled; every other click falls
+   through untouched. */
+function onBackClick(e) {
+  const a = e.target && typeof e.target.closest === "function" ? e.target.closest("a.back") : null;
+  if (!a || !canGoBackInApp()) return;   // cold open: the href="#/" fallback stands
+  e.preventDefault();
+  if (backPending) return;               // the last tap's step has not landed yet
+  backPending = true;
+  history.back();
 }
 
 /* ---------- init ---------- */
@@ -4955,6 +5140,7 @@ async function init() {
   });
 
   $("#menu-btn").addEventListener("click", () => openDrawer($("#drawer").hidden));
+  $("#view").addEventListener("click", onBackClick);
   $("#drawer-overlay").addEventListener("click", () => openDrawer(false));
   $("#drawer").addEventListener("click", (e) => {
     if (e.target.closest("a")) openDrawer(false);

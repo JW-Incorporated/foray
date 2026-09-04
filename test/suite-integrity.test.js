@@ -337,7 +337,25 @@ const FLOORS = {
      results list, honest empty state, absent from Home). Every test names
      its mutation; see the suite header for the full list of what each
      test pins. */
-  "test/show-search.test.js": 11,
+  "test/show-search.test.js": 21,
+  /* Three founder items from the first TestFlight build (2026-09-03), one
+     suite each, floored together because each is the kind of fix that
+     decays silently: a stack that stops being popped, a debounce that stops
+     debouncing, a CSS rule that quietly moves — none of them crashes.
+     - back-navigation: the ‹ button goes back ONE step via history.back(),
+       and Home only on a cold open (no in-app step behind the page).
+     - home-scroll-room: BOTH halves of "the home page should move when I
+       scroll, but the cards should not change size" — an overflow of exactly
+       --home-scroll-room at inset 0 and 59px, and no dynamic viewport unit
+       anywhere the cards are sized from. Each half was fixed before and
+       undone by the fix for the other; this is the pin that stops a third
+       round.
+     - playlist-match: typing on #/playlists narrows the listener's own
+       playlists to the ones sharing a word with the request, read-only.
+     Every test names its mutation; see each suite header. */
+  "test/back-navigation.test.js": 9,
+  "test/home-scroll-room.test.js": 4,
+  "test/playlist-match.test.js": 4,
   /* Home information architecture (founder instruction, 2026-09-03: "the
      home page has so much clutter. Menu should have the following pages:
      Home, Shows, Playlists, Forays, Up Next."). The move matrix: each of

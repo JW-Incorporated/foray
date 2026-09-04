@@ -414,10 +414,15 @@ test("no note this app renders into #view capitalises the unit", () => {
       /innerHTML = `<div class="page"><p class="note">([^<]*)<\/p><\/div>`/g
     ),
   ].map((m) => m[1]);
+  /* Eight until 2026-09-04, when "Playlist not found." stopped being a bare
+     note: with ‹ going back one step, that page is one step behind the list
+     after a remove, so it now renders inside a page head with a ‹ of its own
+     (renderPlaylistDetail; test/back-navigation.test.js pins it). The words
+     are unchanged; only the shape is, and this regex counts shape. */
   assert.equal(
     notes.length,
-    8,
-    `expected eight one-line #view notes, found ${notes.length}. More is fine -- ` +
+    7,
+    `expected seven one-line #view notes, found ${notes.length}. More is fine -- ` +
       "raise this count so the new one is covered. Fewer means a note was lost " +
       `or reshaped: ${notes.join(" | ")}`
   );
