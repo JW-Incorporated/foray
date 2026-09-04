@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-09-04T00:24:26.359Z",
+  "built_at": "2026-09-04T08:18:19.365Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-09-04-e1a738da",
+    "last_batch_id": "fresh-2026-09-04-57147f02",
     "last_batch_tier": 1,
     "transcript_labels": "descriptive cost label, never an eligibility test — see tools/classify/labels.mjs"
   },
@@ -156557,7 +156557,34 @@
         "science/chemistry"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/chemistry",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Chemistry-focused content covering principles and applications.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /deep[\\s-]dive/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 1,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-57147f02",
+      "classified_at": "2026-09-04T08:18:19.365Z"
     },
     "1585413971": {
       "topics": [
@@ -156939,10 +156966,41 @@
     "1586023908": {
       "topics": [
         "adventure/exploration",
-        "nature"
+        "hobbies"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.85
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Outdoor fishing adventure and wilderness exploration guide.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /deep[\\s-]dive/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-57147f02",
+      "classified_at": "2026-09-04T08:18:19.365Z"
     },
     "1586027993": {
       "topics": [
@@ -157375,7 +157433,31 @@
         "science/chemistry"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/chemistry",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Chemistry-focused content covering principles and applications.",
+      "display_title": "Podcast Química",
+      "blurb": "Aprimorando seus conhecimentos",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 1,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-57147f02",
+      "classified_at": "2026-09-04T08:18:19.365Z"
     },
     "1586549659": {
       "topics": [
@@ -157430,10 +157512,34 @@
     },
     "1586688442": {
       "topics": [
-        "culture/performing-arts"
+        "fiction/drama"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/drama",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Serialized audio drama with narrative storytelling.",
+      "display_title": "Marvel's Wolverine: The Long Night",
+      "blurb": "Special Agents Sally Pierce and Tad Marshall investigate a series of mysterious deaths in the seaside town of Burns, Alaska, following the arrival of a strange newcomer - a loner.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-57147f02",
+      "classified_at": "2026-09-04T08:18:19.365Z"
     },
     "1586692881": {
       "topics": [
@@ -157479,7 +157585,31 @@
         "sports/tennis"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/tennis",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Professional tennis coverage and athlete interviews.",
+      "display_title": "Podcast TenisBrasil",
+      "blurb": "O melhor conteúdo sobre tênis também disponível em podcast, apresentado pelo jornalista José Nilton Dalcim.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-57147f02",
+      "classified_at": "2026-09-04T08:18:19.365Z"
     },
     "1586894471": {
       "topics": [
@@ -157677,7 +157807,31 @@
         "science/chemistry"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/chemistry",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Chemistry-focused content covering principles and applications.",
+      "display_title": "No Filter with Kobo",
+      "blurb": "Unfiltered information on all topics related to the cosmetic and personal care industries such as the latest trends, innovative ingredients, formulation tips, regulations, expert i...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-57147f02",
+      "classified_at": "2026-09-04T08:18:19.365Z"
     },
     "1587212660": {
       "topics": [
@@ -157870,10 +158024,38 @@
     },
     "1587512106": {
       "topics": [
-        "science/physics"
+        "health/alternative"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/alternative",
+          "confidence": 0.35
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Alternative health claims; lacks scientific basis for confident classification.",
+      "display_title": "Medical Intuitive Miracle Show",
+      "blurb": "Medical Intuitive Miracle Show on KCAA",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 6,
+        "episodes_with_timed_transcript": 6,
+        "transcript_tags": 18,
+        "transcript_types": {
+          "application/x-subrip": 6,
+          "text/plain": 6,
+          "text/vtt": 6
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-57147f02",
+      "classified_at": "2026-09-04T08:18:19.365Z"
     },
     "1587518345": {
       "topics": [
@@ -157893,11 +158075,34 @@
     },
     "1587644195": {
       "topics": [
-        "education/language-learning",
-        "linguistics/language"
+        "education/language-learning"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Beginner language instruction with structured curriculum.",
+      "display_title": "Oyasumi Japanese with Shun",
+      "blurb": "This Japanese podcast is made for beginners. I speak easy Japanese clearly using Genki1 and Genki2 (N5-N4) grammar. This is perfect to listen before you go to sleep, Japanese langu...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-57147f02",
+      "classified_at": "2026-09-04T08:18:19.365Z"
     },
     "1587713617": {
       "topics": [
@@ -157957,10 +158162,34 @@
     },
     "1587808452": {
       "topics": [
-        "news/daily"
+        "fiction/drama"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/drama",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Serialized audio drama with narrative storytelling.",
+      "display_title": "Noticias Univision",
+      "blurb": "Mantente informado de las últimas noticias a continuación, en el podcast de Noticias Univision. Tenemos los informativos más vistos y confiables de la televisión hispana de Estados...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-57147f02",
+      "classified_at": "2026-09-04T08:18:19.365Z"
     },
     "1587816694": {
       "topics": [
@@ -157980,10 +158209,41 @@
     },
     "1587969593": {
       "topics": [
-        "relationships"
+        "relationships",
+        "comedy/casual-hangs"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Casual conversation show about dating and relationships in urban life.",
+      "display_title": "Match Made in Manhattan",
+      "blurb": "Welcome to your new favorite podcast: Match Made in Manhattan, hosted by the iconic two girls & a gay trio: Katy Bellotte, Colbie Cassidy and Adam Harrison. This is a.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 8,
+        "transcript_types": {
+          "text/vtt": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-57147f02",
+      "classified_at": "2026-09-04T08:18:19.365Z"
     },
     "1588015313": {
       "topics": [
@@ -158058,10 +158318,34 @@
     },
     "1588268734": {
       "topics": [
-        "fiction/sci-fi"
+        "paranormal"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "paranormal",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Paranormal investigation; tier0 prior (sci-fi) does not match actual paranormal content.",
+      "display_title": "Inverted World Live",
+      "blurb": "Inverted World Live investigates the mysteries that lie beneath the surface of everyday life. Host Shane Cashman searches for answers concerning UFO encounters, cryptids, ghosts, i...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-57147f02",
+      "classified_at": "2026-09-04T08:18:19.365Z"
     },
     "1588305087": {
       "topics": [
@@ -158096,7 +158380,37 @@
         "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.85
+        },
+        {
+          "node": "science",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Earth science research interviews on geology and planetary science.",
+      "display_title": "Geology Bites",
+      "blurb": "What moves the continents, creates mountains, swallows up the sea floor, makes volcanoes erupt, triggers earthquakes, and imprints ancient climates into the rocks? Oliver Strimpel,...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 4,
+        "episodes_with_timed_transcript": 4,
+        "transcript_tags": 4,
+        "transcript_types": {
+          "application/x-subrip": 4
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-57147f02",
+      "classified_at": "2026-09-04T08:18:19.365Z"
     },
     "1588326291": {
       "topics": [
@@ -158276,7 +158590,31 @@
         "fiction/sci-fi"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Science fiction short story anthology series.",
+      "display_title": "Science Fiction - Daily Short Stories",
+      "blurb": "Dive into a universe of imagination and wonder with \"Science Fiction - Daily Short Stories,\" where each episode transports you to alternate realities, distant galaxies, and futuris...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-57147f02",
+      "classified_at": "2026-09-04T08:18:19.365Z"
     },
     "1588784036": {
       "topics": [
@@ -158413,14 +158751,66 @@
         "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.75
+        },
+        {
+          "node": "business",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Personal finance and economic policy discussion.",
+      "display_title": "The Money with Katie Show",
+      "blurb": "Finance bros are out, #RichGirls are in. Join Money with Katie and her guests for conversations about where the economic, cultural, and political meet the practical personal financ...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-57147f02",
+      "classified_at": "2026-09-04T08:18:19.365Z"
     },
     "1589146741": {
       "topics": [
         "gaming"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Video game news, reviews, and industry analysis.",
+      "display_title": "The All Things Nintendo Podcast",
+      "blurb": "The All Things Nintendo podcast is a weekly show focusing on the wonderful world of gaming’s most recognizable name. Join host Brian Shea every Friday as he’s joined by special.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-57147f02",
+      "classified_at": "2026-09-04T08:18:19.365Z"
     },
     "1589160645": {
       "topics": [
@@ -158593,7 +158983,31 @@
         "sports/basketball"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/basketball",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily NBA news coverage with expert analysis.",
+      "display_title": "NBA Today",
+      "blurb": "With in-depth, comprehensive daily coverage of all aspects of the NBA, Malika Andrews and a vibrant cast of expert analysts and reporters offer their distinct perspectives on the g...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-57147f02",
+      "classified_at": "2026-09-04T08:18:19.365Z"
     },
     "1589858387": {
       "topics": [
@@ -158694,7 +159108,31 @@
         "sports/cricket"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/cricket",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Women's cricket news and tournament coverage.",
+      "display_title": "The CRICKETher Weekly",
+      "blurb": "Women's cricket news and chat, with Raf Nicholson & Syd Egan",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-57147f02",
+      "classified_at": "2026-09-04T08:18:19.365Z"
     },
     "1590406336": {
       "topics": [
@@ -158819,12 +159257,39 @@
     },
     "1590606658": {
       "topics": [
-        "medicine/biology",
-        "science",
-        "nature"
+        "business/careers",
+        "medicine/biology"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/careers",
+          "confidence": 0.7
+        },
+        {
+          "node": "medicine/biology",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Pharmaceutical and medical device industry topics.",
+      "display_title": "Let's Combinate - Drugs + Devices",
+      "blurb": "Hello Combi-Nation! Our industry fee complicated sometimes. Drugs, devices, clinical trials, submissions, sterilization validation, design control, risk management, market access r...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-57147f02",
+      "classified_at": "2026-09-04T08:18:19.365Z"
     },
     "1590618794": {
       "topics": [
@@ -158883,11 +159348,34 @@
     },
     "1590853667": {
       "topics": [
-        "health/mental",
-        "psychology"
+        "health/mental"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/mental",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Guided meditation and relaxation for mental wellness.",
+      "display_title": "Sleep Wave: Sleep Meditation & Sleepy Stories",
+      "blurb": "Relax and fall asleep with Guided Sleep Meditations and Sleepy Stories, hosted by me Karissa Vacker, an award-winning voice and meditation guide. We'll bring you an original Sleep",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-57147f02",
+      "classified_at": "2026-09-04T08:18:19.365Z"
     },
     "1590898067": {
       "topics": [
@@ -159179,7 +159667,31 @@
         "health/fitness"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fitness training and strength conditioning guidance.",
+      "display_title": "怪獸訓練電台",
+      "blurb": "怪獸肌力及體能訓練中心 Powered by Firstory Hosting",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-57147f02",
+      "classified_at": "2026-09-04T08:18:19.365Z"
     },
     "1591841978": {
       "topics": [
@@ -159277,7 +159789,31 @@
         "business/management"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/management",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Professional communication and management skills training.",
+      "display_title": "Communicast: A Communication Skills Podcast",
+      "blurb": "With Communicast, Scott works to distill down what it means to be a great communicator. Each episode features a conversation with a business professional about communication skills...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-57147f02",
+      "classified_at": "2026-09-04T08:18:19.365Z"
     },
     "1592060110": {
       "topics": [
@@ -159366,10 +159902,34 @@
     },
     "1592441899": {
       "topics": [
-        "sports/rugby"
+        "education"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unclassified; unable to determine primary topic.",
+      "display_title": "Between Two Posts",
+      "blurb": "Don&rsquo;t expect your typical rugby show as Sean Maloney and Andrew Mehrtens talk though all things on and off the field, featuring some special guest appearances from all around...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-57147f02",
+      "classified_at": "2026-09-04T08:18:19.365Z"
     },
     "1592443967": {
       "topics": [
@@ -159414,10 +159974,34 @@
     },
     "1592646595": {
       "topics": [
-        "comedy/interviews"
+        "education"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unclassified; unable to determine primary topic.",
+      "display_title": "不开玩笑 Jokes Aside",
+      "blurb": "一档时而开玩笑，时而不开玩笑的播客。是播客，不是喜剧播客。 关注公众号“猫头鹰喜剧”回复“听友群”，小助手会把你拉进群聊～",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-57147f02",
+      "classified_at": "2026-09-04T08:18:19.365Z"
     },
     "1592655490": {
       "topics": [
@@ -159711,18 +160295,69 @@
     },
     "1593050083": {
       "topics": [
-        "nature/pets"
+        "education"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unclassified; unable to determine primary topic.",
+      "display_title": "Fangs & Fur",
+      "blurb": "Co-hosts Anthony and Danielle Santilli educate pet owners on natural, raw and fresh food diets for their dogs and cats. Every week, the goal with this podcast is to help.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 7,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 7,
+        "transcript_types": {
+          "text/html": 7
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-57147f02",
+      "classified_at": "2026-09-04T08:18:19.365Z"
     },
     "1593071800": {
       "topics": [
-        "sports/endurance",
-        "health/fitness"
+        "education"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unclassified; unable to determine primary topic.",
+      "display_title": "Mindset for runners",
+      "blurb": "Practical lessons and tips to help you develop the mental side of your running",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 4,
+        "episodes_with_timed_transcript": 4,
+        "transcript_tags": 4,
+        "transcript_types": {
+          "text/vtt": 4
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-57147f02",
+      "classified_at": "2026-09-04T08:18:19.365Z"
     },
     "1593148488": {
       "topics": [
@@ -160177,10 +160812,38 @@
     "1594631737": {
       "topics": [
         "adventure/exploration",
-        "nature"
+        "hobbies"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.85
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Outdoor fishing adventure and wilderness exploration guide.",
+      "display_title": "Before the Echo",
+      "blurb": "Become a Paid Subscriber: https://podcasters.spotify.com/pod/show/josh-teulker/subscribe Welcome to Before the Echo. A hunting podcast dedicated to educating hunters in the real wo...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-57147f02",
+      "classified_at": "2026-09-04T08:18:19.365Z"
     },
     "1594633675": {
       "topics": [
@@ -160215,10 +160878,34 @@
     },
     "1594677474": {
       "topics": [
-        "religion/spirituality"
+        "education"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unclassified; unable to determine primary topic.",
+      "display_title": "Hoodoo and Chill",
+      "blurb": "Papa Seer is an author, Master Diviner, spiritual educator, cultural preservationist, and one of the most recognized independent voices in the Hoodoo and broader spiritual communit...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-57147f02",
+      "classified_at": "2026-09-04T08:18:19.365Z"
     },
     "1594728054": {
       "topics": [
@@ -160233,7 +160920,35 @@
         "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.85
+        },
+        {
+          "node": "science",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Earth science research interviews on geology and planetary science.",
+      "display_title": "How Volcanoes Are Formed?",
+      "blurb": "Volcanoes are mountains with a break in the earth's crust through which they expel magma, ash and gases from the interior of the earth. When they erupt, the lava expelled.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 1,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-57147f02",
+      "classified_at": "2026-09-04T08:18:19.365Z"
     },
     "1594861856": {
       "topics": [
@@ -160511,10 +161226,34 @@
     },
     "1595635550": {
       "topics": [
-        "tv-film/interviews"
+        "education"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unclassified; unable to determine primary topic.",
+      "display_title": "The Social Screenwriters Podcast",
+      "blurb": "Welcome to The Social Screenwriters Podcast! Hosted by me, Andy Compton (Screenwriter, Director, idiot). In this podcast, I‘ll be interviewing fellow screenwriters that I‘ve met on...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-57147f02",
+      "classified_at": "2026-09-04T08:18:19.365Z"
     },
     "1595705633": {
       "topics": [
@@ -160529,7 +161268,31 @@
         "sports/basketball"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/basketball",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily NBA news coverage with expert analysis.",
+      "display_title": "No Ceilings",
+      "blurb": "No Ceilings provides you with the most consistent and comprehensive year long draft coverage. We'll cover prospects ranging from the top pick to ones who may not declare for anothe...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-57147f02",
+      "classified_at": "2026-09-04T08:18:19.365Z"
     },
     "1595716948": {
       "topics": [
@@ -161173,10 +161936,34 @@
     },
     "1598047192": {
       "topics": [
-        "sports/golf"
+        "education/language-learning"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Beginner language instruction with structured curriculum.",
+      "display_title": "The ATC Doublecut with Micah Woods",
+      "blurb": "I discuss turfgrass management topics, usually starting with a blog post, sharing supplementary information, stories, and the reasons why I thought the topic was worth writing abou...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-57147f02",
+      "classified_at": "2026-09-04T08:18:19.365Z"
     },
     "1598118159": {
       "topics": [
@@ -161210,10 +161997,34 @@
     },
     "1598186334": {
       "topics": [
-        "religion/judaism"
+        "education"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unclassified; unable to determine primary topic.",
+      "display_title": "Chutzpod!",
+      "blurb": "Chutzpod! is a frank and wide-ranging conversation on how to build a good life, using real-life quandaries and millennia-old Jewish wisdom. Each week, Rabbi Shira Stutman and journ...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-57147f02",
+      "classified_at": "2026-09-04T08:18:19.365Z"
     },
     "1598206683": {
       "topics": [
@@ -161246,10 +162057,34 @@
     },
     "1598274558": {
       "topics": [
-        "religion/buddhism"
+        "health/mental"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/mental",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Guided meditation and relaxation for mental wellness.",
+      "display_title": "Lama Taboot",
+      "blurb": "Two Phish kids ended up in the same Tibetan Buddhist three- year retreat. Now lamas, they discuss common lessons from the meditation cushion to summer tour.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-57147f02",
+      "classified_at": "2026-09-04T08:18:19.365Z"
     },
     "1598362678": {
       "topics": [
@@ -161666,7 +162501,35 @@
         "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.75
+        },
+        {
+          "node": "business",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Personal finance and economic policy discussion.",
+      "display_title": "The View From Apollo",
+      "blurb": "Private markets have moved from a portfolio complement to a core role. The question is no longer whether to invest, but how to allocate with precision. From credit to equity.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-57147f02",
+      "classified_at": "2026-09-04T08:18:19.365Z"
     },
     "1600138482": {
       "topics": [
@@ -161701,10 +162564,34 @@
     },
     "1600276921": {
       "topics": [
-        "math"
+        "education"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unclassified; unable to determine primary topic.",
+      "display_title": "Маткульт-привет!",
+      "blurb": "Математическая культура и жизнь",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 2,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-57147f02",
+      "classified_at": "2026-09-04T08:18:19.365Z"
     },
     "1600321265": {
       "topics": [
@@ -161755,17 +162642,65 @@
     },
     "1600568435": {
       "topics": [
-        "sports/golf"
+        "education"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unclassified; unable to determine primary topic.",
+      "display_title": "The Skillest Podcast",
+      "blurb": "The Skilly Pod is for golfers and coaches who care about getting better — on and off the course. Hosted by Baden Schaff and Alex Clapp, the show covers everything.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-57147f02",
+      "classified_at": "2026-09-04T08:18:19.365Z"
     },
     "1600660063": {
       "topics": [
-        "kids-family/parenting"
+        "education"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unclassified; unable to determine primary topic.",
+      "display_title": "Pop Culture Parenting",
+      "blurb": "This podcast is about finding the sweetspot between the textbooks and real life when it comes to parenting. Dr Billy (a developmental pediatrician) and Nick (a developing parent) a...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-57147f02",
+      "classified_at": "2026-09-04T08:18:19.365Z"
     },
     "1600791991": {
       "topics": [
@@ -162231,10 +163166,34 @@
     },
     "1602882582": {
       "topics": [
-        "religion/islam"
+        "education"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unclassified; unable to determine primary topic.",
+      "display_title": "محمد اللحيدان - رواية حفص عن عاصم -",
+      "blurb": "المصحف الكامل للقارئ محمد اللحيدان - رواية حفص عن عاصم من موقع المكتبة الصوتية للقرآن الكريم http://www.mp3quran.net Mp3 Quran Mohammed Al-Lohaidan - Rewayat Hafs A'n Assem Mohamme...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-57147f02",
+      "classified_at": "2026-09-04T08:18:19.365Z"
     },
     "1602910749": {
       "topics": [
@@ -162287,10 +163246,34 @@
     },
     "1603004118": {
       "topics": [
-        "philosophy"
+        "education"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unclassified; unable to determine primary topic.",
+      "display_title": "Practical Stoicism",
+      "blurb": "Stoicism the pursuit of perfect moral character. If this is not what you understand the objective of Stoicism to be, then you do not understand Stoicism properly. If you would.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-57147f02",
+      "classified_at": "2026-09-04T08:18:19.365Z"
     },
     "1603011962": {
       "topics": [
@@ -162466,10 +163449,34 @@
     },
     "1603825494": {
       "topics": [
-        "food"
+        "education"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unclassified; unable to determine primary topic.",
+      "display_title": "The Black Smoke Barbecue Podcast",
+      "blurb": "Welcome to Black Smoke Barbecue! We are a collaborative group that focuses on different aspects of Barbecue from Pitmasters from all across North America. Barbecue is a culture and...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-57147f02",
+      "classified_at": "2026-09-04T08:18:19.365Z"
     },
     "1603857827": {
       "topics": [
@@ -162592,10 +163599,34 @@
     },
     "1604208508": {
       "topics": [
-        "food"
+        "education"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unclassified; unable to determine primary topic.",
+      "display_title": "Valor Coffee Podcast",
+      "blurb": "A podcast and video show hosted by seasoned coffee pros and Valor Coffee founders Ethan Rivers, Ross Walters and Riley Westbrook where we discuss coffee, starting and running a bus...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-57147f02",
+      "classified_at": "2026-09-04T08:18:19.365Z"
     },
     "1604218333": {
       "topics": [
@@ -162883,10 +163914,34 @@
     },
     "1605253822": {
       "topics": [
-        "tv-film/after-shows"
+        "fiction/drama"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/drama",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Serialized audio drama with narrative storytelling.",
+      "display_title": "The Official Gilded Age Podcast",
+      "blurb": "Join TCM’s Alicia Malone and Tom Meyers from The Bowery Boys on HBO’s official Gilded Age podcast. After each episode, they discuss what happened on screen and the real people,.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-57147f02",
+      "classified_at": "2026-09-04T08:18:19.365Z"
     },
     "1605281717": {
       "topics": [
@@ -162959,7 +164014,35 @@
         "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.85
+        },
+        {
+          "node": "science",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Earth science research interviews on geology and planetary science.",
+      "display_title": "Geografia em Meia Hora",
+      "blurb": "Geografia em Meia Hora é um podcast educativo feito pelo professor Vitor Augusto. O objetivo é ser a porta de entrada para os amantes e os futuro-amantes da Geografia, Atualidades",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-57147f02",
+      "classified_at": "2026-09-04T08:18:19.365Z"
     },
     "1605510126": {
       "topics": [
@@ -163048,7 +164131,31 @@
         "sports/tennis"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/tennis",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Professional tennis coverage and athlete interviews.",
+      "display_title": "Betting Weekly: Game, Bet, Match",
+      "blurb": "Join Nigel Seeley and Sean Calvert as they analyze ATP tennis events around the world. You'll hear in-depth analysis, betting strategies and predictions every week of the tennis ca...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-57147f02",
+      "classified_at": "2026-09-04T08:18:19.365Z"
     },
     "1605851817": {
       "topics": [
@@ -163131,10 +164238,36 @@
     },
     "1605942166": {
       "topics": [
-        "culture/art"
+        "education"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unclassified; unable to determine primary topic.",
+      "display_title": "Unpacking Peanuts",
+      "blurb": "The show where three cartoonists take an in-depth look at the greatest comic strip of all time-- Peanuts by Charles M. Schulz. Undeniably one of the most influential cartoonists in...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 7,
+        "episodes_with_timed_transcript": 7,
+        "transcript_tags": 7,
+        "transcript_types": {
+          "application/srt": 7
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-57147f02",
+      "classified_at": "2026-09-04T08:18:19.365Z"
     },
     "1606000644": {
       "topics": [
@@ -163184,10 +164317,34 @@
     },
     "1606242076": {
       "topics": [
-        "tv-film/animation"
+        "education"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unclassified; unable to determine primary topic.",
+      "display_title": "Cyclops is Waiting for Me - An X-Men:",
+      "blurb": "Cyclops is Waiting for Me is our weekly podcast series where we are going back and watching EVERY-SINGLE-EPISODE of the original 1992 X-Men: The Animated Series in their original i...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-57147f02",
+      "classified_at": "2026-09-04T08:18:19.365Z"
     },
     "1606242229": {
       "topics": [
@@ -163704,10 +164861,34 @@
     },
     "1607196019": {
       "topics": [
-        "culture/fashion"
+        "education"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unclassified; unable to determine primary topic.",
+      "display_title": "Beauty with a Twist",
+      "blurb": "Beauty With A Twist is all about life in the beauty/service industry. Entrepreneurship, Tea, Horror stories & more. Hosted by: Dede",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-57147f02",
+      "classified_at": "2026-09-04T08:18:19.365Z"
     },
     "1607203323": {
       "topics": [
@@ -164275,11 +165456,34 @@
     },
     "1608626153": {
       "topics": [
-        "fiction/comedy",
-        "comedy"
+        "education/language-learning"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Beginner language instruction with structured curriculum.",
+      "display_title": "Classified",
+      "blurb": "A new quick-witted mystery from the makers of Blackout and The Left Right Game, Classified follows Ivan Harris (WYATT RUSSELL), a slightly paranoid smooth talker who finds himself",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-57147f02",
+      "classified_at": "2026-09-04T08:18:19.365Z"
     },
     "1608628778": {
       "topics": [
@@ -164293,7 +165497,31 @@
         "news/daily"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily news coverage from major news organization.",
+      "display_title": "News Connect あなたと経済をつなぐ5分間 #ニュースコネクト",
+      "blurb": "News Connect（ニュースコネクト） ~あなたと経済をつなぐ5分間~ 1日1つ、5分間で、国際政治や海外のビジネスシーンを中心に、世界のメガトレンドがわかる重要ニュースを解説。朝の支度や散歩、通勤、家事の時間などにお聴きいただけるとうれしいです。 ▼MC： 野村高文（のむら・たかふみ）／Podcast Studio Chronicle 代表 Podc...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-57147f02",
+      "classified_at": "2026-09-04T08:18:19.365Z"
     },
     "1608682810": {
       "topics": [
@@ -164312,10 +165540,36 @@
     },
     "1608707465": {
       "topics": [
-        "kids-family/parenting"
+        "business/management"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/management",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Professional communication and management skills training.",
+      "display_title": "The Midlife Momma Podcast - Empty nest mom,",
+      "blurb": "Welcome to The Midlife Momma Podcast, the go-to resource for empty nest moms ready to embrace the next chapter of life with confidence and purpose! Join me, Pamela Henkelman, a.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 8,
+        "transcript_types": {
+          "text/vtt": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-57147f02",
+      "classified_at": "2026-09-04T08:18:19.365Z"
     },
     "1608708031": {
       "topics": [
