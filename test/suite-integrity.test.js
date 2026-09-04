@@ -397,7 +397,14 @@ const FLOORS = {
      "SIZES still names exactly the three icons we publish", so an entry cannot
      be dropped to shed tests while the static count holds still. */
   "tools/brand/build-icons.test.mjs": 10,
-  "tools/ci/path-policy.test.mjs": 82,
+  /* 82 -> 84: the app icon's deny entry, and the reason it is a DENY rather than
+     an entry in that file's `ACKNOWLEDGED_UNDENIED_GATES` beside its own
+     neighbour. Pinned as a named test because the gate-script scan there is
+     satisfied either way — moving `inject-app-icon.mjs` from denied to
+     acknowledged would keep every check green while re-opening the exposure, and
+     what that exposure ships is Capacitor's placeholder on the App Store product
+     page, with no manual upload available to correct it. */
+  "tools/ci/path-policy.test.mjs": 84,
   "tools/ci/pr-triage.test.mjs": 85,
   "tools/ci/run-suites.test.mjs": 36,
   // The classify fleet. `no-exclusion` is the founder's "label, never filter"
@@ -579,11 +586,20 @@ const FLOORS = {
      that asserts the REASONING for `false` is still written beside the key — the
      only defence against the declaration outliving the facts that make it true.
 
-     34 -> 41 for `ios-workflow`, in the same change. Five of those seven are about
+     34 -> 45 for `ios-workflow`, in the same change. Five of those eleven are about
      two steps that did not exist: the icon injection and the encryption
-     declaration. The one not to lose is "both generated-project edits happen AFTER
-     `cap add ios` and BEFORE any build" — nothing pinned that order before, and
-     both ways of getting it wrong are invisible in the build's own output.
+     declaration. The one not to lose there is "both generated-project edits happen
+     AFTER `cap add ios` and BEFORE any build" — nothing pinned that order before,
+     and both ways of getting it wrong are invisible in the build's own output.
+
+     THE OTHER FOUR ARE THE BUILD NUMBER, and they guard the thing that stopped
+     TestFlight entirely: Capacitor ships `CURRENT_PROJECT_VERSION = 1` and never
+     moves it, so run 33815045229 took version 1 and every later upload was
+     rejected as a duplicate — the founder could receive no new build at all. The
+     one not to lose is "the build number is READ BACK out of the archive before
+     the upload is spent": a build-setting override that does not reach the bundle
+     is completely silent, and its only other symptom is the same altool error ten
+     minutes later with nothing pointing at the step that caused it.
 
      `inject-app-icon` IS NEW, and floored at its exact count with no slack. A
      build reached TestFlight on 2026-09-03 wearing Capacitor's placeholder icon,
@@ -606,7 +622,7 @@ const FLOORS = {
   "tools/mobile/inject-app-icon.test.mjs": 27,
   "tools/mobile/inject-background-audio.test.mjs": 41,
   "tools/mobile/ios-ci.test.mjs": 89,
-  "tools/mobile/ios-workflow.test.mjs": 41,
+  "tools/mobile/ios-workflow.test.mjs": 45,
   "tools/mobile/probe/install-probe.test.mjs": 39,
   /* The one-shot that gets a newly curated show's back catalogue into the pipeline
      (#279). The floor matters because the whole script exists to make one silent

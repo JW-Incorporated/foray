@@ -254,6 +254,37 @@ test("tools/events-server.mjs is denied even though tools/ is allowed", () => {
   assert.equal(p.denied[0].prefix, "tools/events-server.mjs");
 });
 
+test("tools/mobile/inject-app-icon.mjs is denied, not merely acknowledged", () => {
+  /* IT SITS ON THE OTHER SIDE OF A LINE ITS NEIGHBOUR DOES NOT.
+     `inject-background-audio.mjs` is in ACKNOWLEDGED_UNDENIED_GATES above: an
+     Info.plist capability edit with no credential exposure, whose worst silent
+     failure is audio stopping on the lock screen — bad, and fixable in the next
+     build. `inject-app-icon.mjs` writes the asset catalog, and since Xcode 14 App
+     Store Connect EXTRACTS the PUBLIC LISTING icon from the uploaded binary's
+     catalog with no manual upload available. A one-line `process.exit(0)` here
+     neuters both the write and the `--check` that proves it, ios-build stays
+     green, and Capacitor's placeholder goes on the App Store product page — which
+     is not hypothetical; a TestFlight build shipped that way on 2026-09-03.
+
+     Pinned as a NAMED test rather than left to the gate-script scan above,
+     because that scan is satisfied either way: moving this file from
+     DENIED_PREFIXES into ACKNOWLEDGED_UNDENIED_GATES would keep it green while
+     re-opening the exposure.
+     MUTATION: move "tools/mobile/inject-app-icon.mjs" out of DENIED_PREFIXES and
+     into ACKNOWLEDGED_UNDENIED_GATES -> fails here, and only here. RUN. */
+  assert.ok(ALLOWED_PREFIXES.includes("tools/"));
+  assert.ok(DENIED_PREFIXES.includes("tools/mobile/inject-app-icon.mjs"));
+  const p = pathPolicy(["tools/mobile/inject-app-icon.mjs"]);
+  assert.equal(p.denied.length, 1);
+  assert.equal(p.denied[0].prefix, "tools/mobile/inject-app-icon.mjs");
+  assert.equal(p.allowed.length, 0, "deny must win over the tools/ allow entry");
+  assert.equal(
+    "tools/mobile/inject-app-icon.mjs" in ACKNOWLEDGED_UNDENIED_GATES,
+    false,
+    "acknowledging it instead of denying it re-opens the exposure with every check green"
+  );
+});
+
 /* --------------------------------------------------------- pathPolicy() */
 
 test("denied wins over allowed, always", () => {

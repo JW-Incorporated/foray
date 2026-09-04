@@ -86,7 +86,18 @@ column can change without anyone buying a laptop.
    at the end collects both, with the app never foregrounded in between.
 8. Report every verdict to the job summary, and upload logs, screenshots and the
    raw probe records as an artifact.
-9. **Gated on secrets that do not exist:** archive, export, upload to TestFlight.
+9. **Gated on signing secrets:** archive, export, upload to TestFlight — with a
+   **unique `CFBundleVersion` per upload**, read back out of the archive before
+   the export is spent. Capacitor's generated project ships
+   `CURRENT_PROJECT_VERSION = 1` and never moves it, so run 33815045229 took
+   version 1 and run 33817797333 was rejected by altool: *"The bundle version
+   must be higher than the previously uploaded version: '1'"* — which meant the
+   founder could receive no new build at all, fix or not. The value is
+   `run_number.run_attempt`: monotonic, needs no stored state, and the attempt
+   suffix is there because a **re-run keeps its run_number** and would otherwise
+   reproduce the duplicate. `MARKETING_VERSION` is deliberately untouched — only
+   `CFBundleVersion` has to be unique, and bumping the marketing version per
+   build would tell TestFlight users a new release shipped every time CI ran.
 
 ## 2. Three design decisions worth defending
 

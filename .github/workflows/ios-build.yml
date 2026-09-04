@@ -287,9 +287,18 @@ jobs:
           set -euo pipefail
           test -d "$APPICONSET"
           node tools/mobile/inject-app-icon.mjs "$APPICONSET"
-          # Apple's own parser as the second opinion on the manifest, exactly as
-          # PlistBuddy is on the Info.plist above. `plutil -lint` reads JSON too.
-          plutil -lint "$APPICONSET/Contents.json"
+          # A SECOND, INDEPENDENT PARSER on the manifest we just read, the way
+          # PlistBuddy is the second opinion on the Info.plist above.
+          #
+          # NOT `plutil -lint`, AND RUN 33819135977 IS WHY. This line used to be
+          # `plutil -lint "$APPICONSET/Contents.json"` with a comment claiming
+          # "plutil -lint reads JSON too". It does not: it parses as a property
+          # list and answered `(Unexpected character { at line 1)`, exit 1, on a
+          # Contents.json Xcode itself wrote. That is the whole value of running
+          # this workflow on the PR that edits it. `python3 -m json.tool` is on
+          # every macOS runner and is genuinely a different implementation from
+          # the Node parser that wrote the file.
+          python3 -m json.tool "$APPICONSET/Contents.json" > /dev/null
           node tools/mobile/inject-app-icon.mjs "$APPICONSET" --check
           cp "$APPICONSET/Contents.json" "$ART/AppIcon-Contents.json"
           ls -l "$APPICONSET" | tee "$ART/appiconset.txt"
@@ -779,16 +788,80 @@ jobs:
           # profile failed to install — it had not. Passing DEVELOPMENT_TEAM
           # alone, as this step used to, does not switch the style.
           #
+          # ── THE BUILD NUMBER, WHICH BLOCKED EVERY UPLOAD AFTER THE FIRST ────
+          #
+          # Run 33817797333 archived, exported, and then died at altool:
+          #
+          #   ERROR: The provided entity includes an attribute with a value that
+          #   has already been used (-19232)
+          #   The bundle version must be higher than the previously uploaded
+          #   version: '1'.
+          #
+          # Capacitor's generated project ships CURRENT_PROJECT_VERSION = 1 and
+          # never moves it, so run 33815045229 took version 1 and EVERY later
+          # build re-uploaded version 1. App Store Connect rejects a duplicate,
+          # which means the founder could not receive any new build at all —
+          # including one carrying a fix.
+          #
+          # VERIFIED, not assumed, against what `cap add ios` actually generated
+          # (run 33819135977's own $ART/Info.plist): the plist reads
+          # `<key>CFBundleVersion</key><string>$(CURRENT_PROJECT_VERSION)</string>`,
+          # so it IS the build setting and passing it here reaches the bundle. Had
+          # the plist hardcoded a literal `1`, this line would have done nothing
+          # and failed at altool again on a green-looking run — which is why the
+          # value is READ BACK OUT of the archive below rather than trusted.
+          #
+          # WHY run_number.run_attempt AND NOT run_number ALONE. `run_number` is
+          # monotonic per workflow and needs no stored state — but RE-RUNNING a
+          # run keeps its run_number and only increments `run_attempt`, so a
+          # re-run of a run that already uploaded would reproduce this exact
+          # duplicate. CFBundleVersion takes up to three period-separated
+          # integers and is compared component-wise, so `144.1` sorts above `1`
+          # and below `144.2` and `145.1`. At the time of writing the workflow is
+          # on run 143, so the next value emitted is >= 144.1 — strictly greater
+          # than the `1` already uploaded, which is the ordering requirement.
+          #
+          # MARKETING_VERSION (the user-visible 1.0) is deliberately untouched:
+          # only CFBundleVersion has to be unique per upload, and bumping the
+          # marketing version per build would tell TestFlight users a new release
+          # shipped every time CI ran.
+          BUILD_NUMBER="${{ github.run_number }}.${{ github.run_attempt }}"
+          echo "CFBundleVersion for this upload: $BUILD_NUMBER"
+          # A build number that is not strictly above the `1` already uploaded is
+          # a wasted archive and a confusing altool error ten minutes later.
+          case "$BUILD_NUMBER" in 1|1.*) echo "::error::refusing to archive at build number $BUILD_NUMBER"; exit 1 ;; esac
+
           # -allowProvisioningUpdates is deliberately NOT the fix: it would let
           # CI mint certificates and profiles in the account on its own.
           xcodebuild "$XC_FLAG" "$XC_PATH" -scheme App -configuration Release \
             -sdk iphoneos -destination 'generic/platform=iOS' \
             -archivePath "${{ runner.temp }}/Foray.xcarchive" \
             CODE_SIGN_STYLE=Manual \
+            CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
             DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
             PROVISIONING_PROFILE_SPECIFIER="$PROFILE_UUID" \
             CODE_SIGN_IDENTITY="Apple Distribution" \
             archive | tail -20
+
+          # READ IT BACK OUT OF THE ARCHIVED APP, with Apple's own parser, before
+          # spending the export and the upload on it. A build-setting override
+          # that silently does not reach the bundle is the "fails green" shape
+          # this file keeps getting burned by, and its only other symptom is the
+          # altool error above, minutes later, with nothing pointing here.
+          ARCHIVED_PLIST="${{ runner.temp }}/Foray.xcarchive/Products/Applications/App.app/Info.plist"
+          test -f "$ARCHIVED_PLIST"
+          BUILT_VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleVersion" "$ARCHIVED_PLIST")
+          BUILT_MARKETING=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$ARCHIVED_PLIST")
+          echo "archived CFBundleVersion=$BUILT_VERSION CFBundleShortVersionString=$BUILT_MARKETING" \
+            | tee "$ART/archived-version.txt"
+          if [ "$BUILT_VERSION" != "$BUILD_NUMBER" ]; then
+            echo "::error::CFBundleVersion in the archive is '$BUILT_VERSION', not '$BUILD_NUMBER'." \
+                 "The CURRENT_PROJECT_VERSION override did not reach the bundle; altool would reject" \
+                 "this upload as a duplicate. Check whether the generated Info.plist still uses" \
+                 "\$(CURRENT_PROJECT_VERSION) for CFBundleVersion."
+            exit 1
+          fi
+
           xcodebuild -exportArchive \
             -archivePath "${{ runner.temp }}/Foray.xcarchive" \
             -exportOptionsPlist "${{ runner.temp }}/ExportOptions.plist" \
