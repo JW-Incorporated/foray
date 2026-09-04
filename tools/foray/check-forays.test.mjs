@@ -128,7 +128,19 @@ test("the committed Forays are the four documented ones, and all are #134's kind
      edit too, and a `deepEqual` is the cheapest way to say so. */
   assert.deepEqual(
     live.forays.forays.map((f) => f.id),
-    ["grilling-history-1", "grilling-history-2", "capital-types-1", "geology-plates-1"]
+    [
+      "grilling-history-1", "grilling-history-2", "capital-types-1", "geology-plates-1",
+      /* NOT CURATED CONTENT. `tts-locked-screen-check` is the instrument for
+         HUMAN-ACTIONS.md #29 — one script-only narration line that names a marker
+         every ten seconds, so a phone speaking it with the screen locked reports
+         how far it got. Its seven segments are ballast: check-forays.mjs will not
+         pass a Foray with no resolvable segment, and D5's IQR floor plus M4's 25 %
+         source cap set the shape of the ballast. It stays a `draft` — the test
+         below pins that — and it comes OUT, with its doc and with
+         `withDiagnosticUnlock()`, the day #29 has an answer.
+         docs/curation/tts-locked-screen-check.md says all of this at length. */
+      "tts-locked-screen-check",
+    ]
   );
   for (const f of live.forays.forays) assert.equal(f.kind, "deep-dive", f.id);
 });
@@ -430,6 +442,12 @@ const RUNNING_ORDER_DOCS = [
   { forayId: "grilling-history-2", doc: "docs/curation/grilling-history-assembly.md", endsBefore: "### 2a.", tldr: false, slotHeaders: false },
   { forayId: "capital-types-1", doc: "docs/curation/foray2-capital.md", endsBefore: "### Why the slots run", tldr: true, slotHeaders: true },
   { forayId: "geology-plates-1", doc: "docs/curation/geology-foray-assembly.md", endsBefore: "### Who each label is", tldr: true, slotHeaders: true },
+  /* The instrument Foray (HUMAN-ACTIONS.md #29). `tldr: false` and
+     `slotHeaders: false` are declared rather than inferred, and both directions
+     are asserted below — its doc is a record of a measuring device, not a
+     curation argument, so it carries neither a §0 summary table nor slot header
+     rows. Its §2 table is pinned exactly as hard as every other Foray's. */
+  { forayId: "tts-locked-screen-check", doc: "docs/curation/tts-locked-screen-check.md", endsBefore: "## 3.", tldr: false, slotHeaders: false },
 ];
 
 /** `2:33` or `1:01:13` as seconds. The curation docs write every duration this

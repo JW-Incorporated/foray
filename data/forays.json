@@ -799,6 +799,93 @@
           "role": "explanation"
         }
       ]
+    },
+    {
+      "id": "tts-locked-screen-check",
+      "kind": "deep-dive",
+      "title": "On-device narration, screen off",
+      "topic": "computing/software-engineering",
+      "status": "draft",
+      "summary": "One spoken line that names a marker every ten seconds, so a locked phone can report itself.",
+      "runtime_sec": 906.95,
+      "source_doc": "docs/curation/tts-locked-screen-check.md",
+      "label_prefixes": {
+        "BERC": "geology-bites--david-bercovici-on-how-plate-subduction-starts",
+        "EVAN": "geology-bites--david-evans-on-supercontinents",
+        "FACC": "geology-bites--claudio-faccenna-on-the-dynamics-of-subduction-zones",
+        "MCN": "geology-bites--allen-mcnamara-on-the-deep-mantle-structure-of-the-earth",
+        "NANC": "geology-bites--damian-nance-on-what-drives-the-supercontinent-cycle",
+        "ROM": "geology-bites--barbara-romanowicz-on-seeing-deep-into-the-earth",
+        "VH": "geology-bites--douwe-van-hinsbergen-on-what-drives-the-motions-of-tectonic"
+      },
+      "slots": [
+        {
+          "id": "the-line",
+          "title": "The line"
+        },
+        {
+          "id": "the-tape",
+          "title": "Ballast: seven clips on plate tectonics"
+        }
+      ],
+      "items": [
+        {
+          "type": "narration",
+          "slot": "the-line",
+          "id": "tts-check-1",
+          "title": "The line",
+          "script": "This is the on-device narration test for Foray. Lock the phone now and keep listening. Every ten seconds this line names the marker it has reached, so the last one you hear is the result. Marker one, ten seconds. The voice you are hearing is the phone's own speech synthesiser, not a recorded file, and nobody has yet measured whether it keeps going once the screen is off. Marker two, twenty seconds. A recorded clip already passed this test on a real handset, so the open question is only whether spoken text gets the same treatment. Marker three, thirty seconds. Thirty seconds is the number that matters. Past this point the phone has had time to clear every short grace period it grants an app that has just gone quiet. Marker four, forty seconds. If you are still hearing this, the answer is yes, and a Foray can narrate its own joins without a rendered audio file for every line. Marker five, fifty seconds. If the sound stopped earlier, note the last marker you heard. That number is the whole result, and it is more useful than a plain yes or no. Marker six, sixty seconds. One more thing worth noticing: whether the voice resumes on its own when you unlock, or stays silent until you press play again. Marker seven, seventy seconds. A voice that resumes was paused by the system. A voice that never returns was stopped, and those two failures need different fixes. Marker eight, eighty seconds. You have what you need now. Unlock the phone, write down the last marker you heard, and say whether the sound came back on its own. Marker nine, ninety seconds. That is the end of the test. Thank you for standing about with a phone in your pocket for a minute and a half."
+        },
+        {
+          "type": "segment",
+          "slot": "the-tape",
+          "label": "MCN-3",
+          "segment_id": "geology-bites--allen-mcnamara-on-the-deep-mantle-structure-of-the-earth#759",
+          "role": "explanation"
+        },
+        {
+          "type": "segment",
+          "slot": "the-tape",
+          "label": "VH-3",
+          "segment_id": "geology-bites--douwe-van-hinsbergen-on-what-drives-the-motions-of-tectonic#1407",
+          "role": "explanation"
+        },
+        {
+          "type": "segment",
+          "slot": "the-tape",
+          "label": "NANC-1",
+          "segment_id": "geology-bites--damian-nance-on-what-drives-the-supercontinent-cycle#440",
+          "role": "explanation"
+        },
+        {
+          "type": "segment",
+          "slot": "the-tape",
+          "label": "BERC-1",
+          "segment_id": "geology-bites--david-bercovici-on-how-plate-subduction-starts#52",
+          "role": "explanation"
+        },
+        {
+          "type": "segment",
+          "slot": "the-tape",
+          "label": "ROM-1",
+          "segment_id": "geology-bites--barbara-romanowicz-on-seeing-deep-into-the-earth#725",
+          "role": "explanation"
+        },
+        {
+          "type": "segment",
+          "slot": "the-tape",
+          "label": "EVAN-2",
+          "segment_id": "geology-bites--david-evans-on-supercontinents#1693",
+          "role": "explanation"
+        },
+        {
+          "type": "segment",
+          "slot": "the-tape",
+          "label": "FACC-1",
+          "segment_id": "geology-bites--claudio-faccenna-on-the-dynamics-of-subduction-zones#73",
+          "role": "explanation"
+        }
+      ]
     }
   ]
 }

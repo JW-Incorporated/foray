@@ -45,6 +45,33 @@ docs/. Completed workstreams move to their plan doc's retro section.
   wrapper that re-execs `scan.mjs`, so this card's original scope of also
   patching `refresh-feeds.mjs`'s own fetch path is moot — fixing `scan.mjs`
   covers both entry points. `refresh-feeds.mjs` itself is untouched here.
+### HUMAN-ACTIONS #29 is runnable on a phone — on-device narration gets wired (2026-09-03) — `feature/tts-locked-screen-test`
+
+- **What:** #29 asked for "a build of the shell with the plugin wired to speak a
+  long test sentence". It could not be produced, because three things were
+  missing and none of them was the plugin: nothing passed a `tts` bridge to
+  `PlayerQueueManager` (so `_speakNarration` was dead code that passed all its
+  own tests), no Foray in `data/` carried a narration `script`, and a `draft`
+  Foray is unreachable inside the shell because `?foray=` reads
+  `location.search` and `capacitor://localhost/` has none. All three closed.
+  A fourth defect fell out: `ForayTtsPlugin.swift` was assigning the player's
+  speed MULTIPLIER onto `AVSpeechUtterance.rate`, where `1.0` means *maximum*
+  speech rate — every narration line would have been read at top speed.
+- **Touches:** `data/forays.json` (one new draft Foray,
+  `tts-locked-screen-check`), `player/tts-bridge.js` (new) +
+  `player/foray-resolve.js` + `player/client.js`,
+  `mobile/plugins/foray-tts/` (Swift rate mapping, README, web header),
+  `test/suite-integrity.test.js`, `HUMAN-ACTIONS.md` #29,
+  `docs/research/on-device-tts.md` §9.5.
+- **Branch:** `feature/tts-locked-screen-test` — PR only, never main. `mobile/`
+  is unlisted, so the whole PR waits for a human press regardless.
+- **Explicitly out of scope:** knowing when an utterance FINISHES
+  (generation-architecture §7 item 3) — the queue still does not advance past a
+  spoken item, and the diagnostic Foray is designed around that rather than
+  hiding it. Also out of scope: any narration-authoring UI.
+- **Delete after the answer:** the Foray, `DIAGNOSTIC_FORAY_ID` /
+  `withDiagnosticUnlock()` and their call sites. Named in #29's own steps.
+
 ### fast-xml-parser security bump (GHSA-8r6m-32jq-jx6q) (2026-09-01) — `fix-fastxmlparser-t_b3f33dfa`
 
 - **What:** Bumping `fast-xml-parser` from `^5.9.3` to `>=5.10.1` in

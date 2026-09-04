@@ -136,14 +136,20 @@ do not stop after §7 thinking you are done. Every answer already exists:
 
   1. **Not "forays", plural, and not a library.** There is exactly **one**
      published: *The types of capital a startup can raise*, 51 minutes, 22
-     segments from 7 shows. The other three are still drafts. "A foray" is
-     honest; "forays" or "a growing collection" is not.
+     segments from 7 shows. The other four are still drafts — and one of those
+     four, `tts-locked-screen-check`, is not content at all: it is the
+     instrument for `HUMAN-ACTIONS.md` #29 and comes out once that is answered
+     (`docs/curation/tts-locked-screen-check.md`). "A foray" is honest;
+     "forays" or "a growing collection" is not.
   2. **Nothing about a host, a narrator or a guide.** A foray is edited tape with
      a 2.0 s beat between segments and nothing spoken in between. **No narration
      audio exists anywhere in the repo** — rule X1 ("a cross-episode seam always
      carries narration") is unmet at all 10 of this foray's cross-episode seams,
      and meeting it is ElevenLabs spend nobody has authorised. See
-     `docs/curation/foray2-capital.md` §11b.
+     `docs/curation/foray2-capital.md` §11b. The diagnostic Foray named above
+     carries a narration SCRIPT, spoken by the phone's own synthesiser — still
+     not narration audio, still nothing a listing may describe, and it is not
+     on the published foray in any case.
   3. **No promise about background or offline playback.** **#224** is open;
      `HUMAN-ACTIONS.md` #11 says in terms to expect playback to stop at a seam
      with the screen off.
