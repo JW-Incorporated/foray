@@ -157,14 +157,61 @@ const ACKNOWLEDGED_UNDENIED_GATES = {
   // segment-pipeline PR — the friction pointing the wrong way that #167 was
   // about. Revisit if that workstream finishes.
   "tools/segments/merge-segments.mjs": "active workstream; own suite floored at 39",
+  // ios-ci.mjs is a multi-subcommand CLI (xcode-container, pick-simulator,
+  // redact-localstorage, signing-gate, decode-localstorage, verdict) invoked
+  // from ios-build.yml. `signing-gate` decides whether the iOS build proceeds
+  // unsigned, but — unlike wire-signing.mjs — no step in ios-build.yml passes
+  // it a live signing secret; ios-build.yml has no APPLE_* credential env at
+  // all today. Revisit and split/deny the signing-gate path specifically the
+  // day iOS signing secrets are wired in (kanban t_97e1c5f4).
+  "tools/mobile/ios-ci.mjs": "no live signing secret in ios-build.yml today; revisit when iOS signing lands",
+  // Diagnostic probes over a live Chrome DevTools socket / device screen —
+  // they read app behaviour after the build already happened and can only
+  // turn a check red, not change what gets built or signed.
+  "tools/mobile/webview-probe.mjs": "post-build diagnostic probe; cannot alter build/signing output",
+  "tools/mobile/probe/install-probe.mjs": "post-build diagnostic probe; cannot alter build/signing output",
+  // Injects a background-audio capability into Info.plist and verifies with
+  // --check, same shape as wire-signing.mjs's own --check re-read — but this
+  // one has no keystore/credential exposure, only an Info.plist edit.
+  "tools/mobile/inject-background-audio.mjs": "Info.plist capability injection; no credential exposure",
+  // nightly-refresh.yml / nightly-watch.yml run with `contents: write` (they
+  // commit refreshed data), not a founder-merge decision — an accepted T3
+  // trade per the file's own tiering above, bounded by main's branch
+  // protection.
+  "tools/refresh/watch-nightly.mjs": "nightly data-refresh pipeline; contents:write, no auto-merge decision at stake",
+  "tools/refresh/scan.mjs": "nightly data-refresh pipeline; contents:write, no auto-merge decision at stake",
+  "tools/refresh/resolve.mjs": "nightly data-refresh pipeline; contents:write, no auto-merge decision at stake",
+  // Re-invokes THIS policy (decide/check) from automerge-nightly.yml and
+  // path-policy.yml — it cannot expose itself, it IS the gate under test.
+  "tools/ci/path-policy.mjs": "the policy script itself; already covered by tools/ci/ in DENIED_PREFIXES",
+  // Drives the PR-hygiene labelling sweep (needs-founder queue etc.) — it
+  // reads/labels PRs, it does not gate what auto-merges or what CI asserts.
+  "tools/ci/pr-triage.mjs": "PR labelling/triage only; does not gate auto-merge or CI checks",
 };
 
-test("every script ci.yml runs as a gate is denied, or explicitly acknowledged", () => {
-  const ci = fs.readFileSync(path.join(REPO, ".github/workflows/ci.yml"), "utf8");
-  const scripts = [...ci.matchAll(/\bnode\s+(tools\/[\w./-]+\.mjs)/g)].map((m) => m[1]);
-  assert.ok(scripts.length >= 3, `expected to find gate scripts in ci.yml, found ${scripts}`);
+/* Every `.github/workflows/*.yml` file, not just ci.yml — a gate script run
+ * from ANY workflow can be neutered the same way; scoping the scan to ci.yml
+ * alone only checked one of the repo's workflow files (kanban t_97e1c5f4). */
+function allGateScripts() {
+  const dir = path.join(REPO, ".github/workflows");
+  const files = fs.readdirSync(dir).filter((f) => f.endsWith(".yml") || f.endsWith(".yaml"));
+  const found = new Map(); // script -> Set(workflow files that invoke it)
+  for (const f of files) {
+    const text = fs.readFileSync(path.join(dir, f), "utf8");
+    for (const m of text.matchAll(/\bnode\s+(tools\/[\w./-]+\.mjs)/g)) {
+      const script = m[1];
+      if (!found.has(script)) found.set(script, new Set());
+      found.get(script).add(f);
+    }
+  }
+  return found;
+}
 
-  const exposed = [...new Set(scripts)]
+test("every gate script run by ANY workflow is denied, or explicitly acknowledged", () => {
+  const found = allGateScripts();
+  assert.ok(found.size >= 3, `expected to find gate scripts across workflows, found ${found.size}`);
+
+  const exposed = [...found.keys()]
     .filter((s) => !pathPolicy([s]).denied.length)
     .filter((s) => !(s in ACKNOWLEDGED_UNDENIED_GATES))
     .sort();
@@ -172,18 +219,19 @@ test("every script ci.yml runs as a gate is denied, or explicitly acknowledged",
   assert.deepStrictEqual(
     exposed,
     [],
-    "these scripts are invoked by ci.yml as gates but sit on an ALLOWED path, so " +
-      "a bot PR could neuter them and auto-merge unread. Add each to " +
+    "these scripts are invoked by a workflow as gates but sit on an ALLOWED " +
+      "path, so a bot PR could neuter them and auto-merge unread. Add each to " +
       "DENIED_PREFIXES in tools/ci/path-policy.mjs, or to " +
-      "ACKNOWLEDGED_UNDENIED_GATES here with the reason:\n" + exposed.join("\n")
+      "ACKNOWLEDGED_UNDENIED_GATES here with the reason:\n" +
+      exposed.map((s) => `${s} (invoked by ${[...found.get(s)].join(", ")})`).join("\n")
   );
 });
 
 test("the acknowledgement list has not gone stale", () => {
-  // An entry for a script ci.yml no longer runs is a licence nobody needs.
-  const ci = fs.readFileSync(path.join(REPO, ".github/workflows/ci.yml"), "utf8");
-  const stale = Object.keys(ACKNOWLEDGED_UNDENIED_GATES).filter((s) => !ci.includes(s));
-  assert.deepStrictEqual(stale, [], `no longer invoked by ci.yml: ${stale.join(", ")}`);
+  // An entry for a script no workflow runs any more is a licence nobody needs.
+  const found = allGateScripts();
+  const stale = Object.keys(ACKNOWLEDGED_UNDENIED_GATES).filter((s) => !found.has(s));
+  assert.deepStrictEqual(stale, [], `no longer invoked by any workflow: ${stale.join(", ")}`);
 });
 
 test("STATE.md and HUMAN-ACTIONS.md are allowlisted", () => {
@@ -191,6 +239,19 @@ test("STATE.md and HUMAN-ACTIONS.md are allowlisted", () => {
   // every obedience cost a founder merge. HUMAN-ACTIONS.md is the same shape.
   assert.equal(pathPolicy(["STATE.md"]).allowed.length, 1);
   assert.equal(pathPolicy(["HUMAN-ACTIONS.md"]).allowed.length, 1);
+});
+
+test("tools/events-server.mjs is denied even though tools/ is allowed", () => {
+  // scripts/events-server.vbs runs `node tools/events-server.mjs` at every
+  // Windows login on the founder's always-on workstation, with the
+  // founder's real user privileges, in the checkout that also holds the
+  // root .env and data-local/. No test suite covers it, so it must stay
+  // off the auto-merge allow path (kanban t_5663c62a / t_85e1b1ba).
+  assert.ok(ALLOWED_PREFIXES.includes("tools/"));
+  assert.ok(DENIED_PREFIXES.includes("tools/events-server.mjs"));
+  const p = pathPolicy(["tools/events-server.mjs"]);
+  assert.equal(p.denied.length, 1);
+  assert.equal(p.denied[0].prefix, "tools/events-server.mjs");
 });
 
 /* --------------------------------------------------------- pathPolicy() */

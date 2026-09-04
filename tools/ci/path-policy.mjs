@@ -91,6 +91,28 @@ export const DENIED_PREFIXES = [
   // a new gate script cannot acquire this exposure silently.
   "tools/test-search.mjs",
   "tools/validate-semantic-index.mjs",
+  // scripts/events-server.vbs runs `node tools/events-server.mjs` at every
+  // Windows login on the founder's always-on workstation (Startup folder),
+  // with the founder's real user privileges, in the checkout that also holds
+  // the root `.env` and `data-local/`. `tools/` is allowlisted and no test
+  // suite executes this file, so without this entry a bot-authored PR
+  // touching only this file would auto-merge unread — the exact risk
+  // DENIED_PREFIXES exists to prevent, except the machine executing the
+  // unread code is a founder's own workstation, not a CI runner. Found by
+  // the Fable-driven CI/release-pipeline audit (kanban t_5663c62a /
+  // t_85e1b1ba). Same trade as the two entries above: near-zero change
+  // frequency, occasional human merge.
+  "tools/events-server.mjs",
+  // android-release.yml runs this to wire the Android signing config into the
+  // Capacitor-generated Gradle project, then re-reads it with `--check`. The
+  // build step right after it receives FORAY_KEYSTORE_PASSWORD and
+  // ANDROID_KEY_ALIAS (from secrets) plus the decoded keystore on disk once
+  // ANDROID_KEYSTORE_B64 is installed. Today that secret is not installed and
+  // the exposure is latent; `tools/` is allowlisted, so an agent-authored
+  // change here would otherwise land unread. Found by extending this file's
+  // own gate-script scan to every workflow, not just ci.yml (kanban
+  // t_97e1c5f4) — deny it before the keystore secret exists, not after.
+  "tools/mobile/wire-signing.mjs",
 ];
 
 /* Paths a bot run may touch, by tier (docs/curation/... § auto-merge):

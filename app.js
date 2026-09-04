@@ -388,6 +388,14 @@ function nudgeTopics(topics, amount) {
     }
   });
   saveInterests();
+  /* Bumps the repeated-query cache key (see buildPlaylist's `searchCache`) so
+     a playlist rebuild after a pick/play/thumbs nudge re-scores instead of
+     silently serving a stale ranking. interestScore (used as
+     searchWithRelaxation's zero-content-token rankFallback, e.g. a bare
+     "comedy"/"something short" query) reads state.interests, so this is the
+     one thing besides the query text and family-mode flag that can change
+     what buildPlaylist should return for the exact same typed query. */
+  state._interestsGen = (state._interestsGen || 0) + 1;
 }
 
 function boostTopics(topics, amount) { nudgeTopics(topics, amount); }
@@ -1344,6 +1352,39 @@ function renderAllShows() {
   renderShowIndexPage("All Shows", `${shows.length} shows in 4a's catalogue, A\u2013Z`, shows);
 }
 
+/* Stage 3b (docs/show-pages-plan.md §Stage 3, kanban t_567b570f): full
+   per-show episode list, fetched on demand from the backend endpoint rather
+   than the curated discover-pool ceiling `episodesForShow` gives (median 7
+   episodes). Maps a full-catalogue row into the same shape `snapshot()`
+   already knows how to normalize (id/title/hook/show/audio_url/duration_min)
+   and seeds it into `state.itemIndex` — bindPlay/toggleStar both read
+   `state.itemIndex[id]` first, so a full-catalogue row plays and stars
+   exactly like a curated one. No new row UI needed; every episode gets a
+   real, playable audio_url straight from the endpoint, never a link-out. */
+function fullCatalogueRowToEpRowItem(show, ep) {
+  const id = `${show.show_id}--${ep.guid}`;
+  return snapshot(id, {
+    show: show.title,
+    title: ep.title,
+    hook: ep.description_text || "",
+    audio_url: ep.audio_url,
+    duration_min: ep.duration_seconds ? Math.round(ep.duration_seconds / 60) : null,
+    duration_sec: ep.duration_seconds ?? null,
+    topics: [],
+  });
+}
+
+async function fetchShowEpisodes(show_id) {
+  try {
+    const res = await fetch(pinnedUrl(`api/shows/${encodeURIComponent(show_id)}/episodes`), { cache: "no-cache" });
+    if (!res.ok) return { episodes: null, error: `status ${res.status}` };
+    const body = await res.json();
+    return { episodes: body.episodes || [], stale: !!body.stale, error: body.error || null };
+  } catch (e) {
+    return { episodes: null, error: e && e.message || "network error" };
+  }
+}
+
 /* A2.5: "Similar shows" — deterministic taxonomy-overlap similarity, zero new
    data needed (docs/product requirements audit note: taxonomy_node_ids
    already sits on every catalog.json show record, unused for this purpose
@@ -1429,8 +1470,8 @@ function renderShow(show_id) {
   document.body.className = "view-page";
   const show = showById(show_id);
   if (!show) { $("#view").innerHTML = `<div class="page"><p class="note">Show not found.</p></div>`; return; }
-  fullPool(); // populate itemIndex/poolIds so episode rows can play in-app
-  const eps = episodesForShow(show);
+  fullPool(); // populate itemIndex/poolIds so curated-pool episode rows can play in-app
+  const curatedEps = episodesForShow(show);
   const ctx = "show-" + show.show_id;
   const chips = (show.taxonomy_node_ids || []).map(taxonomyChip).join("");
   /* A3.1/Q3: a breadth-tier show (found via the full-catalogue search
@@ -1438,39 +1479,79 @@ function renderShow(show_id) {
      — discover.json only ever holds the curated 220's hand-picked episodes.
      That is not the same as "this show genuinely has none" (the curated-tier
      empty state below), so it gets its own honest, non-alarming copy instead
-     of implying the show is empty. Stage 3b (kanban t_567b570f) is the card
-     that wires a real per-show episode list in here; until it lands (or once
-     it has, for a fast-follow to this card) this stays the safe degrade. */
+     of implying the show is empty. Stage 3b's async fetch below (kanban
+     t_567b570f) supersedes this once it resolves; until then this stays the
+     safe degrade for the curated-pool-only render. */
   const isBreadthTier = show.tier === "breadth";
-  const episodesSection = eps.length
-    ? eps.map((item, i) => epRow(item, i, ctx, -1)).join("")
-    : isBreadthTier
-      ? `<p class="note">Fetching this show's episodes — 4a is adding full episode lists for shows outside its curated picks. Check back soon.</p>`
-      : `<p class="note">No episodes from this show are in 4a's catalogue right now.</p>`;
 
-  $("#view").innerHTML = `
-    <div class="page">
-      <div class="page-head">
-        <a class="back" href="#/">‹</a>
-        <div>
-          <h2>${esc(show.title)}${explicitBadge(show.explicit)}</h2>
-          <p class="sub">${isBreadthTier && !eps.length ? "4a's wider catalogue" : `${eps.length} episode${eps.length === 1 ? "" : "s"} in 4a's catalogue`}</p>
-        </div>
+  const head = `
+    <div class="page-head">
+      <a class="back" href="#/">‹</a>
+      <div>
+        <h2>${esc(show.title)}${explicitBadge(show.explicit)}</h2>
+        <p class="sub" data-show-count>${curatedEps.length
+          ? `${curatedEps.length} episode${curatedEps.length === 1 ? "" : "s"} in 4a's catalogue — loading full episode list…`
+          : isBreadthTier
+            ? "4a's wider catalogue — loading full episode list…"
+            : "Loading full episode list…"}</p>
       </div>
-      ${show.artwork_url ? `<img class="show-art" src="${esc(safeUrl(show.artwork_url))}" alt="">` : ""}
-      ${showStarBtn(show.show_id)}
-      ${show.editorial_note ? `<p class="note">${esc(show.editorial_note)}</p>` : ""}
-      ${chips ? `<div class="fy-chips">${chips}</div>` : ""}
-      ${episodesSection}
-      ${similarShowsSection(show)}
-      ${showForaysHtml(show)}
-    </div>`;
+    </div>
+    ${show.artwork_url ? `<img class="show-art" src="${esc(safeUrl(show.artwork_url))}" alt="">` : ""}
+    ${showStarBtn(show.show_id)}
+    ${show.editorial_note ? `<p class="note">${esc(show.editorial_note)}</p>` : ""}
+    ${chips ? `<div class="fy-chips">${chips}</div>` : ""}`;
 
+  // Render immediately with the curated pool so the page is never blank
+  // while the full-catalogue fetch is in flight.
+  $("#view").innerHTML = `<div class="page">${head}<div data-show-episodes>
+    ${curatedEps.length
+      ? curatedEps.map((item, i) => epRow(item, i, ctx, -1)).join("")
+      : isBreadthTier
+        ? `<p class="note">Fetching this show's episodes — 4a is adding full episode lists for shows outside its curated picks. Check back soon.</p>`
+        : `<p class="note">No episodes from this show are in 4a's catalogue right now.</p>`}
+  </div>
+  ${similarShowsSection(show)}
+  ${showForaysHtml(show)}
+  </div>`;
   bindPickLogging($("#view"));
   bindStars($("#view"));
   bindShowStars($("#view"));
   bindUpNext($("#view"));
   bindPlay($("#view"));
+
+  fetchShowEpisodes(show.show_id).then(({ episodes, stale, error }) => {
+    const container = $("#view [data-show-episodes]");
+    const countLabel = $("#view [data-show-count]");
+    if (!container) return; // navigated away before the fetch resolved
+
+    if (episodes === null) {
+      // Fetch failed outright and there's nothing better than the curated
+      // pool already rendered above — never a blank page, per Stage 3's
+      // acceptance criterion (docs/show-pages-plan.md).
+      if (countLabel) countLabel.textContent = curatedEps.length
+        ? `${curatedEps.length} episode${curatedEps.length === 1 ? "" : "s"} in 4a's catalogue (couldn't load the full list)`
+        : `Couldn't load this show's episodes right now.`;
+      return;
+    }
+
+    if (episodes.length === 0) {
+      if (countLabel) countLabel.textContent = curatedEps.length
+        ? `${curatedEps.length} episode${curatedEps.length === 1 ? "" : "s"} in 4a's catalogue`
+        : `No episodes found for this show.`;
+      return;
+    }
+
+    const rows = episodes.map((ep) => fullCatalogueRowToEpRowItem(show, ep));
+    if (countLabel) {
+      countLabel.textContent = `${rows.length} episode${rows.length === 1 ? "" : "s"}` +
+        (stale ? " (showing the last saved list — couldn't refresh just now)" : "");
+    }
+    container.innerHTML = rows.map((item, i) => epRow(item, i, ctx, -1)).join("");
+    bindPickLogging(container);
+    bindStars(container);
+    bindUpNext(container);
+    bindPlay(container);
+  });
 }
 
 function touchPlaylistPlayed(id) {
@@ -1491,15 +1572,46 @@ function listenedShows() {
   return new Set(pickedHistory().map(id => state.itemIndex[id]?.show).filter(Boolean));
 }
 
+/* Repeated-query cache (H bug, kanban t_838a13c0): a typo fix, back button, or
+   re-tap resubmits the exact same query text against a ctx/pool that has not
+   changed, and scoreMatch() was re-scanning and re-scoring the whole
+   ~1,880-item pool from scratch every time -- 3.4-6s even fully warm (see the
+   card's fleet-2 measurement). `interpretQuery` + `searchWithRelaxation`'s
+   output (everything through ranking, BEFORE classifyResults) is a pure
+   function of (query text, family-mode flag, interests weights) given a pool
+   that is otherwise fixed for the session -- state.discover/state.session are
+   fetched once in init() and never reassigned, so the pool a query scores
+   against cannot change mid-session; the one thing that visibly changes
+   without a page reload is `state.interests` (nudgeTopics, on every
+   pick/play/thumbs), which is why `state._interestsGen` is bumped there and
+   folded into this key. Deliberately CACHES BEFORE classifyResults, not
+   after: classifyResults reads `listenedShows()`, which changes on every pick
+   independent of the query -- caching past that point would serve a stale
+   listened-show penalty. classifyResults itself is O(results), not
+   O(catalogue), so leaving it uncached costs nothing.
+   Same bounded-eviction spirit as search-engine.js's PATTERN_CACHE_MAX /
+   patternCache (a session tab is long-lived and every distinct query text is
+   a new key) -- clearing wholesale on overflow is fine since every entry is a
+   pure function of its key and cheap to rebuild. */
+const SEARCH_CACHE_MAX = 200;
+const searchCache = new Map();
+
 function buildPlaylist(query) {
   const ctx = searchCtx();
   const interp = SearchEngine.interpretQuery(query, ctx);
   if (!interp.groups.length && !interp.filters.length) {
     return { status: "empty", suggestions: [] };
   }
-  const pool = poolFiltered();
-  const { results } = SearchEngine.searchWithRelaxation(pool, interp, 2, state.itemTags, interestScore);
-  const { status, picks } = SearchEngine.classifyResults(results, { listenedShows: listenedShows() });
+  const pool = poolFiltered(); // also refreshes state.itemIndex/state.poolIds (side effect)
+  const cacheKey = JSON.stringify([query, familyMode(), state._interestsGen || 0]);
+  let cached = searchCache.get(cacheKey);
+  if (!cached) {
+    const { results } = SearchEngine.searchWithRelaxation(pool, interp, 2, state.itemTags, interestScore);
+    cached = { results };
+    if (searchCache.size >= SEARCH_CACHE_MAX) searchCache.clear();
+    searchCache.set(cacheKey, cached);
+  }
+  const { status, picks } = SearchEngine.classifyResults(cached.results, { listenedShows: listenedShows() });
 
   if (status === "empty") {
     return { status: "empty", suggestions: SearchEngine.suggestAdjacentTopics(interp, ctx) };
@@ -1524,6 +1636,60 @@ function buildPlaylist(query) {
     return { status: "unsaved", suggestions: [] };
   }
   return { status, playlist };
+}
+
+/* Loading-state guard around #pl-form's submit (H bug, kanban t_838a13c0):
+   buildPlaylist() is synchronous and, in the worst case (a fresh session's
+   first query, or any query that misses the repeated-query cache above), can
+   take 1.3-8s on the real catalogue — with nothing before this change to
+   tell the listener their tap registered. Two form instances share this
+   handler (renderHome and renderPlaylists both mount a `#pl-form`), so it is
+   defined once here rather than duplicated.
+
+   THE SETTIMEOUT(0) IS LOAD-BEARING, not decoration: disabling the button and
+   swapping its label only becomes visible to the user if the browser gets a
+   chance to paint before the synchronous, CPU-bound buildPlaylist() call
+   blocks the main thread. Setting `disabled`/`textContent` and calling
+   buildPlaylist() in the same tick produces a frozen-looking button for the
+   whole stall — no paint happens until the synchronous work yields — which is
+   the exact defect this guard exists to fix, just moved one line over. A
+   0ms timeout is enough because the browser only needs a task-queue turn to
+   flush the pending style/paint, not any particular delay.
+   `finally` restores the button whether buildPlaylist ran clean, threw
+   (unexpected but real user data — never let an exception leave the button
+   stuck disabled), or returned early. */
+function bindPlaylistFormSubmit(e) {
+  e.preventDefault();
+  const form = e.currentTarget;
+  const input = form.querySelector("input[type='text']");
+  const btn = form.querySelector("button");
+  const query = input.value.trim();
+  if (!query) return;
+  const originalLabel = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = "Building…";
+  setTimeout(() => {
+    try {
+      const result = buildPlaylist(query);
+      logEvent("playlist_built", { query, status: result.status, found: result.playlist ? result.playlist.items.length : 0 });
+      if (result.status === "ok" || result.status === "sparse") {
+        location.hash = "#/playlist/" + result.playlist.id;
+      } else {
+        const note = $("#pl-note");
+        note.textContent = result.status === "unsaved"
+          /* Says what happened and what to do, and does not blame the listener for
+             a device that is out of room. */
+          ? "That playlist could not be saved — this device has no storage space left. Removing a playlist you have finished with frees enough for a new one."
+          : result.suggestions.length
+            ? `Not much on "${query}" yet — try ${result.suggestions.map(s => s.label).join(", ")} instead.`
+            : `Not much on "${query}" yet — try different words.`;
+        note.hidden = false;
+      }
+    } finally {
+      btn.disabled = false;
+      btn.textContent = originalLabel;
+    }
+  }, 0);
 }
 
 /* ---------- shared wiring ---------- */
@@ -1962,13 +2128,18 @@ function renderHome() {
   document.body.className = "view-home";
   if (!state.cardSlots.length) buildCards();
   const resumeRows = forayResumeRows();
+  /* Rendered OUTSIDE `.home`, below the fold — see the `.home-below` note in
+     styles.css. `.home` is a fixed-height flex column and `.cards4` is its only
+     `flex: 1` child, so any tall sibling inside it starves the four cards to
+     zero. Computed once here rather than called inline twice: the sample is
+     seeded by day-of-year, so a second call is deterministic but wasted. */
+  const vouch = vouchForHtml();
   $("#view").innerHTML = `
     <div class="home">
       <div id="banner-slot">${bannerHtml()}</div>
       ${jumpBackInHtml(resumeRows)}
       ${forayHomeHtml()}
       <div class="cards4">${state.cardSlots.map(miniCard).join("")}</div>
-      ${vouchForHtml()}
       <div class="search-tabs" role="tablist">
         <button type="button" id="tab-topics" class="search-tab on" role="tab" aria-pressed="true">Playlists</button>
         <button type="button" id="tab-shows" class="search-tab" role="tab" aria-pressed="false">Shows</button>
@@ -1985,7 +2156,8 @@ function renderHome() {
       <p id="sh-note" class="note" hidden></p>
       <div id="sh-results" class="show-results" hidden></div>
       <a id="browse-all-link" class="browse-all-link" href="#/shows" hidden>Browse all shows ›</a>
-    </div>`;
+    </div>
+    ${vouch ? `<div class="home-below">${vouch}</div>` : ""}`;
 
   if (!showFirstTimeExplainerOnce()) showIntroPopupOnce();
 
@@ -2018,26 +2190,7 @@ function renderHome() {
     renderShowSearchResults(query);
   });
 
-  $("#pl-form").addEventListener("submit", (e) => {
-    e.preventDefault();
-    const query = $("#pl-input").value.trim();
-    if (!query) return;
-    const result = buildPlaylist(query);
-    logEvent("playlist_built", { query, status: result.status, found: result.playlist ? result.playlist.items.length : 0 });
-    if (result.status === "ok" || result.status === "sparse") {
-      location.hash = "#/playlist/" + result.playlist.id;
-    } else {
-      const note = $("#pl-note");
-      note.textContent = result.status === "unsaved"
-        /* Says what happened and what to do, and does not blame the listener for
-           a device that is out of room. */
-        ? "That playlist could not be saved — this device has no storage space left. Removing a playlist you have finished with frees enough for a new one."
-        : result.suggestions.length
-          ? `Not much on "${query}" yet — try ${result.suggestions.map(s => s.label).join(", ")} instead.`
-          : `Not much on "${query}" yet — try different words.`;
-      note.hidden = false;
-    }
-  });
+  $("#pl-form").addEventListener("submit", bindPlaylistFormSubmit);
 
   sizeProgressBars($("#view"));
   bindPickLogging($("#view"));
@@ -2384,24 +2537,7 @@ function renderPlaylists() {
       : `<p class="note">No playlists yet — type above to build your first one.</p>`}
     </div>`;
 
-  $("#pl-form").addEventListener("submit", (e) => {
-    e.preventDefault();
-    const query = $("#pl-input").value.trim();
-    if (!query) return;
-    const result = buildPlaylist(query);
-    logEvent("playlist_built", { query, status: result.status, found: result.playlist ? result.playlist.items.length : 0 });
-    if (result.status === "ok" || result.status === "sparse") {
-      location.hash = "#/playlist/" + result.playlist.id;
-    } else {
-      const note = $("#pl-note");
-      note.textContent = result.status === "unsaved"
-        ? "That playlist could not be saved — this device has no storage space left. Removing a playlist you have finished with frees enough for a new one."
-        : result.suggestions.length
-          ? `Not much on "${query}" yet — try ${result.suggestions.map(s => s.label).join(", ")} instead.`
-          : `Not much on "${query}" yet — try different words.`;
-      note.hidden = false;
-    }
-  });
+  $("#pl-form").addEventListener("submit", bindPlaylistFormSubmit);
 }
 
 /* ---------- Forays (#128) ----------
@@ -4288,9 +4424,15 @@ async function deleteMyData({ deviceOnly = false } = {}) {
        a resume rail and thumbs that no longer exist anywhere. Interests are reset
        to taxonomy defaults, which `loadInterests` does WITHOUT writing.
        `buildCards()` is deliberately not called: it writes `cp_recent_branches`
-       and `cp_seen`, which would put two of the 20 keys straight back. */
+       and `cp_seen`, which would put two of the 20 keys straight back.
+       Bump `_interestsGen` here too, same as nudgeTopics does on every
+       pick/play/thumbs — otherwise buildPlaylist's `searchCache` (keyed on
+       [query, familyMode, _interestsGen]) would happily serve back a
+       pre-wipe, interest-ranked result for the exact same query, silently
+       undercutting "reset personalization". */
     state.interests = {};
     loadInterests();
+    state._interestsGen = (state._interestsGen || 0) + 1;
     state.forayResume = null;
     state.forayPlaying = null;
     state.foray = null;
@@ -4652,6 +4794,26 @@ async function init() {
   route();
   logEvent("session_shown", { session_id: state.session.session_id });
   trySyncEvents();
+
+  /* Warm the concept-vocabulary DF caches now, while the app is idle between
+     "data finished loading" and "user typed a query and hit Go", instead of
+     paying it interleaved into the FIRST real playlist search (H bug, kanban
+     t_838a13c0 — a fresh session's first query measured 6.6-8.1s before this
+     fix). Deliberately scheduled via requestIdleCallback (falling back to a
+     0ms timeout where it's unavailable, e.g. older WebKit/the native shell)
+     rather than called inline here: `route()` above has already painted the
+     first screen, and priming is pure CPU with no UI of its own, so it must
+     not compete with that paint or with an impatient user who taps into the
+     playlist search within the first second. searchCtx() builds the same ctx
+     this call warms, so a query that arrives before priming finishes just
+     resumes the memoization mid-way — nothing is wasted or redone. */
+  const primeSearchVocab = () => {
+    if (typeof SearchEngine !== "undefined" && SearchEngine.primeVocabulary) {
+      SearchEngine.primeVocabulary(searchCtx());
+    }
+  };
+  if (typeof requestIdleCallback === "function") requestIdleCallback(primeSearchVocab, { timeout: 2000 });
+  else setTimeout(primeSearchVocab, 0);
 
   /* Up Next auto-advance's wiring (docs/listening-queue-plan.md §4 addendum).
      Fire-and-forget: a player that never loads (module failure, test

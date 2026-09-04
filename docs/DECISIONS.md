@@ -1149,6 +1149,256 @@ its reasoning.
   persistence calls and proves a full run touches no file on disk, per the
   task's own acceptance bar for "the strongest version of this check."
 
+## 2026-09-02 (spec-correction pass: generation-architecture.md self-contradictions, kanban card t_7f85beab)
+
+- **§8's narration-share "ceiling" pointed at a number §9.3's own ruling
+  deleted.** §9.3 (Joey, 2026-08-31) permits 100% AI narration with no
+  ceiling; §8 has been corrected to say so directly instead of forwarding to
+  §9.3 for a figure that was never set. §4.5 carried the same stray "Open:
+  acceptable ceiling on narration share" note pointing at §9.3 — also
+  resolved, since it told implementers the opposite of §8's corrected gate.
+  `check-forays.mjs`/`check-narration.mjs` must not gate on narration share
+  at all.
+- **§9.3's authorized undershoot is now an explicit, narrow exception to
+  §3's duration contract, not an unstated collision with it.** §3 (the
+  40%-overshoot-is-a-defect framing) and §8 (±15% tolerance) now both state
+  that overshoot has no exception, while an undershoot taken under §9.3's
+  thin-topic ruling is exempt from the tolerance *only* when it carries a
+  recorded `duration_shortened_reason` field and an explicit narrated
+  explanation — matching §9.3's own "never padded with filler" language.
+  An unexplained undershoot remains a defect like any overshoot.
+- **§3's overshoot tolerance is now unambiguous: ±15% only.** The 40%
+  figure in §3 was a motivating example of a bad overshoot, not a second,
+  looser tolerance sitting alongside §8's ±15% — §3 now says so explicitly
+  to close a gap a reviewer correctly flagged as implementation-ambiguous.
+- **§4.3/§6.3/§8's exploration-budget language now describes one consistent
+  policy instead of three conflicting ones, with the deferrable pair
+  pre-generated (not built under live shortfall pressure), never counted
+  toward or against the required floor, reserved *within* the act's
+  existing duration budget, bounded to §3/§8's ±15% margin, and — per a
+  third reviewer catch — given a per-act count (0, 1, or 2) instead of a
+  fixed "exactly two" that a short act's 15% margin cannot always fit.**
+  The ~30% floor (product principle #1) is computed only over the beats
+  that were always inside it. On top of it, each act produces **up to**
+  two additional "deferrable" beats through the normal pipeline
+  (§4.4-§4.7) — two is the target but §4.4 computes, per act, the maximum
+  count whose combined runtime fits the act's 15% margin — written and
+  sourced ahead of time so they're ready to play instantly, but held back
+  from the act's running order. A **time** shortfall (§6.3) inserts
+  whichever deferrable beats that act actually has (which may be fewer
+  than two, or zero); on schedule they are simply never inserted. A
+  **cost** shortfall instead cancels their production before §4.5. §8's
+  "exploration budget survived" check remains unaffected by any of these
+  outcomes, since the floor's denominator never included deferrable beats
+  to begin with.
+- **§3's undershoot-reason requirement no longer prescribes an
+  undocumented schema field.** A reviewer correctly flagged
+  `duration_shortened_reason` as a new persisted field asserted without
+  going through this document's own "surface a schema change, don't take
+  it as a liberty" rule (line 23). §3/§8 now require only that the reason
+  be *recorded* and *narrated*, and explicitly defer the schema question
+  (existing field vs. proposed addition) to whoever implements §9.3's
+  shortening path.
+- **§9.4 (prompts discarded) vs §9.6 (dedup by prompt similarity) resolved
+  without reopening either ruling — a reviewer caught that our first pass
+  wrongly assumed dedup needed a persisted prompt representation.** §9.6's
+  similarity check embeds the incoming prompt transiently (discarded per
+  §9.4) and compares it against embeddings derived from each **existing
+  Foray's own retained content** (title, description/transcript already
+  kept for the catalogue) — never from another user's prompt. No new
+  prompt-retention exception is needed, and `promptNoPersistence.test.ts`
+  (t_825eee4c, merged) is unaffected: it guards the §4.0-4.1 stage, and
+  this comparison runs downstream against already-catalogued content.
+  A second reviewer catch: whether the per-Foray comparison embedding is
+  itself *cached* (a new `forays.json` field) vs. recomputed on demand is
+  a separate schema decision this document does not make for itself —
+  §9.6 now defers that to a founder-approved schema change if caching is
+  wanted, with recompute-on-demand as the schema-free safe default. Our
+  first pass at this fix (now superseded) proposed a one-way prompt
+  embedding as a founder+legal decision; that path is unnecessary and was
+  dropped once the actual comparison target was corrected.
+- No implementation changed in this pass — spec-only correction per the
+  task's scope. All four contradictions in the finding are now resolved
+  outright, with no remaining founder/legal decision pending on the
+  substance; one small, genuinely optional schema question (caching the
+  §9.6 comparison embedding) is explicitly deferred to whoever builds that
+  stage, with a schema-free default already specified so it does not block
+  anything. Every fix in this pass was a concrete rule change, not a
+  re-opened question.
+- **Review round 5 fix: §9.4's note wrongly asserted the comparison-side embedding "does need to
+  be persisted," contradicting §9.6's own (correct) treatment of persist-vs-recompute as a
+  deferred schema question.** §9.4 now describes only the underlying *retained Foray content*
+  (title/description/transcript, already kept for the catalogue) as the comparison basis, and
+  defers the persist-vs-recompute question for any embedding derived from it entirely to §9.6 —
+  one source of truth instead of two disagreeing ones.
+- **Review round 6 fixes: two more real issues codex caught in §3/§4.3/§6.3's duration-buffer
+  language.** (1) The deferrable-beat headroom rule previously required only that a baseline
+  running order independently pass the same ±15% tolerance as the full Foray — which does not
+  guarantee that *inserting* the reserved deferrable beats keeps the Foray inside tolerance (a
+  baseline already at the ±15% ceiling has no room left for any insertion). §3/§4.3/§6.3 now
+  require the baseline to leave headroom *equal to* the deferrable beats it carries, so baseline +
+  insertion together must fit within ±15% — an act whose baseline already used its headroom carries
+  zero deferrable beats, not "up to two capped only by a flat 15% allowance." (2) §3's discussion of
+  the overshoot tolerance referenced "the 40% figure above" after an earlier fix in this same pass
+  had already removed that figure from the surrounding text, leaving a dangling reference. Replaced
+  with a plain statement that an earlier draft's 40%-overshoot example implied a second, looser
+  tolerance and was removed — ±15% is the only overshoot bound.
+- **Review round 7 fixes: two more real issues codex caught.** (1) The §4.3 headroom rule only
+  constrained baseline+insertion against the +15% ceiling, but said nothing about the baseline
+  alone against the -15% floor — a baseline could undershoot beyond -15% and still "pass," failing
+  §8's publishability gate the moment generation stays on schedule (the deferrable beats never
+  play, so what actually played is the baseline). §4.3 now requires the baseline alone to already
+  sit inside the full ±15% tolerance, with the headroom check against +15% layered on top only for
+  the insertion case. (2) §9.4/§9.6's dedup comparison cited "description/transcript text already
+  kept for the catalogue" as the comparison basis, but `forays.json`'s actual schema retains only
+  `title` and `summary` — no description or transcript field exists, so the comparison as written
+  depended on data that isn't there. Both sections now name `title`+`summary` as the actual,
+  already-available comparison basis, with a richer comparison explicitly deferred to a future
+  founder-approved schema addition rather than assumed available today.
+- **Review round 8 fix: §9.4/§9.6's dedup comparison undersold what `forays.json` actually
+  retains.** The round-7 fix said only `title`+`summary` are retained, but the schema also keeps
+  `topic` and per-slot `title`s — real signal for similarity matching that the round-7 wording
+  wrongly deferred behind a hypothetical schema change. Both sections now name the full existing
+  retained-field set (`title`, `summary`, `topic`, slot `title`s) as the comparison basis, with a
+  richer comparison (description/transcript text) still correctly deferred to a future
+  founder-approved schema addition.
+- **Review round 15 fix: §6.2's continuity-agent bullet still duplicated the round-13 act-boundary
+  runtime-check language that round 14 correctly superseded, contradicting §4.9's per-act gate as
+  the sole timing authority.** §6.2 now points at §4.9's per-act runtime gate instead of restating
+  a competing (and later-timed) check at the continuity checkpoint.
+- **Review round 21 fix: §4.3's spine-freeze runtime validation and §4.9's per-act gate were both
+  written as unconditional ±15% checks with no reference to §9.3's own undershoot exception,
+  contradicting §8's already-correct carve-out for the same check.** §8's runtime-tolerance bullet
+  has always correctly exempted a §9.3 thin-topic undershoot from the ±15% bound, but §4.3's
+  spine-freeze text and its restatement in §8's own duration-check description described the
+  planning-time and per-act validations as unconditional, which would make the one case the
+  founders explicitly authorized to break the duration contract unable to pass its own spine
+  validation. §4.3 now states explicitly that a spine deliberately shortened under §9.3 is
+  validated against its own already-shortened planned budget at every downstream checkpoint
+  (spine-freeze and §4.9's per-act gate) — the exception is taken once, at spine-freeze, not
+  re-litigated per act.
+- **Review round 20 fix: §4.1 still marked "whether a rejected or clarified prompt is stored" as
+  an Open question, contradicting §9.4's own resolved ruling that every prompt is discarded.** An
+  implementer reading §4.1 in isolation would think prompt-retention behavior was still undecided
+  for rejected/clarified prompts specifically. §4.1 now states plainly that §9.4's "each prompt is
+  discarded" ruling is not scoped to accepted prompts only — it covers rejected and clarified
+  prompts too — closing the privacy posture question §4.1 previously left dangling.
+- **Review round 18 fix: two broken cross-references and one overclaimed \"Resolved\" label.**
+  (1) §1.2's fallback path pointed a reader at "§9.4 below" — inside this document, that section
+  is the prompt-retention ruling, not a TTS locked-screen test. Both occurrences (the pronunciation
+  table row and the fallback-trigger paragraph) now correctly point to `on-device-tts.md` §9.4,
+  matching the reference the rest of §1.2 already uses. (2) §9.6 was labelled "Resolved" even
+  though the same section's own round-11 fix explicitly leaves the similarity model/metric/
+  threshold undecided — an implementer skimming for "Resolved" items could build an underspecified
+  similarity check. §9.6's comparison-basis sub-answer is now labelled "Partially resolved," and
+  the founder-clarification paragraph states explicitly that §9.6 as a whole remains Open under the
+  document's own "do not build past these" rule until the decision rule is given, while noting the
+  comparison-basis work itself does not need to wait.
+- **Review round 17 fix: §4.8's "coverage is checked before flow" rule still used the old
+  two-state (present / dropped-with-reason) framing, contradicting the three-state deferrable-beat
+  rule §8's publishability gate already uses.** As written, every on-schedule act carrying a
+  held-back §4.3 deferrable beat would fail §4.8's own coverage check even though §8 explicitly
+  does not penalize that state. §4.8 now names the same three states §8 uses — present, held-back
+  deferrable (unplayed because on schedule), or dropped-with-reason — so the two sections agree.
+- **Review round 17 fix: §4.9's whole-Foray gate description still listed a "narration-share check"
+  among what `check-forays.mjs`/`check-narration.mjs` validate, contradicting §8/§9.3's ruling that
+  narration share has no ceiling and is never gated.** Leaving that wording in §4.9 risked an
+  implementer adding back the exact ceiling §8/§9.3 removed. §4.9 now states narration share is
+  reported by the validators (useful telemetry) but never gated — there is no threshold to fail
+  against.
+- **Review round 16 fix: §4.9's new per-act gate assumed a progressive-write storage mechanism
+  ("appended to the running order the player can reach") that does not exist.** `data/forays.json`
+  is written once, in full, at whole-Foray publish — there is no per-act append path and no player
+  contract for reading a still-growing Foray. Per line 23's rule, §4.9 now surfaces this explicitly
+  as a schema/player gap needing founder sign-off (a mutable per-Foray working record, or an
+  equivalent streaming contract) rather than assuming it is already buildable, with a schema-free
+  fallback: phase 1 does not attempt progressive playback in practice until that contract exists —
+  Act 1 becomes playable only once the whole Foray publishes.
+- **Review round 17 fixes: two more real issues.** (1) §4.9's whole-Foray gate still described the
+  validators as running an "aggregate narration-share check," directly contradicting §8/§9.3's "no
+  ceiling" ruling — an implementer following §4.9 alone could add a rejecting check that breaks
+  valid 100%-narration Forays. Reworded to state narration share is reported, never gated. (2) The
+  document's global instruction ("Anything in §9 is unresolved and must not be built") and §9's own
+  header ("Unresolved. Do not build past these.") blanket-forbade implementing ANY §9 item,
+  including the ones this very task's rulings resolved (§9.3, §9.4, §9.6) — self-contradictory
+  since those rulings are explicitly meant to be implementable. Both instructions now distinguish
+  **Open** items (still forbidden) from **Resolved** items (dated ruling recorded, buildable
+  against it), matching how §9's own entries are already labeled.
+- **Review round 18 fix: §4.9's per-act gate claimed to check an act's "actual written duration,"
+  but §7.3 already establishes that on-device narration has no exact duration before it is
+  spoken — only a characters-per-minute estimate.** The gate now explicitly checks that same
+  estimate (not a measured value), with the estimator's own error bars (§7.3, itself an open
+  finding) and any resulting tolerance-margin adjustment left as a follow-on decision this gate
+  does not make for itself — consistent with how every other schema/measurement gap in this pass
+  was surfaced rather than silently assumed away.
+- **Review round 19 fix: two mirrored §3/§8 passages still called the per-act gate's input "ACTUAL
+  written duration" after round 18 correctly reworded §4.9 itself to call it an estimate.**
+  Terminology now matches consistently across §3, §8, and §4.9: on-device narration duration is a
+  characters-per-minute estimate until spoken (§7.3), never a measured "actual" value, everywhere
+  this document references the per-act runtime gate's input.
+- **Review round 9 fix: the deferrable-beat mechanism itself needed a surfaced schema/player gap,
+  per the document's own line-23 rule, not silent treatment as already buildable.** `forays.json`
+  represents a Foray as one static ordered `items` list today, and the player has no concept of a
+  held-back item spliced in mid-playback — §4.3/§6.3's "deferrable, inserted on a time shortfall"
+  design needs either a schema addition or an equivalent player mechanism that this document does
+  not specify. §4.3 now surfaces this explicitly as a finding for founder sign-off, with a
+  schema-free fallback (an act produces zero deferrable beats until the contract is approved) so
+  the spec does not silently claim an unbuildable mechanism as already available.
+- **Review round 11 fix: §8's runtime gate was defined against "what actually played," which is
+  temporally impossible.** §4.9 (publish, validators run) happens before §4.10 (playback); whether
+  §6.3 inserts the reserved deferrable beats is decided live, per playback session, after
+  publication. A gate that only validates against actual playback could publish a Foray whose
+  runtime turns out invalid only after the fact. §3/§8/§4.3 now require BOTH the baseline running
+  order and the baseline-plus-every-deferrable-beat running order to independently pass the ±15%
+  tolerance at publish time (§4.9) — publishability no longer depends on which path any given
+  listening session happens to take.
+- **Review round 12 fix: round 11's fix wrongly deferred the runtime-tolerance check to §4.9's
+  final publish gate, which is unreachable in time.** Progressive generation (§6) means Act 1 can
+  already be playing while later acts are still being written — a check that waited for §4.9's
+  final actual-duration validation on the WHOLE Foray would run after playback of early acts had
+  already begun, too late to prevent an in-tolerance-looking Foray from becoming a defect
+  mid-playback. §3/§8/§4.3 now validate both the baseline and baseline-plus-deferrables paths
+  against the spine's PLANNED per-beat runtime budgets when the spine freezes (§4.3/§6.1), before
+  any act plays; §4.9 then re-validates each act's ACTUAL written duration against that same
+  planned budget once the act is written, per act, catching a beat that ran long in the writing
+  before that specific act publishes — not waiting for the whole Foray to finish.
+- **Review round 13 fix: round 12's fix still pointed the actual-duration re-check at §4.9, which
+  is the final whole-Foray publish step, not a per-act checkpoint that exists before each act
+  plays.** §6.2 already defines a per-act-boundary checkpoint (the continuity agent, forward-only)
+  that runs before the next act starts and, for Act 1, before playback begins at all (§6.1). §3/§8
+  now assign the actual-duration re-validation to that existing checkpoint instead of inventing a
+  new stage or misassigning it to §4.9 — an act that ran long is caught at its own boundary, before
+  it has already played, which §4.9's whole-Foray-at-the-end timing cannot do under progressive
+  generation (§6).
+- **Review round 14 fix: round 13's fix pointed the actual-duration re-check at §6.2's continuity
+  agent, but §6.2 only ever specifies content/coherence adjustments — it defines no duration or
+  runtime validation step, so the reference was still to a checkpoint that does not do this check.**
+  §4.9 ("Finalize and publish") is now split into two explicit gates instead of one: a **per-act
+  runtime gate** that runs the instant each act finishes writing and blocks that act from entering
+  the running order until its actual duration (baseline and baseline-plus-deferrables) passes
+  against the frozen spine's planned budget, and the existing **whole-Foray gate**
+  (`check-forays.mjs`/`check-narration.mjs`, `data/forays.json`, founder PR review in phase 1) that
+  runs once the last act is written. §3/§8's runtime-tolerance text now points at §4.9's per-act
+  gate by name instead of an existing section that was never a validation checkpoint.
+- **Review round 10 fix: §8's spine-beat completeness gate contradicted the normal on-schedule
+  deferrable-beat path.** §8 required every spine beat to be "present, or explicitly dropped with
+  a recorded reason," but §4.3/§6.3 (as corrected in rounds 6-9) specify that a deferrable beat is
+  produced and sourced like any other beat and, on the common on-schedule path, is simply never
+  inserted into the running order — "produced, but unplayed," a third state that is neither
+  "present" nor a "drop with a recorded reason." As written, every Foray carrying any deferrable
+  beats would fail its own publishability gate the moment generation stays on schedule. §8 now
+  carves out that a held-back deferrable beat is a distinct, pre-authorized state the gate does not
+  penalize, and only requires a recorded reason if a deferrable beat's production is cancelled
+  outright (§6.3's cost-shortfall path) rather than held back as designed.
+- **Review round 11 fix: §9.6's dedup ruling declared similarity detection "buildable" without
+  naming the decision rule that makes it deterministic.** The ruling specifies what text is
+  compared (title/summary/topic/slot titles) but never the embedding model/version, distance
+  metric, or similarity threshold — a real product tradeoff (missed near-duplicates vs. false-
+  positive interruptions) this document should not invent unilaterally, per line 23's rule.
+  §9.6 now explicitly flags this as an open item needing one founder line (name the model/metric/
+  threshold, or explicitly delegate the choice to the implementer) before implementation, rather
+  than silently leaving it to whoever builds it to guess.
+
 ## 2026-09-01 (Fix M4: service worker — versioned manifest for atomic deploy generation, kanban card t_f143c31a)
 
 - **A committed, generated `deploy-manifest.json` (NOT `manifest.json` — that
@@ -1254,6 +1504,45 @@ its reasoning.
      original design's own stated limit (a stale PLAYER, never a stale reader
      of `data/*.json`, which is what #233 was actually about).
 
+## 2026-09-02 (narrator-pipeline gate X1: shipped state is honestly red, not silently unenforced)
+
+- **Rule X1 ("cross-episode seam always carries narration," tier A, gate
+  yes — `docs/curation/segment-length-rules.md` line 956) is currently
+  failed by every shipped Foray, and that is now a recorded, explicit
+  fact rather than a silent gap.** `docs/narrator-pipeline.md` §1 item 1
+  already states plainly that zero narration items exist anywhere in
+  `data/forays.json`; §3.1 separately measures 5 cross-episode seams in
+  the shipped `grilling-history-2` (10 measured across all three Forays:
+  16 in `grilling-history-1`, 5 in `grilling-history-2`, 10 in
+  `capital-types-1`) against X1, but only for the cost inventory — it
+  never states the conclusion that follows from combining those two
+  facts: **every one of those 31 gated seams is currently unmet**, and
+  the shipped product plays through every cross-episode seam with no
+  narration, i.e. is red against a gate the same document calls
+  non-optional.
+- **Decision: X1 is not relaxed or removed.** It stays the correct rule
+  for a fully narrated Foray. What changes here is only that its current
+  failure state is now named instead of implicit. The gate cannot be
+  made green today without spending on narration generation, which is a
+  founder call `#247`/`docs/narrator-pipeline.md` already route through
+  `blocked-on-spend` — not a decision this entry makes or should make.
+  `check-forays.mjs` is intentionally NOT changed to hard-fail on X1
+  right now: doing so would immediately red every existing shipped
+  Foray's CI/validation state over a gap the founders already know about
+  and have not yet funded fixing, which is a worse signal-to-noise
+  outcome than the status quo of a document that states the gap plainly.
+  If a founder wants X1 enforced as a hard CI gate before narration
+  exists, that is a follow-on decision (would require either exempting
+  today's three Forays or blocking them from the catalogue), not implied
+  by this entry.
+- **Action taken:** none to the shipped Forays or to `check-forays.mjs`
+  in this pass — this entry is the "no silent gap" fix `docs/`
+  conventions require per CLAUDE.md workflow rule 4. Revisit once
+  narration generation is funded and `#247`'s dry-run pipeline
+  (`tools/narrate/`) is authorized to make its first real API call; at
+  that point X1 becomes checkable mechanically instead of only by
+  inventory measurement.
+
 ## 2026-09-02 (positioning vs. AI-generation pipeline — founder call, kanban card t_54913003)
 
 - **"Never an AI podcast app" positioning is retired; 4a's story now
@@ -1307,38 +1596,106 @@ its reasoning.
 
 ## 2026-09-02 (HUMAN-ACTIONS.md #32 — the 2026-07-08 marketing-corpus freeze is lifted)
 
-- **Founder decision: C — lift the freeze.** No fresh confirmation was
-  separately solicited from Joey/Wyatt for this entry; the ruling is
-  inferred from two pieces of standing evidence instead: (1) Joey's own
-  merged PR #444 (banner corrections, kanban t_225e8503, commit `189724d3`)
-  whose description already asserted "Freeze on docs/marketing/ was
-  confirmed lifted (HUMAN-ACTIONS.md #32, HA32=C, 2026-09-02)" and (2) an
-  earlier abandoned branch (commit `39242fe`, `docs/HA32-lift-marketing-
-  freeze`) that drafted the identical C ruling and never landed only
-  because its own PR was superseded. Both predate this entry and both
-  point the same direction, so C is treated as the intended ruling on
-  inference, not as a newly-obtained confirmation. The 2026-07-08 freeze
-  ("marketing corpus is frozen until there's a retention curve for it to
-  describe," `07-premortem.md`/`08-REQUIREMENTS-DELTA.md`) is formally
-  ended, not reinterpreted or quietly bypassed. Marketing-corpus work
-  resumes under ordinary review — no special exception process, no
-  retention-curve precondition.
-- **Why now, not a coincidence:** this ruling was requested by, and
-  directly unblocks, the same-day banner-correction work (kanban
-  t_225e8503, PR #444, merged directly by Joey) and the broader R13-R23
-  marketing rewrite already in flight. Formally lifting the freeze is
-  what makes that work authorized rather than one more self-granted
-  exception in the pattern `HUMAN-ACTIONS.md` #32 itself was filed to
-  stop.
-- **What this does NOT retroactively bless.** The freeze workarounds
-  found by the 2026-09-02 Fable review (`09-product-feature-review.md`'s
-  self-granted "R14" exception, `10-category-coverage.md`'s unacknowledged
-  new orders, `06-naming-study.md`'s uncredited edit) happened while the
-  freeze was still open and were out of process at the time. Lifting the
-  freeze now ends the *restriction*, not a finding that those edits were
-  fine when made — no action is required on them retroactively; they are
-  simply no longer blocked going forward.
+- **Founder decision: C — lift the freeze.** Joey, via Discord, 2026-09-02:
+  `HA32=C`. Confirmed by Wyatt on 2026-09-03, in answer to a direct question
+  about this entry's provenance. The 2026-07-08 freeze ("marketing corpus is
+  frozen until there's a retention curve for it to describe,"
+  `07-premortem.md`/`08-REQUIREMENTS-DELTA.md`) is formally ended, not
+  reinterpreted or quietly bypassed. Marketing-corpus work resumes under
+  ordinary review — no special exception process, no retention-curve
+  precondition.
+- **Correction, 2026-09-03 — this entry previously misdescribed its own
+  provenance, and the correction matters more than the ruling.** The draft
+  said "No fresh confirmation was separately solicited" and presented C as
+  *inferred* from two artefacts: PR #444's description, and an abandoned
+  branch (`39242fe`). Both are downstream of the ruling, not independent of
+  it — #444 was opened eleven hours after the ruling was first recorded and
+  merely restates `HA32=C` as settled, and `39242fe` IS the first recording
+  of it. Citing them as corroboration was a citation loop. It also stated
+  that #444 was "merged directly by Joey"; GitHub records it merged by
+  `app/github-actions` — auto-merged — so the one piece of evidence that
+  looked like a human vouching was a bot. The ruling itself was real and
+  given directly; only the account of how we knew it was wrong. Recorded
+  rather than silently overwritten, because a standing record that quietly
+  revises its own sourcing is worth less than one that shows the repair.
+- **Why now, not a coincidence:** this ruling was requested by, and directly
+  unblocks, the same-day banner-correction work (kanban t_225e8503, PR #444)
+  and the broader R13–R23 marketing rewrite already in flight. Formally
+  lifting the freeze is what makes that work authorized rather than one more
+  self-granted exception in the pattern `HUMAN-ACTIONS.md` #32 itself was
+  filed to stop.
+- **What this does NOT retroactively bless.** The freeze workarounds found by
+  the 2026-09-02 review (`09-product-feature-review.md`'s self-granted "R14"
+  exception, `10-category-coverage.md`'s unacknowledged new orders,
+  `06-naming-study.md`'s uncredited edit) happened while the freeze was still
+  open and were out of process at the time. Lifting the freeze now ends the
+  *restriction*, not a finding that those edits were fine when made — no
+  action is required on them retroactively; they are simply no longer blocked
+  going forward.
 - **`HUMAN-ACTIONS.md` #32 is marked DONE**, citing this entry.
+
+## 2026-09-02 (show-pages Stage 3b — full per-show RSS ingestion, kanban card t_567b570f)
+
+- **Stage 3's data source: 3b (full per-show RSS ingestion), not 3a
+  (derive-only).** `docs/show-pages-plan.md` §4 flagged this as the one
+  founder decision Stage 3 needed. Joey's answer, in writing on the
+  marked-up requirements doc (`t_73389a0d`): *"3b: true full catalogue.
+  Just because we haven't curated it or fully transcribed it doesn't mean
+  that it shouldn't be accessible to the users."* Separately, explicit
+  instruction: *"Remove any plan to link out if we don't have the podcast
+  in the app. We should be able to play all podcasts from the app."* This
+  entry records the data-model consequence of that decision per CLAUDE.md
+  workflow rule 4 (expensive-to-reverse choices get a DECISIONS.md entry
+  before implementation) — full design posted as a kanban comment on
+  `t_567b570f` and reviewed there before the bulk of the code was written.
+- **New shared tables, not the existing `shows`/`episodes` pair.**
+  `backend/migrations/0016_catalog_show_episodes.sql` adds
+  `catalog_show_episodes` and `catalog_show_feed_state`, service-role-owned,
+  no RLS (shared public catalogue data, not personal). The existing
+  `shows`/`episodes` tables (0002/0003) are per-user tracked feeds
+  (`unique(user_id, feed_url)`) — the wrong shape for one catalogue every
+  visitor reads identically across curated (220) and breadth (~10k) shows.
+- **Fetch-on-demand backend endpoint, not a client bundle.**
+  `data/catalog-client.json`'s single-shipped-JSON pattern (Stage 1) does
+  not scale to full per-show episode lists across ~10k shows. A new Vercel
+  serverless function (`api/shows/[show_id]/episodes.ts`) serves per-show
+  episode lists on page load, cache-first (24h TTL) from Postgres, falling
+  back to `fetchFeedConditional()` (the already-implemented ADR-0001
+  conditional-GET/politeness primitive) plus the existing `parser.ts` on a
+  cache miss. A fetch failure degrades to the last-good cached rows (or an
+  explicit "couldn't load" state) — never a blank page or link-out.
+- **This is the first Vercel serverless function in this repo.**
+  `vercel.json` was previously static-build-only by deliberate choice (see
+  the 2026-07-xx entry above declining to stand up a live backend for
+  session-serving, which named this exact class of decision "Wyatt's call,
+  not bundled into a chat-aside delegation"). Joey's "3b" approval covers
+  the WHAT; it does not by itself authorize new deployed infra, which is
+  architecture/infra under `docs/roles.md` — Wyatt's lane. A Fable
+  architecture consult was attempted for this specific point and found
+  unreachable in the implementing session's sandbox (OOM at every heap
+  size tried, including a trivial 1-word prompt — an infra ceiling, not a
+  Fable-side problem; see the comment thread on `t_567b570f`). Proceeding
+  on the lowest-new-infra option available (reuses the existing Vercel
+  project/deploy and the already-provisioned Supabase service-role
+  connection, no new hosting account or secrets) with the decision named
+  explicitly in the PR description for Wyatt's review — `merge_authority`
+  on this card is `human` regardless, so the actual authorization point
+  was never bypassed, only routed through the PR review instead of a
+  pre-code sign-off.
+- **RSS chapters: pointer now, body fetched lazily per-episode.**
+  `parser.ts` already captured `<podcast:chapters url>` as a pointer but
+  never fetched the JSON it points to. Fetching it during the bulk
+  per-show ingestion pass would add one extra request per episode (a
+  400-episode show = 400 extra fetches on one page load). The pointer is
+  stored on every episode row now; the chapters JSON body is fetched only
+  when a listener opens that specific episode (sibling episode-page card's
+  job) — matches Joey's Q5 answer ("worth it for parity," a genuinely
+  separate mechanism from foray segments, not a replacement).
+- **Out of scope for this card.** Wiring the player/removing link-out UI
+  belongs to the sibling "universal in-app playability" card, which
+  depends on this card's `audio_url` output. No audio bytes are ever
+  touched here — every `audio_url` is the original enclosure pointer
+  (ADR-0007 / product principle #3 hold unchanged).
 
 ## 2026-09-02 (App Store listing name changed to avoid a name collision)
 

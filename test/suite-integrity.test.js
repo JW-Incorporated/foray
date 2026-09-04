@@ -252,6 +252,17 @@ const FLOORS = {
      either without reading #301 would take the only record of a hazard the
      battery can see only as an unrelated-looking status regression. */
   "test/search-tiering.test.js": 13,
+  /* The full-phrase show-name RESCUE's single-token gate (see the H bug
+     kanban t_0eb5f4e1, filed from the t_711dce13 red-team fleet): a
+     one-word show-name query in the topic box (e.g. "volts", "radiolab")
+     could never reach the rescue because it was gated on
+     `interp.groups.length >= 2`. Floored because the live-catalogue battery
+     alone regressed silently -- the bug shipped on main with every existing
+     suite green. Pins the loosened `>= 1` gate, that `wouldPassGate` still
+     short-circuits the rescue for items that already qualify normally (the
+     n=1 analogue of the existing "crime junkie" invariant), and the
+     11-of-23 one-word shows the bug report measured against real data. */
+  "test/search-showname-rescue.test.js": 7,
   /* Saved playlists must not decay (#276). Floored with ZERO SLACK, like
      data-deletion above and for the same reason: what it guards is a set of
      decisions each one line from its opposite, on a failure that is invisible on
@@ -271,7 +282,19 @@ const FLOORS = {
      entry renders zero episodes rather than an error, on one specific show,
      and nothing else in the repo would notice. Every test names its mutation;
      see the suite header for the full list of what each test pins. */
-  "test/show-page.test.js": 24,
+  "test/show-page.test.js": 39,
+
+  /* Stage 3b of docs/show-pages-plan.md — full per-show RSS ingestion
+     (kanban card t_567b570f): renders the curated pool synchronously so
+     the page is never blank while the endpoint fetch is in flight, swaps
+     in the full-catalogue list on success, degrades to the curated pool
+     on any fetch failure (never blank), proves every full-catalogue
+     episode is in-app playable (real audio_url, no link-out), and surfaces
+     a stale-cache note rather than hiding it. Client wiring only — see
+     backend/test/showEpisodesStore.test.ts and ingestShowFeed.test.ts for
+     the ingestion/storage side. */
+  "test/show-pages-3b-full-catalogue.test.js": 7,
+
   /* Requirements A3.2/A3.3 — category browse + all-shows index (kanban card
      "Build: category browse — linkify taxonomy chips + all-shows index"):
      the taxonomy-chip link itself, the showsForCategory overlap join against
@@ -281,6 +304,7 @@ const FLOORS = {
      its mutation; see the suite header for the full list of what each test
      pins. */
   "test/category-browse.test.js": 11,
+
   /* Stage 2 of docs/show-pages-plan.md — show search (kanban card
      t_1c9afc67): SearchEngine.searchShows against the real catalogue,
      scope-boundary proof that the topic scorer is untouched, and the
@@ -353,7 +377,8 @@ const FLOORS = {
      half is the literal reproduction of Joey's bug report -- deleting either
      would let the thin-anchor gate regress silently the way the original
      bug shipped silently. Every test names the mutation that kills it. */
-  "test/search-thin-anchor.test.js": 9,
+  "test/search-thin-anchor.test.js": 10,
+  "test/search-plural-scaling.test.js": 4,
   /* One generation per page load (#233). Floored because the thing it guards is
      invisible in the product: a mismatched code/data pair renders, it just
      renders the wrong program's reading of today's document. Every test in there
@@ -642,6 +667,15 @@ const FLOORS = {
      answered `running: true` and the fake was the only place the code worked. */
   "tools/mobile/webview-probe.test.mjs": 15,
 
+  /* M1 (full-repo review 2026-08-31): the byte-ceiling guards shared by
+     scan.mjs and refresh-feeds.mjs. Covers all three defenses named in the
+     finding — reject an implausible declared Content-Length before
+     download, abort mid-stream once the decompressed byte ceiling is
+     crossed (the chunked/endless-response case that a Content-Length check
+     alone cannot catch), and cap the item count after parsing — plus the
+     end-to-end wiring through fetchFeedCapped. */
+  "tools/refresh/fetch-limits.test.mjs": 14,
+
   "tools/refresh/enclosure.test.mjs": 18,
   /* Per-episode topics (#292). ZERO SLACK. This suite is the only thing between
      the catalogue and a return to show-level labelling — 77 of the 99 shows with
@@ -895,10 +929,20 @@ const SCANNED_DIRS = ["player", "test", "tools"];
  * Separate from FLOORS because these are `.test.ts`, run by the `backend` job
  * via `npm test` in backend/, not by tools/ci/run-suites.mjs. */
 const BACKEND_FLOORS = {
+  /* Anthropic provider error-path coverage (kanban card t_550d289f): mock-client
+     tests for the constructor dry-run guard, budget-guard call-site wiring, and
+     malformed-JSON/no-text-block error paths across all 5 real provider classes,
+     plus the shared parseWithRetry helper extracted from their copy-pasted
+     private implementations. */
+  "test/AnthropicDeepenActBuilder.test.ts": 7,
+  "test/AnthropicEnricher.test.ts": 10,
+  "test/AnthropicExternalResearcher.test.ts": 9,
+  "test/AnthropicPromptUnderstander.test.ts": 9,
+  "test/AnthropicSpineBuilder.test.ts": 8,
   "test/archetypes.test.ts": 7,
   "test/budgetGuard.test.ts": 6,
   "test/candidateExtractor.test.ts": 8,
-  "test/conditionalGet.test.ts": 6,
+  "test/conditionalGet.test.ts": 9,
   "test/copyRules.test.ts": 3,
   "test/createEnricher.test.ts": 1,
   /* Generation pipeline §4.0-4.1 (kanban card t_825eee4c). */
@@ -906,6 +950,10 @@ const BACKEND_FLOORS = {
   "test/dataSchemaCompliance.test.ts": 8,
   "test/dedup.test.ts": 17,
   "test/duration.test.ts": 12,
+  /* DAILY_BUDGET_USD env parsing (L5): rejects negative / NaN / empty /
+     over-cap values at startup instead of silently substituting the
+     default, and leaves a genuinely unset variable on its fallback. */
+  "test/env.test.ts": 10,
   "test/events.test.ts": 15,
   "test/html.test.ts": 8,
   "test/interestLearning.test.ts": 30,
@@ -914,6 +962,10 @@ const BACKEND_FLOORS = {
   "test/ladderIntegrity.test.ts": 11,
   "test/ladderProgress.test.ts": 8,
   "test/learningJob.test.ts": 4,
+  /* Anthropic provider error-path coverage (kanban card t_550d289f): the
+     shared parseWithRetry/parseLastJsonBlock helper extracted from the 5
+     real Anthropic provider classes' identical private copies. */
+  "test/parseWithRetry.test.ts": 9,
   "test/parser.test.ts": 29,
   "test/personas.test.ts": 6,
   "test/podcastIndex.test.ts": 3,
@@ -984,6 +1036,17 @@ const BACKEND_FLOORS = {
      disclosure template, and decideConnectiveNarration()'s seam-position
      table for tape-adjacent beats needing short connective narration. */
   "test/writeNarration.test.ts": 19,
+  /* Stage 3b (kanban t_567b570f, docs/show-pages-plan.md §Stage 3): shared
+     catalogue store CRUD (scoping by show_id, upsert-not-duplicate on
+     (show_id, guid), published_at ordering, feed-state round-trip). */
+  "test/showEpisodesStore.test.ts": 5,
+  /* Stage 3b end to end: fetches+parses+upserts through the real parser,
+     proves the chapters JSON body is never dereferenced during ingestion
+     (only the pointer is stored), TTL cache-hit/expiry behavior, and the
+     never-blank-page degrade contract (cached_stale / no_cache_error) on a
+     feed fetch failure — plus that a missing enclosure never fabricates an
+     audio_url. */
+  "test/ingestShowFeed.test.ts": 8,
   /* §4.8 end to end (kanban card t_7f410ffc): within-act stitching rules
      (silence bridge, jingle marks cuts, measured cadence, coverage
      hard-gate), the forward-only cross-act continuity Builder (§6.2),

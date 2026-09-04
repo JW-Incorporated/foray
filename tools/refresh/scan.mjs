@@ -16,6 +16,7 @@ import { dirname, join } from "node:path";
 import { createRequire } from "node:module";
 import { audioFieldsFrom } from "./enclosure.mjs";
 import { UA } from "../segments/politeness.mjs";
+import { fetchFeedCapped, capItems } from "./fetch-limits.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const backendRequire = createRequire(join(ROOT, "backend", "package.json"));
@@ -64,11 +65,11 @@ async function main() {
   for (const show of shows) {
     await sleep(THROTTLE_MS);
     try {
-      const res = await fetch(show.feed_url, { headers: { "User-Agent": UA }, redirect: "follow" });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const doc = parser.parse(await res.text());
+      const bodyText = await fetchFeedCapped(show.feed_url, { headers: { "User-Agent": UA } });
+      const doc = parser.parse(bodyText);
       let items = doc?.rss?.channel?.item || [];
       if (!Array.isArray(items)) items = [items];
+      items = capItems(items);
       const seen = new Set(state.seen[show.apple_collection_id] || []);
 
       for (const it of items.slice(0, 10)) {

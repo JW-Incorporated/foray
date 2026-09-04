@@ -7,6 +7,66 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
+### M1: cap feed download size before whole-body XML parsing (2026-09-01) — `foray/t_fc2c5f95`
+
+- **What:** Review finding M1. Fetch paths bound elapsed time but not response
+  bytes. Adds a pre-download `Content-Length` sanity check plus a streamed
+  decompressed-byte ceiling (abort mid-stream) to `backend/src/feeds/conditionalGet.ts`,
+  and a new shared helper `tools/refresh/fetch-limits.mjs` (same checks, plus an
+  item-count cap after parsing) used by `tools/refresh/scan.mjs`.
+- **Branch:** `foray/t_fc2c5f95` — PR only, never main.
+- **New files:** `tools/refresh/fetch-limits.mjs` (+ `.test.mjs`).
+- **Shared files it touches:** `backend/src/feeds/conditionalGet.ts` (+ its
+  test), `tools/refresh/scan.mjs`, `test/suite-integrity.test.js` (two floors).
+- **M6 landed first (PR #393):** `tools/refresh-feeds.mjs` is now a thin
+  wrapper that re-execs `scan.mjs`, so this card's original scope of also
+  patching `refresh-feeds.mjs`'s own fetch path is moot — fixing `scan.mjs`
+  covers both entry points. `refresh-feeds.mjs` itself is untouched here.
+### fast-xml-parser security bump (GHSA-8r6m-32jq-jx6q) (2026-09-01) — `fix-fastxmlparser-t_b3f33dfa`
+
+- **What:** Bumping `fast-xml-parser` from `^5.9.3` to `>=5.10.1` in
+  `backend/package.json`/`package-lock.json` (fixes a DOS advisory: repeated
+  DOCTYPE declarations reset entity-expansion limits). Pure dependency bump +
+  a new adversarial regression fixture in `backend/test/parser.test.ts` /
+  `backend/fixtures/feeds/`. No behavior/API changes intended.
+- **Touches:** `backend/package.json`, `backend/package-lock.json`,
+  `backend/test/parser.test.ts`, `backend/fixtures/feeds/` (new fixture).
+  `tools/refresh/scan.mjs` requires `fast-xml-parser` via
+  `backend/package.json`'s node_modules, so it picks up the bump for free —
+  no separate change needed there.
+- **Branch:** `fix-fastxmlparser-t_b3f33dfa` — PR only, never main
+  (merge_authority: human).
+- **Explicitly out of scope:** any new functionality beyond the version bump
+  + regression test.
+### Show-pages Stage 3b — full per-show RSS ingestion (2026-09-02) — `t_567b570f/show-pages-3b-rss-ingestion`
+
+- **What:** `docs/show-pages-plan.md` §Stage 3, decided path 3b (full
+  per-show RSS ingestion, no curated-subset ceiling — founder instruction:
+  "we should be able to play all podcasts from the app"). New shared
+  catalogue tables (`backend/migrations/0016_catalog_show_episodes.sql`),
+  ingestion module (`backend/src/catalog/`), and the first Vercel
+  serverless function in this repo (`api/shows/[show_id]/episodes.ts`) —
+  flagged explicitly for Wyatt's review, see `docs/DECISIONS.md`
+  2026-09-02 entry. Client (`renderShow()`) now fetches the full list on
+  demand, degrading to the curated pool on any fetch failure.
+- **Branch:** `t_567b570f/show-pages-3b-rss-ingestion` — PR only, never
+  main; `merge_authority: human` on this card regardless.
+- **Owned/new files:** `backend/migrations/0016_catalog_show_episodes.sql`,
+  `backend/src/catalog/showEpisodesStore.ts`,
+  `backend/src/catalog/ingestShowFeed.ts`,
+  `backend/test/showEpisodesStore.test.ts`,
+  `backend/test/ingestShowFeed.test.ts`, `api/shows/[show_id]/episodes.ts`,
+  `api/package.json`, `test/show-pages-3b-full-catalogue.test.js`.
+- **Shared files it touches:** `app.js` (`renderShow()`,
+  `fetchShowEpisodes()`, `fullCatalogueRowToEpRowItem()`), `vercel.json`
+  (installCommand), `test/suite-integrity.test.js` (two new floors),
+  `docs/show-pages-plan.md` (§Stage 3 decision recorded),
+  `docs/DECISIONS.md`.
+- **Explicitly out of scope:** wiring the player / removing link-out UI
+  (sibling "universal in-app playability" card, depends on this card's
+  `audio_url` output), fetching chapters JSON bodies (pointer stored now,
+  body fetched lazily per-episode by the episode-page card).
+
 ### SECURITY: Supabase linter findings — RLS/SECURITY DEFINER/policy scoping (2026-09-02) — `fix/supabase-linter-rls`
 
 - **What:** t_58c99c73. Enables RLS (deny-all, no policies) on

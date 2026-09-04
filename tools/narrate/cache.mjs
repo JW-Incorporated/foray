@@ -9,8 +9,9 @@
      2. the voice id
      3. the model id
      4. the output format (bitrate/sample rate)
+     5. the padding seconds baked around each item's audio (`padSecPerItem`)
 
-   So an entry is INVALIDATED by exactly four things, and each one genuinely
+   So an entry is INVALIDATED by exactly five things, and each one genuinely
    produces different audio:
 
      - **a script edit** — including a single character of punctuation, because
@@ -19,6 +20,13 @@
      - **a model change** — a different engine reading the same words, and per
        `pricing.json` a different price per character
      - **an output-format change** — 64 kbps and 128 kbps are different files
+     - **a padding change** — once padding synthesis exists (it does not yet,
+       see `adapter.mjs`'s guard and `docs/narrator-pipeline.md` §1 item 4),
+       the leading/trailing silence will be encoded directly into the audio
+       bytes, so a different `padSecPerItem` will be a different file even
+       though the TTS provider is never told about it and it never appears in
+       the request body. Until then `createAdapter()` refuses any non-default
+       value, so this field is always the default in practice today.
 
    And it is NOT invalidated by anything else, which is the half that saves
    money. Re-running the pipeline, re-ordering beats within a Foray, renaming a
@@ -56,8 +64,32 @@ import { createHash } from "node:crypto";
 import { billableText, countChars } from "./billable.mjs";
 
 /** Every input that changes the bytes we get back, and therefore every input
-    that belongs in the key. Order is fixed so the hash is stable. */
-export const KEY_INPUTS = Object.freeze(["text", "voiceId", "modelId", "outputFormat"]);
+    that belongs in the key. Order is fixed so the hash is stable.
+
+    `padSecPerItem` is here alongside the four TTS-request inputs even though
+    it never reaches `buildRequest()`'s HTTP body: `projection.mjs` and
+    `docs/narrator-pipeline.md` §1 item 4 are explicit that the padding is
+    ENCODED INTO THE AUDIO FILE (leading/trailing silence baked around the
+    item), so a padding-value change produces different bytes exactly like a
+    voice or model change does, even though the TTS provider is never told
+    about it. Leaving it out of the key is Leak 2 from this file's header —
+    "a key that omits an input that changes the audio" — and it is not
+    hypothetical: `HUMAN-ACTIONS.md` #3 records the padding value as still
+    undecided, so the first time it is set (or later revised), every existing
+    cache entry would otherwise silently serve stale-padding audio under an
+    unchanged key. */
+export const KEY_INPUTS = Object.freeze(["text", "voiceId", "modelId", "outputFormat", "padSecPerItem"]);
+
+/** Canonical default for `padSecPerItem`, defined here (not in `adapter.mjs`)
+    so `cacheKey()` can normalize an omitted value to it without an import
+    cycle — `adapter.mjs` already imports from this file, and the reverse
+    would be circular. `adapter.mjs` re-exports this under the same name for
+    callers that only import from there. Mirrors `projection.mjs`'s
+    `BUDGETS.padSecPerItem`; `HUMAN-ACTIONS.md` #3 still has the actual value
+    as an open founder decision — this is only the fallback used when no
+    caller overrides it (and, per `adapter.mjs`'s guard, no caller may
+    override it with anything else until padding synthesis exists). */
+export const DEFAULT_PAD_SEC_PER_ITEM = 1.0;
 
 /**
  * Guard against a caller passing a generation parameter that would change the
@@ -90,6 +122,12 @@ export function assertKeyInputsComplete(spec) {
  * @param {string} spec.voiceId
  * @param {string} spec.modelId
  * @param {string} spec.outputFormat
+ * @param {number} [spec.padSecPerItem] seconds of silence baked around the
+ *   item's audio (leading + trailing). Part of the key because it is baked
+ *   into the bytes, not merely a request parameter — see KEY_INPUTS' comment.
+ *   Omitted or `undefined` normalizes to `DEFAULT_PAD_SEC_PER_ITEM`, so a
+ *   caller that never mentions padding hashes identically to one that passes
+ *   the default explicitly — the two must be the same cache entry.
  * @returns {string} 64-char hex
  */
 export function cacheKey(spec = {}) {
@@ -115,6 +153,47 @@ export function cacheKey(spec = {}) {
   // is a hit rather than a re-bill. See "Leak 1" in the header.
   field("text", billableText(spec.text));
   for (const name of ["voiceId", "modelId", "outputFormat"]) field(name, spec[name]);
+  // Normalized separately from the loop above: an omitted padSecPerItem must
+  // hash exactly like the explicit default, not like the empty string
+  // `field()`'s `?? ""` would otherwise produce for it.
+  field("padSecPerItem", spec.padSecPerItem ?? DEFAULT_PAD_SEC_PER_ITEM);
+  return h.digest("hex");
+}
+
+/**
+ * The PRE-2026-09-02 four-field digest — exactly what `cacheKey()` computed
+ * before `padSecPerItem` was added to the key. An index built before this
+ * change has every entry under this digest, not `cacheKey()`'s current one.
+ *
+ * This exists ONLY so `NarrationCache` can recognize an old entry on read and
+ * treat it as a hit (see `NarrationCache.plan`/`has`/`get`) instead of the
+ * whole index going cold in one release and re-billing every cached script —
+ * the exact regression a codex review round on PR #420 caught. Padding is
+ * always `DEFAULT_PAD_SEC_PER_ITEM` in every entry this repo has ever
+ * written (see `createAdapter()`'s guard in `adapter.mjs`; nothing else has
+ * ever been recordable), so an old four-field entry and today's five-field
+ * default entry are provably describing the same audio — recognizing the old
+ * digest is not a compatibility shortcut that risks serving wrong bytes.
+ *
+ * Do not add new fields here. This is a fixed historical shape, not a second
+ * general-purpose key function.
+ *
+ * CAUTION FOR THE DAY PADDING SYNTHESIS LANDS: at that point this fallback
+ * (and the default-key entries recorded before that point) must stop being
+ * treated as equivalent to a post-synthesis default-padding request — see
+ * the note in `adapter.mjs`'s `createAdapter()` guard.
+ *
+ * @param {object} spec  same shape as `cacheKey`
+ * @returns {string} 64-char hex
+ */
+export function legacyCacheKey(spec = {}) {
+  const h = createHash("sha256");
+  const field = (name, value) => {
+    const v = String(value ?? "");
+    h.update(`${name}:${Buffer.byteLength(v, "utf8")}:${v}`);
+  };
+  field("text", billableText(spec.text));
+  for (const name of ["voiceId", "modelId", "outputFormat"]) field(name, spec[name]);
   return h.digest("hex");
 }
 
@@ -136,6 +215,40 @@ export class NarrationCache {
   get(key) { return this.entries.get(key) ?? null; }
 
   /**
+   * Look an entry up by SPEC rather than by a precomputed key, trying the
+   * current key first and falling back to `legacyCacheKey()` so an index
+   * written before `padSecPerItem` joined the key is not treated as cold.
+   * `plan()` uses this instead of a bare `has(cacheKey(spec))` for exactly
+   * that reason.
+   *
+   * The fallback is ONLY attempted when the requested `padSecPerItem` is the
+   * default (or omitted, which `cacheKey()` also normalizes to the
+   * default): every entry a legacy four-field index could contain was
+   * generated with the default padding, since nothing else was ever
+   * recordable before this fix. A caller asking for a genuinely different
+   * padding must NOT match a legacy entry — that would serve the wrong
+   * audio the moment padding synthesis exists and this guard's sibling in
+   * `adapter.mjs` is lifted, which is exactly the correctness this whole
+   * change exists to protect. `assertKeyInputsComplete`'s validation via
+   * `cacheKey()` already ran by the time this executes.
+   *
+   * @param {object} spec
+   * @returns {{key: string, entry: object|null}} the key ACTUALLY hit (current
+   *   or legacy) and its entry, or the current key with a null entry on a
+   *   genuine miss
+   */
+  lookup(spec) {
+    const key = cacheKey(spec);
+    if (this.entries.has(key)) return { key, entry: this.entries.get(key) };
+    const requestedPad = spec.padSecPerItem ?? DEFAULT_PAD_SEC_PER_ITEM;
+    if (requestedPad === DEFAULT_PAD_SEC_PER_ITEM) {
+      const legacy = legacyCacheKey(spec);
+      if (this.entries.has(legacy)) return { key: legacy, entry: this.entries.get(legacy) };
+    }
+    return { key, entry: null };
+  }
+
+  /**
    * Decide, for one script, whether a generation would be billed.
    *
    * This is the function the whole file exists for: `billable: false` means a
@@ -145,8 +258,8 @@ export class NarrationCache {
    * @returns {{key: string, cached: boolean, billable: boolean, chars: number, billedChars: number}}
    */
   plan(spec) {
-    const key = cacheKey(spec);
-    const cached = this.has(key);
+    const { key, entry } = this.lookup(spec);
+    const cached = entry !== null;
     const chars = countChars(spec.text);
     /* Deliberately PURE -- no hit/miss counters. It used to keep them and they
        were wrong: `plan()` is a query callers legitimately run more than once for
@@ -180,6 +293,7 @@ export class NarrationCache {
       voiceId: record.voiceId ?? null,
       modelId: record.modelId ?? null,
       outputFormat: record.outputFormat ?? null,
+      padSecPerItem: record.padSecPerItem ?? null,
       asset: record.asset ?? null,
       generated_at: record.generated_at ?? new Date().toISOString(),
     });
