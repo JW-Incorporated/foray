@@ -192,13 +192,43 @@ test("`.home` renders the banner slot and .cards4 and nothing else at all", () =
 
      Written as "subtract the two things that belong, assert nothing remains"
      rather than a list of banned strings, so it fails for a surface nobody
-     has thought of yet.
+     has thought of yet. The two things that belong are computed from the
+     same helpers renderHome calls (bannerHtml, miniCard over the card slots)
+     and subtracted as EXACT strings, whitespace between tags normalised. An
+     earlier draft subtracted them with a greedy `<a class="mini-card"…</a>`
+     regex, which also swallowed any anchor-bearing content appended after
+     the cards — the foray list re-added to Home left a leftover of "" and
+     the test stayed green. Exact subtraction has no such hole.
+
+     The fixture is seeded so that every helper that returns "" on empty
+     state is NON-empty here: editorial notes in the catalogue (vouchForHtml),
+     and a ForayPlayer stub with one listed foray and one resume row
+     (forayListHtml, jumpBackInHtml). Without those seeds, re-adding any of
+     the three to Home renders nothing under quietMount's empty state and
+     this test stays green — the forgiving-fixture failure CLAUDE.md lists
+     five times over. Tests 4-6 pin each move with their own seed; this one
+     has to catch them as "something, anything, inside .home" as well.
 
      MUTATION: add `${vouchForHtml()}` — or any other line — inside
      renderHome's `.home` template. `leftover` is no longer empty and this
-     fails, naming what was added. RUN: added `${vouchForHtml()}` back; fails
-     with the fy-vouch section as the leftover. */
+     fails, naming what was added. RUN, each separately, each failed here:
+     `${vouchForHtml()}`, `${forayListHtml()}`,
+     `${jumpBackInHtml(forayResumeRows())}`, the `#pl-form` block, the
+     `#sh-form` block. */
   const m = quietMount();
+  m.state.catalog = {
+    shows: [
+      { show_id: "vouch-a", title: "Vouch A", editorial_note: "A real note." },
+      { show_id: "vouch-b", title: "Vouch B", editorial_note: "Another real note." },
+    ],
+  };
+  m.state.forays = { forays: [] };
+  m.ctx.ForayPlayer = {
+    listForays: () => [{ id: "capital-types-1", title: "What capital actually is", status: "published" }],
+    forayResumeList: () => [
+      { id: "capital-types-1", title: "What capital actually is", percent: 40, label: "12 min left", finished: false },
+    ],
+  };
   m.ctx.renderHome();
   const inner = homeInner(m.view());
 
@@ -208,11 +238,13 @@ test("`.home` renders the banner slot and .cards4 and nothing else at all", () =
     "all four subject cards must render — they are the product"
   );
 
-  const leftover = inner
-    .replace(/<div id="banner-slot">[\s\S]*?<\/div>\s*<div class="cards4">/, "")
-    .replace(/<\/div>\s*$/, "")
-    .replace(/<a class="mini-card"[\s\S]*<\/a>/, "")
-    .trim();
+  const norm = (s) => s.replace(/>\s+</g, "><").trim();
+  const banner = norm(`<div id="banner-slot">${m.ctx.bannerHtml()}</div>`);
+  const cards = norm(`<div class="cards4">${m.state.cardSlots.map(m.ctx.miniCard).join("")}</div>`);
+  let leftover = norm(inner);
+  assert.ok(leftover.includes(banner), "the banner slot must render exactly as bannerHtml() paints it");
+  assert.ok(leftover.includes(cards), "the four cards must render exactly as miniCard() paints them");
+  leftover = leftover.replace(banner, "").replace(cards, "").trim();
   assert.strictEqual(
     leftover, "",
     `nothing but the banner and .cards4 may render inside .home; found: ${leftover.slice(0, 200)}`

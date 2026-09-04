@@ -22,7 +22,8 @@
  *     most-recently-starred-first order, with an honest empty state.
  *  5. route() dispatches #/starred-shows to renderStarredShows, same
  *     wiring pattern as #/playlists and #/queue.
- *  6. The drawer carries a reachable link to #/starred-shows.
+ *  6. #/starred-shows is reachable from the Shows page, and is NOT a
+ *     top-level drawer entry (the menu is five named pages since 2026-09-03).
  *  7. Starring a show never touches cp_saved (the episode star store) --
  *     the two features share a pattern, not a storage key.
  *
@@ -313,19 +314,40 @@ test("route() dispatches #/starred-shows to renderStarredShows, matching #/playl
 });
 
 /* ==================================================================== */
-/* 6. DRAWER REACHABILITY                                                */
+/* 6. REACHABILITY — FROM THE SHOWS PAGE, NOT THE DRAWER                 */
 /* ==================================================================== */
 
-test("the drawer nav carries a link to #/starred-shows", () => {
-  /* MUTATION: remove the drawer <a> from index.html. This fails because no
-     href pointing at #/starred-shows exists anywhere in the drawer markup.
-     Not on the home screen, per Joey's framing -- this only proves the
-     drawer link exists, deliberately not asserting anything about
-     renderHome's own markup. */
-  assert.match(
+test("#/starred-shows is reachable from the Shows page and is no longer a drawer entry", () => {
+  /* Was: "the drawer nav carries a link to #/starred-shows". The founder
+     named the menu's five pages on 2026-09-03 (Home, Shows, Playlists,
+     Forays, Up Next) and Starred Shows is not one of them, so the drawer
+     entry came out and the link moved onto the Shows page — a show-shaped
+     surface belongs with the shows. Both halves are pinned: the page must
+     still be reachable by a tap somewhere, and it must not have quietly
+     stayed in the drawer as a sixth entry (test/home-information-
+     architecture.test.js pins the drawer's exact five; this is the
+     starred-shows side of the same fact). Not on the home screen, per
+     Joey's framing -- nothing here asserts renderHome's markup.
+
+     MUTATION: delete the `page-link-row` anchor from renderAllShows's
+     `above` block. The first assertion fails and #/starred-shows becomes
+     reachable only by typing the URL. MUTATION 2: put the
+     `<a class="drawer-section" href="#/starred-shows">` line back in
+     index.html. The second assertion fails. */
+  const m = mount();
+  m.state.catalog = { shows: [] };
+  m.state.discover = { items: [] };
+  m.state.taxonomy = { nodes: [] };
+  m.state.session = { session_id: "s-1", builder: "test", episodes: {}, cards: [] };
+  m.ctx.renderAllShows();
+  assert.ok(
+    m.view().includes('href="#/starred-shows"'),
+    "the Shows page must carry a reachable link to #/starred-shows"
+  );
+  assert.doesNotMatch(
     INDEX_HTML,
-    /<nav id="drawer"[^]*?<a class="drawer-section" href="#\/starred-shows">Starred Shows<\/a>[^]*?<\/nav>/,
-    "the drawer must carry a reachable link to #/starred-shows"
+    /<nav id="drawer"[^]*?href="#\/starred-shows"[^]*?<\/nav>/,
+    "the drawer must not carry a top-level Starred Shows entry — the menu is the five named pages"
   );
 });
 

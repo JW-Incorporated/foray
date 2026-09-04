@@ -324,7 +324,8 @@ const FLOORS = {
      the taxonomy-chip link itself, the showsForCategory overlap join against
      the real catalogue, renderCategory/renderAllShows (including honest
      unknown-category/empty-catalogue states), the two new routes, and the
-     "Browse all shows" nav entry point's visibility toggle. Every test names
+     menu's "Shows" entry as the one affordance that replaced the removed
+     "Browse all shows" link (and that the link is gone). Every test names
      its mutation; see the suite header for the full list of what each test
      pins. */
   "test/category-browse.test.js": 11,
@@ -332,11 +333,24 @@ const FLOORS = {
   /* Stage 2 of docs/show-pages-plan.md — show search (kanban card
      t_1c9afc67): SearchEngine.searchShows against the real catalogue,
      scope-boundary proof that the topic scorer is untouched, and the
-     "Shows" tab on the Playlists page as its own affordance (distinct
-     form, distinct results list, honest empty state). Every test names
+     search as the Shows page's own affordance (distinct form, distinct
+     results list, honest empty state, absent from Home). Every test names
      its mutation; see the suite header for the full list of what each
      test pins. */
   "test/show-search.test.js": 11,
+  /* Home information architecture (founder instruction, 2026-09-03: "the
+     home page has so much clutter. Menu should have the following pages:
+     Home, Shows, Playlists, Forays, Up Next."). The move matrix: each of
+     the four surfaces that left Home (vouch row, show search, playlist
+     builder, foray list) asserted absent there AND present on its menu
+     page, the drawer pinned to exactly those five entries in order, the
+     new #/forays route, and "Up Next" proven to be a page over real
+     cp_queue state rather than a slot filled to match the list. Floored
+     because the failure it guards is ACCUMULATION — Home regrew its
+     clutter one "just one more row" at a time, and a suite that can be
+     deleted in an auto-merged PR guards nothing. Every test names its
+     mutation; see the suite header. */
+  "test/home-information-architecture.test.js": 11,
   /* Starred shows (follow-lite), requirement A2.4 / Joey's Q2 answer.
      Kanban card "Build: starred shows (follow-lite) + dedicated Starred
      Shows page". Floored because this is exactly the #276/show-pages
