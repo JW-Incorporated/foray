@@ -129,10 +129,25 @@ from its show's label) and run the committed merge. See
    offending **hook, tags or `topics`** in `edits.json` (or drop the item) and
    re-run. A `not taxonomy node ids: "…"` failure is a `topics` typo — correct
    the id against `data/taxonomy.json`, or delete the `topics` key to fall back
-   to the show's label. **Nothing was written**: merge validates every item
-   before it writes anything, so a failed run leaves the data files untouched
-   and re-running after the fix is safe. It writes `data/discover.json` +
-   `data/item-tags.json`.
+   to the show's label. **Nothing was written on a copy-rule or `topics`
+   failure**: merge validates every item before it writes anything, so that
+   kind of failed run leaves the data files untouched and re-running after the
+   fix is safe. (The one failure that DOES leave files written is the manifest
+   step, below.) It writes `data/discover.json` +
+   `data/item-tags.json`, **and then regenerates `deploy-manifest.json` and
+   restamps `sw.js`'s `BUILD_ID`** (HUMAN-ACTIONS #37, 2026-09-03). Both data
+   files are hashed by the manifest, so it is stale the instant they are
+   written; doing it here means your own commit is already correct and no
+   `github-actions[bot]` fixup commit is ever pushed to your PR. That matters:
+   a bot commit on the PR demands an approving review that GitHub forbids the
+   PR's author from giving, and PRs #443 and #456 sat green and unmergeable
+   for exactly that reason. Expect the line
+   `MANIFEST: deploy-manifest.json regenerated and sw.js BUILD_ID restamped in this commit.`
+   in the output. If the merge instead exits non-zero with a
+   `MERGE: deploy-manifest.json could NOT be regenerated ... DO NOT COMMIT`
+   message, the data files WERE written but the manifest step failed: do not
+   commit, do not open a PR, and leave a note for a daytime human session —
+   that tree is exactly the stale-manifest state that summons the bot commit.
 
 6. **Validate.** Never open a red PR:
    ```sh
@@ -143,21 +158,29 @@ from its show's label) and run the committed merge. See
 7. **Open a PR — never push to `main`.**
    ```sh
    git switch -c "nightly/$(date -u +%F)"
-   git add data/discover.json data/item-tags.json
+   git add data/discover.json data/item-tags.json deploy-manifest.json sw.js
    git commit   # message: "Nightly refresh: +N episodes (YYYY-MM-DD)" + co-author trailer
    git push -u origin HEAD
    gh pr create --base main --title "Nightly refresh: +N episodes (YYYY-MM-DD)" \
      --body "Automated nightly content refresh. N new episodes from the refresh-digest of <date>. Copy rules + pool integrity green."
    ```
-   Do NOT merge it yourself. `automerge-nightly.yml` enables auto-merge on
-   `nightly/*` PRs, so it merges automatically once the required checks
+   **All four files go in the one commit.** `deploy-manifest.json` and `sw.js`
+   were rewritten by step 5; leaving them out reproduces the #37 deadlock
+   (stale manifest → bot fixup commit → an approval nobody can give). Your PR
+   should change exactly those four paths and nothing else. Do NOT merge it
+   yourself. `automerge-nightly.yml` enables auto-merge on `nightly/*` PRs
+   whose changed files are all on `ALLOWED_PREFIXES` — all four of yours are,
+   as of 2026-09-03 — so it merges automatically once the required checks
    (`backend`, `data-and-site`) pass; GitHub Pages then deploys from `main`.
+   If the PR shows a `github-actions[bot]` commit anyway, step 7's `git add`
+   was incomplete: say so in one PR comment and exit.
 
 ## Hard constraints
 
-- Touch ONLY `data/discover.json`, `data/item-tags.json` (both via `merge.mjs`),
-  and `data-local/edits.json`. No schema changes, no dependency changes, no edits
-  to `tools/refresh/*`. **`topics` in `edits.json` is not a schema change** — it
+- Touch ONLY `data/discover.json`, `data/item-tags.json`, `deploy-manifest.json`
+  and `sw.js` (all four via `merge.mjs` — never by hand, and never by running
+  `tools/ci/generate-manifest.mjs` yourself), plus `data-local/edits.json`. No
+  schema changes, no dependency changes, no edits to `tools/refresh/*`. **`topics` in `edits.json` is not a schema change** — it
   is an established optional field of that contract (step 4), and authoring it
   is in scope.
 - Never push to `main`; never force-push; never merge your own PR without the

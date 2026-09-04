@@ -296,9 +296,19 @@ what lets `watch-nightly.test.mjs` replay the real 2026-08-20 night from
 node tools/refresh/scan.mjs --window-hours 48     # ~10 min, ~213 feeds
 node tools/refresh/resolve.mjs                     # writes data-local/resolved.json
 # agent authors data-local/edits.json from resolved.json
-node tools/refresh/merge.mjs                        # writes data/discover.json + item-tags.json
+node tools/refresh/merge.mjs                        # writes data/discover.json + item-tags.json,
+                                                    # then regenerates deploy-manifest.json + sw.js
 cd backend && npx vitest run test/copyRules.test.ts test/poolIntegrity.test.ts
 ```
+
+**On a Windows `core.autocrlf=true` checkout the last step of `merge.mjs` refuses**
+(`tools/ci/crlf-guard.mjs`): the data files are written, then the manifest step
+exits 1 with `DO NOT COMMIT`. That is correct — the manifest hashes bytes on
+disk and a CRLF checkout would hash bytes we never ship. Either run the merge
+on an LF checkout (the nightly's Linux runner is one), or commit the two data
+files and let `.github/workflows/manifest-autofix.yml` restamp the manifest on
+the PR — knowing that its `github-actions[bot]` commit then needs an approving
+review from someone other than the PR's author (HUMAN-ACTIONS #37).
 
 ## Path overrides (used by the cloud split)
 
@@ -311,7 +321,7 @@ GitHub Actions (ephemeral workspace) and locally (`data-local/`):
 | `PENDING_PATH`  | `data-local/fresh-pending.json` | Action |
 | `RESOLVED_PATH` | `data-local/resolved.json`      | Action publishes this to the digest branch |
 | `EDITS_PATH`    | `data-local/edits.json`         | Cloud agent writes this |
-| `MERGE_DISCOVER_PATH` | `data/discover.json`      | Tests only — the nightly writes the real file |
+| `MERGE_DISCOVER_PATH` | `data/discover.json`      | Tests only — the nightly writes the real file. Setting EITHER `MERGE_*` var to a path other than the real file also skips the deploy-manifest step (`manifest-step.mjs`): a redirected run changed nothing the manifest describes. Setting it to the real path is not a redirect and does not skip |
 | `MERGE_TAGS_PATH`     | `data/item-tags.json`     | Tests only — the nightly writes the real file |
 
 **The `MERGE_` prefix is load-bearing, not tidiness.** `tools/classify/root-dumping-report.mjs`

@@ -412,8 +412,12 @@ const FLOORS = {
   /* One generation per page load (#233). Floored because the thing it guards is
      invisible in the product: a mismatched code/data pair renders, it just
      renders the wrong program's reading of today's document. Every test in there
-     was mutation-checked — see the suite header. */
-  "test/sw-generation.test.js": 32,
+     was mutation-checked — see the suite header.
+     32 -> 51 on 2026-09-03 (HUMAN-ACTIONS #37). `sw.js` was allowlisted on the
+     evidence that THIS suite pins its behaviour; with a floor 19 below the real
+     count, an auto-merged `test/` change could thin it while the claim stayed
+     green. Zero slack from here on, for the reason media-session has none. */
+  "test/sw-generation.test.js": 51,
   // tools/ is allowlisted for auto-merge too (T3 in automerge-nightly.yml),
   // so suites under it need the same floor.
   /* The icons are generated from tools/brand/4a-logo.png, and this suite is the
@@ -433,8 +437,20 @@ const FLOORS = {
      satisfied either way — moving `inject-app-icon.mjs` from denied to
      acknowledged would keep every check green while re-opening the exposure, and
      what that exposure ships is Capacitor's placeholder on the App Store product
-     page, with no manual upload available to correct it. */
-  "tools/ci/path-policy.test.mjs": 84,
+     page, with no manual upload available to correct it.
+     84 -> 88 on 2026-09-03 (HUMAN-ACTIONS #37). The four added tests pin the
+     ONE thing that decides whether a nightly-refresh PR merges without a human:
+     that `deploy-manifest.json` and `sw.js` are on ALLOWED_PREFIXES. Removing
+     either entry restores the state in which every nightly PR sat green and
+     unmerged, and nothing else in the repo would say so. */
+  "tools/ci/path-policy.test.mjs": 88,
+  /* The LF-checkout guard on the deploy manifest. Small, and every test is one
+     branch of a function whose whole job is to refuse. The load-bearing one is
+     the binary exclusion: both committed icons really do carry `\r\n` bytes, so
+     dropping it fires the guard on a clean Linux runner and blocks
+     `data-and-site` for the entire repo. All 10 named mutations were run and
+     killed. */
+  "tools/ci/crlf-guard.test.mjs": 10,
   "tools/ci/pr-triage.test.mjs": 85,
   "tools/ci/run-suites.test.mjs": 36,
   // The classify fleet. `no-exclusion` is the founder's "label, never filter"
@@ -784,6 +800,15 @@ const FLOORS = {
      (a comment-only edit to scan.mjs; one new nightly episode) were confirmed to
      stay green. Each test names its own mutation. */
   "tools/refresh/merge-topics.test.mjs": 16,
+  /* The nightly's deploy-manifest step (HUMAN-ACTIONS #37). Floored because its
+     failure mode is silence: if merge.mjs stops restamping the manifest,
+     nothing goes red — `manifest-autofix.yml` pushes the `github-actions[bot]`
+     fixup commit again, and `protect-main`'s
+     `require_extra_approval_for_unattributed_changes` then makes the nightly PR
+     need an approval its own author is forbidden by GitHub to give. That is
+     PR #443 and PR #456 on 2026-09-03, both green and both stuck. All 9
+     mutations were run and killed; each test names its own. */
+  "tools/refresh/manifest-step.test.mjs": 9,
   /* The nightly watchdog (#290). ZERO SLACK, for the reason media-session and
      data-deletion are floored that way: what this suite holds down is a set of
      decisions each one line from its opposite, on a check nobody watches run.

@@ -168,6 +168,50 @@ export const DENIED_PREFIXES = [
  *                    and the PR cannot merge at all. The blast radius of a bad
  *                    test here is a red build, not a bad deploy. Its production
  *                    counterpart `backend/src/` is explicitly denied above.
+ *   T4 deploy-manifest.json sw.js
+ *                    Added 2026-09-03 (HUMAN-ACTIONS #37; docs/DECISIONS.md).
+ *                    These two move TOGETHER on every content deploy and are
+ *                    the pair that stalled the nightly: `deploy-manifest.json`
+ *                    hashes `data/discover.json` + `data/item-tags.json`, which
+ *                    the nightly always rewrites, and `sw.js`'s BUILD_ID is
+ *                    stamped with the resulting deploy_id so browsers notice
+ *                    the new generation at all. Neither was on EITHER list, so
+ *                    every nightly PR fell through to "unlisted" and auto-merge
+ *                    declined — all-or-nothing, the whole PR waiting.
+ *
+ *                    The two are NOT equally safe, and the difference is worth
+ *                    stating rather than blurring:
+ *
+ *                    `deploy-manifest.json` is fully determined by other files.
+ *                    The REQUIRED `data-and-site` check runs
+ *                    `generate-manifest.mjs --check`, which regenerates it in
+ *                    memory from the tree and diffs it including deploy_id. A
+ *                    forged or hand-edited manifest cannot go green. Its
+ *                    contents grant nothing that the hashed files' own prefixes
+ *                    do not already grant.
+ *
+ *                    `sw.js` is real code, and only its BUILD_ID line is
+ *                    machine-verified — `--check` says nothing about the rest.
+ *                    A service worker is the highest-privilege script on the
+ *                    origin: it intercepts every fetch and persists across
+ *                    deploys. It is allowlisted anyway, for the same reason
+ *                    `app.js` and `player/` are and on the same evidence:
+ *                    `test/sw-generation.test.js` evaluates the REAL sw.js in a
+ *                    node:vm and drives its real install/activate/fetch
+ *                    listeners across ~50 tests (torn deploys, hash mismatch,
+ *                    offline reload, runtime write integrity, pin stamping),
+ *                    it runs in the required `data-and-site` check, and it is
+ *                    floored in test/suite-integrity.test.js so it cannot be
+ *                    quietly gutted. Denying `sw.js` while allowing `app.js` —
+ *                    which runs in the page with full DOM and localStorage
+ *                    access — would not have been a coherent line.
+ *
+ *                    The residual, stated plainly: a bot-authored sw.js change
+ *                    that keeps every behaviour that suite pins can now reach
+ *                    `main` unread. That is the price of the founder's ruling
+ *                    on #37 ("Auto fix, I am not trying to do daily manual
+ *                    reviews"), and it is recorded as such in
+ *                    docs/DECISIONS.md rather than left implicit here.
  *
  * BEFORE ADDING ANYTHING HERE: DENIED_PREFIXES is checked first and wins, so
  * widening this list cannot expose a denied path. What it CAN do is let a file
@@ -186,6 +230,8 @@ export const ALLOWED_PREFIXES = [
   "search-engine.js",
   "STATE.md",
   "HUMAN-ACTIONS.md",
+  "deploy-manifest.json",
+  "sw.js",
 ];
 
 /* Labels that stop auto-merge on one PR. `hold` means a human is mid-thought;

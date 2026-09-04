@@ -46,12 +46,24 @@
  * committed copy — including deploy_id — so a hand-edited deploy-manifest.json
  * or one that fell behind a real file change fails loudly rather than silently
  * shipping a torn deploy.
+ *
+ * BOTH MODES REFUSE TO RUN IN A CRLF CHECKOUT (`tools/ci/crlf-guard.mjs`).
+ * These hashes describe bytes on disk, and a Windows `core.autocrlf=true`
+ * checkout has CRLF where the committed blob — and the byte stream Pages
+ * serves — has LF. Read that file's header before touching the guard.
+ *
+ * WHO CALLS `--write`
+ *   - tools/refresh/merge.mjs, so the nightly's FIRST commit already carries a
+ *     correct manifest and no bot fixup commit is needed (docs/DECISIONS.md,
+ *     2026-09-03).
+ *   - .github/workflows/manifest-autofix.yml, the safety net for every other PR.
  */
 
 import { readFileSync, writeFileSync, readdirSync, existsSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
+import { crlfOffenders, crlfFatalMessage } from "./crlf-guard.mjs";
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const MANIFEST_PATH = path.join(ROOT, "deploy-manifest.json");
@@ -116,6 +128,17 @@ function sha256File(relPath) {
   return createHash("sha256").update(readFileSync(abs)).digest("hex");
 }
 
+/* Aborts before any hash is computed or written. Called by BOTH modes: on a
+   CRLF checkout `--check` used to report "deploy-manifest.json is stale", which
+   sends the reader to run the very command that breaks it. Full rationale and
+   the measurement behind it live in tools/ci/crlf-guard.mjs. */
+function assertLfCheckout() {
+  const bad = crlfOffenders(ROOT, listedFiles());
+  if (!bad.length) return;
+  console.error(crlfFatalMessage(bad));
+  process.exit(1);
+}
+
 function computeManifest() {
   const files = {};
   for (const rel of listedFiles()) {
@@ -140,6 +163,8 @@ function main() {
     console.error("usage: generate-manifest.mjs --write | --check");
     process.exit(2);
   }
+
+  assertLfCheckout();
 
   const computed = computeManifest();
 

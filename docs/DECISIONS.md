@@ -1719,3 +1719,106 @@ its reasoning.
   under human review, not yet merged. Once it lands, `renderShow()`'s
   breadth-tier branch should be revisited as a small fast-follow to call
   its episode endpoint instead of showing the fetching message indefinitely.
+
+## 2026-09-03 (nightly-refresh PRs merge with no human click — HUMAN-ACTIONS #37)
+
+**The founder's ruling, verbatim:** *"Auto fix, I am not trying to do daily
+manual reviews."* This entry records what that bought and what it cost, because
+it is a governance change and expensive to reverse (CLAUDE.md rule 4).
+
+**Two independent blockers, both verified before anything was designed.**
+`HUMAN-ACTIONS.md` #37 documents only the first.
+
+1. **Auto-merge never armed.** The nightly always rewrites
+   `data/discover.json` + `data/item-tags.json`. Both are hashed by
+   `deploy-manifest.json`, and `sw.js`'s `BUILD_ID` carries the resulting
+   `deploy_id`. Neither of those two files was on `ALLOWED_PREFIXES` *or*
+   `DENIED_PREFIXES` in `tools/ci/path-policy.mjs` — *unlisted*, so
+   `path-policy` reported CLEAN while auto-merge declined to act, and the
+   decision is per-PR and all-or-nothing. Reproduced:
+   `automergeDecision({files: [the four paths]})` returned
+   `NOT ARMED / UNLISTED_PATH`.
+2. **The bot's fixup commit was unmergeable, and #37 does not mention it.**
+   `manifest-autofix.yml` regenerated the manifest and pushed it as
+   `github-actions[bot]`. The `protect-main` ruleset (19713996) sets
+   `require_extra_approval_for_unattributed_changes: true` with
+   `required_approving_review_count: 0` and **zero bypass actors** — so an
+   unattributed commit demands one approving review, and GitHub forbids a PR's
+   author from approving their own PR. Verified on PR #456: `backend`,
+   `data-and-site` and `playwright` all green on the head SHA, no blocking
+   label, `reviewDecision` empty, `mergeable: MERGEABLE`,
+   `mergeStateStatus: BLOCKED`. PR #443 deadlocked the same way and was closed
+   and relanded as #459. Fixing blocker 1 alone would have left nightly PRs
+   armed and still stuck on an approval nobody could give.
+
+**What we did NOT do.** `require_extra_approval_for_unattributed_changes` stays
+`true` and no bypass actor was added. That rule exists so machine-authored
+changes get a human vouching for them, and switching it off to solve a plumbing
+problem would trade a real safety property for convenience across the whole
+repo, not just the nightly. Attributing bot commits to a human account was
+rejected for the same reason under a worse name. The fix is to **not create an
+unattributed commit in the first place**.
+
+**Decision 1 — the nightly generates its own manifest (option 3 in #37).**
+`tools/refresh/merge.mjs` now calls `stampDeployManifest()`
+(`tools/refresh/manifest-step.mjs`) immediately after it writes the two data
+files, so the nightly's FIRST commit already carries a correct
+`deploy-manifest.json` and `sw.js`, `manifest-autofix` finds nothing to do, and
+no `github-actions[bot]` commit is ever pushed to the PR. The autofix workflow
+is unchanged and stays as the safety net for every other PR. A failed
+regeneration is fatal and prints DO NOT COMMIT: the data files are already
+written at that point, and continuing produces exactly the stale-manifest tree
+that summons the bot commit.
+
+The code half is inert without the prompt half: the nightly agent commits
+whatever it `git add`s, and `docs/agents/runner-prompts/foray-nightly.md` step 7
+added only the two data files. It now adds all four, step 5 tells the agent to
+expect the `MANIFEST:` line and what a `DO NOT COMMIT` exit means, and the
+"touch only" constraint names the two generated files (recorded in
+`docs/agents/runners.md`). If a nightly PR ever shows a `github-actions[bot]`
+commit again, the first suspect is that `git add` line, not the code.
+
+**Decision 2 — `deploy-manifest.json` and `sw.js` are allowlisted (option 1).**
+Option 3 alone does not arm auto-merge; the two files still appear in the PR.
+They are now on `ALLOWED_PREFIXES`, the same treatment `#167`/`#168` gave
+`STATE.md`.
+
+The two are not equally safe and the difference is recorded rather than blurred:
+
+- `deploy-manifest.json` is **fully determined by other files**. The required
+  `data-and-site` check runs `generate-manifest.mjs --check`, which regenerates
+  it from the tree and diffs it including `deploy_id`. A forged or hand-edited
+  manifest cannot go green, so allowlisting it grants nothing the hashed files'
+  own prefixes do not already grant.
+- `sw.js` is **real code**, and only its `BUILD_ID` line is machine-verified. A
+  service worker is the highest-privilege script on the origin. It is
+  allowlisted on the same evidence `app.js` and `player/` are: the required
+  `data-and-site` job runs `test/sw-generation.test.js`, which evaluates the
+  REAL `sw.js` in a `node:vm` and drives its real `install`/`activate`/`fetch`
+  listeners across ~50 tests (torn deploys, hash mismatch, offline reload,
+  runtime write integrity, pin stamping), and that suite is floored in
+  `test/suite-integrity.test.js` so it cannot be quietly gutted. Denying `sw.js`
+  while allowing `app.js` — which runs in the page with full DOM and
+  localStorage access — would not have been a coherent line.
+
+**The price, stated plainly.** A bot-authored change to `sw.js` that keeps every
+behaviour `test/sw-generation.test.js` pins can now reach `main` without a human
+reading it. That is a real widening of the unread-merge surface and it is what
+the ruling bought. It is reversible in one line — remove `"sw.js"` from
+`ALLOWED_PREFIXES` — at the cost of a daily manual merge click, which is the
+thing the ruling declined.
+
+**Decision 3 — `generate-manifest.mjs` refuses to run in a CRLF checkout.**
+The manifest hashes bytes on disk. This repo commits LF and is developed on
+Windows with `core.autocrlf=true`, so `--write` there rewrites all 40 entries to
+hashes of bytes we never ship — plausible-looking, green locally, wrong
+everywhere else. Measured on a `main` worktree that day: 37 of the 38 listed
+text files differed from their committed blobs, and `--check` reported
+"deploy-manifest.json is stale", advice pointing straight at the command that
+causes the damage. `tools/ci/crlf-guard.mjs` now aborts **both** modes with the
+real diagnosis. Refusing rather than normalising is deliberate: normalising
+would make the hash mean "the bytes with CRLF collapsed" instead of "the bytes
+we ship", the same class of lie one layer down. The guard's binary-file
+exclusion is load-bearing, not defensive — both committed icons really do carry
+`\r\n` byte pairs, so without it the guard would fire on a clean Linux runner
+and block `data-and-site` for the entire repo.
