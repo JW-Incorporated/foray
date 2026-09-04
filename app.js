@@ -1382,8 +1382,12 @@ function showsForCategory(nodeId) {
 /* Shared shell for both the category list (A3.2) and the all-shows index
    (A3.3) — same "back, heading, sub, list-of-show-result-rows" shape
    renderShow/renderPlaylistDetail already use, and reuses showResultRow so a
-   row here looks and behaves exactly like a Shows-search result. */
-function renderShowIndexPage(title, subtitle, shows) {
+   row here looks and behaves exactly like a Shows-search result.
+
+   `above` is raw HTML dropped between the header and the A–Z list. It exists
+   for the Shows page's search box + editorial rows; the category page passes
+   nothing and is byte-identical to what it rendered before. */
+function renderShowIndexPage(title, subtitle, shows, above = "") {
   document.body.className = "view-page";
   $("#view").innerHTML = `
     <div class="page">
@@ -1394,8 +1398,9 @@ function renderShowIndexPage(title, subtitle, shows) {
           <p class="sub">${esc(subtitle)}</p>
         </div>
       </div>
+      ${above}
       ${shows.length
-        ? `<div class="show-results">${shows.map(showResultRow).join("")}</div>`
+        ? `<div class="show-results show-index">${shows.map(showResultRow).join("")}</div>`
         : `<p class="note">No shows here yet.</p>`}
     </div>`;
 }
@@ -1414,10 +1419,45 @@ function renderCategory(nodeId) {
 /* A3.3 — the all-shows browsable index. A-Z over the full curated catalogue;
    category grouping is the Shows-search tab's job already (browse by
    category lives one tap away via any show's taxonomy chips), so this stays
-   a single flat alphabetical list rather than duplicating that navigation. */
+   a single flat alphabetical list rather than duplicating that navigation.
+
+   SINCE 2026-09-03 IT IS ALSO THE "Shows" MENU DESTINATION: everything
+   show-shaped lives here now, because the founder asked for the show search
+   and the "Shows we vouch for" row off Home and onto this page (items 1 and
+   5). In order: search, the starred-shows shortcut, the editorial row, then
+   A-Z. That order is deliberate \u2014 search answers "does this show exist
+   here", which is why someone opens this page on purpose, and the A-Z list
+   is the fallback for someone who does not know what they are looking for,
+   so it goes last rather than pushing the search box under 220 rows.
+
+   The tabbed "Playlists | Shows" switcher that used to wrap this search on
+   Home went away with it. It existed only to time-share one strip of the
+   home screen between two different questions; the playlist builder now
+   lives on #/playlists and the show search here, so there is nothing left to
+   toggle between. renderShowSearchResults - local-first paint plus the
+   breadth endpoint - is unchanged.
+
+   The old browse-all link is gone rather than moved (item 6): it was a link
+   from Home to THIS page, and the menu's own "Shows" item is now that
+   affordance. Nothing else in the app linked to it. */
 function renderAllShows() {
   const shows = (state.catalog?.shows || []).slice().sort((a, b) => a.title.localeCompare(b.title));
-  renderShowIndexPage("All Shows", `${shows.length} shows in 4a's catalogue, A\u2013Z`, shows);
+  renderShowIndexPage("Shows", `${shows.length} shows in 4a's catalogue, A\u2013Z`, shows, `
+      <form id="sh-form" autocomplete="off">
+        <input id="sh-input" type="text" maxlength="120" placeholder="search shows by name\u2026">
+        <button type="submit">Go</button>
+      </form>
+      <p id="sh-note" class="note" hidden></p>
+      <div id="sh-results" class="show-results" hidden></div>
+      <a class="page-link-row" href="#/starred-shows">Starred shows \u203a</a>
+      ${vouchForHtml()}`);
+
+  $("#sh-form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const query = $("#sh-input").value.trim();
+    if (!query) return;
+    renderShowSearchResults(query);
+  });
 }
 
 /* Stage 3b (docs/show-pages-plan.md §Stage 3, kanban t_567b570f): full
@@ -2062,7 +2102,7 @@ function showResultRow(show) {
 /* A3.5: "Shows we vouch for" — a show-level editorial row (requirements audit
    note: 220/220 catalog.json shows already carry `editorial_note`, unused as a
    browse surface until now — only the four topic-based subject cards
-   (buildCards/cards4) and forays (forayHomeHtml) serve as an editorial front
+   (buildCards/cards4) and forays (forayListHtml) serve as an editorial front
    door today, and both are episode/topic-shaped, not show-shaped). Per the
    requirements doc's B1 separation rule this is its own distinctly-labeled
    section, never blended into an episode row or a foray row — it reuses
@@ -2180,57 +2220,39 @@ function renderShowSearchResults(query) {
   }); // fetchApiJson already swallows network/parse errors and resolves null — no .catch needed
 }
 
-function setSearchTab(mode) {
-  const topics = mode === "topics";
-  $("#tab-topics").classList.toggle("on", topics);
-  $("#tab-topics").setAttribute("aria-pressed", String(topics));
-  $("#tab-shows").classList.toggle("on", !topics);
-  $("#tab-shows").setAttribute("aria-pressed", String(!topics));
-  $("#pl-form").hidden = !topics;
-  $("#pl-note").hidden = !topics || !$("#pl-note").textContent;
-  $("#sh-form").hidden = topics;
-  $("#sh-note").hidden = topics || !$("#sh-note").textContent;
-  $("#sh-results").hidden = topics || !$("#sh-results").innerHTML;
-  $("#browse-all-link").hidden = topics;
-}
+/* HOME IS THE FOUR SUBJECT CARDS AND THE RESUME BANNER. NOTHING ELSE.
+   (Founder instruction, 2026-09-03, after the first TestFlight build: "the
+   home page has so much clutter … Home should be the four cards.")
 
+   That is a layout invariant as much as a product one. `.home` is a
+   fixed-height flex column (`100svh - topbar`) whose only `flex: 1` child is
+   `.cards4`, and it is `overflow: visible` — so ANY tall sibling added here
+   silently starves the four cards to 0px and overflows on top of whatever
+   follows. That has now shipped as a visible bug twice: #433 (the vouch row)
+   and again before it. The container is correct for what it holds; what was
+   wrong both times was putting a second scrollable surface inside a
+   one-screen one.
+
+   So everything that used to compete for this space now has its own menu
+   destination, and that is where it goes back to if it comes back:
+
+     "Shows we vouch for" (vouchForHtml)   -> Shows      (#/shows)
+     show search (#sh-form/#sh-results)     -> Shows      (#/shows)
+     "Browse all shows" link                -> gone; Shows IS that page
+     playlist builder (#pl-form)            -> Playlists  (#/playlists)
+     foray list + "Jump back in"            -> Forays     (#/forays)
+
+   test/home-information-architecture.test.js asserts each of those in both
+   directions — absent here, present there — so a future re-add fails CI
+   rather than shipping. */
 function renderHome() {
   document.body.className = "view-home";
   if (!state.cardSlots.length) buildCards();
-  const resumeRows = forayResumeRows();
-  /* Rendered OUTSIDE `.home`, below the fold — see the `.home-below` note in
-     styles.css. `.cards4` is `.home`'s only `flex: 1` child, so any tall
-     sibling inside it takes its space straight off the four cards. (`.home` is
-     `min-height` now and `.cards4` has a floor, so that degrades to a taller
-     scrolling page rather than 26px cards — a backstop, not a licence to move
-     this back inside.) Computed once here rather than called inline twice: the
-     sample is seeded by day-of-year, so a second call is deterministic but
-     wasted. */
-  const vouch = vouchForHtml();
   $("#view").innerHTML = `
     <div class="home">
       <div id="banner-slot">${bannerHtml()}</div>
-      ${jumpBackInHtml(resumeRows)}
-      ${forayHomeHtml()}
       <div class="cards4">${state.cardSlots.map(miniCard).join("")}</div>
-      <div class="search-tabs" role="tablist">
-        <button type="button" id="tab-topics" class="search-tab on" role="tab" aria-pressed="true">Playlists</button>
-        <button type="button" id="tab-shows" class="search-tab" role="tab" aria-pressed="false">Shows</button>
-      </div>
-      <form id="pl-form" autocomplete="off">
-        <input id="pl-input" type="text" maxlength="120" placeholder="build me a playlist…">
-        <button type="submit">Go</button>
-      </form>
-      <p id="pl-note" class="note" hidden></p>
-      <form id="sh-form" autocomplete="off" hidden>
-        <input id="sh-input" type="text" maxlength="120" placeholder="search shows by name…">
-        <button type="submit">Go</button>
-      </form>
-      <p id="sh-note" class="note" hidden></p>
-      <div id="sh-results" class="show-results" hidden></div>
-      <a id="browse-all-link" class="browse-all-link" href="#/shows" hidden>Browse all shows ›</a>
-    </div>
-    ${vouch ? `<div class="home-below">${vouch}</div>` : ""}`;
+    </div>`;
 
   if (!showFirstTimeExplainerOnce()) showIntroPopupOnce();
 
@@ -2249,27 +2271,43 @@ function renderHome() {
     });
   }
 
-  $("#tab-topics").addEventListener("click", () => setSearchTab("topics"));
-  $("#tab-shows").addEventListener("click", () => setSearchTab("shows"));
-  setSearchTab("topics"); // paints the initial hidden/visible split in JS,
-  // not just via the template's static `hidden` attribute, so it holds
-  // even where the template string's markup isn't reparsed into live DOM
-  // state (matches how #pl-note/#sh-note's `hidden` toggling already works).
-
-  $("#sh-form").addEventListener("submit", (e) => {
-    e.preventDefault();
-    const query = $("#sh-input").value.trim();
-    if (!query) return;
-    renderShowSearchResults(query);
-  });
-
-  $("#pl-form").addEventListener("submit", bindPlaylistFormSubmit);
-
-  sizeProgressBars($("#view"));
   bindPickLogging($("#view"));
   bindStars($("#view"));
   bindUpNext($("#view"));
   bindPlay($("#view"));
+}
+
+/* ---------- Forays page (#/forays) ----------
+
+   The menu destination the foray list moved to (founder instruction, item 2:
+   "get rid of the recommended foray at the top of Home. Move it into a page
+   accessible via the menu exclusively for Forays").
+
+   "Jump back in" moves here WITH the list rather than staying on Home. The
+   two render the same `.fy-home-row` markup and read as one block, so
+   splitting them would have left Home with a row that looks exactly like the
+   thing the founder asked to remove. Both are still gated by the same
+   visibility rule (forayCards / forayResumeRows) — an unpublished Foray is
+   listed only to someone who arrived with its `?foray=` link this session. */
+function renderForays() {
+  document.body.className = "view-page";
+  const list = forayCards();
+  const resume = forayResumeRows();
+  $("#view").innerHTML = `
+    <div class="page">
+      <div class="page-head">
+        <a class="back" href="#/">‹</a>
+        <div>
+          <h2>Forays</h2>
+          <p class="sub">${list.length} foray${list.length === 1 ? "" : "s"}</p>
+        </div>
+      </div>
+      ${jumpBackInHtml(resume)}
+      ${list.length
+        ? forayListHtml()
+        : `<p class="note">No forays right now — 4a stitches these by hand, so they arrive a few at a time.</p>`}
+    </div>`;
+  sizeProgressBars($("#view"));
 }
 
 /* One playable row = one play control, never two. An item with audio_url gets
@@ -2355,7 +2393,7 @@ function partsNote(rows) {
        return" — and the note a reviewer reads is never the one that ships to them.
        It also no longer claims rebuilding REPLACES this playlist: buildPlaylist
        mints a new id and prepends a new playlist, leaving this one untouched. */
-    parts.push(`${unnamed} part${one ? " was" : "s were"} saved before 4a kept episode details and cannot be named yet — ${one ? "it" : "they"} will fill in if the episode${one ? " returns" : "s return"} to the catalogue, and building the same playlist again from the home screen gives you a fresh one from what 4a has today.`);
+    parts.push(`${unnamed} part${one ? " was" : "s were"} saved before 4a kept episode details and cannot be named yet — ${one ? "it" : "they"} will fill in if the episode${one ? " returns" : "s return"} to the catalogue, and building the same playlist again from the Playlists page gives you a fresh one from what 4a has today.`);
   }
   return `<p class="note">${esc(parts.join(" "))}</p>`;
 }
@@ -2943,6 +2981,11 @@ function forayHeadSub(r) {
   return parts.join(" · ");
 }
 
+/* The back link on this page goes to `#/forays`, not `#/`. enterForayFromQuery's
+   whole point is that a `?foray=` link lands somewhere the unlocked DRAFT is
+   still listed, so the back button is not a dead end for the one person
+   reviewing it. That list moved off Home to `#/forays` on 2026-09-03, so this
+   link moved with it. */
 async function renderForay(id) {
   document.body.className = "view-page";
   $("#view").innerHTML = `<div class="page"><p class="note">Loading…</p></div>`;
@@ -3016,7 +3059,7 @@ async function renderForay(id) {
   $("#view").innerHTML = `
     <div class="page foray">
       <div class="page-head">
-        <a class="back" href="#/">‹</a>
+        <a class="back" href="#/forays">‹</a>
         <div>
           <h2>${esc(r.title)}</h2>
           <p class="sub">${esc(forayHeadSub(r))}</p>
@@ -3981,7 +4024,7 @@ function paintForay(s) {
   }
 }
 
-/** The Forays this visitor may see on the home screen. As of 2026-08-30 that is
+/** The Forays this visitor may see on the Forays page (#/forays). As of 2026-08-30 that is
     ONE — `capital-types-1` is published — plus any draft reached by name. It
     was empty for everyone before that.
 
@@ -4003,7 +4046,11 @@ function forayCards() {
   return window.ForayPlayer.listForays(state.forays, { unlocked: unlockedForays() });
 }
 
-function forayHomeHtml() {
+/* Renamed from forayHomeHtml on 2026-09-03: this list is no longer on Home.
+   The `.fy-home*` class names stay as they are — renaming them would touch
+   every foray style for no behaviour, and `.fy-home-row` is still an accurate
+   description of the row shape. */
+function forayListHtml() {
   const list = forayCards();
   if (!list.length) return "";
   return `<div class="fy-home">${list.map(f => `
@@ -4783,6 +4830,7 @@ function renderCurrentPage() {
   else if ((m = /^#\/category\/(.+)$/.exec(h))) renderCategory(decodeURIComponent(m[1]));
   else if (h === "#/shows") renderAllShows();
   else if (h === "#/playlists") renderPlaylists();
+  else if (h === "#/forays") renderForays();
   else if (h === "#/queue") renderQueue();
   else if (h === "#/starred-shows") renderStarredShows();
   else renderHome();

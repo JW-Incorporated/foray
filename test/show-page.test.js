@@ -876,13 +876,16 @@ test("vouchForHtml renders the 'Shows we vouch for' heading and a real link for 
      playable item, same rule similarShowsSection and the shows-search
      results already follow).
 
-     MUTATION: delete the `${vouch ? ... : ""}` tail from renderHome's
-     template (the section renders after `.home`, inside `.home-below` — see
-     the placement test below). The heading and href assertions both fail. */
+     RENDERED BY THE SHOWS PAGE, not Home, since 2026-09-03 — the founder
+     asked for this row off the home screen and onto #/shows (his item 1). The
+     placement test below pins both halves of that move.
+
+     MUTATION: delete the `${vouchForHtml()}` line from renderAllShows's
+     `above` block. The heading and href assertions both fail. */
   const m = await mountBooted();
   const shows = m.ctx.showsWeVouchFor();
   assert.ok(shows.length > 0, "fixture assumption: the real 220-show catalogue must have editorially-noted shows");
-  m.ctx.renderHome();
+  m.ctx.renderAllShows();
   const html = m.view();
   assert.ok(html.includes("Shows we vouch for"), "must render the 'Shows we vouch for' heading");
   for (const s of shows) {
@@ -929,48 +932,59 @@ test("vouchForHtml's row is separate from the topic cards and forays, per the B1
   assert.ok(!html.includes('class="fy-home-row'), "must not render as foray rows");
 });
 
-test("the vouch row renders below `.home`, never inside it, so it cannot starve the four cards", async () => {
-  /* The #433 regression, pinned. `.cards4` is the only `flex: 1` child of
-     `.home`, the one-screen column (`min-height: calc(100svh -
-     var(--topbar-h) - env(safe-area-inset-top))` — a FIXED `height` when #433
-     happened, which is why the overflow painted over what followed instead of
-     lengthening the page; see test/home-layout.test.js). A ~611px section added as a
-     sibling INSIDE it starves the cards to nothing: measured over CDP at
+test("the vouch row renders on the Shows page and nowhere on Home, so it cannot starve the four cards", async () => {
+  /* The #433 regression, pinned — now by removing its cause rather than
+     working around it.
+
+     WHAT #433 DID: `.home` is a fixed-height flex column
+     (`height: calc(100svh - var(--topbar-h) - env(safe-area-inset-top))`)
+     whose only `flex: 1` child is `.cards4`. A ~611px section added as a
+     sibling INSIDE it starved the cards to nothing: measured over CDP at
      440x956, 402x874, 390x844, 375x667 and 1440x900, `.cards4` was 0px and
-     every `.mini-card` 26px — at EVERY viewport, desktop included. Rendering
-     the section after `.home`'s closing tag (wrapped in `.home-below`)
-     restores all four cards to their exact pre-#433 heights.
+     every `.mini-card` 26px — at EVERY viewport, desktop included.
 
-     This asserts source order rather than geometry, because source order is
-     what the flex starvation actually turns on and this harness has no
-     layout engine. The pixel evidence lives in the PR.
+     #458 parked the row in a `.home-below` wrapper under the fold. This
+     change removes both the wrapper and the reason for it: the row is a
+     SHOW-shaped surface and now lives on the Shows page, which is what the
+     founder asked for. So the assertion is no longer "below `.home`" (a
+     placement inside a screen it does not belong to) but "on #/shows, and
+     absent from Home entirely".
 
-     MUTATION: move `${vouch}` back inside the `.home` template, where
-     `${vouchForHtml()}` sat before the fix. `.home-below` then never renders,
-     so the first assertion fails; so does the last one, which is the
-     regression itself. */
+     BOTH DIRECTIONS MATTER. Asserting only that the Shows page has it would
+     stay green if Home had kept its copy too — which is exactly the shape of
+     the bug: the danger to the cards is a tall sibling on HOME, no matter
+     what else renders elsewhere.
+
+     Source-order/presence rather than geometry, because that is what the flex
+     starvation actually turns on and this harness has no layout engine. The
+     pixel evidence lives in the PR.
+
+     MUTATION: add `${vouchForHtml()}` back inside renderHome's `.home`
+     template. The two "must not appear on Home" assertions fail. MUTATION 2:
+     delete `${vouchForHtml()}` from renderAllShows's `above` block. The
+     Shows-page assertion fails. */
   const m = await mountBooted();
   assert.ok(
     m.ctx.showsWeVouchFor().length > 0,
     "fixture assumption: the real catalogue must have editorially-noted shows, or there is no section to place"
   );
-  m.ctx.renderHome();
-  const html = m.view();
 
-  const belowAt = html.indexOf('class="home-below"');
-  assert.ok(belowAt !== -1, "the vouch row must be wrapped in .home-below, outside .home");
+  m.ctx.renderAllShows();
   assert.ok(
-    html.indexOf('class="ep-more fy-vouch"') > belowAt,
-    "the vouch section must render inside the .home-below wrapper"
+    m.view().includes('class="ep-more fy-vouch"'),
+    "the vouch row must render on the Shows page"
   );
 
-  /* Everything ahead of the wrapper is `.home`'s own subtree. */
-  const home = html.slice(0, belowAt);
+  m.ctx.renderHome();
+  const home = m.view();
   assert.ok(home.includes('class="cards4"'), "sanity: .cards4 must still be inside .home");
-  assert.ok(home.includes('id="browse-all-link"'), "sanity: .home must still hold the whole search block");
   assert.ok(
     !home.includes("fy-vouch"),
     "the vouch row must NOT be a flex sibling inside .home — that is exactly what collapsed the cards to 0px in #433"
+  );
+  assert.ok(
+    !home.includes("home-below"),
+    "the .home-below workaround must be gone with the content it was parking"
   );
 });
 

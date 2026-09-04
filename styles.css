@@ -62,11 +62,10 @@ body {
    no scrollable overflow anywhere also has no rubber-band bounce, which reads
    as "unresponsive" / "is this frozen" on first touch, not "intentionally
    fixed". Letting the body scroll normally keeps the one-screen layout while
-   restoring the felt responsiveness of an ordinary webpage. (Before #433 there
-   was nothing to scroll TO on home, so it always snapped back. `.home-below`
-   now parks the "Shows we vouch for" row under the fold, and the absence of
-   `overflow: hidden` here is exactly what keeps that row reachable — so do not
-   reintroduce it without moving that content somewhere else first.) */
+   restoring the felt responsiveness of an ordinary webpage. There is again
+   nothing to scroll TO on home, so it always snaps back: the `.home-below`
+   wrapper #433 introduced is gone, along with everything that used to sit
+   under the fold — see the `.home` note below. */
 
 /* ---------- top bar ---------- */
 .topbar {
@@ -207,8 +206,7 @@ body {
   cursor: pointer;
 }
 
-/* ---------- home: one screen (`.home`), plus anything deliberately below
-   the fold (`.home-below`) ---------- */
+/* ---------- home: one screen, and only one screen ---------- */
 #view { padding-top: calc(var(--topbar-h) + env(safe-area-inset-top)); }
 
 .home {
@@ -252,25 +250,28 @@ body {
   margin: 0 auto;
 }
 
-/* Anything that belongs to the home screen but must NOT compete with the four
-   cards for space. `.cards4` is `.home`'s only `flex: 1` child, so a tall
-   sibling added inside it takes its space straight off the cards — which is
-   what "Shows we vouch for" (#433) did, at every viewport including desktop:
-   `.cards4` measured 0 px and each card 26 px, and because `.home` was then a
-   FIXED-height column the overflow painted on top of whatever followed.
-   Content placed here sits after `.home` instead, so it is reached by
-   scrolling and the cards keep the viewport. Mirrors `.home`'s own width and
-   horizontal padding so the two read as one column.
+/* NOTHING GOES IN `.home` BUT THE BANNER AND `.cards4`.
 
-   `.home` is `min-height` now, and `.cards4` carries a real floor, so the
-   worst case is a taller scrolling page rather than crushed cards — but that
-   is a backstop for siblings nobody moved, not a licence to put more here.
-   A section this size still belongs below the fold. */
-.home-below {
-  max-width: 680px;
-  margin: 0 auto;
-  padding: 0 10px calc(10px + env(safe-area-inset-bottom));
-}
+   `.home` is a fixed-height flex column whose only `flex: 1` child is
+   `.cards4`, and it is `overflow: visible` — so a tall sibling added inside it
+   silently starves the cards to zero height and overflows on top of whatever
+   follows. That is what "Shows we vouch for" (#433) did at every viewport
+   including desktop: `.cards4` measured 0 px and each card 26 px.
+
+   #458 worked around it with a `.home-below` wrapper that parked the row under
+   the fold. This change removes the workaround AND the reason for it: the
+   founder asked for a home screen that is the four cards and little else, so
+   the vouch row, the show search, the playlist builder and the foray list each
+   moved to their own menu page (see renderHome's header comment in app.js).
+   With no tall sibling left to park, a second scrollable surface stacked under
+   a deliberately one-screen one was simply the wrong shape, and it is gone.
+
+   The container itself is NOT the bug and is left alone: a fixed-height column
+   is exactly right for "four cards, one screen, done choosing", which is the
+   product. What was wrong twice was the content put in it. app.js pins that as
+   a test rather than another CSS guard, because CSS cannot express "and no
+   fifth thing" — test/home-information-architecture.test.js fails if anything
+   but the banner and `.cards4` renders inside `.home`. */
 
 /* `renderHome()` always emits `<div id="banner-slot">`, filled or not, and
    `bannerHtml()` returns "" whenever there is nothing to continue — which is
@@ -490,30 +491,11 @@ button.show-star.on { color: var(--gold); border-color: var(--gold); }
 #pl-form button:disabled { opacity: 0.6; cursor: default; box-shadow: none; }
 .note { color: var(--text-dim); font-size: 0.85rem; margin: 0; flex: none; }
 
-/* ---------- Shows search tabs (Stage 2, docs/show-pages-plan.md) ----------
-   A separate affordance next to #pl-form's topic playlist builder -- see
-   that file's header comment for why the two searches are never merged. */
-.search-tabs {
-  flex: none;
-  display: flex; gap: 8px;
-  margin-bottom: 10px;
-}
-.search-tab {
-  flex: none;
-  padding: 8px 16px;
-  border-radius: var(--radius);
-  border: 1px solid var(--line);
-  background: var(--surface);
-  color: var(--text-dim);
-  font-weight: 600;
-  font-size: 0.9rem;
-  cursor: pointer;
-}
-.search-tab.on {
-  border-color: var(--accent);
-  background: var(--accent);
-  color: #fff;
-}
+/* ---------- Shows search (Stage 2, docs/show-pages-plan.md) ----------
+   Lives on the Shows page (#/shows). The `.search-tabs`/`.search-tab` pair
+   that used to wrap it is gone: those tabs time-shared one strip of the HOME
+   screen between this search and #pl-form's playlist builder, and since
+   2026-09-03 the two live on separate pages with nothing to toggle between. */
 #sh-form {
   flex: none;
   display: flex; gap: 8px;
@@ -572,8 +554,13 @@ button.show-star.on { color: var(--gold); border-color: var(--gold); }
   font-size: 0.95rem;
 }
 
-/* ---------- browse-all-shows entry point (A3.3) ---------- */
-.browse-all-link {
+/* ---------- secondary in-page nav row ----------
+   Was `.browse-all-link`, the Home -> #/shows link (A3.3). That link is gone
+   (the menu's "Shows" item replaced it), but the row STYLE is still the right
+   one for "one more place to go, below the main content" — it now carries the
+   Shows page's link to #/starred-shows. Renamed rather than deleted-and-
+   reinvented so there is one such row style, not two. */
+.page-link-row {
   display: block;
   margin-top: 4px;
   padding: 12px 14px;
@@ -586,7 +573,7 @@ button.show-star.on { color: var(--gold); border-color: var(--gold); }
   font-weight: 600;
   font-size: 0.9rem;
 }
-.browse-all-link:active { background: var(--surface-2); }
+.page-link-row:active { background: var(--surface-2); }
 
 /* ---------- "this page is a version behind" bar (#233) ----------
    Fixed rather than in flow: the topbar is fixed and #view pads itself past it,

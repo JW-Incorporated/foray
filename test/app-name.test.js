@@ -558,7 +558,7 @@ test("the mini-player's back link lowercases the unit", () => {
   assert.equal(m[1], "Back to the running order");
 });
 
-/* The home screen's kicker above each foray's title. A LABEL, not prose, so a
+/* The Forays page's kicker above each foray's title. A LABEL, not prose, so a
    capital would have been defensible the way a title-case heading is -- and
    `styles.css:598` sets `text-transform: uppercase`, so it renders "FORAY"
    whichever case the source holds.
@@ -570,16 +570,19 @@ test("the mini-player's back link lowercases the unit", () => {
    if the stylesheet fails. All three now agree with the convention.
 
    THE FAILURE THIS GUARDS IS NOT A REVERT. It is someone "finishing the
-   rename" and making this `4a`, which would ship a home screen labelling every
-   foray with the app's name -- an app-sense edit to a unit-sense label. Pinning
-   the lowercase unit fails that as loudly as it fails a revert to "Foray".
+   rename" and making this `4a`, which would ship a page labelling every foray
+   with the app's name -- an app-sense edit to a unit-sense label. Pinning the
+   lowercase unit fails that as loudly as it fails a revert to "Foray".
+
+   (The row moved off Home to #/forays on 2026-09-03. The kicker, the class
+   names and this pin are unchanged by that move.)
 
    KILLED BY: either "Foray" or "4a" in this span. Both were run. */
-test("the home-screen kicker labels the unit, lowercase, and never the app", () => {
+test("the foray-row kicker labels the unit, lowercase, and never the app", () => {
   const m = read("app.js").match(
     /<span class="fy-home-kicker">([^$<]*)\$\{/
   );
-  assert.ok(m, "forayHomeHtml() no longer renders an .fy-home-kicker");
+  assert.ok(m, "forayListHtml() no longer renders an .fy-home-kicker");
   assert.equal(m[1], "foray");
 });
 

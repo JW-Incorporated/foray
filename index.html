@@ -39,10 +39,18 @@
 
 <div id="drawer-overlay" hidden></div>
 <nav id="drawer" hidden>
+  <!-- The five destinations, in the founder's own order (2026-09-03). Home is
+       the four subject cards and nothing else; everything that used to sit
+       under them has one of the four pages below as its home. Keep this list
+       to five: test/home-information-architecture.test.js pins it, because
+       the clutter this replaced accumulated one "just one more row" at a time.
+       "Starred Shows" is NOT dropped — it moved onto the Shows page, which is
+       where a show-shaped thing belongs. -->
   <a class="drawer-section" href="#/">Home</a>
+  <a class="drawer-section" href="#/shows">Shows</a>
   <a class="drawer-section" href="#/playlists">Playlists</a>
+  <a class="drawer-section" href="#/forays">Forays</a>
   <a class="drawer-section" href="#/queue">Up Next</a>
-  <a class="drawer-section" href="#/starred-shows">Starred Shows</a>
   <div id="drawer-playlists"></div>
   <div class="drawer-section-label">Settings</div>
   <button class="drawer-item as-btn" id="family-toggle"></button>

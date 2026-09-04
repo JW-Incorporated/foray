@@ -2,9 +2,15 @@
  * show-pages Stage 2 — show search"). Show search is a SEPARATE mode from
  * the existing topic-relevance scorer buildPlaylist() uses: it answers
  * "does this show exist here" by matching catalog(-client).json's `title`
- * field, and it is surfaced as a distinct "Shows" tab next to the existing
- * playlist-builder box on the Playlists page (#pl-form), not merged into
- * the same result list.
+ * field, and it is never merged into the playlist builder's result list.
+ *
+ * IT LIVES ON THE SHOWS PAGE (#/shows) as of 2026-09-03. It used to sit on
+ * HOME, behind a "Playlists | Shows" tab strip that time-shared one strip of
+ * the home screen with #pl-form's playlist builder. The founder asked for the
+ * search off Home ("remove the search from Home; move it into the Shows
+ * page"), and once the two searches sit on two different pages there is
+ * nothing left for a tab to toggle, so `setSearchTab` and `.search-tabs` are
+ * gone rather than moved. The result-painting below is unchanged.
  *
  * WHAT THIS PROVES, in order:
  *  1. SearchEngine.searchShows (pure, no DOM) matches a known show's name
@@ -12,10 +18,10 @@
  *     catalog-client.json, and returns nothing for junk/no-match queries.
  *  2. The two search modes never touch each other: searchShows never reuses
  *     interpretQuery/scoreMatch, and buildPlaylist never reads catalog data.
- *  3. On the Playlists page, the "Shows" tab is a distinct affordance next
- *     to #pl-form: it shows its own form, its own result list (each result
- *     linking to #/show/:id), and an honest empty state on no match — never
- *     merged into #pl-note's playlist-builder output.
+ *  3. On the Shows page, the search is a distinct affordance from #pl-form:
+ *     its own form, its own result list (each result linking to #/show/:id),
+ *     and an honest empty state on no match — never merged into #pl-note's
+ *     playlist-builder output. And it is on THAT page, and not on Home.
  *
  * Every test names the mutation that kills it, per CLAUDE.md "a green test
  * is not evidence until you have broken it".
@@ -217,14 +223,8 @@ function mount({ seed = {}, fetchImpl = () => new Promise(() => {}) } = {}) {
   };
 }
 
-/* Installs a real (recording) addEventListener on one fake element so a
-   test can trigger the handler renderHome() attaches, without a real DOM. */
-function withClickable(el) {
-  let handler = null;
-  el.addEventListener = (type, fn) => { if (type === "click") handler = fn; };
-  el.click = () => { if (handler) handler({}); };
-  return el;
-}
+/* Installs a real (recording) addEventListener on one fake element so a test
+   can trigger the handler renderAllShows() attaches, without a real DOM. */
 function withSubmittable(el) {
   let handler = null;
   el.addEventListener = (type, fn) => { if (type === "submit") handler = fn; };
@@ -232,50 +232,72 @@ function withSubmittable(el) {
   return el;
 }
 
-test("renderHome shows the Playlists form by default and hides the Shows form", () => {
-  /* MUTATION: drop the `hidden` attribute from #sh-form in renderHome's
-     template (or set it on #pl-form instead). Either flips which form is
-     visible on first paint and this fails. */
+test("the show search is rendered by the Shows page, and by nothing on Home", () => {
+  /* BOTH DIRECTIONS, deliberately. A test that only checked the Shows page
+     would stay green if Home had simply kept its copy too — the exact failure
+     mode of "move" work, and the founder asked for a move ("remove the search
+     from Home; move it into the Shows page"), not an addition.
+
+     Asserted against the rendered markup rather than the stub elements'
+     `.hidden`: these fakes are never rebuilt from the template string, so a
+     `hidden` attribute added in a template would not move them and such an
+     assertion would be vacuous.
+
+     MUTATION: paste the `#sh-form` block back into renderHome's template.
+     The "home must render no show-search form" assertion fails. */
   const m = mount();
   m.state.catalog = { shows: [] };
   m.state.discover = { items: [] };
   m.state.cardSlots = [];
   m.state.session = { session_id: "s-1", builder: "test", episodes: {}, cards: [] };
-  withClickable(m.byId.get("tab-topics"));
-  withClickable(m.byId.get("tab-shows"));
-  withSubmittable(m.byId.get("pl-form"));
-  withSubmittable(m.byId.get("sh-form"));
 
   m.ctx.renderHome();
+  const home = m.view();
+  assert.ok(!home.includes('id="sh-form"'), "home must render no show-search form");
+  assert.ok(!home.includes('id="sh-input"'), "home must render no show-search input");
 
-  assert.strictEqual(m.byId.get("pl-form").hidden, false, "the playlist form must be visible by default");
-  assert.strictEqual(m.byId.get("sh-form").hidden, true, "the shows form must start hidden");
-  assert.ok(m.view().includes('id="tab-shows"'), "a distinct Shows tab must be rendered");
+  m.ctx.renderAllShows();
+  const shows = m.view();
+  assert.ok(shows.includes('id="sh-form"'), "the Shows page must render the show-search form");
+  assert.ok(shows.includes('id="sh-input"'), "the Shows page must render the show-search input");
 });
 
-test("clicking the Shows tab swaps to the shows form without touching the playlist form's own state", () => {
-  /* MUTATION: delete setSearchTab's `$("#pl-form").hidden = !topics` line.
-     Clicking Shows would leave BOTH forms visible at once, which is exactly
-     the "merged into the same result list" shape the card forbids -- this
-     fails because #pl-form stays visible after the click. */
+test("the Shows page's search needs no tab pressed first, and the tab strip is gone rather than hidden", () => {
+  /* The two searches are still never merged (the card's rule), but they are
+     now kept apart by living on two pages rather than by a toggle. A search
+     hidden behind a tab on a page that is only about shows would be a worse
+     affordance than the one it replaced, so the form renders unconditionally.
+
+     "Gone rather than hidden" is the half worth pinning: leaving setSearchTab
+     and the tab markup in place with nothing calling them is how dead UI
+     accumulates, and dead UI is what the founder's "so much clutter" was
+     made of.
+
+     MUTATION: add `hidden` to the `<form id="sh-form">` in renderAllShows's
+     template. The first assertion fails. MUTATION 2: re-add the `.search-tabs`
+     div to renderHome. The last assertion fails. */
   const m = mount();
   m.state.catalog = { shows: [] };
   m.state.discover = { items: [] };
   m.state.cardSlots = [];
   m.state.session = { session_id: "s-1", builder: "test", episodes: {}, cards: [] };
-  const tabTopics = withClickable(m.byId.get("tab-topics"));
-  const tabShows = withClickable(m.byId.get("tab-shows"));
-  withSubmittable(m.byId.get("pl-form"));
-  withSubmittable(m.byId.get("sh-form"));
+
+  m.ctx.renderAllShows();
+  const shows = m.view();
+  assert.ok(
+    /<form id="sh-form"(?![^>]*\shidden)[^>]*>/.test(shows),
+    "the show-search form must render visible, with no `hidden` attribute"
+  );
+  assert.ok(!shows.includes("search-tabs"), "no tab strip may remain on the Shows page");
 
   m.ctx.renderHome();
-  tabShows.click();
-
-  assert.strictEqual(m.byId.get("sh-form").hidden, false, "shows form must be visible after the tab click");
-  assert.strictEqual(m.byId.get("pl-form").hidden, true, "playlist form must hide once Shows is selected");
+  assert.ok(
+    !/id="tab-(topics|shows)"/.test(m.view()),
+    "the Playlists|Shows tabs must be gone from Home, not merely hidden"
+  );
 });
 
-test("submitting a known show name in shows-search mode renders a result linking to #/show/:id", () => {
+test("submitting a known show name on the Shows page renders a result linking to #/show/:id", () => {
   /* MUTATION: make showResultRow() link to "#" or omit the show_id. The
      href assertion fails because the link no longer points at Stage 1's
      page for this show. */
@@ -284,13 +306,10 @@ test("submitting a known show name in shows-search mode renders a result linking
   m.state.discover = { items: [] };
   m.state.cardSlots = [];
   m.state.session = { session_id: "s-1", builder: "test", episodes: {}, cards: [] };
-  withClickable(m.byId.get("tab-topics"));
-  withClickable(m.byId.get("tab-shows"));
-  withSubmittable(m.byId.get("pl-form"));
   const shForm = withSubmittable(m.byId.get("sh-form"));
   m.byId.get("sh-input").value = "fridman";
 
-  m.ctx.renderHome();
+  m.ctx.renderAllShows();
   shForm.submit();
 
   const results = m.byId.get("sh-results");
@@ -299,7 +318,7 @@ test("submitting a known show name in shows-search mode renders a result linking
   assert.ok(results.innerHTML.includes("Lex Fridman Podcast"), "must render the show's title");
 });
 
-test("submitting a junk query in shows-search mode renders an honest empty state, not a crash or padded list", () => {
+test("submitting a junk query on the Shows page renders an honest empty state, not a crash or padded list", () => {
   /* MUTATION: remove the `if (!shows.length)` branch from
      renderShowSearchResults so it always writes `results.innerHTML`. The
      empty-state text assertion fails because #sh-results stays populated
@@ -309,13 +328,10 @@ test("submitting a junk query in shows-search mode renders an honest empty state
   m.state.discover = { items: [] };
   m.state.cardSlots = [];
   m.state.session = { session_id: "s-1", builder: "test", episodes: {}, cards: [] };
-  withClickable(m.byId.get("tab-topics"));
-  withClickable(m.byId.get("tab-shows"));
-  withSubmittable(m.byId.get("pl-form"));
   const shForm = withSubmittable(m.byId.get("sh-form"));
   m.byId.get("sh-input").value = "zzz-nonsense-query-zzz";
 
-  m.ctx.renderHome();
+  m.ctx.renderAllShows();
   shForm.submit();
 
   const note = m.byId.get("sh-note");
@@ -356,13 +372,10 @@ test("a breadth-tier show absent from the curated catalogue is appended once the
   m.state.discover = { items: [] };
   m.state.cardSlots = [];
   m.state.session = { session_id: "s-1", builder: "test", episodes: {}, cards: [] };
-  withClickable(m.byId.get("tab-topics"));
-  withClickable(m.byId.get("tab-shows"));
-  withSubmittable(m.byId.get("pl-form"));
   const shForm = withSubmittable(m.byId.get("sh-form"));
   m.byId.get("sh-input").value = "science";
 
-  m.ctx.renderHome();
+  m.ctx.renderAllShows();
   shForm.submit();
 
   // The curated-first pass paints synchronously with zero results (empty
@@ -409,13 +422,10 @@ test("curated catalogue results still resolve first — the breadth fetch never 
   m.state.discover = { items: [] };
   m.state.cardSlots = [];
   m.state.session = { session_id: "s-1", builder: "test", episodes: {}, cards: [] };
-  withClickable(m.byId.get("tab-topics"));
-  withClickable(m.byId.get("tab-shows"));
-  withSubmittable(m.byId.get("pl-form"));
   const shForm = withSubmittable(m.byId.get("sh-form"));
   m.byId.get("sh-input").value = "lex";
 
-  m.ctx.renderHome();
+  m.ctx.renderAllShows();
   shForm.submit();
 
   const results = m.byId.get("sh-results");
@@ -434,13 +444,10 @@ test("a failed breadth fetch degrades silently to the curated-only results, neve
   m.state.discover = { items: [] };
   m.state.cardSlots = [];
   m.state.session = { session_id: "s-1", builder: "test", episodes: {}, cards: [] };
-  withClickable(m.byId.get("tab-topics"));
-  withClickable(m.byId.get("tab-shows"));
-  withSubmittable(m.byId.get("pl-form"));
   const shForm = withSubmittable(m.byId.get("sh-form"));
   m.byId.get("sh-input").value = "fridman";
 
-  m.ctx.renderHome();
+  m.ctx.renderAllShows();
   assert.doesNotThrow(() => shForm.submit());
 
   const results = m.byId.get("sh-results");
