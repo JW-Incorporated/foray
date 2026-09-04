@@ -1,7 +1,7 @@
 {
-  "deploy_id": "a4848b2af5ce49ab",
+  "deploy_id": "91fffec57bb06121",
   "files": {
-    "app.js": "sha256:a81d2ea6a54d7c502873c195cc0aa57ace8460495da4d287e84ca3fb1e1b7150",
+    "app.js": "sha256:9cd51af7f607364e8110dfc5da8008454b134776fb3b1d704a8c18b6f0f47735",
     "data/catalog-client.json": "sha256:83a6a83d4633326dbc422c57677a78438a41c69f3055439a0010d2057aec8864",
     "data/dai-classification.json": "sha256:321fb915e4289a098cbd30ec7cc8e8503345a1c6cadb6cda2803ff656162a545",
     "data/discover.json": "sha256:2c7302342f5017f4d926acbd159e9d85099830ae85848d5bfafbd4b6ce9c2de4",
@@ -17,7 +17,7 @@
     "data/validated-links.json": "sha256:4d638f131c1f7f03bf8b27acfa296c1798f077ac2036e2a85a7f51bcaa550495",
     "icon-180.png": "sha256:e942191c4e92a76c50ee8fd4135e05f762d166401149d957bd4d42475c3432dc",
     "icon-512.png": "sha256:1c7c61679d2e6935e361de64a774930230dfaddd1ecef00dc70288e2d38f2451",
-    "index.html": "sha256:7cdf5d2f6ed82b33923c35b1f9ce8061681df3f3b3a017ef42db64df2ad61d97",
+    "index.html": "sha256:af4b90928f73f39ce27b35074d9cb8763b39882797397c75904b419b2a620079",
     "manifest.json": "sha256:07da0240401a94520a83e205f723a11160646061a0376b88f10a9a4963cbcba6",
     "player/client.js": "sha256:98f14c1489deba533aef6a0b627d3972d133a66281e6ba4bb309337d91064f37",
     "player/diagnostic-log.js": "sha256:2a751701ab8c03ae2fe021d73985cd081f988c247baf5300fa00a2a3646ef00b",
@@ -40,6 +40,6 @@
     "player/segment-strip.js": "sha256:676635df83d78be8708cd1a788aba828dd430a7fa9ef1d283c1c489a4886006a",
     "player/strip-scrub-gesture.js": "sha256:88415f256049ee1ac96c6738651819d3b1c76161f6fe685dc6eaeab71b0d487e",
     "search-engine.js": "sha256:680161045b4a907ddb19b45c42ac873066b5a7d6d5913ce91d40b53a28458d3c",
-    "styles.css": "sha256:39e3884ba33954fee4e00358449fe46d127d1115ca9634168d08d7bd8d99a202"
+    "styles.css": "sha256:eced2f0c01595fcc25a02aa4754fc115419ec3700f87bfa77d93e1e9a3556604"
   }
 }
