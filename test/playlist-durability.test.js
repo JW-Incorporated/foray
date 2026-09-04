@@ -693,7 +693,10 @@ test("the page says what happened, once, and says nothing when nothing is missin
     `the note must open by naming the shortfall: ${noteText}`);
   assert.match(noteText, /1 part was saved before 4a kept episode details/,
     `and name the unnameable one too: ${noteText}`);
-  assert.match(noteText, /home screen/, "and say what can be done about it");
+  /* "the Playlists page", not "the home screen": the builder left Home on
+     2026-09-03 (test/home-information-architecture.test.js), and a note that
+     sent people to a home screen with no builder on it would be wrong. */
+  assert.match(noteText, /Playlists page/, "and say what can be done about it");
 
   const m2 = mount();
   const items = setPool(m2, [poolItem(1), poolItem(2)]);

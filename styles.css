@@ -229,7 +229,7 @@ body {
      ordinary) crushed `.cards4` from 454px to 63.8px and each of the four
      cards to 26px — measured, at 440x956. That is the exact failure #433/#458
      hit from a different sibling, and moving one offender below the fold
-     (`.home-below`) only ever fixes that one offender; the container was the
+     (#458's `.home-below`, since removed) only ever fixes that one offender; the container was the
      bug. With `min-height` the column still fills exactly one screen in the
      common case, and when it genuinely cannot, the page grows and scrolls
      (body scroll is already live — see the `overflow: hidden` note above)

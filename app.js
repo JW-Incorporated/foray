@@ -661,6 +661,9 @@ function starredShowRow(entry) {
   </a>`;
 }
 
+/* Back goes to #/shows: since 2026-09-03 this page is reached from the Shows
+   page (the drawer entry came off with the five-page menu), so the back
+   button returns there rather than to a home screen that no longer links here. */
 function renderStarredShows() {
   document.body.className = "view-page";
   const starred = Object.values(starredShowsMap())
@@ -669,7 +672,7 @@ function renderStarredShows() {
   $("#view").innerHTML = `
     <div class="page">
       <div class="page-head">
-        <a class="back" href="#/">‹</a>
+        <a class="back" href="#/shows">‹</a>
         <div>
           <h2>Starred Shows</h2>
           <p class="sub">${starred.length} show${starred.length === 1 ? "" : "s"} you've starred</p>
@@ -1751,9 +1754,10 @@ function buildPlaylist(query) {
    buildPlaylist() is synchronous and, in the worst case (a fresh session's
    first query, or any query that misses the repeated-query cache above), can
    take 1.3-8s on the real catalogue — with nothing before this change to
-   tell the listener their tap registered. Two form instances share this
-   handler (renderHome and renderPlaylists both mount a `#pl-form`), so it is
-   defined once here rather than duplicated.
+   tell the listener their tap registered. Defined once here rather than
+   inline: two form instances shared it until 2026-09-03 (renderHome and
+   renderPlaylists both mounted a `#pl-form`); only renderPlaylists does now,
+   and the handler stays separate so a second mount point can reuse it.
 
    THE SETTIMEOUT(0) IS LOAD-BEARING, not decoration: disabling the button and
    swapping its label only becomes visible to the user if the browser gets a
@@ -2167,8 +2171,9 @@ function vouchForHtml() {
    A separate affordance from #pl-form's topic playlist builder, on purpose
    (plan §2, kanban card scope): the two ask different questions ("what
    should I listen to" vs "does this show exist here") and are never merged
-   into one result list or one search mode. Toggled by two tab buttons that
-   show/hide their own form+results block; only one is visible at a time.
+   into one result list or one search mode. They were kept apart by a tab
+   strip on Home until 2026-09-03; now they are kept apart by living on two
+   pages — this one on #/shows, the builder on #/playlists.
 
    A3.1/Q3: this must reach 4a's FULL breadth catalogue, not just the 220
    curated shows shipped in data/catalog-client.json — "the user should
@@ -2224,14 +2229,16 @@ function renderShowSearchResults(query) {
    (Founder instruction, 2026-09-03, after the first TestFlight build: "the
    home page has so much clutter … Home should be the four cards.")
 
-   That is a layout invariant as much as a product one. `.home` is a
-   fixed-height flex column (`100svh - topbar`) whose only `flex: 1` child is
-   `.cards4`, and it is `overflow: visible` — so ANY tall sibling added here
-   silently starves the four cards to 0px and overflows on top of whatever
-   follows. That has now shipped as a visible bug twice: #433 (the vouch row)
-   and again before it. The container is correct for what it holds; what was
-   wrong both times was putting a second scrollable surface inside a
-   one-screen one.
+   That is a layout invariant as much as a product one. `.cards4` is the
+   only `flex: 1` child of `.home`, the one-screen column, so ANY sibling
+   added here takes its height straight off the four cards. While `.home` was
+   a FIXED-height column that starved them to 0px and overflowed on top of
+   whatever followed — shipped as a visible bug twice, #433 (the vouch row)
+   and again before it. #464 made the column `min-height` and gave `.cards4`
+   a floor, so the failure now degrades to a taller scrolling page instead of
+   crushed cards. That is a backstop, not a licence: the product is one
+   screen, and what was wrong both times was putting a second surface inside
+   it.
 
    So everything that used to compete for this space now has its own menu
    destination, and that is where it goes back to if it comes back:

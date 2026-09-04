@@ -18,7 +18,9 @@
  *      is a UA-stylesheet rule and ANY author `display` declaration beats the
  *      UA origin. `#sh-form`, `#sh-results` and `#browse-all-link` all carry
  *      one, so a second search box and a "Browse all shows" button drew on the
- *      home screen permanently.
+ *      home screen permanently. (Those elements have since left Home — the
+ *      search lives on the Shows page and the link is gone — so the pin now
+ *      reads renderAllShows(), and separately asserts Home hides nothing.)
  *   4. `.home` was a FIXED-height flex column whose only `flex: 1` child is
  *      `.cards4`, so any optional sibling took its space off the four subject
  *      cards. A continue banner plus three "Jump back in" rows crushed
@@ -409,10 +411,17 @@ test("every offset that reserves room for the fixed topbar equals the topbar's o
 /* BUG 3 — THINGS MARKED `hidden` THAT RENDER ANYWAY                     */
 /* ==================================================================== */
 
-/** Elements in renderHome()'s template that carry the `hidden` attribute. */
-function hiddenHomeElements() {
-  const start = APP.indexOf("function renderHome()");
-  assert.ok(start > 0, "renderHome() must exist in app.js");
+/** Elements in one render function's template that carry the `hidden`
+    attribute. Was renderHome()-only: the bug was found on the home screen,
+    and the elements that carried it (#sh-form, #sh-results, #browse-all-link)
+    lived there. Since 2026-09-03 Home renders nothing hidden at all — the
+    search moved to the Shows page (renderAllShows) and the browse-all link is
+    gone — so the mechanism is pinned where the hidden elements now are. The
+    cascade defect is page-independent: an author `display` on an id or class
+    beats the UA `[hidden]` rule on any page. */
+function hiddenElementsIn(fnName) {
+  const start = APP.indexOf(`function ${fnName}()`);
+  assert.ok(start > 0, `${fnName}() must exist in app.js`);
   const template = APP.slice(start, APP.indexOf("\n}", start));
   const out = [];
   for (const tag of template.match(/<[a-z][^>]*\bhidden\b[^>]*>/g) || []) {
@@ -490,7 +499,7 @@ function competingDisplayRules(el) {
   return displayDeclarations(el).filter((d) => d.sel !== "[hidden]");
 }
 
-test("nothing carrying the `hidden` attribute can render on the home screen", () => {
+test("nothing carrying the `hidden` attribute can render — pinned on the Shows page, where the search's hidden elements now live", () => {
   /* `hidden` is this app's only hiding mechanism — app.js and
      player/client.js toggle `el.hidden` in ~30 places and never touch
      `display`. Three home-screen elements carried a class or id `display`
@@ -498,11 +507,20 @@ test("nothing carrying the `hidden` attribute can render on the home screen", ()
      its results container and "Browse all shows ›" (46px) drew permanently,
      inside a column where vertical space is the scarce resource.
 
+     Those elements moved to the Shows page with the search (founder
+     instruction, 2026-09-03), so this reads renderAllShows() now. Home is
+     also checked, the other way round: it must mark NOTHING hidden, because
+     a hidden element on Home is an element that should not be on Home at all.
+
      MUTATION: drop `!important` from `[hidden] { display: none !important }`
-     in styles.css. `#sh-form` resolves to `flex` and this fails, naming it.
-     MUTATION 2: delete the `[hidden]` rule outright — same failure. */
-  const hidden = hiddenHomeElements();
-  assert.ok(hidden.length >= 4, `expected renderHome() to mark several elements hidden, found ${hidden.length}`);
+     in styles.css. `#sh-results` (`.show-results { display: flex }`) resolves
+     to `flex` and this fails, naming it. MUTATION 2: delete the `[hidden]`
+     rule outright — same failure. MUTATION 3: add `hidden` to any element in
+     renderHome()'s template — the Home assertion fails. */
+  assert.strictEqual(hiddenElementsIn("renderHome").length, 0,
+    "renderHome() must mark nothing hidden — Home is the four cards and the banner, with nothing to hide");
+  const hidden = hiddenElementsIn("renderAllShows");
+  assert.ok(hidden.length >= 2, `expected renderAllShows() to mark its search note and results hidden, found ${hidden.length}`);
 
   /* Not vacuous: at least one of them must actually have a competing author
      `display`, or this test would pass on an empty stylesheet. This is the
