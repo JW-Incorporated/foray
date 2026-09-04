@@ -307,12 +307,29 @@ Finally, the web app is served from **GitHub Pages**, so GitHub serves the page
 and the catalogue files and sees those requests. In the native app the shell and
 catalogue are bundled, so this does not apply there.
 
+### 4.4 A show's full episode list, from our own server
+
+When you open a show's page, the app asks **our own server** — the same
+deployment that serves the web app on Vercel, at `foray-web-seven.vercel.app` —
+for that show's full episode list, because the catalogue bundled with the app
+carries only a few episodes per show. The request names the show (its id in our
+catalogue) and carries the ordinary request metadata of §4 (your IP address,
+the time). It carries **no account id, no event, and nothing you typed**. We
+keep no record of these requests ourselves; our hosting provider keeps ordinary
+request logs for a short period, as any host does. If the request fails, the
+page shows the bundled episodes instead.
+
+This is the one place the app talks to a server of ours other than the
+database in §3, and it is why the policy in §5 names three origins rather than
+two.
+
 ## 5. What 4a does not do
 
 Verified by reading the client, not by assertion. The app's Content Security
 Policy (`index.html`) is the structural reason most of this list is not merely
-a promise: **`connect-src` names only two origins** — the app's own, and our
-Supabase project — so any data-sending request of the kind an API call, an
+a promise: **`connect-src` names only three origins, all ours** — the app's
+own, our Supabase project (§3), and our own server for show episode lists
+(§4.4) — so any data-sending request of the kind a third-party API call, an
 analytics beacon or a crash report needs is blocked by the browser unless the
 policy is changed in code.
 

@@ -354,6 +354,13 @@ const FLOORS = {
        playlists to the ones sharing a word with the request, read-only.
      Every test names its mutation; see each suite header. */
   "test/back-navigation.test.js": 9,
+  /* The full-catalogue endpoint is reachable from the native shell only if
+     the request is ABSOLUTE (a relative api/… resolves inside the bundle
+     under capacitor://localhost) AND the CSP names that origin. Both halves
+     are one string each and decay silently — the show page falls back to
+     the bundled slice with no error — so both are floored. Every test names
+     its mutation; see the suite header. */
+  "test/api-origin.test.js": 4,
   "test/home-scroll-room.test.js": 4,
   "test/playlist-match.test.js": 4,
   /* Home information architecture (founder instruction, 2026-09-03: "the

@@ -55,8 +55,10 @@ every answer below:
    the answer most likely to be got wrong in either direction.
 
 The client's CSP (`index.html`) sets `connect-src 'self'` plus the Supabase
-project, so the transmitted set above is the *most* the browser would permit for
-a data-sending request without a code change. Note it also allows
+project plus our own API host (`app.js:API_ORIGIN`, the Vercel deployment of
+`api/` — it receives a show id when a show page is opened, and no account id,
+event or typed text; privacy-policy §4.4), so the transmitted set above is the
+*most* the browser would permit for a data-sending request without a code change. Note it also allows
 `img-src https:` and `media-src https:` — any HTTPS host — which is how audio and
 artwork load. The CSP bounds outbound *data*, not all network access.
 
@@ -394,7 +396,7 @@ are the answers that will actually be submitted.
 
 **To re-verify before submitting:** that the shell adds no plugin which collects
 anything (each Capacitor plugin can), and that `connect-src` still names only
-Supabase.
+Supabase and our own API host.
 
 ---
 

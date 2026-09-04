@@ -244,6 +244,30 @@ function flushBufferedEvents() {
    enforces per-user isolation. Publishable key is public by design (RLS
    protects the data). Raw fetch, no SDK, to stay within the strict CSP. */
 const SB_URL = "https://qjdllvqdcgacvujhclny.supabase.co";
+
+/* WHERE /api/* LIVES, spelled out.
+
+   The two serverless functions in api/ (Stage 3b's per-show episode list and
+   A3.1's breadth show search) deploy with the Vercel project `foray-web`,
+   whose production alias is this host. Every other origin the app is served
+   from has NO api/: GitHub Pages (jwlabs.ai/4a, jw-incorporated.github.io)
+   answers 404, and the native shell's `capacitor://localhost` resolves a
+   relative `api/…` inside the bundle, where there is no server at all — so a
+   relative path reached the endpoint only when the page itself was served
+   from Vercel, which no listener's page is. The show pages therefore fell
+   back to the bundled three-per-show slice on every device, silently.
+
+   MUST MATCH the `connect-src` entry in index.html's CSP: a fetch to any
+   other origin is blocked by the browser before it is sent, and
+   test/api-origin.test.js pins the two together. Widening `connect-src` is a
+   privacy change by policy (docs/legal/data-safety.md § What would change
+   these answers) — this origin is our own, and it is documented in
+   docs/legal/privacy-policy.md §4.4. */
+const API_ORIGIN = "https://foray-web-seven.vercel.app";
+
+function apiUrl(path) {
+  return `${API_ORIGIN}/${String(path).replace(/^\/+/, "")}`;
+}
 const SB_KEY = "sb_publishable_0T8hpKCC_857G31LlCh0WA_0Rp61B3J";
 
 async function sbAuth(path, body) {
@@ -1499,7 +1523,11 @@ function fullCatalogueRowToEpRowItem(show, ep) {
 
 async function fetchShowEpisodes(show_id) {
   try {
-    const res = await fetch(pinnedUrl(`api/shows/${encodeURIComponent(show_id)}/episodes`), { cache: "no-cache" });
+    /* Absolute (see API_ORIGIN), and NOT through pinnedUrl(): `?_fdid=` pins
+       a data/*.json fetch to a deploy generation, which a live function has
+       no concept of — it was here because this call was first written to
+       look like a data fetch. */
+    const res = await fetch(apiUrl(`api/shows/${encodeURIComponent(show_id)}/episodes`), { cache: "no-cache" });
     if (!res.ok) return { episodes: null, error: `status ${res.status}` };
     const body = await res.json();
     return { episodes: body.episodes || [], stale: !!body.stale, error: body.error || null };
@@ -5055,7 +5083,17 @@ async function fetchJson(path) {
    same call at api/shows/search would incorrectly need to be either bundled
    as data or special-cased out. Same swallow-errors-to-null contract as
    fetchJson, so callers don't need their own try/catch for a down or
-   unreachable endpoint. */
+   unreachable endpoint.
+
+   DELIBERATELY STILL RELATIVE, unlike fetchShowEpisodes — so from the native
+   shell and from GitHub Pages this request goes nowhere useful and the Shows
+   search degrades to the curated 220. That is not an oversight: this request
+   carries the text the listener typed, and docs/legal/privacy-policy.md §2
+   promises "nothing you type into the Shows search box is transmitted".
+   Pointing it at API_ORIGIN is one word, but it is a change to that
+   promise, and it is the founders' to make, not this file's. (On the web
+   the relative request already leaves the device — for the page's own
+   origin, which answers 404 — and that too is theirs to know.) */
 async function fetchApiJson(path) {
   try {
     const res = await fetch(path, { cache: "no-cache" });
