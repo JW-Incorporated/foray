@@ -243,6 +243,43 @@ test("renderStarredShows lists every starred show, most-recently-starred first",
   assert.ok(html.includes(`href="#/show/${encodeURIComponent("s-new")}"`), "each row must link to its show page");
 });
 
+test("a starred snapshot with no artwork falls back to the live show's artwork, never a blank tile", () => {
+  /* The stored entry is a SNAPSHOT of the show record at the moment the star
+     was tapped, so for the 53 catalog shows harvested with `artwork_url: null`
+     it carries null forever — even after showArtworkUrl() learned to fill the
+     same show's tile from the discover pool on every other surface. The row
+     must resolve through the live record, and a snapshot that DID capture
+     artwork must keep it (the snapshot is the cheaper, already-correct
+     answer). A show that has since left the catalogue still renders the grey
+     placeholder rather than throwing on a null record.
+
+     MUTATION: in starredShowRow, revert
+       `const art = entry.artwork_url || showArtworkUrl(showById(entry.show_id));`
+     to `const art = entry.artwork_url;`. The first row renders
+     `show-result-art-blank` and the pool assertion below fails. */
+  const m = mount();
+  m.state.catalog = {
+    shows: [{ show_id: "s-null", title: "Snapshot Show", artwork_url: null, taxonomy_node_ids: [] }],
+  };
+  m.state.discover = {
+    items: [{ id: "ep-1", title: "Ep 1", show: "Snapshot Show", duration_min: 5, artwork_url: "https://cdn.test/live.jpg" }],
+  };
+  m.store.set("cp_starred_shows", JSON.stringify({
+    "s-null": { show_id: "s-null", title: "Snapshot Show", artwork_url: null, starred_at: "2026-03-01T00:00:00.000Z" },
+    "s-snap": { show_id: "s-snap", title: "Captured Show", artwork_url: "https://cdn.test/captured.jpg", starred_at: "2026-02-01T00:00:00.000Z" },
+    "s-gone": { show_id: "s-gone", title: "Gone Show", artwork_url: null, starred_at: "2026-01-01T00:00:00.000Z" },
+  }));
+
+  m.ctx.renderStarredShows();
+  const html = m.view();
+  assert.ok(html.includes('src="https://cdn.test/live.jpg"'),
+    "a null snapshot must resolve the live show's pool artwork");
+  assert.ok(html.includes('src="https://cdn.test/captured.jpg"'),
+    "a snapshot that captured artwork keeps it");
+  assert.strictEqual((html.match(/show-result-art-blank/g) || []).length, 1,
+    "exactly one placeholder: the show that is gone from the catalogue and has nothing in the pool");
+});
+
 test("renderStarredShows shows an honest empty state when nothing is starred", () => {
   /* MUTATION: remove the ternary's empty branch (always render the list
      div). The empty-state copy assertion fails, and an empty `<div

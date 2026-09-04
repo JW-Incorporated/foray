@@ -344,8 +344,14 @@ const FLOORS = {
      storage key, a missing route branch) is silently wrong rather than a
      crash, and nothing else in the repo would notice. Every test names
      its mutation; see the suite header for the full list of what each
-     test pins. */
-  "test/starred-shows.test.js": 8,
+     test pins.
+
+     Raised 8 -> 9 with the show-artwork fallback: a starred entry is a
+     snapshot, so it keeps `artwork_url: null` forever for the 53 shows
+     harvested without one, and the row now resolves through the live show
+     record. Without a test the fallback is the one artwork call site nothing
+     would notice losing. */
+  "test/starred-shows.test.js": 9,
   /* "Up Next" listening queue, Stage 1 of docs/listening-queue-plan.md
      (kanban card t_f4da81f5). Floored because the queue's own decay path
      (an id ageing out of the pool, or the queue emptying) is exactly the

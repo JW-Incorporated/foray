@@ -59,9 +59,10 @@ docs/. Completed workstreams move to their plan doc's retro section.
   any of this, so neither can a test that only reads the DOM at inset 0).
 - **Shared files it touches:** `styles.css` (`.topbar`, `.home`, `.cards4`,
   a global `[hidden]` rule, `#banner-slot:empty`), `app.js`
-  (`showArtworkUrl()` + its three call sites), `test/show-page.test.js`
-  (three artwork tests), `test/suite-integrity.test.js` (one new floor, one
-  raised).
+  (`showArtworkUrl()` + its four call sites), `test/show-page.test.js`
+  (four artwork tests), `test/starred-shows.test.js` (one: the starred row
+  resolves a null snapshot through the live record), `test/suite-integrity.test.js`
+  (one new floor, two raised).
 - **Explicitly out of scope:** `tools/mobile/` and `.github/workflows/` — a
   sibling session owns both. Also NOT done here: backfilling
   `data/catalog.json`'s 53 null `artwork_url` values, which is the root fix
