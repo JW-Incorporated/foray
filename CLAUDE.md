@@ -257,10 +257,13 @@ agents and the coordinator called `path-policy` "report-only" by reading
   player (#36). Its own `package.json`; the repo root stays dependency-free and
   no-build, and the Pages deploy from `main` root is untouched. The `webDir` is
   built by `tools/mobile/prepare-webdir.mjs`, which **copies** the real
-  `index.html`/`app.js`/`styles.css`/`player/` plus the **2.1 MB** of `data/` the
-  client fetches (2.5 MB bundle in total) — there is no second copy of the
-  player. Architecture, decisions and the founder's Mac steps:
-  `docs/mobile-shell.md`.
+  `index.html`/`app.js`/`styles.css`/`player/` plus the `data/` the client
+  fetches, stripping comments and whitespace from the JS/CSS (identifiers kept)
+  and indentation from the JSON on the way in — what was a 2.6 MB bundle ships
+  as ~1.5 MB, and the web keeps serving the commented source. The minifier is
+  the one dependency under `tools/mobile/` (its own `package.json`), never the
+  root's. There is no second copy of the player. Architecture, decisions and the
+  founder's Mac steps: `docs/mobile-shell.md`.
 - `ios/`: **reference material, not the shipping app** (reclassified 2026-08-17,
   #36 — the shell in `mobile/` is the app). SwiftUI app + ForayKit Swift package
   (state machine + intent grammar, unit-tested). **`ios/ForayKit` is real and CI

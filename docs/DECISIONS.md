@@ -1862,3 +1862,74 @@ we ship", the same class of lie one layer down. The guard's binary-file
 exclusion is load-bearing, not defensive — both committed icons really do carry
 `\r\n` byte pairs, so without it the guard would fire on a clean Linux runner
 and block `data-and-site` for the entire repo.
+
+## 2026-09-04 (mobile bundle: the shipped JS/CSS and JSON are minified; the minifier lives in `tools/mobile/`)
+
+**The decision.** `tools/mobile/prepare-webdir.mjs` now transforms two things on
+the way into the native bundle, and nothing else: every shipped `.js`/`.css` is
+written with its comments and whitespace stripped and **every identifier kept**,
+and every `data/*.json` is re-serialised with no indentation. The web is
+untouched — the repo root stays dependency-free and no-build, and GitHub Pages
+keeps serving the fully commented source. Recommendations 1 and 2 of
+`docs/mobile-shell-bundle-reduction.md` (research, PR #468), approved by the
+founder (CTO). Mechanism and verification: `docs/mobile-shell.md` §3.4.
+
+**Why.** Measured on `origin/main` = `88e2416`: the bundle was 2,625,084 bytes
+(2.50 MB) as CI sees it, 206 KB under the 2.7 MB alarm; the code half had grown
+109 KB → 1,098 KB in 39 days (+25 KB/day, five times `item-tags.json`'s rate) and
+72% of those bytes were comments and formatting. After both transforms the bundle
+is **1,529,677 bytes (1.46 MB), −42%**, and the trailing growth rate falls from
+~30 to ~10 KB/day. Both changes have zero user cost: no pool depth, no feature,
+no search-parity change. Names are kept because `player/diagnostic-log.js` is a
+field record a founder copies out of a car; full minification was measured at
+47 KB more and declined.
+
+**Where the minifier may live — the part that is expensive to reverse.** esbuild
+is a devDependency of a NEW `tools/mobile/package.json`, pinned exactly, lockfile
+committed. That directory was chosen over the two alternatives:
+
+- *The repo root* — never. The root's freedom from dependencies and build steps
+  is what makes the keyless Pages deploy a plain checkout of `main`
+  (`shell-invariants.test.mjs` pins it).
+- *`mobile/package.json` with a verbatim fallback when esbuild is absent* — CI
+  never installs `mobile/`, so CI would have measured an **unminified** bundle
+  while the founder's Mac shipped a minified one: alarms about a file nobody
+  installs. Rejected for that reason.
+
+The consequence to know about: `tools/ci/run-suites.mjs` now treats
+`tools/mobile/` as its own group (install, then `npm test -- <files>` there), so
+every shell suite runs after an `npm ci` in that directory and CI builds the
+bundle the way it ships. `mobile/package.json`'s `prepare:webdir` runs
+`npm ci --prefix ../tools/mobile` first, so the Mac path, `ios-build.yml` and
+`android-build.yml` all get the minifier through the script they already call —
+no `.github/` edit. A missing install is a named hard error, never a silent copy.
+
+**What was ruled out.** A dependency-free regex comment stripper (`//` and `/*`
+inside template literals and regex literals make it unsafe without a parser, and
+`search-engine.js` has both); name mangling (above); syntax rewriting (`minifySyntax`
+off — the device runs the source with its prose removed, not an equivalent
+program); minifying `index.html` (3.9 KB, and the injection target for the
+shell-only script tags); pre-compressing data as `.gz` (needs runtime machinery
+and changes what the cap measures — the research doc's §7).
+
+**What changed in the guards.** `COPIED_WHOLE` asserts *parse*-identity with the
+source instead of byte-identity (a trimmed `item-tags.json` still fails it; only
+formatting stopped being asserted), and every other bundled data file gets the
+same check. The alarms were re-based to the distance they had before, against
+the new sizes: total 2.7 → 2.0 MB, data half 1.5 → 1.4 MB, `discover.json` budget
+800 → 720 KB; the 3 MB hard cap is unchanged. The ordering hazard — a minifier
+running before the `fetchJson` derivation reads `app.js`'s text — is pinned by a
+test with a fetch only the source text carries; a build never writes into the
+source tree, also pinned; two builds are byte-identical; every shipped script
+passes `node --check`.
+
+**Verified / not verified.** Both bundles (before and after) were loaded in
+headless Chrome over CDP at 440×956 @3×, dark, first-run sheet dismissed: four
+cards, five menu routes, identical data counts and computed styles, zero
+exceptions and zero console errors in either. Not verified: WKWebView on a
+device — needs a Mac. Nothing in the transform is engine-specific.
+
+**Reversal.** Delete `tools/mobile/minify.mjs` and its package, route `.js`/`.css`
+back through `copy` in `prepare()`, and put the indentation back in
+`serializeSlice`; the parse-identity guards keep holding either way. The three
+alarms would then need raising again.

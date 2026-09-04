@@ -2469,6 +2469,38 @@ and belongs with #133's live position, not behind a `tabindex` on a `role="img"`
 
 ## Completed workstreams
 
+### mobile bundle — minified code and compact JSON: 2,625 → 1,530 KB (2026-09-04, one PR, no follow-up) — `feature/mobile-bundle-minify`
+
+- **What:** recommendations 1 and 2 of `docs/mobile-shell-bundle-reduction.md`
+  (research, PR #468, left open and held), approved by the founder (CTO).
+  `tools/mobile/prepare-webdir.mjs` now writes every shipped `.js`/`.css` with
+  comments and whitespace stripped and **every identifier kept** (new
+  `tools/mobile/minify.mjs`, esbuild `minifyWhitespace` only), and every
+  `data/*.json` re-serialised with no indentation. `COPIED_WHOLE` asserts
+  parse-identity instead of byte-identity. Measured: **2,625,084 → 1,529,677
+  bytes (LF, CI's basis; −42%)**; 2,672,143 → 1,529,758 on a Windows checkout.
+  Growth ~30 → ~10 KB/day. Full numbers and what was verified in headless
+  Chrome: `docs/mobile-shell.md` §3.4.
+- **The minifier lives in `tools/mobile/package.json`** (new, one devDependency,
+  pinned exactly, lockfile committed) — never the root, which stays
+  dependency-free for the keyless Pages deploy. Consequence: `tools/mobile/` is
+  now its own `run-suites` group (CI installs it and runs the shell's suites
+  there), so CI measures the minified bundle that ships.
+  `mobile/package.json`'s `prepare:webdir` runs `npm ci --prefix ../tools/mobile`
+  first, so the Mac path and both platform workflows get it without an edit
+  to `.github/`.
+- **Files:** `tools/mobile/{minify.mjs,minify.test.mjs,package.json,package-lock.json}`
+  (new), `tools/mobile/prepare-webdir.mjs` (+ test: 65 → 72, alarms re-based
+  2.7 → 2.0 MB total, 1.5 → 1.4 MB data, discover budget 800 → 720 KB),
+  `tools/mobile/shell-invariants.test.mjs` (the budget pin), `mobile/package.json`,
+  `mobile/README.md`, `test/suite-integrity.test.js` (one new floor, one raised),
+  `docs/mobile-shell.md` §0/§2.1/§2.4/§3/§3.4, `docs/DECISIONS.md`, `CLAUDE.md`
+  Layout (governed → `founder-approved`).
+- **Explicitly out of scope:** recommendation 3 (the df sidecar / item-tags trim),
+  the per-file and rate-based alarms the doc's §11 proposes, LF-normalising
+  `index.html`, and anything under `.github/workflows/`.
+- **Not verifiable here:** the bundle inside WKWebView on a device (needs a Mac).
+
 ### corpus/embeddings — the embedding backfill: a measured NO (2026-08-13, COMPLETE)
 
 Branch `corpus/embeddings` (migration 0003: `embedding_models` +
