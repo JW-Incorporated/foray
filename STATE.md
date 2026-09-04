@@ -7,6 +7,21 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
+### Research: mobile bundle size reduction (2026-09-04, docs only, PR held) — `research/mobile-bundle-reduction`
+
+- **What:** the founder asked for a ranked, costed set of bundle-reduction
+  options after the 2.5 MB alarm fired on #467. Measurements + recommendations
+  in `docs/mobile-shell-bundle-reduction.md`; **nothing implemented**. Headline:
+  the code half grew 109 KB → 1,098 KB in 39 days (+25 KB/day, 58% comments),
+  five times `item-tags.json`'s rate; stripping comments/whitespace in the
+  mobile build is −794 KB at zero user cost, JSON minify a further −301 KB.
+- **Owned files:** `docs/mobile-shell-bundle-reduction.md` (new). Nothing else.
+- **The PR must be opened with the `hold` label** (`docs/` and `STATE.md` both
+  auto-merge on green otherwise) — this needs a founder ruling (where a minifier
+  may live; whether app/web search parity matters, §8.3). Do not merge it for
+  them; remove the label only when a founder has ruled.
+- **Out of scope:** any change under `tools/mobile/`, `mobile/`, `search-engine.js`.
+
 ### M1: cap feed download size before whole-body XML parsing (2026-09-01) — `foray/t_fc2c5f95`
 
 - **What:** Review finding M1. Fetch paths bound elapsed time but not response
