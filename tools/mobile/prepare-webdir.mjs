@@ -59,6 +59,34 @@
  *   - `*.test.js` under `player/`. Test code is not shipped to devices.
  *   - Everything else in `data/`. The pipeline inputs are not client data.
  *
+ * WHAT IS TRANSFORMED ON THE WAY IN (2026-09-04; the research is
+ * docs/mobile-shell-bundle-reduction.md on PR #468's branch, open and held — the
+ * numbers that landed are in docs/mobile-shell.md §3.4)
+ * Two transforms, neither of which changes what the app does:
+ *   - Every `.js` and `.css` in the plan — `app.js`, `search-engine.js`,
+ *     `styles.css`, `player/*.js`, the shell-only scripts — is written with its
+ *     comments and whitespace stripped and EVERY IDENTIFIER KEPT (`minify.mjs`).
+ *     Measured: the code half was 1,098 KB, 72% of it prose and formatting, and it
+ *     was growing five times faster than the data file everybody was watching.
+ *   - Every `data/*.json` in the plan is re-serialised with `JSON.stringify` and no
+ *     indentation — the slices AND the copies. `COPIED_WHOLE` therefore asserts that
+ *     the bundled document PARSES to the same document as the source, not that the
+ *     bytes match; a trim still fails it, and that is all it ever guarded.
+ * The web is untouched: the repo root stays dependency-free and no-build, GitHub
+ * Pages serves the commented source, and the minifier lives in `tools/mobile/`'s
+ * own package.json. `deploy-manifest.json` and `sw.js` hash the ROOT files for the
+ * web deploy; neither is in this bundle and the shell never registers the worker,
+ * so the minified copies have no manifest to disagree with.
+ *
+ * ORDER MATTERS, AND THIS IS THE ONE PLACE IT DOES. `buildPlan` derives the data
+ * list by matching `fetchJson("data/...")` calls in the TEXT of the root `app.js`.
+ * That text is the source, read before anything is transformed, and the transform
+ * only ever writes into the output directory. A minifier strips comments, and a
+ * regex over stripped text can match less than the same regex over the source —
+ * so a build that minified first and derived second could quietly drop a data
+ * file from the plan while staying under every budget. `prepare-webdir.test.mjs`
+ * pins the order with a fetch that only the source text carries.
+ *
  * THE FILES THAT ARE COPIED IN PART, AND WHY THAT IS NOT A FORK EITHER
  * `data/discover.json` and `data/item-tags.json` are the two bundled files whose
  * size is a function of the CATALOGUE rather than of the product, and the
@@ -96,7 +124,8 @@
  * script tag is not: there is one copy of the selection rule, it lives here, it
  * runs at build time, and the file it writes is a build artefact. The web keeps
  * fetching the whole document; nothing about `app.js` changes; the app just has
- * a smaller pool, and every field on every item it does have is byte-identical.
+ * a smaller pool, and every field on every item it does have is identical (the
+ * bytes differ only by the whitespace the re-serialisation drops).
  * Trimming FIELDS instead was measured and rejected: every field except
  * `episode_guid` (1.9 KB of 1.70 MB) has a live reader in `app.js`,
  * `search-engine.js` or `player/`, and the largest droppable one
@@ -130,6 +159,12 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { isDeepStrictEqual } from "node:util";
+
+/* The one transform that needs a dependency. See minify.mjs's header for why it is
+   a parser and not a regex, why it lives under tools/mobile/ and not the root, and
+   why it is loaded on first use rather than here. */
+import { isMinified, minifySource } from "./minify.mjs";
 
 /* The PRODUCTION join, imported rather than reimplemented. The slice's whole
    correctness condition is "these two functions cannot tell the difference", and
@@ -1051,9 +1086,12 @@ export function assertForaySliceComplete(foraysDoc, full, sliced) {
  * answers a different question from `MAX_BYTES`: not "did something enormous get
  * in" but "did the slice stop being bounded".
  *
- *   - `data/discover.json` — 705 KB today, budget 800 KB, ~13% above. The two ways
- *     it moves are new shows (each costs `perShow` items, ~3.4 KB at 3) and items
- *     getting individually fatter. Not a year of silence. UNCHANGED by #327.
+ *   - `data/discover.json` — 636 KB today, budget 720 KB, ~13% above. The two ways
+ *     it moves are new shows (each costs `perShow` items, ~2.9 KB at 3 since the
+ *     re-serialisation) and items getting individually fatter. Not a year of
+ *     silence. UNCHANGED by #327; LOWERED 800 -> 720 KB on 2026-09-04 when the
+ *     JSON whitespace went (745 -> 636 KB), to keep it the same ~13% alarm it was
+ *     rather than a 26% one.
  *   - `data/segments.json` — 41 KB today, budget 100 KB. Its unit is a Foray: at
  *     ~0.74 KB per referenced segment and ~19 segments per Foray, that is about
  *     four more Forays the size of today's three combined. Authoring a Foray is a
@@ -1071,7 +1109,7 @@ export function assertForaySliceComplete(foraysDoc, full, sliced) {
 export const PROJECTED_DATA = [
   {
     rel: "data/discover.json",
-    maxBytes: 800 * 1024,
+    maxBytes: 720 * 1024,
     whenBreached:
       "Three ways that happens: the catalogue gained shows or topics (each show costs " +
       "BUNDLED_ITEMS_PER_SHOW items), the items got fatter, or a show grew a long run of " +
@@ -1124,10 +1162,17 @@ export const PROJECTED_DATA = [
   },
 ];
 
-/** Bundled files that must arrive BYTE-IDENTICAL, asserted rather than assumed.
- *  Everything not in `PROJECTED_DATA` is copied, so this list adds nothing mechanical
- *  — what it adds is a failing test for the files somebody will reasonably try to
- *  trim next, with the reason attached.
+/** Bundled files that must arrive as the WHOLE DOCUMENT, asserted rather than
+ *  assumed. Everything not in `PROJECTED_DATA` is carried whole, so this list adds
+ *  nothing mechanical — what it adds is a failing test for the files somebody will
+ *  reasonably try to trim next, with the reason attached.
+ *
+ *  "Whole" is PARSE-IDENTITY, not byte-identity, since 2026-09-04: every bundled
+ *  data file is re-serialised without whitespace, so the bytes legitimately differ
+ *  from the source. What the assertion guards — an entry dropped, a field trimmed,
+ *  a Foray filtered out — still fails it, because a trimmed document does not parse
+ *  to the same document. What it stopped guarding is formatting, which it never
+ *  meant to.
  *
  *  `data/item-tags.json`: see the § above `PROJECTED_DATA`; trimming it re-ranks
  *  search in the app and not on the website.
@@ -1158,11 +1203,22 @@ export const WHY_COPIED_WHOLE = {
     `selector had its segments sliced away, and it resolves to an empty running order.`,
 };
 
-/** Exactly how a slice is serialised, in one place, because the bytes are measured
- *  against a budget and compared across runs. Two spaces and a trailing newline is
- *  what `data/` already uses. */
+/** Exactly how a bundled data file is serialised, in one place, because the bytes
+ *  are measured against a budget and compared across runs. NO INDENTATION: the
+ *  file is parsed by `fetchJson` and never read by a human on a phone, and the
+ *  whitespace `data/` uses for git diffs was 301 KB of the bundle (measured, LF:
+ *  `item-tags.json` −30%, `discover.json` −15%). Used for the slices AND for the
+ *  files that are copied whole, so every `data/*.json` in the bundle has one shape. */
 export function serializeSlice(json) {
-  return `${JSON.stringify(json, null, 2)}\n`;
+  return JSON.stringify(json);
+}
+
+/** Every `data/*.json` in the plan is re-serialised through `serializeSlice` rather
+ *  than copied — the sliced ones from their projection, the rest from a parse of
+ *  the source. `manifest.json` at the root is not: it is a PWA artefact the shell
+ *  never reads, 409 bytes, and not under `data/`. */
+export function isBundledData(rel) {
+  return rel.startsWith("data/") && rel.endsWith(".json");
 }
 
 /** The size a slice will be ON DISK. `String.length` is UTF-16 code units and the
@@ -1253,18 +1309,50 @@ export function assertSlicesOnDisk(absOut, root = REPO_ROOT) {
        makes those the same file, and it is asserted a few lines below. */
     spec.verify(source(spec.rel), bundled(spec.rel), { source, bundled });
   }
-  /* The files that are deliberately NOT sliced, asserted on the bytes that ship. */
+  /* The files that are deliberately NOT sliced, asserted on the bytes that ship —
+     parsed, because the bytes are re-serialised on the way in (see COPIED_WHOLE). */
   for (const rel of COPIED_WHOLE) {
-    const a = fs.readFileSync(path.join(root, rel));
-    const b = fs.readFileSync(path.join(absOut, rel));
-    if (!a.equals(b)) {
+    if (!isDeepStrictEqual(source(rel), bundled(rel))) {
       throw new Error(
-        `the bundled ${rel} is not byte-identical to the source. It must be copied whole: ` +
-          `${WHY_COPIED_WHOLE[rel]} See the comment above PROJECTED_DATA.`
+        `the bundled ${rel} does not parse to the same document as the source. It must be ` +
+          `carried whole: ${WHY_COPIED_WHOLE[rel]} See the comment above PROJECTED_DATA.`
+      );
+    }
+  }
+  /* And the same for every other data file in the bundle that is not a slice — the
+     ones with no reason attached because nobody has yet tried to trim them. The
+     re-serialisation is the only transform they go through, and "parses to the same
+     document" is exactly the property that transform must preserve. */
+  for (const rel of bundledDataFiles(absOut)) {
+    if (PROJECTED_DATA.some((p) => p.rel === rel) || COPIED_WHOLE.includes(rel)) continue;
+    if (!isDeepStrictEqual(source(rel), bundled(rel))) {
+      throw new Error(
+        `the bundled ${rel} does not parse to the same document as the source. It is neither ` +
+          `sliced (PROJECTED_DATA) nor listed in COPIED_WHOLE, so the only thing that should ` +
+          `have happened to it on the way into the bundle is losing its whitespace.`
       );
     }
   }
   return true;
+}
+
+/** Every `.json` under the bundle's `data/`, at any depth, as repo-relative POSIX
+ *  paths — recursive because `runtimeDataFiles` and `isBundledData` both accept
+ *  `data/sub/x.json`, and a nested file must not be re-serialised on the way in
+ *  and then skipped by the check that it still parses to its source. */
+function bundledDataFiles(absOut) {
+  const out = [];
+  const walk = (rel) => {
+    const abs = path.join(absOut, rel);
+    if (!fs.existsSync(abs)) return;
+    for (const e of fs.readdirSync(abs, { withFileTypes: true }).sort((a, b) => (a.name < b.name ? -1 : 1))) {
+      const child = path.posix.join(rel, e.name);
+      if (e.isDirectory()) walk(child);
+      else if (e.name.endsWith(".json")) out.push(child);
+    }
+  };
+  walk("data");
+  return out;
 }
 
 /* ------------------------------------------------------------------- output */
@@ -1304,20 +1392,37 @@ export function prepare({
 
   fs.rmSync(absOut, { recursive: true, force: true });
 
+  /* `written` carries the SOURCE size beside each destination so the report can say
+     what the transforms bought, and so a test can assert that the bundle's copy of
+     a file is smaller than the file it came from — which, for a minified file, is
+     the cheapest proof that the transform ran at all. */
   const written = [];
-  const put = (destRel, write) => {
+  const put = (destRel, srcAbs, write) => {
     const dest = path.join(absOut, destRel);
     fs.mkdirSync(path.dirname(dest), { recursive: true });
     write(dest);
-    written.push(destRel);
+    written.push({ rel: destRel, sourceBytes: fs.statSync(srcAbs).size });
   };
-  const copy = (src, destRel) => put(destRel, (dest) => fs.copyFileSync(src, dest));
+  /* THE THREE WAYS A FILE GETS IN, and the source is only ever READ. Nothing here
+     writes back into `root`: the web keeps serving the commented, indented files. */
+  const copy = (src, destRel) => put(destRel, src, (dest) => fs.copyFileSync(src, dest));
+  const minify = (src, destRel) =>
+    put(destRel, src, (dest) => fs.writeFileSync(dest, minifySource(destRel, fs.readFileSync(src, "utf8"))));
+  const reserialize = (src, destRel, json = JSON.parse(fs.readFileSync(src, "utf8"))) =>
+    put(destRel, src, (dest) => fs.writeFileSync(dest, serializeSlice(json)));
 
   for (const rel of plan) {
-    if (slices.has(rel)) put(rel, (dest) => fs.writeFileSync(dest, serializeSlice(slices.get(rel))));
-    else copy(path.join(root, rel), rel);
+    const src = path.join(root, rel);
+    if (slices.has(rel)) reserialize(src, rel, slices.get(rel));
+    else if (isBundledData(rel)) reserialize(src, rel);
+    else if (isMinified(rel)) minify(src, rel);
+    else copy(src, rel);
   }
-  for (const f of shellOnly) copy(path.join(root, f.src), f.dest);
+  for (const f of shellOnly) {
+    const src = path.join(root, f.src);
+    if (isMinified(f.dest)) minify(src, f.dest);
+    else copy(src, f.dest);
+  }
 
   /* THE INJECTION, and then the re-read. Done before anything is measured so the
      reported size is the size that ships, and asserted against the bytes on disk
@@ -1333,9 +1438,9 @@ export function prepare({
 
   const files = [];
   let total = 0;
-  for (const rel of written) {
+  for (const { rel, sourceBytes } of written) {
     const bytes = fs.statSync(path.join(absOut, rel)).size;
-    files.push({ rel, bytes });
+    files.push({ rel, bytes, sourceBytes });
     total += bytes;
   }
 
@@ -1422,6 +1527,16 @@ if (isMain) {
         const f = r.files.find((x) => x.rel === spec.rel);
         console.log(`  sliced: ${spec.rel}  ${fmt(f.bytes)} of ${fmt(spec.maxBytes)}`);
       }
+      /* What the two transforms bought, so a build log answers "did it minify?"
+         without anybody opening the output. Source sizes are as checked out, so on
+         a Windows checkout the code figure includes the CRLF bytes the transform
+         also removes. */
+      const sum = (pred, key) => r.files.filter((f) => pred(f.rel)).reduce((n, f) => n + f[key], 0);
+      console.log(
+        `  minified: JS/CSS ${fmt(sum(isMinified, "sourceBytes"))} -> ${fmt(sum(isMinified, "bytes"))}, ` +
+          `data ${fmt(sum(isBundledData, "sourceBytes"))} -> ${fmt(sum(isBundledData, "bytes"))} ` +
+          `(the slices count their full source)`
+      );
     }
   } catch (e) {
     console.error(`prepare-webdir failed: ${e.message}`);

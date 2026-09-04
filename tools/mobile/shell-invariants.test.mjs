@@ -348,6 +348,25 @@ test("the repo's ios/ contains no Capacitor output", () => {
   }
 });
 
+test("prepare:webdir installs the minifier into tools/mobile/ before it builds", () => {
+  /* Since 2026-09-04 `prepare-webdir.mjs` needs esbuild, which lives in
+     `tools/mobile/package.json` — not here, not the root. Nothing under `.github/`
+     was edited to install it: `ios-build.yml` and `android-build.yml` both run the
+     committed `add:ios` / `add:android` scripts, which run `prepare:webdir`, so THIS
+     script is the one path every build takes, and `docs/mobile-shell.md` §3.4 and
+     `docs/DECISIONS.md` both say so. A wrong edit here fails loudly on the Mac
+     (MinifyError, not a silent copy) — this test moves that failure to CI.
+     MUTATION (ran): drop `npm run deps:webdir && ` from `prepare:webdir`. */
+  const scripts = capPkg().scripts ?? {};
+  assert.match(scripts["prepare:webdir"] ?? "", /^npm run deps:webdir && node \.\.\/tools\/mobile\/prepare-webdir\.mjs$/);
+  assert.match(scripts["deps:webdir"] ?? "", /^npm ci --prefix \.\.\/tools\/mobile\b/);
+  /* And the package it installs is the one prepare-webdir.mjs's minifier resolves
+     from: a lockfile there, so `npm ci` is reproducible, and esbuild pinned in it. */
+  const tools = readJson(path.join(ROOT, "tools", "mobile", "package.json"));
+  assert.match(tools.devDependencies?.esbuild ?? "", /^\d+\.\d+\.\d+$/, "esbuild must be pinned exactly in tools/mobile/package.json");
+  assert.ok(fs.existsSync(path.join(ROOT, "tools", "mobile", "package-lock.json")), "tools/mobile has no lockfile, so `npm ci` there would fail");
+});
+
 test("the webDir size cap is pinned at 3 MB", () => {
   /* WITHOUT THIS, THE CAP GUARDS NOTHING. The only test of today's bundle
      compares it against MAX_BYTES, so raising MAX_BYTES satisfies both sides of
@@ -382,9 +401,14 @@ test("the sliced files' per-file budgets are pinned, all three of them", () => {
      two Foray documents' budgets watch PRODUCT growth: a new Foray is a deliberate
      act, so they sit further above today's number — about four more Forays the size
      of today's three combined — but they must still fire long before the segment
-     pool's unbounded growth could get back into the bundle (#327). */
+     pool's unbounded growth could get back into the bundle (#327).
+
+     `data/discover.json` 800 -> 720 KB on 2026-09-04: the slice is now written with
+     no JSON whitespace (745 -> 636 KB), and 800 KB would have turned a ~13% alarm
+     into a 26% one. The new number keeps the same distance — about 30 new shows at
+     the minified ~2.9 KB each. */
   assert.deepEqual(PROJECTED_DATA.map((p) => [p.rel, p.maxBytes]), [
-    ["data/discover.json", 800 * 1024],
+    ["data/discover.json", 720 * 1024],
     ["data/segments.json", 100 * 1024],
     ["data/segment-sources.json", 40 * 1024],
   ]);

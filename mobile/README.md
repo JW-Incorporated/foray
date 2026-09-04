@@ -47,10 +47,15 @@ npm install
 npm run prepare:webdir      # builds mobile/www from the repo root
 ```
 
-`prepare:webdir` runs `tools/mobile/prepare-webdir.mjs`, which **copies** the
-real `index.html`, `app.js`, `search-engine.js`, `styles.css`, the icons,
-`manifest.json`, every non-test module in `player/`, and only the 2.1 MB of
-`data/*.json` the client actually fetches (2.5 MB of bundle in total). There is no second copy of the player
+`prepare:webdir` first runs `npm ci --prefix ../tools/mobile` (one devDependency,
+esbuild, pinned — it lives there and not here or at the root; see
+`docs/mobile-shell.md` §3.4), then `tools/mobile/prepare-webdir.mjs`, which
+**copies** the real `index.html`, `app.js`, `search-engine.js`, `styles.css`, the
+icons, `manifest.json`, every non-test module in `player/`, and only the
+`data/*.json` the client actually fetches — stripping comments and whitespace from
+the JS/CSS (every identifier kept, so stack traces still read) and indentation
+from the JSON on the way in. What was a 2.6 MB bundle is **1.53 MB**; the
+website keeps serving the commented source. There is no second copy of the player
 in the repo, and `mobile/www/` is gitignored so there never will be.
 
 ## Generating the platforms

@@ -590,8 +590,19 @@ const FLOORS = {
 
      `shell-invariants` gained one: the same slice against TODAY'S real documents,
      independently of the fixture suite. */
-  "tools/mobile/prepare-webdir.test.mjs": 65,
-  "tools/mobile/shell-invariants.test.mjs": 47,
+  "tools/mobile/prepare-webdir.test.mjs": 72,
+  "tools/mobile/shell-invariants.test.mjs": 50,
+  /* 2026-09-04: the bundle's JS/CSS is minified (comments + whitespace, identifiers
+     kept) and its JSON re-serialised on the way in — docs/mobile-shell.md §3.4.
+     `minify.test.mjs` pins the transform (nothing renamed, nothing rewritten, only
+     .js/.css touched, the pinned esbuild); the seven tests added to
+     prepare-webdir.test.mjs (65 -> 72) pin its place in the build: derived from
+     the SOURCE text before anything is minified, never written back over the
+     source, deterministic, and the real bundle under `node --check`. tools/mobile/
+     is now its own runner group (it carries esbuild), so these run after an
+     `npm ci` there rather than from the root; shell-invariants (47 -> 50 on disk,
+     floor raised to 50) pins that mobile/package.json's prepare:webdir installs it. */
+  "tools/mobile/minify.test.mjs": 8,
   /* `foray-tts`'s JS-side interface (docs/research/on-device-tts.md, this
      card). Guards two things nothing else checks: that a lexicon entry with
      `ipa: null` never becomes a guessed pronunciation override (a silent
