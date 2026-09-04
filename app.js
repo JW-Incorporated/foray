@@ -650,8 +650,13 @@ function bindShowStars(scope) {
    language (artwork + title, no play/star/duration controls -- a show,
    not a playable item) rather than inventing a second show-card shape. */
 function starredShowRow(entry) {
+  /* The stored entry is a SNAPSHOT taken when the star was tapped, so it
+     carries whatever `artwork_url` the show record had then — null for the 53
+     shows harvested without one. Fall back through the live show record so a
+     starred show is never blanker than the same show is on any other surface. */
+  const art = entry.artwork_url || showArtworkUrl(showById(entry.show_id));
   return `<a class="show-result" href="#/show/${encodeURIComponent(entry.show_id)}">
-    ${entry.artwork_url ? `<img class="show-result-art" src="${esc(safeUrl(entry.artwork_url))}" alt="">` : `<span class="show-result-art show-result-art-blank"></span>`}
+    ${art ? `<img class="show-result-art" src="${esc(safeUrl(art))}" alt="">` : `<span class="show-result-art show-result-art-blank"></span>`}
     <span class="show-result-title">${esc(entry.title)}</span>
   </a>`;
 }
@@ -1259,6 +1264,69 @@ function episodesForShow(show) {
   return pool.filter(it => wanted.has(it.show));
 }
 
+/* A show's artwork, with the discover pool as the fallback source.
+
+   53 of catalog.json's 220 shows carry `artwork_url: null` — whole harvest
+   batches where tools/harvest-catalog.mjs's iTunes lookup found no match
+   (`artworkUrl600 ?? null`), landing in contiguous index blocks rather than
+   scattered. Every render site then took its `show.artwork_url ? img : blank`
+   else-branch and drew a flat grey square. "Shows we vouch for" samples 8 of
+   220 by day-of-year seed, so on a typical day one or two of the eight are
+   blank next to six that resolve — which reads as one broken show rather than
+   a quarter of the catalogue, and is how this reached a device.
+
+   The show record is derived data; the discover pool is not, and it carries a
+   live 600x600 https artwork URL for all 1946 of its items. So whenever the
+   show has any episode in the pool the correct image is ALREADY in memory —
+   the show record simply doesn't reference it.
+
+   Returns null, never "", when there is genuinely nothing: callers render the
+   grey `.show-result-art-blank` placeholder for that, and a real absence stays
+   a renderable state, same rule as everywhere else in this file.
+
+   WHY AN INDEX AND NOT `episodesForShow(show).find(...)`, which is the obvious
+   one-liner and was the first version of this: `#/shows` renders all 220
+   catalog shows through showResultRow, 53 of them miss the early return above,
+   and episodesForShow builds the FULL matched array before one element is
+   taken — so the obvious version costs 53 whole passes over a 1946-item pool
+   plus 53 intermediate arrays, per navigation. Measured at 59.7ms per render
+   on desktop Node against 0.03ms before, and an iOS WKWebView is several times
+   slower than that; renderCategory and similarShowsSection pay smaller
+   versions of the same. The index is built once per pool and is ~0.
+
+   It is keyed on the pool ARRAY's identity, not on a boot flag: `init()`
+   assigns `state.discover` exactly once and never mutates `items`, but the
+   suites reassign it per test, and an index that outlived a reassignment would
+   answer for the previous fixture — a stale-cache bug that reads as a passing
+   test. Identity comparison costs nothing and cannot get that wrong.
+
+   The join is episodesForShow's, restated as two lookups because a Set-per-
+   call is what made the one-liner expensive: exact title first, then the one
+   TITLE_ALIASES entry. If that list ever grows past its single documented
+   entry, both places have to learn about it.
+
+   Backfilling catalog.json's 53 nulls is still the root fix. This is what
+   makes the UI right in the meantime, and on the next show that harvests
+   without a match. */
+let _artByShowTitle = null;
+let _artIndexPool = null;
+function showArtworkUrl(show) {
+  if (!show) return null;
+  if (show.artwork_url) return show.artwork_url;
+  const pool = (state.discover?.items || []);
+  if (_artIndexPool !== pool) {
+    _artIndexPool = pool;
+    _artByShowTitle = new Map();
+    // First wins, matching `.find()`'s "first episode carrying artwork".
+    for (const it of pool) {
+      if (it.artwork_url && !_artByShowTitle.has(it.show)) _artByShowTitle.set(it.show, it.artwork_url);
+    }
+  }
+  return _artByShowTitle.get(show.title)
+    || _artByShowTitle.get(TITLE_ALIASES[show.title])
+    || null;
+}
+
 /* ---------- show-name links (Stage 4 of docs/show-pages-plan.md) ----------
 
    epRow/archivedRow/renderEpisode only ever have an episode's `show` string
@@ -1483,6 +1551,7 @@ function renderShow(show_id) {
      t_567b570f) supersedes this once it resolves; until then this stays the
      safe degrade for the curated-pool-only render. */
   const isBreadthTier = show.tier === "breadth";
+  const showArt = showArtworkUrl(show);
 
   const head = `
     <div class="page-head">
@@ -1496,7 +1565,7 @@ function renderShow(show_id) {
             : "Loading full episode list…"}</p>
       </div>
     </div>
-    ${show.artwork_url ? `<img class="show-art" src="${esc(safeUrl(show.artwork_url))}" alt="">` : ""}
+    ${showArt ? `<img class="show-art" src="${esc(safeUrl(showArt))}" alt="">` : ""}
     ${showStarBtn(show.show_id)}
     ${show.editorial_note ? `<p class="note">${esc(show.editorial_note)}</p>` : ""}
     ${chips ? `<div class="fy-chips">${chips}</div>` : ""}`;
@@ -1983,8 +2052,9 @@ function showIntroPopupOnce() {
    search result has no play control, duration, or star (it names a SHOW, not
    a playable item), and links straight to the page Stage 1 already built. */
 function showResultRow(show) {
+  const art = showArtworkUrl(show);
   return `<a class="show-result" href="#/show/${encodeURIComponent(show.show_id)}">
-    ${show.artwork_url ? `<img class="show-result-art" src="${esc(safeUrl(show.artwork_url))}" alt="">` : `<span class="show-result-art show-result-art-blank"></span>`}
+    ${art ? `<img class="show-result-art" src="${esc(safeUrl(art))}" alt="">` : `<span class="show-result-art show-result-art-blank"></span>`}
     <span class="show-result-title">${esc(show.title)}</span>
   </a>`;
 }
@@ -2129,10 +2199,13 @@ function renderHome() {
   if (!state.cardSlots.length) buildCards();
   const resumeRows = forayResumeRows();
   /* Rendered OUTSIDE `.home`, below the fold — see the `.home-below` note in
-     styles.css. `.home` is a fixed-height flex column and `.cards4` is its only
-     `flex: 1` child, so any tall sibling inside it starves the four cards to
-     zero. Computed once here rather than called inline twice: the sample is
-     seeded by day-of-year, so a second call is deterministic but wasted. */
+     styles.css. `.cards4` is `.home`'s only `flex: 1` child, so any tall
+     sibling inside it takes its space straight off the four cards. (`.home` is
+     `min-height` now and `.cards4` has a floor, so that degrades to a taller
+     scrolling page rather than 26px cards — a backstop, not a licence to move
+     this back inside.) Computed once here rather than called inline twice: the
+     sample is seeded by day-of-year, so a second call is deterministic but
+     wasted. */
   const vouch = vouchForHtml();
   $("#view").innerHTML = `
     <div class="home">

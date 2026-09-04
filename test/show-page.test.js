@@ -167,6 +167,152 @@ test("a valid show_id renders artwork, title, editorial note and taxonomy chips"
   }
 });
 
+/* ==================================================================== */
+/* 1b. SHOW ARTWORK — THE BLANK TILE ON THE HOME SCREEN                  */
+/* ==================================================================== */
+
+test("a show with no show-level artwork uses its discover-pool episode artwork instead of a blank tile", () => {
+  /* Reported from a TestFlight build: one show in "Shows we vouch for"
+     rendered an empty artwork tile beside neighbours that resolved. It is not
+     that show — 53 of catalog.json's 220 shows carry `artwork_url: null`
+     (whole harvest batches where the iTunes lookup found no match), and
+     `showsWeVouchFor` samples 8 of 220 by day-of-year seed, so roughly one or
+     two of any day's eight are blank. Every render site took its
+     `show.artwork_url ? img : blank` else-branch and drew a flat grey square.
+
+     The discover pool is not derived data and carries a live 600x600 https
+     artwork URL for all of its items, so the right image was already in
+     memory — the show record just did not reference it.
+
+     Synthetic fixture on purpose: it stays true after catalog.json is
+     backfilled, which is the real fix and would make a fixture keyed to a
+     specific null show vanish.
+
+     MUTATION: delete the pool-index lookup from showArtworkUrl() so it is just
+     `return show.artwork_url || null`. Both the row and the show page fall
+     back to the blank placeholder and this fails. MUTATION 2: drop the
+     `_artIndexPool !== pool` identity check so the index is built once and
+     never rebuilt — this test still passes alone, but run after any other test
+     in this file it answers from the previous fixture's pool and fails. */
+  const m = mount();
+  m.state.catalog = {
+    shows: [{ show_id: "no-art-show", title: "No Art Show", artwork_url: null, taxonomy_node_ids: [], editorial_note: "Worth your time." }],
+  };
+  m.state.discover = {
+    items: [{ id: "ep-1", title: "Ep 1", show: "No Art Show", duration_min: 5, artwork_url: "https://cdn.test/art600.jpg" }],
+  };
+  m.state.taxonomy = { nodes: [] };
+  m.state.session = { session_id: "s-1", builder: "test", episodes: {}, cards: [] };
+  const show = m.state.catalog.shows[0];
+
+  assert.strictEqual(m.ctx.showArtworkUrl(show), "https://cdn.test/art600.jpg");
+
+  const row = m.ctx.showResultRow(show);
+  assert.ok(row.includes('src="https://cdn.test/art600.jpg"'), `show row must use the pool artwork, got: ${row}`);
+  assert.ok(!row.includes("show-result-art-blank"), "show row must not fall back to the blank placeholder");
+
+  m.ctx.renderShow("no-art-show");
+  assert.ok(m.view().includes('class="show-art"'), "the show page header must render artwork too");
+});
+
+test("a show with no artwork anywhere still renders the blank placeholder, not a broken image", () => {
+  /* The other direction: absence stays a real, renderable state (Stage 1's
+     own rule). A fallback that invented a URL, or emitted `src=""`, would
+     give every artwork-less show a broken-image glyph.
+
+     MUTATION: make showArtworkUrl return `""` instead of null when nothing is
+     found. The `null` assertion below fails — and ONLY that one, which is the
+     point of asserting the return value separately from the markup: `""` is
+     falsy, so both render sites still take their placeholder branch and every
+     markup assertion here stays green. A caller that used `?? ` or
+     `!== null` instead of a truthiness check would render `src="#"` and a
+     broken-image glyph, and nothing but this line would notice. */
+  const m = mount();
+  m.state.catalog = {
+    shows: [{ show_id: "nothing-show", title: "Nothing Show", artwork_url: null, taxonomy_node_ids: [], editorial_note: null }],
+  };
+  m.state.discover = { items: [{ id: "ep-9", title: "Ep 9", show: "Nothing Show", duration_min: 5 }] };
+  m.state.taxonomy = { nodes: [] };
+  m.state.session = { session_id: "s-1", builder: "test", episodes: {}, cards: [] };
+
+  assert.strictEqual(m.ctx.showArtworkUrl(m.state.catalog.shows[0]), null, "must be null, never an empty string");
+  const row = m.ctx.showResultRow(m.state.catalog.shows[0]);
+  assert.ok(row.includes("show-result-art-blank"), `expected the blank placeholder, got: ${row}`);
+  assert.ok(!row.includes("<img"), "must not emit an <img> with no usable src");
+});
+
+test("the artwork index follows the pool it was built from, and never answers from a stale one", () => {
+  /* showArtworkUrl memoises a title -> artwork index because the obvious
+     `episodesForShow(show).find(...)` cost 53 whole passes over a 1946-item
+     pool per `#/shows` render (59.7ms, measured). A memo needs an invalidation
+     rule, and the wrong one here fails EXACTLY the way #276 did: silently,
+     with the second render, against state the setup happens to reset.
+
+     This test renders twice on purpose. Every other test in this file gets a
+     fresh vm context — module state included — so none of them can see a stale
+     index no matter what the rule is. That is the harness being more forgiving
+     than the browser, where one context lives for the whole session.
+
+     MUTATION: change `if (_artIndexPool !== pool)` to
+     `if (_artByShowTitle === null)`. The second assertion returns the FIRST
+     pool's artwork and this fails. (That mutation survives every other test in
+     this file, which is why this one exists.) */
+  const m = mount();
+  const show = { show_id: "s", title: "Same Show", artwork_url: null, taxonomy_node_ids: [], editorial_note: null };
+  m.state.catalog = { shows: [show] };
+  m.state.taxonomy = { nodes: [] };
+  m.state.session = { session_id: "s-1", builder: "test", episodes: {}, cards: [] };
+
+  m.state.discover = { items: [{ id: "a", title: "A", show: "Same Show", duration_min: 5, artwork_url: "https://cdn.test/first.jpg" }] };
+  assert.strictEqual(m.ctx.showArtworkUrl(show), "https://cdn.test/first.jpg");
+
+  m.state.discover = { items: [{ id: "b", title: "B", show: "Same Show", duration_min: 5, artwork_url: "https://cdn.test/second.jpg" }] };
+  assert.strictEqual(m.ctx.showArtworkUrl(show), "https://cdn.test/second.jpg",
+    "the index must be rebuilt when the pool it indexed is replaced");
+
+  m.state.discover = { items: [] };
+  assert.strictEqual(m.ctx.showArtworkUrl(show), null,
+    "an emptied pool must produce a real absence, not the last thing the index held");
+});
+
+test("against the committed data, no show renders blank while its own artwork sits in the discover pool", async () => {
+  /* The invariant over real data, stated so it does not depend on today's
+     null count: IF the pool has artwork for a show, the show must resolve to
+     artwork. As committed that rescues all 53 null-artwork shows, and it
+     keeps holding after catalog.json is backfilled (the antecedent still
+     applies, the consequent is satisfied by the show's own field).
+
+     The RESCUED count is what makes it non-vacuous, and the distinction cost a
+     review round: counting "shows the pool has artwork for" reaches 220 of
+     220, every one of which satisfies the implication through
+     showArtworkUrl's `if (show.artwork_url) return` early exit without ever
+     entering the fallback. Only shows whose OWN artwork_url is null exercise
+     the code this test is about — 53 of them today.
+
+     MUTATION: delete the pool-index lookup from showArtworkUrl() so it is just
+     `return show.artwork_url || null`. `rescued` drops to 0 and the 53 shows
+     land in `offenders`, reported by id. */
+  const m = await mountBooted();
+  const pool = m.state.discover.items;
+
+  const offenders = [];
+  const rescued = [];
+  for (const show of m.state.catalog.shows) {
+    const poolArt = pool.find((it) => it.show === show.title && it.artwork_url);
+    if (!poolArt) continue;
+    const resolved = m.ctx.showArtworkUrl(show);
+    if (!resolved) offenders.push(show.show_id);
+    else if (!show.artwork_url) rescued.push(show.show_id);
+  }
+
+  assert.deepStrictEqual(offenders, [],
+    `these shows render a blank artwork tile although the discover pool carries artwork for them: ${offenders.join(", ")}`);
+  assert.ok(rescued.length > 0,
+    "no show in the committed catalogue has a null artwork_url that the pool can fill, so " +
+    "nothing here exercised the fallback. If catalog.json was backfilled that is GOOD news — " +
+    "keep the implication above, which still holds, and drop this line.");
+});
+
 test("every discover-pool episode for the show renders as a playable ep-row", async () => {
   /* Cross-checked against an independent count straight off discover.json, not
      against renderShow's own join — so a join that silently dropped or
@@ -784,9 +930,11 @@ test("vouchForHtml's row is separate from the topic cards and forays, per the B1
 });
 
 test("the vouch row renders below `.home`, never inside it, so it cannot starve the four cards", async () => {
-  /* The #433 regression, pinned. `.home` is a fixed-height flex column
-     (`height: calc(100svh - var(--topbar-h) - env(safe-area-inset-top))`)
-     whose only `flex: 1` child is `.cards4`. A ~611px section added as a
+  /* The #433 regression, pinned. `.cards4` is the only `flex: 1` child of
+     `.home`, the one-screen column (`min-height: calc(100svh -
+     var(--topbar-h) - env(safe-area-inset-top))` — a FIXED `height` when #433
+     happened, which is why the overflow painted over what followed instead of
+     lengthening the page; see test/home-layout.test.js). A ~611px section added as a
      sibling INSIDE it starves the cards to nothing: measured over CDP at
      440x956, 402x874, 390x844, 375x667 and 1440x900, `.cards4` was 0px and
      every `.mini-card` 26px — at EVERY viewport, desktop included. Rendering
