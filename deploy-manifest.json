@@ -1,12 +1,12 @@
 {
-  "deploy_id": "cf832f9cf3e6267d",
+  "deploy_id": "96f42d140ac07b70",
   "files": {
     "app.js": "sha256:1468cb5aff5f221bef17048e4b9b677ee18eda056c042a6c7a73079d476a55af",
     "data/catalog-client.json": "sha256:83a6a83d4633326dbc422c57677a78438a41c69f3055439a0010d2057aec8864",
     "data/dai-classification.json": "sha256:321fb915e4289a098cbd30ec7cc8e8503345a1c6cadb6cda2803ff656162a545",
-    "data/discover.json": "sha256:2c7302342f5017f4d926acbd159e9d85099830ae85848d5bfafbd4b6ce9c2de4",
+    "data/discover.json": "sha256:3dda0113dda4120b7e3871e8bcb9032639eb30e51fa4844467155a1021c2e14d",
     "data/forays.json": "sha256:947f941418fc7ca61a630ac49a7b3e96ac938252ca978ed2ab18ee4956feca7b",
-    "data/item-tags.json": "sha256:bd615f14cbc085334ea865fe8ae23653d709814135e1721266b53b0089c86955",
+    "data/item-tags.json": "sha256:7be0c5564c4b96685c260ab38d6f7f4d71d7376b88862de8ddaed46ede1a4914",
     "data/ladders.json": "sha256:7af481f27ac45de519f6ed6d75fccb3fee1208e6f642dd2dad4fad635c55de5b",
     "data/personas.json": "sha256:43f06e95b266f66602abc6e210fe826db71bdfd7258bab611c69be02041dec25",
     "data/segment-sources.json": "sha256:8a1875d3934c57fcff5680f43bfec925079ecbab0ec3b91f8c81761f9f99bfc5",
