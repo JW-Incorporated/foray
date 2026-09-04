@@ -1430,3 +1430,48 @@ its reasoning.
   under human review, not yet merged. Once it lands, `renderShow()`'s
   breadth-tier branch should be revisited as a small fast-follow to call
   its episode endpoint instead of showing the fetching message indefinitely.
+
+## 2026-09-03 (universal in-app playability: the "listen elsewhere" link-out is removed entirely)
+
+- **Product override (Joey), show/episode-pages requirements review:** "Remove
+  any plan to link out if we don't have the podcast in the app. We should be
+  able to play all podcasts from the app. If we can't, let's fix that." This
+  replaces the honest-fallback design shipped as episode-pages Stage 2
+  (PR #369): a "Listen in your podcast app ↗" external link for any episode
+  with no `audio_url`. That fallback is now deleted from `epRow`,
+  `archivedRow`, and `renderEpisode` — 4a either plays an episode in-app or
+  says so plainly; it never sends a listener to another app.
+- **Verified before implementing, per this card's own constraint:** Stage 3b
+  RSS ingestion (kanban t_567b570f, PR #429) merged into `main` first.
+  `ingestShowFeed.ts` never stores an episode without a real, un-rehosted
+  enclosure URL — an item with no enclosure is dropped from the catalogue
+  entirely (`backend/test/ingestShowFeed.test.ts`), so any episode Stage 3b's
+  endpoint returns to the client always has a playable `audio_url`. Spot-checked
+  three curated feeds (Lex Fridman, Titans of Nuclear, omega tau) and two
+  breadth-tier feeds (Science Friday, Escape Pod) live — all real enclosures.
+- **Genuine edge case, quantified rather than guessed at:** the pre-existing
+  curated pool (`data/discover.json` + `data/session.json`, 1882 items total,
+  independent of Stage 3b) had 9 items with no `audio_url`. Ran the existing
+  one-shot tool `tools/refresh/backfill-audio.mjs` (RSS-primary, iTunes
+  fallback) rather than building a new one: it resolved 1 of 9 from a show's
+  RSS feed. The remaining 8 are two real, named failure modes — not a
+  systemic gap: 4 items (This American Life, Modern Love) whose specific
+  episode is absent from the show's own public RSS feed (a members-only /
+  syndication-window gap, not something a refetch fixes), and 4 items (This
+  Week in Startups) whose enclosure is `video/mp4`, not audio, so there is
+  genuinely no audio file to play. 8 of 1882 items (0.43%) is a token edge
+  case, not a reason to stop and flag per the card's own threshold.
+- **What an edge-case episode does instead of linking out:** `epRow` and
+  `renderEpisode` render a plain-text "Not available to play" note
+  (`notPlayableNote()`, `.not-playable` in `styles.css`) in the same slot the
+  ▶ button or the old link used to occupy — nothing clickable, no external
+  hop, an honest dead end. `archivedRow` (a playlist part the live pool no
+  longer carries) gets the same note for a named part; it never had in-app
+  audio to offer either (its `audio_url` is deliberately not persisted). This
+  also means an archived part now has no clickable control at all, so it can
+  no longer log a `picked` event by being opened elsewhere — there is nowhere
+  left to open it.
+- **`playLink`/`appleLink`/`playerPref` are NOT removed** — they still back
+  the drawer's "Open in: Apple Podcasts / Pocket Casts" preference toggle,
+  which is unrelated UI (a stated player preference for the user, not a
+  fallback for a missing audio file) and was never part of this card's scope.

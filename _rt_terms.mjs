@@ -1,0 +1,14 @@
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
+import { createRequire } from "node:module";
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), ".");
+const require = createRequire(import.meta.url);
+const SE = require(join(ROOT, "search-engine.js"));
+const discover = JSON.parse(readFileSync(join(ROOT, "data/discover.json"), "utf8"));
+const itemTags = JSON.parse(readFileSync(join(ROOT, "data/item-tags.json"), "utf8"));
+const semantic = JSON.parse(readFileSync(join(ROOT, "data/semantic-index.json"), "utf8"));
+const ctx = { semantic, itemTags, discover };
+const interp = SE.interpretQuery("nuclear fusion energy", ctx);
+interp.groups.forEach(g => console.log(g.token, "terms:", g.terms.size, "broad:", g.broad));
+console.log("pool discover items", discover.items.length);

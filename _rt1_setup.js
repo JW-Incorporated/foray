@@ -1,0 +1,10 @@
+const fs = require("fs");
+const discover = JSON.parse(fs.readFileSync("data/discover.json", "utf8"));
+const itemTags = JSON.parse(fs.readFileSync("data/item-tags.json", "utf8"));
+const semantic = JSON.parse(fs.readFileSync("data/semantic-index.json", "utf8"));
+const catalog = JSON.parse(fs.readFileSync("data/catalog.json", "utf8"));
+console.log("discover items:", discover.items.length);
+console.log("itemTags keys:", Object.keys(itemTags).length);
+console.log("semantic concepts:", Object.keys(semantic.concepts).length);
+console.log("catalog shows:", catalog.length || Object.keys(catalog).length);
+console.log("sample discover item:", JSON.stringify(discover.items[0], null, 2).slice(0, 500));

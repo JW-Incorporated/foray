@@ -1,0 +1,28 @@
+{
+  "findings": [
+    {
+      "severity": "info",
+      "title": "Tooling failure: `claude --model claude-fable-5` cannot run in this sandbox (OOM-killed every invocation)",
+      "evidence": "Every invocation of `claude --model claude-fable-5 -p ...` (with/without --bare, with NODE_OPTIONS --max-old-space-size down to 48-96MB, chunked prompt ~30KB) was SIGKILL'd (exit 137) before producing output. Confirmed via /sys/fs/cgroup/memory.current sampling climbing to ~205MB (== /sys/fs/cgroup/memory.max = 205520896 bytes) then the process disappearing. Even a trivial `-p \"OK\"` call failed the same way; `claude doctor` took 45s and produced no output either. This is an environment/resource constraint, not a finding about Foray's code. A manual line-by-line adversarial read of the same rule text + same source files was substituted in place of the CLI-driven review; conclusions below are evidence-based, not fabricated Fable output.",
+      "needs_human_gate": false
+    },
+    {
+      "severity": "none",
+      "title": "Seek-and-stop (ADR-0007 / §1.1 / §4.6): no violation found — pipeline never fetches, caches, or persists an audio byte",
+      "evidence": "backend/src/generation/sourceBeats.ts (the only module touching tape resolution) produces only TapePointer objects (segmentId/itemId/startSec/endSec/startAnchor/endAnchor) — see resolveOneBeat() lines 128-249, never a Buffer/byte array. transcriptArchiveLookup.ts reads only committed metadata JSON (data/transcript-digests.json) and its default NullTranscriptCueProvider (lines 141-145) always returns null — no HTTP client, no file write. segmentPoolLookup.ts and catalogueLookup.ts are pure fs.readFileSync JSON readers with zero writes. Grepped the entire backend/src tree for fetch(/writeFile/Buffer.from/axios/http.get/https.get/download — the only hits are unrelated (buildLadder.ts/buildSession.ts writing JSON *documents*, feeds/redirect.ts and duration.ts commenting on the existing, unrelated ingestion pipeline's download path, which is pre-existing app behavior outside this generation pipeline and not audio-byte caching by the generator). No `*.mp3`/`*.wav`/binary write path exists anywhere in backend/src/generation or backend/src/curation. §4.9 (writing data/forays.json, the stitching/publish stage) is not yet implemented in this checkout at all — there is nothing built past §4.6 to check for a violation there.",
+      "needs_human_gate": false
+    },
+    {
+      "severity": "none",
+      "title": "Prompt-discard rule (§9.4): no violation found in the built §4.0-4.1 stage — raw prompt text never reaches a persistence sink",
+      "evidence": "understandPrompt.ts is a pure function (prompt string in, structured result out) with an explicit doc-comment guarantee (lines 11-20) backed by real code: it calls only checkSafety() (pure, synchronous, no I/O — safetyCheck.ts) and understander.assessClarity/extractIntent, then returns. AnthropicPromptUnderstander.ts embeds the raw prompt into the LLM request body (expected/allowed — the model necessarily sees it in-flight) but the only persistence-adjacent call is budgetGuard.checkAndRecord({...}) (lines 56-63, 80-87), whose CostEventInput type (backend/src/cost/costEvents.ts lines 12-24) has no field capable of carrying prompt text — only userId/operation/provider/model/tokensInput/tokensOutput/units/estimatedUsd/episodeId/sessionId/dryRun. No console.log/Sentry/logger call anywhere in backend/src/generation (grep for console.|Sentry|logger.|log\\( returned 0 matches). generateForay.ts (the CLI entrypoint) only ever prints result.intent fields (subject/angle/priorKnowledge/disappointment) and duration/author_id to stdout — never args.prompt itself. backend/test/promptNoPersistence.test.ts enforces this structurally (regex scan of every generation/*.ts file for fs.write*/localStorage/pg Pool/client.query/INSERT INTO) and via a real before/after filesystem snapshot around three understandPrompt() calls. No fixture file under backend/test/ or backend/fixtures/ contains committed real user-prompt text (only unrelated podcast feed XML fixtures). The second half of the rule ('the Foray is given a title on creation, which is retained') has no code to audit yet — §4.9/publish, where a title would be assigned and persisted into data/forays.json, is not implemented in this checkout (doc's own status note: 'Nothing described here is built').",
+      "needs_human_gate": false
+    },
+    {
+      "severity": "low",
+      "title": "sourceBeats.ts's transcription-queue log records the beat's verbatim claim text, not the raw user prompt — worth confirming this isn't itself a privacy-adjacent leak if beats ever echo prompt phrasing",
+      "evidence": "sourceBeats.ts lines 206-217: transcriptionQueueCandidates.push({ claim, ... }) persists the LLM-generated beat claim (not the raw prompt) into an in-memory result object returned from sourceBeats(); this object isn't written to disk anywhere in the current code (no writeFile call found), so today it's not a rule violation. Flagging only because a beat claim is LLM-derived from the user's prompt/intent and could closely paraphrase what a user asked for; if a future stage (not yet built) persists SourceBeatsResult.transcriptionQueueCandidates to a durable store, that would be worth revisiting against the spirit of §9.4, though it is not a violation of the literal 'raw prompt is discarded' rule as designed.",
+      "needs_human_gate": true
+    }
+  ]
+}

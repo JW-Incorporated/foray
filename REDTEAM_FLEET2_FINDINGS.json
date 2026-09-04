@@ -1,0 +1,33 @@
+{
+  "findings": [
+    {
+      "severity": "H",
+      "title": "buildPlaylist recomputes the full search pipeline from scratch on every call — no query-result memoization, only per-term DF caching",
+      "repro": "Instrumented interpretQuery/searchWithRelaxation/classifyResults with process.hrtime around identical repeated calls to buildPlaylist's equivalent pipeline (same persistent ctx object as app.js's searchCtx(), same pool), query='nuclear fusion energy', 8 iterations in a loop.",
+      "evidence": "Per-call timings (ms), same ctx/pool reused every time: [14597.5, 4197.5, 4008.7, 3391.8, 4204.4, 4599.6, 3400.5, 5206.8]. Even fully warm (ctx._dfMemo/_corpusDfMemo populated), every call still costs 3.4-6s because scoreMatch() re-scans and re-scores the whole ~1880-item pool per query with no caching of interpretQuery's term-expansion output or scoreMatch's per-item results. searchWithRelaxation dominates cost (e.g. 4.2-7.7s per call vs interpretQuery's <2ms once warm). A user re-running the same or similar queries (typo fix, back button, re-tap) pays this full cost every time with zero reuse."
+    },
+    {
+      "severity": "L",
+      "title": "Some real queries ('productivity', 'dateline', 'casefile', 'morbid') return single-show-dominated playlists (up to 100% one show)",
+      "repro": "node script running interpretQuery+searchWithRelaxation+classifyResults for 'productivity' and 'dateline' against real data/*.json.",
+      "evidence": "'productivity': picks show distribution {\"Happier with Gretchen Rubin\":5,\"The Mel Robbins Podcast\":2,\"The Happiness Lab\":1} (8/8 strong results, all cleared bar, all from only 3 shows — no cap violation, this is the documented single-show/thin-catalogue backfill path in classifyResults, working as coded and covered by existing tests, not a defect)."
+    },
+    {
+      "severity": "L",
+      "title": "Rich/sparse/empty tiering honest across broad adversarial query set",
+      "repro": "Ran 66 real queries (topical + show-name + edge terms drawn from semantic-index.json concepts) through interpretQuery/searchWithRelaxation/classifyResults against the live catalogue.",
+      "evidence": "No query with a thin/weak result set (e.g. 'gardening' 2 picks, 'huberman' 2 picks, 'joe rogan' 0 results->empty) was misclassified as 'ok'/rich; conversely no rich topic (e.g. 'nuclear fusion energy' 10 picks, diverse) was mislabeled sparse. Empty-vs-sparse boundary (2-clearer floor) held consistently ('basketball', 'chess', 'poker', 'vietnam war', 'freakonomics', 'tim ferriss' all correctly empty with 0-3 raw results)."
+    },
+    {
+      "severity": "L",
+      "title": "Archived-row degrade path is robust to total catalogue loss and corrupted parts — no crash, correct messaging",
+      "repro": "VM-mounted real app.js+search-engine.js against real data/*.json (test/playlist-durability.test.js's own harness pattern), built a real playlist via buildPlaylist('physics'), then (a) removed ALL 10 of its items from discover.json+session.episodes in a throwaway in-memory copy and re-rendered, and (b) injected a part with id:null (fully unresolvable) into a saved playlist and re-rendered.",
+      "evidence": "(a) 100% age-out: no exception thrown, view() HTML shows 10/10 rows as class=\"ep-row gone\", partsNote text 'not in 4a's catalogue right now' present, row count matches saved item count exactly (no silent drop). (b) null-id part: no exception thrown, row rendered as 'Part no longer in the catalogue' (the unnamed-state branch), row count still matches. Independently confirmed by running the full existing suite: `node --test test/playlist-durability.test.js` -> 33/33 pass, 0 fail."
+    }
+  ],
+  "areas_clean": [
+    "rich/sparse/empty tier boundary honesty across 66 real live-catalogue queries — no overselling of thin results found",
+    "diversify() PER_SHOW_CAP mechanism itself — synthetic stress test (1 dominant show x8 + 4 single-episode shows) correctly capped the dominant show to perShowCap=2 on the first pass and only backfilled its overflow after every other candidate show had a slot, exactly as documented",
+    "archivedRow()/partsNote()/resolveParts() degrade path for aged-out and corrupted playlist parts — no crash, no silent drop, correct user-facing messaging, confirmed both via existing green test suite and independent adversarial VM-harness repro"
+  ]
+}
