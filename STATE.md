@@ -38,6 +38,41 @@ docs/. Completed workstreams move to their plan doc's retro section.
   (merge_authority: human).
 - **Explicitly out of scope:** any new functionality beyond the version bump
   + regression test.
+### The home screen under a NOTCH — four device-only defects (2026-09-03, one PR, no follow-up) — `fix/home-layout-safe-area`
+
+- **What:** the founder's TestFlight home screen ("complete garbage"). Four
+  defects, none of them visible in a desktop browser because all four turn
+  on `env(safe-area-inset-top)`, which is 0 there and ~59px on a notched
+  iPhone: (1) `.topbar` set `height: var(--topbar-h)` alongside
+  `padding-top: env(safe-area-inset-top)` under `box-sizing: border-box`, so
+  its border-bottom painted through the `<h1>`; (2) the same mismatch left a
+  43px dead band under the header; (3) `[hidden]` was defeated by author
+  `display` declarations, so a second search box and "Browse all shows"
+  rendered permanently; (4) `.home`'s fixed height crushed the four subject
+  cards to 26px whenever an optional sibling appeared (#458's mechanism,
+  different offender — the container was the bug). Plus the blank artwork
+  tiles: 53 of 220 catalog shows carry `artwork_url: null`, now backfilled at
+  render time from the discover pool.
+- **Branch:** `fix/home-layout-safe-area` — PR only, never main.
+- **Owned/new files:** `test/home-layout.test.js` (evaluates the real
+  stylesheet's box model at inset 0 AND 59px — a desktop browser cannot see
+  any of this, so neither can a test that only reads the DOM at inset 0).
+- **Shared files it touches:** `styles.css` (`.topbar`, `.home`, `.cards4`,
+  a global `[hidden]` rule, `#banner-slot:empty`), `app.js`
+  (`showArtworkUrl()` + its three call sites), `test/show-page.test.js`
+  (three artwork tests), `test/suite-integrity.test.js` (one new floor, one
+  raised).
+- **Explicitly out of scope:** `tools/mobile/` and `.github/workflows/` — a
+  sibling session owns both. Also NOT done here: backfilling
+  `data/catalog.json`'s 53 null `artwork_url` values, which is the root fix
+  for the blank tiles and needs `tools/harvest-catalog.mjs` re-run against
+  iTunes. The render-time fallback covers all 53 today.
+- **Left red and NOT touched:** `tools/mobile/prepare-webdir.test.mjs`'s
+  bundle-total assertion fails on a Windows checkout only (CRLF inflates the
+  six largest shipped files by 70 KB, over a 2.5 MB alarm). CI is green on
+  `main`; same root cause as the long-standing local-only
+  `catalog-client.json is derived from catalog.json` failure.
+
 ### Show-pages Stage 3b — full per-show RSS ingestion (2026-09-02) — `t_567b570f/show-pages-3b-rss-ingestion`
 
 - **What:** `docs/show-pages-plan.md` §Stage 3, decided path 3b (full

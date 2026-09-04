@@ -27,6 +27,28 @@
   }
 }
 * { box-sizing: border-box; }
+
+/* `hidden` is this app's ONLY hiding mechanism — app.js and player/client.js
+   toggle `el.hidden` in ~30 places and never touch `display`. But `hidden` is
+   enforced by a UA-stylesheet rule (`[hidden] { display: none }`), and an
+   author `display` declaration beats the UA origin at ANY specificity. So
+   every element that also carries a `display` from a class or id rule was
+   rendering while marked hidden:
+
+     #sh-form         display: flex   -> the "search shows by name…" box drew
+                                        under the playlist box at all times
+     #sh-results     (.show-results)  -> a phantom flex item + its 8px gap
+     #browse-all-link(.browse-all-link) -> "Browse all shows ›" always visible
+     .dd-device-only                  -> the download-diagnostics device-only
+                                        line, meant for one failure state only
+
+   On the home screen that is ~130px of furniture the founder never asked for,
+   inside a fixed-height flex column — so it also stole that space from the
+   four subject cards. `!important` is the standard fix and the only one that
+   works: it puts the author `display: none` above every other author rule,
+   which is exactly the semantics `hidden` is supposed to have. */
+[hidden] { display: none !important; }
+
 html { -webkit-text-size-adjust: 100%; }
 body {
   margin: 0;
@@ -50,7 +72,24 @@ body {
 .topbar {
   position: fixed;
   top: 0; left: 0; right: 0;
-  height: var(--topbar-h);
+  /* The safe-area inset is part of this box's HEIGHT, not extra on top of it.
+     `* { box-sizing: border-box }` above makes `height` the total of content +
+     padding + border, so the previous `height: var(--topbar-h)` alongside
+     `padding-top: env(safe-area-inset-top)` asked for a 44px box containing
+     59px of padding on a notched iPhone. The content box went negative, the
+     <h1> spilled out below the bar, and `border-bottom` painted straight
+     through the title text. Measured on an emulated iPhone 16 Pro Max with the
+     inset substituted at 59px: bar bottom 60px, border at y=59, title box
+     45.6–72.4 — the line crossed the title and the title hung 12.4px below the
+     bar. `env()` is 0 in every desktop browser, which is why this was invisible
+     until TestFlight.
+
+     This must stay identical to the four places that reserve space for this
+     fixed bar (`#view`, `.home`, `.shell-notice`, `.fy-transport`) — the bar's
+     own box and the gap left for it are one number. When they disagreed, the
+     44px bar under a 103px offset left a 43px dead band under the header.
+     test/home-layout.test.js recomputes all five and fails on any drift. */
+  height: calc(var(--topbar-h) + env(safe-area-inset-top));
   display: flex; align-items: center;
   gap: 10px;
   padding: 0 10px;
@@ -179,12 +218,27 @@ body {
      live: during iOS Safari's rubber-band overscroll bounce the reported
      dynamic viewport height jitters as the gesture plays out, and since
      `.cards4`/`.mini-card` below derive their size from `.home`'s height via
-     `flex: 1; min-height: 0`, that jitter visibly stretched and shrank the
-     cards while scrolling (#reported 2026-08-31, introduced by #359's bounce
+     `flex: 1`, that jitter visibly stretched and shrank the cards while
+     scrolling (#reported 2026-08-31, introduced by #359's bounce
      restore). `svh` stays fixed regardless of toolbar/overscroll state, so
-     `.home` — and everything sized from it — no longer recomputes mid-bounce. */
-  height: calc(100vh - var(--topbar-h) - env(safe-area-inset-top));
-  height: calc(100svh - var(--topbar-h) - env(safe-area-inset-top));
+     `.home` — and everything sized from it — no longer recomputes mid-bounce.
+
+     `min-height`, not `height`, and that is the fix for the second half of
+     "everything is on top of each other". A FIXED height here means the column
+     has a hard budget: `.cards4` is its only `flex: 1` child, so every other
+     child is `flex: none` and takes its space off the top. A returning user
+     with a continue banner and three "Jump back in" rows (both optional, both
+     ordinary) crushed `.cards4` from 454px to 63.8px and each of the four
+     cards to 26px — measured, at 440x956. That is the exact failure #433/#458
+     hit from a different sibling, and moving one offender below the fold
+     (`.home-below`) only ever fixes that one offender; the container was the
+     bug. With `min-height` the column still fills exactly one screen in the
+     common case, and when it genuinely cannot, the page grows and scrolls
+     (body scroll is already live — see the `overflow: hidden` note above)
+     instead of destroying the cards. Pair with `.cards4`'s own floor below:
+     that is what makes "grow" happen rather than "shrink to nothing". */
+  min-height: calc(100vh - var(--topbar-h) - env(safe-area-inset-top));
+  min-height: calc(100svh - var(--topbar-h) - env(safe-area-inset-top));
   /* Contain the rubber-band bounce here so it doesn't chain into resizing
      this element's flex children — the page (body) still bounces normally
      (#359's fix stays intact, no `overflow: hidden` above), only the visual
@@ -199,19 +253,34 @@ body {
 }
 
 /* Anything that belongs to the home screen but must NOT compete with the four
-   cards for space. `.home` is a fixed-height flex column whose only `flex: 1`
-   child is `.cards4`, so a tall sibling added inside it silently starves the
-   cards to zero height and they overflow on top of whatever follows — which is
+   cards for space. `.cards4` is `.home`'s only `flex: 1` child, so a tall
+   sibling added inside it takes its space straight off the cards — which is
    what "Shows we vouch for" (#433) did, at every viewport including desktop:
-   `.cards4` measured 0 px and each card 26 px. Content placed here sits after
-   `.home` instead, so it is reached by scrolling and the cards keep the
-   viewport. Mirrors `.home`'s own width and horizontal padding so the two read
-   as one column. */
+   `.cards4` measured 0 px and each card 26 px, and because `.home` was then a
+   FIXED-height column the overflow painted on top of whatever followed.
+   Content placed here sits after `.home` instead, so it is reached by
+   scrolling and the cards keep the viewport. Mirrors `.home`'s own width and
+   horizontal padding so the two read as one column.
+
+   `.home` is `min-height` now, and `.cards4` carries a real floor, so the
+   worst case is a taller scrolling page rather than crushed cards — but that
+   is a backstop for siblings nobody moved, not a licence to put more here.
+   A section this size still belongs below the fold. */
 .home-below {
   max-width: 680px;
   margin: 0 auto;
   padding: 0 10px calc(10px + env(safe-area-inset-bottom));
 }
+
+/* `renderHome()` always emits `<div id="banner-slot">`, filled or not, and
+   `bannerHtml()` returns "" whenever there is nothing to continue — which is
+   most of the time. An empty div is still a flex item of `.home`, so it still
+   claimed one of the column's 8px `gap`s and pushed everything below it down
+   by that much for no content at all. `:empty` takes it out of flex layout
+   entirely, so an empty optional block costs exactly zero. Same reason the
+   `hidden` fix at the top of this file matters: nothing invisible may occupy
+   space in a column whose space is the scarce resource. */
+#banner-slot:empty { display: none; }
 
 .banner {
   display: flex; align-items: center; gap: 10px;
@@ -243,7 +312,27 @@ body {
 
 .cards4 {
   flex: 1;
-  min-height: 0;
+  /* The floor that turns "the cards get crushed" into "the page gets taller".
+     Was `min-height: 0`, i.e. no floor at all: as the only `flex: 1` child of
+     a fixed-height column, `.cards4` absorbed every optional sibling's height
+     by shrinking, and a banner + three "Jump back in" rows took it to 63.8px
+     with 26px cards. `.mini-card` sets `overflow: hidden`, so nothing looked
+     broken — the four cards simply became slivers with the artwork and hook
+     clipped away.
+
+     The number is not a guess: four `.mini-card`s at their own minimum plus
+     the three 8px gaps. A card's minimum is its 56px artwork (`.mini-card img`)
+     plus its 12px top and bottom padding plus its 1px top and bottom border —
+     everything here is `border-box`, so the border is inside the number, not
+     around it. 56 + 24 + 2 = 82, and 4*82 + 3*8 = 352px. (344 was the first
+     value here, and it omitted the border: each card came out at 80px, an
+     80 - 12 - 12 - 1 - 1 = 54px content box against 56px of artwork, clipped
+     2px top and bottom by `overflow: hidden` — the very failure the floor
+     exists to prevent, two pixels' worth.)
+     Keep the arithmetic here in sync with those rules — it is recomputed from
+     `.mini-card`'s own box in test/home-layout.test.js, which fails if any of
+     them moves. */
+  min-height: calc(4 * (56px + 2 * 12px + 2 * 1px) + 3 * 8px);
   display: grid;
   grid-template-rows: repeat(4, 1fr);
   gap: 8px;

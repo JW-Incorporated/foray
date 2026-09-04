@@ -281,8 +281,32 @@ const FLOORS = {
      silently in exactly the way #276's playlist decay did: a dropped fallback
      entry renders zero episodes rather than an error, on one specific show,
      and nothing else in the repo would notice. Every test names its mutation;
-     see the suite header for the full list of what each test pins. */
-  "test/show-page.test.js": 39,
+     see the suite header for the full list of what each test pins.
+
+     Raised 39 -> 43 for show ARTWORK, which fails the same silent way: 53 of
+     catalog.json's 220 shows carry `artwork_url: null`, every render site took
+     its else-branch, and the result was a flat grey tile that reads as one
+     broken show rather than a quarter of the catalogue. The four added tests
+     pin the discover-pool fallback; that a genuine absence still renders the
+     placeholder rather than a broken image; that its memoised pool index
+     follows the pool it was built from (rendered twice on purpose — this
+     harness gives every test a fresh vm context and a browser gives a whole
+     session ONE); and the implication over the real data, pool has artwork
+     => the show resolves artwork. */
+  "test/show-page.test.js": 43,
+
+  /* The home screen's geometry under DEVICE conditions. Floored because every
+     defect it pins was invisible in a desktop browser — all four turn on
+     `env(safe-area-inset-top)`, which is 0 on a desktop and ~59px on a notched
+     iPhone, so nothing in CI or in anyone's browser would have caught them and
+     they reached TestFlight. The suite evaluates the real stylesheet's box
+     model (var/env/calc, border-box arithmetic) at both inset values rather
+     than grepping for strings, so a fix that merely mentions `env()` still
+     fails. Every test names the one-line mutation that kills it; six mutations
+     across these five tests were run and all six went red. A review round then
+     found four MORE wrong stylesheets the first draft passed — see that file's
+     header for what each of them broke and which line now stops it. */
+  "test/home-layout.test.js": 5,
 
   /* Stage 3b of docs/show-pages-plan.md — full per-show RSS ingestion
      (kanban card t_567b570f): renders the curated pool synchronously so
