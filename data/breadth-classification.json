@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-09-03T16:11:03.722Z",
+  "built_at": "2026-09-04T00:13:38.260Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-09-03-89793fdf",
+    "last_batch_id": "fresh-2026-09-04-40f035f7",
     "last_batch_tier": 1
   },
   "entries": {
@@ -106375,11 +106375,40 @@
     },
     "1628348754": {
       "topics": [
-        "gaming"
+        "gaming",
+        "tv-film",
+        "comedy/casual-hangs",
+        "tv-film/reviews"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.95
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.7
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.5
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Video game industry news and analysis with focus on game releases.",
+      "display_title": "The Jeff Gerstmann Show - A Podcast About",
+      "blurb": "Jeff Gerstmann brings his extreme knowledge of video games, the video game industry, and energy drinks to you each and every week.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-40f035f7",
+      "classified_at": "2026-09-04T00:13:38.260Z"
     },
     "1628369888": {
       "topics": [
@@ -106622,11 +106651,40 @@
     },
     "1629844110": {
       "topics": [
-        "gaming"
+        "gaming",
+        "comedy/casual-hangs",
+        "music",
+        "history"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.95
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.7
+        },
+        {
+          "node": "music",
+          "confidence": 0.5
+        },
+        {
+          "node": "history",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Video game industry news and analysis with focus on game releases.",
+      "display_title": "Friends Per Second",
+      "blurb": "Three nerds. Three microphones. Zero clue what we're talking about - a video game podcast from Skill Up, Jake Baldino, and Lucy James.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-40f035f7",
+      "classified_at": "2026-09-04T00:13:38.260Z"
     },
     "1629889515": {
       "topics": [
@@ -106671,11 +106729,40 @@
     },
     "1630002174": {
       "topics": [
-        "tv-film"
+        "society/law",
+        "business/careers",
+        "tv-film",
+        "news"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society/law",
+          "confidence": 0.95
+        },
+        {
+          "node": "business/careers",
+          "confidence": 0.7
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.65
+        },
+        {
+          "node": "news",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Court cases and legal disputes adjudicated by a judge.",
+      "display_title": "The People’s Court Podcast",
+      "blurb": "The honorable Judge Marilyn Milian presides over the four-time Emmy award winning \"The People’s Court.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-40f035f7",
+      "classified_at": "2026-09-04T00:13:38.260Z"
     },
     "1630013929": {
       "topics": [
@@ -106910,11 +106997,40 @@
     },
     "1631381118": {
       "topics": [
+        "culture/art",
+        "history/military-modern",
+        "craft",
         "gaming"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.7
+        },
+        {
+          "node": "history/military-modern",
+          "confidence": 0.7
+        },
+        {
+          "node": "craft",
+          "confidence": 0.7
+        },
+        {
+          "node": "gaming",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Discussion and analysis of art topics.",
+      "display_title": "Ship of the Dead Podcast",
+      "blurb": "Limithron's Ship of the Dead, a tabletop roleplaying game podcast with a strong focus on pirate themed games, Dungeons & Dragons, and OSR/NSR games like Mörk Borg and Mothership.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-40f035f7",
+      "classified_at": "2026-09-04T00:13:38.260Z"
     },
     "1631381367": {
       "topics": [
@@ -107383,11 +107499,40 @@
     },
     "1633515294": {
       "topics": [
-        "health"
+        "health",
+        "health/nutrition",
+        "news/daily",
+        "news"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health",
+          "confidence": 0.95
+        },
+        {
+          "node": "health/nutrition",
+          "confidence": 0.7
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.5
+        },
+        {
+          "node": "news",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Discussion and analysis of health & fitness topics.",
+      "display_title": "Wellness, Actually with Emily Oster & Perry Wilson,",
+      "blurb": "A staggering amount of health and wellness news and information is bombarding us everywhere we look &ndash; and who&rsquo;s got time to parse it out, to verify it, and then.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-40f035f7",
+      "classified_at": "2026-09-04T00:13:38.260Z"
     },
     "1633589227": {
       "topics": [
@@ -107421,11 +107566,40 @@
     },
     "1633759050": {
       "topics": [
-        "gaming"
+        "comedy/casual-hangs",
+        "history/military-modern",
+        "gaming",
+        "hobbies"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.7
+        },
+        {
+          "node": "history/military-modern",
+          "confidence": 0.7
+        },
+        {
+          "node": "gaming",
+          "confidence": 0.55
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Humorous conversation and comedy performances.",
+      "display_title": "Twenty Sides: A DnD Podcast",
+      "blurb": "Most actual play podcasts ask for four hours.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-40f035f7",
+      "classified_at": "2026-09-04T00:13:38.260Z"
     },
     "1633858127": {
       "topics": [
@@ -107476,12 +107650,40 @@
     },
     "1634135028": {
       "topics": [
+        "society/law",
         "news/politics",
-        "education"
+        "news/daily",
+        "news"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society/law",
+          "confidence": 0.9
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.9
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.7
+        },
+        {
+          "node": "news",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Court cases and legal disputes adjudicated by a judge.",
+      "display_title": "UNBIASED Politics",
+      "blurb": "Get the facts, without the spin.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-40f035f7",
+      "classified_at": "2026-09-04T00:13:38.260Z"
     },
     "1634161343": {
       "topics": [
@@ -107514,11 +107716,40 @@
     },
     "1634356920": {
       "topics": [
-        "computing"
+        "computing",
+        "engineering",
+        "music/theory-production",
+        "science"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.55
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.55
+        },
+        {
+          "node": "music/theory-production",
+          "confidence": 0.5
+        },
+        {
+          "node": "science",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Discussion and analysis of computing topics.",
+      "display_title": "张小珺Jùn｜商业访谈录",
+      "blurb": "和你一起，从这里，探索新世界！ 《张小珺商业访谈录》是一档深度访谈节目，以2至7小时的长对话为形式，聚焦真实的人物表达与高密度的前沿信息。由语言即世界工作室出品。 主持人张小珺是财经媒体人，专注中国科技业深度报道，覆盖AI、科技巨头、风险投资与知名人物。曾13次获得国内外新闻奖项，其中2022年至2024年连续三届获得亚洲卓越新闻奖（SOPA）——被称为“亚洲普利策”。她也是语言即世界工作室的创始人。 “如果我的访谈能陪你走一段孤独的未知的路，也许有一天可以离目的地更近一点，我就很温暖。”——张小珺.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-40f035f7",
+      "classified_at": "2026-09-04T00:13:38.260Z"
     },
     "1634359309": {
       "topics": [
@@ -107552,11 +107783,40 @@
     },
     "1634491338": {
       "topics": [
-        "business/management"
+        "business/careers",
+        "business/management",
+        "culture/art",
+        "culture"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/careers",
+          "confidence": 0.7
+        },
+        {
+          "node": "business/management",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.5
+        },
+        {
+          "node": "culture",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Business strategies, entrepreneurship, and industry insights.",
+      "display_title": "Do Good To Lead Well with Craig Dowden",
+      "blurb": "If you're passionate about mastering self-leadership, you're in the right place.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-40f035f7",
+      "classified_at": "2026-09-04T00:13:38.260Z"
     },
     "1634660275": {
       "topics": [
@@ -107606,11 +107866,40 @@
     },
     "1634874522": {
       "topics": [
+        "culture/books",
+        "education/language-learning",
+        "education/how-to",
         "education/courses"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.7
+        },
+        {
+          "node": "education/language-learning",
+          "confidence": 0.7
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.7
+        },
+        {
+          "node": "education/courses",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Discussion and analysis of books topics.",
+      "display_title": "Talk To Me In Korean",
+      "blurb": "The key to learning Korean is how easy it is to stay motivated to learn the language.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-40f035f7",
+      "classified_at": "2026-09-04T00:13:38.260Z"
     },
     "1634897726": {
       "topics": [
@@ -108038,11 +108327,40 @@
     },
     "1636696986": {
       "topics": [
-        "health/fitness"
+        "health/fitness",
+        "comedy/casual-hangs",
+        "engineering/energy-fusion",
+        "society/law"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.95
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.7
+        },
+        {
+          "node": "engineering/energy-fusion",
+          "confidence": 0.7
+        },
+        {
+          "node": "society/law",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Discussion and analysis of fitness topics.",
+      "display_title": "Know Your Power",
+      "blurb": "The Know Your Power Podcast is a fitness & mindset podcast hosted by IFBB PRO Julia Rene and Kendall Aaliyah.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-40f035f7",
+      "classified_at": "2026-09-04T00:13:38.260Z"
     },
     "1636718576": {
       "topics": [
@@ -108145,11 +108463,40 @@
     },
     "1637180412": {
       "topics": [
-        "education/courses"
+        "education/how-to",
+        "education/courses",
+        "culture/art",
+        "history/military-ancient"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/how-to",
+          "confidence": 0.7
+        },
+        {
+          "node": "education/courses",
+          "confidence": 0.55
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.5
+        },
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Discussion and analysis of how to topics.",
+      "display_title": "Nichole Ford, LCSW Learning to kick the LCSW",
+      "blurb": "Welcome you wanna be LCSWer’s.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-40f035f7",
+      "classified_at": "2026-09-04T00:13:38.260Z"
     },
     "1637182635": {
       "topics": [
@@ -108220,11 +108567,40 @@
     },
     "1637353704": {
       "topics": [
+        "science",
+        "engineering/ai-robotics",
+        "education",
         "math"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.9
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.9
+        },
+        {
+          "node": "education",
+          "confidence": 0.7
+        },
+        {
+          "node": "math",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Scientific research, findings, and expert interviews.",
+      "display_title": "The Cartesian Cafe",
+      "blurb": "The Cartesian Cafe is the podcast where an expert guest and Timothy Nguyen map out scientific and mathematical subjects in detail.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-40f035f7",
+      "classified_at": "2026-09-04T00:13:38.260Z"
     },
     "1637354258": {
       "topics": [
@@ -108303,19 +108679,77 @@
     },
     "1637519892": {
       "topics": [
+        "education/how-to",
+        "craft",
+        "adventure",
         "health/sexuality"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/how-to",
+          "confidence": 0.7
+        },
+        {
+          "node": "craft",
+          "confidence": 0.7
+        },
+        {
+          "node": "adventure",
+          "confidence": 0.7
+        },
+        {
+          "node": "health/sexuality",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Discussion and analysis of how to topics.",
+      "display_title": "Doing It Together",
+      "blurb": "Doing It Together is about empowering women and men to heal from cultural messages so that they can discover true pleasure and connection in their sexual relationship and marriage.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-40f035f7",
+      "classified_at": "2026-09-04T00:13:38.260Z"
     },
     "1637626050": {
       "topics": [
-        "education/self-improvement"
+        "comedy/casual-hangs",
+        "engineering",
+        "education/self-improvement",
+        "psychology"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.7
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.7
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.55
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Humorous conversation and comedy performances.",
+      "display_title": "Align with Jenna Zoe: The Human Design Podcast",
+      "blurb": "Becoming Who You Came Here to Be is the adventure of a lifetime.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-40f035f7",
+      "classified_at": "2026-09-04T00:13:38.260Z"
     },
     "1637662653": {
       "topics": [
@@ -108454,11 +108888,40 @@
     },
     "1638152136": {
       "topics": [
-        "society"
+        "society/law",
+        "psychology",
+        "society",
+        "economics"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society/law",
+          "confidence": 0.7
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.55
+        },
+        {
+          "node": "society",
+          "confidence": 0.55
+        },
+        {
+          "node": "economics",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Court cases and legal disputes adjudicated by a judge.",
+      "display_title": "Transformation Horizon",
+      "blurb": "Exploring how Organization Development principles help leaders build workplaces where both people and organizations thrive.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-40f035f7",
+      "classified_at": "2026-09-04T00:13:38.260Z"
     },
     "1638199777": {
       "topics": [
@@ -108521,11 +108984,40 @@
     },
     "1638615408": {
       "topics": [
+        "tv-film",
+        "news/daily",
+        "travel",
         "personal-journals"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.7
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.7
+        },
+        {
+          "node": "travel",
+          "confidence": 0.7
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Television and film discussion and review content.",
+      "display_title": "The Rick and Kelly Show",
+      "blurb": "Rick & Kelly (Fox News & Bravo TV) host their podcast where they can say anything & everything without fear of being fined or fired.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-40f035f7",
+      "classified_at": "2026-09-04T00:13:38.260Z"
     },
     "1638624711": {
       "topics": [
@@ -108536,11 +109028,40 @@
     },
     "1638628704": {
       "topics": [
-        "religion"
+        "engineering",
+        "religion",
+        "tv-film/reviews",
+        "tv-film"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering",
+          "confidence": 0.7
+        },
+        {
+          "node": "religion",
+          "confidence": 0.55
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.5
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Discussion and analysis of engineering topics.",
+      "display_title": "Latter Day Bridge Builders",
+      "blurb": "Striving to build bridges between active Latter-day Saints (Mormons), those who have left the faith, and everyone in between.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-40f035f7",
+      "classified_at": "2026-09-04T00:13:38.260Z"
     },
     "1638636560": {
       "topics": [
@@ -108584,9 +109105,23 @@
       "topics": [
         "hobbies"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Discussion and analysis of hobbies & leisure topics.",
+      "display_title": "M字闲聊",
+      "blurb": "闲聊关于爱情、城市、音乐或八卦，希望可以陪你上班，也伴你睡着，用轻松幽默的态度看待万物.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-40f035f7",
+      "classified_at": "2026-09-04T00:13:38.260Z"
     },
     "1638937907": {
       "topics": [
@@ -109146,11 +109681,40 @@
     },
     "1641798510": {
       "topics": [
-        "religion"
+        "religion",
+        "comedy/casual-hangs",
+        "tv-film",
+        "culture/art"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.55
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.5
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.5
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Discussion and analysis of religion & spirituality topics.",
+      "display_title": "Come Back Podcast",
+      "blurb": "Sharing stories of coming back to The Church of Jesus Christ of Latter-Day Saints.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-40f035f7",
+      "classified_at": "2026-09-04T00:13:38.260Z"
     },
     "1641800514": {
       "topics": [
@@ -109184,11 +109748,40 @@
     },
     "1642091664": {
       "topics": [
-        "religion"
+        "religion",
+        "history/technology",
+        "history",
+        "science"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.55
+        },
+        {
+          "node": "history/technology",
+          "confidence": 0.5
+        },
+        {
+          "node": "history",
+          "confidence": 0.5
+        },
+        {
+          "node": "science",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Discussion and analysis of religion & spirituality topics.",
+      "display_title": "Deconstructing the Myth",
+      "blurb": "A podcast exploring why those who grew up in the American Evangelical church are now leaving it behind.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-40f035f7",
+      "classified_at": "2026-09-04T00:13:38.260Z"
     },
     "1642116749": {
       "topics": [
@@ -109231,11 +109824,40 @@
     },
     "1642334178": {
       "topics": [
-        "society/government"
+        "news/politics",
+        "engineering/ai-robotics",
+        "society/government",
+        "society/law"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.95
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        },
+        {
+          "node": "society/government",
+          "confidence": 0.55
+        },
+        {
+          "node": "society/law",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Discussion and analysis of politics topics.",
+      "display_title": "You Might Be Right",
+      "blurb": "Former Tennessee Governors Phil Bredesen and Bill Haslam bring their perspectives to some of the country’s most challenging public policy questions, joined by expert guests with a range of viewpoints.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-40f035f7",
+      "classified_at": "2026-09-04T00:13:38.260Z"
     },
     "1642369862": {
       "topics": [
@@ -109390,11 +110012,40 @@
     },
     "1643053152": {
       "topics": [
-        "society"
+        "comedy/casual-hangs",
+        "culture/books",
+        "health/mental",
+        "psychology"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.7
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.7
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Humorous conversation and comedy performances.",
+      "display_title": "The Motivation Mindset with Risa Williams",
+      "blurb": "The Motivation Mindset is an award-winning practical time management podcast hosted by Risa Williams, therapist and the book author of Get Stuff Done Without the Stress, The Ultimate Time Management.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-40f035f7",
+      "classified_at": "2026-09-04T00:13:38.260Z"
     },
     "1643061986": {
       "topics": [
@@ -109506,19 +110157,77 @@
     },
     "1643735064": {
       "topics": [
-        "comedy"
+        "comedy/casual-hangs",
+        "comedy",
+        "culture/books",
+        "culture"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.9
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.55
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.5
+        },
+        {
+          "node": "culture",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Humorous conversation and comedy performances.",
+      "display_title": "Camp Counselors with Zachariah Porter and Jonathan Carson",
+      "blurb": "Hey Happy Campers.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-40f035f7",
+      "classified_at": "2026-09-04T00:13:38.260Z"
     },
     "1643745036": {
       "topics": [
-        "sports"
+        "sports",
+        "sports/football",
+        "comedy/casual-hangs",
+        "news/daily"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.95
+        },
+        {
+          "node": "sports/football",
+          "confidence": 0.9
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.7
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Discussion and analysis of sports topics.",
+      "display_title": "New Heights with Jason & Travis Kelce",
+      "blurb": "Football’s funniest family duo — Jason Kelce of the Philadelphia Eagles and Travis Kelce of the Kansas City Chiefs — team up to provide next-level access to life in the.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-40f035f7",
+      "classified_at": "2026-09-04T00:13:38.260Z"
     },
     "1643758706": {
       "topics": [
@@ -109671,11 +110380,40 @@
     },
     "1644780654": {
       "topics": [
-        "education/how-to"
+        "education/how-to",
+        "tv-film",
+        "society/law",
+        "news/daily"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/how-to",
+          "confidence": 0.65
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.5
+        },
+        {
+          "node": "society/law",
+          "confidence": 0.5
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Discussion and analysis of how to topics.",
+      "display_title": "The Common Sense Practical Prepper",
+      "blurb": "Welcome to The Common Sense Practical Prepper.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-40f035f7",
+      "classified_at": "2026-09-04T00:13:38.260Z"
     },
     "1644787927": {
       "topics": [
@@ -109915,11 +110653,40 @@
     },
     "1646101002": {
       "topics": [
-        "education/self-improvement"
+        "science",
+        "education/how-to",
+        "engineering/energy-fusion",
+        "education"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.7
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.7
+        },
+        {
+          "node": "engineering/energy-fusion",
+          "confidence": 0.7
+        },
+        {
+          "node": "education",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Scientific research, findings, and expert interviews.",
+      "display_title": "The Mel Robbins Podcast",
+      "blurb": "You can change your life and Mel Robbins will show you how.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-40f035f7",
+      "classified_at": "2026-09-04T00:13:38.260Z"
     },
     "1646110438": {
       "topics": [
@@ -109930,11 +110697,40 @@
     },
     "1646152812": {
       "topics": [
-        "computing"
+        "computing",
+        "engineering",
+        "comedy/casual-hangs",
+        "tv-film/reviews"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.55
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.55
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.5
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Discussion and analysis of computing topics.",
+      "display_title": "Sharp Tech with Ben Thompson",
+      "blurb": "A podcast about understanding how tech works and the way it is changing the world. Hosted by Andrew Sharp with Ben Thompson.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-40f035f7",
+      "classified_at": "2026-09-04T00:13:38.260Z"
     },
     "1646154626": {
       "topics": [
@@ -110067,11 +110863,40 @@
     },
     "1646695974": {
       "topics": [
-        "medicine"
+        "education/how-to",
+        "health",
+        "medicine",
+        "culture/books"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/how-to",
+          "confidence": 0.9
+        },
+        {
+          "node": "health",
+          "confidence": 0.7
+        },
+        {
+          "node": "medicine",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Discussion and analysis of how to topics.",
+      "display_title": "The Checkup with Doctor Mike",
+      "blurb": "In The Checkup, board-certified family medicine physician, Dr.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-40f035f7",
+      "classified_at": "2026-09-04T00:13:38.260Z"
     },
     "1646709573": {
       "topics": [
@@ -110293,11 +111118,40 @@
     },
     "1647637080": {
       "topics": [
-        "society"
+        "society/law",
+        "true-crime",
+        "science",
+        "education/how-to"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society/law",
+          "confidence": 0.7
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.7
+        },
+        {
+          "node": "science",
+          "confidence": 0.7
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Court cases and legal disputes adjudicated by a judge.",
+      "display_title": "BioHacked: Family Secrets",
+      "blurb": "BioHacked tells startling true stories of the people caught between two multi-trillion-dollar industries — medicine and technology — and chronicles how their lives are transformed.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-40f035f7",
+      "classified_at": "2026-09-04T00:13:38.260Z"
     },
     "1647682625": {
       "topics": [
@@ -110315,11 +111169,40 @@
     },
     "1647910854": {
       "topics": [
-        "history"
+        "comedy/casual-hangs",
+        "news/politics",
+        "history",
+        "tv-film/reviews"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.7
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.7
+        },
+        {
+          "node": "history",
+          "confidence": 0.55
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Humorous conversation and comedy performances.",
+      "display_title": "Rachel Maddow Presents: Ultra",
+      "blurb": "As a new authoritarian movement rises in American politics, stoked by one of the country’s most outrageous demagogues, there is an all-out international manhunt for an American traitor.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-40f035f7",
+      "classified_at": "2026-09-04T00:13:38.260Z"
     },
     "1647976261": {
       "topics": [
@@ -110557,11 +111440,40 @@
     },
     "1648885530": {
       "topics": [
-        "religion"
+        "education/how-to",
+        "religion",
+        "culture/art",
+        "music/theory-production"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/how-to",
+          "confidence": 0.7
+        },
+        {
+          "node": "religion",
+          "confidence": 0.55
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.5
+        },
+        {
+          "node": "music/theory-production",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Discussion and analysis of how to topics.",
+      "display_title": "Dalai Lama Speaks",
+      "blurb": "Dalai Lama Speaks.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-40f035f7",
+      "classified_at": "2026-09-04T00:13:38.260Z"
     },
     "1648895227": {
       "topics": [
@@ -110645,11 +111557,40 @@
     },
     "1649091516": {
       "topics": [
-        "education/how-to"
+        "business/startups",
+        "business",
+        "education/how-to",
+        "culture/books"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.9
+        },
+        {
+          "node": "business",
+          "confidence": 0.9
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Business strategies, entrepreneurship, and industry insights.",
+      "display_title": "Help To Grow Talk: Effective Communication Skills",
+      "blurb": "DOES YOUR TALK NEED GROWTH.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-40f035f7",
+      "classified_at": "2026-09-04T00:13:38.260Z"
     },
     "1649102310": {
       "topics": [
@@ -110937,11 +111878,40 @@
     },
     "1650142740": {
       "topics": [
-        "gaming"
+        "music",
+        "tv-film/reviews",
+        "tv-film",
+        "sports"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.9
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.7
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.7
+        },
+        {
+          "node": "sports",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Music discussion, production techniques, or artist interviews.",
+      "display_title": "No Chit Chat Trivia",
+      "blurb": "No Chit Chat Trivia brings listeners trivia fun without the host blubbering on and on about their day.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-40f035f7",
+      "classified_at": "2026-09-04T00:13:38.260Z"
     },
     "1650145162": {
       "topics": [
@@ -111071,12 +112041,40 @@
     },
     "1650657462": {
       "topics": [
-        "religion/christianity",
-        "history"
+        "history",
+        "education/how-to",
+        "business/careers",
+        "travel"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.85
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.7
+        },
+        {
+          "node": "business/careers",
+          "confidence": 0.7
+        },
+        {
+          "node": "travel",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Historical events and developments explained.",
+      "display_title": "Misquoting Jesus with Bart Ehrman",
+      "blurb": "\"Misquoting Jesus\" is the only show where a six-time New York Times bestselling author and world-renowned Bible scholar uncovers the many , little known facts about the New Testament, the.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-40f035f7",
+      "classified_at": "2026-09-04T00:13:38.260Z"
     },
     "1650658049": {
       "topics": [
@@ -111162,11 +112160,40 @@
     },
     "1651139892": {
       "topics": [
-        "religion"
+        "religion",
+        "comedy/casual-hangs",
+        "history",
+        "education/how-to"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.55
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.5
+        },
+        {
+          "node": "history",
+          "confidence": 0.5
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Discussion and analysis of religion & spirituality topics.",
+      "display_title": "New Birth Podcast",
+      "blurb": "New Birth Cathedral Dr.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-40f035f7",
+      "classified_at": "2026-09-04T00:13:38.260Z"
     },
     "1651151200": {
       "topics": [
@@ -111321,11 +112348,40 @@
     },
     "1651896150": {
       "topics": [
-        "comedy"
+        "education/how-to",
+        "comedy",
+        "comedy/stand-up",
+        "tv-film"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/how-to",
+          "confidence": 0.7
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.65
+        },
+        {
+          "node": "comedy/stand-up",
+          "confidence": 0.5
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Discussion and analysis of how to topics.",
+      "display_title": "lemonparty",
+      "blurb": "show with ben avery, devan costa and jace avery.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-40f035f7",
+      "classified_at": "2026-09-04T00:13:38.260Z"
     },
     "1651903715": {
       "topics": [
@@ -111556,11 +112612,43 @@
     },
     "1652665068": {
       "topics": [
-        "travel"
+        "travel",
+        "adventure",
+        "comedy/stand-up",
+        "comedy/casual-hangs"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.8
+        },
+        {
+          "node": "adventure",
+          "confidence": 0.7
+        },
+        {
+          "node": "comedy/stand-up",
+          "confidence": 0.5
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Discussion and analysis of travel & places topics.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-40f035f7",
+      "classified_at": "2026-09-04T00:13:38.260Z"
     },
     "1652665688": {
       "topics": [
@@ -111714,11 +112802,40 @@
     },
     "1653631116": {
       "topics": [
-        "society"
+        "society",
+        "culture",
+        "tv-film/reviews",
+        "tv-film"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.55
+        },
+        {
+          "node": "culture",
+          "confidence": 0.55
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.5
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Discussion and analysis of society topics.",
+      "display_title": "Rádio Novelo Apresenta",
+      "blurb": "Toda quinta-feira, histórias que você nem sabia que precisava ouvir.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-40f035f7",
+      "classified_at": "2026-09-04T00:13:38.260Z"
     },
     "1653667017": {
       "topics": [
@@ -111998,12 +113115,40 @@
     },
     "1654644528": {
       "topics": [
-        "history",
+        "comedy/casual-hangs",
+        "education/how-to",
+        "adventure",
         "religion/judaism"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.7
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.7
+        },
+        {
+          "node": "adventure",
+          "confidence": 0.7
+        },
+        {
+          "node": "religion/judaism",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Humorous conversation and comedy performances.",
+      "display_title": "Jewish History Nerds",
+      "blurb": "Whoever said history was boring clearly never heard these stories…Welcome to Jewish History Nerds.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-40f035f7",
+      "classified_at": "2026-09-04T00:13:38.260Z"
     },
     "1654662855": {
       "topics": [
@@ -112230,11 +113375,40 @@
     },
     "1655748708": {
       "topics": [
-        "society"
+        "education/how-to",
+        "business",
+        "society",
+        "culture"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/how-to",
+          "confidence": 0.7
+        },
+        {
+          "node": "business",
+          "confidence": 0.7
+        },
+        {
+          "node": "society",
+          "confidence": 0.55
+        },
+        {
+          "node": "culture",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Discussion and analysis of how to topics.",
+      "display_title": "Skyline Drive: How to Live Forever",
+      "blurb": "Mangesh Hattikudur (Part-Time Genius, Mental_Floss) dives into the booming business of living forever&mdash;meeting the scientists, biopunks, and entrepreneurs trying to turn immortality into reality, and framing death as a choice.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-40f035f7",
+      "classified_at": "2026-09-04T00:13:38.260Z"
     },
     "1655774929": {
       "topics": [
@@ -112370,11 +113544,40 @@
     },
     "1656703836": {
       "topics": [
-        "personal-journals"
+        "personal-journals",
+        "culture/art",
+        "nature/ocean-science",
+        "craft"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "personal-journals",
+          "confidence": 0.55
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.5
+        },
+        {
+          "node": "nature/ocean-science",
+          "confidence": 0.5
+        },
+        {
+          "node": "craft",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Discussion and analysis of personal journals topics.",
+      "display_title": "Conversaciones con el Reflejo",
+      "blurb": "Este es nuestro proceso de aprender a mirar el reflejo y hacer las paces con él.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-40f035f7",
+      "classified_at": "2026-09-04T00:13:38.260Z"
     },
     "1656711321": {
       "topics": [
@@ -112400,11 +113603,43 @@
     },
     "1656808632": {
       "topics": [
-        "tv-film"
+        "tv-film",
+        "news",
+        "comedy/stand-up",
+        "comedy"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.55
+        },
+        {
+          "node": "news",
+          "confidence": 0.55
+        },
+        {
+          "node": "comedy/stand-up",
+          "confidence": 0.5
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Television and film discussion and review content.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-40f035f7",
+      "classified_at": "2026-09-04T00:13:38.260Z"
     },
     "1656841305": {
       "topics": [
@@ -112534,11 +113769,30 @@
     },
     "1657745574": {
       "topics": [
-        "religion/islam"
+        "religion/islam",
+        "business"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/islam",
+          "confidence": 0.7
+        },
+        {
+          "node": "business",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Discussion and analysis of islam topics.",
+      "display_title": "فاهم",
+      "blurb": "الهدف: رؤية العالم من منظور إسلامي وإيقاظ وعي المسلمين في كل أمر يهمهم في دينهم ودنياهم.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-40f035f7",
+      "classified_at": "2026-09-04T00:13:38.260Z"
     },
     "1657770114": {
       "topics": [
@@ -112563,11 +113817,40 @@
     },
     "1657868190": {
       "topics": [
+        "comedy/casual-hangs",
+        "education/how-to",
+        "education",
         "sports/volleyball"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.7
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.7
+        },
+        {
+          "node": "education",
+          "confidence": 0.7
+        },
+        {
+          "node": "sports/volleyball",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Humorous conversation and comedy performances.",
+      "display_title": "How to Get Recruited",
+      "blurb": "Wanting to learn how to help your athlete through the college recruiting process.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-40f035f7",
+      "classified_at": "2026-09-04T00:13:38.260Z"
     },
     "1657873290": {
       "topics": [
@@ -112936,11 +114219,40 @@
     },
     "1660605216": {
       "topics": [
-        "tv-film"
+        "news/daily",
+        "history/technology",
+        "tv-film",
+        "news"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.7
+        },
+        {
+          "node": "history/technology",
+          "confidence": 0.7
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.55
+        },
+        {
+          "node": "news",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Discussion and analysis of daily news topics.",
+      "display_title": "A Right Royal Podcast",
+      "blurb": "A Right Royal Podcast is HELLO.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-40f035f7",
+      "classified_at": "2026-09-04T00:13:38.260Z"
     },
     "1660615057": {
       "topics": [
@@ -113064,11 +114376,40 @@
     },
     "1661043438": {
       "topics": [
-        "society/government"
+        "news/politics",
+        "comedy/casual-hangs",
+        "society/government",
+        "news/daily"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.7
+        },
+        {
+          "node": "society/government",
+          "confidence": 0.55
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Discussion and analysis of politics topics.",
+      "display_title": "American Potential",
+      "blurb": "American Potential is a national award-winning podcast that shares how individuals are taking action in their communities to break barriers.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-40f035f7",
+      "classified_at": "2026-09-04T00:13:38.260Z"
     },
     "1661053093": {
       "topics": [
@@ -113220,11 +114561,40 @@
     },
     "1662104886": {
       "topics": [
+        "culture",
+        "business/careers",
+        "craft",
         "business/non-profit"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture",
+          "confidence": 0.7
+        },
+        {
+          "node": "business/careers",
+          "confidence": 0.7
+        },
+        {
+          "node": "craft",
+          "confidence": 0.7
+        },
+        {
+          "node": "business/non-profit",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Discussion and analysis of culture topics.",
+      "display_title": "Purpose & Profit Club® – The Nonprofit Fundraising",
+      "blurb": "Ready to stop fundraising the old way and start doubling results.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-40f035f7",
+      "classified_at": "2026-09-04T00:13:38.260Z"
     },
     "1662151080": {
       "topics": [
@@ -113514,11 +114884,40 @@
     },
     "1663860720": {
       "topics": [
-        "business"
+        "business",
+        "news/politics",
+        "history/military-ancient",
+        "history/military-modern"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.95
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.7
+        },
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.7
+        },
+        {
+          "node": "history/military-modern",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Business strategies, entrepreneurship, and industry insights.",
+      "display_title": "Bloomberg Daybreak: US Edition",
+      "blurb": "Listen for today's top stories, with context, in just 15 minutes.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-40f035f7",
+      "classified_at": "2026-09-04T00:13:38.260Z"
     },
     "1663863397": {
       "topics": [
@@ -113571,11 +114970,40 @@
     },
     "1663950354": {
       "topics": [
+        "education/how-to",
+        "education",
+        "business/careers",
         "aviation"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/how-to",
+          "confidence": 0.9
+        },
+        {
+          "node": "education",
+          "confidence": 0.7
+        },
+        {
+          "node": "business/careers",
+          "confidence": 0.7
+        },
+        {
+          "node": "aviation",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Discussion and analysis of how to topics.",
+      "display_title": "Ready 4 Pushback",
+      "blurb": "If you're looking to enter the commercial aviation industry, we've got the right podcast for you.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-40f035f7",
+      "classified_at": "2026-09-04T00:13:38.260Z"
     },
     "1663956121": {
       "topics": [
@@ -113902,11 +115330,40 @@
     },
     "1665484566": {
       "topics": [
-        "hobbies"
+        "tv-film",
+        "tv-film/reviews",
+        "culture",
+        "music/theory-production"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.95
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        },
+        {
+          "node": "music/theory-production",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Television and film discussion and review content.",
+      "display_title": "Super Retro",
+      "blurb": "A Nostalgic podcast about retro gaming, movies/tv, music and pop culture from the 80’s, 90’s and early 2000’s.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-40f035f7",
+      "classified_at": "2026-09-04T00:13:38.260Z"
     },
     "1665488006": {
       "topics": [
@@ -113939,11 +115396,40 @@
     },
     "1665728532": {
       "topics": [
+        "history/military-ancient",
+        "history/military-modern",
+        "health/mental",
         "education/self-improvement"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.7
+        },
+        {
+          "node": "history/military-modern",
+          "confidence": 0.7
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.7
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Historical events and developments explained.",
+      "display_title": "The Rollercoaster Podcast",
+      "blurb": "Some things break you open in a way you never fully close back up.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-40f035f7",
+      "classified_at": "2026-09-04T00:13:38.260Z"
     },
     "1665800122": {
       "topics": [
@@ -113954,11 +115440,40 @@
     },
     "1665823746": {
       "topics": [
-        "music"
+        "music",
+        "culture/art",
+        "music/theory-production",
+        "culture"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.95
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.7
+        },
+        {
+          "node": "music/theory-production",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Music discussion, production techniques, or artist interviews.",
+      "display_title": "Artist Friendly with Joel Madden",
+      "blurb": "On Artist Friendly, Good Charlotte’s Joel Madden gets real with today's breakthrough artists.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-40f035f7",
+      "classified_at": "2026-09-04T00:13:38.260Z"
     },
     "1666050632": {
       "topics": [
@@ -114057,11 +115572,40 @@
     },
     "1666536870": {
       "topics": [
-        "gaming"
+        "tv-film",
+        "history/military-modern",
+        "gaming",
+        "hobbies"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.7
+        },
+        {
+          "node": "history/military-modern",
+          "confidence": 0.7
+        },
+        {
+          "node": "gaming",
+          "confidence": 0.55
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Television and film discussion and review content.",
+      "display_title": "Get in the Trunk - A Delta Green",
+      "blurb": "Cosmic and supernatural horrors await the agents of Delta Green, a secret organization committed to protecting an unaware society—whatever the cost.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-40f035f7",
+      "classified_at": "2026-09-04T00:13:38.260Z"
     },
     "1666568050": {
       "topics": [
@@ -114411,12 +115955,40 @@
     },
     "1668002688": {
       "topics": [
+        "business/startups",
+        "education/how-to",
         "engineering/ai-robotics",
-        "computing"
+        "gaming"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.95
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.9
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.9
+        },
+        {
+          "node": "gaming",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Business strategies, entrepreneurship, and industry insights.",
+      "display_title": "No Priors: Artificial Intelligence | Technology | Startups",
+      "blurb": "At this moment of inflection in technology, co-hosts Elad Gil and Sarah Guo talk to the world's leading AI engineers, researchers and founders about the biggest questions: How far away.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-40f035f7",
+      "classified_at": "2026-09-04T00:13:38.260Z"
     },
     "1668038660": {
       "topics": [
@@ -114755,12 +116327,40 @@
     },
     "1669990482": {
       "topics": [
+        "history/technology",
         "engineering/ai-robotics",
-        "computing"
+        "comedy/casual-hangs",
+        "news/daily"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history/technology",
+          "confidence": 0.9
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.9
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.7
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Historical events and developments explained.",
+      "display_title": "AI Chat: AI News & Artificial Intelligence",
+      "blurb": "AI Chat is the podcast where we dive into the world of AI, cutting-edge AI news and its impact on our daily lives.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-40f035f7",
+      "classified_at": "2026-09-04T00:13:38.260Z"
     },
     "1669993077": {
       "topics": [
@@ -114809,11 +116409,35 @@
     },
     "1670193102": {
       "topics": [
-        "music"
+        "music",
+        "music/theory-production",
+        "engineering/ai-robotics"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "music/theory-production",
+          "confidence": 0.5
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Music discussion, production techniques, or artist interviews.",
+      "display_title": "Way Up With Angela Yee",
+      "blurb": "Way Up With Angela Yee On Demand!.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-40f035f7",
+      "classified_at": "2026-09-04T00:13:38.260Z"
     },
     "1670202284": {
       "topics": [
@@ -114869,11 +116493,40 @@
     },
     "1670438094": {
       "topics": [
-        "society/government"
+        "comedy/casual-hangs",
+        "society/government",
+        "news/politics",
+        "tv-film"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.7
+        },
+        {
+          "node": "society/government",
+          "confidence": 0.55
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.55
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Humorous conversation and comedy performances.",
+      "display_title": "Nashville's Morning News with Dan Mandis",
+      "blurb": "Listen to Nashville's Morning News with Dan Mandis weekdays from 5a-9a on SuperTalk 99.7 WTN.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-04-40f035f7",
+      "classified_at": "2026-09-04T00:13:38.260Z"
     },
     "1670449955": {
       "topics": [
