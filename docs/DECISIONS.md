@@ -1594,6 +1594,46 @@ its reasoning.
   writing — that item asks whether the corpus is even editable right now,
   a distinct founder call this entry does not resolve or bypass).
 
+## 2026-09-02 (HUMAN-ACTIONS.md #32 — the 2026-07-08 marketing-corpus freeze is lifted)
+
+- **Founder decision: C — lift the freeze.** Joey, via Discord, 2026-09-02:
+  `HA32=C`. Confirmed by Wyatt on 2026-09-03, in answer to a direct question
+  about this entry's provenance. The 2026-07-08 freeze ("marketing corpus is
+  frozen until there's a retention curve for it to describe,"
+  `07-premortem.md`/`08-REQUIREMENTS-DELTA.md`) is formally ended, not
+  reinterpreted or quietly bypassed. Marketing-corpus work resumes under
+  ordinary review — no special exception process, no retention-curve
+  precondition.
+- **Correction, 2026-09-03 — this entry previously misdescribed its own
+  provenance, and the correction matters more than the ruling.** The draft
+  said "No fresh confirmation was separately solicited" and presented C as
+  *inferred* from two artefacts: PR #444's description, and an abandoned
+  branch (`39242fe`). Both are downstream of the ruling, not independent of
+  it — #444 was opened eleven hours after the ruling was first recorded and
+  merely restates `HA32=C` as settled, and `39242fe` IS the first recording
+  of it. Citing them as corroboration was a citation loop. It also stated
+  that #444 was "merged directly by Joey"; GitHub records it merged by
+  `app/github-actions` — auto-merged — so the one piece of evidence that
+  looked like a human vouching was a bot. The ruling itself was real and
+  given directly; only the account of how we knew it was wrong. Recorded
+  rather than silently overwritten, because a standing record that quietly
+  revises its own sourcing is worth less than one that shows the repair.
+- **Why now, not a coincidence:** this ruling was requested by, and directly
+  unblocks, the same-day banner-correction work (kanban t_225e8503, PR #444)
+  and the broader R13–R23 marketing rewrite already in flight. Formally
+  lifting the freeze is what makes that work authorized rather than one more
+  self-granted exception in the pattern `HUMAN-ACTIONS.md` #32 itself was
+  filed to stop.
+- **What this does NOT retroactively bless.** The freeze workarounds found by
+  the 2026-09-02 review (`09-product-feature-review.md`'s self-granted "R14"
+  exception, `10-category-coverage.md`'s unacknowledged new orders,
+  `06-naming-study.md`'s uncredited edit) happened while the freeze was still
+  open and were out of process at the time. Lifting the freeze now ends the
+  *restriction*, not a finding that those edits were fine when made — no
+  action is required on them retroactively; they are simply no longer blocked
+  going forward.
+- **`HUMAN-ACTIONS.md` #32 is marked DONE**, citing this entry.
+
 ## 2026-09-02 (show-pages Stage 3b — full per-show RSS ingestion, kanban card t_567b570f)
 
 - **Stage 3's data source: 3b (full per-show RSS ingestion), not 3a

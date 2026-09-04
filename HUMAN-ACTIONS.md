@@ -2140,7 +2140,13 @@ paused pending your call.
 **Worked if:** you record A, B, or C (and, for B, the exception rule) as a
 dated entry in `docs/DECISIONS.md`, and this item is marked `DONE`.
 
-**Status:** OPEN
+**Resolved 2026-09-02: C — lift the freeze.** Joey, via Discord, 2026-09-02:
+`HA32=C`. Confirmed by Wyatt 2026-09-03. An earlier draft of this line described
+the ruling as *inferred* from PR #444 and an abandoned branch rather than given;
+that was wrong, and `docs/DECISIONS.md`'s 2026-09-02 entry records the correction
+and why it is kept visible. Marketing-corpus work resumes under ordinary review.
+
+**Status:** DONE
 
 ---
 
