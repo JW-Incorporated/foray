@@ -9,6 +9,9 @@
   --gold: #e8d34c;
   --radius: 14px;
   --topbar-h: 44px;
+  /* How far the home screen scrolls past its one screen of cards. See the
+     `body.view-home #view` rule for why this exists and is not zero. */
+  --home-scroll-room: 40px;
   --shadow: 0 1px 2px rgba(0,0,0,0.4), 0 6px 16px rgba(0,0,0,0.28);
   --serif: Georgia, "Iowan Old Style", "Palatino Linotype", ui-serif, serif;
   --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -209,6 +212,39 @@ body {
 /* ---------- home: one screen, and only one screen ---------- */
 #view { padding-top: calc(var(--topbar-h) + env(safe-area-inset-top)); }
 
+/* THE SCROLL ROOM: the home page is one screen of cards plus 40px of nothing.
+
+   The founder's third report on this screen (TestFlight, 2026-09-03): "when I
+   scroll up or down there should be a bit of movement so I know the page is
+   responsive. The cards should move up/down like I'm scrolling, but they
+   shouldn't change in size." Two halves, and the history here is that each
+   fix for one half undid the other:
+
+   - #359 removed `body.view-home { overflow: hidden }` so the page could
+     rubber-band. At the time the home column had rows under the fold, so
+     there was real overflow and the page moved.
+   - The cards then stretched and shrank during the bounce, because `.home`
+     was sized in `dvh`. The `svh` swap below fixed the size half.
+   - #467 made Home exactly the four cards, so `.home` is exactly one screen
+     tall, the document has NO overflow, and a WKWebView with nothing to
+     scroll does not bounce (that is #359's own diagnosis, and the founder's
+     observation again now). Movement gone, the same day the size half was
+     solved — so the report read as "flagged and somehow unfixed".
+
+   So the page needs something to scroll INTO, and that something must sit
+   OUTSIDE the column the cards are sized from. This padding goes under
+   `.home` on `#view`, so the document is one screen plus 40px: a drag moves
+   the cards by up to 40px and rubber-bands past that on iOS, and nothing in
+   `.home`'s `min-height` changed, so `.cards4` and every `.mini-card` are
+   the same size at every scroll position. Not `.home`'s own padding-bottom:
+   that is inside its border-box `min-height` and would be paid for by the
+   cards. Not `overscroll-behavior` on `.home`: that property only acts on a
+   scroll container, and `.home` is not one — the version of that rule that
+   used to sit below was inert. test/home-scroll-room.test.js pins both
+   halves: an overflow of exactly this much at inset 0 and 59px, and nothing
+   card-sized in a dynamic viewport unit. */
+body.view-home #view { padding-bottom: var(--home-scroll-room); }
+
 .home {
   /* Static 100vh fallback first, then `svh` (small viewport height — the
      height with the browser's toolbar fully expanded, i.e. the smallest it
@@ -237,11 +273,12 @@ body {
      that is what makes "grow" happen rather than "shrink to nothing". */
   min-height: calc(100vh - var(--topbar-h) - env(safe-area-inset-top));
   min-height: calc(100svh - var(--topbar-h) - env(safe-area-inset-top));
-  /* Contain the rubber-band bounce here so it doesn't chain into resizing
-     this element's flex children — the page (body) still bounces normally
-     (#359's fix stays intact, no `overflow: hidden` above), only the visual
-     stretch effect on the cards themselves is suppressed. */
-  overscroll-behavior-y: contain;
+  /* No `overflow` and no `overscroll-behavior` here, on purpose: the BODY is
+     the scroller (#359), and `overscroll-behavior` on an element that does
+     not scroll does nothing — the `contain` that used to sit here was inert,
+     and its comment claimed it was what kept the cards from resizing. It is
+     the `svh` above that does that. The page's scroll room lives on `#view`
+     (see `body.view-home #view`). */
   display: flex;
   flex-direction: column;
   gap: 8px;

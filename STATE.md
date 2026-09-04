@@ -7,6 +7,33 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
+### Founder items from the first TestFlight build — ‹ goes back one step, live Shows search, a home screen that moves, playlists that narrow while you type (2026-09-04, one PR) — `feature/founder-testflight-items`
+
+- **What:** four of the founder's five TestFlight notes (2026-09-03). F9: the
+  page-head `‹` calls `history.back()` when an in-app step is behind the page
+  (`navStack`, noted by `route()`), and falls through to its own href on a
+  cold-open deep link. F2: `#sh-input` filters on `input` — local pass at
+  once, breadth request after a 250 ms pause; Go kept. F1: the home document
+  is one screen plus `--home-scroll-room` (40px, `body.view-home #view`
+  padding), so it scrolls and bounces while `.home` stays `svh`-sized — both
+  halves pinned. F3: `#/playlists` narrows the device's own `cp_playlists`
+  while typing (`playlistMatchesQuery`), read-only; Go still builds.
+- **Branch:** `feature/founder-testflight-items` — PR only, never main.
+- **Owned/new files:** `test/back-navigation.test.js`,
+  `test/home-scroll-room.test.js`, `test/playlist-match.test.js`.
+- **Shared files it touches:** `app.js` (router + `onBackClick`,
+  `renderShowSearchResults`/`renderAllShows`, `renderPlaylists`,
+  `renderPlaylistDetail`'s not-found branch and remove handler,
+  `renderCurrentPage`), `styles.css` (`:root`, `.home`, the new
+  `body.view-home #view` rule), `test/show-search.test.js` (+6, floor 11→21),
+  `test/suite-integrity.test.js` (three new floors).
+- **NOT done here, on purpose:** F8 (mini now-playing title/show as links) —
+  it lives in `player/client.js`, owned by the iOS-audio session; the patch
+  is described in the PR. F4(c) (the full-catalogue endpoint unreachable from
+  the shell) is a separate PR: it widens `connect-src`, which
+  `docs/legal/data-safety.md` names a privacy tripwire.
+- **Explicitly out of scope:** `mobile/`, `player/`, `tools/mobile/`.
+
 ### M1: cap feed download size before whole-body XML parsing (2026-09-01) — `foray/t_fc2c5f95`
 
 - **What:** Review finding M1. Fetch paths bound elapsed time but not response

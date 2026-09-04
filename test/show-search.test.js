@@ -318,12 +318,17 @@ test("submitting a known show name on the Shows page renders a result linking to
   assert.ok(results.innerHTML.includes("Lex Fridman Podcast"), "must render the show's title");
 });
 
-test("submitting a junk query on the Shows page renders an honest empty state, not a crash or padded list", () => {
+test("submitting a junk query on the Shows page renders an honest empty state, not a crash or padded list", async () => {
   /* MUTATION: remove the `if (!shows.length)` branch from
      renderShowSearchResults so it always writes `results.innerHTML`. The
      empty-state text assertion fails because #sh-results stays populated
-     with a stale/empty render instead of showing #sh-note's message. */
-  const m = mount();
+     with a stale/empty render instead of showing #sh-note's message.
+     The note is painted once the breadth endpoint has ALSO answered (see
+     the live-filtering section below), so the empty answer is mocked and
+     awaited here. */
+  const m = mount({ fetchImpl: mockFetch((url) => url.startsWith("api/shows/search")
+    ? jsonResponse({ query: "zzz-nonsense-query-zzz", shows: [], degraded: false })
+    : new Promise(() => {})) }); // init()'s own data fetches never settle, so it never repaints #view
   m.state.catalog = { shows: [{ show_id: "lex-fridman-podcast", title: "Lex Fridman Podcast", artwork_url: null }] };
   m.state.discover = { items: [] };
   m.state.cardSlots = [];
@@ -333,6 +338,8 @@ test("submitting a junk query on the Shows page renders an honest empty state, n
 
   m.ctx.renderAllShows();
   shForm.submit();
+  await new Promise((r) => setTimeout(r, 0));
+  await new Promise((r) => setTimeout(r, 0));
 
   const note = m.byId.get("sh-note");
   const results = m.byId.get("sh-results");
@@ -453,4 +460,144 @@ test("a failed breadth fetch degrades silently to the curated-only results, neve
   const results = m.byId.get("sh-results");
   assert.strictEqual(results.hidden, false, "curated match must still render despite the breadth fetch failing");
   assert.ok(results.innerHTML.includes("Lex Fridman Podcast"), "curated result must still be present");
+});
+
+/* ==================================================================== */
+/* 4. LIVE FILTERING — the list narrows as you type, Go is not required   */
+/* ==================================================================== */
+
+/* Founder, TestFlight, 2026-09-03: "When I'm typing in the shows search box,
+   it should already filter the results live, I shouldn't need to hit go."
+   The local pass (SearchEngine.searchShows over the curated catalogue) runs
+   on every keystroke, at once; the breadth request waits for
+   SHOW_SEARCH_DEBOUNCE_MS of quiet so a typed name does not cost one
+   network request per letter. Go is kept: the keyboard's return key submits
+   it, and it asks the breadth endpoint NOW rather than after the pause. */
+
+/* Records every handler renderAllShows attaches to one fake element, by
+   type, so a test can fire `input` on the box and `submit` on the form. */
+function withEvents(el) {
+  const handlers = new Map();
+  el.addEventListener = (type, fn) => { handlers.set(type, fn); };
+  el.fire = (type, evt = { preventDefault() {} }) => { const fn = handlers.get(type); if (fn) fn(evt); return Boolean(fn); };
+  return el;
+}
+
+function mountLive() {
+  const calls = [];
+  const m = mount({
+    fetchImpl: mockFetch((url) => {
+      /* Only the breadth endpoint is counted. init()'s own data fetches get
+         a promise that never settles, so init() never completes and never
+         repaints #view mid-test (the same trick show-pages-3b's harness uses). */
+      if (!url.startsWith("api/shows/search")) return new Promise(() => {});
+      calls.push(url);
+      return jsonResponse({ query: "", shows: [], degraded: false });
+    }),
+  });
+  m.state.catalog = { shows: [{ show_id: "lex-fridman-podcast", title: "Lex Fridman Podcast", artwork_url: null }] };
+  m.state.discover = { items: [] };
+  m.state.cardSlots = [];
+  m.state.session = { session_id: "s-1", builder: "test", episodes: {}, cards: [] };
+  const form = withEvents(m.byId.get("sh-form"));
+  const input = withEvents(m.byId.get("sh-input"));
+  m.ctx.renderAllShows();
+  return {
+    m, calls,
+    type(text) { input.value = text; return input.fire("input"); },
+    go() { return form.fire("submit"); },
+    results: () => m.byId.get("sh-results"),
+    note: () => m.byId.get("sh-note"),
+  };
+}
+const DEBOUNCE_MS = 250; // mirrors SHOW_SEARCH_DEBOUNCE_MS in app.js; asserted below
+const settle = (ms) => new Promise((r) => setTimeout(r, ms));
+
+test("typing paints the local matches at once, before any network request", () => {
+  /* MUTATION: pass `{ breadthDelayMs: 0 }` (or nothing) from the input
+     listener in renderAllShows. The breadth request then fires on the
+     keystroke and `calls.length` is 1, not 0. */
+  const live = mountLive();
+  assert.strictEqual(live.type("fridman"), true, "renderAllShows must bind an input listener on #sh-input");
+  assert.strictEqual(live.results().hidden, false, "local results paint synchronously on input");
+  assert.ok(live.results().innerHTML.includes('href="#/show/lex-fridman-podcast"'), "and they are the show links");
+  assert.strictEqual(live.calls.length, 0, "no breadth request on the keystroke itself");
+  assert.strictEqual(live.m.evalIn("SHOW_SEARCH_DEBOUNCE_MS"), DEBOUNCE_MS, "the pause this suite waits for is the one app.js uses");
+});
+
+test("three keystrokes send ONE breadth request, for the last query, after the pause", async () => {
+  /* The debounce is guarded twice in renderShowSearchResults: the pending
+     timer is cleared by the next keystroke, AND `breadth` re-checks its
+     token before sending, so a stale timer that does fire sends nothing.
+     Either guard alone keeps this green — measured: deleting only the
+     `clearTimeout(showSearchTimer)` line survives (the stale closures skip
+     the fetch), and deleting only the pre-fetch `if (myToken !==
+     showSearchToken) return` survives (the stale timers never fire).
+     MUTATION: delete BOTH. Three timers fire, none checks, `calls.length`
+     is 3. Ran it — red. The survivors are named here so nobody reads one
+     of them as dead code. */
+  const live = mountLive();
+  live.type("f");
+  live.type("fr");
+  live.type("fri");
+  assert.strictEqual(live.calls.length, 0);
+  await settle(DEBOUNCE_MS + 100);
+  assert.strictEqual(live.calls.length, 1, `expected one breadth request, got ${live.calls.length}: ${live.calls.join(", ")}`);
+  assert.ok(live.calls[0].includes("q=fri"), `the request is for the query as typed last: ${live.calls[0]}`);
+});
+
+test("clearing the box takes the results and the empty-state note away, rather than searching for nothing", async () => {
+  /* MUTATION: delete the `if (!query) { ... return; }` branch in
+     renderShowSearchResults. searchShows("") returns [] and the page then
+     says 'No shows match ""' under an empty box. */
+  const live = mountLive();
+  live.type("fridman");
+  assert.strictEqual(live.results().hidden, false);
+  live.type("");
+  assert.strictEqual(live.results().hidden, true, "no results for an empty box");
+  assert.strictEqual(live.results().innerHTML, "");
+  assert.strictEqual(live.note().hidden, true, "and no 'No shows match' note either");
+  await settle(DEBOUNCE_MS + 100);
+  assert.strictEqual(live.calls.length, 0, "an emptied box cancels the pending breadth request too");
+});
+
+test("leaving the Shows page retires a breadth request still waiting out the pause", async () => {
+  /* MUTATION: delete the `showSearchToken++; if (showSearchTimer) {...}` lines
+     in renderCurrentPage(). The timer fires after navigation and
+     `calls.length` is 1. */
+  const live = mountLive();
+  live.type("fri");
+  live.m.evalIn("state.ready = true; renderHome = () => {}; openDrawer = () => {};");
+  live.m.ctx.location.hash = "#/";
+  live.m.evalIn("renderCurrentPage()");
+  await settle(DEBOUNCE_MS + 100);
+  assert.strictEqual(live.calls.length, 0, "no request for a page that is gone");
+});
+
+test("no local match holds the 'No shows match' verdict until the breadth endpoint has answered", async () => {
+  /* Live, the note would otherwise flash on every keystroke for a show that
+     lives only in the breadth catalogue, then be replaced a moment later.
+     MUTATION: paint(localShows) unconditionally (drop the
+     `if (localShows.length)` guard). The note shows on the keystroke and the
+     first assertion fails. */
+  const live = mountLive();
+  live.type("zzz-not-curated");
+  assert.strictEqual(live.note().hidden, true, "no verdict yet — the breadth pass has not answered");
+  assert.strictEqual(live.results().hidden, true);
+  await settle(DEBOUNCE_MS + 100);
+  await settle(0);
+  assert.strictEqual(live.calls.length, 1);
+  assert.strictEqual(live.note().hidden, false, "the breadth pass answered with nothing: now it is an honest no-match");
+  assert.ok(live.note().textContent.includes("zzz-not-curated"));
+});
+
+test("Go still asks the breadth endpoint immediately — it is the return key, and it skips the pause", () => {
+  /* MUTATION: route the submit handler through the same
+     `{ breadthDelayMs: SHOW_SEARCH_DEBOUNCE_MS }` as the input listener.
+     `calls.length` is then 0 straight after submit. */
+  const live = mountLive();
+  live.m.byId.get("sh-input").value = "fridman";
+  live.go();
+  assert.strictEqual(live.calls.length, 1, "submit sends the breadth request synchronously");
+  assert.strictEqual(live.results().hidden, false);
 });
