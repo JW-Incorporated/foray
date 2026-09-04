@@ -17,8 +17,11 @@
  *     row shape.
  *  5. route() dispatches #/category/:id and #/shows to the two renderers,
  *     matching the #/show/:id and #/playlist/:id pattern already wired.
- *  6. The "Browse all shows" entry point is reachable from renderHome's
- *     Shows tab and hidden on the Playlists tab.
+ *  6. #/shows is REACHABLE, and by exactly one affordance: the menu's own
+ *     "Shows" item. (Was: a "Browse all shows" link on Home, behind the
+ *     Shows tab. The founder asked for that button gone — item 6 — and the
+ *     menu entry replaced it, so what needs pinning is that the page did not
+ *     become unreachable in the process.)
  *
  * Every test names the mutation that kills it, per CLAUDE.md "a green test
  * is not evidence until you have broken it".
@@ -233,13 +236,22 @@ test("renderCategory on an unknown node id renders the raw id as heading with ze
 /* ==================================================================== */
 
 test("renderAllShows renders every catalogue show, A-Z, as a result row", async () => {
-  /* MUTATION: slice/filter the shows list before rendering (e.g. `.slice(0, 50)`).
+  /* Scoped to the A-Z list (`.show-index`), not the whole page. Since the Shows
+     page also carries the "Shows we vouch for" editorial row, which reuses the
+     SAME `.show-result` markup, a page-wide row count would read 228 for a
+     220-show catalogue and would go on passing while the index itself lost
+     rows to the sample.
+
+     MUTATION: slice/filter the shows list before rendering (e.g. `.slice(0, 50)`).
      The row-count assertion fails because it no longer matches the full catalogue. */
   const m = await mountBooted();
   const catalog = readJson("data/catalog-client.json");
 
   m.ctx.renderAllShows();
-  const html = m.view();
+  const page = m.view();
+  const at = page.indexOf('class="show-results show-index"');
+  assert.ok(at !== -1, "the A-Z index list must be distinguishable from the editorial row above it");
+  const html = page.slice(at);
   assert.strictEqual(rowCount(html), catalog.shows.length, "must render every show in the catalogue");
 
   const titles = [...html.matchAll(/class="show-result-title">([^<]*)</g)].map((mm) => mm[1]);
@@ -268,7 +280,7 @@ test("route() dispatches #/category/:id to renderCategory, matching the #/show/:
 
 test("route() dispatches #/shows to renderAllShows, matching the #/playlists pattern", () => {
   /* MUTATION: delete the `#/shows` branch from route(). This fails because
-     renderHome runs instead, and the "All Shows" heading never appears. */
+     renderHome runs instead, and the "Shows" heading never appears. */
   const m = mount();
   m.state.catalog = { shows: [{ show_id: "a", title: "A Show", taxonomy_node_ids: [] }] };
   m.state.taxonomy = { nodes: [] };
@@ -278,29 +290,42 @@ test("route() dispatches #/shows to renderAllShows, matching the #/playlists pat
 
   m.ctx.location.hash = "#/shows";
   m.ctx.route();
-  assert.ok(m.view().includes("All Shows"), "route() must dispatch #/shows to renderAllShows");
+  assert.ok(m.view().includes("<h2>Shows</h2>"), "route() must dispatch #/shows to renderAllShows");
 });
 
 /* ==================================================================== */
-/* 6. THE "BROWSE ALL SHOWS" NAV ENTRY POINT ON renderHome               */
+/* 6. #/shows IS STILL REACHABLE AFTER "BROWSE ALL SHOWS" WAS REMOVED    */
 /* ==================================================================== */
 
-test("renderHome's Shows tab exposes a visible 'Browse all shows' link to #/shows", async () => {
-  /* MUTATION: drop the browse-all-link element, or fail to unhide it in
-     setSearchTab when mode === "shows". This fails because the link is
-     absent or still `hidden` after switching to the Shows tab. */
-  const m = await mountBooted();
-  m.ctx.setSearchTab("shows");
-  const link = m.byId.get("browse-all-link");
-  assert.strictEqual(link.hidden, false, "the browse-all link must be visible on the Shows tab");
-  assert.ok(m.view().includes('href="#/shows"'), "the rendered home page must include the #/shows link");
+test("the menu carries a Shows destination pointing at #/shows", () => {
+  /* The affordance the removed "Browse all shows" button provided, replaced
+     rather than dropped. Read out of index.html rather than a render,
+     because that is where the drawer's markup actually lives — the app never
+     rebuilds those five links, so a render-based assertion would be reading a
+     fixture instead of the shipped nav.
+
+     MUTATION: delete the `<a class="drawer-section" href="#/shows">Shows</a>`
+     line from index.html. This fails, and #/shows becomes an address with no
+     link to it anywhere in the app. */
+  const html = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
+  assert.ok(
+    /<a class="drawer-section" href="#\/shows">Shows<\/a>/.test(html),
+    "the drawer must carry a Shows entry linking to #/shows"
+  );
 });
 
-test("renderHome's Shows browse link is hidden on the default Playlists tab", async () => {
-  /* MUTATION: default browse-all-link to visible (drop its `hidden` attribute
-     in renderHome's template, or the setSearchTab("topics") toggle). This
-     fails because the link would be shown next to the Playlists form too. */
-  const m = await mountBooted();
-  const link = m.byId.get("browse-all-link");
-  assert.strictEqual(link.hidden, true, "the browse-all link must stay hidden on the Playlists tab");
+test("nothing renders a 'Browse all shows' link any more — the menu replaced it, it was not duplicated", () => {
+  /* Item 6 of the founder's list, and the direction that actually needs a
+     test: the menu entry above could have been ADDED while the Home button
+     stayed, which is one more thing on the home screen rather than one fewer.
+
+     Asserted over app.js's source rather than one render, because the link
+     could reappear on any page's template and a per-page render check would
+     only cover the page someone thought to render.
+
+     MUTATION: restore the `<a id="browse-all-link" ...>Browse all shows ›</a>`
+     line to renderHome's template. Both assertions fail. */
+  const src = fs.readFileSync(path.join(ROOT, "app.js"), "utf8");
+  assert.ok(!/id="browse-all-link"/.test(src), "the browse-all-link element must be gone from app.js");
+  assert.ok(!/Browse all shows\s*›/.test(src), "the rendered 'Browse all shows ›' label must be gone from app.js");
 });
