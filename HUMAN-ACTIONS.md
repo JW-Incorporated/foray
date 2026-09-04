@@ -2278,9 +2278,25 @@ other CI went green, PR #450 auto-merged to `main` (`db25f8b`).
 **Status:** OPEN
 
 
-### 37. Merge PR #443 by hand, and rule on the new nightly/deploy-manifest.json collision
+### 37. Merge PR #443 by hand, and rule on the new nightly/deploy-manifest.json collision — DONE
 
-**Tag:** `[BLOCKING]` for this PR, `[UPGRADE]` for the recurring gap · **Time:** ~2 minutes now, longer to decide the fix · **Owner:** Joey or Wyatt
+**Tag:** `[DONE 2026-09-03]` · **Owner:** nobody · **Time:** 0
+
+> **RESOLVED.** Step 1: PR #443 was closed and relanded as
+> [PR #459](https://github.com/JW-Incorporated/foray/pull/459), which merged
+> 2026-09-03. Step 2: the founder ruled, verbatim, *"Auto fix, I am not trying to
+> do daily manual reviews."* Implemented as options **1 and 3 together** (either
+> alone leaves nightly PRs stuck — see the `docs/DECISIONS.md` entry dated
+> 2026-09-03, which also records a second blocker this item did not know about:
+> the `github-actions[bot]` fixup commit itself made the PR unmergeable under
+> `protect-main`'s `require_extra_approval_for_unattributed_changes`):
+> `tools/refresh/merge.mjs` now regenerates `deploy-manifest.json` + `sw.js`
+> itself so the nightly's first commit is already correct and no bot commit is
+> ever pushed, and both files are on `ALLOWED_PREFIXES` so auto-merge arms. The
+> ruleset was not weakened and no bypass actor was added.
+> `docs/agents/runner-prompts/foray-nightly.md` steps 5 and 7 now describe it.
+> **Worked if:** the next `nightly/*` PR merges with no human click and carries
+> no `github-actions[bot]` commit.
 
 **Why it matters.** `data-and-site` failed on
 [PR #443](https://github.com/JW-Incorporated/foray/pull/443) (a nightly-refresh
@@ -2324,7 +2340,7 @@ doesn't mention this at all yet.
 or right here) on which of the three options above applies to future nightly
 PRs.
 
-**Status:** OPEN
+**Status:** DONE (2026-09-03) — see the RESOLVED block above.
 
 ---
 

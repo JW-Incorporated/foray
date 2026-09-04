@@ -241,6 +241,64 @@ test("STATE.md and HUMAN-ACTIONS.md are allowlisted", () => {
   assert.equal(pathPolicy(["HUMAN-ACTIONS.md"]).allowed.length, 1);
 });
 
+test("deploy-manifest.json and sw.js are allowlisted, so a nightly PR can arm", () => {
+  // HUMAN-ACTIONS #37, 2026-09-03. The nightly rewrites data/discover.json and
+  // data/item-tags.json, both of which deploy-manifest.json hashes; sw.js's
+  // BUILD_ID is stamped with the resulting deploy_id. Both were on NEITHER
+  // list, so every nightly PR fell through to "unlisted" and auto-merge
+  // declined even with every required check green.
+  // KILLED BY: removing either `"deploy-manifest.json",` or `"sw.js",` from
+  // ALLOWED_PREFIXES in path-policy.mjs (both run 2026-09-03).
+  assert.equal(pathPolicy(["deploy-manifest.json"]).allowed.length, 1);
+  assert.equal(pathPolicy(["sw.js"]).allowed.length, 1);
+});
+
+test("THE #37 REPRODUCTION: the exact four-file nightly PR is ARMED", () => {
+  // These are the four paths PR #443 and PR #456 changed. Before the two
+  // entries above, this decision was NOT ARMED / UNLISTED_PATH, and because the
+  // decision is per-PR and all-or-nothing the whole PR waited for a human.
+  // This is the assertion that would notice either entry being removed for a
+  // reason that sounded good at the time.
+  // KILLED BY: removing either new entry from ALLOWED_PREFIXES — the decision
+  // reverts to NOT ARMED / UNLISTED_PATH (both run 2026-09-03).
+  const d = automergeDecision({
+    files: ["data/discover.json", "data/item-tags.json", "deploy-manifest.json", "sw.js"],
+    labels: [],
+  });
+  assert.equal(d.armed, true, d.reason);
+  assert.equal(d.code, "OK");
+  assert.equal(d.needsFounder, false);
+});
+
+test("allowlisting sw.js did not widen to its neighbours", () => {
+  // sw.js is a FILE entry, not a prefix, and the matcher's two rules are what
+  // keep it that way — `sw.js.map`, `sw.json` and a `sw.js/` directory must all
+  // still fall through to a human. The old bash matcher would have taken all
+  // three.
+  // KILLED BY: `file === prefix` -> `file.startsWith(prefix)` in matchesPrefix
+  // (path-policy.mjs) — sw.js.map, sw.js/inner.js and the .bak all become
+  // allowed (run 2026-09-03).
+  const p = pathPolicy(["sw.js.map", "sw.json", "sw.js/inner.js", "deploy-manifest.json.bak"]);
+  assert.equal(p.allowed.length, 0);
+  assert.equal(p.unlisted.length, 4);
+  // A same-named file one directory down is a different file, and `sw.js` must
+  // not reach it. (`tools/sw.js` is allowed here, but by `tools/` — a directory
+  // prefix that predates this change — never by the new entry.)
+  assert.equal(pathPolicy(["tools/sw.js"]).allowed[0].prefix, "tools/");
+});
+
+test("the manifest pair is allowed, not denied — and denial would still win if it changed", () => {
+  // Defence in depth, in the direction the file's own header asks for: this
+  // asserts the two entries live on ALLOWED and nowhere on DENIED, so a future
+  // reader cannot conclude from a green suite that they are governed.
+  // KILLED BY: removing `"deploy-manifest.json",` from ALLOWED_PREFIXES (run
+  // 2026-09-03); moving either entry onto DENIED_PREFIXES kills it the same way.
+  for (const f of ["deploy-manifest.json", "sw.js"]) {
+    assert.ok(ALLOWED_PREFIXES.includes(f), `${f} must be on ALLOWED_PREFIXES`);
+    assert.ok(!DENIED_PREFIXES.includes(f), `${f} must not be on DENIED_PREFIXES`);
+  }
+});
+
 test("tools/events-server.mjs is denied even though tools/ is allowed", () => {
   // scripts/events-server.vbs runs `node tools/events-server.mjs` at every
   // Windows login on the founder's always-on workstation, with the
