@@ -920,6 +920,20 @@ const FLOORS = {
   "tools/segments/transcript-coverage.test.mjs": 12,
   "tools/segments/fetch-transcripts.test.mjs": 11,
   "tools/segments/politeness.test.mjs": 7,
+  /* S-04a: the PodcastIndex dump import/shard-build pipeline (kanban
+     t_835d1a3c). Six suites because the pipeline is deliberately split into
+     independently-testable stages (config, filter, dedupe, shard-build,
+     identity, state) plus one integration suite over an in-memory
+     node:sqlite fixture — the same shape tools/corpus/db.test.mjs uses for
+     its own migration+ingest pipeline. Floored individually so a change
+     that silently drops, say, the id-map fail-closed test is caught by
+     name rather than by a combined count going down by one among many. */
+  "tools/shows/dedupe.test.mjs": 9,
+  "tools/shows/filter.test.mjs": 11,
+  "tools/shows/identity.test.mjs": 2,
+  "tools/shows/import-dump.test.mjs": 5,
+  "tools/shows/shard-build.test.mjs": 14,
+  "tools/shows/state.test.mjs": 6,
   /* The breadth prioritiser and its yield report (#114). Floored for the same
      reason politeness.test.mjs is, and the reason is not hypothetical here
      either: the first draft of `rank-breadth.mjs` had a seed hash that produced

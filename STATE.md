@@ -2584,3 +2584,31 @@ backfill is a future, separate pass.
   `tools/transcribe/`, `tools/refresh/`, `backend/`, `app.js`, `.github/`
   (a ci.yml test step will be proposed as a separate PR left for Wyatt).
 - **Plan:** `docs/research/corpus/PLAN.md`.
+
+### S-04a: PodcastIndex dump import builder (2026-09-05) — `foray/t_835d1a3c`
+
+- **What:** `tools/shows/import-dump.mjs` + five pipeline submodules
+  (`config`, `filter`, `dedupe`, `shard-build`, `identity`, `state`,
+  `dump-reader`). Fetches the public PodcastIndex dump (identifying UA,
+  checksum + `Last-Modified`-derived `export_version`, skip-if-already-built),
+  reads it with streaming `node:sqlite`, applies the D1 liveness filter and
+  D13 dedupe from `4a-shows-pipeline-plan.md`, and builds the §3.2 static
+  shard index (`manifest.json`, `shards/<pp>.json.gz`, `top.json`,
+  `changed.json`, `id-map.json`). Offline builder only — no release/PR/
+  workflow automation (that's S-04b, `t_3a896057`, gated on this card).
+- **Tests:** 47 unit/integration tests across 6 suites, all against small
+  in-memory `node:sqlite` fixtures — no real dump touched in CI. Covers D1
+  per-filter counts, D13 both dedupe paths + canonical tie-breaks, shard/top
+  size-budget enforcement, id-map fail-closed naming every miss, and the
+  two-runs-byte-identical determinism the card requires.
+- **Not yet wired:** the `changed.json` diff needs a persisted prior-release
+  manifest to diff against; there is none yet on a first landing, so every
+  row currently reports as "changed" (correct for a first build). Follow-up
+  once a release history exists.
+- **Decision entry:** `docs/DECISIONS.md`, 2026-09-05.
+- **Note:** `node:sqlite` requires `--experimental-sqlite` on Node < 23.4 —
+  `tools/shows/package.json` pins its own `test` script the same way
+  `tools/corpus/package.json` does, so `npm test` there is the one command
+  correct on every machine; `tools/ci/run-suites.mjs` picks it up as its own
+  install-then-test group automatically (no CI file edit needed).
+
