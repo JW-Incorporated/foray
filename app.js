@@ -1452,6 +1452,7 @@ function renderAllShows() {
       </form>
       <p id="sh-note" class="note" hidden></p>
       <div id="sh-results" class="show-results" hidden></div>
+      <div id="ep-search-results" hidden></div>
       <a class="page-link-row" href="#/starred-shows">Starred shows \u203a</a>
       ${vouchForHtml()}`);
 
@@ -2223,6 +2224,64 @@ function renderShowSearchResults(query) {
     }
     if (additions.length) paint(localShows.concat(additions));
   }); // fetchApiJson already swallows network/parse errors and resolves null — no .catch needed
+
+  renderEpisodeSearchResults(query, myToken);
+}
+
+/* Episodes section under Shows search (S-07, kanban t_6baccaa0): a separate
+   result block below the show list, backed by api/episodes/search.ts. Same
+   "guard a slow in-flight fetch with a token" pattern as the show-search
+   breadth fetch above, sharing the same showSearchToken so a fast retype
+   supersedes both in lockstep.
+
+   Offline degrades to nothing rendered — this is a network-only feature
+   (Apple's public index / a show's live feed), there is no local episode
+   index to fall back to for a query outside the curated pool, matching this
+   file's own "absence is a real state" convention rather than a spinner
+   that never resolves. */
+function renderEpisodeSearchResults(query, myToken) {
+  const container = $("#ep-search-results");
+  if (!container) return; // page markup not present (e.g. category page reusing renderShowIndexPage)
+
+  if (typeof navigator !== "undefined" && navigator.onLine === false) {
+    container.innerHTML = "";
+    container.hidden = true;
+    return;
+  }
+
+  fetchApiJson(`api/episodes/search?q=${encodeURIComponent(query)}&limit=10`).then((data) => {
+    if (myToken !== showSearchToken) return; // superseded — drop this response
+    const episodes = data?.episodes || [];
+    if (!episodes.length) {
+      container.innerHTML = "";
+      container.hidden = true;
+      return;
+    }
+    const fromApple = (data.source || []).includes("apple");
+    const ctx = "episode-search-" + query;
+    const rows = episodes.map((ep, i) => {
+      const id = `apple:${ep.show_id}:${ep.guid || (ep.title + "--" + i)}`;
+      const item = snapshot(id, {
+        show: ep.show_title || ep.show_id,
+        title: ep.title,
+        hook: ep.description_text || "",
+        audio_url: ep.audio_url,
+        duration_min: ep.duration_seconds ? Math.round(ep.duration_seconds / 60) : null,
+        duration_sec: ep.duration_seconds ?? null,
+        topics: [],
+      });
+      return epRow(item, i, ctx, -1);
+    });
+    container.innerHTML = `<section class="ep-more fy-episode-search">
+      <h3>Episodes${fromApple ? ` <span class="note">from Apple's index</span>` : ""}</h3>
+      ${rows.join("")}
+    </section>`;
+    container.hidden = false;
+    bindPickLogging(container);
+    bindStars(container);
+    bindUpNext(container);
+    bindPlay(container);
+  });
 }
 
 /* HOME IS THE FOUR SUBJECT CARDS AND THE RESUME BANNER. NOTHING ELSE.
