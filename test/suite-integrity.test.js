@@ -302,6 +302,8 @@ const FLOORS = {
      session ONE); and the implication over the real data, pool has artwork
      => the show resolves artwork. */
   "test/show-page.test.js": 43,
+  "test/show-page-pagination.test.js": 5,
+  "test/show-page-search.test.js": 7,
 
   /* Episodes section under Shows search (S-07, kanban t_6baccaa0): six
      mutations named and killed in the file's own header — rendering,

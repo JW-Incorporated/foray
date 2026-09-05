@@ -60,7 +60,12 @@ const PAGE_IDS = [
    `$("#view [data-show-episodes]")`-style lookups inside renderShow's async
    continuation actually find the nodes it wrote via innerHTML — the plain
    makeEl() stub returns null for every querySelector call, which would make
-   every assertion in this file vacuously fail to find its target. */
+   every assertion in this file vacuously fail to find its target.
+
+   S-06 (kanban t_be4c1793) extended this with the "Show more" button wrap,
+   the count label already handled, and the in-page episode search box —
+   each parsed out of the last innerHTML write the same lazy way the
+   original two attributes were, rather than a real DOM/JSDOM dependency. */
 function makeViewEl() {
   const el = makeEl("div");
   el.id = "view";
@@ -70,29 +75,94 @@ function makeViewEl() {
       this._html = html;
       this._countText = extractAttr(html, "data-show-count");
       this._hasEpisodesContainer = html.includes("data-show-episodes");
+      this._hasMoreWrap = html.includes("data-show-more-wrap");
+      this._hasSearchBox = html.includes("data-show-ep-search");
     },
   });
   el.querySelector = (sel) => {
     const s = String(sel);
     if (s.includes("[data-show-episodes]")) {
       if (!el._hasEpisodesContainer) return null;
-      const container = makeEl("div");
-      Object.defineProperty(container, "innerHTML", {
-        get() { return this._innerHtml || ""; },
-        set(html) { this._innerHtml = html; },
-      });
-      el._episodesContainerRef = container;
-      return container;
+      if (!el._episodesContainerRef) {
+        const container = makeEl("div");
+        Object.defineProperty(container, "innerHTML", {
+          get() { return this._innerHtml || ""; },
+          set(html) { this._innerHtml = html; },
+        });
+        el._episodesContainerRef = container;
+      }
+      return el._episodesContainerRef;
     }
     if (s.includes("[data-show-count]")) {
       if (el._countText === null) return null;
-      const label = makeEl("p");
-      Object.defineProperty(label, "textContent", {
-        get() { return el._countLabelText ?? ""; },
-        set(v) { el._countLabelText = v; },
-      });
-      el._countLabelRef = label;
-      return label;
+      if (!el._countLabelRef) {
+        const label = makeEl("p");
+        Object.defineProperty(label, "textContent", {
+          get() { return el._countLabelText ?? ""; },
+          set(v) { el._countLabelText = v; },
+        });
+        el._countLabelRef = label;
+      }
+      return el._countLabelRef;
+    }
+    if (s.includes("[data-show-more-wrap]")) {
+      if (!el._hasMoreWrap) return null;
+      if (!el._moreWrapRef) {
+        const wrap = makeEl("div");
+        Object.defineProperty(wrap, "innerHTML", {
+          get() { return this._innerHtml || ""; },
+          set(html) {
+            this._innerHtml = html;
+            this._hasBtn = html.includes("data-show-more");
+          },
+        });
+        wrap.querySelector = (innerSel) => {
+          if (String(innerSel).includes("[data-show-more]") && wrap._hasBtn) {
+            if (!wrap._btnRef) wrap._btnRef = makeEl("button");
+            return wrap._btnRef;
+          }
+          return null;
+        };
+        el._moreWrapRef = wrap;
+      }
+      return el._moreWrapRef;
+    }
+    // Bare `[data-show-more]` (not `-wrap`): renderShow's loadNextPage looks
+    // this up directly (`$("#view [data-show-more]")`) rather than through
+    // the wrap element, to grab the button after a click already fired.
+    // Delegates to the same wrap-tracked button reference so both lookup
+    // paths see the identical (disable/relabel-able) element.
+    if (s.includes("[data-show-more]")) {
+      if (!el._hasMoreWrap || !el._moreWrapRef || !el._moreWrapRef._hasBtn) return null;
+      if (!el._moreWrapRef._btnRef) el._moreWrapRef._btnRef = makeEl("button");
+      return el._moreWrapRef._btnRef;
+    }
+    if (s.includes("[data-show-ep-search-form]")) {
+      if (!el._hasSearchBox) return null;
+      if (!el._searchFormRef) el._searchFormRef = makeEl("form");
+      return el._searchFormRef;
+    }
+    if (s.includes("[data-show-ep-search-input]")) {
+      if (!el._hasSearchBox) return null;
+      if (!el._searchInputRef) el._searchInputRef = makeEl("input");
+      return el._searchInputRef;
+    }
+    if (s.includes("[data-show-ep-search-note]")) {
+      if (!el._hasSearchBox) return null;
+      if (!el._searchNoteRef) {
+        const note = makeEl("p");
+        Object.defineProperty(note, "textContent", {
+          get() { return el._searchNoteText ?? ""; },
+          set(v) { el._searchNoteText = v; },
+        });
+        el._searchNoteRef = note;
+      }
+      return el._searchNoteRef;
+    }
+    if (s.includes("[data-show-ep-search]")) {
+      if (!el._hasSearchBox) return null;
+      if (!el._searchWrapRef) el._searchWrapRef = makeEl("div");
+      return el._searchWrapRef;
     }
     return null;
   };

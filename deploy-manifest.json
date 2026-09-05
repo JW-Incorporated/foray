@@ -1,7 +1,7 @@
 {
-  "deploy_id": "c76e31b652edebcf",
+  "deploy_id": "dd23694bcac9be3f",
   "files": {
-    "app.js": "sha256:b5aff4f9b612375fb7eaa15c8487b0f96f20ccefd731a0b9fd809480496f0e0b",
+    "app.js": "sha256:594b10a104a9a76b67550cda97b83bebe90ba7fc5a717fa9ef1e2a5e56697725",
     "data/catalog-client.json": "sha256:83a6a83d4633326dbc422c57677a78438a41c69f3055439a0010d2057aec8864",
     "data/dai-classification.json": "sha256:321fb915e4289a098cbd30ec7cc8e8503345a1c6cadb6cda2803ff656162a545",
     "data/discover.json": "sha256:2c7302342f5017f4d926acbd159e9d85099830ae85848d5bfafbd4b6ce9c2de4",
@@ -40,6 +40,6 @@
     "player/segment-strip.js": "sha256:676635df83d78be8708cd1a788aba828dd430a7fa9ef1d283c1c489a4886006a",
     "player/strip-scrub-gesture.js": "sha256:88415f256049ee1ac96c6738651819d3b1c76161f6fe685dc6eaeab71b0d487e",
     "search-engine.js": "sha256:680161045b4a907ddb19b45c42ac873066b5a7d6d5913ce91d40b53a28458d3c",
-    "styles.css": "sha256:38b49575b801eb26c31c52d1bdaf4adec9fc6412f6b05c0bdf24d022bc630615"
+    "styles.css": "sha256:b57d80e18e47dafab4e8395f5fe706c97e99566efda47bc1f8a2755495b19694"
   }
 }

@@ -1486,14 +1486,35 @@ function fullCatalogueRowToEpRowItem(show, ep) {
   });
 }
 
-async function fetchShowEpisodes(show_id) {
+/* S-06 (kanban t_be4c1793): `cursor` is the API's own opaque keyset cursor
+   (episodeCursor.ts) — when present the next page continues strictly after
+   that episode rather than restarting from the top. Omitting it (the
+   original call shape every existing caller/test still uses) fetches page 1
+   exactly as before, so this stays backward compatible.
+
+   `nextCursor` in the return value is the API's `next_cursor` — null means
+   "no more pages," which is the ONLY signal renderShow is allowed to treat
+   as "the full list is now loaded" (see its own honesty rule below: a
+   present cursor must never be silently dropped by a caller that stops
+   paging on its own accord). */
+async function fetchShowEpisodes(show_id, cursor) {
   try {
-    const res = await fetch(pinnedUrl(`api/shows/${encodeURIComponent(show_id)}/episodes`), { cache: "no-cache" });
-    if (!res.ok) return { episodes: null, error: `status ${res.status}` };
+    const path = `api/shows/${encodeURIComponent(show_id)}/episodes`;
+    const url = cursor ? `${path}?cursor=${encodeURIComponent(cursor)}` : path;
+    const res = await fetch(pinnedUrl(url), { cache: "no-cache" });
+    if (!res.ok) return { episodes: null, nextCursor: null, error: `status ${res.status}` };
     const body = await res.json();
-    return { episodes: body.episodes || [], stale: !!body.stale, error: body.error || null };
+    return {
+      episodes: body.episodes || [],
+      nextCursor: body.next_cursor || null,
+      // `degraded` (no-DB live-fetch failure, S-02) and `stale` (DB-mode
+      // cached-stale) are two different backends' names for the same
+      // "this isn't a fresh fetch, say so" signal — surfaced identically.
+      stale: !!(body.stale || body.degraded),
+      error: body.error || null,
+    };
   } catch (e) {
-    return { episodes: null, error: e && e.message || "network error" };
+    return { episodes: null, nextCursor: null, error: e && e.message || "network error" };
   }
 }
 
@@ -1578,6 +1599,70 @@ function showForaysHtml(show) {
   </footer>`;
 }
 
+/* S-06 (kanban t_be4c1793): renders the count label honestly for however
+   much of the full-catalogue list this render has actually loaded so far.
+   `state.fullyLoaded` (closure var in renderShow, passed in) must be the
+   ONLY thing that flips this to a bare, unqualified total — a page count
+   arriving from a "Show more" click that still carries a next_cursor is,
+   by definition, not the whole show, and this function is the one place
+   that rule is enforced so no call site can accidentally claim otherwise. */
+function showEpisodeCountLabel({ loadedCount, fullyLoaded, curatedCount, isBreadthTier, stale, loadError }) {
+  if (loadError && loadedCount === 0) {
+    return curatedCount
+      ? `${curatedCount} episode${curatedCount === 1 ? "" : "s"} in 4a's catalogue (couldn't load the full list)`
+      : `Couldn't load this show's episodes right now.`;
+  }
+  if (loadedCount === 0) {
+    return curatedCount
+      ? `${curatedCount} episode${curatedCount === 1 ? "" : "s"} in 4a's catalogue`
+      : isBreadthTier
+        ? "No episodes found for this show yet."
+        : "No episodes found for this show.";
+  }
+  const staleNote = stale ? " (showing the last saved list — couldn't refresh just now)" : "";
+  if (fullyLoaded) {
+    return `${loadedCount} episode${loadedCount === 1 ? "" : "s"}${staleNote}`;
+  }
+  // Honesty rule (card acceptance criterion): never imply this is the whole
+  // show while pages remain unfetched. "100+" reads as a floor, not a total.
+  return `${loadedCount}+ episodes loaded so far — more available${staleNote}`;
+}
+
+/* S-06: local-filter search over whatever full-catalogue pages have been
+   loaded into this render so far. This is the FALLBACK path only — S-07
+   (kanban t_6baccaa0, api/episodes/search.ts) shipped a real show-scoped
+   full-catalogue search endpoint, which searchShowEpisodesScoped() below
+   asks first; this function only runs when that call fails/degrades, so
+   the search box still works (against whatever pages happen to be in
+   memory) rather than going dark. Matches against title + description
+   text of the raw API episode records already held in `loaded`,
+   case-insensitive substring, same idiom searchShows() uses for names. */
+function filterLoadedEpisodes(loadedRaw, query) {
+  const q = query.trim().toLowerCase();
+  if (!q) return loadedRaw;
+  return loadedRaw.filter((ep) => {
+    const title = String(ep.title || "").toLowerCase();
+    const desc = String(ep.description_text || "").toLowerCase();
+    return title.includes(q) || desc.includes(q);
+  });
+}
+
+/* S-06: asks S-07's show-scoped episode-search endpoint
+   (GET /api/episodes/search?show=<id>&q=<query>), which fetches the show's
+   OWN live feed server-side and filters the FULL episode list — not just
+   whatever pages this render happens to have loaded via fetchShowEpisodes.
+   This is the real, full-catalogue search the card asks for; the local
+   `filterLoadedEpisodes` fallback above only runs when this call itself
+   fails or comes back `degraded` (rate limit, feed fetch error, endpoint
+   unreachable), so the box degrades to "searching loaded episodes" rather
+   than going silent. Returns `{ episodes: null }` on any failure/degrade —
+   callers branch on that exactly like fetchShowEpisodes' null convention. */
+async function searchShowEpisodesScoped(show_id, query) {
+  const data = await fetchApiJson(`api/episodes/search?show=${encodeURIComponent(show_id)}&q=${encodeURIComponent(query)}&limit=25`);
+  if (!data || data.degraded || !Array.isArray(data.episodes)) return { episodes: null };
+  return { episodes: data.episodes };
+}
+
 function renderShow(show_id) {
   document.body.className = "view-page";
   const show = showById(show_id);
@@ -1614,15 +1699,29 @@ function renderShow(show_id) {
     ${show.editorial_note ? `<p class="note">${esc(show.editorial_note)}</p>` : ""}
     ${chips ? `<div class="fy-chips">${chips}</div>` : ""}`;
 
+  /* S-06: the search box is a real requirement from Wyatt's original ask,
+     not a nice-to-have — but it searches full-catalogue episode data, so it
+     stays hidden until at least one full-catalogue page has loaded (curated-
+     pool-only episodes are already all on-screen with nothing to search
+     for). bindShowEpisodeSearch() below reveals it the moment page 1 lands. */
+  const searchBox = `
+    <div class="show-ep-search" data-show-ep-search hidden>
+      <form data-show-ep-search-form autocomplete="off">
+        <input data-show-ep-search-input type="text" maxlength="120" placeholder="Search this show's episodes…">
+      </form>
+      <p class="note" data-show-ep-search-note hidden></p>
+    </div>`;
+
   // Render immediately with the curated pool so the page is never blank
   // while the full-catalogue fetch is in flight.
-  $("#view").innerHTML = `<div class="page">${head}<div data-show-episodes>
+  $("#view").innerHTML = `<div class="page">${head}${searchBox}<div data-show-episodes>
     ${curatedEps.length
       ? curatedEps.map((item, i) => epRow(item, i, ctx, -1)).join("")
       : isBreadthTier
         ? `<p class="note">Fetching this show's episodes — 4a is adding full episode lists for shows outside its curated picks. Check back soon.</p>`
         : `<p class="note">No episodes from this show are in 4a's catalogue right now.</p>`}
   </div>
+  <div data-show-more-wrap></div>
   ${similarShowsSection(show)}
   ${showForaysHtml(show)}
   </div>`;
@@ -1632,38 +1731,206 @@ function renderShow(show_id) {
   bindUpNext($("#view"));
   bindPlay($("#view"));
 
-  fetchShowEpisodes(show.show_id).then(({ episodes, stale, error }) => {
-    const container = $("#view [data-show-episodes]");
-    const countLabel = $("#view [data-show-count]");
-    if (!container) return; // navigated away before the fetch resolved
+  // ---- Pagination + in-page search state for this render only. A fresh
+  // renderShow() call (new navigation) gets a fresh closure — nothing here
+  // survives or leaks across shows. ----
+  let loaded = [];          // raw API episode records, every page fetched so far, in server order
+  let nextCursor = null;    // API's opaque keyset cursor; null = no more pages
+  let fullyLoaded = false;  // true only once a page comes back with next_cursor: null
+  let anyStale = false;     // sticky once any page reports stale/degraded
+  let lastLoadError = null;
+  let searchQuery = "";
+  /* S-06/S-07 wiring: `searchMode` tracks which result set the container is
+     currently showing so paintSearchNote() can label it honestly.
+       "idle"     — no query typed; showing the full `loaded` list.
+       "loading"  — a scoped-search request is in flight for the current query.
+       "scoped"   — S-07's endpoint answered for the CURRENT query (real,
+                    full-catalogue search results — the honest, non-hedged case).
+       "fallback" — S-07 failed/degraded for the current query; falling back
+                    to filtering whatever pages are loaded, hedged per the
+                    card's partial-list-honesty rule. */
+  let searchMode = "idle";
+  let scopedResults = [];   // populated only when searchMode === "scoped"
+  let searchToken = 0;      // guards a slow/superseded scoped-search response
+  let searchDebounceTimer = null;
+
+  const container = () => $("#view [data-show-episodes]");
+  const countLabelEl = () => $("#view [data-show-count]");
+  const moreWrap = () => $("#view [data-show-more-wrap]");
+  const searchWrap = () => $("#view [data-show-ep-search]");
+  const searchNote = () => $("#view [data-show-ep-search-note]");
+  const stillMounted = () => !!container();
+
+  function paintList() {
+    const c = container();
+    if (!c) return;
+    const visible = searchMode === "scoped" ? scopedResults : filterLoadedEpisodes(loaded, searchQuery);
+    if (searchQuery.trim() && !visible.length && searchMode !== "loading") {
+      c.innerHTML = `<p class="note">No episodes match "${esc(searchQuery.trim())}".</p>`;
+      return;
+    }
+    const rows = visible.map((ep) => fullCatalogueRowToEpRowItem(show, ep));
+    c.innerHTML = rows.map((item, i) => epRow(item, i, ctx, -1)).join("");
+    bindPickLogging(c);
+    bindStars(c);
+    bindUpNext(c);
+    bindPlay(c);
+  }
+
+  function paintCount() {
+    const el = countLabelEl();
+    if (!el) return;
+    el.textContent = showEpisodeCountLabel({
+      loadedCount: loaded.length,
+      fullyLoaded,
+      curatedCount: curatedEps.length,
+      isBreadthTier,
+      stale: anyStale,
+      loadError: loaded.length === 0 ? lastLoadError : null,
+    });
+  }
+
+  function paintSearchNote() {
+    const note = searchNote();
+    if (!note) return;
+    if (!searchQuery.trim()) { note.hidden = true; return; }
+    note.hidden = false;
+    if (searchMode === "loading") {
+      note.textContent = "Searching…";
+      return;
+    }
+    if (searchMode === "scoped") {
+      // The honest, non-hedged case: S-07 searched the show's FULL episode
+      // list server-side, not just whatever this render has paged in.
+      note.textContent = `${scopedResults.length} episode${scopedResults.length === 1 ? "" : "s"} found.`;
+      return;
+    }
+    // "fallback": S-07 failed or degraded for this query. Partial-list
+    // honesty rule (card acceptance criterion): a search box that quietly
+    // filtered only what happened to be in memory would read as "no
+    // results" for an episode on a page that hasn't loaded yet — label the
+    // scope explicitly rather than imply this searched the whole show.
+    const matchCount = filterLoadedEpisodes(loaded, searchQuery).length;
+    note.textContent = fullyLoaded
+      ? `${matchCount} match${matchCount === 1 ? "" : "es"} in ${loaded.length} episode${loaded.length === 1 ? "" : "s"}.`
+      : `${matchCount} match${matchCount === 1 ? "" : "es"} — searching loaded episodes only (${loaded.length} of the full list loaded so far).`;
+  }
+
+  function paintMoreButton() {
+    const wrap = moreWrap();
+    if (!wrap) return;
+    if (fullyLoaded || !nextCursor) { wrap.innerHTML = ""; return; }
+    wrap.innerHTML = `<button type="button" class="show-more-btn" data-show-more>Show more episodes</button>`;
+    const btn = wrap.querySelector("[data-show-more]");
+    if (btn) btn.addEventListener("click", loadNextPage);
+  }
+
+  function revealSearchIfEligible() {
+    const wrap = searchWrap();
+    if (wrap && loaded.length) wrap.hidden = false;
+  }
+
+  function loadNextPage() {
+    const btn = $("#view [data-show-more]");
+    if (btn) { btn.disabled = true; btn.textContent = "Loading…"; }
+    fetchShowEpisodes(show.show_id, nextCursor).then(({ episodes, nextCursor: nc, stale, error }) => {
+      if (!stillMounted()) return; // navigated away before this page resolved
+      if (episodes === null) {
+        lastLoadError = error || "load failed";
+        if (btn) { btn.disabled = false; btn.textContent = "Try again"; }
+        paintCount();
+        return;
+      }
+      lastLoadError = null;
+      if (stale) anyStale = true;
+      loaded = loaded.concat(episodes);
+      nextCursor = nc;
+      fullyLoaded = nc === null;
+      // A pending fallback-mode search should see the newly-loaded page
+      // immediately (this is exactly the "finds an episode on page 12"
+      // case if S-07 itself isn't reachable) — scoped-mode results are
+      // already the full list and don't need re-filtering on a new page.
+      if (searchMode === "fallback") paintSearchNote();
+      paintList();
+      paintCount();
+      paintMoreButton();
+    });
+  }
+
+  /* Debounced (250ms) so a fast typist doesn't fire a request per
+     keystroke — S-07's endpoint does a live feed fetch server-side on a
+     cache miss, so this isn't free. `searchToken` guards a slow response
+     from a superseded query clobbering a newer one's results, same pattern
+     showSearchToken uses for the Shows-page search above. */
+  function runSearch() {
+    const query = searchQuery;
+    if (!query.trim()) {
+      searchMode = "idle";
+      paintList();
+      paintSearchNote();
+      return;
+    }
+    searchMode = "loading";
+    paintSearchNote();
+    const myToken = ++searchToken;
+    searchShowEpisodesScoped(show.show_id, query).then(({ episodes }) => {
+      if (myToken !== searchToken) return; // superseded by a newer query
+      if (!stillMounted()) return; // navigated away
+      if (episodes !== null) {
+        searchMode = "scoped";
+        scopedResults = episodes;
+      } else {
+        searchMode = "fallback";
+        scopedResults = [];
+      }
+      paintList();
+      paintSearchNote();
+    });
+  }
+
+  function onSearchInputChange() {
+    if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
+    searchDebounceTimer = setTimeout(runSearch, 250);
+  }
+
+  const searchForm = $("#view [data-show-ep-search-form]");
+  const searchInput = $("#view [data-show-ep-search-input]");
+  if (searchForm && searchInput) {
+    searchForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      searchQuery = searchInput.value || "";
+      if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
+      runSearch(); // Enter/submit runs immediately, no debounce wait
+    });
+    // Live-filter as the user types — debounced (see runSearch's header).
+    searchInput.addEventListener("input", () => {
+      searchQuery = searchInput.value || "";
+      onSearchInputChange();
+    });
+  }
+
+  fetchShowEpisodes(show.show_id).then(({ episodes, nextCursor: nc, stale, error }) => {
+    if (!stillMounted()) return; // navigated away before the fetch resolved
 
     if (episodes === null) {
-      // Fetch failed outright and there's nothing better than the curated
-      // pool already rendered above — never a blank page, per Stage 3's
-      // acceptance criterion (docs/show-pages-plan.md).
-      if (countLabel) countLabel.textContent = curatedEps.length
-        ? `${curatedEps.length} episode${curatedEps.length === 1 ? "" : "s"} in 4a's catalogue (couldn't load the full list)`
-        : `Couldn't load this show's episodes right now.`;
+      lastLoadError = error || "load failed";
+      paintCount();
       return;
     }
 
     if (episodes.length === 0) {
-      if (countLabel) countLabel.textContent = curatedEps.length
-        ? `${curatedEps.length} episode${curatedEps.length === 1 ? "" : "s"} in 4a's catalogue`
-        : `No episodes found for this show.`;
+      paintCount();
       return;
     }
 
-    const rows = episodes.map((ep) => fullCatalogueRowToEpRowItem(show, ep));
-    if (countLabel) {
-      countLabel.textContent = `${rows.length} episode${rows.length === 1 ? "" : "s"}` +
-        (stale ? " (showing the last saved list — couldn't refresh just now)" : "");
-    }
-    container.innerHTML = rows.map((item, i) => epRow(item, i, ctx, -1)).join("");
-    bindPickLogging(container);
-    bindStars(container);
-    bindUpNext(container);
-    bindPlay(container);
+    if (stale) anyStale = true;
+    loaded = episodes;
+    nextCursor = nc;
+    fullyLoaded = nc === null;
+    paintList();
+    paintCount();
+    paintMoreButton();
+    revealSearchIfEligible();
   });
 }
 
