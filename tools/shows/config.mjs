@@ -28,6 +28,20 @@ export { CONTACT };
     whether the show itself is alive. Exported so re-confirming D1 against
     Joey's export (gate G6, card S-17) is a one-line change here. */
 export const D1_MIN_EPISODES = 3;
+
+/* How many curated shows may be absent from the dump before the import refuses
+   to publish. NOT zero, and the first real run is why: PodcastIndex is 4.7M
+   feeds, which is very large and still not everything, so a hand-curated show
+   legitimately missing from it is a fact about the index, not a bug in us — and
+   that show keeps working in the app regardless, because `data/catalog.json`
+   is what the client ships. Failing the whole build for one such show would
+   mean no show list at all for 4.7M shows because of one.
+
+   A LARGE fraction missing is a different animal: that is the join breaking,
+   which is precisely the failure this guard was written for. 5% of 220 is 11.
+   The unmapped shows are named in the log and recorded in the manifest either
+   way, so "tolerated" never means "unnoticed". */
+export const MAX_UNMAPPED_CURATED_FRACTION = 0.05;
 export const D1_MAX_MONTHS_STALE = 24;
 
 /** Where the "already built this version" marker lives — durable, not

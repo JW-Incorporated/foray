@@ -7,7 +7,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { mkdtemp, mkdir, writeFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, basename } from "node:path";
 import {
   assetBaseUrlFor, buildPointer, listReleaseAssets, PublishError, publishRelease,
   releaseExists, releaseTagFor,
@@ -61,7 +61,12 @@ test("listReleaseAssets: top-level files plus every shard, sorted", async () => 
     await writeFile(join(outDir, "shards", "README.md"), "not an asset");
 
     const assets = await listReleaseAssets(outDir);
-    const names = assets.map((p) => p.split("/").pop());
+    /* `basename`, not `split("/")`: listReleaseAssets returns paths built with
+       `join`, which is backslash-separated on Windows, so splitting on a forward
+       slash returned the whole absolute path and this test failed for every
+       Windows checkout while passing on CI's Linux runner. The assertion was
+       always right; the way it reached the filename was not. */
+    const names = assets.map((p) => basename(p));
     assert.deepEqual(names, [
       "manifest.json", "top.json", "id-map.json", "changed.json",
       "__.json.gz", "aa.json.gz", "zz.json.gz",
