@@ -79,7 +79,10 @@ jobs:
 
       # node:sqlite is flagged on Node < 23.4 — see tools/shows/package.json's
       # own comment for why that package pins its own test script the same
-      # way; this step needs the same flag for the real (non-test) run.
+      # way. run-and-publish.mjs forwards this process's own execArgv to the
+      # import-dump.mjs child it spawns (see runBuild's own comment for why
+      # that forwarding has to be explicit), so passing --experimental-sqlite
+      # here covers BOTH this process and the child it spawns.
       - name: Build the shard index and publish a Release (idempotent)
         id: build
         env:

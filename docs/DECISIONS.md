@@ -2060,4 +2060,15 @@ D13; kanban card S-04a (`t_835d1a3c`, itself a workspace-bug redo of
     ships no client fetch code, so widening the CSP now would be exactly
     the thing that rule exists to prevent.
 - **`docs/DECISIONS.md`** — this entry.
+- **Fresh-context review finding, fixed same-PR:** `runBuild` spawns
+  `import-dump.mjs` as a real child process via `process.execPath`, and
+  Node does **not** auto-inherit `process.execArgv` (e.g.
+  `--experimental-sqlite`) into a spawned child — every test in
+  `run-and-publish.test.mjs` injects a fake `exec`, which hid this
+  completely; the real weekly job would have crashed on Node 22 the first
+  time it ran a genuine (non-skip) build. Fixed by forwarding
+  `process.execArgv` explicitly in `runBuild`, and pinned by a new suite
+  (`run-and-publish-execargv.test.mjs`) that spawns a **real** node
+  subprocess — no fake `exec` anywhere — to prove the forwarding actually
+  reaches the child's argv.
 

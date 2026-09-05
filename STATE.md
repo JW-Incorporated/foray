@@ -2639,7 +2639,10 @@ backfill is a future, separate pass.
   code ships yet, so there is nothing to widen for (S-03's own rule).
 - **Decision entry:** `docs/DECISIONS.md`, 2026-09-05.
 - **Test floors**: `test/suite-integrity.test.js` gained
-  `tools/shows/publish-release.test.mjs` (9) and
-  `tools/shows/run-and-publish.test.mjs` (3).
+  `tools/shows/publish-release.test.mjs` (9),
+  `tools/shows/run-and-publish.test.mjs` (3), and
+  `tools/shows/run-and-publish-execargv.test.mjs` (1 — pins the
+  execArgv-forwarding fix from fresh-context review, see
+  `docs/DECISIONS.md` for the finding).
 
 

@@ -33,7 +33,16 @@ const execFileP = promisify(execFile);
     own contract is "manifest.json exists and is current" whether this
     process or import-dump.mjs's own CLI produced it. */
 export async function runBuild(argv, { exec = execFileP, cwd } = {}) {
-  const scriptArgs = ["tools/shows/import-dump.mjs", ...argv];
+  // execArgv (not argv) carries process-level V8/Node flags like
+  // --experimental-sqlite. Node does NOT inherit these into a spawned
+  // child automatically — only argv strings pass through — so without
+  // forwarding execArgv explicitly here, a real (non-test) invocation
+  // would silently drop the flag and import-dump.mjs's `import("node:sqlite")`
+  // would throw on any Node < 23.4, including the Node 22 the workflow
+  // pins. Every test in this file injects a fake `exec`, so this exact gap
+  // was invisible to the suite until reviewed against the real spawn path
+  // — see run-and-publish.test.mjs's own real-subprocess test added for it.
+  const scriptArgs = [...process.execArgv, "tools/shows/import-dump.mjs", ...argv];
   try {
     const { stdout } = await exec(process.execPath, scriptArgs, { cwd, maxBuffer: 64 * 1024 * 1024 });
     return { stdout, skipped: /^SKIP:/m.test(stdout) };

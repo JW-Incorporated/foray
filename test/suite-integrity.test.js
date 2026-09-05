@@ -947,6 +947,14 @@ const FLOORS = {
      state.json). */
   "tools/shows/publish-release.test.mjs": 9,
   "tools/shows/run-and-publish.test.mjs": 3,
+  /* Fresh-context review finding (2026-09-05): runBuild spawns
+     import-dump.mjs as a real child process, and Node does NOT
+     auto-inherit process.execArgv (e.g. --experimental-sqlite) into a
+     spawned child — every other test in run-and-publish.test.mjs injects
+     a fake `exec`, which hid this gap completely. This suite spawns a
+     REAL node subprocess (no fake exec anywhere) to prove the forwarding
+     actually reaches the child's argv. */
+  "tools/shows/run-and-publish-execargv.test.mjs": 1,
   /* The breadth prioritiser and its yield report (#114). Floored for the same
      reason politeness.test.mjs is, and the reason is not hypothetical here
      either: the first draft of `rank-breadth.mjs` had a seed hash that produced
