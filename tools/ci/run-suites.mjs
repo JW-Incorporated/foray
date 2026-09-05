@@ -104,7 +104,17 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const REPO_ROOT = path.resolve(HERE, "..", "..");
 
 /* KEEP IN SYNC with SCANNED_DIRS in test/suite-integrity.test.js. The sync is
- * not a convention: that file asserts the two agree, and fails if they drift. */
+ * not a convention: that file asserts the two agree, and fails if they drift.
+ *
+ * "api" is deliberately NOT here (S-02, kanban t_4bd3c0a3), for the same
+ * reason "backend" isn't (see that constant's own comment in
+ * suite-integrity.test.js): `api/` is unlisted in path-policy's
+ * ALLOWED_PREFIXES (always a human merge, never auto-merge-eligible), so it
+ * doesn't need floor protection against a silent auto-merged test deletion —
+ * and folding it into this shared data-and-site discovery would imply it
+ * does. `api/test/import-closure.test.mjs` instead gets its own required
+ * `api` CI job (ci.yml), which installs api/'s own dependencies and runs it
+ * directly — same shape as the `backend` job. */
 export const SCANNED_DIRS = ["player", "test", "tools"];
 
 /* KEEP IN SYNC with SUITE_RE in test/suite-integrity.test.js. `.mjs` and `.cjs`

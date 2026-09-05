@@ -2,7 +2,7 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "buildCommand": "node tools/web/prepare-dist.mjs",
   "outputDirectory": "dist",
-  "installCommand": "npm install --prefix api",
+  "installCommand": "npm install --prefix api && npm install --omit=dev --prefix backend",
   "framework": null,
   "headers": [
     {

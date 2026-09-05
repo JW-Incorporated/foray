@@ -1,4 +1,5 @@
 import { searchBreadthShows } from "../../backend/src/catalog/searchBreadthShows";
+import { applyCors } from "../_lib/cors";
 
 /**
  * GET /api/shows/search?q=<query>&limit=<n> — the backend half of A3.1/Q3
@@ -17,6 +18,10 @@ import { searchBreadthShows } from "../../backend/src/catalog/searchBreadthShows
  * to the repo, so it has a materially smaller infra footprint than the
  * episodes endpoint).
  *
+ * CORS (S-02, kanban t_4bd3c0a3): this endpoint had the identical missing-
+ * CORS-header gap `episodes.ts` did, so it's wired to the same shared
+ * `api/_lib/cors.ts` allowlist in the same change rather than left half-fixed.
+ *
  * Degrades honestly: an unreadable catalogue file (missing/corrupt) yields
  * a 200 with an empty result list plus `degraded: true`, never a 500 or a
  * blank crash — matches this repo's "absence is a real state" rule
@@ -27,11 +32,13 @@ import { searchBreadthShows } from "../../backend/src/catalog/searchBreadthShows
 interface ApiRequest {
   method?: string;
   query: Record<string, string | string[] | undefined>;
+  headers: Record<string, string | string[] | undefined>;
 }
 interface ApiResponse {
   status(code: number): ApiResponse;
   json(body: unknown): void;
   setHeader(name: string, value: string): void;
+  end(): void;
 }
 
 function firstParam(v: string | string[] | undefined): string | null {
@@ -40,6 +47,8 @@ function firstParam(v: string | string[] | undefined): string | null {
 }
 
 export default function handler(req: ApiRequest, res: ApiResponse): void {
+  if (applyCors(req, res)) return; // OPTIONS preflight already answered
+
   if (req.method !== "GET") {
     res.status(405).json({ error: "method not allowed" });
     return;
