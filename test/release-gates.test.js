@@ -155,20 +155,23 @@ test("SHOWS_SEARCH_OFF_DEVICE is false when neither app.js/search-engine.js nor 
   assert.equal(offDeviceSearchFlagOn(), false);
 });
 
-test("the privacy policy's absolute no-transmission sentence is present verbatim today", () => {
-  /* Pins the CURRENT state of the sentence this whole gate exists to guard.
-     If this test goes red on its own (sentence missing, flag still off), the
-     policy has been edited without going through G5's tracked process — the
-     sentence should be RETIRED via HUMAN-ACTIONS.md #<G5>, not silently
-     rephrased mid-development.
+test("the privacy policy's absolute no-transmission sentence has been retired now that G5 is resolved", () => {
+  /* G5 (HUMAN-ACTIONS.md #38) is now resolved: docs/legal/privacy-policy.md
+     §2 no longer makes the absolute no-transmission promise for Shows
+     search, because shard/API-backed Shows search now transmits a typed
+     query when the show/episode is not already in the local catalogue. The
+     old absolute sentence must therefore be GONE, and SHOWS_SEARCH_OFF_DEVICE
+     may now be true without tripping the release gate below.
 
-     MUTATION THAT KILLS THIS: reword the sentence without updating this
-     string. Ran it — red, naming exactly what changed. */
-  assert.ok(
+     MUTATION THAT KILLS THIS: put the old absolute sentence back in the
+     policy without also flipping SHOWS_SEARCH_OFF_DEVICE off. Ran it — red,
+     because the core AND-gate test right after this one would then fail. */
+  assert.equal(
     privacySentencePresent(),
-    `docs/legal/privacy-policy.md no longer contains the exact sentence \"${PRIVACY_SENTENCE}\" ` +
-      "— if Wyatt has resolved G5 (HUMAN-ACTIONS.md), this test and its " +
-      "sibling gate assertions below need to move in the same PR."
+    false,
+    `docs/legal/privacy-policy.md still contains the exact retired sentence \"${PRIVACY_SENTENCE}\" ` +
+      "— G5 replaced it with wording that discloses the shard/API lookup for " +
+      "Shows search misses; see HUMAN-ACTIONS.md #38."
   );
 });
 

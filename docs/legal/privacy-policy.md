@@ -176,10 +176,18 @@ Two things worth calling out plainly, because a generic policy would hide them:
   you marked something as too far left or right is a signal about content you
   reacted to, it is transmitted, and you should know that before you use it.
 
-**Nothing you type into the playlist box or the Shows search box is
-transmitted.** Neither search is logged as an event at all, and both run
-entirely on your device against files already downloaded
-(`search-engine.js`); playlist events are local-only.
+**Nothing you type into the playlist box is transmitted.** That search runs
+entirely on your device against files already downloaded (`search-engine.js`)
+and is never logged as an event; playlist events are local-only.
+
+**The Shows search box works the same way — until it has to look further
+than your device.** Typing a search first checks 4a's local catalogue
+on-device, the same as the playlist box, and if a show or episode is already
+in that local catalogue nothing you typed leaves your device. If it is not —
+you are searching for something outside 4a's local catalogue — 4a sends your
+typed query off-device to look it up against a shard/index so it can still
+find it. That query, and nothing else about you, is what is transmitted for
+that lookup.
 
 ## 3. The anonymous account
 
