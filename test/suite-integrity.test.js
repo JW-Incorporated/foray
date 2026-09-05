@@ -302,6 +302,8 @@ const FLOORS = {
      session ONE); and the implication over the real data, pool has artwork
      => the show resolves artwork. */
   "test/show-page.test.js": 43,
+  "test/show-page-pagination.test.js": 5,
+  "test/show-page-search.test.js": 6,
 
   /* The home screen's geometry under DEVICE conditions. Floored because every
      defect it pins was invisible in a desktop browser — all four turn on
