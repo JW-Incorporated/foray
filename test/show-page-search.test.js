@@ -187,7 +187,7 @@ function extractAttr(html, attr) {
   return html.includes(attr) ? "" : null;
 }
 
-function mount({ responses = [], fetchImpl = null } = {}) {
+function mount({ responses = [], fetchImpl = null, searchImpl = null } = {}) {
   const viewEl = makeViewEl();
   const byId = new Map(PAGE_IDS.map((id) => {
     const el = id === "view" ? viewEl : makeEl("div");
@@ -196,8 +196,16 @@ function mount({ responses = [], fetchImpl = null } = {}) {
   }));
   const body = makeEl("body");
   const calls = [];
+  const searchCalls = [];
 
   const routedFetch = (url) => {
+    if (String(url).includes("api/episodes/search")) {
+      searchCalls.push(String(url));
+      if (searchImpl) return searchImpl(url);
+      // Default: endpoint unreachable — exercises the fallback path unless
+      // a test supplies its own searchImpl for the "scoped" happy path.
+      return Promise.reject(new Error("no searchImpl configured"));
+    }
     if (String(url).includes("api/shows/")) {
       calls.push(String(url));
       if (fetchImpl) return fetchImpl(url);
@@ -250,11 +258,19 @@ function mount({ responses = [], fetchImpl = null } = {}) {
   vm.runInContext(APP_SRC, ctx, { filename: "app.js" });
 
   ctx.state = vm.runInContext("state", ctx);
-  return { ctx, viewEl, calls };
+  return { ctx, viewEl, calls, searchCalls };
 }
 
 async function flushMicrotasks(n = 50) {
   for (let i = 0; i < n; i++) await new Promise((r) => setTimeout(r, 0));
+}
+
+/* renderShow's search input is debounced 250ms (S-06/S-07: avoids firing a
+   live-feed-backed network request per keystroke) — tests that type into
+   the box must wait past that window before asserting on the result. */
+async function waitForSearchDebounce() {
+  await new Promise((r) => setTimeout(r, 300));
+  await flushMicrotasks();
 }
 
 function seedShowAndPool(ctx, { show, discoverItems = [] } = {}) {
@@ -292,10 +308,14 @@ test("the search box stays hidden until at least one full-catalogue page has loa
   assert.strictEqual(wrap.hidden, true, "search box must start hidden before any full-catalogue page has loaded");
 });
 
-test("typing a query filters the rendered list to loaded episodes matching title or description", async () => {
+test("typing a query filters the rendered list to loaded episodes matching title or description (fallback path, S-07 unreachable)", async () => {
   /* MUTATION: drop the `.filter(...)` in filterLoadedEpisodes and return
      loadedRaw unconditionally. This assertion fails because both matching
-     and non-matching episodes would remain in the container. */
+     and non-matching episodes would remain in the container.
+
+     mount()'s default searchImpl rejects every api/episodes/search call,
+     so this exercises the fallback local-filter path deliberately — the
+     scoped-path test below covers S-07 answering successfully. */
   const episodes = makeEpisodes(5, { titles: ["Alpha Show Kickoff", "Bravo Update", "Charlie Deep Dive", "Delta Recap", "Echo Finale"] });
   const m = mount({ responses: [pageResponse(episodes, { cursor: null })] });
   seedShowAndPool(m.ctx, { show: { show_id: "show-a", title: "Show A", taxonomy_node_ids: [] } });
@@ -305,6 +325,7 @@ test("typing a query filters the rendered list to loaded episodes matching title
 
   const input = m.viewEl.querySelector("[data-show-ep-search-input]");
   input.type("deep dive");
+  await waitForSearchDebounce();
 
   const container = m.viewEl.querySelector("[data-show-episodes]");
   assert.ok(container.innerHTML.includes("Charlie Deep Dive"), "matching episode must remain visible");
@@ -312,10 +333,57 @@ test("typing a query filters the rendered list to loaded episodes matching title
   assert.ok(!container.innerHTML.includes("Bravo Update"), "non-matching episode must be filtered out");
 });
 
-test('while the list is not fully loaded, the search note says it is searching loaded episodes only', async () => {
+test("a query answered by S-07's scoped endpoint renders those results and reports an unhedged match count", async () => {
+  /* The primary, non-fallback path: S-07 (api/episodes/search.ts) searches
+     the show's FULL feed server-side and returns real results, independent
+     of how many pages this render has paged in via fetchShowEpisodes.
+
+     MUTATION: skip calling searchShowEpisodesScoped and always fall
+     through to the local filter. This assertion fails because the scoped-
+     only episode (never in `loaded`) would not appear, and the note would
+     carry the fallback's "loaded episodes only" hedge instead of a bare
+     count. */
+  const loadedPage = makeEpisodes(3, { titles: ["Local A", "Local B", "Local C"] });
+  const m = mount({
+    responses: [pageResponse(loadedPage, { cursor: "cursor-1" })],
+    searchImpl: () => Promise.resolve({
+      ok: true,
+      json: async () => ({
+        query: "scoped only",
+        show: "show-a",
+        episodes: [{ guid: "far-away", title: "Scoped Only Episode", description_text: "", audio_url: "https://cdn.example.com/far.mp3", duration_seconds: 60, published_at: null }],
+        source: ["live"],
+        degraded: false,
+        error: null,
+      }),
+    }),
+  });
+  seedShowAndPool(m.ctx, { show: { show_id: "show-a", title: "Show A", taxonomy_node_ids: [] } });
+
+  m.ctx.renderShow("show-a");
+  await flushMicrotasks();
+
+  const input = m.viewEl.querySelector("[data-show-ep-search-input]");
+  input.type("scoped only");
+  await waitForSearchDebounce();
+
+  assert.ok(m.searchCalls.length >= 1, "must call S-07's scoped endpoint");
+  assert.match(m.searchCalls[0], /api\/episodes\/search\?show=show-a&q=scoped(%20|\+)only/, `must scope the search request to this show, got: ${m.searchCalls[0]}`);
+
+  const container = m.viewEl.querySelector("[data-show-episodes]");
+  assert.ok(container.innerHTML.includes("Scoped Only Episode"), "must render the scoped-search result even though it was never paged in via fetchShowEpisodes");
+  assert.ok(!container.innerHTML.includes("Local A"), "must not mix in unrelated loaded episodes for a scoped-search result set");
+
+  const note = m.viewEl.querySelector("[data-show-ep-search-note]");
+  assert.doesNotMatch(note.textContent, /loaded episodes only/i, "a real scoped-search result must never carry the partial-list fallback hedge");
+  assert.match(note.textContent, /1 episode found/i, `note must report the scoped result count plainly, got: "${note.textContent}"`);
+});
+
+test('while S-07 is unreachable and the list is not fully loaded, the search note says it is searching loaded episodes only', async () => {
   /* Direct pin of the card's own instruction: label the local-filter
      fallback "searching loaded episodes" (or equivalent honest scope
-     language) rather than implying a full-catalogue search.
+     language) rather than implying a full-catalogue search — this is the
+     state the box is in whenever S-07 fails/degrades for the typed query.
 
      MUTATION: use the `fullyLoaded` branch's wording unconditionally. This
      assertion fails because the note would drop the "loaded episodes"/
@@ -329,13 +397,14 @@ test('while the list is not fully loaded, the search note says it is searching l
 
   const input = m.viewEl.querySelector("[data-show-ep-search-input]");
   input.type("needle");
+  await waitForSearchDebounce();
 
   const note = m.viewEl.querySelector("[data-show-ep-search-note]");
   assert.match(note.textContent, /loaded episodes/i, `note must state it is scoped to loaded episodes while pages remain unfetched, got: "${note.textContent}"`);
   assert.match(note.textContent, /1 of the full list loaded so far|100 of the full list/i, `note must state how much of the full list is loaded, got: "${note.textContent}"`);
 });
 
-test("once the full list is fully loaded, the search note drops the partial-scope hedge", async () => {
+test("once the full list is fully loaded, the fallback search note drops the partial-scope hedge", async () => {
   /* MUTATION: never flip the note's wording once fullyLoaded is true (keep
      always returning the partial-scope sentence). This assertion fails
      because the note would still say "searching loaded episodes only" after
@@ -349,17 +418,21 @@ test("once the full list is fully loaded, the search note drops the partial-scop
 
   const input = m.viewEl.querySelector("[data-show-ep-search-input]");
   input.type("true match");
+  await waitForSearchDebounce();
 
   const note = m.viewEl.querySelector("[data-show-ep-search-note]");
   assert.doesNotMatch(note.textContent, /loaded episodes only/i, `note must drop the partial-scope hedge once the full list has loaded, got: "${note.textContent}"`);
   assert.match(note.textContent, /1 match/i, `note must still report the match count, got: "${note.textContent}"`);
 });
 
-test('a query matching only a not-yet-loaded page ("page 12") is unfindable until that page loads, then finds it', async () => {
+test('a query matching only a not-yet-loaded page ("page 12"), with S-07 unreachable, is unfindable until that page loads, then finds it', async () => {
   /* Pins the card's own acceptance criterion phrasing: "the box finds an
      episode on page 12". Simulated here with two pages (rather than
-     fetching 12 real pages) — the mechanism under test (search only
-     considers `loaded`) is identical regardless of page count.
+     fetching 12 real pages) — the mechanism under test (the fallback path
+     only considers `loaded`) is identical regardless of page count. S-07
+     is unreachable in this test (mount()'s default searchImpl) so the
+     fallback path is what's exercised, matching the card's own instruction
+     to ship the local-filter fallback for exactly this scenario.
 
      MUTATION: have filterLoadedEpisodes search some global/cached episode
      list instead of the `loaded` array passed in. This assertion fails
@@ -376,6 +449,7 @@ test('a query matching only a not-yet-loaded page ("page 12") is unfindable unti
 
   const input = m.viewEl.querySelector("[data-show-ep-search-input]");
   input.type("deep cut on page two");
+  await waitForSearchDebounce();
 
   let container = m.viewEl.querySelector("[data-show-episodes]");
   assert.ok(!container.innerHTML.includes("Deep Cut On Page Two"), "must not find an episode that hasn't loaded yet");
@@ -385,9 +459,6 @@ test('a query matching only a not-yet-loaded page ("page 12") is unfindable unti
   btn.click();
   await flushMicrotasks();
 
-  // Re-apply the still-active query after the new page lands (paintList()
-  // re-filters with the live searchQuery on every repaint, including the
-  // one loadNextPage triggers).
   container = m.viewEl.querySelector("[data-show-episodes]");
   assert.ok(container.innerHTML.includes("Deep Cut On Page Two"), "episode must be findable once its page has loaded");
 });
@@ -402,10 +473,12 @@ test("clearing the query restores the full loaded list", async () => {
 
   const input = m.viewEl.querySelector("[data-show-ep-search-input]");
   input.type("alpha");
+  await waitForSearchDebounce();
   let container = m.viewEl.querySelector("[data-show-episodes]");
   assert.ok(!container.innerHTML.includes("Bravo"), "sanity: filtered list excludes Bravo");
 
   input.type("");
+  await waitForSearchDebounce();
   container = m.viewEl.querySelector("[data-show-episodes]");
   assert.ok(container.innerHTML.includes("Alpha") && container.innerHTML.includes("Bravo") && container.innerHTML.includes("Charlie"), "clearing the query must restore every loaded episode");
 });

@@ -849,6 +849,13 @@ body.fp-open.fp-expanded { padding-bottom: 340px; }
   letter-spacing: 0.06em; text-transform: uppercase;
   color: var(--text-dim);
 }
+/* "from Apple's index" caption (S-07, kanban t_6baccaa0): sits inside an
+   uppercase, letter-spaced h3 — reset both so the caption reads as normal
+   prose rather than shouting the provenance note. */
+.ep-more h3 .note {
+  text-transform: none; letter-spacing: normal; font-weight: 400;
+  font-size: 0.78rem;
+}
 
 .fp-scrub { width: 100%; accent-color: var(--accent); }
 .fp-times { display: flex; justify-content: space-between; font-size: 0.7rem; color: var(--text-dim); }

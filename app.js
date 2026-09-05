@@ -1452,6 +1452,7 @@ function renderAllShows() {
       </form>
       <p id="sh-note" class="note" hidden></p>
       <div id="sh-results" class="show-results" hidden></div>
+      <div id="ep-search-results" hidden></div>
       <a class="page-link-row" href="#/starred-shows">Starred shows \u203a</a>
       ${vouchForHtml()}`);
 
@@ -1628,11 +1629,14 @@ function showEpisodeCountLabel({ loadedCount, fullyLoaded, curatedCount, isBread
 }
 
 /* S-06: local-filter search over whatever full-catalogue pages have been
-   loaded into this render so far. Deliberately NOT a claim of full-catalogue
-   search (that's S-07's scoped backend endpoint, not shipped yet) — matches
-   against title + description text of the raw API episode records already
-   held in `loaded`, case-insensitive substring, same idiom searchShows()
-   uses for show names. */
+   loaded into this render so far. This is the FALLBACK path only — S-07
+   (kanban t_6baccaa0, api/episodes/search.ts) shipped a real show-scoped
+   full-catalogue search endpoint, which searchShowEpisodesScoped() below
+   asks first; this function only runs when that call fails/degrades, so
+   the search box still works (against whatever pages happen to be in
+   memory) rather than going dark. Matches against title + description
+   text of the raw API episode records already held in `loaded`,
+   case-insensitive substring, same idiom searchShows() uses for names. */
 function filterLoadedEpisodes(loadedRaw, query) {
   const q = query.trim().toLowerCase();
   if (!q) return loadedRaw;
@@ -1641,6 +1645,22 @@ function filterLoadedEpisodes(loadedRaw, query) {
     const desc = String(ep.description_text || "").toLowerCase();
     return title.includes(q) || desc.includes(q);
   });
+}
+
+/* S-06: asks S-07's show-scoped episode-search endpoint
+   (GET /api/episodes/search?show=<id>&q=<query>), which fetches the show's
+   OWN live feed server-side and filters the FULL episode list — not just
+   whatever pages this render happens to have loaded via fetchShowEpisodes.
+   This is the real, full-catalogue search the card asks for; the local
+   `filterLoadedEpisodes` fallback above only runs when this call itself
+   fails or comes back `degraded` (rate limit, feed fetch error, endpoint
+   unreachable), so the box degrades to "searching loaded episodes" rather
+   than going silent. Returns `{ episodes: null }` on any failure/degrade —
+   callers branch on that exactly like fetchShowEpisodes' null convention. */
+async function searchShowEpisodesScoped(show_id, query) {
+  const data = await fetchApiJson(`api/episodes/search?show=${encodeURIComponent(show_id)}&q=${encodeURIComponent(query)}&limit=25`);
+  if (!data || data.degraded || !Array.isArray(data.episodes)) return { episodes: null };
+  return { episodes: data.episodes };
 }
 
 function renderShow(show_id) {
@@ -1720,6 +1740,19 @@ function renderShow(show_id) {
   let anyStale = false;     // sticky once any page reports stale/degraded
   let lastLoadError = null;
   let searchQuery = "";
+  /* S-06/S-07 wiring: `searchMode` tracks which result set the container is
+     currently showing so paintSearchNote() can label it honestly.
+       "idle"     — no query typed; showing the full `loaded` list.
+       "loading"  — a scoped-search request is in flight for the current query.
+       "scoped"   — S-07's endpoint answered for the CURRENT query (real,
+                    full-catalogue search results — the honest, non-hedged case).
+       "fallback" — S-07 failed/degraded for the current query; falling back
+                    to filtering whatever pages are loaded, hedged per the
+                    card's partial-list-honesty rule. */
+  let searchMode = "idle";
+  let scopedResults = [];   // populated only when searchMode === "scoped"
+  let searchToken = 0;      // guards a slow/superseded scoped-search response
+  let searchDebounceTimer = null;
 
   const container = () => $("#view [data-show-episodes]");
   const countLabelEl = () => $("#view [data-show-count]");
@@ -1731,9 +1764,9 @@ function renderShow(show_id) {
   function paintList() {
     const c = container();
     if (!c) return;
-    const visible = filterLoadedEpisodes(loaded, searchQuery);
-    if (loaded.length && !visible.length) {
-      c.innerHTML = `<p class="note">No episodes match "${esc(searchQuery.trim())}" in the ${loaded.length} episode${loaded.length === 1 ? "" : "s"} loaded so far.</p>`;
+    const visible = searchMode === "scoped" ? scopedResults : filterLoadedEpisodes(loaded, searchQuery);
+    if (searchQuery.trim() && !visible.length && searchMode !== "loading") {
+      c.innerHTML = `<p class="note">No episodes match "${esc(searchQuery.trim())}".</p>`;
       return;
     }
     const rows = visible.map((ep) => fullCatalogueRowToEpRowItem(show, ep));
@@ -1761,15 +1794,25 @@ function renderShow(show_id) {
     const note = searchNote();
     if (!note) return;
     if (!searchQuery.trim()) { note.hidden = true; return; }
-    const matchCount = filterLoadedEpisodes(loaded, searchQuery).length;
     note.hidden = false;
+    if (searchMode === "loading") {
+      note.textContent = "Searching…";
+      return;
+    }
+    if (searchMode === "scoped") {
+      // The honest, non-hedged case: S-07 searched the show's FULL episode
+      // list server-side, not just whatever this render has paged in.
+      note.textContent = `${scopedResults.length} episode${scopedResults.length === 1 ? "" : "s"} found.`;
+      return;
+    }
+    // "fallback": S-07 failed or degraded for this query. Partial-list
+    // honesty rule (card acceptance criterion): a search box that quietly
+    // filtered only what happened to be in memory would read as "no
+    // results" for an episode on a page that hasn't loaded yet — label the
+    // scope explicitly rather than imply this searched the whole show.
+    const matchCount = filterLoadedEpisodes(loaded, searchQuery).length;
     note.textContent = fullyLoaded
       ? `${matchCount} match${matchCount === 1 ? "" : "es"} in ${loaded.length} episode${loaded.length === 1 ? "" : "s"}.`
-      // Partial-list honesty rule (card acceptance criterion): a search box
-      // that quietly filtered only what happened to be in memory would read
-      // as "no results" for an episode on a page that hasn't loaded yet.
-      // Label the scope explicitly rather than imply this is a full-catalogue
-      // search — S-07's scoped endpoint replaces this fallback later.
       : `${matchCount} match${matchCount === 1 ? "" : "es"} — searching loaded episodes only (${loaded.length} of the full list loaded so far).`;
   }
 
@@ -1803,11 +1846,51 @@ function renderShow(show_id) {
       loaded = loaded.concat(episodes);
       nextCursor = nc;
       fullyLoaded = nc === null;
+      // A pending fallback-mode search should see the newly-loaded page
+      // immediately (this is exactly the "finds an episode on page 12"
+      // case if S-07 itself isn't reachable) — scoped-mode results are
+      // already the full list and don't need re-filtering on a new page.
+      if (searchMode === "fallback") paintSearchNote();
       paintList();
       paintCount();
-      paintSearchNote();
       paintMoreButton();
     });
+  }
+
+  /* Debounced (250ms) so a fast typist doesn't fire a request per
+     keystroke — S-07's endpoint does a live feed fetch server-side on a
+     cache miss, so this isn't free. `searchToken` guards a slow response
+     from a superseded query clobbering a newer one's results, same pattern
+     showSearchToken uses for the Shows-page search above. */
+  function runSearch() {
+    const query = searchQuery;
+    if (!query.trim()) {
+      searchMode = "idle";
+      paintList();
+      paintSearchNote();
+      return;
+    }
+    searchMode = "loading";
+    paintSearchNote();
+    const myToken = ++searchToken;
+    searchShowEpisodesScoped(show.show_id, query).then(({ episodes }) => {
+      if (myToken !== searchToken) return; // superseded by a newer query
+      if (!stillMounted()) return; // navigated away
+      if (episodes !== null) {
+        searchMode = "scoped";
+        scopedResults = episodes;
+      } else {
+        searchMode = "fallback";
+        scopedResults = [];
+      }
+      paintList();
+      paintSearchNote();
+    });
+  }
+
+  function onSearchInputChange() {
+    if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
+    searchDebounceTimer = setTimeout(runSearch, 250);
   }
 
   const searchForm = $("#view [data-show-ep-search-form]");
@@ -1816,16 +1899,13 @@ function renderShow(show_id) {
     searchForm.addEventListener("submit", (e) => {
       e.preventDefault();
       searchQuery = searchInput.value || "";
-      paintList();
-      paintSearchNote();
+      if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
+      runSearch(); // Enter/submit runs immediately, no debounce wait
     });
-    // Live-filter as the user types (loaded episodes are already in memory —
-    // no network cost to re-filter on every keystroke), submit stays as the
-    // no-JS-affordance / Enter-key path for the same box.
+    // Live-filter as the user types — debounced (see runSearch's header).
     searchInput.addEventListener("input", () => {
       searchQuery = searchInput.value || "";
-      paintList();
-      paintSearchNote();
+      onSearchInputChange();
     });
   }
 
@@ -2411,6 +2491,64 @@ function renderShowSearchResults(query) {
     }
     if (additions.length) paint(localShows.concat(additions));
   }); // fetchApiJson already swallows network/parse errors and resolves null — no .catch needed
+
+  renderEpisodeSearchResults(query, myToken);
+}
+
+/* Episodes section under Shows search (S-07, kanban t_6baccaa0): a separate
+   result block below the show list, backed by api/episodes/search.ts. Same
+   "guard a slow in-flight fetch with a token" pattern as the show-search
+   breadth fetch above, sharing the same showSearchToken so a fast retype
+   supersedes both in lockstep.
+
+   Offline degrades to nothing rendered — this is a network-only feature
+   (Apple's public index / a show's live feed), there is no local episode
+   index to fall back to for a query outside the curated pool, matching this
+   file's own "absence is a real state" convention rather than a spinner
+   that never resolves. */
+function renderEpisodeSearchResults(query, myToken) {
+  const container = $("#ep-search-results");
+  if (!container) return; // page markup not present (e.g. category page reusing renderShowIndexPage)
+
+  if (typeof navigator !== "undefined" && navigator.onLine === false) {
+    container.innerHTML = "";
+    container.hidden = true;
+    return;
+  }
+
+  fetchApiJson(`api/episodes/search?q=${encodeURIComponent(query)}&limit=10`).then((data) => {
+    if (myToken !== showSearchToken) return; // superseded — drop this response
+    const episodes = data?.episodes || [];
+    if (!episodes.length) {
+      container.innerHTML = "";
+      container.hidden = true;
+      return;
+    }
+    const fromApple = (data.source || []).includes("apple");
+    const ctx = "episode-search-" + query;
+    const rows = episodes.map((ep, i) => {
+      const id = `apple:${ep.show_id}:${ep.guid || (ep.title + "--" + i)}`;
+      const item = snapshot(id, {
+        show: ep.show_title || ep.show_id,
+        title: ep.title,
+        hook: ep.description_text || "",
+        audio_url: ep.audio_url,
+        duration_min: ep.duration_seconds ? Math.round(ep.duration_seconds / 60) : null,
+        duration_sec: ep.duration_seconds ?? null,
+        topics: [],
+      });
+      return epRow(item, i, ctx, -1);
+    });
+    container.innerHTML = `<section class="ep-more fy-episode-search">
+      <h3>Episodes${fromApple ? ` <span class="note">from Apple's index</span>` : ""}</h3>
+      ${rows.join("")}
+    </section>`;
+    container.hidden = false;
+    bindPickLogging(container);
+    bindStars(container);
+    bindUpNext(container);
+    bindPlay(container);
+  });
 }
 
 /* HOME IS THE FOUR SUBJECT CARDS AND THE RESUME BANNER. NOTHING ELSE.

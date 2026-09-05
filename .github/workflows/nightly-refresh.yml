@@ -263,19 +263,37 @@ jobs:
             echo "created $DIGEST_BRANCH branch"
           fi
 
+          # S-01 (#nightly digest publish failed since 09-01 with "Argument list
+          # too long"): `-f content="$(base64 -w0 "$path")"` puts the ENTIRE
+          # base64'd file on the process argv. That is fine for a small digest and
+          # fatal for a real one — `resolved.json` grows with the catalogue, and a
+          # multi-MB digest blows past the kernel's ARG_MAX before `gh` ever sees
+          # the request. The fix moves the payload into a REQUEST BODY FILE via
+          # `gh api --input`, so the only things left on argv are a path and a
+          # flag; base64 encoding costs a big string, but it lives in one file's
+          # bytes, never in one process's argument vector.
+          #
+          # `jq --rawfile` (not `-f`/`--arg`) is what keeps a 2MB base64 blob out
+          # of argv on the jq invocation too — `--rawfile name file` reads the
+          # file's bytes into the named variable without ever making it a shell
+          # argument.
           put_file() {
             local path="$1" msg="$2"
-            local sha
+            local sha payload
             sha=$(gh api "repos/$REPO/contents/$path?ref=$DIGEST_BRANCH" --jq .sha 2>/dev/null || true)
+            payload=$(mktemp)
+            base64 -w0 "$path" > "$payload.b64"
             if [ -n "$sha" ]; then
-              retry gh api -X PUT "repos/$REPO/contents/$path" \
-                -f message="$msg" -f branch="$DIGEST_BRANCH" -f sha="$sha" \
-                -f content="$(base64 -w0 "$path")" >/dev/null
+              jq -n --arg message "$msg" --arg branch "$DIGEST_BRANCH" --arg sha "$sha" \
+                --rawfile content "$payload.b64" \
+                '{message: $message, branch: $branch, sha: $sha, content: $content}' > "$payload"
             else
-              retry gh api -X PUT "repos/$REPO/contents/$path" \
-                -f message="$msg" -f branch="$DIGEST_BRANCH" \
-                -f content="$(base64 -w0 "$path")" >/dev/null
+              jq -n --arg message "$msg" --arg branch "$DIGEST_BRANCH" \
+                --rawfile content "$payload.b64" \
+                '{message: $message, branch: $branch, content: $content}' > "$payload"
             fi
+            retry gh api -X PUT "repos/$REPO/contents/$path" --input "$payload" >/dev/null
+            rm -f "$payload" "$payload.b64"
           }
 
           COUNT=$(node -e "console.log(require('./resolved.json').resolved.length)")

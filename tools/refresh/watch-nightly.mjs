@@ -409,6 +409,63 @@ export function recoveryWindowHours(ageHours) {
   return Math.max(72, Math.ceil(ageHours) + 12);
 }
 
+/**
+ * S-01: did today's `nightly-refresh` Action itself succeed?
+ *
+ * Independent of `absenceVerdict` ON PURPOSE — the ask ("today's nightly-refresh
+ * run failed -> red, regardless of digest PR state") is deliberately not folded
+ * into the PR-shaped checks above. A red `nightly-refresh` run can still leave a
+ * PREVIOUS night's digest sitting on `refresh-digest` merged and processed, which
+ * makes `absenceVerdict` green — correctly, for the question IT asks ("did last
+ * night's digest become a PR"). That is not the same question as "did the
+ * scheduled run just fail", and folding them into one verdict would let a broken
+ * publish step hide behind an old, healthy PR the way #290's missing agent hid
+ * behind a run that logged success. Two verdicts, `nightly-watch` fails on
+ * either — see the workflow for how they combine.
+ *
+ * Only `event === "schedule"` runs count. A manual `workflow_dispatch` retry
+ * (someone testing the `overwrite_unmerged_digest` escape hatch, say) must not
+ * stand in for the run the cron was supposed to make — a person doing that has
+ * already seen it fail once and knows.
+ *
+ * A run still `in_progress`/`queued` reads OK: a scheduled run that has not
+ * finished yet is not a failure, and this check running at 21:40 UTC, long after
+ * 06:40 + drift, means that gap should not occur, but going red on it would be a
+ * clock-skew false alarm of exactly the kind #290's own header warns against.
+ */
+export function refreshRunVerdict({ runs, now }) {
+  const list = Array.isArray(runs) ? runs : [];
+  const scheduled = list.filter((r) => r && typeof r === "object" && r.event === "schedule");
+  if (scheduled.length === 0) {
+    return ok("NO_SCHEDULED_RUN", "No scheduled nightly-refresh run found to check yet.");
+  }
+
+  const createdAt = (r) => Date.parse(r.createdAt ?? r.created_at ?? "");
+  const sorted = [...scheduled].sort((a, b) => createdAt(b) - createdAt(a));
+  const latest = sorted[0];
+  const facts = {
+    run_id: latest.databaseId ?? latest.id,
+    created_at: latest.createdAt ?? latest.created_at,
+    status: latest.status,
+    conclusion: typeof latest.conclusion === "string" ? latest.conclusion : null,
+  };
+
+  if (typeof latest.status === "string" && latest.status !== "completed") {
+    return ok("RUN_IN_PROGRESS", `The latest scheduled nightly-refresh run is still ${latest.status}.`, facts);
+  }
+
+  const conclusion = typeof latest.conclusion === "string" ? latest.conclusion.toLowerCase() : "";
+  if (conclusion !== "success") {
+    return red(
+      "REFRESH_RUN_FAILED",
+      `Today's scheduled nightly-refresh run did not succeed (conclusion: ${conclusion || "unknown"}). ` +
+        "The publish step may not have run at all, so this is red regardless of any digest PR's state.",
+      facts
+    );
+  }
+  return ok("REFRESH_RUN_OK", "The latest scheduled nightly-refresh run succeeded.", facts);
+}
+
 /* ------------------------------------------------------------------ reports */
 
 export function renderReport(mode, verdict) {
@@ -440,6 +497,17 @@ export function renderReport(mode, verdict) {
  *      the human did the work matches nothing and leaves the guard red forever.
  */
 function howToClear(mode, verdict) {
+  if (mode === "run-failed") {
+    return [
+      "Open the failing `nightly-refresh` run in the Actions tab and read its log — the `#290` header in " +
+        "`nightly-refresh.yml` explains the two guards it runs before scanning, and a genuine scan/publish " +
+        "failure (rather than one of those guards) usually means re-running the job once the underlying " +
+        "cause (rate limit, `gh api` error, a bad feed) is fixed will produce a clean digest.",
+      "",
+      "This is independent of whether a `nightly/<date>` PR exists for a PREVIOUS night — that only tells you " +
+        "the judgment half kept up; it says nothing about whether TODAY's scan and publish actually ran.",
+    ];
+  }
   const date = verdict.facts && verdict.facts.date;
   if (mode !== "overwrite" || !date) {
     return [
@@ -515,11 +583,12 @@ export function mergePulls(lists) {
 
 export function run(argv, env = process.env) {
   const mode = arg(argv, "--mode", "absence");
-  if (mode !== "absence" && mode !== "overwrite" && mode !== "date") {
-    return { code: 2, text: `unknown --mode ${mode} (expected absence|overwrite|date)\n` };
+  if (mode !== "absence" && mode !== "overwrite" && mode !== "date" && mode !== "run-failed") {
+    return { code: 2, text: `unknown --mode ${mode} (expected absence|overwrite|date|run-failed)\n` };
   }
   const digestPath = arg(argv, "--digest", null);
   const pullsPaths = argAll(argv, "--pulls");
+  const runsPath = arg(argv, "--runs", null);
   const discoverPath = arg(argv, "--discover", "data/discover.json");
   const now = arg(argv, "--now", new Date().toISOString());
   const thresholdHours = Number(arg(argv, "--threshold-hours", DEFAULT_THRESHOLD_HOURS));
@@ -539,17 +608,22 @@ export function run(argv, env = process.env) {
 
   let verdict;
   try {
-    const pulls = mergePulls(pullsPaths.map((p) => readJson(p, { missingIsNull: true })));
-    /* A missing digest file means different things in the two modes, and getting
-     * this backwards is how a watchdog goes green on a broken branch. In
-     * `overwrite` there is genuinely nothing to lose. In `absence` the branch is
-     * supposed to always carry one, so its absence is itself the alarm. */
-    const digest = readJson(digestPath, { missingIsNull: mode === "overwrite" });
-    const discover = readJson(discoverPath, { missingIsNull: true });
-    verdict =
-      mode === "absence"
-        ? absenceVerdict({ digest, pulls, discover, now, thresholdHours })
-        : overwriteVerdict({ digest, pulls, discover, now });
+    if (mode === "run-failed") {
+      const runs = readJson(runsPath, { missingIsNull: true });
+      verdict = refreshRunVerdict({ runs, now });
+    } else {
+      const pulls = mergePulls(pullsPaths.map((p) => readJson(p, { missingIsNull: true })));
+      /* A missing digest file means different things in the two modes, and getting
+       * this backwards is how a watchdog goes green on a broken branch. In
+       * `overwrite` there is genuinely nothing to lose. In `absence` the branch is
+       * supposed to always carry one, so its absence is itself the alarm. */
+      const digest = readJson(digestPath, { missingIsNull: mode === "overwrite" });
+      const discover = readJson(discoverPath, { missingIsNull: true });
+      verdict =
+        mode === "absence"
+          ? absenceVerdict({ digest, pulls, discover, now, thresholdHours })
+          : overwriteVerdict({ digest, pulls, discover, now });
+    }
   } catch (err) {
     verdict = red("UNREADABLE_INPUT", `Could not read the watchdog's inputs: ${err.message}`);
   }
