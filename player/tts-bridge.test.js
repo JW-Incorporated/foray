@@ -198,6 +198,61 @@ test("a throwing logger must not break the failure path", async () => {
   assert.equal(out.path, "none");
 });
 
+/* ------------------------------------------------------------- listVoices
+
+   Threaded through this file because the module is resolved HERE — see
+   `tts-bridge.js`'s own comment on the method. */
+
+// TO SEE IT FAIL: in `listVoices()`, call `mod.listVoices()` with no argument.
+// The `{ lang }` filter is dropped and a device report comes back listing every
+// language the phone has, which is the wrong answer for the one question it is
+// asked ("what do I have for English?").
+test("listVoices: forwards options to the module and returns its answer", async () => {
+  const seen = [];
+  const mod = {
+    speak: async () => ({ ok: true }),
+    listVoices: async (opts) => { seen.push(opts); return { ok: true, voices: [{ identifier: "v1" }] }; },
+  };
+  const bridge = createTtsBridge({ load: async () => mod, candidates: ["x"] });
+
+  const out = await bridge.listVoices({ lang: "en-US" });
+
+  assert.deepEqual(seen, [{ lang: "en-US" }]);
+  assert.equal(out.voices[0].identifier, "v1");
+});
+
+// The real case, not a hypothetical: `tools/mobile/prepare-webdir.mjs` copies a
+// FLATTENED snapshot of `foray-tts.js` into the shell bundle at build time, so a
+// shell built before `listVoices` existed loads a module that has `speak` and
+// nothing else.
+// TO SEE IT FAIL: delete the `typeof mod.listVoices !== "function"` guard —
+// this throws a TypeError out of a method whose whole contract is that it
+// resolves.
+test("listVoices: an older module without the method reports that, rather than throwing", async () => {
+  const bridge = createTtsBridge({ load: async () => fakeModule(), candidates: ["x"] });
+
+  const out = await bridge.listVoices();
+
+  assert.equal(out.ok, false);
+  assert.deepEqual(out.voices, []);
+  assert.match(out.reason, /listVoices/);
+});
+
+// TO SEE IT FAIL: in `listVoices()`, drop the `if (!mod)` branch — a page with
+// no reachable module rejects instead of answering.
+test("listVoices: an unreachable module resolves { ok: false }, never rejects", async () => {
+  const bridge = createTtsBridge({
+    candidates: ["a"],
+    load: async () => { throw new Error("404"); },
+    log: () => {},
+  });
+
+  const out = await bridge.listVoices();
+
+  assert.equal(out.ok, false);
+  assert.equal(out.path, "none");
+});
+
 /* ------------------------------------------------- the call site in client.js
 
    Not a behavioural test. See this file's header for why it is here anyway. */

@@ -55,6 +55,17 @@
  *     exactly what the §5.7 fixture has to determine, not something this file
  *     can know in advance.
  *
+ * WHICH VOICE SPEAKS (added 2026-09-05, after the first founder listening test
+ * on a real iPhone came back "much worse than the original test" — the Kokoro
+ * acceptance fixture). The cause was one line in `ForayTtsPlugin.swift`:
+ * `AVSpeechSynthesisVoice(language:)` returns the SYSTEM DEFAULT voice for a
+ * language, which on iOS is the compact/legacy formant tier — the robotic one —
+ * while the same free catalogue also carries neural Enhanced and Premium voices
+ * (`docs/research/on-device-tts.md` §1). The native halves now pick the best
+ * tier actually INSTALLED, `speak()` takes an optional `voice` identifier, and
+ * `listVoices()` reports what a given device actually has. See `listVoices()`'s
+ * own comment for why that third piece is what makes an evaluation possible.
+ *
  * NOTHING IN THIS FILE HAS BEEN OBSERVED IN A WEBVIEW OR HEARD ON A DEVICE.
  * The suite in `tools/mobile/foray-tts.test.mjs` drives every path against a
  * fake bridge and a fake `speechSynthesis` in Node — same honesty standard as
@@ -63,6 +74,26 @@
  */
 
 export const PLUGIN_NAME = "ForayTts";
+
+/** True when an installed voice's BCP-47 tag is RELEVANT to a requested one:
+ *  exact locale, or the same primary subtag (`en-US` ~ `en-GB`, never `fr-FR`).
+ *
+ *  This is the widening half of the rule the native sides use
+ *  (`ForayTtsPlugin.swift`'s `candidates(_:language:)`,
+ *  `ForayTtsPlugin.java`'s `candidates`). It is deliberately NOT their
+ *  precedence half — those prefer exact matches ALONE when any exist, because
+ *  they are choosing one voice to speak with; this is a list filter, where
+ *  hiding the en-GB voices from someone asking "what do I have for English?"
+ *  would be the wrong answer. `listVoices()`'s Web Speech path has no native
+ *  side to ask, which is why the rule exists here at all. */
+export function languageMatches(voiceLang, requested) {
+  if (!requested) return true;
+  if (typeof voiceLang !== "string" || voiceLang.length === 0) return false;
+  const a = voiceLang.toLowerCase().replace(/_/g, "-");
+  const b = requested.toLowerCase().replace(/_/g, "-");
+  if (a === b) return true;
+  return a.split("-")[0] === b.split("-")[0];
+}
 
 /** Case-insensitive word-boundary match, same method
  *  `docs/research/narrator-voice.md`'s own Appendix ("Reproducing the
@@ -135,6 +166,15 @@ export function shellApplies(bridge = (typeof window !== "undefined" ? window.Ca
  *  @param {object} [opts]
  *  @param {Array<{term:string, ipa:?string}>} [opts.lexiconEntries]
  *  @param {string} [opts.lang]
+ *  @param {string} [opts.voice]  a voice identifier from `listVoices()` — on
+ *    iOS an `AVSpeechSynthesisVoice.identifier`
+ *    (`com.apple.voice.enhanced.en-US.Ava`), on Android a `Voice.getName()`,
+ *    on the Web Speech fallback a `voiceURI` or a `name`. OMITTING IT IS THE
+ *    NORMAL CASE and gets the best voice installed for the language — the
+ *    parameter exists so a listening test can compare two voices on one device,
+ *    not because callers are expected to hard-code one. An identifier that is
+ *    not installed never fails the call: it falls back and reports
+ *    `voiceFallback: true`.
  *  @param {number} [opts.rate]
  *  @param {number} [opts.pitch]
  *  @param {number} [opts.volume]
@@ -147,6 +187,7 @@ export async function speak(text, opts = {}) {
   const {
     lexiconEntries = [],
     lang,
+    voice,
     rate,
     pitch,
     volume,
@@ -169,11 +210,22 @@ export async function speak(text, opts = {}) {
         ipaOverrides,
         androidSsml,
         lang: lang ?? null,
+        voice: voice ?? null,
         rate: rate ?? null,
         pitch: pitch ?? null,
         volume: volume ?? null,
       });
-      return { ok: true, path: "native", overridesApplied: ipaOverrides.length, native: result };
+      /* `voice`/`voiceFallback` are hoisted out of `native` so a caller can read
+         "which voice spoke, and was my ask honoured?" without branching on
+         which platform answered — the full native payload stays available. */
+      return {
+        ok: true,
+        path: "native",
+        overridesApplied: ipaOverrides.length,
+        voice: (result && result.voice) || "",
+        voiceFallback: !!(result && result.voiceFallback),
+        native: result,
+      };
     } catch (e) {
       /* Native call itself threw/rejected -- fall through to Web Speech
          rather than surface a rejection, same degradation the class comment
@@ -186,6 +238,20 @@ export async function speak(text, opts = {}) {
     try {
       const utter = new UtteranceCtor(text);
       if (lang) utter.lang = lang;
+      /* WEB SPEECH HAS NO QUALITY TIER TO RANK. `SpeechSynthesisVoice` exposes
+         voiceURI/name/lang/default/localService and nothing about synthesis
+         quality, so there is no "pick the best installed voice" to do here —
+         only "honour an explicit request if that voice exists". That asymmetry
+         with the native halves is the API's, not an omission: see `listVoices`
+         below, which reports `quality: "unknown"` on this path rather than
+         inventing a ranking. A requested voice that is not present leaves the
+         browser's own default in place; it never stops the utterance. */
+      let voiceFallback = false;
+      if (voice) {
+        const match = findWebSpeechVoice(speechSynth, voice);
+        if (match) utter.voice = match;
+        else voiceFallback = true;
+      }
       if (typeof rate === "number") utter.rate = rate;
       if (typeof pitch === "number") utter.pitch = pitch;
       if (typeof volume === "number") utter.volume = volume;
@@ -193,7 +259,13 @@ export async function speak(text, opts = {}) {
       /* Documented, W3C Web Speech API spec, quoted in on-device-tts.md §3:
          no phoneme/IPA control exists on this path at all -- 0 overrides is
          not a bug report, it is the truth about this fallback. */
-      return { ok: true, path: "web-speech", overridesApplied: 0 };
+      return {
+        ok: true,
+        path: "web-speech",
+        overridesApplied: 0,
+        voice: (utter.voice && (utter.voice.voiceURI || utter.voice.name)) || "",
+        voiceFallback,
+      };
     } catch (e) {
       try { log("foray-tts: Web Speech fallback failed", e); } catch (_e) { /* never throw */ }
       return { ok: false, path: "web-speech", reason: (e && e.message) || String(e) };
@@ -203,9 +275,123 @@ export async function speak(text, opts = {}) {
   return { ok: false, path: "none", reason: "no native bridge and no speechSynthesis available" };
 }
 
+/** Look up one Web Speech voice by `voiceURI` first, then by `name`.
+ *
+ *  Both, because the two identify a voice at different levels of stability:
+ *  `voiceURI` is the spec's identifier and is what `listVoices()` reports on
+ *  this path, but a caller pasting a voice out of a device report is far more
+ *  likely to be holding a human-readable name. `getVoices()` throwing (it can,
+ *  in a hostile or partially-implemented environment) is treated as "no match"
+ *  rather than allowed to break a narration call. */
+function findWebSpeechVoice(speechSynth, wanted) {
+  let all;
+  try {
+    all = typeof speechSynth.getVoices === "function" ? speechSynth.getVoices() : null;
+  } catch (_e) {
+    return null;
+  }
+  if (!Array.isArray(all) && !(all && typeof all.length === "number")) return null;
+  const list = Array.from(all);
+  return list.find((v) => v && v.voiceURI === wanted) || list.find((v) => v && v.name === wanted) || null;
+}
+
+/** Enumerate the voices this DEVICE has, so an evaluation is possible at all.
+ *
+ *  WHY THIS IS A FIRST-CLASS CALL AND NOT A DEBUG AFFORDANCE. iOS's
+ *  Enhanced/Premium voices — the neural tier, and the difference between
+ *  "robotic" and "listenable" — are free but are PER-LANGUAGE DOWNLOADS
+ *  (Settings → Accessibility → Spoken Content → Voices). Two phones on the same
+ *  build legitimately carry different catalogues. Without this call, a bad
+ *  listening result has two indistinguishable explanations — the voice is bad,
+ *  or the good voice was never downloaded — and no one on either side of the
+ *  report can tell which.
+ *
+ *  Resolves, never throws, same contract as `speak()`. Shape:
+ *
+ *    { ok, path: "native" | "web-speech" | "none",
+ *      voices: [{ identifier, name, language, quality, isDefaultChoice }],
+ *      defaultIdentifier, reason }
+ *
+ *  `quality` is `"premium" | "enhanced" | "default"` on iOS,
+ *  `"very-high" | "high" | "normal" | "low" | "very-low"` on Android, and
+ *  `"unknown"` on the Web Speech fallback, which exposes no quality at all.
+ *  The tiers are NOT comparable across platforms and this function does not
+ *  pretend they are — it reports what each platform says about itself.
+ *
+ *  @param {object} [opts]
+ *  @param {string} [opts.lang] restrict to one language (exact locale, or the
+ *    same primary subtag). Omit for everything installed.
+ */
+export async function listVoices(opts = {}) {
+  const {
+    lang,
+    bridge = (typeof window !== "undefined" ? window.Capacitor : undefined),
+    speechSynth = (typeof window !== "undefined" ? window.speechSynthesis : undefined),
+    log = (typeof console !== "undefined" ? console.warn.bind(console) : () => {}),
+  } = opts;
+
+  if (shellApplies(bridge)) {
+    try {
+      const native = await bridge.nativePromise(PLUGIN_NAME, "listVoices", { lang: lang ?? null });
+      return {
+        ok: !!(native && native.ok),
+        path: "native",
+        voices: (native && native.voices) || [],
+        defaultIdentifier: (native && native.defaultIdentifier) || "",
+        reason: (native && native.reason) || "",
+        native,
+      };
+    } catch (e) {
+      /* Same degradation `speak()` documents: an older native half that has no
+         `listVoices` method rejects here, and answering from Web Speech is more
+         useful than propagating that. */
+      try { log("foray-tts: native listVoices failed, falling back", e); } catch (_e) { /* never throw */ }
+    }
+  }
+
+  if (speechSynth && typeof speechSynth.getVoices === "function") {
+    try {
+      /* `getVoices()` is documented to return an empty list until the browser
+         has loaded them (the `voiceschanged` event). An empty list here is
+         therefore reported as `ok: true` with zero voices and a reason, not as
+         a failure — a caller that cares should ask again, and a caller that
+         does not should not be told something broke. */
+      const raw = Array.from(speechSynth.getVoices() || []);
+      const filtered = raw.filter((v) => v && languageMatches(v.lang, lang));
+      const voices = filtered.map((v) => ({
+        identifier: v.voiceURI || v.name || "",
+        name: v.name || "",
+        language: v.lang || "",
+        quality: "unknown",
+        isDefaultChoice: !!v.default,
+      }));
+      const fallbackDefault = voices.find((v) => v.isDefaultChoice);
+      return {
+        ok: true,
+        path: "web-speech",
+        voices,
+        defaultIdentifier: fallbackDefault ? fallbackDefault.identifier : "",
+        reason: voices.length === 0 ? "speechSynthesis reported no voices (they may still be loading)" : "",
+      };
+    } catch (e) {
+      try { log("foray-tts: listVoices via speechSynthesis failed", e); } catch (_e) { /* never throw */ }
+      return { ok: false, path: "web-speech", voices: [], defaultIdentifier: "", reason: (e && e.message) || String(e) };
+    }
+  }
+
+  return {
+    ok: false,
+    path: "none",
+    voices: [],
+    defaultIdentifier: "",
+    reason: "no native bridge and no speechSynthesis available",
+  };
+}
+
 export function createForayTtsShell(defaults = {}) {
   return {
     speak: (text, opts = {}) => speak(text, { ...defaults, ...opts }),
+    listVoices: (opts = {}) => listVoices({ ...defaults, ...opts }),
     shellApplies: (bridge) => shellApplies(bridge ?? defaults.bridge),
   };
 }

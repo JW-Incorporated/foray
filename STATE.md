@@ -82,6 +82,32 @@ docs/. Completed workstreams move to their plan doc's retro section.
   in the bucket and the seam for them is `RunPipelineDeps.cueProvider`, but
   nothing maps an R2 object key back to an episode yet — see the PR.
 
+### On-device narration picks a GOOD iOS voice, and a caller can choose one (2026-09-05, one PR) — `feat/tts-voice-selection`
+
+- **What:** the founder's 2026-09-05 device listen said the on-device voice was
+  "much worse than the original test" (the Kokoro fixture). One line:
+  `ForayTtsPlugin.swift` set `utterance.voice = AVSpeechSynthesisVoice(language:)`,
+  which returns the SYSTEM DEFAULT — iOS's compact/legacy formant tier, the
+  robotic one — and set nothing at all when no `lang` was passed. The plugin now
+  enumerates `speechVoices()` and takes the best tier actually installed
+  (premium > enhanced > default), `speak()` accepts an optional `voice`
+  identifier that falls back cleanly and reports that it fell back, and a new
+  `listVoices()` returns the device's real catalogue. Android got the equivalent
+  via `getVoices()`/`setVoice()`.
+- **Branch:** `feat/tts-voice-selection` — PR only, never main.
+- **Shared files it touches:** `mobile/plugins/foray-tts/` (Swift, Java, web JS,
+  README), `player/tts-bridge.js` (+ its suite), `tools/mobile/foray-tts.test.mjs`,
+  `test/suite-integrity.test.js` (two floors), `docs/research/on-device-tts.md`
+  §9.6, `HUMAN-ACTIONS.md` #40.
+- **Deliberately NOT touched:** the rate code in the same Swift file
+  (`utteranceRate(playbackMultiplier:)`) — that landed in #463 and is left alone.
+- **Needs a human:** `mobile/` is unlisted in `tools/ci/path-policy.mjs`, so this
+  waits for a merge click. And it is INAUDIBLE until someone downloads an
+  Enhanced voice on the phone (Settings → Accessibility → Spoken Content →
+  Voices) — that is `HUMAN-ACTIONS.md` #40.
+- **Not done here:** no voice-picker UI, and no `swift test` anywhere — the ten
+  Swift assertions added are authored and unrun (Windows machine, macOS-only
+  iOS jobs).
 
 ### S-03: the client reaches its own API, so a show page shows every episode (2026-09-05, one PR, no follow-up) — `t_s03/api-origin-shell`
 

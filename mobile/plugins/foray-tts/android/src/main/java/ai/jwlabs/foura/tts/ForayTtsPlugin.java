@@ -6,6 +6,8 @@ import android.speech.tts.TextToSpeech;
 import android.speech.tts.UtteranceProgressListener;
 import android.util.Log;
 
+import android.speech.tts.Voice;
+
 import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
@@ -13,7 +15,13 @@ import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -132,6 +140,7 @@ public class ForayTtsPlugin extends Plugin implements TextToSpeech.OnInitListene
         String lang = call.getString("lang");
         Double rate = call.getDouble("rate");
         Double pitch = call.getDouble("pitch");
+        String requestedVoice = call.getString("voice");
         String androidSsml = call.getString("androidSsml");
         JSArray ipaOverrides = call.getArray("ipaOverrides");
         int overrideCount = ipaOverrides != null ? ipaOverrides.length() : 0;
@@ -140,6 +149,53 @@ public class ForayTtsPlugin extends Plugin implements TextToSpeech.OnInitListene
             if (lang != null && !lang.isEmpty()) {
                 tts.setLanguage(localeFor(lang));
             }
+
+            /* VOICE. Android's equivalent of the iOS change in the same PR, and
+               it is genuinely equivalent rather than a token gesture:
+               `getVoices()` exposes a per-voice `getQuality()` (VERY_LOW .. VERY_HIGH)
+               and `setVoice()` selects one, so "best installed for this language"
+               is expressible here too. Two things differ from iOS and both are
+               real, not cosmetic:
+
+                 1. Android voices can require a NETWORK CONNECTION
+                    (`isNetworkConnectionRequired()`). A commute app must not pick
+                    one of those by default — see `resolveVoice` below, which
+                    excludes them from the default pick but still LISTS them, so a
+                    caller who deliberately asks for one gets it.
+                 2. There is no "premium download" tier to explain to a user; the
+                    installed set depends on which TTS engine the device ships and
+                    which language packs it has, which is engine-specific and not
+                    something this plugin can steer.
+
+               `setVoice()` after `setLanguage()` on purpose: the voice carries its
+               own locale, so it is the more specific instruction and must win. */
+            String usedVoice = "";
+            String usedVoiceQuality = "";
+            boolean voiceFallback = false;
+            String voiceReason = "";
+
+            Voice chosen = resolveVoice(installedVoices(), lang, requestedVoice);
+            if (requestedVoice != null && !requestedVoice.isEmpty()
+                    && (chosen == null || !requestedVoice.equals(chosen.getName()))) {
+                voiceFallback = true;
+                voiceReason = "requested voice is not installed on this device";
+            }
+            if (chosen != null) {
+                int setResult = tts.setVoice(chosen);
+                if (setResult == TextToSpeech.SUCCESS) {
+                    usedVoice = chosen.getName();
+                    usedVoiceQuality = qualityLabel(chosen.getQuality());
+                } else {
+                    /* The engine refused the voice. Not fatal and not worth a
+                       failed call: the language set above still stands, so it
+                       speaks in the engine's own default voice. */
+                    voiceFallback = true;
+                    voiceReason = "TextToSpeech.setVoice() refused the selected voice";
+                }
+            } else if (voiceReason.isEmpty()) {
+                voiceReason = "no installed voice matched";
+            }
+
             if (rate != null) {
                 tts.setSpeechRate(rate.floatValue());
             }
@@ -189,6 +245,15 @@ public class ForayTtsPlugin extends Plugin implements TextToSpeech.OnInitListene
             pendingResult.put("accepted", speakResult == TextToSpeech.SUCCESS);
             pendingResult.put("usedSsml", androidSsml != null && !androidSsml.isEmpty());
             pendingResult.put("overridesRequested", overrideCount);
+            /* Same reporting contract the iOS half states: say which voice
+               actually spoke, and say separately whether an explicit ask was
+               honoured, so "sounds bad" and "was never installed" are different
+               answers on the device where it matters. */
+            pendingResult.put("voice", usedVoice);
+            pendingResult.put("voiceQuality", usedVoiceQuality);
+            pendingResult.put("voiceRequested", requestedVoice == null ? "" : requestedVoice);
+            pendingResult.put("voiceFallback", voiceFallback);
+            pendingResult.put("voiceReason", voiceReason);
             pendingResult.put(
                 "reason",
                 speakResult == TextToSpeech.SUCCESS
@@ -201,6 +266,240 @@ public class ForayTtsPlugin extends Plugin implements TextToSpeech.OnInitListene
             result.put("ok", false);
             result.put("reason", e.getClass().getSimpleName() + ": " + e.getMessage());
             call.resolve(result);
+        }
+    }
+
+    /**
+     * Enumerate the voices this device actually has. Same contract as the iOS
+     * half's {@code listVoices}, so one caller can read both.
+     *
+     * <p>Resolves {@code { ok, platform, voices: [{ identifier, name, language,
+     * quality, isDefaultChoice, networkRequired }], defaultIdentifier, count }}.
+     * {@code identifier} is the engine's voice NAME (e.g. {@code en-us-x-sfg#male_1-local}),
+     * because that is what {@link TextToSpeech#setVoice} and this plugin's
+     * {@code speak({ voice })} both take — {@code name} repeats it rather than
+     * inventing a prettier label the plugin would then have to map back.
+     * Android's {@link Voice} exposes no display name.</p>
+     */
+    @PluginMethod
+    public void listVoices(PluginCall call) {
+        JSObject result = new JSObject();
+        result.put("platform", "android");
+
+        if (tts == null || ttsInitFailed) {
+            result.put("ok", false);
+            putArray(result, "voices", new JSArray());
+            result.put("count", 0);
+            result.put("defaultIdentifier", "");
+            result.put("reason", "TextToSpeech failed to initialize");
+            call.resolve(result);
+            return;
+        }
+        if (!ttsReady) {
+            result.put("ok", false);
+            putArray(result, "voices", new JSArray());
+            result.put("count", 0);
+            result.put("defaultIdentifier", "");
+            result.put("reason", "TextToSpeech not ready yet (onInit pending)");
+            call.resolve(result);
+            return;
+        }
+
+        String lang = call.getString("lang");
+        Collection<Voice> installed = installedVoices();
+        Voice best = resolveVoice(installed, lang, null);
+        List<Voice> listed = (lang != null && !lang.isEmpty())
+            ? candidates(installed, lang)
+            : new ArrayList<>(installed);
+        sortForListing(listed);
+
+        JSArray voices = new JSArray();
+        for (Voice voice : listed) {
+            JSObject entry = new JSObject();
+            entry.put("identifier", voice.getName());
+            entry.put("name", voice.getName());
+            entry.put("language", voice.getLocale() == null ? "" : voice.getLocale().toLanguageTag());
+            entry.put("quality", qualityLabel(voice.getQuality()));
+            entry.put("isDefaultChoice", best != null && best.getName().equals(voice.getName()));
+            entry.put("networkRequired", voice.isNetworkConnectionRequired());
+            voices.put(entry);
+        }
+
+        result.put("ok", true);
+        putArray(result, "voices", voices);
+        result.put("count", listed.size());
+        result.put("installedCount", installed.size());
+        result.put("defaultIdentifier", best == null ? "" : best.getName());
+        result.put("language", lang == null ? "" : lang);
+        result.put("reason", "");
+        call.resolve(result);
+    }
+
+    /**
+     * Attach a {@link JSArray} to a result object.
+     *
+     * <p>Every other {@code put} in this file uses a primitive/String overload
+     * that {@code JSObject} overrides to swallow {@code JSONException}. The
+     * Object overload is the one whose exact signature has varied across
+     * Capacitor majors, so this wrapper keeps the file compiling either way —
+     * and a failure to attach the list must not become a thrown promise, per
+     * the class header.</p>
+     */
+    private static void putArray(JSObject target, String key, JSArray value) {
+        try {
+            target.put(key, value);
+        } catch (Exception e) {
+            Log.w(TAG, "could not attach " + key, e);
+        }
+    }
+
+    /**
+     * Every installed voice, or an empty set.
+     *
+     * <p>{@link TextToSpeech#getVoices()} is documented to return null, and
+     * several shipping engines throw from it outright rather than returning
+     * null. Neither is allowed to become a rejected promise here — see the class
+     * header's "every method resolves" rule.</p>
+     */
+    private Collection<Voice> installedVoices() {
+        try {
+            Set<Voice> voices = tts.getVoices();
+            return voices == null ? Collections.<Voice>emptyList() : new ArrayList<>(voices);
+        } catch (Exception e) {
+            Log.w(TAG, "TextToSpeech.getVoices() failed", e);
+            return Collections.emptyList();
+        }
+    }
+
+    /**
+     * Voices eligible for {@code languageTag}: exact locale matches alone when
+     * there are any, widening to the whole language only when the exact locale
+     * has nothing. Mirrors {@code ForayTtsPlugin.swift}'s {@code candidates(_:language:)}.
+     *
+     * <p>Matching goes through ISO-639-2/ISO-3166-3 codes rather than string
+     * equality on the tag, because Android engines are inconsistent about which
+     * spelling they hand back: the same voice can present as {@code en-US} on one
+     * engine and {@code eng-USA} on another, and a plain {@code equalsIgnoreCase}
+     * on the tag silently matches nothing on the second.</p>
+     */
+    static List<Voice> candidates(Collection<Voice> all, String languageTag) {
+        List<Voice> matches = new ArrayList<>();
+        if (all == null || all.isEmpty() || languageTag == null || languageTag.isEmpty()) {
+            return matches;
+        }
+        Locale wanted = localeFor(languageTag);
+        String wantedLang = iso3Language(wanted);
+        String wantedCountry = iso3Country(wanted);
+
+        for (Voice voice : all) {
+            Locale locale = voice.getLocale();
+            if (locale == null) continue;
+            if (!iso3Language(locale).equals(wantedLang)) continue;
+            if (!wantedCountry.isEmpty() && !iso3Country(locale).equals(wantedCountry)) continue;
+            matches.add(voice);
+        }
+        if (!matches.isEmpty()) return matches;
+
+        for (Voice voice : all) {
+            Locale locale = voice.getLocale();
+            if (locale != null && iso3Language(locale).equals(wantedLang)) {
+                matches.add(voice);
+            }
+        }
+        return matches;
+    }
+
+    /**
+     * The voice {@code speak()} should use: the requested one if it is installed,
+     * else the best-quality installed voice for the language.
+     *
+     * <p>Network-only voices are excluded from the DEFAULT pick — a commute app
+     * that silently chose one would go mute in a tunnel — but an explicit request
+     * for one is honoured, and {@code listVoices()} lists them with
+     * {@code networkRequired: true} so the choice is visible.</p>
+     *
+     * <p>Returns null when nothing matches; the caller then leaves the engine's
+     * own default in place rather than failing to speak.</p>
+     */
+    static Voice resolveVoice(Collection<Voice> all, String languageTag, String requestedName) {
+        if (all == null || all.isEmpty()) return null;
+
+        if (requestedName != null && !requestedName.isEmpty()) {
+            for (Voice voice : all) {
+                if (requestedName.equals(voice.getName())) return voice;
+            }
+        }
+
+        List<Voice> pool = candidates(all, languageTag);
+        if (pool.isEmpty()) return null;
+
+        Voice best = null;
+        for (Voice voice : pool) {
+            if (voice.isNetworkConnectionRequired()) continue;
+            if (best == null || betterThan(voice, best)) best = voice;
+        }
+        if (best != null) return best;
+
+        /* Everything for this language needs a network. Better than nothing —
+           and the caller reports which voice it used, so this is visible. */
+        for (Voice voice : pool) {
+            if (best == null || betterThan(voice, best)) best = voice;
+        }
+        return best;
+    }
+
+    /** Higher quality wins; ties break on name, purely for determinism. */
+    private static boolean betterThan(Voice candidate, Voice incumbent) {
+        if (candidate.getQuality() != incumbent.getQuality()) {
+            return candidate.getQuality() > incumbent.getQuality();
+        }
+        return candidate.getName().compareTo(incumbent.getName()) < 0;
+    }
+
+    /** Language, then BEST QUALITY FIRST within a language, then name. */
+    static void sortForListing(List<Voice> voices) {
+        Collections.sort(voices, new Comparator<Voice>() {
+            @Override
+            public int compare(Voice a, Voice b) {
+                String langA = a.getLocale() == null ? "" : a.getLocale().toLanguageTag();
+                String langB = b.getLocale() == null ? "" : b.getLocale().toLanguageTag();
+                int byLang = langA.compareTo(langB);
+                if (byLang != 0) return byLang;
+                if (a.getQuality() != b.getQuality()) return b.getQuality() - a.getQuality();
+                return a.getName().compareTo(b.getName());
+            }
+        });
+    }
+
+    /**
+     * Android's quality scale is a coarse int constant, not iOS's three named
+     * tiers, so the labels differ across platforms on purpose. Reported as a
+     * bucket name rather than the raw number because the numbers
+     * ({@code QUALITY_VERY_HIGH == 500}) mean nothing to a reader.
+     */
+    static String qualityLabel(int quality) {
+        if (quality >= Voice.QUALITY_VERY_HIGH) return "very-high";
+        if (quality >= Voice.QUALITY_HIGH) return "high";
+        if (quality >= Voice.QUALITY_NORMAL) return "normal";
+        if (quality >= Voice.QUALITY_LOW) return "low";
+        return "very-low";
+    }
+
+    private static String iso3Language(Locale locale) {
+        try {
+            return locale.getISO3Language();
+        } catch (Exception e) {
+            /* MissingResourceException for a language with no three-letter code
+               — fall back to whatever the locale calls itself. */
+            return locale.getLanguage();
+        }
+    }
+
+    private static String iso3Country(Locale locale) {
+        try {
+            return locale.getISO3Country();
+        } catch (Exception e) {
+            return locale.getCountry();
         }
     }
 

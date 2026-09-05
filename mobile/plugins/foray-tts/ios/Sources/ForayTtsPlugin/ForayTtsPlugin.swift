@@ -28,7 +28,8 @@ public class ForayTtsPlugin: CAPPlugin, CAPBridgedPlugin, AVSpeechSynthesizerDel
     public let jsName = "ForayTts"
     public let pluginMethods: [CAPPluginMethod] = [
         CAPPluginMethod(name: "speak", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "state", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "state", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "listVoices", returnType: CAPPluginReturnPromise)
     ]
 
     private let synthesizer = AVSpeechSynthesizer()
@@ -142,6 +143,187 @@ public class ForayTtsPlugin: CAPPlugin, CAPBridgedPlugin, AVSpeechSynthesizerDel
     /// whole empirical content of this mapping, and it is a soft number — do not
     /// quote it as 3.00.
     private static let calibrationPerceivedMultiple = 3.0
+    // MARK: - Voice selection
+    //
+    // WHY THIS EXISTS AT ALL. Until now `speak()` set a voice only when a `lang`
+    // was passed, and it set it with `AVSpeechSynthesisVoice(language:)`. That
+    // initialiser returns the SYSTEM DEFAULT voice for a language, which on iOS
+    // is the compact/legacy formant-synthesis tier -- the robotic one. Apple's
+    // catalogue is not one tier: `docs/research/on-device-tts.md` §1 recorded
+    // that it "spans multiple synthesis tiers (compact/legacy formant-style
+    // voices through modern neural 'Enhanced'/'Premium' voices, downloaded
+    // per-language on demand)", and nothing in this plugin had ever asked for
+    // one of the good ones. A founder listening test on 2026-09-05 called the
+    // on-device voice "much worse than the original test" (the Kokoro
+    // acceptance fixture) -- this is why.
+    //
+    // ENHANCED AND PREMIUM VOICES ARE PER-DEVICE DOWNLOADS. They are free, but
+    // they are not present until someone fetches them in
+    // Settings -> Accessibility -> Spoken Content -> Voices. So the selection
+    // below is written as "best of what is ACTUALLY INSTALLED", degrading one
+    // tier at a time, and the plugin must never fail to speak because a
+    // preferred voice is absent. That is the whole design constraint.
+    //
+    // THE PURE FUNCTIONS ARE THE POINT. `AVSpeechSynthesisVoice` cannot be
+    // constructed with arbitrary properties, so the ranking/matching rules live
+    // in `static` functions over a plain `VoiceOption` value type that tests can
+    // build by hand; `installedVoices()` is the only place that touches the
+    // framework's catalogue.
+
+    /// One installed voice, reduced to the four things selection cares about.
+    /// `qualityRank` is `AVSpeechSynthesisVoiceQuality.rawValue` -- deliberately
+    /// the raw integer rather than the enum, because `.premium` is iOS 16+ and
+    /// ranking by rawValue needs no availability check and cannot go stale if
+    /// Apple appends a further tier above premium.
+    struct VoiceOption: Equatable {
+        let identifier: String
+        let name: String
+        let language: String
+        let qualityRank: Int
+    }
+
+    /// `1` -> "default", `2` -> "enhanced", `3` -> "premium". Anything else is
+    /// reported as "unknown" rather than guessed: a future tier this build has
+    /// never heard of still SORTS correctly (rank is numeric) and is merely
+    /// unlabelled, which is the honest failure direction.
+    static func qualityLabel(rank: Int) -> String {
+        switch rank {
+        case 1: return "default"
+        case 2: return "enhanced"
+        case 3: return "premium"
+        default: return "unknown"
+        }
+    }
+
+    /// The primary subtag of a BCP-47 tag, lowercased: `en-US` -> `en`.
+    static func primarySubtag(_ tag: String) -> String {
+        let lowered = tag.lowercased()
+        if let cut = lowered.firstIndex(where: { $0 == "-" || $0 == "_" }) {
+            return String(lowered[lowered.startIndex..<cut])
+        }
+        return lowered
+    }
+
+    /// Voices eligible for `language`, EXACT MATCHES FIRST AND ALONE when there
+    /// are any. Only when the exact locale has nothing installed does this widen
+    /// to the primary subtag -- asking for `en-US` on a device that only carries
+    /// `en-GB` should get a British voice rather than silence, but it must never
+    /// get one while an American voice exists.
+    static func candidates(_ all: [VoiceOption], language: String) -> [VoiceOption] {
+        guard !language.isEmpty else { return [] }
+        let wanted = language.lowercased()
+        let exact = all.filter { $0.language.lowercased() == wanted }
+        if !exact.isEmpty { return exact }
+        let primary = primarySubtag(language)
+        return all.filter { primarySubtag($0.language) == primary }
+    }
+
+    /// The best INSTALLED voice for `language`: highest `qualityRank` wins.
+    ///
+    /// Ties are broken toward `preferringName` -- the name of the voice the
+    /// system would have used anyway (`AVSpeechSynthesisVoice(language:)?.name`)
+    /// -- so that a device carrying both "Samantha (compact)" and "Samantha
+    /// (enhanced)" upgrades the listener's familiar voice rather than swapping
+    /// them onto a stranger with the same quality tier. Remaining ties fall to
+    /// the lowest identifier, purely so the answer is deterministic and testable
+    /// rather than dependent on the order `speechVoices()` happens to return.
+    static func bestVoice(among all: [VoiceOption], language: String, preferringName: String?) -> VoiceOption? {
+        let pool = candidates(all, language: language)
+        guard let topRank = pool.map(\.qualityRank).max() else { return nil }
+        let top = pool.filter { $0.qualityRank == topRank }
+        if let wanted = preferringName?.lowercased(), !wanted.isEmpty,
+           let familiar = top.filter({ $0.name.lowercased() == wanted }).min(by: { $0.identifier < $1.identifier }) {
+            return familiar
+        }
+        return top.min(by: { $0.identifier < $1.identifier })
+    }
+
+    /// What `speak()` decided, INCLUDING why -- so a listening test can tell
+    /// "this voice sounds bad" apart from "this voice was never installed".
+    /// Reporting only the voice that spoke would make those two indistinguishable
+    /// on the device where it matters.
+    struct VoiceResolution: Equatable {
+        let voice: VoiceOption?
+        /// The identifier the caller asked for, `""` if none.
+        let requested: String
+        /// True when a specific identifier was asked for and something else
+        /// (or nothing) was used instead.
+        let didFallBack: Bool
+        let reason: String
+    }
+
+    /// Resolve the voice for one utterance. An identifier that is not installed
+    /// is NOT an error: it degrades to `bestVoice`, and says so.
+    static func resolveVoice(
+        among all: [VoiceOption],
+        requested: String?,
+        language: String,
+        preferringName: String?
+    ) -> VoiceResolution {
+        let asked = requested?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let best = bestVoice(among: all, language: language, preferringName: preferringName)
+
+        if !asked.isEmpty {
+            if let exact = all.first(where: { $0.identifier == asked }) {
+                return VoiceResolution(voice: exact, requested: asked, didFallBack: false, reason: "")
+            }
+            if let best = best {
+                return VoiceResolution(
+                    voice: best,
+                    requested: asked,
+                    didFallBack: true,
+                    reason: "requested voice is not installed on this device"
+                )
+            }
+            return VoiceResolution(
+                voice: nil,
+                requested: asked,
+                didFallBack: true,
+                reason: "requested voice is not installed, and no voice is installed for \(language)"
+            )
+        }
+
+        if let best = best {
+            return VoiceResolution(voice: best, requested: "", didFallBack: false, reason: "")
+        }
+        return VoiceResolution(
+            voice: nil,
+            requested: "",
+            didFallBack: false,
+            reason: "no installed voice for \(language)"
+        )
+    }
+
+    /// Listing order: language, then BEST QUALITY FIRST within a language, then
+    /// name. The quality direction is the one that matters -- a human reading
+    /// `listVoices()` output to decide what to download should see the good ones
+    /// at the top of each language, not buried under a dozen compact voices.
+    static func sortedForListing(_ voices: [VoiceOption]) -> [VoiceOption] {
+        voices.sorted {
+            if $0.language != $1.language { return $0.language < $1.language }
+            if $0.qualityRank != $1.qualityRank { return $0.qualityRank > $1.qualityRank }
+            if $0.name != $1.name { return $0.name < $1.name }
+            return $0.identifier < $1.identifier
+        }
+    }
+
+    /// The one place that reads the framework's catalogue.
+    static func installedVoices() -> [VoiceOption] {
+        AVSpeechSynthesisVoice.speechVoices().map {
+            VoiceOption(
+                identifier: $0.identifier,
+                name: $0.name,
+                language: $0.language,
+                qualityRank: $0.quality.rawValue
+            )
+        }
+    }
+
+    /// The language a call is about: what it asked for, else the device's own.
+    private static func effectiveLanguage(_ requested: String?) -> String {
+        if let requested = requested, !requested.isEmpty { return requested }
+        return AVSpeechSynthesisVoice.currentLanguageCode()
+    }
 
     /// `ipaOverrides` arrives as `[{ term, start, end, ipa }]` -- character
     /// offsets into `text`, built by `foray-tts.js`'s `buildIpaOverrides()`
@@ -185,9 +367,38 @@ public class ForayTtsPlugin: CAPPlugin, CAPBridgedPlugin, AVSpeechSynthesizerDel
 
         let utterance = AVSpeechUtterance(attributedString: attributed)
 
-        if let lang = call.getString("lang"), !lang.isEmpty {
-            utterance.voice = AVSpeechSynthesisVoice(language: lang)
+        /* VOICE. See the "Voice selection" MARK above for why this is eight
+           lines instead of the one it used to be. The short version: the line
+           that stood here was `utterance.voice = AVSpeechSynthesisVoice(language: lang)`,
+           which asks for the system DEFAULT voice — the compact/legacy tier —
+           and asked for nothing at all when no `lang` was passed.
+
+           The order below is deliberate and each step is a real fallback, not
+           defensive noise:
+             1. the resolved voice (an explicitly requested identifier, else the
+                best-installed tier for the language),
+             2. failing that — `AVSpeechSynthesisVoice(identifier:)` returning
+                nil for an identifier `speechVoices()` just handed us should be
+                impossible, but "impossible" here would mean SILENCE — the
+                language default, i.e. exactly the old behaviour,
+             3. failing that, `utterance.voice` stays as the framework left it
+                and the synthesiser picks for itself.
+           Nothing in this ladder can stop the utterance from being spoken. */
+        let language = Self.effectiveLanguage(call.getString("lang"))
+        let installed = Self.installedVoices()
+        let systemDefaultName = AVSpeechSynthesisVoice(language: language)?.name
+        let resolution = Self.resolveVoice(
+            among: installed,
+            requested: call.getString("voice"),
+            language: language,
+            preferringName: systemDefaultName
+        )
+        if let chosen = resolution.voice, let voice = AVSpeechSynthesisVoice(identifier: chosen.identifier) {
+            utterance.voice = voice
+        } else if !language.isEmpty {
+            utterance.voice = AVSpeechSynthesisVoice(language: language)
         }
+
         /* AVSpeechUtterance's own documented ranges, not this repo's
            narrator-voice.md §7 pinned values (those are ElevenLabs-specific
            settings for a different synthesis path entirely) -- pitch/volume are
@@ -236,12 +447,81 @@ public class ForayTtsPlugin: CAPPlugin, CAPBridgedPlugin, AVSpeechSynthesizerDel
         result["accepted"] = true
         result["overridesApplied"] = appliedCount
         result["reason"] = ""
+        /* WHICH VOICE ACTUALLY SPOKE, read back off the utterance rather than
+           echoing what we decided — the two can differ (fallback step 2/3
+           above), and the whole reason this is reported is so a founder running
+           a listening test can distinguish "this voice sounds bad" from "this
+           voice was never on the device". `voiceRequested`/`voiceFallback` say
+           whether an ASK was honoured; the rest describe what was HEARD. */
+        result["voice"] = utterance.voice?.identifier ?? ""
+        result["voiceName"] = utterance.voice?.name ?? ""
+        result["voiceLanguage"] = utterance.voice?.language ?? ""
+        result["voiceQuality"] = utterance.voice.map { Self.qualityLabel(rank: $0.quality.rawValue) } ?? ""
+        result["voiceRequested"] = resolution.requested
+        result["voiceFallback"] = resolution.didFallBack
+        result["voiceReason"] = resolution.reason
         /* RESOLVED ON ACCEPT, not on completion -- `AVSpeechSynthesizer.speak()`
            enqueues; it does not block until spoken. A completion-aware version
            (via the delegate's didFinish callback) is real future work, not
            something this card's single proof-of-plumbing call site needs --
            same "accepted, not necessarily finished" distinction
            ForayTtsPlugin.java draws for Android's speak(). */
+        call.resolve(result)
+    }
+
+    /// Enumerate the voices this DEVICE actually has, with the tier of each and
+    /// which one `speak()` would pick if asked for nothing.
+    ///
+    /// This call is the reason an evaluation is possible at all. Enhanced and
+    /// Premium voices are per-language downloads, so two iPhones running the
+    /// same build legitimately have different catalogues, and without this there
+    /// is no way for anyone — founder, support, or a future settings screen — to
+    /// find out which. A bad listening result then has two indistinguishable
+    /// explanations: the voice is bad, or the good voice was never downloaded.
+    ///
+    /// `lang` filters to that language (exact locale if anything matches it,
+    /// else the whole primary subtag — the same widening `candidates()` does for
+    /// selection, so the list is the list `speak()` was choosing from). Omit it
+    /// and every installed voice is returned, across all languages;
+    /// `defaultIdentifier` is still computed for the device's own language, so
+    /// "what would I get right now?" is answerable from the unfiltered call.
+    @objc func listVoices(_ call: CAPPluginCall) {
+        let requestedLang = call.getString("lang")
+        let language = Self.effectiveLanguage(requestedLang)
+        let installed = Self.installedVoices()
+        let best = Self.bestVoice(
+            among: installed,
+            language: language,
+            preferringName: AVSpeechSynthesisVoice(language: language)?.name
+        )
+
+        let listed: [VoiceOption]
+        if let requestedLang = requestedLang, !requestedLang.isEmpty {
+            listed = Self.candidates(installed, language: language)
+        } else {
+            listed = installed
+        }
+
+        var voices = JSArray()
+        for voice in Self.sortedForListing(listed) {
+            var entry = JSObject()
+            entry["identifier"] = voice.identifier
+            entry["name"] = voice.name
+            entry["language"] = voice.language
+            entry["quality"] = Self.qualityLabel(rank: voice.qualityRank)
+            entry["isDefaultChoice"] = (voice.identifier == best?.identifier)
+            voices.append(entry)
+        }
+
+        var result = JSObject()
+        result["ok"] = true
+        result["platform"] = "ios"
+        result["language"] = language
+        result["voices"] = voices
+        result["count"] = voices.count
+        result["defaultIdentifier"] = best?.identifier ?? ""
+        result["installedCount"] = installed.count
+        result["reason"] = ""
         call.resolve(result)
     }
 

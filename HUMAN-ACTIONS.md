@@ -2591,6 +2591,62 @@ project's existing rule.
 
 ---
 
+### 40. Download one Enhanced iPhone voice, then re-listen to the narration test
+
+**Tag:** `[BLOCKING]` for judging on-device narration at all · **Time:** ~3 minutes of taps
+plus one download, then the same 100-second listen as #29 · **Owner:** whoever has the iPhone
+
+**Why it matters.** #29 came back with two results, and the second one has been
+misread. The locked-screen question passed. The other observation was that the voice
+was "much worse than the original test" — the original being the Kokoro fixture. That
+was taken as evidence about on-device TTS. It was not: `ForayTtsPlugin.swift` was
+asking iOS for the SYSTEM DEFAULT voice, which is the compact/legacy tier — the robotic
+one — while the same free catalogue also carries neural "Enhanced" and "Premium"
+voices. The plugin now asks for the best tier installed. **But those voices are
+per-language downloads and a stock iPhone does not have them**, so on a phone that has
+never been to the settings screen below, this change is completely inaudible and a
+re-listen would produce the same verdict for a different reason.
+
+So: download one, then listen. Until that happens nobody — including us — knows what
+on-device narration actually sounds like, and a product decision about server-side vs.
+on-device synthesis is resting on a comparison against the worst voice iOS ships.
+
+**Steps.**
+
+1. On the iPhone, open **Settings → Accessibility → Spoken Content → Voices → English**.
+2. Pick a voice and tap the **download arrow** beside it. Any Enhanced or Premium voice
+   is fine; **Ava** and **Samantha** are the usual English (US) ones, and Samantha has
+   the small advantage that it is the same name as the default, so the plugin's
+   tie-break will prefer it. The download is free and is typically 100–500 MB.
+   (If the list shows only one entry per name with no download arrow, that voice is
+   already installed — note which and move on.)
+3. Write down the exact names of every voice that now shows as downloaded. That is the
+   ground truth this repo does not have.
+4. Install/launch the shell build with this change in it, open the
+   **"On-device narration, screen off"** Foray (the same one #29 used), and listen to
+   the first ~20 seconds.
+5. **Report:** does it sound meaningfully better than what you heard on 2026-09-05?
+   Better/same/worse, in your own words — no scale needed. If it sounds identical,
+   say so, because that is the informative answer: it would mean the plugin is not
+   picking up the downloaded voice and there is a second bug.
+
+**Values written out, so nothing has to be guessed:**
+- Settings path: `Settings → Accessibility → Spoken Content → Voices → English`
+- Foray title in the app: **On-device narration, screen off** (id `tts-locked-screen-check`)
+- The plugin call that would confirm what the phone actually has:
+  `window.Capacitor.nativePromise("ForayTts", "listVoices", { lang: "en-US" })` —
+  there is no UI for this yet, so it is only reachable from a Safari Web Inspector
+  console attached to the device. Skip it unless step 5 comes back "identical"; the
+  human answer to step 5 is the one that matters.
+
+**Worked if:** there is a written note saying which voice was downloaded and whether the
+narration sounded better with it. Both halves are needed — "sounds better" without the
+voice name cannot be reproduced, and the voice name without a verdict answers nothing.
+
+**Status:** OPEN.
+
+---
+
 ## DONE
 
 *(Finished items move here with the date they were done and keep their
