@@ -155,11 +155,15 @@ jobs:
           if [ -n "$PR_NUMBER" ]; then
             echo "PR #$PR_NUMBER for $BRANCH already open — pushed an update to it"
           else
-            gh pr create --repo "${{ github.repository }}" \
+            # Parse the PR number from `gh pr create`'s own stdout (it prints
+            # the new PR's URL) rather than immediately re-listing — GitHub's
+            # list API can lag a just-created PR by a beat, and re-listing
+            # into an empty result would hand `gh pr merge` no argument below.
+            CREATE_URL=$(gh pr create --repo "${{ github.repository }}" \
               --base main --head "$BRANCH" \
               --title "chore(shows): point shows-index at $TAG" \
-              --body "Automated shows-index build (S-04b). Points \`data/shows-index-pointer.json\` at the GitHub Release \`$TAG\`. \`data/\` auto-merges on green CI per the project registry (merge_authority: agent)."
-            PR_NUMBER=$(gh pr list --repo "${{ github.repository }}" --head "$BRANCH" --state open --json number --jq '.[0].number')
+              --body "Automated shows-index build (S-04b). Points \`data/shows-index-pointer.json\` at the GitHub Release \`$TAG\`. \`data/\` auto-merges on green CI per the project registry (merge_authority: agent).")
+            PR_NUMBER="${CREATE_URL##*/}"
           fi
 
           # A PR OPENED (OR UPDATED) VIA THE AUTOMATIC GITHUB_TOKEN DOES NOT
