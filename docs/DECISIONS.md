@@ -1980,3 +1980,84 @@ D13; kanban card S-04a (`t_835d1a3c`, itself a workspace-bug redo of
 - **Test floors**: `test/suite-integrity.test.js` gained six entries under
   `tools/shows/*` (workflow rule 4/6 — this file + that one are the two
   shared files this card touches, both isolated to this change).
+
+## 2026-09-05 — S-04b: shows-index release automation
+
+- **What:** `tools/shows/publish-release.mjs` (tag sanitization,
+  fail-closed idempotency check via `gh release view`, asset listing, `gh
+  release create` invocation, the pointer payload builder) and
+  `tools/shows/run-and-publish.mjs` (the orchestration S-04a's builder
+  runs through — build, then publish-if-new, then write
+  `data/shows-index-pointer.json`). `.github/workflows/shows-import.yml`
+  runs it weekly (Sun 06:00 UTC) plus `workflow_dispatch`, and opens a PR
+  updating the pointer when a new release was actually published.
+- **Idempotency has TWO independent layers**, both exercised end to end by
+  `run-and-publish.test.mjs`'s acceptance test (a faked build + faked `gh`,
+  not each piece in isolation): S-04a's own `state.json`
+  skip-if-already-built, AND a `gh release view <tag>` check before
+  publishing — the second catches the case `state.json` was lost (fresh
+  checkout, evicted runner cache) while the release still exists on
+  GitHub. Either one alone would leave a real gap; the test proves both
+  paths land on zero-new-releases.
+- **`releaseExists` fails CLOSED.** Any `gh` error other than a literal
+  "release not found" (auth, network blip, rate limit) throws rather than
+  being read as "safe to publish" — a transient error must never produce a
+  duplicate release. Unit-tested directly in `publish-release.test.mjs`.
+- **Release tag = sanitized `export_version`** (`shows-index-<sanitized>`),
+  not a counter or a date-of-run — this is what makes "does a release for
+  this exact dump version already exist" a single deterministic lookup
+  rather than a search.
+- **The pointer PR, not a direct commit.** `data/` auto-merges on green CI
+  per the project registry (`merge_authority: agent`), same as S-04a's own
+  PR #483 — this workflow opens a normal PR (reusing
+  `manifest-autofix.yml`'s git-push-then-`gh pr create` pattern) rather
+  than committing to `main` directly, so the pointer change is visible in
+  the PR list like everything else.
+- **CSP `connect-src` measurement (the card's #5), done against a REAL
+  release in this repo** (`kokoro-fixture-t_f3c788ca`, already on GitHub —
+  not a hypothetical): a `fetch()`-shaped request to
+  `github.com/<owner>/<repo>/releases/download/<tag>/<asset>` gets a `302`
+  from `github.com` to a presigned URL on **`release-assets.githubusercontent.com`**
+  (an Azure Blob Storage-backed CDN — the redirect target's own response
+  headers are `server: Windows-Azure-Blob/1.0` and its own subsequent CDN
+  layer). **Neither hop sends an `Access-Control-Allow-Origin` header at
+  all** — checked with `curl -H "Origin: capacitor://localhost"` against
+  both the `github.com` redirect response and the final
+  `release-assets.githubusercontent.com` response, and confirmed with a
+  standalone `OPTIONS` preflight against the resolved asset URL (`405`,
+  no CORS headers). **A `fetch()` from the `capacitor://localhost` origin
+  to a GitHub Release asset URL will therefore fail the browser's CORS
+  check as shipped** — this is not a hypothetical risk, it is the measured
+  behavior of GitHub's actual release-asset serving path today.
+  - **The final resolved host to name in any future `connect-src` entry is
+    `release-assets.githubusercontent.com`** — but naming it alone does
+    NOT fix the fetch, because `connect-src` only controls which origins
+    the page is ALLOWED to ask; it does nothing about whether the SERVER
+    answers with the CORS header the browser then requires. Widening
+    `connect-src` to include this host is necessary but not sufficient.
+  - **`raw.githubusercontent.com`** (files committed to the repo, not
+    release assets) **does** send `access-control-allow-origin: *` —
+    verified against this repo's own `README.md`. **`cdn.jsdelivr.net`**
+    also sends `access-control-allow-origin: *` for repo files at a ref,
+    but does **not** mirror release-only binary assets (`404` confirmed
+    against a real release asset by that name) — jsDelivr's GitHub proxy
+    only serves files tracked in git, not Release uploads.
+  - **Practical consequence for S-05 (the client that will actually fetch
+    the shard index):** shipping the shard index as GitHub Release assets
+    and fetching them directly from the client will not work under the
+    current CSP model without a CORS-capable front end. The two realistic
+    options, left for that card / a founder call rather than guessed at
+    here: (a) front the release assets with a CDN/proxy that adds CORS
+    headers (jsDelivr does not cover this asset type, so this needs a
+    different proxy — e.g. a Cloudflare Worker or an object-storage mirror
+    the pipeline also uploads to), or (b) route the fetch through this
+    repo's own API layer (`api/`) as a same-origin proxy, matching the
+    pattern `api/shows/[show_id]/episodes.ts` already uses for no-DB mode.
+    Filed as `HUMAN-ACTIONS.md` — see that file's shows-index-CORS entry.
+  - **No CSP `connect-src` change lands in this card.** #36/S-03's own rule
+    (`docs/mobile-shell.md` §3: "should land with the code that needs it
+    rather than sitting open in advance") applies identically here — S-04b
+    ships no client fetch code, so widening the CSP now would be exactly
+    the thing that rule exists to prevent.
+- **`docs/DECISIONS.md`** — this entry.
+

@@ -40,6 +40,22 @@ export const STATE_PATH = join(STATE_DIR, "last-build.json");
 export const CATALOG_PATH = join(ROOT, "data", "catalog.json");
 export const POINTER_PATH = join(ROOT, "data", "shows-index-pointer.json");
 
+/** S-04b: GitHub Release publishing. `REPO_SLUG` is read from the
+    Actions-provided `GITHUB_REPOSITORY` env var when present (so a fork
+    publishes to itself, never to this repo by accident) and falls back to
+    this repo's slug for local/manual runs. `RELEASE_TAG_PREFIX` namespaces
+    every release this pipeline creates so `gh release list` can tell them
+    apart from `kokoro-fixture-*` and any other release in the repo. */
+export const REPO_SLUG = process.env.GITHUB_REPOSITORY || "JW-Incorporated/foray";
+export const RELEASE_TAG_PREFIX = "shows-index-";
+
+/** data/shows-index-pointer.json is committed (not gitignored) — it is the
+    D3-swap-ready config value the client reads to find the current
+    release, per 4a-shows-pipeline-plan.md's origin-is-a-config-value
+    design. Bumped whenever the pointer's own shape changes, independent of
+    `manifest.json`'s `version`. */
+export const POINTER_SCHEMA_VERSION = 1;
+
 /** Local scratch for the downloaded archive + extracted db + build output.
     Gitignored (data-local/), never committed — same pattern as
     tools/transcribe and tools/segments. */
