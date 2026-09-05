@@ -119,6 +119,27 @@ test("backend/test/ is allowlisted and backend/src/ is denied", () => {
   assert.ok(DENIED_PREFIXES.includes("backend/src/"));
 });
 
+test("mobile/ auto-merges, but the signing scripts under tools/mobile/ still don't", () => {
+  /* Founder ruling 2026-09-05: mobile/ (the native shell's app code) is on the
+     allowlist so a mobile-only PR auto-merges when green, like other app areas.
+
+     The load-bearing subtlety this pins: "mobile/" as a prefix must NOT reach the
+     signing/asset scripts under tools/mobile/, which stay DENIED. They are a
+     different path root ("tools/mobile/..." starts with "tools/", never "mobile/"),
+     and DENIED is checked first regardless.
+
+     MUTATION: remove "mobile/" from ALLOWED_PREFIXES -> the first assert fails.
+     MUTATION: move "tools/mobile/wire-signing.mjs" out of DENIED -> the last fails. */
+  assert.ok(ALLOWED_PREFIXES.includes("mobile/"));
+  const shell = pathPolicy(["mobile/plugins/foray-tts/ios/Sources/ForayTtsPlugin/ForayTtsPlugin.swift"]);
+  assert.equal(shell.denied.length, 0, "a mobile app-code file must not be denied");
+  assert.equal(shell.unlisted.length, 0, "a mobile app-code file must be allowlisted, not unlisted");
+
+  const signing = pathPolicy(["tools/mobile/wire-signing.mjs"]);
+  assert.equal(signing.denied.length, 1, "the signing script stays governed");
+  assert.ok(DENIED_PREFIXES.includes("tools/mobile/wire-signing.mjs"));
+});
+
 test("tools/ci/ is denied even though tools/ is allowed", () => {
   // This directory is the gate: without the deny entry, the first PR editing
   // the policy would auto-merge under the policy it was rewriting.
