@@ -2392,11 +2392,43 @@ starting with the flag on until this item is resolved.
 **Worked if:** `test/release-gates.test.js` passes with the flag on and the
 new sentence in place, and fails if either reverts alone.
 
-**Status:** OPEN
+**Status:** DONE (2026-09-05)
+
+**Decision line:** Joey authorized an agent to draft the replacement wording
+itself and ship it without a stop-and-review cycle (Discord, 2026-09-0x):
+"have a fable agent on low effort draft the necessary wording and put that in
+place. Legal counsel is regularly reviewing every word on the website, so no
+need to stop and tell us to review it." This overrides this item's original
+"exact wording is a founder call" framing for this one wording decision;
+legal counsel's regular review of the site is the safety net.
+
+`docs/legal/privacy-policy.md` §2's absolute sentence was replaced with
+wording that keeps the on-device promise for the playlist box and for Shows
+search when the show/episode is already in 4a's local catalogue, and
+discloses that a Shows search miss looks the typed query up against a
+shard/index off-device. `docs/legal/data-safety.md`'s two repeats of the same
+claim (Play's "In-app search history" row and Apple's "Search History" row)
+were reconciled to match. `test/legal-citations.test.js` and
+`test/release-gates.test.js` both pass; `test/release-gates.test.js`'s core
+gate now passes regardless of `SHOWS_SEARCH_OFF_DEVICE`'s value, because the
+old absolute sentence the gate watches for is gone.
+
+**`SHOWS_SEARCH_OFF_DEVICE` itself was deliberately NOT flipped in this PR.**
+Nothing in `app.js` or `search-engine.js` performs a shard/API-backed Shows
+search yet (S-04's shard-index release and S-05's client wiring haven't
+shipped) — flipping the flag now would declare a feature live that doesn't
+exist in the client. Flipping it is S-05/S-15's job, once the real off-device
+Shows search path lands; this item only had to make the flip *safe* to do at
+that point, which it now is.
 
 ---
 
 ## DONE
 
-*(Nothing filed yet. Finished items move here with the date they were done and
-keep their number — the history is how we stop re-asking.)*
+*(Finished items move here with the date they were done and keep their
+number — the history is how we stop re-asking.)*
+
+Item #38 (privacy policy no-transmission sentence, G5) is DONE as of
+2026-09-05 — its `### 38.` heading, full detail, and decision line are kept
+in place above rather than duplicated here, since this is the file's first
+completed item and moving the block would cost more diff than it's worth.
