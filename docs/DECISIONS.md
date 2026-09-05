@@ -2071,4 +2071,40 @@ D13; kanban card S-04a (`t_835d1a3c`, itself a workspace-bug redo of
   (`run-and-publish-execargv.test.mjs`) that spawns a **real** node
   subprocess — no fake `exec` anywhere — to prove the forwarding actually
   reaches the child's argv.
+- **Second fresh-context review pass, two more findings, both fixed
+  same-PR:**
+  1. **The pointer PR was opened via `GITHUB_TOKEN`, which GitHub does not
+     fire `pull_request` workflow events for (anti-recursion rule).** As
+     written, `automerge-nightly.yml` — which listens ONLY on
+     `pull_request` events and has no `workflow_dispatch` trigger — would
+     never see the pointer PR at all, and `ci.yml`'s required checks would
+     never report on its head SHA. The PR would sit open forever needing a
+     human, contradicting the workflow's own "auto-merges on green CI"
+     claim. Fixed by having `shows-import.yml` dispatch `ci.yml` via
+     `workflow_dispatch` (the same documented exception
+     `manifest-autofix.yml`/`pr-hygiene.yml` already rely on) and arm
+     `gh pr merge --auto` directly, rather than routing through
+     `automerge-nightly.yml`'s own path-policy machinery — this workflow's
+     diff shape is fixed and pre-known (exactly one path,
+     `data/shows-index-pointer.json`, already named agent-auto-mergeable
+     in the project registry), so the general "is this diff safe to
+     auto-merge" question that file exists to answer does not apply here.
+  2. **Idempotency was gated on `published`, stranding a release whose
+     pointer PR never landed.** If a prior run published a release but its
+     pointer-update step failed/was interrupted/its PR got closed, every
+     later run for that same `export_version` hit `releaseExists` ->
+     `published: false` and stopped — the pointer was never reconciled,
+     and the release sat orphaned with nothing ever pointing at it, with
+     no path back except manual intervention. Fixed: `runAndPublish` now
+     ALWAYS computes the pointer for the current build's export_version
+     (whether the release was just published or already existed) and
+     compares it against whatever is currently on disk by `release_tag`
+     (not the whole object, which carries a fresh timestamp every run —
+     that would report a spurious diff on every no-op run). The workflow
+     now gates the PR-open step on `pointer_changed`, not `published`.
+     Proven by a new test (`reconciliation: a release that exists with no
+     landed pointer PR is still reconciled on the next run`) that
+     reproduces the exact gap: publish, delete the pointer file (simulating
+     a lost PR), run again, assert the pointer gets rewritten even though
+     nothing new was published.
 

@@ -81,6 +81,16 @@ export async function listReleaseAssets(outDir) {
   return [...top.map((f) => join(outDir, f)), ...shardFiles.map((f) => join(shardDir, f))];
 }
 
+/** The stable, directly-constructible asset base URL for a tag — no API
+    call needed, whether or not THIS run is the one that published it.
+    Factored out of publishRelease so the caller can reconcile a pointer
+    against an ALREADY-existing release (the recovery path in
+    run-and-publish.mjs: a release published on a prior run whose pointer
+    PR never landed) without re-deriving this string ad hoc. */
+export function assetBaseUrlFor(tag, repo = REPO_SLUG) {
+  return `https://github.com/${repo}/releases/download/${tag}`;
+}
+
 /** Creates the release and uploads every asset in one `gh release create`
     call — uploading separately from creation would be two points of
     partial failure (a release created with zero assets, e.g.) instead of
@@ -102,7 +112,7 @@ export async function publishRelease({ tag, title, notes, assets, exec = execFil
   ]);
   return {
     tag,
-    asset_base_url: `https://github.com/${repo}/releases/download/${tag}`,
+    asset_base_url: assetBaseUrlFor(tag, repo),
   };
 }
 

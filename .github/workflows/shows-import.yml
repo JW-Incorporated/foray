@@ -4,9 +4,12 @@
 # tools/shows/run-and-publish.mjs, which additionally:
 #   1. publishes the built shard-index artifacts as a GitHub Release
 #      (keyless — GITHUB_TOKEN only, no new secret);
-#   2. opens a PR updating data/shows-index-pointer.json to point at the
-#      new release, IF the build actually produced a new one (idempotent:
-#      see run-and-publish.mjs's own two-layer skip check).
+#   2. opens a PR updating data/shows-index-pointer.json whenever the
+#      pointer needs to change — either because a new release was just
+#      published, OR because a prior release exists with no pointer
+#      pointing at it yet (see run-and-publish.mjs's reconciliation logic:
+#      idempotency is gated on the RELEASE, the pointer PR is gated on the
+#      POINTER, and those are deliberately two different checks).
 #
 # WHY A PR, NOT A DIRECT COMMIT (unlike manifest-autofix.yml's fixup
 # commit): `data/` auto-merges on green CI per the project registry
@@ -59,7 +62,8 @@ concurrency:
 
 permissions:
   contents: write # push the pointer-update branch
-  pull-requests: write # open the pointer PR
+  pull-requests: write # open the pointer PR, arm auto-merge
+  actions: write # workflow_dispatch the ci.yml re-trigger (GITHUB_TOKEN anti-recursion workaround)
 
 env:
   BRANCH: shows-index/pointer-update
@@ -97,15 +101,23 @@ jobs:
             tail -20 build.log
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
-          if grep -qE '^PUBLISHED:' build.log; then
-            echo "published=true" >> "$GITHUB_OUTPUT"
+          if grep -qE '^POINTER_UPDATED:' build.log; then
+            echo "pointer_changed=true" >> "$GITHUB_OUTPUT"
           else
-            echo "published=false" >> "$GITHUB_OUTPUT"
-            echo "No new release published this run (idempotent skip — see build.log above for which check caught it)." >> "$GITHUB_STEP_SUMMARY"
+            echo "pointer_changed=false" >> "$GITHUB_OUTPUT"
+            echo "No pointer change this run (idempotent skip — see build.log above for which check caught it)." >> "$GITHUB_STEP_SUMMARY"
           fi
 
-      - name: Open a PR updating the pointer, only if a new release was published
-        if: steps.build.outputs.published == 'true'
+      - name: Open a PR updating the pointer, whenever it needs to change
+        # Gated on `pointer_changed`, NOT `published` — run-and-publish.mjs
+        # reconciles the pointer independently of whether THIS run created
+        # the release (fresh-context review finding, 2026-09-05): a prior
+        # run's release can exist with no landed pointer PR (interrupted
+        # workflow, closed PR, transient failure), and gating on `published`
+        # alone would leave that release stranded forever, since
+        # `releaseExists` would keep reporting `published=false` on every
+        # later run for the same export_version.
+        if: steps.build.outputs.pointer_changed == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -121,7 +133,7 @@ jobs:
           # silently skip the very first pointer PR. Staging it first makes
           # "new file" and "modified file" the same check.
           if git diff --cached --quiet; then
-            echo "run-and-publish.mjs reported a new release but the pointer file is unchanged — refusing to open an empty PR"
+            echo "run-and-publish.mjs reported the pointer needs reconciling but the file is byte-identical to what's committed — refusing to open an empty PR"
             exit 1
           fi
           TAG=$(node -e "console.log(require('./data/shows-index-pointer.json').release_tag)")
@@ -134,5 +146,37 @@ jobs:
             gh pr create --repo "${{ github.repository }}" \
               --base main --head "$BRANCH" \
               --title "chore(shows): point shows-index at $TAG" \
-              --body "Automated weekly shows-index build (S-04b). Points \`data/shows-index-pointer.json\` at the new GitHub Release \`$TAG\`. \`data/\` auto-merges on green CI per the project registry (merge_authority: agent)."
+              --body "Automated shows-index build (S-04b). Points \`data/shows-index-pointer.json\` at the GitHub Release \`$TAG\`. \`data/\` auto-merges on green CI per the project registry (merge_authority: agent)."
           fi
+
+          PR_NUMBER=$(gh pr view "$BRANCH" --repo "${{ github.repository }}" --json number --jq .number)
+          HEAD_SHA=$(gh pr view "$BRANCH" --repo "${{ github.repository }}" --json headRefOid --jq .headRefOid)
+
+          # A PR OPENED (OR UPDATED) VIA THE AUTOMATIC GITHUB_TOKEN DOES NOT
+          # ITSELF TRIGGER `pull_request` WORKFLOWS — GitHub's documented
+          # anti-recursion rule for the automatic token, the same one
+          # manifest-autofix.yml's header names for its own push-then-dispatch
+          # pattern. Two consequences, both handled explicitly rather than
+          # assumed away:
+          #   1. `ci.yml`'s required checks (`backend`, `data-and-site`) would
+          #      never report on this head SHA — `workflow_dispatch` is the
+          #      documented exception, exactly as manifest-autofix.yml and
+          #      pr-hygiene.yml already rely on for their own bot commits.
+          #   2. `automerge-nightly.yml` listens ONLY on `pull_request` events
+          #      (no `workflow_dispatch` trigger exists on that file), so it
+          #      would never see this PR at all and it would sit open needing
+          #      a human despite the registry saying `data/` auto-merges on
+          #      green CI. Rather than adding a `workflow_dispatch` entry point
+          #      to that shared, safety-critical file (it gates policy checks
+          #      on `github.event.pull_request.*` context that a dispatched run
+          #      would not have — a bigger, riskier change than this card's
+          #      scope), this workflow arms auto-merge directly here. The
+          #      scope is narrow and pre-approved: this job only ever touches
+          #      `data/shows-index-pointer.json`, a single path the project
+          #      registry already names as agent-auto-mergeable — the general
+          #      path-policy question `automerge-nightly.yml` exists to answer
+          #      for an arbitrary PR does not apply to a workflow that only
+          #      ever produces one exact diff shape.
+          gh workflow run ci.yml --repo "${{ github.repository }}" --ref "$BRANCH"
+          gh pr merge "$PR_NUMBER" --repo "${{ github.repository }}" \
+            --squash --auto --delete-branch --match-head-commit "$HEAD_SHA"

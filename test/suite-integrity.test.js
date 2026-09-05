@@ -945,8 +945,8 @@ const FLOORS = {
      both idempotency paths (S-04a's own state.json skip, and the
      independent release-already-exists check that catches a lost
      state.json). */
-  "tools/shows/publish-release.test.mjs": 9,
-  "tools/shows/run-and-publish.test.mjs": 3,
+  "tools/shows/publish-release.test.mjs": 11,
+  "tools/shows/run-and-publish.test.mjs": 4,
   /* Fresh-context review finding (2026-09-05): runBuild spawns
      import-dump.mjs as a real child process, and Node does NOT
      auto-inherit process.execArgv (e.g. --experimental-sqlite) into a

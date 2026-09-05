@@ -20,7 +20,7 @@ import {
   BUILD_OUT_DIR, POINTER_PATH, STATE_PATH,
 } from "./config.mjs";
 import {
-  buildPointer, listReleaseAssets, publishRelease, releaseExists, releaseTagFor,
+  assetBaseUrlFor, buildPointer, listReleaseAssets, publishRelease, releaseExists, releaseTagFor,
 } from "./publish-release.mjs";
 
 const execFileP = promisify(execFile);
@@ -60,7 +60,21 @@ export async function runBuild(argv, { exec = execFileP, cwd } = {}) {
     idempotency guarantee is exercised end-to-end against a real (small)
     build without touching this repo's own data-local/ or a real GitHub
     repo. Production `main()` below calls this with zero overrides, which
-    is exactly the module-level config.mjs constants. */
+    is exactly the module-level config.mjs constants.
+
+    RECONCILES THE POINTER INDEPENDENTLY OF "did this run publish a new
+    release" (fresh-context review finding, 2026-09-05): if a prior run
+    published a release but its pointer-PR step never landed (workflow
+    interrupted, PR closed, transient failure), a later run for the SAME
+    export_version used to hit `releaseExists` -> `published: false` and
+    stop — the pointer PR was never re-opened, and the whole run reported
+    no work needed while `data/shows-index-pointer.json` silently drifted
+    behind the release that actually exists. The function now ALWAYS
+    computes the intended pointer for the current build's export_version
+    (whether the release was just published or already existed) and
+    reports `pointerChanged` against whatever is currently on disk, so the
+    workflow can open/refresh the PR on that signal instead of on
+    `published`. */
 export async function runAndPublish(argv, {
   buildExec = execFileP,
   ghExec = execFileP,
@@ -78,12 +92,12 @@ export async function runAndPublish(argv, {
 
   if (dryRun) {
     log("DRY_RUN: not publishing (see import-dump.mjs's own DRY_RUN line above)");
-    return { published: false, reason: "dry-run" };
+    return { published: false, pointerChanged: false, reason: "dry-run" };
   }
 
   if (build.skipped) {
     log("SKIP: build was already current — nothing new to publish (idempotency: no release created)");
-    return { published: false, reason: "build-skipped" };
+    return { published: false, pointerChanged: false, reason: "build-skipped" };
   }
 
   const state = JSON.parse(await readFile(statePath, "utf8"));
@@ -94,24 +108,28 @@ export async function runAndPublish(argv, {
   // state.json skip above — see releaseExists's doc comment for why both
   // checks matter. A tag that already exists here means state.json was
   // lost (fresh checkout, evicted cache) while the release survived.
+  let assetBaseUrl;
+  let published = false;
   if (await releaseExists(tag, { exec: ghExec, repo })) {
     log(`SKIP: release ${tag} already exists on GitHub — nothing new to publish`);
-    return { published: false, reason: "release-exists", tag };
+    assetBaseUrl = assetBaseUrlFor(tag, repo);
+  } else {
+    const assets = await listReleaseAssets(buildOutDir);
+    ({ asset_base_url: assetBaseUrl } = await publishRelease({
+      tag,
+      title: `Shows index — ${state.export_version}`,
+      notes: [
+        `Automated shows-index release (S-04b).`,
+        `export_version: ${state.export_version}`,
+        `rows: read ${manifest.counts.read}, in_4a ${manifest.counts.in_4a}, canonical ${manifest.counts.canonical}`,
+      ].join("\n"),
+      assets,
+      exec: ghExec,
+      repo,
+    }));
+    published = true;
+    log(`PUBLISHED: ${tag} (${assets.length} assets)`);
   }
-
-  const assets = await listReleaseAssets(buildOutDir);
-  const { asset_base_url: assetBaseUrl } = await publishRelease({
-    tag,
-    title: `Shows index — ${state.export_version}`,
-    notes: [
-      `Automated shows-index release (S-04b).`,
-      `export_version: ${state.export_version}`,
-      `rows: read ${manifest.counts.read}, in_4a ${manifest.counts.in_4a}, canonical ${manifest.counts.canonical}`,
-    ].join("\n"),
-    assets,
-    exec: ghExec,
-    repo,
-  });
 
   const pointer = buildPointer({
     tag,
@@ -119,9 +137,29 @@ export async function runAndPublish(argv, {
     exportVersion: state.export_version,
     manifest,
   });
+
+  // Reconcile against whatever is currently committed, REGARDLESS of
+  // `published` — this is the fix. Compare on release_tag alone (not the
+  // whole object, which includes a fresh `published_at` timestamp every
+  // run) so re-running against an unchanged release never reports a
+  // spurious diff.
+  let currentPointer = null;
+  try {
+    currentPointer = JSON.parse(await readFile(pointerPath, "utf8"));
+  } catch {
+    // No pointer file yet — this is the first release ever, or it was
+    // never committed. Either way, a write is needed.
+  }
+  const pointerChanged = !currentPointer || currentPointer.release_tag !== pointer.release_tag;
+
+  if (!pointerChanged) {
+    log(`SKIP: data/shows-index-pointer.json already points at ${tag} — nothing to reconcile`);
+    return { published, pointerChanged: false, reason: published ? "published-pointer-current" : "release-exists-pointer-current", tag };
+  }
+
   await writeFile(pointerPath, `${JSON.stringify(pointer, null, 2)}\n`);
-  log(`PUBLISHED: ${tag} (${assets.length} assets) — pointer written to ${pointerPath}`);
-  return { published: true, tag, assetCount: assets.length };
+  log(`POINTER_UPDATED: ${pointerPath} now points at ${tag}${published ? "" : " (release already existed — reconciling a stale/missing pointer)"}`);
+  return { published, pointerChanged: true, tag, reason: published ? "published" : "reconciled-existing-release" };
 }
 
 async function main() {

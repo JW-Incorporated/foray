@@ -9,7 +9,7 @@ import { mkdtemp, mkdir, writeFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
-  buildPointer, listReleaseAssets, PublishError, publishRelease,
+  assetBaseUrlFor, buildPointer, listReleaseAssets, PublishError, publishRelease,
   releaseExists, releaseTagFor,
 } from "./publish-release.mjs";
 
@@ -98,6 +98,16 @@ test("publishRelease: calls gh release create once with every asset, returns the
   ]);
   assert.equal(result.tag, "shows-index-v1");
   assert.equal(result.asset_base_url, "https://github.com/org/repo/releases/download/shows-index-v1");
+});
+
+test("assetBaseUrlFor: derives the same URL shape publishRelease returns, with no gh call needed", () => {
+  // This is what run-and-publish.mjs's reconciliation path relies on: a
+  // release that already exists (published on a PRIOR run) still needs its
+  // asset base URL to build the pointer, with no `gh` call at all.
+  assert.equal(
+    assetBaseUrlFor("shows-index-v1", "org/repo"),
+    "https://github.com/org/repo/releases/download/shows-index-v1",
+  );
 });
 
 test("buildPointer: shapes the config-value payload the client reads", () => {
