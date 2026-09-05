@@ -52,6 +52,30 @@ function globToRegExp(glob) {
   return new RegExp(`^${escaped}$`);
 }
 
+// Path-style glob matcher for vercel.json's `functions` KEYS specifically --
+// these use `**` to mean "zero or more path segments" (per Vercel's own
+// docs: a pattern like api/star-star/star.ts matches both api/hello.ts and
+// api/hello/world.ts), which is different from globToRegExp()'s flat
+// `*` -> `.*` substitution above (that flat form would wrongly require a
+// literal `/` to exist even when `**` matches nothing -- caught in review:
+// it silently failed to prove that the api/shows/** functions glob covers
+// api/shows/search.ts, which has no extra path segment, and only passed
+// because it was OR'd against episodes.ts instead of actually being
+// asserted). A `**` immediately followed by a slash collapses to an
+// optional non-capturing group here specifically so a zero-segment match
+// doesn't leave a dangling required slash.
+function functionKeyToRegExp(glob) {
+  const escaped = glob
+    .replace(/\*\*\//g, "@@DOUBLESTAR_SLASH@@")
+    .replace(/\*\*/g, "@@DOUBLESTAR@@")
+    .replace(/\*/g, "@@STAR@@")
+    .replace(/[.+^${}()|[\]\\]/g, "\\$&")
+    .replace(/@@DOUBLESTAR_SLASH@@/g, "(?:.*/)?")
+    .replace(/@@DOUBLESTAR@@/g, ".*")
+    .replace(/@@STAR@@/g, "[^/]*");
+  return new RegExp(`^${escaped}$`);
+}
+
 function loadVercelConfig() {
   return JSON.parse(fs.readFileSync(path.join(ROOT, "vercel.json"), "utf8"));
 }
@@ -62,13 +86,10 @@ test("vercel.json declares includeFiles for api/shows/** covering both catalogue
     "data/catalog*.json will not be bundled with any deployed function, and " +
     "every real show_id / search query 404s or degrades in production.");
 
+  const TARGETS = ["api/shows/[show_id]/episodes.ts", "api/shows/search.ts"];
   const matchingKeys = Object.keys(config.functions).filter((key) => {
-    // Same glob-to-regex logic as above, applied to the FUNCTION path glob
-    // itself, just enough to confirm it covers api/shows/**.
-    const re = globToRegExp(key.replace(/\*\*/g, "__DOUBLESTAR__")).source
-      .replace(/__DOUBLESTAR__/g, ".*");
-    return new RegExp(re).test("api/shows/[show_id]/episodes.ts") ||
-      new RegExp(re).test("api/shows/search.ts");
+    const re = functionKeyToRegExp(key);
+    return TARGETS.some((target) => re.test(target));
   });
   assert.ok(
     matchingKeys.length > 0,
@@ -76,6 +97,19 @@ test("vercel.json declares includeFiles for api/shows/** covering both catalogue
       "or api/shows/search.ts — both read data/catalog*.json at runtime and " +
       "need an includeFiles entry, or they 404/degrade in production."
   );
+
+  // Every target file must be covered by AT LEAST ONE matching key's
+  // includeFiles glob — not just "some key matched something". A key that
+  // only covers episodes.ts (e.g. a future narrower glob) would otherwise
+  // let search.ts silently lose its catalogue bundling.
+  for (const target of TARGETS) {
+    const coveringKeys = matchingKeys.filter((key) => functionKeyToRegExp(key).test(target));
+    assert.ok(
+      coveringKeys.length > 0,
+      `no vercel.json functions key's glob actually matches "${target}" — ` +
+        "it reads data/catalog*.json at runtime and needs includeFiles coverage."
+    );
+  }
 
   for (const key of matchingKeys) {
     const includeFiles = config.functions[key]?.includeFiles;
