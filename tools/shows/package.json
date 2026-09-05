@@ -1,0 +1,12 @@
+{
+  "name": "foray-shows",
+  "private": true,
+  "type": "module",
+  "description": "PodcastIndex dump import/shard-build pipeline (S-04a). Scoped package.json for the same reason tools/corpus has one: node:sqlite is flagged on Node 22.x (CI's version), so `npm test` here is the only command correct on every machine.",
+  "engines": {
+    "node": ">=22.5"
+  },
+  "scripts": {
+    "test": "node --experimental-sqlite --test"
+  }
+}

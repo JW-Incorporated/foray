@@ -1933,3 +1933,50 @@ device — needs a Mac. Nothing in the transform is engine-specific.
 back through `copy` in `prepare()`, and put the indentation back in
 `serializeSlice`; the parse-identity guards keep holding either way. The three
 alarms would then need raising again.
+
+## 2026-09-05 — S-04a: PodcastIndex dump import builder (`tools/shows/`)
+
+Source: `4a-shows-pipeline-plan.md` (Wyatt, 2026-09-04) §0 decisions D1–D3,
+D13; kanban card S-04a (`t_835d1a3c`, itself a workspace-bug redo of
+`t_c175e965`).
+
+- **D1 filter implemented exactly as the plan's decision table states**: a
+  row is "in 4a" when `dead != 1`, `episodeCount >= 3`, and its
+  `newestItemPubdate` is within 24 months of the build clock. "Updated" reads
+  the show's own newest-episode timestamp, not PodcastIndex's crawl
+  `lastUpdate` — the plan's own §3.1 lists both and this is the one that
+  answers "is the show alive", not "when did the crawler last visit it".
+  **Language filter left open**, per D1's own "Language filter open" —
+  `language` is stored on every shard row and never used to drop a row; D1's
+  own status column ("re-confirm with Joey's export in hand") is gate G6 /
+  card S-17, not this one.
+- **D13 dedupe**: group by `podcastGuid` (case-insensitive) when present,
+  else normalised title+author (accent-folded, punctuation-collapsed).
+  Canonical = has a non-null/non-zero `itunesId`; among itunesId holders,
+  ties broken by lowest dump `id` (the plan does not state a preference
+  there); without any itunesId in the group, the newest by
+  `newestItemPubdate`, same tie-break. Every tie-break bottoms out on `id`
+  so two runs over one fixture are byte-identical — the card's own
+  acceptance criterion.
+- **id-map fails closed, not partially**: `buildIdMap` matches curated shows
+  by normalised feed URL first (D2's join key), falls back to
+  `apple_collection_id === itunesId` (D2's stated cross-reference, for a feed
+  that moved), and returns every unresolved curated show by id+title rather
+  than silently omitting it. `writeBuildOutput` refuses to write anything —
+  not even a partial `id-map.json` — when `missing.length > 0`.
+- **Config is one file** (`tools/shows/config.mjs`): the dump URL, the D1
+  thresholds, and the size budgets are named exports, not inlined — the
+  card's explicit ask so a future swap to Joey's export (D3) is a one-line
+  change.
+- **Not yet wired**: `previousNewest` (the prior release's per-id
+  `newestItemPubdate` snapshot that `changed.json` diffs against) is empty on
+  every run today — there is no persisted manifest history yet since this is
+  the pipeline's first landing. Every row counts as "changed" on a fresh
+  build, which is correct for a first run; wiring the real diff is a small
+  follow-up once a release history exists (S-04b's job, or a fast-follow on
+  this card).
+- **Offline builder only** — no GitHub Release, no PR automation, no
+  workflow file. That is S-04b (`t_3a896057`), gated on this card.
+- **Test floors**: `test/suite-integrity.test.js` gained six entries under
+  `tools/shows/*` (workflow rule 4/6 — this file + that one are the two
+  shared files this card touches, both isolated to this change).
