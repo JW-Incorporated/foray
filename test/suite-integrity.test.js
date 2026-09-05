@@ -1244,6 +1244,13 @@ const BACKEND_FLOORS = {
     for a genuine catalogue gap) against an injected no-tape fixture so the
     assertion doesn't drift as the real catalogue grows. */
   "test/researchShape.test.ts": 11,
+  /* The §4.0-§4.9 orchestrator (runPipeline.ts). Floored because it is the ONLY
+     suite that exercises the chain as a chain: every stage has its own tests and
+     all of them stayed green while nothing joined the stages together, which is
+     how the pipeline reached "all nine stages built" with no way to run them.
+     Four of its cases pin whole-Foray properties the first real run failed on —
+     the §4.7 disclosure, and the runtime the checker recomputes. */
+  "test/runPipeline.test.ts": 11,
   /* §4.3's spine types: SpineSchema (strict, no per-act voice field),
      isClaimShaped (claim- vs topic-shaped beats), and validateSpine
      (§3's shape budgets with ±15% tolerance, the ~30% exploration
