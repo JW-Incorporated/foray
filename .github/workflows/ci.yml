@@ -43,6 +43,16 @@ jobs:
     # Not (yet) added to protect-main's required-checks list — see that
     # ruleset before relying on this to block a merge; it runs and reports
     # regardless.
+    #
+    # Installs backend/'s dependencies too (--omit=dev), mirroring
+    # vercel.json's installCommand exactly: Node's module resolution walks
+    # up from the REQUIRING FILE's own directory, not the api/ entry
+    # point's, so anything api/**'s import graph reaches inside
+    # backend/src/** (e.g. fast-xml-parser via
+    # backend/src/feeds/parser.ts) needs backend/node_modules to actually
+    # exist, api/'s own install alone is not enough. Caught here BECAUSE
+    # this job installs api/ only the first time it ran — see this PR's
+    # second commit for the reproduction.
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -53,6 +63,7 @@ jobs:
         with:
           node-version: 22
       - run: npm install
+      - run: npm install --omit=dev --prefix ../backend
       - run: npm test
 
   ios-kit:
