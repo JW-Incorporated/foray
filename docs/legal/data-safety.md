@@ -55,8 +55,12 @@ every answer below:
    the answer most likely to be got wrong in either direction.
 
 The client's CSP (`index.html`) sets `connect-src 'self'` plus the Supabase
-project, so the transmitted set above is the *most* the browser would permit for
-a data-sending request without a code change. Note it also allows
+project plus our own API origin (`https://foray-web-seven.vercel.app`, the
+Vercel project that serves `api/shows/*` and `api/episodes/*`), so the
+transmitted set above is the *most* the browser would permit for a data-sending
+request without a code change. What that API entry carries is a show id, or a
+typed search query — the privacy policy §2 states it; no account id and no
+event goes with it. Note it also allows
 `img-src https:` and `media-src https:` — any HTTPS host — which is how audio and
 artwork load. The CSP bounds outbound *data*, not all network access.
 
@@ -394,7 +398,8 @@ are the answers that will actually be submitted.
 
 **To re-verify before submitting:** that the shell adds no plugin which collects
 anything (each Capacitor plugin can), and that `connect-src` still names only
-Supabase.
+Supabase and our own API origin — `test/legal-citations.test.js` asserts that
+list exactly, reading both origins out of `app.js` rather than restating them.
 
 ---
 

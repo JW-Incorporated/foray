@@ -185,6 +185,13 @@ const FLOORS = {
      each is exactly one careless edit from its opposite, and #302 exists because
      reverting one of them passed the whole suite. */
   "test/app-name.test.js": 21,
+  /* Where `api/*` actually lives, and the CSP entry that lets the client reach
+     it. Floored because this is the suite standing between the app and a
+     REGRESSION THAT LOOKS LIKE NOTHING: every caller degrades a failed api
+     fetch to the bundled slice, so reverting any one line here restores "3
+     episodes a show" silently, with a green suite and no error anywhere. Seven
+     mutations named in the file's header; all seven were run and are red. */
+  "test/api-origin.test.js": 5,
   "test/app-security.test.js": 26,
   "test/episode-page.test.js": 8,
   /* Stage 3 of docs/episode-pages-plan.md — epRow/archivedRow/bannerHtml
