@@ -642,9 +642,14 @@ app.js  styles.css  search-engine.js  STATE.md  HUMAN-ACTIONS.md
   not governed, and nothing needs approving — and `automergeDecision()` returns
   `UNLISTED_PATH` with `needsFounder: true`, so **it waits for a human.**
 
-**So "ungoverned" and "auto-mergeable" are different sets, and `mobile/` is in the
-gap between them.** That gap is the whole reason this was got wrong: a `CLEAN`
-path-policy check reads like permission to land, and it is not.
+**So "ungoverned" and "auto-mergeable" are different sets.** That gap is the whole
+reason this was got wrong: a `CLEAN` path-policy check reads like permission to
+land, and it is not. `api/` and `index.html` are live examples of the gap today.
+
+**Note (2026-09-05): `mobile/` was moved onto the allowlist by a founder ruling,
+so it now auto-merges like other app code — the paragraphs below describe the
+posture before that change and are kept for the reasoning, not the current state
+of `mobile/`.**
 
 **And the decision is per-PR, all-or-nothing.** `automergeDecision()` arms only
 when *"All N changed file(s) are allowlisted"*; its one-line `reason` names the

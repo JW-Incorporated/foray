@@ -225,6 +225,13 @@ export const ALLOWED_PREFIXES = [
   "tools/",
   "test/",
   "backend/test/",
+  /* The native shell's own app code. Founder ruling 2026-09-05 (Wyatt): the CTO
+     has merge authority here like any other app area, so mobile/ auto-merges when
+     green rather than waiting for a human. The signing/asset scripts under
+     `tools/mobile/` that must NOT move stay in DENIED_PREFIXES and win regardless
+     (DENIED is checked first); "mobile/" as a prefix does not match "tools/mobile/",
+     so this changes nothing about them. */
+  "mobile/",
   "app.js",
   "styles.css",
   "search-engine.js",
