@@ -2112,7 +2112,61 @@ completion with the screen locked — same reporting bar item #11 already set fo
 call sites in `player/client.js`, and the tests that name them all go in one commit.
 None of it should be in the App Store build.
 
-**Status:** OPEN
+---
+
+### RESULT (Wyatt, 2026-09-05): locked screen, **it continued all the way through.**
+
+Run on a TestFlight build off `main` — the first build carrying #463's player/plugin
+wiring, and carrying #389's explicit `AVAudioSession.setCategory(.playback,
+mode: .spokenAudio)` + `setActive(true)`. So this is the FIXED plugin, not the
+unfixed one this item warned about.
+
+**`AVSpeechSynthesizer` keeps speaking with the screen locked.** That answers
+`Foray_Generation_Architecture.md` §9.1's "measure this before anything else in this
+document is built": on-device narration is a viable delivery path on iOS, and
+`docs/research/on-device-tts.md`'s reasoning from `usesApplicationAudioSession`
+holds up on a real device.
+
+**Three things the run surfaced that it was not looking for.** All three are
+engineering work, not founder actions; they are recorded here because this is where
+the evidence landed.
+
+1. **The rate mapping is badly wrong — 1.5x played at roughly 3x.** This is the
+   measurement `utteranceRate(playbackMultiplier:)`'s own comment said it was
+   waiting for: *"NOT PERCEPTUALLY LINEAR... 1.5 here is 'half again faster than
+   default' in the framework's units, not a measured 1.5x wall-clock speed-up.
+   Measuring that needs a device, which is the same limit HUMAN-ACTIONS #29 exists
+   for."* It now has a device. The function multiplies
+   `AVSpeechUtteranceDefaultSpeechRate` (0.5) by the playback multiplier, so 1.5x
+   asks for rate 0.75 — and Apple's curve from 0.5 to 1.0 spans normal speech to
+   unusably fast, so 0.75 lands near 3x. The listener's speed control is therefore
+   lying to them. **Do not treat one data point as a calibration curve**: it fixes
+   the shape of the error, not the exact mapping, and a corrected version needs a
+   second device reading to confirm.
+2. **The voice is much worse than the Kokoro acceptance fixture.** Cause is one
+   line: `ForayTtsPlugin.swift` sets a voice only when a `lang` is passed, via
+   `AVSpeechSynthesisVoice(language:)`, which returns the system DEFAULT for that
+   language — the compact/legacy formant tier. `on-device-tts.md` §1 already noted
+   Apple's catalogue "spans multiple synthesis tiers (compact/legacy formant-style
+   voices through modern neural 'Enhanced'/'Premium' voices, downloaded per-language
+   on demand)" and nothing in the plugin ever asks for one. Selecting the best
+   installed tier is small; whether it closes the gap to Kokoro is a listening test,
+   not a code question, because those voices are per-device downloads and are not
+   guaranteed present.
+3. **4a still has no lock-screen controls.** Confirmed by inspection on `main`: no
+   `MPRemoteCommandCenter` and no `MPNowPlayingInfoCenter` anywhere under `mobile/`,
+   the shipping Capacitor shell. The only matches in the repo are under `ios/App/`,
+   which `CLAUDE.md` classifies as reference material rather than the app. Same gap
+   as founder-feedback F5/F7, and unchanged by this test: audio surviving the lock
+   screen and the lock screen offering transport controls are two different
+   mechanisms, and only the first was measured here.
+
+**The instrument stays for now**, deliberately, against the deletion note above:
+findings 1 and 2 are both re-measured with the same 99-second counting line, and
+deleting it before they are fixed would mean rebuilding it to check the fix. It must
+still be gone before an App Store build.
+
+**Status:** DONE (2026-09-05)
 
 ---
 ### 31. Before phase 2 is scheduled: build the four App Store Guideline 1.2 UGC-moderation requirements
@@ -2546,3 +2600,9 @@ Item #38 (privacy policy no-transmission sentence, G5) is DONE as of
 2026-09-05 — its `### 38.` heading, full detail, and decision line are kept
 in place above rather than duplicated here, since this is the file's first
 completed item and moving the block would cost more diff than it's worth.
+
+Item #29 (on-device narration with the screen locked) is DONE as of
+2026-09-05 — the result is recorded under its own `### 29.` heading above, for
+the same reason: the answer is only legible next to the steps that produced it.
+**Answer: it continued all the way through** — plus three defects the run
+surfaced, listed there.
