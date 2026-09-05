@@ -934,6 +934,27 @@ const FLOORS = {
   "tools/shows/import-dump.test.mjs": 5,
   "tools/shows/shard-build.test.mjs": 14,
   "tools/shows/state.test.mjs": 6,
+  /* S-04b: GitHub Release publishing + the run-then-publish orchestration
+     (kanban t_3a896057), gated on S-04a above. publish-release.test.mjs
+     unit-tests each piece (tag sanitization, the fail-closed idempotency
+     check, asset listing, the gh invocation, the pointer payload shape)
+     against a faked `gh`; run-and-publish.test.mjs is the end-to-end
+     acceptance test the card's own criterion asks for — "two full runs on
+     the same dump version -> no new release" — proven against the REAL
+     control flow (runAndPublish), not each piece in isolation, covering
+     both idempotency paths (S-04a's own state.json skip, and the
+     independent release-already-exists check that catches a lost
+     state.json). */
+  "tools/shows/publish-release.test.mjs": 11,
+  "tools/shows/run-and-publish.test.mjs": 4,
+  /* Fresh-context review finding (2026-09-05): runBuild spawns
+     import-dump.mjs as a real child process, and Node does NOT
+     auto-inherit process.execArgv (e.g. --experimental-sqlite) into a
+     spawned child — every other test in run-and-publish.test.mjs injects
+     a fake `exec`, which hid this gap completely. This suite spawns a
+     REAL node subprocess (no fake exec anywhere) to prove the forwarding
+     actually reaches the child's argv. */
+  "tools/shows/run-and-publish-execargv.test.mjs": 1,
   /* The breadth prioritiser and its yield report (#114). Floored for the same
      reason politeness.test.mjs is, and the reason is not hypothetical here
      either: the first draft of `rank-breadth.mjs` had a seed hash that produced

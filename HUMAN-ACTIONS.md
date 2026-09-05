@@ -2423,6 +2423,65 @@ that point, which it now is.
 
 ---
 
+### 39. Decide how the shard-index client (S-05) reaches GitHub Release assets — CORS gap measured, not fixed
+
+**Tag:** `[INFO]` (no gate — S-05 has not shipped a client fetch yet) · **Time:** ~10 minutes to read, decision itself depends on S-05's design · **Owner:** whoever picks up S-05
+
+**Why it matters.** S-04b publishes the shard index as GitHub Release
+assets. Measured against a real release already in this repo
+(`kokoro-fixture-t_f3c788ca`): a download URL
+(`github.com/<owner>/<repo>/releases/download/<tag>/<asset>`) redirects
+(302) to a presigned URL on `release-assets.githubusercontent.com` (an
+Azure Blob Storage-backed CDN). **Neither the redirect response nor the
+final asset response sends an `Access-Control-Allow-Origin` header.** A
+browser `fetch()` from the app's origin (`capacitor://localhost` on iOS,
+`https://localhost` on Android, or the web origin) to a Release asset URL
+**will fail the browser's CORS check as GitHub serves it today** — this
+was verified with `curl -H "Origin: capacitor://localhost"` against both
+hops of the real redirect chain, and with a standalone `OPTIONS`
+preflight against the resolved asset URL (`405`, no CORS headers either).
+
+Widening the CSP's `connect-src` to name `release-assets.githubusercontent.com`
+is **necessary but not sufficient** — `connect-src` only controls which
+origins the page may ask; it does nothing about whether the *server*
+answers with the CORS header the browser then requires, and GitHub's
+server does not.
+
+**What does work, measured the same way:** `raw.githubusercontent.com`
+and `cdn.jsdelivr.net` both send `access-control-allow-origin: *` — but
+only for files **committed to git**, not Release uploads. `cdn.jsdelivr.net`
+returns a `404` for a real Release asset requested by its GitHub-release
+URL shape (confirmed against `kokoro-fixture-t_f3c788ca`'s own assets).
+
+**Options for S-05, in rough order of effort:**
+- **Route through `api/` as a same-origin proxy** (recommended starting
+  point) — matches the pattern `api/shows/[show_id]/episodes.ts` already
+  uses for no-DB mode: the client's own origin stays in `connect-src`,
+  and the Vercel function fetches the Release asset server-side (no CORS
+  concern server-to-server) and streams it back. No new infra.
+- **Front the Release assets with a CORS-capable CDN/proxy** (e.g. a
+  Cloudflare Worker, or mirroring the built shards to an S3/R2 bucket
+  configured with CORS headers) — more infra, but removes the API-layer
+  hop from the client's read path.
+- **Commit the shard index to git instead of Release assets** — would get
+  free CORS via `raw.githubusercontent.com`/jsDelivr, but reopens the
+  repo-bloat problem GitHub Releases exist to avoid (see
+  `docs/DECISIONS.md`'s S-04b entry for the sizing reasoning). Not
+  recommended without a strong reason to prefer it.
+
+**No CSP change lands in this card (S-04b) or is owed by it** — S-03/#36's
+own rule (`docs/mobile-shell.md` §3) is that `connect-src` widens with the
+code that needs it, not in advance. This item exists so S-05 does not
+discover the CORS gap by shipping a client that silently fails to fetch.
+
+**Worked if:** S-05's design doc (or its PR) states which option it picked
+and why, and the CSP change (if any) lands in that same PR per the
+project's existing rule.
+
+**Status:** OPEN.
+
+---
+
 ## DONE
 
 *(Finished items move here with the date they were done and keep their

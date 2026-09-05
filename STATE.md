@@ -2601,7 +2601,7 @@ backfill is a future, separate pass.
   per-filter counts, D13 both dedupe paths + canonical tie-breaks, shard/top
   size-budget enforcement, id-map fail-closed naming every miss, and the
   two-runs-byte-identical determinism the card requires.
-- **Not yet wired:** the `changed.json` diff needs a persisted prior-release
+- **Not yet wired**: the `changed.json` diff needs a persisted prior-release
   manifest to diff against; there is none yet on a first landing, so every
   row currently reports as "changed" (correct for a first build). Follow-up
   once a release history exists.
@@ -2611,4 +2611,40 @@ backfill is a future, separate pass.
   `tools/corpus/package.json` does, so `npm test` there is the one command
   correct on every machine; `tools/ci/run-suites.mjs` picks it up as its own
   install-then-test group automatically (no CI file edit needed).
+
+### S-04b: shows-index release automation (2026-09-05) — `foray/t_3a896057`
+
+- **What:** `tools/shows/publish-release.mjs` + `tools/shows/run-and-publish.mjs`
+  wrap S-04a's builder with GitHub Release publishing (keyless, `GITHUB_TOKEN`
+  only) and a pointer-update PR for `data/shows-index-pointer.json`.
+  `.github/workflows/shows-import.yml` runs it weekly (Sun 06:00 UTC) +
+  `workflow_dispatch`.
+- **Two-layer idempotency**, both proven end to end (faked build + faked
+  `gh`, real control flow) in `run-and-publish.test.mjs`: S-04a's own
+  `state.json` skip, plus an independent `gh release view` check that
+  catches a lost `state.json` while the release still exists on GitHub.
+  `releaseExists` fails closed on any non-"not found" `gh` error.
+- **CSP measurement done against a real release asset already in this
+  repo**: GitHub Release download URLs redirect (302) to
+  `release-assets.githubusercontent.com` (Azure Blob-backed) and **neither
+  hop sends any CORS header** — a `fetch()` from `capacitor://localhost`
+  to a release asset fails the browser's CORS check today, full stop.
+  `raw.githubusercontent.com` and `cdn.jsdelivr.net` both send
+  `access-control-allow-origin: *` for files committed to git, but
+  jsDelivr does not mirror release-only binary assets (404 confirmed).
+  Full redirect chain, headers, and the two remediation options (CORS
+  proxy/CDN mirror, or route through `api/` same-origin) are in
+  `docs/DECISIONS.md`'s 2026-09-05 S-04b entry and `HUMAN-ACTIONS.md`.
+  **No CSP `connect-src` change lands in this card** — no client fetch
+  code ships yet, so there is nothing to widen for (S-03's own rule).
+- **Decision entry:** `docs/DECISIONS.md`, 2026-09-05.
+- **Test floors**: `test/suite-integrity.test.js` gained
+  `tools/shows/publish-release.test.mjs` (11),
+  `tools/shows/run-and-publish.test.mjs` (4), and
+  `tools/shows/run-and-publish-execargv.test.mjs` (1). Two rounds of
+  fresh-context review both found and fixed real bugs before merge — see
+  `docs/DECISIONS.md` for all three findings (execArgv forwarding, the
+  GITHUB_TOKEN/automerge gap, and the published-vs-pointerChanged
+  idempotency gate).
+
 
