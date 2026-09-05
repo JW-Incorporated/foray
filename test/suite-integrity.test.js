@@ -110,10 +110,24 @@ const FLOORS = {
      built to explain — one pins that the message is on screen BEFORE the record is
      touched (the obvious version of it could not see the order at all), and one
      that an error too hostile to read still produces both. */
-  "player/foray-playback.test.js": 87,
+  /* 87 -> 95 with #29's wiring: eight tests for the diagnostic Foray
+     (`tts-locked-screen-check`) — that its line is long enough for a 30-second
+     lock to prove anything, that it reaches the queue as SCRIPT and not as a
+     file, that pressing play hands the committed script to the injected plugin
+     at the listener's own speed, that the audio element is left alone, that a
+     manager with no plugin wired reports a load failure rather than passing
+     silently, and that the Foray stays a draft so the public website never
+     lists it. The last of those is the only thing standing between a one-word
+     edit and a diagnostic on the home screen of the live site. */
+  "player/foray-playback.test.js": 95,
   "player/foray-progress.test.js": 58,
   "player/foray-queue.test.js": 37,
-  "player/foray-resolve.test.js": 54,
+  /* 54 -> 59 with #29: `withDiagnosticUnlock`, the one-id exception that lets
+     the native shell open a draft when `?foray=` cannot exist there. Five tests,
+     and the load-bearing one is that the WEBSITE's list comes back untouched —
+     the failure this guards is not "the phone cannot see it" but "everybody
+     can". */
+  "player/foray-resolve.test.js": 59,
   "player/foray-sources.test.js": 24,
     /* 108 -> 109 with #264: a telemetry sink that throws must not reject a load. That
      became reachable when `player/client.js` gave this backend its first real sink —
@@ -177,6 +191,15 @@ const FLOORS = {
   "player/segment-strip.test.js": 27,
   "player/strip-scrub-gesture.test.js": 41,
   "player/seek-policy.test.js": 33,
+  /* The wire between the page and on-device speech (#29). Floored with no
+     slack, because what it holds down is a connection that was ABSENT for
+     months without a single test going red: `PlayerQueueManager` took a `tts`
+     option, `_speakNarration` was complete, and nothing anywhere passed one, so
+     the whole narration path was dead code that all its own unit tests passed.
+     The last test in the suite is deliberately a source-level guard on
+     `client.js`'s call site — a weak test, and the only one in the repo that
+     turns red if that one line is deleted again. */
+  "player/tts-bridge.test.js": 11,
   /* The app's name on the surfaces users read (#302), 6 -> 8 when the two
      published legal documents were added, 8 -> 21 when the shipped UI copy that
      suite had only RECORDED as a known gap was renamed and pinned -- twenty

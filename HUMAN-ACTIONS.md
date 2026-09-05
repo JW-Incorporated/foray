@@ -2013,7 +2013,7 @@ XT on at least one model size, and the Vulkan device line confirms the GPU
 
 ### 29. Test whether on-device narration survives a locked screen on a real iPhone
 
-**Tag:** `[BLOCKING]` for `Foray_Generation_Architecture.md` §1.2/§9.1 · **Time:** ~5 minutes to start, then a 30-second wait · **Owner:** Joey (an iPhone)
+**Tag:** `[BLOCKING]` for `Foray_Generation_Architecture.md` §1.2/§9.1 · **Time:** ~5 minutes once a build exists, then a 40-second listen · **Owner:** whoever has the iPhone
 
 **Why it matters.** `Foray_Generation_Architecture.md` §9.1 flags this as the single
 highest-priority open question in the whole generation-architecture spec: *"Measure
@@ -2024,38 +2024,93 @@ already measured that a plain `<audio>` element survives a locked screen on iOS
 gets the same treatment. `docs/research/on-device-tts.md` §9 (added 2026-09-01) worked
 through everything documentation alone can settle: `AVSpeechSynthesizer` *can*
 inherit the app's background-audio grant by default (`usesApplicationAudioSession = true`,
-per Apple's WWDC20 session 10022), but the plugin as currently built never explicitly
-activates that audio session itself — so whether it actually holds up on a locked
-phone is genuinely unknown without a device test. The Web Speech API path
+per Apple's WWDC20 session 10022), but *"will use"* is not *"will configure"* — so
+whether it actually holds up on a locked phone is genuinely unknown without a device
+test, even now that the plugin claims the session itself (see below). The Web Speech API path
 (`speechSynthesis`, no native plugin) has no such documented mechanism at all and is
 the weaker candidate either way.
 
-**Before running this test:** ideally a follow-up engineering card first makes
-`ForayTtsPlugin.swift` explicitly call `AVAudioSession.sharedInstance().setCategory(.playback,
-mode: .spokenAudio, options: [])` + `setActive(true)` before speaking (see
-`on-device-tts.md` §9.4) — without that fix, a failure here might just mean the
-session was never activated, not that the approach is unworkable. If that fix hasn't
-landed yet and you want to test anyway, that's fine — just note in your report that
-you tested the *unfixed* plugin.
+**Which version you are testing (both prerequisites have landed).** `on-device-tts.md`
+§9.4 asked for one plugin fix before this test, so that a failure could not just mean
+"the audio session was never activated". Both of these are now in `main`:
+
+1. **The audio-session fix — landed 2026-09-01, PR #389.** `ForayTtsPlugin.swift`
+   now calls `AVAudioSession.sharedInstance().setCategory(.playback, mode: .spokenAudio,
+   options: [])` and `setActive(true)` immediately before `synthesizer.speak(utterance)`.
+2. **A speech-rate fix found while building this test.** The plugin was assigning the
+   player's speed multiplier straight onto `AVSpeechUtterance.rate`. Those are different
+   scales: the player's `1` means "normal speed", but `AVSpeechUtterance.rate = 1.0` is
+   `AVSpeechUtteranceMaximumSpeechRate` — the fastest the synthesiser goes. Every
+   narration line would have been read at top speed, which would have made this test
+   unreadable and its result meaningless. `ForayTtsPlugin.utteranceRate(playbackMultiplier:)`
+   now maps `1` onto `AVSpeechUtteranceDefaultSpeechRate`.
+
+So report this as **the fixed plugin**, not the unfixed one. Neither fix has been heard
+on a device — only compiled — which is part of what you are checking.
+
+**What was built for you.** `data/forays.json` now carries one Foray,
+`tts-locked-screen-check`, titled **"On-device narration, screen off"**. Its first item
+is a single spoken line of about **99 seconds** that names a marker every ten seconds
+("Marker one, ten seconds… Marker nine, ninety seconds"), so **whichever marker you hear
+last IS the measurement** — you do not have to time anything. It is a `draft`, so the
+public website never lists it; the native app lists it because
+`withDiagnosticUnlock()` in `player/foray-resolve.js` unlocks that one id when
+`window.Capacitor` exists. The line is the FIRST item and the queue does not yet advance
+past a spoken item, so nothing else will start playing over it — that is deliberate.
 
 **Steps.**
 
-1. Get a build of the Capacitor iOS shell with the `foray-tts` plugin wired to speak
-   a long (60+ second) test sentence on a button press (a session can produce this on
-   request — say the word, same as `mobile-shell.md` §6 item 2 already covers for the
-   background-audio Info.plist line).
-2. Install it on your iPhone (TestFlight or a debug build over USB).
-3. Press the button to start the test sentence speaking.
-4. **Lock the phone immediately** and put it in your pocket.
-5. Wait at least 30 seconds.
-6. Unlock and check: did the sentence finish, or did it stop partway through? If it
-   stopped, roughly how many seconds played before silence?
-7. Report back: "native TTS plugin, locked screen, [continued throughout / stopped
-   after ~X seconds]."
+1. **Get the build.** Two ways, in order of preference:
+   - The `ios-build` run for the PR that added this already tried to upload to
+     TestFlight (it triggers on `player/**` and `mobile/**`). Open TestFlight on the
+     iPhone and look for a new build of **`4a`**.
+   - If nothing is there, go to
+     `https://github.com/JW-Incorporated/foray/actions/workflows/ios-build.yml`,
+     press **Run workflow**, branch **`main`**, leave `probes` as-is, press the green
+     **Run workflow** button, and wait for the job **`ios-shell`** to finish.
+   - **Expect this to be the hard part.** The TestFlight upload has never once
+     succeeded end to end (item #19). If the run is red at the step
+     **"Archive, export and upload to TestFlight"**, that is a separate problem — paste
+     the failing step's log and stop here; nothing below is testable yet.
+2. **Install it** from TestFlight on the iPhone and open **`4a`**.
+3. **On the home screen, find the row that reads `foray · draft` above the title
+   "On-device narration, screen off"** and tap it. If that row is not there, the build
+   predates this change — check the build number against the PR.
+4. Turn the **ringer/volume up** so you can hear it in your pocket, then press the big
+   **play** button. Within a second or two a voice starts: *"This is the on-device
+   narration test for Foray. Lock the phone now and keep listening."*
+5. **Lock the phone immediately** (side button) and put it in your pocket. Keep
+   listening — the whole point is that you can hear exactly where it stops.
+6. **Listen for at least 40 seconds.** The line names its own markers, so you do not
+   need a stopwatch: you want to get past *"Marker three, thirty seconds"* at minimum.
+7. Unlock and note two things:
+   - **the last marker you heard** (or "it never stopped" — the line ends with
+     *"Marker nine, ninety seconds"* and then a closing sentence);
+   - **whether the voice came back on its own** when you unlocked, or stayed silent.
+     A voice that resumes was paused by the system; a voice that never returns was
+     stopped, and those are different problems with different fixes.
+8. **Report back in this exact form:** `native TTS plugin (session + rate fixes),
+   locked screen, last marker heard = <N or "none — played through">, resumed on
+   unlock = <yes / no>.`
 
-**Worked if:** there's a written result saying whether the test sentence played to
+**A five-minute thing you can do right now, which answers a DIFFERENT question.** Open
+`https://jw-incorporated.github.io/foray/?foray=tts-locked-screen-check` in a **Private
+Browsing** tab in Safari on the iPhone (private, so the service worker cannot serve you
+an old copy of the player), tap the same play button, and lock the phone. That plays the
+same line through the **Web Speech API**, not the native plugin — `on-device-tts.md` §9.2
+expects it to stop, and it is the weaker candidate either way. It is not a substitute for
+steps 1-8. It is worth doing because it proves the whole chain (data → player → speech)
+works before you spend time on the build, and because "the weak path also survived" would
+be genuinely surprising and worth knowing.
+
+**Worked if:** there's a written result saying whether the test line played to
 completion with the screen locked — same reporting bar item #11 already set for the
 `<audio>` case.
+
+**When it is answered, delete the instrument.** The Foray in `data/forays.json`,
+`DIAGNOSTIC_FORAY_ID` and `withDiagnosticUnlock()` in `player/foray-resolve.js`, their
+call sites in `player/client.js`, and the tests that name them all go in one commit.
+None of it should be in the App Store build.
 
 **Status:** OPEN
 

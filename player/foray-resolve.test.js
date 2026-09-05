@@ -13,6 +13,7 @@ import assert from "node:assert/strict";
 import {
   PUBLISHED, indexSegments, indexSources, allForays, forayVisibility,
   listableForays, findForay, hydrateForayItems, resolveForay, groupBySlot,
+  withDiagnosticUnlock, DIAGNOSTIC_FORAY_ID,
   segmentStarts, segmentAtElapsed, forayElapsed, fmtClock, fmtSpan, progressSegments,
 } from "./foray-resolve.js";
 /* The resume half of #40. Imported here rather than tested in
@@ -540,4 +541,69 @@ test("fmtSpan reads in seconds when short and minutes when not", () => {
   assert.equal(fmtSpan(45), "45 sec");
   assert.equal(fmtSpan(152.5), "3 min");
   assert.equal(fmtSpan(0), "0 sec");
+});
+
+/* ---------- the one draft the native shell may see (HUMAN-ACTIONS.md #29) ----
+
+   `?foray=<id>` is the only unlock, and it reads `location.search` — which
+   inside the Capacitor shell is permanently empty (`capacitor://localhost/`, no
+   address bar, no `server.url`, no registered URL scheme). So the draft that has
+   to be played on a phone, in the native app, through the native speech plugin
+   was the one draft no route could reach. `withDiagnosticUnlock` is the whole of
+   the exception, and it is deliberately one id wide. */
+
+const draftForay = (id) => ({ id, status: "draft", title: id, items: [] });
+
+// TO SEE IT FAIL: drop the `if (!inShell)` guard so the id is always added —
+// the diagnostic Foray then appears on the public website's home screen.
+test("the website's unlock list is returned untouched — a draft stays invisible there", () => {
+  assert.deepEqual(withDiagnosticUnlock([]), []);
+  assert.deepEqual(withDiagnosticUnlock([], { inShell: false }), []);
+  assert.deepEqual(withDiagnosticUnlock(["some-other-draft"]), ["some-other-draft"]);
+});
+
+// TO SEE IT FAIL: return `base` unconditionally.
+test("inside the shell, exactly one id is added and the caller's own ids survive", () => {
+  assert.deepEqual(
+    withDiagnosticUnlock(["typed-by-hand"], { inShell: true }),
+    ["typed-by-hand", DIAGNOSTIC_FORAY_ID]
+  );
+});
+
+// `?foray=tts-locked-screen-check` typed into a browser, inside a shell that
+// also unlocks it, must not yield the id twice — `forayVisibility` uses
+// `includes`, but a duplicated list is the kind of thing a later `map` over
+// unlocked ids renders twice.
+// TO SEE IT FAIL: drop the `base.includes(...)` clause.
+test("naming the diagnostic Foray by hand inside the shell does not duplicate it", () => {
+  assert.deepEqual(
+    withDiagnosticUnlock([DIAGNOSTIC_FORAY_ID], { inShell: true }),
+    [DIAGNOSTIC_FORAY_ID]
+  );
+});
+
+// A caller that passes junk (or nothing) must still get a list `forayVisibility`
+// can read, not a crash on the home screen.
+// TO SEE IT FAIL: replace the `Array.isArray` guard with `unlocked ?? []`.
+test("a non-array unlock list degrades to an array rather than throwing", () => {
+  assert.deepEqual(withDiagnosticUnlock(null, { inShell: true }), [DIAGNOSTIC_FORAY_ID]);
+  assert.deepEqual(withDiagnosticUnlock("nope", { inShell: false }), []);
+});
+
+// The property that actually matters, asserted through the real visibility
+// function rather than by reading the list: the diagnostic Foray is listed in
+// the shell and nowhere else.
+// TO SEE IT FAIL: change `DIAGNOSTIC_FORAY_ID` to any other string.
+test("the diagnostic Foray is listable in the shell and invisible on the website", () => {
+  const doc = { forays: [draftForay(DIAGNOSTIC_FORAY_ID), draftForay("another-draft")] };
+
+  const site = listableForays(doc, { unlocked: withDiagnosticUnlock([]) });
+  assert.deepEqual(site.map((f) => f.id), []);
+
+  const shell = listableForays(doc, { unlocked: withDiagnosticUnlock([], { inShell: true }) });
+  assert.deepEqual(shell.map((f) => f.id), [DIAGNOSTIC_FORAY_ID]);
+
+  // and the OTHER draft stays hidden in the shell too — this is one id, not a
+  // switch that publishes every unpublished Foray on a phone.
+  assert.equal(shell.some((f) => f.id === "another-draft"), false);
 });

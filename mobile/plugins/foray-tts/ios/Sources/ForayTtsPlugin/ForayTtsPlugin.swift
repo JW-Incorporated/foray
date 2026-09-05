@@ -37,6 +37,42 @@ public class ForayTtsPlugin: CAPPlugin, CAPBridgedPlugin, AVSpeechSynthesizerDel
         synthesizer.delegate = self
     }
 
+    /// The `rate` this plugin receives is a PLAYBACK-SPEED MULTIPLIER, not a
+    /// normalised rate. Its one caller is `PlayerQueueManager._speakNarration`
+    /// (`player/queue-manager.js`), which passes `this._rate` — a value off
+    /// `player/playback-rate.js`'s `RATES` ladder `[0.75, 1, 1.25, 1.5, 1.75, 2]`,
+    /// where **1 means the listener's normal speed**. That is also what Android's
+    /// `TextToSpeech.setSpeechRate()` means, which is why `ForayTtsPlugin.java`
+    /// can pass it straight through.
+    ///
+    /// `AVSpeechUtterance.rate` does NOT mean that. Its scale runs from
+    /// `AVSpeechUtteranceMinimumSpeechRate` to `AVSpeechUtteranceMaximumSpeechRate`
+    /// with `AVSpeechUtteranceDefaultSpeechRate` (0.5) as ordinary speech — so
+    /// assigning the multiplier directly, as this method did until now, turned the
+    /// DEFAULT playback speed of 1.0 into `AVSpeechUtteranceMaximumSpeechRate`:
+    /// every narration line in the app would have been spoken at the fastest rate
+    /// the synthesiser has, on every device, for every listener who had never
+    /// touched the speed control. Nobody heard it because nothing ever wired the
+    /// plugin to the player (see `player/tts-bridge.js`'s header); this is fixed in
+    /// the same change that wires it.
+    ///
+    /// Written against the framework's own constants rather than the literals
+    /// 0.0/0.5/1.0 so it cannot drift if Apple ever moves them. The framework
+    /// clamps out-of-range values itself; clamping here as well is what makes
+    /// 2.0x land on the maximum instead of relying on that.
+    ///
+    /// NOT PERCEPTUALLY LINEAR, and this method does not pretend otherwise:
+    /// AVSpeechSynthesizer's rate curve is its own, so 1.5 here is "half again
+    /// faster than default" in the framework's units, not a measured 1.5x
+    /// wall-clock speed-up. Measuring that needs a device, which is the same
+    /// limit `HUMAN-ACTIONS.md` #29 exists for.
+    static func utteranceRate(playbackMultiplier multiplier: Double) -> Float {
+        let scaled = Double(AVSpeechUtteranceDefaultSpeechRate) * multiplier
+        let minRate = Double(AVSpeechUtteranceMinimumSpeechRate)
+        let maxRate = Double(AVSpeechUtteranceMaximumSpeechRate)
+        return Float(min(max(scaled, minRate), maxRate))
+    }
+
     /// `ipaOverrides` arrives as `[{ term, start, end, ipa }]` -- character
     /// offsets into `text`, built by `foray-tts.js`'s `buildIpaOverrides()`
     /// from `lexicon/hard-terms.json`. Only entries with a non-null,
@@ -84,13 +120,18 @@ public class ForayTtsPlugin: CAPPlugin, CAPBridgedPlugin, AVSpeechSynthesizerDel
         }
         /* AVSpeechUtterance's own documented ranges, not this repo's
            narrator-voice.md §7 pinned values (those are ElevenLabs-specific
-           settings for a different synthesis path entirely) -- rate is
-           [AVSpeechUtteranceMinimumSpeechRate, AVSpeechUtteranceMaximumSpeechRate]
-           and pitch/volume are the framework's own [0.5, 2.0] / [0.0, 1.0]. A
-           caller passing an out-of-range value is clamped by the framework
-           itself; nothing here re-validates that. */
+           settings for a different synthesis path entirely) -- pitch/volume are
+           the framework's own [0.5, 2.0] / [0.0, 1.0], and a caller passing an
+           out-of-range value for either is clamped by the framework itself;
+           nothing here re-validates those two.
+
+           RATE IS THE EXCEPTION, and it always was -- it is the one field whose
+           incoming UNIT differs from the framework's. See
+           `utteranceRate(playbackMultiplier:)` above: what arrives is a playback
+           MULTIPLIER, and letting the framework clamp it is exactly how 1.0x
+           became AVSpeechUtteranceMaximumSpeechRate. */
         if let rate = call.getDouble("rate") {
-            utterance.rate = Float(rate)
+            utterance.rate = Self.utteranceRate(playbackMultiplier: rate)
         }
         if let pitch = call.getDouble("pitch") {
             utterance.pitchMultiplier = Float(pitch)

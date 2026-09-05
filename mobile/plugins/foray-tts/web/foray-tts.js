@@ -15,9 +15,18 @@
  * uses and the player's `playBtn` in-app-vs-external fallback already
  * established as this app's house style — see the card body for the pointer.
  *
+ * WHO CALLS IT (updated for HUMAN-ACTIONS.md #29). The line above about "one real
+ * call site this card wires up" was true of `tools/mobile/tts-fixture.mjs` and of
+ * nothing else for months: `player/client.js` never passed a `tts` bridge to
+ * `PlayerQueueManager`, so `_speakNarration` — which was complete — could only ever
+ * throw. `player/tts-bridge.js` is now the wire, and it imports THIS FILE
+ * dynamically because the shell and the website hold it at different URLs (see that
+ * file's header). A Foray whose data carries a narration `script` is now spoken.
+ *
  * WHAT THIS FILE DOES NOT DO, stated per the card's explicit scope:
- *   - No narration-authoring UI. No end-user trigger. `tools/mobile/tts-fixture.mjs`
- *     is a Node-side CLI/test harness, not a page feature.
+ *   - No narration-authoring UI, and no way for a listener to type something for
+ *     the phone to read. What reaches `speak()` is a `script` a curator committed
+ *     to `data/forays.json`.
  *   - No IPA authoring. `../lexicon/hard-terms.json`'s `ipa` fields are all
  *     `null` today — see that file's own honesty note. A term with a `null`
  *     ipa is treated exactly like a term not in the lexicon at all: spoken as

@@ -653,3 +653,52 @@ result explicitly labelled as testing the *unfixed* plugin):**
 **Worked if:** there is a written result for at least one real iPhone stating whether the test
 sentence played to completion with the screen locked, matching the reporting bar
 `HUMAN-ACTIONS.md` #11 already sets for the `<audio>` case.
+
+### 9.5 Addendum, 2026-09-03 — both prerequisites landed, and one more was found
+
+**§9.4's "before testing" fix is in.** PR #389 (2026-09-01) made `ForayTtsPlugin.swift`
+call `AVAudioSession.sharedInstance().setCategory(.playback, mode: .spokenAudio, options: [])`
+and `setActive(true)` immediately before `synthesizer.speak(utterance)`. §9.4's warning
+about a false negative therefore no longer applies: a failure on a real device now means
+something.
+
+**A second, unrelated defect surfaced while making the test runnable, and it would have
+corrupted the result.** `speak()` assigned the incoming `rate` straight onto
+`AVSpeechUtterance.rate`. The value arriving is the player's playback-speed MULTIPLIER —
+`player/playback-rate.js`'s ladder, where `1` is the listener's normal speed and is the
+default nobody has to choose. `AVSpeechUtterance.rate` is a different scale entirely:
+`AVSpeechUtteranceMinimumSpeechRate` … `AVSpeechUtteranceMaximumSpeechRate` with
+`AVSpeechUtteranceDefaultSpeechRate` (0.5) as ordinary speech. So the default case mapped
+onto the FASTEST rate the synthesiser has, for every listener, on every line.
+
+Two consequences worth recording separately:
+
+- **For the product:** every narration line would have been read at maximum speed. Not a
+  subtle regression — the kind of thing one device test finds immediately, which is
+  precisely why nobody found it: nothing had ever called the plugin from the player.
+- **For §9.4's test:** a 99-second script read at maximum rate finishes in roughly the
+  same window as the 30-second lock, and unintelligibly. The founder could not have
+  reported which marker he heard, so the measurement would have come back ambiguous for
+  a reason that has nothing to do with the question.
+
+`ForayTtsPlugin.utteranceRate(playbackMultiplier:)` now converts, clamped to the
+framework's own range, written against its constants rather than the literals. **Android
+needed no change**: `TextToSpeech.setSpeechRate()` already takes a multiplier where 1.0 is
+normal, which is why `ForayTtsPlugin.java` could pass the value through. The two platforms
+disagreeing about what one JSON field means is the underlying hazard here, and it is now
+stated in both plugins' comments.
+
+**The mapping is compiled, not run.** `ios-build`'s `ios-shell` job builds this file;
+nothing in this repo executes `swift test` on the package, so the assertions added to
+`ios/Tests/ForayTtsPluginTests/` have never run anywhere. Whether 1.0x SOUNDS like
+ordinary speech is a device observation, and it is one more thing #29 comes back with.
+
+**How the test is reached, since it needed solving and the answer is not obvious.** The
+test content is a real Foray in `data/forays.json` (`tts-locked-screen-check`) whose first
+item is a script-only narration line — so the measurement runs the shipped path rather
+than a synthetic harness. It is a `draft`, which made it unreachable in the native app:
+`?foray=<id>` is the only unlock and it reads `location.search`, which is permanently
+empty behind `capacitor://localhost/`. `withDiagnosticUnlock()` in
+`player/foray-resolve.js` unlocks that one id when `window.Capacitor` exists, so the
+native app lists it and the public website still does not. Steps, and the deletion that
+follows the answer, are in `HUMAN-ACTIONS.md` #29.
