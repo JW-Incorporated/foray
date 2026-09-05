@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "built_at": "2026-09-02T12:01:00.144Z",
+  "built_at": "2026-09-05T11:46:12.982Z",
   "tags": {
     "lex-fridman-podcast--don-lincoln-physics": [
       "physics",
@@ -16742,6 +16742,312 @@
       "review",
       "bourbon",
       "tasting"
+    ],
+    "being-an-engineer--jacob-evink-from-cad-to-mechanical": [
+      "engineering",
+      "mechanical-engineering",
+      "cad",
+      "robotics",
+      "manufacturing",
+      "product-development",
+      "students",
+      "interview"
+    ],
+    "business-of-machining--466-hearing-about-automation-implemting-it": [
+      "machining",
+      "automation",
+      "cnc",
+      "manufacturing",
+      "engineering",
+      "tools",
+      "shop-talk"
+    ],
+    "engines-of-our-ingenuity--the-engines-of-our-ingenuity-1625": [
+      "history-of-technology",
+      "invention",
+      "biography",
+      "telephone",
+      "engineering",
+      "history"
+    ],
+    "engines-of-our-ingenuity--the-engines-of-our-ingenuity-1624": [
+      "history-of-technology",
+      "invention",
+      "biography",
+      "black-history",
+      "engineering",
+      "history"
+    ],
+    "this-week-in-startups--dr-mark-hyman-on-function-health": [
+      "health",
+      "biomarkers",
+      "startups",
+      "medicine",
+      "entrepreneurship",
+      "interview",
+      "longevity"
+    ],
+    "this-week-in-startups--becki-degraw-on-spinouts-ip-licensing": [
+      "startups",
+      "law",
+      "venture-capital",
+      "founders",
+      "business",
+      "entrepreneurship",
+      "legal"
+    ],
+    "twenty-minute-vc--20vc-how-to-build-your-own": [
+      "startups",
+      "ai",
+      "venture-capital",
+      "founders",
+      "artificial-intelligence",
+      "entrepreneurship",
+      "tech-industry"
+    ],
+    "shop-talk-live--stl374-the-space-between-the-dots": [
+      "woodworking",
+      "craft",
+      "design",
+      "craftsmanship",
+      "diy",
+      "interview"
+    ],
+    "just-fly-performance-podcast--531-ted-kroeten-on-play-movement": [
+      "sports-science",
+      "coaching",
+      "athletes",
+      "training",
+      "interview"
+    ],
+    "99-percent-invisible--100-objects-16-wheel-of-fortune": [
+      "pop-culture",
+      "design",
+      "history",
+      "storytelling",
+      "tv-history"
+    ],
+    "the-worlds-best-construction-podcast--is-gordie-howe-the-worst-timed": [
+      "infrastructure",
+      "architecture",
+      "engineering",
+      "urbanism",
+      "news"
+    ],
+    "ologies-with-alie-ward--party-psychology-why-we-celebrate-with": [
+      "psychology",
+      "neuroscience",
+      "science",
+      "interview",
+      "culture"
+    ],
+    "off-nominal--255-sorry-reno-with-matt-gjertsen": [
+      "space",
+      "aerospace",
+      "management",
+      "interview",
+      "rockets"
+    ],
+    "planet-money--trump-drinks-venezuela-s-milkshake": [
+      "economics",
+      "markets",
+      "politics",
+      "oil",
+      "geopolitics",
+      "policy"
+    ],
+    "odd-lots--why-laser-beams-are-the-hottest": [
+      "defense",
+      "military",
+      "technology",
+      "economics",
+      "policy",
+      "interview"
+    ],
+    "freakonomics-radio--685-how-to-survive-the-a": [
+      "economics",
+      "ai",
+      "policy",
+      "artificial-intelligence",
+      "politics"
+    ],
+    "the-race-f1-podcast--in-car-insights-unpacking-a-day": [
+      "formula-1",
+      "motorsport",
+      "racing",
+      "sports",
+      "monza"
+    ],
+    "the-race-f1-podcast--tech-show-is-mercedes-at-risk": [
+      "formula-1",
+      "motorsport",
+      "racing",
+      "engineering",
+      "sports"
+    ],
+    "partially-examined-life--pel-presents-pmp-229-what-s": [
+      "pop-culture",
+      "philosophy",
+      "movies",
+      "panel",
+      "comics"
+    ],
+    "camera-shake-photography-podcast--what-45-years-as-a-photographer": [
+      "photography",
+      "craft",
+      "interview",
+      "careers",
+      "craftsmanship"
+    ],
+    "the-cinematography-podcast--dp-brett-pawlak-8217-s-vision": [
+      "filmmaking",
+      "cinematography",
+      "movies",
+      "craft",
+      "interview",
+      "hollywood"
+    ],
+    "history-of-wwii-podcast--episode-651-interview-w-nick-reynolds": [
+      "world-war-2",
+      "military-history",
+      "biography",
+      "history",
+      "interview"
+    ],
+    "amicus-dahlia-lithwick--scotus-rewrites-the-rules-for-one": [
+      "law",
+      "supreme-court",
+      "politics",
+      "courts",
+      "policy"
+    ],
+    "craft-beer-and-brewing-magazine-podcast--501-perspectives-on-fresh-hop-brewing": [
+      "beer",
+      "brewing",
+      "craft-beer",
+      "food",
+      "fermentation",
+      "panel"
+    ],
+    "fast-talk--439-the-importance-of-small-sided": [
+      "cycling",
+      "endurance",
+      "sports-science",
+      "training",
+      "coaching"
+    ],
+    "shipwrecks-and-sea-dogs--this-week-in-shipwrecks-3": [
+      "maritime",
+      "shipwrecks",
+      "history",
+      "news",
+      "ocean",
+      "archaeology"
+    ],
+    "woodshop-life--saw-kick-back-shop-made-veneer": [
+      "woodworking",
+      "craft",
+      "diy",
+      "tools",
+      "q-and-a"
+    ],
+    "ten-percent-happier--the-psychology-of-success-guy-raz": [
+      "self-improvement",
+      "psychology",
+      "interview",
+      "careers",
+      "mental-health"
+    ],
+    "feel-better-live-more--bitesize-how-to-train-your-eyes": [
+      "health",
+      "neuroscience",
+      "wellbeing",
+      "bite-sized",
+      "brain"
+    ],
+    "zoe-science-nutrition--the-secret-to-coping-with-stress": [
+      "health",
+      "nutrition",
+      "neuroscience",
+      "science",
+      "wellbeing"
+    ],
+    "happier-gretchen-rubin--more-happier-how-do-people-know": [
+      "happiness",
+      "self-improvement",
+      "psychology",
+      "habits",
+      "relationships"
+    ],
+    "armchair-expert--armchair-anonymous-summer-fling": [
+      "comedy",
+      "interview",
+      "relationships",
+      "storytelling",
+      "personal-story"
+    ],
+    "how-did-this-get-made--last-looks-xxx-the-legend-of": [
+      "movies",
+      "pop-culture",
+      "comedy",
+      "panel",
+      "film"
+    ],
+    "handsome--pretty-little-episode-107": [
+      "comedy",
+      "hang",
+      "banter",
+      "celebrities",
+      "absurdist"
+    ],
+    "kill-tony--kt-behind-the-tape-ep-783": [
+      "comedy",
+      "stand-up",
+      "celebrities",
+      "behind-the-scenes",
+      "interview"
+    ],
+    "criminal--the-informant": [
+      "true-crime",
+      "investigation",
+      "storytelling",
+      "law",
+      "narrative"
+    ],
+    "casefile--case-351-neelma-kunal-sidhi-singh": [
+      "true-crime",
+      "investigation",
+      "murder",
+      "narrative",
+      "cold-case"
+    ],
+    "unexplained--season-09-episode-33-the-day": [
+      "mystery",
+      "history",
+      "storytelling",
+      "paranormal",
+      "narrative"
+    ],
+    "dateline--verdict-watch-in-a-mother-s": [
+      "true-crime",
+      "courts",
+      "law",
+      "investigation",
+      "narrative"
+    ],
+    "the-moth--taken-by-surprise-the-moth-podcast": [
+      "storytelling",
+      "personal-story",
+      "narrative",
+      "family",
+      "live-storytelling"
+    ],
+    "bourbon-pursuit--twib-kentucky-bourbon-boys-launches-kbb": [
+      "bourbon",
+      "whiskey",
+      "food",
+      "drinks",
+      "news"
     ]
   }
 }
