@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "built_at": "2026-09-05T00:17:06.110Z",
+  "built_at": "2026-09-05T00:17:48.225Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
@@ -173524,14 +173524,11 @@
           "confidence": 0.75
         }
       ],
-      "needs_review": true,
+      "needs_review": false,
       "rationale": "Daily Japanese news digest focusing on economics; morning business news.",
-      "display_title": null,
-      "blurb": null,
-      "display_copy_ok": false,
-      "display_copy_notes": [
-        "blurb: banned /your commute\\b/i"
-      ],
+      "display_title": "ながら日経",
+      "blurb": "Daily Japanese business and economic news broadcast.",
+      "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "transcript_labels": {
         "label_schema_version": 1,
@@ -173544,7 +173541,8 @@
       },
       "tier": 1,
       "batch_id": "fresh-2026-09-05-67f59bac",
-      "classified_at": "2026-09-05T00:17:06.110Z"
+      "classified_at": "2026-09-05T00:17:06.110Z",
+      "built_at": "2026-09-05T00:17:53.455Z"
     },
     "1627066829": {
       "topics": [
