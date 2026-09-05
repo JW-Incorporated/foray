@@ -2350,6 +2350,52 @@ PRs.
 
 ---
 
+### 38. Edit the privacy policy's absolute no-transmission sentence before shard/API-backed Shows search ships (G5)
+
+**Tag:** `[GATE]` · **Time:** ~10 minutes · **Owner:** Wyatt
+
+**Why it matters.** `docs/legal/privacy-policy.md` §2 currently says, verbatim:
+
+> **Nothing you type into the playlist box or the Shows search box is transmitted.**
+
+That is true today: `search-engine.js` runs entirely on-device, and the only
+thing app.js currently sends off-device from the Shows page is the FULL-
+CATALOGUE BREADTH lookup (kanban t_8d1a6a58's `api/shows/search`), which is a
+separate, already-disclosed feature from the typed search box itself. The
+`4a-shows-pipeline-plan.md` (S-04/S-05) replaces on-device search with a
+shard-backed and/or API-backed index, which necessarily transmits what a
+user types into `#sh-input` to resolve a shard or hit the API. Shipping that
+change while the sentence above still stands is a false statement in a
+published legal document.
+
+**The mechanical tripwire (S-08, this item's G5).** `test/release-gates.test.js`
+fails CI and the first step of `ios-build.yml` / `android-release.yml`
+whenever a `SHOWS_SEARCH_OFF_DEVICE` flag is on (set as a source constant in
+`app.js`/`search-engine.js`, or as a `SHOWS_SEARCH_OFF_DEVICE=true` workflow
+env var) **and** the sentence above is still present. This lets S-05 merge
+its shard search behind the flag off, but blocks any release build from
+starting with the flag on until this item is resolved.
+
+**Steps.**
+1. Decide the accurate replacement wording with Wyatt — likely scoped to
+   "on-device unless you search a show or episode we don't already have,
+   which looks up a shard/index off your device" (exact wording is a
+   founder call, not an agent one: it is a legal-accuracy question about
+   what a listener is told, not a code fact).
+2. Edit the sentence in `docs/legal/privacy-policy.md` §2 (and reconcile
+   `docs/legal/data-safety.md` if it repeats the claim — `test/legal-citations.test.js`
+   checks cross-document consistency separately).
+3. Flip `SHOWS_SEARCH_OFF_DEVICE` on (S-15 in the pipeline plan) once the
+   edit lands — `test/release-gates.test.js` re-verifies the combination is
+   now safe.
+
+**Worked if:** `test/release-gates.test.js` passes with the flag on and the
+new sentence in place, and fails if either reverts alone.
+
+**Status:** OPEN
+
+---
+
 ## DONE
 
 *(Nothing filed yet. Finished items move here with the date they were done and

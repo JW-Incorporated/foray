@@ -153,6 +153,18 @@ jobs:
         with:
           node-version: 22
 
+      - name: Release gate — the privacy tripwire (S-08)
+        # THE FIRST STEP THAT CAN FAIL THIS JOB, DELIBERATELY. Off-device
+        # Shows/playlist search shipping while docs/legal/privacy-policy.md
+        # still promises no such thing is a legal-accuracy defect, not a
+        # build defect, and this repo's rule (4a-shows-pipeline-plan.md D4,
+        # card S-08) is that no release build may even START in that state.
+        # See test/release-gates.test.js's own header for the full mechanism
+        # (the SHOWS_SEARCH_OFF_DEVICE flag, the two ways it can be set, and
+        # why the check is an AND rather than either condition alone) and
+        # HUMAN-ACTIONS.md's G5 item for the human action that resolves it.
+        run: node --test test/release-gates.test.js
+
       - name: Toolchain versions (the first thing to read when this breaks)
         run: |
           set -euo pipefail

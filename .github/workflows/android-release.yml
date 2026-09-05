@@ -161,6 +161,15 @@ jobs:
         with:
           node-version: 22
 
+      - name: Release gate — the privacy tripwire (S-08)
+        # THE FIRST STEP THAT CAN FAIL THIS JOB, DELIBERATELY. See
+        # ios-build.yml's identical step for the full rationale:
+        # test/release-gates.test.js fails a release build outright when
+        # off-device Shows/playlist search (SHOWS_SEARCH_OFF_DEVICE) ships
+        # while docs/legal/privacy-policy.md still promises none exists.
+        # HUMAN-ACTIONS.md's G5 item is the human action that resolves it.
+        run: node --test test/release-gates.test.js
+
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
