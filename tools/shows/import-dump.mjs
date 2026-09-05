@@ -36,8 +36,10 @@ import {
   BUILD_OUT_DIR, CATALOG_PATH, DOWNLOAD_DIR, DUMP_UA, DUMP_URL,
   MAX_SHARD_GZ_P95_BYTES, MAX_TOP_JSON_BYTES, POINTER_PATH,
   STATE_DIR, STATE_PATH, TOP_N_BY_POPULARITY,
+  MAX_UNMAPPED_CURATED_FRACTION,
 } from "./config.mjs";
 import { applyD1Filter } from "./filter.mjs";
+import { curatedKeys } from "./identity.mjs";
 import { applyD13Dedupe } from "./dedupe.mjs";
 import {
   buildChanged, buildIdMap, buildShards, buildTop,
@@ -129,8 +131,12 @@ export async function extractDump({ archivePath, outDir }) {
     DatabaseSync built from fixtures). */
 export function runPipeline(db, { curatedShows, previousNewest = {}, now = Date.now() } = {}) {
   const totalRows = countPodcasts(db);
-  const { kept, counts: d1Counts } = applyD1Filter(streamPodcasts(db), { now });
-  const { canonical, counts: d13Counts } = applyD13Dedupe(kept);
+  /* Curated shows are exempt from D1 — see identity.mjs's `curatedKeys`. Built
+     once, before the stream, because the filter runs per row over 4.7M of
+     them. */
+  const curated = curatedKeys(curatedShows);
+  const { kept, counts: d1Counts } = applyD1Filter(streamPodcasts(db), { now, curatedKeys: curated });
+  const { canonical, counts: d13Counts } = applyD13Dedupe(kept, { curatedKeys: curated });
 
   const { idMap, missing } = buildIdMap(canonical, curatedShows);
   const curatedIds = new Set(Object.values(idMap));
@@ -141,6 +147,7 @@ export function runPipeline(db, { curatedShows, previousNewest = {}, now = Date.
 
   return {
     totalRows,
+    curatedTotal: curatedShows.length,
     d1Counts,
     d13Counts,
     canonical,
@@ -177,11 +184,25 @@ export function p95(sizes) {
     is therefore computed into memory first; writes only start once every
     check has passed. */
 export async function writeBuildOutput(result, { outDir = BUILD_OUT_DIR, exportVersion, builtAt = new Date().toISOString() } = {}) {
-  if (result.missing.length > 0) {
+  const curatedTotal = result.curatedTotal || (result.missing.length + Object.keys(result.idMap).length);
+  const unmappedFraction = curatedTotal > 0 ? result.missing.length / curatedTotal : 0;
+  if (unmappedFraction > MAX_UNMAPPED_CURATED_FRACTION) {
     throw new ImportError(
       "ID_MAP_INCOMPLETE",
-      `${result.missing.length} curated show(s) did not resolve to a dump row: ${result.missing.map((m) => `${m.show_id} (${m.title})`).join(", ")}`,
-      { missing: result.missing },
+      `${result.missing.length} of ${curatedTotal} curated show(s) did not resolve to a dump row ` +
+        `(${(unmappedFraction * 100).toFixed(1)}%, over the ${(MAX_UNMAPPED_CURATED_FRACTION * 100).toFixed(0)}% ceiling — ` +
+        `that is the join breaking, not the index being incomplete): ` +
+        result.missing.map((m) => `${m.show_id} (${m.title})`).join(", "),
+      { missing: result.missing, curatedTotal },
+    );
+  }
+  if (result.missing.length > 0) {
+    // Under the ceiling: publish, but name them. See config.mjs's note.
+    console.warn(
+      `WARN: ${result.missing.length} of ${curatedTotal} curated show(s) are not in this dump ` +
+        `(under the ${(MAX_UNMAPPED_CURATED_FRACTION * 100).toFixed(0)}% ceiling, so the build continues; ` +
+        `they keep working from data/catalog.json): ` +
+        result.missing.map((m) => `${m.show_id} (${m.title})`).join(", "),
     );
   }
 
@@ -216,6 +237,15 @@ export async function writeBuildOutput(result, { outDir = BUILD_OUT_DIR, exportV
     },
     d1_filter_counts: result.d1Counts,
     d13_dedupe_counts: result.d13Counts,
+    curated: {
+      total: curatedTotal,
+      mapped: Object.keys(result.idMap).length,
+      /* Kept only because they are curated — they failed D1 and were exempted.
+         This is the number that says whether D1's staleness rule is eating the
+         catalogue, so it belongs in the published manifest, not just a log. */
+      exempt_from_d1: result.d1Counts.curated_exempt || 0,
+      unmapped: result.missing,
+    },
     shard_size_bytes: { p95: shardP95, max: Math.max(0, ...shardSizes), count: shardSizes.length },
   };
 
