@@ -688,6 +688,11 @@ normal, which is why `ForayTtsPlugin.java` could pass the value through. The two
 disagreeing about what one JSON field means is the underlying hazard here, and it is now
 stated in both plugins' comments.
 
+> **Superseded in part by §9.6.** The conversion described in this paragraph —
+> `AVSpeechUtteranceDefaultSpeechRate × multiplier` — fixed the 1.0x case and was wrong
+> everywhere else; the device says 1.5x played at roughly 3x. Read §9.6 before quoting
+> this paragraph. What survives it unchanged is the Android half.
+
 **The mapping is compiled, not run.** `ios-build`'s `ios-shell` job builds this file;
 nothing in this repo executes `swift test` on the package, so the assertions added to
 `ios/Tests/ForayTtsPluginTests/` have never run anywhere. Whether 1.0x SOUNDS like
@@ -702,3 +707,70 @@ empty behind `capacitor://localhost/`. `withDiagnosticUnlock()` in
 `player/foray-resolve.js` unlocks that one id when `window.Capacitor` exists, so the
 native app lists it and the public website still does not. Steps, and the deletion that
 follows the answer, are in `HUMAN-ACTIONS.md` #29.
+
+### 9.6 Addendum, 2026-09-05 — the rate mapping is now CALIBRATED, from exactly one device reading
+
+`HUMAN-ACTIONS.md` #29 came back (RESULT, 2026-09-05). The headline answer is §9.1's:
+`AVSpeechSynthesizer` keeps speaking with the screen locked. This section is about the
+first of the three things the run surfaced that it was not looking for.
+
+**The measurement.** Requesting the player's **1.5x** stop was heard at **roughly 3x**
+normal speed. Under the mapping that build shipped, 1.5x asked for utterance rate
+`AVSpeechUtteranceDefaultSpeechRate × 1.5` = **0.75**. So: *rate 0.75 ≈ 3x normal*, on
+one iPhone, in one session, reported by one listener to one significant figure.
+
+**Why the old mapping was wrong in a way documentation could not have caught.** Apple
+documents `AVSpeechUtteranceMinimumSpeechRate` … `AVSpeechUtteranceMaximumSpeechRate`
+with `AVSpeechUtteranceDefaultSpeechRate` as ordinary speech, and documents **nothing**
+about what a step on that scale is worth in multiples of speaking speed. §9.5 assumed the
+only relationship available without a device — proportionality — and the function's own
+comment said so, in as many words: *"NOT PERCEPTUALLY LINEAR … Measuring that needs a
+device."* The assumption turns out to be badly off: the 0.5→1.0 half of Apple's scale
+spans normal speech to unusably fast, so proportionality compresses the entire useful
+ladder into its bottom sliver and overshoots everywhere above 1.0x.
+
+**What replaced it, and the honest status of it.** Utterance rate is now affine in
+`log(multiplier)` — equivalently, perceived speed is exponential in utterance rate:
+
+```
+perceived(r) = 3.0 ^ ((r − D) / (1.5·D − D))          D = AVSpeechUtteranceDefaultSpeechRate
+rate(m)      = D + (1.5·D − D) · log(m) / log(3.0)
+```
+
+That rests on **two anchors and one assumed form**:
+
+1. rate `D` = 1.0x. **Definitional**, from Apple's naming of the constant. Not measured.
+2. rate `1.5·D` ≈ 3.0x. **The one reading above.**
+3. Exponential, not linear. **Assumed.** It is the simplest one-parameter family through
+   both anchors that stays sane over the whole scale — a straight line through the same
+   two points reaches zero perceived speed at rate 0.375 and goes negative below it, on a
+   scale whose minimum is 0.0 — and it matches how speed is heard, as ratios. Neither of
+   those is evidence. With two points, infinitely many curves fit.
+
+Resulting rates at the player's ladder (`[0.75, 1, 1.25, 1.5, 1.75, 2]`): **0.435, 0.500,
+0.551, 0.592, 0.627, 0.658**. Only the second of those has anything behind it.
+
+**The one reading that would settle the shape**, and it is cheap because the instrument
+still exists: play the 99-second counting line from `tts-locked-screen-check` at the
+ladder's **2.0x** stop and time it. This mapping predicts ≈2.0x wall clock, so ≈50 s. A
+materially different number means the *form* is wrong and the fix is a third anchor, not
+a nudge to the two constants. (§9.5's deletion note says the instrument goes when #29 is
+answered; #29's RESULT deliberately keeps it alive for exactly this and for the voice
+finding. It must still be gone before an App Store build.)
+
+**Android is unaffected and was re-verified rather than assumed.** AOSP's own javadoc on
+`TextToSpeech.setSpeechRate(float)` reads: *"Speech rate. 1.0 is the normal speech rate,
+lower values slow down the speech (0.5 is half the normal speech rate), greater values
+accelerate it (2.0 is twice the normal speech rate)."* That is a true multiplier with the
+same meaning as `player/playback-rate.js`'s ladder, so `ForayTtsPlugin.java` passing the
+value straight into `setSpeechRate` is correct and stays untouched. **iOS is the platform
+with the mapping problem; do not make Android match it.** Note the asymmetry this leaves:
+Android's speeds are exact by documentation, iOS's are an estimate off one point, so the
+same Foray at 1.75x is not guaranteed to take the same wall time on the two platforms.
+Nobody has measured that gap either.
+
+**Still not run:** `swift test` on this package, anywhere. The XCTest assertions for the
+new mapping — including the mutation each one names in its own comment — are compiled by
+`ios-build`'s `ios-shell` job and executed by nothing. Their arithmetic was checked off
+the device (each named mutation was computed and does move an asserted value); that is a
+weaker claim than a red test and is written down as the weaker claim.

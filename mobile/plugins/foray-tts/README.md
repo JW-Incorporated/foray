@@ -83,6 +83,19 @@ now wired:
   `AVSpeechUtterance.rate` means — there, `1.0` is
   `AVSpeechUtteranceMaximumSpeechRate`. `ForayTtsPlugin.utteranceRate(playbackMultiplier:)`
   now converts. Compiled by `ios-build`'s `ios-shell` job; never heard.
+- **…and the device then said that correction was still wrong.**
+  `HUMAN-ACTIONS.md` #29's RESULT (2026-09-05) measured **1.5x playing back at
+  roughly 3x**: multiplying `AVSpeechUtteranceDefaultSpeechRate` by the
+  multiplier asks for rate 0.75, and Apple's 0.5→1.0 band spans ordinary speech
+  to unusably fast. The mapping is now **calibrated from that one reading**
+  rather than derived — utterance rate is affine in `log(multiplier)`, pinned by
+  two anchors (rate `D` = 1.0x, definitional; rate `1.5·D` ≈ 3.0x, measured).
+  **One data point does not make a curve.** The form is an assumption chosen for
+  simplicity, and the function's own doc comment names the second device reading
+  that would confirm or refute it. **Android needed no change and still needs
+  none** — AOSP's javadoc on `setSpeechRate` documents a true multiplier
+  ("1.0 is the normal speech rate … 2.0 is twice the normal speech rate"), so
+  passing the value straight through is correct there.
 
 The Node harness below is still the way to see the payload without a device.
 
@@ -119,7 +132,7 @@ line sets, and `docs/android-native-code.md`'s own claims table:
 | `android.speech.tts.TextToSpeech` actually speaks the text, or that passing SSML `<phoneme>` markup into `speak()` changes anything audible | **NEITHER MEASURED NOR INFERRED — UNVERIFIED.** No emulator, no device. `docs/research/on-device-tts.md` §2 is explicit that whether Android SSML phoneme support does anything at all is unknowable from documentation and can only be settled by listening on a real device. |
 | The plugin is discovered by `cap add ios` / `cap add android` the way `foray-audio` is | **NOT RUN.** `docs/android-native-code.md` §1's own table records `cap add android` finding `foray-audio` by executing it; that has not been re-run for this change, because this environment has neither an Xcode/CocoaPods toolchain nor an Android SDK. This is a real gap, not an oversight — flag it for a founder or a CI run with the right toolchain before merging with confidence, per `docs/ios-ci.md`'s own toolchain table. |
 | Native (Swift/Kotlin — actually Java here, matching `foray-audio`'s own choice) code is unit-testable the way this repo's JS is | **It is not**, same as `foray-audio`. `ForayTtsPlugin.java` and `ForayTtsPlugin.swift` have no suite exercising them against a real `TextToSpeech`/`AVSpeechSynthesizer` — only the JS layer, and only against fakes, is tested here. |
-| `ForayTtsPlugin.utteranceRate(playbackMultiplier:)` maps the player's speed onto AVSpeechUtterance's scale | **COMPILED, NOT RUN.** `ios-build`'s `ios-shell` job builds this file (transitively, via `cap add ios`); nothing in this repo executes `swift test` on this package, so the assertions added to `ios/Tests/ForayTtsPluginTests/` have never run anywhere. That the mapping is AUDIBLY right — that 1.0x sounds like ordinary speech — needs a device, and is part of what HUMAN-ACTIONS.md #29 will report. |
+| `ForayTtsPlugin.utteranceRate(playbackMultiplier:)` maps the player's speed onto AVSpeechUtterance's scale | **CALIBRATED FROM ONE READING; STILL COMPILED, NOT RUN.** `ios-build`'s `ios-shell` job builds this file (transitively, via `cap add ios`); nothing in this repo executes `swift test` on this package, so the assertions in `ios/Tests/ForayTtsPluginTests/` — and the mutations their comments name — have never run anywhere. What HAS been heard is a single point: HUMAN-ACTIONS.md #29's RESULT measured 1.5x at roughly 3x, and the mapping is fitted through that plus the definitional 1.0x anchor. **Everything between and beyond those two points is an estimate**, including the ladder's 2.0x stop. The doc comment on the function names the one device reading that would confirm the shape; nobody has taken it. |
 | The player reaches this plugin at all, on a phone | **NOT RUN.** `player/tts-bridge.test.js` proves the wire against fakes in Node and `player/foray-playback.test.js` proves the committed script reaches an injected bridge. Whether `window.Capacitor.nativePromise("ForayTts", "speak", …)` resolves inside the real WKWebView has never been observed. HUMAN-ACTIONS.md #29 is the observation. |
 
 ## Preparing (not running) the §5.7 acceptance fixture

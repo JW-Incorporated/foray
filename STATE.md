@@ -7,6 +7,50 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
+### The iOS speed control stops lying — the TTS rate mapping is calibrated, not derived (2026-09-05, one PR, no follow-up) — `fix/tts-rate-mapping`
+
+- **What:** `HUMAN-ACTIONS.md` #29's RESULT finding 1. On a real iPhone, asking
+  for **1.5x played back at roughly 3x**. `ForayTtsPlugin.utteranceRate(
+  playbackMultiplier:)` multiplied `AVSpeechUtteranceDefaultSpeechRate` by the
+  multiplier, so 1.5x asked for rate 0.75, and Apple's 0.5→1.0 band spans normal
+  speech to unusably fast. Replaced with a mapping **fitted to that one reading**:
+  utterance rate is affine in `log(multiplier)`, anchored at rate `D` = 1.0x
+  (definitional) and rate `1.5·D` ≈ 3.0x (the measurement). Ladder rates go
+  0.435 / 0.500 / 0.551 / 0.592 / 0.627 / 0.658.
+- **Branch:** `fix/tts-rate-mapping` — PR only, never main. `mobile/` is
+  **unlisted** by `path-policy`, so this waits for a human press regardless.
+- **Read this before quoting the new numbers.** It is a **calibration, not a
+  curve**. Two anchors, one of them definitional, and the exponential *form* is an
+  assumption chosen for simplicity — a straight line through the same two points
+  goes negative inside the framework's own range, which is why it is not linear.
+  The one reading that would settle it is named in the function's doc comment and
+  in `docs/research/on-device-tts.md` §9.6: play `tts-locked-screen-check`'s
+  99-second counting line at **2.0x** and time it (predicted ≈50 s).
+- **Android is correct and is DELIBERATELY UNTOUCHED.** AOSP's javadoc on
+  `TextToSpeech.setSpeechRate(float)` documents a true multiplier ("1.0 is the
+  normal speech rate … 2.0 is twice the normal"), same meaning as
+  `player/playback-rate.js`'s ladder. Do not make Android match iOS.
+- **Shared files it touches:** `mobile/plugins/foray-tts/ios/Sources/ForayTtsPlugin/ForayTtsPlugin.swift`
+  (the rate function + its two calibration constants ONLY),
+  `mobile/plugins/foray-tts/ios/Tests/ForayTtsPluginTests/ForayTtsPluginTests.swift`
+  (3 → 8 tests), `mobile/plugins/foray-tts/README.md` (the rate bullet + one
+  claims-table row), `docs/research/on-device-tts.md` (§9.5 gets a supersession
+  note, new §9.6), this file.
+- **Colliding right now:** a sibling session owns VOICE SELECTION in the same
+  Swift file (`listVoices`, voice-tier picking). This card touched nothing outside
+  `utteranceRate` and its two constants; expect to rebase, and the two changes do
+  not overlap textually.
+- **Explicitly out of scope:** the voice tier (#29 finding 2), lock-screen
+  transport controls (#29 finding 3), the Android plugin, `web/foray-tts.js`'s Web
+  Speech fallback (`SpeechSynthesisUtterance.rate` is already a true multiplier),
+  and deleting the diagnostic Foray — #29's RESULT keeps it alive on purpose until
+  findings 1 and 2 are re-measured.
+- **NOT RUN, and said plainly:** `swift test`. CI's `ios-kit`/`ios-shell` jobs are
+  macOS-only and this branch was written on Windows, so neither the new assertions
+  nor the mutations their comments name have been executed anywhere. The
+  arithmetic of every named mutation was checked off-device instead, which is the
+  weaker claim and is written down as the weaker claim.
+
 ### S-03: the client reaches its own API, so a show page shows every episode (2026-09-05, one PR, no follow-up) — `t_s03/api-origin-shell`
 
 - **What:** the last of the four F4(c) gaps, and the whole of "4a only has 3
