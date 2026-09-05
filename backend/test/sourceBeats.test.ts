@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { sourceBeats } from "../src/generation/sourceBeats";
+import { sourceBeats, M4_ITEM_SHARE_MAX } from "../src/generation/sourceBeats";
 import { validateSourcing, allSourcedBeats } from "../src/types/tapeSourcing";
 import type { DeepenedAct } from "../src/types/spine";
 import type { SegmentRecord } from "../src/generation/segmentPoolLookup";
@@ -287,5 +287,159 @@ describe("sourceBeats — no audio bytes fetched or written anywhere in this mod
       expect(source).not.toMatch(/\bdownload\w*\s*\(/i);
       expect(source).not.toMatch(/writeFileSync\s*\(\s*.*data-local/);
     }
+  });
+});
+
+/* THE THREE FORAY-WIDE ASSEMBLY RULES, added after the first end-to-end run of
+   the pipeline (`runPipeline.ts`) failed `check-forays.mjs` on all three of its
+   prompts. Per-beat sourcing was stateless, so nothing stopped it building a
+   Foray the checker would certainly reject. Each rule below names the exact
+   checker error it exists to prevent. */
+describe("sourceBeats — Foray-wide assembly constraints", () => {
+  /** Several segments from two episodes, spaced so every rule can be exercised. */
+  function multiPool(): SegmentRecord[] {
+    const base = {
+      topic: "engineering/energy-fusion",
+      reference_duration_sec: 11840,
+      why: "Whyte explains the Lawson criterion tokamak plasma confinement without hand-waving",
+      confidence: "high" as const,
+      transcript_source: "publisher",
+      dai_suspected: false,
+      source: "agent-v1",
+      batch_id: "seg-test",
+      needs_review: false
+    };
+    const seg = (id: string, item: string, start: number) => ({
+      ...base,
+      id,
+      item_id: item,
+      start_sec: start,
+      end_sec: start + 120,
+      start_anchor: "so the lawson criterion is really a statement about",
+      end_anchor: "and that's why the tokamak won by default for thirty years"
+    });
+    /* ep-a is listed LATEST-FIRST on purpose. Every beat in these tests makes
+       the same claim, so every segment scores the same and the ranked walk
+       falls back to pool order — which means an unguarded matcher would place
+       ep-a at 1800 s, then 900 s, then 100 s, i.e. descending, which is exactly
+       the M3 violation. An ascending fixture would let the ordering test pass
+       with the guard deleted. */
+    return [
+      seg("ep-a#1800", "ep-a", 1800),
+      seg("ep-a#900", "ep-a", 900),
+      seg("ep-a#100", "ep-a", 100),
+      seg("ep-b#1200", "ep-b", 1200),
+      seg("ep-b#200", "ep-b", 200)
+    ] as SegmentRecord[];
+  }
+
+  /* ASCENDING, and with six segments in one episode. The descending pool above
+     is right for the ordering test and wrong for the other two: with segments
+     listed latest-first the M3 guard admits only the first from each episode,
+     so no episode can ever reach the M4 cap and no beat can ever collide with a
+     used id. Both of those tests then passed with their own clause deleted —
+     they were pinning M3. This fixture leaves room for six picks from `ep-a`,
+     so the cap (3 of 12 beats) genuinely binds and dedupe genuinely matters. */
+  function ascendingPool(): SegmentRecord[] {
+    const base = multiPool()[0]!;
+    const seg = (item: string, start: number) =>
+      ({ ...base, id: `${item}#${start}`, item_id: item, start_sec: start, end_sec: start + 120 }) as SegmentRecord;
+    return [
+      seg("ep-a", 100), seg("ep-a", 400), seg("ep-a", 700),
+      seg("ep-a", 1000), seg("ep-a", 1300), seg("ep-a", 1600),
+      seg("ep-b", 200), seg("ep-b", 500)
+    ];
+  }
+
+  /** N beats all making the SAME claim — the worst case for a stateless matcher. */
+  function identicalClaimActs(n: number): DeepenedAct[] {
+    const claim = "The Lawson criterion is a statement about tokamak plasma confinement.";
+    return [
+      makeDeepenedAct({
+        slots: [{ title: "Fusion basics", beats: Array.from({ length: n }, () => ({ claim, exploration: false })) }]
+      })
+    ];
+  }
+
+  function tapePointers(result: ReturnType<typeof sourceBeats>) {
+    return allSourcedBeats(result.acts)
+      .filter((b) => b.sourcing === "tape")
+      .map((b) => b.tape!);
+  }
+
+  it("never plays the same segment twice in one Foray", () => {
+    /* CHECKER ERROR THIS PREVENTS: 'segment "X" appears twice in one Foray'.
+       Every beat here makes an identical claim, so a stateless matcher returns
+       the same top-scoring segment every time.
+
+       MUTATION THAT KILLS THIS: drop the `usedSegmentIds.has(...)` clause from
+       the isUsable predicate in resolveOneBeat. Ran it — red. */
+    /* TWELVE beats, not four. The M4 cap allows floor(12 * 0.25) = 3 segments
+       per episode; at four beats the cap alone held every episode to one, so
+       this test passed with the dedupe clause DELETED — it was pinning M4, not
+       dedupe. Measured: with the clause removed and twelve beats, the same
+       segment id is returned three times. */
+    const result = sourceBeats(identicalClaimActs(12), { segmentPool: ascendingPool(), transcriptArchive: [] });
+    const ids = tapePointers(result).map((t) => t.segmentId);
+    expect(ids.length).toBeGreaterThan(1);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it("plays segments from one episode in ascending time order", () => {
+    /* CHECKER ERROR THIS PREVENTS: M3, "plays at 1964.16 s ... after a later
+       segment from the same episode". A Foray that jumps backwards inside one
+       episode reads as a mistake to a listener.
+
+       MUTATION THAT KILLS THIS: drop the `segment.start_sec >= lastStart`
+       clause. The pool is ordered so the matcher would otherwise be free to
+       pick an earlier start after a later one. Ran it — red. */
+    /* Twelve beats for the same reason as the dedupe case: at five, the M4 cap
+       held each episode to one segment and there was no order to get wrong, so
+       this passed with the ordering clause deleted. */
+    const result = sourceBeats(identicalClaimActs(12), { segmentPool: multiPool(), transcriptArchive: [] });
+    const byItem = new Map<string, number[]>();
+    for (const t of tapePointers(result)) {
+      if (!byItem.has(t.itemId)) byItem.set(t.itemId, []);
+      byItem.get(t.itemId)!.push(t.startSec);
+    }
+    for (const [item, starts] of byItem) {
+      expect(starts, `episode ${item} plays out of order: ${starts.join(", ")}`)
+        .toEqual([...starts].sort((a, b) => a - b));
+    }
+  });
+
+  it("holds any one episode under the M4 share cap", () => {
+    /* CHECKER ERROR THIS PREVENTS: 'M4 FAIL: "X" is 33.3 % of segments ...
+       over the 25 % cap'. Sourcing can only bound the COUNT — runtime share is
+       not known until stitching — and the count is what was failing.
+
+       MUTATION THAT KILLS THIS: drop the `usedCountByItem >= maxPerItem`
+       clause. With every beat making the same claim, one episode takes them
+       all. Ran it — red. */
+    const acts = identicalClaimActs(12);
+    const result = sourceBeats(acts, { segmentPool: ascendingPool(), transcriptArchive: [] });
+    const pointers = tapePointers(result);
+    const counts = new Map<string, number>();
+    for (const t of pointers) counts.set(t.itemId, (counts.get(t.itemId) ?? 0) + 1);
+    const cap = Math.max(1, Math.floor(12 * M4_ITEM_SHARE_MAX));
+    for (const [item, n] of counts) {
+      expect(n, `episode ${item} supplied ${n} of ${pointers.length} tape beats (cap ${cap})`).toBeLessThanOrEqual(cap);
+    }
+    expect(pointers.length, "the cap must bind before the pool runs out, or this pins nothing").toBeGreaterThan(cap);
+  });
+
+  it("degrades a beat to narration rather than breaking a rule to keep tape", () => {
+    /* §4.5's guardrail: a beat's existence never depends on tape. With one
+       segment and three identical claims, two beats must become narration — the
+       constraints must not be satisfied by inventing or reusing tape.
+
+       MUTATION THAT KILLS THIS: make the isUsable predicate return true
+       unconditionally; all three beats take the single segment. Ran it — red. */
+    const pool = [multiPool()[0]!];
+    const result = sourceBeats(identicalClaimActs(3), { segmentPool: pool, transcriptArchive: [] });
+    const beats = allSourcedBeats(result.acts);
+    expect(beats).toHaveLength(3);
+    expect(beats.filter((b) => b.sourcing === "tape")).toHaveLength(1);
+    expect(beats.filter((b) => b.sourcing === "narration")).toHaveLength(2);
   });
 });

@@ -98,9 +98,35 @@ export function scoreSegmentsAgainstClaim(claimText: string, pool: SegmentRecord
 
 /** The tier-1 decision: best match if it clears `TIER1_MATCH_THRESHOLD`,
  * else `null` (fall through to tier 2). */
-export function findTier1Match(claimText: string, pool: SegmentRecord[] = loadSegmentPool()): SegmentMatch | null {
+export function findTier1Match(
+  claimText: string,
+  pool: SegmentRecord[] = loadSegmentPool(),
+  isUsable: (segment: SegmentRecord) => boolean = () => true
+): SegmentMatch | null {
+  /* WHY THE CALLER GETS A VETO, AND WHY IT IS APPLIED INSIDE THE SEARCH.
+     Scoring is per-claim and stateless, so nothing here knows what the rest of
+     the Foray has already committed to. Two constraints in `check-forays.mjs`
+     are about the Foray as a whole, and the first end-to-end run of the
+     pipeline failed on both:
+
+       - a segment may not play twice ("appears twice in one Foray");
+       - segments from the SAME episode must play in ascending time order
+         (M3: "plays at 1964.16 s ... after a later segment from the same
+         episode"), because a Foray that jumps backwards inside one episode
+         reads as a mistake to a listener.
+
+     Filtering at the call site would only ever inspect the top hit and then
+     give up, degrading a beat to narration whenever its best segment happened
+     to be spoken for. Applying the veto INSIDE the ranked walk lets the search
+     fall through to the next candidate that still clears the threshold, so the
+     beat keeps real tape. When nothing usable clears the bar the answer is a
+     genuine null and §4.5's guardrail takes over: a beat's existence never
+     depends on tape. */
   const scored = scoreSegmentsAgainstClaim(claimText, pool);
-  const best = scored[0];
-  if (!best || best.score < TIER1_MATCH_THRESHOLD) return null;
-  return best;
+  for (const candidate of scored) {
+    if (candidate.score < TIER1_MATCH_THRESHOLD) return null; // ranked: nothing later can clear it
+    if (isUsable(candidate.segment)) return candidate;
+  }
+  return null;
 }
+

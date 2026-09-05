@@ -18,17 +18,46 @@ output type is the next stage's input type (`GenerationRequest` ->
 async function call that returns before the next one starts. Nothing
 plays while a later stage is still generating.
 
-There is currently **no single CLI or script that drives all nine stages
-end to end.** `backend/src/cli/generateForay.ts` (§4.0-4.1's own CLI)
-stops at "understood" — §4.2 (research) is genuinely the next stage that
-needs its own orchestration, not a gap this stage (§4.9) is responsible
-for closing. `backend/src/cli/publishForay.ts` (§4.9's own CLI) picks up
-at the OTHER end: it takes a `stitchForay()` result as a JSON file and
-runs it through `finalizeForay()`. A founder (or a future orchestrating
-script) is the connective tissue between the two today. Wiring one
-top-to-bottom command is real, valuable future work — it is out of scope
-for §4.9's own task brief ("finalize AND PUBLISH", not "orchestrate
-4.0-4.8") and is recorded here rather than silently assumed away.
+**UPDATE 2026-09-05: this gap is closed.**
+`backend/src/generation/runPipeline.ts` (`runForayPipeline`) drives §4.0
+through §4.9 in one call, and `backend/src/cli/generateForays.ts`
+(`npm run generate-forays`) runs it over a list of prompts. The paragraph
+below is kept because it states what the shape of the gap was.
+
+~~There is currently **no single CLI or script that drives all nine stages
+end to end.**~~ `backend/src/cli/generateForay.ts` (§4.0-4.1's own CLI)
+stops at "understood". `backend/src/cli/publishForay.ts` (§4.9's own CLI)
+picks up at the OTHER end: it takes a `stitchForay()` result as a JSON
+file and runs it through `finalizeForay()`. A founder was the connective
+tissue between the two, which is why `data/forays.json` had four Forays
+in it and not four hundred.
+
+### What the first end-to-end run found
+
+Running the chain for real immediately failed `check-forays.mjs` on every
+prompt, four times over, for four different reasons — none of which any
+per-stage test could have caught, because each is a property of the whole
+Foray rather than of one stage:
+
+| Failure | Cause | Fix |
+|---|---|---|
+| `items[0] is not the required disclosure` | §4.7's disclosure is a Foray-level obligation and no act produces it, so nothing in §4.0-§4.8 ever emitted it | the orchestrator prepends it |
+| `segment "X" appears twice` | per-beat sourcing was stateless; two similar claims resolve to the same best segment | Foray-wide used-segment set, applied inside the ranked search so the beat keeps tape |
+| `M3: plays at 1964 s after a later segment from the same episode` | nothing kept one episode's segments in ascending order | per-episode last-start guard |
+| `M4: "X" is 33.3 % of segments` | nothing capped one episode's share | per-episode count cap at 25 % of beats |
+
+**What is still not satisfied, and it is not a code gap.** With those four
+fixed, candidates now fail only on the D-tier *editorial* rules — D3 (mean
+segment duration ≥ 90 s), D5 (interquartile range ≥ 45 s; no three
+consecutive durations within ±20 %). Those are distribution properties of
+the tape a Foray is built from, and `data/segments.json` holds **212
+segments over 64 sources**. The matcher cannot produce a varied running
+order out of a pool that thin, and no amount of sourcing logic will change
+that. **The binding constraint on publishable Forays is now the size of
+the segment pool, not the pipeline.** The ~1,900 word-timestamped
+transcripts the transcription farm has published to R2 are the raw
+material for exactly that, and cutting them into segments is the next
+piece of work.
 
 ## §6: progressive generation — NOT built, on purpose
 

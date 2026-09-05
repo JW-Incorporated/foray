@@ -9,6 +9,10 @@ import type {
   TranscriptionQueueCandidate
 } from "../types/tapeSourcing";
 import { validateSourcing } from "../types/tapeSourcing";
+
+/** check-forays' M4 cap, mirrored. The checker stays the authority; this only
+    keeps sourcing from building something it will certainly reject. */
+export const M4_ITEM_SHARE_MAX = 0.25;
 import { findTier1Match, loadSegmentPool, type SegmentRecord } from "./segmentPoolLookup";
 import {
   findTranscriptArchiveMatch,
@@ -78,6 +82,34 @@ export function sourceBeats(deepenedActs: DeepenedAct[], options: SourceBeatsOpt
   const newSegments: NewSegment[] = [];
   const transcriptionQueueCandidates: TranscriptionQueueCandidate[] = [];
   const mintedIds = new Set<string>(segmentPool.map((s) => s.id));
+  /* What THIS Foray has already committed to. Both are Foray-wide, not
+     per-slot, because both rules they serve span the whole running order:
+       - `usedSegmentIds` — a segment may not play twice;
+       - `lastStartByItem`  — segments from one episode must play in ascending
+         time order (check-forays' M3), so an episode already heard at 1964 s
+         cannot later be joined at 900 s.
+     A set scoped to a slot or an act would satisfy neither. */
+  const usedSegmentIds = new Set<string>();
+  const lastStartByItem = new Map<string, number>();
+  /* M4: no single episode may be more than a quarter of a Foray. The checker
+     measures share of segments AND of runtime; sourcing can only bound the
+     first, because it places beats one at a time and does not know the final
+     runtime until stitching. Bounding the count is what is available here and
+     it is what was actually failing ("33.3 % of segments and 33.0 % of
+     runtime") — the two track each other closely enough that holding the count
+     under the cap holds the runtime under it too in practice, and check-forays
+     remains the authority either way.
+
+     The cap is computed from the total beat count up front rather than adjusted
+     as the Foray grows: a running denominator would let the first episode take
+     three beats before the fourth beat made three too many, which is how a
+     greedy cap ends up over the line at the end. */
+  const totalBeats = deepenedActs.reduce(
+    (n, act) => n + act.slots.reduce((m, slot) => m + slot.beats.length, 0),
+    0
+  );
+  const maxPerItem = Math.max(1, Math.floor(totalBeats * M4_ITEM_SHARE_MAX));
+  const usedCountByItem = new Map<string, number>();
 
   const acts: SourcedAct[] = deepenedActs.map((act) => {
     const slots: SourcedSlot[] = act.slots.map((slot) => {
@@ -87,7 +119,7 @@ export function sourceBeats(deepenedActs: DeepenedAct[], options: SourceBeatsOpt
       // whether the SLOT the beat belongs to has any other tape-sourced
       // beats").
       const resolutions = slot.beats.map((beat) =>
-        resolveOneBeat(beat.claim, segmentPool, transcriptArchive, cueProvider, mintedIds, newSegments, transcriptionQueueCandidates)
+        resolveOneBeat(beat.claim, segmentPool, transcriptArchive, cueProvider, mintedIds, newSegments, transcriptionQueueCandidates, usedSegmentIds, lastStartByItem, usedCountByItem, maxPerItem)
       );
       const slotHasTape = resolutions.some((r) => r.kind === "tape");
 
@@ -132,13 +164,26 @@ function resolveOneBeat(
   cueProvider: TranscriptCueProvider,
   mintedIds: Set<string>,
   newSegments: NewSegment[],
-  transcriptionQueueCandidates: TranscriptionQueueCandidate[]
+  transcriptionQueueCandidates: TranscriptionQueueCandidate[],
+  usedSegmentIds: Set<string>,
+  lastStartByItem: Map<string, number>,
+  usedCountByItem: Map<string, number>,
+  maxPerItem: number
 ): BeatResolution {
   // Tier 1: existing data/segments.json pool. Cheapest possible hit,
   // tried first, per §4.5's own search order — no new segment is ever
   // created here.
-  const tier1 = findTier1Match(claim, segmentPool);
+  const tier1 = findTier1Match(claim, segmentPool, (segment) => {
+    if (usedSegmentIds.has(segment.id)) return false;
+    if ((usedCountByItem.get(segment.item_id) ?? 0) >= maxPerItem) return false; // M4
+    const lastStart = lastStartByItem.get(segment.item_id);
+    // Same episode, earlier in the tape than one already placed -> M3 violation.
+    return lastStart === undefined || segment.start_sec >= lastStart;
+  });
   if (tier1) {
+    usedSegmentIds.add(tier1.segment.id);
+    lastStartByItem.set(tier1.segment.item_id, tier1.segment.start_sec);
+    usedCountByItem.set(tier1.segment.item_id, (usedCountByItem.get(tier1.segment.item_id) ?? 0) + 1);
     return {
       kind: "tape",
       pointer: {
