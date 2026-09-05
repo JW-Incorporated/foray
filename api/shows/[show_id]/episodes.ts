@@ -59,6 +59,18 @@ let showIndex: Map<string, CatalogShowMeta> | null = null; // show_id -> catalog
  * specific offset. Walking up is correct in both places and does not
  * depend on how many directories deep this file happens to sit.
  */
+// BUNDLING NOTE (kanban t_7d1a82d2): the two files this module reads via
+// findRepoRoot()/loadShowIndex() below (data/catalog.json,
+// data/catalog-breadth.json) are NOT automatically included in this
+// function's deployed Vercel bundle — Vercel's bundler only picks up files
+// reached via a static, analyzable readFileSync('./literal') call, and this
+// is a runtime join()/readFileSync() instead. They are bundled ONLY because
+// vercel.json's `functions["api/shows/**/*.ts"].includeFiles` glob names
+// them explicitly. If you rename either file, move this function outside
+// api/shows/**, or change how it locates the repo root, update vercel.json's
+// includeFiles glob in the same change — api/test/vercel-bundle.test.mjs
+// checks this pairing but only catches drift that test runs against, not a
+// glob that silently stops matching after a rename.
 function findRepoRoot(startDir: string): string {
   // A module transform that doesn't preserve a real on-disk __dirname (seen
   // under tsx's test-runner ESM loader) hands back something that isn't a

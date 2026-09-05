@@ -29,6 +29,15 @@ import * as path from "path";
 
 const REPO_ROOT = path.resolve(__dirname, "..", "..", "..");
 
+// BUNDLING NOTE (kanban t_7d1a82d2): readJson() below reads data/catalog.json
+// and data/catalog-breadth.json via a runtime path.join(), which Vercel's
+// bundler does not auto-include for any deployed function that imports this
+// module (currently api/shows/search.ts). They only ship in production
+// because vercel.json's `functions["api/shows/**/*.ts"].includeFiles` glob
+// names them explicitly — see the matching note on
+// api/shows/[show_id]/episodes.ts's findRepoRoot(), which reads the same two
+// files independently. Keep both in sync with vercel.json if either moves.
+
 export type CatalogueTier = "curated" | "breadth";
 
 export interface CatalogueShowEntry {

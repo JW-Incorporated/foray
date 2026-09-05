@@ -4,6 +4,11 @@
   "outputDirectory": "dist",
   "installCommand": "npm install --prefix api && npm install --omit=dev --prefix backend",
   "framework": null,
+  "functions": {
+    "api/shows/**/*.ts": {
+      "includeFiles": "data/catalog*.json"
+    }
+  },
   "headers": [
     {
       "source": "/data/(.*)",
