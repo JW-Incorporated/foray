@@ -39,6 +39,7 @@ import {
   overwriteVerdict,
   recoveryBranch,
   recoveryWindowHours,
+  refreshRunVerdict,
   renderReport,
   run,
 } from "./watch-nightly.mjs";
@@ -478,6 +479,85 @@ test("recoveryWindowHours reaches back past the stranded digest", () => {
   assert.equal(recoveryWindowHours(96), 108); // a long weekend needs more than 72
   assert.equal(recoveryWindowHours(undefined), 72);
   assert.equal(recoveryWindowHours(-5), 72);
+});
+
+/* --------------------------------------------------------- refreshRunVerdict (S-01) */
+
+const RUNS_FAILED = "runs-2026-08-20-failed.json";
+const RUNS_HEALTHY = "runs-2026-08-20-healthy.json";
+
+test("refreshRunVerdict fires when the latest scheduled nightly-refresh run failed", () => {
+  // S-01: "today's nightly-refresh run failed -> red, regardless of digest PR state."
+  // Mutation: `conclusion !== "success"` -> `conclusion === "success"`.
+  const v = refreshRunVerdict({ runs: fixture(RUNS_FAILED) });
+  assert.equal(v.ok, false);
+  assert.equal(v.code, "REFRESH_RUN_FAILED");
+  assert.equal(v.facts.conclusion, "failure");
+});
+
+test("refreshRunVerdict passes when the latest scheduled run succeeded", () => {
+  const v = refreshRunVerdict({ runs: fixture(RUNS_HEALTHY) });
+  assert.equal(v.ok, true);
+  assert.equal(v.code, "REFRESH_RUN_OK");
+});
+
+test("refreshRunVerdict ignores a manual workflow_dispatch run, even a failed one", () => {
+  // The healthy fixture's newest ROW overall is a failed workflow_dispatch retry
+  // created after the successful scheduled run. If that leaked in, a person
+  // testing overwrite_unmerged_digest by hand would trip this alarm for no
+  // reason. Mutation: drop the `event === "schedule"` filter.
+  const runs = fixture(RUNS_HEALTHY);
+  assert.ok(runs.some((r) => r.event === "workflow_dispatch" && r.conclusion === "failure"));
+  const v = refreshRunVerdict({ runs });
+  assert.equal(v.ok, true);
+  assert.equal(v.code, "REFRESH_RUN_OK");
+});
+
+test("refreshRunVerdict is quiet when no scheduled run exists yet", () => {
+  // A brand-new repo, or the very first day this check exists. Nothing to be red
+  // about — that is what NO_SCHEDULED_RUN says, distinct from a real failure.
+  const v = refreshRunVerdict({ runs: [] });
+  assert.equal(v.ok, true);
+  assert.equal(v.code, "NO_SCHEDULED_RUN");
+  assert.equal(refreshRunVerdict({ runs: null }).code, "NO_SCHEDULED_RUN");
+});
+
+test("refreshRunVerdict does not flag a scheduled run still in progress", () => {
+  // Mutation: delete the `status !== "completed"` branch. A run that has not
+  // finished yet then reads as a hard failure instead of "wait".
+  const runs = [{ event: "schedule", status: "in_progress", conclusion: null, createdAt: "2026-08-20T06:41:00Z" }];
+  const v = refreshRunVerdict({ runs });
+  assert.equal(v.ok, true);
+  assert.equal(v.code, "RUN_IN_PROGRESS");
+});
+
+test("refreshRunVerdict picks the newest scheduled run when several exist", () => {
+  // Mutation: sort ascending instead of descending, or drop the sort. The
+  // failed fixture's OLDER run is a success; picking it would hide the failure.
+  const v = refreshRunVerdict({ runs: fixture(RUNS_FAILED) });
+  assert.equal(v.facts.run_id, 1002003001);
+});
+
+test("renderReport tells an operator to check the Actions log on a run-failed verdict", () => {
+  const report = renderReport("run-failed", refreshRunVerdict({ runs: fixture(RUNS_FAILED) }));
+  assert.match(report, /^### FAIL/);
+  assert.match(report, /Actions tab/);
+});
+
+test("the CLI's --mode run-failed reads --runs and exits accordingly", () => {
+  const failing = run(["--mode", "run-failed", "--runs", fixPath(RUNS_FAILED)]);
+  assert.equal(failing.code, 1);
+  assert.match(failing.text, /REFRESH_RUN_FAILED/);
+
+  const healthy = run(["--mode", "run-failed", "--runs", fixPath(RUNS_HEALTHY)]);
+  assert.equal(healthy.code, 0);
+  assert.match(healthy.text, /REFRESH_RUN_OK/);
+});
+
+test("--mode run-failed is accepted by the top-level --mode guard", () => {
+  // Mutation: leave "run-failed" out of the allowed-modes list in run().
+  const out = run(["--mode", "run-failed", "--runs", fixPath(RUNS_HEALTHY)]);
+  assert.notEqual(out.code, 2);
 });
 
 /* ------------------------------------------------------------------ reports */
