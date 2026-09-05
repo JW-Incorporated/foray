@@ -226,6 +226,14 @@ const FLOORS = {
      red for a reason in a `.md` file — the 27 line numbers it replaced went stale
      precisely because correcting them was somebody's optional courtesy. */
   "test/legal-citations.test.js": 12,
+  /* S-08's mechanical privacy tripwire: SHOWS_SEARCH_OFF_DEVICE flag detection
+     (source and env), the pinned current-sentence check, the core AND-gate
+     that fails release builds only when the flag is on AND the old sentence
+     is still present, and the HUMAN-ACTIONS.md G5 cross-reference. Floored at
+     5 because this is the gate S-05's shard search must ship behind — a test
+     quietly deleted here is a release build free to ship off-device search
+     while the privacy policy still swears it never happens. */
+  "test/release-gates.test.js": 5,
   /* The shared search matcher (#218/#219). Floored because both of the things it
      pins are invisible when they break. Loosening the prefix guard buys recall
      and reintroduces a documented collision flood that only the ~170-second
