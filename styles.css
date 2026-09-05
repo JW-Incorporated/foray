@@ -628,7 +628,36 @@ button.show-star.on { color: var(--gold); border-color: var(--gold); }
   margin: 0 auto;
   padding: 12px 12px calc(24px + env(safe-area-inset-bottom));
 }
-.page-head { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+/* Wyatt (2026-09-05): on a long episode list the ‹ bar scrolling off with
+   the rest of the page (plain document flow, no special CSS at all before
+   this) is the "collapses on scroll — feels nice" behavior he likes. The
+   bug was that nothing brought it back except scrolling the whole list back
+   to literal position 0. `position: sticky` is what makes it reachable
+   again at all (it pins to `top` once its natural flow position scrolls
+   past that offset, instead of leaving the viewport for good); the
+   translateY hide/show below (driven by app.js's onWindowScroll) is what
+   makes it collapse on scroll-down and reappear the instant the user
+   reverses, at any scroll position — sticky alone would just stay pinned
+   and visible forever once passed, which is a different (also reasonable,
+   but not what was asked for) behavior.
+   `top` matches the fixed topbar's own height + inset so the sticky header
+   pins directly under it, never overlapping. z-index 15 sits below the
+   topbar (20) and the shell notice (19) but above ordinary page content. */
+.page-head {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 14px;
+  position: sticky;
+  top: calc(var(--topbar-h) + env(safe-area-inset-top));
+  z-index: 15;
+  background: var(--bg);
+  padding: 8px 0;
+  margin-top: -8px;
+  transition: transform 0.18s ease;
+  will-change: transform;
+}
+/* Toggled by app.js's onWindowScroll — never in the DOM at load, so a page
+   with no scroll listener wired up yet (tests, a stalled boot) still shows
+   the header exactly as before this fix. */
+.page-head.page-head-hidden { transform: translateY(-130%); }
 .page-head .back {
   width: 42px; height: 42px;
   display: flex; align-items: center; justify-content: center;

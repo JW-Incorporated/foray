@@ -406,8 +406,17 @@ test("both shell notices name the app", () => {
    (`sw.js:284`, `test/sw-generation.test.js:442`) were updated with it.
 
    KILLED BY: recapitalising either unit note, or reverting 1589's wording (both
-   run individually). ALSO KILLED BY: adding a seventh note that says "Foray",
-   which is the case a list would have missed. */
+   run individually). ALSO KILLED BY: adding a seventh (now eighth, see below)
+   note that says "Foray", which is the case a list would have missed.
+
+   The count dropped from 8 to 7 in kanban t_0faae03f (2026-09-05, Wyatt's
+   back-navigation fix): "Playlist not found." used to be this exact
+   one-line `<div class="page"><p class="note">…</p></div>` shape, with no
+   way back to the Playlists list. Landing there is now a real page (a
+   `.page-head` with a working ‹), so it no longer matches this regex at
+   all -- it moved OUT of the set this test enumerates, not out of the app.
+   See "a removed/missing playlist still renders a page head with a working
+   ‹ back link" in test/back-navigation.test.js for its own coverage. */
 test("no note this app renders into #view capitalises the unit", () => {
   const notes = [
     ...read("app.js").matchAll(
@@ -416,8 +425,8 @@ test("no note this app renders into #view capitalises the unit", () => {
   ].map((m) => m[1]);
   assert.equal(
     notes.length,
-    8,
-    `expected eight one-line #view notes, found ${notes.length}. More is fine -- ` +
+    7,
+    `expected seven one-line #view notes, found ${notes.length}. More is fine -- ` +
       "raise this count so the new one is covered. Fewer means a note was lost " +
       `or reshaped: ${notes.join(" | ")}`
   );

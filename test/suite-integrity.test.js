@@ -185,6 +185,14 @@ const FLOORS = {
      each is exactly one careless edit from its opposite, and #302 exists because
      reverting one of them passed the whole suite. */
   "test/app-name.test.js": 21,
+  /* Back-navigation (kanban t_0faae03f, Wyatt 2026-09-05): the ‹ button must
+     go back one real step, not always Home — see the suite's own header
+     for the full journey list this covers. */
+  "test/back-navigation.test.js": 9,
+  /* Collapsing page header reappears on scroll-up (kanban t_0faae03f, same
+     report): the header must un-hide on any upward scroll, not only at the
+     literal top of the page. */
+  "test/collapsing-header-scroll.test.js": 6,
   /* Where `api/*` actually lives, and the CSP entry that lets the client reach
      it. Floored because this is the suite standing between the app and a
      REGRESSION THAT LOOKS LIKE NOTHING: every caller degrades a failed api

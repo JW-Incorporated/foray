@@ -2761,7 +2761,21 @@ function partsNote(rows) {
 function renderPlaylistDetail(id) {
   document.body.className = "view-page";
   const p = playlistById(id) || subjectQueueById(id);
-  if (!p) { $("#view").innerHTML = `<div class="page"><p class="note">Playlist not found.</p></div>`; return; }
+  /* A gone playlist still gets a real page head, ‹ included: with ‹ now
+     going back one real step (see § in-app history) instead of always
+     Home, an entry for a just-removed playlist sits one step behind the
+     Playlists list, so landing here with no ‹ at all would be a dead end
+     for whoever tapped a now-stale link (e.g. from the drawer). */
+  if (!p) {
+    $("#view").innerHTML = `<div class="page">
+      <div class="page-head">
+        <a class="back" href="#/playlists">‹</a>
+        <div><h2>Playlist</h2></div>
+      </div>
+      <p class="note">Playlist not found.</p>
+    </div>`;
+    return;
+  }
   fullPool(); // populate itemIndex
   const rows = resolveParts(p);
   /* An archived part goes into the snapshot cache under its own id so the rest of
@@ -2802,7 +2816,7 @@ function renderPlaylistDetail(id) {
   if (!p.isSubject) $("#pl-remove")?.addEventListener("click", () => {
     savePlaylists(playlists().filter(x => x.id !== p.id));
     logEvent("playlist_removed", { playlist_id: p.id });
-    location.hash = "#/playlists";
+    leaveRemovedPlaylist();
   });
   bindPickLogging($("#view"));
   bindStars($("#view"));
@@ -5179,6 +5193,7 @@ function renderCurrentPage() {
      next time someone reuses the sheet. */
   fbTarget = null;
   state.forayResume = null;
+  resetPageHeadScrollState();
   const h = location.hash || "#/";
   const forayId = forayRouteId();
   let m;
@@ -5198,8 +5213,150 @@ function renderCurrentPage() {
 
 function route() {
   if (!state.ready) return;
+  noteNavigation(location.hash);
   openDrawer(false);
   renderCurrentPage();
+}
+
+/* ---------- in-app history: what the ‹ button does ----------
+
+   Wyatt (2026-09-05, live bug report): the ‹ button jumped all the way to
+   Home instead of one step back. Every page head renders a plain
+   `<a class="back" href="#/">` link, which always followed that literal
+   href — Shows -> a show -> an episode -> ‹ landed on the four cards, not
+   on the show, exactly as reported.
+
+   The browser already holds the right answer: routing is hash-only, every
+   navigation pushes one `hashchange`-triggering history entry, and
+   `history.back()` replays it. So the fix is to call `history.back()`
+   INSTEAD of following the link whenever there is an in-app step to go
+   back to, and to let the `#/` href stand otherwise. That fallback is the
+   cold-open case — a deep link opened fresh (`#/show/x` from a share, a
+   `?foray=` link) has no in-app history behind it, and `history.back()`
+   there would leave the app entirely or do nothing. Home is the right
+   landing for that case.
+
+   "Is there a step to go back to" is tracked here rather than asked of the
+   browser: `history.length` counts entries from before the app loaded, and
+   there is no reliable "canGoBack" available across every WebKit this ships
+   to. So route() notes every hash it renders in `navStack`. Landing back on
+   the hash that was two steps ago pops the stack (a real back-step);
+   anything else pushes (a forward-step). More than one entry on the stack
+   means `history.back()` lands inside the app; exactly one means the
+   current page is the first the app rendered this session (or after a
+   reload — reloading always resets the stack), so ‹ falls back to the
+   href and goes Home, which is the correct behavior for a cold open. */
+const navStack = [];
+
+function noteNavigation(hash) {
+  backPending = false;
+  const h = hash || "#/";
+  if (navStack.length >= 2 && navStack[navStack.length - 2] === h) navStack.pop();
+  else if (navStack[navStack.length - 1] !== h) navStack.push(h);
+}
+
+function canGoBackInApp() { return navStack.length > 1; }
+
+/* `history.back()` is asynchronous — the `hashchange` that actually pops the
+   stack lands a beat later. A second tap on ‹ inside that beat would still
+   see the pre-pop stack and call `history.back()` twice, overshooting by one
+   page. `backPending` makes it one step per tap no matter how fast the taps
+   land; `noteNavigation` (called from every route()) clears it once the step
+   has actually happened. */
+let backPending = false;
+
+/* After removing a playlist: back to the list. When the list is the step
+   immediately behind this page (the ordinary way in — Playlists ->
+   this playlist), that is `history.back()`, which leaves the now-removed
+   playlist's entry BEHIND the list rather than pushing a fresh one in
+   front of it — otherwise the very next ‹ tap from the list would land
+   back on a playlist that no longer exists. From anywhere else (e.g. a
+   drawer link straight into a specific playlist, with no list entry behind
+   it), there is no such step to reuse, so this navigates to the list
+   directly instead. */
+function leaveRemovedPlaylist() {
+  if (navStack.length >= 2 && navStack[navStack.length - 2] === "#/playlists") {
+    backPending = true;
+    history.back();
+  } else {
+    location.hash = "#/playlists";
+  }
+}
+
+/* Delegated from #view (bound once in init(), see below) rather than bound
+   per-render: every page-rendering function replaces #view's innerHTML
+   wholesale, and a per-render listener would have to be repeated in every
+   one of them for no benefit — a click on `a.back` means the same thing on
+   every page. Only that class is handled; anything else falls through
+   untouched (the drawer, play buttons, star toggles, etc. bind their own
+   listeners exactly as before). */
+function onBackClick(e) {
+  const a = e.target && typeof e.target.closest === "function" ? e.target.closest("a.back") : null;
+  if (!a || !canGoBackInApp()) return;   // cold open: the href="#/" fallback stands
+  e.preventDefault();
+  if (backPending) return;               // the previous tap's step has not landed yet
+  backPending = true;
+  history.back();
+}
+
+/* ---------- collapsing page header: show/hide on scroll direction ----------
+
+   Wyatt (2026-09-05, live bug report): the ‹ header bar collapsing out of
+   view while scrolling DOWN a long episode list is intentional and "feels
+   nice" — it is `.page-head`'s `position: sticky` leaving the viewport once
+   `.page-head-hidden` translates it up (see styles.css). The bug is that it
+   never came back except by scrolling all the way back to the literal top
+   of the page, which on a show with hundreds of episodes is a real dead
+   end: there was no reappear-on-scroll-up behavior at all, only the
+   scroll-position-zero case sticky/CSS gives you for free.
+
+   Standard mobile pattern, implemented directly rather than via a library
+   given the app's no-build-step, single-file-classic-script shape: compare
+   this scroll event's `window.scrollY` against the last one seen. Moving
+   down past a small dead zone (SCROLL_HIDE_DELTA, so normal reading
+   micro-jitter and rubber-band bounce don't flicker the bar) hides it;
+   moving up by any amount shows it again immediately, at any scroll
+   position — not just at the top. Near the very top (within the header's
+   own height) it always shows, so it can never hide itself out from under
+   a user who just landed on the page. */
+const SCROLL_HIDE_DELTA = 10; // px of downward movement before hiding, to absorb jitter/bounce
+let lastScrollY = 0;
+let pageHeadHiddenNow = false;
+
+function currentPageHead() { return $("#view .page-head"); }
+
+function setPageHeadHidden(hidden) {
+  if (hidden === pageHeadHiddenNow) return;
+  pageHeadHiddenNow = hidden;
+  const head = currentPageHead();
+  if (head) head.classList.toggle("page-head-hidden", hidden);
+}
+
+function onWindowScroll() {
+  const y = window.scrollY || 0;
+  const head = currentPageHead();
+  if (!head) { lastScrollY = y; return; } // no page head on this page (e.g. home) — nothing to do
+  const delta = y - lastScrollY;
+  if (y <= head.offsetHeight) {
+    setPageHeadHidden(false);           // never hide near the very top of the page
+  } else if (delta > SCROLL_HIDE_DELTA) {
+    setPageHeadHidden(true);            // scrolling down past the dead zone: collapse
+  } else if (delta < 0) {
+    setPageHeadHidden(false);           // any upward movement: reappear immediately
+  }
+  lastScrollY = y;
+}
+
+/* A fresh page (new navigation, or the same page's own re-render) starts
+   with its header visible and a clean scroll baseline — otherwise a header
+   left hidden by the PREVIOUS page's scroll position would render already
+   collapsed on a brand new page the user has not scrolled on yet. Called
+   from renderCurrentPage() below, once per page render. */
+function resetPageHeadScrollState() {
+  pageHeadHiddenNow = false;
+  lastScrollY = window.scrollY || 0;
+  const head = currentPageHead();
+  if (head) head.classList.remove("page-head-hidden");
 }
 
 /* ---------- init ---------- */
@@ -5308,6 +5465,7 @@ async function init() {
   });
 
   $("#menu-btn").addEventListener("click", () => openDrawer($("#drawer").hidden));
+  $("#view").addEventListener("click", onBackClick);
   $("#drawer-overlay").addEventListener("click", () => openDrawer(false));
   $("#drawer").addEventListener("click", (e) => {
     if (e.target.closest("a")) openDrawer(false);
@@ -5346,6 +5504,18 @@ async function init() {
     else location.hash = "#/";
   });
   window.addEventListener("hashchange", route);
+  /* `{ passive: true }`: this listener never calls preventDefault, and
+     without the flag some browsers assume it might and delay scrolling to
+     find out — passive says up front that scrolling can proceed immediately.
+     Throttled to one evaluation per animation frame (a plain boolean flag,
+     no timer) rather than running on every fired scroll event, which on a
+     long list can be many times per frame. */
+  let scrollScheduled = false;
+  window.addEventListener("scroll", () => {
+    if (scrollScheduled) return;
+    scrollScheduled = true;
+    requestAnimationFrame(() => { scrollScheduled = false; onWindowScroll(); });
+  }, { passive: true });
 }
 
 init();
