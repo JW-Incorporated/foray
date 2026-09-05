@@ -50,6 +50,38 @@ docs/. Completed workstreams move to their plan doc's retro section.
   nor the mutations their comments name have been executed anywhere. The
   arithmetic of every named mutation was checked off-device instead, which is the
   weaker claim and is written down as the weaker claim.
+### Foray generation runs end to end, and a batch driver runs it over a list (2026-09-05, one PR) — `t_gen/pipeline-orchestrator`
+
+- **What:** `docs/curation/generation-pipeline-status.md` recorded that all
+  nine stages existed and **nothing drove them end to end** — a founder moved
+  JSON between two CLIs that meet at opposite ends. `runForayPipeline`
+  (`backend/src/generation/runPipeline.ts`) is §4.0→§4.9 in one call, every
+  dependency injectable, defaults to the `create*()` factories so the same code
+  path is stubs without a key and Anthropic with one.
+  `npm run generate-forays -- --prompts prompts.json` runs it over a list,
+  resumable, one candidate JSON per Foray in `publishForay.ts`'s input shape.
+  **It writes candidates; it never publishes** — phase 1's review gate stands.
+- **The first real run failed check-forays four ways**, each a whole-Foray
+  property no per-stage test could catch: the §4.7 disclosure was never
+  emitted by anything; the same segment could play twice; one episode's
+  segments could play out of order (M3); one episode could exceed its 25 %
+  share (M4). All four fixed, each with a test naming its mutation.
+- **The remaining blocker is content, not code.** Candidates now fail only on
+  D3/D5 — mean segment duration and duration variety — which are distribution
+  properties of a 212-segment pool. Cutting the ~1,900 R2 transcripts into
+  segments is the next piece of work.
+- **Branch:** `t_gen/pipeline-orchestrator` — PR only, never main.
+- **Owned/new files:** `backend/src/generation/runPipeline.ts`,
+  `resolveTopic.ts`, `backend/src/cli/generateForays.ts`,
+  `backend/test/runPipeline.test.ts`.
+- **Shared files it touches:** `backend/src/generation/sourceBeats.ts` and
+  `segmentPoolLookup.ts` (the three assembly guards),
+  `backend/test/sourceBeats.test.ts`, `backend/package.json` (one script),
+  `docs/curation/generation-pipeline-status.md`.
+- **Not done here:** an R2-backed `TranscriptCueProvider`. The transcripts are
+  in the bucket and the seam for them is `RunPipelineDeps.cueProvider`, but
+  nothing maps an R2 object key back to an episode yet — see the PR.
+
 
 ### S-03: the client reaches its own API, so a show page shows every episode (2026-09-05, one PR, no follow-up) — `t_s03/api-origin-shell`
 
