@@ -812,7 +812,7 @@ test("both legal documents name the cache bucket FAMILY sw.js actually ships", (
 
 /* ================= 4. the numeric claims ==================================== */
 
-test("connect-src names exactly the app's own origin and the Supabase project", () => {
+test("connect-src names exactly the app's own origin, Supabase, and the API", () => {
   /* This replaces a pointer with an assertion, deliberately. The documents used
      to cite `index.html:13` for the CSP; they now cite `index.html`, and the
      claim they rest on — "`connect-src` names only two origins" — is checked
@@ -822,7 +822,14 @@ test("connect-src names exactly the app's own origin and the Supabase project", 
      MUTATION THAT KILLS THIS: add any origin to `connect-src` in index.html.
      Ran it — red. That is the tripwire data-safety § What would change these
      answers says is the narrowest reliable one in the client, so it should have
-     a check and did not. */
+     a check and did not.
+
+     THE THIRD ORIGIN, added when the client started reaching its own API: the
+     list is still exact, and the third entry is not free-typed here — it is read
+     out of `app.js`'s `API_ORIGIN` exactly the way the Supabase one is read out
+     of `SB_URL`. So a *different* new origin in either file is still red; only
+     the one the client actually calls is allowed, and the documents keep resting
+     on a checked claim rather than on a number somebody remembered to bump. */
   const csp = /http-equiv="Content-Security-Policy"\s+content="([^"]*)"/
     .exec(read("index.html"));
   assert.ok(csp, "index.html's CSP meta tag could not be located");
@@ -832,11 +839,13 @@ test("connect-src names exactly the app's own origin and the Supabase project", 
 
   const sbUrl = /const SB_URL = "([^"]+)"/.exec(read("app.js"));
   assert.ok(sbUrl, "app.js's SB_URL could not be located");
+  const apiOrigin = /const API_ORIGIN = "([^"]+)"/.exec(read("app.js"));
+  assert.ok(apiOrigin, "app.js's API_ORIGIN could not be located");
 
   assert.deepStrictEqual(
-    sources, ["'self'", sbUrl[1]],
+    sources, ["'self'", sbUrl[1], apiOrigin[1]],
     "policy §5 and data-safety §A4 both rest on connect-src naming exactly the " +
-      "app's own origin and our Supabase project. It now names: " +
+      "app's own origin, our Supabase project and our API. It now names: " +
       sources.join(" ")
   );
 });

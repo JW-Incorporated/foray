@@ -246,6 +246,33 @@ function flushBufferedEvents() {
 const SB_URL = "https://qjdllvqdcgacvujhclny.supabase.co";
 const SB_KEY = "sb_publishable_0T8hpKCC_857G31LlCh0WA_0Rp61B3J";
 
+/* WHERE `api/*` ACTUALLY LIVES, and why naming it here is not a style choice.
+
+   Every `api/shows/*` and `api/episodes/*` call used to be a RELATIVE path. On
+   the web that resolves against the page's origin, which is GitHub Pages, where
+   no such function exists (404). In the native shell the page is served from
+   `capacitor://localhost`, so it resolves INSIDE the app bundle — a scheme with
+   no server behind it at all. Both failures are swallowed by the callers' own
+   "absence is a real state" degrade, so the app fell back to the bundled slice
+   of `BUNDLED_ITEMS_PER_SHOW` (3) episodes a show and said nothing. That is the
+   whole of "4a only has 3 episodes per show": the full-catalogue endpoint has
+   been shipping and working, and no client has ever reached it.
+
+   The functions are deployed by the Vercel project `foray-web` (vercel.json,
+   api/package.json); this is its production alias. It is a bare origin with no
+   trailing slash, and `test/api-origin.test.js` pins that shape, because
+   `apiUrl()` joins with a single "/" and a trailing one would produce `//api`.
+
+   NOT `pinnedUrl()`. That appends `_fdid=<deploy id>` so a reload cannot mix
+   files from two data deploys — a statement about the STATIC bundle's
+   generation. These are live functions with no deploy generation to pin, so the
+   parameter would be noise the function has to ignore. */
+const API_ORIGIN = "https://foray-web-seven.vercel.app";
+
+function apiUrl(path) {
+  return `${API_ORIGIN}/${String(path).replace(/^\/+/, "")}`;
+}
+
 async function sbAuth(path, body) {
   try {
     const res = await fetch(SB_URL + path, {
@@ -1501,7 +1528,7 @@ async function fetchShowEpisodes(show_id, cursor) {
   try {
     const path = `api/shows/${encodeURIComponent(show_id)}/episodes`;
     const url = cursor ? `${path}?cursor=${encodeURIComponent(cursor)}` : path;
-    const res = await fetch(pinnedUrl(url), { cache: "no-cache" });
+    const res = await fetch(apiUrl(url), { cache: "no-cache" });
     if (!res.ok) return { episodes: null, nextCursor: null, error: `status ${res.status}` };
     const body = await res.json();
     return {
@@ -5199,7 +5226,7 @@ async function fetchJson(path) {
    unreachable endpoint. */
 async function fetchApiJson(path) {
   try {
-    const res = await fetch(path, { cache: "no-cache" });
+    const res = await fetch(apiUrl(path), { cache: "no-cache" });
     return res.ok ? await res.json() : null;
   } catch (_) { return null; }
 }

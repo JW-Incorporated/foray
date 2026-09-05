@@ -342,6 +342,24 @@ test("submitting a junk query on the Shows page renders an honest empty state, n
 });
 
 /* ==================================================================== */
+/* The show-search request is ABSOLUTE, and these stubs assert that rather than
+   merely tolerating it. A relative `api/shows/search` resolves against the page
+   origin on the web (404 on GitHub Pages) and against `capacitor://localhost`
+   in the native shell, where there is no server at all — which is the bug that
+   left every show page showing the bundled 3-episode slice. So a stub matching
+   on a bare prefix would go on passing for exactly the client that cannot work.
+
+   MUTATION THAT KILLS THIS: revert `fetchApiJson` to `fetch(path, …)`. The URL
+   arrives relative, `new URL(url)` throws, the stub 404s and every assertion in
+   section 4 fails. Ran it — red. */
+function isApiCall(url, path) {
+  const s = String(url);
+  if (!s.includes(path)) return false;
+  assert.doesNotThrow(() => new URL(s),
+    `api calls must be absolute or they resolve inside the shell; got: ${s}`);
+  return true;
+}
+
 /* 4. A3.1/Q3 — REACHING THE FULL BREADTH CATALOGUE VIA /api/shows/search */
 /* ==================================================================== */
 
@@ -358,7 +376,7 @@ test("a breadth-tier show absent from the curated catalogue is appended once the
      show's row would never appear, and this assertion fails. */
   const m = mount({
     fetchImpl: mockFetch((url) => {
-      if (url.startsWith("api/shows/search")) {
+      if (isApiCall(url, "api/shows/search")) {
         return jsonResponse({
           query: "science",
           shows: [{ show_id: "999999", title: "Science Friday", artwork_url: null, tier: "breadth" }],
@@ -408,7 +426,7 @@ test("curated catalogue results still resolve first — the breadth fetch never 
      breadth-endpoint record and this dedupe assertion fails. */
   const m = mount({
     fetchImpl: mockFetch((url) => {
-      if (url.startsWith("api/shows/search")) {
+      if (isApiCall(url, "api/shows/search")) {
         return jsonResponse({
           query: "lex",
           shows: [{ show_id: "lex-fridman-podcast", title: "Lex Fridman Podcast (breadth copy)", tier: "breadth" }],

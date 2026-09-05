@@ -7,6 +7,29 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
+### S-03: the client reaches its own API, so a show page shows every episode (2026-09-05, one PR, no follow-up) — `t_s03/api-origin-shell`
+
+- **What:** the last of the four F4(c) gaps, and the whole of "4a only has 3
+  episodes a show". `api/shows/:id/episodes` has been live and correct since
+  S-02 (#477); every client call was a RELATIVE path, which resolves to the
+  Pages origin on the web (404) and *inside the app bundle* in the shell
+  (`capacitor://localhost`, no server). Both failures degrade silently to the
+  bundled `BUNDLED_ITEMS_PER_SHOW = 3` slice. `app.js` gains `API_ORIGIN` +
+  `apiUrl()`; `fetchShowEpisodes` and `fetchApiJson` (shows search, episode
+  search, in-show episode search) go through it; `index.html`'s `connect-src`
+  names that one origin. Measured: Lex Fridman 6 → **502** episodes.
+- **Branch:** `t_s03/api-origin-shell` — PR only, never main.
+- **Owned/new files:** `test/api-origin.test.js` (5 tests, floored, 7 mutations
+  run and red).
+- **Shared files it touches:** `app.js` (two fetchers + the constant),
+  `index.html` (CSP), `test/legal-citations.test.js` (the origin pin becomes
+  three, read out of `app.js`), `docs/legal/data-safety.md`,
+  `test/suite-integrity.test.js`.
+- **Not done here:** S-05 (client search over the shards) — the shows-import
+  workflow has never run, so there is no release to search yet.
+- **Needs a human:** `index.html` is unlisted by `path-policy`, so this waits
+  for a merge click. The privacy half of the tripwire already landed in #482.
+
 ### M1: cap feed download size before whole-body XML parsing (2026-09-01) — `foray/t_fc2c5f95`
 
 - **What:** Review finding M1. Fetch paths bound elapsed time but not response
