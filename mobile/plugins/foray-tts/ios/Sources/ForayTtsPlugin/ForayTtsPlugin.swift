@@ -41,37 +41,107 @@ public class ForayTtsPlugin: CAPPlugin, CAPBridgedPlugin, AVSpeechSynthesizerDel
     /// normalised rate. Its one caller is `PlayerQueueManager._speakNarration`
     /// (`player/queue-manager.js`), which passes `this._rate` — a value off
     /// `player/playback-rate.js`'s `RATES` ladder `[0.75, 1, 1.25, 1.5, 1.75, 2]`,
-    /// where **1 means the listener's normal speed**. That is also what Android's
-    /// `TextToSpeech.setSpeechRate()` means, which is why `ForayTtsPlugin.java`
-    /// can pass it straight through.
+    /// where **1 means the listener's normal speed**. That is also exactly what
+    /// Android's `TextToSpeech.setSpeechRate()` means — AOSP's own javadoc on that
+    /// method reads *"1.0 is the normal speech rate, lower values slow down the
+    /// speech (0.5 is half the normal speech rate), greater values accelerate it
+    /// (2.0 is twice the normal speech rate)"* — which is why `ForayTtsPlugin.java`
+    /// passes the value straight through and **must keep doing so**. Android is not
+    /// the platform with the mapping problem; do not "fix" it to match this file.
     ///
     /// `AVSpeechUtterance.rate` does NOT mean that. Its scale runs from
     /// `AVSpeechUtteranceMinimumSpeechRate` to `AVSpeechUtteranceMaximumSpeechRate`
-    /// with `AVSpeechUtteranceDefaultSpeechRate` (0.5) as ordinary speech — so
-    /// assigning the multiplier directly, as this method did until now, turned the
-    /// DEFAULT playback speed of 1.0 into `AVSpeechUtteranceMaximumSpeechRate`:
-    /// every narration line in the app would have been spoken at the fastest rate
-    /// the synthesiser has, on every device, for every listener who had never
-    /// touched the speed control. Nobody heard it because nothing ever wired the
-    /// plugin to the player (see `player/tts-bridge.js`'s header); this is fixed in
-    /// the same change that wires it.
+    /// with `AVSpeechUtteranceDefaultSpeechRate` (0.5) as ordinary speech, and
+    /// Apple documents no relationship at all between a step on that scale and a
+    /// multiple of normal speaking speed. The first version of this method assigned
+    /// the multiplier straight onto `rate` (so 1.0x asked for
+    /// `AVSpeechUtteranceMaximumSpeechRate`); the second multiplied
+    /// `AVSpeechUtteranceDefaultSpeechRate` by it, which fixed the 1.0x case and
+    /// left everything else wrong. This is the third, and the first with a
+    /// measurement under it.
     ///
-    /// Written against the framework's own constants rather than the literals
-    /// 0.0/0.5/1.0 so it cannot drift if Apple ever moves them. The framework
-    /// clamps out-of-range values itself; clamping here as well is what makes
-    /// 2.0x land on the maximum instead of relying on that.
+    /// ── THE MAPPING IS CALIBRATED, NOT DERIVED ───────────────────────────────
     ///
-    /// NOT PERCEPTUALLY LINEAR, and this method does not pretend otherwise:
-    /// AVSpeechSynthesizer's rate curve is its own, so 1.5 here is "half again
-    /// faster than default" in the framework's units, not a measured 1.5x
-    /// wall-clock speed-up. Measuring that needs a device, which is the same
-    /// limit `HUMAN-ACTIONS.md` #29 exists for.
+    /// **Exactly one point on this curve has ever been heard, and it is the one below.**
+    /// `HUMAN-ACTIONS.md` #29's RESULT (2026-09-05, TestFlight build off `main`, one
+    /// iPhone, one listener): asking for playback multiplier **1.5** — which the
+    /// previous mapping turned into utterance rate `0.75`, i.e.
+    /// `AVSpeechUtteranceDefaultSpeechRate` times 1.5 — was heard at **roughly 3x**
+    /// normal speed. Nothing else about the curve was measured: not 2.0x, not 0.75x,
+    /// and not the shape in between.
+    ///
+    /// So the mapping rests on **two anchors and one assumption of form**:
+    ///
+    /// 1. `AVSpeechUtteranceDefaultSpeechRate` = 1.0x normal. Definitional, from
+    ///    Apple's own naming of the constant, not from this measurement.
+    /// 2. `AVSpeechUtteranceDefaultSpeechRate * 1.5` ≈ 3.0x normal. The one reading.
+    /// 3. **Form: perceived speed is EXPONENTIAL in utterance rate** — equivalently,
+    ///    utterance rate is affine in `log(multiplier)`:
+    ///
+    ///        perceived(r) = 3.0 ^ ((r − D) / (1.5·D − D))      D = default rate
+    ///        rate(m)      = D + (1.5·D − D) · log(m) / log(3.0)
+    ///
+    /// A one-parameter exponential is the **simplest** family that passes through both
+    /// anchors and stays sane over the whole framework range: a straight line through
+    /// the same two points hits zero perceived speed at rate 0.375 and goes negative
+    /// below it, which is nonsense on a scale whose minimum is 0.0. Exponential also
+    /// matches how speed is *heard* — listeners compare speeds as ratios, and a
+    /// playback ladder is itself multiplicative — so equal ratios of `multiplier` cost
+    /// equal steps of `rate`. That is an argument for plausibility, **not** evidence:
+    /// with two anchors, infinitely many curves fit, and this one was chosen for
+    /// simplicity, not because the device data distinguishes it from any other.
+    ///
+    /// **WHAT WOULD SETTLE IT: a second device reading.** Play the 99-second counting
+    /// line from `tts-locked-screen-check` at the ladder's 2.0x stop and time it; this
+    /// mapping predicts a rate of ≈0.658 and therefore ≈2.0x wall clock, so the line
+    /// should finish in ≈50 s. If it does not, the *form* above is what is wrong, and
+    /// the fix is a third anchor, not a nudge to these two. Until someone runs that,
+    /// treat every value here except 1.0x as an estimate with one point behind it.
+    ///
+    /// Consequences worth knowing at the ladder's stops (`[0.75, 1, 1.25, 1.5, 1.75, 2]`):
+    /// rates ≈ 0.435, 0.500, 0.551, 0.592, 0.627, 0.658. The old mapping sent 0.750 for
+    /// 1.5x — the value now reserved for a listener who actually asks for 3x, which the
+    /// ladder does not offer, so 0.750 is unreachable in the app.
+    ///
+    /// Still written against the framework's own constants rather than the literals
+    /// 0.0/0.5/1.0, so it cannot drift if Apple ever moves them, and the two
+    /// calibration numbers are named rather than inlined. The explicit clamp stays:
+    /// the framework clamps out-of-range values itself, but clamping here is what
+    /// makes an absurd `rate` from the page land on a known end of the scale rather
+    /// than relying on that.
     static func utteranceRate(playbackMultiplier multiplier: Double) -> Float {
-        let scaled = Double(AVSpeechUtteranceDefaultSpeechRate) * multiplier
+        let defaultRate = Double(AVSpeechUtteranceDefaultSpeechRate)
         let minRate = Double(AVSpeechUtteranceMinimumSpeechRate)
         let maxRate = Double(AVSpeechUtteranceMaximumSpeechRate)
+
+        /* A multiplier that is not a positive number has no logarithm, and Swift's
+           `min`/`max` PROPAGATE NaN rather than clamping it (both compare false, so
+           the NaN is returned), which would put a NaN on `utterance.rate`. `rate`
+           arrives from `call.getDouble("rate")` — whatever JSON the page sent — so
+           0, a negative, and NaN are all reachable inputs, and all three mean "this
+           is not a speed": answer with the slowest rate the framework has rather
+           than with a value AVFoundation cannot interpret. */
+        guard multiplier > 0 else { return Float(minRate) }
+
+        let anchorRate = defaultRate * calibrationRequestedMultiplier
+        let anchorSpan = anchorRate - defaultRate
+        let scaled = defaultRate
+            + anchorSpan * log(multiplier) / log(calibrationPerceivedMultiple)
         return Float(min(max(scaled, minRate), maxRate))
     }
+
+    /// The playback multiplier that was actually requested on the device in
+    /// `HUMAN-ACTIONS.md` #29's RESULT. Under the mapping that build shipped, this
+    /// produced utterance rate `AVSpeechUtteranceDefaultSpeechRate * 1.5` = 0.75 —
+    /// which is why the anchor rate above is written as that product rather than as
+    /// a bare 0.75.
+    private static let calibrationRequestedMultiplier = 1.5
+
+    /// What that rate was HEARD as: "roughly 3x". A listener's estimate, reported to
+    /// one significant figure, from a single session on a single iPhone. It is the
+    /// whole empirical content of this mapping, and it is a soft number — do not
+    /// quote it as 3.00.
+    private static let calibrationPerceivedMultiple = 3.0
 
     /// `ipaOverrides` arrives as `[{ term, start, end, ipa }]` -- character
     /// offsets into `text`, built by `foray-tts.js`'s `buildIpaOverrides()`
