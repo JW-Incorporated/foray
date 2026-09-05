@@ -16,6 +16,7 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import { pathToFileURL } from "node:url";
 import {
   BUILD_OUT_DIR, POINTER_PATH, STATE_PATH,
 } from "./config.mjs";
@@ -166,7 +167,7 @@ async function main() {
   await runAndPublish(process.argv.slice(2));
 }
 
-if (process.argv[1] && process.argv[1].endsWith("run-and-publish.mjs")) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   main().catch((e) => {
     console.error("FATAL:", e instanceof Error ? e.message : e);
     process.exit(1);

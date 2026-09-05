@@ -139,18 +139,28 @@ jobs:
           TAG=$(node -e "console.log(require('./data/shows-index-pointer.json').release_tag)")
           git commit -m "chore(shows): point shows-index at $TAG"
           git push --force origin "HEAD:$BRANCH"
+          HEAD_SHA=$(git rev-parse HEAD)
 
-          if gh pr view "$BRANCH" --repo "${{ github.repository }}" >/dev/null 2>&1; then
-            echo "PR for $BRANCH already open — pushed an update to it"
+          # `gh pr view <branch>` resolves the branch name to a PR regardless
+          # of state (open/closed/merged) — with a REUSED branch name (this
+          # workflow always pushes to the same `$BRANCH`, and `--delete-branch`
+          # on the auto-merge below deletes it after each week's PR lands),
+          # that lookup would find LAST WEEK'S already-merged PR on every
+          # subsequent run. That would both skip `gh pr create` for the new
+          # release (silently no PR ever opens again) and hand a dead PR
+          # number to the merge call below. `gh pr list --state open` scopes
+          # the lookup to exactly what matters: is there an OPEN PR on this
+          # branch right now.
+          PR_NUMBER=$(gh pr list --repo "${{ github.repository }}" --head "$BRANCH" --state open --json number --jq '.[0].number // empty')
+          if [ -n "$PR_NUMBER" ]; then
+            echo "PR #$PR_NUMBER for $BRANCH already open — pushed an update to it"
           else
             gh pr create --repo "${{ github.repository }}" \
               --base main --head "$BRANCH" \
               --title "chore(shows): point shows-index at $TAG" \
               --body "Automated shows-index build (S-04b). Points \`data/shows-index-pointer.json\` at the GitHub Release \`$TAG\`. \`data/\` auto-merges on green CI per the project registry (merge_authority: agent)."
+            PR_NUMBER=$(gh pr list --repo "${{ github.repository }}" --head "$BRANCH" --state open --json number --jq '.[0].number')
           fi
-
-          PR_NUMBER=$(gh pr view "$BRANCH" --repo "${{ github.repository }}" --json number --jq .number)
-          HEAD_SHA=$(gh pr view "$BRANCH" --repo "${{ github.repository }}" --json headRefOid --jq .headRefOid)
 
           # A PR OPENED (OR UPDATED) VIA THE AUTOMATIC GITHUB_TOKEN DOES NOT
           # ITSELF TRIGGER `pull_request` WORKFLOWS — GitHub's documented

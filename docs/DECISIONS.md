@@ -2107,4 +2107,17 @@ D13; kanban card S-04a (`t_835d1a3c`, itself a workspace-bug redo of
      reproduces the exact gap: publish, delete the pointer file (simulating
      a lost PR), run again, assert the pointer gets rewritten even though
      nothing new was published.
+- **Third fresh-context review pass: one more finding, fixed.** `gh pr
+  view <branch>` resolves a branch name to a PR regardless of state
+  (open/closed/merged). With this workflow's fixed, reused branch name
+  (`shows-index/pointer-update`) and `--delete-branch` on the auto-merge,
+  the SECOND weekly run's lookup would have resolved to the FIRST week's
+  already-merged PR — silently skipping `gh pr create` for the new release
+  and handing a dead PR number to the merge call, breaking the automation
+  on every run after the first. Fixed by scoping the lookup to
+  `gh pr list --state open --head <branch>` and deriving `HEAD_SHA` from
+  `git rev-parse HEAD` (the commit this run just pushed) instead of from
+  `gh pr view`. Also aligned `run-and-publish.mjs`'s main-guard with
+  `import-dump.mjs`'s (`import.meta.url` comparison, not a filename
+  suffix check) per the same pass's minor note.
 
