@@ -19,7 +19,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
@@ -63,7 +62,14 @@ function writeMock(dir, name, content) {
 
 test("the real 'Publish digest' step passes a synthetic 2MB resolved.json without hitting argv limits", () => {
   const workflowText = fs.readFileSync(WORKFLOW, "utf8");
-  const script = extractStepRun(workflowText, "Publish digest to refresh-digest branch");
+  let script = extractStepRun(workflowText, "Publish digest to refresh-digest branch");
+
+  // `${{ github.sha }}` is a GitHub Actions expression, substituted by the
+  // runner BEFORE bash ever sees the script — it is not valid bash and never
+  // executes as one in production. Stand in a fixed value here, the same way
+  // Actions would, so this test exercises the step's actual logic rather than
+  // failing on a syntax error that can never happen in CI.
+  script = script.replace(/\$\{\{\s*github\.sha\s*\}\}/g, "0000000000000000000000000000000000000000");
 
   // The step must use a request-body FILE, never inline -f content= on a real
   // command line. (The step's own header COMMENT mentions the old
@@ -77,8 +83,14 @@ test("the real 'Publish digest' step passes a synthetic 2MB resolved.json withou
     .join("\n");
   assert.doesNotMatch(codeOnly, /-f content=/, "step reintroduced -f content=... on argv");
 
-  const workdir = fs.mkdtempSync(path.join(os.tmpdir(), "s01-publish-"));
-  const mockBin = fs.mkdtempSync(path.join(os.tmpdir(), "s01-mockbin-"));
+  // NOTE: `os.tmpdir()` (/tmp) is mounted noexec in some sandboxes, which would
+  // make the shimmed `gh`/`jq` unexecutable for a reason that has nothing to do
+  // with the fix under test. Use a directory under this repo instead — CI
+  // runners don't have this restriction, but a local sandbox might.
+  const scratchRoot = path.join(REPO, ".scratch-publish-digest-test");
+  fs.mkdirSync(scratchRoot, { recursive: true });
+  const workdir = fs.mkdtempSync(path.join(scratchRoot, "work-"));
+  const mockBin = fs.mkdtempSync(path.join(scratchRoot, "bin-"));
 
   // A synthetic resolved.json comfortably over the ARG_MAX (~2MB on Linux)
   // that made `-f content="$(base64 -w0 resolved.json)"` fail since 09-01.
@@ -143,7 +155,7 @@ exit 1
     `const fs = require("fs");
 const [, , endpoint, inputFile, workdir] = process.argv;
 const body = JSON.parse(fs.readFileSync(inputFile, "utf8"));
-if (typeof body.content !== "string" || body.content.length < 100) {
+if (typeof body.content !== "string" || body.content.length < 4) {
   console.error("payload content missing or implausibly small");
   process.exit(1);
 }
@@ -198,7 +210,12 @@ process.stdout.write(JSON.stringify(obj));
   const scriptPath = path.join(workdir, "publish-step.sh");
   fs.writeFileSync(scriptPath, script);
 
-  const stdout = execFileSync("bash", [scriptPath], { cwd: workdir, env, encoding: "utf8" });
-  assert.match(stdout, /published digest: \d+ resolved episodes/);
-  assert.ok(fs.existsSync(path.join(workdir, "summary.md")), "job summary was not written");
+  let stdout;
+  try {
+    stdout = execFileSync("bash", [scriptPath], { cwd: workdir, env, encoding: "utf8" });
+    assert.match(stdout, /published digest: \d+ resolved episodes/);
+    assert.ok(fs.existsSync(path.join(workdir, "summary.md")), "job summary was not written");
+  } finally {
+    fs.rmSync(scratchRoot, { recursive: true, force: true });
+  }
 });

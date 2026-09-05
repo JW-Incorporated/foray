@@ -840,12 +840,23 @@ const FLOORS = {
      It is also the suite most able to look fine while pinning nothing — a
      watchdog fixture that is healthy makes every assertion pass while the alarm
      is wired to nothing. The committed fixtures are the real 2026-08-20 failure
-     rebuilt from git, and two of these 62 tests exist purely to pin that they
-     still are. All 62 were mutation-killed; the mutation is named in each.
+     rebuilt from git, and two of these tests exist purely to pin that they
+     still are. All were mutation-killed; the mutation is named in each.
      47 -> 62 in the pre-push review round, which found that the guard could
      stall the pipeline with no documented way to clear it and that the digest
-     fetch failed OPEN on any API error that was not a 404. */
-  "tools/refresh/watch-nightly.test.mjs": 62,
+     fetch failed OPEN on any API error that was not a 404. 62 -> 71 with S-01
+     (issue: nightly digest publish failed since 09-01 with "Argument list too
+     long"): refreshRunVerdict()/`--mode run-failed` answers a question neither
+     `absence` nor `overwrite` could — "did today's scheduled nightly-refresh
+     run itself succeed", independent of any digest/PR state. */
+  "tools/refresh/watch-nightly.test.mjs": 71,
+  /* S-01's other half: proves the actual bash in nightly-refresh.yml's
+     "Publish digest to refresh-digest branch" step, not a JS reimplementation
+     of it. Extracts the real `run:` block, shims `gh`/`jq`, and round-trips a
+     synthetic 2MB resolved.json through it end to end — the acceptance
+     criterion the card asked for. One test, deliberately: this is an
+     integration proof of the fix, not a table of unit cases. */
+  "tools/refresh/publish-digest.test.mjs": 1,
   "tools/segments/sweep-transcripts.test.mjs": 38,
   "tools/segments/transcript-normalize.test.mjs": 24,
   "tools/segments/merge-segments.test.mjs": 39,
