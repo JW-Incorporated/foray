@@ -449,7 +449,19 @@ test("no file under tools/ spells out a User-Agent (#316 follow-up)", () => {
    backend is already consolidated on `env.userAgent`, read by all four outbound
    clients (itunes, podcastIndex, conditionalGet, redirect); this asserts both
    that its one declaration still agrees with ours AND that no fifth caller has
-   quietly started spelling its own. */
+   quietly started spelling its own.
+
+   `backend/src/feeds/userAgent.ts` (S-02, kanban t_4bd3c0a3) is a DELIBERATE,
+   NAMED exception, not drift: `conditionalGet.ts` used to import `config/env`
+   directly, and that import closure (dotenv+fs, undeclared in
+   `api/package.json`) is exactly what crashed
+   `api/shows/[show_id]/episodes.ts` in production with
+   FUNCTION_INVOCATION_FAILED — see that file's own header. `userAgent.ts`
+   exists so `conditionalGet.ts` can default its User-Agent WITHOUT importing
+   `config/env`, at the cost of a second literal that must stay pinned to the
+   first. It is asserted equal to `env.ts`'s value below, by name, rather than
+   silently added to `MAY_SPELL_IT_OUT` — an unasserted exception is exactly how
+   the ORIGINAL #316 drift happened. */
 test("the backend service sends the same User-Agent as the tools (#316 follow-up)", () => {
   const ENV = "backend/src/config/env.ts";
   const src = readFileSync(join(REPO, ENV), "utf8");
@@ -463,9 +475,26 @@ test("the backend service sends the same User-Agent as the tools (#316 follow-up
       "acceptable because one of them is harder to edit."
   );
 
-  /* `env.ts` is the backend's single source; nothing else there may spell one. */
+  /* The one NAMED, asserted exception (S-02, kanban t_4bd3c0a3) — see this
+     test's own header comment for why it exists. Checked for its OWN
+     agreement with UA here, rather than merely excluded, so a drift in this
+     file is caught exactly like every other copy. */
+  const USER_AGENT_TS = "backend/src/feeds/userAgent.ts";
+  const uaTsSrc = readFileSync(join(REPO, USER_AGENT_TS), "utf8");
+  const uaTsMatch = uaTsSrc.match(/DEFAULT_FEED_USER_AGENT\s*=\s*"([^"]*)"/);
+  assert.ok(uaTsMatch, `${USER_AGENT_TS} still declares DEFAULT_FEED_USER_AGENT as a string literal`);
+  assert.equal(
+    uaTsMatch[1],
+    UA,
+    `${USER_AGENT_TS} has drifted from tools/segments/politeness.mjs's UA — it is a ` +
+      "deliberate second copy (see this test's header) and must be updated in the " +
+      "same change as every other copy, never independently."
+  );
+
+  /* `env.ts` and `userAgent.ts` are the backend's only two sanctioned sources;
+     nothing else there may spell one. */
   const others = tracked("backend/src/").filter(
-    (f) => f !== ENV && UA_MENTION.test(readFileSync(join(REPO, f), "utf8"))
+    (f) => f !== ENV && f !== USER_AGENT_TS && UA_MENTION.test(readFileSync(join(REPO, f), "utf8"))
   );
   assert.deepEqual(
     others,
