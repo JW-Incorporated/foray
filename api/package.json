@@ -2,7 +2,14 @@
   "name": "foray-api",
   "private": true,
   "description": "Vercel serverless functions (Stage 3b, kanban t_567b570f). Scoped dependencies only — the repo root stays dependency-free by design (see CLAUDE.md). Vercel auto-detects and bundles this directory's functions.",
+  "scripts": {
+    "test": "node --import tsx --test"
+  },
   "dependencies": {
+    "fast-xml-parser": "^5.11.1",
     "pg": "^8.13.1"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.2"
   }
 }

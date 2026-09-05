@@ -1,4 +1,4 @@
-import { env } from "../config/env";
+import { DEFAULT_FEED_USER_AGENT } from "./userAgent";
 
 export interface ConditionalGetState {
   etag: string | null;
@@ -90,18 +90,24 @@ async function readBodyCapped(
  * repeat polls cost the publisher (and us) as little as possible — the core
  * mechanic behind the polling-cadence ADR (0001). A 304 short-circuits with
  * `notModified: true` and no body.
+ *
+ * `opts.userAgent` (S-02, kanban t_4bd3c0a3): takes the User-Agent as a
+ * parameter rather than importing `config/env` directly, so this module has
+ * no transitive dependency on `dotenv`/`fs` — see `userAgent.ts`'s header for
+ * why that import broke `api/shows/[show_id]/episodes.ts` in production.
+ * Existing callers that don't pass one keep the same default string.
  */
 export async function fetchFeedConditional(
   url: string,
   prior: ConditionalGetState,
-  opts: { fetchImpl?: typeof fetch; timeoutMs?: number; maxBytes?: number } = {}
+  opts: { fetchImpl?: typeof fetch; timeoutMs?: number; maxBytes?: number; userAgent?: string } = {}
 ): Promise<FeedFetchResult> {
   const fetchImpl = opts.fetchImpl ?? fetch;
   const timeoutMs = opts.timeoutMs ?? 15_000;
   const maxBytes = opts.maxBytes ?? MAX_FEED_BYTES;
 
   const headers: Record<string, string> = {
-    "User-Agent": env.userAgent,
+    "User-Agent": opts.userAgent ?? DEFAULT_FEED_USER_AGENT,
     Accept: "application/rss+xml, application/xml, text/xml, */*"
   };
   if (prior.etag) headers["If-None-Match"] = prior.etag;

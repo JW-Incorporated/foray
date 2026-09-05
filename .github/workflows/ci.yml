@@ -32,6 +32,29 @@ jobs:
       - run: npm ci
       - run: npm test
 
+  api:
+    # S-02 (kanban t_4bd3c0a3): api/package.json now declares dependencies
+    # (pg, fast-xml-parser) and its own test script, so this mirrors the
+    # `backend` job's shape rather than folding into `data-and-site`'s
+    # discovery — see run-suites.mjs's SCANNED_DIRS comment for why `api/`
+    # is deliberately excluded from that shared discovery (it is a
+    # human-merge-only path, not auto-merge-eligible, so it doesn't need
+    # the auto-merge floor-protection mechanism `data-and-site` exists for).
+    # Not (yet) added to protect-main's required-checks list — see that
+    # ruleset before relying on this to block a merge; it runs and reports
+    # regardless.
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install
+      - run: npm test
+
   ios-kit:
     # ForayKit is a pure-Swift package (no AVFoundation) precisely so its
     # state machine + intent grammar tests can run on a CI Mac — the only
