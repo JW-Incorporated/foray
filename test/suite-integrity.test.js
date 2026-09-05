@@ -303,6 +303,13 @@ const FLOORS = {
      => the show resolves artwork. */
   "test/show-page.test.js": 43,
 
+  /* Episodes section under Shows search (S-07, kanban t_6baccaa0): six
+     mutations named and killed in the file's own header — rendering,
+     Apple-vs-live captioning, empty-result absence, offline skip, stale
+     response drop, and in-app playability of a result. */
+  "test/episode-search.test.js": 6,
+
+
   /* The home screen's geometry under DEVICE conditions. Floored because every
      defect it pins was invisible in a desktop browser — all four turn on
      `env(safe-area-inset-top)`, which is 0 on a desktop and ~59px on a notched
