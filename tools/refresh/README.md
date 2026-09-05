@@ -290,6 +290,30 @@ Every input is a file the caller fetched — no network, no dependencies — whi
 what lets `watch-nightly.test.mjs` replay the real 2026-08-20 night from
 `fixtures/nightly-watch/` and prove the alarm fires.
 
+### A third mode, added by S-01: did the Action itself fail?
+
+`absence` and `overwrite` are both shaped around the digest/PR handoff, and
+neither one answers "did today's scheduled `nightly-refresh` run succeed at
+all" — a run that fails inside its own scan/resolve/publish steps can still
+leave a perfectly healthy PREVIOUS night's digest sitting there merged, which
+reads as green to both of the checks above. That is the same blind spot #290
+was about, one layer closer to the metal: "the job I can see finished" is not
+"the job did what it was for".
+
+```sh
+# "did today's scheduled nightly-refresh run succeed?" — independent of any digest/PR state
+node tools/refresh/watch-nightly.mjs --mode run-failed --runs runs.json
+```
+
+`runs.json` is `gh run list --workflow nightly-refresh.yml --event schedule
+--json databaseId,event,status,conclusion,createdAt`. Only `event: schedule`
+rows count — a manual `workflow_dispatch` retry (someone exercising
+`overwrite_unmerged_digest` by hand, say) must not stand in for the run the
+cron was supposed to make. `nightly-watch.yml` runs this check **and** the
+`absence` check every evening; either one failing turns the job red, because
+they are answering different questions and a green answer to one must never
+paper over a red answer to the other.
+
 ## Running locally
 
 ```sh
