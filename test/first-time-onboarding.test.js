@@ -397,6 +397,24 @@ test("Welcome degrades to no strip when the player module or forays are unavaila
   assert.strictEqual(m.body.querySelectorAll(".ft-strip-wrap").length, 0);
 });
 
+test("Welcome degrades to no strip when the player module throws (malformed data)", () => {
+  /* MUTATION: remove the try/catch around player.resolve()/segmentStripHtml()
+     — a throwing resolve() (e.g. malformed state.segments) would then
+     propagate out of renderWelcome() and break the whole first-run Home
+     render, not just skip the illustration. */
+  const player = {
+    listForays: () => [{ id: "f1", title: "Test Foray", status: "published" }],
+    resolve: () => { throw new Error("malformed segments doc"); },
+    segmentStripHtml: () => "",
+    applyStripGrow: () => {},
+  };
+  const m = mount({ forayPlayer: player });
+  bootWithTaxonomy(m);
+  m.state.forays = { forays: [{ id: "f1", status: "published" }] };
+  assert.doesNotThrow(() => m.ctx.showFirstTimeExplainerOnce());
+  assert.strictEqual(m.body.querySelectorAll(".ft-strip-wrap").length, 0);
+});
+
 test("Skip for now at step 1 dismisses immediately with no interest write", () => {
   /* MUTATION: make step-1 skip advance to step 2 instead of calling dismiss()
      directly — the acceptance line ("skipping at step 1 or 2 lands on Home
@@ -587,7 +605,6 @@ test("neither step renders an account-connector or import-history control", () =
   const m = mount();
   bootWithTaxonomy(m);
   toStep2(m); // renders through both panes along the way
-  const html = JSON.stringify([...m.body.children].map((c) => c.id || c.className));
   assert.doesNotMatch(SRC.slice(
     SRC.indexOf("function showFirstTimeExplainerOnce("),
     SRC.indexOf("\nfunction ", SRC.indexOf("function showFirstTimeExplainerOnce(") + 10)

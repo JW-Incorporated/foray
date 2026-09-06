@@ -2583,12 +2583,19 @@ function showFirstTimeExplainerOnce() {
     if (!state.forays) return "";
     const first = forayCards()[0];
     if (!first) return "";
-    const r = player.resolve(state.forays, {
-      id: first.id, segmentsDoc: state.segments, sourcesDoc: state.segmentSources,
-      unlocked: unlockedForays(),
-    });
-    if (!r) return "";
-    return player.segmentStripHtml(r.playable, { size: "sm" });
+    try {
+      const r = player.resolve(state.forays, {
+        id: first.id, segmentsDoc: state.segments, sourcesDoc: state.segmentSources,
+        unlocked: unlockedForays(),
+      });
+      if (!r) return "";
+      return player.segmentStripHtml(r.playable, { size: "sm" }) || "";
+    } catch (_) {
+      // Malformed segments/sources data must not break the first-run Home
+      // render — "degrades to nothing" (this function's own contract) has to
+      // hold even when the player module throws, not just when it's absent.
+      return "";
+    }
   }
 
   function renderWelcome() {
