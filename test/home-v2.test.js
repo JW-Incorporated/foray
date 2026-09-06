@@ -165,27 +165,18 @@ function ui2Mount(overrides = {}) {
 /* 1. THE FLAG DISPATCH                                                  */
 /* ==================================================================== */
 
-test("renderHome renders the v2 layout when cp_ui_v2 is on, and the old layout when it is off", () => {
-  // MUTATION: delete `if (ui2On()) return renderHomeV2();` from renderHome().
-  // Both assertions below fail — the flag-on mount would show `.cards4`
-  // instead of `.hv2-home`.
+test("renderHome always renders the v2 layout (cp_ui_v2 retired, U-11 cutover)", () => {
+  /* CUTOVER (U-11, founder override, 2026-09-06, kanban card t_a3f01c8a):
+     ui2On() always returns true now, so there is no flag-off mount left
+     to test — that layout, and its Settings toggle, are retired and
+     preserved verbatim in archive/legacy-ui-2026-09/. This test now only
+     pins renderHome()'s one remaining shape.
+     MUTATION: change renderHome() to render anything other than
+     renderHomeV2(). The v2 assertion fails. */
   const on = ui2Mount();
   on.ctx.renderHome();
-  assert.ok(on.view().includes('class="home hv2-home"'), "cp_ui_v2 on must render the v2 Home layout");
-  assert.ok(!on.view().includes('class="cards4"'), "cp_ui_v2 on must not render the old four-card grid");
-
-  const off = mount({ seed: { cp_ui_v2: "false" } });
-  off.state.catalog = { shows: [] };
-  off.state.forays = { forays: [] };
-  off.ctx.ForayPlayer = { listForays: () => [], forayResumeList: () => [] };
-  off.state.cardSlots = [0, 1, 2, 3].map((i) => ({
-    branch: `branch-${i}`, role: "top",
-    item: { id: `ep-${i}`, title: `Episode ${i}`, show: `Show ${i}`, duration_min: 30, artwork_url: null },
-    items: [{ id: `ep-${i}`, title: `Episode ${i}`, show: `Show ${i}`, duration_min: 30 }],
-  }));
-  off.ctx.renderHome();
-  assert.ok(off.view().includes('class="cards4"'), "cp_ui_v2 off must still render the old four-card grid");
-  assert.ok(!off.view().includes("hv2-home"), "cp_ui_v2 off must render no v2 markup at all");
+  assert.ok(on.view().includes('class="home hv2-home"'), "renderHome() must always render the v2 Home layout");
+  assert.ok(!on.view().includes('class="cards4"'), "renderHome() must never render the retired four-card grid");
 });
 
 /* ==================================================================== */

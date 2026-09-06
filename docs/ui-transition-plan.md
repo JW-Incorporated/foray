@@ -134,8 +134,15 @@ Read first: `CLAUDE.md`; this file; `docs/ux/README.md`; issues #102, #123,
 - **Governance:** `index.html` → human merge; the PR is Joey's — note the rebase in its body and let him see it.
 - **Acceptance:** Library tab opens his screen; his own tests pass.
 
-#### U-11 · Cutover and records — **S**
+#### U-11 · Cutover and records — **S** — **DONE, founder-overridden schedule (2026-09-06, kanban `t_a3f01c8a`)**
 - **Ask:** after every card above is green on TestFlight for a week: default `cp_ui_v2` on for everyone, delete the four-card Home and the menu-as-primary-nav code paths, delete the flag. DECISIONS entries: #123 resolved (floor kept), #125 resolved (anonymous-first stands), #126 deferred, D3 (tab bar reverses #467), D4 (self-hosted fonts). Close or repoint C1, C2, C3, C4, C7 issues; leave C6/C10/C11 open with a pointer here. `docs/ux/README.md` gains a "what shipped vs the mockup" table.
+- **FOUNDER OVERRIDE (2026-09-06):** Joey directed cutting over immediately
+  rather than waiting out the week of TestFlight soak time above — see
+  STATE.md's U-11 entry and `archive/legacy-ui-2026-09/README.md`. The wait
+  requirement above is superseded; do not re-block on it. `ui2On()` now
+  always returns `true`; the flag, its Settings toggle, and every
+  flag-off/old-Home code path are retired to `archive/legacy-ui-2026-09/`
+  rather than deleted outright, so they remain recoverable.
 - **Governance:** `docs/DECISIONS.md` → `founder-approved`.
 
 ## 4. Gates

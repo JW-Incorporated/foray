@@ -370,7 +370,7 @@ const FLOORS = {
      across these five tests were run and all six went red. A review round then
      found four MORE wrong stylesheets the first draft passed — see that file's
      header for what each of them broke and which line now stops it. */
-  "test/home-layout.test.js": 7,
+  "test/home-layout.test.js": 6, // U-11 cutover (2026-09-06, kanban t_a3f01c8a): BUG 5's flag-off #banner-slot test retired with cp_ui_v2 (renderHome always renders Home v2 now, which has no #banner-slot); 7 -> 6
 
   /* Stage 3b of docs/show-pages-plan.md — full per-show RSS ingestion
      (kanban card t_567b570f): renders the curated pool synchronously so
@@ -409,7 +409,7 @@ const FLOORS = {
      unchanged" half of the card's own acceptance line, which is exactly
      the accumulation this suite's floor exists to prevent regressing
      unnoticed. */
-  "test/show-search.test.js": 17,
+  "test/show-search.test.js": 15, // U-11 cutover (2026-09-06, kanban t_a3f01c8a): the two v1/flag-off tests ("no Playlists-search section at all"; "no browse-subjects pill row") were retired along with cp_ui_v2 — ui2On() always returns true now, so those guards are unreachable; the surviving "no matching playlist" test was kept, renamed. 17 -> 15
   /* U-05 (docs/ui-transition-plan.md, kanban t_53381ee4, resolves issue
      #135): the Playlists results section under Shows/Episodes on the Shows
      page, plus the "Create a playlist about X" CTA. Floored new rather than
@@ -426,7 +426,7 @@ const FLOORS = {
      proofs that neither SearchEngine's exports nor its scoring output moved
      (2, mirroring show-search.test.js's own such test). Every test names its
      mutation; see the suite header for the full list of what each pins. */
-  "test/search-playlists.test.js": 18,
+  "test/search-playlists.test.js": 17, // U-11 cutover (2026-09-06, kanban t_a3f01c8a): the v1/flag-off "no Playlists section, no pill row, no CTA" test was retired along with cp_ui_v2 — ui2On() always returns true now, so that off-state is unreachable. 18 -> 17
   /* Home information architecture (founder instruction, 2026-09-03: "the
      home page has so much clutter. Menu should have the following pages:
      Home, Shows, Playlists, Forays, Up Next."). The move matrix: each of
@@ -439,7 +439,7 @@ const FLOORS = {
      clutter one "just one more row" at a time, and a suite that can be
      deleted in an auto-merged PR guards nothing. Every test names its
      mutation; see the suite header. */
-  "test/home-information-architecture.test.js": 12,
+  "test/home-information-architecture.test.js": 10, // U-11 cutover (2026-09-06, kanban t_a3f01c8a): the v1/flag-off "foray list renders on #/forays and not on Home" + "Jump back in moved" tests were retired — Home always renders Home v2 now, which intentionally DOES show a "Jump back in" row (covered by test/home-v2.test.js); the ".home renders banner+cards4 and nothing else" test was rewritten to pin Home v2's shape instead. 12 -> 10
 
   /* U-03 (docs/ui-transition-plan.md, kanban t_6e8343b6): Home v2's four
      sections plus the greeting, behind cp_ui_v2, with the exploration floor
@@ -575,7 +575,7 @@ const FLOORS = {
      the route-mapping/all-routes tests above (which were updated in place,
      not counted here) because a regression that reverted just the href
      while leaving tabForHash's mapping correct would otherwise pass. */
-  "test/tab-bar.test.js": 12,
+  "test/tab-bar.test.js": 8, // U-11 cutover (2026-09-06, kanban t_a3f01c8a): cp_ui_v2 is retired — ui2On() always returns true, so the off-by-default, native-shell-default, and explicit-off-overrides-native tests (4 of them) no longer have a flag-off state to assert against; replaced with one "always renders" test. 12 -> 8
   /* U-06's Create screen (docs/ui-transition-plan.md D7+D8, kanban card
      t_bd3f749a): the Foray | Playlist toggle with Foray permanently
      disabled and honestly labelled, and Playlist mode reusing the real

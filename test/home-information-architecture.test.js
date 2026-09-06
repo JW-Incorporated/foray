@@ -177,44 +177,15 @@ function homeInner(view) {
 /* 1. `.home` HOLDS THE BANNER AND THE FOUR CARDS. FULL STOP.           */
 /* ==================================================================== */
 
-test("`.home` renders the banner slot and .cards4 and nothing else at all", () => {
-  /* THE ONE ASSERTION THAT DOES NOT AGE. Every other test here names a
-     specific thing that must not be on Home; this one says nothing new may
-     be, which is what actually failed twice.
-
-     It is a layout invariant, not only a product preference: `.home` is a
-     fixed-height flex column whose only `flex: 1` child is `.cards4`, and it
-     is `overflow: visible`, so ANY tall sibling starves the four cards to
-     0px and overflows on top of what follows. #433 shipped exactly that (the
-     vouch row: `.cards4` measured 0px and each card 26px at every viewport,
-     desktop included), and #458 worked around it with a `.home-below`
-     wrapper rather than removing the sibling.
-
-     Written as "subtract the two things that belong, assert nothing remains"
-     rather than a list of banned strings, so it fails for a surface nobody
-     has thought of yet. The two things that belong are computed from the
-     same helpers renderHome calls (bannerHtml, miniCard over the card slots)
-     and subtracted as EXACT strings, whitespace between tags normalised. An
-     earlier draft subtracted them with a greedy `<a class="mini-card"…</a>`
-     regex, which also swallowed any anchor-bearing content appended after
-     the cards — the foray list re-added to Home left a leftover of "" and
-     the test stayed green. Exact subtraction has no such hole.
-
-     The fixture is seeded so that every helper that returns "" on empty
-     state is NON-empty here: editorial notes in the catalogue (vouchForHtml),
-     and a ForayPlayer stub with one listed foray and one resume row
-     (forayListHtml, jumpBackInHtml). Without those seeds, re-adding any of
-     the three to Home renders nothing under quietMount's empty state and
-     this test stays green — the forgiving-fixture failure CLAUDE.md lists
-     five times over. Tests 4-6 pin each move with their own seed; this one
-     has to catch them as "something, anything, inside .home" as well.
-
-     MUTATION: add `${vouchForHtml()}` — or any other line — inside
-     renderHome's `.home` template. `leftover` is no longer empty and this
-     fails, naming what was added. RUN, each separately, each failed here:
-     `${vouchForHtml()}`, `${forayListHtml()}`,
-     `${jumpBackInHtml(forayResumeRows())}`, the `#pl-form` block, the
-     `#sh-form` block. */
+test("`.home` renders the v2 layout (U-11 cutover retired the flag-off four-card grid)", () => {
+  /* CUTOVER (U-11, founder override, 2026-09-06, kanban card t_a3f01c8a):
+     ui2On() always returns true now, so renderHome() always renders
+     renderHomeV2()'s `.home.hv2-home` shape, never the flag-off four-card
+     grid this test originally pinned. That grid's markup is preserved
+     verbatim in archive/legacy-ui-2026-09/app.js.pre-cutover-2026-09-06.
+     Full behavioural coverage of the v2 layout lives in
+     test/home-v2.test.js; this is just the "renderHome renders v2, full
+     stop" sanity check, matching test 12 below. */
   const m = quietMount();
   m.state.catalog = {
     shows: [
@@ -230,25 +201,9 @@ test("`.home` renders the banner slot and .cards4 and nothing else at all", () =
     ],
   };
   m.ctx.renderHome();
-  const inner = homeInner(m.view());
-
-  assert.ok(inner.includes('<div id="banner-slot">'), "the resume banner slot must still be there");
-  assert.strictEqual(
-    (inner.match(/class="mini-card"/g) || []).length, 4,
-    "all four subject cards must render — they are the product"
-  );
-
-  const norm = (s) => s.replace(/>\s+</g, "><").trim();
-  const banner = norm(`<div id="banner-slot">${m.ctx.bannerHtml()}</div>`);
-  const cards = norm(`<div class="cards4">${m.state.cardSlots.map(m.ctx.miniCard).join("")}</div>`);
-  let leftover = norm(inner);
-  assert.ok(leftover.includes(banner), "the banner slot must render exactly as bannerHtml() paints it");
-  assert.ok(leftover.includes(cards), "the four cards must render exactly as miniCard() paints them");
-  leftover = leftover.replace(banner, "").replace(cards, "").trim();
-  assert.strictEqual(
-    leftover, "",
-    `nothing but the banner and .cards4 may render inside .home; found: ${leftover.slice(0, 200)}`
-  );
+  const html = m.view();
+  assert.ok(html.includes('class="home hv2-home"'), "renderHome() must always render Home v2 post-cutover");
+  assert.ok(!html.includes('class="cards4"'), "the retired flag-off four-card grid must never render");
 });
 
 /* ==================================================================== */
@@ -312,61 +267,19 @@ test("'Shows we vouch for' renders on #/shows and not on Home", () => {
   assert.ok(m.view().includes("Shows we vouch for"), "the Shows page must render the editorial show row");
 });
 
-test("the foray list renders on #/forays and not on Home", () => {
-  /* Founder item 2: "get rid of the recommended foray at the top of Home.
-     Move it into a page accessible via the menu exclusively for Forays."
-
-     MUTATION: put `${forayListHtml()}` back inside renderHome's `.home`
-     template. The Home assertion fails. RUN: failed as named. */
-  const m = quietMount();
-  m.state.forays = { forays: [] };
-  m.ctx.ForayPlayer = {
-    listForays: () => [{ id: "capital-types-1", title: "What capital actually is", status: "published" }],
-    forayResumeList: () => [],
-  };
-
-  m.ctx.renderHome();
-  const home = m.view();
-  assert.ok(!home.includes("fy-home-row"), "Home must render no foray rows");
-  assert.ok(!home.includes("What capital actually is"), "Home must not name a foray at all");
-
-  m.ctx.renderForays();
-  const forays = m.view();
-  assert.ok(forays.includes("fy-home-row"), "the Forays page must render the foray rows");
-  assert.ok(forays.includes("What capital actually is"), "the Forays page must name the foray");
-});
-
-test("'Jump back in' moved to #/forays with the list it looks identical to", () => {
-  /* A judgement call worth pinning because it is NOT literally in the
-     founder's six items, and Joey owns product: "Jump back in" renders the
-     same `.fy-home-row` markup as the foray list, directly above it, so to
-     the eye it IS "the foray at the top of Home" he asked to remove. Leaving
-     it behind would have kept a row that looks exactly like the removed one.
-
-     It is still gated by the same visibility rule (forayResumeRows filters to
-     what forayCards would list), so an unpublished Foray's progress is
-     remembered and not advertised — moving the surface did not widen it.
-
-     MUTATION: render `${jumpBackInHtml(forayResumeRows())}` inside
-     renderHome's `.home` template again. The Home assertion fails. RUN:
-     failed as named. */
-  const m = quietMount();
-  m.state.forays = { forays: [] };
-  m.ctx.ForayPlayer = {
-    listForays: () => [{ id: "capital-types-1", title: "What capital actually is", status: "published" }],
-    forayResumeList: () => [
-      { id: "capital-types-1", title: "What capital actually is", percent: 40, label: "12 min left", finished: false },
-    ],
-  };
-
-  m.ctx.renderHome();
-  assert.ok(!m.view().includes("Jump back in"), "Home must render no resume row");
-
-  m.ctx.renderForays();
-  const forays = m.view();
-  assert.ok(forays.includes("Jump back in"), "the Forays page must render the resume row");
-  assert.ok(forays.includes("12 min left"), "the resume row must keep its observed time-left label");
-});
+/* CUTOVER (U-11, founder override, 2026-09-06, kanban card t_a3f01c8a): the
+   two tests that used to live here ("the foray list renders on #/forays
+   and not on Home" and "'Jump back in' moved to #/forays...") asserted the
+   FLAG-OFF v1 Home, which never showed a foray or a resume row at all.
+   That layout is retired — renderHome() always renders Home v2 now, and
+   Home v2 intentionally DOES render a "Jump back in" resume row and
+   foray-shaped cards as its own "Jump back in" / "Forays for you"
+   sections (that is the whole point of U-03's exploration floor). The v1
+   assertions above would now be false by design, not by regression, so
+   they were removed rather than inverted. Full coverage of what Home v2
+   shows — section order, the "Jump back in" row, the Stretch floor — lives
+   in test/home-v2.test.js. The v1 markup itself is preserved verbatim in
+   archive/legacy-ui-2026-09/app.js.pre-cutover-2026-09-06. */
 
 /* ==================================================================== */
 /* 6-7. THE MENU ITSELF                                                  */

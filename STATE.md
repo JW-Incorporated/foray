@@ -7,6 +7,43 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
+### U-11 cutover NOW — old UI retired to archive, TestFlight-week wait overridden (2026-09-06, kanban `t_a3f01c8a`) — `foray/t_a3f01c8a-ui-cutover`
+
+- **FOUNDER OVERRIDE, explicit:** Joey, via Discord, 2026-09-06, directed
+  proceeding with the U-11 cutover (docs/ui-transition-plan.md) NOW rather
+  than waiting the originally-planned full week of TestFlight soak time.
+  **This overrides the "wait a full week on TestFlight" plan recorded in
+  `docs/ui-transition-plan.md` U-11 — do not re-block this thinking the wait
+  is still required.** Authorized by Joey, 2026-09-06, kanban card
+  `t_a3f01c8a`.
+- **What:** `ui2On()` in `app.js` now always returns `true`. The `cp_ui_v2`
+  flag, its Settings toggle (`bindUi2Control`), the native-shell-default
+  fallback, the old flag-off four-card `renderHome()` implementation, the
+  tab-bar's off-branch, and the interim Playlists→Library link are all
+  retired — every listener now sees only the new (ui-v2) design, with no
+  in-app way to opt back into the old one.
+- **Archive, not deletion:** the pre-cutover `app.js`, `styles.css`, and
+  `index.html` are preserved verbatim at
+  `archive/legacy-ui-2026-09/*.pre-cutover-2026-09-06`. See that directory's
+  `README.md` for exact restore steps in a worst-case scenario (short
+  version: the old `ui2On()` body, `renderHome()` v1 branch, and
+  `bindUi2Control()` are all intact there — nothing was rewritten, only
+  moved).
+- **Tests:** all `test/*.test.js` flag-off/native-shell-default assertions
+  that pinned the now-unreachable old behaviour were either updated to pin
+  the new always-on shape or removed (with a `CUTOVER (U-11, ...)` comment
+  explaining why, pointing at the archive). `test/suite-integrity.test.js`
+  floors were lowered for the five suites that lost tests this way, each
+  with an inline reason. Full `node tools/ci/run-suites.mjs` run: 3370/3370
+  passing in the root suite (`tools/corpus` and `tools/shows` fail only on
+  this environment's Node 20 lacking `--experimental-sqlite` — pre-existing,
+  unrelated to this change).
+- **Docs updated:** `docs/legal/privacy-policy.md` and
+  `docs/legal/data-safety.md` (the `cp_ui_v2` storage key and `finished`
+  event type are gone — the latter was only ever emitted from the retired
+  v1 `renderHome()`'s Done-banner click handler, so `toEventRow`'s
+  `"finished"` case was genuinely dead code and was removed too).
+
 ### The iOS speed control stops lying — the TTS rate mapping is calibrated, not derived (2026-09-05, one PR, no follow-up) — `fix/tts-rate-mapping`
 
 - **What:** `HUMAN-ACTIONS.md` #29's RESULT finding 1. On a real iPhone, asking
