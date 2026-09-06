@@ -2128,3 +2128,31 @@ D13; kanban card S-04a (`t_835d1a3c`, itself a workspace-bug redo of
   `import-dump.mjs`'s (`import.meta.url` comparison, not a filename
   suffix check) per the same pass's minor note.
 
+
+## 2026-09-06 (release lockstep, kanban card R-06: version rule and no-uploads-from-PRs rule)
+
+- **One version number drives both stores (R-02).** `mobile/VERSION` holds the
+  marketing version (e.g. `1.2.0`). The build number is a single monotonic
+  integer computed at release time — `YYYYMMDD × 100 + run-of-day` — and is
+  used unmodified as **both** iOS's `CFBundleVersion` and Android's
+  `versionCode`. There is no second, independently-typed build number for
+  either platform, and Android's `versionCode` is never a manual dispatch
+  input again: Play permanently rejects a reused `versionCode`, so a single
+  monotonic source is a correctness requirement, not a style preference. The
+  scheme's ceiling was checked against Play's `int32` limit: the largest value
+  the formula can produce is comfortably under it. See
+  `docs/release-lockstep-plan.md` §1–2 for the full derivation and rationale.
+- **No store upload ever runs from a pull-request build (R-01).** Same-repo
+  GitHub Actions pull_request runs receive repo secrets, so before this rule
+  every PR touching the app shipped a TestFlight build from an *unmerged*
+  branch — that was the entire "App Store keeps emailing but Play never does"
+  flood Wyatt reported, and it was also simply wrong: what testers received
+  was never `main`. The fix: iOS's "Archive, export and upload to TestFlight"
+  step, and Android's future upload step, are gated on
+  `github.event_name != 'pull_request'` in addition to signing/credential
+  readiness. PR runs still build unsigned, still run their simulator/CI
+  probes, still upload diagnostic artifacts for debugging — they simply never
+  reach a store. Uploads to either store happen only from the dedicated
+  release workflow (`release.yml`, R-03), triggered by a `v*` tag on `main`
+  or an explicit `workflow_dispatch` on `main`. See
+  `docs/release-lockstep-plan.md` §1, R-01, R-03.
