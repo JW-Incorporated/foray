@@ -465,6 +465,121 @@ function nudgeTopics(topics, amount) {
 
 function boostTopics(topics, amount) { nudgeTopics(topics, amount); }
 
+/* ---------- interests page (#/interests, U-07 / docs/ui-transition-plan.md D6) ----------
+
+   Row set: every ROOT (so the listener always has something to set at the top
+   level, even one they've never touched), plus any node — root or leaf —
+   whose current weight has diverged from the taxonomy-authored default. A
+   diverged leaf is exactly a listener override or an observed nudge (plays,
+   thumbs, a prior slider drag); a diverged root is the same, or the damped
+   parent-propagation nudgeTopics() now applies. Rows are grouped by root:
+   a leaf's group is its own parent id, a root is its own group.
+
+   Range 0-1 (today's clamped model), NOT the old prototype's -1..1 — see the
+   card: nudgeTopics clamps at zero, so a negative floor here would be a
+   different design than the rest of the app already ships.
+
+   No history feed, no evidence log (D6) — deliberately not built. */
+function interestGroups() {
+  const nodes = taxonomyNodes();
+  const roots = nodes.filter(n => n.parent === null);
+  const diverged = nodes.filter(n =>
+    n.parent !== null && typeof state.interests[n.id] === "number" && state.interests[n.id] !== n.weight
+  );
+  const byRoot = new Map(roots.map(r => [r.id, { root: r, rows: [] }]));
+  roots.forEach(r => byRoot.get(r.id).rows.push(r));
+  diverged.forEach(n => {
+    const g = byRoot.get(n.parent);
+    if (g) g.rows.push(n);
+  });
+  // Stable, readable order: alphabetical by root label, leaves under a root
+  // alphabetical by their own label, root row always first in its group.
+  return [...byRoot.values()]
+    .sort((a, b) => a.root.label.localeCompare(b.root.label))
+    .map(g => ({
+      root: g.root,
+      rows: g.rows.sort((a, b) => (a.id === g.root.id ? -1 : b.id === g.root.id ? 1 : a.label.localeCompare(b.label))),
+    }));
+}
+
+function interestSliderRow(node) {
+  const value = typeof state.interests[node.id] === "number" ? state.interests[node.id] : Math.max(0, node.weight);
+  const pct = Math.round(value * 100);
+  const isRoot = node.parent === null;
+  return `<div class="interest-row${isRoot ? " interest-row-root" : ""}">
+    <div class="interest-row-head">
+      <span class="interest-row-name">${esc(node.label)}</span>
+      <span class="interest-row-path">${esc(node.id)}</span>
+    </div>
+    <div class="interest-row-controls">
+      <input type="range" class="interest-slider" role="slider"
+        min="0" max="1" step="0.01" value="${value}"
+        data-interest-id="${esc(node.id)}"
+        aria-label="${esc(node.label)} interest"
+        aria-valuemin="0" aria-valuemax="1" aria-valuenow="${value}"
+        aria-valuetext="${pct}%">
+      <span class="interest-row-pct">${pct}%</span>
+      <button type="button" class="interest-reset" data-interest-reset="${esc(node.id)}"
+        ${value === Math.max(0, node.weight) ? "disabled" : ""}>Reset to learned</button>
+    </div>
+  </div>`;
+}
+
+function renderInterests() {
+  document.body.className = "view-page";
+  const groups = interestGroups();
+  $("#view").innerHTML = `
+    <div class="page">
+      <div class="page-head">
+        <a class="back" href="#/">‹</a>
+        <div><h2>Interests</h2><p class="sub">Drag a slider to overrule what 4a has learned</p></div>
+      </div>
+      ${groups.map(g => `
+        <div class="interest-group">
+          <h3 class="interest-group-label">${esc(g.root.label)}</h3>
+          ${g.rows.map(interestSliderRow).join("")}
+        </div>`).join("")}
+    </div>`;
+  bindInterestsControls($("#view"));
+}
+
+function bindInterestsControls(scope) {
+  scope.querySelectorAll("[data-interest-id]").forEach(input => {
+    if (input._bound) return;
+    input._bound = true;
+    const id = input.dataset.interestId;
+    const apply = () => {
+      const v = Math.max(0, Math.min(1, Number(input.value)));
+      state.interests[id] = v;
+      saveInterests();
+      state._interestsGen = (state._interestsGen || 0) + 1;
+      input.setAttribute("aria-valuenow", String(v));
+      input.setAttribute("aria-valuetext", `${Math.round(v * 100)}%`);
+      const row = input.closest(".interest-row");
+      const pct = row?.querySelector(".interest-row-pct");
+      if (pct) pct.textContent = `${Math.round(v * 100)}%`;
+      const resetBtn = row?.querySelector("[data-interest-reset]");
+      const node = nodeById(id);
+      if (resetBtn && node) resetBtn.disabled = v === Math.max(0, node.weight);
+    };
+    input.addEventListener("input", apply);
+    input.addEventListener("change", apply);
+  });
+  scope.querySelectorAll("[data-interest-reset]").forEach(btn => {
+    if (btn._bound) return;
+    btn._bound = true;
+    btn.addEventListener("click", () => {
+      const id = btn.dataset.interestReset;
+      const node = nodeById(id);
+      if (!node) return;
+      state.interests[id] = Math.max(0, node.weight);
+      saveInterests();
+      state._interestsGen = (state._interestsGen || 0) + 1;
+      renderInterests();
+    });
+  });
+}
+
 /* ---------- pool ---------- */
 
 function episode(id) {
@@ -4517,6 +4632,7 @@ function sizeProgressBars(scope) {
 /* ---------- drawer ---------- */
 
 function renderDrawer() {
+  ensureInterestsDrawerLink();
   const recent = [...playlists()]
     .sort((a, b) => (b.last_played_at || b.created).localeCompare(a.last_played_at || a.created))
     .slice(0, 5);
@@ -4532,6 +4648,30 @@ function openDrawer(open) {
   $("#drawer").hidden = !open;
   $("#drawer-overlay").hidden = !open;
   if (open) renderDrawer();
+}
+
+/* The Interests page (#/interests, U-07) is reachable from Settings, but
+   index.html's drawer markup is not among this card's owned files and is
+   unlisted/human-merge-gated (CLAUDE.md path-policy) — editing it would pull
+   this whole change off the auto-merge path for one nav link. Injected once
+   into the drawer's Settings section instead, ahead of the toggle buttons,
+   the same place a founder editing index.html by hand would put it. Guarded
+   by a flag on the drawer element so repeated renderDrawer() calls (every
+   `openDrawer(true)`) don't stack duplicate links. */
+function ensureInterestsDrawerLink() {
+  const drawer = $("#drawer");
+  if (!drawer || drawer._interestsLinkAdded) return;
+  drawer._interestsLinkAdded = true;
+  const label = document.querySelector(".drawer-section-label");
+  const link = document.createElement("a");
+  link.className = "drawer-item";
+  link.href = "#/interests";
+  link.textContent = "Interests";
+  if (label && label.parentNode) {
+    label.parentNode.insertBefore(link, label.nextSibling);
+  } else {
+    drawer.appendChild(link);
+  }
 }
 
 /* ---------- delete my data (#42) ----------
@@ -5250,6 +5390,7 @@ function renderCurrentPage() {
   else if (h === "#/forays") renderForays();
   else if (h === "#/queue") renderQueue();
   else if (h === "#/starred-shows") renderStarredShows();
+  else if (h === "#/interests") renderInterests();
   else renderHome();
 }
 

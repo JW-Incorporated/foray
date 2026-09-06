@@ -444,6 +444,20 @@ const FLOORS = {
      path any other suite would notice going missing. Every test names its
      mutation; see the suite header for the full list of what each pins. */
   "test/up-next-autoadvance.test.js": 6,
+  /* U-07's Interests page (docs/ui-transition-plan.md D6, kanban card
+     t_1cb3688a). Floored for the same reason as up-next-queue.test.js: a
+     wrong row set, a wrong slider range, or a drag that silently fails to
+     persist are all silent-wrong-behavior, not a crash any other suite
+     would notice. Every test names its mutation; see the suite header. */
+  "test/interests-page.test.js": 11,
+  /* The root-node interest bug this same card fixes (D6): loadInterests()
+     used to seed leaf nodes only, silently dropping a root-level interest
+     on the next save. Floored separately from interests-page.test.js
+     because it pins the DATA layer (loadInterests/saveInterests/
+     nudgeTopics), not the page — either could regress without the other
+     noticing. Includes the MUTATION TEST the card asks for by name
+     (restore leafNodes() as the seed set -> red). */
+  "test/interests-roots.test.js": 6,
   /* #301's bound, over the REAL catalogue: improving a result the ranking keeps
      below the top one must never empty its query or drop a bar-clearer. One test,
      floored at one, because the alternative to a floor here is a suite that can be
