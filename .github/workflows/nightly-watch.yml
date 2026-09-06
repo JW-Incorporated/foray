@@ -75,6 +75,10 @@ concurrency:
 permissions:
   contents: read
   pull-requests: read
+  # S-01: `gh run list --workflow nightly-refresh.yml` needs this to read run
+  # conclusions. Still read-only — the watchdog reports, it never re-runs
+  # anything.
+  actions: read
 
 env:
   DIGEST_BRANCH: refresh-digest
@@ -107,6 +111,15 @@ jobs:
               sleep $delay; n=$((n + 1)); delay=$((delay * 3))
             done
           }
+
+          # S-01: "today's nightly-refresh run failed -> red, regardless of
+          # digest PR state." A separate signal from the digest/PR checks below —
+          # see refreshRunVerdict()'s header for why it must not be folded into
+          # them. `gh run list` gives us the scheduled run's own conclusion
+          # directly; no reason to infer it from side effects.
+          retry gh run list --repo "$REPO" --workflow nightly-refresh.yml \
+            --event schedule --limit 5 \
+            --json databaseId,event,status,conclusion,createdAt > refresh-runs.json
 
           # A digest branch with no digest is itself the alarm, so on a real 404
           # the file is left ABSENT rather than empty — the checker is red on a
@@ -163,6 +176,10 @@ jobs:
             retry search_pulls
             echo "digest date $DIGEST_DATE"
           fi
+
+      - name: Did today's nightly-refresh run itself succeed?
+        run: |
+          node tools/refresh/watch-nightly.mjs --mode run-failed --runs refresh-runs.json
 
       - name: Did last night's digest become a PR?
         run: |

@@ -119,6 +119,27 @@ test("backend/test/ is allowlisted and backend/src/ is denied", () => {
   assert.ok(DENIED_PREFIXES.includes("backend/src/"));
 });
 
+test("mobile/ auto-merges, but the signing scripts under tools/mobile/ still don't", () => {
+  /* Founder ruling 2026-09-05: mobile/ (the native shell's app code) is on the
+     allowlist so a mobile-only PR auto-merges when green, like other app areas.
+
+     The load-bearing subtlety this pins: "mobile/" as a prefix must NOT reach the
+     signing/asset scripts under tools/mobile/, which stay DENIED. They are a
+     different path root ("tools/mobile/..." starts with "tools/", never "mobile/"),
+     and DENIED is checked first regardless.
+
+     MUTATION: remove "mobile/" from ALLOWED_PREFIXES -> the first assert fails.
+     MUTATION: move "tools/mobile/wire-signing.mjs" out of DENIED -> the last fails. */
+  assert.ok(ALLOWED_PREFIXES.includes("mobile/"));
+  const shell = pathPolicy(["mobile/plugins/foray-tts/ios/Sources/ForayTtsPlugin/ForayTtsPlugin.swift"]);
+  assert.equal(shell.denied.length, 0, "a mobile app-code file must not be denied");
+  assert.equal(shell.unlisted.length, 0, "a mobile app-code file must be allowlisted, not unlisted");
+
+  const signing = pathPolicy(["tools/mobile/wire-signing.mjs"]);
+  assert.equal(signing.denied.length, 1, "the signing script stays governed");
+  assert.ok(DENIED_PREFIXES.includes("tools/mobile/wire-signing.mjs"));
+});
+
 test("tools/ci/ is denied even though tools/ is allowed", () => {
   // This directory is the gate: without the deny entry, the first PR editing
   // the policy would auto-merge under the policy it was rewriting.
@@ -157,14 +178,61 @@ const ACKNOWLEDGED_UNDENIED_GATES = {
   // segment-pipeline PR — the friction pointing the wrong way that #167 was
   // about. Revisit if that workstream finishes.
   "tools/segments/merge-segments.mjs": "active workstream; own suite floored at 39",
+  // ios-ci.mjs is a multi-subcommand CLI (xcode-container, pick-simulator,
+  // redact-localstorage, signing-gate, decode-localstorage, verdict) invoked
+  // from ios-build.yml. `signing-gate` decides whether the iOS build proceeds
+  // unsigned, but — unlike wire-signing.mjs — no step in ios-build.yml passes
+  // it a live signing secret; ios-build.yml has no APPLE_* credential env at
+  // all today. Revisit and split/deny the signing-gate path specifically the
+  // day iOS signing secrets are wired in (kanban t_97e1c5f4).
+  "tools/mobile/ios-ci.mjs": "no live signing secret in ios-build.yml today; revisit when iOS signing lands",
+  // Diagnostic probes over a live Chrome DevTools socket / device screen —
+  // they read app behaviour after the build already happened and can only
+  // turn a check red, not change what gets built or signed.
+  "tools/mobile/webview-probe.mjs": "post-build diagnostic probe; cannot alter build/signing output",
+  "tools/mobile/probe/install-probe.mjs": "post-build diagnostic probe; cannot alter build/signing output",
+  // Injects a background-audio capability into Info.plist and verifies with
+  // --check, same shape as wire-signing.mjs's own --check re-read — but this
+  // one has no keystore/credential exposure, only an Info.plist edit.
+  "tools/mobile/inject-background-audio.mjs": "Info.plist capability injection; no credential exposure",
+  // nightly-refresh.yml / nightly-watch.yml run with `contents: write` (they
+  // commit refreshed data), not a founder-merge decision — an accepted T3
+  // trade per the file's own tiering above, bounded by main's branch
+  // protection.
+  "tools/refresh/watch-nightly.mjs": "nightly data-refresh pipeline; contents:write, no auto-merge decision at stake",
+  "tools/refresh/scan.mjs": "nightly data-refresh pipeline; contents:write, no auto-merge decision at stake",
+  "tools/refresh/resolve.mjs": "nightly data-refresh pipeline; contents:write, no auto-merge decision at stake",
+  // Re-invokes THIS policy (decide/check) from automerge-nightly.yml and
+  // path-policy.yml — it cannot expose itself, it IS the gate under test.
+  "tools/ci/path-policy.mjs": "the policy script itself; already covered by tools/ci/ in DENIED_PREFIXES",
+  // Drives the PR-hygiene labelling sweep (needs-founder queue etc.) — it
+  // reads/labels PRs, it does not gate what auto-merges or what CI asserts.
+  "tools/ci/pr-triage.mjs": "PR labelling/triage only; does not gate auto-merge or CI checks",
 };
 
-test("every script ci.yml runs as a gate is denied, or explicitly acknowledged", () => {
-  const ci = fs.readFileSync(path.join(REPO, ".github/workflows/ci.yml"), "utf8");
-  const scripts = [...ci.matchAll(/\bnode\s+(tools\/[\w./-]+\.mjs)/g)].map((m) => m[1]);
-  assert.ok(scripts.length >= 3, `expected to find gate scripts in ci.yml, found ${scripts}`);
+/* Every `.github/workflows/*.yml` file, not just ci.yml — a gate script run
+ * from ANY workflow can be neutered the same way; scoping the scan to ci.yml
+ * alone only checked one of the repo's workflow files (kanban t_97e1c5f4). */
+function allGateScripts() {
+  const dir = path.join(REPO, ".github/workflows");
+  const files = fs.readdirSync(dir).filter((f) => f.endsWith(".yml") || f.endsWith(".yaml"));
+  const found = new Map(); // script -> Set(workflow files that invoke it)
+  for (const f of files) {
+    const text = fs.readFileSync(path.join(dir, f), "utf8");
+    for (const m of text.matchAll(/\bnode\s+(tools\/[\w./-]+\.mjs)/g)) {
+      const script = m[1];
+      if (!found.has(script)) found.set(script, new Set());
+      found.get(script).add(f);
+    }
+  }
+  return found;
+}
 
-  const exposed = [...new Set(scripts)]
+test("every gate script run by ANY workflow is denied, or explicitly acknowledged", () => {
+  const found = allGateScripts();
+  assert.ok(found.size >= 3, `expected to find gate scripts across workflows, found ${found.size}`);
+
+  const exposed = [...found.keys()]
     .filter((s) => !pathPolicy([s]).denied.length)
     .filter((s) => !(s in ACKNOWLEDGED_UNDENIED_GATES))
     .sort();
@@ -172,18 +240,19 @@ test("every script ci.yml runs as a gate is denied, or explicitly acknowledged",
   assert.deepStrictEqual(
     exposed,
     [],
-    "these scripts are invoked by ci.yml as gates but sit on an ALLOWED path, so " +
-      "a bot PR could neuter them and auto-merge unread. Add each to " +
+    "these scripts are invoked by a workflow as gates but sit on an ALLOWED " +
+      "path, so a bot PR could neuter them and auto-merge unread. Add each to " +
       "DENIED_PREFIXES in tools/ci/path-policy.mjs, or to " +
-      "ACKNOWLEDGED_UNDENIED_GATES here with the reason:\n" + exposed.join("\n")
+      "ACKNOWLEDGED_UNDENIED_GATES here with the reason:\n" +
+      exposed.map((s) => `${s} (invoked by ${[...found.get(s)].join(", ")})`).join("\n")
   );
 });
 
 test("the acknowledgement list has not gone stale", () => {
-  // An entry for a script ci.yml no longer runs is a licence nobody needs.
-  const ci = fs.readFileSync(path.join(REPO, ".github/workflows/ci.yml"), "utf8");
-  const stale = Object.keys(ACKNOWLEDGED_UNDENIED_GATES).filter((s) => !ci.includes(s));
-  assert.deepStrictEqual(stale, [], `no longer invoked by ci.yml: ${stale.join(", ")}`);
+  // An entry for a script no workflow runs any more is a licence nobody needs.
+  const found = allGateScripts();
+  const stale = Object.keys(ACKNOWLEDGED_UNDENIED_GATES).filter((s) => !found.has(s));
+  assert.deepStrictEqual(stale, [], `no longer invoked by any workflow: ${stale.join(", ")}`);
 });
 
 test("STATE.md and HUMAN-ACTIONS.md are allowlisted", () => {
@@ -191,6 +260,108 @@ test("STATE.md and HUMAN-ACTIONS.md are allowlisted", () => {
   // every obedience cost a founder merge. HUMAN-ACTIONS.md is the same shape.
   assert.equal(pathPolicy(["STATE.md"]).allowed.length, 1);
   assert.equal(pathPolicy(["HUMAN-ACTIONS.md"]).allowed.length, 1);
+});
+
+test("deploy-manifest.json and sw.js are allowlisted, so a nightly PR can arm", () => {
+  // HUMAN-ACTIONS #37, 2026-09-03. The nightly rewrites data/discover.json and
+  // data/item-tags.json, both of which deploy-manifest.json hashes; sw.js's
+  // BUILD_ID is stamped with the resulting deploy_id. Both were on NEITHER
+  // list, so every nightly PR fell through to "unlisted" and auto-merge
+  // declined even with every required check green.
+  // KILLED BY: removing either `"deploy-manifest.json",` or `"sw.js",` from
+  // ALLOWED_PREFIXES in path-policy.mjs (both run 2026-09-03).
+  assert.equal(pathPolicy(["deploy-manifest.json"]).allowed.length, 1);
+  assert.equal(pathPolicy(["sw.js"]).allowed.length, 1);
+});
+
+test("THE #37 REPRODUCTION: the exact four-file nightly PR is ARMED", () => {
+  // These are the four paths PR #443 and PR #456 changed. Before the two
+  // entries above, this decision was NOT ARMED / UNLISTED_PATH, and because the
+  // decision is per-PR and all-or-nothing the whole PR waited for a human.
+  // This is the assertion that would notice either entry being removed for a
+  // reason that sounded good at the time.
+  // KILLED BY: removing either new entry from ALLOWED_PREFIXES — the decision
+  // reverts to NOT ARMED / UNLISTED_PATH (both run 2026-09-03).
+  const d = automergeDecision({
+    files: ["data/discover.json", "data/item-tags.json", "deploy-manifest.json", "sw.js"],
+    labels: [],
+  });
+  assert.equal(d.armed, true, d.reason);
+  assert.equal(d.code, "OK");
+  assert.equal(d.needsFounder, false);
+});
+
+test("allowlisting sw.js did not widen to its neighbours", () => {
+  // sw.js is a FILE entry, not a prefix, and the matcher's two rules are what
+  // keep it that way — `sw.js.map`, `sw.json` and a `sw.js/` directory must all
+  // still fall through to a human. The old bash matcher would have taken all
+  // three.
+  // KILLED BY: `file === prefix` -> `file.startsWith(prefix)` in matchesPrefix
+  // (path-policy.mjs) — sw.js.map, sw.js/inner.js and the .bak all become
+  // allowed (run 2026-09-03).
+  const p = pathPolicy(["sw.js.map", "sw.json", "sw.js/inner.js", "deploy-manifest.json.bak"]);
+  assert.equal(p.allowed.length, 0);
+  assert.equal(p.unlisted.length, 4);
+  // A same-named file one directory down is a different file, and `sw.js` must
+  // not reach it. (`tools/sw.js` is allowed here, but by `tools/` — a directory
+  // prefix that predates this change — never by the new entry.)
+  assert.equal(pathPolicy(["tools/sw.js"]).allowed[0].prefix, "tools/");
+});
+
+test("the manifest pair is allowed, not denied — and denial would still win if it changed", () => {
+  // Defence in depth, in the direction the file's own header asks for: this
+  // asserts the two entries live on ALLOWED and nowhere on DENIED, so a future
+  // reader cannot conclude from a green suite that they are governed.
+  // KILLED BY: removing `"deploy-manifest.json",` from ALLOWED_PREFIXES (run
+  // 2026-09-03); moving either entry onto DENIED_PREFIXES kills it the same way.
+  for (const f of ["deploy-manifest.json", "sw.js"]) {
+    assert.ok(ALLOWED_PREFIXES.includes(f), `${f} must be on ALLOWED_PREFIXES`);
+    assert.ok(!DENIED_PREFIXES.includes(f), `${f} must not be on DENIED_PREFIXES`);
+  }
+});
+
+test("tools/events-server.mjs is denied even though tools/ is allowed", () => {
+  // scripts/events-server.vbs runs `node tools/events-server.mjs` at every
+  // Windows login on the founder's always-on workstation, with the
+  // founder's real user privileges, in the checkout that also holds the
+  // root .env and data-local/. No test suite covers it, so it must stay
+  // off the auto-merge allow path (kanban t_5663c62a / t_85e1b1ba).
+  assert.ok(ALLOWED_PREFIXES.includes("tools/"));
+  assert.ok(DENIED_PREFIXES.includes("tools/events-server.mjs"));
+  const p = pathPolicy(["tools/events-server.mjs"]);
+  assert.equal(p.denied.length, 1);
+  assert.equal(p.denied[0].prefix, "tools/events-server.mjs");
+});
+
+test("tools/mobile/inject-app-icon.mjs is denied, not merely acknowledged", () => {
+  /* IT SITS ON THE OTHER SIDE OF A LINE ITS NEIGHBOUR DOES NOT.
+     `inject-background-audio.mjs` is in ACKNOWLEDGED_UNDENIED_GATES above: an
+     Info.plist capability edit with no credential exposure, whose worst silent
+     failure is audio stopping on the lock screen — bad, and fixable in the next
+     build. `inject-app-icon.mjs` writes the asset catalog, and since Xcode 14 App
+     Store Connect EXTRACTS the PUBLIC LISTING icon from the uploaded binary's
+     catalog with no manual upload available. A one-line `process.exit(0)` here
+     neuters both the write and the `--check` that proves it, ios-build stays
+     green, and Capacitor's placeholder goes on the App Store product page — which
+     is not hypothetical; a TestFlight build shipped that way on 2026-09-03.
+
+     Pinned as a NAMED test rather than left to the gate-script scan above,
+     because that scan is satisfied either way: moving this file from
+     DENIED_PREFIXES into ACKNOWLEDGED_UNDENIED_GATES would keep it green while
+     re-opening the exposure.
+     MUTATION: move "tools/mobile/inject-app-icon.mjs" out of DENIED_PREFIXES and
+     into ACKNOWLEDGED_UNDENIED_GATES -> fails here, and only here. RUN. */
+  assert.ok(ALLOWED_PREFIXES.includes("tools/"));
+  assert.ok(DENIED_PREFIXES.includes("tools/mobile/inject-app-icon.mjs"));
+  const p = pathPolicy(["tools/mobile/inject-app-icon.mjs"]);
+  assert.equal(p.denied.length, 1);
+  assert.equal(p.denied[0].prefix, "tools/mobile/inject-app-icon.mjs");
+  assert.equal(p.allowed.length, 0, "deny must win over the tools/ allow entry");
+  assert.equal(
+    "tools/mobile/inject-app-icon.mjs" in ACKNOWLEDGED_UNDENIED_GATES,
+    false,
+    "acknowledging it instead of denying it re-opens the exposure with every check green"
+  );
 });
 
 /* --------------------------------------------------------- pathPolicy() */

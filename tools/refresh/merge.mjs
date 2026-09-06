@@ -12,7 +12,11 @@
    Inputs (override paths via env):
      RESOLVED_PATH  resolved digest from resolve.mjs   (default data-local/resolved.json)
      EDITS_PATH     agent-authored { id: {hook, tags} } (default data-local/edits.json)
-   Writes data/discover.json + data/item-tags.json in place.
+   Writes data/discover.json + data/item-tags.json in place, then restamps
+   deploy-manifest.json + sw.js's BUILD_ID (both data files are on the
+   manifest's watched list, so they are stale the instant this runs). That last
+   step is skipped when the output paths are redirected — see manifest-step.mjs
+   for why it lives here rather than in a bot's follow-up commit.
 
    Contract for edits.json:
      { "<item-id>": { "hook": "<=16 words", "tags": ["5-12","lowercase-hyphenated"],
@@ -35,6 +39,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { resolve as resolvePath } from "node:path";
 import copyRules from "../../backend/src/copy/rules.js";
 import { episodeTopics } from "./topics.mjs";
+import { stampDeployManifest } from "./manifest-step.mjs";
 
 const root = new URL("../../", import.meta.url);
 const p = (rel) => new URL(rel, root);
@@ -156,6 +161,19 @@ discover.built_at = now;
 tagsDoc.built_at = now;
 writeFileSync(MERGE_DISCOVER_PATH, JSON.stringify(discover, null, 2) + "\n");
 writeFileSync(MERGE_TAGS_PATH, JSON.stringify(tagsDoc, null, 2) + "\n");
+
+/* Both files just written are on deploy-manifest.json's watched list, so the
+   manifest is stale as of the line above. Restamp it HERE, in this run, so the
+   nightly's first commit is already correct and no `github-actions[bot]` fixup
+   commit is ever pushed to the PR — that commit is what `protect-main`'s
+   `require_extra_approval_for_unattributed_changes` rule makes unmergeable.
+   Full reasoning in manifest-step.mjs and docs/DECISIONS.md (2026-09-03). */
+try {
+  stampDeployManifest();
+} catch (err) {
+  console.error("MERGE: " + err.message);
+  process.exit(1);
+}
 
 const uniqShows = [...new Set(shows)];
 console.log(`ADDED ${added} items. built_at=${now}`);

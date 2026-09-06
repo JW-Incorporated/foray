@@ -472,3 +472,38 @@ test("the matcher is actually exported, so sharing it is possible at all", () =>
   assert.equal(typeof SE.hitText, "function");
   assert.equal(typeof SE.hitTag, "function");
 });
+
+/* ---------- oversized-token guard (H-severity red-team finding, 2026-09-02) ----------
+ * longTermPattern()/shortTermPattern() interpolate a raw token straight into a
+ * `new RegExp(...)` source string. A token of ~50,000+ repeated identical chars
+ * makes V8 throw "Invalid regular expression: too large" (30,000 chars is fine).
+ * The UI text boxes carry maxlength="120", so this was not reachable through the
+ * normal search box -- but interpretQuery is a require()-able public module
+ * contract, and any other caller (devtools console, a future import/API path,
+ * a differently-validated caller) could hit it with zero UI guard in front.
+ * tokenize() now drops any token over MAX_TOKEN_LENGTH before it can ever reach
+ * the pattern builders, so the module's own contract holds regardless of who
+ * calls it. */
+test("tokenize drops tokens over the length ceiling instead of letting them through", () => {
+  const SE = require(path.join(ROOT, "search-engine.js"));
+  const huge = "b".repeat(100000);
+  const tokens = SE.tokenize(`podcast about ${huge} query`);
+  assert.ok(!tokens.includes(huge), "oversized token must not survive tokenize()");
+  assert.deepEqual(tokens, ["query"]);
+});
+
+test("interpretQuery never throws on an oversized query token (was: Invalid regular expression: too large)", () => {
+  const SE = require(path.join(ROOT, "search-engine.js"));
+  const ctx = { discover: { items: [] }, itemTags: {}, semantic: {} };
+  assert.doesNotThrow(() => SE.interpretQuery("b".repeat(100000), ctx));
+  assert.doesNotThrow(() => SE.interpretQuery("b".repeat(50000), ctx));
+});
+
+test("tokenize still accepts ordinary long-ish real words under the ceiling", () => {
+  const SE = require(path.join(ROOT, "search-engine.js"));
+  // "electroencephalography" (23 chars) is a legitimately long real word and
+  // must not be caught by the guard -- the ceiling targets pathological input,
+  // not normal vocabulary.
+  const tokens = SE.tokenize("electroencephalography basics");
+  assert.ok(tokens.includes("electroencephalography"));
+});

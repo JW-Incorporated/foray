@@ -642,19 +642,31 @@ test("the runner context is not used where GitHub does not provide it", () => {
   assert.match(WF, /RUNNER_TEMP/, "$RUNNER_TEMP in a step is the way to get it");
 });
 
-test("ci.yml still declares exactly its three jobs, and #245 added none", () => {
-  /* MUTATION: add a fourth job to ci.yml -> fails.
+test("ci.yml still declares exactly its five jobs, and #245 added none", () => {
+  /* MUTATION: add a sixth job to ci.yml -> fails.
      THE POINT IS WHERE THIS JOB IS *NOT*. `ci.yml` is what runs on every push and
      every PR, and two of its jobs (`backend`, `data-and-site`) are required
      contexts. An Android build added there would gate every content PR on a
      20-minute Gradle run. It lives in its own path-filtered workflow instead, and
-     this assertion is what notices if it ever migrates. */
+     this assertion is what notices if it ever migrates.
+
+     Raised from three to four jobs by kanban card t_504fd5fd (M4's real-Chromium
+     `playwright` job) — additive and advisory-only (see ci.yml's own comment on
+     that job): it is not in `protect-main`'s required-checks list, so it does not
+     change the "two required contexts" argument this test exists to protect.
+
+     Raised from four to five jobs by S-02 (kanban t_4bd3c0a3): a new `api` job,
+     same non-required shape as `playwright` (mirrors `backend`'s structure —
+     install + test — for the newly-dependency-carrying `api/` directory; see
+     ci.yml's own comment on that job for why it isn't folded into
+     `data-and-site` instead). Also not required, so this doesn't change the
+     argument either. */
   const jobs = block(CI, "jobs");
   const names = jobs
     .split(/\r?\n/)
     .filter((l) => /^ {2}[a-z][\w-]*:/.test(l))
     .map((l) => l.trim().replace(":", ""));
-  assert.deepEqual(names, ["backend", "ios-kit", "data-and-site"]);
+  assert.deepEqual(names, ["backend", "api", "ios-kit", "data-and-site", "playwright"]);
   assert.equal(
     /android/i.test(code(CI)),
     false,

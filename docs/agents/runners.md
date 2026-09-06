@@ -18,7 +18,7 @@ changes a runner.
 | Runner | Where | Cadence | Model | Billing | Prompt / source | Status |
 |--------|-------|---------|-------|---------|-----------------|--------|
 | **nightly-refresh (scan+resolve)** | GitHub Actions (`.github/workflows/nightly-refresh.yml`) | Daily 06:40 UTC | — (deterministic) | Actions minutes (free tier, public repo) | workflow file | live |
-| **foray-nightly-enrich** | Claude Cloud routine | Daily ~11:40 UTC (≥2h after the Action) | Sonnet | Wyatt's account | `runner-prompts/foray-nightly.md` | live — **step 4 changed 2026-08-21 (#292)**: `edits.json` gained an optional per-episode `topics` field, and the "no schema changes" constraint now names it as in scope. Without that edit the fix would have been inert on the pipeline it was built for — topics were assigned per show, and the agent had no way to say otherwise. |
+| **foray-nightly-enrich** | Claude Cloud routine | Daily ~11:40 UTC (≥2h after the Action) | Sonnet | Wyatt's account | `runner-prompts/foray-nightly.md` | live — **step 4 changed 2026-08-21 (#292)**: `edits.json` gained an optional per-episode `topics` field, and the "no schema changes" constraint now names it as in scope. Without that edit the fix would have been inert on the pipeline it was built for — topics were assigned per show, and the agent had no way to say otherwise. **Steps 5 and 7 changed 2026-09-03 (HUMAN-ACTIONS #37)**: `merge.mjs` now regenerates `deploy-manifest.json` + `sw.js` itself, step 7 `git add`s all four files, and the "touch only" constraint names them. Without the step-7 edit the code change would be inert: the agent would commit only the two data files, the manifest would still be stale, and the `github-actions[bot]` fixup commit that deadlocked #443/#456 would come straight back. |
 | **foray-classify-shard0–5** | Claude Cloud routines (6) | Every 8h, staggered 40 min apart — see below | Sonnet | Wyatt's account | `runner-prompts/classify-batch.md` | live — **push to `reclassify-<N>`, open NO PR** (see below) |
 | **nightly-watch** | GitHub Actions (`.github/workflows/nightly-watch.yml`) | Daily 21:40 UTC | — (deterministic) | Actions minutes | workflow file → `tools/refresh/watch-nightly.mjs` | **checker landed, workflow pending a founder merge** — `.github/` is governed (#290) |
 
@@ -51,6 +51,60 @@ changes a runner.
 > `git switch -c classify/<date>-<batch_id>` and `gh pr create`; **the live
 > routine configuration in the cloud does not do that.** The committed prompt
 > and the running routines disagree, and the routines win.
+>
+> ### 2026-08-31 reconcile: the "39 problems" were a stale shard key, not new drift
+>
+> The 2026-08-17 reconciliation below assumed every branch's committed
+> `tools/classify/prepare-batch.mjs` would pick up PR #203's shard-key fix
+> (`Number(id) % N` → `fnv1a32(String(id)) % N`) the moment #203 merged, and
+> `reconcile-shards.mjs`'s `keyForRow()` used a single cutover timestamp on
+> that assumption. **False for five of the six branches.**
+> `origin/reclassify-0,1,2,4,5` never merged or rebased onto `main` after
+> forking from `origin/reclassify` on 2026-07-25 — their committed
+> `prepare-batch.mjs` is still the pre-#203 file, computing
+> `Number(id) % shardCount` unconditionally, with no cutover logic. Every row
+> those five branches have ever produced, whatever its `classified_at`, is
+> legacy-keyed. (`origin/reclassify-3` is the one exception — its tree has
+> #203's code, copied in some out-of-band way rather than merged, which is
+> why `git merge-base --is-ancestor <#203 commit> origin/reclassify-3` reads
+> false despite the files matching main's.) That mismatch produced the
+> 2026-08-31 dry-run's "39 problems": 604 rows correctly partitioned under the
+> legacy key by code that never updated, misread as off-lane/unsharded work by
+> a checker that assumed the key changed everywhere at once.
+>
+> **The fix, in `reconcile-shards.mjs` (code, not a data patch — see rules 3b
+> and 4 in the file's own header for the full reasoning):**
+> - The lane check now tries BOTH shard keys per row and accepts either match
+>   (`keysForRow()`), rather than picking one key from the row's timestamp.
+>   Disjointness (below) is unchanged and still catches a genuinely unsharded
+>   run — this only recognizes that a branch's code, not a row's clock, decides
+>   which key it used.
+> - The ~30 real cross-shard double-claims (all produced by the same
+>   legacy/hashed split) are resolved by rule 3b: newest `classified_at` wins,
+>   same tie-break rule already used for agent-vs-incumbent conflicts (rule 3)
+>   — not a new decision, the existing rule applied a second time. Every
+>   resolved pair is recorded in the merge's `cross_shard_conflicts`
+>   provenance for audit.
+> - The "inherited, exempt from the lane check" comparison now also checks a
+>   row against the branches' common fork point (`origin/reclassify`), not
+>   only against `main` — `main` and the shard branches are separate lineages
+>   past 2026-07-25, so a row genuinely inherited from the fork point could
+>   legitimately differ from `main`'s own independent history for the same id.
+> - **The root cause is NOT fixed by this change** — it is a reconciliation
+>   fix, not a shard-branch fix. `reclassify-0,1,2,4,5` are cloud routines this
+>   repo's agents cannot push to or reconfigure; they will keep producing
+>   legacy-keyed rows on every future run until a human either rebases those
+>   branches onto `main` (picking up #203) or the cloud routine config is
+>   changed to run against updated code. Filed as a `HUMAN-ACTIONS.md` entry.
+>   The `keysForRow()` fix means this is not urgent — every future run
+>   continues to reconcile cleanly under the current key mix — but it is real
+>   technical debt: the fleet is running two shard keys in parallel
+>   indefinitely, not just during a short cutover window.
+> - Reconciled 2026-08-31: 19,278 → 19,677 agent-classified shows (+399 new,
+>   1,368 refreshed by a newer pass, 33 cross-shard conflicts resolved). 110
+>   shows still have no agent pass at all (down from 509 — the earlier "509"
+>   count was measured before this reconcile, not stale data this reconcile
+>   invalidated).
 >
 > The visible symptoms, all of which read as a dead fleet and none of which are:
 > no classify PR open, no new `classify/*` branch since 2026-08-03, and

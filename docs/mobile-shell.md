@@ -8,8 +8,10 @@ Foray ships as a **Capacitor shell around the real web player**. The app loads t
 same `index.html`, `app.js`, `styles.css` and `player/` the website serves —
 copied at build time, never forked — plus the `data/*.json` the client actually
 fetches. That data was **2.1 MB** of a 2.5 MB bundle when this was written and had
-reached 2.3 MB of 2.98 MB by 2026-08-18; it is **1.18 MB of a 1.96 MB bundle** since
-the catalogue became a bounded slice rather than a copy (§3).
+reached 2.3 MB of 2.98 MB by 2026-08-18; it was **1.18 MB of a 1.96 MB bundle** once
+the catalogue became a bounded slice rather than a copy (§3), and it is **1.16 MB
+of a 1.53 MB bundle** since 2026-09-04, when the shipped code lost its comments and
+whitespace and the JSON its indentation on the way in (§3.4).
 
 ## 0. Status — what exists and what does not
 
@@ -21,7 +23,7 @@ than deleted.
 | | State |
 |---|---|
 | `mobile/` project, config, ignore rules | **Committed** |
-| `tools/mobile/prepare-webdir.mjs` (the `webDir` build) | **Committed and run.** 36 files, **2.10 MB** of a 3.00 MB cap. It reached 2.98 MB of 3.00 on 2026-08-18 and would have failed on the next nightly refresh; `data/discover.json` is now a bounded slice rather than a copy (§3), and since #327 so are `data/segments.json` and `data/segment-sources.json` (§3.3) |
+| `tools/mobile/prepare-webdir.mjs` (the `webDir` build) | **Committed and run.** 40 files, **1.46 MB (1,530 KB) of a 3.00 MB cap** since 2026-09-04, when the shipped JS/CSS started being minified and the JSON compacted on the way in (§3.4); 2.50 MB the day before. It reached 2.98 MB of 3.00 on 2026-08-18 and would have failed on the next nightly refresh; `data/discover.json` is a bounded slice rather than a copy (§3), and since #327 so are `data/segments.json` and `data/segment-sources.json` (§3.3) |
 | The four architecture changes (§2) | **Committed**, each with a test |
 | `mobile/node_modules` | **Installed.** `#36 said all seven @capacitor/* packages resolve to 8.5.0` — **that was never true of an install.** Core, CLI, `android` and `ios` are 8.5.0; the four plugins are 8.1.1 / 8.0.1 / 8.0.2 / 8.0.3. `mobile/package-lock.json` is now committed |
 | `mobile/android/` | **Generated and BUILT** — debug and unsigned release APKs, on Windows. Issue #37, `docs/android-shell-build.md` |
@@ -124,10 +126,11 @@ and 12.2 MB `.gz` archives). The client fetches **2.1 MB** of it.
 
 `tools/mobile/prepare-webdir.mjs` copies the shell, every non-test module in
 `player/`, and only the data the client fetches, into `mobile/www` — one of those
-data files as a bounded slice rather than a copy, for the reason §3 measures. It is
-dependency-free, uses Node builtins only, and **fails** above 3 MB rather than
-warning — that cap is the only thing between the bundle and the 16 MB
-classification file.
+data files as a bounded slice rather than a copy, for the reason §3 measures. It has
+exactly one dependency — esbuild, pinned in `tools/mobile/package.json` and used
+only to strip comments and whitespace from the copies (§3.4) — and it **fails**
+above 3 MB rather than warning — that cap is the only thing between the bundle and
+the 16 MB classification file.
 
 Two properties worth naming:
 
@@ -142,9 +145,12 @@ Two properties worth naming:
   a hard error.
 
 **The web path is unchanged.** No root dependency, no root build step, no change
-to what GitHub Pages serves from `main`'s root. `shell-invariants` pins that: the
-root `package.json` may declare no dependencies of any kind and exactly one
-script.
+to what GitHub Pages serves from `main`'s root — the website serves the fully
+commented, indented source, and only the bundle's copies are minified. The one
+dependency this build has lives in `tools/mobile/`'s own `package.json`, not the
+root's. `shell-invariants` pins that: the root `package.json` may declare no
+dependencies of any kind and exactly one script; `prepare-webdir.test.mjs` pins
+that a build never writes into the source tree.
 
 ### 2. The service worker must not register inside the shell
 
@@ -239,8 +245,13 @@ or a `file:` path pointing out of the tree.
 One mechanical consequence: `tools/ci/run-suites.mjs` hard-errors on a
 `package.json` that declares dependencies but no `test` script. `mobile/` is safe
 because the runner only scans `player/`, `test/` and `tools/` — but that is why
-the shell's suites live in `tools/mobile/` (dependency-free, root group) rather
-than in `mobile/`, and why `mobile/package.json` carries a comment saying so.
+the shell's suites live in `tools/mobile/` rather than in `mobile/`, and why
+`mobile/package.json` carries a comment saying so. Since 2026-09-04 `tools/mobile/`
+is a package of its own — one devDependency, esbuild, for §3.4 — with a `test`
+script that forwards its arguments, so the runner installs it and runs its suites
+there as their own group. That is deliberate rather than incidental: it is what
+makes CI build and measure the **minified** bundle, the one that ships, instead of
+an unminified stand-in whose alarms would be about a different file.
 
 ## 3. Data: bundled, fetched, and what a cold first launch shows
 
@@ -273,7 +284,10 @@ than copied; `item-tags.json` could not be, for the reason §3.1 measures — se
 | `data/segment-sources.json` | 52 KB, 64 episodes | **15 KB, 19 episodes** | the episodes those segments play out of — §3.3 |
 | `data/forays.json` | 20 KB, 3 Forays | **copied whole** | it is the *selector* for the two rows above; slice it and the segments it names leave with it |
 
-**36 files, 2.10 MB of 3.00 MB.** The shape of that selection is the whole point:
+**36 files, 2.10 MB of 3.00 MB** when this section was written; **40 files, 1.46 MB
+(1,530 KB)** since 2026-09-04, and the table's "Bundled" column is now written
+without JSON whitespace — the `discover.json` slice is 636 KB, `item-tags.json`
+258 KB (§3.4). The shape of that selection is the whole point:
 it is **O(shows × topics)**, not O(episodes). Shows have moved 213 → **221 since
 2026-07-13** while episodes went 764 → **1,677**, because the nightly refresh adds
 episodes to shows already in the catalogue — and the slice grew 622 → 645 items
@@ -576,6 +590,101 @@ the size of today's three combined. Looser than `discover.json`'s ~13%, delibera
 catalogue growth is nobody's decision and should trip a tight alarm, whereas authoring
 a Foray *is* a decision and an alarm that fires on the first one is noise. All three
 budgets are pinned literally in `shell-invariants.test.mjs`.
+
+### 3.4 The shipped code and JSON are minified on the way in (2026-09-04)
+
+`docs/mobile-shell-bundle-reduction.md` (research, PR #468) measured where the
+bundle's bytes were and found the growth nobody had been watching: the **code**
+half went 109 KB → 1,098 KB in 39 days, five times `item-tags.json`'s rate, and
+**72% of it was comments and formatting** — the repo's documentation, shipped to
+every phone. Its two zero-user-cost recommendations were approved by the founder
+and are what `prepare-webdir.mjs` does now:
+
+1. **Every `.js` and `.css` in the plan is written with comments and whitespace
+   stripped and every identifier kept** (`tools/mobile/minify.mjs`: esbuild
+   `minifyWhitespace` only — `minifySyntax` and `minifyIdentifiers` off, `esnext`
+   target, UTF-8 out). Names stay because `player/diagnostic-log.js` is a field
+   record a founder copies out of a car; full minification was measured at a
+   further 47 KB and declined. Nothing is inlined, so the CSP (`script-src 'self'`,
+   no `unsafe-inline`) is exactly as satisfied as before.
+2. **Every `data/*.json` in the plan is re-serialised with `JSON.stringify` and no
+   indentation** — the slices and the copies alike. `COPIED_WHOLE` therefore
+   asserts *parse*-identity with the source rather than byte-identity: a trimmed
+   `item-tags.json` still fails it, and formatting never was what it guarded.
+
+**Measured, on `origin/main` = `88e2416`** (raw `fs.statSync().size` over the
+built `webDir`, which is what `MAX_BYTES` sums):
+
+| | before | after | change |
+|---|---:|---:|---:|
+| code (26 `.js`/`.css`) | 1,097,948 | 303,181 | −794,767 (−72%) |
+| `data/` (10 files) | 1,465,461 | 1,164,821 | −300,640 (−21%) |
+| icons, `index.html`, `manifest.json` | 61,675 | 61,675 | 0 |
+| **total, LF (what CI and the macOS build see)** | **2,625,084** | **1,529,677** | **−1,095,407 (−42%)** |
+| total, as built on a Windows checkout (`core.autocrlf=true`) | 2,672,143 | 1,529,758 | −1,142,385 |
+
+The two bases used to differ by 47 KB of `\r`; they now differ by 81 bytes — the
+68 lines of `index.html` and the 13 of `manifest.json`, the two text files still
+copied verbatim — because esbuild's printer and `JSON.stringify` emit no `\r`. Growth,
+at the rates the research doc measured and this scales: ~10 KB/day (item-tags
+~3.3 KB/night, feature code ~7 KB/day) instead of ~30. Per file, the biggest:
+`app.js` 248 → 96 KB, `search-engine.js` 105 → 15 KB, `player/html-audio-backend.js`
+104 → 19 KB, `discover.json` 745 → 636 KB, `item-tags.json` 369 → 258 KB.
+
+**Where the minifier lives, and why it is not the root.** `tools/mobile/package.json`
+carries esbuild as its one devDependency, pinned exactly, with a committed lockfile.
+The repo root stays dependency-free and no-build — that is what keeps the keyless
+Pages deploy a checkout of `main`, and the website keeps serving the commented
+source. `tools/ci/run-suites.mjs` treats a directory with a `package.json` + `test`
+script as its own group, so CI installs esbuild there and runs every `tools/mobile/`
+suite in place: **the bundle CI measures is the bundle that ships.** The other
+placement — `mobile/package.json`, with a verbatim fallback when esbuild is absent —
+was rejected because CI would then have measured an unminified bundle nobody
+installs. `mobile/package.json`'s `prepare:webdir` runs `npm ci --prefix
+../tools/mobile` first, so a founder's Mac, `ios-build.yml` and `android-build.yml`
+all get the minifier through the script they already run; a missing install is a
+named hard error, never a silent verbatim copy.
+
+**The one ordering that matters.** `buildPlan` derives the data list by matching
+`fetchJson("data/…")` calls in the *text* of the root `app.js`, and a minifier strips
+comments — so a build that minified first and derived second could match fewer
+calls and ship a bundle one data file short, under every budget. The derivation
+reads the source before anything is transformed, the transform only ever writes
+into the output directory, and *"the plan is derived from the SOURCE app.js, before
+anything is minified"* pins it with a fetch that only the source text carries. (On
+today's `app.js` esbuild keeps every string literal, so both texts happen to derive
+the same ten files; the test does not rely on that.)
+
+**The service worker and its manifest are unaffected, verified rather than
+assumed.** `deploy-manifest.json` hashes the *root* files for the *web* deploy
+(`tools/ci/generate-manifest.mjs` reads `ROOT`); `sw.js` verifies those hashes on
+the web and is excluded from the bundle by two independent mechanisms (§2.2). The
+minified copies exist only under `mobile/www`, are never served with the worker, and
+have no manifest to disagree with. Never run `generate-manifest.mjs --write` on a
+CRLF checkout for any reason — that is a separate, older rule.
+
+**What was verified, and how.** Beyond the suites (`node --check` on all 25 shipped
+scripts, modules as `.mjs`; every one of `app.js`'s 190+ top-level `function`
+declarations and 100+ long local names present in the shipped copy; two builds
+byte-identical; every data file
+parse-identical to its source), the built `webDir` was served over HTTP and loaded in
+headless Chrome over CDP at 440×956 @3×, `prefers-color-scheme: dark`, first-run
+sheet dismissed — once from the unminified bundle, once from the minified one. Both
+rendered the four cards (`.cards4` 894 px, card 218 px), resolved all five menu
+routes (`#/`, `#/shows` with 230 links, `#/playlists`, `#/forays`, `#/queue`) with
+identical element counts, loaded the same data (666 discover items, 1,973 tag
+entries), matched on the computed styles of ten layout selectors, and logged **zero
+exceptions and zero `console.error`s**; the only log entries in either were the same
+two web-only notes (the `sw.js` 404 that `shouldRegisterServiceWorker` lets happen
+outside the shell, and Chrome's `apple-mobile-web-app-capable` deprecation). **Not
+verified:** WKWebView on a device, which needs a Mac; nothing in the transform is
+engine-specific, and the shell's iOS build path installs the same pinned esbuild.
+
+**The alarms moved with the bundle.** `prepare-webdir.test.mjs`'s total alarm 2.7 →
+2.0 MB, its data-half alarm 1.5 → 1.4 MB, and `discover.json`'s per-file budget
+800 → 720 KB — each re-based to the distance it had before, in nights and shows,
+against the new sizes; the 3 MB hard cap is unchanged. All three are pinned in
+`shell-invariants.test.mjs`.
 
 ## 4. Two footguns that are pinned rather than remembered
 

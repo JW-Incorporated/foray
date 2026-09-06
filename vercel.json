@@ -2,8 +2,13 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "buildCommand": "node tools/web/prepare-dist.mjs",
   "outputDirectory": "dist",
-  "installCommand": "echo 'no dependencies by design — see tools/web/prepare-dist.mjs'",
+  "installCommand": "npm install --prefix api && npm install --omit=dev --prefix backend",
   "framework": null,
+  "functions": {
+    "api/shows/**/*.ts": {
+      "includeFiles": "data/catalog*.json"
+    }
+  },
   "headers": [
     {
       "source": "/data/(.*)",

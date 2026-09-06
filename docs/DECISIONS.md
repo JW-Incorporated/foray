@@ -1056,3 +1056,1068 @@ its reasoning.
   queue was rejected in favor of one small idempotent "+ Up Next" control
   that never removes, with the list-management surface entirely on the
   queue's own page.
+
+## 2026-08-31 (Up Next auto-advance, kanban card t_b9880844)
+
+- **A genuine product/principle conflict, resolved as opt-in default-off,
+  not silently picked either way.** Joey's ask (a queue that plays through)
+  and CLAUDE.md product principle #1 ("no autoplay chains") are in real
+  tension. Resolution: auto-advance ships as one per-device toggle
+  (`cp_autoadvance`), read with a `false` fallback — same shape as the
+  existing `cp_family`/`cp_player` drawer toggles. An unconfigured install
+  never runs an autoplay chain; turning it on is one explicit, reversible
+  tap. Full reasoning: `docs/listening-queue-plan.md` §8. **This decision is
+  provisional pending Joey's sign-off** — if he wants the default flipped to
+  on, that is his call to make, not a call this addendum makes for him.
+- **Scope: only a play started FROM `#/queue` can trigger auto-advance.**
+  Starting an unrelated episode elsewhere in the app must never be silently
+  read as "now playing the queue" — `#/queue`'s play buttons alone tag the
+  play as queue-originated (`bindPlay(scope, { origin: "queue" })`); every
+  other row's play button in the app does not.
+- **End of queue stops cleanly — no loop, no pulling in more content.**
+  Matches product principle #1's "no infinite scroll" language, not just its
+  "no autoplay chains" clause.
+- **Reorder/removal mid-playback freezes at what was queued when playback
+  started, not a live recompute.** Advance looks up the finishing episode's
+  position in `cp_queue` at the moment it ends; if that episode itself was
+  removed mid-playback there is no position to advance from and playback
+  simply stops, rather than guessing which item should play next. A live
+  recompute was rejected because it would let the running order shown on
+  `#/queue` visibly diverge from what is about to auto-play — confusing
+  enough to defer past this stage.
+- **`player/client.js` gains exactly one new signal:**
+  `ForayPlayer.onEpisodeEnded(fn)`, fired once per finished ordinary
+  (non-Foray) episode. Never fires for a Foray — a Foray already owns its
+  own segment-advance machinery via `player/queue-manager.js`, and this must
+  not be a second opinion layered on top of it. Every actual decision (is
+  auto-advance on, was this play queue-originated, what plays next) stays in
+  `app.js`; the player module remains exactly as ignorant of "Up Next" as it
+  was before this change.
+
+## 2026-08-31 (episode pages Stage 2 — honest "listen elsewhere" fallback)
+
+- **An unplayable episode still gets one explicit, honestly-labelled external
+  control instead of a silent gap.** Per `docs/episode-pages-plan.md` §2, this
+  is the one genuinely reversible-but-costly product decision in that plan.
+  When an episode has no `audio_url`, `renderEpisode()` renders the full page
+  (artwork/title/show/duration/hook) exactly as it does for a playable
+  episode, and puts a **"Listen in your podcast app ↗"** link where the ▶
+  button would be, rather than omitting a playback control entirely. Product
+  principle #3 ("legally boring") means 4a categorically cannot serve audio it
+  has no `audio_url` for — this is a fact about the episode, not a UI choice,
+  and hiding the affordance would silently under-deliver for a listener who
+  specifically wants that episode. The same copy replaces the prior "Play"
+  label on `epRow()`'s external fallback and "Open" on `archivedRow()`'s
+  link, purely for consistency — none of the three controls' `href`/gating
+  logic changed (`epRow`'s external control still only appears when there is
+  no in-app ▶, per PR #357; `archivedRow`'s link still requires
+  `apple_collection_id`). Rejected alternative: hiding the play affordance
+  entirely for unplayable episodes — worse than an honest, clearly-labelled
+  external link, since it leaves the listener with no path to that episode
+  at all. Reversible: relabelling or re-hiding this control later is a
+  one-line change: it costs whatever confusion the interim copy causes, not
+  data or architecture.
+
+## 2026-09-01 (Generation pipeline §4.0-4.1: prompt capture surface, kanban card t_825eee4c)
+
+- **§4.0's capture surface is a founder-run CLI (`npm run generate-foray`),
+  not a drawer/UI addition.** Phase 1 generation is founder-only (§1.3) and
+  the existing frontend (`app.js`) has no server call into `backend/` at
+  all today — every other backend pipeline stage (`build-session`,
+  `build-ladder`, `ingest-fixtures`, `learn-interests`) is already a
+  founder-run CLI, not a web surface. Building a drawer entry plus an HTTP
+  bridge to reach this backend would be scope past this section's own
+  boundary ("prompt capture + safety/clarify/intent"). Revisit when phase 2
+  (§1.3) opens generation to any user — that is the point a real web
+  capture surface earns its cost, and `understandPrompt()`'s call shape is
+  already what an HTTP handler would call directly.
+- **§4.1's safety check is co-occurrence-gated, not single-keyword.** Each
+  forbidden-topics rule (`backend/src/generation/safetyCheck.ts`) requires a
+  subject-matter term AND an intent/action term to both match, so
+  "Roman siege weapons" and "the history of nuclear weapons policy" pass
+  cleanly while "how to build a bomb" is caught. A bare-keyword approach
+  would misfire on the doc's own worked example. This is phase-1,
+  founder-only tooling (§1.3), so a false negative is still caught by the
+  founder reviewing before publish (§4.9); a false positive costs a
+  confusing, un-appealable rejection with no recourse, so the rule leans
+  conservative in that direction.
+- **§9.4's "prompts are discarded" ruling is enforced structurally, not by
+  convention.** `understandPrompt()` and its collaborators are pure
+  functions with no persistence primitive anywhere in
+  `backend/src/generation/` — no file write, no DB call, no localStorage.
+  `backend/test/promptNoPersistence.test.ts` greps the module source for
+  persistence calls and proves a full run touches no file on disk, per the
+  task's own acceptance bar for "the strongest version of this check."
+
+## 2026-09-02 (spec-correction pass: generation-architecture.md self-contradictions, kanban card t_7f85beab)
+
+- **§8's narration-share "ceiling" pointed at a number §9.3's own ruling
+  deleted.** §9.3 (Joey, 2026-08-31) permits 100% AI narration with no
+  ceiling; §8 has been corrected to say so directly instead of forwarding to
+  §9.3 for a figure that was never set. §4.5 carried the same stray "Open:
+  acceptable ceiling on narration share" note pointing at §9.3 — also
+  resolved, since it told implementers the opposite of §8's corrected gate.
+  `check-forays.mjs`/`check-narration.mjs` must not gate on narration share
+  at all.
+- **§9.3's authorized undershoot is now an explicit, narrow exception to
+  §3's duration contract, not an unstated collision with it.** §3 (the
+  40%-overshoot-is-a-defect framing) and §8 (±15% tolerance) now both state
+  that overshoot has no exception, while an undershoot taken under §9.3's
+  thin-topic ruling is exempt from the tolerance *only* when it carries a
+  recorded `duration_shortened_reason` field and an explicit narrated
+  explanation — matching §9.3's own "never padded with filler" language.
+  An unexplained undershoot remains a defect like any overshoot.
+- **§3's overshoot tolerance is now unambiguous: ±15% only.** The 40%
+  figure in §3 was a motivating example of a bad overshoot, not a second,
+  looser tolerance sitting alongside §8's ±15% — §3 now says so explicitly
+  to close a gap a reviewer correctly flagged as implementation-ambiguous.
+- **§4.3/§6.3/§8's exploration-budget language now describes one consistent
+  policy instead of three conflicting ones, with the deferrable pair
+  pre-generated (not built under live shortfall pressure), never counted
+  toward or against the required floor, reserved *within* the act's
+  existing duration budget, bounded to §3/§8's ±15% margin, and — per a
+  third reviewer catch — given a per-act count (0, 1, or 2) instead of a
+  fixed "exactly two" that a short act's 15% margin cannot always fit.**
+  The ~30% floor (product principle #1) is computed only over the beats
+  that were always inside it. On top of it, each act produces **up to**
+  two additional "deferrable" beats through the normal pipeline
+  (§4.4-§4.7) — two is the target but §4.4 computes, per act, the maximum
+  count whose combined runtime fits the act's 15% margin — written and
+  sourced ahead of time so they're ready to play instantly, but held back
+  from the act's running order. A **time** shortfall (§6.3) inserts
+  whichever deferrable beats that act actually has (which may be fewer
+  than two, or zero); on schedule they are simply never inserted. A
+  **cost** shortfall instead cancels their production before §4.5. §8's
+  "exploration budget survived" check remains unaffected by any of these
+  outcomes, since the floor's denominator never included deferrable beats
+  to begin with.
+- **§3's undershoot-reason requirement no longer prescribes an
+  undocumented schema field.** A reviewer correctly flagged
+  `duration_shortened_reason` as a new persisted field asserted without
+  going through this document's own "surface a schema change, don't take
+  it as a liberty" rule (line 23). §3/§8 now require only that the reason
+  be *recorded* and *narrated*, and explicitly defer the schema question
+  (existing field vs. proposed addition) to whoever implements §9.3's
+  shortening path.
+- **§9.4 (prompts discarded) vs §9.6 (dedup by prompt similarity) resolved
+  without reopening either ruling — a reviewer caught that our first pass
+  wrongly assumed dedup needed a persisted prompt representation.** §9.6's
+  similarity check embeds the incoming prompt transiently (discarded per
+  §9.4) and compares it against embeddings derived from each **existing
+  Foray's own retained content** (title, description/transcript already
+  kept for the catalogue) — never from another user's prompt. No new
+  prompt-retention exception is needed, and `promptNoPersistence.test.ts`
+  (t_825eee4c, merged) is unaffected: it guards the §4.0-4.1 stage, and
+  this comparison runs downstream against already-catalogued content.
+  A second reviewer catch: whether the per-Foray comparison embedding is
+  itself *cached* (a new `forays.json` field) vs. recomputed on demand is
+  a separate schema decision this document does not make for itself —
+  §9.6 now defers that to a founder-approved schema change if caching is
+  wanted, with recompute-on-demand as the schema-free safe default. Our
+  first pass at this fix (now superseded) proposed a one-way prompt
+  embedding as a founder+legal decision; that path is unnecessary and was
+  dropped once the actual comparison target was corrected.
+- No implementation changed in this pass — spec-only correction per the
+  task's scope. All four contradictions in the finding are now resolved
+  outright, with no remaining founder/legal decision pending on the
+  substance; one small, genuinely optional schema question (caching the
+  §9.6 comparison embedding) is explicitly deferred to whoever builds that
+  stage, with a schema-free default already specified so it does not block
+  anything. Every fix in this pass was a concrete rule change, not a
+  re-opened question.
+- **Review round 5 fix: §9.4's note wrongly asserted the comparison-side embedding "does need to
+  be persisted," contradicting §9.6's own (correct) treatment of persist-vs-recompute as a
+  deferred schema question.** §9.4 now describes only the underlying *retained Foray content*
+  (title/description/transcript, already kept for the catalogue) as the comparison basis, and
+  defers the persist-vs-recompute question for any embedding derived from it entirely to §9.6 —
+  one source of truth instead of two disagreeing ones.
+- **Review round 6 fixes: two more real issues codex caught in §3/§4.3/§6.3's duration-buffer
+  language.** (1) The deferrable-beat headroom rule previously required only that a baseline
+  running order independently pass the same ±15% tolerance as the full Foray — which does not
+  guarantee that *inserting* the reserved deferrable beats keeps the Foray inside tolerance (a
+  baseline already at the ±15% ceiling has no room left for any insertion). §3/§4.3/§6.3 now
+  require the baseline to leave headroom *equal to* the deferrable beats it carries, so baseline +
+  insertion together must fit within ±15% — an act whose baseline already used its headroom carries
+  zero deferrable beats, not "up to two capped only by a flat 15% allowance." (2) §3's discussion of
+  the overshoot tolerance referenced "the 40% figure above" after an earlier fix in this same pass
+  had already removed that figure from the surrounding text, leaving a dangling reference. Replaced
+  with a plain statement that an earlier draft's 40%-overshoot example implied a second, looser
+  tolerance and was removed — ±15% is the only overshoot bound.
+- **Review round 7 fixes: two more real issues codex caught.** (1) The §4.3 headroom rule only
+  constrained baseline+insertion against the +15% ceiling, but said nothing about the baseline
+  alone against the -15% floor — a baseline could undershoot beyond -15% and still "pass," failing
+  §8's publishability gate the moment generation stays on schedule (the deferrable beats never
+  play, so what actually played is the baseline). §4.3 now requires the baseline alone to already
+  sit inside the full ±15% tolerance, with the headroom check against +15% layered on top only for
+  the insertion case. (2) §9.4/§9.6's dedup comparison cited "description/transcript text already
+  kept for the catalogue" as the comparison basis, but `forays.json`'s actual schema retains only
+  `title` and `summary` — no description or transcript field exists, so the comparison as written
+  depended on data that isn't there. Both sections now name `title`+`summary` as the actual,
+  already-available comparison basis, with a richer comparison explicitly deferred to a future
+  founder-approved schema addition rather than assumed available today.
+- **Review round 8 fix: §9.4/§9.6's dedup comparison undersold what `forays.json` actually
+  retains.** The round-7 fix said only `title`+`summary` are retained, but the schema also keeps
+  `topic` and per-slot `title`s — real signal for similarity matching that the round-7 wording
+  wrongly deferred behind a hypothetical schema change. Both sections now name the full existing
+  retained-field set (`title`, `summary`, `topic`, slot `title`s) as the comparison basis, with a
+  richer comparison (description/transcript text) still correctly deferred to a future
+  founder-approved schema addition.
+- **Review round 15 fix: §6.2's continuity-agent bullet still duplicated the round-13 act-boundary
+  runtime-check language that round 14 correctly superseded, contradicting §4.9's per-act gate as
+  the sole timing authority.** §6.2 now points at §4.9's per-act runtime gate instead of restating
+  a competing (and later-timed) check at the continuity checkpoint.
+- **Review round 21 fix: §4.3's spine-freeze runtime validation and §4.9's per-act gate were both
+  written as unconditional ±15% checks with no reference to §9.3's own undershoot exception,
+  contradicting §8's already-correct carve-out for the same check.** §8's runtime-tolerance bullet
+  has always correctly exempted a §9.3 thin-topic undershoot from the ±15% bound, but §4.3's
+  spine-freeze text and its restatement in §8's own duration-check description described the
+  planning-time and per-act validations as unconditional, which would make the one case the
+  founders explicitly authorized to break the duration contract unable to pass its own spine
+  validation. §4.3 now states explicitly that a spine deliberately shortened under §9.3 is
+  validated against its own already-shortened planned budget at every downstream checkpoint
+  (spine-freeze and §4.9's per-act gate) — the exception is taken once, at spine-freeze, not
+  re-litigated per act.
+- **Review round 20 fix: §4.1 still marked "whether a rejected or clarified prompt is stored" as
+  an Open question, contradicting §9.4's own resolved ruling that every prompt is discarded.** An
+  implementer reading §4.1 in isolation would think prompt-retention behavior was still undecided
+  for rejected/clarified prompts specifically. §4.1 now states plainly that §9.4's "each prompt is
+  discarded" ruling is not scoped to accepted prompts only — it covers rejected and clarified
+  prompts too — closing the privacy posture question §4.1 previously left dangling.
+- **Review round 18 fix: two broken cross-references and one overclaimed \"Resolved\" label.**
+  (1) §1.2's fallback path pointed a reader at "§9.4 below" — inside this document, that section
+  is the prompt-retention ruling, not a TTS locked-screen test. Both occurrences (the pronunciation
+  table row and the fallback-trigger paragraph) now correctly point to `on-device-tts.md` §9.4,
+  matching the reference the rest of §1.2 already uses. (2) §9.6 was labelled "Resolved" even
+  though the same section's own round-11 fix explicitly leaves the similarity model/metric/
+  threshold undecided — an implementer skimming for "Resolved" items could build an underspecified
+  similarity check. §9.6's comparison-basis sub-answer is now labelled "Partially resolved," and
+  the founder-clarification paragraph states explicitly that §9.6 as a whole remains Open under the
+  document's own "do not build past these" rule until the decision rule is given, while noting the
+  comparison-basis work itself does not need to wait.
+- **Review round 17 fix: §4.8's "coverage is checked before flow" rule still used the old
+  two-state (present / dropped-with-reason) framing, contradicting the three-state deferrable-beat
+  rule §8's publishability gate already uses.** As written, every on-schedule act carrying a
+  held-back §4.3 deferrable beat would fail §4.8's own coverage check even though §8 explicitly
+  does not penalize that state. §4.8 now names the same three states §8 uses — present, held-back
+  deferrable (unplayed because on schedule), or dropped-with-reason — so the two sections agree.
+- **Review round 17 fix: §4.9's whole-Foray gate description still listed a "narration-share check"
+  among what `check-forays.mjs`/`check-narration.mjs` validate, contradicting §8/§9.3's ruling that
+  narration share has no ceiling and is never gated.** Leaving that wording in §4.9 risked an
+  implementer adding back the exact ceiling §8/§9.3 removed. §4.9 now states narration share is
+  reported by the validators (useful telemetry) but never gated — there is no threshold to fail
+  against.
+- **Review round 16 fix: §4.9's new per-act gate assumed a progressive-write storage mechanism
+  ("appended to the running order the player can reach") that does not exist.** `data/forays.json`
+  is written once, in full, at whole-Foray publish — there is no per-act append path and no player
+  contract for reading a still-growing Foray. Per line 23's rule, §4.9 now surfaces this explicitly
+  as a schema/player gap needing founder sign-off (a mutable per-Foray working record, or an
+  equivalent streaming contract) rather than assuming it is already buildable, with a schema-free
+  fallback: phase 1 does not attempt progressive playback in practice until that contract exists —
+  Act 1 becomes playable only once the whole Foray publishes.
+- **Review round 17 fixes: two more real issues.** (1) §4.9's whole-Foray gate still described the
+  validators as running an "aggregate narration-share check," directly contradicting §8/§9.3's "no
+  ceiling" ruling — an implementer following §4.9 alone could add a rejecting check that breaks
+  valid 100%-narration Forays. Reworded to state narration share is reported, never gated. (2) The
+  document's global instruction ("Anything in §9 is unresolved and must not be built") and §9's own
+  header ("Unresolved. Do not build past these.") blanket-forbade implementing ANY §9 item,
+  including the ones this very task's rulings resolved (§9.3, §9.4, §9.6) — self-contradictory
+  since those rulings are explicitly meant to be implementable. Both instructions now distinguish
+  **Open** items (still forbidden) from **Resolved** items (dated ruling recorded, buildable
+  against it), matching how §9's own entries are already labeled.
+- **Review round 18 fix: §4.9's per-act gate claimed to check an act's "actual written duration,"
+  but §7.3 already establishes that on-device narration has no exact duration before it is
+  spoken — only a characters-per-minute estimate.** The gate now explicitly checks that same
+  estimate (not a measured value), with the estimator's own error bars (§7.3, itself an open
+  finding) and any resulting tolerance-margin adjustment left as a follow-on decision this gate
+  does not make for itself — consistent with how every other schema/measurement gap in this pass
+  was surfaced rather than silently assumed away.
+- **Review round 19 fix: two mirrored §3/§8 passages still called the per-act gate's input "ACTUAL
+  written duration" after round 18 correctly reworded §4.9 itself to call it an estimate.**
+  Terminology now matches consistently across §3, §8, and §4.9: on-device narration duration is a
+  characters-per-minute estimate until spoken (§7.3), never a measured "actual" value, everywhere
+  this document references the per-act runtime gate's input.
+- **Review round 9 fix: the deferrable-beat mechanism itself needed a surfaced schema/player gap,
+  per the document's own line-23 rule, not silent treatment as already buildable.** `forays.json`
+  represents a Foray as one static ordered `items` list today, and the player has no concept of a
+  held-back item spliced in mid-playback — §4.3/§6.3's "deferrable, inserted on a time shortfall"
+  design needs either a schema addition or an equivalent player mechanism that this document does
+  not specify. §4.3 now surfaces this explicitly as a finding for founder sign-off, with a
+  schema-free fallback (an act produces zero deferrable beats until the contract is approved) so
+  the spec does not silently claim an unbuildable mechanism as already available.
+- **Review round 11 fix: §8's runtime gate was defined against "what actually played," which is
+  temporally impossible.** §4.9 (publish, validators run) happens before §4.10 (playback); whether
+  §6.3 inserts the reserved deferrable beats is decided live, per playback session, after
+  publication. A gate that only validates against actual playback could publish a Foray whose
+  runtime turns out invalid only after the fact. §3/§8/§4.3 now require BOTH the baseline running
+  order and the baseline-plus-every-deferrable-beat running order to independently pass the ±15%
+  tolerance at publish time (§4.9) — publishability no longer depends on which path any given
+  listening session happens to take.
+- **Review round 12 fix: round 11's fix wrongly deferred the runtime-tolerance check to §4.9's
+  final publish gate, which is unreachable in time.** Progressive generation (§6) means Act 1 can
+  already be playing while later acts are still being written — a check that waited for §4.9's
+  final actual-duration validation on the WHOLE Foray would run after playback of early acts had
+  already begun, too late to prevent an in-tolerance-looking Foray from becoming a defect
+  mid-playback. §3/§8/§4.3 now validate both the baseline and baseline-plus-deferrables paths
+  against the spine's PLANNED per-beat runtime budgets when the spine freezes (§4.3/§6.1), before
+  any act plays; §4.9 then re-validates each act's ACTUAL written duration against that same
+  planned budget once the act is written, per act, catching a beat that ran long in the writing
+  before that specific act publishes — not waiting for the whole Foray to finish.
+- **Review round 13 fix: round 12's fix still pointed the actual-duration re-check at §4.9, which
+  is the final whole-Foray publish step, not a per-act checkpoint that exists before each act
+  plays.** §6.2 already defines a per-act-boundary checkpoint (the continuity agent, forward-only)
+  that runs before the next act starts and, for Act 1, before playback begins at all (§6.1). §3/§8
+  now assign the actual-duration re-validation to that existing checkpoint instead of inventing a
+  new stage or misassigning it to §4.9 — an act that ran long is caught at its own boundary, before
+  it has already played, which §4.9's whole-Foray-at-the-end timing cannot do under progressive
+  generation (§6).
+- **Review round 14 fix: round 13's fix pointed the actual-duration re-check at §6.2's continuity
+  agent, but §6.2 only ever specifies content/coherence adjustments — it defines no duration or
+  runtime validation step, so the reference was still to a checkpoint that does not do this check.**
+  §4.9 ("Finalize and publish") is now split into two explicit gates instead of one: a **per-act
+  runtime gate** that runs the instant each act finishes writing and blocks that act from entering
+  the running order until its actual duration (baseline and baseline-plus-deferrables) passes
+  against the frozen spine's planned budget, and the existing **whole-Foray gate**
+  (`check-forays.mjs`/`check-narration.mjs`, `data/forays.json`, founder PR review in phase 1) that
+  runs once the last act is written. §3/§8's runtime-tolerance text now points at §4.9's per-act
+  gate by name instead of an existing section that was never a validation checkpoint.
+- **Review round 10 fix: §8's spine-beat completeness gate contradicted the normal on-schedule
+  deferrable-beat path.** §8 required every spine beat to be "present, or explicitly dropped with
+  a recorded reason," but §4.3/§6.3 (as corrected in rounds 6-9) specify that a deferrable beat is
+  produced and sourced like any other beat and, on the common on-schedule path, is simply never
+  inserted into the running order — "produced, but unplayed," a third state that is neither
+  "present" nor a "drop with a recorded reason." As written, every Foray carrying any deferrable
+  beats would fail its own publishability gate the moment generation stays on schedule. §8 now
+  carves out that a held-back deferrable beat is a distinct, pre-authorized state the gate does not
+  penalize, and only requires a recorded reason if a deferrable beat's production is cancelled
+  outright (§6.3's cost-shortfall path) rather than held back as designed.
+- **Review round 11 fix: §9.6's dedup ruling declared similarity detection "buildable" without
+  naming the decision rule that makes it deterministic.** The ruling specifies what text is
+  compared (title/summary/topic/slot titles) but never the embedding model/version, distance
+  metric, or similarity threshold — a real product tradeoff (missed near-duplicates vs. false-
+  positive interruptions) this document should not invent unilaterally, per line 23's rule.
+  §9.6 now explicitly flags this as an open item needing one founder line (name the model/metric/
+  threshold, or explicitly delegate the choice to the implementer) before implementation, rather
+  than silently leaving it to whoever builds it to guess.
+
+## 2026-09-01 (Fix M4: service worker — versioned manifest for atomic deploy generation, kanban card t_f143c31a)
+
+- **A committed, generated `deploy-manifest.json` (NOT `manifest.json` — that
+  name stays the PWA web-app manifest) replaces the hand-bumped `foray-vN`
+  cache name.** `deploy_id` is `sha256(sorted "path:filehash\n" lines)`,
+  first 16 hex chars — content-derived, not git-SHA-based, reproducible from
+  the tree alone. Generated by `tools/ci/generate-manifest.mjs --write` and
+  verified in CI by `--check` (`.github/workflows/ci.yml`'s `data-and-site`
+  job). Rationale, spec, and founder approval are on the kanban card's
+  comment thread (design posted 2026-09-01 15:43, approved via Discord
+  2026-09-01 17:50).
+- **sw.js now stages a whole generation into its own cache
+  (`foray-gen-<deploy_id>`) and verifies every file's sha256 against the
+  manifest before writing anything, promoting only via a single atomic
+  pointer write (`foray-pointer`).** This closes the two cache-atomicity
+  holes named in the review finding: a deferred module (`player/client.js`)
+  landing after fresh data went out, and a partial-fetch load leaving two
+  deploys mixed in one cache bucket. `activate` retains exactly the current
+  and immediately-previous generation and deletes anything older.
+- **The per-client `degraded` in-memory Set is retired entirely.** The pin
+  now lives on the PAGE (`app.js`'s `pinnedDeployId`, set from the
+  `stale-shell` message's `deployId`) and travels on the request itself
+  (`?_fdid=<id>` on `data/*.json` fetches) rather than in worker memory that
+  a browser-initiated idle-worker eviction could silently empty. A worker
+  spun up fresh mid-session needs nothing in memory: the pin is on the
+  request, and the generation lookup goes straight to durable CacheStorage.
+- **Rollback needs no special code path.** Reverting `deploy-manifest.json`
+  to an earlier commit's exact content is, to `sw.js`, indistinguishable
+  from any other new deploy — it re-verifies and re-promotes through the
+  ordinary install/verify/promote flow. Tested directly in
+  `test/sw-generation.test.js`.
+- **`tools/web/prepare-dist.mjs`'s `RUNTIME_DATA` list gained four files**
+  (`forays.json`, `segments.json`, `segment-sources.json`,
+  `catalog-client.json`) that `app.js`'s `init()` already fetched but the
+  Vercel bundle never shipped — caught by the new manifest-vs-dist
+  cross-check this change added to that script (a Vercel deploy would have
+  404'd on all four). Pre-existing gap, unrelated to M4's own scope, fixed
+  in the same change because the new tooling is what surfaced it.
+- **Codex review (PR #404) found three real holes in the first draft, all fixed
+  before merge:**
+  1. A manifest-only content change (no `sw.js` edit) would leave `sw.js`'s
+     own bytes unchanged, and browsers skip `install()` when a service
+     worker's fetched script is byte-identical to what is registered —
+     existing clients would never notice the new generation. Fixed with
+     `BUILD_ID`, a constant `tools/ci/generate-manifest.mjs --write` stamps
+     to the fresh `deploy_id` on every run; `--check` fails if the stamp and
+     the manifest ever drift apart.
+  2. `cachePut`'s ordinary runtime revalidation write could silently
+     overwrite a hash-verified generation-cache entry with unverified bytes
+     from an old, still-active worker mid-rollout — defeating the whole
+     integrity guarantee for exactly the files `handleData`'s `_fdid` tagging
+     treats as authoritative. Fixed: every generation cache now also stores
+     its own manifest snapshot; a runtime write to a manifest-tracked path is
+     only accepted if it re-hashes to the SAME value the generation was
+     installed with.
+  3. The `stale-shell` postMessage establishing the per-page pin could race
+     app.js's own `addEventListener`, which only attaches after `init()` has
+     already started fetching — a lost message meant unpinned data requests
+     paired with stale code. Fixed: `handleShell` now bakes the pinned
+     generation id directly into the fallback response's own bytes (a
+     `self.__forayPinnedDeployId = "<id>";` statement prepended to a `.js`
+     fallback, or a `<meta name="foray-pin-deploy-id">` tag inserted into a
+     navigation's `<head>`), read by app.js as the very first thing it does,
+     before `init()` runs. The postMessage is unchanged and still drives the
+     reload notice, but no longer establishes the pin.
+- **A second review pass (same PR, after the fixes above) found two more real
+  holes, both fixed:**
+  4. `handleData` fell through to the LIVE, untagged path when a `_fdid` named
+     a generation that had aged out of the 2-generation retention window —
+     exactly the failure mode the whole tagging mechanism exists to prevent,
+     since a page open across two deploys would then start reading CURRENT
+     data against its own OLD, still-pinned code. Fixed: an unresolvable tag
+     now fails visibly (`unavailable(request)`, the same 504 an untagged
+     request gets with nothing cached) instead of silently degrading to live
+     data.
+  5. `activate` deleted the pending-generation marker BEFORE the atomic
+     pointer write, so a transient CacheStorage/quota failure on that write
+     would strand a fully verified, fully staged generation with no durable
+     record it was ever meant to be promoted — no later `activate` would
+     retry it. Fixed: the marker is now cleared only after the pointer write
+     succeeds, making a failed promotion attempt retryable on the next
+     activation instead of silently stuck.
+- **A third review pass found one more real bug and one legitimate question
+  about scope, both addressed:**
+  6. `stampPin` reused the cached origin response's headers verbatim after
+     prepending/inserting bytes, so a static host's `Content-Length` (GitHub
+     Pages sends one) would declare the ORIGINAL body's length against the
+     now-longer STAMPED body — a browser is entitled to reject that as a
+     malformed response, breaking the exact offline/stale fallback this exists
+     to serve. Fixed: fresh `Headers`, with `content-length` and
+     `content-encoding` explicitly dropped so the platform recomputes them.
+  7. The review asked directly whether the deferred `player/client.js`
+     module's original ordering hole (named in #233's own header: the module
+     is fetched in PARALLEL with the pin-setting files, so a load where it
+     independently falls back after `app.js`'s untagged data fetches have
+     already gone out is not retroactively re-taggable) is actually closed by
+     this change. It is not — install-time atomicity closes it for a TORN
+     INSTALL, not for this runtime race, and closing it fully would mean
+     blocking every page load on the module, contradicting the founding
+     "survive a dead zone" constraint. sw.js's header was corrected to say so
+     plainly instead of overclaiming three holes closed when it is two closed
+     and one narrowed-but-disclosed; the exposure is unchanged from the
+     original design's own stated limit (a stale PLAYER, never a stale reader
+     of `data/*.json`, which is what #233 was actually about).
+
+## 2026-09-02 (narrator-pipeline gate X1: shipped state is honestly red, not silently unenforced)
+
+- **Rule X1 ("cross-episode seam always carries narration," tier A, gate
+  yes — `docs/curation/segment-length-rules.md` line 956) is currently
+  failed by every shipped Foray, and that is now a recorded, explicit
+  fact rather than a silent gap.** `docs/narrator-pipeline.md` §1 item 1
+  already states plainly that zero narration items exist anywhere in
+  `data/forays.json`; §3.1 separately measures 5 cross-episode seams in
+  the shipped `grilling-history-2` (10 measured across all three Forays:
+  16 in `grilling-history-1`, 5 in `grilling-history-2`, 10 in
+  `capital-types-1`) against X1, but only for the cost inventory — it
+  never states the conclusion that follows from combining those two
+  facts: **every one of those 31 gated seams is currently unmet**, and
+  the shipped product plays through every cross-episode seam with no
+  narration, i.e. is red against a gate the same document calls
+  non-optional.
+- **Decision: X1 is not relaxed or removed.** It stays the correct rule
+  for a fully narrated Foray. What changes here is only that its current
+  failure state is now named instead of implicit. The gate cannot be
+  made green today without spending on narration generation, which is a
+  founder call `#247`/`docs/narrator-pipeline.md` already route through
+  `blocked-on-spend` — not a decision this entry makes or should make.
+  `check-forays.mjs` is intentionally NOT changed to hard-fail on X1
+  right now: doing so would immediately red every existing shipped
+  Foray's CI/validation state over a gap the founders already know about
+  and have not yet funded fixing, which is a worse signal-to-noise
+  outcome than the status quo of a document that states the gap plainly.
+  If a founder wants X1 enforced as a hard CI gate before narration
+  exists, that is a follow-on decision (would require either exempting
+  today's three Forays or blocking them from the catalogue), not implied
+  by this entry.
+- **Action taken:** none to the shipped Forays or to `check-forays.mjs`
+  in this pass — this entry is the "no silent gap" fix `docs/`
+  conventions require per CLAUDE.md workflow rule 4. Revisit once
+  narration generation is funded and `#247`'s dry-run pipeline
+  (`tools/narrate/`) is authorized to make its first real API call; at
+  that point X1 becomes checkable mechanically instead of only by
+  inventory measurement.
+
+## 2026-09-02 (positioning vs. AI-generation pipeline — founder call, kanban card t_54913003)
+
+- **"Never an AI podcast app" positioning is retired; 4a's story now
+  explicitly includes the AI-generation feature.** A Fable-driven
+  marketing/go-to-market review found the marketing corpus (11 memos in
+  `docs/marketing/`, `00-MARKET-BRIEF.md` through `10-category-coverage.md`,
+  plus the Google Play listing draft in `docs/store/play/`) repeatedly
+  locks in "your personal podcast curator, never an AI podcast app" as the
+  core positioning and competitive moat — while `docs/curation/
+  generation-architecture.md` specifies, and the codebase is actively
+  shipping (pipeline stages 4.3–4.6 landed the week of 2026-09-01), a
+  feature that takes a free-text prompt and produces a full AI-generated,
+  AI-narrated episode (a **foray**, in this project's terminology; the app
+  itself remains **4a**). No document in the corpus reconciled the two
+  before this decision; `09-product-feature-review.md` §5's CI-gated store
+  copy (R23: "Real shows, real hosts," "your personal podcast curator")
+  would have gone literally false the day generation reached any
+  user-visible surface.
+- **Founder decision (Joey, via Discord, D1=A on kanban card t_54913003):
+  revise positioning to include generation rather than hide or silently
+  contradict it.** Directional framing: **"curator first, and can also
+  build you something new"** — curation remains the primary identity and
+  the anchor of the trust argument (the 78%-vs-42% human-vs-AI trust gap
+  cited in `03-positioning-pricing.md` §1 does not disappear just because
+  4a now also generates); AI-generation is added as a second, clearly
+  disclosed capability rather than folded in silently or marketed as the
+  main event. This formally supersedes: `00-MARKET-BRIEF.md`'s "never AI
+  podcast app" category rule, `04-personas-retention.md` implication #10
+  ("do not expand toward AI-narrated content"), the "isn't that" framing
+  in `07-premortem.md`'s low-risk rating for synthetic audio, and R23's
+  locked store copy in `09-product-feature-review.md` §5.
+- **Rejected alternatives, for the record.** (B) Ship generation
+  hidden/opt-in and never mention it in store copy — rejected because
+  generation-architecture.md §1.3 already plans a phase 2 open to any
+  user, which a permanently-hidden feature can't grow into, and because it
+  leaves the underlying contradiction merely unmarketed rather than
+  resolved. (C) Formally retire the R7/R23 rule with no replacement
+  positioning — rejected as leaving the moat argument (and the "we called
+  this toxic, then built it" discovery risk) unaddressed, just unlocked
+  instead of enforced.
+- **Scope of this entry.** This records the founder decision only, per
+  this card's explicit scope ("audit and route only — no marketing copy
+  should be written here"). No memo in `docs/marketing/`, the Play listing
+  draft, or the R23 CI-gated copy string is edited by this entry. The
+  actual rewrite of the 11 memos, the Play listing, and R23's locked copy
+  to reflect this new position is follow-up work for a dedicated card, and
+  should also account for the separate, still-open `HUMAN-ACTIONS.md`
+  item #32 (2026-07-08 marketing-corpus freeze: still OPEN as of this
+  writing — that item asks whether the corpus is even editable right now,
+  a distinct founder call this entry does not resolve or bypass).
+
+## 2026-09-02 (HUMAN-ACTIONS.md #32 — the 2026-07-08 marketing-corpus freeze is lifted)
+
+- **Founder decision: C — lift the freeze.** Joey, via Discord, 2026-09-02:
+  `HA32=C`. Confirmed by Wyatt on 2026-09-03, in answer to a direct question
+  about this entry's provenance. The 2026-07-08 freeze ("marketing corpus is
+  frozen until there's a retention curve for it to describe,"
+  `07-premortem.md`/`08-REQUIREMENTS-DELTA.md`) is formally ended, not
+  reinterpreted or quietly bypassed. Marketing-corpus work resumes under
+  ordinary review — no special exception process, no retention-curve
+  precondition.
+- **Correction, 2026-09-03 — this entry previously misdescribed its own
+  provenance, and the correction matters more than the ruling.** The draft
+  said "No fresh confirmation was separately solicited" and presented C as
+  *inferred* from two artefacts: PR #444's description, and an abandoned
+  branch (`39242fe`). Both are downstream of the ruling, not independent of
+  it — #444 was opened eleven hours after the ruling was first recorded and
+  merely restates `HA32=C` as settled, and `39242fe` IS the first recording
+  of it. Citing them as corroboration was a citation loop. It also stated
+  that #444 was "merged directly by Joey"; GitHub records it merged by
+  `app/github-actions` — auto-merged — so the one piece of evidence that
+  looked like a human vouching was a bot. The ruling itself was real and
+  given directly; only the account of how we knew it was wrong. Recorded
+  rather than silently overwritten, because a standing record that quietly
+  revises its own sourcing is worth less than one that shows the repair.
+- **Why now, not a coincidence:** this ruling was requested by, and directly
+  unblocks, the same-day banner-correction work (kanban t_225e8503, PR #444)
+  and the broader R13–R23 marketing rewrite already in flight. Formally
+  lifting the freeze is what makes that work authorized rather than one more
+  self-granted exception in the pattern `HUMAN-ACTIONS.md` #32 itself was
+  filed to stop.
+- **What this does NOT retroactively bless.** The freeze workarounds found by
+  the 2026-09-02 review (`09-product-feature-review.md`'s self-granted "R14"
+  exception, `10-category-coverage.md`'s unacknowledged new orders,
+  `06-naming-study.md`'s uncredited edit) happened while the freeze was still
+  open and were out of process at the time. Lifting the freeze now ends the
+  *restriction*, not a finding that those edits were fine when made — no
+  action is required on them retroactively; they are simply no longer blocked
+  going forward.
+- **`HUMAN-ACTIONS.md` #32 is marked DONE**, citing this entry.
+
+## 2026-09-02 (show-pages Stage 3b — full per-show RSS ingestion, kanban card t_567b570f)
+
+- **Stage 3's data source: 3b (full per-show RSS ingestion), not 3a
+  (derive-only).** `docs/show-pages-plan.md` §4 flagged this as the one
+  founder decision Stage 3 needed. Joey's answer, in writing on the
+  marked-up requirements doc (`t_73389a0d`): *"3b: true full catalogue.
+  Just because we haven't curated it or fully transcribed it doesn't mean
+  that it shouldn't be accessible to the users."* Separately, explicit
+  instruction: *"Remove any plan to link out if we don't have the podcast
+  in the app. We should be able to play all podcasts from the app."* This
+  entry records the data-model consequence of that decision per CLAUDE.md
+  workflow rule 4 (expensive-to-reverse choices get a DECISIONS.md entry
+  before implementation) — full design posted as a kanban comment on
+  `t_567b570f` and reviewed there before the bulk of the code was written.
+- **New shared tables, not the existing `shows`/`episodes` pair.**
+  `backend/migrations/0016_catalog_show_episodes.sql` adds
+  `catalog_show_episodes` and `catalog_show_feed_state`, service-role-owned,
+  no RLS (shared public catalogue data, not personal). The existing
+  `shows`/`episodes` tables (0002/0003) are per-user tracked feeds
+  (`unique(user_id, feed_url)`) — the wrong shape for one catalogue every
+  visitor reads identically across curated (220) and breadth (~10k) shows.
+- **Fetch-on-demand backend endpoint, not a client bundle.**
+  `data/catalog-client.json`'s single-shipped-JSON pattern (Stage 1) does
+  not scale to full per-show episode lists across ~10k shows. A new Vercel
+  serverless function (`api/shows/[show_id]/episodes.ts`) serves per-show
+  episode lists on page load, cache-first (24h TTL) from Postgres, falling
+  back to `fetchFeedConditional()` (the already-implemented ADR-0001
+  conditional-GET/politeness primitive) plus the existing `parser.ts` on a
+  cache miss. A fetch failure degrades to the last-good cached rows (or an
+  explicit "couldn't load" state) — never a blank page or link-out.
+- **This is the first Vercel serverless function in this repo.**
+  `vercel.json` was previously static-build-only by deliberate choice (see
+  the 2026-07-xx entry above declining to stand up a live backend for
+  session-serving, which named this exact class of decision "Wyatt's call,
+  not bundled into a chat-aside delegation"). Joey's "3b" approval covers
+  the WHAT; it does not by itself authorize new deployed infra, which is
+  architecture/infra under `docs/roles.md` — Wyatt's lane. A Fable
+  architecture consult was attempted for this specific point and found
+  unreachable in the implementing session's sandbox (OOM at every heap
+  size tried, including a trivial 1-word prompt — an infra ceiling, not a
+  Fable-side problem; see the comment thread on `t_567b570f`). Proceeding
+  on the lowest-new-infra option available (reuses the existing Vercel
+  project/deploy and the already-provisioned Supabase service-role
+  connection, no new hosting account or secrets) with the decision named
+  explicitly in the PR description for Wyatt's review — `merge_authority`
+  on this card is `human` regardless, so the actual authorization point
+  was never bypassed, only routed through the PR review instead of a
+  pre-code sign-off.
+- **RSS chapters: pointer now, body fetched lazily per-episode.**
+  `parser.ts` already captured `<podcast:chapters url>` as a pointer but
+  never fetched the JSON it points to. Fetching it during the bulk
+  per-show ingestion pass would add one extra request per episode (a
+  400-episode show = 400 extra fetches on one page load). The pointer is
+  stored on every episode row now; the chapters JSON body is fetched only
+  when a listener opens that specific episode (sibling episode-page card's
+  job) — matches Joey's Q5 answer ("worth it for parity," a genuinely
+  separate mechanism from foray segments, not a replacement).
+- **Out of scope for this card.** Wiring the player/removing link-out UI
+  belongs to the sibling "universal in-app playability" card, which
+  depends on this card's `audio_url` output. No audio bytes are ever
+  touched here — every `audio_url` is the original enclosure pointer
+  (ADR-0007 / product principle #3 hold unchanged).
+
+## 2026-09-02 (App Store listing name changed to avoid a name collision)
+
+- **App Store Connect "Name" field changes from `4a` to `4a: Podcast
+  Curator`.** Founder decision (Discord), triggered by Apple rejecting the
+  bare-`4a` submission as already taken by another app/reservation. Scope
+  is narrow and explicit: only the App Store "Name" metadata field changes.
+  The app's home-screen display name (`CFBundleDisplayName`) stays `4a`,
+  and the app/`foray` naming convention is unaffected everywhere else in
+  the product and docs. Updated `docs/marketing/09-product-feature-review.md`
+  §5 (the locked R23 listing draft) to record the new name and the scope
+  note in place. Google Play's separate listing name (`docs/store/play/`)
+  was not the app that hit this collision and is left as `4a` pending a
+  founder call on cross-store consistency — flagged, not decided, in
+  `HUMAN-ACTIONS.md` #34. The actual App Store Connect submission field can
+  only be typed in by a human with dashboard access; tracked as
+  `HUMAN-ACTIONS.md` #34, not done by this entry.
+
+## 2026-09-02 (show search reaches the full breadth catalogue, kanban card t_8d1a6a58)
+
+- **Founder answer (Joey, A3.1/Q3): "yes, the user should never notice any
+  limitations based on our own limited curation or transcriptions. We need
+  to meet table stakes, then the additional features are what
+  differentiate."** Show search (`SearchEngine.searchShows`) was previously
+  scoped only to the 220-show curated `catalog-client.json`. The ~10k-show
+  breadth catalogue (`data/catalog-breadth.json`) exists server-side but
+  `docs/CATALOG-PIPELINE.md` §5 deliberately never ships it to the client.
+- **Decision: a new backend endpoint, not a client bundle.** Added
+  `GET /api/shows/search?q=&limit=` (a second function in the `api/`
+  directory `api/shows/[show_id]/episodes.ts`, kanban t_567b570f, already
+  opened for Vercel serverless — no new infra decision here, this reuses
+  that surface) backed by `backend/src/catalog/breadthCatalog.ts` (merges
+  curated `data/catalog.json` + breadth `data/catalog-breadth.json`,
+  deduping `in_curated` breadth rows against their curated counterpart) and
+  `backend/src/catalog/searchBreadthShows.ts` (same exact/prefix/substring
+  ranking rule as the client's `SearchEngine.searchShows`, reimplemented
+  server-side — no shared-module boundary exists between the classic
+  browser script `search-engine.js` and a TS backend module without adding
+  a build step neither side has today). `CATALOG-PIPELINE.md` §5's "client
+  isolation" rule still holds: only this backend module reads the breadth
+  file directly; the client never fetches it, only a thin per-query
+  result list.
+- **Client wiring: curated-first, breadth-appended.** `renderShowSearchResults`
+  in `app.js` still runs `SearchEngine.searchShows` against the local
+  curated catalogue first (instant, no network) and paints immediately,
+  then queries `/api/shows/search` in parallel and appends any non-
+  duplicate breadth-tier results once they land. A failed/slow fetch
+  degrades silently to the curated-only results — never a broken or blank
+  state, matching this repo's existing "absence is a real state" rule.
+- **Breadth-tier show pages degrade honestly pending Stage 3b.** A show
+  found only in the breadth tier has zero `discover.json` episodes by
+  construction (that file only ever holds the curated 220's hand-picked
+  episodes). `renderShow()` now distinguishes that from a curated show that
+  genuinely has none: a breadth-tier show with no episodes shows "Fetching
+  this show's episodes… check back soon" rather than the curated tier's
+  "No episodes from this show are in 4a's catalogue right now" copy, which
+  would incorrectly imply the show is empty. This is intentionally the
+  degrade path, not the fix — Stage 3b (kanban t_567b570f, per-show RSS
+  ingestion) is the card that wires a real per-show episode list into this
+  same slot; as of this entry that card's PR (#429) is implemented and
+  under human review, not yet merged. Once it lands, `renderShow()`'s
+  breadth-tier branch should be revisited as a small fast-follow to call
+  its episode endpoint instead of showing the fetching message indefinitely.
+
+## 2026-09-03 (nightly-refresh PRs merge with no human click — HUMAN-ACTIONS #37)
+
+**The founder's ruling, verbatim:** *"Auto fix, I am not trying to do daily
+manual reviews."* This entry records what that bought and what it cost, because
+it is a governance change and expensive to reverse (CLAUDE.md rule 4).
+
+**Two independent blockers, both verified before anything was designed.**
+`HUMAN-ACTIONS.md` #37 documents only the first.
+
+1. **Auto-merge never armed.** The nightly always rewrites
+   `data/discover.json` + `data/item-tags.json`. Both are hashed by
+   `deploy-manifest.json`, and `sw.js`'s `BUILD_ID` carries the resulting
+   `deploy_id`. Neither of those two files was on `ALLOWED_PREFIXES` *or*
+   `DENIED_PREFIXES` in `tools/ci/path-policy.mjs` — *unlisted*, so
+   `path-policy` reported CLEAN while auto-merge declined to act, and the
+   decision is per-PR and all-or-nothing. Reproduced:
+   `automergeDecision({files: [the four paths]})` returned
+   `NOT ARMED / UNLISTED_PATH`.
+2. **The bot's fixup commit was unmergeable, and #37 does not mention it.**
+   `manifest-autofix.yml` regenerated the manifest and pushed it as
+   `github-actions[bot]`. The `protect-main` ruleset (19713996) sets
+   `require_extra_approval_for_unattributed_changes: true` with
+   `required_approving_review_count: 0` and **zero bypass actors** — so an
+   unattributed commit demands one approving review, and GitHub forbids a PR's
+   author from approving their own PR. Verified on PR #456: `backend`,
+   `data-and-site` and `playwright` all green on the head SHA, no blocking
+   label, `reviewDecision` empty, `mergeable: MERGEABLE`,
+   `mergeStateStatus: BLOCKED`. PR #443 deadlocked the same way and was closed
+   and relanded as #459. Fixing blocker 1 alone would have left nightly PRs
+   armed and still stuck on an approval nobody could give.
+
+**What we did NOT do.** `require_extra_approval_for_unattributed_changes` stays
+`true` and no bypass actor was added. That rule exists so machine-authored
+changes get a human vouching for them, and switching it off to solve a plumbing
+problem would trade a real safety property for convenience across the whole
+repo, not just the nightly. Attributing bot commits to a human account was
+rejected for the same reason under a worse name. The fix is to **not create an
+unattributed commit in the first place**.
+
+**Decision 1 — the nightly generates its own manifest (option 3 in #37).**
+`tools/refresh/merge.mjs` now calls `stampDeployManifest()`
+(`tools/refresh/manifest-step.mjs`) immediately after it writes the two data
+files, so the nightly's FIRST commit already carries a correct
+`deploy-manifest.json` and `sw.js`, `manifest-autofix` finds nothing to do, and
+no `github-actions[bot]` commit is ever pushed to the PR. The autofix workflow
+is unchanged and stays as the safety net for every other PR. A failed
+regeneration is fatal and prints DO NOT COMMIT: the data files are already
+written at that point, and continuing produces exactly the stale-manifest tree
+that summons the bot commit.
+
+The code half is inert without the prompt half: the nightly agent commits
+whatever it `git add`s, and `docs/agents/runner-prompts/foray-nightly.md` step 7
+added only the two data files. It now adds all four, step 5 tells the agent to
+expect the `MANIFEST:` line and what a `DO NOT COMMIT` exit means, and the
+"touch only" constraint names the two generated files (recorded in
+`docs/agents/runners.md`). If a nightly PR ever shows a `github-actions[bot]`
+commit again, the first suspect is that `git add` line, not the code.
+
+**Decision 2 — `deploy-manifest.json` and `sw.js` are allowlisted (option 1).**
+Option 3 alone does not arm auto-merge; the two files still appear in the PR.
+They are now on `ALLOWED_PREFIXES`, the same treatment `#167`/`#168` gave
+`STATE.md`.
+
+The two are not equally safe and the difference is recorded rather than blurred:
+
+- `deploy-manifest.json` is **fully determined by other files**. The required
+  `data-and-site` check runs `generate-manifest.mjs --check`, which regenerates
+  it from the tree and diffs it including `deploy_id`. A forged or hand-edited
+  manifest cannot go green, so allowlisting it grants nothing the hashed files'
+  own prefixes do not already grant.
+- `sw.js` is **real code**, and only its `BUILD_ID` line is machine-verified. A
+  service worker is the highest-privilege script on the origin. It is
+  allowlisted on the same evidence `app.js` and `player/` are: the required
+  `data-and-site` job runs `test/sw-generation.test.js`, which evaluates the
+  REAL `sw.js` in a `node:vm` and drives its real `install`/`activate`/`fetch`
+  listeners across ~50 tests (torn deploys, hash mismatch, offline reload,
+  runtime write integrity, pin stamping), and that suite is floored in
+  `test/suite-integrity.test.js` so it cannot be quietly gutted. Denying `sw.js`
+  while allowing `app.js` — which runs in the page with full DOM and
+  localStorage access — would not have been a coherent line.
+
+**The price, stated plainly.** A bot-authored change to `sw.js` that keeps every
+behaviour `test/sw-generation.test.js` pins can now reach `main` without a human
+reading it. That is a real widening of the unread-merge surface and it is what
+the ruling bought. It is reversible in one line — remove `"sw.js"` from
+`ALLOWED_PREFIXES` — at the cost of a daily manual merge click, which is the
+thing the ruling declined.
+
+**Decision 3 — `generate-manifest.mjs` refuses to run in a CRLF checkout.**
+The manifest hashes bytes on disk. This repo commits LF and is developed on
+Windows with `core.autocrlf=true`, so `--write` there rewrites all 40 entries to
+hashes of bytes we never ship — plausible-looking, green locally, wrong
+everywhere else. Measured on a `main` worktree that day: 37 of the 38 listed
+text files differed from their committed blobs, and `--check` reported
+"deploy-manifest.json is stale", advice pointing straight at the command that
+causes the damage. `tools/ci/crlf-guard.mjs` now aborts **both** modes with the
+real diagnosis. Refusing rather than normalising is deliberate: normalising
+would make the hash mean "the bytes with CRLF collapsed" instead of "the bytes
+we ship", the same class of lie one layer down. The guard's binary-file
+exclusion is load-bearing, not defensive — both committed icons really do carry
+`\r\n` byte pairs, so without it the guard would fire on a clean Linux runner
+and block `data-and-site` for the entire repo.
+
+## 2026-09-04 (mobile bundle: the shipped JS/CSS and JSON are minified; the minifier lives in `tools/mobile/`)
+
+**The decision.** `tools/mobile/prepare-webdir.mjs` now transforms two things on
+the way into the native bundle, and nothing else: every shipped `.js`/`.css` is
+written with its comments and whitespace stripped and **every identifier kept**,
+and every `data/*.json` is re-serialised with no indentation. The web is
+untouched — the repo root stays dependency-free and no-build, and GitHub Pages
+keeps serving the fully commented source. Recommendations 1 and 2 of
+`docs/mobile-shell-bundle-reduction.md` (research, PR #468), approved by the
+founder (CTO). Mechanism and verification: `docs/mobile-shell.md` §3.4.
+
+**Why.** Measured on `origin/main` = `88e2416`: the bundle was 2,625,084 bytes
+(2.50 MB) as CI sees it, 206 KB under the 2.7 MB alarm; the code half had grown
+109 KB → 1,098 KB in 39 days (+25 KB/day, five times `item-tags.json`'s rate) and
+72% of those bytes were comments and formatting. After both transforms the bundle
+is **1,529,677 bytes (1.46 MB), −42%**, and the trailing growth rate falls from
+~30 to ~10 KB/day. Both changes have zero user cost: no pool depth, no feature,
+no search-parity change. Names are kept because `player/diagnostic-log.js` is a
+field record a founder copies out of a car; full minification was measured at
+47 KB more and declined.
+
+**Where the minifier may live — the part that is expensive to reverse.** esbuild
+is a devDependency of a NEW `tools/mobile/package.json`, pinned exactly, lockfile
+committed. That directory was chosen over the two alternatives:
+
+- *The repo root* — never. The root's freedom from dependencies and build steps
+  is what makes the keyless Pages deploy a plain checkout of `main`
+  (`shell-invariants.test.mjs` pins it).
+- *`mobile/package.json` with a verbatim fallback when esbuild is absent* — CI
+  never installs `mobile/`, so CI would have measured an **unminified** bundle
+  while the founder's Mac shipped a minified one: alarms about a file nobody
+  installs. Rejected for that reason.
+
+The consequence to know about: `tools/ci/run-suites.mjs` now treats
+`tools/mobile/` as its own group (install, then `npm test -- <files>` there), so
+every shell suite runs after an `npm ci` in that directory and CI builds the
+bundle the way it ships. `mobile/package.json`'s `prepare:webdir` runs
+`npm ci --prefix ../tools/mobile` first, so the Mac path, `ios-build.yml` and
+`android-build.yml` all get the minifier through the script they already call —
+no `.github/` edit. A missing install is a named hard error, never a silent copy.
+
+**What was ruled out.** A dependency-free regex comment stripper (`//` and `/*`
+inside template literals and regex literals make it unsafe without a parser, and
+`search-engine.js` has both); name mangling (above); syntax rewriting (`minifySyntax`
+off — the device runs the source with its prose removed, not an equivalent
+program); minifying `index.html` (3.9 KB, and the injection target for the
+shell-only script tags); pre-compressing data as `.gz` (needs runtime machinery
+and changes what the cap measures — the research doc's §7).
+
+**What changed in the guards.** `COPIED_WHOLE` asserts *parse*-identity with the
+source instead of byte-identity (a trimmed `item-tags.json` still fails it; only
+formatting stopped being asserted), and every other bundled data file gets the
+same check. The alarms were re-based to the distance they had before, against
+the new sizes: total 2.7 → 2.0 MB, data half 1.5 → 1.4 MB, `discover.json` budget
+800 → 720 KB; the 3 MB hard cap is unchanged. The ordering hazard — a minifier
+running before the `fetchJson` derivation reads `app.js`'s text — is pinned by a
+test with a fetch only the source text carries; a build never writes into the
+source tree, also pinned; two builds are byte-identical; every shipped script
+passes `node --check`.
+
+**Verified / not verified.** Both bundles (before and after) were loaded in
+headless Chrome over CDP at 440×956 @3×, dark, first-run sheet dismissed: four
+cards, five menu routes, identical data counts and computed styles, zero
+exceptions and zero console errors in either. Not verified: WKWebView on a
+device — needs a Mac. Nothing in the transform is engine-specific.
+
+**Reversal.** Delete `tools/mobile/minify.mjs` and its package, route `.js`/`.css`
+back through `copy` in `prepare()`, and put the indentation back in
+`serializeSlice`; the parse-identity guards keep holding either way. The three
+alarms would then need raising again.
+
+## 2026-09-05 — S-04a: PodcastIndex dump import builder (`tools/shows/`)
+
+Source: `4a-shows-pipeline-plan.md` (Wyatt, 2026-09-04) §0 decisions D1–D3,
+D13; kanban card S-04a (`t_835d1a3c`, itself a workspace-bug redo of
+`t_c175e965`).
+
+- **D1 filter implemented exactly as the plan's decision table states**: a
+  row is "in 4a" when `dead != 1`, `episodeCount >= 3`, and its
+  `newestItemPubdate` is within 24 months of the build clock. "Updated" reads
+  the show's own newest-episode timestamp, not PodcastIndex's crawl
+  `lastUpdate` — the plan's own §3.1 lists both and this is the one that
+  answers "is the show alive", not "when did the crawler last visit it".
+  **Language filter left open**, per D1's own "Language filter open" —
+  `language` is stored on every shard row and never used to drop a row; D1's
+  own status column ("re-confirm with Joey's export in hand") is gate G6 /
+  card S-17, not this one.
+- **D13 dedupe**: group by `podcastGuid` (case-insensitive) when present,
+  else normalised title+author (accent-folded, punctuation-collapsed).
+  Canonical = has a non-null/non-zero `itunesId`; among itunesId holders,
+  ties broken by lowest dump `id` (the plan does not state a preference
+  there); without any itunesId in the group, the newest by
+  `newestItemPubdate`, same tie-break. Every tie-break bottoms out on `id`
+  so two runs over one fixture are byte-identical — the card's own
+  acceptance criterion.
+- **id-map fails closed, not partially**: `buildIdMap` matches curated shows
+  by normalised feed URL first (D2's join key), falls back to
+  `apple_collection_id === itunesId` (D2's stated cross-reference, for a feed
+  that moved), and returns every unresolved curated show by id+title rather
+  than silently omitting it. `writeBuildOutput` refuses to write anything —
+  not even a partial `id-map.json` — when `missing.length > 0`.
+- **Config is one file** (`tools/shows/config.mjs`): the dump URL, the D1
+  thresholds, and the size budgets are named exports, not inlined — the
+  card's explicit ask so a future swap to Joey's export (D3) is a one-line
+  change.
+- **Not yet wired**: `previousNewest` (the prior release's per-id
+  `newestItemPubdate` snapshot that `changed.json` diffs against) is empty on
+  every run today — there is no persisted manifest history yet since this is
+  the pipeline's first landing. Every row counts as "changed" on a fresh
+  build, which is correct for a first run; wiring the real diff is a small
+  follow-up once a release history exists (S-04b's job, or a fast-follow on
+  this card).
+- **Offline builder only** — no GitHub Release, no PR automation, no
+  workflow file. That is S-04b (`t_3a896057`), gated on this card.
+- **Test floors**: `test/suite-integrity.test.js` gained six entries under
+  `tools/shows/*` (workflow rule 4/6 — this file + that one are the two
+  shared files this card touches, both isolated to this change).
+
+## 2026-09-05 — S-04b: shows-index release automation
+
+- **What:** `tools/shows/publish-release.mjs` (tag sanitization,
+  fail-closed idempotency check via `gh release view`, asset listing, `gh
+  release create` invocation, the pointer payload builder) and
+  `tools/shows/run-and-publish.mjs` (the orchestration S-04a's builder
+  runs through — build, then publish-if-new, then write
+  `data/shows-index-pointer.json`). `.github/workflows/shows-import.yml`
+  runs it weekly (Sun 06:00 UTC) plus `workflow_dispatch`, and opens a PR
+  updating the pointer when a new release was actually published.
+- **Idempotency has TWO independent layers**, both exercised end to end by
+  `run-and-publish.test.mjs`'s acceptance test (a faked build + faked `gh`,
+  not each piece in isolation): S-04a's own `state.json`
+  skip-if-already-built, AND a `gh release view <tag>` check before
+  publishing — the second catches the case `state.json` was lost (fresh
+  checkout, evicted runner cache) while the release still exists on
+  GitHub. Either one alone would leave a real gap; the test proves both
+  paths land on zero-new-releases.
+- **`releaseExists` fails CLOSED.** Any `gh` error other than a literal
+  "release not found" (auth, network blip, rate limit) throws rather than
+  being read as "safe to publish" — a transient error must never produce a
+  duplicate release. Unit-tested directly in `publish-release.test.mjs`.
+- **Release tag = sanitized `export_version`** (`shows-index-<sanitized>`),
+  not a counter or a date-of-run — this is what makes "does a release for
+  this exact dump version already exist" a single deterministic lookup
+  rather than a search.
+- **The pointer PR, not a direct commit.** `data/` auto-merges on green CI
+  per the project registry (`merge_authority: agent`), same as S-04a's own
+  PR #483 — this workflow opens a normal PR (reusing
+  `manifest-autofix.yml`'s git-push-then-`gh pr create` pattern) rather
+  than committing to `main` directly, so the pointer change is visible in
+  the PR list like everything else.
+- **CSP `connect-src` measurement (the card's #5), done against a REAL
+  release in this repo** (`kokoro-fixture-t_f3c788ca`, already on GitHub —
+  not a hypothetical): a `fetch()`-shaped request to
+  `github.com/<owner>/<repo>/releases/download/<tag>/<asset>` gets a `302`
+  from `github.com` to a presigned URL on **`release-assets.githubusercontent.com`**
+  (an Azure Blob Storage-backed CDN — the redirect target's own response
+  headers are `server: Windows-Azure-Blob/1.0` and its own subsequent CDN
+  layer). **Neither hop sends an `Access-Control-Allow-Origin` header at
+  all** — checked with `curl -H "Origin: capacitor://localhost"` against
+  both the `github.com` redirect response and the final
+  `release-assets.githubusercontent.com` response, and confirmed with a
+  standalone `OPTIONS` preflight against the resolved asset URL (`405`,
+  no CORS headers). **A `fetch()` from the `capacitor://localhost` origin
+  to a GitHub Release asset URL will therefore fail the browser's CORS
+  check as shipped** — this is not a hypothetical risk, it is the measured
+  behavior of GitHub's actual release-asset serving path today.
+  - **The final resolved host to name in any future `connect-src` entry is
+    `release-assets.githubusercontent.com`** — but naming it alone does
+    NOT fix the fetch, because `connect-src` only controls which origins
+    the page is ALLOWED to ask; it does nothing about whether the SERVER
+    answers with the CORS header the browser then requires. Widening
+    `connect-src` to include this host is necessary but not sufficient.
+  - **`raw.githubusercontent.com`** (files committed to the repo, not
+    release assets) **does** send `access-control-allow-origin: *` —
+    verified against this repo's own `README.md`. **`cdn.jsdelivr.net`**
+    also sends `access-control-allow-origin: *` for repo files at a ref,
+    but does **not** mirror release-only binary assets (`404` confirmed
+    against a real release asset by that name) — jsDelivr's GitHub proxy
+    only serves files tracked in git, not Release uploads.
+  - **Practical consequence for S-05 (the client that will actually fetch
+    the shard index):** shipping the shard index as GitHub Release assets
+    and fetching them directly from the client will not work under the
+    current CSP model without a CORS-capable front end. The two realistic
+    options, left for that card / a founder call rather than guessed at
+    here: (a) front the release assets with a CDN/proxy that adds CORS
+    headers (jsDelivr does not cover this asset type, so this needs a
+    different proxy — e.g. a Cloudflare Worker or an object-storage mirror
+    the pipeline also uploads to), or (b) route the fetch through this
+    repo's own API layer (`api/`) as a same-origin proxy, matching the
+    pattern `api/shows/[show_id]/episodes.ts` already uses for no-DB mode.
+    Filed as `HUMAN-ACTIONS.md` — see that file's shows-index-CORS entry.
+  - **No CSP `connect-src` change lands in this card.** #36/S-03's own rule
+    (`docs/mobile-shell.md` §3: "should land with the code that needs it
+    rather than sitting open in advance") applies identically here — S-04b
+    ships no client fetch code, so widening the CSP now would be exactly
+    the thing that rule exists to prevent.
+- **`docs/DECISIONS.md`** — this entry.
+- **Fresh-context review finding, fixed same-PR:** `runBuild` spawns
+  `import-dump.mjs` as a real child process via `process.execPath`, and
+  Node does **not** auto-inherit `process.execArgv` (e.g.
+  `--experimental-sqlite`) into a spawned child — every test in
+  `run-and-publish.test.mjs` injects a fake `exec`, which hid this
+  completely; the real weekly job would have crashed on Node 22 the first
+  time it ran a genuine (non-skip) build. Fixed by forwarding
+  `process.execArgv` explicitly in `runBuild`, and pinned by a new suite
+  (`run-and-publish-execargv.test.mjs`) that spawns a **real** node
+  subprocess — no fake `exec` anywhere — to prove the forwarding actually
+  reaches the child's argv.
+- **Second fresh-context review pass, two more findings, both fixed
+  same-PR:**
+  1. **The pointer PR was opened via `GITHUB_TOKEN`, which GitHub does not
+     fire `pull_request` workflow events for (anti-recursion rule).** As
+     written, `automerge-nightly.yml` — which listens ONLY on
+     `pull_request` events and has no `workflow_dispatch` trigger — would
+     never see the pointer PR at all, and `ci.yml`'s required checks would
+     never report on its head SHA. The PR would sit open forever needing a
+     human, contradicting the workflow's own "auto-merges on green CI"
+     claim. Fixed by having `shows-import.yml` dispatch `ci.yml` via
+     `workflow_dispatch` (the same documented exception
+     `manifest-autofix.yml`/`pr-hygiene.yml` already rely on) and arm
+     `gh pr merge --auto` directly, rather than routing through
+     `automerge-nightly.yml`'s own path-policy machinery — this workflow's
+     diff shape is fixed and pre-known (exactly one path,
+     `data/shows-index-pointer.json`, already named agent-auto-mergeable
+     in the project registry), so the general "is this diff safe to
+     auto-merge" question that file exists to answer does not apply here.
+  2. **Idempotency was gated on `published`, stranding a release whose
+     pointer PR never landed.** If a prior run published a release but its
+     pointer-update step failed/was interrupted/its PR got closed, every
+     later run for that same `export_version` hit `releaseExists` ->
+     `published: false` and stopped — the pointer was never reconciled,
+     and the release sat orphaned with nothing ever pointing at it, with
+     no path back except manual intervention. Fixed: `runAndPublish` now
+     ALWAYS computes the pointer for the current build's export_version
+     (whether the release was just published or already existed) and
+     compares it against whatever is currently on disk by `release_tag`
+     (not the whole object, which carries a fresh timestamp every run —
+     that would report a spurious diff on every no-op run). The workflow
+     now gates the PR-open step on `pointer_changed`, not `published`.
+     Proven by a new test (`reconciliation: a release that exists with no
+     landed pointer PR is still reconciled on the next run`) that
+     reproduces the exact gap: publish, delete the pointer file (simulating
+     a lost PR), run again, assert the pointer gets rewritten even though
+     nothing new was published.
+- **Third fresh-context review pass: one more finding, fixed.** `gh pr
+  view <branch>` resolves a branch name to a PR regardless of state
+  (open/closed/merged). With this workflow's fixed, reused branch name
+  (`shows-index/pointer-update`) and `--delete-branch` on the auto-merge,
+  the SECOND weekly run's lookup would have resolved to the FIRST week's
+  already-merged PR — silently skipping `gh pr create` for the new release
+  and handing a dead PR number to the merge call, breaking the automation
+  on every run after the first. Fixed by scoping the lookup to
+  `gh pr list --state open --head <branch>` and deriving `HEAD_SHA` from
+  `git rev-parse HEAD` (the commit this run just pushed) instead of from
+  `gh pr view`. Also aligned `run-and-publish.mjs`'s main-guard with
+  `import-dump.mjs`'s (`import.meta.url` comparison, not a filename
+  suffix check) per the same pass's minor note.
+

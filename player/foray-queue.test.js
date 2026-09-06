@@ -11,7 +11,7 @@ import {
   buildForayQueue, forayRuntimeSec, itemRuntimeSec, narrationDuration,
   NARRATION_CHARS_PER_SEC, NARRATION_FALLBACK_SEC,
   DURATION_MEASURED, DURATION_ESTIMATED, DURATION_FALLBACK,
-  SEGMENT, NARRATION,
+  SEGMENT, NARRATION, JINGLE, JINGLE_ASSET_URL, JINGLE_DURATION_SEC,
 } from "./foray-queue.js";
 import { AD_PAD_CEILING_SEC } from "./seek-policy.js";
 
@@ -130,10 +130,39 @@ test("an unknown item type is refused rather than guessed at", () => {
   assert.match(build([null]).skipped[0].reason, /not an object/);
 });
 
-test("a narration with no asset is dropped without stalling the rest of the Foray", () => {
+test("a narration with neither asset nor script is dropped without stalling the rest of the Foray", () => {
   const { items, skipped } = build([{ type: NARRATION, id: "nar-1" }, seg()]);
   assert.equal(items.length, 1, "the segment still plays");
-  assert.match(skipped[0].reason, /no asset/);
+  assert.match(skipped[0].reason, /no asset or script/);
+});
+
+/* ---------- generation-architecture.md §7 item 1: script, no asset ---------- */
+
+test("a script-only narration item is playable, not dropped — on-device narration's common case", () => {
+  const { items, skipped } = build([
+    { type: NARRATION, id: "nar-1", script: SCRIPT_5S },
+    seg(),
+  ]);
+  assert.deepStrictEqual(skipped, []);
+  assert.equal(items.length, 2, "both the narration and the segment resolve");
+  assert.equal(items[0].kind, "tts");
+  assert.equal(items[0].audio_url, null, "no file exists — the plugin speaks the script, nothing loads one");
+  assert.equal(items[0].script, SCRIPT_5S);
+});
+
+test("an item with both script and asset still prefers asset (§1.2), even with a script present", () => {
+  const { items } = build([
+    { type: NARRATION, id: "nar-1", asset: "narration/fire-1.mp3", script: SCRIPT_5S },
+    seg(),
+  ]);
+  assert.equal(items[0].audio_url, "narration/fire-1.mp3", "the pre-rendered asset wins, per §1.2");
+  assert.equal(items[0].script, SCRIPT_5S, "the script still rides along — a bridge may carry both");
+});
+
+test("a script-only narration item's duration is estimated, exactly as before", () => {
+  const { items } = build([{ type: NARRATION, id: "nar-1", script: SCRIPT_5S }, seg()]);
+  assert.equal(items[0].duration_sec, 5);
+  assert.equal(items[0].duration_source, DURATION_ESTIMATED);
 });
 
 test("an empty or malformed Foray yields an empty queue rather than throwing", () => {
@@ -406,4 +435,38 @@ test("an estimated duration is rounded to the millisecond", () => {
   // A MEASURED duration is passed through untouched: it is a fact about a file,
   // not a projection, and rounding somebody's measurement is not ours to do.
   assert.equal(narrationDuration({ duration_sec: 2.9411764705882355 }).sec, 2.9411764705882355);
+});
+
+/* ---------- generation-architecture.md §7 item 4: the jingle ---------- */
+
+test("a jingle item round-trips to a playable, non-spoken queue item", () => {
+  const { items, skipped } = build([
+    seg({ start_sec: 10, end_sec: 60 }),
+    { type: JINGLE, id: "jingle-1" },
+    seg({ start_sec: 900, end_sec: 1000 }),
+  ]);
+  assert.deepStrictEqual(skipped, [], "a jingle is never skipped — it is a fixed, always-valid asset");
+  assert.equal(items.length, 3);
+  const jingle = items[1];
+  // It is its own kind, not a disguised narration item — see foray-queue.js's
+  // note on why NARRATION+flag was rejected. The player must be able to tell
+  // "jingle" from "narration" without inspecting anything else on the item.
+  assert.equal(jingle.kind, JINGLE);
+  assert.notEqual(jingle.kind, "tts", "a jingle must never route into the on-device TTS plugin");
+  assert.equal(jingle.audio_url, JINGLE_ASSET_URL);
+  assert.equal(jingle.duration_sec, JINGLE_DURATION_SEC);
+  assert.equal(jingle.duration_source, DURATION_MEASURED, "the asset's length is a fact, not an estimate");
+  // It contributes to the Foray's clock exactly like any other bounded-less
+  // item with a duration_sec — the same arithmetic a narration bridge uses.
+  assert.equal(itemRuntimeSec(jingle), JINGLE_DURATION_SEC);
+});
+
+test("a jingle needs no start_sec/end_sec — it is not a segment for seam purposes", () => {
+  // player/seam-gap.js's isSegment() rejects anything without bounds, so a
+  // jingle produces no seam beat on either side by construction — the
+  // "bridge and gap are alternatives, never both" rule (§4.8) without any new
+  // code in seam-gap.js itself.
+  const { items } = build([{ type: JINGLE, id: "jingle-1" }]);
+  assert.equal(items[0].start_sec, undefined);
+  assert.equal(items[0].end_sec, undefined);
 });

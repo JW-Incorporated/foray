@@ -241,6 +241,30 @@ export function planMergeability(prs, opts = {}) {
       if (!decision.armed) {
         actions.push({ kind: "disable-auto", pr: pr.number, reason: decision.reason });
       }
+    } else if (pr.state === "clean") {
+      // ARM — the symmetric half that was missing (t_a25ea475). A PR can reach
+      // "the policy would approve it" with autoMergeEnabled still false and no
+      // qualifying `pull_request` event ever fire to re-decide it: clearing
+      // AUTOMERGE_FREEZE fires no PR event at all, and retargeting a PR's base
+      // branch to `main` fires `edited`, which automerge-nightly.yml now also
+      // listens for. Without this branch, "CLEAN + unarmed" is an absorbing
+      // state — escapable only by a human clicking merge or a fresh push.
+      //
+      // Gated on `state === "clean"`, GitHub's own mergeStateStatus, not the
+      // separate `mergeable` boolean: a BEHIND or DIRTY PR can still report
+      // `mergeable: true` (behind/dirty are about mergeStateStatus, not the
+      // plain mergeable flag), and arming either of those would race the
+      // update-branch/conflict-label handling below. Only a settled CLEAN read
+      // arms; UNKNOWN means "ask again next sweep", never "assume fine".
+      const decision = automergeDecision({
+        files: pr.files,
+        labels: pr.labels,
+        freeze,
+        baseRef: pr.baseRefName || "main",
+      });
+      if (decision.armed) {
+        actions.push({ kind: "enable-auto", pr: pr.number, headSha: pr.headSha, reason: decision.reason });
+      }
     }
 
     const labelled = pr.labels.includes(CONFLICT_LABEL);

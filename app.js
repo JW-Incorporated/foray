@@ -3,6 +3,50 @@
    playlist builder), playlists list, playlist detail. Hash routing.
    The semantic layer (compiled concepts + tags) powers playlist building. */
 
+/* THE GENERATION PIN, READ BEFORE ANYTHING ELSE IN THIS FILE (#233/M4).
+ *
+ * sw.js's `handleShell` bakes a fallen-back generation's id directly into
+ * whichever CODE file it served stale, synchronously, so it is readable
+ * before that file's own logic runs — never only via `postMessage`, which a
+ * review correctly flagged as racy: a message sent before this file's own
+ * `addEventListener("message", ...)` attaches (further down this file, after
+ * `init()` has already started fetching) is simply lost, and `init()`'s first
+ * `data/*.json` fetches would go out unpinned even though the code they are
+ * paired with is stale.
+ *
+ * Two places this id can arrive from, checked in the order a real page load
+ * can produce them:
+ *   1. `self.__forayPinnedDeployId` — set by a `self.__forayPinnedDeployId =
+ *      "<id>";` statement sw.js prepends to THIS file's own bytes, when
+ *      app.js itself is what fell back. Executes as this file's very first
+ *      statement, before anything below it.
+ *   2. A `<meta name="foray-pin-deploy-id" content="<id>">` tag sw.js
+ *      inserts into `index.html`'s `<head>` when the NAVIGATION fell back
+ *      (parsed by the browser before any script tag runs, including this
+ *      one) — covers the case where index.html/search-engine.js fell back but
+ *      this file's own fetch was fresh.
+ * Either establishes the pin synchronously; no message race is possible for
+ * either path. The one residual gap — `player/client.js`, a DEFERRED module
+ * that can still be discovered stale after `init()`'s own fetches have
+ * already gone out — is unchanged from the original design and is named in
+ * sw.js's header; closing it would mean blocking every page load on that
+ * module, which the founding "survive a dead zone" constraint rules out. */
+let pinnedDeployId = (typeof self !== "undefined" && self.__forayPinnedDeployId) || null;
+if (!pinnedDeployId && typeof document !== "undefined" && typeof document.querySelector === "function") {
+  /* Defensive on `metaPin` itself, not just `document.querySelector`'s
+     existence: several test harnesses in this repo (episode-page.test.js,
+     first-time-onboarding.test.js, others) stub `document.querySelector` as
+     an always-truthy shape with no real selector matching and no
+     `getAttribute`, to keep those harnesses minimal. A real DOM's
+     `querySelector` correctly returns `null` for a tag that is not there;
+     this reads the attribute only when the returned object actually offers
+     one, so neither shape can throw. */
+  const metaPin = document.querySelector('meta[name="foray-pin-deploy-id"]');
+  if (metaPin && typeof metaPin.getAttribute === "function") {
+    pinnedDeployId = metaPin.getAttribute("content") || null;
+  }
+}
+
 const state = {
   session: null,
   validated: null,
@@ -15,6 +59,7 @@ const state = {
   segments: null,           // data/segments.json
   segmentSources: null,     // data/segment-sources.json
   catalog: null,            // data/catalog-client.json — show-level records, #/show/:id (Stage 1)
+  breadthShowCache: {},     // show_id -> minimal show record from /api/shows/search (A3.1/Q3), see showById
   foray: null,              // the resolved Foray currently on screen
   forayResume: null,        // its stored resume point, or null — see paintForay
   forayPlaying: null,       // id of the Foray the player is inside, or null
@@ -160,11 +205,37 @@ function profileId() {
   return id;
 }
 
+/* Buffers rows logged before `player/client.js` has evaluated and published
+   `window.forayEventLog` — the same bridging pattern `waitForStorage()` above
+   uses for `cp_` keys, and for the same reason: `app.js` is a classic script
+   parsed before the deferred module below it, so a `logEvent` call made
+   during `init()`'s own early work (a `refreshed_all` on first paint, say)
+   must not be silently dropped just because the module has not arrived yet.
+   Drained by `flushBufferedEvents()`, called once the module is confirmed
+   present (mirroring `storageReady()`'s one-shot handoff). */
+let _bufferedEvents = [];
+
 function logEvent(type, payload) {
-  const events = lsGet("cp_events", []);
-  const builder = state.session?.builder || "unknown";
-  events.push({ ts: new Date().toISOString(), type, builder, profile: profileId(), payload });
-  lsSet("cp_events", events.slice(-5000));
+  const row = { ts: new Date().toISOString(), type, builder: state.session?.builder || "unknown", profile: profileId(), payload };
+  if (window.forayEventLog && typeof window.forayEventLog.append === "function") {
+    flushBufferedEvents();
+    window.forayEventLog.append(row);
+  } else {
+    _bufferedEvents.push(row);
+  }
+}
+
+/** Hand the pre-module buffer to `window.forayEventLog` the moment it exists.
+    Called from `logEvent` itself (the module may have arrived between two
+    calls) and once from `init()` after `waitForStorage()` settles, matching
+    how `player/client.js` publishes both bridges off the same
+    `forayplayer:ready` event. */
+function flushBufferedEvents() {
+  if (!_bufferedEvents.length) return;
+  if (!window.forayEventLog || typeof window.forayEventLog.append !== "function") return;
+  const rows = _bufferedEvents;
+  _bufferedEvents = [];
+  for (const row of rows) window.forayEventLog.append(row);
 }
 
 /* Durable telemetry: flush the buffered events to Supabase (ADR-0005 +
@@ -174,6 +245,33 @@ function logEvent(type, payload) {
    protects the data). Raw fetch, no SDK, to stay within the strict CSP. */
 const SB_URL = "https://qjdllvqdcgacvujhclny.supabase.co";
 const SB_KEY = "sb_publishable_0T8hpKCC_857G31LlCh0WA_0Rp61B3J";
+
+/* WHERE `api/*` ACTUALLY LIVES, and why naming it here is not a style choice.
+
+   Every `api/shows/*` and `api/episodes/*` call used to be a RELATIVE path. On
+   the web that resolves against the page's origin, which is GitHub Pages, where
+   no such function exists (404). In the native shell the page is served from
+   `capacitor://localhost`, so it resolves INSIDE the app bundle — a scheme with
+   no server behind it at all. Both failures are swallowed by the callers' own
+   "absence is a real state" degrade, so the app fell back to the bundled slice
+   of `BUNDLED_ITEMS_PER_SHOW` (3) episodes a show and said nothing. That is the
+   whole of "4a only has 3 episodes per show": the full-catalogue endpoint has
+   been shipping and working, and no client has ever reached it.
+
+   The functions are deployed by the Vercel project `foray-web` (vercel.json,
+   api/package.json); this is its production alias. It is a bare origin with no
+   trailing slash, and `test/api-origin.test.js` pins that shape, because
+   `apiUrl()` joins with a single "/" and a trailing one would produce `//api`.
+
+   NOT `pinnedUrl()`. That appends `_fdid=<deploy id>` so a reload cannot mix
+   files from two data deploys — a statement about the STATIC bundle's
+   generation. These are live functions with no deploy generation to pin, so the
+   parameter would be noise the function has to ignore. */
+const API_ORIGIN = "https://foray-web-seven.vercel.app";
+
+function apiUrl(path) {
+  return `${API_ORIGIN}/${String(path).replace(/^\/+/, "")}`;
+}
 
 async function sbAuth(path, body) {
   try {
@@ -210,9 +308,10 @@ async function ensureAnonSession() {
   return null;
 }
 
-/* Map a buffered cp_events entry to a canonical events-table row, or null for
-   local-only types (see the client-integration spec §3). episode_id/session_id
-   stay null; durable ids ride in payload as episode_slug/session_key. */
+/* Map a buffered event-log row (window.forayEventLog, formerly `cp_events`) to
+   a canonical events-table row, or null for local-only types (see the
+   client-integration spec §3). episode_id/session_id stay null; durable ids
+   ride in payload as episode_slug/session_key. */
 const SB_ARCHETYPES = new Set(["deep-learn", "stretch", "narrative", "comfort", "continue"]);
 /* The player (player/client.js) is an ES module and cannot import from this
    classic script, so the event pipeline is handed over explicitly rather than
@@ -259,15 +358,19 @@ function toEventRow(e, userId) {
 
 async function trySyncEvents() {
   try {
-    const events = lsGet("cp_events", []);
-    const since = lsGet("cp_synced_ts", "");
-    const unsynced = events.filter(e => e.ts > since);
+    if (!window.forayEventLog || typeof window.forayEventLog.unsynced !== "function") return;
+    flushBufferedEvents();
+    const unsynced = await window.forayEventLog.unsynced();
     if (!unsynced.length) return;
     const s = await ensureAnonSession();
     if (!s) return; // offline / auth unavailable — buffer persists, retry next time
-    const lastTs = unsynced[unsynced.length - 1].ts;
     const rows = unsynced.map(e => toEventRow(e, s.user_id)).filter(Boolean);
-    if (!rows.length) { lsSet("cp_synced_ts", lastTs); return; } // all local-only
+    const syncedIds = unsynced.map(e => e.id);
+    if (!rows.length) {
+      await window.forayEventLog.markSynced(syncedIds); // all local-only
+      await window.forayEventLog.pruneToRetention(5000);
+      return;
+    }
     for (let i = 0; i < rows.length; i += 500) {
       const res = await fetch(SB_URL + "/rest/v1/events", {
         method: "POST",
@@ -281,7 +384,8 @@ async function trySyncEvents() {
       });
       if (!res.ok) return; // don't advance the cursor — retry the whole batch next time
     }
-    lsSet("cp_synced_ts", lastTs);
+    await window.forayEventLog.markSynced(syncedIds);
+    await window.forayEventLog.pruneToRetention(5000);
   } catch (_) { /* buffer persists, retry next time */ }
 }
 
@@ -311,6 +415,14 @@ function nudgeTopics(topics, amount) {
     }
   });
   saveInterests();
+  /* Bumps the repeated-query cache key (see buildPlaylist's `searchCache`) so
+     a playlist rebuild after a pick/play/thumbs nudge re-scores instead of
+     silently serving a stale ranking. interestScore (used as
+     searchWithRelaxation's zero-content-token rankFallback, e.g. a bare
+     "comedy"/"something short" query) reads state.interests, so this is the
+     one thing besides the query text and family-mode flag that can change
+     what buildPlaylist should return for the exact same typed query. */
+  state._interestsGen = (state._interestsGen || 0) + 1;
 }
 
 function boostTopics(topics, amount) { nudgeTopics(topics, amount); }
@@ -348,6 +460,13 @@ function snapshot(id, src) {
     audio_bytes: src.audio_bytes ?? null,
     duration_sec: src.duration_sec ?? null,
     dai_suspected: src.dai_suspected ?? false,
+    // Explicit-content flag (kanban card t_02c6bb0b): already ingested at the
+    // source (tools/refresh/merge.mjs), but this whitelist projection dropped
+    // it on the floor before the badge existed to read it — every pool item
+    // (the vast majority of what epRow/renderEpisode actually render) would
+    // otherwise silently lose the flag here, one snapshot() call after the
+    // caller thought it kept it.
+    explicit: src.explicit ?? null,
   };
   state.itemIndex[id] = snap;
   return snap;
@@ -414,6 +533,18 @@ function poolFiltered() {
   return pool.filter(i => i.explicit !== true && branchOf(i) !== "comedy");
 }
 
+/* The visible half of the same flag Family Mode has quietly filtered on since
+   corner-case 28 (kanban card t_02c6bb0b): every mainstream podcast app shows
+   an "E" next to explicit content, and 4a never did, even though the
+   publisher's <itunes:explicit> flag was captured all along. Additive only —
+   Family Mode's `i.explicit !== true` filter above is untouched, this just
+   makes the same field visible when Family Mode is off. Strict `=== true`
+   because the field is tri-state (true/false/null) at both the episode and
+   show level; false and null both mean "no badge", not "unknown = flag it". */
+function explicitBadge(isExplicit) {
+  return isExplicit === true ? `<span class="explicit-badge" title="Explicit content" aria-label="Explicit">E</span>` : "";
+}
+
 function fmtDur(min) {
   if (!min) return "";
   return min >= 60 ? `${Math.floor(min / 60)}h ${min % 60}m` : `${min} min`;
@@ -478,6 +609,106 @@ function upNextBtn(id) {
   const on = isQueued(id);
   return `<button class="up-next ${on ? "on" : ""}" data-upnext="${esc(id)}"
     aria-label="${on ? "In Up Next" : "Add to Up Next"}">${on ? "✓ Up Next" : "+ Up Next"}</button>`;
+}
+
+/* ---------- starred shows (follow-lite) ----------
+
+   Requirement A2.4 / Joey's Q2 answer: "yes, add starred shows, and a
+   section for all of your starred shows. It is not the home page but is
+   somewhat easily accessible." Deliberately NOT subscribe semantics — no
+   notifications, no auto-download, no algorithmic surfacing — just a
+   lightweight marker, mirroring the existing episode star (`cp_saved`)
+   pattern exactly, keyed on show_id instead of episode id. Same "state
+   observed, never declared" principle: starring a show changes nothing
+   about what the app recommends or fetches. */
+function starredShowsMap() { return lsGet("cp_starred_shows", {}); }
+function isShowStarred(id) { return id in starredShowsMap(); }
+
+function toggleShowStar(id) {
+  const starred = starredShowsMap();
+  if (starred[id]) {
+    delete starred[id];
+    logEvent("show_unstarred", { show_id: id });
+  } else {
+    const show = showById(id);
+    if (!show) return;
+    starred[id] = {
+      show_id: show.show_id,
+      title: show.title,
+      artwork_url: show.artwork_url || null,
+      starred_at: new Date().toISOString(),
+    };
+    logEvent("show_starred", { show_id: id });
+  }
+  lsSet("cp_starred_shows", starred);
+  document.querySelectorAll(`[data-show-star="${CSS.escape(id)}"]`).forEach(b => {
+    b.textContent = isShowStarred(id) ? "★ Starred" : "☆ Star this show";
+    b.classList.toggle("on", isShowStarred(id));
+  });
+}
+
+/* Text label, not a bare glyph like starBtn -- this button sits alone in a
+   page header rather than beside a play control in a dense row, so it needs
+   to read on its own. */
+function showStarBtn(show_id) {
+  const on = isShowStarred(show_id);
+  return `<button class="show-star ${on ? "on" : ""}" data-show-star="${esc(show_id)}" aria-label="${on ? "Unstar show" : "Star show"}">${on ? "★ Starred" : "☆ Star this show"}</button>`;
+}
+
+function bindShowStars(scope) {
+  scope.querySelectorAll("[data-show-star]").forEach(btn => {
+    if (btn._bound) return;
+    btn._bound = true;
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      toggleShowStar(btn.dataset.showStar);
+    });
+  });
+}
+
+/* ---------- Starred Shows page (#/starred-shows) ----------
+
+   Reachable from the drawer, deliberately NOT on the home screen (Joey's
+   framing: "somewhat easily accessible" but distinct from home). Renders
+   exactly what cp_starred_shows holds -- no fetch, no ranking, no
+   algorithmic surfacing. An empty state is a real, renderable state, same
+   convention as every other page in the app. Reuses showResultRow's visual
+   language (artwork + title, no play/star/duration controls -- a show,
+   not a playable item) rather than inventing a second show-card shape. */
+function starredShowRow(entry) {
+  /* The stored entry is a SNAPSHOT taken when the star was tapped, so it
+     carries whatever `artwork_url` the show record had then — null for the 53
+     shows harvested without one. Fall back through the live show record so a
+     starred show is never blanker than the same show is on any other surface. */
+  const art = entry.artwork_url || showArtworkUrl(showById(entry.show_id));
+  return `<a class="show-result" href="#/show/${encodeURIComponent(entry.show_id)}">
+    ${art ? `<img class="show-result-art" src="${esc(safeUrl(art))}" alt="">` : `<span class="show-result-art show-result-art-blank"></span>`}
+    <span class="show-result-title">${esc(entry.title)}</span>
+  </a>`;
+}
+
+/* Back goes to #/shows: since 2026-09-03 this page is reached from the Shows
+   page (the drawer entry came off with the five-page menu), so the back
+   button returns there rather than to a home screen that no longer links here. */
+function renderStarredShows() {
+  document.body.className = "view-page";
+  const starred = Object.values(starredShowsMap())
+    .sort((a, b) => (b.starred_at || "").localeCompare(a.starred_at || ""));
+
+  $("#view").innerHTML = `
+    <div class="page">
+      <div class="page-head">
+        <a class="back" href="#/shows">‹</a>
+        <div>
+          <h2>Starred Shows</h2>
+          <p class="sub">${starred.length} show${starred.length === 1 ? "" : "s"} you've starred</p>
+        </div>
+      </div>
+      ${starred.length
+        ? `<div class="show-results">${starred.map(starredShowRow).join("")}</div>`
+        : `<p class="note">No starred shows yet — star a show from its page to see it here.</p>`}
+    </div>`;
 }
 
 /* ---------- the four suggestions ---------- */
@@ -682,9 +913,10 @@ function prettyTitle(query) {
    naming rather than rounding away: the largest single part is 468 B, and 50
    playlists of the ten longest-titled episodes in the catalogue come to ~252 KB.
    A blanket self-sufficient copy would be ~861 B a part — ~430 KB — for the worse
-   failure mode above. This lands in DurableStore's localStorage tier, where
-   `cp_events` (5,000 entries) is already several times any of these figures, so it
-   is not the largest thing in there; and lsSet reports a refused write rather than
+   failure mode above. This lands in DurableStore's localStorage tier — the event
+   queue (M3) moved off it into IndexedDB, so it is no longer the comparison point
+   here, but the playlist bytes above are still well inside what that tier already
+   held; and lsSet reports a refused write rather than
    swallowing it, which buildPlaylist now ACTS on rather than discarding. All four
    figures are asserted against the real catalogue in
    test/playlist-durability.test.js, so widening the whitelist turns CI red rather
@@ -921,6 +1153,79 @@ function rowsForIds(ids) {
 
 function queueRows() { return rowsForIds(queueIds()); }
 
+/* ---------- Up Next auto-advance (docs/listening-queue-plan.md §4 addendum,
+   kanban card t_b9880844) ----------
+
+   CLAUDE.md product principle #1 explicitly bans "autoplay chains" as a dark
+   pattern. This feature is a genuine, deliberate exception carved out of that
+   rule for exactly one purpose — continuing a list the LISTENER built and
+   ordered by hand — and it is scoped as narrowly as it can be to stay
+   distinguishable from the pattern the principle bans:
+
+     - DEFAULT OFF. `cp_autoadvance` is read with a `false` fallback, same as
+       `cp_family`. A fresh install and a fresh page reload never runs an
+       autoplay chain nobody asked for.
+     - OPT-IN, ONE PER-DEVICE TOGGLE, no per-episode variant. See the drawer
+       control (`autoadvance-toggle`), same pattern as `family-toggle`/
+       `player-toggle`.
+     - ONLY WHEN THE FINISHED EPISODE WAS PLAYED FROM #/queue. Starting an
+       unrelated episode elsewhere in the app must never silently hijack it
+       into "now playing the queue" — see `queuePlaybackOrigin` below. This is
+       the addendum's answer to plan §4 Q1.
+     - THE QUEUE NEVER LOOPS. Reaching the end stops cleanly and says so
+       (`bannerHtml`-style toast is out of scope for Stage 1; the queue page's
+       own count already reflects an empty list). No pulling in more content
+       to keep going — that would be the "infinite scroll" half of principle
+       #1, not just the "autoplay chains" half. */
+function autoAdvanceOn() { return lsGet("cp_autoadvance", false); }
+
+/* Set the instant a queue-originated play is dispatched (bindPlay below,
+   guarded by `origin === "queue"`), read the instant an episode ends
+   (advanceQueueOnEnded). Cleared whenever ANY play starts that is NOT from
+   the queue, so playing an unrelated episode mid-list can never be read as
+   "still playing the queue" by a slow finish event that arrives after. One
+   flat field is enough — Stage 1 has exactly one player and one Up Next
+   list, never two concurrent playback sessions to disambiguate between. */
+function setQueuePlaybackOrigin(id) { state.queuePlaybackOrigin = id || null; }
+function clearQueuePlaybackOrigin() { state.queuePlaybackOrigin = null; }
+function isPlayingFromQueue(id) { return state.queuePlaybackOrigin === id; }
+
+/** Called from `ForayPlayer.onEpisodeEnded` (player/client.js) with the id of
+    the episode that just finished ordinary (non-Foray) playback.
+
+    Runs unconditionally — the guards below, not the caller, decide whether
+    anything happens — because the player module intentionally knows nothing
+    about Up Next; it only reports "this finished playing" once per episode. */
+function advanceQueueOnEnded(id) {
+  const wasFromQueue = isPlayingFromQueue(id);
+  clearQueuePlaybackOrigin();
+  if (!autoAdvanceOn()) return;
+  if (!wasFromQueue) return;
+  const ids = queueIds();
+  const i = ids.indexOf(id);
+  // Not (or no longer) in the list — reordered/removed mid-playback (plan §4
+  // Q4): freeze at what was queued when playback started, i.e. do nothing
+  // rather than guess at a new position.
+  if (i < 0) return;
+  const nextId = ids[i + 1];
+  // End of the queue: stop cleanly, no loop, no pulling in more content.
+  if (!nextId) return;
+  const nextItem = state.poolIds.has(nextId) ? state.itemIndex[nextId] : null;
+  // The next item aged out of the live pool since it was queued (archived/
+  // unnamed) — nothing playable to hand to the player. Stop rather than
+  // skip past it silently; a listener who reordered/removed things mid-list
+  // already gets the "freeze" behavior above for the same reason.
+  if (!nextItem || !nextItem.audio_url || !window.ForayPlayer) return;
+  setQueuePlaybackOrigin(nextId);
+  window.ForayPlayer.play(nextItem, { why: whyFor(nextId, nextItem) }).then(ok => {
+    if (!ok) { clearQueuePlaybackOrigin(); return; }
+    logEvent("play_started", { episode_id: nextId, topics: nextItem.topics || [], ctx: "autoadvance" });
+    const history = pickedHistory();
+    if (!history.includes(nextId)) lsSet("cp_history", history.concat(nextId).slice(-200));
+    trySyncEvents();
+  });
+}
+
 /* One row per saved part, in saved order, each tagged with what the live pool
    can still do for it. `resolveParts(p).length` is the number BOTH views print,
    so the count and the contents cannot disagree — that is the whole of #276, and
@@ -974,8 +1279,14 @@ const TITLE_ALIASES = {
   "Lingthusiasm - A podcast that's enthusiastic about linguistics": "Lingthusiasm",
 };
 
+/* A3.1/Q3: the curated 220-show catalogue first, then the breadth-search
+   cache (populated by renderShow when a show_id isn't in the curated set —
+   see there) so a show page for a breadth-tier show found via Shows search
+   still resolves once its record has been fetched once this session. */
 function showById(id) {
-  return (state.catalog?.shows || []).find(s => s.show_id === id) || null;
+  return (state.catalog?.shows || []).find(s => s.show_id === id)
+    || state.breadthShowCache[id]
+    || null;
 }
 
 /* Every discover-pool episode belonging to a show, joined by show_id first and
@@ -990,41 +1301,671 @@ function episodesForShow(show) {
   return pool.filter(it => wanted.has(it.show));
 }
 
+/* A show's artwork, with the discover pool as the fallback source.
+
+   53 of catalog.json's 220 shows carry `artwork_url: null` — whole harvest
+   batches where tools/harvest-catalog.mjs's iTunes lookup found no match
+   (`artworkUrl600 ?? null`), landing in contiguous index blocks rather than
+   scattered. Every render site then took its `show.artwork_url ? img : blank`
+   else-branch and drew a flat grey square. "Shows we vouch for" samples 8 of
+   220 by day-of-year seed, so on a typical day one or two of the eight are
+   blank next to six that resolve — which reads as one broken show rather than
+   a quarter of the catalogue, and is how this reached a device.
+
+   The show record is derived data; the discover pool is not, and it carries a
+   live 600x600 https artwork URL for all 1946 of its items. So whenever the
+   show has any episode in the pool the correct image is ALREADY in memory —
+   the show record simply doesn't reference it.
+
+   Returns null, never "", when there is genuinely nothing: callers render the
+   grey `.show-result-art-blank` placeholder for that, and a real absence stays
+   a renderable state, same rule as everywhere else in this file.
+
+   WHY AN INDEX AND NOT `episodesForShow(show).find(...)`, which is the obvious
+   one-liner and was the first version of this: `#/shows` renders all 220
+   catalog shows through showResultRow, 53 of them miss the early return above,
+   and episodesForShow builds the FULL matched array before one element is
+   taken — so the obvious version costs 53 whole passes over a 1946-item pool
+   plus 53 intermediate arrays, per navigation. Measured at 59.7ms per render
+   on desktop Node against 0.03ms before, and an iOS WKWebView is several times
+   slower than that; renderCategory and similarShowsSection pay smaller
+   versions of the same. The index is built once per pool and is ~0.
+
+   It is keyed on the pool ARRAY's identity, not on a boot flag: `init()`
+   assigns `state.discover` exactly once and never mutates `items`, but the
+   suites reassign it per test, and an index that outlived a reassignment would
+   answer for the previous fixture — a stale-cache bug that reads as a passing
+   test. Identity comparison costs nothing and cannot get that wrong.
+
+   The join is episodesForShow's, restated as two lookups because a Set-per-
+   call is what made the one-liner expensive: exact title first, then the one
+   TITLE_ALIASES entry. If that list ever grows past its single documented
+   entry, both places have to learn about it.
+
+   Backfilling catalog.json's 53 nulls is still the root fix. This is what
+   makes the UI right in the meantime, and on the next show that harvests
+   without a match. */
+let _artByShowTitle = null;
+let _artIndexPool = null;
+function showArtworkUrl(show) {
+  if (!show) return null;
+  if (show.artwork_url) return show.artwork_url;
+  const pool = (state.discover?.items || []);
+  if (_artIndexPool !== pool) {
+    _artIndexPool = pool;
+    _artByShowTitle = new Map();
+    // First wins, matching `.find()`'s "first episode carrying artwork".
+    for (const it of pool) {
+      if (it.artwork_url && !_artByShowTitle.has(it.show)) _artByShowTitle.set(it.show, it.artwork_url);
+    }
+  }
+  return _artByShowTitle.get(show.title)
+    || _artByShowTitle.get(TITLE_ALIASES[show.title])
+    || null;
+}
+
+/* ---------- show-name links (Stage 4 of docs/show-pages-plan.md) ----------
+
+   epRow/archivedRow/renderEpisode only ever have an episode's `show` string
+   (discover.json/itemIndex never carry show_id) — the reverse of
+   episodesForShow's join. Same two-step rule as Stage 1: match catalog.json's
+   `title` first, then TITLE_ALIASES for the one show (Lingthusiasm) whose
+   catalog title and discover `show` string disagree. Returns null (never
+   throws) when no show record matches, e.g. state.catalog not loaded yet or a
+   show discover.json carries that catalog.json doesn't — the caller falls
+   back to plain text, matching renderShow's own "absence is a real state, not
+   an error" rule. */
+function showIdForShowName(showName) {
+  if (!showName) return null;
+  const shows = state.catalog?.shows || [];
+  let s = shows.find(sh => sh.title === showName);
+  if (!s) {
+    const aliasedTitle = Object.keys(TITLE_ALIASES).find(k => TITLE_ALIASES[k] === showName);
+    if (aliasedTitle) s = shows.find(sh => sh.title === aliasedTitle);
+  }
+  return s ? s.show_id : null;
+}
+
+/* The show-name text as a link to its show page, or plain escaped text when
+   no show record joins (see showIdForShowName). Never returns an empty
+   string for a truthy showName, so callers can drop it straight into the
+   existing `${esc(item.show)}` slot without an extra guard. */
+function showNameLink(showName) {
+  const label = esc(showName || "");
+  const showId = showIdForShowName(showName);
+  return showId ? `<a class="show-link" href="#/show/${esc(showId)}">${label}</a>` : label;
+}
+
+/* A3.2 — tapping a chip goes to "shows in this category" (renderCategory),
+   reusing taxonomy_node_ids overlap across the existing 220-show curated
+   catalogue. Zero new data needed: the join is entirely against fields
+   already fetched (state.taxonomy, state.catalog). Deliberately an <a>, not
+   a <button> wired through JS, so it is a normal navigable link (right-click
+   "open in new tab" etc. keep working, same reasoning as showNameLink). */
 function taxonomyChip(nodeId) {
   const node = (state.taxonomy?.nodes || []).find(n => n.id === nodeId);
-  return `<span class="fy-chip">${esc(node?.label || nodeId)}</span>`;
+  const label = esc(node?.label || nodeId);
+  return `<a class="fy-chip" href="#/category/${esc(encodeURIComponent(nodeId))}">${label}</a>`;
+}
+
+/* Every catalogue show whose taxonomy_node_ids includes nodeId — the exact
+   overlap check A3.2 calls for. Once Stage 3b's breadth catalogue becomes
+   client-searchable this should extend to it too (separate card); for now
+   it reads only state.catalog, the curated 220-show set. */
+function showsForCategory(nodeId) {
+  return (state.catalog?.shows || []).filter(s => (s.taxonomy_node_ids || []).includes(nodeId));
+}
+
+/* Shared shell for both the category list (A3.2) and the all-shows index
+   (A3.3) — same "back, heading, sub, list-of-show-result-rows" shape
+   renderShow/renderPlaylistDetail already use, and reuses showResultRow so a
+   row here looks and behaves exactly like a Shows-search result.
+
+   `above` is raw HTML dropped between the header and the A–Z list. It exists
+   for the Shows page's search box + editorial rows; the category page passes
+   nothing and is byte-identical to what it rendered before. */
+function renderShowIndexPage(title, subtitle, shows, above = "") {
+  document.body.className = "view-page";
+  $("#view").innerHTML = `
+    <div class="page">
+      <div class="page-head">
+        <a class="back" href="#/">‹</a>
+        <div>
+          <h2>${esc(title)}</h2>
+          <p class="sub">${esc(subtitle)}</p>
+        </div>
+      </div>
+      ${above}
+      ${shows.length
+        ? `<div class="show-results show-index">${shows.map(showResultRow).join("")}</div>`
+        : `<p class="note">No shows here yet.</p>`}
+    </div>`;
+}
+
+/* A3.2's landing page. An unknown nodeId still renders — same "absence is a
+   real state, not an error" rule renderShow's not-found guard follows —
+   falling back to the raw id as its own label, and an empty result list
+   getting the shared "No shows here yet" copy rather than a dead end. */
+function renderCategory(nodeId) {
+  const node = (state.taxonomy?.nodes || []).find(n => n.id === nodeId);
+  const label = node?.label || nodeId;
+  const shows = showsForCategory(nodeId).slice().sort((a, b) => a.title.localeCompare(b.title));
+  renderShowIndexPage(label, `${shows.length} show${shows.length === 1 ? "" : "s"} in 4a's catalogue`, shows);
+}
+
+/* A3.3 — the all-shows browsable index. A-Z over the full curated catalogue;
+   category grouping is the Shows-search tab's job already (browse by
+   category lives one tap away via any show's taxonomy chips), so this stays
+   a single flat alphabetical list rather than duplicating that navigation.
+
+   SINCE 2026-09-03 IT IS ALSO THE "Shows" MENU DESTINATION: everything
+   show-shaped lives here now, because the founder asked for the show search
+   and the "Shows we vouch for" row off Home and onto this page (items 1 and
+   5). In order: search, the starred-shows shortcut, the editorial row, then
+   A-Z. That order is deliberate \u2014 search answers "does this show exist
+   here", which is why someone opens this page on purpose, and the A-Z list
+   is the fallback for someone who does not know what they are looking for,
+   so it goes last rather than pushing the search box under 220 rows.
+
+   The tabbed "Playlists | Shows" switcher that used to wrap this search on
+   Home went away with it. It existed only to time-share one strip of the
+   home screen between two different questions; the playlist builder now
+   lives on #/playlists and the show search here, so there is nothing left to
+   toggle between. renderShowSearchResults - local-first paint plus the
+   breadth endpoint - is unchanged.
+
+   The old browse-all link is gone rather than moved (item 6): it was a link
+   from Home to THIS page, and the menu's own "Shows" item is now that
+   affordance. Nothing else in the app linked to it. */
+function renderAllShows() {
+  const shows = (state.catalog?.shows || []).slice().sort((a, b) => a.title.localeCompare(b.title));
+  renderShowIndexPage("Shows", `${shows.length} shows in 4a's catalogue, A\u2013Z`, shows, `
+      <form id="sh-form" autocomplete="off">
+        <input id="sh-input" type="text" maxlength="120" placeholder="search shows by name\u2026">
+        <button type="submit">Go</button>
+      </form>
+      <p id="sh-note" class="note" hidden></p>
+      <div id="sh-results" class="show-results" hidden></div>
+      <div id="ep-search-results" hidden></div>
+      <a class="page-link-row" href="#/starred-shows">Starred shows \u203a</a>
+      ${vouchForHtml()}`);
+
+  $("#sh-form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const query = $("#sh-input").value.trim();
+    if (!query) return;
+    renderShowSearchResults(query);
+  });
+}
+
+/* Stage 3b (docs/show-pages-plan.md §Stage 3, kanban t_567b570f): full
+   per-show episode list, fetched on demand from the backend endpoint rather
+   than the curated discover-pool ceiling `episodesForShow` gives (median 7
+   episodes). Maps a full-catalogue row into the same shape `snapshot()`
+   already knows how to normalize (id/title/hook/show/audio_url/duration_min)
+   and seeds it into `state.itemIndex` — bindPlay/toggleStar both read
+   `state.itemIndex[id]` first, so a full-catalogue row plays and stars
+   exactly like a curated one. No new row UI needed; every episode gets a
+   real, playable audio_url straight from the endpoint, never a link-out. */
+function fullCatalogueRowToEpRowItem(show, ep) {
+  const id = `${show.show_id}--${ep.guid}`;
+  return snapshot(id, {
+    show: show.title,
+    title: ep.title,
+    hook: ep.description_text || "",
+    audio_url: ep.audio_url,
+    duration_min: ep.duration_seconds ? Math.round(ep.duration_seconds / 60) : null,
+    duration_sec: ep.duration_seconds ?? null,
+    topics: [],
+  });
+}
+
+/* S-06 (kanban t_be4c1793): `cursor` is the API's own opaque keyset cursor
+   (episodeCursor.ts) — when present the next page continues strictly after
+   that episode rather than restarting from the top. Omitting it (the
+   original call shape every existing caller/test still uses) fetches page 1
+   exactly as before, so this stays backward compatible.
+
+   `nextCursor` in the return value is the API's `next_cursor` — null means
+   "no more pages," which is the ONLY signal renderShow is allowed to treat
+   as "the full list is now loaded" (see its own honesty rule below: a
+   present cursor must never be silently dropped by a caller that stops
+   paging on its own accord). */
+async function fetchShowEpisodes(show_id, cursor) {
+  try {
+    const path = `api/shows/${encodeURIComponent(show_id)}/episodes`;
+    const url = cursor ? `${path}?cursor=${encodeURIComponent(cursor)}` : path;
+    const res = await fetch(apiUrl(url), { cache: "no-cache" });
+    if (!res.ok) return { episodes: null, nextCursor: null, error: `status ${res.status}` };
+    const body = await res.json();
+    return {
+      episodes: body.episodes || [],
+      nextCursor: body.next_cursor || null,
+      // `degraded` (no-DB live-fetch failure, S-02) and `stale` (DB-mode
+      // cached-stale) are two different backends' names for the same
+      // "this isn't a fresh fetch, say so" signal — surfaced identically.
+      stale: !!(body.stale || body.degraded),
+      error: body.error || null,
+    };
+  } catch (e) {
+    return { episodes: null, nextCursor: null, error: e && e.message || "network error" };
+  }
+}
+
+/* A2.5: "Similar shows" — deterministic taxonomy-overlap similarity, zero new
+   data needed (docs/product requirements audit note: taxonomy_node_ids
+   already sits on every catalog.json show record, unused for this purpose
+   until now). Score = count of taxonomy_node_ids shared with `show`; a show
+   sharing none is not "weakly similar", it is unrelated, so it is filtered
+   out rather than padded in (same "honest sparse/empty beats padding" rule
+   buildPlaylist's tiering already follows). Ties broken by show_id so the
+   order is stable and pinnable in a test, not accidentally date- or
+   insertion-order-dependent. Returns [] (never throws) for a show with no
+   taxonomy_node_ids of its own — there is nothing to overlap against. */
+function similarShows(show, limit = 6) {
+  const nodeIds = new Set(show?.taxonomy_node_ids || []);
+  if (!nodeIds.size) return [];
+  const all = state.catalog?.shows || [];
+  return all
+    .filter(s => s.show_id !== show.show_id)
+    .map(s => ({ show: s, shared: (s.taxonomy_node_ids || []).filter(id => nodeIds.has(id)).length }))
+    .filter(x => x.shared > 0)
+    .sort((a, b) => b.shared - a.shared || a.show.show_id.localeCompare(b.show.show_id))
+    .slice(0, limit)
+    .map(x => x.show);
+}
+
+/* Reuses showResultRow verbatim (same "names a SHOW, not a playable item"
+   rule the shows-search results already follow) rather than inventing a
+   second show-card markup for the same kind of link. Renders nothing (not
+   an empty section) when there is no overlap — matches every other join on
+   this page (moreFromShow, the "no episodes" branch above). */
+function similarShowsSection(show) {
+  const shows = similarShows(show);
+  if (!shows.length) return "";
+  return `<section class="ep-more">
+    <h3>Similar shows</h3>
+    <div class="show-results">${shows.map(showResultRow).join("")}</div>
+  </section>`;
+}
+
+/* ---------- "used in these forays" (show page, requirements B3/Q6) ----------
+
+   The reverse of foraySourcesHtml's join: that surface starts from a resolved
+   Foray and asks "which shows is this made of"; this starts from a show and
+   asks "which forays draw on it". The actual segment/source walk happens in
+   player/foray-resolve.js's foraysReferencingShow, bridged through
+   player/client.js — app.js itself is NOT allowed to enumerate the pool of
+   segments/sources beyond the one fetch-assignment line below (see
+   tools/mobile/prepare-webdir.test.js's "nothing in the app browses the
+   segment pool" premise, #327): the mobile bundle ships only the segments
+   its bundled Forays reference, so a surface that walked the pool directly
+   here would render complete on the website and silently short in the app.
+
+   Read synchronously off window.ForayPlayer, same trade-off forayCards()
+   already makes for the home screen's Foray row: on a cold load where the
+   player module has not evaluated yet, the footer is simply absent until the
+   next render rather than blocking renderShow on an await. */
+function foraysUsingShow(show) {
+  if (!show || !window.ForayPlayer || typeof window.ForayPlayer.foraysUsingShow !== "function") return [];
+  if (!state.forays) return [];
+  const names = [show.title, TITLE_ALIASES[show.title]].filter(Boolean);
+  return window.ForayPlayer.foraysUsingShow(state.forays, names, {
+    segmentsDoc: state.segments,
+    sourcesDoc: state.segmentSources,
+    unlocked: unlockedForays(),
+  });
+}
+
+/* Deliberately its own <footer>, never mixed into the episode list above it —
+   requirements doc's B1 rule (forays stay visually distinct from episodes
+   everywhere) applies here too: this is 4a's own cross-reference, not
+   anything the show itself published. */
+function showForaysHtml(show) {
+  const forays = foraysUsingShow(show);
+  if (!forays.length) return "";
+  return `<footer class="show-forays">
+    <h3 class="show-forays-h">Used in the following forays</h3>
+    <p class="show-forays-note">Not part of ${esc(show.title)}'s own catalogue — 4a stitched a clip from it into these.</p>
+    ${forays.map(f => `<a class="show-forays-row" href="#/foray/${esc(f.id)}">
+      <span class="show-forays-title">${esc(f.title)}</span>${f.status === "published" ? "" : `<span class="show-forays-draft">draft</span>`}
+    </a>`).join("")}
+  </footer>`;
+}
+
+/* S-06 (kanban t_be4c1793): renders the count label honestly for however
+   much of the full-catalogue list this render has actually loaded so far.
+   `state.fullyLoaded` (closure var in renderShow, passed in) must be the
+   ONLY thing that flips this to a bare, unqualified total — a page count
+   arriving from a "Show more" click that still carries a next_cursor is,
+   by definition, not the whole show, and this function is the one place
+   that rule is enforced so no call site can accidentally claim otherwise. */
+function showEpisodeCountLabel({ loadedCount, fullyLoaded, curatedCount, isBreadthTier, stale, loadError }) {
+  if (loadError && loadedCount === 0) {
+    return curatedCount
+      ? `${curatedCount} episode${curatedCount === 1 ? "" : "s"} in 4a's catalogue (couldn't load the full list)`
+      : `Couldn't load this show's episodes right now.`;
+  }
+  if (loadedCount === 0) {
+    return curatedCount
+      ? `${curatedCount} episode${curatedCount === 1 ? "" : "s"} in 4a's catalogue`
+      : isBreadthTier
+        ? "No episodes found for this show yet."
+        : "No episodes found for this show.";
+  }
+  const staleNote = stale ? " (showing the last saved list — couldn't refresh just now)" : "";
+  if (fullyLoaded) {
+    return `${loadedCount} episode${loadedCount === 1 ? "" : "s"}${staleNote}`;
+  }
+  // Honesty rule (card acceptance criterion): never imply this is the whole
+  // show while pages remain unfetched. "100+" reads as a floor, not a total.
+  return `${loadedCount}+ episodes loaded so far — more available${staleNote}`;
+}
+
+/* S-06: local-filter search over whatever full-catalogue pages have been
+   loaded into this render so far. This is the FALLBACK path only — S-07
+   (kanban t_6baccaa0, api/episodes/search.ts) shipped a real show-scoped
+   full-catalogue search endpoint, which searchShowEpisodesScoped() below
+   asks first; this function only runs when that call fails/degrades, so
+   the search box still works (against whatever pages happen to be in
+   memory) rather than going dark. Matches against title + description
+   text of the raw API episode records already held in `loaded`,
+   case-insensitive substring, same idiom searchShows() uses for names. */
+function filterLoadedEpisodes(loadedRaw, query) {
+  const q = query.trim().toLowerCase();
+  if (!q) return loadedRaw;
+  return loadedRaw.filter((ep) => {
+    const title = String(ep.title || "").toLowerCase();
+    const desc = String(ep.description_text || "").toLowerCase();
+    return title.includes(q) || desc.includes(q);
+  });
+}
+
+/* S-06: asks S-07's show-scoped episode-search endpoint
+   (GET /api/episodes/search?show=<id>&q=<query>), which fetches the show's
+   OWN live feed server-side and filters the FULL episode list — not just
+   whatever pages this render happens to have loaded via fetchShowEpisodes.
+   This is the real, full-catalogue search the card asks for; the local
+   `filterLoadedEpisodes` fallback above only runs when this call itself
+   fails or comes back `degraded` (rate limit, feed fetch error, endpoint
+   unreachable), so the box degrades to "searching loaded episodes" rather
+   than going silent. Returns `{ episodes: null }` on any failure/degrade —
+   callers branch on that exactly like fetchShowEpisodes' null convention. */
+async function searchShowEpisodesScoped(show_id, query) {
+  const data = await fetchApiJson(`api/episodes/search?show=${encodeURIComponent(show_id)}&q=${encodeURIComponent(query)}&limit=25`);
+  if (!data || data.degraded || !Array.isArray(data.episodes)) return { episodes: null };
+  return { episodes: data.episodes };
 }
 
 function renderShow(show_id) {
   document.body.className = "view-page";
   const show = showById(show_id);
   if (!show) { $("#view").innerHTML = `<div class="page"><p class="note">Show not found.</p></div>`; return; }
-  fullPool(); // populate itemIndex/poolIds so episode rows can play in-app
-  const eps = episodesForShow(show);
+  fullPool(); // populate itemIndex/poolIds so curated-pool episode rows can play in-app
+  const curatedEps = episodesForShow(show);
   const ctx = "show-" + show.show_id;
   const chips = (show.taxonomy_node_ids || []).map(taxonomyChip).join("");
+  /* A3.1/Q3: a breadth-tier show (found via the full-catalogue search
+     endpoint, never curated) has zero discover-pool episodes by construction
+     — discover.json only ever holds the curated 220's hand-picked episodes.
+     That is not the same as "this show genuinely has none" (the curated-tier
+     empty state below), so it gets its own honest, non-alarming copy instead
+     of implying the show is empty. Stage 3b's async fetch below (kanban
+     t_567b570f) supersedes this once it resolves; until then this stays the
+     safe degrade for the curated-pool-only render. */
+  const isBreadthTier = show.tier === "breadth";
+  const showArt = showArtworkUrl(show);
 
-  $("#view").innerHTML = `
-    <div class="page">
-      <div class="page-head">
-        <a class="back" href="#/">‹</a>
-        <div>
-          <h2>${esc(show.title)}</h2>
-          <p class="sub">${eps.length} episode${eps.length === 1 ? "" : "s"} in 4a's catalogue</p>
-        </div>
+  const head = `
+    <div class="page-head">
+      <a class="back" href="#/">‹</a>
+      <div>
+        <h2>${esc(show.title)}${explicitBadge(show.explicit)}</h2>
+        <p class="sub" data-show-count>${curatedEps.length
+          ? `${curatedEps.length} episode${curatedEps.length === 1 ? "" : "s"} in 4a's catalogue — loading full episode list…`
+          : isBreadthTier
+            ? "4a's wider catalogue — loading full episode list…"
+            : "Loading full episode list…"}</p>
       </div>
-      ${show.artwork_url ? `<img class="show-art" src="${esc(safeUrl(show.artwork_url))}" alt="">` : ""}
-      ${show.editorial_note ? `<p class="note">${esc(show.editorial_note)}</p>` : ""}
-      ${chips ? `<div class="fy-chips">${chips}</div>` : ""}
-      ${eps.length
-        ? eps.map((item, i) => epRow(item, i, ctx, -1)).join("")
-        : `<p class="note">No episodes from this show are in 4a's catalogue right now.</p>`}
+    </div>
+    ${showArt ? `<img class="show-art" src="${esc(safeUrl(showArt))}" alt="">` : ""}
+    ${showStarBtn(show.show_id)}
+    ${show.editorial_note ? `<p class="note">${esc(show.editorial_note)}</p>` : ""}
+    ${chips ? `<div class="fy-chips">${chips}</div>` : ""}`;
+
+  /* S-06: the search box is a real requirement from Wyatt's original ask,
+     not a nice-to-have — but it searches full-catalogue episode data, so it
+     stays hidden until at least one full-catalogue page has loaded (curated-
+     pool-only episodes are already all on-screen with nothing to search
+     for). bindShowEpisodeSearch() below reveals it the moment page 1 lands. */
+  const searchBox = `
+    <div class="show-ep-search" data-show-ep-search hidden>
+      <form data-show-ep-search-form autocomplete="off">
+        <input data-show-ep-search-input type="text" maxlength="120" placeholder="Search this show's episodes…">
+      </form>
+      <p class="note" data-show-ep-search-note hidden></p>
     </div>`;
 
+  // Render immediately with the curated pool so the page is never blank
+  // while the full-catalogue fetch is in flight.
+  $("#view").innerHTML = `<div class="page">${head}${searchBox}<div data-show-episodes>
+    ${curatedEps.length
+      ? curatedEps.map((item, i) => epRow(item, i, ctx, -1)).join("")
+      : isBreadthTier
+        ? `<p class="note">Fetching this show's episodes — 4a is adding full episode lists for shows outside its curated picks. Check back soon.</p>`
+        : `<p class="note">No episodes from this show are in 4a's catalogue right now.</p>`}
+  </div>
+  <div data-show-more-wrap></div>
+  ${similarShowsSection(show)}
+  ${showForaysHtml(show)}
+  </div>`;
   bindPickLogging($("#view"));
   bindStars($("#view"));
+  bindShowStars($("#view"));
   bindUpNext($("#view"));
   bindPlay($("#view"));
+
+  // ---- Pagination + in-page search state for this render only. A fresh
+  // renderShow() call (new navigation) gets a fresh closure — nothing here
+  // survives or leaks across shows. ----
+  let loaded = [];          // raw API episode records, every page fetched so far, in server order
+  let nextCursor = null;    // API's opaque keyset cursor; null = no more pages
+  let fullyLoaded = false;  // true only once a page comes back with next_cursor: null
+  let anyStale = false;     // sticky once any page reports stale/degraded
+  let lastLoadError = null;
+  let searchQuery = "";
+  /* S-06/S-07 wiring: `searchMode` tracks which result set the container is
+     currently showing so paintSearchNote() can label it honestly.
+       "idle"     — no query typed; showing the full `loaded` list.
+       "loading"  — a scoped-search request is in flight for the current query.
+       "scoped"   — S-07's endpoint answered for the CURRENT query (real,
+                    full-catalogue search results — the honest, non-hedged case).
+       "fallback" — S-07 failed/degraded for the current query; falling back
+                    to filtering whatever pages are loaded, hedged per the
+                    card's partial-list-honesty rule. */
+  let searchMode = "idle";
+  let scopedResults = [];   // populated only when searchMode === "scoped"
+  let searchToken = 0;      // guards a slow/superseded scoped-search response
+  let searchDebounceTimer = null;
+
+  const container = () => $("#view [data-show-episodes]");
+  const countLabelEl = () => $("#view [data-show-count]");
+  const moreWrap = () => $("#view [data-show-more-wrap]");
+  const searchWrap = () => $("#view [data-show-ep-search]");
+  const searchNote = () => $("#view [data-show-ep-search-note]");
+  const stillMounted = () => !!container();
+
+  function paintList() {
+    const c = container();
+    if (!c) return;
+    const visible = searchMode === "scoped" ? scopedResults : filterLoadedEpisodes(loaded, searchQuery);
+    if (searchQuery.trim() && !visible.length && searchMode !== "loading") {
+      c.innerHTML = `<p class="note">No episodes match "${esc(searchQuery.trim())}".</p>`;
+      return;
+    }
+    const rows = visible.map((ep) => fullCatalogueRowToEpRowItem(show, ep));
+    c.innerHTML = rows.map((item, i) => epRow(item, i, ctx, -1)).join("");
+    bindPickLogging(c);
+    bindStars(c);
+    bindUpNext(c);
+    bindPlay(c);
+  }
+
+  function paintCount() {
+    const el = countLabelEl();
+    if (!el) return;
+    el.textContent = showEpisodeCountLabel({
+      loadedCount: loaded.length,
+      fullyLoaded,
+      curatedCount: curatedEps.length,
+      isBreadthTier,
+      stale: anyStale,
+      loadError: loaded.length === 0 ? lastLoadError : null,
+    });
+  }
+
+  function paintSearchNote() {
+    const note = searchNote();
+    if (!note) return;
+    if (!searchQuery.trim()) { note.hidden = true; return; }
+    note.hidden = false;
+    if (searchMode === "loading") {
+      note.textContent = "Searching…";
+      return;
+    }
+    if (searchMode === "scoped") {
+      // The honest, non-hedged case: S-07 searched the show's FULL episode
+      // list server-side, not just whatever this render has paged in.
+      note.textContent = `${scopedResults.length} episode${scopedResults.length === 1 ? "" : "s"} found.`;
+      return;
+    }
+    // "fallback": S-07 failed or degraded for this query. Partial-list
+    // honesty rule (card acceptance criterion): a search box that quietly
+    // filtered only what happened to be in memory would read as "no
+    // results" for an episode on a page that hasn't loaded yet — label the
+    // scope explicitly rather than imply this searched the whole show.
+    const matchCount = filterLoadedEpisodes(loaded, searchQuery).length;
+    note.textContent = fullyLoaded
+      ? `${matchCount} match${matchCount === 1 ? "" : "es"} in ${loaded.length} episode${loaded.length === 1 ? "" : "s"}.`
+      : `${matchCount} match${matchCount === 1 ? "" : "es"} — searching loaded episodes only (${loaded.length} of the full list loaded so far).`;
+  }
+
+  function paintMoreButton() {
+    const wrap = moreWrap();
+    if (!wrap) return;
+    if (fullyLoaded || !nextCursor) { wrap.innerHTML = ""; return; }
+    wrap.innerHTML = `<button type="button" class="show-more-btn" data-show-more>Show more episodes</button>`;
+    const btn = wrap.querySelector("[data-show-more]");
+    if (btn) btn.addEventListener("click", loadNextPage);
+  }
+
+  function revealSearchIfEligible() {
+    const wrap = searchWrap();
+    if (wrap && loaded.length) wrap.hidden = false;
+  }
+
+  function loadNextPage() {
+    const btn = $("#view [data-show-more]");
+    if (btn) { btn.disabled = true; btn.textContent = "Loading…"; }
+    fetchShowEpisodes(show.show_id, nextCursor).then(({ episodes, nextCursor: nc, stale, error }) => {
+      if (!stillMounted()) return; // navigated away before this page resolved
+      if (episodes === null) {
+        lastLoadError = error || "load failed";
+        if (btn) { btn.disabled = false; btn.textContent = "Try again"; }
+        paintCount();
+        return;
+      }
+      lastLoadError = null;
+      if (stale) anyStale = true;
+      loaded = loaded.concat(episodes);
+      nextCursor = nc;
+      fullyLoaded = nc === null;
+      // A pending fallback-mode search should see the newly-loaded page
+      // immediately (this is exactly the "finds an episode on page 12"
+      // case if S-07 itself isn't reachable) — scoped-mode results are
+      // already the full list and don't need re-filtering on a new page.
+      if (searchMode === "fallback") paintSearchNote();
+      paintList();
+      paintCount();
+      paintMoreButton();
+    });
+  }
+
+  /* Debounced (250ms) so a fast typist doesn't fire a request per
+     keystroke — S-07's endpoint does a live feed fetch server-side on a
+     cache miss, so this isn't free. `searchToken` guards a slow response
+     from a superseded query clobbering a newer one's results, same pattern
+     showSearchToken uses for the Shows-page search above. */
+  function runSearch() {
+    const query = searchQuery;
+    if (!query.trim()) {
+      searchMode = "idle";
+      paintList();
+      paintSearchNote();
+      return;
+    }
+    searchMode = "loading";
+    paintSearchNote();
+    const myToken = ++searchToken;
+    searchShowEpisodesScoped(show.show_id, query).then(({ episodes }) => {
+      if (myToken !== searchToken) return; // superseded by a newer query
+      if (!stillMounted()) return; // navigated away
+      if (episodes !== null) {
+        searchMode = "scoped";
+        scopedResults = episodes;
+      } else {
+        searchMode = "fallback";
+        scopedResults = [];
+      }
+      paintList();
+      paintSearchNote();
+    });
+  }
+
+  function onSearchInputChange() {
+    if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
+    searchDebounceTimer = setTimeout(runSearch, 250);
+  }
+
+  const searchForm = $("#view [data-show-ep-search-form]");
+  const searchInput = $("#view [data-show-ep-search-input]");
+  if (searchForm && searchInput) {
+    searchForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      searchQuery = searchInput.value || "";
+      if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
+      runSearch(); // Enter/submit runs immediately, no debounce wait
+    });
+    // Live-filter as the user types — debounced (see runSearch's header).
+    searchInput.addEventListener("input", () => {
+      searchQuery = searchInput.value || "";
+      onSearchInputChange();
+    });
+  }
+
+  fetchShowEpisodes(show.show_id).then(({ episodes, nextCursor: nc, stale, error }) => {
+    if (!stillMounted()) return; // navigated away before the fetch resolved
+
+    if (episodes === null) {
+      lastLoadError = error || "load failed";
+      paintCount();
+      return;
+    }
+
+    if (episodes.length === 0) {
+      paintCount();
+      return;
+    }
+
+    if (stale) anyStale = true;
+    loaded = episodes;
+    nextCursor = nc;
+    fullyLoaded = nc === null;
+    paintList();
+    paintCount();
+    paintMoreButton();
+    revealSearchIfEligible();
+  });
 }
 
 function touchPlaylistPlayed(id) {
@@ -1045,15 +1986,46 @@ function listenedShows() {
   return new Set(pickedHistory().map(id => state.itemIndex[id]?.show).filter(Boolean));
 }
 
+/* Repeated-query cache (H bug, kanban t_838a13c0): a typo fix, back button, or
+   re-tap resubmits the exact same query text against a ctx/pool that has not
+   changed, and scoreMatch() was re-scanning and re-scoring the whole
+   ~1,880-item pool from scratch every time -- 3.4-6s even fully warm (see the
+   card's fleet-2 measurement). `interpretQuery` + `searchWithRelaxation`'s
+   output (everything through ranking, BEFORE classifyResults) is a pure
+   function of (query text, family-mode flag, interests weights) given a pool
+   that is otherwise fixed for the session -- state.discover/state.session are
+   fetched once in init() and never reassigned, so the pool a query scores
+   against cannot change mid-session; the one thing that visibly changes
+   without a page reload is `state.interests` (nudgeTopics, on every
+   pick/play/thumbs), which is why `state._interestsGen` is bumped there and
+   folded into this key. Deliberately CACHES BEFORE classifyResults, not
+   after: classifyResults reads `listenedShows()`, which changes on every pick
+   independent of the query -- caching past that point would serve a stale
+   listened-show penalty. classifyResults itself is O(results), not
+   O(catalogue), so leaving it uncached costs nothing.
+   Same bounded-eviction spirit as search-engine.js's PATTERN_CACHE_MAX /
+   patternCache (a session tab is long-lived and every distinct query text is
+   a new key) -- clearing wholesale on overflow is fine since every entry is a
+   pure function of its key and cheap to rebuild. */
+const SEARCH_CACHE_MAX = 200;
+const searchCache = new Map();
+
 function buildPlaylist(query) {
   const ctx = searchCtx();
   const interp = SearchEngine.interpretQuery(query, ctx);
   if (!interp.groups.length && !interp.filters.length) {
     return { status: "empty", suggestions: [] };
   }
-  const pool = poolFiltered();
-  const { results } = SearchEngine.searchWithRelaxation(pool, interp, 2, state.itemTags, interestScore);
-  const { status, picks } = SearchEngine.classifyResults(results, { listenedShows: listenedShows() });
+  const pool = poolFiltered(); // also refreshes state.itemIndex/state.poolIds (side effect)
+  const cacheKey = JSON.stringify([query, familyMode(), state._interestsGen || 0]);
+  let cached = searchCache.get(cacheKey);
+  if (!cached) {
+    const { results } = SearchEngine.searchWithRelaxation(pool, interp, 2, state.itemTags, interestScore);
+    cached = { results };
+    if (searchCache.size >= SEARCH_CACHE_MAX) searchCache.clear();
+    searchCache.set(cacheKey, cached);
+  }
+  const { status, picks } = SearchEngine.classifyResults(cached.results, { listenedShows: listenedShows() });
 
   if (status === "empty") {
     return { status: "empty", suggestions: SearchEngine.suggestAdjacentTopics(interp, ctx) };
@@ -1078,6 +2050,61 @@ function buildPlaylist(query) {
     return { status: "unsaved", suggestions: [] };
   }
   return { status, playlist };
+}
+
+/* Loading-state guard around #pl-form's submit (H bug, kanban t_838a13c0):
+   buildPlaylist() is synchronous and, in the worst case (a fresh session's
+   first query, or any query that misses the repeated-query cache above), can
+   take 1.3-8s on the real catalogue — with nothing before this change to
+   tell the listener their tap registered. Defined once here rather than
+   inline: two form instances shared it until 2026-09-03 (renderHome and
+   renderPlaylists both mounted a `#pl-form`); only renderPlaylists does now,
+   and the handler stays separate so a second mount point can reuse it.
+
+   THE SETTIMEOUT(0) IS LOAD-BEARING, not decoration: disabling the button and
+   swapping its label only becomes visible to the user if the browser gets a
+   chance to paint before the synchronous, CPU-bound buildPlaylist() call
+   blocks the main thread. Setting `disabled`/`textContent` and calling
+   buildPlaylist() in the same tick produces a frozen-looking button for the
+   whole stall — no paint happens until the synchronous work yields — which is
+   the exact defect this guard exists to fix, just moved one line over. A
+   0ms timeout is enough because the browser only needs a task-queue turn to
+   flush the pending style/paint, not any particular delay.
+   `finally` restores the button whether buildPlaylist ran clean, threw
+   (unexpected but real user data — never let an exception leave the button
+   stuck disabled), or returned early. */
+function bindPlaylistFormSubmit(e) {
+  e.preventDefault();
+  const form = e.currentTarget;
+  const input = form.querySelector("input[type='text']");
+  const btn = form.querySelector("button");
+  const query = input.value.trim();
+  if (!query) return;
+  const originalLabel = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = "Building…";
+  setTimeout(() => {
+    try {
+      const result = buildPlaylist(query);
+      logEvent("playlist_built", { query, status: result.status, found: result.playlist ? result.playlist.items.length : 0 });
+      if (result.status === "ok" || result.status === "sparse") {
+        location.hash = "#/playlist/" + result.playlist.id;
+      } else {
+        const note = $("#pl-note");
+        note.textContent = result.status === "unsaved"
+          /* Says what happened and what to do, and does not blame the listener for
+             a device that is out of room. */
+          ? "That playlist could not be saved — this device has no storage space left. Removing a playlist you have finished with frees enough for a new one."
+          : result.suggestions.length
+            ? `Not much on "${query}" yet — try ${result.suggestions.map(s => s.label).join(", ")} instead.`
+            : `Not much on "${query}" yet — try different words.`;
+        note.hidden = false;
+      }
+    } finally {
+      btn.disabled = false;
+      btn.textContent = originalLabel;
+    }
+  }, 0);
 }
 
 /* ---------- shared wiring ---------- */
@@ -1111,7 +2138,13 @@ function bindPickLogging(scope) {
   });
 }
 
-function bindPlay(scope) {
+/* `origin` distinguishes "this play button lives on the #/queue page" (only
+   caller: renderQueue) from every other row in the app (undefined/omitted).
+   That distinction is the whole mechanism behind plan §4 Q1's answer: only a
+   play started FROM #/queue can ever trigger auto-advance — starting an
+   unrelated episode elsewhere must never be silently read as "now playing
+   the queue" (see setQueuePlaybackOrigin's header). */
+function bindPlay(scope, { origin = null } = {}) {
   scope.querySelectorAll("[data-play]").forEach(btn => {
     if (btn._bound) return;
     btn._bound = true;
@@ -1123,8 +2156,10 @@ function bindPlay(scope) {
       const id = btn.dataset.play;
       const item = state.itemIndex[id] || episode(id);
       if (!item || !window.ForayPlayer) return;
+      if (origin === "queue") setQueuePlaybackOrigin(id);
+      else clearQueuePlaybackOrigin();
       const ok = await window.ForayPlayer.play(item, { why: whyFor(id, item) });
-      if (!ok) return;
+      if (!ok) { clearQueuePlaybackOrigin(); return; }
       logEvent("play_started", { episode_id: id, topics: item.topics || [] });
       const history = pickedHistory();
       if (!history.includes(id)) lsSet("cp_history", history.concat(id).slice(-200));
@@ -1185,7 +2220,7 @@ function bannerHtml() {
   const c = currentContinue();
   if (!c) return "";
   snapshot(c.id, c);
-  return `<a class="banner" href="${esc(safeUrl(playLink(c)))}" target="_blank" rel="noopener"
+  return `<a class="banner" href="#/episode/${esc(encodeURIComponent(c.id))}"
       data-ev="picked" data-ep="${c.id}" data-ctx="continue">
     ${c.artwork_url ? `<img src="${esc(safeUrl(c.artwork_url))}" alt="">` : ""}
     <div class="b-info">
@@ -1224,12 +2259,101 @@ function miniCard(slot) {
   </a>`;
 }
 
+/* First-time explanation/consent screen (docs/ux/foray-m3-prototype.html +
+   docs/ux/README.md § "First-time vs. returning user"). Ports the INTENT of
+   the prototype's `V.signinNew` screen into the shipped stack — not a literal
+   port, same relationship PR #357's intro-popup fix already established.
+
+   This is deliberately a SEPARATE gate from showIntroPopupOnce()'s
+   cp_intro_dismissed flag. That flag alone is not a real "never used this
+   app" signal — it also flips true the moment this screen (or the old popup)
+   is dismissed, and a fresh device with a corrupted/partial localStorage
+   write could have history but no dismissed flag. The real signal is the
+   absence of any trace of prior use: no history, no saves, no playlists.
+   `cp_intro_dismissed` is intentionally NOT part of this check — this screen
+   must never reappear for an existing user just because that one flag is
+   unset (see the test for exactly that case). */
+function isGenuineFirstTimeUser() {
+  return (
+    pickedHistory().length === 0 &&
+    Object.keys(savedMap()).length === 0 &&
+    playlists().length === 0
+  );
+}
+
+/** Explanation + consent, not an interview. The M3 prototype's `finishOnb`/
+    `skipOnb` describe a preference INTERVIEW step that has no counterpart in
+    the real backend (the session doc has no such concept) — this screen does
+    not build one. It explains how interests are actually learned today
+    (weighted signals from what you play/save/skip, per `loadInterests()` /
+    `bump()` — never a fixed picklist), states what data leaves the device and
+    why (docs/legal/privacy-policy.md §§ "The short version", 2), and gives an
+    explicit skip path. Both actions land on today's home screen and set the
+    same cp_intro_dismissed flag showIntroPopupOnce() already uses, so this
+    screen and the older popup can never both show on the same visit and
+    neither shows again after. */
+function showFirstTimeExplainerOnce() {
+  if (!isGenuineFirstTimeUser()) return false;
+  if (lsGet("cp_intro_dismissed", false)) return false;
+
+  const wrap = ddEl("div", "fy-sheet");
+  wrap.id = "first-time-sheet";
+
+  const scrim = ddEl("div", "fy-scrim");
+  const panel = ddEl("div", "fy-panel");
+  panel.setAttribute("role", "dialog");
+  panel.setAttribute("aria-modal", "true");
+
+  const grab = ddEl("div", "fy-grab");
+  grab.setAttribute("aria-hidden", "true");
+
+  const title = ddEl("h3", null, "4a picks podcast episodes for you");
+  title.id = "first-time-sheet-title";
+  panel.setAttribute("aria-labelledby", "first-time-sheet-title");
+
+  const what = ddEl("p", "fy-sheet-sub",
+    "It groups real podcast episodes into short listening sessions built around topics you're into.");
+  const learn = ddEl("p", "fy-sheet-sub",
+    "There's no interview. 4a learns your interests from what you play, save and skip — every weight can change, nothing is locked in.");
+  const data = ddEl("p", "fy-sheet-sub",
+    "Your interests, history and saves stay on this device. A few anonymous events — what you picked, finished, saved and any feedback you leave — are sent to run the app. Nothing is sold or shared.");
+
+  const actions = ddEl("div", "fy-sheet-actions");
+  const skip = ddEl("button", "fy-sheet-cancel", "Skip for now");
+  skip.type = "button";
+  skip.id = "first-time-sheet-skip";
+  const go = ddEl("button", "fy-sheet-go", "Get started");
+  go.type = "button";
+  go.id = "first-time-sheet-go";
+  actions.append(skip, go);
+
+  panel.append(grab, title, what, learn, data, actions);
+  wrap.append(scrim, panel);
+  document.body.appendChild(wrap);
+  document.body.classList.add("fy-sheet-open");
+
+  const dismiss = () => {
+    lsSet("cp_intro_dismissed", true);
+    wrap.remove();
+    document.body.classList.remove("fy-sheet-open");
+  };
+  scrim.addEventListener("click", dismiss);
+  skip.addEventListener("click", dismiss);
+  go.addEventListener("click", dismiss);
+  return true;
+}
+
 /* First-run explainer (#128 follow-up). Used to be a permanent card at the top
    of the home screen — after the first read it was dead weight that pushed the
    four topic queues down the screen for good. It is now a one-time popup shown
    right after the very first app open (gated on the same cp_intro_dismissed
    flag, so an existing install that already dismissed the card never sees it
-   again) and nothing about it lives in the home layout any more. */
+   again) and nothing about it lives in the home layout any more.
+
+   Returning users, and first-time users who already saw
+   showFirstTimeExplainerOnce() this visit, are the only ones who reach this
+   function — renderHome() calls the two in sequence and short-circuits here
+   when the explainer just showed, so a first-ever visit never shows both. */
 function showIntroPopupOnce() {
   if (lsGet("cp_intro_dismissed", false)) return;
   const wrap = ddEl("div", "fy-sheet");
@@ -1270,24 +2394,234 @@ function showIntroPopupOnce() {
   ok.addEventListener("click", dismiss);
 }
 
+/* One result row per matched show -- deliberately not epRow/miniCard: a show
+   search result has no play control, duration, or star (it names a SHOW, not
+   a playable item), and links straight to the page Stage 1 already built. */
+function showResultRow(show) {
+  const art = showArtworkUrl(show);
+  return `<a class="show-result" href="#/show/${encodeURIComponent(show.show_id)}">
+    ${art ? `<img class="show-result-art" src="${esc(safeUrl(art))}" alt="">` : `<span class="show-result-art show-result-art-blank"></span>`}
+    <span class="show-result-title">${esc(show.title)}</span>
+  </a>`;
+}
+
+/* A3.5: "Shows we vouch for" — a show-level editorial row (requirements audit
+   note: 220/220 catalog.json shows already carry `editorial_note`, unused as a
+   browse surface until now — only the four topic-based subject cards
+   (buildCards/cards4) and forays (forayListHtml) serve as an editorial front
+   door today, and both are episode/topic-shaped, not show-shaped). Per the
+   requirements doc's B1 separation rule this is its own distinctly-labeled
+   section, never blended into an episode row or a foray row — it reuses
+   showResultRow verbatim (same "names a SHOW, not a playable item" rule
+   similarShowsSection already follows) rather than inventing a second
+   show-card markup.
+
+   Every show qualifies (all 220 carry a non-empty editorial_note), so
+   "curated" here means a deterministic day-rotating sample rather than a
+   hand-maintained allow-list — a fixed set would either need constant
+   upkeep as the catalogue grows or go stale immediately. Seeded by calendar
+   day (UTC `YYYY-MM-DD` of `now`), NOT Math.random: every visitor and every
+   render on the same day sees the same set (no layout jitter from a refresh),
+   and a test can pin the exact output by passing a fixed `now` rather than
+   stubbing global Date. Base order is show_id-sorted before the seeded
+   shuffle runs, so the result is never insertion-order-dependent (same
+   tie-breaking discipline similarShows uses). */
+function dayOfYearSeed(now) {
+  const key = now.toISOString().slice(0, 10); // UTC YYYY-MM-DD
+  let h = 0;
+  for (let i = 0; i < key.length; i++) h = (Math.imul(h, 31) + key.charCodeAt(i)) >>> 0;
+  return h >>> 0;
+}
+
+/* A linear-congruential shuffle (Fisher-Yates driven by an LCG), not
+   Math.random — the whole point of dayOfYearSeed is a result a test can
+   reproduce by passing the same `now`, and Math.random cannot be seeded. */
+function seededShuffle(arr, seed) {
+  const a = arr.slice();
+  let s = seed >>> 0;
+  for (let i = a.length - 1; i > 0; i--) {
+    s = (Math.imul(s, 1103515245) + 12345) >>> 0;
+    const j = s % (i + 1);
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function showsWeVouchFor(limit = 8, now = new Date()) {
+  const shows = (state.catalog?.shows || [])
+    .filter(s => s.editorial_note && s.editorial_note.trim())
+    .slice()
+    .sort((a, b) => a.show_id.localeCompare(b.show_id));
+  if (!shows.length) return [];
+  return seededShuffle(shows, dayOfYearSeed(now)).slice(0, limit);
+}
+
+/* Renders nothing (not an empty section) when there is no editorially-noted
+   show in the catalogue — matches similarShowsSection's and moreFromShow's
+   own absence rule. */
+function vouchForHtml() {
+  const shows = showsWeVouchFor();
+  if (!shows.length) return "";
+  return `<section class="ep-more fy-vouch">
+    <h3>Shows we vouch for</h3>
+    <div class="show-results">${shows.map(showResultRow).join("")}</div>
+  </section>`;
+}
+
+/* ---------- Shows search (Stage 2, docs/show-pages-plan.md) ----------
+
+   A separate affordance from #pl-form's topic playlist builder, on purpose
+   (plan §2, kanban card scope): the two ask different questions ("what
+   should I listen to" vs "does this show exist here") and are never merged
+   into one result list or one search mode. They were kept apart by a tab
+   strip on Home until 2026-09-03; now they are kept apart by living on two
+   pages — this one on #/shows, the builder on #/playlists.
+
+   A3.1/Q3: this must reach 4a's FULL breadth catalogue, not just the 220
+   curated shows shipped in data/catalog-client.json — "the user should
+   never notice any limitations based on our own limited curation." The
+   curated set is searched locally first (instant, no network) as the fast
+   first pass; the full-breadth backend endpoint (kanban t_8d1a6a58,
+   backend/src/catalog/searchBreadthShows.ts) is queried in parallel and its
+   results are appended once they land, deduped against what's already
+   showing. A network failure degrades to the curated-only results silently
+   — never a broken/blank state (matches showsForCategory's and renderShow's
+   own "absence is a real state, not an error" rule). */
+let showSearchToken = 0; // guards a slow in-flight fetch from clobbering a newer query's results
+
+function renderShowSearchResults(query) {
+  const myToken = ++showSearchToken;
+  const note = $("#sh-note");
+  const results = $("#sh-results");
+  const localShows = SearchEngine.searchShows(query, state.catalog?.shows || []);
+
+  const paint = (shows) => {
+    if (myToken !== showSearchToken) return; // a newer query already superseded this one
+    if (!shows.length) {
+      results.innerHTML = "";
+      results.hidden = true;
+      note.textContent = `No shows match "${query}" in 4a's catalogue.`;
+      note.hidden = false;
+      return;
+    }
+    note.hidden = true;
+    results.innerHTML = shows.map(showResultRow).join("");
+    results.hidden = false;
+  };
+
+  paint(localShows);
+
+  fetchApiJson(`api/shows/search?q=${encodeURIComponent(query)}&limit=25`).then((data) => {
+    if (myToken !== showSearchToken) return; // superseded — drop this response
+    const breadthShows = data?.shows || [];
+    if (!breadthShows.length) return; // degrade silently: local-only results already painted
+    const seen = new Set(localShows.map((s) => s.show_id));
+    const additions = [];
+    for (const s of breadthShows) {
+      if (seen.has(s.show_id)) continue;
+      seen.add(s.show_id);
+      state.breadthShowCache[s.show_id] = s; // so showById can resolve it once a result is tapped
+      additions.push(s);
+    }
+    if (additions.length) paint(localShows.concat(additions));
+  }); // fetchApiJson already swallows network/parse errors and resolves null — no .catch needed
+
+  renderEpisodeSearchResults(query, myToken);
+}
+
+/* Episodes section under Shows search (S-07, kanban t_6baccaa0): a separate
+   result block below the show list, backed by api/episodes/search.ts. Same
+   "guard a slow in-flight fetch with a token" pattern as the show-search
+   breadth fetch above, sharing the same showSearchToken so a fast retype
+   supersedes both in lockstep.
+
+   Offline degrades to nothing rendered — this is a network-only feature
+   (Apple's public index / a show's live feed), there is no local episode
+   index to fall back to for a query outside the curated pool, matching this
+   file's own "absence is a real state" convention rather than a spinner
+   that never resolves. */
+function renderEpisodeSearchResults(query, myToken) {
+  const container = $("#ep-search-results");
+  if (!container) return; // page markup not present (e.g. category page reusing renderShowIndexPage)
+
+  if (typeof navigator !== "undefined" && navigator.onLine === false) {
+    container.innerHTML = "";
+    container.hidden = true;
+    return;
+  }
+
+  fetchApiJson(`api/episodes/search?q=${encodeURIComponent(query)}&limit=10`).then((data) => {
+    if (myToken !== showSearchToken) return; // superseded — drop this response
+    const episodes = data?.episodes || [];
+    if (!episodes.length) {
+      container.innerHTML = "";
+      container.hidden = true;
+      return;
+    }
+    const fromApple = (data.source || []).includes("apple");
+    const ctx = "episode-search-" + query;
+    const rows = episodes.map((ep, i) => {
+      const id = `apple:${ep.show_id}:${ep.guid || (ep.title + "--" + i)}`;
+      const item = snapshot(id, {
+        show: ep.show_title || ep.show_id,
+        title: ep.title,
+        hook: ep.description_text || "",
+        audio_url: ep.audio_url,
+        duration_min: ep.duration_seconds ? Math.round(ep.duration_seconds / 60) : null,
+        duration_sec: ep.duration_seconds ?? null,
+        topics: [],
+      });
+      return epRow(item, i, ctx, -1);
+    });
+    container.innerHTML = `<section class="ep-more fy-episode-search">
+      <h3>Episodes${fromApple ? ` <span class="note">from Apple's index</span>` : ""}</h3>
+      ${rows.join("")}
+    </section>`;
+    container.hidden = false;
+    bindPickLogging(container);
+    bindStars(container);
+    bindUpNext(container);
+    bindPlay(container);
+  });
+}
+
+/* HOME IS THE FOUR SUBJECT CARDS AND THE RESUME BANNER. NOTHING ELSE.
+   (Founder instruction, 2026-09-03, after the first TestFlight build: "the
+   home page has so much clutter … Home should be the four cards.")
+
+   That is a layout invariant as much as a product one. `.cards4` is the
+   only `flex: 1` child of `.home`, the one-screen column, so ANY sibling
+   added here takes its height straight off the four cards. While `.home` was
+   a FIXED-height column that starved them to 0px and overflowed on top of
+   whatever followed — shipped as a visible bug twice, #433 (the vouch row)
+   and again before it. #464 made the column `min-height` and gave `.cards4`
+   a floor, so the failure now degrades to a taller scrolling page instead of
+   crushed cards. That is a backstop, not a licence: the product is one
+   screen, and what was wrong both times was putting a second surface inside
+   it.
+
+   So everything that used to compete for this space now has its own menu
+   destination, and that is where it goes back to if it comes back:
+
+     "Shows we vouch for" (vouchForHtml)   -> Shows      (#/shows)
+     show search (#sh-form/#sh-results)     -> Shows      (#/shows)
+     "Browse all shows" link                -> gone; Shows IS that page
+     playlist builder (#pl-form)            -> Playlists  (#/playlists)
+     foray list + "Jump back in"            -> Forays     (#/forays)
+
+   test/home-information-architecture.test.js asserts each of those in both
+   directions — absent here, present there — so a future re-add fails CI
+   rather than shipping. */
 function renderHome() {
   document.body.className = "view-home";
   if (!state.cardSlots.length) buildCards();
-  const resumeRows = forayResumeRows();
   $("#view").innerHTML = `
     <div class="home">
       <div id="banner-slot">${bannerHtml()}</div>
-      ${jumpBackInHtml(resumeRows)}
-      ${forayHomeHtml()}
       <div class="cards4">${state.cardSlots.map(miniCard).join("")}</div>
-      <form id="pl-form" autocomplete="off">
-        <input id="pl-input" type="text" maxlength="120" placeholder="build me a playlist…">
-        <button type="submit">Go</button>
-      </form>
-      <p id="pl-note" class="note" hidden></p>
     </div>`;
 
-  showIntroPopupOnce();
+  if (!showFirstTimeExplainerOnce()) showIntroPopupOnce();
 
   const done = $("#banner-done");
   if (done) {
@@ -1304,58 +2638,91 @@ function renderHome() {
     });
   }
 
-  $("#pl-form").addEventListener("submit", (e) => {
-    e.preventDefault();
-    const query = $("#pl-input").value.trim();
-    if (!query) return;
-    const result = buildPlaylist(query);
-    logEvent("playlist_built", { query, status: result.status, found: result.playlist ? result.playlist.items.length : 0 });
-    if (result.status === "ok" || result.status === "sparse") {
-      location.hash = "#/playlist/" + result.playlist.id;
-    } else {
-      const note = $("#pl-note");
-      note.textContent = result.status === "unsaved"
-        /* Says what happened and what to do, and does not blame the listener for
-           a device that is out of room. */
-        ? "That playlist could not be saved — this device has no storage space left. Removing a playlist you have finished with frees enough for a new one."
-        : result.suggestions.length
-          ? `Not much on "${query}" yet — try ${result.suggestions.map(s => s.label).join(", ")} instead.`
-          : `Not much on "${query}" yet — try different words.`;
-      note.hidden = false;
-    }
-  });
-
-  sizeProgressBars($("#view"));
   bindPickLogging($("#view"));
   bindStars($("#view"));
   bindUpNext($("#view"));
   bindPlay($("#view"));
 }
 
-/* One playable row = one play control, never two. An item with audio_url gets
-   the in-app ▶ button and nothing else plays it; only an item with NO
-   audio_url falls back to the external "Play" link-out. Before this a row
-   with audio_url rendered both — the ▶ button AND a text link that also said
-   "Play" — which is two controls doing the same job. */
+/* ---------- Forays page (#/forays) ----------
+
+   The menu destination the foray list moved to (founder instruction, item 2:
+   "get rid of the recommended foray at the top of Home. Move it into a page
+   accessible via the menu exclusively for Forays").
+
+   "Jump back in" moves here WITH the list rather than staying on Home. The
+   two render the same `.fy-home-row` markup and read as one block, so
+   splitting them would have left Home with a row that looks exactly like the
+   thing the founder asked to remove. Both are still gated by the same
+   visibility rule (forayCards / forayResumeRows) — an unpublished Foray is
+   listed only to someone who arrived with its `?foray=` link this session. */
+function renderForays() {
+  document.body.className = "view-page";
+  const list = forayCards();
+  const resume = forayResumeRows();
+  $("#view").innerHTML = `
+    <div class="page">
+      <div class="page-head">
+        <a class="back" href="#/">‹</a>
+        <div>
+          <h2>Forays</h2>
+          <p class="sub">${list.length} foray${list.length === 1 ? "" : "s"}</p>
+        </div>
+      </div>
+      ${jumpBackInHtml(resume)}
+      ${list.length
+        ? forayListHtml()
+        : `<p class="note">No forays right now — 4a stitches these by hand, so they arrive a few at a time.</p>`}
+    </div>`;
+  sizeProgressBars($("#view"));
+}
+
+/* One playable row = one play control, never two — and there is no other
+   kind of control any more (product rule, 2026-09-02, Joey: "we should be
+   able to play all podcasts from the app. If we can't, let's fix that.").
+   The prior "Listen in your podcast app ↗" link-out is gone entirely: it is
+   not what a missing audio_url degrades to, it is deleted. An item with
+   audio_url gets the in-app ▶ button. An item WITHOUT one (a genuine
+   ingestion edge case — see notPlayableNote()) gets an honest inline note
+   instead of a fake button or an external hop — never both, never neither
+   silently. */
 function epRow(item, idx, ctx, nextIdx) {
   const inApp = playBtn(item);
-  const external = inApp ? "" : `<a class="go" href="${esc(safeUrl(playLink(item)))}" target="_blank" rel="noopener"
-       data-ev="picked" data-ep="${item.id}" data-ctx="${ctx}">Play</a>`;
+  const unavailable = inApp ? "" : notPlayableNote();
   return `<div class="ep-row">
     <span class="q-num ${idx === nextIdx ? "next" : ""}">${idx + 1}</span>
     <div class="info">
-      <div class="t">${esc(item.title)}</div>
-      <div class="s">${esc(item.show)} · ${fmtDur(item.duration_min)}</div>
+      <div class="t"><a class="ep-title-link" href="#/episode/${esc(encodeURIComponent(item.id))}">${esc(item.title)}</a>${explicitBadge(item.explicit)}</div>
+      <div class="s">${showNameLink(item.show)} · ${fmtDur(item.duration_min)}</div>
     </div>
-    ${inApp}${starBtn(item.id)}${upNextBtn(item.id)}${external}
+    ${inApp}${starBtn(item.id)}${upNextBtn(item.id)}${unavailable}
   </div>`;
+}
+
+/* The only thing that fills the control slot when an episode genuinely has
+   no audio_url — never a link elsewhere. As of the Stage 3b RSS ingestion
+   (kanban t_567b570f), this is a rare, named edge case, not a routine
+   degrade: an episode never enters the catalogue without a real enclosure
+   (ingestShowFeed.ts drops any item with none), so this only fires for the
+   small number of pre-existing curated-pool items a one-off backfill could
+   not resolve — a members-only/paywalled episode absent from the public RSS
+   feed, or a video-only enclosure with no audio track (see
+   tools/refresh/backfill-audio.mjs's UNRESOLVED report: 8 of 1855+27 items,
+   0.43%, as of 2026-09-03). Plain text, no href, nothing to click — an
+   honest dead end beats a button that does nothing and a link that leaves
+   the app. */
+function notPlayableNote() {
+  return `<span class="not-playable" title="4a could not get a playable audio file for this episode">Not available to play</span>`;
 }
 
 /* A part the live pool no longer carries, rendered from what the playlist saved
    (#276). It keeps its number and its place, so the count above it stays true.
-   What it cannot offer is in-app playback — `audio_url` is the field deliberately
-   not persisted because it moves — so it links out instead, exactly the
-   degradation playBtn() already gives an item with no audio.
+   It has no in-app audio to play (`audio_url` is deliberately not persisted
+   because it moves) — as of 2026-09-03 there is no link-out fallback for
+   that any more, product rule: 4a plays everything itself or says so
+   honestly, it never sends a listener elsewhere. So an aged-out part gets
+   the same notPlayableNote() plain-text state epRow gives a genuine
+   ingestion edge case, not a link to another app.
 
    IT KEEPS ITS STAR, and that closes a loop rather than decorating the row:
    `cp_saved` holds whole snapshots, and hydratePlaylistParts reads it, so a
@@ -1363,36 +2730,19 @@ function epRow(item, idx, ctx, nextIdx) {
    episode is the one action that makes it permanently recoverable. It works
    because renderPlaylistDetail seeds the snapshot into `state.itemIndex`, which
    toggleStar requires; an `unnamed` part has no snapshot to store, so it gets no
-   star.
-
-   `apple_collection_id` is what a link-out needs, and an `unnamed` part has
-   neither that nor a title, so it gets no link rather than a link to
-   `.../idundefined`.
-
-   THE LINK STILL CARRIES `data-ev="picked"`, and it has to. Opening an archived
-   part in another app is the same act as opening a live one, so it must reach
-   bindPickLogging: otherwise it stops entering `cp_history`, and this playlist's
-   own "played" count and its next-up marker would go backwards the moment an
-   episode aged out — the same class of quiet regression as the one #276 is about.
-   That path reads `state.itemIndex` for the topics it reports, which is why
-   renderPlaylistDetail seeds the archived snapshot there and why `topics` is one
-   of the persisted fields. An `unnamed` part has no link and nothing to report,
-   so it logs nothing. */
+   star. */
 function archivedRow(item, idx, ctx) {
   const named = !!item.title;
-  const link = item.apple_collection_id
-    ? `<a class="go" href="${esc(safeUrl(playLink(item)))}" target="_blank" rel="noopener"
-         data-ev="picked" data-ep="${esc(item.id)}" data-ctx="${esc(ctx)}">Open</a>`
-    : "";
+  const unavailable = named ? notPlayableNote() : "";
   return `<div class="ep-row gone">
     <span class="q-num">${idx + 1}</span>
     <div class="info">
-      <div class="t">${named ? esc(item.title) : "Part no longer in the catalogue"}</div>
+      <div class="t">${named ? `<a class="ep-title-link" href="#/episode/${esc(encodeURIComponent(item.id))}">${esc(item.title)}</a>${explicitBadge(item.explicit)}` : "Part no longer in the catalogue"}</div>
       <div class="s">${named
-        ? `${esc(item.show)}${item.duration_min ? ` · ${fmtDur(item.duration_min)}` : ""} · not in 4a's catalogue right now`
+        ? `${showNameLink(item.show)}${item.duration_min ? ` · ${fmtDur(item.duration_min)}` : ""} · not in 4a's catalogue right now`
         : "Saved before 4a kept episode details"}</div>
     </div>
-    ${named ? starBtn(item.id) : ""}${named ? upNextBtn(item.id) : ""}${link}
+    ${named ? starBtn(item.id) : ""}${named ? upNextBtn(item.id) : ""}${unavailable}
   </div>`;
 }
 
@@ -1406,7 +2756,7 @@ function partsNote(rows) {
   const parts = [];
   if (archived) {
     const one = archived === 1;
-    parts.push(`${archived} part${one ? " is" : "s are"} not in 4a's catalogue right now, so ${one ? "it" : "they"} cannot play in the app — open ${one ? "it" : "them"} in your podcast app instead.`);
+    parts.push(`${archived} part${one ? " is" : "s are"} not in 4a's catalogue right now, so ${one ? "it" : "they"} cannot play — ${one ? "it stays listed" : "they stay listed"} so you can see where it fits in the playlist.`);
   }
   if (unnamed) {
     const one = unnamed === 1;
@@ -1415,7 +2765,7 @@ function partsNote(rows) {
        return" — and the note a reviewer reads is never the one that ships to them.
        It also no longer claims rebuilding REPLACES this playlist: buildPlaylist
        mints a new id and prepends a new playlist, leaving this one untouched. */
-    parts.push(`${unnamed} part${one ? " was" : "s were"} saved before 4a kept episode details and cannot be named yet — ${one ? "it" : "they"} will fill in if the episode${one ? " returns" : "s return"} to the catalogue, and building the same playlist again from the home screen gives you a fresh one from what 4a has today.`);
+    parts.push(`${unnamed} part${one ? " was" : "s were"} saved before 4a kept episode details and cannot be named yet — ${one ? "it" : "they"} will fill in if the episode${one ? " returns" : "s return"} to the catalogue, and building the same playlist again from the Playlists page gives you a fresh one from what 4a has today.`);
   }
   return `<p class="note">${esc(parts.join(" "))}</p>`;
 }
@@ -1423,7 +2773,21 @@ function partsNote(rows) {
 function renderPlaylistDetail(id) {
   document.body.className = "view-page";
   const p = playlistById(id) || subjectQueueById(id);
-  if (!p) { $("#view").innerHTML = `<div class="page"><p class="note">Playlist not found.</p></div>`; return; }
+  /* A gone playlist still gets a real page head, ‹ included: with ‹ now
+     going back one real step (see § in-app history) instead of always
+     Home, an entry for a just-removed playlist sits one step behind the
+     Playlists list, so landing here with no ‹ at all would be a dead end
+     for whoever tapped a now-stale link (e.g. from the drawer). */
+  if (!p) {
+    $("#view").innerHTML = `<div class="page">
+      <div class="page-head">
+        <a class="back" href="#/playlists">‹</a>
+        <div><h2>Playlist</h2></div>
+      </div>
+      <p class="note">Playlist not found.</p>
+    </div>`;
+    return;
+  }
   fullPool(); // populate itemIndex
   const rows = resolveParts(p);
   /* An archived part goes into the snapshot cache under its own id so the rest of
@@ -1464,7 +2828,7 @@ function renderPlaylistDetail(id) {
   if (!p.isSubject) $("#pl-remove")?.addEventListener("click", () => {
     savePlaylists(playlists().filter(x => x.id !== p.id));
     logEvent("playlist_removed", { playlist_id: p.id });
-    location.hash = "#/playlists";
+    leaveRemovedPlaylist();
   });
   bindPickLogging($("#view"));
   bindStars($("#view"));
@@ -1484,6 +2848,29 @@ function resolveEpisode(id) {
   return pool[id] || savedMap()[id] || null;
 }
 
+/* A1.8: "More from this show" — display-only, no new data (the join already
+   exists as episodesForShow, docs/requirements audit note). item.show is only
+   ever a name string here (discover.json/itemIndex never carry show_id — the
+   same gap showNameLink already works around), so this resolves the show
+   record the same way showNameLink does (showIdForShowName -> showById) before
+   reusing episodesForShow/epRow exactly as renderShow does. Independent of
+   Stage 3b ingestion: works fine on today's curated pool and just grows once
+   that lands, per the card's own framing. Renders nothing (not an empty
+   section) when there is no show match or no other episodes — absence is a
+   real state, matching every other join on this page. */
+function moreFromShow(item) {
+  const showId = showIdForShowName(item.show);
+  const show = showId ? showById(showId) : null;
+  if (!show) return "";
+  const eps = episodesForShow(show).filter(e => e.id !== item.id).slice(0, 8);
+  if (!eps.length) return "";
+  const ctx = "episode-more-" + item.id;
+  return `<section class="ep-more">
+    <h3>More from this show</h3>
+    ${eps.map((e, i) => epRow(e, i, ctx, -1)).join("")}
+  </section>`;
+}
+
 function renderEpisode(id) {
   document.body.className = "view-page";
   const item = resolveEpisode(id);
@@ -1491,19 +2878,27 @@ function renderEpisode(id) {
     $("#view").innerHTML = `<div class="page"><p class="note">Episode not found.</p></div>`;
     return;
   }
+  // populate itemIndex/poolIds so "more from this show" rows can play in-app;
+  // never throws — no catalogue yet is a reason to skip that row's play button,
+  // not to lose the whole page (same rule hydrationPool already follows).
+  if (state.session && state.session.episodes) {
+    try { fullPool(); } catch (_) { /* catalogue not really there yet */ }
+  }
   $("#view").innerHTML = `
     <div class="page">
       <div class="page-head">
         <a class="back" href="#/">‹</a>
         <div>
-          <h2 class="fp-s-title">${esc(item.title)}</h2>
-          <p class="fp-s-show">${esc(item.show || "")}${item.duration_min ? ` · ${fmtDur(item.duration_min)}` : ""}</p>
+          <h2 class="fp-s-title">${esc(item.title)}${explicitBadge(item.explicit)}</h2>
+          <p class="fp-s-show">${item.show ? showNameLink(item.show) : ""}${item.duration_min ? ` · ${fmtDur(item.duration_min)}` : ""}</p>
         </div>
       </div>
       ${item.artwork_url ? `<img class="ep-art" src="${esc(safeUrl(item.artwork_url))}" alt="">` : ""}
       ${item.hook ? `<p class="fp-s-why">${esc(item.hook)}</p>` : ""}
-      <div class="ep-actions">${playBtn(item)}${starBtn(item.id)}${upNextBtn(item.id)}</div>
+      <div class="ep-actions">${item.audio_url ? playBtn(item) : notPlayableNote()}${starBtn(item.id)}${upNextBtn(item.id)}</div>
+      ${moreFromShow(item)}
     </div>`;
+  bindPickLogging($("#view"));
   bindStars($("#view"));
   bindUpNext($("#view"));
   bindPlay($("#view"));
@@ -1544,7 +2939,7 @@ function renderQueue() {
 
   bindPickLogging($("#view"));
   bindStars($("#view"));
-  bindPlay($("#view"));
+  bindPlay($("#view"), { origin: "queue" });
   bindUpNextReorder($("#view"));
 }
 
@@ -1738,6 +3133,7 @@ function renderPlaylists() {
         <button type="submit">Go</button>
       </form>
       <p id="pl-note" class="note" hidden></p>
+      <a class="page-link-row" href="#/library">Library ›</a>
       ${all.length ? all.map(p => `
         <a class="pl-row" href="#/playlist/${esc(p.id)}">
           <div class="info">
@@ -1749,24 +3145,7 @@ function renderPlaylists() {
       : `<p class="note">No playlists yet — type above to build your first one.</p>`}
     </div>`;
 
-  $("#pl-form").addEventListener("submit", (e) => {
-    e.preventDefault();
-    const query = $("#pl-input").value.trim();
-    if (!query) return;
-    const result = buildPlaylist(query);
-    logEvent("playlist_built", { query, status: result.status, found: result.playlist ? result.playlist.items.length : 0 });
-    if (result.status === "ok" || result.status === "sparse") {
-      location.hash = "#/playlist/" + result.playlist.id;
-    } else {
-      const note = $("#pl-note");
-      note.textContent = result.status === "unsaved"
-        ? "That playlist could not be saved — this device has no storage space left. Removing a playlist you have finished with frees enough for a new one."
-        : result.suggestions.length
-          ? `Not much on "${query}" yet — try ${result.suggestions.map(s => s.label).join(", ")} instead.`
-          : `Not much on "${query}" yet — try different words.`;
-      note.hidden = false;
-    }
-  });
+  $("#pl-form").addEventListener("submit", bindPlaylistFormSubmit);
 }
 
 /* ---------- Forays (#128) ----------
@@ -2065,11 +3444,12 @@ function foraySourcesHtml(r, player) {
   const clips = (n) => `${esc(String(n))} clip${n === 1 ? "" : "s"}`;
   const rows = credits.map(c => `
     <div class="fy-src">
-      <a class="fy-src-head" href="${esc(safeUrl(c.link))}" target="_blank" rel="noopener"
-         data-src-show="${esc(c.show)}">
-        <span class="fy-src-show">${esc(c.show)} ↗</span>
+      <div class="fy-src-head">
+        <span class="fy-src-show">${showNameLink(c.show)}</span>
+        <a class="fy-src-out" href="${esc(safeUrl(c.link))}" target="_blank" rel="noopener"
+           data-src-show="${esc(c.show)}" aria-label="Open ${esc(c.show)} on Apple Podcasts">↗</a>
         <span class="fy-src-meta">${clips(c.clips)} · ${esc(player.fmtSpan(c.seconds))}</span>
-      </a>
+      </div>
       <ul class="fy-src-eps">${c.episodes.map(e =>
         `<li>${esc(e.title)} <span>${clips(e.clips)}</span></li>`).join("")}</ul>
     </div>`).join("");
@@ -2098,6 +3478,11 @@ function forayHeadSub(r) {
   return parts.join(" · ");
 }
 
+/* The back link on this page goes to `#/forays`, not `#/`. enterForayFromQuery's
+   whole point is that a `?foray=` link lands somewhere the unlocked DRAFT is
+   still listed, so the back button is not a dead end for the one person
+   reviewing it. That list moved off Home to `#/forays` on 2026-09-03, so this
+   link moved with it. */
 async function renderForay(id) {
   document.body.className = "view-page";
   $("#view").innerHTML = `<div class="page"><p class="note">Loading…</p></div>`;
@@ -2171,7 +3556,7 @@ async function renderForay(id) {
   $("#view").innerHTML = `
     <div class="page foray">
       <div class="page-head">
-        <a class="back" href="#/">‹</a>
+        <a class="back" href="#/forays">‹</a>
         <div>
           <h2>${esc(r.title)}</h2>
           <p class="sub">${esc(forayHeadSub(r))}</p>
@@ -3136,7 +4521,7 @@ function paintForay(s) {
   }
 }
 
-/** The Forays this visitor may see on the home screen. As of 2026-08-30 that is
+/** The Forays this visitor may see on the Forays page (#/forays). As of 2026-08-30 that is
     ONE — `capital-types-1` is published — plus any draft reached by name. It
     was empty for everyone before that.
 
@@ -3158,7 +4543,11 @@ function forayCards() {
   return window.ForayPlayer.listForays(state.forays, { unlocked: unlockedForays() });
 }
 
-function forayHomeHtml() {
+/* Renamed from forayHomeHtml on 2026-09-03: this list is no longer on Home.
+   The `.fy-home*` class names stay as they are — renaming them would touch
+   every foray style for no behaviour, and `.fy-home-row` is still an accurate
+   description of the row shape. */
+function forayListHtml() {
   const list = forayCards();
   if (!list.length) return "";
   return `<div class="fy-home">${list.map(f => `
@@ -3217,6 +4606,7 @@ function renderDrawer() {
     || `<p class="drawer-empty">none yet</p>`;
   $("#family-toggle").textContent = `Family mode: ${familyMode() ? "on" : "off"}`;
   $("#player-toggle").textContent = `Open in: ${playerPref() === "apple" ? "Apple Podcasts" : "Pocket Casts (show page)"}`;
+  $("#autoadvance-toggle").textContent = `Up Next auto-advance: ${autoAdvanceOn() ? "on" : "off"}`;
 }
 
 function openDrawer(open) {
@@ -3257,7 +4647,7 @@ function openDrawer(open) {
         account instead of re-attaching to the old one. What stays behind is a row
         with no name, email, phone number or password — and `app_users` plus the
         events keyed to it are deleted, so it is an empty shell. Removing the
-        shell is `HUMAN-ACTIONS.md` #16.
+        shell is `HUMAN-ACTIONS.md` #14.
      4. NOT THE PUBLISHER AND ATTRIBUTION HOSTS. Playing a segment points an
         `<audio>` element at the publisher's own URL, so 43 first-hop hosts —
         several of them ad-attribution prefixes the publisher put there — saw
@@ -3651,9 +5041,15 @@ async function deleteMyData({ deviceOnly = false } = {}) {
        a resume rail and thumbs that no longer exist anywhere. Interests are reset
        to taxonomy defaults, which `loadInterests` does WITHOUT writing.
        `buildCards()` is deliberately not called: it writes `cp_recent_branches`
-       and `cp_seen`, which would put two of the 20 keys straight back. */
+       and `cp_seen`, which would put two of the 20 keys straight back.
+       Bump `_interestsGen` here too, same as nudgeTopics does on every
+       pick/play/thumbs — otherwise buildPlaylist's `searchCache` (keyed on
+       [query, familyMode, _interestsGen]) would happily serve back a
+       pre-wipe, interest-ranked result for the exact same query, silently
+       undercutting "reset personalization". */
     state.interests = {};
     loadInterests();
+    state._interestsGen = (state._interestsGen || 0) + 1;
     state.forayResume = null;
     state.forayPlaying = null;
     state.foray = null;
@@ -3906,15 +5302,21 @@ function enterForayFromQuery() {
   } catch (_) { /* a hash we cannot write is a home screen, not a broken page */ }
 }
 
-function route() {
+/* Renders whichever page the current hash points at, WITHOUT touching the
+   drawer. Split out of route() so a settings-toggle re-render (family mode,
+   player pref, auto-advance) can refresh the page behind the drawer without
+   the drawer-closing side effect below — those toggles are not navigation,
+   the hash never changes, and closing the drawer on them is the bug this
+   split fixes. route() itself still closes the drawer, for real navigation. */
+function renderCurrentPage() {
   if (!state.ready) return;
-  openDrawer(false);
   /* Both of these belong to a page that is about to be replaced. The sheet's DOM
      and listeners die with #view, so neither can act — but a stale entry left
      pointing at a detached segment is the kind of thing that becomes a bug the
      next time someone reuses the sheet. */
   fbTarget = null;
   state.forayResume = null;
+  resetPageHeadScrollState();
   const h = location.hash || "#/";
   const forayId = forayRouteId();
   let m;
@@ -3923,17 +5325,189 @@ function route() {
   else if ((m = /^#\/subject\/(.+)$/.exec(h))) renderPlaylistDetail("subject-" + m[1]);
   else if ((m = /^#\/episode\/(.+)$/.exec(h))) renderEpisode(m[1]);
   else if ((m = /^#\/show\/(.+)$/.exec(h))) renderShow(decodeURIComponent(m[1]));
+  else if ((m = /^#\/category\/(.+)$/.exec(h))) renderCategory(decodeURIComponent(m[1]));
+  else if (h === "#/shows") renderAllShows();
   else if (h === "#/playlists") renderPlaylists();
+  else if (h === "#/forays") renderForays();
   else if (h === "#/queue") renderQueue();
   else if (h === "#/library") renderLibrary();
+  else if (h === "#/starred-shows") renderStarredShows();
   else renderHome();
+}
+
+function route() {
+  if (!state.ready) return;
+  noteNavigation(location.hash);
+  openDrawer(false);
+  renderCurrentPage();
+}
+
+/* ---------- in-app history: what the ‹ button does ----------
+
+   Wyatt (2026-09-05, live bug report): the ‹ button jumped all the way to
+   Home instead of one step back. Every page head renders a plain
+   `<a class="back" href="#/">` link, which always followed that literal
+   href — Shows -> a show -> an episode -> ‹ landed on the four cards, not
+   on the show, exactly as reported.
+
+   The browser already holds the right answer: routing is hash-only, every
+   navigation pushes one `hashchange`-triggering history entry, and
+   `history.back()` replays it. So the fix is to call `history.back()`
+   INSTEAD of following the link whenever there is an in-app step to go
+   back to, and to let the `#/` href stand otherwise. That fallback is the
+   cold-open case — a deep link opened fresh (`#/show/x` from a share, a
+   `?foray=` link) has no in-app history behind it, and `history.back()`
+   there would leave the app entirely or do nothing. Home is the right
+   landing for that case.
+
+   "Is there a step to go back to" is tracked here rather than asked of the
+   browser: `history.length` counts entries from before the app loaded, and
+   there is no reliable "canGoBack" available across every WebKit this ships
+   to. So route() notes every hash it renders in `navStack`. Landing back on
+   the hash that was two steps ago pops the stack (a real back-step);
+   anything else pushes (a forward-step). More than one entry on the stack
+   means `history.back()` lands inside the app; exactly one means the
+   current page is the first the app rendered this session (or after a
+   reload — reloading always resets the stack), so ‹ falls back to the
+   href and goes Home, which is the correct behavior for a cold open. */
+const navStack = [];
+
+function noteNavigation(hash) {
+  backPending = false;
+  const h = hash || "#/";
+  if (navStack.length >= 2 && navStack[navStack.length - 2] === h) navStack.pop();
+  else if (navStack[navStack.length - 1] !== h) navStack.push(h);
+}
+
+function canGoBackInApp() { return navStack.length > 1; }
+
+/* `history.back()` is asynchronous — the `hashchange` that actually pops the
+   stack lands a beat later. A second tap on ‹ inside that beat would still
+   see the pre-pop stack and call `history.back()` twice, overshooting by one
+   page. `backPending` makes it one step per tap no matter how fast the taps
+   land; `noteNavigation` (called from every route()) clears it once the step
+   has actually happened. */
+let backPending = false;
+
+/* After removing a playlist: back to the list. When the list is the step
+   immediately behind this page (the ordinary way in — Playlists ->
+   this playlist), that is `history.back()`, which leaves the now-removed
+   playlist's entry BEHIND the list rather than pushing a fresh one in
+   front of it — otherwise the very next ‹ tap from the list would land
+   back on a playlist that no longer exists. From anywhere else (e.g. a
+   drawer link straight into a specific playlist, with no list entry behind
+   it), there is no such step to reuse, so this navigates to the list
+   directly instead. */
+function leaveRemovedPlaylist() {
+  if (navStack.length >= 2 && navStack[navStack.length - 2] === "#/playlists") {
+    backPending = true;
+    history.back();
+  } else {
+    location.hash = "#/playlists";
+  }
+}
+
+/* Delegated from #view (bound once in init(), see below) rather than bound
+   per-render: every page-rendering function replaces #view's innerHTML
+   wholesale, and a per-render listener would have to be repeated in every
+   one of them for no benefit — a click on `a.back` means the same thing on
+   every page. Only that class is handled; anything else falls through
+   untouched (the drawer, play buttons, star toggles, etc. bind their own
+   listeners exactly as before). */
+function onBackClick(e) {
+  const a = e.target && typeof e.target.closest === "function" ? e.target.closest("a.back") : null;
+  if (!a || !canGoBackInApp()) return;   // cold open: the href="#/" fallback stands
+  e.preventDefault();
+  if (backPending) return;               // the previous tap's step has not landed yet
+  backPending = true;
+  history.back();
+}
+
+/* ---------- collapsing page header: show/hide on scroll direction ----------
+
+   Wyatt (2026-09-05, live bug report): the ‹ header bar collapsing out of
+   view while scrolling DOWN a long episode list is intentional and "feels
+   nice" — it is `.page-head`'s `position: sticky` leaving the viewport once
+   `.page-head-hidden` translates it up (see styles.css). The bug is that it
+   never came back except by scrolling all the way back to the literal top
+   of the page, which on a show with hundreds of episodes is a real dead
+   end: there was no reappear-on-scroll-up behavior at all, only the
+   scroll-position-zero case sticky/CSS gives you for free.
+
+   Standard mobile pattern, implemented directly rather than via a library
+   given the app's no-build-step, single-file-classic-script shape: compare
+   this scroll event's `window.scrollY` against the last one seen. Moving
+   down past a small dead zone (SCROLL_HIDE_DELTA, so normal reading
+   micro-jitter and rubber-band bounce don't flicker the bar) hides it;
+   moving up by any amount shows it again immediately, at any scroll
+   position — not just at the top. Near the very top (within the header's
+   own height) it always shows, so it can never hide itself out from under
+   a user who just landed on the page. */
+const SCROLL_HIDE_DELTA = 10; // px of downward movement before hiding, to absorb jitter/bounce
+let lastScrollY = 0;
+let pageHeadHiddenNow = false;
+
+function currentPageHead() { return $("#view .page-head"); }
+
+function setPageHeadHidden(hidden) {
+  if (hidden === pageHeadHiddenNow) return;
+  pageHeadHiddenNow = hidden;
+  const head = currentPageHead();
+  if (head) head.classList.toggle("page-head-hidden", hidden);
+}
+
+function onWindowScroll() {
+  const y = window.scrollY || 0;
+  const head = currentPageHead();
+  if (!head) { lastScrollY = y; return; } // no page head on this page (e.g. home) — nothing to do
+  const delta = y - lastScrollY;
+  if (y <= head.offsetHeight) {
+    setPageHeadHidden(false);           // never hide near the very top of the page
+  } else if (delta > SCROLL_HIDE_DELTA) {
+    setPageHeadHidden(true);            // scrolling down past the dead zone: collapse
+  } else if (delta < 0) {
+    setPageHeadHidden(false);           // any upward movement: reappear immediately
+  }
+  lastScrollY = y;
+}
+
+/* A fresh page (new navigation, or the same page's own re-render) starts
+   with its header visible and a clean scroll baseline — otherwise a header
+   left hidden by the PREVIOUS page's scroll position would render already
+   collapsed on a brand new page the user has not scrolled on yet. Called
+   from renderCurrentPage() below, once per page render. */
+function resetPageHeadScrollState() {
+  pageHeadHiddenNow = false;
+  lastScrollY = window.scrollY || 0;
+  const head = currentPageHead();
+  if (head) head.classList.remove("page-head-hidden");
 }
 
 /* ---------- init ---------- */
 
 async function fetchJson(path) {
   try {
-    const res = await fetch(path, { cache: "no-cache" });
+    const res = await fetch(pinnedUrl(path), { cache: "no-cache" });
+    return res.ok ? await res.json() : null;
+  } catch (_) { return null; }
+}
+
+/* A3.1/Q3: a plain, unpinned fetch for /api/* backend endpoints — deliberately
+   a separate helper from fetchJson, not a reuse of it. fetchJson pins every
+   call to the deploy generation (pinnedUrl) because data/*.json is a static,
+   versioned build artifact; /api/* is a live serverless function with no
+   deploy-generation concept to pin against. Keeping this a distinct function
+   (rather than making fetchJson conditionally skip pinning) also keeps
+   tools/mobile/prepare-webdir.mjs's runtimeDataFiles() derivation correct —
+   that scanner matches every literal fetchJson call against a data/*.json
+   path to build the native bundle's data-file manifest, and pointing that
+   same call at api/shows/search would incorrectly need to be either bundled
+   as data or special-cased out. Same swallow-errors-to-null contract as
+   fetchJson, so callers don't need their own try/catch for a down or
+   unreachable endpoint. */
+async function fetchApiJson(path) {
+  try {
+    const res = await fetch(apiUrl(path), { cache: "no-cache" });
     return res.ok ? await res.json() : null;
   } catch (_) { return null; }
 }
@@ -3983,7 +5557,39 @@ async function init() {
   logEvent("session_shown", { session_id: state.session.session_id });
   trySyncEvents();
 
+  /* Warm the concept-vocabulary DF caches now, while the app is idle between
+     "data finished loading" and "user typed a query and hit Go", instead of
+     paying it interleaved into the FIRST real playlist search (H bug, kanban
+     t_838a13c0 — a fresh session's first query measured 6.6-8.1s before this
+     fix). Deliberately scheduled via requestIdleCallback (falling back to a
+     0ms timeout where it's unavailable, e.g. older WebKit/the native shell)
+     rather than called inline here: `route()` above has already painted the
+     first screen, and priming is pure CPU with no UI of its own, so it must
+     not compete with that paint or with an impatient user who taps into the
+     playlist search within the first second. searchCtx() builds the same ctx
+     this call warms, so a query that arrives before priming finishes just
+     resumes the memoization mid-way — nothing is wasted or redone. */
+  const primeSearchVocab = () => {
+    if (typeof SearchEngine !== "undefined" && SearchEngine.primeVocabulary) {
+      SearchEngine.primeVocabulary(searchCtx());
+    }
+  };
+  if (typeof requestIdleCallback === "function") requestIdleCallback(primeSearchVocab, { timeout: 2000 });
+  else setTimeout(primeSearchVocab, 0);
+
+  /* Up Next auto-advance's wiring (docs/listening-queue-plan.md §4 addendum).
+     Fire-and-forget: a player that never loads (module failure, test
+     harness with no `window.addEventListener`) just means auto-advance never
+     fires, same as every other ForayPlayer-gated feature on this page — it
+     must not hold up `init()`, which has already returned control above. */
+  playerBridge().then(player => {
+    if (player && typeof player.onEpisodeEnded === "function") {
+      player.onEpisodeEnded(advanceQueueOnEnded);
+    }
+  });
+
   $("#menu-btn").addEventListener("click", () => openDrawer($("#drawer").hidden));
+  $("#view").addEventListener("click", onBackClick);
   $("#drawer-overlay").addEventListener("click", () => openDrawer(false));
   $("#drawer").addEventListener("click", (e) => {
     if (e.target.closest("a")) openDrawer(false);
@@ -3993,13 +5599,18 @@ async function init() {
     logEvent("family_mode", { on: familyMode() });
     buildCards();
     renderDrawer();
-    route();
+    renderCurrentPage();
   });
   $("#player-toggle").addEventListener("click", () => {
     lsSet("cp_player", playerPref() === "apple" ? "pocketcasts" : "apple");
     logEvent("player_pref", { player: playerPref() });
     renderDrawer();
-    route();
+    renderCurrentPage();
+  });
+  $("#autoadvance-toggle").addEventListener("click", () => {
+    lsSet("cp_autoadvance", !autoAdvanceOn());
+    logEvent("autoadvance_pref", { on: autoAdvanceOn() });
+    renderDrawer();
   });
   /* The field record's surface (#264), appended for the same reason as the
      control below it and deliberately ABOVE it: "Delete my data" must stay the
@@ -4017,6 +5628,18 @@ async function init() {
     else location.hash = "#/";
   });
   window.addEventListener("hashchange", route);
+  /* `{ passive: true }`: this listener never calls preventDefault, and
+     without the flag some browsers assume it might and delay scrolling to
+     find out — passive says up front that scrolling can proceed immediately.
+     Throttled to one evaluation per animation frame (a plain boolean flag,
+     no timer) rather than running on every fired scroll event, which on a
+     long list can be many times per frame. */
+  let scrollScheduled = false;
+  window.addEventListener("scroll", () => {
+    if (scrollScheduled) return;
+    scrollScheduled = true;
+    requestAnimationFrame(() => { scrollScheduled = false; onWindowScroll(); });
+  }, { passive: true });
 }
 
 init();
@@ -4084,6 +5707,26 @@ const SHELL_NOTICE = {
   "generation-changed": "4a updated in the background, so this page is one version behind.",
 };
 
+/* THE PAGE'S HALF OF THE GENERATION PIN (#233/M4, sw.js's `handleShell`).
+ *
+ * The worker no longer remembers which pages are running last-known code —
+ * that lived in an in-memory `Set` that a browser-initiated worker eviction
+ * silently emptied, which failed a pinned page OPEN the next time it asked for
+ * data. The pin now lives here instead, in this page's own JS state (set
+ * synchronously at the TOP of this file — see that comment for why it cannot
+ * depend solely on this message listener, which attaches only after `init()`
+ * has already started fetching), which cannot be evicted independently of the
+ * page itself. Every `data/*.json` fetch carries `?_fdid=<that id>` so sw.js's
+ * `handleData` keeps reading the SAME generation rather than whatever today's
+ * pointer names. A reload clears this by simply being a new document — there
+ * is nothing to clear on purpose.
+ */
+function pinnedUrl(path) {
+  if (!pinnedDeployId) return path;
+  const sep = path.includes("?") ? "&" : "?";
+  return `${path}${sep}_fdid=${encodeURIComponent(pinnedDeployId)}`;
+}
+
 function showShellNotice(reason) {
   /* Own properties only. A plain object literal answers `SHELL_NOTICE["constructor"]`
      with a function, and `SHELL_NOTICE["toString"]` with another one, so a bare
@@ -4130,7 +5773,19 @@ if ("serviceWorker" in navigator && shouldRegisterServiceWorker(window)) {
   if (typeof navigator.serviceWorker.addEventListener === "function") {
     navigator.serviceWorker.addEventListener("message", (e) => {
       const msg = e && e.data;
-      if (msg && msg.source === "foray-sw") showShellNotice(msg.reason);
+      if (!msg || msg.source !== "foray-sw") return;
+      /* By the time this fires, `pinnedDeployId` is already set synchronously
+         (see the top of this file) if this load fell back at all — this
+         assignment is now a REDUNDANT confirmation, not the establishing
+         write, kept only as a safety net for a message that legitimately
+         arrives with a different id than the synchronous read found (there is
+         no such path today, but it costs nothing and a future one should not
+         have to remember this). A `deployId` of null (an unretained/unknown
+         generation on the worker's side) intentionally does not clear an
+         already-set pin — see sw.js's `handleData` fail-safe for the matching
+         reasoning. */
+      if (msg.reason === "stale-shell" && msg.deployId) pinnedDeployId = msg.deployId;
+      showShellNotice(msg.reason);
     });
   }
 }

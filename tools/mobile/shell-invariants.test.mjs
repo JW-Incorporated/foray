@@ -348,6 +348,25 @@ test("the repo's ios/ contains no Capacitor output", () => {
   }
 });
 
+test("prepare:webdir installs the minifier into tools/mobile/ before it builds", () => {
+  /* Since 2026-09-04 `prepare-webdir.mjs` needs esbuild, which lives in
+     `tools/mobile/package.json` — not here, not the root. Nothing under `.github/`
+     was edited to install it: `ios-build.yml` and `android-build.yml` both run the
+     committed `add:ios` / `add:android` scripts, which run `prepare:webdir`, so THIS
+     script is the one path every build takes, and `docs/mobile-shell.md` §3.4 and
+     `docs/DECISIONS.md` both say so. A wrong edit here fails loudly on the Mac
+     (MinifyError, not a silent copy) — this test moves that failure to CI.
+     MUTATION (ran): drop `npm run deps:webdir && ` from `prepare:webdir`. */
+  const scripts = capPkg().scripts ?? {};
+  assert.match(scripts["prepare:webdir"] ?? "", /^npm run deps:webdir && node \.\.\/tools\/mobile\/prepare-webdir\.mjs$/);
+  assert.match(scripts["deps:webdir"] ?? "", /^npm ci --prefix \.\.\/tools\/mobile\b/);
+  /* And the package it installs is the one prepare-webdir.mjs's minifier resolves
+     from: a lockfile there, so `npm ci` is reproducible, and esbuild pinned in it. */
+  const tools = readJson(path.join(ROOT, "tools", "mobile", "package.json"));
+  assert.match(tools.devDependencies?.esbuild ?? "", /^\d+\.\d+\.\d+$/, "esbuild must be pinned exactly in tools/mobile/package.json");
+  assert.ok(fs.existsSync(path.join(ROOT, "tools", "mobile", "package-lock.json")), "tools/mobile has no lockfile, so `npm ci` there would fail");
+});
+
 test("the webDir size cap is pinned at 3 MB", () => {
   /* WITHOUT THIS, THE CAP GUARDS NOTHING. The only test of today's bundle
      compares it against MAX_BYTES, so raising MAX_BYTES satisfies both sides of
@@ -382,9 +401,14 @@ test("the sliced files' per-file budgets are pinned, all three of them", () => {
      two Foray documents' budgets watch PRODUCT growth: a new Foray is a deliberate
      act, so they sit further above today's number — about four more Forays the size
      of today's three combined — but they must still fire long before the segment
-     pool's unbounded growth could get back into the bundle (#327). */
+     pool's unbounded growth could get back into the bundle (#327).
+
+     `data/discover.json` 800 -> 720 KB on 2026-09-04: the slice is now written with
+     no JSON whitespace (745 -> 636 KB), and 800 KB would have turned a ~13% alarm
+     into a 26% one. The new number keeps the same distance — about 30 new shows at
+     the minified ~2.9 KB each. */
   assert.deepEqual(PROJECTED_DATA.map((p) => [p.rel, p.maxBytes]), [
-    ["data/discover.json", 800 * 1024],
+    ["data/discover.json", 720 * 1024],
     ["data/segments.json", 100 * 1024],
     ["data/segment-sources.json", 40 * 1024],
   ]);
@@ -611,9 +635,17 @@ test("app.js is the only file in the bundle that registers a service worker", ()
   assert.deepEqual(offenders, [], "registration must stay in app.js, behind shouldRegisterServiceWorker()");
 });
 
-test("sw.js is still served to the web and still cache-first for the shell", () => {
+test("sw.js is still served to the web and still versions its generations", () => {
+  /* M4 (#233 remainder) replaced the hand-bumped `const CACHE = "foray-vN"`
+     with a content-derived deploy id read from deploy-manifest.json, staged
+     into a per-generation cache (`foray-gen-<deploy_id>`) and promoted through
+     a durable pointer cache — see sw.js's header and
+     tools/ci/generate-manifest.mjs. The invariant this test guards is
+     unchanged (the shell is still versioned, so a stale copy is still
+     detectable and replaceable), only the mechanism moved. */
   const sw = fs.readFileSync(path.join(ROOT, "sw.js"), "utf8");
-  assert.match(sw, /const CACHE = "foray-v\d+"/, "sw.js lost its versioned cache name.");
+  assert.match(sw, /CACHE_PREFIX\s*=\s*"foray-gen-"/, "sw.js lost its versioned-generation cache prefix.");
+  assert.match(sw, /POINTER_CACHE\s*=\s*"foray-pointer"/, "sw.js lost its atomic-promotion pointer cache.");
 });
 
 /* ────────────────────────── 4. the KeepRunning footgun ───────────────────── */
@@ -940,11 +972,15 @@ test("mobile/'s only non-Capacitor dependency is our own plugin, by a file: path
     );
     local.push({ name, target });
   }
-  /* Pinned at exactly one, because "how many local plugins does the shell have" is a
-     decision and today's answer is one. A second is fine — say so here, in the PR
-     that adds it. */
-  assert.equal(local.length, 1, "expected exactly one local plugin, found: " + (local.map((l) => l.name).join(", ") || "none"));
-  assert.equal(local[0].name, "foray-audio");
+  /* Pinned at exactly two, because "how many local plugins does the shell have" is a
+     decision and today's answer is two. `foray-tts` is the second, added by this
+     card (docs/research/on-device-tts.md) — say so here, in the PR that adds the
+     next one, same as this comment already asked of the PR that added this one. */
+  assert.equal(local.length, 2, "expected exactly two local plugins, found: " + (local.map((l) => l.name).join(", ") || "none"));
+  assert.deepEqual(
+    local.map((l) => l.name).sort(),
+    ["foray-audio", "foray-tts"]
+  );
 });
 
 test("the plugin name the web half calls is the name the Java registers", () => {
@@ -1094,7 +1130,19 @@ test("the Java package, the source layout, the Gradle namespace and the manifest
   const pkgDirRel = PLUGIN_REL + "/" + path.dirname(serviceRel);
   const ls = git(["ls-files", "--", PLUGIN_REL]);
   assert.equal(ls.status, 0, "could not read the git index; this half of the invariant is about what is COMMITTED");
-  const trackedJava = ls.stdout.split(/\r?\n/).map((l) => l.trim()).filter((f) => f.endsWith(".java"));
+  /* M5 (full-repo-review-report.md, 2026-08-31) added a real `src/test/java/...`
+     tree (Robolectric unit tests) alongside `src/main/java/...`. Those test
+     classes legitimately live under their own package directory outside
+     `src/main/java` — a second, separate JVM source root Gradle already knows
+     about, not a stray leftover from an incomplete rename. Scope this check to
+     production sources only (`src/main/java`) so it keeps catching the one
+     failure mode it exists for (an old src/main package tree left behind by a
+     half-finished `git mv`) without flagging every legitimate test file. */
+  const mainJavaRoot = PLUGIN_REL + "/android/src/main/java/";
+  const trackedJava = ls.stdout
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter((f) => f.endsWith(".java") && f.startsWith(mainJavaRoot));
   assert.ok(trackedJava.length >= 5, "expected at least five tracked .java files, found " + trackedJava.length);
   for (const f of trackedJava) {
     assert.ok(

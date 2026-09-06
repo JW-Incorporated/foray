@@ -229,12 +229,42 @@ jobs:
             pr=$(jq -r   '.pr'    <<<"$line")
             label=$(jq -r '.label // empty' <<<"$line")
             ref=$(jq -r   '.ref // empty'   <<<"$line")
+            head_sha=$(jq -r '.headSha // empty' <<<"$line")
             echo "::group::$kind #$pr $label$ref"
             case "$kind" in
               add-label)     gh pr edit "$pr" --repo "$REPO" --add-label "$label" ;;
               remove-label)  gh pr edit "$pr" --repo "$REPO" --remove-label "$label" ;;
               comment)       jq -r '.body' <<<"$line" | gh pr comment "$pr" --repo "$REPO" --body-file - ;;
               disable-auto)  gh pr merge "$pr" --repo "$REPO" --disable-auto ;;
+              # The symmetric half of disable-auto (t_a25ea475): the sweep now
+              # arms a PR the policy approves even when nothing else ever asked
+              # to re-decide it. `--match-head-commit` binds the arming to the
+              # exact SHA the planner judged, same as automerge-nightly.yml.
+              #
+              # GitHub rejects `enablePullRequestAutoMerge` with "Pull request
+              # is in clean status" when the PR has nothing left to wait on —
+              # documented behavior, not a bug — and erroring there would leave
+              # the PR right back in the same stuck state this action exists to
+              # fix. Treat that one rejection as "just merge it" instead of a
+              # failure; any other error still fails the job normally.
+              enable-auto)
+                sha="$head_sha"
+                if [ -z "$sha" ]; then
+                  sha=$(gh api "repos/$REPO/pulls/$pr" --jq '.head.sha')
+                fi
+                out=$(gh pr merge "$pr" --repo "$REPO" --squash --auto --delete-branch \
+                        --match-head-commit "$sha" 2>&1) && echo "$out" || {
+                  if grep -qi "clean status" <<<"$out"; then
+                    echo "$out"
+                    echo "#$pr is already clean — merging directly instead of arming"
+                    gh pr merge "$pr" --repo "$REPO" --squash --delete-branch \
+                      --match-head-commit "$sha"
+                  else
+                    echo "$out" >&2
+                    false
+                  fi
+                }
+                ;;
               # `PUT .../update-branch` returns 202 Accepted and merges in the
               # BACKGROUND. Dispatching immediately races it and loses two ways:
               # CI runs on the pre-update SHA (so the new head gets no checks at

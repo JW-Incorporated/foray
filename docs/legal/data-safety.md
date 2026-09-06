@@ -36,12 +36,12 @@ collection.
 Read `privacy-policy.md` §1–§4 for the full table. The three facts that decide
 every answer below:
 
-1. **22 `cp_*` storage keys live on the device**, each mirrored into both
+1. **23 `cp_*` storage keys live on the device**, each mirrored into both
    `localStorage` and IndexedDB (`player/durable-store.js` mirrors the whole
-   `cp_` prefix; db `foray`, store `kv`). Two of the 22 are diagnostics rather
+   `cp_` prefix; db `foray`, store `kv`). Two of the 23 are diagnostics rather
    than a listener's data — `cp_storage_health` and `cp_diag` — and neither is
    transmitted.
-2. **Exactly 5 of 20 event types are transmitted**, to one endpoint
+2. **Exactly 5 of 23 event types are transmitted**, to one endpoint
    (`https://qjdllvqdcgacvujhclny.supabase.co`), keyed to an anonymous account.
    Mapping: `app.js:toEventRow()` — the five `case` arms that return a row are
    the whole transmitted set, and every other type falls to `return null`.
@@ -55,8 +55,12 @@ every answer below:
    the answer most likely to be got wrong in either direction.
 
 The client's CSP (`index.html`) sets `connect-src 'self'` plus the Supabase
-project, so the transmitted set above is the *most* the browser would permit for
-a data-sending request without a code change. Note it also allows
+project plus our own API origin (`https://foray-web-seven.vercel.app`, the
+Vercel project that serves `api/shows/*` and `api/episodes/*`), so the
+transmitted set above is the *most* the browser would permit for a data-sending
+request without a code change. What that API entry carries is a show id, or a
+typed search query — the privacy policy §2 states it; no account id and no
+event goes with it. Note it also allows
 `img-src https:` and `media-src https:` — any HTTPS host — which is how audio and
 artwork load. The CSP bounds outbound *data*, not all network access.
 
@@ -90,7 +94,7 @@ ones a template gets wrong.
 | **Calendar** | **No** | No | — |
 | **Contacts** | **No** | No | — |
 | **App activity — App interactions** | **Yes** | No | The five transmitted events are interactions: picked, finished, saved, thumbs, session shown (`app.js:toEventRow()`). The `picked` row's `context` field is filtered against a five-value allowlist (`app.js:SB_ARCHETYPES`) but the app only ever produces `continue` or a value the filter discards, so it is `"continue"` or null in practice — it does not report which recommendation archetype you saw. |
-| **App activity — In-app search history** | **No** | No | The playlist box (`app.js:#pl-input`, `maxlength=120`) is searched entirely on-device by `search-engine.js`; `playlist_built`/`playlist_removed` are local-only (they fall to `toEventRow`'s `default: return null`). Stored in `cp_playlists`, never sent — which since #276 also holds a copy of each saved episode’s title, show, length, topic ids and Apple Podcasts ids, so an aged-out part still renders. That is catalogue metadata about episodes, not search history about you, and none of it leaves the device either. |
+| **App activity — In-app search history** | **No** | No | The playlist box (`app.js:#pl-input`, `maxlength=120`) is searched entirely on-device by `search-engine.js`; `playlist_built`/`playlist_removed` are local-only (they fall to `toEventRow`'s `default: return null`). Stored in `cp_playlists`, never sent — which since #276 also holds a copy of each saved episode’s title, show, length, topic ids and Apple Podcasts ids, so an aged-out part still renders. That is catalogue metadata about episodes, not search history about you, and none of it leaves the device either. The Shows search box (`app.js:#sh-input`) works the same way for anything already in 4a's local catalogue; when a search misses the local catalogue it looks the query up against a shard/index off-device (HUMAN-ACTIONS.md #38, `privacy-policy.md` §2) — that miss-only lookup is not a search-history event and is not logged, but it is a network transmission of what you typed, so this row is worth a lawyer's eye once shard/API-backed Shows search ships. |
 | **App activity — Installed apps** | **No** | No | Nothing is enumerated. `cp_player` (your preferred external app) is local-only and never transmitted. The `picked` row carries an `app` field, but it reads a `data-app` attribute **nothing in the app ever sets**, so it is always the hardcoded literal `"Apple Podcasts"` regardless of your preference (`app.js:bindPickLogging()`) — it reports nothing about you or your device. |
 | **App activity — Other user-generated content** | **Yes** | No | The thumbs-down free-text note is transmitted (`app.js:toEventRow()`; typed into `app.js:#fy-sheet-note`, `maxlength=200`). |
 | **App activity — Other actions** | **Yes** | No | Thumbs direction and the fixed reason codes (`app.js:FB_CHIPS`, sent by `app.js:toEventRow()`). |
@@ -280,7 +284,7 @@ longer than the real-time request needs**. Same conclusion as Play — the local
 | **User Content — Other User Content** | **Yes** | The free-text thumbs-down note is transmitted (`app.js:toEventRow()`). |
 | **User Content** — photos, videos, audio, gameplay, customer support | **No** | None exist. The app plays third-party audio; it records and uploads none. |
 | **Browsing History** | **No** | Not accessible to the app. |
-| **Search History** | **No** | Playlist search is on-device and never transmitted (`search-engine.js`; playlist events are local-only). |
+| **Search History** | **No** | Playlist search is on-device and never transmitted (`search-engine.js`; playlist events are local-only). Shows search (`app.js:#sh-input`) is the same for anything already in 4a's local catalogue; a search that misses the local catalogue looks the query up against a shard/index off-device (HUMAN-ACTIONS.md #38, `privacy-policy.md` §2) — that transmits what you typed, though it is not logged as a search-history event. |
 | **Identifiers — User ID** | **Yes** | The Supabase anonymous account id on every row (`app.js:toEventRow()`). |
 | **Identifiers — Device ID** | **No** | No IDFA, IDFV, or fingerprint. `cp_profile_id` is local-only and never transmitted. |
 | **Purchases** | **No** | — |
@@ -336,14 +340,31 @@ Applies to **User ID**, **Product Interaction** and **Other User Content**.
 - **Rule 5.1.2 / third-party AI disclosure.** The legal memo treats this as a
   live obligation. **On the current code it is not:** no user data reaches an AI
   provider from the app, and `connect-src` would block a call from the device. AI
-  runs in our **build pipeline** on public podcast metadata, off-device. Do not
-  build a consent screen naming an AI vendor for a data flow that does not exist.
+  runs in our **build pipeline**, off-device, in two places: (1) the ingest/build
+  stage, on public podcast metadata; and (2) the generation pipeline's §4.1
+  prompt-understanding stage (`backend/src/generation/AnthropicPromptUnderstander.ts`,
+  invoked via `backend/src/cli/generateForay.ts`, plus its siblings
+  `AnthropicSpineBuilder.ts`, `AnthropicDeepenActBuilder.ts`, and
+  `AnthropicExternalResearcher.ts`), which sends the founder's free-text creation
+  prompt to Anthropic (`claude-haiku-4-5`) for clarity/intent extraction. Today's
+  actual sender for (2) is the founder, not a listener — Phase 1 generation is
+  founder-only (§1.3, run from a CLI by Wyatt and Joey) — and that prompt text is
+  provably not persisted anywhere (`backend/test/promptNoPersistence.test.ts`
+  structurally greps the whole `generation/` stage for persistence primitives).
+  Do not build a consent screen naming an AI vendor for a data flow that does not
+  exist for a real listener today.
   - **But it is one env var away, not one feature away.** The pipeline already
     has a prompt field for listener context and it is currently fed a placeholder;
     see the `userInterestsProvider` row in § What would change these answers. If
     that is ever wired up, 5.1.2 applies and the memo's checklist item becomes
     live. Re-check this before every submission rather than trusting this
     paragraph.
+  - **A second, independent tripwire: generation opening to non-founder users.**
+    The day Phase 2 lets a real listener (not the founder) submit the free-text
+    creation prompt described above, their prompt text reaching Anthropic becomes
+    a live Rule 5.1.2 disclosure obligation on its own — regardless of whether
+    `userInterestsProvider` is ever wired up. Re-check this document at that point
+    too, not just the listener-context field.
 - **Account deletion (App Store guideline 5.1.1(v)).** Applies to apps that let
   you *create an account*. 4a creates an anonymous account with no user
   action, which is arguably outside the rule — but the safe posture is the same
@@ -369,7 +390,7 @@ are the answers that will actually be submitted.
 | Aspect | Web | Native shell | Effect on the declarations |
 |---|---|---|---|
 | Event sync to Supabase | Yes | **Yes — unchanged.** The shell keeps `connect-src … supabase.co` in its CSP. | **None.** Every "Yes" above still applies. |
-| Service worker / `foray-v5` cache | Registered | **Not registered** — `shouldRegisterServiceWorker()` returns false for `capacitor:`/`ionic:` origins and native platforms | None (that cache was never declarable — same-origin app shell). |
+| Service worker / `foray-gen-<deploy_id>` caches | Registered | **Not registered** — `shouldRegisterServiceWorker()` returns false for `capacitor:`/`ionic:` origins and native platforms | None (that cache family was never declarable — same-origin app shell). |
 | Catalogue JSON | Fetched from GitHub Pages | **Bundled in the app** (`tools/mobile/prepare-webdir.mjs`) | Slightly *fewer* third parties: GitHub no longer sees catalogue requests. |
 | App origin | `https://…github.io` | `capacitor://localhost` (iOS) / `https://localhost` (Android) | None. It is why the shell widens `img-src` to include `'self'`. |
 | Audio from publisher CDNs | Direct | **Direct — unchanged** | §A6 applies identically. |
@@ -377,7 +398,8 @@ are the answers that will actually be submitted.
 
 **To re-verify before submitting:** that the shell adds no plugin which collects
 anything (each Capacitor plugin can), and that `connect-src` still names only
-Supabase.
+Supabase and our own API origin — `test/legal-citations.test.js` asserts that
+list exactly, reading both origins out of `app.js` rather than restating them.
 
 ---
 

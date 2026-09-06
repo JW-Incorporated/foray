@@ -156,7 +156,7 @@ const prose = (rel) => {
    WHY THIS MATCHES ON CASE AND NOT ON THE WORD. The word "foray" must survive
    in these documents. It is the stitched-audio unit ("inside a given foray",
    "the assembled forays"), and it is inside identifiers the documents are
-   obliged to name verbatim: `cp_foray:<id>`, `cp_foray_feedback`, `foray-v5`,
+   obliged to name verbatim: `cp_foray:<id>`, `cp_foray_feedback`, `foray-gen-`,
    the IndexedDB database `foray`, the `foray_play` / `foray_restart` /
    `foray_progress_drift` event types, and the Pages URL. So this cannot assert
    the word is absent. What it CAN assert is the capitalisation: the unit is a
@@ -406,8 +406,17 @@ test("both shell notices name the app", () => {
    (`sw.js:284`, `test/sw-generation.test.js:442`) were updated with it.
 
    KILLED BY: recapitalising either unit note, or reverting 1589's wording (both
-   run individually). ALSO KILLED BY: adding a seventh note that says "Foray",
-   which is the case a list would have missed. */
+   run individually). ALSO KILLED BY: adding a seventh (now eighth, see below)
+   note that says "Foray", which is the case a list would have missed.
+
+   The count dropped from 8 to 7 in kanban t_0faae03f (2026-09-05, Wyatt's
+   back-navigation fix): "Playlist not found." used to be this exact
+   one-line `<div class="page"><p class="note">…</p></div>` shape, with no
+   way back to the Playlists list. Landing there is now a real page (a
+   `.page-head` with a working ‹), so it no longer matches this regex at
+   all -- it moved OUT of the set this test enumerates, not out of the app.
+   See "a removed/missing playlist still renders a page head with a working
+   ‹ back link" in test/back-navigation.test.js for its own coverage. */
 test("no note this app renders into #view capitalises the unit", () => {
   const notes = [
     ...read("app.js").matchAll(
@@ -416,8 +425,8 @@ test("no note this app renders into #view capitalises the unit", () => {
   ].map((m) => m[1]);
   assert.equal(
     notes.length,
-    8,
-    `expected eight one-line #view notes, found ${notes.length}. More is fine -- ` +
+    7,
+    `expected seven one-line #view notes, found ${notes.length}. More is fine -- ` +
       "raise this count so the new one is covered. Fewer means a note was lost " +
       `or reshaped: ${notes.join(" | ")}`
   );
@@ -558,7 +567,7 @@ test("the mini-player's back link lowercases the unit", () => {
   assert.equal(m[1], "Back to the running order");
 });
 
-/* The home screen's kicker above each foray's title. A LABEL, not prose, so a
+/* The Forays page's kicker above each foray's title. A LABEL, not prose, so a
    capital would have been defensible the way a title-case heading is -- and
    `styles.css:598` sets `text-transform: uppercase`, so it renders "FORAY"
    whichever case the source holds.
@@ -570,16 +579,19 @@ test("the mini-player's back link lowercases the unit", () => {
    if the stylesheet fails. All three now agree with the convention.
 
    THE FAILURE THIS GUARDS IS NOT A REVERT. It is someone "finishing the
-   rename" and making this `4a`, which would ship a home screen labelling every
-   foray with the app's name -- an app-sense edit to a unit-sense label. Pinning
-   the lowercase unit fails that as loudly as it fails a revert to "Foray".
+   rename" and making this `4a`, which would ship a page labelling every foray
+   with the app's name -- an app-sense edit to a unit-sense label. Pinning the
+   lowercase unit fails that as loudly as it fails a revert to "Foray".
+
+   (The row moved off Home to #/forays on 2026-09-03. The kicker, the class
+   names and this pin are unchanged by that move.)
 
    KILLED BY: either "Foray" or "4a" in this span. Both were run. */
-test("the home-screen kicker labels the unit, lowercase, and never the app", () => {
+test("the foray-row kicker labels the unit, lowercase, and never the app", () => {
   const m = read("app.js").match(
     /<span class="fy-home-kicker">([^$<]*)\$\{/
   );
-  assert.ok(m, "forayHomeHtml() no longer renders an .fy-home-kicker");
+  assert.ok(m, "forayListHtml() no longer renders an .fy-home-kicker");
   assert.equal(m[1], "foray");
 });
 
@@ -677,7 +689,7 @@ test("no Android string capitalises the unit, and none of them says the old app 
    pinned above. What is left is not a gap in shipped UI:
 
    ON PURPOSE, FOREVER -- identifiers, verified byte-identical by this PR:
-   `foray-v5`, `cp_foray:`, `cp_foray_feedback`, the IndexedDB database `foray`,
+   `foray-gen-`, `cp_foray:`, `cp_foray_feedback`, the IndexedDB database `foray`,
    the `foray_play` / `foray_restart` / `foray_progress_drift` event types, the
    `?foray=` parameter, the Pages URL, both
    User-Agents (`Foray/0.1`, the client's, and `ForayBot/0.1`, the audio

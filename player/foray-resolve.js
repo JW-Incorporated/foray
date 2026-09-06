@@ -97,6 +97,48 @@ export function forayVisibility(foray, { unlocked = [] } = {}) {
   return { visible: false, published, reason: `${status || "unpublished"} — not published` };
 }
 
+/** The one Foray that exists to be measured rather than listened to: a single
+    narration line that names a marker every ten seconds, so a phone speaking it
+    with the screen locked reports how far it got out loud. It is `status:
+    "draft"` like any unpublished Foray, so the website never lists it and a
+    visitor never sees it — `HUMAN-ACTIONS.md` #29 is the whole reason it exists.
+    Authored in `data/forays.json`. */
+export const DIAGNOSTIC_FORAY_ID = "tts-locked-screen-check";
+
+/**
+ * The unlock list a surface should actually use.
+ *
+ * WHY THIS EXISTS AND WHY IT IS SHAPED LIKE THIS. `?foray=<id>` is the only way
+ * to unlock a draft, and it reads `location.search` — which inside the Capacitor
+ * shell is permanently empty, because the webview loads `capacitor://localhost/`
+ * and there is no address bar, no `server.url`, and no registered URL scheme to
+ * put a query string on. So the draft that has to be played ON A PHONE, in the
+ * NATIVE app, using the NATIVE speech plugin, was the one draft no route could
+ * reach. Publishing it instead would have put a diagnostic on the public
+ * website's home screen, which is the opposite trade.
+ *
+ * So exactly one id is unlocked, and only inside the shell. The website is
+ * untouched: `inShell` is false there, this returns the caller's own list
+ * unchanged, and `tts-locked-screen-check` stays invisible unless somebody types
+ * its `?foray=` link.
+ *
+ * PURE ON PURPOSE — this module has no DOM and keeps none. The caller
+ * (`client.js`) is what knows whether `window.Capacitor` exists.
+ *
+ * DELETE THIS WITH THE FORAY. Once #29 has an answer, `DIAGNOSTIC_FORAY_ID`,
+ * this function, its call sites and the Foray itself go in one commit — see
+ * `HUMAN-ACTIONS.md` #29's own "Worked if".
+ *
+ * @param {string[]} unlocked  ids the visitor named explicitly (`?foray=`)
+ * @param {{ inShell?: boolean }} [opts]
+ * @returns {string[]}
+ */
+export function withDiagnosticUnlock(unlocked, { inShell = false } = {}) {
+  const base = Array.isArray(unlocked) ? unlocked : [];
+  if (!inShell || base.includes(DIAGNOSTIC_FORAY_ID)) return base;
+  return [...base, DIAGNOSTIC_FORAY_ID];
+}
+
 /** The Forays a surface may LIST. Deliberately not "all of them minus drafts":
     an unlocked draft is listed too, so the founder testing one sees it where he
     expects it rather than only via the URL he typed. */
@@ -227,6 +269,39 @@ function spanOf(seg) {
   return isNum(seg?.start_sec) && isNum(seg?.end_sec) && seg.end_sec > seg.start_sec
     ? seg.end_sec - seg.start_sec
     : 0;
+}
+
+/* ---------- reverse lookup: which Forays draw on a given show ----------
+
+   Show pages (#/show/:id, requirements B3/Q6) need this reverse of the join
+   above: given a show, which Forays play a segment sourced from it. Lives
+   here rather than in app.js because app.js is not allowed to enumerate the
+   segment/source pool directly — the mobile bundle ships ONLY the segments
+   its bundled Forays reference (tools/mobile/prepare-webdir.mjs, #327), so
+   any surface that walks the whole pool renders complete on the website and
+   silently short in the app. Doing the walk here keeps that constraint true:
+   this module (plus client.js, the bridge) is the one place allowed to read
+   `segments`/`sources` beyond an id lookup.
+
+   Same draft-visibility rule as `listableForays`/`findForay`: an unpublished
+   Foray is included only when the visitor named it explicitly. */
+export function foraysReferencingShow(foraysDoc, showNames, { segments, sources, unlocked = [] } = {}) {
+  const wanted = new Set(Array.isArray(showNames) ? showNames.filter(nonEmpty) : [showNames].filter(nonEmpty));
+  if (!wanted.size) return [];
+  const segIndex = asMap(segments);
+  const srcIndex = asMap(sources);
+
+  return allForays(foraysDoc).filter((f) => {
+    if (!forayVisibility(f, { unlocked }).visible) return false;
+    const items = Array.isArray(f.items) ? f.items : [];
+    return items.some((it) => {
+      if (!it || it.type !== SEGMENT) return false;
+      const seg = segIndex.get(it.segment_id);
+      if (!seg) return false;
+      const src = srcIndex.get(seg.item_id);
+      return !!src && wanted.has(src.show);
+    });
+  });
 }
 
 /* ---------- the whole thing ---------- */

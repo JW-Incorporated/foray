@@ -1,0 +1,196 @@
+# S-04b: weekly shows-index build + GitHub Release + pointer PR.
+#
+# Runs S-04a's builder (tools/shows/import-dump.mjs) end to end, wrapped by
+# tools/shows/run-and-publish.mjs, which additionally:
+#   1. publishes the built shard-index artifacts as a GitHub Release
+#      (keyless — GITHUB_TOKEN only, no new secret);
+#   2. opens a PR updating data/shows-index-pointer.json whenever the
+#      pointer needs to change — either because a new release was just
+#      published, OR because a prior release exists with no pointer
+#      pointing at it yet (see run-and-publish.mjs's reconciliation logic:
+#      idempotency is gated on the RELEASE, the pointer PR is gated on the
+#      POINTER, and those are deliberately two different checks).
+#
+# WHY A PR, NOT A DIRECT COMMIT (unlike manifest-autofix.yml's fixup
+# commit): `data/` auto-merges on green CI per the project registry
+# (merge_authority: agent), so this PR is expected to land on its own —
+# but it is still a PR, both so its diff is visible in the normal PR list
+# (a config-value change every reader should be able to spot, not a
+# push straight to main) and so `path-policy`'s allow-list is what decides
+# whether it needs a human, not this workflow's own judgment.
+#
+# WHY A GITHUB RELEASE, NOT A COMMIT OF THE BUILT SHARDS: the built output
+# (manifest + shards + top + id-map + changed) is generated, potentially
+# large (a shard's own p95 budget is 400KB gzipped and there can be dozens
+# of shards), and changes on a schedule — exactly the profile the repo
+# already avoids committing (see docs/narrator-pipeline.md's "not git, not
+# the app bundle" for audio, same reasoning applies here). A Release is
+# free, versioned, and gives every past build a stable, independently
+# fetchable URL without repo bloat.
+#
+# DISK / TIME BUDGET (measured against the acceptance criterion "fits a
+# standard GitHub Actions runner (disk, <40 min)"): `ubuntu-latest` ships
+# ~14GB free disk; the PodcastIndex dump is documented as ~1.8GB
+# compressed archive, several times that extracted as sqlite — comfortably
+# under budget with room for the runner's own footprint. The whole
+# pipeline (fetch, D1, D13, shard-build) plus release publish is I/O- and
+# single-pass-CPU-bound, not multi-minute-per-item slow, so 40 minutes is
+# not tight for this shape of job; `timeout-minutes` below enforces the
+# ceiling directly rather than hoping.
+#
+# NO THIRD-PARTY ACTIONS. Same rule as every other workflow in this repo
+# (see android-release.yml's header for the fullest statement of why) —
+# every `uses:` here is `actions/*`; the branch-push-PR mechanics reuse the
+# exact `git`/`gh` pattern manifest-autofix.yml and nightly-refresh.yml
+# already use.
+
+name: shows-import
+
+on:
+  schedule:
+    # Weekly, Sun 06:00 UTC. Not :00 exactly per nightly-refresh.yml's own
+    # measured note that GitHub delays top-of-hour cron under load — this
+    # job has no downstream freshness race to protect (unlike the nightly
+    # digest/enrich pair), so the offset here is only to avoid adding to
+    # that contention, not a correctness requirement.
+    - cron: "7 6 * * 0"
+  workflow_dispatch: {}
+
+concurrency:
+  group: shows-import
+  cancel-in-progress: false
+
+permissions:
+  contents: write # push the pointer-update branch
+  pull-requests: write # open the pointer PR, arm auto-merge
+  actions: write # workflow_dispatch the ci.yml re-trigger (GITHUB_TOKEN anti-recursion workaround)
+
+env:
+  BRANCH: shows-index/pointer-update
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # node:sqlite is flagged on Node < 23.4 — see tools/shows/package.json's
+      # own comment for why that package pins its own test script the same
+      # way. run-and-publish.mjs forwards this process's own execArgv to the
+      # import-dump.mjs child it spawns (see runBuild's own comment for why
+      # that forwarding has to be explicit), so passing --experimental-sqlite
+      # here covers BOTH this process and the child it spawns.
+      - name: Build the shard index and publish a Release (idempotent)
+        id: build
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          node --experimental-sqlite tools/shows/run-and-publish.mjs | tee build.log
+          {
+            echo "### shows-import"
+            echo
+            echo '```'
+            tail -20 build.log
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          if grep -qE '^POINTER_UPDATED:' build.log; then
+            echo "pointer_changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "pointer_changed=false" >> "$GITHUB_OUTPUT"
+            echo "No pointer change this run (idempotent skip — see build.log above for which check caught it)." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Open a PR updating the pointer, whenever it needs to change
+        # Gated on `pointer_changed`, NOT `published` — run-and-publish.mjs
+        # reconciles the pointer independently of whether THIS run created
+        # the release (fresh-context review finding, 2026-09-05): a prior
+        # run's release can exist with no landed pointer PR (interrupted
+        # workflow, closed PR, transient failure), and gating on `published`
+        # alone would leave that release stranded forever, since
+        # `releaseExists` would keep reporting `published=false` on every
+        # later run for the same export_version.
+        if: steps.build.outputs.pointer_changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -B "$BRANCH"
+          git add data/shows-index-pointer.json
+          # `git diff --cached --quiet` (NOT `git diff --quiet`) is the check
+          # that matters on the FIRST run ever: the pointer file does not
+          # exist on main yet, so it is untracked, and a plain `git diff`
+          # never reports an untracked file as changed at all — that would
+          # silently skip the very first pointer PR. Staging it first makes
+          # "new file" and "modified file" the same check.
+          if git diff --cached --quiet; then
+            echo "run-and-publish.mjs reported the pointer needs reconciling but the file is byte-identical to what's committed — refusing to open an empty PR"
+            exit 1
+          fi
+          TAG=$(node -e "console.log(require('./data/shows-index-pointer.json').release_tag)")
+          git commit -m "chore(shows): point shows-index at $TAG"
+          git push --force origin "HEAD:$BRANCH"
+          HEAD_SHA=$(git rev-parse HEAD)
+
+          # `gh pr view <branch>` resolves the branch name to a PR regardless
+          # of state (open/closed/merged) — with a REUSED branch name (this
+          # workflow always pushes to the same `$BRANCH`, and `--delete-branch`
+          # on the auto-merge below deletes it after each week's PR lands),
+          # that lookup would find LAST WEEK'S already-merged PR on every
+          # subsequent run. That would both skip `gh pr create` for the new
+          # release (silently no PR ever opens again) and hand a dead PR
+          # number to the merge call below. `gh pr list --state open` scopes
+          # the lookup to exactly what matters: is there an OPEN PR on this
+          # branch right now.
+          PR_NUMBER=$(gh pr list --repo "${{ github.repository }}" --head "$BRANCH" --state open --json number --jq '.[0].number // empty')
+          if [ -n "$PR_NUMBER" ]; then
+            echo "PR #$PR_NUMBER for $BRANCH already open — pushed an update to it"
+          else
+            # Parse the PR number from `gh pr create`'s own stdout (it prints
+            # the new PR's URL) rather than immediately re-listing — GitHub's
+            # list API can lag a just-created PR by a beat, and re-listing
+            # into an empty result would hand `gh pr merge` no argument below.
+            CREATE_URL=$(gh pr create --repo "${{ github.repository }}" \
+              --base main --head "$BRANCH" \
+              --title "chore(shows): point shows-index at $TAG" \
+              --body "Automated shows-index build (S-04b). Points \`data/shows-index-pointer.json\` at the GitHub Release \`$TAG\`. \`data/\` auto-merges on green CI per the project registry (merge_authority: agent).")
+            PR_NUMBER="${CREATE_URL##*/}"
+          fi
+
+          # A PR OPENED (OR UPDATED) VIA THE AUTOMATIC GITHUB_TOKEN DOES NOT
+          # ITSELF TRIGGER `pull_request` WORKFLOWS — GitHub's documented
+          # anti-recursion rule for the automatic token, the same one
+          # manifest-autofix.yml's header names for its own push-then-dispatch
+          # pattern. Two consequences, both handled explicitly rather than
+          # assumed away:
+          #   1. `ci.yml`'s required checks (`backend`, `data-and-site`) would
+          #      never report on this head SHA — `workflow_dispatch` is the
+          #      documented exception, exactly as manifest-autofix.yml and
+          #      pr-hygiene.yml already rely on for their own bot commits.
+          #   2. `automerge-nightly.yml` listens ONLY on `pull_request` events
+          #      (no `workflow_dispatch` trigger exists on that file), so it
+          #      would never see this PR at all and it would sit open needing
+          #      a human despite the registry saying `data/` auto-merges on
+          #      green CI. Rather than adding a `workflow_dispatch` entry point
+          #      to that shared, safety-critical file (it gates policy checks
+          #      on `github.event.pull_request.*` context that a dispatched run
+          #      would not have — a bigger, riskier change than this card's
+          #      scope), this workflow arms auto-merge directly here. The
+          #      scope is narrow and pre-approved: this job only ever touches
+          #      `data/shows-index-pointer.json`, a single path the project
+          #      registry already names as agent-auto-mergeable — the general
+          #      path-policy question `automerge-nightly.yml` exists to answer
+          #      for an arbitrary PR does not apply to a workflow that only
+          #      ever produces one exact diff shape.
+          gh workflow run ci.yml --repo "${{ github.repository }}" --ref "$BRANCH"
+          gh pr merge "$PR_NUMBER" --repo "${{ github.repository }}" \
+            --squash --auto --delete-branch --match-head-commit "$HEAD_SHA"

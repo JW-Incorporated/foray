@@ -51,7 +51,7 @@ outcomes**, not code line-by-line. Full role split: `docs/roles.md`.
    this is exactly why the nightly pipeline was consolidated out of `data-local`).
 7. **On auto-merge paths, review before PUSH — not before merge.** A PR whose
    changed files are **all** on `ALLOWED_PREFIXES` in `tools/ci/path-policy.mjs`
-   — `data/`, `docs/`, `player/`, `tools/`, `test/`, `backend/test/`, `app.js`,
+   — `data/`, `docs/`, `player/`, `tools/`, `test/`, `backend/test/`, `mobile/`, `app.js`,
    `styles.css`, `search-engine.js`, `STATE.md`, `HUMAN-ACTIONS.md` — **and none of
    them on `DENIED_PREFIXES`**, which is tested first and wins (so `docs/adr/` and
    `tools/ci/` are governed despite `docs/` and `tools/` being allowed), has
@@ -68,9 +68,11 @@ outcomes**, not code line-by-line. Full role split: `docs/roles.md`.
    "Ungoverned" and "auto-mergeable" are **different sets**. A path on neither the
    allow-list above nor `DENIED_PREFIXES` is *unlisted*: `path-policy` reports **CLEAN**
    (nothing to approve, no founder label needed) **and** auto-merge declines to
-   act, so the PR waits for a human. `mobile/` is the live example — six files in
-   this repo asserted that it auto-merges and it never has, which is why #244 and
-   #271 both needed a human to press merge. The decision is also **per-PR and
+   act, so the PR waits for a human. `api/` and `index.html` are the live examples —
+   the client-API and CSP work in #485 touched both and had to wait for a human to
+   press merge, exactly as intended. (`mobile/` used to sit in this gap and was the
+   original example here; a founder ruling on 2026-09-05 moved it onto the allowlist,
+   so it now auto-merges like other app code.) The decision is also **per-PR and
    all-or-nothing**: one unlisted file makes the whole PR wait, so there is no
    "the `docs/` half lands and the rest waits". `docs/android-native-code.md` §8
    has the full rule.
@@ -257,10 +259,13 @@ agents and the coordinator called `path-policy` "report-only" by reading
   player (#36). Its own `package.json`; the repo root stays dependency-free and
   no-build, and the Pages deploy from `main` root is untouched. The `webDir` is
   built by `tools/mobile/prepare-webdir.mjs`, which **copies** the real
-  `index.html`/`app.js`/`styles.css`/`player/` plus the **2.1 MB** of `data/` the
-  client fetches (2.5 MB bundle in total) — there is no second copy of the
-  player. Architecture, decisions and the founder's Mac steps:
-  `docs/mobile-shell.md`.
+  `index.html`/`app.js`/`styles.css`/`player/` plus the `data/` the client
+  fetches, stripping comments and whitespace from the JS/CSS (identifiers kept)
+  and indentation from the JSON on the way in — what was a 2.6 MB bundle ships
+  as ~1.5 MB, and the web keeps serving the commented source. The minifier is
+  the one dependency under `tools/mobile/` (its own `package.json`), never the
+  root's. There is no second copy of the player. Architecture, decisions and the
+  founder's Mac steps: `docs/mobile-shell.md`.
 - `ios/`: **reference material, not the shipping app** (reclassified 2026-08-17,
   #36 — the shell in `mobile/` is the app). SwiftUI app + ForayKit Swift package
   (state machine + intent grammar, unit-tested). **`ios/ForayKit` is real and CI

@@ -1,5 +1,26 @@
 # Legal / Compliance Risk-Scoping Memo — CommutePilot
 
+> **Name change since this memo — 2026-08-21.** This memo was researched
+> against a working name, "CommutePilot," which is not the shipped
+> product: the founder chose **4a** (`foray` now names only the
+> stitched-audio unit — see `06-naming-study.md`, `docs/DECISIONS.md`).
+> Read every "CommutePilot" below as "4a." This memo also cites
+> `01_PROMPT.md` and `05_CORNER_CASES.md` — files foreign to this corpus
+> that are not present in this repo; treat those citations as pointing
+> to an earlier planning document set this memo was written against, not
+> to anything in `docs/`. **Applicability, item by item:** the
+> RSS-client legal baseline (§1), App Store guideline analysis (§App
+> Store), and third-party-AI-disclosure requirement (§5.1.2) are
+> name-independent and still apply as-is to 4a. **One section does NOT
+> transfer and must be redone, not just renamed:** §"Name clearance" —
+> its trademark-adjacency finding (no registered mark for "CommutePilot,"
+> low collision risk with "Copilot") clears a name 4a doesn't use. It is
+> not a trademark clearance for "4a." Per `06-naming-study.md`'s
+> 2026-09-02 closing note, "4a" has never been run through a clearance
+> search and has a plausible unaddressed collision with Google's "Pixel
+> 4a" line — that is open work, not covered by this memo's now-moot
+> CommutePilot clearance.
+
 **Author:** legal/compliance desk (non-lawyer, risk-scoping only) · **Date:** 2026-07-07
 
 > This is a risk-scoping memo, not legal advice. I'm not a lawyer and this isn't a substitute for one. It's meant to flag where CommutePilot's current design sits relative to known precedent, App Store rules, and applicable statutes, with sources, so a solo developer can prioritize. Treat every "LOW" below as "low given current scope," not "cleared forever" — re-check at monetization.
@@ -38,6 +59,16 @@ Sources:
 **5.1.2 / third-party AI disclosure (new as of late 2025).** Apple now requires apps to disclose when personal data is shared with third-party AI (explicitly named, e.g., "Anthropic") and to get explicit user permission before the first transmission. CommutePilot's backend sends episode metadata and (later) listening-history-derived context to the Anthropic API to build curation and why-lines. Even though the call originates server-side rather than from the device, the data ultimately reaches a third-party AI, so the safer reading is that disclosure + consent UI + a privacy-label entry are required. Build this in now — it's cheap pre-launch, expensive to retrofit into an already-submitted app.
 
 **4.1/4.3 (copycat / spam).** Low risk — CommutePilot's curation + TTS-intro feature set is meaningfully differentiated from stock podcast players, so it shouldn't trip "indistinguishable from what's already available."
+
+**1.2 (User Generated Content) — LOW today, SUBMISSION-BLOCKING at phase 2.** `docs/curation/generation-architecture.md` §1.3 already flags this: today (phase 1) every generated Foray is prompted by a founder and reviewed before it reaches the shared catalogue, so 4a is not hosting UGC in Apple's sense and Guideline 1.2 does not bite. **Phase 2 — any user's prompt reaching the shared catalogue — changes that.** The moment a stranger's prompt can produce content other users hear, 4a becomes a UGC host and Guideline 1.2 requires all four of:
+  1. Content filtering (a moderation/classification step before a stranger-prompted Foray is playable to anyone else).
+  2. A mechanism for a user to report objectionable content.
+  3. A way to block abusive users.
+  4. Published developer contact information (a support address/page, not just a store listing).
+
+None of the four exist in the current build — this is a known, named gap, not a discovered one, and it is a submission-blocking rejection risk the moment a phase-2 build reaches App Review. It is a phase-2 precondition, not a phase-1 action item: **do not build the moderation system now**, but do not schedule phase 2 without it either. Track it explicitly in `HUMAN-ACTIONS.md` (item added the day phase 2 is scheduled) rather than letting it live only in the engineering doc.
+
+Source: [App Review Guidelines §1.2 (User Generated Content) — Apple Developer](https://developer.apple.com/app-store/review/guidelines/#user-generated-content)
 
 **2026 rejection trends worth noting generically:** the fastest-growing rejection category is privacy (missing AI-data-sharing consent screens, missing `PrivacyInfo.xcprivacy` manifests for bundled third-party SDKs like Supabase's), plus incomplete/placeholder-content submissions. Both are process items, not architecture risks.
 
@@ -135,6 +166,9 @@ Sources:
 - [ ] Decide and document the geo-availability choice (US-only launch vs. accepting GDPR obligations day one).
 - [ ] Apply for the CarPlay audio entitlement once the iPhone app is substantive (per brief — don't block other milestones on it).
 - [ ] Re-run the App Store name/icon collision check immediately before submission (names and the competitive landscape drift over a multi-month build).
+
+### Do before phase 2 is scheduled (any-user prompting)
+- [ ] Build the four Guideline 1.2 UGC-moderation requirements before any stranger-prompted Foray can reach another user: content filtering, a report-objectionable-content mechanism, a user-blocking mechanism, and published developer contact info (see Section 2). Confirm the corresponding `HUMAN-ACTIONS.md` item is filed and open before phase 2 work is scheduled, not after.
 
 ### Do at monetization (multi-user, revenue)
 - [ ] Get a real (paid, attorney-assisted) trademark clearance search before formally registering "CommutePilot" as a mark.

@@ -96,6 +96,7 @@ import { itemRuntimeSec } from "./foray-queue.js";
 import {
   resolveForay, indexSegments, indexSources, findForay, listableForays,
   forayElapsed, segmentAtElapsed, fmtClock, fmtSpan, progressSegments,
+  foraysReferencingShow, withDiagnosticUnlock,
 } from "./foray-resolve.js";
 import {
   ForayProgressStore, resumePoint, remainingLabel, percentDone,
@@ -113,7 +114,9 @@ import {
   bubblePosition, bubbleContentOffset,
 } from "./strip-scrub-gesture.js";
 import { createDurableStore } from "./durable-store.js";
+import { createTtsBridge, inShell } from "./tts-bridge.js";
 import { makeIdbTier } from "./idb-tier.js";
+import { createEventLog } from "./event-log.js";
 import {
   createMediaSession, mediaSessionView, SEEK_BACKWARD_SEC, SEEK_FORWARD_SEC,
 } from "./media-session.js";
@@ -177,6 +180,25 @@ window.forayStorage = storage;
 window.forayStorageReady = storageReady;
 /** For a founder or a tester with a console open: the whole failure record. */
 window.forayStorageHealth = () => storage.health();
+
+/* ---------- the event queue (M3) ----------
+
+   Built the same way `storage` above is: at module evaluation, over the real
+   `indexedDB` where one exists, published on `window` because `app.js` is a
+   classic script and cannot import this module. `app.js`'s `logEvent()` is a
+   thin call to `append()` below; see `event-log.js`'s header for the queue
+   itself and why it replaces a synchronous localStorage rewrite. */
+const eventLog = createEventLog({
+  indexedDB: typeof indexedDB !== "undefined" ? indexedDB : null,
+  onFault: (fault) => {
+    // Same rule as the storage fault above: the player cannot fix a dead
+    // tier, but it must not hide one either.
+    console.warn("[event-log]", fault.op, fault.error);
+  },
+});
+window.forayEventLog = eventLog;
+/** For a founder or a tester with a console open, beside `forayStorageHealth`. */
+window.forayEventLogHealth = () => eventLog.health();
 
 /* Resume points are readable with nothing booted: the home screen asks for them
    before anything has been played, and booting an <audio> element to answer a
@@ -395,6 +417,34 @@ function buildUI() {
 
 let current = null;
 let scrubbing = false;
+
+/* ---------- episode-ended notification (Up Next auto-advance, #369) ----------
+
+   ONE signal, for ordinary single-episode playback only (never for a Foray —
+   a Foray already has its own internal advance-to-next-segment machinery and
+   this must not be a second opinion about that). `app.js` is the only
+   consumer, and it decides entirely on its own whether "ended" should mean
+   "start the next Up Next item" (docs/listening-queue-plan.md addendum) —
+   this module just reports the fact once, exactly once, per finished item.
+
+   `_endedAnnouncedFor` is the de-dupe: `render()` runs on every `timeupdate`/
+   `play`/`pause` while `manager.state.type === "ended"` keeps reading true
+   after the first tick, so without this a single finish would fire the
+   listener dozens of times. Cleared the moment a NEW item starts (`play()`
+   below), so the next episode's own end is reportable again. */
+let _endedAnnouncedFor = null;
+const _episodeEndedListeners = new Set();
+
+function _announceEpisodeEndedIfNeeded() {
+  if (foray || !manager || !current) return;
+  if (manager.state?.type !== "ended") return;
+  if (_endedAnnouncedFor === current.id) return;
+  _endedAnnouncedFor = current.id;
+  const id = current.id;
+  _episodeEndedListeners.forEach((fn) => {
+    try { fn(id); } catch (_) { /* a listener's own bug must not break playback */ }
+  });
+}
 
 /** The Foray being played, or null for ordinary single-episode playback.
     `{ resolved, index, onChange, error }`.
@@ -695,6 +745,8 @@ function render() {
   if (foray) {
     persistForayProgress();
     notifyForay();
+  } else {
+    _announceEpisodeEndedIfNeeded();
   }
 }
 
@@ -1197,6 +1249,16 @@ function ensureBooted() {
        reaches it at all, so the beat is invisible and the main button still
        means "start". This is the only repaint during a beat, at both edges. */
     onSeamGapChange: () => render(),
+    /* THE WIRE (generation-architecture.md §7 items 1-2). `_speakNarration` and
+       the whole script-only-narration branch of `_loadItem` have been complete
+       since #382 and were unreachable, because this argument was never passed:
+       `this._tts` was null in every build, so a narration item carrying a
+       `script` and no asset could only ever fail to load. `createTtsBridge`
+       resolves the plugin's web half lazily — see tts-bridge.js for why the
+       path differs between the shell and the website — so a page that never
+       plays narration never fetches it, and a host with no plugin reports one
+       unplayable item instead of taking the player down at import time. */
+    tts: createTtsBridge(),
     telemetry: onTelemetry,
   });
 
@@ -1300,6 +1362,21 @@ function ensureBooted() {
 
 /* ---------- public surface ---------- */
 
+/** app.js's `unlockedForays()` (the `?foray=` ids), plus the one diagnostic
+    Foray that only the native shell may see — HUMAN-ACTIONS.md #29. Every one
+    of the three Foray-visibility bridge methods below routes through this, so
+    "listed on the home screen" and "reachable at #/foray/<id>" cannot disagree:
+    a Foray the app lists and then refuses to open is a worse bug than either.
+
+    `inShell()` is asked HERE and not in `foray-resolve.js`, which is pure and
+    stays that way — the window is this file's business. It is also asked on
+    every call rather than once at module scope: `client.js` evaluates early and
+    Capacitor injects its bridge into the page, so a value cached at import time
+    could be read before the shell exists. */
+function unlockedHere(unlocked) {
+  return withDiagnosticUnlock(unlocked, { inShell: inShell() });
+}
+
 const ForayPlayer = {
   /** True when this item can play in-app. app.js uses it to decide whether to
       show a play button or fall back to the Apple Podcasts link (#25 note). */
@@ -1319,6 +1396,10 @@ const ForayPlayer = {
     persistForayProgress({ force: true });
     foray = null;
     setSkipButtonMode(false);
+    // A new item starting makes its own eventual "ended" reportable again —
+    // without this a listener who replays the SAME episode id would never
+    // see a second ended announcement.
+    _endedAnnouncedFor = null;
     // Installed BEFORE the metadata is written, and it replaces the Foray's set
     // rather than adding to it: a stale `nexttrack` still pointed at a Foray
     // nobody is on is the one wiring bug this surface can hide.
@@ -1334,13 +1415,25 @@ const ForayPlayer = {
     return isPlaying() && current?.id === id;
   },
 
+  /** Subscribe to "an ordinary (non-Foray) episode just finished playing".
+      Returns an unsubscribe function. Fires at most once per finished
+      episode — see `_announceEpisodeEndedIfNeeded`'s header. Never fires for
+      a Foray: that has its own internal segment-advance machinery and this
+      must not layer a second opinion on top of it (docs/listening-queue-plan.md
+      §4 addendum). */
+  onEpisodeEnded(fn) {
+    if (typeof fn !== "function") return () => {};
+    _episodeEndedListeners.add(fn);
+    return () => _episodeEndedListeners.delete(fn);
+  },
+
   /* ---------- Forays (#128) ---------- */
 
   /** The three-document join, re-exported so app.js resolves the running order
       with exactly the code that builds the queue. app.js is a classic script and
       cannot import an ES module, which is the whole reason this bridge exists. */
   resolve(foraysDoc, { id, segmentsDoc, sourcesDoc, unlocked = [] } = {}) {
-    const doc = findForay(foraysDoc, id, { unlocked });
+    const doc = findForay(foraysDoc, id, { unlocked: unlockedHere(unlocked) });
     if (!doc) return null;
     return resolveForay(doc, {
       segments: indexSegments(segmentsDoc),
@@ -1350,7 +1443,18 @@ const ForayPlayer = {
 
   /** Which Forays may be listed for this visitor (drafts only when named). */
   listForays(foraysDoc, { unlocked = [] } = {}) {
-    return listableForays(foraysDoc, { unlocked });
+    return listableForays(foraysDoc, { unlocked: unlockedHere(unlocked) });
+  },
+
+  /** The reverse of `resolve`: which Forays draw on a given show (show page,
+      requirements B3/Q6). See foray-resolve.js's foraysReferencingShow for
+      why this must live here rather than in app.js. */
+  foraysUsingShow(foraysDoc, showNames, { segmentsDoc, sourcesDoc, unlocked = [] } = {}) {
+    return foraysReferencingShow(foraysDoc, showNames, {
+      segments: indexSegments(segmentsDoc),
+      sources: indexSources(sourcesDoc),
+      unlocked: unlockedHere(unlocked),
+    });
   },
 
   fmtClock,

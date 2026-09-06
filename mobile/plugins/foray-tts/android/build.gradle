@@ -1,0 +1,56 @@
+/* The `foray-tts` Capacitor plugin's Android library module.
+ *
+ * WHAT THIS IS. Same mechanism `foray-audio/android/build.gradle` documents in
+ * full: Capacitor's CLI reads `../package.json`'s `capacitor.android.src`,
+ * finds this directory, and writes the include/implementation lines into the
+ * GENERATED `mobile/android/` on every `cap add android` / `cap sync`. See
+ * `docs/android-native-code.md` for why hand-written native code lives here
+ * rather than in the gitignored `mobile/android/`.
+ *
+ * ONE DEPENDENCY, AND IT IS NOT NEW TO THE BUILD: `project(':capacitor-android')`
+ * for the `Plugin`/`PluginCall` base classes -- already a module of every
+ * generated Capacitor project, exactly as `foray-audio`'s module notes.
+ *
+ * NO MEDIA3, UNLIKE `foray-audio`. This plugin does not touch a foreground
+ * service, a notification or a lock-screen session -- `android.speech.tts.TextToSpeech`
+ * is a plain framework class the Activity/Context already has access to, and
+ * synthesis for a fixture-length utterance (§5.7's ~4,500-character estimate)
+ * finishes well inside Android's normal process-priority window, so nothing
+ * here needs to survive being backgrounded the way Foray playback does.
+ */
+
+apply plugin: 'com.android.library'
+
+android {
+    namespace = "ai.jwlabs.foura.tts"
+    compileSdk = project.hasProperty('compileSdkVersion') ? rootProject.ext.compileSdkVersion : 36
+    defaultConfig {
+        minSdkVersion project.hasProperty('minSdkVersion') ? rootProject.ext.minSdkVersion : 24
+        targetSdkVersion project.hasProperty('targetSdkVersion') ? rootProject.ext.targetSdkVersion : 36
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+    lintOptions {
+        abortOnError = false
+    }
+    compileOptions {
+        /* Matches foray-audio's own module: capacitor-android compiles at 21
+           and Capacitor 8 requires JDK 21 outright (docs/android-shell-build.md
+           §1.2). One toolchain across both hand-written modules. */
+        sourceCompatibility JavaVersion.VERSION_21
+        targetCompatibility JavaVersion.VERSION_21
+    }
+}
+
+repositories {
+    google()
+    mavenCentral()
+}
+
+dependencies {
+    implementation project(':capacitor-android')
+}

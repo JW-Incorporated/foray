@@ -3,10 +3,20 @@
 # Verified 2026-08-11 on Windows 11 / Python 3.14.5 / CPU-only.
 # Install with:  python -m pip install -r requirements.txt
 #
-# GPU note: this file is device-agnostic. faster-whisper's `ctranslate2`
-# wheel on PyPI ships BOTH the CPU and the CUDA runtime for Windows/Linux
-# x86_64 — you do NOT install a different package for CUDA, you pass
-# device="cuda". You do need NVIDIA cuBLAS + cuDNN present; see README.md.
+# GPU note: this file is device-agnostic for NVIDIA. faster-whisper's
+# `ctranslate2` wheel on PyPI ships BOTH the CPU and the CUDA runtime for
+# Windows/Linux x86_64 — you do NOT install a different package for CUDA,
+# you pass device="cuda". You do need NVIDIA cuBLAS + cuDNN present; see
+# README.md.
+#
+# AMD GPU note: CTranslate2 (the engine faster-whisper is built on) has NO
+# AMD backend at all — no ROCm, no Vulkan. None of the packages below will
+# use an AMD GPU no matter what --device flag you pass. `bench.py` on an
+# AMD card silently runs CPU-speed math while still installing and
+# "working" — nothing here errors to tell you. See README.md §3b for the
+# separate AMD/Vulkan path (`bench_whispercpp.py`, a different engine
+# entirely, no new Python packages needed beyond `av` which is already
+# pinned below).
 
 faster-whisper==1.2.1
 

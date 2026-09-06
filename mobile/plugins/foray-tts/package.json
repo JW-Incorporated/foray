@@ -1,0 +1,24 @@
+{
+  "name": "foray-tts",
+  "version": "0.1.0",
+  "private": true,
+  "license": "UNLICENSED",
+  "description": "Foray's own Capacitor plugin: on-device text-to-speech via iOS AVSpeechSynthesizer and Android TextToSpeech, with an optional per-substring pronunciation-override lexicon. Same pattern as mobile/plugins/foray-audio/ (see docs/android-native-code.md for why hand-written native code lives here rather than in the gitignored mobile/android/ and mobile/ios/). NOT published, NOT a third-party dependency -- this repo's own hand-written native code. Built per docs/research/on-device-tts.md §7 item 2 and docs/research/narrator-voice.md §5.7: PROVES THE PLUMBING, does not ship a narration-authoring UI (see README.md in this directory).",
+  "//no-js-entry": "No main/module/types on purpose, matching foray-audio. The web half is web/foray-tts.js, loaded as an ordinary same-origin <script type=module>. There is no bundler in this repo (dependency-free, no build step), so the shell talks to native through window.Capacitor.nativePromise() rather than an imported @capacitor/core proxy, and falls back to the standard Web Speech API (speechSynthesis) when no native bridge is present -- e.g. a plain browser tab, not the Capacitor shell.",
+  "capacitor": {
+    "ios": {
+      "src": "ios"
+    },
+    "android": {
+      "src": "android"
+    }
+  },
+  "files": [
+    "ios/Sources/",
+    "ios/Package.swift",
+    "android/src/main/",
+    "android/build.gradle",
+    "web/",
+    "lexicon/"
+  ]
+}

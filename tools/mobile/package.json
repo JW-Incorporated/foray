@@ -1,0 +1,14 @@
+{
+  "name": "foray-mobile-tools",
+  "private": true,
+  "type": "module",
+  "description": "The native shell's build tooling and its suites. This package exists for ONE dependency: esbuild, which prepare-webdir.mjs uses to strip comments and whitespace from the JavaScript and CSS it copies into the bundle (identifiers kept, nothing mangled — docs/mobile-shell.md §3.4). It lives HERE and not at the repo root because the root is deliberately dependency-free with no build step: that is what lets the keyless GitHub Action deploy the static site from main's root, and the web keeps serving the fully commented source. Same pattern as tools/corpus/, backend/ and mobile/.",
+  "//test": "tools/ci/run-suites.mjs treats a directory with a package.json + test script as its own group: it runs `npm ci` here and then `npm test -- <files>`, so CI measures the bundle the way it ships (minified) rather than an unminified stand-in. The script MUST keep forwarding its arguments (end in `node --test`): one that ignored them would be planned, floored and reported as executed while the named suite never ran. Every suite under tools/mobile/ (probe/ included) now runs from this directory; they resolve the repo root from their own location, not from cwd.",
+  "//esbuild": "Pinned EXACTLY, not a range: the bundle's bytes are measured against budgets and compared across runs, and a floating minifier version is a bundle that changes size with nobody's commit. Bump it deliberately and re-baseline in the same PR.",
+  "scripts": {
+    "test": "node --test"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2"
+  }
+}

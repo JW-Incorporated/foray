@@ -18,7 +18,9 @@
  *     the in-app hash-route/safeUrl composition every other page uses (this
  *     is also covered generally by test/app-security.test.js, pinned here
  *     against this file's own new markup).
- *  9. The Library screen is reachable from the drawer nav.
+ *  9. The Library screen is reachable — linked from the Playlists page
+ *     (demoted off the drawer by the founder's later 5-item mandate; same
+ *     precedent as Starred Shows).
  *
  * Every test names the mutation that kills it, per CLAUDE.md "a green test
  * is not evidence until you have broken it".
@@ -60,7 +62,7 @@ function makeEl(tag) {
 
 const PAGE_IDS = [
   "view", "drawer", "drawer-overlay", "drawer-playlists", "family-toggle",
-  "player-toggle", "menu-btn", "refresh-btn", "banner-slot", "pl-form",
+  "player-toggle", "autoadvance-toggle", "menu-btn", "refresh-btn", "banner-slot", "pl-form",
   "pl-input", "pl-note",
 ];
 
@@ -315,13 +317,33 @@ test("Library renders no external link-out that bypasses the app's own row/summa
 });
 
 /* ==================================================================== */
-/* 9. REACHABLE FROM THE DRAWER                                          */
+/* 9. REACHABLE FROM THE APP — LINKED OFF THE PLAYLISTS PAGE             */
 /* ==================================================================== */
 
-test("the drawer nav links to #/library", () => {
-  /* MUTATION: remove the Library <a> from index.html's drawer. */
+/* Fable ruling (this merge, 2026-09-06): the founder's later 2026-09-03
+   five-item drawer mandate (test/home-information-architecture.test.js)
+   floors the drawer at exactly Home/Shows/Playlists/Forays/Up Next, so
+   Library is off the drawer -- same precedent as Starred Shows, which
+   left the menu without leaving the app (test/home-information-
+   architecture.test.js, "Starred Shows is NOT dropped"). Library hangs
+   off the Playlists page instead of Shows because its unique content
+   (Saved + History) is personal-collection material, and Playlists is
+   where the other page-link-row precedent already lives. The #/library
+   route itself is unchanged and still fully renders. */
+test("Library left the drawer but stays reachable — the Playlists page links to it", () => {
+  /* MUTATION: delete the `<a class="page-link-row" href="#/library">` line
+     from renderPlaylists(). */
+  const m = mount();
+  m.state.catalog = { shows: [] };
+  m.state.discover = { items: [] };
+  m.state.taxonomy = { nodes: [] };
+  m.state.session = { session_id: "s-1", builder: "test", episodes: {}, cards: [] };
+  m.state.cardSlots = [];
+  m.state.ready = true;
+  m.ctx.renderPlaylists();
+  const html = m.view();
   assert.ok(
-    /<a class="drawer-section" href="#\/library">Library<\/a>/.test(INDEX_HTML),
-    "the drawer must carry a Library nav link"
+    /<a class="page-link-row" href="#\/library">/.test(html),
+    "the Playlists page must carry a link to #/library"
   );
 });

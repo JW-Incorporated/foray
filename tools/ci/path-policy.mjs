@@ -91,6 +91,41 @@ export const DENIED_PREFIXES = [
   // a new gate script cannot acquire this exposure silently.
   "tools/test-search.mjs",
   "tools/validate-semantic-index.mjs",
+  // scripts/events-server.vbs runs `node tools/events-server.mjs` at every
+  // Windows login on the founder's always-on workstation (Startup folder),
+  // with the founder's real user privileges, in the checkout that also holds
+  // the root `.env` and `data-local/`. `tools/` is allowlisted and no test
+  // suite executes this file, so without this entry a bot-authored PR
+  // touching only this file would auto-merge unread — the exact risk
+  // DENIED_PREFIXES exists to prevent, except the machine executing the
+  // unread code is a founder's own workstation, not a CI runner. Found by
+  // the Fable-driven CI/release-pipeline audit (kanban t_5663c62a /
+  // t_85e1b1ba). Same trade as the two entries above: near-zero change
+  // frequency, occasional human merge.
+  "tools/events-server.mjs",
+  // android-release.yml runs this to wire the Android signing config into the
+  // Capacitor-generated Gradle project, then re-reads it with `--check`. The
+  // build step right after it receives FORAY_KEYSTORE_PASSWORD and
+  // ANDROID_KEY_ALIAS (from secrets) plus the decoded keystore on disk once
+  // ANDROID_KEYSTORE_B64 is installed. Today that secret is not installed and
+  // the exposure is latent; `tools/` is allowlisted, so an agent-authored
+  // change here would otherwise land unread. Found by extending this file's
+  // own gate-script scan to every workflow, not just ci.yml (kanban
+  // t_97e1c5f4) — deny it before the keystore secret exists, not after.
+  "tools/mobile/wire-signing.mjs",
+  // ios-build.yml runs this to write 4a's icon into the Capacitor-generated
+  // asset catalog, then re-reads it with `--check`. It is DENIED rather than
+  // acknowledged (unlike inject-background-audio.mjs beside it) because of what
+  // its silent failure ships: since Xcode 14 App Store Connect EXTRACTS the
+  // PUBLIC LISTING icon from the uploaded binary's asset catalog — there is no
+  // manual upload on iOS — so a one-line `process.exit(0)` here neuters the
+  // write AND the `--check` that proves it, leaves ios-build green, and puts
+  // Capacitor's placeholder on the App Store product page with no way to fix it
+  // short of another build. That is not a hypothetical: a TestFlight build
+  // shipped exactly that way on 2026-09-03, which is why this script exists.
+  // The trade is the one the entries above make — near-zero change frequency
+  // (this file moves when Capacitor's template does), occasional human merge.
+  "tools/mobile/inject-app-icon.mjs",
 ];
 
 /* Paths a bot run may touch, by tier (docs/curation/... § auto-merge):
@@ -98,7 +133,16 @@ export const DENIED_PREFIXES = [
  *                    ci.yml (refs, dupes, taxonomy, audio scheme, tokened-URL
  *                    leaks, DAI flags) + copy rules
  *   T2 docs/         low blast radius; governance paths denied above
- *   T3 player/ tools/ test/   covered by node --test suites in ci.yml
+ *   T3 player/ tools/ test/   covered by node --test suites in ci.yml, with
+ *                    one documented exception: test/playwright/ (kanban card
+ *                    t_504fd5fd) is real-Chromium coverage run by its own
+ *                    `playwright` CI job, not node --test, and that job is
+ *                    ADVISORY-ONLY (see ci.yml's own comment on it) — a bad
+ *                    change there cannot block a merge or reach production,
+ *                    only turn a non-required check red. Still additive/
+ *                    test-only in the same sense as backend/test/ below, so
+ *                    it stays inside test/'s existing T3 allowance rather
+ *                    than needing its own entry.
  *   T4 app.js styles.css search-engine.js
  *                    covered by test/app-security.test.js (esc/safeUrl
  *                    behaviour + CSP/href static invariants) and node --check
@@ -124,6 +168,50 @@ export const DENIED_PREFIXES = [
  *                    and the PR cannot merge at all. The blast radius of a bad
  *                    test here is a red build, not a bad deploy. Its production
  *                    counterpart `backend/src/` is explicitly denied above.
+ *   T4 deploy-manifest.json sw.js
+ *                    Added 2026-09-03 (HUMAN-ACTIONS #37; docs/DECISIONS.md).
+ *                    These two move TOGETHER on every content deploy and are
+ *                    the pair that stalled the nightly: `deploy-manifest.json`
+ *                    hashes `data/discover.json` + `data/item-tags.json`, which
+ *                    the nightly always rewrites, and `sw.js`'s BUILD_ID is
+ *                    stamped with the resulting deploy_id so browsers notice
+ *                    the new generation at all. Neither was on EITHER list, so
+ *                    every nightly PR fell through to "unlisted" and auto-merge
+ *                    declined — all-or-nothing, the whole PR waiting.
+ *
+ *                    The two are NOT equally safe, and the difference is worth
+ *                    stating rather than blurring:
+ *
+ *                    `deploy-manifest.json` is fully determined by other files.
+ *                    The REQUIRED `data-and-site` check runs
+ *                    `generate-manifest.mjs --check`, which regenerates it in
+ *                    memory from the tree and diffs it including deploy_id. A
+ *                    forged or hand-edited manifest cannot go green. Its
+ *                    contents grant nothing that the hashed files' own prefixes
+ *                    do not already grant.
+ *
+ *                    `sw.js` is real code, and only its BUILD_ID line is
+ *                    machine-verified — `--check` says nothing about the rest.
+ *                    A service worker is the highest-privilege script on the
+ *                    origin: it intercepts every fetch and persists across
+ *                    deploys. It is allowlisted anyway, for the same reason
+ *                    `app.js` and `player/` are and on the same evidence:
+ *                    `test/sw-generation.test.js` evaluates the REAL sw.js in a
+ *                    node:vm and drives its real install/activate/fetch
+ *                    listeners across ~50 tests (torn deploys, hash mismatch,
+ *                    offline reload, runtime write integrity, pin stamping),
+ *                    it runs in the required `data-and-site` check, and it is
+ *                    floored in test/suite-integrity.test.js so it cannot be
+ *                    quietly gutted. Denying `sw.js` while allowing `app.js` —
+ *                    which runs in the page with full DOM and localStorage
+ *                    access — would not have been a coherent line.
+ *
+ *                    The residual, stated plainly: a bot-authored sw.js change
+ *                    that keeps every behaviour that suite pins can now reach
+ *                    `main` unread. That is the price of the founder's ruling
+ *                    on #37 ("Auto fix, I am not trying to do daily manual
+ *                    reviews"), and it is recorded as such in
+ *                    docs/DECISIONS.md rather than left implicit here.
  *
  * BEFORE ADDING ANYTHING HERE: DENIED_PREFIXES is checked first and wins, so
  * widening this list cannot expose a denied path. What it CAN do is let a file
@@ -137,11 +225,20 @@ export const ALLOWED_PREFIXES = [
   "tools/",
   "test/",
   "backend/test/",
+  /* The native shell's own app code. Founder ruling 2026-09-05 (Wyatt): the CTO
+     has merge authority here like any other app area, so mobile/ auto-merges when
+     green rather than waiting for a human. The signing/asset scripts under
+     `tools/mobile/` that must NOT move stay in DENIED_PREFIXES and win regardless
+     (DENIED is checked first); "mobile/" as a prefix does not match "tools/mobile/",
+     so this changes nothing about them. */
+  "mobile/",
   "app.js",
   "styles.css",
   "search-engine.js",
   "STATE.md",
   "HUMAN-ACTIONS.md",
+  "deploy-manifest.json",
+  "sw.js",
 ];
 
 /* Labels that stop auto-merge on one PR. `hold` means a human is mid-thought;

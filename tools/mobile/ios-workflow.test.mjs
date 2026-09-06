@@ -45,6 +45,20 @@ function xcodebuildInvocations(src) {
   return invocationsOf(src, "xcodebuild");
 }
 
+/** A step with its comment lines removed.
+ *
+ *  The steps in this workflow QUOTE the defects they fixed — `--level debug`,
+ *  `grep -o`, and now the `plutil -lint` that could not read JSON and the altool
+ *  duplicate-version error. A whole-step scan therefore fails on a step's own
+ *  explanation, which is how a test ends up rewarding silence about a bug. Shell
+ *  comments (`#`) and the JS ones inside the `node -e` block (`//`) both go. */
+function commandsOnly(s) {
+  return s
+    .split("\n")
+    .filter((l) => !/^\s*(#|\/\/)/.test(l))
+    .join("\n");
+}
+
 /* ────────────────────────── shape and trigger set ────────────────────────── */
 
 test("the workflow exists and its top-level keys are the expected five", () => {
@@ -610,17 +624,26 @@ test("ci.yml's ios-kit job is untouched and still compiles ForayKit", () => {
   assert.match(CI, /runs-on: macos-latest/);
 });
 
-test("ci.yml still declares exactly its three jobs, and #38 added none", () => {
+test("ci.yml still declares exactly its five jobs, and #38 added none", () => {
   /* NOT a check on the `protect-main` ruleset — that lives in GitHub's settings
      and nothing in this repo can read it. What this asserts is narrower and still
-     worth having: `ci.yml` has the same three jobs it had before #38, so the two
+     worth having: `ci.yml` has the same jobs it had before #38, so the two
      REQUIRED contexts (`backend`, `data-and-site`) are still produced by the job
-     names they were produced by, and #38 did not quietly add a fourth. */
+     names they were produced by, and #38 did not quietly add another.
+
+     Raised from three to four jobs by kanban card t_504fd5fd (M4's real-Chromium
+     `playwright` job, advisory-only — see android-workflow.test.mjs's matching
+     assertion and ci.yml's own comment on that job for why this does not touch
+     the "two required contexts" argument).
+
+     Raised from four to five jobs by S-02 (kanban t_4bd3c0a3): a new `api` job
+     (install + test for the newly-dependency-carrying `api/` directory), also
+     not required — see android-workflow.test.mjs's matching assertion. */
   const jobs = block(CI, "jobs")
     .split(/\r?\n/)
     .filter((l) => /^ {2}[a-z][\w-]*:/.test(l))
     .map((l) => l.trim().replace(":", ""));
-  assert.deepEqual(jobs.sort(), ["backend", "data-and-site", "ios-kit"]);
+  assert.deepEqual(jobs.sort(), ["api", "backend", "data-and-site", "ios-kit", "playwright"]);
 });
 
 /* ───────────────────────────── the cost claim ────────────────────────────── */
@@ -780,4 +803,260 @@ test("the artifact upload path is exactly the report directory, not all of RUNNE
   const pathLine = upload.split(/\r?\n/).find((l) => /^\s*path:/.test(l)) ?? "";
   assert.match(pathLine, /path:\s*\$\{\{\s*runner\.temp\s*\}\}\/ios-ci\s*$/, `upload path is ${pathLine.trim()}`);
   assert.equal(/\*/.test(pathLine), false, "no glob in the upload path — it would sweep in $WORK");
+});
+
+/* ─────── the two edits Capacitor does not make, and CI used never to ─────── */
+
+test("the encryption declaration is injected by the tested script and read back by Apple's", () => {
+  /* Apple told the founder on 2026-09-03 that a build with no encryption can say
+     so in the Info.plist and stop answering the questionnaire on every upload.
+     The failure mode of getting this wrong is not a red build — it is a
+     questionnaire that keeps coming back with nothing anywhere saying why — so the
+     step needs the same three independent confirmations the background-audio one
+     has, and a `sed` would have none of them.
+     MUTATION: drop `--encryption false` from the injection line -> fails on the
+     first assertion. Replace the PlistBuddy line with a `grep` of the plist ->
+     fails on the second. RUN. */
+  const s = step(WF, "Declare no non-exempt encryption") ?? "";
+  assert.ok(s, "the encryption step is gone");
+  assert.match(s, /node tools\/mobile\/inject-background-audio\.mjs "\$INFO_PLIST" --encryption false/);
+  assert.match(s, /PlistBuddy -c "Print :ITSAppUsesNonExemptEncryption"/,
+    "Apple's own parser must be the second opinion on our output");
+  assert.match(s, /plutil -lint "\$INFO_PLIST"/);
+  assert.match(s, /--check --encryption false/, "the injection is never re-read through our own parser");
+  /* The grep must pin the VALUE. `grep -q false` on a file containing `true`
+     fails, but a bare `grep .` would pass on either — and `true` is the opposite
+     legal declaration. */
+  assert.match(s, /grep -qx "false"/, "the declared value is never checked, only its presence");
+  assert.equal(/sed -i/.test(s), false, "the plist must not be edited with sed");
+});
+
+test("the app icon is injected by the tested script, not copied to a guessed filename", () => {
+  /* THE BUG THIS STEP EXISTS FOR: `cap add ios` writes Capacitor's placeholder
+     AppIcon.appiconset and this workflow archived it, so a build reached
+     TestFlight wearing it. The obvious fix is
+     `cp icon-1024.png .../AppIcon-512@2x.png` — and that filename is a Capacitor
+     TEMPLATE detail that has already changed once between major versions. A copy
+     to a name the catalog no longer declares leaves the placeholder in place and
+     ships green.
+     MUTATION: replace the two `node tools/mobile/inject-app-icon.mjs` lines with
+     that `cp` -> fails on the first assertion and on the `--check` one. RUN. */
+  const s = step(WF, "Put the REAL app icon") ?? "";
+  assert.ok(s, "the app-icon step is gone");
+  assert.match(s, /node tools\/mobile\/inject-app-icon\.mjs "\$APPICONSET"/);
+  assert.match(s, /node tools\/mobile\/inject-app-icon\.mjs "\$APPICONSET" --check/,
+    "the write is never re-read");
+  /* A SECOND, INDEPENDENT PARSER on the manifest, and NOT `plutil -lint` — run
+     33819135977 established that `plutil -lint` parses as a property list and
+     rejects a Contents.json Xcode itself wrote ("Unexpected character { at line
+     1"). `python3` is on every macOS runner and is a different implementation
+     from the Node parser that wrote the file. */
+  assert.match(s, /python3 -m json\.tool "\$APPICONSET\/Contents\.json"/,
+    "nothing but our own parser reads the manifest back");
+  /* COMMANDS ONLY — the step's comment QUOTES the `plutil -lint` line it
+     replaced, so a whole-step scan fails on its own explanation. Same fix, and
+     the same reason, as the `commands()` helper in the log-capture test above:
+     a test that goes red when a bug is documented rewards silence about bugs. */
+  assert.equal(
+    /plutil -lint "\$APPICONSET/.test(commandsOnly(s)),
+    false,
+    "plutil -lint cannot read JSON — it failed on run 33819135977's own Contents.json"
+  );
+  /* No line in the step may copy the icon into the catalog by hand. `cp` of
+     Contents.json OUT to the artifact directory is fine and is why this is scoped
+     to lines that mention the source icon. */
+  const byHand = s.split(/\r?\n/).filter((l) => /^\s*(cp|ditto|install|rsync)\b/.test(l) && /icon-1024/.test(l));
+  assert.deepEqual(byHand, [], `the icon is copied by hand rather than through the script:\n  ${byHand.join("\n  ")}`);
+});
+
+test("`APPICONSET` is inside the generated project, derived rather than retyped", () => {
+  /* A path pointing at a directory `cap add ios` did not generate makes
+     `inject-app-icon.mjs` fail loudly (it refuses a directory with no
+     Contents.json), which is the right outcome — but only if the path is wrong in
+     an obvious way. This pins it against $IOS_DIR, the same job env the rest of the
+     workflow addresses the generated project with, so the two cannot drift into
+     naming different checkouts.
+     MUTATION: change APPICONSET to `ios/App/App/Assets.xcassets/AppIcon.appiconset`
+     (the SwiftUI scaffold, which this workflow asserts Capacitor must never
+     generate into) -> fails. RUN. */
+  const iosDir = /^\s*IOS_DIR:\s*(\S+)\s*$/m.exec(WF)?.[1];
+  const appIconSet = /^\s*APPICONSET:\s*(\S+)\s*$/m.exec(WF)?.[1];
+  assert.ok(iosDir, "the workflow no longer sets IOS_DIR");
+  assert.ok(appIconSet, "the workflow no longer sets APPICONSET, but the icon step is given $APPICONSET");
+  assert.ok(
+    appIconSet.startsWith(`${iosDir}/`),
+    `APPICONSET is ${appIconSet}, which is not inside IOS_DIR (${iosDir})`
+  );
+  assert.match(appIconSet, /Assets\.xcassets\/AppIcon\.appiconset$/);
+});
+
+test("both generated-project edits happen AFTER `cap add ios` and BEFORE any build", () => {
+  /* THE ORDER IS THE WHOLE THING, and neither edit is visible in the build's
+     output when it is wrong. `npm run add:ios` GENERATES the project, so an edit
+     before it writes into a directory that is about to be replaced — or does not
+     exist. A build before the edits compiles the placeholder icon and a plist with
+     no background mode and no encryption declaration, and every check stays green.
+     Nothing in this file pinned the order until now.
+     MUTATION: move either edit step below "Build for the iOS Simulator" -> fails,
+     naming which one. RUN. */
+  const at = (fragment) => {
+    const i = WF.indexOf(`- name: ${fragment}`);
+    assert.ok(i > 0, `step not found: ${fragment}`);
+    return i;
+  };
+  const generate = at("Build the webDir and generate the iOS project");
+  const build = at("Build for the iOS Simulator");
+  for (const edit of [
+    "Add UIBackgroundModes -> audio",
+    "Declare no non-exempt encryption",
+    "Put the REAL app icon",
+  ]) {
+    assert.ok(at(edit) > generate, `"${edit}" runs before the project it edits is generated`);
+    assert.ok(at(edit) < build, `"${edit}" runs after the build that would have used it`);
+  }
+});
+
+test("the built bundle is checked for the icon, not only the source catalog", () => {
+  /* TWO DIFFERENT CLAIMS. `--check` says our bytes are in the SOURCE catalog;
+     this says `actool` compiled them into the BUNDLE. Between them sits a whole
+     class of failure no source-side check can see — a catalog Xcode never looked
+     at, a wrong ASSETCATALOG_COMPILER_APPICON_NAME — and each one produces a green
+     build with a placeholder on the home screen AND on the App Store product page,
+     which since Xcode 14 is extracted from this same catalog with no manual upload
+     available to fix it.
+     MUTATION: delete the `test -f "$APP/Assets.car"` line -> fails. RUN. */
+  const s = step(WF, "Assert the icon really reached the BUILT asset catalog") ?? "";
+  assert.ok(s, "nothing checks the built bundle for the icon");
+  assert.match(s, /test -f "\$APP\/Assets\.car"/, "the compiled asset catalog is never checked for");
+  assert.match(s, /PlistBuddy -c "Print :CFBundleIconName"/,
+    "the built Info.plist's icon name is never read with Apple's own parser");
+  assert.match(s, /assetutil --info/, "Apple's own catalog reader is never asked");
+  assert.equal(
+    /continue-on-error/.test(s),
+    false,
+    "the built-catalog assertion carries continue-on-error, so a missing icon would not fail the job"
+  );
+});
+
+/* ───────────── the build number, which blocked every upload after the first ── */
+
+test("the archive is given a UNIQUE CFBundleVersion, from a source with no state", () => {
+  /* THE FAILURE THIS FIXES, in full. Run 33817797333 archived and exported
+     cleanly and then died at altool:
+
+       ERROR: The provided entity includes an attribute with a value that has
+       already been used (-19232)
+       The bundle version must be higher than the previously uploaded version: '1'.
+
+     Capacitor's generated project ships `CURRENT_PROJECT_VERSION = 1` and never
+     moves it, so run 33815045229 took version 1 and every later build re-uploaded
+     version 1. The founder could not receive ANY new build — including one
+     carrying a fix — and nothing in the repo would have said why.
+
+     `run_number` is monotonic per workflow and needs no stored state; the
+     `.run_attempt` suffix is there because a RE-RUN keeps its run_number and only
+     increments the attempt, which would reproduce this exact duplicate.
+
+     MUTATION: drop `CURRENT_PROJECT_VERSION="$BUILD_NUMBER"` from the archive
+     invocation -> fails on the first assertion. Set BUILD_NUMBER to a literal
+     (`BUILD_NUMBER="2"`) -> fails on the run_number one, because a literal cannot
+     be unique across runs. RUN. */
+  const s = step(WF, "Archive, export and upload to TestFlight") ?? "";
+  assert.ok(s, "the upload step is gone");
+  assert.match(
+    s,
+    /CURRENT_PROJECT_VERSION="\$BUILD_NUMBER"/,
+    "the archive does not override CURRENT_PROJECT_VERSION, so every upload is version 1 again"
+  );
+  assert.match(
+    s,
+    /BUILD_NUMBER="\$\{\{ github\.run_number \}\}\.\$\{\{ github\.run_attempt \}\}"/,
+    "the build number is not derived from run_number.run_attempt, so it can repeat"
+  );
+  /* AND IT MUST BE ON THE ARCHIVE, not merely somewhere in the step. The `build`
+     invocations above are never uploaded, so setting it there and not here would
+     leave the bug intact with the string present in the file. */
+  const archive = xcodebuildInvocations(WF).find((c) => /\sarchive(\s|$)/.test(c) && /-archivePath/.test(c));
+  assert.ok(archive, "no xcodebuild archive invocation found");
+  assert.match(archive, /CURRENT_PROJECT_VERSION="\$BUILD_NUMBER"/, archive);
+});
+
+test("the build number is READ BACK out of the archive before the upload is spent", () => {
+  /* A BUILD-SETTING OVERRIDE THAT DOES NOT REACH THE BUNDLE IS SILENT. If the
+     generated Info.plist ever stopped using `$(CURRENT_PROJECT_VERSION)` for
+     CFBundleVersion — it uses it today, verified against run 33819135977's own
+     archived $ART/Info.plist — this override would do nothing, the archive and
+     the export would both succeed, and the only symptom would be the same altool
+     duplicate error minutes later with nothing pointing at this step.
+
+     So the value is read out of the ARCHIVED app with Apple's own parser and
+     compared, exactly as the icon and the two plist keys are.
+
+     MUTATION: delete the `if [ "$BUILT_VERSION" != "$BUILD_NUMBER" ]` guard ->
+     fails. Change the PlistBuddy read to target the SOURCE Info.plist
+     ($INFO_PLIST, which still holds the literal `$(CURRENT_PROJECT_VERSION)`
+     variable rather than the built value) -> fails on the archive-path
+     assertion. RUN. */
+  const s = step(WF, "Archive, export and upload to TestFlight") ?? "";
+  assert.match(
+    s,
+    /ARCHIVED_PLIST="\$\{\{ runner\.temp \}\}\/Foray\.xcarchive\/Products\/Applications\/App\.app\/Info\.plist"/,
+    "the readback does not target the ARCHIVED app's Info.plist"
+  );
+  assert.match(s, /PlistBuddy -c "Print :CFBundleVersion" "\$ARCHIVED_PLIST"/,
+    "the built CFBundleVersion is never read with Apple's own parser");
+  assert.match(s, /if \[ "\$BUILT_VERSION" != "\$BUILD_NUMBER" \]/,
+    "the readback is not compared to what was asked for, so it proves nothing");
+  /* SCOPED TO THAT GUARD'S OWN BLOCK. A bare `assert.match(WF, /exit 1/)` would be
+     vacuous — the workflow has several — which is the hole the redaction test
+     above was fixed for. */
+  const guard = s.slice(s.indexOf('if [ "$BUILT_VERSION" != "$BUILD_NUMBER" ]'));
+  const block = guard.slice(0, guard.indexOf("\n          fi"));
+  assert.match(block, /::error::/, "a build number that did not land must be loud");
+  assert.match(block, /^\s*exit 1\s*$/m, "the guard must exit non-zero, or the upload is spent anyway");
+  /* And it must sit BEFORE the export and the upload: a guard after altool has
+     already lost the ten minutes it exists to save.
+
+     COMMANDS ONLY, and the first draft of this was defeated by exactly the thing
+     `commandsOnly` exists for — the signing step's own comment says
+     "-exportArchive re-signs", hundreds of characters ABOVE the guard, so
+     `s.indexOf("-exportArchive")` pointed at prose and the ordering assertion
+     failed on a correctly-ordered step. */
+  const cmds = commandsOnly(s);
+  const guardAt = cmds.indexOf('if [ "$BUILT_VERSION" != "$BUILD_NUMBER" ]');
+  assert.ok(guardAt > 0, "the guard is gone");
+  assert.ok(guardAt < cmds.indexOf("-exportArchive"), "the guard runs after the export");
+  assert.ok(guardAt < cmds.indexOf("altool"), "the guard runs after the upload it exists to protect");
+});
+
+test("the build number cannot be the `1` that is already uploaded", () => {
+  /* The ordering requirement, asserted rather than assumed. Version `1` was taken
+     by run 33815045229; the workflow was on run 143 when this landed, so the next
+     value emitted is >= 144.1. The `case` guard is what makes that a check rather
+     than a note — and what would catch a future rewrite of BUILD_NUMBER that
+     re-introduced a constant.
+     MUTATION: delete the `case "$BUILD_NUMBER" in 1|1.*)` line -> fails. RUN. */
+  const s = step(WF, "Archive, export and upload to TestFlight") ?? "";
+  assert.match(
+    s,
+    /case "\$BUILD_NUMBER" in 1\|1\.\*\)/,
+    "nothing refuses a build number that is not above the version already uploaded"
+  );
+});
+
+test("the user-visible marketing version is NOT bumped per build", () => {
+  /* Only CFBundleVersion has to be unique per upload. Overriding MARKETING_VERSION
+     as well would tell every TestFlight user a new RELEASE shipped each time CI
+     ran, which is a product statement rather than a build detail.
+     MUTATION: add `MARKETING_VERSION="$BUILD_NUMBER" \` to the archive invocation
+     -> fails. RUN. */
+  assert.equal(
+    /MARKETING_VERSION=/.test(WF),
+    false,
+    "the workflow overrides MARKETING_VERSION; only CFBundleVersion needs to move per upload"
+  );
+  /* The archived value is still recorded, so a future change to it is visible in
+     the run rather than only on a device. */
+  const s = step(WF, "Archive, export and upload to TestFlight") ?? "";
+  assert.match(s, /PlistBuddy -c "Print :CFBundleShortVersionString"/);
 });

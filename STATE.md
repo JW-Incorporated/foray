@@ -7,6 +7,297 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
+### The iOS speed control stops lying — the TTS rate mapping is calibrated, not derived (2026-09-05, one PR, no follow-up) — `fix/tts-rate-mapping`
+
+- **What:** `HUMAN-ACTIONS.md` #29's RESULT finding 1. On a real iPhone, asking
+  for **1.5x played back at roughly 3x**. `ForayTtsPlugin.utteranceRate(
+  playbackMultiplier:)` multiplied `AVSpeechUtteranceDefaultSpeechRate` by the
+  multiplier, so 1.5x asked for rate 0.75, and Apple's 0.5→1.0 band spans normal
+  speech to unusably fast. Replaced with a mapping **fitted to that one reading**:
+  utterance rate is affine in `log(multiplier)`, anchored at rate `D` = 1.0x
+  (definitional) and rate `1.5·D` ≈ 3.0x (the measurement). Ladder rates go
+  0.435 / 0.500 / 0.551 / 0.592 / 0.627 / 0.658.
+- **Branch:** `fix/tts-rate-mapping` — PR only, never main. `mobile/` is
+  **unlisted** by `path-policy`, so this waits for a human press regardless.
+- **Read this before quoting the new numbers.** It is a **calibration, not a
+  curve**. Two anchors, one of them definitional, and the exponential *form* is an
+  assumption chosen for simplicity — a straight line through the same two points
+  goes negative inside the framework's own range, which is why it is not linear.
+  The one reading that would settle it is named in the function's doc comment and
+  in `docs/research/on-device-tts.md` §9.6: play `tts-locked-screen-check`'s
+  99-second counting line at **2.0x** and time it (predicted ≈50 s).
+- **Android is correct and is DELIBERATELY UNTOUCHED.** AOSP's javadoc on
+  `TextToSpeech.setSpeechRate(float)` documents a true multiplier ("1.0 is the
+  normal speech rate … 2.0 is twice the normal"), same meaning as
+  `player/playback-rate.js`'s ladder. Do not make Android match iOS.
+- **Shared files it touches:** `mobile/plugins/foray-tts/ios/Sources/ForayTtsPlugin/ForayTtsPlugin.swift`
+  (the rate function + its two calibration constants ONLY),
+  `mobile/plugins/foray-tts/ios/Tests/ForayTtsPluginTests/ForayTtsPluginTests.swift`
+  (3 → 8 tests), `mobile/plugins/foray-tts/README.md` (the rate bullet + one
+  claims-table row), `docs/research/on-device-tts.md` (§9.5 gets a supersession
+  note, new §9.6), this file.
+- **Colliding right now:** a sibling session owns VOICE SELECTION in the same
+  Swift file (`listVoices`, voice-tier picking). This card touched nothing outside
+  `utteranceRate` and its two constants; expect to rebase, and the two changes do
+  not overlap textually.
+- **Explicitly out of scope:** the voice tier (#29 finding 2), lock-screen
+  transport controls (#29 finding 3), the Android plugin, `web/foray-tts.js`'s Web
+  Speech fallback (`SpeechSynthesisUtterance.rate` is already a true multiplier),
+  and deleting the diagnostic Foray — #29's RESULT keeps it alive on purpose until
+  findings 1 and 2 are re-measured.
+- **NOT RUN, and said plainly:** `swift test`. CI's `ios-kit`/`ios-shell` jobs are
+  macOS-only and this branch was written on Windows, so neither the new assertions
+  nor the mutations their comments name have been executed anywhere. The
+  arithmetic of every named mutation was checked off-device instead, which is the
+  weaker claim and is written down as the weaker claim.
+### Foray generation runs end to end, and a batch driver runs it over a list (2026-09-05, one PR) — `t_gen/pipeline-orchestrator`
+
+- **What:** `docs/curation/generation-pipeline-status.md` recorded that all
+  nine stages existed and **nothing drove them end to end** — a founder moved
+  JSON between two CLIs that meet at opposite ends. `runForayPipeline`
+  (`backend/src/generation/runPipeline.ts`) is §4.0→§4.9 in one call, every
+  dependency injectable, defaults to the `create*()` factories so the same code
+  path is stubs without a key and Anthropic with one.
+  `npm run generate-forays -- --prompts prompts.json` runs it over a list,
+  resumable, one candidate JSON per Foray in `publishForay.ts`'s input shape.
+  **It writes candidates; it never publishes** — phase 1's review gate stands.
+- **The first real run failed check-forays four ways**, each a whole-Foray
+  property no per-stage test could catch: the §4.7 disclosure was never
+  emitted by anything; the same segment could play twice; one episode's
+  segments could play out of order (M3); one episode could exceed its 25 %
+  share (M4). All four fixed, each with a test naming its mutation.
+- **The remaining blocker is content, not code.** Candidates now fail only on
+  D3/D5 — mean segment duration and duration variety — which are distribution
+  properties of a 212-segment pool. Cutting the ~1,900 R2 transcripts into
+  segments is the next piece of work.
+- **Branch:** `t_gen/pipeline-orchestrator` — PR only, never main.
+- **Owned/new files:** `backend/src/generation/runPipeline.ts`,
+  `resolveTopic.ts`, `backend/src/cli/generateForays.ts`,
+  `backend/test/runPipeline.test.ts`.
+- **Shared files it touches:** `backend/src/generation/sourceBeats.ts` and
+  `segmentPoolLookup.ts` (the three assembly guards),
+  `backend/test/sourceBeats.test.ts`, `backend/package.json` (one script),
+  `docs/curation/generation-pipeline-status.md`.
+- **Not done here:** an R2-backed `TranscriptCueProvider`. The transcripts are
+  in the bucket and the seam for them is `RunPipelineDeps.cueProvider`, but
+  nothing maps an R2 object key back to an episode yet — see the PR.
+
+### On-device narration picks a GOOD iOS voice, and a caller can choose one (2026-09-05, one PR) — `feat/tts-voice-selection`
+
+- **What:** the founder's 2026-09-05 device listen said the on-device voice was
+  "much worse than the original test" (the Kokoro fixture). One line:
+  `ForayTtsPlugin.swift` set `utterance.voice = AVSpeechSynthesisVoice(language:)`,
+  which returns the SYSTEM DEFAULT — iOS's compact/legacy formant tier, the
+  robotic one — and set nothing at all when no `lang` was passed. The plugin now
+  enumerates `speechVoices()` and takes the best tier actually installed
+  (premium > enhanced > default), `speak()` accepts an optional `voice`
+  identifier that falls back cleanly and reports that it fell back, and a new
+  `listVoices()` returns the device's real catalogue. Android got the equivalent
+  via `getVoices()`/`setVoice()`.
+- **Branch:** `feat/tts-voice-selection` — PR only, never main.
+- **Shared files it touches:** `mobile/plugins/foray-tts/` (Swift, Java, web JS,
+  README), `player/tts-bridge.js` (+ its suite), `tools/mobile/foray-tts.test.mjs`,
+  `test/suite-integrity.test.js` (two floors), `docs/research/on-device-tts.md`
+  §9.6, `HUMAN-ACTIONS.md` #40.
+- **Deliberately NOT touched:** the rate code in the same Swift file
+  (`utteranceRate(playbackMultiplier:)`) — that landed in #463 and is left alone.
+- **Needs a human:** `mobile/` is unlisted in `tools/ci/path-policy.mjs`, so this
+  waits for a merge click. And it is INAUDIBLE until someone downloads an
+  Enhanced voice on the phone (Settings → Accessibility → Spoken Content →
+  Voices) — that is `HUMAN-ACTIONS.md` #40.
+- **Not done here:** no voice-picker UI, and no `swift test` anywhere — the ten
+  Swift assertions added are authored and unrun (Windows machine, macOS-only
+  iOS jobs).
+
+### S-03: the client reaches its own API, so a show page shows every episode (2026-09-05, one PR, no follow-up) — `t_s03/api-origin-shell`
+
+- **What:** the last of the four F4(c) gaps, and the whole of "4a only has 3
+  episodes a show". `api/shows/:id/episodes` has been live and correct since
+  S-02 (#477); every client call was a RELATIVE path, which resolves to the
+  Pages origin on the web (404) and *inside the app bundle* in the shell
+  (`capacitor://localhost`, no server). Both failures degrade silently to the
+  bundled `BUNDLED_ITEMS_PER_SHOW = 3` slice. `app.js` gains `API_ORIGIN` +
+  `apiUrl()`; `fetchShowEpisodes` and `fetchApiJson` (shows search, episode
+  search, in-show episode search) go through it; `index.html`'s `connect-src`
+  names that one origin. Measured: Lex Fridman 6 → **502** episodes.
+- **Branch:** `t_s03/api-origin-shell` — PR only, never main.
+- **Owned/new files:** `test/api-origin.test.js` (5 tests, floored, 7 mutations
+  run and red).
+- **Shared files it touches:** `app.js` (two fetchers + the constant),
+  `index.html` (CSP), `test/legal-citations.test.js` (the origin pin becomes
+  three, read out of `app.js`), `docs/legal/data-safety.md`,
+  `test/suite-integrity.test.js`.
+- **Not done here:** S-05 (client search over the shards) — the shows-import
+  workflow has never run, so there is no release to search yet.
+- **Needs a human:** `index.html` is unlisted by `path-policy`, so this waits
+  for a merge click. The privacy half of the tripwire already landed in #482.
+
+### M1: cap feed download size before whole-body XML parsing (2026-09-01) — `foray/t_fc2c5f95`
+
+- **What:** Review finding M1. Fetch paths bound elapsed time but not response
+  bytes. Adds a pre-download `Content-Length` sanity check plus a streamed
+  decompressed-byte ceiling (abort mid-stream) to `backend/src/feeds/conditionalGet.ts`,
+  and a new shared helper `tools/refresh/fetch-limits.mjs` (same checks, plus an
+  item-count cap after parsing) used by `tools/refresh/scan.mjs`.
+- **Branch:** `foray/t_fc2c5f95` — PR only, never main.
+- **New files:** `tools/refresh/fetch-limits.mjs` (+ `.test.mjs`).
+- **Shared files it touches:** `backend/src/feeds/conditionalGet.ts` (+ its
+  test), `tools/refresh/scan.mjs`, `test/suite-integrity.test.js` (two floors).
+- **M6 landed first (PR #393):** `tools/refresh-feeds.mjs` is now a thin
+  wrapper that re-execs `scan.mjs`, so this card's original scope of also
+  patching `refresh-feeds.mjs`'s own fetch path is moot — fixing `scan.mjs`
+  covers both entry points. `refresh-feeds.mjs` itself is untouched here.
+### HUMAN-ACTIONS #29 is runnable on a phone — on-device narration gets wired (2026-09-03) — `feature/tts-locked-screen-test`
+
+- **What:** #29 asked for "a build of the shell with the plugin wired to speak a
+  long test sentence". It could not be produced, because three things were
+  missing and none of them was the plugin: nothing passed a `tts` bridge to
+  `PlayerQueueManager` (so `_speakNarration` was dead code that passed all its
+  own tests), no Foray in `data/` carried a narration `script`, and a `draft`
+  Foray is unreachable inside the shell because `?foray=` reads
+  `location.search` and `capacitor://localhost/` has none. All three closed.
+  A fourth defect fell out: `ForayTtsPlugin.swift` was assigning the player's
+  speed MULTIPLIER onto `AVSpeechUtterance.rate`, where `1.0` means *maximum*
+  speech rate — every narration line would have been read at top speed.
+- **Touches:** `data/forays.json` (one new draft Foray,
+  `tts-locked-screen-check`), `player/tts-bridge.js` (new) +
+  `player/foray-resolve.js` + `player/client.js`,
+  `mobile/plugins/foray-tts/` (Swift rate mapping, README, web header),
+  `test/suite-integrity.test.js`, `HUMAN-ACTIONS.md` #29,
+  `docs/research/on-device-tts.md` §9.5.
+- **Branch:** `feature/tts-locked-screen-test` — PR only, never main. `mobile/`
+  is unlisted, so the whole PR waits for a human press regardless.
+- **Explicitly out of scope:** knowing when an utterance FINISHES
+  (generation-architecture §7 item 3) — the queue still does not advance past a
+  spoken item, and the diagnostic Foray is designed around that rather than
+  hiding it. Also out of scope: any narration-authoring UI.
+- **Delete after the answer:** the Foray, `DIAGNOSTIC_FORAY_ID` /
+  `withDiagnosticUnlock()` and their call sites. Named in #29's own steps.
+
+### fast-xml-parser security bump (GHSA-8r6m-32jq-jx6q) (2026-09-01) — `fix-fastxmlparser-t_b3f33dfa`
+
+- **What:** Bumping `fast-xml-parser` from `^5.9.3` to `>=5.10.1` in
+  `backend/package.json`/`package-lock.json` (fixes a DOS advisory: repeated
+  DOCTYPE declarations reset entity-expansion limits). Pure dependency bump +
+  a new adversarial regression fixture in `backend/test/parser.test.ts` /
+  `backend/fixtures/feeds/`. No behavior/API changes intended.
+- **Touches:** `backend/package.json`, `backend/package-lock.json`,
+  `backend/test/parser.test.ts`, `backend/fixtures/feeds/` (new fixture).
+  `tools/refresh/scan.mjs` requires `fast-xml-parser` via
+  `backend/package.json`'s node_modules, so it picks up the bump for free —
+  no separate change needed there.
+- **Branch:** `fix-fastxmlparser-t_b3f33dfa` — PR only, never main
+  (merge_authority: human).
+- **Explicitly out of scope:** any new functionality beyond the version bump
+  + regression test.
+### The home screen under a NOTCH — four device-only defects (2026-09-03, one PR, no follow-up) — `fix/home-layout-safe-area`
+
+- **What:** the founder's TestFlight home screen ("complete garbage"). Four
+  defects, none of them visible in a desktop browser because all four turn
+  on `env(safe-area-inset-top)`, which is 0 there and ~59px on a notched
+  iPhone: (1) `.topbar` set `height: var(--topbar-h)` alongside
+  `padding-top: env(safe-area-inset-top)` under `box-sizing: border-box`, so
+  its border-bottom painted through the `<h1>`; (2) the same mismatch left a
+  43px dead band under the header; (3) `[hidden]` was defeated by author
+  `display` declarations, so a second search box and "Browse all shows"
+  rendered permanently; (4) `.home`'s fixed height crushed the four subject
+  cards to 26px whenever an optional sibling appeared (#458's mechanism,
+  different offender — the container was the bug). Plus the blank artwork
+  tiles: 53 of 220 catalog shows carry `artwork_url: null`, now backfilled at
+  render time from the discover pool.
+- **Branch:** `fix/home-layout-safe-area` — PR only, never main.
+- **Owned/new files:** `test/home-layout.test.js` (evaluates the real
+  stylesheet's box model at inset 0 AND 59px — a desktop browser cannot see
+  any of this, so neither can a test that only reads the DOM at inset 0).
+- **Shared files it touches:** `styles.css` (`.topbar`, `.home`, `.cards4`,
+  a global `[hidden]` rule, `#banner-slot:empty`), `app.js`
+  (`showArtworkUrl()` + its four call sites), `test/show-page.test.js`
+  (four artwork tests), `test/starred-shows.test.js` (one: the starred row
+  resolves a null snapshot through the live record), `test/suite-integrity.test.js`
+  (one new floor, two raised).
+- **Explicitly out of scope:** `tools/mobile/` and `.github/workflows/` — a
+  sibling session owns both. Also NOT done here: backfilling
+  `data/catalog.json`'s 53 null `artwork_url` values, which is the root fix
+  for the blank tiles and needs `tools/harvest-catalog.mjs` re-run against
+  iTunes. The render-time fallback covers all 53 today.
+- **Left red and NOT touched:** `tools/mobile/prepare-webdir.test.mjs`'s
+  bundle-total assertion fails on a Windows checkout only (CRLF inflates the
+  six largest shipped files by 70 KB, over a 2.5 MB alarm). CI is green on
+  `main`; same root cause as the long-standing local-only
+  `catalog-client.json is derived from catalog.json` failure.
+
+### Show-pages Stage 3b — full per-show RSS ingestion (2026-09-02) — `t_567b570f/show-pages-3b-rss-ingestion`
+
+- **What:** `docs/show-pages-plan.md` §Stage 3, decided path 3b (full
+  per-show RSS ingestion, no curated-subset ceiling — founder instruction:
+  "we should be able to play all podcasts from the app"). New shared
+  catalogue tables (`backend/migrations/0016_catalog_show_episodes.sql`),
+  ingestion module (`backend/src/catalog/`), and the first Vercel
+  serverless function in this repo (`api/shows/[show_id]/episodes.ts`) —
+  flagged explicitly for Wyatt's review, see `docs/DECISIONS.md`
+  2026-09-02 entry. Client (`renderShow()`) now fetches the full list on
+  demand, degrading to the curated pool on any fetch failure.
+- **Branch:** `t_567b570f/show-pages-3b-rss-ingestion` — PR only, never
+  main; `merge_authority: human` on this card regardless.
+- **Owned/new files:** `backend/migrations/0016_catalog_show_episodes.sql`,
+  `backend/src/catalog/showEpisodesStore.ts`,
+  `backend/src/catalog/ingestShowFeed.ts`,
+  `backend/test/showEpisodesStore.test.ts`,
+  `backend/test/ingestShowFeed.test.ts`, `api/shows/[show_id]/episodes.ts`,
+  `api/package.json`, `test/show-pages-3b-full-catalogue.test.js`.
+- **Shared files it touches:** `app.js` (`renderShow()`,
+  `fetchShowEpisodes()`, `fullCatalogueRowToEpRowItem()`), `vercel.json`
+  (installCommand), `test/suite-integrity.test.js` (two new floors),
+  `docs/show-pages-plan.md` (§Stage 3 decision recorded),
+  `docs/DECISIONS.md`.
+- **Explicitly out of scope:** wiring the player / removing link-out UI
+  (sibling "universal in-app playability" card, depends on this card's
+  `audio_url` output), fetching chapters JSON bodies (pointer stored now,
+  body fetched lazily per-episode by the episode-page card).
+
+### SECURITY: Supabase linter findings — RLS/SECURITY DEFINER/policy scoping (2026-09-02) — `fix/supabase-linter-rls`
+
+- **What:** t_58c99c73. Enables RLS (deny-all, no policies) on
+  `public.schema_migrations` and `public.learning_cursor` (the 2 linter
+  ERRORs); revokes `anon`/`authenticated` EXECUTE on the two
+  `SECURITY DEFINER` auth-trigger functions; rescopes the 8 `own_rows_*`
+  policies to `TO authenticated` explicitly. Founder-approved spec on the
+  card, PR only.
+- **Branch:** `fix/supabase-linter-rls` — PR only, never main.
+- **Owned/new files:** `backend/migrations/supabase/0002_linter_findings.sql`.
+- **Shared files it touches:** `HUMAN-ACTIONS.md` (new item logging the
+  leaked-password-protection dashboard toggle, which no worker can click).
+- **Explicitly out of scope:** anything else in `backend/migrations/` —
+  no other portable migration files touched.
+
+### M3: event log off synchronous localStorage onto IndexedDB (2026-09-01) — `t_c7199b13/event-log-idb`
+
+- **What:** Finding M3 (approved design). Client event logging (`logEvent()` /
+  `trySyncEvents()`) moved off a synchronous per-call `cp_events` localStorage
+  JSON rewrite onto a new batched, IndexedDB-backed queue,
+  `player/event-log.js`. `cp_events`/`cp_synced_ts` are retired — the queue is
+  outbound state, not resumable per-user state, so retiring the key orphans
+  nothing. No caller-visible change to `logEvent(type, payload)`'s signature.
+- **Branch:** `t_c7199b13/event-log-idb` — PR only, never main; PR pending
+  review.
+- **Owned/new files:** `player/event-log.js`, `player/event-log.test.js`.
+- **Shared files it touches:** `app.js` (`logEvent()`, `trySyncEvents()`, a
+  pre-module event buffer mirroring the existing `waitForStorage()` pattern),
+  `player/client.js` (constructs the event-log module the same way it already
+  constructs `durable-store.js`, publishes `window.forayEventLog`),
+  `docs/legal/privacy-policy.md` §1/§2 (the `cp_events`/`cp_synced_ts` rows
+  retired, a note added on the new queue), `test/suite-integrity.test.js` (one
+  new floor, one count updated 23→21 for the retired keys),
+  `test/data-deletion.test.js` (key-family count and seeds updated),
+  `test/diagnostics-surface.test.js`, `test/playlist-durability.test.js`,
+  `player/foray-playback.test.js`, `player/foray-progress.test.js` (all
+  updated from asserting against `cp_events`/localStorage to a synchronous
+  `window.forayEventLog` test double, reusing the fake IDBFactory pattern from
+  `player/idb-tier.test.js`/`durable-store.test.js`).
+- **Explicitly out of scope:** anything about the REMOTE `events` table or
+  `toEventRow()`'s mapping — unchanged. `cp_diag`/`player/diagnostic-log.js`
+  — unrelated ring, untouched.
+
 ### "Up Next" listening queue, Stage 1 (2026-08-31) — `t_f4da81f5/up-next-stage1`
 
 - **What:** `docs/listening-queue-plan.md` Stage 1, PR pending. New `cp_queue`
@@ -82,7 +373,7 @@ docs/. Completed workstreams move to their plan doc's retro section.
   `tools/mobile/webview-probe.mjs` (+ test), `docs/android-release.md`.
 - **Shared files it touches:** `tools/mobile/android-workflow.test.mjs` (27 → 61
   tests, a whole new section for the second workflow),
-  `test/suite-integrity.test.js` (three floors), `HUMAN-ACTIONS.md` (#26 new; a
+  `test/suite-integrity.test.js` (three floors), `HUMAN-ACTIONS.md` (#30 new; a
   note on #18).
 - **Rulings, since they constrain future work:**
   - **`android-build.yml` is untouched and must stay so.** Its two pinned
@@ -2330,6 +2621,38 @@ and belongs with #133's live position, not behind a `tabindex` on a `role="img"`
 
 ## Completed workstreams
 
+### mobile bundle — minified code and compact JSON: 2,625 → 1,530 KB (2026-09-04, one PR, no follow-up) — `feature/mobile-bundle-minify`
+
+- **What:** recommendations 1 and 2 of `docs/mobile-shell-bundle-reduction.md`
+  (research, PR #468, left open and held), approved by the founder (CTO).
+  `tools/mobile/prepare-webdir.mjs` now writes every shipped `.js`/`.css` with
+  comments and whitespace stripped and **every identifier kept** (new
+  `tools/mobile/minify.mjs`, esbuild `minifyWhitespace` only), and every
+  `data/*.json` re-serialised with no indentation. `COPIED_WHOLE` asserts
+  parse-identity instead of byte-identity. Measured: **2,625,084 → 1,529,677
+  bytes (LF, CI's basis; −42%)**; 2,672,143 → 1,529,758 on a Windows checkout.
+  Growth ~30 → ~10 KB/day. Full numbers and what was verified in headless
+  Chrome: `docs/mobile-shell.md` §3.4.
+- **The minifier lives in `tools/mobile/package.json`** (new, one devDependency,
+  pinned exactly, lockfile committed) — never the root, which stays
+  dependency-free for the keyless Pages deploy. Consequence: `tools/mobile/` is
+  now its own `run-suites` group (CI installs it and runs the shell's suites
+  there), so CI measures the minified bundle that ships.
+  `mobile/package.json`'s `prepare:webdir` runs `npm ci --prefix ../tools/mobile`
+  first, so the Mac path and both platform workflows get it without an edit
+  to `.github/`.
+- **Files:** `tools/mobile/{minify.mjs,minify.test.mjs,package.json,package-lock.json}`
+  (new), `tools/mobile/prepare-webdir.mjs` (+ test: 65 → 72, alarms re-based
+  2.7 → 2.0 MB total, 1.5 → 1.4 MB data, discover budget 800 → 720 KB),
+  `tools/mobile/shell-invariants.test.mjs` (the budget pin), `mobile/package.json`,
+  `mobile/README.md`, `test/suite-integrity.test.js` (one new floor, one raised),
+  `docs/mobile-shell.md` §0/§2.1/§2.4/§3/§3.4, `docs/DECISIONS.md`, `CLAUDE.md`
+  Layout (governed → `founder-approved`).
+- **Explicitly out of scope:** recommendation 3 (the df sidecar / item-tags trim),
+  the per-file and rate-based alarms the doc's §11 proposes, LF-normalising
+  `index.html`, and anything under `.github/workflows/`.
+- **Not verifiable here:** the bundle inside WKWebView on a device (needs a Mac).
+
 ### corpus/embeddings — the embedding backfill: a measured NO (2026-08-13, COMPLETE)
 
 Branch `corpus/embeddings` (migration 0003: `embedding_models` +
@@ -2413,3 +2736,67 @@ backfill is a future, separate pass.
   `tools/transcribe/`, `tools/refresh/`, `backend/`, `app.js`, `.github/`
   (a ci.yml test step will be proposed as a separate PR left for Wyatt).
 - **Plan:** `docs/research/corpus/PLAN.md`.
+
+### S-04a: PodcastIndex dump import builder (2026-09-05) — `foray/t_835d1a3c`
+
+- **What:** `tools/shows/import-dump.mjs` + five pipeline submodules
+  (`config`, `filter`, `dedupe`, `shard-build`, `identity`, `state`,
+  `dump-reader`). Fetches the public PodcastIndex dump (identifying UA,
+  checksum + `Last-Modified`-derived `export_version`, skip-if-already-built),
+  reads it with streaming `node:sqlite`, applies the D1 liveness filter and
+  D13 dedupe from `4a-shows-pipeline-plan.md`, and builds the §3.2 static
+  shard index (`manifest.json`, `shards/<pp>.json.gz`, `top.json`,
+  `changed.json`, `id-map.json`). Offline builder only — no release/PR/
+  workflow automation (that's S-04b, `t_3a896057`, gated on this card).
+- **Tests:** 47 unit/integration tests across 6 suites, all against small
+  in-memory `node:sqlite` fixtures — no real dump touched in CI. Covers D1
+  per-filter counts, D13 both dedupe paths + canonical tie-breaks, shard/top
+  size-budget enforcement, id-map fail-closed naming every miss, and the
+  two-runs-byte-identical determinism the card requires.
+- **Not yet wired**: the `changed.json` diff needs a persisted prior-release
+  manifest to diff against; there is none yet on a first landing, so every
+  row currently reports as "changed" (correct for a first build). Follow-up
+  once a release history exists.
+- **Decision entry:** `docs/DECISIONS.md`, 2026-09-05.
+- **Note:** `node:sqlite` requires `--experimental-sqlite` on Node < 23.4 —
+  `tools/shows/package.json` pins its own `test` script the same way
+  `tools/corpus/package.json` does, so `npm test` there is the one command
+  correct on every machine; `tools/ci/run-suites.mjs` picks it up as its own
+  install-then-test group automatically (no CI file edit needed).
+
+### S-04b: shows-index release automation (2026-09-05) — `foray/t_3a896057`
+
+- **What:** `tools/shows/publish-release.mjs` + `tools/shows/run-and-publish.mjs`
+  wrap S-04a's builder with GitHub Release publishing (keyless, `GITHUB_TOKEN`
+  only) and a pointer-update PR for `data/shows-index-pointer.json`.
+  `.github/workflows/shows-import.yml` runs it weekly (Sun 06:00 UTC) +
+  `workflow_dispatch`.
+- **Two-layer idempotency**, both proven end to end (faked build + faked
+  `gh`, real control flow) in `run-and-publish.test.mjs`: S-04a's own
+  `state.json` skip, plus an independent `gh release view` check that
+  catches a lost `state.json` while the release still exists on GitHub.
+  `releaseExists` fails closed on any non-"not found" `gh` error.
+- **CSP measurement done against a real release asset already in this
+  repo**: GitHub Release download URLs redirect (302) to
+  `release-assets.githubusercontent.com` (Azure Blob-backed) and **neither
+  hop sends any CORS header** — a `fetch()` from `capacitor://localhost`
+  to a release asset fails the browser's CORS check today, full stop.
+  `raw.githubusercontent.com` and `cdn.jsdelivr.net` both send
+  `access-control-allow-origin: *` for files committed to git, but
+  jsDelivr does not mirror release-only binary assets (404 confirmed).
+  Full redirect chain, headers, and the two remediation options (CORS
+  proxy/CDN mirror, or route through `api/` same-origin) are in
+  `docs/DECISIONS.md`'s 2026-09-05 S-04b entry and `HUMAN-ACTIONS.md`.
+  **No CSP `connect-src` change lands in this card** — no client fetch
+  code ships yet, so there is nothing to widen for (S-03's own rule).
+- **Decision entry:** `docs/DECISIONS.md`, 2026-09-05.
+- **Test floors**: `test/suite-integrity.test.js` gained
+  `tools/shows/publish-release.test.mjs` (11),
+  `tools/shows/run-and-publish.test.mjs` (4), and
+  `tools/shows/run-and-publish-execargv.test.mjs` (1). Two rounds of
+  fresh-context review both found and fixed real bugs before merge — see
+  `docs/DECISIONS.md` for all three findings (execArgv forwarding, the
+  GITHUB_TOKEN/automerge gap, and the published-vs-pointerChanged
+  idempotency gate).
+
+

@@ -27,6 +27,28 @@
   }
 }
 * { box-sizing: border-box; }
+
+/* `hidden` is this app's ONLY hiding mechanism — app.js and player/client.js
+   toggle `el.hidden` in ~30 places and never touch `display`. But `hidden` is
+   enforced by a UA-stylesheet rule (`[hidden] { display: none }`), and an
+   author `display` declaration beats the UA origin at ANY specificity. So
+   every element that also carries a `display` from a class or id rule was
+   rendering while marked hidden:
+
+     #sh-form         display: flex   -> the "search shows by name…" box drew
+                                        under the playlist box at all times
+     #sh-results     (.show-results)  -> a phantom flex item + its 8px gap
+     #browse-all-link(.browse-all-link) -> "Browse all shows ›" always visible
+     .dd-device-only                  -> the download-diagnostics device-only
+                                        line, meant for one failure state only
+
+   On the home screen that is ~130px of furniture the founder never asked for,
+   inside a fixed-height flex column — so it also stole that space from the
+   four subject cards. `!important` is the standard fix and the only one that
+   works: it puts the author `display: none` above every other author rule,
+   which is exactly the semantics `hidden` is supposed to have. */
+[hidden] { display: none !important; }
+
 html { -webkit-text-size-adjust: 100%; }
 body {
   margin: 0;
@@ -39,15 +61,34 @@ body {
    to fit one viewport with no internal scroll, but on iOS Safari a page with
    no scrollable overflow anywhere also has no rubber-band bounce, which reads
    as "unresponsive" / "is this frozen" on first touch, not "intentionally
-   fixed". Letting the body scroll normally (there is nothing to scroll TO on
-   home, so it always snaps back) keeps the one-screen layout while restoring
-   the felt responsiveness of an ordinary webpage. */
+   fixed". Letting the body scroll normally keeps the one-screen layout while
+   restoring the felt responsiveness of an ordinary webpage. There is again
+   nothing to scroll TO on home, so it always snaps back: the `.home-below`
+   wrapper #433 introduced is gone, along with everything that used to sit
+   under the fold — see the `.home` note below. */
 
 /* ---------- top bar ---------- */
 .topbar {
   position: fixed;
   top: 0; left: 0; right: 0;
-  height: var(--topbar-h);
+  /* The safe-area inset is part of this box's HEIGHT, not extra on top of it.
+     `* { box-sizing: border-box }` above makes `height` the total of content +
+     padding + border, so the previous `height: var(--topbar-h)` alongside
+     `padding-top: env(safe-area-inset-top)` asked for a 44px box containing
+     59px of padding on a notched iPhone. The content box went negative, the
+     <h1> spilled out below the bar, and `border-bottom` painted straight
+     through the title text. Measured on an emulated iPhone 16 Pro Max with the
+     inset substituted at 59px: bar bottom 60px, border at y=59, title box
+     45.6–72.4 — the line crossed the title and the title hung 12.4px below the
+     bar. `env()` is 0 in every desktop browser, which is why this was invisible
+     until TestFlight.
+
+     This must stay identical to the four places that reserve space for this
+     fixed bar (`#view`, `.home`, `.shell-notice`, `.fy-transport`) — the bar's
+     own box and the gap left for it are one number. When they disagreed, the
+     44px bar under a 103px offset left a 43px dead band under the header.
+     test/home-layout.test.js recomputes all five and fails on any drift. */
+  height: calc(var(--topbar-h) + env(safe-area-inset-top));
   display: flex; align-items: center;
   gap: 10px;
   padding: 0 10px;
@@ -165,12 +206,42 @@ body {
   cursor: pointer;
 }
 
-/* ---------- home: one screen, no scroll ---------- */
+/* ---------- home: one screen, and only one screen ---------- */
 #view { padding-top: calc(var(--topbar-h) + env(safe-area-inset-top)); }
 
 .home {
-  height: calc(100vh - var(--topbar-h) - env(safe-area-inset-top));
-  height: calc(100dvh - var(--topbar-h) - env(safe-area-inset-top));
+  /* Static 100vh fallback first, then `svh` (small viewport height — the
+     height with the browser's toolbar fully expanded, i.e. the smallest it
+     ever reports). `dvh` was here before and tracked the browser chrome
+     live: during iOS Safari's rubber-band overscroll bounce the reported
+     dynamic viewport height jitters as the gesture plays out, and since
+     `.cards4`/`.mini-card` below derive their size from `.home`'s height via
+     `flex: 1`, that jitter visibly stretched and shrank the cards while
+     scrolling (#reported 2026-08-31, introduced by #359's bounce
+     restore). `svh` stays fixed regardless of toolbar/overscroll state, so
+     `.home` — and everything sized from it — no longer recomputes mid-bounce.
+
+     `min-height`, not `height`, and that is the fix for the second half of
+     "everything is on top of each other". A FIXED height here means the column
+     has a hard budget: `.cards4` is its only `flex: 1` child, so every other
+     child is `flex: none` and takes its space off the top. A returning user
+     with a continue banner and three "Jump back in" rows (both optional, both
+     ordinary) crushed `.cards4` from 454px to 63.8px and each of the four
+     cards to 26px — measured, at 440x956. That is the exact failure #433/#458
+     hit from a different sibling, and moving one offender below the fold
+     (#458's `.home-below`, since removed) only ever fixes that one offender; the container was the
+     bug. With `min-height` the column still fills exactly one screen in the
+     common case, and when it genuinely cannot, the page grows and scrolls
+     (body scroll is already live — see the `overflow: hidden` note above)
+     instead of destroying the cards. Pair with `.cards4`'s own floor below:
+     that is what makes "grow" happen rather than "shrink to nothing". */
+  min-height: calc(100vh - var(--topbar-h) - env(safe-area-inset-top));
+  min-height: calc(100svh - var(--topbar-h) - env(safe-area-inset-top));
+  /* Contain the rubber-band bounce here so it doesn't chain into resizing
+     this element's flex children — the page (body) still bounces normally
+     (#359's fix stays intact, no `overflow: hidden` above), only the visual
+     stretch effect on the cards themselves is suppressed. */
+  overscroll-behavior-y: contain;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -178,6 +249,39 @@ body {
   max-width: 680px;
   margin: 0 auto;
 }
+
+/* NOTHING GOES IN `.home` BUT THE BANNER AND `.cards4`.
+
+   `.home` is a fixed-height flex column whose only `flex: 1` child is
+   `.cards4`, and it is `overflow: visible` — so a tall sibling added inside it
+   silently starves the cards to zero height and overflows on top of whatever
+   follows. That is what "Shows we vouch for" (#433) did at every viewport
+   including desktop: `.cards4` measured 0 px and each card 26 px.
+
+   #458 worked around it with a `.home-below` wrapper that parked the row under
+   the fold. This change removes the workaround AND the reason for it: the
+   founder asked for a home screen that is the four cards and little else, so
+   the vouch row, the show search, the playlist builder and the foray list each
+   moved to their own menu page (see renderHome's header comment in app.js).
+   With no tall sibling left to park, a second scrollable surface stacked under
+   a deliberately one-screen one was simply the wrong shape, and it is gone.
+
+   The container itself is NOT the bug and is left alone: a fixed-height column
+   is exactly right for "four cards, one screen, done choosing", which is the
+   product. What was wrong twice was the content put in it. app.js pins that as
+   a test rather than another CSS guard, because CSS cannot express "and no
+   fifth thing" — test/home-information-architecture.test.js fails if anything
+   but the banner and `.cards4` renders inside `.home`. */
+
+/* `renderHome()` always emits `<div id="banner-slot">`, filled or not, and
+   `bannerHtml()` returns "" whenever there is nothing to continue — which is
+   most of the time. An empty div is still a flex item of `.home`, so it still
+   claimed one of the column's 8px `gap`s and pushed everything below it down
+   by that much for no content at all. `:empty` takes it out of flex layout
+   entirely, so an empty optional block costs exactly zero. Same reason the
+   `hidden` fix at the top of this file matters: nothing invisible may occupy
+   space in a column whose space is the scarce resource. */
+#banner-slot:empty { display: none; }
 
 .banner {
   display: flex; align-items: center; gap: 10px;
@@ -209,7 +313,27 @@ body {
 
 .cards4 {
   flex: 1;
-  min-height: 0;
+  /* The floor that turns "the cards get crushed" into "the page gets taller".
+     Was `min-height: 0`, i.e. no floor at all: as the only `flex: 1` child of
+     a fixed-height column, `.cards4` absorbed every optional sibling's height
+     by shrinking, and a banner + three "Jump back in" rows took it to 63.8px
+     with 26px cards. `.mini-card` sets `overflow: hidden`, so nothing looked
+     broken — the four cards simply became slivers with the artwork and hook
+     clipped away.
+
+     The number is not a guess: four `.mini-card`s at their own minimum plus
+     the three 8px gaps. A card's minimum is its 56px artwork (`.mini-card img`)
+     plus its 12px top and bottom padding plus its 1px top and bottom border —
+     everything here is `border-box`, so the border is inside the number, not
+     around it. 56 + 24 + 2 = 82, and 4*82 + 3*8 = 352px. (344 was the first
+     value here, and it omitted the border: each card came out at 80px, an
+     80 - 12 - 12 - 1 - 1 = 54px content box against 56px of artwork, clipped
+     2px top and bottom by `overflow: hidden` — the very failure the floor
+     exists to prevent, two pixels' worth.)
+     Keep the arithmetic here in sync with those rules — it is recomputed from
+     `.mini-card`'s own box in test/home-layout.test.js, which fails if any of
+     them moves. */
+  min-height: calc(4 * (56px + 2 * 12px + 2 * 1px) + 3 * 8px);
   display: grid;
   grid-template-rows: repeat(4, 1fr);
   gap: 8px;
@@ -313,6 +437,22 @@ button.star {
 }
 button.star.on { color: var(--gold); }
 
+/* ---------- starred shows (follow-lite) ---------- */
+
+button.show-star {
+  display: block;
+  margin: 10px 0 14px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+button.show-star.on { color: var(--gold); border-color: var(--gold); }
+
 #pl-form {
   flex: none;
   display: flex; gap: 8px;
@@ -341,7 +481,99 @@ button.star.on { color: var(--gold); }
   cursor: pointer;
   box-shadow: var(--shadow);
 }
+/* Building-state guard (H bug, kanban t_838a13c0): buildPlaylist() has a
+   measured 1.3-8s worst case (cold-session term expansion, or a catalogue
+   this large scoring against a query with no repeated-query cache hit yet —
+   see app.js's searchCache), and the submit was fully synchronous with no
+   visible affordance for that stall. Same idiom as .fy-btn:disabled a few
+   sections up: dim + no pointer, not hidden, so the label ("Building…") stays
+   legible as an explanation rather than the control just vanishing. */
+#pl-form button:disabled { opacity: 0.6; cursor: default; box-shadow: none; }
 .note { color: var(--text-dim); font-size: 0.85rem; margin: 0; flex: none; }
+
+/* ---------- Shows search (Stage 2, docs/show-pages-plan.md) ----------
+   Lives on the Shows page (#/shows). The `.search-tabs`/`.search-tab` pair
+   that used to wrap it is gone: those tabs time-shared one strip of the HOME
+   screen between this search and #pl-form's playlist builder, and since
+   2026-09-03 the two live on separate pages with nothing to toggle between. */
+#sh-form {
+  flex: none;
+  display: flex; gap: 8px;
+  margin-bottom: 14px;
+}
+#sh-input {
+  flex: 1;
+  min-height: 52px;
+  padding: 0 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  color: var(--text);
+  font-size: 1rem;
+}
+#sh-form button {
+  flex: none;
+  min-width: 72px;
+  border-radius: var(--radius);
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: #fff;
+  font-weight: 700;
+  font-size: 1rem;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+}
+.show-results {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.show-result {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  color: var(--text);
+  text-decoration: none;
+}
+.show-result-art {
+  width: 44px; height: 44px;
+  border-radius: 8px;
+  object-fit: cover;
+  flex: none;
+}
+.show-result-art-blank {
+  background: var(--surface-2);
+}
+.show-result-title {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+/* ---------- secondary in-page nav row ----------
+   Was `.browse-all-link`, the Home -> #/shows link (A3.3). That link is gone
+   (the menu's "Shows" item replaced it), but the row STYLE is still the right
+   one for "one more place to go, below the main content" — it now carries the
+   Shows page's link to #/starred-shows. Renamed rather than deleted-and-
+   reinvented so there is one such row style, not two. */
+.page-link-row {
+  display: block;
+  margin-top: 4px;
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text-dim);
+  text-align: center;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+.page-link-row:active { background: var(--surface-2); }
 
 /* ---------- "this page is a version behind" bar (#233) ----------
    Fixed rather than in flow: the topbar is fixed and #view pads itself past it,
@@ -396,7 +628,36 @@ button.star.on { color: var(--gold); }
   margin: 0 auto;
   padding: 12px 12px calc(24px + env(safe-area-inset-bottom));
 }
-.page-head { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+/* Wyatt (2026-09-05): on a long episode list the ‹ bar scrolling off with
+   the rest of the page (plain document flow, no special CSS at all before
+   this) is the "collapses on scroll — feels nice" behavior he likes. The
+   bug was that nothing brought it back except scrolling the whole list back
+   to literal position 0. `position: sticky` is what makes it reachable
+   again at all (it pins to `top` once its natural flow position scrolls
+   past that offset, instead of leaving the viewport for good); the
+   translateY hide/show below (driven by app.js's onWindowScroll) is what
+   makes it collapse on scroll-down and reappear the instant the user
+   reverses, at any scroll position — sticky alone would just stay pinned
+   and visible forever once passed, which is a different (also reasonable,
+   but not what was asked for) behavior.
+   `top` matches the fixed topbar's own height + inset so the sticky header
+   pins directly under it, never overlapping. z-index 15 sits below the
+   topbar (20) and the shell notice (19) but above ordinary page content. */
+.page-head {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 14px;
+  position: sticky;
+  top: calc(var(--topbar-h) + env(safe-area-inset-top));
+  z-index: 15;
+  background: var(--bg);
+  padding: 8px 0;
+  margin-top: -8px;
+  transition: transform 0.18s ease;
+  will-change: transform;
+}
+/* Toggled by app.js's onWindowScroll — never in the DOM at load, so a page
+   with no scroll listener wired up yet (tests, a stalled boot) still shows
+   the header exactly as before this fix. */
+.page-head.page-head-hidden { transform: translateY(-130%); }
 .page-head .back {
   width: 42px; height: 42px;
   display: flex; align-items: center; justify-content: center;
@@ -426,17 +687,38 @@ button.star.on { color: var(--gold); }
 .ep-row .info, .pl-row .info { flex: 1; min-width: 0; }
 .ep-row .t, .pl-row .t { font-family: var(--serif); font-size: 0.98rem; font-weight: 700; line-height: 1.3; }
 .ep-row .s, .pl-row .s { font-size: 0.78rem; color: var(--text-dim); margin-top: 2px; }
+.ep-title-link { color: inherit; text-decoration: none; }
+.ep-title-link:active { text-decoration: underline; }
+/* Publisher-set explicit-content marker (kanban card t_02c6bb0b), matching the
+   small square "E" every mainstream podcast app puts next to a title —
+   deliberately not a color-only signal (text label, not a dot) so it still
+   reads for a colorblind listener. Sits inline right after the title text it
+   is quietly filtered on (see poolFiltered's Family Mode), on ep-rows,
+   the episode page, and the show page (renderShow's h2). */
+.explicit-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 15px; height: 15px; margin-left: 6px;
+  font-size: 0.62rem; font-weight: 700; line-height: 1;
+  color: var(--text-dim); border: 1px solid var(--text-dim); border-radius: 3px;
+  vertical-align: middle; flex: none;
+}
+.show-link { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+.fp-s-show .show-link { color: inherit; }
 .pl-row .chev { color: var(--text-dim); font-size: 1.3rem; flex: none; }
-.ep-row a.go {
+/* Replaces `.ep-row a.go` (removed 2026-09-03 with the "listen elsewhere"
+   link-out itself — product rule, Joey: 4a plays everything in-app or says
+   so, it never sends a listener to another app). Same slot in the row, but
+   plain text with no href: there is nothing to click, and it should not
+   look clickable. Fires only for the rare named edge case notPlayableNote()
+   documents — not a routine degrade any more. */
+.not-playable {
   flex: none;
   min-width: 60px; min-height: 44px;
   display: flex; align-items: center; justify-content: center;
-  background: var(--surface-2);
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  color: var(--text);
-  text-decoration: none;
-  font-size: 0.82rem; font-weight: 600;
+  text-align: center;
+  color: var(--text-dim);
+  font-size: 0.72rem; font-weight: 600;
+  padding: 0 6px;
 }
 .q-num {
   flex: none;
@@ -604,6 +886,22 @@ body.fp-open.fp-expanded { padding-bottom: 340px; }
    the existing .fp-s-why, both already used by the player sheet. */
 .ep-art { width: 100%; max-width: 320px; display: block; border-radius: 10px; margin: 0 0 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
 .ep-actions { display: flex; align-items: center; gap: 12px; }
+/* A1.8 "More from this show" — same section-label language as .fy-slot h3. */
+.ep-more { margin: 24px 0 0; }
+.ep-more h3 {
+  margin: 0 0 8px;
+  font-family: var(--serif);
+  font-size: 0.86rem; font-weight: 700;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--text-dim);
+}
+/* "from Apple's index" caption (S-07, kanban t_6baccaa0): sits inside an
+   uppercase, letter-spaced h3 — reset both so the caption reads as normal
+   prose rather than shouting the provenance note. */
+.ep-more h3 .note {
+  text-transform: none; letter-spacing: normal; font-weight: 400;
+  font-size: 0.78rem;
+}
 
 .fp-scrub { width: 100%; accent-color: var(--accent); }
 .fp-times { display: flex; justify-content: space-between; font-size: 0.7rem; color: var(--text-dim); }
@@ -1070,12 +1368,14 @@ body.fy-sheet-open { overflow: hidden; }
 .fy-sheet-sub { margin: 0 0 14px; font-size: 0.8rem; color: var(--text-dim); }
 .fy-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
 .fy-chip {
+  display: inline-block;
   padding: 7px 12px;
   border-radius: 16px;
   border: 1px solid var(--line);
   background: var(--surface-2);
   color: var(--text-dim);
   font: inherit; font-size: 0.78rem;
+  text-decoration: none;
   cursor: pointer;
 }
 .fy-chip.on { border-color: var(--accent); color: var(--text); background: var(--surface); }
@@ -1194,10 +1494,10 @@ body.fy-sheet-open { overflow: hidden; }
 .fy-src-head {
   display: flex; justify-content: space-between; align-items: baseline; gap: 10px;
   color: var(--text);
-  text-decoration: none;
 }
-.fy-src-head:hover .fy-src-show { color: var(--accent); }
 .fy-src-show { font-family: var(--serif); font-size: 0.94rem; font-weight: 700; }
+.fy-src-out { flex: none; color: var(--text-dim); text-decoration: none; }
+.fy-src-out:hover { color: var(--accent); }
 .fy-src-meta { flex: none; font-size: 0.72rem; color: var(--text-dim); }
 .fy-src-eps { margin: 8px 0 0; padding: 0 0 0 14px; list-style: none; }
 .fy-src-eps li {
@@ -1210,6 +1510,69 @@ body.fy-sheet-open { overflow: hidden; }
   content: "·"; position: absolute; left: -12px; color: var(--line);
 }
 .fy-src-eps li span { color: var(--text-dim); opacity: 0.75; white-space: nowrap; }
+
+/* ---------- show page: "used in the following forays" (requirements B3/Q6) ----------
+   A footer band, deliberately separated from the episode list above it by a
+   rule + heading + explanatory note, so it reads as 4a's own cross-reference
+   rather than anything the show published — same "forays stay visually
+   distinct from episodes" rule the sources block above already keeps. */
+.show-forays {
+  margin: 30px 0 0;
+  padding: 16px 0 0;
+  border-top: 1px solid var(--line);
+}
+.show-forays-h {
+  margin: 0 0 4px;
+  font-family: var(--serif);
+  font-size: 0.86rem; font-weight: 700;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--text-dim);
+}
+.show-forays-note { margin: 0 0 10px; font-size: 0.76rem; color: var(--text-dim); }
+
+/* ---------- show-page pagination + in-page episode search (S-06) ---------- */
+.show-more-btn {
+  display: block;
+  width: 100%;
+  margin: 14px 0;
+  padding: 12px 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 600;
+  font-size: 0.92rem;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+}
+.show-more-btn:disabled { opacity: 0.6; cursor: default; box-shadow: none; }
+.show-ep-search { margin: 14px 0; }
+.show-ep-search input {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 14px;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  color: var(--text);
+  font-size: 0.95rem;
+}
+.show-ep-search .note { margin-top: 6px; }
+.show-forays-row {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 10px;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+  color: var(--text);
+  text-decoration: none;
+}
+.show-forays-row:first-of-type { border-top: none; }
+.show-forays-row:hover .show-forays-title { color: var(--accent); }
+.show-forays-title { font-family: var(--serif); font-size: 0.92rem; font-weight: 700; }
+.show-forays-draft {
+  flex: none; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.04em;
+  text-transform: uppercase; color: var(--text-dim);
+}
 
 /* ---------- playback diagnostics (#264) ----------
    Reuses the same sheet shell as the two below. Only three decisions here, and all

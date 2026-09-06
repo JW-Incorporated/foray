@@ -67,8 +67,8 @@ import { fileURLToPath } from "node:url";
 import { PlayerQueueManager, __resetInstanceForTests } from "./queue-manager.js";
 import { END_OUT_POINT } from "./queue-state.js";
 import {
-  resolveForay, indexSegments, indexSources, findForay,
-  forayElapsed, segmentAtElapsed, fmtClock,
+  resolveForay, indexSegments, indexSources, findForay, listableForays,
+  forayElapsed, segmentAtElapsed, fmtClock, DIAGNOSTIC_FORAY_ID,
 } from "./foray-resolve.js";
 import { ForayProgressStore, resumePoint, makeProgress, progressKey } from "./foray-progress.js";
 import { SEAM_GAP_SEC } from "./seam-gap.js";
@@ -1093,6 +1093,12 @@ async function mountForayPage({
      which this harness cannot load (it is a module that builds DOM at import). */
   const durableTier = durable ? fakeDurableTier(durableRows) : null;
   const forayStorage = durable ? createDurableStore({ localStorage: localStorageShim, idbTier: durableTier }) : null;
+  /* app.js's `logEvent` calls through `window.forayEventLog` now (M3), never
+     `cp_events` directly — see `event-log.js`. A synchronous fake here mirrors
+     the module's shape (`append`/`unsynced`/`markSynced`/`pruneToRetention`)
+     without any of the IndexedDB plumbing `event-log.test.js` exists to cover;
+     `eventLog.rows` is what this harness's assertions read. */
+  const eventLog = fakeEventLog();
 
   const ctx = {
     console: { ...console, warn() {}, error() {} },
@@ -1103,6 +1109,7 @@ async function mountForayPage({
        be told through, which is the honest answer for a page where the player
        module never loaded. */
     ...(forayStorage ? { forayStorage } : {}),
+    forayEventLog: eventLog,
     document: {
       body: dom.body,
       documentElement: dom.body,
@@ -1157,9 +1164,33 @@ async function mountForayPage({
     );
   }
   return {
-    dom, bridge, ctx, resolved, store, forayStorage, durableTier,
+    dom, bridge, ctx, resolved, store, forayStorage, durableTier, eventLog,
     setFailLocal: (on) => { failLocal = on; },
     html: dom.el("view").innerHTML,
+  };
+}
+
+/** A synchronous stand-in for `player/event-log.js`'s public surface — see the
+    comment where this is constructed in `mountForayPage`. `append` pushes
+    straight onto `rows` rather than batching, because these tests assert on
+    the row a moment after the call that logged it and have no reason to
+    exercise the real module's scheduling (that is `event-log.test.js`'s job). */
+function fakeEventLog() {
+  let nextId = 1;
+  const rows = [];
+  return {
+    rows,
+    append(row) { rows.push({ id: nextId++, synced: false, ...row }); },
+    async unsynced() { return rows.filter((r) => !r.synced); },
+    async markSynced(ids) {
+      const set = new Set(ids);
+      for (const r of rows) if (set.has(r.id)) r.synced = true;
+    },
+    async pruneToRetention(cap) {
+      const excess = rows.length - cap;
+      if (excess > 0) rows.splice(0, excess);
+    },
+    health() { return { ok: true, backend: "memory", pending: 0, ringSize: rows.length, faults: [] }; },
   };
 }
 
@@ -1805,7 +1836,7 @@ test("a thumbs-up records a vote — the binder that actually threw", async () =
   // bindFeedback is where the ReferenceError lived. It runs before the transport
   // is bound, so this assertion and the ones above fail together on that bug —
   // deliberately, because either symptom alone is enough to catch it.
-  const { dom, store, resolved } = await mountForayPage();
+  const { dom, eventLog, resolved, store } = await mountForayPage();
   const up = dom.thumbs.find((t) => t.dataset.thumb === "up");
   await up.click();
 
@@ -1814,7 +1845,7 @@ test("a thumbs-up records a vote — the binder that actually threw", async () =
   assert.equal(saved[first.segment_id]?.direction, "up");
   assert.ok(up.classList.contains("on"), "the control must show the vote it just took");
 
-  const events = JSON.parse(store.get("cp_events") ?? "[]").filter((e) => e.type === "thumbs");
+  const events = eventLog.rows.filter((e) => e.type === "thumbs");
   assert.equal(events.length, 1);
   assert.equal(events[0].payload.node_id, first.topic, "the learning job keys on the taxonomy node");
   assert.equal(events[0].payload.direction, "up");
@@ -1889,12 +1920,12 @@ test("a stored position makes the cold press a resume, and Start over clears it"
 test("a source credit is bound, so the outbound click is measured", async () => {
   // Publisher credit is the one surface with a business reason to be
   // instrumented — this is how we see the traffic we send them.
-  const { dom, resolved, store } = await mountForayPage();
+  const { dom, resolved, eventLog } = await mountForayPage();
   assert.ok(dom.srcLinks.length > 0, "the harness has no credit rows to bind");
   const link = dom.srcLinks.find((a) => a.dataset.srcShow === resolved.shows[0]) ?? dom.srcLinks[0];
   assert.ok(link.listeners("click") > 0, "a credit link that logs nothing sends the publisher no measurable traffic");
   await link.click();
-  const opened = JSON.parse(store.get("cp_events") ?? "[]").filter((e) => e.type === "source_opened");
+  const opened = eventLog.rows.filter((e) => e.type === "source_opened");
   assert.equal(opened.length, 1);
   assert.equal(opened[0].payload.foray_id, FORAY_ID);
 });
@@ -2063,7 +2094,6 @@ test("DELETING EVERYTHING leaves the page interactive, and resume works again af
       [progressKey(FORAY_ID)]: row,
       cp_interests: '{"food/grilling-bbq":0.82}',
       "cp_pos:ep-1": '{"seconds":12,"updated_at":"2026-08-17T00:00:00.000Z"}',
-      cp_events: "[]",
     },
     resume: { elapsedSec: 1180, index: 9, remainingSec: 2493, percent: 32, finished: false, drift: "exact", label: "42 min left", clock: "19:40" },
   });
@@ -2137,7 +2167,7 @@ test("a drifted resume is recorded as an event; a clean one is not", async () =>
   const drifted = await mountForayPage({
     resume: { elapsedSec: 900, index: 3, remainingSec: 2773, percent: 24, finished: false, drift: "moved", label: "46 min left", clock: "15:00" },
   });
-  const events = JSON.parse(drifted.store.get("cp_events") ?? "[]").filter((e) => e.type === "foray_progress_drift");
+  const events = drifted.eventLog.rows.filter((e) => e.type === "foray_progress_drift");
   assert.equal(events.length, 1);
   assert.equal(events[0].payload.drift, "moved");
   assert.equal(events[0].payload.foray_id, FORAY_ID);
@@ -2145,7 +2175,7 @@ test("a drifted resume is recorded as an event; a clean one is not", async () =>
   const clean = await mountForayPage({
     resume: { elapsedSec: 900, index: 3, remainingSec: 2773, percent: 24, finished: false, drift: "exact", label: "46 min left", clock: "15:00" },
   });
-  assert.equal(JSON.parse(clean.store.get("cp_events") ?? "[]").filter((e) => e.type === "foray_progress_drift").length, 0);
+  assert.equal(clean.eventLog.rows.filter((e) => e.type === "foray_progress_drift").length, 0);
 });
 
 test("an older player module that cannot answer the drift question does not break the page", async () => {
@@ -2501,4 +2531,176 @@ test("a snapshot from an OLDER player module leaves the label alone rather than 
     elapsedSec: 240, totalSec: 3673, error: null,   // no `rate` at all
   });
   assert.equal(dom.el("fy-rate").textContent, "1.5×");
+});
+
+/* ---------- the diagnostic Foray, and the one wire it needs (#29) ----------
+
+   `data/forays.json` carries one Foray whose FIRST item is a script-only
+   narration line: `tts-locked-screen-check`. It exists to be measured rather
+   than listened to — HUMAN-ACTIONS.md #29 asks whether iOS keeps speaking with
+   the screen locked, and answering that needs a build that actually speaks
+   something long enough for a 30-second lock to mean anything.
+
+   These tests are the part of #29 that IS answerable from Windows: that the
+   committed script reaches the plugin, unchanged, at the listener's own speed,
+   with the backend untouched. Whether a locked iPhone keeps playing it is not
+   knowable here and nothing below pretends otherwise. */
+
+/* THE CONSTANT, not a second copy of the string. `withDiagnosticUnlock` is what
+   makes this Foray reachable inside the shell, and it unlocks one id — so if
+   that id and the id in `data/forays.json` ever drift apart, the unlock stops
+   unlocking anything and every assertion below must go red rather than quietly
+   testing a Foray nobody can open. Writing the literal here made exactly that
+   drift invisible. */
+const CHECK_ID = DIAGNOSTIC_FORAY_ID;
+/** narration-craft.md §0's planning rate, the same one foray-queue.js estimates
+    with. Used here only to say "this script is long enough to lock a phone on". */
+const CHARS_PER_SEC = 17;
+
+function checkForay() {
+  const f = findForay(FORAYS, CHECK_ID, { unlocked: [CHECK_ID] });
+  assert.ok(f, `${CHECK_ID} must exist in data/forays.json`);
+  return f;
+}
+
+function checkResolved() {
+  return resolveForay(checkForay(), {
+    segments: indexSegments(SEGMENTS),
+    sources: indexSources(SOURCES),
+  });
+}
+
+/** A stand-in for `player/tts-bridge.js`'s bridge — same contract
+    (`async speak(text, opts) -> { ok }`, never throws), recording what it got. */
+function recordingTts() {
+  const said = [];
+  return { said, speak: async (text, opts) => { said.push({ text, opts }); return { ok: true }; } };
+}
+
+function playCheck({ tts, rate }) {
+  __resetInstanceForTests();
+  const backend = new FakeBackend();
+  const log = [];
+  const m = new PlayerQueueManager({
+    backend, telemetry: (t) => log.push(t), scheduler: INSTANT_SCHEDULER,
+    ...(tts === undefined ? {} : { tts }),
+    ...(rate === undefined ? {} : { rate }),
+  });
+  const r = checkResolved();
+  return { m, backend, log, r, start: () => startForay(m, r) };
+}
+
+// #29 step 5 waits "at least 30 seconds", and #29 step 1 asks for a 60+ second
+// line so that a 30-second lock is a real test rather than a near-miss. A
+// script that estimates under a minute makes the whole exercise ambiguous.
+// TO SEE IT FAIL: cut the committed script down to one sentence.
+test("the diagnostic Foray's line is long enough that a 30-second lock proves something", () => {
+  const first = checkForay().items[0];
+  assert.equal(first.type, "narration");
+  assert.equal(typeof first.script, "string");
+  assert.ok(
+    first.script.length / CHARS_PER_SEC >= 60,
+    `the line estimates to ${(first.script.length / CHARS_PER_SEC).toFixed(1)} s; #29 needs 60+`
+  );
+});
+
+// The item has to reach the queue as a SPEAKABLE item — kind tts, a script, and
+// no file. `buildForayQueue` drops a narration item carrying neither, and
+// `_isSynthNarration` refuses to speak one that carries a URL.
+// TO SEE IT FAIL: give the committed narration item an `asset` in
+// data/forays.json — it then plays as a file and never reaches the plugin.
+test("the diagnostic Foray's first queue item is script-only narration, not a file", () => {
+  const r = checkResolved();
+  const first = r.playable[0];
+  assert.equal(first.kind, "tts");
+  assert.equal(first.audio_url, null);
+  assert.ok(first.script.trim().length > 0);
+});
+
+// THE WIRE, end to end, through the shipped documents: press play and the
+// committed script is handed to the plugin verbatim. This is the assertion that
+// was false on `main` — nothing passed a `tts`, so this path threw instead.
+// TO SEE IT FAIL: remove `tts` from the options object in `playCheck`.
+test("playing the diagnostic Foray speaks the committed script through the injected plugin", async () => {
+  const tts = recordingTts();
+  const { start } = playCheck({ tts });
+
+  await start();
+
+  assert.equal(tts.said.length, 1);
+  assert.equal(tts.said[0].text, checkForay().items[0].script);
+});
+
+// generation-architecture.md §7 item 2: for a synthesiser the rate is a property
+// of the UTTERANCE, so the listener's current speed goes into `speak()` rather
+// than being applied to a media element that, for this item, does not exist.
+// TO SEE IT FAIL: change `_speakNarration` to pass `{ rate: 1 }`.
+test("the listener's own speed reaches the plugin, not a hardcoded 1.0x", async () => {
+  const tts = recordingTts();
+  const { start } = playCheck({ tts, rate: 1.5 });
+
+  await start();
+
+  assert.equal(tts.said[0].opts.rate, 1.5);
+});
+
+// A spoken item has no file, so the backend must be left alone: a `load` here
+// would be the player trying to fetch a URL that does not exist.
+// TO SEE IT FAIL: drop the `_isSynthNarration(item)` branch in `_loadItem` so
+// every item goes to `backend.load`.
+test("nothing is loaded into the audio element for a spoken item", async () => {
+  const tts = recordingTts();
+  const { backend, start } = playCheck({ tts });
+
+  await start();
+
+  assert.deepEqual(backend.loads(), []);
+});
+
+// The state `main` shipped in: the manager accepted a `tts` option and nothing
+// ever passed one, so this Foray could only ever fail to load. Pinned so the
+// wire cannot be removed silently — `player/tts-bridge.test.js` guards the
+// other end of it (that `client.js` is what passes the bridge).
+// TO SEE IT FAIL: make `_speakNarration` return silently when `this._tts` is
+// null instead of throwing.
+test("with no plugin wired at all, the line reports a load failure rather than silently passing", async () => {
+  const { log, start } = playCheck({});
+
+  await start();
+
+  assert.ok(
+    log.some((m) => /no on-device TTS plugin wired/.test(m)),
+    `expected a "no on-device TTS plugin wired" failure; got:\n${log.join("\n")}`
+  );
+});
+
+// STATED, NOT FIXED. `ForayTtsPlugin.swift` resolves `speak()` on ACCEPT, not on
+// completion, so nothing learns when the utterance ends and the queue cannot
+// advance past it — generation-architecture.md §7 item 3, explicitly out of
+// scope for the card that built `_speakNarration`. That is WHY the diagnostic
+// Foray puts its line first: the tape after it never starts, so the phone is
+// speaking exactly one thing while the screen is locked and #29's "did it
+// finish?" has an unambiguous answer.
+// TO SEE IT FAIL: build a completion signal that advances the queue — this test
+// is the reminder to delete it when that lands.
+test("the queue does not advance past a spoken item, so the line plays alone", async () => {
+  const tts = recordingTts();
+  const { backend, start } = playCheck({ tts });
+
+  await start();
+
+  assert.equal(tts.said.length, 1);
+  assert.deepEqual(backend.loads(), [], "a segment started, so the line is no longer alone");
+});
+
+// The reason `withDiagnosticUnlock` exists at all: this Foray must stay a
+// DRAFT, so the public website never lists it, and reach the phone through the
+// shell-only unlock instead. Publishing it would put a diagnostic on the home
+// screen of https://jw-incorporated.github.io/foray/.
+// TO SEE IT FAIL: change its `status` to "published" in data/forays.json.
+test("the diagnostic Foray is a draft, so only the shell ever lists it", () => {
+  const raw = FORAYS.forays.find((f) => f.id === CHECK_ID);
+  assert.ok(raw, `${CHECK_ID} must exist in data/forays.json`);
+  assert.equal(raw.status, "draft");
+  assert.deepEqual(listableForays(FORAYS, { unlocked: [] }).filter((f) => f.id === CHECK_ID), []);
 });

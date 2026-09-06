@@ -136,17 +136,64 @@ function basenameIndex() {
 /**
  * The repo-relative path a cited path denotes, or null.
  *
- * An exact path wins. Otherwise the basename must be UNIQUE in the repo: taking
- * the first of several hits would let a renamed file go on resolving against an
- * unrelated namesake, which is the whole failure this suite exists to stop. Five
- * citations resolve this way today (`sessionBuilder.ts`, `buildSession.ts`,
- * `createUserInterestsProvider.ts` and the two documents' references to each
- * other), and each is unique. `package.json` has eight namesakes and resolves
- * exactly, so the ambiguity never arises — but it would the moment the root one
- * were renamed, and then the citation should fail rather than quietly land on
- * `backend/package.json`.
+ * Three strategies, tried in order, and each exists to close one way a
+ * citation can go stale without the resolver noticing:
+ *
+ * 1. SIBLING-DOCUMENT-RELATIVE (Markdown only, M7), tried FIRST when the
+ *    citation is Markdown and a citing document is known. A legal document's
+ *    own Markdown links are written relative to ITS OWN DIRECTORY — the
+ *    anchor text `[data-safety.md](./data-safety.md)` in
+ *    `docs/legal/privacy-policy.md` means `docs/legal/data-safety.md`, not
+ *    repo-root `data-safety.md`, and that is true even on a day some OTHER
+ *    root-level `data-safety.md` also exists. This has to run before strategy
+ *    2 (the exact repo-root check) for that reason: checking the repo root
+ *    first would let a coincidental root-level namesake silently outrank the
+ *    document's own sibling and point a store reviewer at the wrong file —
+ *    the exact silent-resolution failure this suite exists to refuse. Scoped
+ *    to `.md`: this is a Markdown-authoring convention (relative links from
+ *    the citing file), not a code-citation one — code is addressed by
+ *    basename (see 3), not by the citing document's location, which would
+ *    make the same `app.js:foo()` citation resolve differently depending on
+ *    which legal doc wrote it.
+ *
+ * 2. EXACT REPO-ROOT-RELATIVE PATH. `backend/src/cli/buildSession.ts` cited
+ *    exactly as written.
+ *
+ * 3. BASENAME, if unique in the whole repo. `sessionBuilder.ts`,
+ *    `buildSession.ts`, `createUserInterestsProvider.ts` resolve this way —
+ *    the document does not have to spell out `backend/src/curation/`. Taking
+ *    the first of several hits would let a renamed file go on resolving
+ *    against an unrelated namesake, which is the whole failure this suite
+ *    exists to stop, so this strategy requires the basename to be UNIQUE and
+ *    fails outright rather than guessing when it is not. `package.json` has
+ *    eight namesakes and resolves exactly (strategy 2), so the ambiguity
+ *    never arises — but it would the moment the root one were renamed, and
+ *    then the citation should fail rather than quietly land on
+ *    `backend/package.json`.
+ *
+ * @param {string} cited     the citation text as written in the document.
+ * @param {string} [citingDoc]  the repo-relative path of the document that
+ *   wrote the citation, required for strategy 1.
  */
-function resolveFile(cited) {
+function resolveFile(cited, citingDoc) {
+  /* Sibling-relative goes FIRST for Markdown citations, ahead of the exact
+     repo-root check: a link written as `./data-safety.md` in
+     docs/legal/privacy-policy.md means docs/legal/data-safety.md, full stop,
+     even on the day a coincidental root-level `data-safety.md` also exists.
+     Checking the repo-root path first would let that coincidence quietly win
+     and point a store reviewer at the wrong file — precisely the kind of
+     silent resolution-to-something-plausible-but-wrong this suite exists to
+     refuse. (Review flagged this ordering directly: a root-level namesake
+     must never shadow the citing document's own sibling.) */
+  if (citingDoc && /\.md$/i.test(cited)) {
+    const siblingRel = path
+      .relative(ROOT, path.join(ROOT, path.dirname(citingDoc), cited))
+      .split(path.sep)
+      .join("/");
+    if (!siblingRel.startsWith("..") && fs.existsSync(path.join(ROOT, siblingRel))) {
+      return siblingRel;
+    }
+  }
   if (fs.existsSync(path.join(ROOT, cited))) return cited;
   const hits = basenameIndex().get(path.basename(cited)) || [];
   if (hits.length === 1) return hits[0];
@@ -219,10 +266,12 @@ function declaresElement(src, id) {
 
 /**
  * Resolve one `file:anchor` citation.
+ * @param {string} [citingDoc] repo-relative path of the document that wrote
+ *   the citation — see `resolveFile`'s strategy 1 (sibling-document-relative).
  * @returns {{ok: true} | {ok: false, why: string}}
  */
-function resolveAnchor(citedPath, anchor) {
-  const rel = resolveFile(citedPath);
+function resolveAnchor(citedPath, anchor, citingDoc) {
+  const rel = resolveFile(citedPath, citingDoc);
   if (!rel) return { ok: false, why: `no such file: ${citedPath}` };
   const src = codeOnly(read(rel));
 
@@ -295,7 +344,7 @@ test("every anchored citation resolves to a declaration in the file it names", (
   for (const s of allSpans()) {
     const m = ANCHORED_RE.exec(s.span);
     if (!m) continue;
-    const r = resolveAnchor(m[1], m[2]);
+    const r = resolveAnchor(m[1], m[2], s.doc);
     if (!r.ok) bad.push(`${s.doc}:${s.line}  \`${s.span}\` — ${r.why}`);
   }
   assert.deepStrictEqual(
@@ -313,9 +362,95 @@ test("every bare file a legal document names exists", () => {
   const missing = [];
   for (const s of allSpans()) {
     if (!BARE_RE.test(s.span)) continue;
-    if (!resolveFile(s.span)) missing.push(`${s.doc}:${s.line}  \`${s.span}\``);
+    if (!resolveFile(s.span, s.doc)) missing.push(`${s.doc}:${s.line}  \`${s.span}\``);
   }
   assert.deepStrictEqual(missing, [], "cited files that do not exist:\n" + missing.join("\n"));
+});
+
+/* ---------- M7: direct fixtures for the resolveFile strategies ---------- */
+
+test("resolveFile: sibling-document-relative Markdown resolves from the citing doc's own directory, not the repo root", () => {
+  /* MUTATION THAT KILLS THIS: delete strategy 1 from resolveFile (the
+     citingDoc / .md branch). Ran it — every assertion below except the
+     README.md one goes red.
+
+     `test/fixtures/legal-citations/{a,b}/note.md` are two files with the
+     SAME basename, deliberately, so strategy 3 (basename, unique-in-repo) is
+     structurally incapable of resolving `note.md` on its own — it is
+     ambiguous by construction. Only strategy 1 (relative to the citing
+     document's own directory) can tell `a/note.md`'s citation of `note.md`
+     from `b/note.md`'s. This is what isolates strategy 1 from strategy 3's
+     incidental coverage: `data-safety.md` and `privacy-policy.md` also
+     happen to be basename-unique today, which would let strategy 3 quietly
+     stand in for a deleted strategy 1 and leave this fixture green
+     regardless.
+
+     The hits check below asserts the two fixture paths are present and that
+     the basename has AT LEAST two hits — not exactly two — so a future,
+     unrelated, legitimately-named `note.md` anywhere else in the repo can't
+     turn this fixture red; ambiguity (more than one hit) is all strategy 1
+     needs to be the only path that can resolve it. */
+  const hits = basenameIndex().get("note.md") || [];
+  assert.ok(
+    hits.length >= 2 &&
+      hits.includes("test/fixtures/legal-citations/a/note.md") &&
+      hits.includes("test/fixtures/legal-citations/b/note.md"),
+    "this fixture requires test/fixtures/legal-citations/{a,b}/note.md to " +
+      "both exist, so note.md is ambiguous by basename and strategy 3 alone " +
+      `cannot resolve it — found: ${hits.join(", ") || "(none)"}`
+  );
+  // Each citing doc's own `note.md` resolves to ITS sibling, not the other.
+  // The citing path (`other.md`) does not itself need to exist — resolveFile
+  // only ever reads its DIRECTORY, exactly as `path.dirname` of a real
+  // citing document's repo-relative path would be used in production.
+  assert.strictEqual(
+    resolveFile("note.md", "test/fixtures/legal-citations/a/other.md"),
+    "test/fixtures/legal-citations/a/note.md"
+  );
+  assert.strictEqual(
+    resolveFile("note.md", "test/fixtures/legal-citations/b/other.md"),
+    "test/fixtures/legal-citations/b/note.md"
+  );
+  // The real-world case this fixture generalizes: privacy-policy.md's
+  // `[data-safety.md](./data-safety.md)` link means docs/legal/data-safety.md.
+  assert.strictEqual(
+    resolveFile("data-safety.md", "docs/legal/privacy-policy.md"),
+    "docs/legal/data-safety.md"
+  );
+  // A citing document OUTSIDE docs/legal citing an ambiguous basename that
+  // exists nowhere near it: strategy 1 must not fire (no sibling by that
+  // name), and the basename IS ambiguous, so strategy 3 must refuse too.
+  assert.strictEqual(resolveFile("note.md", "README.md"), null);
+  // A relative citation that does NOT exist next to its citing document must
+  // still fail — strategy 1 is not a license to invent files.
+  assert.strictEqual(
+    resolveFile("no-such-sibling.md", "docs/legal/privacy-policy.md"),
+    null
+  );
+});
+
+test("resolveFile: unanchored code basenames resolve without the document spelling out the directory", () => {
+  /* Direct fixture for strategy 3, isolated from the legal documents'
+     current content so a future edit to those documents cannot silently
+     stop exercising it. MUTATION THAT KILLS THIS: delete the basename
+     fallback (strategy 3) from resolveFile. Ran it — red on all four. */
+  for (const [basename, expected] of [
+    ["sessionBuilder.ts", "backend/src/curation/sessionBuilder.ts"],
+    ["buildSession.ts", "backend/src/cli/buildSession.ts"],
+    ["createUserInterestsProvider.ts", "backend/src/curation/createUserInterestsProvider.ts"],
+    ["sw.js", "sw.js"],
+  ]) {
+    assert.strictEqual(resolveFile(basename), expected, `resolving \`${basename}\``);
+  }
+  // package.json is deliberately NOT basename-unique (eight in the repo) —
+  // the bare basename must fail rather than guess at one of them.
+  assert.strictEqual(resolveFile("package.json"), "package.json");
+  assert.ok(
+    (basenameIndex().get("package.json") || []).length > 1,
+    "this fixture assumes package.json has namesakes elsewhere in the repo " +
+      "(the ambiguity strategy 3 is supposed to refuse) — if that's no " +
+      "longer true, this no longer tests what it claims to"
+  );
 });
 
 /**
@@ -579,10 +714,11 @@ test("both documents' event-type totals are the numbers the code produces", () =
      rather than for a form. */
   const WORDS = {
     five: 5, six: 6, eleven: 11, twelve: 12, thirteen: 13, fourteen: 14,
-    fifteen: 15, seventeen: 17, eighteen: 18, nineteen: 19, twenty: 20,
+    fifteen: 15, sixteen: 16, seventeen: 17, eighteen: 18, nineteen: 19,
+    twenty: 20, "twenty-one": 21, "twenty-two": 22, "twenty-three": 23,
   };
   const pp = read("docs/legal/privacy-policy.md");
-  const ppClaim = /\*\*([A-Za-z]+) of the ([a-z]+) event types the app\s+records never leave the device\.\*\*/
+  const ppClaim = /\*\*([A-Za-z]+) of the ([a-z-]+) event types the app\s+records never leave the device\.\*\*/
     .exec(pp);
   assert.ok(ppClaim, "policy §2's local-only-count sentence could not be located");
   const said = [WORDS[ppClaim[1].toLowerCase()], WORDS[ppClaim[2].toLowerCase()]];
@@ -634,41 +770,49 @@ test("policy §2's \"Not sent\" list is exactly the local-only set", () => {
 
 /* ================= 3. the cache bucket name ================================== */
 
-/** The bucket `sw.js` actually ships. */
-function shippedCacheName() {
-  const m = /const CACHE = "([^"]+)"/.exec(read("sw.js"));
-  assert.ok(m, "sw.js's CACHE constant could not be located");
+/** The cache-name prefix sw.js actually ships. Unlike the old hand-bumped
+    `foray-vN`, there is no longer one fixed literal name to pin — the suffix is
+    a content-derived deploy id that changes with every real deploy (see
+    tools/ci/generate-manifest.mjs). What CAN be pinned, and is the actual
+    drift risk (#233 bumped `foray-v4` to `foray-v5` and left the old name in
+    three places across the docs for nine weeks), is the family PREFIX: if that
+    ever changes, every doc quoting the old one goes stale at once. */
+function shippedCachePrefix() {
+  const m = /CACHE_PREFIX\s*=\s*"([^"]+)"/.exec(read("sw.js"));
+  assert.ok(m, "sw.js's CACHE_PREFIX constant could not be located");
   return m[1];
 }
 
-test("both legal documents name the cache bucket sw.js actually ships", () => {
+test("both legal documents name the cache bucket FAMILY sw.js actually ships", () => {
   /* THE DRIFT THIS PIN EXISTS FOR: #233 bumped `sw.js` to `foray-v5` and left
      `foray-v4` in three places across the two documents, for nine weeks, with
      `test/sw-generation.test.js` green the whole time — it pins the name inside
-     `sw.js` and has no idea the documents quote it.
+     `sw.js` and has no idea the documents quote it. M4 replaced the single
+     hand-bumped name with a family prefix (`foray-gen-`) plus a per-deploy
+     suffix that changes on every real deploy, so the fixed thing to pin moved
+     from "the exact name" to "the family prefix, quoted as `foray-gen-<deploy_id>`".
 
-     MUTATION THAT KILLS THIS: change `sw.js` to `const CACHE = "foray-v6";`.
-     Ran it — red on both documents. The next bump cannot land in `sw.js` alone. */
-  const name = shippedCacheName();
+     MUTATION THAT KILLS THIS: change `sw.js`'s `CACHE_PREFIX` to
+     `"foray-generation-"`. Ran it — red on both documents: neither still
+     quotes a prefix the code actually uses. */
+  const prefix = shippedCachePrefix();
   for (const rel of DOCS) {
     const doc = read(rel);
     assert.ok(
-      doc.includes(`\`${name}\``),
-      `${rel} never names the shipped cache bucket \`${name}\``
+      doc.includes(`\`${prefix}<deploy_id>\``),
+      `${rel} never names the shipped cache family \`${prefix}<deploy_id>\``
     );
-    const stale = [...doc.matchAll(/`(foray-v\d+)`/g)]
-      .map((m) => m[1])
-      .filter((v) => v !== name);
+    const stale = [...doc.matchAll(/`(foray-v\d+)`/g)].map((m) => m[1]);
     assert.deepStrictEqual(
       [...new Set(stale)], [],
-      `${rel} still names a cache bucket the app does not use: ${stale.join(", ")}`
+      `${rel} still names the retired single-version cache bucket format: ${stale.join(", ")}`
     );
   }
 });
 
 /* ================= 4. the numeric claims ==================================== */
 
-test("connect-src names exactly the app's own origin and the Supabase project", () => {
+test("connect-src names exactly the app's own origin, Supabase, and the API", () => {
   /* This replaces a pointer with an assertion, deliberately. The documents used
      to cite `index.html:13` for the CSP; they now cite `index.html`, and the
      claim they rest on — "`connect-src` names only two origins" — is checked
@@ -678,7 +822,14 @@ test("connect-src names exactly the app's own origin and the Supabase project", 
      MUTATION THAT KILLS THIS: add any origin to `connect-src` in index.html.
      Ran it — red. That is the tripwire data-safety § What would change these
      answers says is the narrowest reliable one in the client, so it should have
-     a check and did not. */
+     a check and did not.
+
+     THE THIRD ORIGIN, added when the client started reaching its own API: the
+     list is still exact, and the third entry is not free-typed here — it is read
+     out of `app.js`'s `API_ORIGIN` exactly the way the Supabase one is read out
+     of `SB_URL`. So a *different* new origin in either file is still red; only
+     the one the client actually calls is allowed, and the documents keep resting
+     on a checked claim rather than on a number somebody remembered to bump. */
   const csp = /http-equiv="Content-Security-Policy"\s+content="([^"]*)"/
     .exec(read("index.html"));
   assert.ok(csp, "index.html's CSP meta tag could not be located");
@@ -688,11 +839,13 @@ test("connect-src names exactly the app's own origin and the Supabase project", 
 
   const sbUrl = /const SB_URL = "([^"]+)"/.exec(read("app.js"));
   assert.ok(sbUrl, "app.js's SB_URL could not be located");
+  const apiOrigin = /const API_ORIGIN = "([^"]+)"/.exec(read("app.js"));
+  assert.ok(apiOrigin, "app.js's API_ORIGIN could not be located");
 
   assert.deepStrictEqual(
-    sources, ["'self'", sbUrl[1]],
+    sources, ["'self'", sbUrl[1], apiOrigin[1]],
     "policy §5 and data-safety §A4 both rest on connect-src naming exactly the " +
-      "app's own origin and our Supabase project. It now names: " +
+      "app's own origin, our Supabase project and our API. It now names: " +
       sources.join(" ")
   );
 });

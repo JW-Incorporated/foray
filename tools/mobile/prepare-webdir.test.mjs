@@ -19,6 +19,14 @@
  *      being a signal — which is why an empty slice has to be a hard error, and why
  *      the show->artwork and show->collection-id joins are asserted through the REAL
  *      `player/foray-sources.js` functions rather than re-derived here.
+ *   6. THE TRANSFORMS MUST NOT CHANGE THE PROGRAM, AND MUST NOT CHANGE THE PLAN.
+ *      Since 2026-09-04 the JS/CSS is minified and the JSON re-serialised on the way
+ *      in (docs/mobile-shell.md §3.4; the research behind it is on PR #468's branch,
+ *      not on main). The two failures that matter are a
+ *      minifier that runs BEFORE the data list is derived from `app.js`'s text — a
+ *      comment-stripped text can match fewer `fetchJson` calls, so the bundle would
+ *      lose a file while passing every budget — and a build that writes the
+ *      transformed files back over the source the website serves. Both are pinned.
  *
  * Most tests run against a synthetic repo in a temp directory, so they assert the
  * script's behaviour rather than today's file list. The ones that use the REAL repo
@@ -40,9 +48,12 @@ import {
   BUNDLED_ITEMS_PER_SHOW, PROJECTED_DATA, COPIED_WHOLE, discoverSlice,
   assertDiscoverSliceComplete, serializeSlice, sliceBytes, assertSlicesOnDisk, projectData,
   referencedSegmentIds, segmentSlice, segmentSourceSlice, assertForaySliceComplete,
-  WHY_COPIED_WHOLE,
+  WHY_COPIED_WHOLE, isBundledData,
 } from "./prepare-webdir.mjs";
+import { isMinified, minifySource } from "./minify.mjs";
 import { createRequire } from "node:module";
+import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 
 /* The production join, imported the same way prepare-webdir.mjs imports it, so the
    slice's central promise is asserted against the code the app runs. */
@@ -203,7 +214,275 @@ test("prepare refuses an output directory it should not be deleting", () => {
   assert.ok(fs.existsSync(path.join(fake, "player", "client.js")), "the guard let a real directory be deleted");
 });
 
+/* ──────────────── the transforms: minified code, compact JSON ───────────── */
+
+/* The nine fetches `makeFakeRepo` writes, so a test can append to `app.js` without
+   re-listing them and without tripping MIN_DERIVED_DATA_FILES. */
+const FIXTURE_FETCHES = [
+  "data/session.json", "data/taxonomy.json", "data/discover.json",
+  "data/item-tags.json", "data/forays.json", "data/segments.json",
+  "data/segment-sources.json", "data/semantic-index.json", "data/validated-links.json",
+].map((f) => `await fetchJson("${f}");`);
+
+test("shipped JS and CSS arrive minified: comments and whitespace gone, every identifier kept", () => {
+  /* Recommendation 1 of docs/mobile-shell-bundle-reduction.md (PR #468's branch;
+     docs/mobile-shell.md §3.4 on main), as a fixture. The two
+     properties are asserted separately because they fail separately:
+       MUTATION 1 (ran): in `prepare()`, route `.js`/`.css` through `copy` instead
+         of `minify` — the comments survive and the first assertions fail.
+       MUTATION 2 (ran): in `minify.mjs`, `minifyIdentifiers: true` — `longLocalName`
+         is renamed and the identifier assertions fail while everything else stays
+         green, which is exactly the trade the doc declined (§6.1: readable names in
+         a device diagnostic are worth 47 KB). */
+  const fake = makeFakeRepo({
+    appSrc: [
+      ...FIXTURE_FETCHES,
+      "/* a block comment that must not ship */",
+      "function alpha() {",
+      "  const longLocalName = 1; // a trailing comment that must not ship either",
+      "  return longLocalName;",
+      "}",
+    ].join("\n"),
+  });
+  fs.writeFileSync(path.join(fake, "styles.css"), "/* stylesheet prose */\n.a {\n  color: red;\n}\n");
+  fs.writeFileSync(
+    path.join(fake, "player", "queue-manager.js"),
+    "// module prose\nexport const x = 1;\nexport function beta() {\n  const keepMe = 2;\n  return keepMe;\n}\n"
+  );
+  const r = prepare({ root: fake, out: "www" });
+  const bundled = (rel) => fs.readFileSync(path.join(fake, "www", rel), "utf8");
+
+  const app = bundled("app.js");
+  assert.ok(!app.includes("must not ship"), "a comment shipped in app.js");
+  assert.ok(!app.includes("\n  "), "app.js still carries its indentation");
+  assert.ok(app.includes("function alpha("), "a top-level function was renamed or dropped");
+  assert.ok(app.includes("longLocalName"), "a LOCAL identifier was renamed — names must survive for stack traces");
+  for (const f of FIXTURE_FETCHES) {
+    const rel = f.match(/"([^"]+)"/)[1];
+    assert.ok(app.includes(`fetchJson("${rel}")`), `${rel}'s fetch is not in the shipped app.js`);
+  }
+
+  const css = bundled("styles.css");
+  assert.ok(!css.includes("stylesheet prose"), "a comment shipped in styles.css");
+  assert.ok(css.includes(".a{color:red}"), `styles.css was not minified: ${JSON.stringify(css)}`);
+
+  const mod = bundled("player/queue-manager.js");
+  assert.ok(!mod.includes("module prose"), "a comment shipped in a player module");
+  assert.ok(mod.includes("export function beta("), "an export was renamed or dropped");
+  assert.ok(mod.includes("keepMe"), "a local identifier in a module was renamed");
+
+  /* Shell-only scripts go through the same transform: the fixture's is a comment
+     and nothing else, so the bundle's copy is empty — present, and empty. */
+  for (const f of SHELL_ONLY_FILES) {
+    assert.equal(bundled(f.dest), "", `${f.dest} was copied rather than minified`);
+  }
+
+  /* And the report knows the source size, so the saving is a number rather than an
+     impression: every minified file is reported smaller than the file it came from,
+     and every non-minified file is reported at exactly its source size (index.html
+     excepted — it grows by the injected tags, which its own test measures). */
+  for (const f of r.files) {
+    assert.equal(typeof f.sourceBytes, "number", `${f.rel} reports no source size`);
+    if (isMinified(f.rel)) assert.ok(f.bytes < f.sourceBytes, `${f.rel}: ${f.bytes} B is not smaller than its ${f.sourceBytes} B source`);
+    else if (!isBundledData(f.rel) && f.rel !== "index.html") assert.equal(f.bytes, f.sourceBytes, `${f.rel} changed size on the way in`);
+  }
+});
+
+test("the plan is derived from the SOURCE app.js, before anything is minified", () => {
+  /* THE ORDERING HAZARD, PINNED. `buildPlan` finds the data files by matching
+     `fetchJson("data/...")` in the TEXT of app.js. A minifier removes comments, and
+     a comment is the one place a fetch can exist in the source and not in the
+     shipped copy — so a commented call is the cheapest probe of WHICH text the
+     derivation read. (esbuild keeps every string literal and template literal, so on
+     today's app.js the two texts derive the same list; that is luck, not a
+     guarantee, and this test does not rely on it.)
+
+     This is NOT an endorsement of commented-out fetches. It is the statement that
+     the derivation reads the file the website serves, and that the transform only
+     ever writes into the output directory — the wrong order would have shipped a
+     bundle one data file short while under every budget, which is the exact
+     "small, silent, green" shape prepare-webdir.mjs's header warns about.
+
+     MUTATION (ran): in `buildPlan`, derive from `minifySource("app.js", appSrc)`
+     instead of `appSrc`. The commented file leaves the plan, the bundle lacks it,
+     MIN_DERIVED_DATA_FILES is still satisfied at nine, and this is the test that
+     fails. */
+  const probe = "data/only-the-source-names-this.json";
+  const fake = makeFakeRepo({
+    appSrc: [...FIXTURE_FETCHES, `// fetchJson("${probe}")  <- exists only in the source text`].join("\n"),
+  });
+  fs.writeFileSync(path.join(fake, probe), "{}");
+  prepare({ root: fake, out: "www" });
+
+  assert.ok(fs.existsSync(path.join(fake, "www", probe)), `${probe} is not in the bundle: the plan was derived from the minified text`);
+  /* The shipped text really does derive one fewer file than the source, or the
+     probe proved nothing about order. */
+  const shipped = fs.readFileSync(path.join(fake, "www", "app.js"), "utf8");
+  const source = fs.readFileSync(path.join(fake, "app.js"), "utf8");
+  assert.ok(!shipped.includes(probe), "the comment shipped, so the two texts do not differ");
+  assert.equal(runtimeDataFiles(source).length, runtimeDataFiles(shipped).length + 1);
+  assert.ok(runtimeDataFiles(shipped).length >= MIN_DERIVED_DATA_FILES, "the floor would have caught this on its own; the probe is not testing the order");
+});
+
+test("prepare() reads the source tree and never writes into it", () => {
+  /* The web serves the fully commented, indented source from the repo root, and
+     the only way that changes is a build that writes its transformed output back
+     over its input. Hashed over every file in the fixture, before and after.
+     MUTATION (ran): in `prepare()`'s `minify`, add `fs.writeFileSync(src, code)`
+     beside the write to `dest` — which is the "helpful" refactor that would put
+     minified app.js on GitHub Pages. */
+  const fake = makeFakeRepo();
+  fs.writeFileSync(path.join(fake, "styles.css"), "/* prose */\n.a {\n  color: red;\n}\n");
+  const digest = (dir) => {
+    const out = new Map();
+    const walk = (d) => {
+      for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+        const full = path.join(d, e.name);
+        if (e.isDirectory()) { if (e.name !== "www") walk(full); }
+        else out.set(path.relative(dir, full), createHash("sha256").update(fs.readFileSync(full)).digest("hex"));
+      }
+    };
+    walk(dir);
+    return out;
+  };
+  const before = digest(fake);
+  assert.ok(before.size > 15, "the fixture is too small for this to mean anything");
+  prepare({ root: fake, out: "www" });
+  assert.deepEqual(digest(fake), before, "a build modified the source tree");
+  /* And the transform really ran, or the tree was trivially untouched. */
+  assert.ok(!fs.readFileSync(path.join(fake, "www", "styles.css"), "utf8").includes("prose"));
+});
+
+test("every bundled data file is compact JSON that parses to the source, and a drifted copy is caught", () => {
+  /* Recommendation 2. Two halves, two mutations:
+       MUTATION 1 (ran): `serializeSlice` back to `JSON.stringify(json, null, 2)` —
+         the bundled copies carry line breaks again and the first half fails.
+       MUTATION 2 (ran): delete the "every other data file" loop in
+         `assertSlicesOnDisk` — the corrupted session.json below goes unnoticed,
+         because that file is neither sliced nor in COPIED_WHOLE and nothing else
+         reads it back. */
+  const fake = makeFakeRepo();
+  fs.writeFileSync(path.join(fake, "data", "taxonomy.json"), JSON.stringify({ topics: ["a", "b"], nested: { k: 1 } }, null, 2) + "\n");
+  prepare({ root: fake, out: "www" });
+  for (const rel of buildPlan(fake).filter(isBundledData)) {
+    const text = fs.readFileSync(path.join(fake, "www", rel), "utf8");
+    assert.ok(!text.includes("\n"), `the bundled ${rel} is not on one line`);
+    if (PROJECTED_DATA.some((p) => p.rel === rel)) continue;
+    assert.deepEqual(JSON.parse(text), JSON.parse(fs.readFileSync(path.join(fake, rel), "utf8")), `${rel} does not parse to its source`);
+  }
+  assert.equal(fs.readFileSync(path.join(fake, "www", "data", "taxonomy.json"), "utf8"), '{"topics":["a","b"],"nested":{"k":1}}');
+
+  /* The guard on the un-listed files, reached. */
+  const bundled = path.join(fake, "www", "data", "session.json");
+  const doc = JSON.parse(fs.readFileSync(bundled, "utf8"));
+  const dropped = Object.keys(doc)[0];
+  assert.ok(dropped, "the fixture's session.json is empty, so there is nothing to drift");
+  delete doc[dropped];
+  fs.writeFileSync(bundled, serializeSlice(doc));
+  assert.throws(
+    () => assertSlicesOnDisk(path.join(fake, "www"), fake),
+    (e) => /session\.json does not parse to the same document/.test(e.message) && /neither sliced/.test(e.message)
+  );
+});
+
+test("two builds of the same tree are byte-identical", () => {
+  /* Determinism is what makes "did the bundle change?" answerable from a diff, and
+     the minifier and the serialiser both have to hold it. Built twice into two
+     directories and compared file by file.
+     MUTATION (ran): in `discoverSlice`, add `nonce: Math.random()` to `bundled_from`
+     — the shape of a plausible bit of provenance (`built_at: Date.now()` is the
+     realistic one, and it was also run and killed, but two fixture builds CAN land
+     in the same millisecond, so the unambiguous spelling is the one named). */
+  const fake = makeFakeRepo();
+  const a = prepare({ root: fake, out: "www" });
+  const bytesA = new Map(a.files.map((f) => [f.rel, fs.readFileSync(path.join(fake, "www", f.rel))]));
+  const b = prepare({ root: fake, out: path.join("mobile", "www") });
+  assert.deepEqual(b.files.map((f) => f.rel), a.files.map((f) => f.rel));
+  for (const f of b.files) {
+    assert.ok(
+      bytesA.get(f.rel).equals(fs.readFileSync(path.join(fake, "mobile", "www", f.rel))),
+      `${f.rel} differs between two builds of the same tree`
+    );
+  }
+});
+
 /* ─────────────────────── the real repo, today's numbers ─────────────────── */
+
+test("REAL REPO: every shipped JavaScript file parses under node --check, and the shipped code is a fraction of the source", () => {
+  /* THE PROOF THAT THE MINIFIED BUNDLE IS STILL A PROGRAM, on the real files, with
+     V8's own parser rather than esbuild's. `node --check` cannot be pointed at the
+     bundle's `player/*.js` directly — outside `player/package.json`'s
+     `"type": "module"` Node would parse them as CommonJS and reject every `import`
+     — so each module is checked under a `.mjs` name and each classic script under
+     `.js`, which is how the browser will treat them (`<script type="module">` vs
+     `<script>`). The shell-only scripts are modules too (`SHELL_ONLY_FILES[].module`).
+
+     MUTATION (ran): in `minify.mjs`, `minifyWhitespace: false` — the files still
+     parse, but the aggregate ratio below rises from ~0.28 to ~0.42 (comments alone
+     are 58% of the code half; comments plus whitespace are 72%), and the ratio
+     assertion fails. That is the assertion that says the minifier RAN, which the
+     parse check alone cannot. */
+  withRealBundle((r, absOut) => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "foray-check-"));
+    try {
+      const modules = new Set([...SHELL_ONLY_FILES.filter((f) => f.module).map((f) => f.dest)]);
+      let checked = 0;
+      for (const f of r.files) {
+        if (!f.rel.endsWith(".js")) continue;
+        const isModule = f.rel.startsWith("player/") || modules.has(f.rel);
+        const dest = path.join(tmp, `${checked}-${path.basename(f.rel, ".js")}.${isModule ? "mjs" : "js"}`);
+        fs.copyFileSync(path.join(absOut, f.rel), dest);
+        const res = spawnSync(process.execPath, ["--check", dest], { encoding: "utf8" });
+        assert.equal(res.status, 0, `${f.rel} does not parse after minification:\n${res.stderr}`);
+        checked++;
+      }
+      assert.ok(checked >= 20, `only ${checked} JavaScript files were checked — the plan has collapsed`);
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true });
+    }
+
+    const minified = r.files.filter((f) => isMinified(f.rel));
+    assert.ok(minified.some((f) => f.rel === "app.js") && minified.some((f) => f.rel === "styles.css"));
+    for (const f of minified) {
+      assert.ok(f.bytes < f.sourceBytes, `${f.rel} is not smaller than its source`);
+    }
+    const shipped = minified.reduce((n, f) => n + f.bytes, 0);
+    const source = minified.reduce((n, f) => n + f.sourceBytes, 0);
+    /* Measured 2026-09-04: 303,181 of 1,097,948 bytes (LF), 0.276. Comments alone
+       would leave 0.417, so 0.35 separates "stripped both" from "stripped one". */
+    assert.ok(
+      shipped / source < 0.35,
+      `the shipped JS/CSS is ${shipped} B of ${source} B source (${(shipped / source).toFixed(2)}) — the minifier is not stripping whitespace`
+    );
+    assert.ok(shipped / source > 0.1, "the shipped code is implausibly small — something was dropped, not minified");
+  });
+});
+
+test("REAL REPO: the names a stack trace needs survive minification", () => {
+  /* Identifiers are kept so a trace copied out of `player/diagnostic-log.js` by a
+     founder in a car still names the function. Checked on the real app.js: every
+     top-level `function name(` in the source appears verbatim in the shipped copy,
+     and so does a sample of local names inside them.
+     MUTATION (ran): `minifyIdentifiers: true` in `minify.mjs` — top-level names in
+     a classic script survive that (they are globals), but the local names do not,
+     and the second assertion fails. */
+  const source = fs.readFileSync(path.join(ROOT, "app.js"), "utf8");
+  const shipped = minifySource("app.js", source);
+  const topLevel = [...source.matchAll(/^function ([A-Za-z_$][\w$]*)\(/gm)].map((m) => m[1]);
+  assert.ok(topLevel.length > 100, `only ${topLevel.length} top-level functions found in app.js`);
+  for (const name of topLevel) {
+    assert.ok(shipped.includes(`function ${name}(`), `top-level function ${name} was renamed or dropped`);
+  }
+  /* Locals: `const <name> =` inside function bodies, long enough that a mangler
+     would certainly shorten them. Matched as a whole word in the shipped text
+     rather than as `const name=`, because app.js's comments carry code samples
+     whose declarations the source regex also sees; a name that survives as an
+     identifier anywhere is the property being asserted. */
+  const locals = [...new Set([...source.matchAll(/^\s{2,}const ([a-z][A-Za-z]{5,}) =/gm)].map((m) => m[1]))];
+  assert.ok(locals.length > 30, `only ${locals.length} long local names found in app.js`);
+  const renamed = locals.filter((name) => !new RegExp(`\\b${name}\\b`).test(shipped));
+  assert.deepEqual(renamed, [], `local names renamed by the minifier: ${renamed.join(", ")}`);
+});
 
 test("REAL REPO: today's bundle is under the 3 MB cap", () => {
   /* Deliberately not mocked. This is the early-warning signal for the cap.
@@ -529,7 +808,7 @@ test("the artwork the app would show is the artwork the website shows", () => {
   assert.notDeepEqual([...artworkUrlsByShow(wrong)], [...artworkUrlsByShow(discover)]);
 });
 
-test("data/item-tags.json is COPIED WHOLE, and the bundle proves it byte for byte", () => {
+test("data/item-tags.json is COPIED WHOLE, and the bundle proves it entry for entry", () => {
   /* THE FINDING THAT REVERTED HALF OF THIS CHANGE, kept as a test so nobody has to
      rediscover it. Trimming item-tags.json to the bundled pool takes it from 295 KB
      to 121 KB and looks obviously safe: search only ever looks a tag list up by an
@@ -550,17 +829,22 @@ test("data/item-tags.json is COPIED WHOLE, and the bundle proves it byte for byt
      from the website, on a phone, with every guard in prepare-webdir.mjs green. The
      test below measures both numbers so the refusal cannot rot into a quotation.
 
-     So it is copied, and the copy is asserted on the bytes. THE MUTATION THIS KILLS
-     is somebody adding it back to PROJECTED_DATA — which is a reasonable-looking
-     174 KB saving. */
+     So it is copied, and the copy is asserted on the bytes — PARSED, since 2026-09-04,
+     because every bundled data file is re-serialised without whitespace and the
+     bytes legitimately differ. What the assertion is about has not moved: a trimmed
+     map does not parse to the same map. THE MUTATION THIS KILLS is somebody adding it
+     back to PROJECTED_DATA — which is a reasonable-looking 174 KB saving. */
   const fake = makeFakeRepo({ catalogue: makeCatalogue({ shows: 4, episodes: 6 }) });
   prepare({ root: fake, out: "www", perShow: 2 });
   for (const rel of COPIED_WHOLE) {
-    assert.deepEqual(
-      fs.readFileSync(path.join(fake, "www", rel)),
-      fs.readFileSync(path.join(fake, rel)),
-      `${rel} is not byte-identical in the bundle`
-    );
+    const bundledText = fs.readFileSync(path.join(fake, "www", rel), "utf8");
+    const sourceText = fs.readFileSync(path.join(fake, rel), "utf8");
+    assert.deepEqual(JSON.parse(bundledText), JSON.parse(sourceText), `${rel} is not the whole document in the bundle`);
+    /* And it really was re-serialised rather than copied: the fixture is written
+       indented, and the bundle's copy must not be. Otherwise "parses equal" is true
+       of a verbatim copy and the whitespace saving is unmeasured. */
+    assert.ok(sourceText.includes("\n  "), `the fixture's ${rel} is not indented, so this proves nothing`);
+    assert.ok(!bundledText.includes("\n"), `the bundled ${rel} still carries the source's line breaks`);
   }
   assert.ok(COPIED_WHOLE.includes("data/item-tags.json"));
   /* And it is not in PROJECTED_DATA, which is the list that would trim it. */
@@ -576,8 +860,14 @@ test("data/item-tags.json is COPIED WHOLE, and the bundle proves it byte for byt
   fs.writeFileSync(bundled, serializeSlice(whole));
   assert.throws(
     () => assertSlicesOnDisk(path.join(fake, "www"), fake),
-    (e) => /not byte-identical to the source/.test(e.message) && /tagDF/.test(e.message)
+    (e) => /does not parse to the same document as the source/.test(e.message) && /tagDF/.test(e.message)
   );
+  /* Formatting alone must NOT trip it, or the guard is back to asserting bytes and
+     the re-serialisation could never have landed. Pretty-print the bundled copy of
+     the whole document and the guard stays quiet. */
+  const restored = JSON.parse(fs.readFileSync(path.join(fake, "data", "item-tags.json"), "utf8"));
+  fs.writeFileSync(bundled, JSON.stringify(restored, null, 4));
+  assert.equal(assertSlicesOnDisk(path.join(fake, "www"), fake), true);
 });
 
 test("REAL REPO: trimming item-tags STILL re-ranks the app, on sampling now rather than arithmetic (#275)", () => {
@@ -729,14 +1019,17 @@ test("a per-file budget failure is loud, names the knob, and is not the 3 MB cap
      The budget is enforced nowhere else, so with the call gone this is the only
      failing test — and it fails for the right reason, on the bytes on disk.
 
-     The fixture is 300 shows of padded items, which is a slice over the 800 KB
+     The fixture is 300 shows of padded items, which is a slice over the 720 KB
      budget while the whole bundle stays far under 3 MB. That separation is the
-     point: the two numbers answer different questions. */
-  const fake = makeFakeRepo({ catalogue: makeCatalogue({ shows: 300, episodes: 4, hookBytes: 800 }) });
+     point: the two numbers answer different questions. (Padding went 800 -> 900
+     bytes per hook on 2026-09-04: the slice is written without JSON whitespace
+     now, and 800 no longer cleared the budget. Not more, because `fmt()` switches
+     to MB at 1 MiB and the message regex below reads KB.) */
+  const fake = makeFakeRepo({ catalogue: makeCatalogue({ shows: 300, episodes: 4, hookBytes: 900 }) });
   assert.throws(
     () => prepare({ root: fake, out: "www", perShow: 3 }),
     (e) =>
-      /data\/discover\.json is [\d.]+ KB, over its 800\.0 KB budget/.test(e.message) &&
+      /data\/discover\.json is [\d.]+ KB, over its 720\.0 KB budget/.test(e.message) &&
       /BUNDLED_ITEMS_PER_SHOW/.test(e.message) &&
       /not the 3 MB bundle cap/.test(e.message)
   );
@@ -1216,7 +1509,7 @@ test("data/forays.json is COPIED WHOLE, because it is the slice's selector", () 
   fs.writeFileSync(bundled, serializeSlice(doc));
   assert.throws(
     () => assertSlicesOnDisk(path.join(fake, "www"), fake),
-    (e) => /not byte-identical to the source/.test(e.message) && /SELECTOR/.test(e.message)
+    (e) => /does not parse to the same document as the source/.test(e.message) && /SELECTOR/.test(e.message)
   );
 });
 
@@ -1294,9 +1587,11 @@ test("REAL REPO: a year of nightly refreshes adds no bundle bytes", () => {
   const bytes = (d) => serializeSlice(d).length;
 
   /* THE COUNTERFACTUAL FIRST, because it is the number that makes the rest matter:
-     copied whole, a year of this is a 9.6 MB file inside a 3 MB bundle. */
+     copied whole, a year of this is an 8.6 MB file inside a 3 MB bundle (10 MB as
+     `data/` indents it; `serializeSlice` has written no indentation since
+     2026-09-04, and this measures what the bundle would carry). */
   assert.ok(
-    bytes(grown) > 9 * 1024 * 1024,
+    bytes(grown) > 8 * 1024 * 1024,
     `the synthetic year is only ${(bytes(grown) / 1024 / 1024).toFixed(2)} MB, so it is not a year`
   );
 
@@ -1382,7 +1677,39 @@ test("REAL REPO: the sliced bundle, its budgets and the headroom that is left", 
           different quantity, because two alarms are only worth having if they can
           go off separately. */
     assert.ok(
-      r.total < 2.5 * 1024 * 1024,
+      /* RAISED 2.5 -> 2.7 MB on 2026-09-04, and this is a re-baseline, which the
+         comment above tells you not to do. Read why before doing it again.
+
+         That warning is about `data/item-tags.json`'s ~4 KB-a-night growth, where a
+         re-baseline buys a month and hides an unbounded trend. **This was not that.**
+         PR #467 (the five-page menu) added 9,127 bytes of app.js/styles.css/index.html
+         in one step, against a bundle already at 99.8% of this alarm — feature code,
+         bounded, one-off. The alarm fired on the straw, not on the load.
+
+         The lever the docs name for a budget error is `BUNDLED_ITEMS_PER_SHOW`
+         (`docs/mobile-shell.md` §3, `HUMAN-ACTIONS.md` #16). Lowering it 3 -> 2 would
+         have held 2.5 MB — by shipping users a shallower offline pool. Degrading a
+         user-facing property to preserve a tripwire's round number is the wrong trade
+         when the REAL cap (`MAX_BYTES`, 3 MB) still has 508 KB free.
+
+         The alarm keeps its teeth: 2.7 MB is ~75 nights of item-tags growth before it
+         fires again and ~150 before the hard cap, so it still arrives with time to act.
+         The df sidecar remains the actual fix for the unbounded half and is unaffected
+         by this line. If this assertion goes red again and the cause is item-tags
+         rather than a feature step, DO NOT raise it a third time — build the sidecar.
+
+         LOWERED 2.7 -> 2.0 MB on 2026-09-04, the same day, in the other direction, and
+         for a third reason: the bundle itself moved. Minifying the shipped JS/CSS
+         (comments and whitespace, identifiers kept) and the JSON whitespace took it
+         2,625 KB -> 1,530 KB as CI measures it (docs/mobile-shell.md §3.4; the
+         research is on PR #468's branch), so an alarm at 2.7 MB would have been 1.2 MB of
+         silence. What 2.0 MB buys, at the rates that doc measured and this change
+         scaled: ~570 KB of headroom is ~170 nights of item-tags (−30% per night now,
+         ~3.3 KB) alone, or ~55 days of item-tags PLUS feature code at its trailing
+         rate (~7 KB/day after minification, ~25 before). The code half is the one that
+         actually runs away, and it is what this alarm now mostly measures — which is
+         why it is not set at ~100 nights of item-tags the way the previous two were. */
+      r.total < 2.0 * 1024 * 1024,
       `the bundle is ${(r.total / 1024 / 1024).toFixed(2)} MB, leaving ` +
         `${((MAX_BYTES - r.total) / 1024).toFixed(0)} KB of headroom under the 3 MB cap`
     );
@@ -1392,11 +1719,17 @@ test("REAL REPO: the sliced bundle, its budgets and the headroom that is left", 
           `data/` (1,254 KB today — the catalogue, the tags, the pool) and everything
           else (897 KB — `player/` grew 66 KB -> 480 KB in the fourteen days to
           2026-08-18). A total-only alarm cannot say which one moved, and that is
-          exactly why #328 read as ordinary growth. 1.5 MB is ~282 KB above today's
-          1,254 KB: ~70 nights of `item-tags.json`, or one pipeline input in the plan. */
+          exactly why #328 read as ordinary growth. 1.5 MB was ~282 KB above the
+          1,254 KB of the day: ~70 nights of `item-tags.json`, or one pipeline input
+          in the plan.
+
+          LOWERED 1.5 -> 1.4 MB on 2026-09-04 with the JSON re-serialisation: the data
+          half went 1,465 KB -> 1,165 KB (LF), so 1.4 MB is ~270 KB above today —
+          ~80 nights of item-tags at its minified ~3.3 KB/night, the same distance in
+          nights the previous number had. Same shape, re-measured. */
     const dataBytes = r.files.filter((f) => f.rel.startsWith("data/")).reduce((n, f) => n + f.bytes, 0);
     assert.ok(
-      dataBytes < 1.5 * 1024 * 1024,
+      dataBytes < 1.4 * 1024 * 1024,
       `the bundle's data/ half is ${(dataBytes / 1024).toFixed(0)} KB — something in data/ stopped being bounded`
     );
     assert.ok(dataBytes > 512 * 1024, `the bundle's data/ half is only ${(dataBytes / 1024).toFixed(0)} KB — the plan has collapsed`);
@@ -1601,8 +1934,10 @@ function makeFakeRepo({
   }
   /* The size-cap fixture pads a file that is COPIED, not sliced: padding a sliced
      one would trip its per-file budget first and the test would pass for the wrong
-     reason. `taxonomy.json` is a plain copy. */
-  if (bigDataBytes) write("data/taxonomy.json", "x".repeat(bigDataBytes));
+     reason. `taxonomy.json` is a plain copy — re-serialised on the way in, so the
+     padding has to be VALID JSON with no whitespace to lose, or the file arrives in
+     the bundle either unparseable or smaller than the cap the test is about. */
+  if (bigDataBytes) write("data/taxonomy.json", JSON.stringify({ pad: "x".repeat(bigDataBytes) }));
   /* `extraFetches` names files that must be MISSING, so undo the loop for them. */
   for (const f of extraFetches) fs.rmSync(path.join(root, f), { force: true });
   return root;

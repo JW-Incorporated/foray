@@ -421,3 +421,36 @@ test("the backfill path and the nightly path reach the SAME topic seam, by writi
   assert.equal(overridden.status, 0);
   assert.deepEqual(overridden.items.map((i) => i.topics), [["nature/earth-science"], ["nature/earth-science"]]);
 });
+
+// ------------------------------------------- the deploy-manifest step, run --
+
+test("the real merge.mjs reaches the deploy-manifest step, and a redirected run leaves the real manifest alone", () => {
+  /* TWO THINGS AT ONCE, both of which fail silently if they break.
+     (1) merge.mjs must actually call stampDeployManifest. If it stops, nothing
+         goes red: manifest-autofix.yml pushes the `github-actions[bot]` fixup
+         commit again, and `protect-main`'s
+         `require_extra_approval_for_unattributed_changes` makes the nightly PR
+         need an approval its own author is forbidden to give (PR #443, #456,
+         2026-09-03). The skip line on stdout is the proof it got there.
+     (2) EVERY OTHER TEST IN THIS SUITE DEPENDS ON THE SKIP. runMerge redirects
+         the outputs to a temp dir; without the guard, each of the 16 runs above
+         would fire `generate-manifest.mjs --write` against the REAL checkout —
+         which on the Windows development checkout is exactly the 40-wrong-hashes
+         corruption tools/ci/crlf-guard.mjs exists to refuse. So this asserts the
+         real deploy-manifest.json and sw.js come out byte-identical.
+     KILLED BY: deleting the `if (reason) { ... return ... }` early return in
+     manifest-step.mjs's stampDeployManifest — the skip line disappears, and on
+     a CRLF checkout the byte comparison fails too. */
+  const manifestPath = join(ROOT, "deploy-manifest.json");
+  const swPath = join(ROOT, "sw.js");
+  const before = [readFileSync(manifestPath), readFileSync(swPath)];
+
+  const { status, stdout } = runMerge({ resolved: [resolvedFromBackfill()], edits: { "sysk--kola": EDIT } });
+  assert.equal(status, 0);
+  assert.match(stdout, /MANIFEST: skipped/);
+  assert.match(stdout, /MERGE_DISCOVER_PATH/);
+
+  const after = [readFileSync(manifestPath), readFileSync(swPath)];
+  assert.ok(before[0].equals(after[0]), "deploy-manifest.json was rewritten by a redirected merge run");
+  assert.ok(before[1].equals(after[1]), "sw.js was rewritten by a redirected merge run");
+});

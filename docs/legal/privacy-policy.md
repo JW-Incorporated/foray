@@ -92,32 +92,44 @@ The app also asks the browser to mark its storage as persistent
 | `cp_playlists` | Playlists you built, including the text you typed to build them. Since 2026-08-19 each part also keeps a copy of the episode's own details — its id, title, show name, length, Apple Podcasts ids and topic ids — so a playlist still lists what is in it after the episode leaves 4a's catalogue. It deliberately does **not** copy the audio URL or the artwork URL | **No** |
 | `cp_quests` | A legacy key, migrated once into `cp_playlists` | **No** |
 | `cp_queue` | Your Up Next list — an ordered array of episode ids you added from any episode row's "+ Up Next" control. Separate from `cp_playlists`; does not copy episode details, only the id | **No** |
+| `cp_starred_shows` | A per-device map of shows you starred from a show page — a lightweight favorite, separate from episode saves (`cp_saved`). No notifications, no auto-download, and starring a show never changes what 4a surfaces to you elsewhere | **No** |
 | `cp_recent_branches` | Which topic branches you recently came from | **No** |
 | `cp_foray:<id>` | Where you are inside a given foray, and which segment you were in | **No** |
 | `cp_pos:<id>` | Your position in seconds inside an individual episode | **No** |
 | `cp_rate` | Your playback speed | **No** |
 | `cp_player` | Which external podcast app you prefer to open episodes in | **No** |
 | `cp_family` | Family mode on/off — a local content filter that hides explicit-rated episodes | **No** |
+| `cp_autoadvance` | Up Next auto-advance on/off — a local per-device preference for whether finishing an episode played from your Up Next list starts the next queued item. Off by default | **No** (but see `autoadvance_pref` in §2) |
 | `cp_intro_dismissed` | Whether you dismissed the intro card | **No** |
 | `cp_foray_feedback` | Your per-segment thumbs: direction, reason codes, any note you typed, timestamp | **Yes, via `thumbs`** — see §2 |
-| `cp_events` | A rolling buffer of the last 5,000 events | **Partly** — 5 of the 18 event types are sent; see §2 |
-| `cp_synced_ts` | A bookmark recording which events have already been sent | **No** |
 | `cp_profile_id` | A random local id (e.g. `p-a1b2c3d4...`) generated on this device | **No** — it is stamped on local events but is **not** included in anything sent |
 | `cp_sb_session` | The access and refresh token for your anonymous account, and its user id | It **is** your credential for our database — see §3 |
 | `cp_storage_health` | A diagnostic record of storage failures, for troubleshooting | **No** |
 | `cp_diag` | A playback diagnostic record, capped at the most recent 200 entries: how long each seam between two segments took, the load deadline in force, out-point overshoot, stops (a lost audio route, an interruption), which resume point was written and read back, when the app went to the background and for how long, and any press of a play or transport control that failed — with the *class* of the error (for example `NotAllowedError`, meaning your browser held the audio back), never its message, and with a count when the same press fails repeatedly. It holds no audio, no URLs, no account id and no device names — when it records that a known audio route came back, it records only *that* one was recognised, never which | **No** — it is never transmitted; the drawer's **Playback diagnostics** shows it and lets you copy or clear it |
 
-The web app also keeps a Cache Storage bucket named `foray-v5` holding the app
-shell and the catalogue JSON files, so the app renders in a dead zone (`sw.js`).
+**The event queue is not a `cp_` key.** Until 2026-09, the buffer of events
+waiting to be sent lived at `cp_events` (with a `cp_synced_ts` bookmark) inside
+the same two-tier store as everything above. It is now its own IndexedDB
+database (`foray_events`, object store `events`, `player/event-log.js`),
+outside the `cp_` namespace and outside "Delete my data"'s enumeration —
+deliberately, because it is an OUTBOUND QUEUE, not resumable state about you: a
+row that fails to sync is retried, and once sent (or once it ages past the
+5,000-row cap) it is deleted from the device, never resurrected. **Delete my
+data** deliberately does not log an event for the deletion itself (see §7), so
+there is nothing about the deletion for this queue to hold.
+
+The web app also keeps Cache Storage buckets named `foray-gen-<deploy_id>` (one
+per retained deploy — up to two at a time), `foray-pointer` (which one is
+current) and `foray-pending` (used only mid-install), holding the app shell and
+the catalogue JSON files, so the app renders in a dead zone (`sw.js`).
 **It never caches podcast audio**, because the service worker ignores every
 request that is not to our own origin.
 
 ## 2. What leaves your device, exactly
 
-The app buffers events locally and periodically sends some of them to our
-database (Supabase — see §3). **Fifteen of the twenty event types the app
-records never leave the device.** The buffer is trimmed to the most recent 5,000
-entries.
+The app buffers events locally (in the event queue described above) and
+periodically sends some of them to our database (Supabase — see §3). **Eighteen of the twenty-three event types the app records never leave the device.** The
+buffer is trimmed to the most recent 5,000 entries.
 
 **Sent** (`app.js:toEventRow()`). Every row carries your anonymous account id
 and a timestamp:
@@ -135,8 +147,10 @@ position; stored about every 15 seconds, recorded as an event at most once a
 minute per episode — `player/position-store.js:save()`), `foray_play`,
 `foray_restart`, `foray_progress_drift`, `source_opened`, `saved`'s counterpart
 `unsaved`, `playlist_built`, `playlist_removed`, `player_pref`, `family_mode`,
-`refreshed_all`, `storage_fault`, `queued` and its counterpart `unqueued`
-(added to your Up Next list, or removed from it).
+`autoadvance_pref` (toggling Up Next auto-advance on or off), `refreshed_all`,
+`storage_fault`, `queued` and its counterpart `unqueued`
+(added to your Up Next list, or removed from it), `show_starred` and its
+counterpart `show_unstarred` (starring a show, or removing a star).
 
 **The `picked` row's two labels are narrower than they sound**, and we would
 rather say so than let the field names imply more collection than happens:
@@ -163,8 +177,17 @@ Two things worth calling out plainly, because a generic policy would hide them:
   reacted to, it is transmitted, and you should know that before you use it.
 
 **Nothing you type into the playlist box is transmitted.** That search runs
-entirely on your device against files already downloaded
-(`search-engine.js`); playlist events are local-only.
+entirely on your device against files already downloaded (`search-engine.js`)
+and is never logged as an event; playlist events are local-only.
+
+**The Shows search box works the same way — until it has to look further
+than your device.** Typing a search first checks 4a's local catalogue
+on-device, the same as the playlist box, and if a show or episode is already
+in that local catalogue nothing you typed leaves your device. If it is not —
+you are searching for something outside 4a's local catalogue — 4a sends your
+typed query off-device to look it up against a shard/index so it can still
+find it. That query, and nothing else about you, is what is transmitted for
+that lookup.
 
 ## 3. The anonymous account
 
@@ -395,9 +418,9 @@ browser's settings for the origin the web app is served from,
 removes the local copies but **not** the server rows, for the reason in the
 paragraph above.
 
-The `foray-v5` Cache Storage bucket is not touched by the button: it holds the
-app shell and the catalogue files (§1), which are the same for every listener and
-say nothing about you.
+The `foray-gen-<deploy_id>` Cache Storage buckets are not touched by the
+button: they hold the app shell and the catalogue files (§1), which are the
+same for every listener and say nothing about you.
 
 > TODO(founder): publish a **data-deletion URL** for the store listings. The
 > in-app control answers Play's "can users request deletion" question, but the

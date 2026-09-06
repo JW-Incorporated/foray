@@ -708,7 +708,10 @@ Read those three together, because two of them can lie on their own:
 
 The click matters: nothing is written until something happens.
 
-**Status:** OPEN
+**Status:** DONE — 2026-09-01. The `foray-v5` bump merged in #241 and `sw.js`
+on `main` confirms it (`sw.js:82-85`); nothing about it is waiting on a
+founder. The `forayStorageHealth()` console check above is a manual spot-check
+a founder can still run at leisure, not a gate on this item.
 
 ---
 
@@ -786,6 +789,62 @@ decision (CLAUDE.md decision authority #3) and not one to stumble into.
 `classify-agent-tier1` rows within 48 hours without anyone running a command
 locally — either from six `classify/*` PRs, or from one
 `classify/reconcile-*` PR.
+
+> **Update, 2026-08-31:** the reconciler ran again (18 days after the first,
+> 19,278 → 19,677 agent-classified shows), and it now blocks on a second
+> problem that (b) does not fix by itself — see #27. Recommendation (b) below
+> is unchanged and still correct; #27 is a prerequisite for it to keep
+> working cleanly rather than a reason to prefer (a).
+
+**Status:** OPEN
+
+---
+
+### 27. Rebase (or reconfigure) five of the six classify shard branches onto `main`, past PR #203
+
+**Tag:** `[BLOCKING]` · **Time:** ~15 minutes, or a cloud-routine config change · **Owner:** Wyatt
+
+**Why it matters.** PR #203 (2026-08-16) fixed the classify shard key from
+`Number(id) % N` (2.20x unbalanced) to `fnv1a32(String(id)) % N` and merged to
+`main`. Measured 2026-08-31, **five of the six live shard branches
+(`origin/reclassify-0,1,2,4,5`) never received that fix** — they forked from
+`origin/reclassify` on 2026-07-25 and have not merged or rebased onto `main`
+since, so their committed `tools/classify/prepare-batch.mjs` is still the
+pre-#203 file and computes the old, unbalanced key on every run, indefinitely.
+(`origin/reclassify-3` is the exception: it has #203's code, apparently
+copied in rather than merged — worth understanding, but not a problem by
+itself.)
+
+**This did not lose or misclassify any data — `reconcile-shards.mjs` was
+fixed in the same change that found this (see `docs/agents/runners.md`'s
+2026-08-31 update block) to correctly reconcile branches running either key,
+indefinitely.** So this is not urgent in the sense of blocking today's
+reconcile. It is real technical debt: the fleet will keep running an
+unbalanced shard key that PR #203 measured as 2.20x skewed (shard0 would idle
+around day 12 while shard3 still has 1.8x its share of work), and every future
+reconcile has to keep reasoning about two shard keys instead of one.
+
+**Two ways to actually fix it, pick one:**
+- **Rebase the five branches onto `main`** (or a common ancestor that already
+  has #203), so their `prepare-batch.mjs` starts computing the balanced key
+  going forward. This is a repo operation an agent could do, EXCEPT the
+  branches are driven by six always-on cloud routines that commit to them
+  directly — a rebase done by hand here could be overwritten or conflict with
+  the next scheduled run. **This needs Wyatt's judgment on whether the cloud
+  routines can be safely paused for the rebase, which is outside what this
+  repo's agents can see or control** (per CLAUDE.md decision authority #2,
+  the routine configuration itself is Wyatt's Claude Cloud account, not this
+  repo).
+- **Point each routine's cloud config at code that already has #203** —
+  functionally the same fix, applied at the routine-configuration layer
+  instead of the branch layer. Whichever of #5/#10's `HUMAN-ACTIONS.md`
+  history is current for "how these routines are configured" is the starting
+  point.
+
+**Worked if:** a fresh dry-run of `node tools/classify/reconcile-shards.mjs
+--dry-run` some time after this ships reports `shard_key hashed` (not
+`hashed+legacy`) for all six branches, meaning every branch's own new work is
+using the current key exclusively.
 
 **Status:** OPEN
 
@@ -973,9 +1032,16 @@ letter, so a `4a` segment will not build — `ai` does, because it starts with a
 2. Reply either **"confirmed"**, or with the id you want instead.
 3. If you want a different one, a session changes the id itself in **three** places — that file, the pinned assertion in `tools/mobile/shell-invariants.test.mjs` ("the app id is pinned, because it is permanent once published"), and `APP_ID` in `.github/workflows/ios-build.yml`, which is what `simctl` is given. This item said "exactly two" through two renames; `APP_ID` was the third all along, kept in sync by hand each time, and as of 2026-08-25 a test derives it from the config so a miss cannot be quiet. **A change to the reverse-DNS *prefix* is bigger than two lines**, because the Android plugin's Java package shares it: the 2026-08-25 move to `ai.jwlabs` touched 19 files, including a `git mv` of the Java source tree, `APP_ID` in `.github/workflows/ios-build.yml` and two fully-qualified needles in `.github/workflows/android-build.yml`. Still cheap, still not two lines.
 
+**CONFIRMED BY WYATT 2026-09-03.** Asked directly, while assembling the App Store
+submission kit, whether `ai.jwlabs.foura` is the id to publish under forever: *"bundle
+ID is correct"*. That is the reply step 2 asks for, so this item is closed. Nothing in
+`mobile/capacitor.config.json` changed — the value was already right; what was missing
+was the ruling on it. The App ID registration in #19 can now proceed against
+`ai.jwlabs.foura`, and that registration is the irreversible step.
+
 **Worked if:** the status below says DONE and `mobile/capacitor.config.json`'s `appId` is the id you intend to publish under, forever.
 
-**Status:** OPEN
+**Status:** DONE (2026-09-03)
 
 ---
 
@@ -1832,7 +1898,14 @@ or on its own store URL.
 ---
 ---
 
-### 26. Back up the Android upload key, and install its three secrets
+### 30. Back up the Android upload key, and install its three secrets
+
+> **Renumbered from #26, 2026-09-01.** #26 was already in use for "Publish the
+> Play Store listing" (above); item numbers are stable IDs and are never
+> reused (see the rule at the top of this file), so this action — added later
+> under the same number by mistake — takes the next unused ID instead. Any
+> reference elsewhere in the repo to "HUMAN-ACTIONS.md #26" meaning the
+> upload-key backup has been updated to #30.
 
 **Tag:** `[BLOCKING]` for any Play upload · **Time:** ~10 minutes · **Owner:** Wyatt (he holds the key)
 
@@ -1883,7 +1956,709 @@ summary page, and you can say where the two backups are without looking.
 **Status:** OPEN
 
 ---
+
+### 28. Run the new AMD/Vulkan transcription path on your actual RX 6700 XT and report the numbers
+
+**Tag:** `[BLOCKING]` for AMD-GPU throughput numbers · **Time:** ~20 minutes (mostly download/setup) · **Owner:** Joey (his machine, his GPU)
+
+**Why this exists.** `tools/transcribe` §3 only ever worked for NVIDIA cards
+— CUDA is NVIDIA-proprietary, and `faster-whisper`/`ctranslate2` (the whole
+CPU/CUDA stack) has no AMD support at all, not even a slow one. Your RX 6700
+XT could not use the GPU path that existed before this change; it would
+either error outright or (worse) silently run CPU speed while claiming
+`--device cuda`. §3b adds a real second engine — whisper.cpp with a Vulkan
+backend — chosen specifically because Vulkan runs on AMD cards including
+RDNA2 (your 6700 XT) without AMD's own ROCm toolkit, which does not
+officially support the 6700 XT at all.
+
+**What is proven vs. not.** This sandbox has no AMD GPU (it has no GPU of
+any kind), so everything that could be checked here *was* checked: the new
+`bench_whispercpp.py` script and a from-source CPU build of whisper.cpp
+were run end-to-end against a real audio sample, produced a correct
+transcript, and printed the same JSON shape `bench.py` already produces —
+so the code path itself is not broken. **What was not, and could not be,
+checked here:** whether the Vulkan backend actually engages your GPU, and
+how fast it runs. Every throughput number anyone gives you for this path
+until you run it yourself is a claim from someone else's card, not a
+measurement of yours.
+
+**Steps.**
+
+1. Follow `tools/transcribe/README.md` §3b exactly — download a
+   Vulkan-enabled `whisper-cli.exe` (prebuilt, no compiling needed for most
+   people), grab one `ggml-base.en.bin` model file, and run
+   `bench_whispercpp.py` against one podcast episode (any episode already on
+   your machine from earlier testing works, or fetch one the same way §1
+   describes).
+2. **Confirm the GPU actually engaged.** The run's console output should
+   show a line like `ggml_vulkan: 0 = AMD Radeon RX 6700 XT (...)` near the
+   top. If you only see CPU info, stop and say so — that means the setup
+   grabbed a CPU-only build by mistake, not that the GPU path doesn't work.
+3. Paste the JSON line the script prints at the end (starts with
+   `{"audio": ...`) into a comment on this repo's kanban board or wherever
+   you're reporting back. That line alone has everything needed to update
+   §3b's "expected, not measured" numbers with real ones.
+4. If it errors, paste the exact error — most likely failure modes are (a)
+   `whisper-cli.exe` can't find its DLLs (they must sit next to the .exe,
+   not just be downloaded), or (b) an old/mismatched GPU driver not
+   supporting Vulkan 1.3 (a driver update from AMD's site fixes this).
+
+**Worked if:** you have a real `realtime_multiple` number for your RX 6700
+XT on at least one model size, and the Vulkan device line confirms the GPU
+(not the CPU) produced it.
+
+**Status:** OPEN
+
+---
+
+### 29. Test whether on-device narration survives a locked screen on a real iPhone
+
+**Tag:** `[BLOCKING]` for `Foray_Generation_Architecture.md` §1.2/§9.1 · **Time:** ~5 minutes once a build exists, then a 40-second listen · **Owner:** whoever has the iPhone
+
+**Why it matters.** `Foray_Generation_Architecture.md` §9.1 flags this as the single
+highest-priority open question in the whole generation-architecture spec: *"Measure
+this before anything else in this document is built."* `docs/research/mp1-background-audio.md`
+already measured that a plain `<audio>` element survives a locked screen on iOS
+(0.0045 s out-point overshoot) — but `AVSpeechSynthesizer` (the native TTS plugin,
+`mobile/plugins/foray-tts/`) is a different API, and nobody has measured whether it
+gets the same treatment. `docs/research/on-device-tts.md` §9 (added 2026-09-01) worked
+through everything documentation alone can settle: `AVSpeechSynthesizer` *can*
+inherit the app's background-audio grant by default (`usesApplicationAudioSession = true`,
+per Apple's WWDC20 session 10022), but *"will use"* is not *"will configure"* — so
+whether it actually holds up on a locked phone is genuinely unknown without a device
+test, even now that the plugin claims the session itself (see below). The Web Speech API path
+(`speechSynthesis`, no native plugin) has no such documented mechanism at all and is
+the weaker candidate either way.
+
+**Which version you are testing (both prerequisites have landed).** `on-device-tts.md`
+§9.4 asked for one plugin fix before this test, so that a failure could not just mean
+"the audio session was never activated". Both of these are now in `main`:
+
+1. **The audio-session fix — landed 2026-09-01, PR #389.** `ForayTtsPlugin.swift`
+   now calls `AVAudioSession.sharedInstance().setCategory(.playback, mode: .spokenAudio,
+   options: [])` and `setActive(true)` immediately before `synthesizer.speak(utterance)`.
+2. **A speech-rate fix found while building this test.** The plugin was assigning the
+   player's speed multiplier straight onto `AVSpeechUtterance.rate`. Those are different
+   scales: the player's `1` means "normal speed", but `AVSpeechUtterance.rate = 1.0` is
+   `AVSpeechUtteranceMaximumSpeechRate` — the fastest the synthesiser goes. Every
+   narration line would have been read at top speed, which would have made this test
+   unreadable and its result meaningless. `ForayTtsPlugin.utteranceRate(playbackMultiplier:)`
+   now maps `1` onto `AVSpeechUtteranceDefaultSpeechRate`.
+
+So report this as **the fixed plugin**, not the unfixed one. Neither fix has been heard
+on a device — only compiled — which is part of what you are checking.
+
+**What was built for you.** `data/forays.json` now carries one Foray,
+`tts-locked-screen-check`, titled **"On-device narration, screen off"**. Its first item
+is a single spoken line of about **99 seconds** that names a marker every ten seconds
+("Marker one, ten seconds… Marker nine, ninety seconds"), so **whichever marker you hear
+last IS the measurement** — you do not have to time anything. It is a `draft`, so the
+public website never lists it; the native app lists it because
+`withDiagnosticUnlock()` in `player/foray-resolve.js` unlocks that one id when
+`window.Capacitor` exists. The line is the FIRST item and the queue does not yet advance
+past a spoken item, so nothing else will start playing over it — that is deliberate.
+
+**Steps.**
+
+1. **Get the build.** Two ways, in order of preference:
+   - The `ios-build` run for the PR that added this already tried to upload to
+     TestFlight (it triggers on `player/**` and `mobile/**`). Open TestFlight on the
+     iPhone and look for a new build of **`4a`**.
+   - If nothing is there, go to
+     `https://github.com/JW-Incorporated/foray/actions/workflows/ios-build.yml`,
+     press **Run workflow**, branch **`main`**, leave `probes` as-is, press the green
+     **Run workflow** button, and wait for the job **`ios-shell`** to finish.
+   - **Expect this to be the hard part.** The TestFlight upload has never once
+     succeeded end to end (item #19). If the run is red at the step
+     **"Archive, export and upload to TestFlight"**, that is a separate problem — paste
+     the failing step's log and stop here; nothing below is testable yet.
+2. **Install it** from TestFlight on the iPhone and open **`4a`**.
+3. **On the home screen, find the row that reads `foray · draft` above the title
+   "On-device narration, screen off"** and tap it. If that row is not there, the build
+   predates this change — check the build number against the PR.
+4. Turn the **ringer/volume up** so you can hear it in your pocket, then press the big
+   **play** button. Within a second or two a voice starts: *"This is the on-device
+   narration test for Foray. Lock the phone now and keep listening."*
+5. **Lock the phone immediately** (side button) and put it in your pocket. Keep
+   listening — the whole point is that you can hear exactly where it stops.
+6. **Listen for at least 40 seconds.** The line names its own markers, so you do not
+   need a stopwatch: you want to get past *"Marker three, thirty seconds"* at minimum.
+7. Unlock and note two things:
+   - **the last marker you heard** (or "it never stopped" — the line ends with
+     *"Marker nine, ninety seconds"* and then a closing sentence);
+   - **whether the voice came back on its own** when you unlocked, or stayed silent.
+     A voice that resumes was paused by the system; a voice that never returns was
+     stopped, and those are different problems with different fixes.
+8. **Report back in this exact form:** `native TTS plugin (session + rate fixes),
+   locked screen, last marker heard = <N or "none — played through">, resumed on
+   unlock = <yes / no>.`
+
+**A five-minute thing you can do right now, which answers a DIFFERENT question.** Open
+`https://jw-incorporated.github.io/foray/?foray=tts-locked-screen-check` in a **Private
+Browsing** tab in Safari on the iPhone (private, so the service worker cannot serve you
+an old copy of the player), tap the same play button, and lock the phone. That plays the
+same line through the **Web Speech API**, not the native plugin — `on-device-tts.md` §9.2
+expects it to stop, and it is the weaker candidate either way. It is not a substitute for
+steps 1-8. It is worth doing because it proves the whole chain (data → player → speech)
+works before you spend time on the build, and because "the weak path also survived" would
+be genuinely surprising and worth knowing.
+
+**Worked if:** there's a written result saying whether the test line played to
+completion with the screen locked — same reporting bar item #11 already set for the
+`<audio>` case.
+
+**When it is answered, delete the instrument.** The Foray in `data/forays.json`,
+`DIAGNOSTIC_FORAY_ID` and `withDiagnosticUnlock()` in `player/foray-resolve.js`, their
+call sites in `player/client.js`, and the tests that name them all go in one commit.
+None of it should be in the App Store build.
+
+---
+
+### RESULT (Wyatt, 2026-09-05): locked screen, **it continued all the way through.**
+
+Run on a TestFlight build off `main` — the first build carrying #463's player/plugin
+wiring, and carrying #389's explicit `AVAudioSession.setCategory(.playback,
+mode: .spokenAudio)` + `setActive(true)`. So this is the FIXED plugin, not the
+unfixed one this item warned about.
+
+**`AVSpeechSynthesizer` keeps speaking with the screen locked.** That answers
+`Foray_Generation_Architecture.md` §9.1's "measure this before anything else in this
+document is built": on-device narration is a viable delivery path on iOS, and
+`docs/research/on-device-tts.md`'s reasoning from `usesApplicationAudioSession`
+holds up on a real device.
+
+**Three things the run surfaced that it was not looking for.** All three are
+engineering work, not founder actions; they are recorded here because this is where
+the evidence landed.
+
+1. **The rate mapping is badly wrong — 1.5x played at roughly 3x.** This is the
+   measurement `utteranceRate(playbackMultiplier:)`'s own comment said it was
+   waiting for: *"NOT PERCEPTUALLY LINEAR... 1.5 here is 'half again faster than
+   default' in the framework's units, not a measured 1.5x wall-clock speed-up.
+   Measuring that needs a device, which is the same limit HUMAN-ACTIONS #29 exists
+   for."* It now has a device. The function multiplies
+   `AVSpeechUtteranceDefaultSpeechRate` (0.5) by the playback multiplier, so 1.5x
+   asks for rate 0.75 — and Apple's curve from 0.5 to 1.0 spans normal speech to
+   unusably fast, so 0.75 lands near 3x. The listener's speed control is therefore
+   lying to them. **Do not treat one data point as a calibration curve**: it fixes
+   the shape of the error, not the exact mapping, and a corrected version needs a
+   second device reading to confirm.
+2. **The voice is much worse than the Kokoro acceptance fixture.** Cause is one
+   line: `ForayTtsPlugin.swift` sets a voice only when a `lang` is passed, via
+   `AVSpeechSynthesisVoice(language:)`, which returns the system DEFAULT for that
+   language — the compact/legacy formant tier. `on-device-tts.md` §1 already noted
+   Apple's catalogue "spans multiple synthesis tiers (compact/legacy formant-style
+   voices through modern neural 'Enhanced'/'Premium' voices, downloaded per-language
+   on demand)" and nothing in the plugin ever asks for one. Selecting the best
+   installed tier is small; whether it closes the gap to Kokoro is a listening test,
+   not a code question, because those voices are per-device downloads and are not
+   guaranteed present.
+3. **4a still has no lock-screen controls.** Confirmed by inspection on `main`: no
+   `MPRemoteCommandCenter` and no `MPNowPlayingInfoCenter` anywhere under `mobile/`,
+   the shipping Capacitor shell. The only matches in the repo are under `ios/App/`,
+   which `CLAUDE.md` classifies as reference material rather than the app. Same gap
+   as founder-feedback F5/F7, and unchanged by this test: audio surviving the lock
+   screen and the lock screen offering transport controls are two different
+   mechanisms, and only the first was measured here.
+
+**The instrument stays for now**, deliberately, against the deletion note above:
+findings 1 and 2 are both re-measured with the same 99-second counting line, and
+deleting it before they are fixed would mean rebuilding it to check the fix. It must
+still be gone before an App Store build.
+
+**Status:** DONE (2026-09-05)
+
+---
+### 31. Before phase 2 is scheduled: build the four App Store Guideline 1.2 UGC-moderation requirements
+
+**Tag:** `[BLOCKING]` for scheduling phase 2 (any-user prompting) · **Time:** its own future engineering card, not a quick action · **Owner:** Joey/Wyatt (decision to schedule phase 2), engineering (the build)
+
+**Why it matters.** `docs/curation/generation-architecture.md` §1.3 already says this in
+the engineering docs: *"The moment a stranger's prompt produces content other users can
+hear, 4a hosts user-generated content and App Store Guideline 1.2 applies: content
+filtering, a mechanism to report objectionable content, a way to block abusive users, and
+published developer contact information. None of the four exist. This is a
+submission-blocking discovery for phase 2 and it belongs in `HUMAN-ACTIONS.md` the day
+phase 2 is scheduled — not the day it ships."* A 2026-09-02 review confirmed none of the
+11 marketing/legal documents (including `docs/marketing/05-legal-risk-memo.md`, the
+dedicated legal-risk-scoping memo) named this gap either, so it existed only in one
+engineering doc where a founder scheduling phase 2 from the marketing/legal corpus alone
+would not see it. `05-legal-risk-memo.md` §2 now carries the same four-item list (added
+2026-09-02) — this item is the corresponding founder-facing tripwire.
+
+**Today (phase 1, founder-prompted, founder-reviewed before publish): not applicable.**
+4a is not hosting UGC in Apple's sense yet — do not build the moderation system now.
+
+**The moment phase 2 (any user's prompt reaching the shared catalogue) is scheduled**,
+this item blocks it: all four of content filtering, a report-content mechanism, a
+user-blocking mechanism, and published developer contact info must exist before that
+build reaches App Review, or it is an expected rejection. When phase 2 is scheduled,
+open the engineering card for the moderation system itself against this item.
+
+**Status:** OPEN — dormant until phase 2 is scheduled; re-read this item the day that decision is made.
+
+---
+
+### 32. Rule on the 2026-07-08 marketing-corpus freeze: still in effect, needs a formal exception process, or should be lifted
+
+**Tag:** `[BLOCKING]` for further marketing-corpus work · **Time:** ~5 minutes · **Owner:** the owner (founder strategic call)
+
+**Why it matters.** `07-premortem.md` and `08-REQUIREMENTS-DELTA.md` (both
+2026-07-08) issued a standing order: "Marketing corpus is frozen until
+there's a retention curve for it to describe." (also recorded in
+`docs/DECISIONS.md`, 2026-07-08 "night 2" entry.) A Fable-driven review on
+2026-09-02 found the freeze has been repeatedly worked around without
+founder sign-off:
+
+- `docs/marketing/09-product-feature-review.md` (dated 2026-07-08, edited
+  2026-08-21 per its own banner) extends the corpus with R13-R23 and
+  self-grants a freeze exception ("R14 — narrow, justified") instead of
+  requesting one, and locks App Store listing copy into CI via R23.
+- `docs/marketing/10-category-coverage.md` (dated 2026-07-09, numbered
+  after both freeze documents) issues new curation orders with no freeze
+  acknowledgment.
+- `docs/marketing/06-naming-study.md` was edited 2026-08-21 without citing
+  a freeze exception.
+- A live Google Play store listing was drafted and captured
+  (`docs/store/play/`, captured 2026-08-25) — new external go-to-market
+  surface, well after the freeze. (Separately tracked for publication at
+  item #26 above — that item assumes the corpus is publishable; this item
+  is the prior question of whether it should be.)
+
+Per Fable ruling FR-t_437143f8-1 (classification-only consult, recorded on
+kanban card t_437143f8, board=foray): this is an explicit founder-issued
+strategic gate (CLAUDE.md: "Humans make strategic decisions; AI executes")
+with no local written exception process, so it is human-only
+(`explicit_project_human_gates`) — Fable cannot resolve it, only certify
+that it needs you. Per the ruling, all further marketing-corpus work stays
+paused pending your call.
+
+**The decision (pick one).**
+- **A — freeze still stands.** Nothing above was authorized; the
+  self-granted exceptions get flagged/reverted as needed and
+  marketing-corpus work stays paused until an explicit retention curve
+  exists.
+- **B — define a formal exception process.** State who can grant an
+  exception and on what grounds (e.g. legal/safety corrections should
+  probably always be exempt) so future narrow needs don't require a full
+  freeze lift.
+- **C — lift the freeze.** Work has already continued past it in
+  practice; formally end it and let marketing-corpus work resume under
+  normal review, not freeze rules.
+
+**Worked if:** you record A, B, or C (and, for B, the exception rule) as a
+dated entry in `docs/DECISIONS.md`, and this item is marked `DONE`.
+
+**Resolved 2026-09-02: C — lift the freeze.** Joey, via Discord, 2026-09-02:
+`HA32=C`. Confirmed by Wyatt 2026-09-03. An earlier draft of this line described
+the ruling as *inferred* from PR #444 and an abandoned branch rather than given;
+that was wrong, and `docs/DECISIONS.md`'s 2026-09-02 entry records the correction
+and why it is kept visible. Marketing-corpus work resumes under ordinary review.
+
+**Status:** DONE
+
+---
+
+### 33. Enable leaked-password protection in Supabase Auth settings
+
+**Tag:** `[UPGRADE]` · **Time:** ~2 minutes · **Owner:** the owner (dashboard-only toggle)
+
+**Why it matters.** The Supabase database linter flagged that leaked-password
+protection (the HaveIBeenPwned check on new/changed passwords) is off. This is
+a toggle in the Supabase dashboard's Authentication settings — not a database
+migration, so no worker/agent can apply it.
+
+**Steps.**
+1. Open the Supabase dashboard for this project.
+2. Go to **Authentication** → **Settings** (Auth providers/Policies page,
+   named "Password Security" or similar depending on dashboard version).
+3. Enable **"Leaked password protection"** (the HaveIBeenPwned check).
+4. Save.
+
+**Worked if:** the toggle shows enabled, and the Supabase linter no longer
+lists this WARN on a re-run of Advisors → Security.
+
+**Status:** OPEN
+
+---
+
+### 34. Type the new App Store Connect listing name into Apple's dashboard
+
+**Tag:** `[BLOCKING]` for App Store submission · **Time:** ~2 minutes · **Owner:** Joey or Wyatt (App Store Connect access)
+
+**Why it matters.** Apple rejected the App Store Connect submission because the
+bare name **`4a`** is already taken by another app/reservation (App Store
+"Name" must be globally unique). Founder decision, 2026-09-02 (Discord): the
+listing name becomes **`4a: Podcast Curator`**. This is an App Store Connect
+web-dashboard field — it is not stored anywhere in this repo (no `ios/`
+project or `Info.plist` exists here yet), so no agent can type it in. The repo
+side of this (the listing-copy draft in
+`docs/marketing/09-product-feature-review.md` §5, R23) has already been
+updated to record the new name and note the scope explicitly: this does
+**not** change the app's home-screen display name (`CFBundleDisplayName`,
+stays `4a`) or any internal `4a`/`foray` naming convention — only the store
+"Name" metadata field.
+
+**Steps.**
+1. Open App Store Connect → My Apps → (the 4a app record) → App Information.
+2. In the **Name** field, enter exactly: `4a: Podcast Curator`
+3. Save.
+
+**Also flagging, not deciding:** Google Play's separate listing name field
+(`docs/store/play/README.md` §1, Play Console → Grow → Store presence → Main
+store listing → App name) currently says plain `4a` and was not the app that
+hit Apple's collision. Left as-is pending a founder call on whether it should
+match (`4a: Podcast Curator`) for cross-store consistency or stay `4a` since
+Play has no known naming conflict. If you want it changed, say so and it's a
+one-line dashboard edit, same as this item.
+
+**Worked if:** App Store Connect shows the new name and the "name already in
+use" submission error is gone.
+
+**Status:** OPEN
+
+---
+
+### 36. Label PR #450 `founder-approved` (touches the `tools/test-search.mjs` gate)
+
+**Tag:** `[UPGRADE]` · **Time:** ~1 minute · **Owner:** Joey or Wyatt
+
+**Why it matters.** PR #450 fixes the H-severity buildPlaylist caching bug
+(kanban t_838a13c0): cold-session playlist searches cost 6.6-8.1s and even
+warm-ctx repeated queries cost 3.4-6s, with no loading-state affordance on
+the submit button. The fix adds real caching (`search-engine.js`'s
+`corpusDF`/`tagCount` reverse indexes and `primeVocabulary`, `app.js`'s
+`buildPlaylist` `searchCache`), a `Building…` disabled-button state, and —
+because scope item 4 asked for it — new timing assertions in
+`tools/test-search.mjs`'s own battery so this class of regression can't
+silently return. That last file is one of the two test-suite files
+`DENIED_PREFIXES` protects (alongside `tools/validate-semantic-index.mjs`)
+specifically because it IS the gate CI reads to decide "is search quality
+still honest" — so `path-policy` correctly refuses to auto-merge this PR
+without a human eyeball on the new assertions, same as every other PR that
+has ever touched this file.
+
+**What changed there, in one paragraph:** a new §11 block asserting (a)
+`primeVocabulary` finishes in well under 5s (measured ~0.3s), (b) a query
+against a primed ctx answers in well under 500ms (measured ~1-7ms), and (c)
+a repeated identical query against the same ctx is markedly cheaper the
+second time (proves the DF memoization is actually being reused, not just
+present). All three are generous multiples of measured cost, chosen to catch
+an algorithmic regression rather than flake on CI hardware variance — see
+the inline comments in the file for the exact numbers.
+
+**Steps.**
+1. Open PR #450: https://github.com/JW-Incorporated/foray/pull/450
+2. Skim the new §11 section in `tools/test-search.mjs` (search the diff for
+   "11. perf regression") — confirm the assertions genuinely test what they
+   claim and the thresholds aren't so loose they're vacuous.
+3. Apply the `founder-approved` label. The `path-policy` check re-runs
+   automatically on the label change; no push needed.
+4. Once `path-policy` and the rest of CI (`CI`, `data-and-site`, etc.) are
+   green, the PR is mergeable — foray's `merge_authority` is `agent`, so no
+   further founder action is needed to merge it; I'll self-merge once every
+   required check passes.
+
+**Worked if:** the `path-policy` check on PR #450 flips from `UNAPPROVED
+(blocking)` to passing.
+
+**Decision (2026-09-03, founder):** done — reviewed §11 assertions in
+`tools/test-search.mjs`, thresholds are generous multiples of measured
+cost (not vacuous), applied `founder-approved`, `path-policy` and all
+other CI went green, PR #450 auto-merged to `main` (`db25f8b`).
+
+**Status:** DONE (2026-09-03)
+
+---
+
+### 35. Merge PR #429 (Stage 3b full-catalogue RSS ingestion) — first Vercel serverless function, needs Wyatt's architecture sign-off
+
+**Tag:** `[BLOCKING]` for the "universal in-app playability" card · **Time:** ~10 minutes review · **Owner:** Wyatt (per `docs/roles.md` / registry `architecture_infra_ci_secrets` human gate)
+
+**Why it matters.** `t_a36252bb` ("remove the listen-elsewhere link-out, play everything in-app") depends on `t_567b570f` shipping real `audio_url`s at scale. That work is done and reviewed (round 3, 216/216 local tests pass, GitHub CI green) in PR #429, but it is genuinely gated on a human decision, not just a routine merge:
+
+- PR #429 adds **the first Vercel serverless function** in this repo (`api/shows/[show_id]/episodes.ts`). `vercel.json` was previously static-build-only by deliberate choice (see `docs/DECISIONS.md`, 2026-07-xx entry naming "standing up a live backend" as reserved for Wyatt).
+- The implementing worker could not reach Fable for an architecture consult on this point (sandbox OOM at every heap size tried) and proceeded on the lowest-new-infra option: reuses the existing Vercel project, reuses the existing Supabase service-role connection (no new secrets), scoped its own minimal `api/package.json`.
+- Registry `merge_authority` is `agent` for the foray project generally, but `human_gates` explicitly includes `architecture_infra_ci_secrets` — this PR is exactly that case.
+- GitHub also currently blocks auto-merge on this PR with a `needs-founder` label and a failing `path-policy` check (expected — it's a governed path awaiting the founder-approved label), so nothing merges without your action either way.
+
+**Steps.**
+1. Read the "For Wyatt: one thing to look at specifically" section at the top of PR #429: https://github.com/JW-Incorporated/foray/pull/429
+2. Decide: is reusing the existing Vercel project + existing Supabase service-role connection an acceptable way to stand up the first live backend endpoint, or do you want a different shape?
+3. If acceptable: add the `founder-approved` label (or ask Hermes to add it) and merge (or authorize Hermes to merge) the PR.
+4. If not acceptable: say what should change; the implementing lane will revise.
+
+**Worked if:** PR #429 is merged to `main` (or explicitly redirected), unblocking `t_a36252bb`.
+
+**Status:** OPEN
+
+
+### 37. Merge PR #443 by hand, and rule on the new nightly/deploy-manifest.json collision — DONE
+
+**Tag:** `[DONE 2026-09-03]` · **Owner:** nobody · **Time:** 0
+
+> **RESOLVED.** Step 1: PR #443 was closed and relanded as
+> [PR #459](https://github.com/JW-Incorporated/foray/pull/459), which merged
+> 2026-09-03. Step 2: the founder ruled, verbatim, *"Auto fix, I am not trying to
+> do daily manual reviews."* Implemented as options **1 and 3 together** (either
+> alone leaves nightly PRs stuck — see the `docs/DECISIONS.md` entry dated
+> 2026-09-03, which also records a second blocker this item did not know about:
+> the `github-actions[bot]` fixup commit itself made the PR unmergeable under
+> `protect-main`'s `require_extra_approval_for_unattributed_changes`):
+> `tools/refresh/merge.mjs` now regenerates `deploy-manifest.json` + `sw.js`
+> itself so the nightly's first commit is already correct and no bot commit is
+> ever pushed, and both files are on `ALLOWED_PREFIXES` so auto-merge arms. The
+> ruleset was not weakened and no bypass actor was added.
+> `docs/agents/runner-prompts/foray-nightly.md` steps 5 and 7 now describe it.
+> **Worked if:** the next `nightly/*` PR merges with no human click and carries
+> no `github-actions[bot]` commit.
+
+**Why it matters.** `data-and-site` failed on
+[PR #443](https://github.com/JW-Incorporated/foray/pull/443) (a nightly-refresh
+recovery run, +91 episodes) because `deploy-manifest.json`'s per-file content
+hashes go stale whenever a shipped file changes, and the nightly always
+changes `data/discover.json` + `data/item-tags.json`, both of which are on the
+manifest's watched list. A `github-actions[bot]` auto-fix step regenerated
+`deploy-manifest.json` and `sw.js` (its `BUILD_ID` companion) and pushed
+directly to the PR branch — CI is green now. But `deploy-manifest.json` and
+`sw.js` are not on `ALLOWED_PREFIXES` in `tools/ci/path-policy.mjs`, so
+`path-policy` reports `NOT ARMED` / `UNLISTED_PATH` and auto-merge will not
+fire, even though every required check is green. Per `CLAUDE.md`'s note on
+"ungoverned" vs. "auto-mergeable": these two paths are on neither list, they
+fail safe to a human, and it's all-or-nothing — the whole PR waits, not just
+the two files.
+
+**The recurring part:** the manifest mechanism (`tools/ci/generate-manifest.mjs`,
+M4, landed 2026-08-31) means this will hit *every* future nightly-refresh PR
+the same way, not just this one — the bot's auto-fix will keep making CI
+green, but auto-merge will keep declining to act on it. `docs/agents/runner-prompts/foray-nightly.md`
+doesn't mention this at all yet.
+
+**Steps.**
+1. Open [PR #443](https://github.com/JW-Incorporated/foray/pull/443), confirm
+   `backend` + `data-and-site` are green (they were as of this writing), and
+   click **Merge**.
+2. Decide how nightly PRs should handle this going forward — options, not a
+   recommendation:
+   - Add `deploy-manifest.json` and `sw.js` to `ALLOWED_PREFIXES` (the
+     `tools/ci/path-policy.mjs` fix `#167`/`#168` used for `STATE.md`) so
+     these two land unread whenever a bot or nightly PR touches only them
+     alongside already-allowed paths.
+   - Or leave it governed and accept that every nightly-refresh PR now needs
+     a manual merge click, and update the runbook to say so.
+   - Or teach `tools/refresh/merge.mjs` to call `generate-manifest.mjs --write`
+     itself, so the manifest is never stale on the PR's first commit (does not
+     by itself fix the `ALLOWED_PREFIXES` question above).
+
+**Worked if:** PR #443 is merged, and a decision is recorded (in
+`docs/DECISIONS.md` per the workflow rule on anything expensive to reverse,
+or right here) on which of the three options above applies to future nightly
+PRs.
+
+**Status:** DONE (2026-09-03) — see the RESOLVED block above.
+
+---
+
+### 38. Edit the privacy policy's absolute no-transmission sentence before shard/API-backed Shows search ships (G5)
+
+**Tag:** `[GATE]` · **Time:** ~10 minutes · **Owner:** Wyatt
+
+**Why it matters.** `docs/legal/privacy-policy.md` §2 currently says, verbatim:
+
+> **Nothing you type into the playlist box or the Shows search box is transmitted.**
+
+That is true today: `search-engine.js` runs entirely on-device, and the only
+thing app.js currently sends off-device from the Shows page is the FULL-
+CATALOGUE BREADTH lookup (kanban t_8d1a6a58's `api/shows/search`), which is a
+separate, already-disclosed feature from the typed search box itself. The
+`4a-shows-pipeline-plan.md` (S-04/S-05) replaces on-device search with a
+shard-backed and/or API-backed index, which necessarily transmits what a
+user types into `#sh-input` to resolve a shard or hit the API. Shipping that
+change while the sentence above still stands is a false statement in a
+published legal document.
+
+**The mechanical tripwire (S-08, this item's G5).** `test/release-gates.test.js`
+fails CI and the first step of `ios-build.yml` / `android-release.yml`
+whenever a `SHOWS_SEARCH_OFF_DEVICE` flag is on (set as a source constant in
+`app.js`/`search-engine.js`, or as a `SHOWS_SEARCH_OFF_DEVICE=true` workflow
+env var) **and** the sentence above is still present. This lets S-05 merge
+its shard search behind the flag off, but blocks any release build from
+starting with the flag on until this item is resolved.
+
+**Steps.**
+1. Decide the accurate replacement wording with Wyatt — likely scoped to
+   "on-device unless you search a show or episode we don't already have,
+   which looks up a shard/index off your device" (exact wording is a
+   founder call, not an agent one: it is a legal-accuracy question about
+   what a listener is told, not a code fact).
+2. Edit the sentence in `docs/legal/privacy-policy.md` §2 (and reconcile
+   `docs/legal/data-safety.md` if it repeats the claim — `test/legal-citations.test.js`
+   checks cross-document consistency separately).
+3. Flip `SHOWS_SEARCH_OFF_DEVICE` on (S-15 in the pipeline plan) once the
+   edit lands — `test/release-gates.test.js` re-verifies the combination is
+   now safe.
+
+**Worked if:** `test/release-gates.test.js` passes with the flag on and the
+new sentence in place, and fails if either reverts alone.
+
+**Status:** DONE (2026-09-05)
+
+**Decision line:** Joey authorized an agent to draft the replacement wording
+itself and ship it without a stop-and-review cycle (Discord, 2026-09-0x):
+"have a fable agent on low effort draft the necessary wording and put that in
+place. Legal counsel is regularly reviewing every word on the website, so no
+need to stop and tell us to review it." This overrides this item's original
+"exact wording is a founder call" framing for this one wording decision;
+legal counsel's regular review of the site is the safety net.
+
+`docs/legal/privacy-policy.md` §2's absolute sentence was replaced with
+wording that keeps the on-device promise for the playlist box and for Shows
+search when the show/episode is already in 4a's local catalogue, and
+discloses that a Shows search miss looks the typed query up against a
+shard/index off-device. `docs/legal/data-safety.md`'s two repeats of the same
+claim (Play's "In-app search history" row and Apple's "Search History" row)
+were reconciled to match. `test/legal-citations.test.js` and
+`test/release-gates.test.js` both pass; `test/release-gates.test.js`'s core
+gate now passes regardless of `SHOWS_SEARCH_OFF_DEVICE`'s value, because the
+old absolute sentence the gate watches for is gone.
+
+**`SHOWS_SEARCH_OFF_DEVICE` itself was deliberately NOT flipped in this PR.**
+Nothing in `app.js` or `search-engine.js` performs a shard/API-backed Shows
+search yet (S-04's shard-index release and S-05's client wiring haven't
+shipped) — flipping the flag now would declare a feature live that doesn't
+exist in the client. Flipping it is S-05/S-15's job, once the real off-device
+Shows search path lands; this item only had to make the flip *safe* to do at
+that point, which it now is.
+
+---
+
+### 39. Decide how the shard-index client (S-05) reaches GitHub Release assets — CORS gap measured, not fixed
+
+**Tag:** `[INFO]` (no gate — S-05 has not shipped a client fetch yet) · **Time:** ~10 minutes to read, decision itself depends on S-05's design · **Owner:** whoever picks up S-05
+
+**Why it matters.** S-04b publishes the shard index as GitHub Release
+assets. Measured against a real release already in this repo
+(`kokoro-fixture-t_f3c788ca`): a download URL
+(`github.com/<owner>/<repo>/releases/download/<tag>/<asset>`) redirects
+(302) to a presigned URL on `release-assets.githubusercontent.com` (an
+Azure Blob Storage-backed CDN). **Neither the redirect response nor the
+final asset response sends an `Access-Control-Allow-Origin` header.** A
+browser `fetch()` from the app's origin (`capacitor://localhost` on iOS,
+`https://localhost` on Android, or the web origin) to a Release asset URL
+**will fail the browser's CORS check as GitHub serves it today** — this
+was verified with `curl -H "Origin: capacitor://localhost"` against both
+hops of the real redirect chain, and with a standalone `OPTIONS`
+preflight against the resolved asset URL (`405`, no CORS headers either).
+
+Widening the CSP's `connect-src` to name `release-assets.githubusercontent.com`
+is **necessary but not sufficient** — `connect-src` only controls which
+origins the page may ask; it does nothing about whether the *server*
+answers with the CORS header the browser then requires, and GitHub's
+server does not.
+
+**What does work, measured the same way:** `raw.githubusercontent.com`
+and `cdn.jsdelivr.net` both send `access-control-allow-origin: *` — but
+only for files **committed to git**, not Release uploads. `cdn.jsdelivr.net`
+returns a `404` for a real Release asset requested by its GitHub-release
+URL shape (confirmed against `kokoro-fixture-t_f3c788ca`'s own assets).
+
+**Options for S-05, in rough order of effort:**
+- **Route through `api/` as a same-origin proxy** (recommended starting
+  point) — matches the pattern `api/shows/[show_id]/episodes.ts` already
+  uses for no-DB mode: the client's own origin stays in `connect-src`,
+  and the Vercel function fetches the Release asset server-side (no CORS
+  concern server-to-server) and streams it back. No new infra.
+- **Front the Release assets with a CORS-capable CDN/proxy** (e.g. a
+  Cloudflare Worker, or mirroring the built shards to an S3/R2 bucket
+  configured with CORS headers) — more infra, but removes the API-layer
+  hop from the client's read path.
+- **Commit the shard index to git instead of Release assets** — would get
+  free CORS via `raw.githubusercontent.com`/jsDelivr, but reopens the
+  repo-bloat problem GitHub Releases exist to avoid (see
+  `docs/DECISIONS.md`'s S-04b entry for the sizing reasoning). Not
+  recommended without a strong reason to prefer it.
+
+**No CSP change lands in this card (S-04b) or is owed by it** — S-03/#36's
+own rule (`docs/mobile-shell.md` §3) is that `connect-src` widens with the
+code that needs it, not in advance. This item exists so S-05 does not
+discover the CORS gap by shipping a client that silently fails to fetch.
+
+**Worked if:** S-05's design doc (or its PR) states which option it picked
+and why, and the CSP change (if any) lands in that same PR per the
+project's existing rule.
+
+**Status:** OPEN.
+
+---
+
+### 40. Download one Enhanced iPhone voice, then re-listen to the narration test
+
+**Tag:** `[BLOCKING]` for judging on-device narration at all · **Time:** ~3 minutes of taps
+plus one download, then the same 100-second listen as #29 · **Owner:** whoever has the iPhone
+
+**Why it matters.** #29 came back with two results, and the second one has been
+misread. The locked-screen question passed. The other observation was that the voice
+was "much worse than the original test" — the original being the Kokoro fixture. That
+was taken as evidence about on-device TTS. It was not: `ForayTtsPlugin.swift` was
+asking iOS for the SYSTEM DEFAULT voice, which is the compact/legacy tier — the robotic
+one — while the same free catalogue also carries neural "Enhanced" and "Premium"
+voices. The plugin now asks for the best tier installed. **But those voices are
+per-language downloads and a stock iPhone does not have them**, so on a phone that has
+never been to the settings screen below, this change is completely inaudible and a
+re-listen would produce the same verdict for a different reason.
+
+So: download one, then listen. Until that happens nobody — including us — knows what
+on-device narration actually sounds like, and a product decision about server-side vs.
+on-device synthesis is resting on a comparison against the worst voice iOS ships.
+
+**Steps.**
+
+1. On the iPhone, open **Settings → Accessibility → Spoken Content → Voices → English**.
+2. Pick a voice and tap the **download arrow** beside it. Any Enhanced or Premium voice
+   is fine; **Ava** and **Samantha** are the usual English (US) ones, and Samantha has
+   the small advantage that it is the same name as the default, so the plugin's
+   tie-break will prefer it. The download is free and is typically 100–500 MB.
+   (If the list shows only one entry per name with no download arrow, that voice is
+   already installed — note which and move on.)
+3. Write down the exact names of every voice that now shows as downloaded. That is the
+   ground truth this repo does not have.
+4. Install/launch the shell build with this change in it, open the
+   **"On-device narration, screen off"** Foray (the same one #29 used), and listen to
+   the first ~20 seconds.
+5. **Report:** does it sound meaningfully better than what you heard on 2026-09-05?
+   Better/same/worse, in your own words — no scale needed. If it sounds identical,
+   say so, because that is the informative answer: it would mean the plugin is not
+   picking up the downloaded voice and there is a second bug.
+
+**Values written out, so nothing has to be guessed:**
+- Settings path: `Settings → Accessibility → Spoken Content → Voices → English`
+- Foray title in the app: **On-device narration, screen off** (id `tts-locked-screen-check`)
+- The plugin call that would confirm what the phone actually has:
+  `window.Capacitor.nativePromise("ForayTts", "listVoices", { lang: "en-US" })` —
+  there is no UI for this yet, so it is only reachable from a Safari Web Inspector
+  console attached to the device. Skip it unless step 5 comes back "identical"; the
+  human answer to step 5 is the one that matters.
+
+**Worked if:** there is a written note saying which voice was downloaded and whether the
+narration sounded better with it. Both halves are needed — "sounds better" without the
+voice name cannot be reproduced, and the voice name without a verdict answers nothing.
+
+**Status:** OPEN.
+
+---
+
 ## DONE
 
-*(Nothing filed yet. Finished items move here with the date they were done and
-keep their number — the history is how we stop re-asking.)*
+*(Finished items move here with the date they were done and keep their
+number — the history is how we stop re-asking.)*
+
+Item #38 (privacy policy no-transmission sentence, G5) is DONE as of
+2026-09-05 — its `### 38.` heading, full detail, and decision line are kept
+in place above rather than duplicated here, since this is the file's first
+completed item and moving the block would cost more diff than it's worth.
+
+Item #29 (on-device narration with the screen locked) is DONE as of
+2026-09-05 — the result is recorded under its own `### 29.` heading above, for
+the same reason: the answer is only legible next to the steps that produced it.
+**Answer: it continued all the way through** — plus three defects the run
+surfaced, listed there.
