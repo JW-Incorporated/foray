@@ -19472,7 +19472,8 @@
       "audio_url": "https://episodes.captivate.fm/episode/f60aa6b3-a1a1-4d31-b26e-0cdf45e38632.mp3",
       "audio_type": "audio/mpeg",
       "audio_bytes": 6046246,
-      "duration_sec": 235
+      "duration_sec": 235,
+      "dai_suspected": true
     },
     {
       "id": "wood-talk--when-she-gives-away-your-tools",
