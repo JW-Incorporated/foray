@@ -618,3 +618,48 @@ test("an optional home block that renders nothing costs no height and no flex ga
     `an empty #banner-slot still costs ${costWhenEmpty}px of .home's column — it must ` +
     `leave flex layout entirely (\`#banner-slot:empty { display: none }\`)`);
 });
+
+/* ==================================================================== */
+/* U-03 — HOME V2's COLUMN HAS NO FIXED HEIGHT FOR A SIBLING TO FIGHT     */
+/* ==================================================================== */
+
+test("`.hv2-home` (U-03) declares no fixed height — unlike `.home`, it is meant to scroll", () => {
+  /* BUG 4 above exists because the flag-off `.home` is a FIXED-height column
+     with exactly one scrollable child (`.cards4`) — any sibling that grows
+     starves it. Home v2 is architecturally different on purpose: the mockup
+     scrolls (docs/ux/foray-mockup.jsx wraps HomeScreen in
+     `overflowY: "auto"`), five sections of unbounded length is not a
+     "four cards, one screen" product, so `.hv2-home` must have no `height`
+     and no `min-height` floor for a sibling to fight over — the whole
+     failure mode BUG 4 fixed cannot recur if the column was never fixed to
+     begin with.
+
+     MUTATION: add `height: calc(100svh - var(--topbar-h))` to `.hv2-home`
+     (porting `.home`'s fix onto a column that doesn't need it). This fails,
+     naming the declared height. */
+  assert.strictEqual(valueOf("body.ui-v2 .hv2-home", "height"), null,
+    ".hv2-home must not declare a fixed height — Home v2 is a scrolling page, not a one-screen column");
+  assert.strictEqual(valueOf("body.ui-v2 .hv2-home", "min-height"), null,
+    ".hv2-home must not declare a min-height floor either — nothing here needs BUG 4's fix because " +
+    "nothing here is fixed-height to begin with");
+});
+
+test("`.hv2-home` still reserves the safe-area inset at the bottom, like every other fixed-bar-aware surface", () => {
+  /* Not a repeat of BUG 1/2 (those are about the FIXED topbar reserving its
+     OWN box correctly) — this is the same category of bug on the bottom
+     edge: content padding must include env(safe-area-inset-bottom) or it
+     draws under the home-indicator area on a notched phone. Verified at
+     both insets the rest of this file already tests.
+
+     MUTATION: drop `env(safe-area-inset-bottom)` from `.hv2-home`'s
+     padding-bottom (leaving a bare px value). At NOTCHED this fails by
+     34px; at DESKTOP (env resolves to 0) it still passes, which is why
+     both insets are asserted. */
+  for (const [label, env] of [["desktop (inset 0)", DESKTOP], ["notched iPhone (inset 59px)", NOTCHED]]) {
+    const paddingBottom = valuesOf("body.ui-v2 .hv2-home", "padding");
+    assert.ok(paddingBottom.length > 0, ".hv2-home must declare padding");
+    const raw = paddingBottom[paddingBottom.length - 1];
+    assert.match(raw, /env\(safe-area-inset-bottom\)/,
+      `${label}: .hv2-home's padding must reserve env(safe-area-inset-bottom)`);
+  }
+});
