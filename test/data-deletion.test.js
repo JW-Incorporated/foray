@@ -403,7 +403,7 @@ async function mount({
 
 /* ================= 1. enumeration, not a list ================= */
 
-test("the shipped source names exactly the 21 cp_ key families the audit found", () => {
+test("the shipped source names exactly the 23 cp_ key families the audit found", () => {
   /* The count is pinned deliberately. 20-not-11 is the whole reason this control
      enumerates instead of carrying a list, and a new key is a privacy-policy
      change as much as a code change — see the next test.
@@ -432,11 +432,15 @@ test("the shipped source names exactly the 21 cp_ key families the audit found",
      21 -> 22 on 2026-09-02: `cp_starred_shows`, the starred-shows list
      (Q2's follow-lite answer, kanban card t_7cc5eaa5) — a per-device map of
      starred show ids, same storage pattern as every other resumable-state
-     key here. */
+     key here.
+
+     22 -> 23 on 2026-09-06: `cp_ui_v2`, the U-02 tab-bar flag
+     (docs/ui-transition-plan.md, kanban card t_806e5d01) — a local, cosmetic
+     preference, same mechanism as every prior addition here. */
   const families = [...keyFamiliesInSource().keys()].sort();
   assert.strictEqual(
-    families.length, 22,
-    `expected 22 cp_ key families, found ${families.length}:\n${families.join("\n")}`
+    families.length, 23,
+    `expected 23 cp_ key families, found ${families.length}:\n${families.join("\n")}`
   );
   assert.ok(families.includes("cp_foray:"), "the patterned Foray resume key must be found as a family");
   assert.ok(families.includes("cp_pos:"), "the patterned episode-position key must be found as a family");

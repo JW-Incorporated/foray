@@ -527,6 +527,54 @@ function playBtn(item) {
    branch (older comedy items predate per-episode ratings). */
 function familyMode() { return lsGet("cp_family", false); }
 
+/* ---------- U-02: the ui-v2 flag (docs/ui-transition-plan.md) ----------
+
+   cp_ui_v2 gates the whole v2 surface (tab bar, and every screen U-03+
+   restyles): default OFF on the web, default ON for a native-shell build so
+   the app the founders actually carry shows the new look without a manual
+   toggle. There is no separate "TestFlight vs production" signal today
+   (R-01 stopped shipping PR builds to TestFlight, but there is no
+   store-production build yet either) -- isNativeShell() below duplicates
+   shouldRegisterServiceWorker's Capacitor detection (further down this
+   file) rather than sharing it, because that function answers a different
+   question (should the SW register) with an inverted return and this one
+   must be callable before that function's own definition site in source
+   order is guaranteed relevant. When a real production channel exists this
+   default should be revisited; until then "native shell" and "TestFlight"
+   are the same population. */
+function isNativeShell(win = window) {
+  try {
+    const proto = (win && win.location && win.location.protocol) || "";
+    if (proto === "capacitor:" || proto === "ionic:") return true;
+  } catch (_) { /* no location: not the shell */ }
+  try {
+    const cap = win && win.Capacitor;
+    if (cap) {
+      if (typeof cap.isNativePlatform === "function") return !!cap.isNativePlatform();
+      if (cap.isNative) return true;
+    }
+  } catch (_) { /* a throwing bridge is not a "yes" */ }
+  return false;
+}
+
+/** Whether ui-v2 is on for this listener. A listener who has ever touched the
+    Settings toggle gets their explicit choice forever (lsGet's stored value
+    wins); only a listener with NO stored value at all falls back to the
+    native-shell default. */
+function ui2On() {
+  const stored = lsGet("cp_ui_v2", null);
+  if (stored !== null) return !!stored;
+  return isNativeShell();
+}
+
+/** Every page-render function replaces document.body.className wholesale
+    (see renderHome/renderShow/etc.), which would otherwise silently drop
+    ui-v2 on every single navigation. Route every one of those assignments
+    through this instead of writing document.body.className directly. */
+function setBodyClass(base) {
+  document.body.className = ui2On() ? `${base} ui-v2` : base;
+}
+
 function poolFiltered() {
   const pool = fullPool();
   if (!familyMode()) return pool;
@@ -692,7 +740,7 @@ function starredShowRow(entry) {
    page (the drawer entry came off with the five-page menu), so the back
    button returns there rather than to a home screen that no longer links here. */
 function renderStarredShows() {
-  document.body.className = "view-page";
+  setBodyClass("view-page");
   const starred = Object.values(starredShowsMap())
     .sort((a, b) => (b.starred_at || "").localeCompare(a.starred_at || ""));
 
@@ -1425,7 +1473,7 @@ function showsForCategory(nodeId) {
    for the Shows page's search box + editorial rows; the category page passes
    nothing and is byte-identical to what it rendered before. */
 function renderShowIndexPage(title, subtitle, shows, above = "") {
-  document.body.className = "view-page";
+  setBodyClass("view-page");
   $("#view").innerHTML = `
     <div class="page">
       <div class="page-head">
@@ -1698,7 +1746,7 @@ async function searchShowEpisodesScoped(show_id, query) {
 }
 
 function renderShow(show_id) {
-  document.body.className = "view-page";
+  setBodyClass("view-page");
   const show = showById(show_id);
   if (!show) { $("#view").innerHTML = `<div class="page"><p class="note">Show not found.</p></div>`; return; }
   fullPool(); // populate itemIndex/poolIds so curated-pool episode rows can play in-app
@@ -2613,7 +2661,7 @@ function renderEpisodeSearchResults(query, myToken) {
    directions — absent here, present there — so a future re-add fails CI
    rather than shipping. */
 function renderHome() {
-  document.body.className = "view-home";
+  setBodyClass("view-home");
   if (!state.cardSlots.length) buildCards();
   $("#view").innerHTML = `
     <div class="home">
@@ -2657,7 +2705,7 @@ function renderHome() {
    visibility rule (forayCards / forayResumeRows) — an unpublished Foray is
    listed only to someone who arrived with its `?foray=` link this session. */
 function renderForays() {
-  document.body.className = "view-page";
+  setBodyClass("view-page");
   const list = forayCards();
   const resume = forayResumeRows();
   $("#view").innerHTML = `
@@ -2771,7 +2819,7 @@ function partsNote(rows) {
 }
 
 function renderPlaylistDetail(id) {
-  document.body.className = "view-page";
+  setBodyClass("view-page");
   const p = playlistById(id) || subjectQueueById(id);
   /* A gone playlist still gets a real page head, ‹ included: with ‹ now
      going back one real step (see § in-app history) instead of always
@@ -2872,7 +2920,7 @@ function moreFromShow(item) {
 }
 
 function renderEpisode(id) {
-  document.body.className = "view-page";
+  setBodyClass("view-page");
   const item = resolveEpisode(id);
   if (!item) {
     $("#view").innerHTML = `<div class="page"><p class="note">Episode not found.</p></div>`;
@@ -2923,7 +2971,7 @@ function renderEpisode(id) {
    playBtn/epRow-style playback, unchanged — no auto-advance chaining into the
    next Up Next item (plan §4, explicitly deferred). */
 function renderQueue() {
-  document.body.className = "view-page";
+  setBodyClass("view-page");
   fullPool(); // populate itemIndex/poolIds so a live queued item can play in-app
   const rows = queueRows();
   $("#view").innerHTML = `
@@ -3072,7 +3120,7 @@ function libSection(title, bodyHtml) {
 }
 
 function renderLibrary() {
-  document.body.className = "view-page";
+  setBodyClass("view-page");
   fullPool(); // populate itemIndex/poolIds so saved/history rows can play in-app
 
   const savedRows = rowsForIds(Object.keys(savedMap()));
@@ -3129,7 +3177,7 @@ function renderLibrary() {
 }
 
 function renderPlaylists() {
-  document.body.className = "view-page";
+  setBodyClass("view-page");
   const all = playlists();
   $("#view").innerHTML = `
     <div class="page">
@@ -3493,7 +3541,7 @@ function forayHeadSub(r) {
    reviewing it. That list moved off Home to `#/forays` on 2026-09-03, so this
    link moved with it. */
 async function renderForay(id) {
-  document.body.className = "view-page";
+  setBodyClass("view-page");
   $("#view").innerHTML = `<div class="page"><p class="note">Loading…</p></div>`;
 
   const player = await playerBridge();
@@ -4616,12 +4664,120 @@ function renderDrawer() {
   $("#family-toggle").textContent = `Family mode: ${familyMode() ? "on" : "off"}`;
   $("#player-toggle").textContent = `Open in: ${playerPref() === "apple" ? "Apple Podcasts" : "Pocket Casts (show page)"}`;
   $("#autoadvance-toggle").textContent = `Up Next auto-advance: ${autoAdvanceOn() ? "on" : "off"}`;
+  const ui2Btn = $("#ui2-toggle");
+  if (ui2Btn) ui2Btn.textContent = `New look (preview): ${ui2On() ? "on" : "off"}`;
 }
 
 function openDrawer(open) {
   $("#drawer").hidden = !open;
   $("#drawer-overlay").hidden = !open;
   if (open) renderDrawer();
+}
+
+/* ---------- U-02: the four-tab bar (docs/ui-transition-plan.md) ----------
+
+   Built and appended in JS, exactly like the diagnostics/delete-my-data
+   controls just above and for the identical reason stated on those: this
+   card's owned files are app.js and styles.css (index.html is outside the
+   auto-merge allowlist), so the bar cannot be a static element in
+   index.html.
+
+   APPENDED/REMOVED, NOT `hidden`-toggled. test/home-layout.test.js's own
+   BUG 3 documents why: `[hidden] { display: none }` is a UA-stylesheet
+   rule, and ANY author `display` declaration (which `.tab-bar { display:
+   flex }` in styles.css necessarily is) beats it at any specificity. A
+   `hidden` attribute on this element would therefore render anyway the
+   moment its own display rule existed — exactly the bug that suite exists
+   to catch. Appending only when the flag is on, and removing it the moment
+   the flag goes off, sidesteps that cascade question entirely instead of
+   relying on getting it right. */
+const TAB_ROUTES = [
+  { key: "home", label: "Home", hash: "#/",
+    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
+      'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+      '<path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>' },
+  { key: "search", label: "Search", hash: "#/shows",
+    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
+      'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+      '<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>' },
+  { key: "create", label: "Create", hash: "#/playlists",
+    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
+      'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+      '<circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>' },
+  { key: "library", label: "Library", hash: "#/library",
+    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
+      'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+      '<path d="M4 19V5a2 2 0 0 1 2-2h9l5 5v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><path d="M15 3v5h5"/></svg>' },
+];
+
+/** Which tab a hash belongs to, for highlighting `aria-current`. Every one
+    of today's 13 routes maps to exactly one tab — Home, everything shows/
+    episode/category-shaped to Search, playlist/subject-queue-shaped to
+    Create, and library/queue/forays-shaped to Library — so switching tabs
+    is a real, memorable destination rather than a guess. Returns null for
+    a hash this mapping does not recognise (there is none today, but a
+    future route landing here with no owner should highlight nothing rather
+    than guess wrong). */
+function tabForHash(hash) {
+  const h = hash || "#/";
+  if (h === "#/") return "home";
+  if (/^#\/(shows$|show\/|category\/|starred-shows$)/.test(h)) return "search";
+  if (/^#\/(playlists$|playlist\/|subject\/)/.test(h)) return "create";
+  if (/^#\/(library$|queue$|forays$|foray\/)/.test(h)) return "library";
+  if (/^#\/episode\//.test(h)) return "search"; // reached from a show/search result
+  return null;
+}
+
+/** Renders (or removes) the tab bar to match the flag, and syncs which tab
+    reads as current. Called from renderCurrentPage() so every navigation —
+    real or a settings-toggle refresh — keeps it in sync, same as the
+    drawer's own settings text. */
+function renderTabBar() {
+  let bar = $("#tab-bar");
+  if (!ui2On()) {
+    if (bar) bar.remove();
+    return;
+  }
+  if (!bar) {
+    bar = document.createElement("nav");
+    bar.className = "tab-bar";
+    bar.id = "tab-bar";
+    for (const t of TAB_ROUTES) {
+      const a = document.createElement("a");
+      a.className = "tab-btn";
+      a.href = t.hash;
+      a.dataset.tabKey = t.key;
+      a.innerHTML = `${t.icon}<span>${esc(t.label)}</span>`;
+      bar.append(a);
+    }
+    document.body.append(bar);
+  }
+  const active = tabForHash(location.hash);
+  bar.querySelectorAll(".tab-btn").forEach((a) => {
+    if (a.dataset.tabKey === active) a.setAttribute("aria-current", "page");
+    else a.removeAttribute("aria-current");
+  });
+}
+
+/** The Settings entry for the flag itself (U-02: "a Settings toggle"),
+    appended the same way as the diagnostics/delete-my-data controls below.
+    Flipping it re-renders the drawer's own label AND the current page (tab
+    bar included) via renderCurrentPage() — the same path the other three
+    settings toggles use — so nothing needs a reload to take effect. */
+function bindUi2Control() {
+  const drawer = $("#drawer");
+  if (!drawer || $("#ui2-toggle")) return;
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "drawer-item as-btn";
+  btn.id = "ui2-toggle";
+  drawer.appendChild(btn);
+  btn.addEventListener("click", () => {
+    lsSet("cp_ui_v2", !ui2On());
+    logEvent("ui_v2_pref", { on: ui2On() });
+    renderDrawer();
+    renderCurrentPage();
+  });
 }
 
 /* ---------- delete my data (#42) ----------
@@ -5342,6 +5498,16 @@ function renderCurrentPage() {
   else if (h === "#/library") renderLibrary();
   else if (h === "#/starred-shows") renderStarredShows();
   else renderHome();
+  /* Called AFTER the page paints, not before: renderTabBar() reads
+     document.body's class to decide nothing (it reads ui2On() and
+     location.hash directly), but appending it after the page's own
+     document.body.className/innerHTML writes is what guarantees the bar
+     survives those writes rather than a future page-render function
+     clobbering an element the bar already placed. Every page above sets
+     document.body.className wholesale via setBodyClass() and none of them
+     touch #view's siblings, so ordering here is a belt-and-braces call, not
+     a load-bearing one today — but it is the right belt to wear. */
+  renderTabBar();
 }
 
 function route() {
@@ -5621,6 +5787,11 @@ async function init() {
     logEvent("autoadvance_pref", { on: autoAdvanceOn() });
     renderDrawer();
   });
+  /* The Settings entry for cp_ui_v2 itself (U-02). Placed ABOVE the field-
+     record/delete controls, same rule those two apply to each other:
+     the two truly destructive/diagnostic items stay at the bottom where a
+     scrolled thumb lands, and a cosmetic preview toggle is not one of them. */
+  bindUi2Control();
   /* The field record's surface (#264), appended for the same reason as the
      control below it and deliberately ABOVE it: "Delete my data" must stay the
      drawer's last item, because it is the one control in there that cannot be

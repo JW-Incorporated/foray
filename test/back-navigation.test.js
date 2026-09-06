@@ -283,3 +283,43 @@ test("a removed/missing playlist still renders a page head with a working ‹ ba
   assert.ok(html.includes('class="back"'), "a not-found playlist page must still offer a way back");
   assert.ok(html.includes("#/playlists"), "its back link must point at the playlists list");
 });
+
+/* ==================================================================== */
+/* 9. U-02: SWITCHING TABS IS ORDINARY NAVIGATION, NOT A "BACK" STEP      */
+/* ==================================================================== */
+
+/* docs/ui-transition-plan.md U-02's acceptance: "switching tabs is not a
+   'back' step; deep links land on the right tab." The tab bar's own links
+   (app.js's renderTabBar) are plain `<a href="#hash">` elements dispatched
+   through the SAME hashchange -> route() -> noteNavigation() path every
+   other in-app link uses -- there is no separate "tab navigation"
+   mechanism to special-case, and that absence is the point: a tab switch
+   pushes a real forward step onto navStack exactly like any other link,
+   so ‹ from a page reached via a tab goes back ONE page, never all the way
+   to whichever tab you started the tour on. */
+
+test("moving between the four tab destinations composes with the real back-stack: each hop is one ordinary forward step", () => {
+  /* MUTATION: give tab navigation special treatment in noteNavigation (e.g.
+     skip pushing when landing on one of the four tab-root hashes). The
+     final canGoBack() would then read false after four ordinary hops,
+     which is wrong -- there IS a step behind #/library (namely #/playlists,
+     the tab visited just before it). */
+  const m = mount();
+  m.go("#/");          // Home tab
+  m.go("#/shows");      // Search tab
+  m.go("#/playlists");  // Create tab
+  m.go("#/library");    // Library tab
+  assert.strictEqual(m.canGoBack(), true, "four ordinary tab-to-tab hops must leave a real step behind the last one");
+  const e = m.click();
+  assert.strictEqual(m.calls.back, 1, "‹ from a tab-reached page must call history.back() exactly once, the same as any other link");
+});
+
+test("a deep link straight into a tab-owned route has no in-app step behind it, same as any other deep link", () => {
+  /* MUTATION: special-case tab-root hashes in canGoBackInApp() to always
+     report true (e.g. "a tab always has Home behind it"). This is a cold
+     open -- the very first hash this session renders -- so it must report
+     false exactly like the #/show/abc cold-open case in test 1 above. */
+  const m = mount();
+  m.go("#/library"); // arriving here first, e.g. from a bookmark
+  assert.strictEqual(m.canGoBack(), false, "a deep link into a tab-owned route is still a cold open with no step behind it");
+});

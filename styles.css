@@ -953,6 +953,71 @@ body.fp-open.fp-expanded { padding-bottom: 340px; }
   /* Android gesture bar / iPhone home indicator (#39 formalises this). */
   padding-bottom: env(safe-area-inset-bottom, 0);
 }
+
+/* ---------- U-02: the four-tab bar (docs/ui-transition-plan.md) ----------
+
+   `--tab-bar-h` is the bar's own CONTENT height, deliberately named apart
+   from `--topbar-h` (44px) even though both are chrome bars — the two are
+   sized independently (this one carries icon+label, not just a title row)
+   and a shared name would make changing one silently move the other, the
+   same trap `--topbar-h`'s own comment warns about for the header.
+
+   `renderTabBar()` (app.js) appends `#tab-bar` to `<body>` ONLY while
+   `body.ui-v2` is present (ui2On()), so every rule below is safely scoped
+   under that class: there is nothing to hide when the flag is off, because
+   the element itself does not exist then. */
+:root { --tab-bar-h: 56px; }
+
+body.ui-v2 {
+  /* Reserves room so the LAST thing on every page (a card, a list row) is
+     not tucked under the bar — the same "reserve, don't overlap" rule
+     .topbar's own four reservations follow, just at the opposite edge. */
+  padding-bottom: calc(var(--tab-bar-h) + env(safe-area-inset-bottom));
+}
+.tab-bar {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 55; /* below #foray-player's 60: the mini-player docks ON TOP of the bar, never behind it */
+  display: flex;
+  height: calc(var(--tab-bar-h) + env(safe-area-inset-bottom));
+  padding-bottom: env(safe-area-inset-bottom, 0);
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+  box-shadow: 0 -1px 8px rgba(0,0,0,0.12);
+}
+.tab-btn {
+  flex: 1;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 2px;
+  color: var(--faint, var(--text-dim));
+  text-decoration: none;
+  font-size: 0.66rem;
+  font-weight: 600;
+}
+.tab-btn svg { width: 22px; height: 22px; }
+/* The listener's OWN current location in the app is their material, not
+   4a's editorial voice — amber, not violet, per the split U-01 establishes
+   and issue #127 requires stay meaningful everywhere it appears. Falls
+   back to --accent outside ui-v2 scope, though in practice the bar never
+   renders there at all (see the header comment). */
+.tab-btn[aria-current="page"] { color: var(--accent); }
+body.ui-v2 .tab-btn[aria-current="page"] { color: var(--amber); }
+
+/* The mini-player DOCKS ABOVE the bar (U-02's ask, "exactly as the mockup
+   stacks them") rather than overlapping or replacing it — both must stay
+   reachable at once, since the bar is primary nav and the player is
+   transport. Bumping #foray-player's own `bottom` by the bar's reserved
+   height is what "docked above" means in a fixed-position layout; the
+   content reservation below stacks the tab-bar's height UNDERNEATH the
+   existing fp-open reservation (96px/340px) rather than replacing it,
+   because both are real space something now occupies. */
+body.ui-v2.fp-open #foray-player {
+  bottom: calc(var(--tab-bar-h) + env(safe-area-inset-bottom));
+}
+body.ui-v2.fp-open {
+  padding-bottom: calc(var(--tab-bar-h) + env(safe-area-inset-bottom) + 96px);
+}
+body.ui-v2.fp-open.fp-expanded {
+  padding-bottom: calc(var(--tab-bar-h) + env(safe-area-inset-bottom) + 340px);
+}
 .fp-progress { height: 3px; background: var(--surface-2); }
 .fp-fill { height: 100%; width: 0; background: var(--accent); transition: width .25s linear; }
 
