@@ -1218,6 +1218,17 @@ body.fp-open.fp-expanded { padding-bottom: 340px; }
 .fy-strip--sm { --strip-h: 5px; --seam: 3px; --seg-min: 5px; }
 .fy-strip--md { --strip-h: 8px; --seam: 4px; --seg-min: 6px; }
 .fy-strip--lg { --strip-h: 12px; --seam: 5px; --seg-min: 7px; }
+/* U-04: `segmentStripHtml`'s static strip — a card in a rail (Home's Foray
+   cards, U-03; the show/episode restyle, U-08), not the full player's
+   scrubber. No click handler is bound to it and no press-and-hold zoom
+   gesture (`bindStripZoomScrub`, app.js) reaches it, so the base rule's
+   `touch-action: none` and `cursor: pointer` would be a promise this markup
+   cannot keep — worse, `touch-action: none` on a card would fight the rail's
+   own scroll for every touch that starts on one. */
+.fy-strip--static {
+  cursor: default;
+  touch-action: pan-y;
+}
 .fy-seg {
   flex-basis: 0;
   /* A 6 s narrator bridge inside a 51-minute Foray is 0.2% of the row. Floored
