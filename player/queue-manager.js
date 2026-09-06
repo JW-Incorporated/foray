@@ -153,7 +153,19 @@ import { normalizeRate, isRate, DEFAULT_RATE } from "./playback-rate.js";
 
 const POSITION_INTERVAL_MS = 15_000;
 
+/** How often the narration ticker fires `onNarrationTick` while a script-only
+    line is speaking (L-03, generation-architecture.md §7 item 3's position
+    half). No media element is producing `timeupdate` for a synth item —
+    that event is `client.js`'s only other trigger for `render()` — so without
+    a ticker the Now Playing position and the in-page clock would freeze for
+    the whole utterance and only move again at the next unrelated event.
+    250ms matches the ~4Hz cadence `client.js`'s own `timeupdate` handler
+    already repaints at, so a narration line does not look smoother or
+    choppier than an ordinary segment. */
+const NARRATION_TICK_MS = 250;
+
 const nonEmptyStr = (s) => typeof s === "string" && s.trim().length > 0;
+const isNum = (n) => typeof n === "number" && Number.isFinite(n);
 
 /** Wall clock for the seam beat. Injected so the suite drives the beat by hand
     instead of sleeping: a test that asserts "2 s elapsed" is a test that goes
@@ -189,6 +201,11 @@ export class PlayerQueueManager {
    * @param {Function} [opts.onSeamGapChange] (inGap: boolean) => void — fires
    *   when a beat starts and when it ends. A surface needs this because a beat
    *   produces no media events to repaint on.
+   * @param {Function} [opts.onNarrationTick] () => void — fires roughly every
+   *   `NARRATION_TICK_MS` while a script-only item is speaking (L-03). The
+   *   same problem `onSeamGapChange` solves for the beat: a synth utterance
+   *   produces no `timeupdate`, so without this hook a surface's Now Playing
+   *   position and in-page clock freeze for the utterance's whole length.
    * @param {number}   [opts.rate]  the listener's speed (§12). Stored, not
    *   applied: a constructor that reached into the backend would make building a
    *   manager audible. `setRate()` is what applies it, and `client.js` calls it
@@ -207,10 +224,19 @@ export class PlayerQueueManager {
    *   dropped. `null` (the default) means no plugin is wired — a script-only
    *   item then fails to load exactly like a missing bridge asset always has
    *   (corner case #12: reported, and the Foray moves on).
+   *
+   *   §7 item 3 (L-03): an OPTIONAL `onFinished(fn) -> unsubscribe` completes
+   *   the contract. When present, this manager subscribes once and advances
+   *   the queue past the currently-speaking item the first time it fires
+   *   after that item started — see `_onTtsFinished`. Its absence changes
+   *   nothing: a bridge with no `onFinished` behaves exactly as it always
+   *   has, and previous/next from the lock screen remain the only way past
+   *   a narration line.
    */
   constructor({
     backend, positionStore = null, strategy = SINGLE_ITEM, telemetry = null, allowMultiple = false,
     seamGapSec: gapSec = SEAM_GAP_SEC, scheduler = REAL_SCHEDULER, onSeamGapChange = null,
+    onNarrationTick = null,
     rate = DEFAULT_RATE, tts = null, voice = null,
   } = {}) {
     if (!backend) throw new Error("PlayerQueueManager requires a backend");
@@ -233,6 +259,17 @@ export class PlayerQueueManager {
     this.seamGapSec = gapSec;
     this._scheduler = scheduler ?? REAL_SCHEDULER;
     this._onSeamGapChange = typeof onSeamGapChange === "function" ? onSeamGapChange : null;
+    /** L-03. `null` when the surface passed nothing — `_startNarrationTicker`
+        then simply never starts, exactly like `_onSeamGapChange`'s absence
+        already leaves the beat's own hook inert. */
+    this._onNarrationTick = typeof onNarrationTick === "function" ? onNarrationTick : null;
+    /** The narration ticker's own interval handle, distinct from `_timer`
+        (the 15s position-persistence timer) — the two run on different
+        schedules and must not be confused when either is stopped. */
+    this._narrationTicker = null;
+    /** Wall-clock ms the currently-speaking synth item started, or `null`.
+        See `narrationElapsedSec`. */
+    this._narrationStartedAtMs = null;
 
     this.state = S.idle();
     this.queue = [];
@@ -264,6 +301,28 @@ export class PlayerQueueManager {
     /** The on-device TTS bridge (§7 item 1-2 of generation-architecture.md),
         or `null` when none is wired — see the constructor doc above. */
     this._tts = tts && typeof tts.speak === "function" ? tts : null;
+    /** §7 item 3 (L-03). Subscribed once, for the manager's whole lifetime —
+        not per-utterance — because the bridge's own contract (mirroring
+        `foray-tts.js`) is a single long-lived listener, the same shape
+        `foray-media-session.js`'s `TRANSPORT_EVENT` subscription uses. Kept
+        so `dispose()` can remove it; `null` when the bridge offers none. */
+    this._ttsFinishedUnsubscribe = null;
+    if (this._tts && typeof this._tts.onFinished === "function") {
+      this._ttsFinishedUnsubscribe = this._tts.onFinished(() => this._onTtsFinished());
+    }
+    /** Bumped every time a NEW synth utterance starts speaking (`_loadedId`
+        moves onto a synth item). `_onTtsFinished` captures this value at the
+        moment it decides to advance and compares again just before firing the
+        advance — see that method for why a plain boolean cannot do this job:
+        a `finished` event fired twice for the SAME utterance must advance the
+        queue exactly once (the card's own MUTATION test), but a genuinely
+        NEW utterance starting must be advanceable again. */
+    this._speakSeq = 0;
+    /** The `_speakSeq` value that has already been advanced past. Distinct
+        from a boolean so a stray SECOND `finished` for the same utterance is
+        provably a duplicate rather than merely "already handled once this
+        session" — see `_onTtsFinished`. */
+    this._advancedSpeakSeq = null;
     /** The listener's chosen narration voice identifier (V-01), or `null` to
         let the plugin pick its own best-installed tier. The one place it
         lives, same discipline as `_rate` immediately above: `voice` getter
@@ -338,6 +397,7 @@ export class PlayerQueueManager {
 
   dispose() {
     this._stopTimer();
+    this._stopNarrationTicker();
     // `_disposed` first: the released wait's continuation then hits `_handle`'s
     // disposed guard instead of dispatching into a torn-down player.
     this._disposed = true;
@@ -345,6 +405,13 @@ export class PlayerQueueManager {
     this._releaseSeamGap();
     if (liveInstance === this) liveInstance = null;
     if (typeof this.backend.release === "function") this.backend.release();
+    // §7 item 3: a live subscription on a torn-down manager is a listener that
+    // outlives the object it would advance — the same class of leak `L-01`'s
+    // TRANSPORT_EVENT unsubscribe on `release()` exists to avoid.
+    if (typeof this._ttsFinishedUnsubscribe === "function") {
+      try { this._ttsFinishedUnsubscribe(); } catch (_) { /* a surface must never break disposal */ }
+      this._ttsFinishedUnsubscribe = null;
+    }
   }
 
   /* ---------- queue construction ---------- */
@@ -951,17 +1018,15 @@ export class PlayerQueueManager {
            to load at all — it is spoken, not played. §7 item 2: the rate
            passed here is the listener's CURRENT preference, read at the
            moment of the call, not a hardcoded 1.0x — see `_speakNarration`.
-           Ending/advancing past a spoken item — knowing WHEN the utterance
-           finishes, so the queue can move on — needs the utterance's own
-           duration, which is §7 item 3 and explicitly out of scope for this
-           card; nothing here builds that. */
+           §7 item 3 (L-03): advancing past a spoken item on its own now
+           happens too — see `_beginSynthNarration` and `_onTtsFinished`. */
         await this._speakNarration(item);
         this._loadedId = item.id;
-        this._loadedIsSynth = true;
+        this._beginSynthNarration(item);
       } else {
         await this.backend.load(item, { startOffset });
         this._loadedId = item.id;
-        this._loadedIsSynth = false;
+        this._endSynthNarration();
       }
       // The ladder's rung 3 runs HERE and nowhere earlier: this is the first
       // moment the duration of the copy the listener actually received exists.
@@ -1022,17 +1087,16 @@ export class PlayerQueueManager {
       caller's `catch` is the existing "a load failed" path, which is exactly
       what "the plugin could not speak this line" means for the queue.
 
-      WHAT THIS METHOD DELIBERATELY DOES NOT DO: know when the utterance
-      finishes. `ForayTtsPlugin.swift` resolves `speak()` on ACCEPT, not on
-      completion (see its own comment on this) — Android's contract is no
-      better documented — so nothing this card can build learns when a
-      listener stops hearing the line. That is §7 item 3
-      ("duration is unknown before speaking"), explicitly out of scope here.
-      The practical consequence, stated rather than hidden: today a
-      script-only item is spoken and the queue does not yet advance past it
-      on its own — a follow-up card owns building that signal (or an
-      estimate-driven timer off the `duration_sec` this queue item already
-      carries) once §7 item 3 is scoped.
+      WHAT THIS METHOD STILL DOES NOT DO: know when the utterance finishes.
+      `ForayTtsPlugin.swift` resolves `speak()` on ACCEPT, not on completion
+      (see its own comment on this) — Android's contract is no better
+      documented — so this method itself cannot learn when a listener stops
+      hearing the line. §7 item 3's answer to that (a separate `finished`
+      event, surfaced through the bridge's OPTIONAL `onFinished`) is wired at
+      the call SITES (`_beginSynthNarration`/`_onTtsFinished`), not here,
+      because `_speakNarration` is also the mid-Foray bridge's call path
+      (`_playTransitionBridge`) and both call sites need the same start/finish
+      bookkeeping around one `speak()` call rather than a second copy of it.
 
       VOICE (V-01): `this._voice`, read here at call time for the same reason
       `this._rate` is — a choice made from the page while nothing is speaking
@@ -1055,6 +1119,144 @@ export class PlayerQueueManager {
     }
     this._lastSpeakResult = result || null;
     return result;
+  }
+
+  /* ---------- §7 item 3 (L-03): the narration position ticker and the
+     `finished` event that advances past a spoken item ---------- */
+
+  /**
+   * Mark the currently-loading item as the synth utterance now audible, and
+   * start the position ticker for it. The single entry point both
+   * `_loadItem` and `_playTransitionBridge` call once `_speakNarration` has
+   * resolved — the bookkeeping is identical at both call sites, so it lives
+   * here rather than being duplicated.
+   *
+   * `_speakSeq` is bumped BEFORE the ticker starts: it is the identity of
+   * THIS utterance, and `_onTtsFinished` compares against it rather than a
+   * plain boolean so that a `finished` event arriving for an utterance that
+   * has already been superseded (a skip, a new item entirely) is provably
+   * stale rather than merely "already seen".
+   */
+  _beginSynthNarration() {
+    this._loadedIsSynth = true;
+    this._speakSeq++;
+    /* The Foray clock during narration (L-03). Nothing in `backend` is
+       playing this item — its `currentTime` is frozen at wherever the last
+       rendered item left it — so a surface reading the manager's playhead
+       through the backend would see a position that never advances. Wall
+       clock elapsed since THIS utterance started is the only clock there is
+       for a synthesizer, the same reasoning `_speakNarration`'s own doc
+       comment gives for why the RATE has to be read at call time rather than
+       applied to a media element that does not exist. `narrationElapsedSec`
+       reads this. */
+    this._narrationStartedAtMs = this._scheduler.nowMs();
+    this._startNarrationTicker();
+  }
+
+  /** Wall-clock seconds since the currently-loaded synth item started
+      speaking, or `null` when nothing is speaking. `client.js`'s
+      `forayPlayhead()` uses this in place of `backend.currentTime` for a
+      narration item — see the comment on `_beginSynthNarration` for why the
+      backend's own clock cannot answer this question for an utterance. Not
+      clamped to the item's estimated/measured duration here: `forayElapsed`
+      (foray-resolve.js) already clamps at the consuming end, the same
+      contract it applies to every other item's position. */
+  get narrationElapsedSec() {
+    if (!this._loadedIsSynth || this._narrationStartedAtMs == null) return null;
+    return Math.max(0, (this._scheduler.nowMs() - this._narrationStartedAtMs) / 1000);
+  }
+
+  /** Is the item the manager currently holds a synth narration utterance —
+      i.e. should a caller read `narrationElapsedSec` rather than the
+      backend's own clock for the playhead? Exposed as its own boolean rather
+      than making callers infer it from `narrationElapsedSec` being non-null,
+      because "nothing is speaking" and "something is speaking but the clock
+      has not started yet" would otherwise both read as `null` and a caller
+      could not tell which backend to trust for THIS item. */
+  get isNarrationPlayhead() {
+    return this._loadedIsSynth === true;
+  }
+
+  /** The item now loaded/loading is NOT a synth utterance — an ordinary
+      backend load, or (via `_endSeamGap`'s callers) nothing at all. Stops the
+      ticker, which would otherwise keep firing `onNarrationTick` for a
+      rendered item that already has its own `timeupdate`. Does NOT bump
+      `_speakSeq` or touch `_advancedSpeakSeq`: those identify a SPECIFIC
+      utterance's lifecycle, and clearing them here would let a `finished`
+      event that arrives just after this call (a genuine late race, not a
+      stale one) look unhandled and double-advance. */
+  _endSynthNarration() {
+    this._loadedIsSynth = false;
+    this._narrationStartedAtMs = null;
+    this._stopNarrationTicker();
+  }
+
+  _startNarrationTicker() {
+    this._stopNarrationTicker();
+    if (!this._onNarrationTick) return;
+    this._narrationTicker = this._scheduler.schedule(NARRATION_TICK_MS, () => this._tickNarration());
+  }
+
+  /** Re-arms itself on every tick — `scheduler.schedule` is a one-shot timer
+      (see `REAL_SCHEDULER`/the test schedulers' own contracts), the same
+      shape `_awaitSeamGap` already relies on, so a repeating tick is built
+      the same way here rather than assuming `setInterval` semantics that the
+      manual test scheduler does not provide. */
+  _tickNarration() {
+    this._narrationTicker = null;
+    if (this._disposed || !this._loadedIsSynth) return;
+    if (this._onNarrationTick) {
+      try { this._onNarrationTick(); } catch (_) { /* a surface must never break the player */ }
+    }
+    this._startNarrationTicker();
+  }
+
+  _stopNarrationTicker() {
+    if (typeof this._narrationTicker === "function") this._narrationTicker();
+    this._narrationTicker = null;
+  }
+
+  /**
+   * The bridge says an utterance finished (§7 item 3,
+   * `generation-architecture.md` §7 item 3; `ForayTtsPlugin.speechSynthesizer
+   * (_:didFinish:)` on iOS, Android's `UtteranceProgressListener.onDone`).
+   * Advances the queue past the currently-speaking item EXACTLY ONCE per
+   * utterance — the card's own acceptance test fires this twice and requires
+   * a single advance.
+   *
+   * THREE GUARDS, in the order that makes each one meaningful:
+   *
+   *   1. `!this._loadedIsSynth` — nothing is speaking right now (the item
+   *      already advanced some other way: a listener's own skip, an error,
+   *      a stop). A `finished` for an utterance that is no longer the
+   *      loaded item is not this utterance's event.
+   *   2. `this._applying > 0` — a transition is already in flight (see
+   *      `reconcileWithBackend`'s identical guard and comment). Firing a
+   *      SECOND advance while the first is still being applied would race
+   *      the reducer against itself.
+   *   3. `this._advancedSpeakSeq === this._speakSeq` — THIS utterance has
+   *      already been advanced past. `_speakSeq` only changes when a NEW
+   *      utterance starts (`_beginSynthNarration`), so a duplicate event for
+   *      the SAME utterance is caught here even though guard 1 has already
+   *      gone false by the time the second event's microtask runs — the
+   *      first advance's own `_loadItem`/`_playTransitionBridge` may already
+   *      have loaded the NEXT item and left `_loadedIsSynth` however that
+   *      item leaves it, so guard 1 alone cannot be trusted to still be true
+   *      for a genuinely duplicate event. Recorded BEFORE the async advance
+   *      dispatches, not after, so two `finished` events arriving before
+   *      either's `_handle` call resolves cannot both pass the check.
+   */
+  _onTtsFinished() {
+    if (this._disposed) return;
+    if (!this._loadedIsSynth) return;
+    if (this._applying > 0) return;
+    const seq = this._speakSeq;
+    if (this._advancedSpeakSeq === seq) return;
+    this._advancedSpeakSeq = seq;
+    this._stopNarrationTicker();
+    this._emit(`tts.finished item=${this._currentItem()?.id ?? "?"}`);
+    this._handleBackendItemEnded(END_NATURAL)
+      .catch((err) => this._emit(`tts.finished.advanceFailed: ${err?.message ?? err}`));
   }
 
   /* ---------- the seam beat ---------- */
@@ -1305,10 +1507,10 @@ export class PlayerQueueManager {
          as each already had it. */
       if (this._isSynthNarration(bridge)) {
         await this._speakNarration(bridge);
-        this._loadedIsSynth = true;
+        this._beginSynthNarration(bridge);
       } else {
         await this.backend.load(bridge, { startOffset: 0 });
-        this._loadedIsSynth = false;
+        this._endSynthNarration();
         this.backend.play();
       }
       /* THE BRIDGE IS WHAT THE ELEMENT IS HOLDING, so it has to say so (#263).

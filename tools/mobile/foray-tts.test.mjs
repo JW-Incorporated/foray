@@ -12,6 +12,7 @@ import assert from "node:assert/strict";
 
 import {
   PLUGIN_NAME,
+  FINISHED_EVENT,
   buildIpaOverrides,
   buildAndroidSsml,
   languageMatches,
@@ -19,6 +20,7 @@ import {
   shellApplies,
   speak,
   createForayTtsShell,
+  onFinished,
 } from "../../mobile/plugins/foray-tts/web/foray-tts.js";
 
 const LEXICON = [
@@ -456,4 +458,103 @@ test("createForayTtsShell: shellApplies reflects the baked-in bridge by default"
   const shell = createForayTtsShell({ bridge });
   assert.equal(shell.shellApplies(), true);
   assert.equal(shell.shellApplies({}), false);
+});
+
+/* ------------------------------------------------------------- §7 item 3: onFinished
+
+   L-03's advance-past-narration signal — the web half of the contract
+   `ForayTtsPlugin.speechSynthesizer(_:didFinish:)` (iOS) and
+   `UtteranceProgressListener.onDone` (Android) raise natively, surfaced the
+   same way `foray-media-session.js`'s `TRANSPORT_EVENT` already is. */
+
+/** A bridge that also answers `addListener`, the way `foray-media-session.js`'s
+    own `subscribe()` expects Capacitor's real bridge to. `fakeBridge()` above
+    has no such method — `speak`/`listVoices` never call it — so this is a
+    distinct fixture rather than an extension of that one. */
+function fakeListenerBridge() {
+  const listeners = new Map(); // "plugin:event" -> Set<fn>
+  return {
+    key: (p, e) => `${p}:${e}`,
+    listeners,
+    bridge: {
+      nativePromise: async () => ({ ok: true }),
+      addListener(plugin, event, fn) {
+        const k = `${plugin}:${event}`;
+        if (!listeners.has(k)) listeners.set(k, new Set());
+        listeners.get(k).add(fn);
+        return { remove: () => listeners.get(k)?.delete(fn) };
+      },
+    },
+  };
+}
+
+// TO SEE IT FAIL: in `onFinished`, call `bridge.addListener(PLUGIN_NAME, "done", fn)`
+// (a wrong event name) — the fixture's own listeners map would then never
+// receive a callback and this assertion would find nothing to invoke.
+test("onFinished: subscribes to PLUGIN_NAME/FINISHED_EVENT via addListener", () => {
+  const { bridge, listeners } = fakeListenerBridge();
+  onFinished(() => {}, { bridge });
+  assert.equal(listeners.get(`${PLUGIN_NAME}:${FINISHED_EVENT}`)?.size, 1);
+});
+
+test("onFinished: the callback fires when the bridge dispatches the event", () => {
+  const { bridge, listeners } = fakeListenerBridge();
+  const seen = [];
+  onFinished(() => seen.push("fired"), { bridge });
+  for (const fn of listeners.get(`${PLUGIN_NAME}:${FINISHED_EVENT}`)) fn();
+  assert.deepEqual(seen, ["fired"]);
+});
+
+// TO SEE IT FAIL: drop the `handle.remove()` call from the returned
+// unsubscribe function — a caller that unsubscribes (the manager's own
+// `dispose()`) would then keep receiving events from a torn-down listener.
+test("onFinished: the returned unsubscribe stops the callback from firing again", () => {
+  const { bridge, listeners } = fakeListenerBridge();
+  const seen = [];
+  const unsubscribe = onFinished(() => seen.push("fired"), { bridge });
+  const key = `${PLUGIN_NAME}:${FINISHED_EVENT}`;
+  for (const fn of listeners.get(key)) fn();
+  unsubscribe();
+  assert.equal(listeners.get(key)?.size, 0, "the native listener set must be empty after unsubscribe");
+  assert.deepEqual(seen, ["fired"], "no further event may reach the callback");
+});
+
+// The card's own contract: absence changes nothing. A plain browser tab (no
+// Capacitor bridge at all) must get a safe no-op, not a throw.
+// TO SEE IT FAIL: remove the `!shellApplies(bridge)` guard — this then throws
+// trying to call `.addListener` on `undefined`.
+test("onFinished: no bridge at all is a safe no-op", () => {
+  const unsubscribe = onFinished(() => {}, { bridge: undefined });
+  assert.equal(typeof unsubscribe, "function");
+  assert.doesNotThrow(() => unsubscribe());
+});
+
+test("onFinished: a non-function callback is a no-op, not a crash", () => {
+  const { bridge } = fakeListenerBridge();
+  assert.doesNotThrow(() => onFinished(null, { bridge })());
+  assert.doesNotThrow(() => onFinished(undefined, { bridge })());
+});
+
+// `nativeCallback` is `foray-media-session.js`'s own documented fallback for
+// a bridge exposing only the thinner primitive `addListener` wraps.
+// TO SEE IT FAIL: check `addListener` only, with no `nativeCallback` branch —
+// a bridge shaped this way would then be treated as having no listener API
+// at all, silently dropping the subscription.
+test("onFinished: falls back to nativeCallback when addListener is absent", () => {
+  const calls = [];
+  const bridge = {
+    nativePromise: async () => ({ ok: true }),
+    nativeCallback: (plugin, method, args, cb) => calls.push({ plugin, method, args, cb }),
+  };
+  onFinished(() => {}, { bridge });
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].plugin, PLUGIN_NAME);
+  assert.equal(calls[0].args.eventName, FINISHED_EVENT);
+});
+
+test("createForayTtsShell: exposes onFinished wired to the same baked-in bridge", () => {
+  const { bridge, listeners } = fakeListenerBridge();
+  const shell = createForayTtsShell({ bridge });
+  shell.onFinished(() => {});
+  assert.equal(listeners.get(`${PLUGIN_NAME}:${FINISHED_EVENT}`)?.size, 1);
 });

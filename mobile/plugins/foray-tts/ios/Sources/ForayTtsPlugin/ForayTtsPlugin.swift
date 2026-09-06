@@ -32,10 +32,41 @@ public class ForayTtsPlugin: CAPPlugin, CAPBridgedPlugin, AVSpeechSynthesizerDel
         CAPPluginMethod(name: "listVoices", returnType: CAPPluginReturnPromise)
     ]
 
+    /// §7 item 3 (L-03, `generation-architecture.md` §7 item 3): the event
+    /// this plugin raises from `speechSynthesizer(_:didFinish:)` once an
+    /// utterance completes. Mirrors `TRANSPORT_EVENT` in
+    /// `ForayAudioPlugin.swift`/`foray-media-session.js` -- the same
+    /// `notifyListeners`/`addListener` mechanism, a different plugin and
+    /// event name, pinned against `web/foray-tts.js`'s own `FINISHED_EVENT`
+    /// constant by `shell-invariants.test.mjs` once that suite extends to
+    /// this plugin (kept a plain string constant here, not re-derived, so
+    /// a rename on either side is a one-line diff to catch, the same
+    /// discipline `TRANSPORT_EVENT` already established).
+    static let FINISHED_EVENT = "finished"
+
     private let synthesizer = AVSpeechSynthesizer()
 
     override public func load() {
         synthesizer.delegate = self
+    }
+
+    /// `AVSpeechSynthesizerDelegate`. Documented as "real future work" at the
+    /// `speak()` call site below for months -- `speak()` resolves on ACCEPT,
+    /// not completion, so nothing in that method itself can ever learn when
+    /// the listener stops hearing the line. This is the other half: fired
+    /// once per utterance, unconditionally, with no payload -- the web/queue
+    /// layer (`player/queue-manager.js`'s `_onTtsFinished`) already tracks
+    /// WHICH utterance is current and de-dupes a stray duplicate itself, so
+    /// this delegate method stays a pure "an utterance just ended" signal
+    /// and does not try to also answer "which one" -- one native event, one
+    /// job.
+    ///
+    /// Fired for EVERY completion, not gated on whether JS is still
+    /// listening: `notifyListeners` is a no-op with no registered listener
+    /// (Capacitor's own documented behaviour), so there is nothing here to
+    /// guard.
+    public func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) {
+        notifyListeners(Self.FINISHED_EVENT, data: JSObject())
     }
 
     /// The `rate` this plugin receives is a PLAYBACK-SPEED MULTIPLIER, not a
@@ -465,11 +496,15 @@ public class ForayTtsPlugin: CAPPlugin, CAPBridgedPlugin, AVSpeechSynthesizerDel
         result["voiceFallback"] = resolution.didFallBack
         result["voiceReason"] = resolution.reason
         /* RESOLVED ON ACCEPT, not on completion -- `AVSpeechSynthesizer.speak()`
-           enqueues; it does not block until spoken. A completion-aware version
-           (via the delegate's didFinish callback) is real future work, not
-           something this card's single proof-of-plumbing call site needs --
-           same "accepted, not necessarily finished" distinction
-           ForayTtsPlugin.java draws for Android's speak(). */
+           enqueues; it does not block until spoken. `speak()`'s own promise
+           stays accept-only: changing it to await completion would delay
+           every caller by the utterance's own length for no benefit, since a
+           caller that wants completion now has a purpose-built signal.
+           Completion is reported separately, via
+           `speechSynthesizer(_:didFinish:)` above (L-03,
+           `generation-architecture.md` §7 item 3) -- same "accepted, not
+           necessarily finished" distinction `ForayTtsPlugin.java` draws for
+           Android's `speak()`. */
         call.resolve(result)
     }
 

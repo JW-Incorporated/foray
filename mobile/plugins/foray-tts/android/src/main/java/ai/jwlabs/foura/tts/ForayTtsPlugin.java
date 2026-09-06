@@ -66,6 +66,17 @@ public class ForayTtsPlugin extends Plugin implements TextToSpeech.OnInitListene
 
     private static final String TAG = "ForayTts";
 
+    /** §7 item 3 (L-03, {@code generation-architecture.md} §7 item 3): the
+     *  event this plugin raises once an utterance completes, from
+     *  {@link UtteranceProgressListener#onDone}. Mirrors {@code
+     *  TRANSPORT_EVENT} in {@code ForayAudioPlugin.java}/{@code
+     *  foray-media-session.js} -- the same {@code notifyListeners}/{@code
+     *  addListener} mechanism, a different plugin and event name -- and must
+     *  stay equal to {@code web/foray-tts.js}'s own {@code FINISHED_EVENT}
+     *  string, the same pairing that file's own header states for {@code
+     *  PLUGIN_NAME}. */
+    private static final String FINISHED_EVENT = "finished";
+
     /** Null until {@link #onInit} reports success or failure. Guarded by the
      *  Capacitor bridge's own single-threaded call dispatch -- every
      *  {@code @PluginMethod} here runs on the same worker, so no separate lock
@@ -211,7 +222,20 @@ public class ForayTtsPlugin extends Plugin implements TextToSpeech.OnInitListene
                 public void onStart(String utteranceId) { /* no-op: resolution is on accept, not on completion -- see class comment */ }
 
                 @Override
-                public void onDone(String utteranceId) { /* completion is not awaited; see below */ }
+                public void onDone(String utteranceId) {
+                    /* §7 item 3 (L-03). `speak()` itself stays accept-only
+                       (see the class comment on why) -- this is the separate
+                       completion signal, mirroring
+                       `ForayTtsPlugin.swift`'s `speechSynthesizer(_:didFinish:)`.
+                       Fired on Android's own utterance-callback thread, not
+                       the main thread; `notifyListeners` is documented safe
+                       to call from any thread (it posts to the bridge's own
+                       dispatch), the same assumption
+                       `ForayAudioPlugin.java`'s TRANSPORT_EVENT emission
+                       already makes for a command coming off a media-session
+                       callback. */
+                    notifyListeners(FINISHED_EVENT, new JSObject());
+                }
 
                 @Override
                 public void onError(String utteranceId) { /* completion is not awaited; see below */ }
@@ -225,9 +249,9 @@ public class ForayTtsPlugin extends Plugin implements TextToSpeech.OnInitListene
                call returning SUCCESS means "accepted", exactly the same
                "accepted, not necessarily audible" distinction
                `ForayAudioPlugin.start()`'s own comment draws for
-               `startForegroundService`. A completion-aware version (awaiting
-               `onDone`) is real future work, not something this card's single
-               proof-of-plumbing call site needs. */
+               `startForegroundService`. Completion is reported separately,
+               via `onDone` above (L-03, `generation-architecture.md` §7
+               item 3) -- `speak()`'s own promise stays accept-only. */
             Bundle params = new Bundle();
             int speakResult;
             if (androidSsml != null && !androidSsml.isEmpty()) {

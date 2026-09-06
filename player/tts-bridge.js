@@ -140,5 +140,36 @@ export function createTtsBridge({ load = null, candidates = null, log = null } =
       }
       return mod.listVoices(opts);
     },
+
+    /* §7 item 3 (L-03). Same lazy-load-then-delegate shape `speak`/
+       `listVoices` above already use, and the same reason: the module lives
+       at a different URL per host (this file's own header), so a caller must
+       not import it directly.
+
+       ASYNC UNSUBSCRIBE, because the module is not loaded yet when a caller
+       subscribes — `PlayerQueueManager`'s constructor calls this
+       synchronously, before the manager can possibly know whether a real
+       plugin exists. Returns an unsubscribe function IMMEDIATELY (never a
+       Promise of one) so `queue-manager.js`'s `dispose()` always has
+       something safe to call; if the module turns out to have no
+       `onFinished` (an older shell build, mirroring `listVoices`'s own
+       comment on the same risk) or never resolves before `dispose()` runs,
+       the returned function is a no-op rather than a promise it cannot keep. */
+    onFinished(fn) {
+      if (typeof fn !== "function") return () => {};
+      let live = true;
+      let realUnsubscribe = null;
+      if (!pending) pending = loadModule();
+      pending.then((mod) => {
+        if (!live) return; // unsubscribed before the module resolved
+        if (mod && typeof mod.onFinished === "function") {
+          realUnsubscribe = mod.onFinished(fn);
+        }
+      });
+      return () => {
+        live = false;
+        if (typeof realUnsubscribe === "function") realUnsubscribe();
+      };
+    },
   };
 }

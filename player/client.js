@@ -468,7 +468,20 @@ function _announceEpisodeEndedIfNeeded() {
 let foray = null;
 
 function isPlaying() {
-  return manager?.state?.type === "playing";
+  /* L-03: a narration bridge INSERTED mid-Foray (an authored TTS item the
+     reducer reaches via `itemEnded`'s `bridged` branch, not through the
+     ordinary `play(index)` entry point) lands in `"transitioning"`, not
+     `"playing"` — see `queue-state.js`'s `handleItemEnded`. That state means
+     exactly the same thing to a listener: the bridge is audible right now,
+     nothing is paused, and Now Playing must say so. `PlayerQueueManager`'s
+     own `_narrationIsAudible()` already treats the two states as one for the
+     rate-deferral guarantee (§12); reading it here for playback state is the
+     same rule, not a new one. A narration item reached the ORDINARY way
+     (index 0, or any item loaded via `play()`/a skip) already lands in
+     `"playing"` like any other item, so this widening changes nothing for
+     that path — it only fixes the bridge's own transitional state. */
+  const type = manager?.state?.type;
+  return type === "playing" || type === "transitioning";
 }
 
 /** Is the Foray RUNNING, as a listener would say it?
@@ -510,6 +523,20 @@ function forayPlayhead() {
   if (manager?.currentIndex !== foray.index) return null;
   const item = foray.resolved.playable[foray.index];
   if (!item || !item.id || manager?.playheadItemId !== item.id) return null;
+  /* L-03: a script-only narration item is spoken through the on-device
+     plugin, not loaded into `backend` — `backend.currentTime` at this
+     instant is whatever the LAST rendered item left it at, frozen for the
+     whole utterance (see `_beginSynthNarration`'s own comment on the
+     manager side). `narrationElapsedSec` is the manager's wall-clock answer
+     for exactly this item, and `forayElapsed`'s own narration branch already
+     treats a bare elapsed-seconds number as the offset directly, with no
+     `start_sec` to subtract — the same contract this call already relies on
+     for a rendered bridge. */
+  if (manager?.isNarrationPlayhead === true) {
+    const t = manager.narrationElapsedSec;
+    if (typeof t !== "number" || !Number.isFinite(t)) return null;
+    return forayElapsed(foray.resolved.playable, foray.index, t);
+  }
   const t = backend?.currentTime;
   if (typeof t !== "number" || !Number.isFinite(t)) return null;
   return forayElapsed(foray.resolved.playable, foray.index, t);
@@ -1325,6 +1352,14 @@ function ensureBooted() {
        reaches it at all, so the beat is invisible and the main button still
        means "start". This is the only repaint during a beat, at both edges. */
     onSeamGapChange: () => render(),
+    /* L-03: a synth narration item produces no `timeupdate` at all — there is
+       no `<audio>` element under it — so without this hook `render()` would
+       not run again until some unrelated event, and both the Now Playing
+       position and the in-page clock would freeze for the whole utterance.
+       Same repaint-on-a-hook shape `onSeamGapChange` already uses above, for
+       the same reason: the manager knows exactly when there is nothing else
+       to trigger a repaint, and the surface only needs to be told. */
+    onNarrationTick: () => render(),
     /* THE WIRE (generation-architecture.md §7 items 1-2). `_speakNarration` and
        the whole script-only-narration branch of `_loadItem` have been complete
        since #382 and were unreachable, because this argument was never passed:

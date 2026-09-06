@@ -75,6 +75,17 @@
 
 export const PLUGIN_NAME = "ForayTts";
 
+/** §7 item 3 (L-03, `generation-architecture.md` §7 item 3). The native event
+ *  name each plugin raises when an utterance finishes —
+ *  `ForayTtsPlugin.speechSynthesizer(_:didFinish:)` on iOS,
+ *  `UtteranceProgressListener.onDone` on Android — surfaced through
+ *  Capacitor's own `notifyListeners`/`addListener` plumbing, the SAME
+ *  mechanism `foray-media-session.js`'s `TRANSPORT_EVENT` already uses for a
+ *  different plugin. A string constant here, exported, for the same reason
+ *  `TRANSPORT_EVENT` is: `shell-invariants.test.mjs`-style pinning can catch
+ *  a rename on one side without the other, once either side needs it. */
+export const FINISHED_EVENT = "finished";
+
 /** True when an installed voice's BCP-47 tag is RELEVANT to a requested one:
  *  exact locale, or the same primary subtag (`en-US` ~ `en-GB`, never `fr-FR`).
  *
@@ -393,5 +404,62 @@ export function createForayTtsShell(defaults = {}) {
     speak: (text, opts = {}) => speak(text, { ...defaults, ...opts }),
     listVoices: (opts = {}) => listVoices({ ...defaults, ...opts }),
     shellApplies: (bridge) => shellApplies(bridge ?? defaults.bridge),
+    onFinished: (fn) => onFinished(fn, defaults),
   };
+}
+
+/**
+ * Subscribe to the native `finished` event (§7 item 3, L-03) — an utterance
+ * completed, and the caller (`player/queue-manager.js`'s `_onTtsFinished`)
+ * should advance the queue. Returns an unsubscribe function; a no-op one
+ * when there is nothing to subscribe to, so a caller never has to branch on
+ * whether the subscription "took".
+ *
+ * OPTIONAL BY DESIGN. `speak()`/`listVoices()` degrade to Web Speech when no
+ * native bridge exists; this does not, because Web Speech's
+ * `SpeechSynthesisUtterance` DOES have a real `onend` event and a caller in
+ * that environment already has a better tool than this one. So the Web
+ * Speech path here is deliberately absent rather than reimplemented — a
+ * caller that wants Web Speech's own completion signal reads `utter.onend`
+ * directly, and this function's whole job is bridging what a Capacitor
+ * plugin event otherwise has no page-level API for.
+ *
+ * ONE SUBSCRIPTION PER CALLER. Each call to `bridge.addListener` returns its
+ * own handle from the underlying Capacitor bridge; nothing here de-dupes
+ * multiple `onFinished` calls into one native subscription, because
+ * `player/queue-manager.js`'s own contract (see its constructor doc) is a
+ * single long-lived subscription for the manager's whole lifetime, matching
+ * `foray-media-session.js`'s `TRANSPORT_EVENT` subscription shape.
+ *
+ * @param {Function} fn  () => void, called once per `finished` event
+ * @param {object} [opts]
+ * @param {object} [opts.bridge] injected `window.Capacitor` (or a fake)
+ * @param {Function} [opts.log] injected logger
+ * @returns {Function} unsubscribe
+ */
+export function onFinished(fn, opts = {}) {
+  const {
+    bridge = (typeof window !== "undefined" ? window.Capacitor : undefined),
+    log = (typeof console !== "undefined" ? console.warn.bind(console) : () => {}),
+  } = opts;
+  if (typeof fn !== "function" || !shellApplies(bridge)) return () => {};
+  try {
+    if (typeof bridge.addListener === "function") {
+      const handle = bridge.addListener(PLUGIN_NAME, FINISHED_EVENT, fn);
+      return () => { try { handle?.remove?.(); } catch (_e) { /* a surface must never break on teardown */ } };
+    }
+    if (typeof bridge.nativeCallback === "function") {
+      /* `foray-media-session.js`'s own fallback for a bridge with no
+         `addListener` — `nativeCallback` is the thinner primitive
+         `addListener` itself wraps, and one of the two is present in every
+         bridge that has plugins at all. There is no unsubscribe handle on
+         this path (same limit that file's own comment states), so the
+         returned function is a no-op rather than a promise it cannot keep. */
+      bridge.nativeCallback(PLUGIN_NAME, "addListener", { eventName: FINISHED_EVENT }, fn);
+      return () => {};
+    }
+  } catch (e) {
+    try { log("foray-tts: could not subscribe to " + FINISHED_EVENT, e); } catch (_e) { /* never throw */ }
+  }
+  return () => {};
 }
