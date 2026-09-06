@@ -2028,7 +2028,7 @@ Android job is written to skip loudly rather than fail (see
 `docs/release-lockstep-plan.md` R-03), so nothing breaks in the meantime, but
 nothing uploads either.
 
-**Status:** OPEN
+**Status:** DONE (2026-09-06 — Wyatt created `play-uploader@a-play-uploads.iam.gserviceaccount.com` with testing-track permissions and added `PLAY_SERVICE_ACCOUNT_JSON`; release run 34045806385 uploaded versionCode 2026090603 to the internal track: `Successfully committed` edit 03636605186726154828)
 
 ---
 
@@ -2066,7 +2066,7 @@ account is configured.
 secret exists) can upload `versionCode 2` and higher without Google's API
 rejecting it as "no existing release to update."
 
-**Status:** OPEN
+**Status:** DONE (2026-09-06 — Wyatt uploaded the first release by hand; it was still *in review* when the first API upload above succeeded, so review does not block internal-track API uploads)
 
 ---
 
