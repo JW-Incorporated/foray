@@ -1989,24 +1989,36 @@ service account, not a person, and nothing in this repo can create that
 account — it is a click-through flow in the Play Console tied to the
 developer account's identity.
 
-**Steps, with the exact menu path.**
+**Steps, with the exact menu path** (rewritten 2026-09-06 — Google removed the
+Play Console's *Setup → API access* page in 2025; Wyatt looked for it and it is
+not there. A Cloud project no longer needs to be *linked* to the developer
+account; the service account is simply invited as a user.
+Source: `developers.google.com/android-publisher/getting_started`.)
 
-1. In the **Play Console**, open the app (`4a`), then go to
-   **Setup → API access**.
-2. If no Google Cloud project is linked yet, follow the prompt to **link (or
-   create) a Google Cloud project** — Play Console does this step for you.
-3. Under that linked project, **create a new service account** (Play Console
-   deep-links you straight into the Google Cloud IAM console for this step).
-4. Back in Play Console's **API access** page, grant the new service account
-   access to this app with the role **`Release manager`** — this is the
-   minimum role that can upload and manage releases without also granting
-   store-listing or financial-data access.
-5. In Google Cloud IAM, generate a **JSON key** for that service account and
-   download it.
-6. Add the whole JSON file as a GitHub repo secret named exactly
-   **`PLAY_SERVICE_ACCOUNT_JSON`** — from the file, not retyped
-   (`gh secret set PLAY_SERVICE_ACCOUNT_JSON < path/to/key.json`), so the key
-   material never enters a shell history or a transcript.
+1. **Google Cloud Console** (`console.cloud.google.com`), any project you own
+   (create one called `4a-play-uploads` if in doubt): **APIs & Services →
+   Library → search "Google Play Android Developer API" → Enable**.
+2. Same project: **IAM & Admin → Service Accounts → Create service account**.
+   Name `play-uploader`. No Cloud roles are needed. Copy its email
+   (`play-uploader@<project>.iam.gserviceaccount.com`).
+3. Open that service account → **Keys → Add key → Create new key → JSON**.
+   The file downloads once; keep it.
+4. **Play Console**, at the *account* level (left nav on the "All apps" page,
+   not inside 4a): **Users and permissions → Invite new users**. Paste the
+   service-account email as the user. Under **App permissions → Add app →
+   4a**, tick: *View app information and download bulk reports*, *Release
+   apps to testing tracks*, *Manage testing tracks and edit tester lists*.
+   Leave production release and financial permissions unticked. Send the
+   invite; a service account needs no acceptance.
+   If you do not see **Users and permissions**, your Play login is not an
+   Owner/Admin of the developer account — the account owner (Joey) has to do
+   this step.
+5. Hand the JSON file to the session over Signal or the password manager (not
+   chat/email), or add it yourself as the GitHub repo secret named exactly
+   `PLAY_SERVICE_ACCOUNT_JSON` (Settings → Secrets and variables → Actions),
+   pasting the whole file as the value.
+6. Tell the session; it runs `release.yml` once and checks the summary's Play row.
+
 
 **Worked if:** the Play Console's API access page shows the service account
 listed with **Release manager** access to `4a`, and
