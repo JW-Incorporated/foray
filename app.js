@@ -3252,7 +3252,7 @@ function playlistCardV2Html(p, { generated = false } = {}) {
     than a mini-card. No new backend, per the card's own text. */
 function playlistsForYouHtml() {
   const own = [...playlists()]
-    .sort((a, b) => (b.last_played_at || b.created).localeCompare(a.last_played_at || a.created))
+    .sort((a, b) => (b.last_played_at || b.created || "").localeCompare(a.last_played_at || a.created || ""))
     .slice(0, 3);
   const generated = (state.cardSlots || []).slice(0, 3).map(sl => ({
     id: "subject-" + sl.branch, branch: sl.branch, isSubject: true,
@@ -3284,9 +3284,11 @@ function miniCardV2(slot) {
 /** "Episodes for you": buildCards()'s ranked discover-pool picks, i.e.
     state.cardSlots verbatim — the SAME floor buildCards() already
     computes for the flag-off four-card Home, so this section and that
-    one can never disagree about which slot is the stretch. */
+    one can never disagree about which slot is the stretch. renderHomeV2()
+    guarantees state.cardSlots is already built before this runs (same as
+    v1's own renderHome()), so this only guards a caller that invokes this
+    function directly (e.g. a future test). */
 function episodesForYouHtml() {
-  if (!state.cardSlots.length) buildCards();
   if (!state.cardSlots.length) return "";
   return `<section class="hv2-section hv2-episodes">
     <h2 class="hv2-title">Episodes for you</h2>
@@ -3296,6 +3298,7 @@ function episodesForYouHtml() {
 
 function renderHomeV2() {
   setBodyClass("view-home");
+  if (!state.cardSlots.length) buildCards();
   $("#view").innerHTML = `
     <div class="home hv2-home">
       ${homeGreeting()}
