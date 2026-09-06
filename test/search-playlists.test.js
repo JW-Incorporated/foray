@@ -377,9 +377,13 @@ test("no own or generated match renders neither section content nor the CTA when
 /* 4. THE CTA — #135/D8, PRESENTATION ONLY, NO SECOND CREATION PATH      */
 /* ==================================================================== */
 
-test("the CTA appears when the topic scorer finds no strong result and no playlist matches", () => {
+test("the CTA appears when the topic scorer finds no strong result and no playlist matches", async () => {
   /* MUTATION: return the CTA unconditionally rather than gating on
-     topicSearchStatus(query) === "empty". */
+     topicSearchStatus(query) === "empty". The CTA is computed inside a
+     deferred setTimeout(0) (see renderPlaylistSearchResults's own "THE
+     DEFER IS LOAD-BEARING" comment, added after a review finding that the
+     synchronous topic-scorer call could freeze the Shows page) -- await
+     one macrotask before asserting. */
   const m = mount({ seed: { cp_ui_v2: "true" } });
   seedV2Empty(m);
   m.state.session = { session_id: "s-1", builder: "test", episodes: {}, cards: [] };
@@ -388,6 +392,7 @@ test("the CTA appears when the topic scorer finds no strong result and no playli
 
   m.ctx.renderAllShows();
   shForm.submit();
+  await new Promise((r) => setTimeout(r, 0));
 
   const pl = m.byId.get("pl-search-results");
   assert.strictEqual(pl.hidden, false, "the CTA container must become visible");
@@ -395,7 +400,7 @@ test("the CTA appears when the topic scorer finds no strong result and no playli
   assert.ok(pl.innerHTML.includes("zzz-nonsense-query-zzz"), "must name the actual typed query");
 });
 
-test("the CTA does not appear when a rich topic answer exists, even with no own/generated playlist match", () => {
+test("the CTA does not appear when a rich topic answer exists, even with no own/generated playlist match", async () => {
   /* MUTATION: gate the CTA on `!own.length && !generated.length` alone,
      ignoring topicSearchStatus. A listener with zero saved playlists
      searching a well-covered topic would then wrongly see the CTA even
@@ -414,12 +419,13 @@ test("the CTA does not appear when a rich topic answer exists, even with no own/
 
   m.ctx.renderAllShows();
   shForm.submit();
+  await new Promise((r) => setTimeout(r, 0));
 
   const pl = m.byId.get("pl-search-results");
   assert.ok(!pl.innerHTML.includes("Create a playlist about"), "must not show the CTA when the topic scorer already has a rich answer");
 });
 
-test("tapping the CTA does not itself create a playlist — it hands off to #/playlists' own form", () => {
+test("tapping the CTA does not itself create a playlist — it hands off to #/playlists' own form", async () => {
   /* MUTATION: call buildPlaylist(query) directly from the CTA's click
      handler instead of navigating + resubmitting #pl-form. D8/the card's
      scope line requires exactly one playlist-creation code path
@@ -439,6 +445,7 @@ test("tapping the CTA does not itself create a playlist — it hands off to #/pl
 
   m.ctx.renderAllShows();
   shForm.submit();
+  await new Promise((r) => setTimeout(r, 0));
 
   const pl = m.byId.get("pl-search-results");
   assert.ok(pl.innerHTML.includes("data-create-playlist=\"zzz-nonsense-query-zzz\""),

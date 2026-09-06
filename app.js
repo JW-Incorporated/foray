@@ -3080,15 +3080,30 @@ function renderPlaylistSearchResults(query, myToken) {
   const generated = generatedPlaylistCandidatesForQuery(query).filter(p => !ownIds.has(p.id));
 
   if (!own.length && !generated.length) {
-    const cta = createPlaylistCtaHtml(query);
-    if (!cta) {
-      container.innerHTML = "";
-      container.hidden = true;
-      return;
-    }
-    container.innerHTML = cta;
-    container.hidden = false;
-    bindCreatePlaylistCta(container);
+    /* THE DEFER IS LOAD-BEARING (review finding, fresh-context Opus pass):
+       createPlaylistCtaHtml() calls topicSearchStatus(), which runs the
+       exact same SearchEngine.searchWithRelaxation() scan buildPlaylist()
+       does -- 1.3-8s on a cold cache per that function's own documented
+       measurement (see buildPlaylist's SEARCH_CACHE_MAX comment). Calling
+       it synchronously from here, on every show-name search that matches
+       no playlist (the COMMON case -- e.g. "fridman"), would freeze the
+       whole Shows page exactly the way bindPlaylistFormSubmit's own
+       setTimeout(0)+"Building…" guard exists to prevent for #pl-form.
+       Same idiom, same reason: clear the section first so nothing stale
+       lingers, then let the browser get a paint turn before the CPU-bound
+       work runs, and guard with `myToken` so a fast retype's OLD deferred
+       computation can never clobber a newer query's freshly-painted
+       own/generated section. */
+    container.innerHTML = "";
+    container.hidden = true;
+    setTimeout(() => {
+      if (myToken !== showSearchToken) return; // a newer query already superseded this one
+      const cta = createPlaylistCtaHtml(query);
+      if (!cta) return; // container already cleared above
+      container.innerHTML = cta;
+      container.hidden = false;
+      bindCreatePlaylistCta(container);
+    }, 0);
     return;
   }
 
