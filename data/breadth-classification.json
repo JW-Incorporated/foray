@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-07-25T05:11:10.043Z",
+  "built_at": "2026-09-06T00:09:42.950Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-07-25-4292d1cd",
+    "last_batch_id": "fresh-2026-09-06-34aa84e2",
     "last_batch_tier": 1
   },
   "entries": {
@@ -4940,11 +4940,30 @@
     },
     "261654474": {
       "topics": [
-        "history"
+        "history",
+        "engineering"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "history/empire; technology",
+      "display_title": "The History of Rome",
+      "blurb": "A weekly podcast tracing the history of the Roman Empire, beginning with Aeneas's arrival in Italy a",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-34aa84e2",
+      "classified_at": "2026-09-06T00:09:12.839Z"
     },
     "261735167": {
       "topics": [
@@ -5282,11 +5301,35 @@
     },
     "270338166": {
       "topics": [
-        "music"
+        "music",
+        "engineering",
+        "architecture"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        },
+        {
+          "node": "architecture",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "music/audio; technology",
+      "display_title": "Pure Trance Radio Podcast with...",
+      "blurb": "A weekly podcast of progressive and uplifting Pure Trance music, presented by Solarstone.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-34aa84e2",
+      "classified_at": "2026-09-06T00:09:12.839Z"
     },
     "270572701": {
       "topics": [
@@ -5326,11 +5369,40 @@
     },
     "272018688": {
       "topics": [
-        "nature/pets"
+        "music",
+        "engineering",
+        "food",
+        "science"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        },
+        {
+          "node": "food",
+          "confidence": 0.75
+        },
+        {
+          "node": "science",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "music/audio; science",
+      "display_title": "Cattitude -  The #1 Cat Podcast",
+      "blurb": "In these cat podcasts, learn everything there is to know about cats on Cattitude with your hosts Mic",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-34aa84e2",
+      "classified_at": "2026-09-06T00:09:12.839Z"
     },
     "272591768": {
       "topics": [
@@ -5364,11 +5436,35 @@
     },
     "273149718": {
       "topics": [
-        "sports/fantasy"
+        "history/military-ancient",
+        "engineering",
+        "craft"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        },
+        {
+          "node": "craft",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "military; technology",
+      "display_title": "Fantasy Baseball Today",
+      "blurb": "It's the most comprehensive Fantasy Baseball Podcast you'll find. We're dedicated to helping you win",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-34aa84e2",
+      "classified_at": "2026-09-06T00:09:12.839Z"
     },
     "273537688": {
       "topics": [
@@ -5394,11 +5490,25 @@
     },
     "274450056": {
       "topics": [
-        "gaming"
+        "engineering"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "technology",
+      "display_title": "Giant Bombcast",
+      "blurb": "The Giant Bomb discusses the latest video game news and new releases, answers listener questions, an",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-34aa84e2",
+      "classified_at": "2026-09-06T00:09:12.839Z"
     },
     "275087414": {
       "topics": [
@@ -5529,19 +5639,67 @@
     },
     "278930814": {
       "topics": [
-        "adventure"
+        "history/military-ancient",
+        "engineering",
+        "architecture"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        },
+        {
+          "node": "architecture",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "military; technology",
+      "display_title": "The Orvis Fly-Fishing Podcast",
+      "blurb": "The Orvis Fly Fishing Guide Podcast provides weekly tips from acclaimed fly fishing author and lifel",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-34aa84e2",
+      "classified_at": "2026-09-06T00:09:12.839Z"
     },
     "278968170": {
       "topics": [
-        "space"
+        "aviation",
+        "science",
+        "craft"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.75
+        },
+        {
+          "node": "science",
+          "confidence": 0.7
+        },
+        {
+          "node": "craft",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "science; craft/making",
+      "display_title": "Star Diary",
+      "blurb": "The astronomy podcast from the makers of BBC Sky at Night Magazine.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-34aa84e2",
+      "classified_at": "2026-09-06T00:09:12.839Z"
     },
     "278974813": {
       "topics": [
@@ -5569,11 +5727,35 @@
     },
     "279428154": {
       "topics": [
-        "education/courses"
+        "history",
+        "engineering",
+        "science"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        },
+        {
+          "node": "science",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "history/empire; science",
+      "display_title": "LSE: Public lectures and events",
+      "blurb": "The London School of Economics and Political Science public events podcast series is a platform for",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-34aa84e2",
+      "classified_at": "2026-09-06T00:09:12.839Z"
     },
     "279620985": {
       "topics": [
@@ -5794,11 +5976,40 @@
     },
     "284922000": {
       "topics": [
-        "science/physics"
+        "history/military-ancient",
+        "engineering",
+        "science",
+        "craft"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        },
+        {
+          "node": "science",
+          "confidence": 0.7
+        },
+        {
+          "node": "craft",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "history/empire; military",
+      "display_title": "icqpodcast's Amateur / Ham Radio Podcast",
+      "blurb": "The premier podcast for Amateur Radio / Ham Radio users. News, views, features, upcoming events and",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-34aa84e2",
+      "classified_at": "2026-09-06T00:09:12.839Z"
     },
     "285097604": {
       "topics": [
@@ -5870,11 +6081,25 @@
     },
     "288472896": {
       "topics": [
-        "fiction/sci-fi"
+        "science"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "science",
+      "display_title": "Clarkesworld Magazine",
+      "blurb": "Science fiction and fantasy stories from Clarkesworld Magazine",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-34aa84e2",
+      "classified_at": "2026-09-06T00:09:12.839Z"
     },
     "288838352": {
       "topics": [
@@ -6267,12 +6492,35 @@
     },
     "306106212": {
       "topics": [
-        "economics/markets",
+        "history/military-ancient",
+        "engineering",
         "business"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        },
+        {
+          "node": "business",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "military; business",
+      "display_title": "Motley Fool Hidden Gems Investing",
+      "blurb": "Motley Fool Hidden Gems Investing is a daily podcast for stock investors. Weekday episodes offer a l",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-34aa84e2",
+      "classified_at": "2026-09-06T00:09:12.839Z"
     },
     "306390087": {
       "topics": [
@@ -6306,11 +6554,30 @@
     },
     "307580286": {
       "topics": [
-        "music"
+        "music",
+        "history/military-ancient"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "history/empire; military",
+      "display_title": "Perfecto Podcast",
+      "blurb": "The official podcast featuring legendary DJ Paul Oakenfold delivers a fresh mix in every weekly epis",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-34aa84e2",
+      "classified_at": "2026-09-06T00:09:12.839Z"
     },
     "307934313": {
       "topics": [
@@ -6402,11 +6669,35 @@
     },
     "312059190": {
       "topics": [
-        "education/language-learning"
+        "history/military-ancient",
+        "comedy",
+        "engineering"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.75
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "military; comedy",
+      "display_title": "Luke's ENGLISH Podcast - Learn...",
+      "blurb": "Luke's English Podcast is an award-winning podcast for learners of English. Listen, learn and have f",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-34aa84e2",
+      "classified_at": "2026-09-06T00:09:12.839Z"
     },
     "312094772": {
       "topics": [
@@ -6442,11 +6733,35 @@
     },
     "313300476": {
       "topics": [
-        "fiction/drama"
+        "history/military-ancient",
+        "engineering",
+        "aviation"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        },
+        {
+          "node": "aviation",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "military; technology",
+      "display_title": "We're Alive",
+      "blurb": "We're Alive is an award-winning audio drama that follows a group of Survivors in a post-apocalyptic",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-34aa84e2",
+      "classified_at": "2026-09-06T00:09:12.839Z"
     },
     "314020330": {
       "topics": [
@@ -6472,11 +6787,30 @@
     },
     "315813066": {
       "topics": [
-        "science"
+        "engineering",
+        "espionage"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        },
+        {
+          "node": "espionage",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "technology; espionage",
+      "display_title": "Clever Trees",
+      "blurb": "A series of five podcasts from around the world on trees that are smart, extraordinary or downright",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-34aa84e2",
+      "classified_at": "2026-09-06T00:09:12.839Z"
     },
     "316019334": {
       "topics": [
@@ -6593,11 +6927,35 @@
     },
     "324698394": {
       "topics": [
-        "tv-film/animation"
+        "music",
+        "history/military-ancient",
+        "engineering"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "military; music/audio",
+      "display_title": "Anime Addicts Anonymous",
+      "blurb": "We have one mission: To make your anime addiction worse! We're a podcast for all anime addicts out t",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-34aa84e2",
+      "classified_at": "2026-09-06T00:09:12.839Z"
     },
     "325045115": {
       "topics": [
@@ -6737,11 +7095,30 @@
     },
     "328570104": {
       "topics": [
-        "education/courses"
+        "engineering",
+        "science"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        },
+        {
+          "node": "science",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "science; technology",
+      "display_title": "NAEYC Radio- The National Asso...",
+      "blurb": "The National Association for The Education of Young Children and BAM Radio Network have partnered to",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-34aa84e2",
+      "classified_at": "2026-09-06T00:09:12.839Z"
     },
     "329875043": {
       "topics": [
@@ -6753,11 +7130,35 @@
     },
     "329937558": {
       "topics": [
+        "history/military-ancient",
+        "engineering",
         "science"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        },
+        {
+          "node": "science",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "history/empire; military",
+      "display_title": "Mysterious Universe",
+      "blurb": "Always interesting and often hilarious, join hosts Joe Hodgdon and Brandon Thomas as they investigat",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-34aa84e2",
+      "classified_at": "2026-09-06T00:09:12.839Z"
     },
     "330291397": {
       "topics": [
@@ -6791,11 +7192,35 @@
     },
     "333016788": {
       "topics": [
-        "space"
+        "history",
+        "engineering",
+        "science"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        },
+        {
+          "node": "science",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "history/empire; science",
+      "display_title": "Astronomy 141 - Life in the Universe",
+      "blurb": "Astronomy 141, Life in the Universe, is a one-quarter introduction to Astrobiology for non-science m",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-34aa84e2",
+      "classified_at": "2026-09-06T00:09:12.839Z"
     },
     "333208305": {
       "topics": [
@@ -7127,11 +7552,30 @@
     },
     "350070282": {
       "topics": [
-        "fiction/drama"
+        "music",
+        "engineering"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "music/audio; technology",
+      "display_title": "Strange Tales (Old Time Radio)",
+      "blurb": "RelicRadio.com presents tales of the strange and bizarre, the weird and the wicked. Stories not nece",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-34aa84e2",
+      "classified_at": "2026-09-06T00:09:12.839Z"
     },
     "350159142": {
       "topics": [
@@ -7173,11 +7617,25 @@
     },
     "351065142": {
       "topics": [
-        "education/language-learning"
+        "science"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "science",
+      "display_title": "Talk To Me In Korean",
+      "blurb": "The key to learning Korean is how easy it is to stay motivated to learn the language. At TalkToMeInK",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-34aa84e2",
+      "classified_at": "2026-09-06T00:09:12.839Z"
     },
     "351096296": {
       "topics": [
@@ -7196,11 +7654,30 @@
     },
     "351975870": {
       "topics": [
-        "music"
+        "music",
+        "history/military-ancient"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "military; music/audio",
+      "display_title": "Paul van Dyk's VONYC Sessions Podcast",
+      "blurb": "Welcome to the Vonyc Sessions Podcast.. 60mins of the very best new electronic music from around the",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-34aa84e2",
+      "classified_at": "2026-09-06T00:09:12.839Z"
     },
     "352076108": {
       "topics": [
@@ -7226,11 +7703,35 @@
     },
     "353011626": {
       "topics": [
-        "business/non-profit"
+        "music",
+        "engineering",
+        "food"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        },
+        {
+          "node": "food",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "music/audio; technology",
+      "display_title": "AM Quincy",
+      "blurb": "AM Quincy is a live audio show that can be heard Monday-Friday, 7am to 9am on QATV-8 (Quincy Access",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-34aa84e2",
+      "classified_at": "2026-09-06T00:09:12.839Z"
     },
     "354082588": {
       "topics": [
@@ -7326,9 +7827,23 @@
       "topics": [
         "music"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weekly house, progressive, and chillout music showcase",
+      "display_title": "Monstercat Silk Showcase",
+      "blurb": "Weekly house and progressive music show featuring emotive and intelligent selections",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-34aa84e2",
+      "classified_at": "2026-09-06T00:09:32.510Z"
     },
     "360084272": {
       "topics": [
@@ -7388,8 +7903,22 @@
         "religion/islam"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/islam",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Quran recitation by Sheikh Saud Al-Shuraim",
+      "display_title": "الشيخ سعود الشريم",
+      "blurb": "Complete recitation of the Quran by Sheikh Saud Al-Shuraim",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-34aa84e2",
+      "classified_at": "2026-09-06T00:09:32.510Z"
     },
     "365374471": {
       "topics": [
@@ -7452,11 +7981,30 @@
     },
     "367825854": {
       "topics": [
-        "sports"
+        "engineering",
+        "food"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        },
+        {
+          "node": "food",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "technology; food",
+      "display_title": "The Sports Junkies",
+      "blurb": "For more than 25 years, The Junks have owned Washington D.C. sports radio, covering Commanders, Nati",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-34aa84e2",
+      "classified_at": "2026-09-06T00:09:12.839Z"
     },
     "368166171": {
       "topics": [
@@ -7498,11 +8046,25 @@
     },
     "369369012": {
       "topics": [
-        "tv-film"
+        "engineering"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "technology",
+      "display_title": "Les Grosses Têtes",
+      "blurb": "Tous les jours de 15h30 à 18h, plongez dans l'univers hilarant et décalé des \"Grosses Têtes\", l'émis",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-34aa84e2",
+      "classified_at": "2026-09-06T00:09:12.839Z"
     },
     "369757090": {
       "topics": [
@@ -7901,11 +8463,35 @@
     },
     "390453558": {
       "topics": [
-        "sports/basketball"
+        "history/military-ancient",
+        "engineering",
+        "craft"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        },
+        {
+          "node": "craft",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "history/empire; military",
+      "display_title": "Locked On Jazz - Daily Podcast...",
+      "blurb": "Locked On Jazz podcast is your daily ticket to stay ahead of the game and the first to know the late",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-34aa84e2",
+      "classified_at": "2026-09-06T00:09:12.839Z"
     },
     "391277967": {
       "topics": [
@@ -8253,11 +8839,30 @@
     },
     "413995650": {
       "topics": [
-        "music"
+        "music",
+        "engineering"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "music/audio; technology",
+      "display_title": "Adam Beyer presents Drumcode",
+      "blurb": "Adam Beyer's music is synonymous with all that is exciting about electronic music today. Having emer",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-34aa84e2",
+      "classified_at": "2026-09-06T00:09:12.839Z"
     },
     "414672788": {
       "topics": [
@@ -8409,11 +9014,30 @@
     },
     "424397634": {
       "topics": [
-        "religion/islam"
+        "history/military-ancient",
+        "engineering"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "military; technology",
+      "display_title": "Qalam Institute Podcast",
+      "blurb": "Faith | Family | Community",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-34aa84e2",
+      "classified_at": "2026-09-06T00:09:12.839Z"
     },
     "425179503": {
       "topics": [
@@ -8494,11 +9118,40 @@
     },
     "425683368": {
       "topics": [
-        "society"
+        "history",
+        "engineering",
+        "food",
+        "science"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        },
+        {
+          "node": "food",
+          "confidence": 0.75
+        },
+        {
+          "node": "science",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "history/empire; science",
+      "display_title": "New Books in Sociology",
+      "blurb": "This podcast is a channel on the New Books Network. The New Books Network is an academic audio libra",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-34aa84e2",
+      "classified_at": "2026-09-06T00:09:12.839Z"
     },
     "425700062": {
       "topics": [
@@ -8990,11 +9643,40 @@
     },
     "454755642": {
       "topics": [
-        "news"
+        "music",
+        "history/military-ancient",
+        "engineering",
+        "business"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        },
+        {
+          "node": "business",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "military; music/audio",
+      "display_title": "The World and Everything In It",
+      "blurb": "The World and Everything in It is an Apple Podcasts top 100 News program delivering essential headli",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-34aa84e2",
+      "classified_at": "2026-09-06T00:09:12.839Z"
     },
     "455422434": {
       "topics": [
@@ -9057,11 +9739,40 @@
     },
     "458827716": {
       "topics": [
-        "business/management"
+        "history/military-ancient",
+        "engineering",
+        "science",
+        "business"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        },
+        {
+          "node": "science",
+          "confidence": 0.7
+        },
+        {
+          "node": "business",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "military; science",
+      "display_title": "Coaching for Leaders",
+      "blurb": "Leaders aren&#8217;t born; they&#8217;re made. Many leaders reach points in their careers where what",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-34aa84e2",
+      "classified_at": "2026-09-06T00:09:12.839Z"
     },
     "459436811": {
       "topics": [
@@ -9127,11 +9838,35 @@
     },
     "463701000": {
       "topics": [
-        "history"
+        "history",
+        "engineering",
+        "science"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        },
+        {
+          "node": "science",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "history/empire; science",
+      "display_title": "In Our Time: Science",
+      "blurb": "Scientific principles, theory, and the role of key figures in the advancement of science.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-34aa84e2",
+      "classified_at": "2026-09-06T00:09:12.839Z"
     },
     "463855630": {
       "topics": [
@@ -9502,11 +10237,40 @@
     },
     "483046074": {
       "topics": [
-        "space"
+        "history/military-ancient",
+        "engineering",
+        "aviation",
+        "science"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        },
+        {
+          "node": "aviation",
+          "confidence": 0.75
+        },
+        {
+          "node": "science",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "military; science",
+      "display_title": "Podcast UFO",
+      "blurb": "Podcast UFO is your destination for compelling audio programs focused on UFOs, close encounters, and",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-34aa84e2",
+      "classified_at": "2026-09-06T00:09:12.839Z"
     },
     "483978280": {
       "topics": [
@@ -9517,11 +10281,25 @@
     },
     "484661268": {
       "topics": [
-        "adventure"
+        "engineering"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "technology; medicine",
+      "display_title": "Trail Runner Nation",
+      "blurb": "Trail Runner Nation is devoted to sharing knowledge and advice to the trail running community - from",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-34aa84e2",
+      "classified_at": "2026-09-06T00:09:12.839Z"
     },
     "486135958": {
       "topics": [
@@ -9736,19 +10514,72 @@
     },
     "499682376": {
       "topics": [
-        "craft"
+        "engineering",
+        "craft",
+        "architecture"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        },
+        {
+          "node": "craft",
+          "confidence": 0.7
+        },
+        {
+          "node": "architecture",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "technology; craft/making",
+      "display_title": "The Yarniacs: A Knitting Podcast",
+      "blurb": "Gayle and Sharlene talk about what they are wearing, what they are stalking, and of course, what the",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-34aa84e2",
+      "classified_at": "2026-09-06T00:09:12.839Z"
     },
     "499883130": {
       "topics": [
-        "science/chemistry"
+        "music",
+        "history/military-ancient",
+        "engineering",
+        "science"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        },
+        {
+          "node": "science",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "military; music/audio",
+      "display_title": "Clinical Chemistry Podcast",
+      "blurb": "This free monthly podcast is offered by Clinical Chemistry. Clinical Chemistry is the leading forum",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-34aa84e2",
+      "classified_at": "2026-09-06T00:09:12.839Z"
     },
     "500189078": {
       "topics": [
@@ -10244,11 +11075,40 @@
     },
     "528458508": {
       "topics": [
-        "computing"
+        "history/military-ancient",
+        "engineering",
+        "craft",
+        "espionage"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        },
+        {
+          "node": "craft",
+          "confidence": 0.7
+        },
+        {
+          "node": "espionage",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "history/empire; military",
+      "display_title": "The Talk Show With John Gruber",
+      "blurb": "The director’s commentary track for Daring Fireball. Long digressions on Apple, technology, design,",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-34aa84e2",
+      "classified_at": "2026-09-06T00:09:12.839Z"
     },
     "529077669": {
       "topics": [
@@ -10350,11 +11210,35 @@
     },
     "541401108": {
       "topics": [
-        "religion/spirituality"
+        "history",
+        "music",
+        "engineering"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.85
+        },
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "history/empire; music/audio",
+      "display_title": "The Astrology Podcast",
+      "blurb": "A weekly podcast on the history, philosophy, and techniques of astrology, hosted by professional ast",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-34aa84e2",
+      "classified_at": "2026-09-06T00:09:12.839Z"
     },
     "541446017": {
       "topics": [
@@ -10626,11 +11510,38 @@
     },
     "561510696": {
       "topics": [
-        "society"
+        "history",
+        "engineering",
+        "science"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        },
+        {
+          "node": "science",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "history/empire; science",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-34aa84e2",
+      "classified_at": "2026-09-06T00:09:12.839Z"
     },
     "561769983": {
       "topics": [
@@ -10764,11 +11675,25 @@
     },
     "574192620": {
       "topics": [
-        "gaming"
+        "engineering"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "technology",
+      "display_title": "Dungeons & Randomness",
+      "blurb": "In the epic world of Theria, every choice leaves a mark and no fate is safe. Dungeons & Randomness i",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-34aa84e2",
+      "classified_at": "2026-09-06T00:09:12.839Z"
     },
     "575308520": {
       "topics": [
@@ -10863,11 +11788,30 @@
     },
     "582573564": {
       "topics": [
-        "gaming"
+        "history/military-ancient",
+        "engineering"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "military; technology",
+      "display_title": "Nerd Poker",
+      "blurb": "Each week, under dark of night, in a dining room in Encino, a group of warriors led by Brian Posehn",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-34aa84e2",
+      "classified_at": "2026-09-06T00:09:12.839Z"
     },
     "582614834": {
       "topics": [
@@ -10901,11 +11845,35 @@
     },
     "583758126": {
       "topics": [
-        "religion"
+        "history/military-ancient",
+        "engineering",
+        "craft"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        },
+        {
+          "node": "craft",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "military; technology",
+      "display_title": "Discovering Truth with Dan Duval",
+      "blurb": "Daniel Duval shares current events, teachings, and information from relevant guests on a Christ cent",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-34aa84e2",
+      "classified_at": "2026-09-06T00:09:12.839Z"
     },
     "583938622": {
       "topics": [
@@ -11019,11 +11987,30 @@
     },
     "592746186": {
       "topics": [
-        "religion/islam"
+        "history/military-ancient",
+        "engineering"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "military; technology",
+      "display_title": "Mufti Menk",
+      "blurb": "Mufti Menk, (Doctor, Mufti, Ismail Menk) is a leading global Islamic scholar born and raised in Zimb",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-34aa84e2",
+      "classified_at": "2026-09-06T00:09:12.839Z"
     },
     "593007235": {
       "topics": [
@@ -11157,11 +12144,30 @@
     },
     "595399272": {
       "topics": [
-        "education/language-learning"
+        "engineering",
+        "craft"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        },
+        {
+          "node": "craft",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "technology; craft/making",
+      "display_title": "Coffee Break German",
+      "blurb": "Learn German in coffee-break lessons from the Radio Lingua Network. In each lesson we'll focus on th",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-34aa84e2",
+      "classified_at": "2026-09-06T00:09:12.839Z"
     },
     "596024360": {
       "topics": [
@@ -11497,19 +12503,52 @@
     },
     "618344550": {
       "topics": [
-        "science"
+        "history"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "history/empire",
+      "display_title": "Palaeo After Dark",
+      "blurb": "A group of scientists have biweekly informal discussions about evolutionary biology and palaeontolog",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-34aa84e2",
+      "classified_at": "2026-09-06T00:09:12.839Z"
     },
     "619369512": {
       "topics": [
-        "comedy"
+        "comedy",
+        "engineering"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "comedy; technology",
+      "display_title": "The Read",
+      "blurb": "Join bloggers Kid Fury and Crissle for their weekly podcast covering hip-hop and pop culture's most",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-34aa84e2",
+      "classified_at": "2026-09-06T00:09:12.839Z"
     },
     "619896822": {
       "topics": [
@@ -11528,11 +12567,35 @@
     },
     "620466888": {
       "topics": [
+        "history",
+        "engineering",
         "science"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        },
+        {
+          "node": "science",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "history/empire; science",
+      "display_title": "Voices of the North Cascades",
+      "blurb": "In this collection, park employees reflect on their relationship with North Cascades National Park.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-34aa84e2",
+      "classified_at": "2026-09-06T00:09:12.839Z"
     },
     "620967489": {
       "topics": [
@@ -11610,9 +12673,23 @@
       "topics": [
         "health/sexuality"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/sexuality",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Candid discussions about sex, love, and intimate connection",
+      "display_title": "Speaking of Sex with The Pleasure Mechanics",
+      "blurb": "Passionate conversations about sex, love, and intimate connection with erotic knowledge and wellness focus",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-34aa84e2",
+      "classified_at": "2026-09-06T00:09:32.510Z"
     },
     "625975033": {
       "topics": [
@@ -11738,11 +12815,40 @@
     },
     "635045292": {
       "topics": [
-        "news/commentary"
+        "history/military-ancient",
+        "engineering",
+        "food",
+        "science"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        },
+        {
+          "node": "food",
+          "confidence": 0.75
+        },
+        {
+          "node": "science",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "history/empire; military",
+      "display_title": "THE SAVAGE NATION",
+      "blurb": "Dr. Michael Savage earned his PhD in epidemiology and nutrition sciences from the Univ. of Cal. at B",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-34aa84e2",
+      "classified_at": "2026-09-06T00:09:12.839Z"
     },
     "635440007": {
       "topics": [
@@ -11782,11 +12888,40 @@
     },
     "640246578": {
       "topics": [
-        "health/nutrition"
+        "history",
+        "engineering",
+        "science",
+        "espionage"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        },
+        {
+          "node": "science",
+          "confidence": 0.7
+        },
+        {
+          "node": "espionage",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "history/empire; science",
+      "display_title": "The Model Health Show",
+      "blurb": "The Model Health Show is a fun, entertaining, and enlightening look at health and fitness. No subjec",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-34aa84e2",
+      "classified_at": "2026-09-06T00:09:12.839Z"
     },
     "641742791": {
       "topics": [
@@ -12152,11 +13287,30 @@
     },
     "665986218": {
       "topics": [
-        "society/government"
+        "history/military-ancient",
+        "engineering"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "military; technology",
+      "display_title": "It's Just Politics",
+      "blurb": "Politics can be messy. Politics can be confusing. But, that certainly doesn't mean politics can't be",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-34aa84e2",
+      "classified_at": "2026-09-06T00:09:12.839Z"
     },
     "667450331": {
       "topics": [
@@ -12184,11 +13338,25 @@
     },
     "669420150": {
       "topics": [
-        "music"
+        "engineering"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "technology",
+      "display_title": "Let There Be House",
+      "blurb": "With over 60,000 iTunes downloads per month the Let There Be House is a podcast delivered every Mond",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-34aa84e2",
+      "classified_at": "2026-09-06T00:09:12.839Z"
     },
     "669499379": {
       "topics": [
