@@ -457,7 +457,7 @@ const FLOORS = {
      nudgeTopics), not the page — either could regress without the other
      noticing. Includes the MUTATION TEST the card asks for by name
      (restore leafNodes() as the seed set -> red). */
-  "test/interests-roots.test.js": 7,
+  "test/interests-roots.test.js": 8,
   /* #301's bound, over the REAL catalogue: improving a result the ranking keeps
      below the top one must never empty its query or drop a bar-clearer. One test,
      floored at one, because the alternative to a floor here is a suite that can be

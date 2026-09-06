@@ -438,26 +438,34 @@ const PARENT_NUDGE_RATIO = 0.5;
 
    Propagates to the parent at PARENT_NUDGE_RATIO (D6, docs/ui-transition-plan.md):
    a nudge on a leaf is also weaker evidence about the root it belongs to, so
-   the root moves too, just damped. Roots have parent === null and so never
+   the root moves too, just damped — HALF as much moves the root as moves any
+   one leaf, by design, not "half per leaf." Propagation is therefore applied
+   ONCE PER DISTINCT PARENT per call, no matter how many sibling leaves under
+   that root the same call names (a multi-topic episode's `topics` array
+   commonly does) — two sibling leaves must not compound into a full-strength
+   nudge on their shared root. Roots have parent === null and so never
    propagate a second hop; a topic id that resolves to no taxonomy node (some
    legacy/decorative topics aren't taxonomy ids) simply moves itself, as
-   before, with no parent step. If `topics` names a root directly (its own
-   direct nudge, tracked in `directlyNudged`), that root is skipped for
-   damped propagation from a sibling leaf in the same call — otherwise a
+   before, with no parent step. A root named DIRECTLY in `topics` is excluded
+   from propagation entirely (tracked via `directlyNudged`) — otherwise a
    topics array carrying both a leaf and its own parent root would move the
-   root twice: once at the full amount for its own entry, once more at the
-   damped ratio from the leaf's propagation. */
+   root twice: once at the full amount for its own entry, once more from the
+   leaf's propagation. */
 function nudgeTopics(topics, amount) {
   const list = topics || [];
   const directlyNudged = new Set(list);
+  const parentsToPropagate = new Set();
   list.forEach(t => {
     if (t in state.interests) {
       state.interests[t] = Math.max(0, Math.min(1, state.interests[t] + amount));
       const parent = nodeById(t)?.parent;
       if (parent && parent in state.interests && !directlyNudged.has(parent)) {
-        state.interests[parent] = Math.max(0, Math.min(1, state.interests[parent] + amount * PARENT_NUDGE_RATIO));
+        parentsToPropagate.add(parent);
       }
     }
+  });
+  parentsToPropagate.forEach(parent => {
+    state.interests[parent] = Math.max(0, Math.min(1, state.interests[parent] + amount * PARENT_NUDGE_RATIO));
   });
   saveInterests();
   /* Bumps the repeated-query cache key (see buildPlaylist's `searchCache`) so
@@ -474,13 +482,14 @@ function boostTopics(topics, amount) { nudgeTopics(topics, amount); }
 
 /* ---------- interests page (#/interests, U-07 / docs/ui-transition-plan.md D6) ----------
 
-   Row set: every ROOT (so the listener always has something to set at the top
-   level, even one they've never touched), plus any node — root or leaf —
-   whose current weight has diverged from the taxonomy-authored default. A
-   diverged leaf is exactly a listener override or an observed nudge (plays,
-   thumbs, a prior slider drag); a diverged root is the same, or the damped
-   parent-propagation nudgeTopics() now applies. Rows are grouped by root:
-   a leaf's group is its own parent id, a root is its own group.
+   Row set: every ROOT is always shown (so the listener always has something
+   to set at the top level, even one they've never touched) — a root can
+   ALSO independently qualify as diverged, but the "always" rule alone
+   guarantees it's on the page. Additionally, any LEAF whose current weight
+   has diverged from its taxonomy-authored default gets a row: exactly a
+   listener override or an observed nudge (plays, thumbs, a prior slider
+   drag). Rows are grouped by root: a leaf's group is its own parent id, a
+   root is its own group.
 
    Range 0-1 (today's clamped model), NOT the old prototype's -1..1 — see the
    card: nudgeTopics clamps at zero, so a negative floor here would be a
@@ -4661,9 +4670,12 @@ function openDrawer(open) {
    index.html's drawer markup is not among this card's owned files and is
    unlisted/human-merge-gated (CLAUDE.md path-policy) — editing it would pull
    this whole change off the auto-merge path for one nav link. Injected once
-   into the drawer's Settings section instead, ahead of the toggle buttons,
-   the same place a founder editing index.html by hand would put it. Guarded
-   by a flag on the drawer element so repeated renderDrawer() calls (every
+   into the drawer instead, immediately after `.drawer-section-label`
+   ("Settings" — the drawer's only section label today, per index.html), the
+   same place a founder editing index.html by hand would put it. If the
+   drawer ever grows a second `.drawer-section-label`, this must switch to a
+   text-matched lookup rather than "the first one found". Guarded by a flag
+   on the drawer element so repeated renderDrawer() calls (every
    `openDrawer(true)`) don't stack duplicate links. */
 function ensureInterestsDrawerLink() {
   const drawer = $("#drawer");

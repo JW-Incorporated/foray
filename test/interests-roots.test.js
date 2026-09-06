@@ -258,3 +258,26 @@ test("a topics list naming both a leaf and its own parent root does not double-n
     "the root must move by exactly its own direct amount, not amount + damped amount"
   );
 });
+
+test("two sibling leaves under the same root in one call propagate ONCE, not once per leaf", async () => {
+  /* THE DEFECT THIS PINS (fresh-context review, second pass): a single
+     nudgeTopics() call over an episode's real multi-topic array commonly
+     names several leaves under the same root. Propagating amount*0.5 per
+     leaf compounds — two siblings would move the root by 0.5+0.5 = a full
+     direct nudge, contradicting the stated "half as much as ONE leaf"
+     design. Propagation must happen once per distinct parent per call.
+
+     MUTATION: revert to propagating inside the per-topic forEach instead of
+     collecting parents into a Set first. The root would move by
+     amount*0.5*2 instead of amount*0.5. */
+  const m = await mountBooted();
+  const siblings = TAXONOMY.nodes.filter((n) => n.parent === A_ROOT_ID).slice(0, 2);
+  assert.ok(siblings.length === 2, "fixture assumption: true-crime has at least two leaves");
+  const rootBefore = m.state.interests[A_ROOT_ID];
+  m.ctx.nudgeTopics(siblings.map((s) => s.id), 0.08);
+  assert.strictEqual(
+    m.state.interests[A_ROOT_ID],
+    Math.max(0, Math.min(1, rootBefore + 0.08 * 0.5)),
+    "two sibling leaves in one call must move the shared root by only ONE damped step, not two"
+  );
+});
