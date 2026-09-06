@@ -329,20 +329,53 @@ test("Library renders no external link-out that bypasses the app's own row/summa
    page carried its own `page-link-row` to #/library; now that U-02's
    four-tab bar (Home/Search/Create/Library) has landed with a real
    Library tab wired to #/library (test/tab-bar.test.js, "the Library
-   tab's href is #/library"), that interim link has been removed from
-   renderPlaylists() -- the tab bar is the real entry point. The
-   #/library route itself is unchanged and still fully renders. */
-test("Library left the drawer but stays reachable — the tab bar links to it", () => {
-  /* MUTATION: remove the "library" entry from TAB_ROUTES, or point its
-     hash at anything other than #/library.
+   tab's href is #/library"), the interim link is redundant with it --
+   but NOT removable outright: cp_ui_v2 (and therefore the tab bar) is
+   off by default on web (only on by default for the native shell/
+   TestFlight per U-02), so a flag-off web listener has no tab bar at
+   all. renderPlaylists() now shows the interim link only when the tab
+   bar is not rendering (`!ui2On()`), so #/library stays reachable for
+   both cohorts without a duplicate link when the tab bar is present. */
+test("Library stays reachable in both cohorts — the Playlists link when the tab bar is off, the tab bar when it's on", () => {
+  /* MUTATION: drop the `!ui2On()` guard (always/never show the interim
+     link), or point either entry point's href at anything other than
+     #/library.
      NOTE: this suite's mount() uses the flat by-id DOM stub (see the file
      header), whose querySelector/querySelectorAll always return null/[] —
      unlike test/tab-bar.test.js's real DOM harness. renderTabBar() still
      appends the real bar element to document.body via body.append(), so
      it is found by walking body.children directly instead. */
-  const m = mount({ seed: { cp_ui_v2: "true" } });
-  m.evalIn("renderTabBar();");
-  const bar = m.body.children.find((el) => el.id === "tab-bar");
+  // Flag off: the tab bar does not render, so the interim link must.
+  const off = mount();
+  off.state.catalog = { shows: [] };
+  off.state.discover = { items: [] };
+  off.state.taxonomy = { nodes: [] };
+  off.state.session = { session_id: "s-1", builder: "test", episodes: {}, cards: [] };
+  off.state.cardSlots = [];
+  off.state.ready = true;
+  off.ctx.renderPlaylists();
+  assert.ok(
+    /<a class="page-link-row" href="#\/library">/.test(off.view()),
+    "with cp_ui_v2 off, the Playlists page must carry the interim link to #/library"
+  );
+  assert.strictEqual(off.body.children.find((el) => el.id === "tab-bar"), undefined,
+    "with cp_ui_v2 off, no tab bar should exist");
+
+  // Flag on: the tab bar renders and owns the Library entry point instead.
+  const on = mount({ seed: { cp_ui_v2: "true" } });
+  on.state.catalog = { shows: [] };
+  on.state.discover = { items: [] };
+  on.state.taxonomy = { nodes: [] };
+  on.state.session = { session_id: "s-1", builder: "test", episodes: {}, cards: [] };
+  on.state.cardSlots = [];
+  on.state.ready = true;
+  on.ctx.renderPlaylists();
+  assert.ok(
+    !/<a class="page-link-row" href="#\/library">/.test(on.view()),
+    "with cp_ui_v2 on, the Playlists page must not duplicate the tab bar's #/library link"
+  );
+  on.evalIn("renderTabBar();");
+  const bar = on.body.children.find((el) => el.id === "tab-bar");
   assert.ok(bar, "the tab bar must exist when cp_ui_v2 is on");
   const lib = bar.children.find((a) => a.dataset.tabKey === "library");
   assert.ok(lib, "a library tab must exist");

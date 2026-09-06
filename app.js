@@ -3552,6 +3552,7 @@ function renderPlaylists() {
         <button type="submit">Go</button>
       </form>
       <p id="pl-note" class="note" hidden></p>
+      ${ui2On() ? "" : `<a class="page-link-row" href="#/library">Library ›</a>`}
       ${all.length ? all.map(p => `
         <a class="pl-row" href="#/playlist/${esc(p.id)}">
           <div class="info">
