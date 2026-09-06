@@ -1893,6 +1893,11 @@ is what fits the field. Paste whole files.
 warnings on Main store listing or App content, and `4a` resolves in a Play search
 or on its own store URL.
 
+**See also:** items **#41** (Play Console API access + service account, so
+automated uploads can reach this listing) and **#42** (the mandatory first
+manual upload) both depend on this listing existing — `docs/release-lockstep-plan.md`
+G1/G2/G3.
+
 **Status:** OPEN
 
 ---
@@ -1952,6 +1957,102 @@ this list is a delay; this one is a wall.
 
 **Worked if:** an `android-release` run reports signature **signed** on its
 summary page, and you can say where the two backups are without looking.
+
+**Reconciled 2026-09-06 (kanban card R-06).** `gh secret list` on this repo
+confirms all three secrets exist and were set together on 2026-08-26:
+`ANDROID_KEYSTORE_B64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`. That
+closes steps 1–3 above from the automation's point of view — an
+`android-release` workflow run can sign a bundle today. Marked **DONE** on
+that basis. Two things are **not** verified by this reconciliation and are
+not this item's job: (a) whether the two *physical/off-repo* backups in step 1
+(password manager + offline copy) actually exist — only Wyatt, who holds the
+key, can attest to that, and no automated check can; (b) `docs/release-lockstep-plan.md`
+records that the only `workflow_dispatch` of `android-release.yml` from `main`
+(2026-08-30) **failed** — that is tracked separately as R-04 in the same plan,
+not reopened here, because it is a pipeline-health question, not a
+missing-secret one.
+
+**Status:** DONE (secrets confirmed present 2026-09-06; physical key-backup
+attestation and the 2026-08-30 failed run are tracked elsewhere, see above).
+
+---
+
+### 41. Play Console: create the API service account for automated uploads (G2)
+
+**Tag:** `[BLOCKING]` for R-03's automated Play upload · **Time:** ~10 minutes ·
+**Owner:** Joey/Wyatt · **Depends on:** #26 (the Play listing must exist first)
+
+**Why it matters.** `docs/release-lockstep-plan.md` (R-03) adds an automated
+Android upload to Play's internal testing track, the same way the iOS workflow
+already uploads to TestFlight. That upload authenticates as a Google Cloud
+service account, not a person, and nothing in this repo can create that
+account — it is a click-through flow in the Play Console tied to the
+developer account's identity.
+
+**Steps, with the exact menu path.**
+
+1. In the **Play Console**, open the app (`4a`), then go to
+   **Setup → API access**.
+2. If no Google Cloud project is linked yet, follow the prompt to **link (or
+   create) a Google Cloud project** — Play Console does this step for you.
+3. Under that linked project, **create a new service account** (Play Console
+   deep-links you straight into the Google Cloud IAM console for this step).
+4. Back in Play Console's **API access** page, grant the new service account
+   access to this app with the role **`Release manager`** — this is the
+   minimum role that can upload and manage releases without also granting
+   store-listing or financial-data access.
+5. In Google Cloud IAM, generate a **JSON key** for that service account and
+   download it.
+6. Add the whole JSON file as a GitHub repo secret named exactly
+   **`PLAY_SERVICE_ACCOUNT_JSON`** — from the file, not retyped
+   (`gh secret set PLAY_SERVICE_ACCOUNT_JSON < path/to/key.json`), so the key
+   material never enters a shell history or a transcript.
+
+**Worked if:** the Play Console's API access page shows the service account
+listed with **Release manager** access to `4a`, and
+`gh secret list` shows `PLAY_SERVICE_ACCOUNT_JSON` present. That is what
+unblocks R-03's Play upload job — until this secret exists, `release.yml`'s
+Android job is written to skip loudly rather than fail (see
+`docs/release-lockstep-plan.md` R-03), so nothing breaks in the meantime, but
+nothing uploads either.
+
+**Status:** OPEN
+
+---
+
+### 42. The first Play upload for `4a` must be done by hand, with versionCode 1 (G3)
+
+**Tag:** `[BLOCKING]` for R-03's automated Play upload to ever succeed ·
+**Time:** ~10 minutes · **Owner:** Joey/Wyatt · **Depends on:** #26 (listing),
+#41 (service account) — do this one **last**, after both.
+
+**Why it matters.** Google's Play Developer API can update an *existing*
+release but cannot create the very first one for a brand-new app — that step
+is Console-UI-only, no API path exists. Until one build has been uploaded by
+hand, the automated `release.yml` job (R-03) has nothing to attach an update
+to and will fail every time it runs, regardless of how correctly the service
+account is configured.
+
+**Steps.**
+
+1. Run **Actions → android-release → Run workflow** (or reuse the artifact
+   from item #30's step 4) to produce a signed `.aab`.
+2. In the **Play Console**, open `4a` → **Release → Testing → Internal
+   testing** → **Create new release**, and upload that `.aab` by hand.
+3. **The first upload must be manual, and it must use `versionCode 1`** —
+   set that explicitly if the Console does not infer it from the bundle.
+   This value must sit **below** whatever `docs/release-lockstep-plan.md`
+   R-02's automated version scheme (`YYYYMMDDnn`, e.g. `2609061` and up)
+   will generate next, so the first automated upload never collides with
+   this manual one. Using `1` guarantees that with room to spare.
+4. Roll it out to the internal testing track and confirm the release shows
+   as **live** on that track in the Console (an app with zero prior Play
+   releases needs this one accepted before the API will touch it at all).
+
+**Worked if:** the Play Console's Internal testing track shows one release at
+`versionCode 1`, and a subsequent `release.yml` run (R-03/R-07, once #41's
+secret exists) can upload `versionCode 2` and higher without Google's API
+rejecting it as "no existing release to update."
 
 **Status:** OPEN
 

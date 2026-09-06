@@ -782,6 +782,19 @@ button.show-star.on { color: var(--gold); border-color: var(--gold); }
 }
 .ep-row.gone .t { color: var(--text-dim); font-weight: 600; }
 
+/* ---------- Library (#/library) ---------- */
+.lib-section { margin-bottom: 20px; }
+.lib-section:last-child { margin-bottom: 0; }
+.lib-section-head {
+  font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.08em; color: var(--text-dim); margin: 0 2px 8px;
+}
+.lib-more {
+  display: block; text-align: center; padding: 10px;
+  color: var(--text-dim); font-size: 0.82rem; text-decoration: none;
+}
+.lib-more:active { color: var(--text); }
+
 button.danger {
   margin-top: 12px;
   background: none;

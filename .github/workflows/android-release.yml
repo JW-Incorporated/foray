@@ -701,7 +701,29 @@ jobs:
             | sudo tee /etc/udev/rules.d/99-kvm4all.rules > /dev/null
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
-          test -w /dev/kvm || { echo "/dev/kvm is still not writable — this runner cannot accelerate an emulator"; exit 1; }
+          # `udevadm trigger` only QUEUES the re-evaluation of the rule; it returns
+          # before the kernel has necessarily finished applying the new device
+          # mode. The version that shipped here tested `-w /dev/kvm` in the very
+          # next line — 0.03s later, measured on the run that failed (2026-08-30,
+          # run 33325261993) — which raced the udev worker rather than genuinely
+          # finding a runner without a device. `udevadm settle` blocks until the
+          # queued event has been processed, so the check below reflects the
+          # post-trigger state instead of a coin flip on scheduler timing.
+          sudo udevadm settle --timeout=30 || true
+          # BELT AND BRACES, NOT A REPLACEMENT FOR THE RULE ABOVE: if the device
+          # node exists but `settle` still raced, or the udev worker on this image
+          # is slow, retry a direct permission change rather than failing the job
+          # for a race that has nothing to do with the app. This does not paper
+          # over a genuinely missing device — the `-c` check below still fails the
+          # job when `/dev/kvm` was never created at all.
+          for i in 1 2 3 4 5; do
+            if [ -w /dev/kvm ]; then break; fi
+            sudo chmod 0666 /dev/kvm 2>/dev/null || true
+            sleep 1
+          done
+          ls -l /dev/kvm || true
+          test -c /dev/kvm || { echo "/dev/kvm does not exist on this runner at all — this runner class has no KVM device, not a permissions problem"; exit 1; }
+          test -w /dev/kvm || { echo "/dev/kvm is still not writable after udevadm settle and a direct permission change — this runner cannot accelerate an emulator"; exit 1; }
 
       - name: The Android SDK, plus the emulator and one system image
         run: |
