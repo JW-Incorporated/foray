@@ -1,16 +1,25 @@
-# `tts-locked-screen-check` — the instrument Foray
+# `tts-locked-screen-check` — the instrument Foray (HISTORICAL)
 
-This is not curated content and it is not meant to be listened to. It is the
+**STATUS: historical record. The instrument itself is deleted (D-01,
+2026-09-06).** #29 got its answer on 2026-09-05 (see §3 and the RESULT
+recorded in `HUMAN-ACTIONS.md` #29): on-device narration survives a locked
+screen on a real iPhone. `docs/ios-controls-and-voice-plan.md`'s V-01 then
+shipped an in-app **Audition** button that replaced this Foray for the
+remaining human listening tests (#40, H3), which unblocked D-01 per that
+deck's own sequencing. The Foray in `data/forays.json`, `DIAGNOSTIC_FORAY_ID`
+/ `withDiagnosticUnlock()` in `player/foray-resolve.js`, their call sites in
+`player/client.js`, and the tests that named them are gone — and
+`test/release-gates.test.js` now gates every release build against any of
+those three strings reappearing under `player/`, `app.js` or `data/`. This
+document is kept, deliberately, as the record of what was measured and how;
+it is not deleted with the instrument.
+
+This is not curated content and it is not meant to be listened to. It was the
 measuring device for `HUMAN-ACTIONS.md` #29: *does on-device narration survive a
 locked screen on a real iPhone?* `docs/curation/generation-architecture.md` §9.1
 calls that "the single highest-priority open question in the whole
 generation-architecture spec", and `docs/research/on-device-tts.md` §9.3 concluded
 it cannot be settled from documentation — only by holding a phone.
-
-**Delete it once the question is answered.** This document, the Foray in
-`data/forays.json`, `DIAGNOSTIC_FORAY_ID` / `withDiagnosticUnlock()` in
-`player/foray-resolve.js` and their call sites in `player/client.js` go in one
-commit. #29's own steps say so too.
 
 ## 1. What it does, and why it is shaped like this
 

@@ -250,8 +250,11 @@ docs/. Completed workstreams move to their plan doc's retro section.
   (generation-architecture §7 item 3) — the queue still does not advance past a
   spoken item, and the diagnostic Foray is designed around that rather than
   hiding it. Also out of scope: any narration-authoring UI.
-- **Delete after the answer:** the Foray, `DIAGNOSTIC_FORAY_ID` /
-  `withDiagnosticUnlock()` and their call sites. Named in #29's own steps.
+- **Delete after the answer:** DONE 2026-09-06 (D-01) — the Foray,
+  `DIAGNOSTIC_FORAY_ID` / `withDiagnosticUnlock()` and their call sites are
+  gone, gated by `test/release-gates.test.js` so they cannot silently
+  return. See `docs/ios-controls-and-voice-plan.md` D-01 and HUMAN-ACTIONS
+  #29's own "delete the instrument" step.
 
 ### fast-xml-parser security bump (GHSA-8r6m-32jq-jx6q) (2026-09-01) — `fix-fastxmlparser-t_b3f33dfa`
 
