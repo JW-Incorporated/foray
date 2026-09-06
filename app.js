@@ -395,23 +395,61 @@ function leafNodes() {
   return (state.taxonomy?.nodes || []).filter(n => n.parent !== null);
 }
 
+/* All taxonomy nodes, roots and leaves alike — the seeding/persistence set for
+   interests (see loadInterests's header comment: `leafNodes()` used to be the
+   seed set here too, which is the root-node bug this fixes). Kept distinct
+   from leafNodes() because callers that mean "just the leaves" (none today,
+   but the name invites it) must not silently start seeing roots. */
+function taxonomyNodes() {
+  return state.taxonomy?.nodes || [];
+}
+
+function nodeById(id) {
+  return taxonomyNodes().find(n => n.id === id) || null;
+}
+
+/* Bug fix (kanban t_1cb3688a / docs/ui-transition-plan.md D6): this used to
+   iterate leafNodes() only, so a declared interest in a ROOT node (e.g.
+   `true-crime`) was never seeded into state.interests, and the very next
+   saveInterests() call persisted an object that had silently dropped it —
+   the listener's root-level pick vanished on reload with no error anywhere.
+   Iterating every taxonomy node (roots AND leaves) is the whole fix;
+   saveInterests() itself needed no change, since it always persisted
+   whatever this function put into state.interests. */
 function loadInterests() {
   const saved = lsGet("cp_interests", {});
-  leafNodes().forEach(n => {
+  taxonomyNodes().forEach(n => {
     state.interests[n.id] = saved[n.id] ?? Math.max(0, n.weight);
   });
 }
 
 function saveInterests() { lsSet("cp_interests", state.interests); }
 
+/* How much of a leaf's own nudge also moves its parent root. Stated here per
+   the card's ask ("state the ratio"): a play/thumb on a leaf is signal about
+   the parent subject too, just weaker than a direct signal on the parent
+   itself — half as much moves the root as moves the leaf that caused it. */
+const PARENT_NUDGE_RATIO = 0.5;
+
 /* Move a taxonomy node's weight. Clamped at BOTH ends since thumbs-down made
    the amount negative for the first time — an unclamped floor lets a few
    downvotes drive a node below zero, where it can never climb back into a menu
-   however much the listener later plays of it. */
+   however much the listener later plays of it.
+
+   Propagates to the parent at PARENT_NUDGE_RATIO (D6, docs/ui-transition-plan.md):
+   a nudge on a leaf is also weaker evidence about the root it belongs to, so
+   the root moves too, just damped. Roots have parent === null and so never
+   propagate a second hop; a topic id that resolves to no taxonomy node (some
+   legacy/decorative topics aren't taxonomy ids) simply moves itself, as
+   before, with no parent step. */
 function nudgeTopics(topics, amount) {
   (topics || []).forEach(t => {
     if (t in state.interests) {
       state.interests[t] = Math.max(0, Math.min(1, state.interests[t] + amount));
+      const parent = nodeById(t)?.parent;
+      if (parent && parent in state.interests) {
+        state.interests[parent] = Math.max(0, Math.min(1, state.interests[parent] + amount * PARENT_NUDGE_RATIO));
+      }
     }
   });
   saveInterests();
