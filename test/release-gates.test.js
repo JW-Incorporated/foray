@@ -318,7 +318,7 @@ test("the diagnostic Foray instrument (#29) stays deleted from player/, app.js a
     try {
       text = fs.readFileSync(file, "utf8");
     } catch {
-      continue; // not a text file (binary asset, etc.) — nothing to scan
+      continue; // unreadable (permissions, race with deletion) — nothing to scan
     }
     for (const needle of DIAGNOSTIC_STRINGS) {
       if (text.includes(needle)) offenders.push(`${path.relative(ROOT, file)}: "${needle}"`);
