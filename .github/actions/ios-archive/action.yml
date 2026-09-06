@@ -1,0 +1,235 @@
+name: "ios-archive"
+description: >-
+  Build, sign (if configured) and upload the iOS shell to TestFlight, using a
+  version pair supplied by the caller rather than $(run_number). Factored out
+  of ios-build.yml for R-03 (docs/release-lockstep-plan.md) so release.yml and
+  the PR-time CI job share one implementation instead of two copies drifting.
+  DOES NOT run the simulator/out-point/seam probes — those are ios-build.yml's
+  CI concern (see its own header), not release.yml's; a release run's job is
+  to ship a build, not to re-measure background-audio behaviour on every tag.
+  Callers must `actions/checkout` before invoking this action.
+
+inputs:
+  marketing_version:
+    description: "X.Y.Z, from tools/mobile/version.mjs marketing-version"
+    required: true
+  build_number:
+    description: "Integer YYYYMMDDnn, from tools/mobile/version.mjs build-number"
+    required: true
+  ios_dist_cert_p12_base64:
+    required: true
+  ios_dist_cert_password:
+    required: true
+  ios_provisioning_profile_base64:
+    required: true
+  apple_team_id:
+    required: true
+  app_store_connect_key_id:
+    required: true
+  app_store_connect_issuer_id:
+    required: true
+  app_store_connect_private_key_base64:
+    required: true
+
+outputs:
+  state:
+    description: "ready | absent | partial — see tools/mobile/ios-ci.mjs signingReadiness()"
+    value: ${{ steps.signing.outputs.state }}
+  uploaded:
+    description: "true iff the archive/export/upload step actually ran and succeeded"
+    value: ${{ steps.upload.outputs.uploaded || steps.upload_absent.outputs.uploaded }}
+
+runs:
+  using: "composite"
+  steps:
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 22
+
+    - name: Toolchain versions (the first thing to read when this breaks)
+      shell: bash
+      run: |
+        set -euo pipefail
+        echo "ART=$RUNNER_TEMP/ios-release" >> "$GITHUB_ENV"
+        mkdir -p "$RUNNER_TEMP/ios-release"
+        { sw_vers; xcodebuild -version; } | tee "$RUNNER_TEMP/ios-release/toolchain.txt"
+
+    - name: Install the shell's dependencies
+      shell: bash
+      working-directory: mobile
+      run: |
+        set -euo pipefail
+        npm install --no-audit --no-fund
+
+    - name: Build the webDir and generate the iOS project
+      shell: bash
+      working-directory: mobile
+      run: |
+        set -euo pipefail
+        npm run add:ios 2>&1 | tee "$ART/cap-add-ios.log"
+
+    - name: Which Xcode container did Capacitor generate?
+      id: xc
+      shell: bash
+      run: |
+        set -euo pipefail
+        node tools/mobile/ios-ci.mjs xcode-container mobile/ios | tee "$ART/xcode-container.txt"
+        sed -n 's/^xc_flag=/XC_FLAG=/p; s/^xc_path=/XC_PATH=/p; s/^xc_toolchain=/XC_TOOLCHAIN=/p' \
+          "$ART/xcode-container.txt" >> "$GITHUB_ENV"
+
+    - name: Assert the generated project did NOT land on the SwiftUI scaffold
+      shell: bash
+      run: |
+        set -euo pipefail
+        for bad in ios/App/App ios/App/Podfile ios/App/App.xcodeproj ios/capacitor.config.json; do
+          if [ -e "$bad" ]; then echo "Capacitor generated into the SwiftUI scaffold: $bad"; exit 1; fi
+        done
+        test -f ios/ForayKit/Package.swift
+
+    - name: Add UIBackgroundModes -> audio, and have Apple's parser check it
+      shell: bash
+      run: |
+        set -euo pipefail
+        node tools/mobile/inject-background-audio.mjs mobile/ios/App/App/Info.plist
+        plutil -lint mobile/ios/App/App/Info.plist
+        node tools/mobile/inject-background-audio.mjs mobile/ios/App/App/Info.plist --check
+
+    - name: Declare no non-exempt encryption, and have Apple's parser check it
+      shell: bash
+      run: |
+        set -euo pipefail
+        node tools/mobile/inject-background-audio.mjs mobile/ios/App/App/Info.plist --encryption false
+        plutil -lint mobile/ios/App/App/Info.plist
+        node tools/mobile/inject-background-audio.mjs mobile/ios/App/App/Info.plist --check --encryption false
+
+    - name: Put the REAL app icon in the generated asset catalog
+      shell: bash
+      run: |
+        set -euo pipefail
+        node tools/mobile/inject-app-icon.mjs mobile/ios/App/App/Assets.xcassets/AppIcon.appiconset
+        node tools/mobile/inject-app-icon.mjs mobile/ios/App/App/Assets.xcassets/AppIcon.appiconset --check
+
+    - name: Is signing configured?
+      id: signing
+      shell: bash
+      env:
+        IOS_DIST_CERT_P12_BASE64: ${{ inputs.ios_dist_cert_p12_base64 }}
+        IOS_DIST_CERT_PASSWORD: ${{ inputs.ios_dist_cert_password }}
+        IOS_PROVISIONING_PROFILE_BASE64: ${{ inputs.ios_provisioning_profile_base64 }}
+        APPLE_TEAM_ID: ${{ inputs.apple_team_id }}
+        APP_STORE_CONNECT_KEY_ID: ${{ inputs.app_store_connect_key_id }}
+        APP_STORE_CONNECT_ISSUER_ID: ${{ inputs.app_store_connect_issuer_id }}
+        APP_STORE_CONNECT_PRIVATE_KEY_BASE64: ${{ inputs.app_store_connect_private_key_base64 }}
+      # `state=absent` exits 0 and stops the upload below; `state=partial` exits
+      # 1 and fails this whole job — see tools/mobile/ios-ci.mjs signingReadiness().
+      run: node tools/mobile/ios-ci.mjs signing-gate
+
+    - name: Archive, export and upload to TestFlight
+      id: upload
+      if: steps.signing.outputs.ready == 'true'
+      shell: bash
+      env:
+        IOS_DIST_CERT_P12_BASE64: ${{ inputs.ios_dist_cert_p12_base64 }}
+        IOS_DIST_CERT_PASSWORD: ${{ inputs.ios_dist_cert_password }}
+        IOS_PROVISIONING_PROFILE_BASE64: ${{ inputs.ios_provisioning_profile_base64 }}
+        APPLE_TEAM_ID: ${{ inputs.apple_team_id }}
+        APP_STORE_CONNECT_KEY_ID: ${{ inputs.app_store_connect_key_id }}
+        APP_STORE_CONNECT_ISSUER_ID: ${{ inputs.app_store_connect_issuer_id }}
+        APP_STORE_CONNECT_PRIVATE_KEY_BASE64: ${{ inputs.app_store_connect_private_key_base64 }}
+        MARKETING_VERSION: ${{ inputs.marketing_version }}
+        BUILD_NUMBER: ${{ inputs.build_number }}
+        APP_ID: ai.jwlabs.foura
+      run: |
+        set -euo pipefail
+        KEYCHAIN="$RUNNER_TEMP/signing.keychain-db"
+        KEYCHAIN_PASSWORD=$(uuidgen)
+        security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+        security set-keychain-settings -lut 3600 "$KEYCHAIN"
+        security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+        echo "$IOS_DIST_CERT_P12_BASE64" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+        security import "$RUNNER_TEMP/cert.p12" -k "$KEYCHAIN" -P "$IOS_DIST_CERT_PASSWORD" \
+          -T /usr/bin/codesign -A
+        security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+        security list-keychains -d user -s "$KEYCHAIN"
+
+        PROFILES="$HOME/Library/MobileDevice/Provisioning Profiles"
+        mkdir -p "$PROFILES"
+        echo "$IOS_PROVISIONING_PROFILE_BASE64" | base64 --decode > "$PROFILES/foray.mobileprovision"
+        security cms -D -i "$PROFILES/foray.mobileprovision" > "$RUNNER_TEMP/profile.plist"
+        export PROFILE_UUID
+        PROFILE_UUID=$(/usr/libexec/PlistBuddy -c "Print :UUID" "$RUNNER_TEMP/profile.plist")
+
+        XC_PROFILES="$HOME/Library/Developer/Xcode/UserData/Provisioning Profiles"
+        mkdir -p "$XC_PROFILES"
+        cp "$PROFILES/foray.mobileprovision" "$XC_PROFILES/$PROFILE_UUID.mobileprovision"
+
+        mkdir -p "$HOME/.appstoreconnect/private_keys"
+        echo "$APP_STORE_CONNECT_PRIVATE_KEY_BASE64" | base64 --decode \
+          > "$HOME/.appstoreconnect/private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8"
+
+        node -e '
+          const fs = require("node:fs");
+          fs.writeFileSync(process.argv[1],
+            `<?xml version="1.0" encoding="UTF-8"?>\n` +
+            `<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n` +
+            `<plist version="1.0"><dict>` +
+            `<key>method</key><string>app-store-connect</string>` +
+            `<key>teamID</key><string>${process.env.APPLE_TEAM_ID}</string>` +
+            `<key>uploadSymbols</key><true/>` +
+            `<key>signingStyle</key><string>manual</string>` +
+            `<key>provisioningProfiles</key><dict>` +
+            `<key>${process.env.APP_ID}</key><string>${process.env.PROFILE_UUID}</string>` +
+            `</dict>` +
+            `</dict></plist>\n`);
+        ' "$RUNNER_TEMP/ExportOptions.plist"
+        plutil -lint "$RUNNER_TEMP/ExportOptions.plist"
+
+        # BUILD_NUMBER COMES FROM tools/mobile/version.mjs, NOT run_number.run_attempt.
+        # R-02's whole point is one release-time integer shared with Android's
+        # versionCode; a per-run counter here would reintroduce the exact
+        # "two workflows, two numbers" defect R-02 retired. Refusing 1/1.* stays
+        # as a floor: ios-build.yml's own history (ERROR -19232) is why a build
+        # number this low can never be safely re-uploaded.
+        case "$BUILD_NUMBER" in 1|1.*) echo "::error::refusing to archive at build number $BUILD_NUMBER"; exit 1 ;; esac
+
+        xcodebuild "$XC_FLAG" "$XC_PATH" -scheme App -configuration Release \
+          -sdk iphoneos -destination 'generic/platform=iOS' \
+          -archivePath "$RUNNER_TEMP/Foray.xcarchive" \
+          CODE_SIGN_STYLE=Manual \
+          MARKETING_VERSION="$MARKETING_VERSION" \
+          CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
+          DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
+          PROVISIONING_PROFILE_SPECIFIER="$PROFILE_UUID" \
+          CODE_SIGN_IDENTITY="Apple Distribution" \
+          archive | tail -20
+
+        # READ BOTH VERSION FIELDS BACK OUT OF THE ARCHIVE, with Apple's own
+        # parser, exactly as ios-build.yml's original step does for
+        # CFBundleVersion — a build-setting override that silently does not
+        # reach the bundle is this repo's "green and wrong" failure shape.
+        ARCHIVED_PLIST="$RUNNER_TEMP/Foray.xcarchive/Products/Applications/App.app/Info.plist"
+        test -f "$ARCHIVED_PLIST"
+        BUILT_VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleVersion" "$ARCHIVED_PLIST")
+        BUILT_MARKETING=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$ARCHIVED_PLIST")
+        if [ "$BUILT_VERSION" != "$BUILD_NUMBER" ]; then
+          echo "::error::CFBundleVersion in the archive is '$BUILT_VERSION', not '$BUILD_NUMBER'."
+          exit 1
+        fi
+        if [ "$BUILT_MARKETING" != "$MARKETING_VERSION" ]; then
+          echo "::error::CFBundleShortVersionString in the archive is '$BUILT_MARKETING', not '$MARKETING_VERSION'."
+          exit 1
+        fi
+
+        xcodebuild -exportArchive \
+          -archivePath "$RUNNER_TEMP/Foray.xcarchive" \
+          -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" \
+          -exportPath "$RUNNER_TEMP/export" | tail -20
+        xcrun altool --upload-app -f "$RUNNER_TEMP/export/App.ipa" -t ios \
+          --apiKey "$APP_STORE_CONNECT_KEY_ID" --apiIssuer "$APP_STORE_CONNECT_ISSUER_ID"
+        echo "uploaded=true" >> "$GITHUB_OUTPUT"
+
+    - name: Record 'not uploaded' when signing was not ready
+      id: upload_absent
+      if: steps.signing.outputs.ready != 'true'
+      shell: bash
+      run: echo "uploaded=false" >> "$GITHUB_OUTPUT"

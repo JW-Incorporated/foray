@@ -868,6 +868,13 @@ const FLOORS = {
      identical pair" — spawning the CLI twice with pinned inputs and diffing
      stdout byte-for-byte. */
   "tools/mobile/version.test.mjs": 22,
+  /* R-03 (docs/release-lockstep-plan.md): release.yml's own pure-function
+     decisions (playReadiness/releaseGuard/isAncestorOfMain) and the workflow
+     invariant suite that pins it and the two composite actions it factors
+     shared build steps into. Registered the same day both suites were
+     written, per R-02's own precedent for this map. */
+  "tools/mobile/release-ci.test.mjs": 15,
+  "tools/mobile/release-workflow.test.mjs": 24,
   /* The launch verdict (the `android-smoke` job's brain). ZERO SLACK. This is the
      only thing in the repo that can judge a RUNNING Android app, and its risk is
      entirely one-directional: a verdict too generous reports a launch for a page
