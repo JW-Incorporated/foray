@@ -1349,12 +1349,24 @@ test("KVM is enabled and ASSERTED, not hoped for", () => {
      booted after 35 minutes". The difference between a ~2 minute boot and a
      timeout is one file in /etc/udev/rules.d, so its effect is checked rather
      than assumed: a silently unaccelerated emulator does not fail here, it fails
-     fifteen minutes later in the boot poll with a message about booting. */
+     fifteen minutes later in the boot poll with a message about booting.
+
+     UPDATED 2026-09-06 (R-04): the original single `test -w /dev/kvm` raced
+     `udevadm trigger`, which only queues the permission change rather than
+     applying it before returning — the only workflow_dispatch of this file on
+     main (run 33325261993) failed exactly that way, 0.03s after the trigger.
+     The fix adds `udevadm settle` plus a retry loop, and SPLITS the assertion
+     into two distinct failure clauses: one for "device does not exist at all"
+     (`test -c`, a real missing-KVM runner class) and one for "exists but still
+     not writable" (`test -w`, the final gate after settle+retries). Both must
+     still be able to fail the job independently. */
   const s = releaseStepCode("Enable KVM");
   assert.ok(s, "nothing enables KVM");
   assert.match(s, /99-kvm4all\.rules/);
+  assert.match(s, /udevadm settle/, "udevadm trigger only queues the change; settle must wait for it before the check runs");
+  assert.match(s, /test -c \/dev\/kvm/, "a genuinely absent device must be distinguished from a not-yet-writable one");
   assert.match(s, /test -w \/dev\/kvm/, "the rule's EFFECT must be checked, not just written");
-  assert.equal(failureClauses(s), 1, "the /dev/kvm check must be able to fail the job");
+  assert.equal(failureClauses(s), 2, "both the absent-device check and the not-writable check must be able to fail the job");
 });
 
 test("the app is installed and started, and `am start` must report ok", () => {
