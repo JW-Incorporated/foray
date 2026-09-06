@@ -171,7 +171,7 @@ const FLOORS = {
      stale stored value SNAPS onto the ladder rather than resetting to 1x. Raise it
      when the suite grows. */
   "player/playback-rate.test.js": 22,
-  "player/queue-manager.test.js": 99,
+  "player/queue-manager.test.js": 114,
   "player/queue-state.test.js": 56,
   "player/seam-gap.test.js": 16,
   /* The SegmentStrip (#128) — the element that makes a Foray legible as
@@ -198,7 +198,7 @@ const FLOORS = {
      one non-obvious case is a SHELL BUILT BEFORE IT EXISTED -- the bundle holds a
      flattened build-time copy of `foray-tts.js`, so "the module loaded but has
      no such method" is a real state and not defensiveness. */
-  "player/tts-bridge.test.js": 14,
+  "player/tts-bridge.test.js": 20,
   /* The app's name on the surfaces users read (#302), 6 -> 8 when the two
      published legal documents were added, 8 -> 21 when the shipped UI copy that
      suite had only RECORDED as a known gap was renamed and pinned -- twenty
@@ -776,7 +776,7 @@ const FLOORS = {
      Speech fallback applies one, that a voice which is not installed is REPORTED
      rather than silently substituted, and that `listVoices()` answers on every
      path without throwing. */
-  "tools/mobile/foray-tts.test.mjs": 38,
+  "tools/mobile/foray-tts.test.mjs": 45,
   /* The foreground service's web half (#27's Android half, on #37). Zero slack, and
      for the reason `media-session.test.js` above gives: what this suite guards is
      mostly a set of single-line edits away from their opposites, on a surface nobody

@@ -117,6 +117,7 @@ function make(opts = {}) {
   const m = new PlayerQueueManager({
     backend, positionStore, telemetry: (t) => log.push(t), strategy: opts.strategy,
     scheduler, seamGapSec: opts.seamGapSec, onSeamGapChange: opts.onSeamGapChange,
+    onNarrationTick: opts.onNarrationTick,
     rate: opts.rate, tts: opts.tts, voice: opts.voice,
   });
   return { m, backend, saved, log, scheduler };
@@ -652,11 +653,23 @@ test("narration between segments plays as an ordinary TTS item at 1.0x", async (
 
 function fakeTts() {
   const calls = [];
+  const finishedListeners = new Set();
   return {
     calls,
     async speak(text, opts = {}) {
       calls.push({ text, rate: opts.rate, voice: opts.voice });
       return { ok: true };
+    },
+    /** L-03's optional half of the bridge contract. `finish()` is the test's
+        own trigger — the fake stands in for `speechSynthesizer(_:didFinish:)`
+        firing on iOS or `onDone` on Android, neither of which exists in this
+        sandbox (`foray-tts.test.mjs`'s own header states the same limit). */
+    onFinished(fn) {
+      finishedListeners.add(fn);
+      return () => finishedListeners.delete(fn);
+    },
+    finish() {
+      for (const fn of [...finishedListeners]) fn();
     },
   };
 }
@@ -741,6 +754,105 @@ test("a script-only item with NO plugin wired fails to load and does not stall t
     log.some((l) => l.includes("no on-device TTS plugin wired")),
     `expected a named failure reason in telemetry, got ${JSON.stringify(log)}`
   );
+});
+
+/* ---------- L-03: the `finished` event advances past a spoken item ---------- */
+
+test("a `finished` event advances the queue to the next item exactly once", async () => {
+  // The card's own acceptance test: fire it twice, still one advance.
+  const tts = fakeTts();
+  const { m, backend } = make({ tts });
+  await m.playForay(foray([
+    { type: "narration", id: "nar-1", script: "the history of grilling starts with fire" },
+    fseg(),
+  ]), { resolveItem });
+
+  assert.equal(m.state.type, "playing", "the narration item is treated as playing");
+  assert.ok(!backend.loads().includes("nar-1"), "still never reaches backend.load");
+
+  tts.finish();
+  await tick();
+  await tick();
+  assert.ok(backend.calls.includes("load:foray-1#1@100"), `expected the next segment loaded, got ${backend.calls}`);
+  const loadsAfterFirst = backend.loads().length;
+
+  // MUTATION THAT KILLS THIS: delete the `_advancedSpeakSeq` guard in
+  // `_onTtsFinished` (or replace it with a plain boolean set only once,
+  // never reset) — a second `finished` for the SAME utterance would then
+  // dispatch a second `itemEnded` and load whatever follows the segment too.
+  tts.finish();
+  await tick();
+  await tick();
+  assert.equal(backend.loads().length, loadsAfterFirst, "a duplicate finished event must not advance twice");
+});
+
+test("a `finished` event for a bridge item (mid-Foray) also advances exactly once", async () => {
+  const tts = fakeTts();
+  const { m, backend } = make({ tts });
+  await m.playForay(foray([
+    fseg(),
+    { type: "narration", id: "nar-1", asset: undefined, script: "a bridge line" },
+    fseg({ start_sec: 400, end_sec: 500 }),
+  ]), { resolveItem });
+  await m._handleBackendItemEnded(END_OUT_POINT); // segment 1 ends, the bridge speaks
+  assert.equal(m.state.type, "transitioning", "the bridge is what is audible");
+
+  tts.finish();
+  await tick();
+  await tick();
+  assert.equal(m.state.type, "playing", "the bridge finished and the next segment loaded");
+  assert.ok(backend.loads().includes("load:foray-1#2"), `expected the segment after the bridge, got ${backend.loads()}`);
+});
+
+test("a `finished` event while nothing is speaking is ignored, not a crash", async () => {
+  const tts = fakeTts();
+  const { m } = make({ tts });
+  await m.playForay(foray([fseg(), fseg({ start_sec: 400, end_sec: 500 })]), { resolveItem });
+  assert.equal(m.state.type, "playing");
+  // No narration item was ever loaded, so `_loadedIsSynth` is false — firing
+  // `finished` here must be a silent no-op, not an advance past an ordinary
+  // segment the listener is still hearing.
+  tts.finish();
+  await tick();
+  assert.equal(m.state.type, "playing", "an ordinary segment must not be skipped by a stray finished event");
+});
+
+test("the narration position ticker fires while speaking and stops once it is not", async () => {
+  const tts = fakeTts();
+  const ticks = [];
+  const scheduler = manualScheduler();
+  const { m } = make({ tts, scheduler, onNarrationTick: () => ticks.push(scheduler.nowMs()) });
+  await m.playForay(foray([
+    { type: "narration", id: "nar-1", script: "a line long enough to tick a few times" },
+    fseg(),
+  ]), { resolveItem });
+
+  assert.equal(ticks.length, 0, "nothing has ticked yet — the ticker fires on its own schedule");
+  await scheduler.advance(250);
+  await scheduler.advance(250);
+  await scheduler.advance(250);
+  assert.equal(ticks.length, 3, `expected three ticks, got ${ticks.length}`);
+
+  tts.finish();
+  await tick();
+  await tick();
+  const afterFinish = ticks.length;
+  await scheduler.advance(250);
+  await scheduler.advance(250);
+  assert.equal(ticks.length, afterFinish, "the ticker must stop once the item is no longer speaking");
+});
+
+test("a bridge with no onFinished behaves exactly as before — no ticker, no auto-advance", async () => {
+  // The card's own contract: absence changes nothing.
+  const tts = { async speak() { return { ok: true }; } }; // no onFinished at all
+  const { m, backend } = make({ tts });
+  await m.playForay(foray([
+    { type: "narration", id: "nar-1", script: "no finished contract here" },
+    fseg(),
+  ]), { resolveItem });
+  assert.equal(m.state.type, "playing");
+  await m.skipToNext();
+  assert.ok(backend.calls.includes("load:foray-1#1@100"), `expected the manual skip to still work, got ${backend.calls}`);
 });
 
 /* ---------- V-01: the listener's chosen narration voice ---------- */

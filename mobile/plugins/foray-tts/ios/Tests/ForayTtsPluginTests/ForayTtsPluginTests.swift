@@ -387,4 +387,19 @@ final class ForayTtsPluginTests: XCTestCase {
         XCTAssertEqual(ForayTtsPlugin.primarySubtag("fr"), "fr")
         XCTAssertEqual(ForayTtsPlugin.primarySubtag(""), "")
     }
+
+    // MARK: - §7 item 3 (L-03): the `finished` event
+
+    /// Pins the event name against `web/foray-tts.js`'s own `FINISHED_EVENT`
+    /// constant — the same discipline `shell-invariants.test.mjs` applies to
+    /// `TRANSPORT_EVENT`. A rename on either side without the other is a
+    /// silent drop: `notifyListeners` simply has no subscriber for the new
+    /// name and the queue stops advancing past narration with no error
+    /// anywhere.
+    ///
+    /// TO SEE IT FAIL: rename `FINISHED_EVENT` here to `"done"` without
+    /// updating `web/foray-tts.js`.
+    func testFinishedEventNameMatchesTheWebHalf() {
+        XCTAssertEqual(ForayTtsPlugin.FINISHED_EVENT, "finished")
+    }
 }

@@ -198,6 +198,101 @@ test("a throwing logger must not break the failure path", async () => {
   assert.equal(out.path, "none");
 });
 
+/* --------------------------------------------------------- §7 item 3: onFinished
+
+   L-03's advance-past-narration signal. The module is loaded LAZILY, the
+   same as `speak`/`listVoices` above, but `onFinished` differs from both:
+   `PlayerQueueManager`'s constructor calls it SYNCHRONOUSLY, before the
+   module can possibly have resolved, so the return value must be a plain
+   function today — never a Promise the constructor would have to await. */
+
+// TO SEE IT FAIL: make `onFinished` return the Promise from `pending.then(...)`
+// instead of a plain unsubscribe function — `PlayerQueueManager`'s constructor
+// would then hold a Promise where it expects a callable, and calling it in
+// `dispose()` would throw.
+test("onFinished: returns an unsubscribe function immediately, before the module resolves", () => {
+  let resolveLoad;
+  const bridge = createTtsBridge({
+    load: () => new Promise((r) => { resolveLoad = r; }),
+    candidates: ["x"],
+  });
+
+  const unsubscribe = bridge.onFinished(() => {});
+  assert.equal(typeof unsubscribe, "function", "must be callable synchronously, not a Promise");
+  resolveLoad?.(fakeModule());
+});
+
+// TO SEE IT FAIL: in `onFinished`, call `mod.onFinished(fn)` without checking
+// `typeof mod.onFinished === "function"` — an older shell build's flattened
+// copy (same real risk `listVoices`'s own test above names) would then throw
+// a TypeError inside a `.then()` with nobody watching it.
+test("onFinished: a module with no onFinished() is a silent miss, not a crash", async () => {
+  const bridge = createTtsBridge({ load: async () => fakeModule(), candidates: ["x"] });
+  const unsubscribe = bridge.onFinished(() => {});
+  await Promise.resolve(); await Promise.resolve();
+  assert.doesNotThrow(() => unsubscribe());
+});
+
+test("onFinished: forwards the module's finished event to the caller's callback", async () => {
+  const listeners = new Set();
+  const mod = {
+    speak: async () => ({ ok: true }),
+    onFinished(fn) { listeners.add(fn); return () => listeners.delete(fn); },
+  };
+  const bridge = createTtsBridge({ load: async () => mod, candidates: ["x"] });
+
+  const seen = [];
+  bridge.onFinished(() => seen.push("fired"));
+  await Promise.resolve(); await Promise.resolve();
+
+  assert.equal(listeners.size, 1, "the module's own onFinished must have been called");
+  for (const fn of listeners) fn();
+  assert.deepEqual(seen, ["fired"]);
+});
+
+// TO SEE IT FAIL: drop the `live` flag / do not check it inside the
+// `pending.then(...)` callback — an unsubscribe called BEFORE the module
+// resolves would then be silently ignored and the callback would still fire.
+test("onFinished: unsubscribing before the module resolves prevents the late subscription", async () => {
+  let resolveLoad;
+  const listeners = new Set();
+  const mod = {
+    speak: async () => ({ ok: true }),
+    onFinished(fn) { listeners.add(fn); return () => listeners.delete(fn); },
+  };
+  const bridge = createTtsBridge({
+    load: () => new Promise((r) => { resolveLoad = r; }),
+    candidates: ["x"],
+  });
+
+  const unsubscribe = bridge.onFinished(() => {});
+  unsubscribe();
+  resolveLoad(mod);
+  await Promise.resolve(); await Promise.resolve();
+
+  assert.equal(listeners.size, 0, "a pre-resolution unsubscribe must stop the subscription from ever landing");
+});
+
+test("onFinished: unsubscribing after the module resolves removes the real listener", async () => {
+  const listeners = new Set();
+  const mod = {
+    speak: async () => ({ ok: true }),
+    onFinished(fn) { listeners.add(fn); return () => listeners.delete(fn); },
+  };
+  const bridge = createTtsBridge({ load: async () => mod, candidates: ["x"] });
+
+  const unsubscribe = bridge.onFinished(() => {});
+  await Promise.resolve(); await Promise.resolve();
+  assert.equal(listeners.size, 1);
+  unsubscribe();
+  assert.equal(listeners.size, 0);
+});
+
+test("onFinished: a non-function argument is a no-op, not a crash", () => {
+  const bridge = createTtsBridge({ load: async () => fakeModule(), candidates: ["x"] });
+  assert.doesNotThrow(() => bridge.onFinished(null)());
+});
+
 /* ------------------------------------------------------------- listVoices
 
    Threaded through this file because the module is resolved HERE — see
