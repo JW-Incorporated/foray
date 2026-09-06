@@ -163,7 +163,7 @@ test("renderEpisode renders the same for a cp_saved-only (aged-out) item", () =>
   assertFullEpisodeRender(app, app._view.innerHTML);
 });
 
-test("renderEpisode renders the Stage 2 fallback link, not a play button, when audio_url is absent", () => {
+test("renderEpisode renders the honest not-playable note, not a play button or link-out, when audio_url is absent", () => {
   // Mutation: change playBtn(item) to unconditionally return a button. This
   // assertion then fails because a play-btn shows up for an unplayable item.
   // Mutation 2: drop the `item.audio_url ? playBtn(item) : ...` fallback in
@@ -175,7 +175,9 @@ test("renderEpisode renders the Stage 2 fallback link, not a play button, when a
   app.renderEpisode("ep-5");
   const html = app._view.innerHTML;
   assert.doesNotMatch(html, /class="play-btn"/, "no play button without audio_url");
-  assert.match(html, /Listen in your podcast app ↗/, "an honest external fallback replaces the ▶ button");
+  assert.doesNotMatch(html, /class="go"/, "no external link-out control any more (removed 2026-09-03)");
+  assert.doesNotMatch(html, /Listen in your podcast app/, "the old link-out copy must not appear anywhere");
+  assert.match(html, /class="not-playable"/, "an honest in-app not-playable note replaces the ▶ button");
   assert.match(html, /class="star /, "star toggle still renders");
 });
 
