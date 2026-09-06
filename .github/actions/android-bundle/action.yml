@@ -110,6 +110,18 @@ runs:
         node tools/mobile/wire-signing.mjs mobile/android
         node tools/mobile/wire-signing.mjs mobile/android --check
 
+    - name: Put the REAL splash screen and launcher icon in the generated project
+      # `cap add android` generates Capacitor's placeholder splash drawables AND
+      # placeholder launcher icons (inject-app-icon.mjs is iOS-only), and Android
+      # 12+ paints its own launch screen from the launcher icon on
+      # windowSplashScreenBackground. inject-splash.mjs replaces all of it from
+      # the same masters the iOS build uses; `--check` compares bytes.
+      shell: bash
+      run: |
+        set -euo pipefail
+        node tools/mobile/inject-splash.mjs android mobile/android/app/src/main/res
+        node tools/mobile/inject-splash.mjs android mobile/android/app/src/main/res --check
+
     - name: Materialise the upload key, if the founder has installed one
       id: key
       shell: bash

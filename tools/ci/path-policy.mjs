@@ -126,6 +126,11 @@ export const DENIED_PREFIXES = [
   // The trade is the one the entries above make — near-zero change frequency
   // (this file moves when Capacitor's template does), occasional human merge.
   "tools/mobile/inject-app-icon.mjs",
+  // Same argument, one imageset over (2026-09-06): inject-splash.mjs writes the
+  // splash and the Android launcher icon into the generated projects on all four
+  // build paths, and its `--check` is the only thing that would notice a
+  // one-line `process.exit(0)` shipping the placeholder to both stores unread.
+  "tools/mobile/inject-splash.mjs",
   // release.yml's `guard` job runs `release-ci.mjs release-guard` to decide
   // whether THIS ref may proceed to build+upload at all — the only thing
   // standing between an arbitrary dispatched ref/tag and a job that receives
