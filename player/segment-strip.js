@@ -431,3 +431,108 @@ export function renderStrip(items, opts = {}) {
   mountStrip(el, items, opts);
   return el;
 }
+
+/* ---------- U-04: the string half ---------- */
+
+/**
+ * `segmentStripHtml` exists for the callers `mountStrip`/`renderStrip` do not
+ * fit: `app.js`'s Home cards (U-03) and the show/episode restyle (U-08) build
+ * their markup as TEMPLATE STRINGS interpolated into `innerHTML`, the same way
+ * every other card on the page does (`miniCard`, `foraySlotHtml`, …) — handing
+ * them a live DOM node built by `renderStrip` would mean one card element built
+ * two different ways, and the string half is the one that already fits how
+ * `app.js` renders everything else.
+ *
+ * `<3 chars of HTML>` to escape: `esc()` in `app.js` cannot be imported here —
+ * `app.js` is a classic script and this file is an ES module (`player/` is the
+ * one directory scoped to module semantics; see `player/package.json`) — so
+ * this file carries its own, matching `app.js`'s table exactly rather than
+ * inventing a second escaping rule for one string.
+ */
+const escHtml = (s) => String(s ?? "").replace(/[&<>"']/g, (c) =>
+  ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+/**
+ * The whole element as an HTML string, over a Foray's items.
+ *
+ * NO WIDTH IS WRITTEN HERE. The page CSP is `style-src 'self'` (no
+ * `unsafe-inline`), which blocks a `style="..."` attribute exactly as it would
+ * if this string were typed by hand — a pure function returning markup cannot
+ * duck that by being a different file from `app.js`. Each bar instead carries
+ * its proportion in `data-grow`, a plain data attribute, and the caller applies
+ * it with `applyStripGrow` after the string lands in the DOM — one CSSOM write
+ * per bar, the exact mechanism `mountStrip`'s `paintSegments` and `app.js`'s
+ * `sizeForayStrip` already use for the same reason. Splitting the string from
+ * the sizing is not a workaround here; it is the only way a *pure* function
+ * can hand back something with a per-segment width at all under this CSP.
+ *
+ * Degrades to `""` for a Foray with no segments — `app.js`'s
+ * `${maybeStrip || ""}` composes with that directly, no `if` needed at the
+ * call site, matching how every other optional block in this codebase's
+ * templates already reads.
+ *
+ * @param {object[]} items  a player queue (`resolved.playable`) or hydrated entries
+ * @param {object} [opts]
+ * @param {number|null} [opts.elapsed]  see `stripModel`
+ * @param {boolean} [opts.playing]      see `mountStrip`
+ * @param {string} [opts.size]          "sm" | "md" | "lg"
+ * @returns {string}
+ */
+export function segmentStripHtml(items, { elapsed = null, playing = false, size = "md" } = {}) {
+  const model = stripModel(items, { elapsed });
+  if (model.segments.length === 0) return "";
+
+  const chosen = SIZES.includes(size) ? size : "md";
+  const bars = model.segments.map((seg) => {
+    const classes = [SEG_CLASS];
+    if (seg.kind === "narration") classes.push("fy-seg--narration");
+    else classes.push(`fy-t${seg.tone}`);
+    if (seg.runStart) classes.push("is-run-start");
+    if (seg.runEnd) classes.push("is-run-end");
+    if (seg.state === "past") classes.push("is-played");
+    if (seg.state === "current") {
+      classes.push("is-here");
+      if (playing) classes.push("is-playing");
+    }
+    /* `data-grow`, not a computed percentage: percentages drift the instant a
+       sibling bar is added or removed (every share is `lengthSec / totalSec`),
+       while the flex-grow ratio `applyStripGrow` reads off this attribute is
+       exactly what `stripModel` already computed for the whole set — one
+       number, no re-derivation at mount time. */
+    return `<span class="${classes.join(" ")}" data-seg="${seg.index}" data-grow="${seg.grow}">`
+      + `<i class="fy-seg-fill"></i></span>`;
+  }).join("");
+
+  /* `fy-strip--static`: this markup has no scrub-gesture listener bound to it
+     (that binding lives in `app.js`, on the ONE `#fy-strip` the full player
+     page owns) and a card sitting in a vertically-scrolling rail is exactly
+     where `.fy-strip`'s base `touch-action: none` would fight the page's own
+     scroll — the V1 zoom-to-scrub gesture that rule exists for has nowhere to
+     attach on a card. See the modifier in styles.css. */
+  const posClass = model.positioned ? " has-position" : "";
+  return `<div class="fy-strip fy-strip--${chosen} fy-strip--static${posClass}"`
+    + ` role="img" aria-label="${escHtml(stripSummary(model))}">${bars}</div>`;
+}
+
+/**
+ * Apply `segmentStripHtml`'s `data-grow` widths to bars already in the DOM.
+ *
+ * CSSOM, not an attribute — see `segmentStripHtml`'s header. This is the same
+ * write `mountStrip`'s `paintSegments` performs inline as it builds each bar;
+ * here the bars already exist (the caller's `innerHTML` put them there) so the
+ * write happens in a second pass instead of during construction. Safe to call
+ * on a container that holds more than one strip (a rail of Foray cards) —
+ * every `[data-grow]` under it is sized, not just the first.
+ *
+ * @param {object} container  an element containing one or more `.fy-strip`s
+ *   built by `segmentStripHtml`
+ */
+export function applyStripGrow(container) {
+  if (!container || typeof container.querySelectorAll !== "function") return;
+  const bars = container.querySelectorAll("[data-grow]");
+  for (const bar of bars) {
+    const raw = typeof bar.getAttribute === "function" ? bar.getAttribute("data-grow") : null;
+    const grow = Number(raw);
+    bar.style.flexGrow = String(Number.isFinite(grow) && grow > 0 ? grow : 1);
+  }
+}

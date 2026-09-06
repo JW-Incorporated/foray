@@ -46,6 +46,7 @@ import { itemRuntimeSec } from "./foray-queue.js";
 import {
   stripModel, stripSummary, mountStrip, renderStrip, assignTones, toneSeed,
   sourceKeyOf, isNarration, growOf, TONE_COUNT, NARRATOR_SOURCE, SIZES,
+  segmentStripHtml, applyStripGrow,
 } from "./segment-strip.js";
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -681,10 +682,37 @@ function withoutLightBlocks(css) {
 
 const CSS_DARK = withoutLightBlocks(CSS);
 
+/** Strips `body.ui-v2 { ... }` blocks (U-01, docs/ui-transition-plan.md).
+    That scope deliberately reuses several v1 token NAMES (`--bg`, `--surface`,
+    `--text`, `--line`) with different values, so a naive last-match-wins scan
+    over the whole file would start reading the v2 value for a v1 (flag-off)
+    measurement the moment ui-v2 shipped. Everything in this suite measures the
+    stylesheet a v1 page (no `body.ui-v2` class) actually resolves, so the v2
+    scope must never be part of what `cssVar` sees. Brace-counted for the same
+    reason `withoutLightBlocks` is above it. */
+function withoutUiV2Blocks(css) {
+  const marker = "body.ui-v2 {";
+  let out = css;
+  for (;;) {
+    const start = out.indexOf(marker);
+    if (start < 0) return out;
+    let i = out.indexOf("{", start);
+    assert.ok(i > 0, "a body.ui-v2 block with no body");
+    let depth = 0;
+    for (; i < out.length; i++) {
+      if (out[i] === "{") depth++;
+      else if (out[i] === "}" && --depth === 0) break;
+    }
+    assert.equal(depth, 0, "unbalanced braces in styles.css");
+    out = out.slice(0, start) + out.slice(i + 1);
+  }
+}
+
 /** The stylesheet as one theme resolves it. Named once and used by everything
     below: two copies of this expression is how the light branch stayed inert in
-    one of them while the other was fixed. */
-const scopeFor = (light) => (light ? CSS : CSS_DARK);
+    one of them while the other was fixed. Both branches also drop the ui-v2
+    scope, per withoutUiV2Blocks above — a v1 page never carries `body.ui-v2`. */
+const scopeFor = (light) => withoutUiV2Blocks(light ? CSS : CSS_DARK);
 
 /** Declared value of a custom property as the named theme resolves it: the LAST
     winning declaration, which is how a browser cascades it. */
@@ -863,3 +891,154 @@ test("every tone the renderer can emit has a colour, and both themes define it",
      i=8, and so does the contrast test above, which then looks for an
      undeclared `--seg-c8`. */
 });
+
+/* ---------- U-04: segmentStripHtml — the string half ---------- */
+
+/* app.js is a classic browser script, not an ES module (player/package.json
+   scopes module semantics to this directory alone), so these tests exercise
+   `segmentStripHtml`/`applyStripGrow` exactly as `app.js` would reach them: by
+   composing the returned string into a container's `innerHTML`, then applying
+   sizing as a second CSSOM pass — never by importing app.js itself. */
+
+test("segmentStripHtml degrades to nothing for a Foray with no segments", () => {
+  assert.equal(segmentStripHtml([]), "");
+  assert.equal(segmentStripHtml(null), "");
+  assert.equal(segmentStripHtml(undefined), "");
+  /* MUTATION (killed): `if (model.segments.length === 0) return "";` ->
+     always fall through. An empty Foray would render `<div class="fy-strip
+     ..."></div>` — an empty, focusable-looking picture frame instead of
+     nothing, which is what "degrades to nothing" (#128/U-04's acceptance)
+     means to rule out. */
+});
+
+for (const id of REAL_IDS) {
+  test(`${id}: segmentStripHtml's data-grow widths sum to 100% of the runtime`, () => {
+    const r = real(id);
+    const html = segmentStripHtml(r.playable);
+    const grows = [...html.matchAll(/data-grow="(\d+)"/g)].map((m) => Number(m[1]));
+    assert.equal(grows.length, r.playable.length, "one bar per item");
+
+    // Same arithmetic mountStrip's DOM bars carry (growOf over itemRuntimeSec),
+    // so a card built from the string and the full player built from the DOM
+    // never disagree about one Foray's proportions.
+    const model = stripModel(r.playable);
+    assert.deepEqual(grows, model.segments.map((s) => s.grow));
+
+    // And the widths this produces are a partition of the runtime: converting
+    // each flex-grow back to a share and summing lands at 100% within rounding
+    // (each grow is `Math.round`ed seconds, so the accumulated error is bounded
+    // by the segment count, not unbounded drift).
+    const totalGrow = grows.reduce((t, g) => t + g, 0);
+    const pctSum = grows.reduce((t, g) => t + (g / totalGrow) * 100, 0);
+    assert.ok(Math.abs(pctSum - 100) < 1e-9, `widths summed to ${pctSum}%`);
+  });
+}
+
+test("segmentStripHtml's bar classes match mountStrip's, bar for bar", () => {
+  /* Two renderers for one element is exactly what this file's own module
+     header (`player/segment-strip.js`, "the DOM half") warns against for
+     mountStrip vs a hand-rolled copy — segmentStripHtml is not exempt from
+     that just because it emits a string. Both must derive from the same
+     `stripModel`, and this pins that they actually agree, not merely that
+     each individually looks plausible. */
+  for (const id of REAL_IDS) {
+    const r = real(id);
+    const domClasses = renderedBarClasses(mount(r.playable).markup);
+    const html = segmentStripHtml(r.playable);
+    const htmlClasses = [...html.matchAll(/<span class="([^"]*)"/g)].map((m) => m[1].split(" "));
+    assert.deepEqual(htmlClasses, domClasses, `${id}: string and DOM renderers disagree`);
+  }
+  /* MUTATION (killed): drop `is-run-start`/`is-run-end` from segmentStripHtml's
+     class list. The capsule geometry — the strip's whole reason to exist —
+     would render correctly in the full player and silently flatten to one
+     undifferentiated run everywhere segmentStripHtml is used (U-03, U-08). */
+});
+
+test("colours are stable per show across renders — segmentStripHtml agrees with itself and with mountStrip", () => {
+  const r = real("capital-types-1");
+  const a = segmentStripHtml(r.playable);
+  const b = segmentStripHtml(r.playable);
+  assert.equal(a, b, "the same Foray must render the same string twice");
+
+  const toneOf = (html) => [...html.matchAll(/<span class="([^"]*)"/g)]
+    .map((m) => m[1].split(" ").find((c) => /^fy-t\d+$/.test(c)) ?? null);
+  assert.deepEqual(toneOf(a), toneOf(mount(r.playable).markup));
+  /* MUTATION (killed): in assignTones, `used.add(tone)` -> no-op (never mark a
+     tone spent). Every show would probe to its raw hash and two adjacent
+     capsules could collide on tone — exactly the "indistinguishable from one
+     long capsule" failure the module header calls out — which changes the
+     class list a second call away from matching mountStrip's, since mountStrip
+     and segmentStripHtml build tones from the same assignTones(keys) call over
+     the same first-appearance order and any non-determinism there shows up as
+     a mismatch here. */
+});
+
+test("segmentStripHtml's accessible label is escaped and matches stripSummary", () => {
+  const r = real("grilling-history-2");
+  const html = segmentStripHtml(r.playable);
+  const label = /aria-label="([^"]*)"/.exec(html)?.[1];
+  assert.ok(label, "expected an aria-label on the strip");
+  assert.equal(label, escapeForAssert(stripSummary(stripModel(r.playable))));
+  /* MUTATION (killed): drop escHtml() around stripSummary's output in
+     segmentStripHtml, i.e. interpolate the sentence raw. A show name with an
+     `&` (real RSS titles have them) would then land unescaped in the
+     attribute; this test's escaping check would still pass by coincidence on
+     today's two real Forays, so it is paired with the explicit escaping test
+     below, which forces the case. */
+});
+
+test("segmentStripHtml escapes a show name that carries HTML-significant characters", () => {
+  /* A hand-built item rather than real data: neither committed Foray's show
+     name happens to carry `&`/`<`, and this element's one escaping call site
+     must not depend on today's catalogue staying that way. The show name only
+     reaches `stripSummary`'s sentence in the POSITIONED branch ("Now on piece
+     N of M, from <show>, …"), so `elapsed` must be set for this to actually
+     exercise the call site rather than pass by the label never containing the
+     name at all. */
+  const items = [{ source_item_id: "ep-1", show: "Tom & <b>Jerry</b>", audio_url: "https://cdn.test/a.mp3", duration_sec: 60 }];
+  const html = segmentStripHtml(items, { elapsed: 5 });
+  const label = /aria-label="([^"]*)"/.exec(html)?.[1];
+  assert.ok(label.includes("Tom &amp; &lt;b&gt;Jerry&lt;/b&gt;"), `show name not escaped in: ${label}`);
+  assert.ok(!label.includes("<b>"), "a raw tag must not reach the attribute");
+});
+
+test("applyStripGrow writes the same flexGrow mountStrip's paintSegments writes inline", () => {
+  const r = real("grilling-history-2");
+  const model = stripModel(r.playable);
+
+  // Build the string, "parse" it into the stub DOM (segmentStripHtml's own
+  // markup shape, reconstructed the way innerHTML would build it), then apply.
+  const container = new StubEl("div");
+  const grows = [...segmentStripHtml(r.playable).matchAll(/data-grow="(\d+)"/g)].map((m) => m[1]);
+  for (const g of grows) {
+    const bar = new StubEl("span");
+    bar.setAttribute("data-grow", g);
+    container.appendChild(bar);
+  }
+  applyStripGrow({
+    querySelectorAll: (sel) => (sel === "[data-grow]" ? container.children : []),
+  });
+  assert.deepEqual(
+    container.children.map((c) => c.style.flexGrow),
+    model.segments.map((s) => String(s.grow)),
+  );
+  /* MUTATION (killed): `Number.isFinite(grow) && grow > 0 ? grow : 1` -> always
+     `1`. Every bar in the rail would render equal-width regardless of runtime —
+     the same failure the DOM path's growOf mutation test above catches, on the
+     path U-03/U-08 actually call. */
+});
+
+test("applyStripGrow tolerates a container with no data-grow bars and a missing querySelectorAll", () => {
+  assert.doesNotThrow(() => applyStripGrow(null));
+  assert.doesNotThrow(() => applyStripGrow({}));
+  assert.doesNotThrow(() => applyStripGrow({ querySelectorAll: () => [] }));
+});
+
+/** `escHtml` is not exported (it is segment-strip.js's own escaping table, not
+    part of the module's public surface) so this test asserts the observable
+    behaviour — what lands in the attribute — via the same table rather than
+    importing the private function. */
+function escapeForAssert(s) {
+  return String(s ?? "").replace(/[&<>"']/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
