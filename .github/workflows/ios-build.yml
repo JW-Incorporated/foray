@@ -127,6 +127,7 @@ jobs:
       IOS_DIR: mobile/ios
       INFO_PLIST: mobile/ios/App/App/Info.plist
       APPICONSET: mobile/ios/App/App/Assets.xcassets/AppIcon.appiconset
+      SPLASHSET: mobile/ios/App/App/Assets.xcassets/Splash.imageset
       # $XC_FLAG and $XC_PATH are NOT set here: what xcodebuild gets pointed at
       # depends on what `cap add ios` generated, and the first run of this workflow
       # is what established that Capacitor 8 uses Swift Package Manager and emits
@@ -314,6 +315,22 @@ jobs:
           node tools/mobile/inject-app-icon.mjs "$APPICONSET" --check
           cp "$APPICONSET/Contents.json" "$ART/AppIcon-Contents.json"
           ls -l "$APPICONSET" | tee "$ART/appiconset.txt"
+
+      - name: Put the REAL splash screen in the generated asset catalog
+        # Same bug as the icon, one imageset over: `cap add ios` generates
+        # Capacitor's placeholder Splash.imageset and every build to 2026090603
+        # opened on it. tools/mobile/inject-splash.mjs renders the 4a wordmark on
+        # the app's own ground into every file the imageset's Contents.json
+        # declares; `--check` compares BYTES, because the placeholder exists at
+        # the right name and size. Pure functions, tested on Windows
+        # (tools/mobile/inject-splash.test.mjs).
+        run: |
+          set -euo pipefail
+          test -d "$SPLASHSET"
+          node tools/mobile/inject-splash.mjs ios "$SPLASHSET"
+          python3 -m json.tool "$SPLASHSET/Contents.json" > /dev/null
+          node tools/mobile/inject-splash.mjs ios "$SPLASHSET" --check
+          ls -l "$SPLASHSET" | tee "$ART/splashset.txt"
 
       - name: Build for the iOS Simulator (unsigned by construction)
         # The primary build verdict, and the artefact the probes run in. A

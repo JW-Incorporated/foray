@@ -964,6 +964,7 @@ test("both generated-project edits happen AFTER `cap add ios` and BEFORE any bui
     "Add UIBackgroundModes -> audio",
     "Declare no non-exempt encryption",
     "Put the REAL app icon",
+    "Put the REAL splash screen",
   ]) {
     assert.ok(at(edit) > generate, `"${edit}" runs before the project it edits is generated`);
     assert.ok(at(edit) < build, `"${edit}" runs after the build that would have used it`);

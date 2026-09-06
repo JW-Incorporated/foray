@@ -858,6 +858,10 @@ const FLOORS = {
          alpha channel and a submission Apple rejects after the upload and the
          wait. */
   "tools/mobile/inject-app-icon.test.mjs": 27,
+  /* inject-splash (2026-09-06): the splash and the Android launcher icon were
+     Capacitor's placeholders on every build to 2026090603. Same rules as
+     inject-app-icon: byte-level --check, refuse a half fix. Floored exact. */
+  "tools/mobile/inject-splash.test.mjs": 19,
   "tools/mobile/inject-background-audio.test.mjs": 41,
   "tools/mobile/ios-ci.test.mjs": 125,
   "tools/mobile/ios-workflow.test.mjs": 45,
