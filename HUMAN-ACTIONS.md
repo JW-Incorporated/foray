@@ -2225,6 +2225,13 @@ completion with the screen locked — same reporting bar item #11 already set fo
 call sites in `player/client.js`, and the tests that name them all go in one commit.
 None of it should be in the App Store build.
 
+**DONE (2026-09-06, D-01):** deleted in one commit, gated so it cannot silently
+return — see `test/release-gates.test.js`'s diagnostic-Foray tripwire (D-01,
+`docs/ios-controls-and-voice-plan.md`). V-01's in-app Audition button replaced
+the instrument for #40/H3's listening tests first, per that deck's sequencing.
+`docs/curation/tts-locked-screen-check.md` is kept as the historical record of
+this measurement; it is marked historical rather than deleted.
+
 ---
 
 ### RESULT (Wyatt, 2026-09-05): locked screen, **it continued all the way through.**

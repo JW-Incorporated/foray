@@ -96,7 +96,7 @@ import { itemRuntimeSec } from "./foray-queue.js";
 import {
   resolveForay, indexSegments, indexSources, findForay, listableForays,
   forayElapsed, segmentAtElapsed, fmtClock, fmtSpan, progressSegments,
-  foraysReferencingShow, withDiagnosticUnlock,
+  foraysReferencingShow,
 } from "./foray-resolve.js";
 import {
   ForayProgressStore, resumePoint, remainingLabel, percentDone,
@@ -114,7 +114,7 @@ import {
   bubblePosition, bubbleContentOffset,
 } from "./strip-scrub-gesture.js";
 import { createDurableStore } from "./durable-store.js";
-import { createTtsBridge, inShell } from "./tts-bridge.js";
+import { createTtsBridge } from "./tts-bridge.js";
 import { makeIdbTier } from "./idb-tier.js";
 import { createEventLog } from "./event-log.js";
 import {
@@ -1439,21 +1439,6 @@ function ensureBooted() {
 
 /* ---------- public surface ---------- */
 
-/** app.js's `unlockedForays()` (the `?foray=` ids), plus the one diagnostic
-    Foray that only the native shell may see — HUMAN-ACTIONS.md #29. Every one
-    of the three Foray-visibility bridge methods below routes through this, so
-    "listed on the home screen" and "reachable at #/foray/<id>" cannot disagree:
-    a Foray the app lists and then refuses to open is a worse bug than either.
-
-    `inShell()` is asked HERE and not in `foray-resolve.js`, which is pure and
-    stays that way — the window is this file's business. It is also asked on
-    every call rather than once at module scope: `client.js` evaluates early and
-    Capacitor injects its bridge into the page, so a value cached at import time
-    could be read before the shell exists. */
-function unlockedHere(unlocked) {
-  return withDiagnosticUnlock(unlocked, { inShell: inShell() });
-}
-
 const ForayPlayer = {
   /** True when this item can play in-app. app.js uses it to decide whether to
       show a play button or fall back to the Apple Podcasts link (#25 note). */
@@ -1510,7 +1495,7 @@ const ForayPlayer = {
       with exactly the code that builds the queue. app.js is a classic script and
       cannot import an ES module, which is the whole reason this bridge exists. */
   resolve(foraysDoc, { id, segmentsDoc, sourcesDoc, unlocked = [] } = {}) {
-    const doc = findForay(foraysDoc, id, { unlocked: unlockedHere(unlocked) });
+    const doc = findForay(foraysDoc, id, { unlocked });
     if (!doc) return null;
     return resolveForay(doc, {
       segments: indexSegments(segmentsDoc),
@@ -1520,7 +1505,7 @@ const ForayPlayer = {
 
   /** Which Forays may be listed for this visitor (drafts only when named). */
   listForays(foraysDoc, { unlocked = [] } = {}) {
-    return listableForays(foraysDoc, { unlocked: unlockedHere(unlocked) });
+    return listableForays(foraysDoc, { unlocked });
   },
 
   /** The reverse of `resolve`: which Forays draw on a given show (show page,
@@ -1530,7 +1515,7 @@ const ForayPlayer = {
     return foraysReferencingShow(foraysDoc, showNames, {
       segments: indexSegments(segmentsDoc),
       sources: indexSources(sourcesDoc),
-      unlocked: unlockedHere(unlocked),
+      unlocked,
     });
   },
 

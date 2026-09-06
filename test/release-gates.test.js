@@ -262,6 +262,73 @@ test("HUMAN-ACTIONS.md carries an open item for G5 quoting the sentence and this
   assert.ok(
     normalizeWrap(doc).includes(PRIVACY_SENTENCE),
     "HUMAN-ACTIONS.md's G5 item does not quote the exact sentence to change " +
-      `(\"${PRIVACY_SENTENCE}\")`
+      `("${PRIVACY_SENTENCE}")`
+  );
+});
+
+/* The diagnostic-Foray tripwire (D-01, HUMAN-ACTIONS.md #29).
+ *
+ * #29's own steps said: "When it is answered, delete the instrument… None of
+ * it should be in the App Store build." D-01 did that deletion (the Foray
+ * `tts-locked-screen-check` out of data/forays.json, `DIAGNOSTIC_FORAY_ID`
+ * and `withDiagnosticUnlock()` out of player/foray-resolve.js, their call
+ * sites out of player/client.js). This gate is what stops the instrument
+ * quietly coming back — a revert, a bad merge, a copy-pasted fixture — from
+ * ever reaching a release build again: it fails release.yml the moment any
+ * of the three identifying strings reappears under player/, app.js or
+ * data/. docs/curation/tts-locked-screen-check.md is kept, deliberately, as
+ * the historical record of the measurement (#29's RESULT) — this gate does
+ * not touch docs/ or HUMAN-ACTIONS.md, on purpose, because the record of
+ * having built and retired the instrument must survive its deletion.
+ *
+ * MUTATION THAT KILLS THIS: re-add the Foray id to data/forays.json (or
+ * either identifier to player/) without also removing it — this test goes
+ * red immediately, pointing at #29.
+ */
+const DIAGNOSTIC_STRINGS = [
+  "tts-locked-screen-check",
+  "DIAGNOSTIC_FORAY_ID",
+  "withDiagnosticUnlock",
+];
+const DIAGNOSTIC_SCAN_DIRS = ["player", "data"];
+const DIAGNOSTIC_SCAN_FILES = ["app.js"];
+
+function listFilesRecursive(dir) {
+  const out = [];
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) out.push(...listFilesRecursive(full));
+    else out.push(full);
+  }
+  return out;
+}
+
+test("the diagnostic Foray instrument (#29) stays deleted from player/, app.js and data/", () => {
+  const files = [
+    ...DIAGNOSTIC_SCAN_DIRS.flatMap((rel) => {
+      const full = path.join(ROOT, rel);
+      return fs.existsSync(full) ? listFilesRecursive(full) : [];
+    }),
+    ...DIAGNOSTIC_SCAN_FILES.map((rel) => path.join(ROOT, rel)).filter(fs.existsSync),
+  ];
+
+  const offenders = [];
+  for (const file of files) {
+    let text;
+    try {
+      text = fs.readFileSync(file, "utf8");
+    } catch {
+      continue; // not a text file (binary asset, etc.) — nothing to scan
+    }
+    for (const needle of DIAGNOSTIC_STRINGS) {
+      if (text.includes(needle)) offenders.push(`${path.relative(ROOT, file)}: "${needle}"`);
+    }
+  }
+
+  assert.deepEqual(
+    offenders,
+    [],
+    "the diagnostic Foray instrument from HUMAN-ACTIONS.md #29 has reappeared " +
+      `under player/, app.js or data/ — D-01 deleted it on purpose:\n${offenders.join("\n")}`
   );
 });
