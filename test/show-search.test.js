@@ -160,12 +160,13 @@ function makeEl(tag) {
 }
 
 /* Extends show-page.test.js's PAGE_IDS with the new tab/form/results
-   elements this stage adds to renderHome()'s template. */
+   elements this stage adds to renderHome()'s template. U-05 adds
+   pl-search-results (the Playlists section + CTA container). */
 const PAGE_IDS = [
   "view", "drawer", "drawer-overlay", "drawer-playlists", "family-toggle",
   "player-toggle", "menu-btn", "refresh-btn", "banner-slot", "pl-form",
   "pl-input", "pl-note", "tab-topics", "tab-shows", "sh-form", "sh-input",
-  "sh-note", "sh-results", "browse-all-link",
+  "sh-note", "sh-results", "browse-all-link", "pl-search-results",
 ];
 
 function mount({ seed = {}, fetchImpl = () => new Promise(() => {}) } = {}) {
@@ -472,3 +473,44 @@ test("a failed breadth fetch degrades silently to the curated-only results, neve
   assert.strictEqual(results.hidden, false, "curated match must still render despite the breadth fetch failing");
   assert.ok(results.innerHTML.includes("Lex Fridman Podcast"), "curated result must still be present");
 });
+
+/* ==================================================================== */
+/* 5. U-05: THE SHOWS PAGE STAYS UNCHANGED FOR A V1 (flag-off) LISTENER  */
+/* ==================================================================== */
+
+test("with cp_ui_v2 off, the Shows page renders no Playlists-search section at all", () => {
+  /* MUTATION: drop the `if (!ui2On())` guard from renderPlaylistSearchResults.
+     A v1 listener would then see the new #pl-search-results content, which
+     is exactly the "offline behaviour unchanged" regression this card's own
+     acceptance line forbids. */
+  const m = mount();
+  m.state.catalog = { shows: [{ show_id: "lex-fridman-podcast", title: "Lex Fridman Podcast", artwork_url: null }] };
+  m.state.discover = { items: [] };
+  m.state.cardSlots = [];
+  m.state.session = { session_id: "s-1", builder: "test", episodes: {}, cards: [] };
+  const shForm = withSubmittable(m.byId.get("sh-form"));
+  m.byId.get("sh-input").value = "fridman";
+
+  m.ctx.renderAllShows();
+  shForm.submit();
+
+  const plResults = m.byId.get("pl-search-results");
+  assert.strictEqual(plResults.hidden, true, "the Playlists section must not appear for a v1 listener");
+  assert.strictEqual(plResults.innerHTML, "", "no Playlists-search markup at all with the flag off");
+});
+
+test("with cp_ui_v2 off, renderAllShows renders no browse-subjects pill row", () => {
+  /* MUTATION: drop the `if (!ui2On())` guard from browsePillsHtml(). A v1
+     Shows page would then grow a pill row it never had, which is new
+     clutter on a page the card must leave alone offline. */
+  const m = mount();
+  m.state.catalog = { shows: [] };
+  m.state.discover = { items: [] };
+  m.state.cardSlots = [];
+  m.state.taxonomy = { nodes: [{ id: "history", parent: null, label: "History", weight: 0.5 }] };
+  m.state.session = { session_id: "s-1", builder: "test", episodes: {}, cards: [] };
+
+  m.ctx.renderAllShows();
+  assert.ok(!m.view().includes("sh-browse-pills"), "v1 Shows page must render no browse-subjects pill row");
+});
+

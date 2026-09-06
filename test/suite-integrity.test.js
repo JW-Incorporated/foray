@@ -400,8 +400,33 @@ const FLOORS = {
      search as the Shows page's own affordance (distinct form, distinct
      results list, honest empty state, absent from Home). Every test names
      its mutation; see the suite header for the full list of what each
-     test pins. */
-  "test/show-search.test.js": 11,
+     test pins.
+
+     Raised 11 -> 17 for U-05 (docs/ui-transition-plan.md, kanban
+     t_53381ee4): two tests pinning that a v1 (flag-off) listener gets
+     neither the new Playlists-search section nor the new browse-subjects
+     pill row this card adds to renderAllShows -- the "offline behaviour
+     unchanged" half of the card's own acceptance line, which is exactly
+     the accumulation this suite's floor exists to prevent regressing
+     unnoticed. */
+  "test/show-search.test.js": 17,
+  /* U-05 (docs/ui-transition-plan.md, kanban t_53381ee4, resolves issue
+     #135): the Playlists results section under Shows/Episodes on the Shows
+     page, plus the "Create a playlist about X" CTA. Floored new rather than
+     folded into show-search.test.js because it pins a genuinely separate
+     concern -- D5/D7's own-playlist-match + generated-candidate logic and
+     the D8 CTA retarget -- with its own scope-boundary proof that
+     search-engine.js's scorer is untouched (the card's explicit "ranking is
+     presentation-only" line). 18 tests: playlistMatchesQuery's title/topics/
+     case-insensitivity/empty-query rules (4), generatedPlaylistCandidatesForQuery
+     reusing state.cardSlots with no new backend (3), the Shows-page section's
+     own-first-then-generated order and badge and de-dupe and honest-quiet
+     behavior (4), the CTA's gating/copy/no-second-creation-path rules (3),
+     the whole section gated off for a v1 listener (1), and two scope-boundary
+     proofs that neither SearchEngine's exports nor its scoring output moved
+     (2, mirroring show-search.test.js's own such test). Every test names its
+     mutation; see the suite header for the full list of what each pins. */
+  "test/search-playlists.test.js": 18,
   /* Home information architecture (founder instruction, 2026-09-03: "the
      home page has so much clutter. Menu should have the following pages:
      Home, Shows, Playlists, Forays, Up Next."). The move matrix: each of
