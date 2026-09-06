@@ -698,8 +698,9 @@ jobs:
         # PR RUNS NEVER REACH THIS STEP, regardless of signing state. Same-repo
         # pull_request runs receive the same secrets a push to main does, so
         # without this an unmerged branch's build would be eligible for the
-        # TestFlight upload below just because a fork PR happened to carry
-        # working credentials. R-01: gate on event_name, not just secrets.
+        # TestFlight upload below just because it happened to be a same-repo
+        # PR carrying working credentials. R-01: gate on event_name, not just
+        # secrets.
         if: github.event_name != 'pull_request'
         env:
           IOS_DIST_CERT_P12_BASE64: ${{ secrets.IOS_DIST_CERT_P12_BASE64 }}
