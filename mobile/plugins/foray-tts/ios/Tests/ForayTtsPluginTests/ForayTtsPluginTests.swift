@@ -207,5 +207,182 @@ final class ForayTtsPluginTests: XCTestCase {
         }
         let atInfinity = ForayTtsPlugin.utteranceRate(playbackMultiplier: .infinity)
         XCTAssertEqual(atInfinity, AVSpeechUtteranceMaximumSpeechRate, accuracy: 0.0001)
+    // MARK: - Voice selection
+    //
+    // These build `VoiceOption` values by hand rather than calling
+    // `AVSpeechSynthesisVoice.speechVoices()`, and that is the point: the real
+    // catalogue is a per-DEVICE download set, so a test that read it would
+    // assert something different on every machine — and would pass vacuously on
+    // a simulator that happens to carry only the compact tier, which is the one
+    // configuration where the bug being fixed here is invisible.
+    //
+    // EVERY MUTATION BELOW IS NAMED BUT NONE HAS BEEN RUN. See this file's
+    // header: nothing in this repo executes `swift test`, and the machine this
+    // change was written on is Windows. Treat the "TO SEE IT FAIL" lines as
+    // instructions for the first person with a Mac, not as a claim that the
+    // assertion has ever been red.
+
+    private func option(_ identifier: String, _ name: String, _ language: String, _ rank: Int) -> ForayTtsPlugin.VoiceOption {
+        ForayTtsPlugin.VoiceOption(identifier: identifier, name: name, language: language, qualityRank: rank)
+    }
+
+    /// A stand-in catalogue: one language carrying all three tiers, plus a
+    /// second locale of the same primary subtag, plus an unrelated language.
+    private var catalogue: [ForayTtsPlugin.VoiceOption] {
+        [
+            option("com.apple.ttsbundle.Samantha-compact", "Samantha", "en-US", 1),
+            option("com.apple.voice.enhanced.en-US.Samantha", "Samantha", "en-US", 2),
+            option("com.apple.voice.enhanced.en-US.Ava", "Ava", "en-US", 2),
+            option("com.apple.voice.premium.en-US.Zoe", "Zoe", "en-US", 3),
+            option("com.apple.ttsbundle.Daniel-compact", "Daniel", "en-GB", 1),
+            option("com.apple.ttsbundle.Amelie-compact", "Amélie", "fr-FR", 1)
+        ]
+    }
+
+    /// THE WHOLE BUG. `AVSpeechSynthesisVoice(language:)` returns the system
+    /// default, which is the compact tier; a premium voice sitting installed on
+    /// the same device was never asked for.
+    ///
+    /// TO SEE IT FAIL: in `bestVoice`, change `pool.map(\.qualityRank).max()` to
+    /// `.min()` — the selection returns the compact Samantha, which is exactly
+    /// the voice the founder called "much worse than the original test".
+    func testBestVoicePrefersPremiumOverEnhancedOverCompact() {
+        let best = ForayTtsPlugin.bestVoice(among: catalogue, language: "en-US", preferringName: "Samantha")
+        XCTAssertEqual(best?.identifier, "com.apple.voice.premium.en-US.Zoe")
+        XCTAssertEqual(best?.qualityRank, 3)
+    }
+
+    /// Enhanced/Premium voices are per-device downloads. On a stock phone that
+    /// has fetched nothing, selection must still produce a voice.
+    ///
+    /// TO SEE IT FAIL: make `bestVoice` return nil unless `topRank >= 2` — a
+    /// stock device then gets no voice at all from the resolver.
+    func testBestVoiceDegradesToWhateverIsInstalled() {
+        let compactOnly = [
+            option("com.apple.ttsbundle.Samantha-compact", "Samantha", "en-US", 1),
+            option("com.apple.ttsbundle.Fred-compact", "Fred", "en-US", 1)
+        ]
+        let best = ForayTtsPlugin.bestVoice(among: compactOnly, language: "en-US", preferringName: "Samantha")
+        XCTAssertEqual(best?.identifier, "com.apple.ttsbundle.Samantha-compact")
+    }
+
+    /// Ties inside the top tier go to the voice the system would have used
+    /// anyway, so an upgrade sounds like the listener's own voice getting better
+    /// rather than a stranger arriving.
+    ///
+    /// TO SEE IT FAIL: delete the `preferringName` branch in `bestVoice` — the
+    /// deterministic identifier tie-break then picks Ava, because
+    /// "…enhanced.en-US.Ava" sorts before "…enhanced.en-US.Samantha".
+    func testEnhancedTieBreaksTowardTheSystemDefaultName() {
+        let enhancedOnly = catalogue.filter { $0.qualityRank != 3 }
+        let best = ForayTtsPlugin.bestVoice(among: enhancedOnly, language: "en-US", preferringName: "Samantha")
+        XCTAssertEqual(best?.identifier, "com.apple.voice.enhanced.en-US.Samantha")
+    }
+
+    /// An exact locale match must never be displaced by a same-primary-subtag
+    /// one, even when the other locale carries a better tier.
+    ///
+    /// TO SEE IT FAIL: in `candidates`, drop the `if !exact.isEmpty { return exact }`
+    /// early return — en-GB's Daniel then competes for an en-US request.
+    func testExactLocaleWinsOverPrimarySubtagWidening() {
+        let chosen = ForayTtsPlugin.candidates(catalogue, language: "en-US")
+        XCTAssertEqual(chosen.count, 4)
+        XCTAssertFalse(chosen.contains { $0.language == "en-GB" })
+    }
+
+    /// …but a locale with nothing installed widens rather than going silent.
+    ///
+    /// TO SEE IT FAIL: make `candidates` return `exact` unconditionally — an
+    /// en-AU request on this catalogue then yields no voice at all.
+    func testUnknownLocaleWidensToThePrimarySubtag() {
+        let chosen = ForayTtsPlugin.candidates(catalogue, language: "en-AU")
+        XCTAssertEqual(chosen.count, 5, "every en-* voice, and no French one")
+        XCTAssertFalse(chosen.contains { $0.language == "fr-FR" })
+    }
+
+    /// An explicitly requested, installed identifier is used verbatim — the
+    /// caller's choice outranks the quality ladder.
+    ///
+    /// TO SEE IT FAIL: in `resolveVoice`, delete the `all.first(where:)` exact
+    /// branch — the request is silently upgraded to the premium voice and
+    /// `didFallBack` still reads false, which is the worst of both.
+    func testExplicitInstalledVoiceIsHonouredEvenWhenNotTheBest() {
+        let resolution = ForayTtsPlugin.resolveVoice(
+            among: catalogue,
+            requested: "com.apple.voice.enhanced.en-US.Ava",
+            language: "en-US",
+            preferringName: "Samantha"
+        )
+        XCTAssertEqual(resolution.voice?.identifier, "com.apple.voice.enhanced.en-US.Ava")
+        XCTAssertFalse(resolution.didFallBack)
+        XCTAssertEqual(resolution.reason, "")
+    }
+
+    /// The case a listening test cannot survive without: an identifier that is
+    /// not downloaded on THIS phone must still speak, and must say it did not
+    /// use what was asked for.
+    ///
+    /// TO SEE IT FAIL: make `resolveVoice` return `didFallBack: false` on the
+    /// not-installed path. A founder then reports "the enhanced voice sounds
+    /// identical to the compact one" and is describing a voice that was never
+    /// on the device.
+    func testUninstalledVoiceFallsBackAndSaysSo() {
+        let resolution = ForayTtsPlugin.resolveVoice(
+            among: catalogue,
+            requested: "com.apple.voice.premium.en-US.NotDownloaded",
+            language: "en-US",
+            preferringName: "Samantha"
+        )
+        XCTAssertEqual(resolution.voice?.identifier, "com.apple.voice.premium.en-US.Zoe")
+        XCTAssertTrue(resolution.didFallBack)
+        XCTAssertEqual(resolution.requested, "com.apple.voice.premium.en-US.NotDownloaded")
+        XCTAssertFalse(resolution.reason.isEmpty)
+    }
+
+    /// An empty catalogue is not a crash and not a silent success.
+    ///
+    /// TO SEE IT FAIL: change `bestVoice`'s `guard let topRank = … else { return nil }`
+    /// to force-unwrap the max — an empty pool then traps instead of resolving.
+    func testEmptyCatalogueResolvesToNoVoiceWithAReason() {
+        let resolution = ForayTtsPlugin.resolveVoice(
+            among: [],
+            requested: nil,
+            language: "en-US",
+            preferringName: nil
+        )
+        XCTAssertNil(resolution.voice)
+        XCTAssertFalse(resolution.didFallBack, "nothing was asked for, so nothing was refused")
+        XCTAssertFalse(resolution.reason.isEmpty)
+    }
+
+    /// TO SEE IT FAIL: return `"enhanced"` for rank 3 in `qualityLabel` — the
+    /// premium tier is then reported as enhanced everywhere, including in the
+    /// `listVoices()` output a founder reads to decide what to download.
+    func testQualityLabels() {
+        XCTAssertEqual(ForayTtsPlugin.qualityLabel(rank: 1), "default")
+        XCTAssertEqual(ForayTtsPlugin.qualityLabel(rank: 2), "enhanced")
+        XCTAssertEqual(ForayTtsPlugin.qualityLabel(rank: 3), "premium")
+        XCTAssertEqual(ForayTtsPlugin.qualityLabel(rank: 99), "unknown", "a future tier sorts right but is not mislabelled")
+    }
+
+    /// TO SEE IT FAIL: flip the quality comparison in `sortedForListing` to
+    /// `<` — the compact voices head each language and the good ones sink to the
+    /// bottom of the list, which is the opposite of what the list is read for.
+    func testListingPutsBestQualityFirstWithinALanguage() {
+        let sorted = ForayTtsPlugin.sortedForListing(catalogue)
+        let englishUS = sorted.filter { $0.language == "en-US" }
+        XCTAssertEqual(englishUS.first?.qualityRank, 3)
+        XCTAssertEqual(englishUS.last?.qualityRank, 1)
+        XCTAssertEqual(sorted.first?.language, "en-GB", "languages sort ahead of quality")
+    }
+
+    /// TO SEE IT FAIL: make `primarySubtag` return the whole tag — `en-US` then
+    /// never widens to `en`, and `testUnknownLocaleWidensToThePrimarySubtag`
+    /// goes with it.
+    func testPrimarySubtag() {
+        XCTAssertEqual(ForayTtsPlugin.primarySubtag("en-US"), "en")
+        XCTAssertEqual(ForayTtsPlugin.primarySubtag("EN_us"), "en")
+        XCTAssertEqual(ForayTtsPlugin.primarySubtag("fr"), "fr")
+        XCTAssertEqual(ForayTtsPlugin.primarySubtag(""), "")
     }
 }

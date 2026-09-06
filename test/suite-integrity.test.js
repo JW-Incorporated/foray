@@ -199,7 +199,11 @@ const FLOORS = {
      The last test in the suite is deliberately a source-level guard on
      `client.js`'s call site — a weak test, and the only one in the repo that
      turns red if that one line is deleted again. */
-  "player/tts-bridge.test.js": 11,
+  /* 11 -> 14 (2026-09-05): the bridge now also carries `listVoices()`, whose
+     one non-obvious case is a SHELL BUILT BEFORE IT EXISTED -- the bundle holds a
+     flattened build-time copy of `foray-tts.js`, so "the module loaded but has
+     no such method" is a real state and not defensiveness. */
+  "player/tts-bridge.test.js": 14,
   /* The app's name on the surfaces users read (#302), 6 -> 8 when the two
      published legal documents were added, 8 -> 21 when the shipped UI copy that
      suite had only RECORDED as a known gap was renamed and pinned -- twenty
@@ -663,8 +667,17 @@ const FLOORS = {
      `ipa: null` never becomes a guessed pronunciation override (a silent
      mispronunciation risk, not a crash, so nothing else would catch it), and
      that a native call failure/absence always falls back to Web Speech rather
-     than rejecting into a caller's promise chain. */
-  "tools/mobile/foray-tts.test.mjs": 22,
+     than rejecting into a caller's promise chain.
+
+     22 -> 38 (2026-09-05, voice selection). The defect that prompted those is
+     native and untestable from Node -- iOS asked `AVSpeechSynthesisVoice(language:)`
+     for the SYSTEM DEFAULT voice, the compact/robotic tier, and never for the
+     installed Enhanced/Premium ones. What this suite can and does pin is the JS
+     half: that a `voice` request reaches the native payload at all, that the Web
+     Speech fallback applies one, that a voice which is not installed is REPORTED
+     rather than silently substituted, and that `listVoices()` answers on every
+     path without throwing. */
+  "tools/mobile/foray-tts.test.mjs": 38,
   /* The foreground service's web half (#27's Android half, on #37). Zero slack, and
      for the reason `media-session.test.js` above gives: what this suite guards is
      mostly a set of single-line edits away from their opposites, on a surface nobody

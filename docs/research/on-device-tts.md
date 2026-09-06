@@ -774,3 +774,51 @@ new mapping — including the mutation each one names in its own comment — are
 `ios-build`'s `ios-shell` job and executed by nothing. Their arithmetic was checked off
 the device (each named mutation was computed and does move an asserted value); that is a
 weaker claim than a red test and is written down as the weaker claim.
+
+### 9.7 Addendum, 2026-09-05 — the device test ran, and §1's own finding had never been implemented
+
+**#29's locked-screen question came back a pass.** Narration continued all the way through
+with the screen off, which is the answer `Foray_Generation_Architecture.md` §9.1 called the
+highest-priority open question in the document. That result stands.
+
+**The same listen produced a second, unasked-for finding: the voice was "much worse than
+the original test"** — the original being the Kokoro acceptance fixture, a server-side
+neural voice. That comparison had been taken as "on-device TTS sounds worse than
+server-side TTS", which would be a product conclusion. It was not. It was one line.
+
+`ForayTtsPlugin.swift` set a voice only when a `lang` was passed, and set it with
+`AVSpeechSynthesisVoice(language:)`. **That initialiser returns the system default voice
+for a language, which is the compact/legacy formant tier.** §1 of this document had already
+recorded the relevant fact, in its own words: the catalogue "spans multiple synthesis tiers
+(compact/legacy formant-style voices through modern neural 'Enhanced'/'Premium' voices,
+downloaded per-language on demand)", and §1 also recorded the API that reaches them —
+"`AVSpeechSynthesisVoice.speechVoices()` enumerates every voice installed on the device;
+voices are selected by language/locale (`voiceWithLanguage:`) or by a specific
+`identifier`." The plugin used the first of those two and never the second. So the
+listening test was not comparing Kokoro against iOS on-device; it was comparing Kokoro
+against **the worst voice iOS has**, and the good ones were one method call away the whole
+time.
+
+**Worth recording as a research-process finding, not just a bug.** A document can state a
+capability accurately, in the right section, and the implementation can still never use it,
+because "the catalogue has tiers" reads as background rather than as an instruction.
+Nothing in §1 said "and therefore never call `AVSpeechSynthesisVoice(language:)` on its
+own." It does now, by way of this addendum.
+
+**What changed** (`mobile/plugins/foray-tts/README.md` § "Which voice speaks" has the full
+API): the plugin now enumerates `speechVoices()` and picks the highest quality tier
+*actually installed* for the language, `speak()` takes an optional `voice` identifier, an
+identifier that is not installed falls back and reports that it did, and a new
+`listVoices()` reports the device's real catalogue with the tier of each.
+
+**The catch, and it is the operationally important half.** Enhanced and Premium voices are
+free but are **per-language downloads** — Settings → Accessibility → Spoken Content →
+Voices. A stock iPhone that has never visited that screen carries only the compact tier, so
+on that phone this change is inaudible: the best installed voice IS the robotic one. The
+re-listen therefore needs a download first, which is `HUMAN-ACTIONS.md` #40.
+
+**Nothing here has been heard either.** No device ran this code; `listVoices()` has never
+returned a real catalogue; the identifier examples in the plugin README are documented
+naming convention, not a device reading. The Swift assertions added alongside the change
+have never been executed, because nothing in this repo runs `swift test` and the change was
+written on a Windows machine.

@@ -117,5 +117,28 @@ export function createTtsBridge({ load = null, candidates = null, log = null } =
       }
       return mod.speak(text, opts);
     },
+
+    /* Threaded through rather than redesigned around: `PlayerQueueManager` asks
+       this object for `speak` and nothing else, and that stays true. This exists
+       because the module is loaded HERE and the two-URL problem in this file's
+       header applies identically to any other call on it — a diagnostic screen
+       that resolved `foray-tts.js` a second time would have to re-solve it.
+
+       `typeof mod.listVoices !== "function"` is a REAL case, not defensive
+       noise: the Capacitor shell carries a flattened COPY of the module made at
+       build time by `tools/mobile/prepare-webdir.mjs`, so a shell built before
+       this change loads a module with a `speak` and no `listVoices`. Saying so
+       is more useful than a TypeError. */
+    async listVoices(opts = {}) {
+      if (!pending) pending = loadModule();
+      const mod = await pending;
+      if (!mod) {
+        return { ok: false, path: "none", voices: [], reason: "foray-tts module could not be loaded" };
+      }
+      if (typeof mod.listVoices !== "function") {
+        return { ok: false, path: "none", voices: [], reason: "this build of foray-tts has no listVoices()" };
+      }
+      return mod.listVoices(opts);
+    },
   };
 }

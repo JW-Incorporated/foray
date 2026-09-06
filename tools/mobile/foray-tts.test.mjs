@@ -14,6 +14,8 @@ import {
   PLUGIN_NAME,
   buildIpaOverrides,
   buildAndroidSsml,
+  languageMatches,
+  listVoices,
   shellApplies,
   speak,
   createForayTtsShell,
@@ -231,7 +233,213 @@ test("speak: a throwing logger must not break the fallback path", async () => {
   assert.equal(result.path, "web-speech");
 });
 
+/* ------------------------------------------------------------- voice selection
+
+   Added 2026-09-05. The defect these cover is on the NATIVE side (iOS asked
+   `AVSpeechSynthesisVoice(language:)` for the system default — the compact,
+   robotic tier — and never for the installed Enhanced/Premium voices), and it
+   cannot be tested from Node. What CAN be tested here, and is, is the half this
+   file owns: that a `voice` request reaches the native payload at all, that the
+   Web Speech fallback honours one, that "not installed" is reported instead of
+   swallowed, and that `listVoices()` answers on every path without throwing. */
+
+// TO SEE IT FAIL: change `a.split("-")[0] === b.split("-")[0]` in
+// `languageMatches` to `a === b` — the en-GB widening case goes false, and
+// `listVoices({ lang: "en-US" })` hides every voice a device has for `en`.
+test("languageMatches: exact locale, then primary subtag, never across languages", () => {
+  assert.equal(languageMatches("en-US", "en-US"), true);
+  assert.equal(languageMatches("en-GB", "en-US"), true, "same primary subtag is relevant");
+  assert.equal(languageMatches("EN_us", "en-US"), true, "case and separator normalised");
+  assert.equal(languageMatches("fr-FR", "en-US"), false);
+  assert.equal(languageMatches("en-US", undefined), true, "no filter means everything matches");
+  assert.equal(languageMatches(undefined, "en-US"), false, "a voice with no language cannot match one");
+});
+
+// TO SEE IT FAIL: drop `voice: voice ?? null,` from the native payload in
+// `speak()` — an explicitly chosen voice never reaches the plugin and every
+// device test silently compares the default voice against itself.
+test("speak: passes an explicit voice identifier through to the native payload", async () => {
+  const { calls, bridge } = fakeBridge();
+  await speak("hello", { bridge, voice: "com.apple.voice.enhanced.en-US.Ava" });
+  assert.equal(calls[0].payload.voice, "com.apple.voice.enhanced.en-US.Ava");
+});
+
+// TO SEE IT FAIL: same mutation — with `voice` absent from the payload the key
+// is `undefined`, not `null`, and `assert.equal(..., null)` fails on strict.
+test("speak: no voice requested -> the payload carries null, not a missing key", async () => {
+  const { calls, bridge } = fakeBridge();
+  await speak("hello", { bridge });
+  assert.equal(calls[0].payload.voice, null);
+});
+
+// TO SEE IT FAIL: remove the `voice:` / `voiceFallback:` lines from the native
+// return in `speak()`. A caller then has to reach into `.native` and know which
+// platform it is talking to, which is precisely what makes a founder's report
+// ("the enhanced voice sounds the same") unreadable.
+test("speak: hoists the native voice report so 'not installed' is distinguishable", async () => {
+  const { bridge } = fakeBridge(() => ({
+    ok: true,
+    voice: "com.apple.ttsbundle.Samantha-compact",
+    voiceRequested: "com.apple.voice.premium.en-US.Zoe",
+    voiceFallback: true,
+    voiceReason: "requested voice is not installed on this device",
+  }));
+  const result = await speak("hello", { bridge, voice: "com.apple.voice.premium.en-US.Zoe" });
+  assert.equal(result.voice, "com.apple.ttsbundle.Samantha-compact");
+  assert.equal(result.voiceFallback, true, "the ask was not honoured and the caller must be able to see that");
+  assert.equal(result.native.voiceReason, "requested voice is not installed on this device");
+});
+
+/** A Web Speech stand-in with a catalogue. */
+function fakeSynthWithVoices(voices) {
+  const spoken = [];
+  return {
+    spoken,
+    synth: { speak: (u) => spoken.push(u), getVoices: () => voices },
+  };
+}
+class FakeUtter {
+  constructor(text) { this.text = text; }
+}
+const WEB_VOICES = [
+  { voiceURI: "urn:moz-tts:sapi:Zira", name: "Microsoft Zira", lang: "en-US", default: true },
+  { voiceURI: "urn:moz-tts:sapi:David", name: "Microsoft David", lang: "en-US", default: false },
+  { voiceURI: "urn:moz-tts:sapi:Hortense", name: "Microsoft Hortense", lang: "fr-FR", default: false },
+];
+
+// TO SEE IT FAIL: delete the `if (match) utter.voice = match;` line in the
+// Web Speech branch of `speak()` — the requested voice is accepted and ignored,
+// which is the same class of bug as the native one being fixed here.
+test("speak (web-speech): an explicit voice is applied to the utterance", async () => {
+  const { spoken, synth } = fakeSynthWithVoices(WEB_VOICES);
+  const result = await speak("hello", {
+    bridge: undefined, speechSynth: synth, UtteranceCtor: FakeUtter,
+    voice: "urn:moz-tts:sapi:David",
+  });
+  assert.equal(result.ok, true);
+  assert.equal(spoken[0].voice.name, "Microsoft David");
+  assert.equal(result.voice, "urn:moz-tts:sapi:David");
+  assert.equal(result.voiceFallback, false);
+});
+
+// TO SEE IT FAIL: remove the `list.find((v) => v && v.name === wanted)` clause
+// from `findWebSpeechVoice` — a human-readable name (what anyone copies out of
+// a device report) stops resolving.
+test("speak (web-speech): a voice can also be named rather than URI'd", async () => {
+  const { spoken, synth } = fakeSynthWithVoices(WEB_VOICES);
+  await speak("hello", {
+    bridge: undefined, speechSynth: synth, UtteranceCtor: FakeUtter,
+    voice: "Microsoft Hortense",
+  });
+  assert.equal(spoken[0].voice.lang, "fr-FR");
+});
+
+// TO SEE IT FAIL: set `voiceFallback = false` unconditionally in the Web Speech
+// branch. The utterance still speaks — it always did — but the report claims the
+// requested voice was used when it was not, which is the exact ambiguity this
+// whole change exists to remove.
+test("speak (web-speech): an unknown voice still speaks, and says it fell back", async () => {
+  const { spoken, synth } = fakeSynthWithVoices(WEB_VOICES);
+  const result = await speak("hello", {
+    bridge: undefined, speechSynth: synth, UtteranceCtor: FakeUtter,
+    voice: "com.apple.voice.premium.en-US.Zoe",
+  });
+  assert.equal(result.ok, true, "a missing voice must never stop the narration");
+  assert.equal(spoken.length, 1);
+  assert.equal(result.voiceFallback, true);
+});
+
+// TO SEE IT FAIL: remove the try/catch around `speechSynth.getVoices()` in
+// `findWebSpeechVoice` — `speak()` then rejects, breaking its own documented
+// "never throws" contract on a path a caller cannot control.
+test("speak (web-speech): a throwing getVoices() must not break speak()", async () => {
+  const spoken = [];
+  const synth = { speak: (u) => spoken.push(u), getVoices: () => { throw new Error("no voices for you"); } };
+  const result = await speak("hello", {
+    bridge: undefined, speechSynth: synth, UtteranceCtor: FakeUtter, voice: "anything",
+  });
+  assert.equal(result.ok, true);
+  assert.equal(spoken.length, 1);
+  assert.equal(result.voiceFallback, true);
+});
+
+/* ------------------------------------------------------------- listVoices */
+
+// TO SEE IT FAIL: change the native branch of `listVoices` to call
+// `bridge.nativePromise(PLUGIN_NAME, "speak", …)`. Nothing else in this suite
+// notices, and on a device the founder gets a spoken "null" instead of a list.
+test("listVoices: calls the plugin's listVoices and returns its catalogue", async () => {
+  const { calls, bridge } = fakeBridge(() => ({
+    ok: true,
+    voices: [
+      { identifier: "com.apple.voice.premium.en-US.Zoe", name: "Zoe", language: "en-US", quality: "premium", isDefaultChoice: true },
+      { identifier: "com.apple.ttsbundle.Samantha-compact", name: "Samantha", language: "en-US", quality: "default", isDefaultChoice: false },
+    ],
+    defaultIdentifier: "com.apple.voice.premium.en-US.Zoe",
+  }));
+  const out = await listVoices({ bridge, lang: "en-US" });
+  assert.equal(calls[0].method, "listVoices");
+  assert.equal(calls[0].payload.lang, "en-US");
+  assert.equal(out.path, "native");
+  assert.equal(out.voices.length, 2);
+  assert.equal(out.defaultIdentifier, "com.apple.voice.premium.en-US.Zoe");
+});
+
+// TO SEE IT FAIL: remove the try/catch around the native call in `listVoices`.
+// A shell whose native half predates this change rejects on an unknown method,
+// and the whole call rejects instead of answering from Web Speech.
+test("listVoices: a rejecting native side falls back to Web Speech, never rejects", async () => {
+  const bridge = { nativePromise: async () => { throw new Error("no such method"); } };
+  const { synth } = fakeSynthWithVoices(WEB_VOICES);
+  const out = await listVoices({ bridge, speechSynth: synth, log: () => {} });
+  assert.equal(out.path, "web-speech");
+  assert.equal(out.voices.length, 3);
+});
+
+// TO SEE IT FAIL: drop the `.filter((v) => v && languageMatches(v.lang, lang))`
+// in the Web Speech branch — asking for English returns the French voice too.
+test("listVoices (web-speech): maps the shape, filters by language, marks the default", async () => {
+  const { synth } = fakeSynthWithVoices(WEB_VOICES);
+  const out = await listVoices({ bridge: undefined, speechSynth: synth, lang: "en-GB" });
+  assert.equal(out.ok, true);
+  assert.equal(out.voices.length, 2, "both en-US voices are relevant to en-GB; the fr-FR one is not");
+  assert.deepEqual(Object.keys(out.voices[0]).sort(), ["identifier", "isDefaultChoice", "language", "name", "quality"]);
+  assert.equal(out.voices[0].quality, "unknown", "Web Speech exposes no quality tier and must not invent one");
+  assert.equal(out.defaultIdentifier, "urn:moz-tts:sapi:Zira");
+});
+
+// TO SEE IT FAIL: make the empty-list case return `{ ok: false }`. A browser
+// that simply has not fired `voiceschanged` yet then reports a broken TTS
+// stack, and a caller retries nothing because it was told it failed.
+test("listVoices (web-speech): an empty catalogue is 'not loaded yet', not a failure", async () => {
+  const { synth } = fakeSynthWithVoices([]);
+  const out = await listVoices({ bridge: undefined, speechSynth: synth });
+  assert.equal(out.ok, true);
+  assert.deepEqual(out.voices, []);
+  assert.match(out.reason, /loading/);
+});
+
+// TO SEE IT FAIL: have the final `return` in `listVoices` throw instead. Every
+// caller in a headless/CI context (no bridge, no speechSynthesis) gets a
+// rejection from a function documented to resolve.
+test("listVoices: nothing available at all -> { ok: false, path: 'none' }, never throws", async () => {
+  const out = await listVoices({ bridge: undefined, speechSynth: undefined });
+  assert.equal(out.ok, false);
+  assert.equal(out.path, "none");
+  assert.deepEqual(out.voices, []);
+});
+
 /* ------------------------------------------------------------- createForayTtsShell */
+
+// TO SEE IT FAIL: delete the `listVoices:` line from `createForayTtsShell` —
+// `shell.listVoices` is undefined and this throws a TypeError.
+test("createForayTtsShell: exposes listVoices with the same baked-in defaults", async () => {
+  const { calls, bridge } = fakeBridge(() => ({ ok: true, voices: [], defaultIdentifier: "" }));
+  const shell = createForayTtsShell({ bridge, lang: "en-GB" });
+  await shell.listVoices();
+  assert.equal(calls[0].method, "listVoices");
+  assert.equal(calls[0].payload.lang, "en-GB");
+});
 
 test("createForayTtsShell: bakes in defaults, per-call opts override them", async () => {
   const { calls, bridge } = fakeBridge();
