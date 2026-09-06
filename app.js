@@ -1034,6 +1034,43 @@ function subjectQueueById(id) {
   });
 }
 
+/* U-05 (docs/ui-transition-plan.md D7): does one of the listener's OWN
+   saved playlists (cp_playlists) already cover this query? A plain
+   substring check, same shape as searchShows() -- title first (the
+   listener's own name for it), then each part's own topics, so a playlist
+   titled "History Kick" still surfaces for a query naming one of its
+   episodes' actual subjects even though the title itself doesn't. NOT
+   routed through SearchEngine.interpretQuery/tokenize (same reasoning
+   show-search.test.js pins for searchShows: a listener's own playlist name
+   is not a topic query, and stripping "the"/"on" would break a literal
+   name match). `playlistSpine` (not resolveParts) so a query still matches
+   an archived part's stored topics without needing the live pool. */
+function playlistMatchesQuery(playlist, query) {
+  const q = String(query || "").trim().toLowerCase();
+  if (!q) return false;
+  if (String(playlist.title || "").toLowerCase().includes(q)) return true;
+  return playlistSpine(playlist).some(part =>
+    (part.topics || []).some(t => String(t).toLowerCase().includes(q)));
+}
+
+/* U-05 (D5, D7): the same interest-based generator U-03's "Playlists for
+   you" reuses -- today's subject queues, `state.cardSlots`, built once per
+   session by buildCards() -- filtered to the branches whose label matches
+   the typed query and projected through the existing subjectQueueById() so
+   a generated match renders and opens exactly like a Home "Playlists for
+   you" generated card (same #/playlist/subject-<branch> route, same
+   isSubject/withMirror shape). No new backend, no new scoring: this reads
+   cardSlots as they already are, it does not rebuild or re-rank them for
+   the query the way buildPlaylist's topic scorer does. */
+function generatedPlaylistCandidatesForQuery(query) {
+  const q = String(query || "").trim().toLowerCase();
+  if (!q) return [];
+  return (state.cardSlots || [])
+    .filter(slot => subjectLabel(slot.branch).toLowerCase().includes(q))
+    .map(slot => subjectQueueById(`subject-${slot.branch}`))
+    .filter(Boolean);
+}
+
 /* Hand-crafted why-lines survive where they exist. */
 function whyFor(id, item) {
   const curated = state.session.cards.find(c => c.episode_id === id);
@@ -1694,6 +1731,30 @@ function renderCategory(nodeId) {
    The old browse-all link is gone rather than moved (item 6): it was a link
    from Home to THIS page, and the menu's own "Shows" item is now that
    affordance. Nothing else in the app linked to it. */
+/* U-05 (docs/ui-transition-plan.md): every taxonomy ROOT, for a "browse
+   subjects" pill row on the Shows page (v2 only). Distinct from leafNodes()
+   above the same way taxonomyNodes() is -- a root has `parent === null` --
+   and this stays its own tiny helper rather than reusing subjectLabel's
+   inline find, because that one looks up ONE root by id and this needs all
+   of them, sorted for a stable pill order across renders. */
+function taxonomyRootNodes() {
+  return (state.taxonomy?.nodes || []).filter(n => n.parent === null).slice().sort((a, b) => a.label.localeCompare(b.label));
+}
+
+/* U-05: the "browse subjects" pill row the mockup's Search screen shows
+   above an active query (docs/ux/foray-mockup.jsx SearchScreen). v2-only —
+   v1's Shows page had no such row and must not grow one (offline/v1
+   behaviour unchanged is this card's own acceptance line). Reuses
+   taxonomyChip() verbatim (A3.2's existing "chip -> #/category/:id" link,
+   restyled to tokens in styles.css under body.ui-v2 .fy-chip) rather than a
+   new component, so there is exactly one taxonomy-chip renderer in the app. */
+function browsePillsHtml() {
+  if (!ui2On()) return "";
+  const roots = taxonomyRootNodes();
+  if (!roots.length) return "";
+  return `<div class="sh-browse-pills">${roots.map(n => taxonomyChip(n.id)).join("")}</div>`;
+}
+
 function renderAllShows() {
   const shows = (state.catalog?.shows || []).slice().sort((a, b) => a.title.localeCompare(b.title));
   renderShowIndexPage("Shows", `${shows.length} shows in 4a's catalogue, A\u2013Z`, shows, `
@@ -1701,9 +1762,11 @@ function renderAllShows() {
         <input id="sh-input" type="text" maxlength="120" placeholder="search shows by name\u2026">
         <button type="submit">Go</button>
       </form>
+      ${browsePillsHtml()}
       <p id="sh-note" class="note" hidden></p>
       <div id="sh-results" class="show-results" hidden></div>
       <div id="ep-search-results" hidden></div>
+      <div id="pl-search-results" hidden></div>
       <a class="page-link-row" href="#/starred-shows">Starred shows \u203a</a>
       ${vouchForHtml()}`);
 
@@ -2226,6 +2289,35 @@ function listenedShows() {
    pure function of its key and cheap to rebuild. */
 const SEARCH_CACHE_MAX = 200;
 const searchCache = new Map();
+
+/* U-05 (docs/ui-transition-plan.md D7): read-only topic-match classification,
+   shared with buildPlaylist() below via the same `searchCache` (same cache
+   key shape, so typing into Search costs nothing extra once the Playlists
+   builder -- or a prior Search -- has already scored the same query this
+   session). Exists because renderShowSearchResults needs to know whether a
+   query clears the topic scorer's "strong result" bar (to decide the
+   Create-a-playlist CTA) WITHOUT buildPlaylist's side effect of persisting a
+   new `cp_playlists` entry -- a listener must be able to type into search
+   without silently accumulating playlists they never asked to save.
+   PRESENTATION-ONLY, per the card's explicit scope line: this calls
+   SearchEngine.interpretQuery/searchWithRelaxation/classifyResults exactly as
+   buildPlaylist does and changes NOTHING about how they score or rank; it only
+   chooses not to act on the result the way buildPlaylist does. */
+function topicSearchStatus(query) {
+  const ctx = searchCtx();
+  const interp = SearchEngine.interpretQuery(query, ctx);
+  if (!interp.groups.length && !interp.filters.length) return "empty";
+  const pool = poolFiltered();
+  const cacheKey = JSON.stringify([query, familyMode(), state._interestsGen || 0]);
+  let cached = searchCache.get(cacheKey);
+  if (!cached) {
+    const { results } = SearchEngine.searchWithRelaxation(pool, interp, 2, state.itemTags, interestScore);
+    cached = { results };
+    if (searchCache.size >= SEARCH_CACHE_MAX) searchCache.clear();
+    searchCache.set(cacheKey, cached);
+  }
+  return SearchEngine.classifyResults(cached.results, { listenedShows: listenedShows() }).status;
+}
 
 function buildPlaylist(query) {
   const ctx = searchCtx();
@@ -2937,7 +3029,146 @@ function renderShowSearchResults(query) {
   }); // fetchApiJson already swallows network/parse errors and resolves null — no .catch needed
 
   renderEpisodeSearchResults(query, myToken);
+  renderPlaylistSearchResults(query, myToken);
 }
+
+/* U-05 (docs/ui-transition-plan.md D7): the Playlists section under Shows
+   and Episodes results. Unlike renderEpisodeSearchResults this is entirely
+   LOCAL/SYNCHRONOUS -- both sources (cp_playlists, cardSlots) are already
+   in memory, so there is no fetch to guard against staleness beyond the
+   same `myToken` check every section here shares (a fast retype still must
+   not let a slow show-search token's residual call clobber a newer one,
+   though nothing here awaits anything itself).
+
+   ORDER (the card's own "own playlists first, then generated" rule): the
+   listener's own matching playlists lead, each exactly as renderPlaylists
+   already renders one row (`.pl-row`, same fields, same #/playlist/:id
+   link) so a playlist opened from Search is indistinguishable from one
+   opened from the Playlists page. Generated candidates follow, visibly
+   badged "Generated for you" (D5's own wording, reused verbatim rather than
+   inventing new copy for the same concept) -- the reader must be able to
+   tell the two apart before tapping, same principle as U-03's Home badge.
+
+   THE CTA (the card's own #135 retarget, D8): "Create a playlist about X"
+   appears when `topicSearchStatus` reports no strong result at all -- not
+   merely "no own/generated playlist matched", because a listener could
+   have zero saved playlists yet the topic scorer still finds a rich set of
+   episodes (that is exactly what Playlists/#pl-form already builds from).
+   The CTA is presentation only: tapping it hands off to the existing
+   #/playlists page's own #pl-form flow (through `location.hash` +
+   prefilling the input) rather than calling buildPlaylist() here, so this
+   card adds no second path that can create a playlist -- there remains
+   exactly one (#pl-form's bindPlaylistFormSubmit), matching D8's "the
+   Foray half is not built, Playlist creation stays today's flow" scope. */
+function renderPlaylistSearchResults(query, myToken) {
+  const container = $("#pl-search-results");
+  if (!container) return; // page markup not present (e.g. a caller that reuses renderShowIndexPage without it)
+  if (myToken !== showSearchToken) return; // superseded before this ran
+
+  /* U-05 ships behind cp_ui_v2 like every other card in this deck (plan §3:
+     "Every card ships behind cp_ui_v2 until U-11") -- a v1/flag-off listener
+     gets none of this new section, matching the card's own "offline
+     behaviour unchanged" acceptance line. */
+  if (!ui2On()) {
+    container.innerHTML = "";
+    container.hidden = true;
+    return;
+  }
+
+  const own = playlists().filter(p => playlistMatchesQuery(p, query));
+  const ownIds = new Set(own.map(p => p.id));
+  const generated = generatedPlaylistCandidatesForQuery(query).filter(p => !ownIds.has(p.id));
+
+  if (!own.length && !generated.length) {
+    /* THE DEFER IS LOAD-BEARING (review finding, fresh-context Opus pass):
+       createPlaylistCtaHtml() calls topicSearchStatus(), which runs the
+       exact same SearchEngine.searchWithRelaxation() scan buildPlaylist()
+       does -- 1.3-8s on a cold cache per that function's own documented
+       measurement (see buildPlaylist's SEARCH_CACHE_MAX comment). Calling
+       it synchronously from here, on every show-name search that matches
+       no playlist (the COMMON case -- e.g. "fridman"), would freeze the
+       whole Shows page exactly the way bindPlaylistFormSubmit's own
+       setTimeout(0)+"Building…" guard exists to prevent for #pl-form.
+       Same idiom, same reason: clear the section first so nothing stale
+       lingers, then let the browser get a paint turn before the CPU-bound
+       work runs, and guard with `myToken` so a fast retype's OLD deferred
+       computation can never clobber a newer query's freshly-painted
+       own/generated section. */
+    container.innerHTML = "";
+    container.hidden = true;
+    setTimeout(() => {
+      if (myToken !== showSearchToken) return; // a newer query already superseded this one
+      const cta = createPlaylistCtaHtml(query);
+      if (!cta) return; // container already cleared above
+      container.innerHTML = cta;
+      container.hidden = false;
+      bindCreatePlaylistCta(container);
+    }, 0);
+    return;
+  }
+
+  const row = (p, generated) => `
+    <a class="pl-row" href="#/playlist/${esc(p.id)}">
+      <div class="info">
+        <div class="t">${esc(p.title)}${generated ? ` <span class="fy-badge fy-badge-generated">Generated for you</span>` : ""}</div>
+        <div class="s">${resolveParts(p).length} parts</div>
+      </div>
+      <span class="chev">\u203a</span>
+    </a>`;
+
+  container.innerHTML = `<section class="ep-more fy-playlist-search">
+    <h3>Playlists</h3>
+    <div class="show-results">
+      ${own.map(p => row(p, false)).join("")}
+      ${generated.map(p => row(p, true)).join("")}
+    </div>
+  </section>`;
+  container.hidden = false;
+}
+
+/* U-05 (#135, D7/D8): appears in place of a Playlists section when the topic
+   scorer finds no strong result for the typed query at all -- i.e. neither
+   an own/generated playlist match above NOR a topic-search answer rich
+   enough to act on. `topicSearchStatus` runs the exact same scorer
+   buildPlaylist() would, read-only (see its own header for why this must
+   not itself create a playlist).  Retargeted from Foray to Playlist per D8:
+   the mockup's SearchScreen CTA offers "Create a Foray about X"; Foray
+   generation stays out of the UI (D8), so this offers a Playlist instead,
+   handed to the existing #pl-form flow rather than a new creation path. */
+function createPlaylistCtaHtml(query) {
+  if (!ui2On()) return "";
+  if (topicSearchStatus(query) !== "empty") return "";
+  return `<div class="sh-create-cta">
+    <button type="button" class="fy-btn fy-main" data-create-playlist="${esc(query)}">
+      Create a playlist about \u201c${esc(query)}\u201d
+    </button>
+  </div>`;
+}
+
+/* Hands off to #/playlists' own, single creation path (#pl-form's
+   bindPlaylistFormSubmit) rather than calling buildPlaylist() from here --
+   see createPlaylistCtaHtml's header for why a second creation path is out
+   of scope. Navigates first so #pl-form exists, then prefills and submits
+   it on the next task-queue turn (route() replaces #view synchronously on
+   the hashchange handler, which runs after this click handler returns —
+   same "let the browser get a paint/task turn" idiom bindPlaylistFormSubmit
+   itself already documents for its own setTimeout(0)). */
+function bindCreatePlaylistCta(scope) {
+  const btn = scope.querySelector("[data-create-playlist]");
+  if (!btn) return;
+  btn.addEventListener("click", () => {
+    const query = btn.dataset.createPlaylist || "";
+    location.hash = "#/playlists";
+    setTimeout(() => {
+      const input = $("#pl-input");
+      const form = $("#pl-form");
+      if (!input || !form) return; // route() failed to land on #/playlists — nothing to prefill
+      input.value = query;
+      form.dispatchEvent(new Event("submit", { cancelable: true }));
+    }, 0);
+  });
+}
+
 
 /* Episodes section under Shows search (S-07, kanban t_6baccaa0): a separate
    result block below the show list, backed by api/episodes/search.ts. Same

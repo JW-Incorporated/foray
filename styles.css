@@ -1985,6 +1985,84 @@ body.fy-sheet-open { overflow: hidden; }
 .dd-status { margin: 12px 0 0; font-size: 0.82rem; color: var(--text); line-height: 1.45; }
 
 /* ===========================================================================
+   U-05: Search restyle + Playlists results section
+   (docs/ui-transition-plan.md). Everything below is SCOPED to `body.ui-v2`
+   -- the flag-off/v1 rules for `#sh-form`/`#sh-input`/`#sh-form button`/
+   `.show-results` above are untouched, so a v1 listener's Shows page (field,
+   button, result rows) looks and behaves exactly as it did before this
+   card. `body.ui-v2`'s higher specificity means these override the v1
+   rules only for a listener who has opted in (U-02's cp_ui_v2), same
+   pattern U-01/U-02 already established.
+
+   PRESENTATION ONLY (the card's explicit scope line): nothing below changes
+   what #sh-form submits, what SearchEngine returns, or how a result is
+   selected -- only how the field, the pill row, and the result rows look,
+   plus the two new sections (#pl-search-results, browsePillsHtml's pill
+   row) this card adds to the template.
+
+   `.show-result`, `.pl-row`, `.fy-btn.fy-main` and `.ep-more h3` already got
+   their body.ui-v2 restyle from U-08 (merged in after this card was
+   written) -- this block does NOT re-declare those selectors, to avoid two
+   competing rules for the same property disagreeing by source order. Only
+   the genuinely new surfaces this card adds (the search field/button, the
+   browse-subjects pill row, the generated-playlist badge, and the CTA's own
+   layout) are styled here. */
+body.ui-v2 #sh-input {
+  border-radius: 16px;
+  border-color: var(--line);
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--font-body);
+}
+body.ui-v2 #sh-form button {
+  border-radius: 16px;
+  border-color: var(--violet);
+  background: var(--violet);
+  color: var(--text);
+}
+body.ui-v2 .show-result-title { font-family: var(--font-body); }
+
+/* The "browse subjects" pill row (mockup SearchScreen), v2-only per
+   browsePillsHtml()'s own guard -- there is no v1 pill row to restyle,
+   this is new markup, not a restyle of something that already existed. */
+body.ui-v2 .sh-browse-pills {
+  display: flex; flex-wrap: wrap; gap: 8px;
+  margin: 10px 0 14px;
+}
+body.ui-v2 .sh-browse-pills .fy-chip {
+  border-radius: 16px;
+  border-color: var(--line);
+  background: var(--surface2);
+  color: var(--muted);
+  font-family: var(--font-body);
+}
+
+/* "Generated for you" badge (D5's own wording, shared with U-03's Home
+   section): violet, per issue #127's split -- this is what 4a itself
+   assembled, not the listener's own material. Text label, not a color-only
+   dot, same accessibility reasoning as .explicit-badge above. */
+body.ui-v2 .fy-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  vertical-align: middle;
+}
+body.ui-v2 .fy-badge-generated {
+  background: color-mix(in srgb, var(--violet) 22%, transparent);
+  color: var(--violet);
+}
+
+/* The "Create a playlist about X" CTA (#135, D7/D8's retarget from Foray to
+   Playlist -- the Foray half of the mockup's toggle is not built, D8).
+   Layout only -- U-08's `body.ui-v2 .fy-btn.fy-main` rule already supplies
+   the violet fill/border this button needs. */
+body.ui-v2 .sh-create-cta { margin: 4px 0; }
+body.ui-v2 .sh-create-cta .fy-btn.fy-main { width: 100%; font-family: var(--font-body); }
+
+/* ===========================================================================
    U-08 (docs/ui-transition-plan.md): presentation-only ui-v2 restyle of
    Show, Episode, Forays, Queue, Playlists/PlaylistDetail and the mini/full
    player chrome.
