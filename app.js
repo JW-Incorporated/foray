@@ -2450,17 +2450,98 @@ function isGenuineFirstTimeUser() {
   );
 }
 
-/** Explanation + consent, not an interview. The M3 prototype's `finishOnb`/
-    `skipOnb` describe a preference INTERVIEW step that has no counterpart in
-    the real backend (the session doc has no such concept) — this screen does
-    not build one. It explains how interests are actually learned today
-    (weighted signals from what you play/save/skip, per `loadInterests()` /
-    `bump()` — never a fixed picklist), states what data leaves the device and
-    why (docs/legal/privacy-policy.md §§ "The short version", 2), and gives an
-    explicit skip path. Both actions land on today's home screen and set the
-    same cp_intro_dismissed flag showIntroPopupOnce() already uses, so this
-    screen and the older popup can never both show on the same visit and
-    neither shows again after. */
+/* ---------- U-09: Preferences chips — subtree write path ----------
+
+   docs/curation/interest-survey-plan.md §4.1: an answer is a SUBTREE
+   expansion, never an exact match on the chip's own root id — tagging depth
+   is inconsistent (some subjects are tagged only on the root, e.g.
+   `true-crime`; others only on children, e.g. `engineering`), so writing just
+   the root would silently miss the pool entirely for half the chips. The
+   taxonomy is capped at two levels (root -> leaf, taxonomy-review-2026-08.md
+   §3.5), so one parent-lookup covers every descendant — no recursion needed. */
+function expandTaxonomyPick(rootId) {
+  return taxonomyNodes().filter(n => n.id === rootId || n.parent === rootId).map(n => n.id);
+}
+
+/* §4.3: SEED_LIFT = 0.20, damped by /sqrt(d) so picking many chips doesn't
+   overwhelm any one of them ("I like everything" should barely move anything)
+   — worth about four finishes or two and a half thumbs-ups (§4.4), never a
+   fact. Added on top of whatever loadInterests() already seeded (authored
+   default or a returning-format restore), never a replacement value, and
+   through the same clamp nudgeTopics uses elsewhere. */
+const ONBOARDING_SEED_LIFT = 0.20;
+
+/** Applies a Preferences pick: `pickedRootIds` from the chip grid, plus an
+    optional typed subject matched against a real top-level taxonomy label
+    (case-insensitive) — the mockup's "Or type a subject yourself…" field
+    reaches the same write path a chip tap would when it names a real root,
+    and is otherwise a no-op rather than inventing an untagged node nothing
+    in the pool carries. Returns false (no write, no _interestsGen bump) when
+    nothing was picked and nothing typed matched, so a caller can tell a real
+    Skip from a Continue with an empty/unmatched form. */
+function applyOnboardingPicks(pickedRootIds, typedSubject) {
+  const ids = [...(pickedRootIds || [])];
+  const typed = (typedSubject || "").trim();
+  if (typed) {
+    const typedNode = taxonomyNodes().find(
+      n => n.parent === null && n.label.toLowerCase() === typed.toLowerCase()
+    );
+    if (typedNode && !ids.includes(typedNode.id)) ids.push(typedNode.id);
+  }
+  if (!ids.length) return false;
+
+  const lift = ONBOARDING_SEED_LIFT / Math.sqrt(ids.length);
+  const targets = new Set(ids.flatMap(expandTaxonomyPick));
+  targets.forEach(id => {
+    if (id in state.interests) {
+      state.interests[id] = Math.max(0, Math.min(1, state.interests[id] + lift));
+    }
+  });
+  saveInterests();
+  state._interestsGen = (state._interestsGen || 0) + 1;
+  return true;
+}
+
+/* The 17 top-level nodes with measured pool depth (>= 50 items AND several
+   distinct shows — interest-survey-plan.md §3.2), so every chip is backed by
+   enough content to fill a queue on day one. Ids only; labels are read live
+   off state.taxonomy so a taxonomy relabel never drifts out of sync with
+   this list. */
+const PREFS_CHIP_IDS = [
+  "history", "comedy", "engineering", "business", "health", "society",
+  "science", "true-crime", "culture", "psychology", "food", "craft",
+  "nature", "medicine", "music", "personal-journals", "sports",
+];
+
+/** Explanation + consent, not an interview, then an optional Preferences
+    pane — the mockup's Welcome and Preferences screens (docs/ux/foray-
+    mockup.jsx, `WelcomeScreen`/`PrefsScreen`) as ONE modal sheet with two
+    panes swapped in place, per D2 / card U-09 (docs/ui-transition-plan.md,
+    #132). SKIPPABLE AT EVERY STEP:
+
+      Step 1 (Welcome) — two value props, the M3 prototype's `finishOnb`/
+      `skipOnb` preference-INTERVIEW step has no counterpart here and this
+      still does not build one (see the test that pins that). The second
+      prop is illustrated with a live, non-interactive SegmentStrip
+      (player/segment-strip.js's segmentStripHtml, U-04) over the first
+      listable Foray, when one exists — degrades to nothing otherwise, the
+      same "no Foray, no strip" rule the component already guarantees.
+      "Skip for now" dismisses immediately, with no interest write. "Get
+      started" advances to step 2 WITHOUT dismissing yet.
+
+      Step 2 (Preferences) — the taxonomy chip grid (PREFS_CHIP_IDS) plus
+      the mockup's tucked-away "Or type a subject yourself…" field. Neither
+      the mockup's account-connector buttons ("Continue with Apple/Google")
+      nor "Import subscriptions/listening history" are built here —
+      connector features, explicitly out of scope per D2/C5. "Skip" dismisses
+      with no interest write (Generalist: today's taxonomy defaults stand).
+      "Start listening" applies the picks via applyOnboardingPicks() — the
+      FIXED U-07 write path (taxonomyNodes() includes roots, so a root-level
+      chip actually persists) — then dismisses.
+
+    Both steps' exits set the SAME cp_intro_dismissed flag showIntroPopupOnce()
+    already uses, so this flow and the older popup can never both show on the
+    same visit and neither shows again after. */
 function showFirstTimeExplainerOnce() {
   if (!isGenuineFirstTimeUser()) return false;
   if (lsGet("cp_intro_dismissed", false)) return false;
@@ -2475,28 +2556,11 @@ function showFirstTimeExplainerOnce() {
 
   const grab = ddEl("div", "fy-grab");
   grab.setAttribute("aria-hidden", "true");
+  panel.append(grab);
 
-  const title = ddEl("h3", null, "4a picks podcast episodes for you");
-  title.id = "first-time-sheet-title";
-  panel.setAttribute("aria-labelledby", "first-time-sheet-title");
+  const body = ddEl("div", "ft-step-body");
+  panel.append(body);
 
-  const what = ddEl("p", "fy-sheet-sub",
-    "It groups real podcast episodes into short listening sessions built around topics you're into.");
-  const learn = ddEl("p", "fy-sheet-sub",
-    "There's no interview. 4a learns your interests from what you play, save and skip — every weight can change, nothing is locked in.");
-  const data = ddEl("p", "fy-sheet-sub",
-    "Your interests, history and saves stay on this device. A few anonymous events — what you picked, finished, saved and any feedback you leave — are sent to run the app. Nothing is sold or shared.");
-
-  const actions = ddEl("div", "fy-sheet-actions");
-  const skip = ddEl("button", "fy-sheet-cancel", "Skip for now");
-  skip.type = "button";
-  skip.id = "first-time-sheet-skip";
-  const go = ddEl("button", "fy-sheet-go", "Get started");
-  go.type = "button";
-  go.id = "first-time-sheet-go";
-  actions.append(skip, go);
-
-  panel.append(grab, title, what, learn, data, actions);
   wrap.append(scrim, panel);
   document.body.appendChild(wrap);
   document.body.classList.add("fy-sheet-open");
@@ -2507,8 +2571,137 @@ function showFirstTimeExplainerOnce() {
     document.body.classList.remove("fy-sheet-open");
   };
   scrim.addEventListener("click", dismiss);
-  skip.addEventListener("click", dismiss);
-  go.addEventListener("click", dismiss);
+
+  /* Live SegmentStrip illustration for the second value prop — reads off
+     window.ForayPlayer exactly as forayCards()/renderForay() do (app.js is a
+     classic script and cannot import player/segment-strip.js). Absent
+     module, absent forays, or a Foray with no segments all degrade to no
+     strip, never an error. */
+  function welcomeStripHtml() {
+    const player = window.ForayPlayer;
+    if (!player || typeof player.resolve !== "function" || typeof player.segmentStripHtml !== "function") return "";
+    if (!state.forays) return "";
+    const first = forayCards()[0];
+    if (!first) return "";
+    try {
+      const r = player.resolve(state.forays, {
+        id: first.id, segmentsDoc: state.segments, sourcesDoc: state.segmentSources,
+        unlocked: unlockedForays(),
+      });
+      if (!r) return "";
+      return player.segmentStripHtml(r.playable, { size: "sm" }) || "";
+    } catch (_) {
+      // Malformed segments/sources data must not break the first-run Home
+      // render — "degrades to nothing" (this function's own contract) has to
+      // hold even when the player module throws, not just when it's absent.
+      return "";
+    }
+  }
+
+  function renderWelcome() {
+    body.innerHTML = "";
+    const title = ddEl("h3", null, "4a picks podcast episodes for you");
+    title.id = "first-time-sheet-title";
+    panel.setAttribute("aria-labelledby", "first-time-sheet-title");
+    const sub = ddEl("p", "fy-sheet-sub", "A podcast app that listens to you first. Two things make it different:");
+
+    const propLearn = ddEl("div", "ft-value-prop");
+    propLearn.append(
+      ddEl("h4", null, "Suggestions that actually learn"),
+      ddEl("p", "fy-sheet-sub",
+        "Episode picks tuned to your subjects and the voices you trust — sharper every time you listen.")
+    );
+
+    const propForay = ddEl("div", "ft-value-prop");
+    propForay.append(
+      ddEl("h4", null, "Forays: one subject, many shows"),
+      ddEl("p", "fy-sheet-sub",
+        "We clip the best parts of several podcasts on a subject and stitch them into one seamless listen, with a narrator bridging the gaps.")
+    );
+    const stripHtml = welcomeStripHtml();
+    if (stripHtml) {
+      const stripWrap = ddEl("div", "ft-strip-wrap");
+      stripWrap.innerHTML = stripHtml;
+      propForay.append(stripWrap);
+    }
+
+    const props = ddEl("div", "ft-value-props");
+    props.append(propLearn, propForay);
+
+    const actions = ddEl("div", "fy-sheet-actions");
+    const skip = ddEl("button", "fy-sheet-cancel", "Skip for now");
+    skip.type = "button";
+    skip.id = "first-time-sheet-skip";
+    const go = ddEl("button", "fy-sheet-go", "Get started");
+    go.type = "button";
+    go.id = "first-time-sheet-go";
+    actions.append(skip, go);
+
+    body.append(title, sub, props, actions);
+    if (stripHtml) applyStripGrowIfBridged(propForay);
+
+    skip.addEventListener("click", dismiss);
+    go.addEventListener("click", renderPreferences);
+  }
+
+  function applyStripGrowIfBridged(scope) {
+    if (window.ForayPlayer && typeof window.ForayPlayer.applyStripGrow === "function") {
+      window.ForayPlayer.applyStripGrow(scope);
+    }
+  }
+
+  function renderPreferences() {
+    body.innerHTML = "";
+    const picked = new Set();
+
+    const title = ddEl("h3", null, "What are you into?");
+    title.id = "first-time-sheet-title";
+    panel.setAttribute("aria-labelledby", "first-time-sheet-title");
+    const sub = ddEl("p", "fy-sheet-sub", "This is how we tune your suggestions. Pick a few, or skip — we learn either way, from what you play.");
+
+    const chips = ddEl("div", "fy-chips");
+    chips.id = "first-time-sheet-chips";
+    PREFS_CHIP_IDS.forEach(id => {
+      const node = nodeById(id);
+      if (!node) return; // taxonomy drift: never render a chip for a node that no longer exists
+      const chip = ddEl("button", "fy-chip", node.label);
+      chip.type = "button";
+      chip.dataset.chip = id;
+      chip.setAttribute("aria-pressed", "false");
+      chip.addEventListener("click", () => {
+        if (picked.has(id)) { picked.delete(id); chip.classList.remove("on"); chip.setAttribute("aria-pressed", "false"); }
+        else { picked.add(id); chip.classList.add("on"); chip.setAttribute("aria-pressed", "true"); }
+      });
+      chips.append(chip);
+    });
+
+    const typedWrap = ddEl("div", "ft-typed-wrap");
+    const typedInput = ddEl("input");
+    typedInput.type = "text";
+    typedInput.id = "first-time-sheet-typed";
+    typedInput.className = "ft-typed-input";
+    typedInput.placeholder = "Or type a subject yourself…";
+    typedWrap.append(typedInput);
+
+    const actions = ddEl("div", "fy-sheet-actions");
+    const skip = ddEl("button", "fy-sheet-cancel", "Skip");
+    skip.type = "button";
+    skip.id = "first-time-sheet-prefs-skip";
+    const go = ddEl("button", "fy-sheet-go", "Start listening");
+    go.type = "button";
+    go.id = "first-time-sheet-prefs-go";
+    actions.append(skip, go);
+
+    body.append(title, sub, chips, typedWrap, actions);
+
+    skip.addEventListener("click", dismiss);
+    go.addEventListener("click", () => {
+      applyOnboardingPicks([...picked], typedInput.value);
+      dismiss();
+    });
+  }
+
+  renderWelcome();
   return true;
 }
 

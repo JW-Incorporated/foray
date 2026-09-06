@@ -1534,6 +1534,27 @@ body.fy-sheet-open { overflow: hidden; }
 }
 .fy-chip.on { border-color: var(--accent); color: var(--text); background: var(--surface); }
 
+/* ---------- U-09: Welcome + Preferences first-run flow ---------- */
+.ft-value-props { display: flex; flex-direction: column; gap: 14px; margin: 4px 0 14px; }
+.ft-value-prop {
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 14px 16px;
+}
+.ft-value-prop h4 { margin: 0 0 6px; font-size: 0.95rem; font-weight: 700; }
+.ft-strip-wrap { margin-top: 12px; }
+.ft-typed-wrap { margin: 4px 0 14px; }
+.ft-typed-input {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit; font-size: 0.86rem;
+}
+
 /* ---------- show page (#/show/:id, Stage 1) ---------- */
 .show-art {
   display: block;
