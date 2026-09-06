@@ -214,8 +214,13 @@ const FLOORS = {
   "test/app-name.test.js": 21,
   /* Back-navigation (kanban t_0faae03f, Wyatt 2026-09-05): the ‹ button must
      go back one real step, not always Home — see the suite's own header
-     for the full journey list this covers. */
-  "test/back-navigation.test.js": 9,
+     for the full journey list this covers.
+     9 -> 11 with U-02 (docs/ui-transition-plan.md, kanban t_806e5d01): the
+     tab bar's own links compose with the SAME back-stack rather than
+     needing a special case, and a deep link into a tab-owned route is a
+     cold open like any other -- two more journeys added to the list this
+     suite already existed to protect. */
+  "test/back-navigation.test.js": 11,
   /* Collapsing page header reappears on scroll-up (kanban t_0faae03f, same
      report): the header must un-hide on any upward scroll, not only at the
      literal top of the page. */
@@ -519,6 +524,17 @@ const FLOORS = {
      font-src proof. Zero slack: each one guards a distinct way the token
      system could quietly stop being a token system. */
   "test/ui-tokens.test.js": 4,
+  /* U-02 (docs/ui-transition-plan.md, kanban t_806e5d01): the cp_ui_v2 flag
+     and the four-tab bar shell. Eleven tests -- off by default, all four
+     tabs in order when on, removed (not hidden) when turned back off, the
+     native-shell default and its override by an explicit choice (two
+     tests plus the plain web-default case), every route mapping to
+     exactly one current tab, all 13 routes still resolving with the flag
+     on, the Library tab's href, and the two CSS box-model checks that pin
+     the "bar and mini-player never overlap content" acceptance line at
+     both insets. Zero slack: each one guards a distinct way this flag or
+     its bar could quietly stop doing what U-02 asks. */
+  "test/tab-bar.test.js": 11,
   // tools/ is allowlisted for auto-merge too (T3 in automerge-nightly.yml),
   // so suites under it need the same floor.
   /* The icons are generated from tools/brand/4a-logo.png, and this suite is the
