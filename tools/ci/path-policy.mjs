@@ -126,6 +126,26 @@ export const DENIED_PREFIXES = [
   // The trade is the one the entries above make — near-zero change frequency
   // (this file moves when Capacitor's template does), occasional human merge.
   "tools/mobile/inject-app-icon.mjs",
+  // release.yml's `guard` job runs `release-ci.mjs release-guard` to decide
+  // whether THIS ref may proceed to build+upload at all — the only thing
+  // standing between an arbitrary dispatched ref/tag and a job that receives
+  // live IOS_DIST_CERT_P12_BASE64 / APP_STORE_CONNECT_* secrets (already
+  // installed and already used for real TestFlight uploads before R-01
+  // restricted them to release runs — unlike Play's PLAY_SERVICE_ACCOUNT_JSON
+  // or Android's ANDROID_KEYSTORE_B64, which are both still latent/unset). A
+  // one-line neuter of releaseGuard() would not grant a bot new trigger
+  // permission, but it would drop the "main, or a tag verified as an ancestor
+  // of main" restriction, letting a dispatched or tagged ref other than a
+  // founder-reviewed main commit reach a job wired with live signing/upload
+  // credentials — the same shape of risk wire-signing.mjs is denied for two
+  // entries up. `play-gate` (this file's other subcommand) has no live-secret
+  // exposure today and would on its own read like `ios-ci.mjs`'s
+  // ACKNOWLEDGED signing-gate, but the file is denied as a whole because
+  // release-guard's exposure is live, not latent, and DENIED wins regardless
+  // of ALLOWED prefix matches. Revisit a play-gate/release-guard split if the
+  // two need different merge authority. Found while fixing PR #501's gate
+  // scan (kanban t_5458c0a2).
+  "tools/mobile/release-ci.mjs",
 ];
 
 /* Paths a bot run may touch, by tier (docs/curation/... § auto-merge):

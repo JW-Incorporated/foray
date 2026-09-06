@@ -208,6 +208,21 @@ const ACKNOWLEDGED_UNDENIED_GATES = {
   // Drives the PR-hygiene labelling sweep (needs-founder queue etc.) — it
   // reads/labels PRs, it does not gate what auto-merges or what CI asserts.
   "tools/ci/pr-triage.mjs": "PR labelling/triage only; does not gate auto-merge or CI checks",
+  // release.yml calls `marketing-version` (tag-name-vs-tracked-version check)
+  // and `pair` (the MARKETING_VERSION/BUILD_NUMBER both stores ship). Unlike
+  // release-ci.mjs (denied above), a neutered version.mjs cannot bypass the
+  // main-only guard or reach a live secret it didn't already have: the worst
+  // outcome is a mislabeled version string or a colliding build number, which
+  // either fails the App Store Connect / Play upload outright (a red run, not
+  // a silent bad deploy) or ships a release under the wrong human-readable
+  // version — a governance/labelling defect, not an auth or secrets bypass.
+  // `mobile/` (where mobile/VERSION lives) already requires a founder merge
+  // per CLAUDE.md's "A NOTE ON THE TWO WORDS", so the number this script reads
+  // is itself human-reviewed; this script only formats/validates it. Same
+  // risk class as the tools/refresh/* nightly entries above: real but bounded
+  // to a bad build, not an unread security-relevant change. Found while fixing
+  // PR #501's gate scan (kanban t_5458c0a2).
+  "tools/mobile/version.mjs": "no auth/secret bypass; worst case is a mislabeled version or a failed (red) upload, not a silent bad deploy",
 };
 
 /* Every `.github/workflows/*.yml` file, not just ci.yml — a gate script run

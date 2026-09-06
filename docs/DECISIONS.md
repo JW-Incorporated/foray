@@ -2156,3 +2156,72 @@ D13; kanban card S-04a (`t_835d1a3c`, itself a workspace-bug redo of
   release workflow (`release.yml`, R-03), triggered by a `v*` tag on `main`
   or an explicit `workflow_dispatch` on `main`. See
   `docs/release-lockstep-plan.md` §1, R-01, R-03.
+
+## 2026-09-06 (release.yml: one run, both stores — R-03)
+
+- **`release.yml` is the only place either store is ever uploaded to.** New
+  workflow (`.github/workflows/release.yml`), triggered by a `push` of a
+  `refs/tags/v*` ref or `workflow_dispatch`. A `guard` job refuses to proceed
+  unless the ref is `refs/heads/main` (dispatch) or a tag verified an
+  ancestor of `origin/main` via `git merge-base --is-ancestor` (push) —
+  checked with git plumbing against the real ref, not inferred from the event
+  payload, because a tag can be pushed pointing at any commit. `ios` and
+  `android` jobs run in parallel from the identical checked-out SHA and the
+  identical version pair (from R-02's `tools/mobile/version.mjs pair`,
+  computed once in a `version` job and passed as job outputs so a slow iOS
+  build and a fast Android build can never observe two different "today"s
+  across a UTC midnight boundary).
+- **The ~700 lines of shared build steps were factored into two composite
+  actions** (`.github/actions/ios-archive`, `.github/actions/android-
+  bundle`) rather than copied a second time. `ios-build.yml` and
+  `android-release.yml` still exist unchanged for now (R-05 will retire their
+  upload halves once R-03 has one proven green run — see that card's own
+  dependency note); the composites are new call sites, not a refactor of the
+  existing two files, so nothing in this PR changes CI-time behavior on a PR.
+- **The Play upload gate mirrors the iOS signing gate's three-outcome rule,
+  by design.** New `tools/mobile/release-ci.mjs` exports `playReadiness()`
+  over `PLAY_SECRETS = [PLAY_SERVICE_ACCOUNT_JSON]`, shaped identically to
+  `ios-ci.mjs`'s `signingReadiness()` (`ready`/`absent`/`partial`) even though
+  `partial` is structurally unreachable with a single secret today — kept for
+  when a second Play credential is ever added, and covered by its own test so
+  the branch isn't dead code discovered broken the day it's needed. `absent`
+  prints a message naming `HUMAN-ACTIONS.md`'s G2/G3 items and still uploads
+  the signed `.aab` as a build artifact (the existing manual-download
+  fallback, unchanged); `ready` uploads via `r0adkll/upload-google-play`,
+  pinned to a commit SHA rather than a floating tag — the one third-party
+  action in the repo's mobile pipeline, accepted because there is no
+  first-party way to call the Play Developer API's bundle-upload endpoint in
+  the ~30 direct-tool-invocation style `android-release.yml`'s own header
+  argues for elsewhere (there is no `sdkmanager`/`adb`-equivalent for this).
+- **The summary job's failure rule is narrower than "any problem":** it fails
+  the run only when *both* platforms report `ready` credentials and their
+  `uploaded` outcomes disagree, or when either reports `partial` (half-
+  configured) credentials. A documented-absent Play secret is a warning in
+  the run summary, never a failure — this is `docs/release-lockstep-plan.md`
+  R-03's acceptance criterion verbatim, and it is what lets this workflow
+  ship correctly before Track B's human gates (G1-G3) ever clear.
+- **`concurrency: release` never cancels an in-progress run**
+  (`cancel-in-progress: false`), the one workflow in this repo that doesn't —
+  every other one cancels superseded runs because a stale CI probe is
+  worthless once superseded, but a release run mid-archive or mid-upload is
+  not worthless if superseded, and cancelling it there risks a half-finished
+  keystore/TestFlight session racing a queued second run's cleanup.
+- **Explicitly NOT built: an in-workflow version-bump push to `main`.** R-03's
+  `workflow_dispatch` carries a `bump: patch|minor|major|none` input per the
+  card's own ask, but a non-`none` value does not attempt `git push` — `main`
+  is protected by the `protect-main` ruleset with `bypass_actors: []` and
+  `current_user_can_bypass: never` (checked live against the GitHub API
+  while writing this workflow), so a push from this job would simply fail.
+  The job instead refuses loudly and tells the operator to bump
+  `mobile/VERSION` in an ordinary PR first (same human-review gate every
+  other `mobile/` change gets, per the "TWO WORDS" note above), merge it, and
+  re-dispatch with `bump=none`. A tag push ignores `bump` entirely and
+  instead asserts the tag name matches the tracked `mobile/VERSION` exactly,
+  failing loudly on any mismatch. Building a PR-and-wait auto-bump flow was
+  considered and rejected as a bigger scope change than this card asked for.
+- **Never executed end-to-end.** Like `ios-build.yml`'s TestFlight upload and
+  `android-release.yml`'s Android smoke job when each was first written, this
+  workflow has real credentials for neither Play (G2/G3 open) nor — checked
+  as part of this change — any surprises in App Store Connect's existing
+  ones; treat the first real tag/dispatch run as a debugging session per this
+  repo's standing rule about inferences presented as measurements.
