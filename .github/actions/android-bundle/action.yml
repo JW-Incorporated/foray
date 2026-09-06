@@ -236,7 +236,7 @@ runs:
       # every guard already on this key (see 'Shred the upload key' above,
       # which still fires because it is `if: always()` and runs before this
       # step's inputs are even read).
-      uses: r0adkll/upload-google-play@935ef9c67dd85a5822618b8f7c50bd85a92e83ba # v1.1.3
+      uses: r0adkll/upload-google-play@935ef9c68bb393a8e6116b1575626a7f5be3a7fb # v1.1.3
       with:
         serviceAccountJsonPlainText: ${{ inputs.play_service_account_json }}
         packageName: ai.jwlabs.foura
