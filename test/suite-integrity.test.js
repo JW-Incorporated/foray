@@ -370,7 +370,7 @@ const FLOORS = {
      across these five tests were run and all six went red. A review round then
      found four MORE wrong stylesheets the first draft passed — see that file's
      header for what each of them broke and which line now stops it. */
-  "test/home-layout.test.js": 5,
+  "test/home-layout.test.js": 7,
 
   /* Stage 3b of docs/show-pages-plan.md — full per-show RSS ingestion
      (kanban card t_567b570f): renders the curated pool synchronously so
@@ -414,7 +414,18 @@ const FLOORS = {
      clutter one "just one more row" at a time, and a suite that can be
      deleted in an auto-merged PR guards nothing. Every test names its
      mutation; see the suite header. */
-  "test/home-information-architecture.test.js": 11,
+  "test/home-information-architecture.test.js": 12,
+
+  /* U-03 (docs/ui-transition-plan.md, kanban t_6e8343b6): Home v2's four
+     sections plus the greeting, behind cp_ui_v2, with the exploration floor
+     (D1/#123). Floored for the same reason as the suite above: the floor
+     itself ("Forays for you"/"Episodes for you" always reserve a visibly-
+     labelled stretch slot with its bridge line) is a product decision Wyatt
+     made explicitly to resolve a founder gate, and it is exactly the kind
+     of thing that regresses silently — nobody notices a personalization
+     feed slowly stopped surprising anyone. Every test names its mutation;
+     see the suite header. */
+  "test/home-v2.test.js": 7,
   /* Starred shows (follow-lite), requirement A2.4 / Joey's Q2 answer.
      Kanban card "Build: starred shows (follow-lite) + dedicated Starred
      Shows page". Floored because this is exactly the #276/show-pages

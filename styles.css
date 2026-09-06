@@ -2187,3 +2187,102 @@ body.ui-v2 .fp-note { color: var(--faint); }
 body.ui-v2 .lib-section-head { color: var(--muted); font-family: var(--font-display); }
 body.ui-v2 .lib-more { color: var(--muted); }
 body.ui-v2 .lib-more:active { color: var(--text); }
+
+/* ---------- U-03: Home v2 (docs/ui-transition-plan.md, kanban t_6e8343b6) ----------
+
+   Scoped entirely to `body.ui-v2 .hv2-*` — the flag-off four-card `.home`
+   above is untouched, same discipline U-01/U-02 already keep. Sections are
+   ordinary flex-column children (unlike `.cards4`'s fixed grid): Home v2 is
+   allowed to scroll, per the mockup, so there is no equivalent of the
+   flag-off floor/crush bug this file's BUG 4 comment documents — `.hv2-home`
+   declares no `height`/`min-height` at all, so there is no fixed budget for
+   a sibling to fight over in the first place. */
+body.ui-v2 .hv2-home {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 8px 0 calc(16px + env(safe-area-inset-bottom));
+  max-width: 680px;
+  margin: 0 auto;
+}
+body.ui-v2 .hv2-greeting {
+  display: flex; align-items: baseline; gap: 8px;
+  padding: 4px 14px 0;
+}
+body.ui-v2 .hv2-greeting-word { color: var(--muted); font-size: 0.85rem; font-family: var(--font-body); }
+body.ui-v2 .hv2-greeting-brand {
+  font-family: var(--font-display); font-style: italic; font-weight: 600; font-size: 1.3rem; color: var(--text);
+}
+body.ui-v2 .hv2-title {
+  margin: 0; padding: 0 14px;
+  font-family: var(--font-display); font-weight: 600; font-size: 1.05rem; color: var(--text);
+}
+body.ui-v2 .hv2-section { display: flex; flex-direction: column; gap: 8px; }
+/* Horizontal rails (Jump back in, Forays for you, Playlists for you) share one
+   scroller pattern; Episodes for you uses `.hv2-cards` (a vertical stack)
+   instead, since epRow-shaped rows read as a list, not a shelf. */
+body.ui-v2 .hv2-hscroll {
+  display: flex; gap: 12px; overflow-x: auto;
+  padding: 0 14px 4px;
+  scroll-snap-type: x proximity;
+}
+body.ui-v2 .hv2-cards { display: flex; flex-direction: column; gap: 8px; padding: 0 14px; }
+
+body.ui-v2 .hv2-jbi-card, body.ui-v2 .hv2-foray-card, body.ui-v2 .hv2-playlist-card {
+  flex: none;
+  scroll-snap-align: start;
+  display: flex; flex-direction: column; gap: 4px;
+  width: 240px; min-width: 240px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 14px;
+  text-decoration: none; color: var(--text);
+}
+body.ui-v2 .hv2-jbi-kicker {
+  font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--amber);
+}
+body.ui-v2 .hv2-jbi-title, body.ui-v2 .hv2-foray-title, body.ui-v2 .hv2-playlist-title {
+  font-family: var(--font-display); font-weight: 600; font-size: 0.95rem; color: var(--text);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+body.ui-v2 .hv2-jbi-sub, body.ui-v2 .hv2-jbi-left, body.ui-v2 .hv2-playlist-sub {
+  font-size: 0.78rem; color: var(--muted);
+}
+body.ui-v2 .hv2-jbi-card .fy-bar { margin-top: 4px; }
+
+/* The stretch label and its required bridge line (D1's copy rule: a stretch
+   pick must always state WHY it's being suggested). `.hv2-bridge` is the one
+   thing that must NEVER appear without `.hv2-stretch-tag` alongside it on the
+   same card, and vice versa — both are written by the same caller
+   (forayCardV2Html/miniCardV2) so they can't drift apart independently, and
+   test/home-v2.test.js pins that pairing directly. */
+body.ui-v2 .hv2-stretch { border-color: var(--violet); }
+body.ui-v2 .hv2-stretch-tag {
+  align-self: flex-start;
+  padding: 1px 7px;
+  border-radius: 3px;
+  font-size: 0.64rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
+  color: var(--violet);
+  background: color-mix(in srgb, var(--violet) 18%, transparent);
+}
+body.ui-v2 .hv2-bridge {
+  margin: 2px 0 0;
+  font-size: 0.78rem; font-style: italic; color: var(--muted);
+}
+
+body.ui-v2 .hv2-forays .fy-strip { margin-top: 2px; }
+
+body.ui-v2 .hv2-generated-badge {
+  align-self: flex-start;
+  padding: 1px 7px;
+  border-radius: 3px;
+  font-size: 0.64rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
+  color: var(--amber);
+  background: color-mix(in srgb, var(--amber) 18%, transparent);
+}
+
+/* Episodes for you reuses miniCard()'s own `.mini-card` markup and rules
+   unchanged (miniCardV2() wraps it rather than forking it) — only the
+   section container and the appended `.hv2-bridge` line are new here. */
+body.ui-v2 .hv2-episodes .mini-card { min-height: 0; }

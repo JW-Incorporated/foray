@@ -3023,6 +3023,7 @@ function renderEpisodeSearchResults(query, myToken) {
    directions — absent here, present there — so a future re-add fails CI
    rather than shipping. */
 function renderHome() {
+  if (ui2On()) return renderHomeV2();
   setBodyClass("view-home");
   if (!state.cardSlots.length) buildCards();
   $("#view").innerHTML = `
@@ -3046,6 +3047,269 @@ function renderHome() {
       lsSet("cp_lastpick", null);
       $("#banner-slot").innerHTML = "";
     });
+  }
+
+  bindPickLogging($("#view"));
+  bindStars($("#view"));
+  bindUpNext($("#view"));
+  bindPlay($("#view"));
+}
+
+/* ==================================================================== */
+/* U-03: HOME v2 — four sections plus the greeting, behind cp_ui_v2       */
+/* (docs/ui-transition-plan.md, kanban t_6e8343b6, resolves gate #123)   */
+/* ==================================================================== */
+
+/* Top to bottom, per the card: greeting; Jump back in; Forays for you;
+   Playlists for you; Episodes for you. "Shared with you" and "Build your
+   own" are explicitly out of scope (D10/D8) — not stubbed, not commented
+   out, simply never written.
+
+   THE FLOOR (Wyatt's decision, resolves #123): "Forays for you" and
+   "Episodes for you" EACH reserve at least one slot for a STRETCH pick —
+   something outside the listener's top interest tier, on purpose, visibly
+   labelled "Stretch" with a bridge line stating why it's being suggested.
+   A row reason ("Because you finish every Odd Lots") is allowed elsewhere
+   but never on the stretch slot itself — that is the whole point of a
+   stretch: it is not being justified by what the listener already likes.
+
+   Episodes for you REUSES buildCards()'s existing tiering (top 60% of
+   branches by average interest vs. the rest) rather than re-implementing
+   it — that function already computes exactly this split for the
+   flag-off four-card Home, and a second copy is a second place for the
+   two to quietly disagree about what a stretch pick is. Forays for you
+   applies the same helper independently, over Foray topics rather than
+   episode branches, since Forays are a different pool with different
+   membership. */
+
+/** Generic stretch-floor picker (D1/#123), shared by both "for you"
+    sections so there is exactly one implementation of "the floor" to keep
+    correct. `branchFn` maps a candidate to its topic/subject id;
+    `scoreFn` maps a candidate to its interest score. Reserves the FIRST
+    slot for a candidate from a branch outside the top ~60% of branches by
+    average score — recomputed exactly like buildCards()'s own
+    `topBranchIds`, so the two thresholds cannot drift apart — falling
+    back to ordinary top-ranked-first when there is no lower tier to draw
+    from at all (e.g. every candidate shares one branch). Returns
+    `{ picks, stretchIndex }`: `picks` is `take` candidates, in render
+    order; `stretchIndex` is the position of the stretch pick within
+    `picks`, or -1 if none could be found (never render a fake stretch
+    label over an ordinary pick). */
+function pickWithStretchFloor(candidates, { branchFn, scoreFn, take }) {
+  if (!candidates.length) return { picks: [], stretchIndex: -1 };
+
+  const byBranch = new Map();
+  candidates.forEach(c => {
+    const b = branchFn(c);
+    if (!byBranch.has(b)) byBranch.set(b, []);
+    byBranch.get(b).push(c);
+  });
+  const branchAvg = [...byBranch.entries()].map(([b, items]) => ({
+    b, avg: items.reduce((s, i) => s + scoreFn(i), 0) / items.length,
+  })).sort((x, y) => y.avg - x.avg);
+  const topCount = Math.max(1, Math.ceil(branchAvg.length * 0.6));
+  const topBranchIds = new Set(branchAvg.slice(0, topCount).map(x => x.b));
+
+  const stretchBranch = branchAvg.filter(x => !topBranchIds.has(x.b))[0]?.b ?? null;
+  const stretchPick = stretchBranch
+    ? [...byBranch.get(stretchBranch)].sort((x, y) => scoreFn(y) - scoreFn(x))[0]
+    : null;
+
+  const rest = candidates
+    .filter(c => c !== stretchPick)
+    .sort((x, y) => scoreFn(y) - scoreFn(x));
+
+  const picks = (stretchPick ? [stretchPick] : []).concat(rest).slice(0, take);
+  const stretchIndex = stretchPick ? picks.indexOf(stretchPick) : -1;
+  return { picks, stretchIndex };
+}
+
+/** The bridge line D1's copy rule requires on every stretch pick: it must
+    state WHY the pick is being suggested despite sitting outside the
+    listener's usual subjects, never a row reason implying it matches
+    their taste (that's what the non-stretch "Because you finish every X"
+    line is for, and it is deliberately never used here). Takes the
+    subject label so the sentence names the actual branch, matching how
+    every other Home string prefers a real name over a generic one. */
+function stretchBridgeLine(subjectLabelText) {
+  return `Outside your usual subjects — a deliberate change of pace into ${esc(subjectLabelText)}.`;
+}
+
+function homeGreeting() {
+  const h = new Date().getHours();
+  const word = h < 5 ? "Good night" : h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
+  return `<div class="hv2-greeting">
+    <span class="hv2-greeting-word">${word}</span>
+    <span class="hv2-greeting-brand">4a</span>
+  </div>`;
+}
+
+/** "Jump back in": forayResumeRows() plus the ordinary-episode continue
+    banner, as one horizontal scroller — the mockup's own shape for this
+    section (docs/ux/foray-mockup.jsx `HomeScreen`'s first row). Degrades
+    to "" when neither has anything to resume, so the section simply does
+    not render rather than showing an empty rail. */
+function jumpBackInV2Html() {
+  const resumeRows = forayResumeRows();
+  const continueItem = currentContinue();
+  if (!resumeRows.length && !continueItem) return "";
+
+  const forayCards = resumeRows.map(p => `
+    <a class="hv2-jbi-card" href="#/foray/${esc(p.id)}" data-ev="picked" data-ep="${esc(p.id)}" data-ctx="jbi-foray">
+      <span class="hv2-jbi-kicker">Jump back in</span>
+      <span class="hv2-jbi-title">${esc(p.title || p.id)}</span>
+      <span class="fy-bar"><span class="fy-bar-fill" data-pct="${esc(String(p.percent))}"></span></span>
+      <span class="hv2-jbi-left">${esc(p.label)}</span>
+    </a>`).join("");
+
+  let episodeCard = "";
+  if (continueItem) {
+    snapshot(continueItem.id, continueItem);
+    episodeCard = `
+    <a class="hv2-jbi-card" href="#/episode/${esc(encodeURIComponent(continueItem.id))}"
+       data-ev="picked" data-ep="${esc(continueItem.id)}" data-ctx="jbi-episode">
+      <span class="hv2-jbi-kicker">Jump back in</span>
+      <span class="hv2-jbi-title">${esc(continueItem.title)}</span>
+      <span class="hv2-jbi-sub">${esc(continueItem.show || "")}</span>
+    </a>`;
+  }
+
+  return `<section class="hv2-section hv2-jbi">
+    <h2 class="hv2-title">Jump back in</h2>
+    <div class="hv2-hscroll">${forayCards}${episodeCard}</div>
+  </section>`;
+}
+
+/** One Foray card for "Forays for you", carrying its SegmentStrip (U-04) —
+    the one component the plan names as what makes a Foray legible as a
+    different object from an episode. Resolves each Foray through the same
+    bridge welcomeStripHtml() (U-09) already uses; a Foray whose segments
+    fail to resolve degrades to a card with no strip, never an error, same
+    contract as that function's own try/catch. `stretch` renders the
+    visible label plus the required bridge line naming the Foray's own
+    subject; a non-stretch card gets neither. */
+function forayCardV2Html(foray, { stretch = false } = {}) {
+  const player = window.ForayPlayer;
+  let stripHtml = "";
+  if (player && state.forays && typeof player.resolve === "function" && typeof player.segmentStripHtml === "function") {
+    try {
+      const r = player.resolve(state.forays, {
+        id: foray.id, segmentsDoc: state.segments, sourcesDoc: state.segmentSources,
+        unlocked: unlockedForays(),
+      });
+      if (r) stripHtml = player.segmentStripHtml(r.playable, { size: "sm" }) || "";
+    } catch (_) {
+      stripHtml = ""; // malformed segments/sources must not break Home
+    }
+  }
+  const subject = subjectLabel((foray.topic || "").split("/")[0]);
+  return `<a class="hv2-foray-card${stretch ? " hv2-stretch" : ""}" href="#/foray/${esc(foray.id)}">
+    ${stretch ? `<span class="hv2-stretch-tag">Stretch</span>` : ""}
+    <span class="hv2-foray-title">${esc(foray.title)}</span>
+    ${stripHtml}
+    ${stretch ? `<p class="hv2-bridge">${stretchBridgeLine(subject)}</p>` : ""}
+  </a>`;
+}
+
+/** "Forays for you" (D1, U-03/U-04): the published (+ explicitly unlocked)
+    Forays, floored per pickWithStretchFloor over each Foray's own topic
+    root. Renders nothing when there are no listable Forays at all —
+    absence is a real state here, same convention forayListHtml() and
+    every other optional Home block already follow. */
+function foraysForYouHtml() {
+  const cards = forayCards();
+  if (!cards.length) return "";
+  const { picks, stretchIndex } = pickWithStretchFloor(cards, {
+    branchFn: f => (f.topic || "other").split("/")[0],
+    scoreFn: f => interestScore({ topics: [(f.topic || "other").split("/")[0]] }),
+    take: 4,
+  });
+  return `<section class="hv2-section hv2-forays">
+    <h2 class="hv2-title">Forays for you</h2>
+    <div class="hv2-hscroll">${picks.map((f, i) => forayCardV2Html(f, { stretch: i === stretchIndex })).join("")}</div>
+  </section>`;
+}
+
+/** One playlist card for "Playlists for you" — own recent playlists render
+    exactly like a subject queue's card (shared shape, #276), generated
+    ones carry the "Generated for you" badge D5 requires so a listener
+    never mistakes a generated grouping for one they built. */
+function playlistCardV2Html(p, { generated = false } = {}) {
+  const count = (p.items || []).length;
+  return `<a class="hv2-playlist-card" href="#/${p.isSubject ? "subject/" + esc(p.branch) : "playlist/" + esc(p.id)}">
+    ${generated ? `<span class="hv2-generated-badge">Generated for you</span>` : ""}
+    <span class="hv2-playlist-title">${esc(p.title)}</span>
+    <span class="hv2-playlist-sub">${count} episode${count === 1 ? "" : "s"}</span>
+  </a>`;
+}
+
+/** "Playlists for you" (D5): the listener's own recent playlists first,
+    then 2-3 generated from state.interests against the subject queues —
+    which is exactly what state.cardSlots already is (buildCards()'s
+    output), so "generate a playlist from interests" costs nothing new:
+    each card slot IS a subject queue, reachable at #/subject/<branch>
+    (subjectQueueById), and is rendered here as a playlist card rather
+    than a mini-card. No new backend, per the card's own text. */
+function playlistsForYouHtml() {
+  const own = [...playlists()]
+    .sort((a, b) => (b.last_played_at || b.created).localeCompare(a.last_played_at || a.created))
+    .slice(0, 3);
+  const generated = (state.cardSlots || []).slice(0, 3).map(sl => ({
+    id: "subject-" + sl.branch, branch: sl.branch, isSubject: true,
+    title: subjectLabel(sl.branch), items: sl.items,
+  }));
+  if (!own.length && !generated.length) return "";
+  const cards = own.map(p => playlistCardV2Html(p, { generated: false }))
+    .concat(generated.map(p => playlistCardV2Html(p, { generated: true })));
+  return `<section class="hv2-section hv2-playlists">
+    <h2 class="hv2-title">Playlists for you</h2>
+    <div class="hv2-hscroll">${cards.join("")}</div>
+  </section>`;
+}
+
+/** One episode card for "Episodes for you" — miniCard()'s existing markup
+    plus the visible bridge line D1's copy rule requires on a stretch
+    slot, which miniCard() itself does not render (its "Stretch" tag is a
+    hover-only `title`, pinned as-is elsewhere and left untouched here).
+    Composes rather than forks: the card body is exactly miniCard(slot),
+    with the bridge line appended after it for a stretch slot only. */
+function miniCardV2(slot) {
+  const card = miniCard(slot);
+  if (slot.role !== "stretch") return card;
+  // Insert the bridge line just before the anchor's closing tag.
+  const bridge = `<p class="hv2-bridge">${stretchBridgeLine(subjectLabel(slot.branch))}</p></a>`;
+  return card.replace(/<\/a>$/, bridge);
+}
+
+/** "Episodes for you": buildCards()'s ranked discover-pool picks, i.e.
+    state.cardSlots verbatim — the SAME floor buildCards() already
+    computes for the flag-off four-card Home, so this section and that
+    one can never disagree about which slot is the stretch. */
+function episodesForYouHtml() {
+  if (!state.cardSlots.length) buildCards();
+  if (!state.cardSlots.length) return "";
+  return `<section class="hv2-section hv2-episodes">
+    <h2 class="hv2-title">Episodes for you</h2>
+    <div class="hv2-cards">${state.cardSlots.map(miniCardV2).join("")}</div>
+  </section>`;
+}
+
+function renderHomeV2() {
+  setBodyClass("view-home");
+  $("#view").innerHTML = `
+    <div class="home hv2-home">
+      ${homeGreeting()}
+      ${jumpBackInV2Html()}
+      ${foraysForYouHtml()}
+      ${playlistsForYouHtml()}
+      ${episodesForYouHtml()}
+    </div>`;
+
+  if (!showFirstTimeExplainerOnce()) showIntroPopupOnce();
+
+  sizeProgressBars($("#view"));
+  if (window.ForayPlayer && typeof window.ForayPlayer.applyStripGrow === "function") {
+    window.ForayPlayer.applyStripGrow($("#view"));
   }
 
   bindPickLogging($("#view"));

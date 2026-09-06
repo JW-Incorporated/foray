@@ -492,3 +492,30 @@ test("a Foray's back link lands on #/forays, where an unlocked draft is still li
     "a Foray's back link must reach the page that lists Forays, not the home screen that no longer does"
   );
 });
+
+/* ==================================================================== */
+/* 12. U-03: THE FLAG-ON SHAPE (docs/ui-transition-plan.md, kanban t_6e8343b6) */
+/* ==================================================================== */
+
+test("with cp_ui_v2 on, Home renders the v2 layout instead of the four-card grid — the two never coexist", () => {
+  /* This suite's own subject is the FLAG-OFF information architecture (the
+     founder's six-item declutter). U-03 adds a second Home behind a flag
+     rather than replacing this one, so the suite is rewritten (not deleted,
+     per the card's own instruction) to also pin that the two layouts are
+     mutually exclusive — the specific way a dispatcher-shaped change quietly
+     breaks is BOTH branches rendering into the same container.
+
+     MUTATION: delete the `if (ui2On()) return renderHomeV2();` line from
+     renderHome(). The v2-on assertion fails: `.cards4` renders instead of
+     `.hv2-home`. RUN: failed as named. Full behavioural coverage of the v2
+     layout itself (section order, the floor, the badge) lives in
+     test/home-v2.test.js, not duplicated here. */
+  const m = quietMount({ cp_ui_v2: "true" });
+  m.state.forays = { forays: [] };
+  m.ctx.ForayPlayer = { listForays: () => [], forayResumeList: () => [] };
+
+  m.ctx.renderHome();
+  const html = m.view();
+  assert.ok(html.includes('class="home hv2-home"'), "cp_ui_v2 on must render Home v2");
+  assert.ok(!html.includes('class="cards4"'), "cp_ui_v2 on must not also render the flag-off four-card grid");
+});
