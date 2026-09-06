@@ -3082,18 +3082,27 @@ function renderLibrary() {
   const queued = queueIds();
 
   const rowHtml = (r, i, ctx) => r.state === "live" ? epRow(r.item, i, ctx, -1) : archivedRow(r.item, i, ctx);
+  // History's "unnamed" case (an id neither live in the pool nor covered by a
+  // cp_saved snapshot) is real and common -- unlike Saved, a history entry was
+  // never necessarily starred. archivedRow's "unnamed" copy ("Saved before 4a
+  // kept episode details") is written for the saved/playlist snapshot path and
+  // would misname what happened here, so History gets its own honest fallback
+  // for that one state rather than reusing archivedRow's wording.
+  const historyRowHtml = (r, i) => r.state === "unnamed"
+    ? `<div class="ep-row gone"><span class="q-num">${i + 1}</span><div class="info"><div class="t">No longer available</div><div class="s">Previously played, no longer in 4a's catalogue</div></div></div>`
+    : rowHtml(r, i, "library-history");
 
   const savedHtml = savedRows.length
     ? savedRows.map((r, i) => rowHtml(r, i, "library-saved")).join("")
     : `<p class="note">Nothing saved yet — tap ☆ on an episode to keep it here.</p>`;
 
   const historyHtml = historyRows.length
-    ? historyRows.map((r, i) => rowHtml(r, i, "library-history")).join("")
+    ? historyRows.map((r, i) => historyRowHtml(r, i)).join("")
     : `<p class="note">No listening history yet — episodes you play show up here.</p>`;
 
   const playlistsHtml = allPlaylists.length
     ? allPlaylists.slice(0, 5).map(p =>
-        libSummaryRow(`/playlist/${p.id}`, p.title, `${resolveParts(p).length} parts`)).join("")
+        libSummaryRow(`/playlist/${p.id}`, p.title, `${resolveParts(p).length} part${resolveParts(p).length === 1 ? "" : "s"}`)).join("")
       + (allPlaylists.length > 5 ? `<a class="lib-more" href="#/playlists">All ${allPlaylists.length} playlists ›</a>` : "")
     : `<p class="note">No playlists yet — build one from the home screen.</p>`;
 
