@@ -1,0 +1,839 @@
+diff --git a/app.js b/app.js
+index ae8e6f4..42a2bc4 100644
+--- a/app.js
++++ b/app.js
+@@ -3023,6 +3023,7 @@ function renderEpisodeSearchResults(query, myToken) {
+    directions — absent here, present there — so a future re-add fails CI
+    rather than shipping. */
+ function renderHome() {
++  if (ui2On()) return renderHomeV2();
+   setBodyClass("view-home");
+   if (!state.cardSlots.length) buildCards();
+   $("#view").innerHTML = `
+@@ -3054,6 +3055,272 @@ function renderHome() {
+   bindPlay($("#view"));
+ }
+ 
++/* ==================================================================== */
++/* U-03: HOME v2 — four sections plus the greeting, behind cp_ui_v2       */
++/* (docs/ui-transition-plan.md, kanban t_6e8343b6, resolves gate #123)   */
++/* ==================================================================== */
++
++/* Top to bottom, per the card: greeting; Jump back in; Forays for you;
++   Playlists for you; Episodes for you. "Shared with you" and "Build your
++   own" are explicitly out of scope (D10/D8) — not stubbed, not commented
++   out, simply never written.
++
++   THE FLOOR (Wyatt's decision, resolves #123): "Forays for you" and
++   "Episodes for you" EACH reserve at least one slot for a STRETCH pick —
++   something outside the listener's top interest tier, on purpose, visibly
++   labelled "Stretch" with a bridge line stating why it's being suggested.
++   A row reason ("Because you finish every Odd Lots") is allowed elsewhere
++   but never on the stretch slot itself — that is the whole point of a
++   stretch: it is not being justified by what the listener already likes.
++
++   Episodes for you REUSES buildCards()'s existing tiering (top 60% of
++   branches by average interest vs. the rest) rather than re-implementing
++   it — that function already computes exactly this split for the
++   flag-off four-card Home, and a second copy is a second place for the
++   two to quietly disagree about what a stretch pick is. Forays for you
++   applies the same helper independently, over Foray topics rather than
++   episode branches, since Forays are a different pool with different
++   membership. */
++
++/** Generic stretch-floor picker (D1/#123), shared by both "for you"
++    sections so there is exactly one implementation of "the floor" to keep
++    correct. `branchFn` maps a candidate to its topic/subject id;
++    `scoreFn` maps a candidate to its interest score. Reserves the FIRST
++    slot for a candidate from a branch outside the top ~60% of branches by
++    average score — recomputed exactly like buildCards()'s own
++    `topBranchIds`, so the two thresholds cannot drift apart — falling
++    back to ordinary top-ranked-first when there is no lower tier to draw
++    from at all (e.g. every candidate shares one branch). Returns
++    `{ picks, stretchIndex }`: `picks` is `take` candidates, in render
++    order; `stretchIndex` is the position of the stretch pick within
++    `picks`, or -1 if none could be found (never render a fake stretch
++    label over an ordinary pick). */
++function pickWithStretchFloor(candidates, { branchFn, scoreFn, take }) {
++  if (!candidates.length) return { picks: [], stretchIndex: -1 };
++
++  const byBranch = new Map();
++  candidates.forEach(c => {
++    const b = branchFn(c);
++    if (!byBranch.has(b)) byBranch.set(b, []);
++    byBranch.get(b).push(c);
++  });
++  const branchAvg = [...byBranch.entries()].map(([b, items]) => ({
++    b, avg: items.reduce((s, i) => s + scoreFn(i), 0) / items.length,
++  })).sort((x, y) => y.avg - x.avg);
++  const topCount = Math.max(1, Math.ceil(branchAvg.length * 0.6));
++  const topBranchIds = new Set(branchAvg.slice(0, topCount).map(x => x.b));
++
++  const stretchBranch = branchAvg.filter(x => !topBranchIds.has(x.b))[0]?.b ?? null;
++  const stretchPick = stretchBranch
++    ? [...byBranch.get(stretchBranch)].sort((x, y) => scoreFn(y) - scoreFn(x))[0]
++    : null;
++
++  const rest = candidates
++    .filter(c => c !== stretchPick)
++    .sort((x, y) => scoreFn(y) - scoreFn(x));
++
++  const picks = (stretchPick ? [stretchPick] : []).concat(rest).slice(0, take);
++  const stretchIndex = stretchPick ? picks.indexOf(stretchPick) : -1;
++  return { picks, stretchIndex };
++}
++
++/** The bridge line D1's copy rule requires on every stretch pick: it must
++    state WHY the pick is being suggested despite sitting outside the
++    listener's usual subjects, never a row reason implying it matches
++    their taste (that's what the non-stretch "Because you finish every X"
++    line is for, and it is deliberately never used here). Takes the
++    subject label so the sentence names the actual branch, matching how
++    every other Home string prefers a real name over a generic one. */
++function stretchBridgeLine(subjectLabelText) {
++  return `Outside your usual subjects — a deliberate change of pace into ${esc(subjectLabelText)}.`;
++}
++
++function homeGreeting() {
++  const h = new Date().getHours();
++  const word = h < 5 ? "Good night" : h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
++  return `<div class="hv2-greeting">
++    <span class="hv2-greeting-word">${word}</span>
++    <span class="hv2-greeting-brand">4a</span>
++  </div>`;
++}
++
++/** "Jump back in": forayResumeRows() plus the ordinary-episode continue
++    banner, as one horizontal scroller — the mockup's own shape for this
++    section (docs/ux/foray-mockup.jsx `HomeScreen`'s first row). Degrades
++    to "" when neither has anything to resume, so the section simply does
++    not render rather than showing an empty rail. */
++function jumpBackInV2Html() {
++  const resumeRows = forayResumeRows();
++  const continueItem = currentContinue();
++  if (!resumeRows.length && !continueItem) return "";
++
++  const forayCards = resumeRows.map(p => `
++    <a class="hv2-jbi-card" href="#/foray/${esc(p.id)}">
++      <span class="hv2-jbi-kicker">Jump back in</span>
++      <span class="hv2-jbi-title">${esc(p.title || p.id)}</span>
++      <span class="fy-bar"><span class="fy-bar-fill" data-pct="${esc(String(p.percent))}"></span></span>
++      <span class="hv2-jbi-left">${esc(p.label)}</span>
++    </a>`).join("");
++
++  let episodeCard = "";
++  if (continueItem) {
++    snapshot(continueItem.id, continueItem);
++    episodeCard = `
++    <a class="hv2-jbi-card" href="#/episode/${esc(encodeURIComponent(continueItem.id))}"
++       data-ev="picked" data-ep="${esc(continueItem.id)}" data-ctx="jbi-episode">
++      <span class="hv2-jbi-kicker">Jump back in</span>
++      <span class="hv2-jbi-title">${esc(continueItem.title)}</span>
++      <span class="hv2-jbi-sub">${esc(continueItem.show || "")}</span>
++    </a>`;
++  }
++
++  return `<section class="hv2-section hv2-jbi">
++    <h2 class="hv2-title">Jump back in</h2>
++    <div class="hv2-hscroll">${forayCards}${episodeCard}</div>
++  </section>`;
++}
++
++/** One Foray card for "Forays for you", carrying its SegmentStrip (U-04) —
++    the one component the plan names as what makes a Foray legible as a
++    different object from an episode. Resolves each Foray through the same
++    bridge welcomeStripHtml() (U-09) already uses; a Foray whose segments
++    fail to resolve degrades to a card with no strip, never an error, same
++    contract as that function's own try/catch. `stretch` renders the
++    visible label plus the required bridge line naming the Foray's own
++    subject; a non-stretch card gets neither. */
++function forayCardV2Html(foray, { stretch = false } = {}) {
++  const player = window.ForayPlayer;
++  let stripHtml = "";
++  if (player && state.forays && typeof player.resolve === "function" && typeof player.segmentStripHtml === "function") {
++    try {
++      const r = player.resolve(state.forays, {
++        id: foray.id, segmentsDoc: state.segments, sourcesDoc: state.segmentSources,
++        unlocked: unlockedForays(),
++      });
++      if (r) stripHtml = player.segmentStripHtml(r.playable, { size: "sm" }) || "";
++    } catch (_) {
++      stripHtml = ""; // malformed segments/sources must not break Home
++    }
++  }
++  const subject = subjectLabel((foray.topic || "").split("/")[0]);
++  return `<a class="hv2-foray-card${stretch ? " hv2-stretch" : ""}" href="#/foray/${esc(foray.id)}">
++    ${stretch ? `<span class="hv2-stretch-tag">Stretch</span>` : ""}
++    <span class="hv2-foray-title">${esc(foray.title)}</span>
++    ${stripHtml}
++    ${stretch ? `<p class="hv2-bridge">${stretchBridgeLine(subject)}</p>` : ""}
++  </a>`;
++}
++
++/** "Forays for you" (D1, U-03/U-04): the published (+ explicitly unlocked)
++    Forays, floored per pickWithStretchFloor over each Foray's own topic
++    root. Renders nothing when there are no listable Forays at all —
++    absence is a real state here, same convention forayListHtml() and
++    every other optional Home block already follow. */
++function foraysForYouHtml() {
++  const cards = forayCards();
++  if (!cards.length) return "";
++  const { picks, stretchIndex } = pickWithStretchFloor(cards, {
++    branchFn: f => (f.topic || "other").split("/")[0],
++    scoreFn: f => interestScore({ topics: [(f.topic || "other").split("/")[0]] }),
++    take: 4,
++  });
++  return `<section class="hv2-section hv2-forays">
++    <h2 class="hv2-title">Forays for you</h2>
++    <div class="hv2-hscroll">${picks.map((f, i) => forayCardV2Html(f, { stretch: i === stretchIndex })).join("")}</div>
++  </section>`;
++}
++
++/** One playlist card for "Playlists for you" — own recent playlists render
++    exactly like a subject queue's card (shared shape, #276), generated
++    ones carry the "Generated for you" badge D5 requires so a listener
++    never mistakes a generated grouping for one they built. */
++function playlistCardV2Html(p, { generated = false } = {}) {
++  const count = (p.items || []).length;
++  return `<a class="hv2-playlist-card" href="#/${p.isSubject ? "subject/" + esc(p.branch) : "playlist/" + esc(p.id)}">
++    ${generated ? `<span class="hv2-generated-badge">Generated for you</span>` : ""}
++    <span class="hv2-playlist-title">${esc(p.title)}</span>
++    <span class="hv2-playlist-sub">${count} episode${count === 1 ? "" : "s"}</span>
++  </a>`;
++}
++
++/** "Playlists for you" (D5): the listener's own recent playlists first,
++    then 2-3 generated from state.interests against the subject queues —
++    which is exactly what state.cardSlots already is (buildCards()'s
++    output), so "generate a playlist from interests" costs nothing new:
++    each card slot IS a subject queue, reachable at #/subject/<branch>
++    (subjectQueueById), and is rendered here as a playlist card rather
++    than a mini-card. No new backend, per the card's own text. */
++function playlistsForYouHtml() {
++  const own = [...playlists()]
++    .sort((a, b) => (b.last_played_at || b.created || "").localeCompare(a.last_played_at || a.created || ""))
++    .slice(0, 3);
++  const generated = (state.cardSlots || []).slice(0, 3).map(sl => ({
++    id: "subject-" + sl.branch, branch: sl.branch, isSubject: true,
++    title: subjectLabel(sl.branch), items: sl.items,
++  }));
++  if (!own.length && !generated.length) return "";
++  const cards = own.map(p => playlistCardV2Html(p, { generated: false }))
++    .concat(generated.map(p => playlistCardV2Html(p, { generated: true })));
++  return `<section class="hv2-section hv2-playlists">
++    <h2 class="hv2-title">Playlists for you</h2>
++    <div class="hv2-hscroll">${cards.join("")}</div>
++  </section>`;
++}
++
++/** One episode card for "Episodes for you" — miniCard()'s existing markup
++    plus the visible bridge line D1's copy rule requires on a stretch
++    slot, which miniCard() itself does not render (its "Stretch" tag is a
++    hover-only `title`, pinned as-is elsewhere and left untouched here).
++    Composes rather than forks: the card body is exactly miniCard(slot),
++    with the bridge line appended after it for a stretch slot only. */
++function miniCardV2(slot) {
++  const card = miniCard(slot);
++  if (slot.role !== "stretch") return card;
++  // Insert the bridge line just before the anchor's closing tag.
++  const bridge = `<p class="hv2-bridge">${stretchBridgeLine(subjectLabel(slot.branch))}</p></a>`;
++  return card.replace(/<\/a>$/, bridge);
++}
++
++/** "Episodes for you": buildCards()'s ranked discover-pool picks, i.e.
++    state.cardSlots verbatim — the SAME floor buildCards() already
++    computes for the flag-off four-card Home, so this section and that
++    one can never disagree about which slot is the stretch. renderHomeV2()
++    guarantees state.cardSlots is already built before this runs (same as
++    v1's own renderHome()), so this only guards a caller that invokes this
++    function directly (e.g. a future test). */
++function episodesForYouHtml() {
++  if (!state.cardSlots.length) return "";
++  return `<section class="hv2-section hv2-episodes">
++    <h2 class="hv2-title">Episodes for you</h2>
++    <div class="hv2-cards">${state.cardSlots.map(miniCardV2).join("")}</div>
++  </section>`;
++}
++
++function renderHomeV2() {
++  setBodyClass("view-home");
++  if (!state.cardSlots.length) buildCards();
++  $("#view").innerHTML = `
++    <div class="home hv2-home">
++      ${homeGreeting()}
++      ${jumpBackInV2Html()}
++      ${foraysForYouHtml()}
++      ${playlistsForYouHtml()}
++      ${episodesForYouHtml()}
++    </div>`;
++
++  if (!showFirstTimeExplainerOnce()) showIntroPopupOnce();
++
++  sizeProgressBars($("#view"));
++  if (window.ForayPlayer && typeof window.ForayPlayer.applyStripGrow === "function") {
++    window.ForayPlayer.applyStripGrow($("#view"));
++  }
++
++  bindPickLogging($("#view"));
++  bindStars($("#view"));
++  bindUpNext($("#view"));
++  bindPlay($("#view"));
++}
++
+ /* ---------- Forays page (#/forays) ----------
+ 
+    The menu destination the foray list moved to (founder instruction, item 2:
+diff --git a/styles.css b/styles.css
+index 3a74dbd..a4a974d 100644
+--- a/styles.css
++++ b/styles.css
+@@ -2187,3 +2187,102 @@ body.ui-v2 .fp-note { color: var(--faint); }
+ body.ui-v2 .lib-section-head { color: var(--muted); font-family: var(--font-display); }
+ body.ui-v2 .lib-more { color: var(--muted); }
+ body.ui-v2 .lib-more:active { color: var(--text); }
++
++/* ---------- U-03: Home v2 (docs/ui-transition-plan.md, kanban t_6e8343b6) ----------
++
++   Scoped entirely to `body.ui-v2 .hv2-*` — the flag-off four-card `.home`
++   above is untouched, same discipline U-01/U-02 already keep. Sections are
++   ordinary flex-column children (unlike `.cards4`'s fixed grid): Home v2 is
++   allowed to scroll, per the mockup, so there is no equivalent of the
++   flag-off floor/crush bug this file's BUG 4 comment documents — `.hv2-home`
++   declares no `height`/`min-height` at all, so there is no fixed budget for
++   a sibling to fight over in the first place. */
++body.ui-v2 .hv2-home {
++  display: flex;
++  flex-direction: column;
++  gap: 20px;
++  padding: 8px 0 calc(16px + env(safe-area-inset-bottom));
++  max-width: 680px;
++  margin: 0 auto;
++}
++body.ui-v2 .hv2-greeting {
++  display: flex; align-items: baseline; gap: 8px;
++  padding: 4px 14px 0;
++}
++body.ui-v2 .hv2-greeting-word { color: var(--muted); font-size: 0.85rem; font-family: var(--font-body); }
++body.ui-v2 .hv2-greeting-brand {
++  font-family: var(--font-display); font-style: italic; font-weight: 600; font-size: 1.3rem; color: var(--text);
++}
++body.ui-v2 .hv2-title {
++  margin: 0; padding: 0 14px;
++  font-family: var(--font-display); font-weight: 600; font-size: 1.05rem; color: var(--text);
++}
++body.ui-v2 .hv2-section { display: flex; flex-direction: column; gap: 8px; }
++/* Horizontal rails (Jump back in, Forays for you, Playlists for you) share one
++   scroller pattern; Episodes for you uses `.hv2-cards` (a vertical stack)
++   instead, since epRow-shaped rows read as a list, not a shelf. */
++body.ui-v2 .hv2-hscroll {
++  display: flex; gap: 12px; overflow-x: auto;
++  padding: 0 14px 4px;
++  scroll-snap-type: x proximity;
++}
++body.ui-v2 .hv2-cards { display: flex; flex-direction: column; gap: 8px; padding: 0 14px; }
++
++body.ui-v2 .hv2-jbi-card, body.ui-v2 .hv2-foray-card, body.ui-v2 .hv2-playlist-card {
++  flex: none;
++  scroll-snap-align: start;
++  display: flex; flex-direction: column; gap: 4px;
++  width: 240px; min-width: 240px;
++  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
++  box-shadow: var(--shadow);
++  padding: 14px;
++  text-decoration: none; color: var(--text);
++}
++body.ui-v2 .hv2-jbi-kicker {
++  font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
++  color: var(--amber);
++}
++body.ui-v2 .hv2-jbi-title, body.ui-v2 .hv2-foray-title, body.ui-v2 .hv2-playlist-title {
++  font-family: var(--font-display); font-weight: 600; font-size: 0.95rem; color: var(--text);
++  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
++}
++body.ui-v2 .hv2-jbi-sub, body.ui-v2 .hv2-jbi-left, body.ui-v2 .hv2-playlist-sub {
++  font-size: 0.78rem; color: var(--muted);
++}
++body.ui-v2 .hv2-jbi-card .fy-bar { margin-top: 4px; }
++
++/* The stretch label and its required bridge line (D1's copy rule: a stretch
++   pick must always state WHY it's being suggested). `.hv2-bridge` is the one
++   thing that must NEVER appear without `.hv2-stretch-tag` alongside it on the
++   same card, and vice versa — both are written by the same caller
++   (forayCardV2Html/miniCardV2) so they can't drift apart independently, and
++   test/home-v2.test.js pins that pairing directly. */
++body.ui-v2 .hv2-stretch { border-color: var(--violet); }
++body.ui-v2 .hv2-stretch-tag {
++  align-self: flex-start;
++  padding: 1px 7px;
++  border-radius: 3px;
++  font-size: 0.64rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
++  color: var(--violet);
++  background: color-mix(in srgb, var(--violet) 18%, transparent);
++}
++body.ui-v2 .hv2-bridge {
++  margin: 2px 0 0;
++  font-size: 0.78rem; font-style: italic; color: var(--muted);
++}
++
++body.ui-v2 .hv2-forays .fy-strip { margin-top: 2px; }
++
++body.ui-v2 .hv2-generated-badge {
++  align-self: flex-start;
++  padding: 1px 7px;
++  border-radius: 3px;
++  font-size: 0.64rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
++  color: var(--amber);
++  background: color-mix(in srgb, var(--amber) 18%, transparent);
++}
++
++/* Episodes for you reuses miniCard()'s own `.mini-card` markup and rules
++   unchanged (miniCardV2() wraps it rather than forking it) — only the
++   section container and the appended `.hv2-bridge` line are new here. */
++body.ui-v2 .hv2-episodes .mini-card { min-height: 0; }
+diff --git a/test/home-information-architecture.test.js b/test/home-information-architecture.test.js
+index 9bff104..7b38656 100644
+--- a/test/home-information-architecture.test.js
++++ b/test/home-information-architecture.test.js
+@@ -492,3 +492,30 @@ test("a Foray's back link lands on #/forays, where an unlocked draft is still li
+     "a Foray's back link must reach the page that lists Forays, not the home screen that no longer does"
+   );
+ });
++
++/* ==================================================================== */
++/* 12. U-03: THE FLAG-ON SHAPE (docs/ui-transition-plan.md, kanban t_6e8343b6) */
++/* ==================================================================== */
++
++test("with cp_ui_v2 on, Home renders the v2 layout instead of the four-card grid — the two never coexist", () => {
++  /* This suite's own subject is the FLAG-OFF information architecture (the
++     founder's six-item declutter). U-03 adds a second Home behind a flag
++     rather than replacing this one, so the suite is rewritten (not deleted,
++     per the card's own instruction) to also pin that the two layouts are
++     mutually exclusive — the specific way a dispatcher-shaped change quietly
++     breaks is BOTH branches rendering into the same container.
++
++     MUTATION: delete the `if (ui2On()) return renderHomeV2();` line from
++     renderHome(). The v2-on assertion fails: `.cards4` renders instead of
++     `.hv2-home`. RUN: failed as named. Full behavioural coverage of the v2
++     layout itself (section order, the floor, the badge) lives in
++     test/home-v2.test.js, not duplicated here. */
++  const m = quietMount({ cp_ui_v2: "true" });
++  m.state.forays = { forays: [] };
++  m.ctx.ForayPlayer = { listForays: () => [], forayResumeList: () => [] };
++
++  m.ctx.renderHome();
++  const html = m.view();
++  assert.ok(html.includes('class="home hv2-home"'), "cp_ui_v2 on must render Home v2");
++  assert.ok(!html.includes('class="cards4"'), "cp_ui_v2 on must not also render the flag-off four-card grid");
++});
+diff --git a/test/home-layout.test.js b/test/home-layout.test.js
+index a5136c3..74f0cd2 100644
+--- a/test/home-layout.test.js
++++ b/test/home-layout.test.js
+@@ -618,3 +618,48 @@ test("an optional home block that renders nothing costs no height and no flex ga
+     `an empty #banner-slot still costs ${costWhenEmpty}px of .home's column — it must ` +
+     `leave flex layout entirely (\`#banner-slot:empty { display: none }\`)`);
+ });
++
++/* ==================================================================== */
++/* U-03 — HOME V2's COLUMN HAS NO FIXED HEIGHT FOR A SIBLING TO FIGHT     */
++/* ==================================================================== */
++
++test("`.hv2-home` (U-03) declares no fixed height — unlike `.home`, it is meant to scroll", () => {
++  /* BUG 4 above exists because the flag-off `.home` is a FIXED-height column
++     with exactly one scrollable child (`.cards4`) — any sibling that grows
++     starves it. Home v2 is architecturally different on purpose: the mockup
++     scrolls (docs/ux/foray-mockup.jsx wraps HomeScreen in
++     `overflowY: "auto"`), five sections of unbounded length is not a
++     "four cards, one screen" product, so `.hv2-home` must have no `height`
++     and no `min-height` floor for a sibling to fight over — the whole
++     failure mode BUG 4 fixed cannot recur if the column was never fixed to
++     begin with.
++
++     MUTATION: add `height: calc(100svh - var(--topbar-h))` to `.hv2-home`
++     (porting `.home`'s fix onto a column that doesn't need it). This fails,
++     naming the declared height. */
++  assert.strictEqual(valueOf("body.ui-v2 .hv2-home", "height"), null,
++    ".hv2-home must not declare a fixed height — Home v2 is a scrolling page, not a one-screen column");
++  assert.strictEqual(valueOf("body.ui-v2 .hv2-home", "min-height"), null,
++    ".hv2-home must not declare a min-height floor either — nothing here needs BUG 4's fix because " +
++    "nothing here is fixed-height to begin with");
++});
++
++test("`.hv2-home` still reserves the safe-area inset at the bottom, like every other fixed-bar-aware surface", () => {
++  /* Not a repeat of BUG 1/2 (those are about the FIXED topbar reserving its
++     OWN box correctly) — this is the same category of bug on the bottom
++     edge: content padding must include env(safe-area-inset-bottom) or it
++     draws under the home-indicator area on a notched phone. Verified at
++     both insets the rest of this file already tests.
++
++     MUTATION: drop `env(safe-area-inset-bottom)` from `.hv2-home`'s
++     padding-bottom (leaving a bare px value). At NOTCHED this fails by
++     34px; at DESKTOP (env resolves to 0) it still passes, which is why
++     both insets are asserted. */
++  for (const [label, env] of [["desktop (inset 0)", DESKTOP], ["notched iPhone (inset 59px)", NOTCHED]]) {
++    const paddingBottom = valuesOf("body.ui-v2 .hv2-home", "padding");
++    assert.ok(paddingBottom.length > 0, ".hv2-home must declare padding");
++    const raw = paddingBottom[paddingBottom.length - 1];
++    assert.match(raw, /env\(safe-area-inset-bottom\)/,
++      `${label}: .hv2-home's padding must reserve env(safe-area-inset-bottom)`);
++  }
++});
+diff --git a/test/home-v2.test.js b/test/home-v2.test.js
+new file mode 100644
+index 0000000..582bcc2
+--- /dev/null
++++ b/test/home-v2.test.js
+@@ -0,0 +1,320 @@
++/* U-03 (docs/ui-transition-plan.md, kanban t_6e8343b6): Home v2 — four
++ * sections plus the greeting, behind cp_ui_v2, with the exploration floor
++ * (D1, resolves gate #123).
++ *
++ * WHAT THIS SUITE PROVES, in order:
++ *  1. renderHome() dispatches to the v2 layout when cp_ui_v2 is on, and to
++ *     the untouched flag-off layout when it is off — the two must never
++ *     both render, and the flag-off shape must be byte-for-byte what
++ *     test/home-layout.test.js / test/home-information-architecture.test.js
++ *     already pin.
++ *  2. The five sections render in the card's specified order: greeting,
++ *     Jump back in, Forays for you, Playlists for you, Episodes for you.
++ *  3. THE FLOOR: "Forays for you" and "Episodes for you" each carry a
++ *     visible Stretch label with its required bridge line, on 20
++ *     consecutive seeded renders — and the pairing is exact: a card can
++ *     never have one without the other.
++ *  4. A stretch card's bridge line never reads as a row reason implying
++ *     the pick matches the listener's taste (the copy rule: a stretch
++ *     pick states its bridge, never "because you like X").
++ *  5. "Playlists for you" badges every generated card "Generated for you"
++ *     and never badges an own/real playlist that way.
++ *  6. "Shared with you" and "Build your own" are not built (D10/D8) — no
++ *     trace of either surface anywhere in the v2 render.
++ *
++ * Every test names the mutation that kills it, per CLAUDE.md.
++ *
++ * HARNESS: the same flat-by-id node:vm DOM stub test/home-information-
++ * architecture.test.js uses, duplicated rather than imported (that file's
++ * own header explains why) — quietMount() seeds just enough state for
++ * renderHome()/buildCards() to run without booting against the real data
++ * files, which is both faster and independent of today's discover pool.
++ */
++
++const { test } = require("node:test");
++const assert = require("node:assert");
++const vm = require("node:vm");
++const fs = require("node:fs");
++const path = require("node:path");
++
++const ROOT = path.join(__dirname, "..");
++const APP_SRC = fs.readFileSync(path.join(ROOT, "app.js"), "utf8");
++const SEARCH_SRC = fs.readFileSync(path.join(ROOT, "search-engine.js"), "utf8");
++
++process.on("unhandledRejection", () => {});
++
++function makeEl(tag) {
++  return {
++    tagName: String(tag || "div").toUpperCase(),
++    id: null, className: "", innerHTML: "", textContent: "", value: "",
++    hidden: false, disabled: false, dataset: {}, style: {}, children: [],
++    classList: { add() {}, remove() {}, toggle() {}, contains: () => false },
++    addEventListener() {}, removeEventListener() {},
++    appendChild(k) { this.children.push(k); return k; },
++    append(...k) { this.children.push(...k); },
++    setAttribute() {}, getAttribute: () => null, removeAttribute() {},
++    querySelector: () => null, querySelectorAll: () => [],
++    closest: () => null, focus() {}, select() {}, click() {},
++    remove() {},
++  };
++}
++
++const PAGE_IDS = [
++  "view", "drawer", "drawer-overlay", "drawer-playlists", "family-toggle",
++  "player-toggle", "autoadvance-toggle", "menu-btn", "refresh-btn", "banner-slot",
++  "pl-form", "pl-input", "pl-note", "sh-form", "sh-input", "sh-note", "sh-results",
++];
++
++function mount({ seed = {} } = {}) {
++  const store = new Map(Object.entries(seed).map(([k, v]) => [k, String(v)]));
++  const byId = new Map(PAGE_IDS.map((id) => {
++    const el = makeEl("div");
++    el.id = id;
++    return [id, el];
++  }));
++  const body = makeEl("body");
++
++  const ctx = {
++    console: { ...console, warn() {}, error() {} },
++    fetch: () => new Promise(() => {}),
++    localStorage: {
++      get length() { return store.size; },
++      key: (i) => [...store.keys()][i] ?? null,
++      getItem: (k) => (store.has(k) ? store.get(k) : null),
++      setItem: (k, v) => { store.set(k, String(v)); },
++      removeItem: (k) => { store.delete(k); },
++    },
++    document: {
++      body, documentElement: body, readyState: "complete",
++      addEventListener() {}, createElement: (t) => makeEl(t),
++      querySelector: (sel) => {
++        const s = String(sel);
++        return s.startsWith("#") ? byId.get(s.slice(1)) ?? null : null;
++      },
++      querySelectorAll: () => [],
++    },
++    navigator: { userAgent: "node" },
++    addEventListener() {}, removeEventListener() {},
++    location: { hash: "#/", search: "", pathname: "/", href: "https://x.test/" },
++    history: { replaceState() {}, pushState() {} },
++    CSS: { escape: (s) => String(s) },
++    URL, URLSearchParams, Math, Date, JSON, Promise, clearTimeout,
++    setTimeout: (fn, ms) => { const t = setTimeout(fn, ms); if (t && t.unref) t.unref(); return t; },
++    encodeURIComponent, decodeURIComponent,
++  };
++  ctx.window = ctx;
++  ctx.globalThis = ctx;
++  vm.createContext(ctx);
++  vm.runInContext(SEARCH_SRC, ctx, { filename: "search-engine.js" });
++  vm.runInContext(APP_SRC, ctx, { filename: "app.js" });
++
++  const evalIn = (src) => vm.runInContext(src, ctx);
++  return {
++    ctx, evalIn, store, body, byId,
++    state: evalIn("state"),
++    view: () => byId.get("view").innerHTML,
++  };
++}
++
++/* A mounted, flag-on app with two card slots (one "top", one "stretch") for
++   Episodes for you, and two Forays for Forays for you with topics on
++   opposite sides of a clear interest split, so pickWithStretchFloor always
++   has a real lower tier to draw its stretch pick from. */
++function ui2Mount(overrides = {}) {
++  const m = mount({ seed: { cp_ui_v2: "true", ...overrides.seed } });
++  m.state.catalog = { shows: [] };
++  m.state.discover = { items: [] };
++  m.state.taxonomy = {
++    nodes: [
++      { id: "engineering", parent: null, label: "Engineering", weight: 0.9 },
++      { id: "business", parent: null, label: "Business", weight: 0.5 },
++      { id: "comedy", parent: null, label: "Comedy", weight: 0.5 },
++    ],
++  };
++  m.state.session = { session_id: "s-1", builder: "test", episodes: {}, cards: [] };
++  m.state.interests = { engineering: 0.9, business: 0.6, comedy: 0.1 };
++  m.state.cardSlots = [
++    {
++      branch: "engineering", role: "top",
++      item: { id: "ep-top", title: "Fusion 101", show: "Engineering Weekly", duration_min: 30, artwork_url: null, topics: ["engineering"] },
++      items: [{ id: "ep-top", title: "Fusion 101", show: "Engineering Weekly", duration_min: 30, topics: ["engineering"] }],
++    },
++    {
++      branch: "comedy", role: "stretch",
++      item: { id: "ep-stretch", title: "A comedy bit", show: "Laugh Hour", duration_min: 20, artwork_url: null, topics: ["comedy"] },
++      items: [{ id: "ep-stretch", title: "A comedy bit", show: "Laugh Hour", duration_min: 20, topics: ["comedy"] }],
++    },
++  ];
++  m.state.forays = { forays: [] };
++  m.ctx.ForayPlayer = {
++    listForays: () => [
++      { id: "foray-eng", title: "Deep Fusion", topic: "engineering/energy-fusion", status: "published" },
++      { id: "foray-biz", title: "Founder Stories", topic: "business/startups", status: "published" },
++      { id: "foray-comedy", title: "Standup Roots", topic: "comedy/history", status: "published" },
++    ],
++    forayResumeList: () => [],
++    resolve: () => null,
++    segmentStripHtml: () => "",
++    applyStripGrow: () => {},
++  };
++  if (overrides.mutate) overrides.mutate(m);
++  return m;
++}
++
++/* ==================================================================== */
++/* 1. THE FLAG DISPATCH                                                  */
++/* ==================================================================== */
++
++test("renderHome renders the v2 layout when cp_ui_v2 is on, and the old layout when it is off", () => {
++  // MUTATION: delete `if (ui2On()) return renderHomeV2();` from renderHome().
++  // Both assertions below fail — the flag-on mount would show `.cards4`
++  // instead of `.hv2-home`.
++  const on = ui2Mount();
++  on.ctx.renderHome();
++  assert.ok(on.view().includes('class="home hv2-home"'), "cp_ui_v2 on must render the v2 Home layout");
++  assert.ok(!on.view().includes('class="cards4"'), "cp_ui_v2 on must not render the old four-card grid");
++
++  const off = mount({ seed: { cp_ui_v2: "false" } });
++  off.state.catalog = { shows: [] };
++  off.state.forays = { forays: [] };
++  off.ctx.ForayPlayer = { listForays: () => [], forayResumeList: () => [] };
++  off.state.cardSlots = [0, 1, 2, 3].map((i) => ({
++    branch: `branch-${i}`, role: "top",
++    item: { id: `ep-${i}`, title: `Episode ${i}`, show: `Show ${i}`, duration_min: 30, artwork_url: null },
++    items: [{ id: `ep-${i}`, title: `Episode ${i}`, show: `Show ${i}`, duration_min: 30 }],
++  }));
++  off.ctx.renderHome();
++  assert.ok(off.view().includes('class="cards4"'), "cp_ui_v2 off must still render the old four-card grid");
++  assert.ok(!off.view().includes("hv2-home"), "cp_ui_v2 off must render no v2 markup at all");
++});
++
++/* ==================================================================== */
++/* 2. SECTION ORDER                                                      */
++/* ==================================================================== */
++
++test("the five sections render top to bottom: greeting, Jump back in, Forays for you, Playlists for you, Episodes for you", () => {
++  // MUTATION: swap the order of any two section calls inside renderHomeV2's
++  // template literal. The strictly-increasing index assertion below fails,
++  // naming the two that are out of order.
++  const m = ui2Mount();
++  m.ctx.ForayPlayer.forayResumeList = () => [
++    { id: "foray-eng", title: "Deep Fusion", percent: 40, label: "12 min left", finished: false },
++  ];
++  m.ctx.renderHome();
++  const html = m.view();
++
++  const iGreeting = html.indexOf("hv2-greeting");
++  const iJbi = html.indexOf("hv2-jbi");
++  const iForays = html.indexOf("hv2-forays");
++  const iPlaylists = html.indexOf("hv2-playlists");
++  const iEpisodes = html.indexOf("hv2-episodes");
++
++  for (const [label, i] of [["greeting", iGreeting], ["Jump back in", iJbi], ["Forays for you", iForays], ["Playlists for you", iPlaylists], ["Episodes for you", iEpisodes]]) {
++    assert.ok(i !== -1, `${label} section did not render at all`);
++  }
++  assert.ok(iGreeting < iJbi && iJbi < iForays && iForays < iPlaylists && iPlaylists < iEpisodes,
++    `sections rendered out of order: greeting=${iGreeting} jbi=${iJbi} forays=${iForays} playlists=${iPlaylists} episodes=${iEpisodes}`);
++});
++
++/* ==================================================================== */
++/* 3. THE FLOOR — STRETCH SLOT PRESENCE, 20 SEEDED RENDERS               */
++/* ==================================================================== */
++
++test("both 'for you' sections carry a visible Stretch label with its bridge line, on 20 consecutive seeded renders", () => {
++  // MUTATION: in pickWithStretchFloor, change `.filter(x => !topBranchIds.has(x.b))[0]`
++  // to always return null (no stretch ever found) — every iteration below
++  // fails immediately. MUTATION 2: in miniCardV2, drop the bridge-line
++  // insertion — the "Stretch" tag would still render but its paired bridge
++  // line would not, and the pairing assertion (test 4 below) is what
++  // actually catches that; this test's own count would still pass, which is
++  // why both tests exist.
++  for (let i = 0; i < 20; i++) {
++    const m = ui2Mount();
++    m.ctx.renderHome();
++    const html = m.view();
++    assert.ok(/class="hv2-stretch-tag">Stretch</.test(html), `run ${i}: Forays for you must carry a visible Stretch tag`);
++    assert.ok(/class="mc-stretch"[^>]*>Stretch</.test(html), `run ${i}: Episodes for you must carry a visible Stretch tag`);
++    assert.ok(html.includes('class="hv2-bridge">'), `run ${i}: the stretch pick must carry a bridge line`);
++  }
++});
++
++/* ==================================================================== */
++/* 4. THE STRETCH TAG AND ITS BRIDGE LINE NEVER APPEAR ALONE             */
++/* ==================================================================== */
++
++test("a Stretch tag never appears without its bridge line, and a bridge line never appears without a Stretch tag", () => {
++  // MUTATION: render `hv2-stretch-tag`/`mc-stretch` without also appending
++  // `.hv2-bridge` (or vice versa) on one card type. The counts below diverge.
++  const m = ui2Mount();
++  m.ctx.renderHome();
++  const html = m.view();
++  const forayStretchTags = (html.match(/class="hv2-stretch-tag"/g) || []).length;
++  const episodeStretchTags = (html.match(/class="mc-stretch"/g) || []).length;
++  const stretchTags = forayStretchTags + episodeStretchTags;
++  const bridgeLines = (html.match(/class="hv2-bridge"/g) || []).length;
++  assert.ok(stretchTags > 0, "expected at least one Stretch tag to render");
++  assert.strictEqual(stretchTags, bridgeLines,
++    `${stretchTags} Stretch tag(s) but ${bridgeLines} bridge line(s) — every stretch card must carry exactly one of each`);
++});
++
++test("the stretch bridge line never reads as a row-reason match to the listener's taste", () => {
++  // The copy rule (D1): a stretch pick states why it's outside the
++  // listener's usual subjects, never a reason implying it matches their
++  // taste (that phrasing is reserved for an ordinary row reason, and this
++  // suite's fixtures never emit one on Home v2 at all).
++  const m = ui2Mount();
++  m.ctx.renderHome();
++  const html = m.view();
++  const bridgeText = [...html.matchAll(/class="hv2-bridge">([^<]*)<\/p>/g)].map((mm) => mm[1]);
++  assert.ok(bridgeText.length > 0, "expected at least one bridge line to inspect");
++  for (const line of bridgeText) {
++    assert.doesNotMatch(line, /because you/i,
++      `a stretch bridge line must never read as a taste-match reason: "${line}"`);
++    assert.match(line, /outside your usual/i,
++      `a stretch bridge line must state the outside-your-usual-subjects bridge: "${line}"`);
++  }
++});
++
++/* ==================================================================== */
++/* 5. THE GENERATED-PLAYLIST BADGE                                       */
++/* ==================================================================== */
++
++test("a generated playlist card is badged 'Generated for you'; the listener's own playlist never is", () => {
++  // MUTATION: badge every card in playlistsForYouHtml unconditionally
++  // (`generated: true` always) — the "own playlist has no badge" assertion
++  // fails. MUTATION 2: never badge (`generated: false` always) — the
++  // "generated card is badged" assertion fails.
++  const m = ui2Mount();
++  m.evalIn(`lsSet("cp_playlists", ${JSON.stringify([
++    { id: "own-1", title: "My Real Playlist", items: [{ id: "e1" }, { id: "e2" }], created: "2026-09-01T00:00:00Z" },
++  ])})`);
++  m.ctx.renderHome();
++  const html = m.view();
++
++  assert.ok(html.includes("Generated for you"), "expected at least one generated-playlist badge");
++  assert.ok(html.includes("My Real Playlist"), "expected the listener's own playlist to render");
++
++  // Isolate the own-playlist card's markup: it runs from its own <a ...> to
++  // the next <a class="hv2-playlist-card" up to the matching close, so a
++  // narrower slice than the whole section is needed to prove NO badge sits
++  // on that specific card rather than merely "a badge exists somewhere".
++  const ownCardStart = html.indexOf("My Real Playlist");
++  const cardOpenBefore = html.lastIndexOf('<a class="hv2-playlist-card"', ownCardStart);
++  const cardCloseAfter = html.indexOf("</a>", ownCardStart);
++  const ownCardHtml = html.slice(cardOpenBefore, cardCloseAfter);
++  assert.ok(!ownCardHtml.includes("Generated for you"), "the listener's own playlist must not carry the generated badge");
++});
++
++/* ==================================================================== */
++/* 6. OUT OF SCOPE: NOT BUILT, AND NOT SIMULATED EITHER                  */
++/* ==================================================================== */
++
++test("'Shared with you' and 'Build your own' are not built anywhere in the v2 render", () => {
++  // D10/D8: explicitly out of scope for this card. Not a stub, not a
++  // disabled control — no trace at all.
++  const m = ui2Mount();
++  m.ctx.renderHome();
++  const html = m.view();
++  assert.ok(!/shared with you/i.test(html), "'Shared with you' must not appear on Home v2");
++  assert.ok(!/build your own/i.test(html), "'Build your own' must not appear on Home v2");
++});
+diff --git a/test/suite-integrity.test.js b/test/suite-integrity.test.js
+index 83ac9b4..2e1d85e 100644
+--- a/test/suite-integrity.test.js
++++ b/test/suite-integrity.test.js
+@@ -370,7 +370,7 @@ const FLOORS = {
+      across these five tests were run and all six went red. A review round then
+      found four MORE wrong stylesheets the first draft passed — see that file's
+      header for what each of them broke and which line now stops it. */
+-  "test/home-layout.test.js": 5,
++  "test/home-layout.test.js": 7,
+ 
+   /* Stage 3b of docs/show-pages-plan.md — full per-show RSS ingestion
+      (kanban card t_567b570f): renders the curated pool synchronously so
+@@ -414,7 +414,18 @@ const FLOORS = {
+      clutter one "just one more row" at a time, and a suite that can be
+      deleted in an auto-merged PR guards nothing. Every test names its
+      mutation; see the suite header. */
+-  "test/home-information-architecture.test.js": 11,
++  "test/home-information-architecture.test.js": 12,
++
++  /* U-03 (docs/ui-transition-plan.md, kanban t_6e8343b6): Home v2's four
++     sections plus the greeting, behind cp_ui_v2, with the exploration floor
++     (D1/#123). Floored for the same reason as the suite above: the floor
++     itself ("Forays for you"/"Episodes for you" always reserve a visibly-
++     labelled stretch slot with its bridge line) is a product decision Wyatt
++     made explicitly to resolve a founder gate, and it is exactly the kind
++     of thing that regresses silently — nobody notices a personalization
++     feed slowly stopped surprising anyone. Every test names its mutation;
++     see the suite header. */
++  "test/home-v2.test.js": 7,
+   /* Starred shows (follow-lite), requirement A2.4 / Joey's Q2 answer.
+      Kanban card "Build: starred shows (follow-lite) + dedicated Starred
+      Shows page". Floored because this is exactly the #276/show-pages
