@@ -3155,7 +3155,7 @@ function jumpBackInV2Html() {
   if (!resumeRows.length && !continueItem) return "";
 
   const forayCards = resumeRows.map(p => `
-    <a class="hv2-jbi-card" href="#/foray/${esc(p.id)}" data-ev="picked" data-ep="${esc(p.id)}" data-ctx="jbi-foray">
+    <a class="hv2-jbi-card" href="#/foray/${esc(p.id)}">
       <span class="hv2-jbi-kicker">Jump back in</span>
       <span class="hv2-jbi-title">${esc(p.title || p.id)}</span>
       <span class="fy-bar"><span class="fy-bar-fill" data-pct="${esc(String(p.percent))}"></span></span>
