@@ -1,24 +1,18 @@
-/* U-02 (docs/ui-transition-plan.md): the cp_ui_v2 flag and the four-tab bar.
+/* U-02 (docs/ui-transition-plan.md): the four-tab bar. Originally gated by a
+ * cp_ui_v2 flag; U-11 (founder override, 2026-09-06, kanban card
+ * t_a3f01c8a) retired the flag — ui2On() now always returns true and the
+ * bar is unconditional. The pre-cutover flag/off-state tests are preserved
+ * in archive/legacy-ui-2026-09/ (see that directory's README).
  *
  * WHAT THIS PROVES, in order:
- *  1. The flag is OFF by default (a fresh listener, nothing in localStorage,
- *     not the native shell) -- no #tab-bar element exists at all.
- *  2. Turning the flag on (the Settings toggle) renders the bar with all
- *     four destinations, in the mockup's order: Home, Search, Create,
- *     Library.
- *  3. Turning the flag back off REMOVES the bar rather than hiding it --
- *     see the comment on renderTabBar() in app.js for why `hidden` is the
- *     wrong mechanism here (test/home-layout.test.js's BUG 3).
- *  4. A native-shell listener with NO stored preference gets the flag ON by
- *     default (the "TestFlight builds default on" ask); a listener who has
- *     ever touched the toggle keeps their own explicit choice regardless of
- *     shell.
- *  5. Each of the app's 13 routes maps to exactly one tab, and that tab
+ *  1. The tab bar always renders (no on/off state left).
+ *  2. It renders all four destinations, in the mockup's order: Home,
+ *     Search, Create, Library.
+ *  3. Each of the app's 14 routes maps to exactly one tab, and that tab
  *     (and only that tab) carries aria-current="page" -- so switching tabs
  *     always highlights a real destination, never a stale or double one.
- *  6. All 13 routes still resolve to a real page with the flag ON, matching
- *     the acceptance line in docs/ui-transition-plan.md U-02.
- *  7. Library's tab points at #/library (the U-10/library-screen precedent
+ *  4. All 14 routes still resolve to a real page.
+ *  5. Library's tab points at #/library (the U-10/library-screen precedent
  *     this card is explicitly asked to compose with).
  *
  * Every test names the mutation that kills it, per CLAUDE.md.
@@ -177,28 +171,29 @@ function mount({ seed = {}, native = false } = {}) {
 }
 
 /* ==================================================================== */
-/* 1. OFF BY DEFAULT                                                     */
+/* 1. THE BAR ALWAYS RENDERS (post-cutover: no on/off state left)        */
 /* ==================================================================== */
 
-test("cp_ui_v2 is off by default on the web: no #tab-bar exists after a render", () => {
-  /* MUTATION: change ui2On()'s fallback from isNativeShell() to `true`.
-     A non-native mount would then get the bar and this assertion fails. */
+test("the tab bar always exists after a render (cp_ui_v2 retired, U-11 cutover)", () => {
+  /* MUTATION: reintroduce an off-branch in renderTabBar() that removes the
+     bar under any condition. ui2On() always returns true post-cutover, so
+     the bar must always exist. */
   const m = mount();
   m.evalIn('renderCurrentPage = () => { document.body.className = "view-home"; }; renderTabBar();');
-  assert.strictEqual(m.body.querySelector("#tab-bar"), null, "the tab bar must not exist when cp_ui_v2 is off");
+  assert.ok(m.body.querySelector("#tab-bar"), "the tab bar must always exist post-cutover");
 });
 
 /* ==================================================================== */
-/* 2. ALL FOUR TABS, IN ORDER, WHEN ON                                   */
+/* 2. ALL FOUR TABS, IN ORDER                                            */
 /* ==================================================================== */
 
-test("turning cp_ui_v2 on renders all four tabs in the mockup's order: Home, Search, Create, Library", () => {
+test("the tab bar renders all four tabs in the mockup's order: Home, Search, Create, Library", () => {
   /* MUTATION: reorder TAB_ROUTES, or drop one entry. The labels array
      comparison below fails on either. */
-  const m = mount({ seed: { cp_ui_v2: "true" } });
+  const m = mount();
   m.evalIn("renderTabBar();");
   const bar = m.body.querySelector("#tab-bar");
-  assert.ok(bar, "the tab bar must exist when cp_ui_v2 is on");
+  assert.ok(bar, "the tab bar must exist");
   const labels = bar.querySelectorAll(".tab-btn").map((a) => {
     const span = a.children.find((c) => c.tagName === "SPAN");
     return span ? span.textContent : null;
@@ -213,48 +208,11 @@ test("turning cp_ui_v2 on renders all four tabs in the mockup's order: Home, Sea
   void labels;
 });
 
-/* ==================================================================== */
-/* 3. TURNING IT OFF REMOVES THE BAR, NOT HIDES IT                       */
-/* ==================================================================== */
-
-test("turning cp_ui_v2 back off removes #tab-bar entirely (not hidden=true)", () => {
-  /* MUTATION: change renderTabBar()'s off-branch from `bar.remove()` to
-     `bar.hidden = true`. The element would still be found by
-     querySelector (hidden is just a property in this harness, same as a
-     real DOM) and this assertion fails. */
-  const m = mount({ seed: { cp_ui_v2: "true" } });
-  m.evalIn("renderTabBar();");
-  assert.ok(m.body.querySelector("#tab-bar"), "sanity: the bar exists while the flag is on");
-  m.evalIn('lsSet("cp_ui_v2", false); renderTabBar();');
-  assert.strictEqual(m.body.querySelector("#tab-bar"), null, "the bar must be removed, not merely hidden, once the flag is off");
-});
-
-/* ==================================================================== */
-/* 4. NATIVE-SHELL DEFAULT, AND AN EXPLICIT CHOICE OVERRIDES IT           */
-/* ==================================================================== */
-
-test("a native-shell listener with no stored preference gets cp_ui_v2 on by default", () => {
-  /* MUTATION: drop the isNativeShell() fallback from ui2On() (always
-     default to false). The bar would not exist and this fails. */
-  const m = mount({ native: true });
-  m.evalIn("renderTabBar();");
-  assert.ok(m.body.querySelector("#tab-bar"), "a native-shell build must default cp_ui_v2 on");
-});
-
-test("an explicit off choice overrides the native-shell default", () => {
-  /* MUTATION: have ui2On() ignore a stored `false` in favour of
-     isNativeShell() whenever the shell is native. This test's mount is
-     native AND has explicitly stored false, so the bar must not exist. */
-  const m = mount({ seed: { cp_ui_v2: "false" }, native: true });
-  m.evalIn("renderTabBar();");
-  assert.strictEqual(m.body.querySelector("#tab-bar"), null, "an explicit off choice must beat the native-shell default");
-});
-
-test("a non-native listener with no stored preference gets cp_ui_v2 off by default", () => {
-  const m = mount({ native: false });
-  m.evalIn("renderTabBar();");
-  assert.strictEqual(m.body.querySelector("#tab-bar"), null, "the web default must stay off");
-});
+/* Sections 3 and 4 (turning the flag off; native-shell default vs explicit
+   choice) were retired with the cp_ui_v2 flag itself in U-11 (founder
+   override, 2026-09-06). There is no off state left to test — see the
+   header comment and archive/legacy-ui-2026-09/ for the pre-cutover
+   coverage. */
 
 /* ==================================================================== */
 /* 5. EACH ROUTE MAPS TO EXACTLY ONE TAB, AND ONLY THAT TAB IS CURRENT    */
@@ -264,7 +222,7 @@ test("every route highlights exactly one tab, and it is the right one", () => {
   /* MUTATION: change tabForHash's Search branch to also match `#/library`
      (an overlapping regex). Both "search" and "library" would then read
      current for a #/library hash and the "exactly one" assertion fails. */
-  const m = mount({ seed: { cp_ui_v2: "true" } });
+  const m = mount();
   const cases = [
     ["#/", "home"],
     ["#/shows", "search"],
@@ -295,16 +253,13 @@ test("every route highlights exactly one tab, and it is the right one", () => {
 /* 6. ALL 14 ROUTES STILL RESOLVE WITH THE FLAG ON                       */
 /* ==================================================================== */
 
-test("all 14 existing routes still resolve to a real page with cp_ui_v2 on", () => {
-  /* MUTATION: have renderCurrentPage() return early when ui2On() (i.e.
-     accidentally gate page rendering on the flag instead of just the tab
-     bar). Every one of these would then render nothing and the innerHTML
-     assertion fails. This is the acceptance line from
-     docs/ui-transition-plan.md U-02, checked directly rather than assumed
-     from the tab-mapping test above.
+test("all 14 existing routes still resolve to a real page", () => {
+  /* MUTATION: have renderCurrentPage() return early for any route (e.g.
+     accidentally gate page rendering behind a stale condition). Every one
+     of these would then render nothing and the innerHTML assertion fails.
      13 -> 14 with U-06 (docs/ui-transition-plan.md): #/create is a new
      route, Create's own screen rather than an alias for #/playlists. */
-  const m = mount({ seed: { cp_ui_v2: "true" } });
+  const m = mount();
   m.evalIn(
     'state.catalog = { shows: [] }; state.discover = { items: [] }; ' +
     'state.taxonomy = { nodes: [] }; state.forays = []; ' +
@@ -330,7 +285,7 @@ test("all 14 existing routes still resolve to a real page with cp_ui_v2 on", () 
 /* ==================================================================== */
 
 test("the Library tab's href is #/library", () => {
-  const m = mount({ seed: { cp_ui_v2: "true" } });
+  const m = mount();
   m.evalIn("renderTabBar();");
   const bar = m.body.querySelector("#tab-bar");
   const lib = bar.querySelectorAll(".tab-btn").find((a) => a.dataset.tabKey === "library");
@@ -346,7 +301,7 @@ test("the Create tab's href is #/create, not #/playlists", () => {
   /* MUTATION: revert TAB_ROUTES's create entry's hash back to "#/playlists".
      U-06 gives Create its own screen (the Foray|Playlist toggle, honest
      copy) rather than routing straight at the old Playlists page. */
-  const m = mount({ seed: { cp_ui_v2: "true" } });
+  const m = mount();
   m.evalIn("renderTabBar();");
   const bar = m.body.querySelector("#tab-bar");
   const create = bar.querySelectorAll(".tab-btn").find((a) => a.dataset.tabKey === "create");

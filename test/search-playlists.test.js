@@ -468,27 +468,13 @@ test("tapping the CTA does not itself create a playlist — it hands off to #/pl
 /* 5. GATED ON cp_ui_v2 — U-05 SHIPS BEHIND THE FLAG LIKE EVERY OTHER CARD */
 /* ==================================================================== */
 
-test("with cp_ui_v2 off, no Playlists section, no pill row, and no CTA render at all", () => {
-  /* MUTATION: drop any of the three `if (!ui2On()) return ""` /
-     `if (!ui2On()) { ...; return; }` guards this card adds. Each one alone
-     regressing v1's "offline behaviour unchanged" acceptance line. */
-  const m = mount();
-  seedV2Empty(m);
-  m.state.taxonomy = { nodes: [{ id: "history", parent: null, label: "History", weight: 0.5 }] };
-  m.store.set("cp_playlists", JSON.stringify([
-    { id: "p1", title: "History Kick", items: [{ id: "e1", title: "Ep", topics: ["history/rome"] }] },
-  ]));
-  const shForm = withSubmittable(m.byId.get("sh-form"));
-  m.byId.get("sh-input").value = "history";
-
-  m.ctx.renderAllShows();
-  shForm.submit();
-
-  assert.ok(!m.view().includes("sh-browse-pills"), "v1 must render no browse-subjects pill row");
-  const pl = m.byId.get("pl-search-results");
-  assert.strictEqual(pl.hidden, true, "v1 must render no Playlists section");
-  assert.strictEqual(pl.innerHTML, "", "v1 must render no Playlists-search markup, including the CTA");
-});
+/* CUTOVER (U-11, founder override, 2026-09-06, kanban card t_a3f01c8a): the
+   v1/flag-off "no Playlists section, no pill row, no CTA" test that lived
+   here is retired along with cp_ui_v2 — ui2On() always returns true now,
+   so these guards are unconditionally active and there is no v1 path left
+   to assert against. The guarded code itself (the three `if (!ui2On())`
+   checks) is untouched; only the now-unreachable off-state test is gone.
+   Preserved verbatim in archive/legacy-ui-2026-09/ for reference. */
 
 /* ==================================================================== */
 /* 6. RANKING IS PRESENTATION-ONLY — THE CARD'S OWN SCOPE BOUNDARY       */

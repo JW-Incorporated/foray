@@ -594,30 +594,15 @@ test("the four subject cards keep a floor no sibling can take, and `.home` grows
 /* BUG 5 — EMPTY OPTIONAL BLOCKS THAT STILL COST SPACE                   */
 /* ==================================================================== */
 
-test("an optional home block that renders nothing costs no height and no flex gap", () => {
-  /* `renderHome()` always emits `<div id="banner-slot">`, and `bannerHtml()`
-     returns "" whenever there is nothing to continue — which is the common
-     case. An empty div is still a flex item of `.home`, so it still consumed
-     one of the column's `gap`s and pushed everything below it down. The cost
-     is computed here from `.home`'s actual gap rather than asserted as a
-     string, so raising the gap without fixing the block fails.
-
-     MUTATION: delete `#banner-slot:empty { display: none; }` from styles.css.
-     The cost becomes 8px and this fails. */
-  assert.ok(/<div id="banner-slot">\$\{bannerHtml\(\)\}<\/div>/.test(APP),
-    "renderHome() must still emit #banner-slot unconditionally for this to be the right check");
-  assert.ok(/function bannerHtml\(\)[\s\S]{0,600}?return "";/.test(APP),
-    "bannerHtml() must still be able to return an empty string");
-
-  const homeGap = px(valueOf(".home", "gap"));
-  assert.ok(homeGap > 0, ".home must declare a flex gap for this test to mean anything");
-
-  const emptyDisplay = valueOf("#banner-slot:empty", "display");
-  const costWhenEmpty = emptyDisplay === "none" ? 0 : homeGap;
-  assert.strictEqual(costWhenEmpty, 0,
-    `an empty #banner-slot still costs ${costWhenEmpty}px of .home's column — it must ` +
-    `leave flex layout entirely (\`#banner-slot:empty { display: none }\`)`);
-});
+/* CUTOVER (U-11, founder override, 2026-09-06, kanban card t_a3f01c8a): BUG
+   5 pinned the flag-off `.home`/`#banner-slot` layout, which is retired —
+   renderHome() always renders Home v2 now, and Home v2 has no
+   `#banner-slot` at all ("Jump back in" is its own always-rendered
+   section, never empty-but-present the way the old banner slot was). The
+   `#banner-slot:empty { display: none; }` CSS rule and the old markup are
+   preserved verbatim in archive/legacy-ui-2026-09/ for reference; this
+   test's premise no longer holds against the shipped code, so it was
+   removed rather than converted. */
 
 /* ==================================================================== */
 /* U-03 — HOME V2's COLUMN HAS NO FIXED HEIGHT FOR A SIBLING TO FIGHT     */

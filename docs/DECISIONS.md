@@ -2,6 +2,45 @@
 
 Per-topic ADRs live in `docs/adr/`. This file is the chronological record.
 
+## 2026-09-06 (U-11: cutover NOW, founder override — TestFlight-week wait skipped)
+
+- **Founder override, explicit.** Joey directed (Discord, 2026-09-06,
+  following up on the visual-overhaul cutover card) proceeding with U-11's
+  cutover immediately, rather than waiting the originally-planned full week
+  of TestFlight soak time recorded in `docs/ui-transition-plan.md` U-11.
+  **This supersedes that wait requirement** — see STATE.md's U-11 entry and
+  kanban card `t_a3f01c8a`. Authorized by Joey, 2026-09-06.
+- **`ui2On()` now always returns `true`.** The `cp_ui_v2` flag, its Settings
+  toggle (`bindUi2Control`), the native-shell-default fallback, the old
+  flag-off `renderHome()` four-card implementation, the tab-bar's
+  off-branch, and the interim Playlists→Library link are all retired —
+  every listener now sees only the new (ui-v2) design.
+- **Archived, not deleted.** The pre-cutover `app.js`, `styles.css`, and
+  `index.html` are preserved verbatim at
+  `archive/legacy-ui-2026-09/*.pre-cutover-2026-09-06`, with a README giving
+  exact restore steps, per Joey's explicit "keep them recoverable"
+  instruction — this is a recoverable retirement, not a hard delete.
+- **Two dead-code cleanups found while doing this, both fixed:** the interim
+  `page-link-row` link to `#/library` on the Playlists page (only rendered
+  when `!ui2On()`, now unreachable) was removed from `app.js`; and
+  `toEventRow`'s `"finished"` case (nothing left emits it — it was only
+  ever produced by the retired v1 `renderHome()`'s Done-banner click
+  handler) was removed, with `docs/legal/privacy-policy.md` §1/§2 and
+  `docs/legal/data-safety.md`'s event/key counts updated to match (23→22
+  `cp_*` key families, 24→22 event types, 24→22 storage keys, 5→4
+  transmitted). Note: this is the same "local-only event type" mechanism
+  `trySyncEvents()` already uses for every event type that has no
+  `toEventRow` case — any already-buffered `finished` row still sitting
+  unsynced on a listener's device is marked synced and dropped on the next
+  sync pass rather than transmitted, exactly as any other local-only event
+  type already was; no new behavior, no change to `trySyncEvents()` itself.
+- **Test suite:** every flag-off/native-shell-default test that pinned the
+  now-unreachable old behaviour was either rewritten to pin the new
+  always-on shape or removed with an inline `CUTOVER (U-11, ...)` comment
+  pointing at the archive; `test/suite-integrity.test.js`'s per-suite test
+  floors were lowered accordingly, each with its own inline reason. Full
+  `node tools/ci/run-suites.mjs`: 3370/3370 passing in the root suite.
+
 ## 2026-09-06 (U-03: Home v2 — four sections with the exploration floor)
 
 - **Issue #123 resolved: the floor kept, the four-section shape adopted.** Wyatt's brief (docs/ui-transition-plan.md, D1) replaces the flag-off four-card Home with five sections behind `cp_ui_v2` — greeting, Jump back in, Forays for you, Playlists for you, Episodes for you — and settles #123's open question (whether Home's ~30% exploration floor survives the redesign) by keeping it: "Forays for you" and "Episodes for you" **each** reserve at least one visibly-labelled Stretch slot, with a required bridge line stating why the pick is being suggested (never a taste-match reason like the ordinary row reasons elsewhere on the card). A single `pickWithStretchFloor()` helper in `app.js` reproduces `buildCards()`'s existing top-60%-of-branches-by-interest tiering so the flag-off Home and the new Episodes for you section can never quietly disagree about what counts as a stretch pick.

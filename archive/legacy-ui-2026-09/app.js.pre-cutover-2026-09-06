@@ -324,6 +324,10 @@ function toEventRow(e, userId) {
   switch (e.type) {
     case "picked":
       return row("picked", { episode_slug: p.episode_id, topics: p.topics || [], app: p.app }, SB_ARCHETYPES.has(p.context) ? p.context : null);
+    case "finished":
+      // Web hands playback to external apps and cannot observe real position —
+      // the Done button is a declared click, so source is manual_stopgap (spec §1.2).
+      return row("finished", { episode_slug: p.episode_id, topics: p.topics || [], percent_complete: 1, source: "manual_stopgap" });
     case "saved":
       return row("saved", { episode_slug: p.episode_id, topics: p.topics || [] });
     case "thumbs":
@@ -722,15 +726,14 @@ function isNativeShell(win = window) {
   return false;
 }
 
-/** CUTOVER (U-11, founder override 2026-09-06 — see STATE.md and
-    docs/ui-transition-plan.md §U-11): ui-v2 is now the only UI. The
-    cp_ui_v2 flag, its localStorage override, and the native-shell
-    fallback are retired; this always returns true. The pre-cutover
-    implementation (flag, Settings toggle, old Home/menu-nav screens)
-    is preserved intact in archive/legacy-ui-2026-09/ for recovery —
-    see that directory's README for exact restore steps. */
+/** Whether ui-v2 is on for this listener. A listener who has ever touched the
+    Settings toggle gets their explicit choice forever (lsGet's stored value
+    wins); only a listener with NO stored value at all falls back to the
+    native-shell default. */
 function ui2On() {
-  return true;
+  const stored = lsGet("cp_ui_v2", null);
+  if (stored !== null) return !!stored;
+  return isNativeShell();
 }
 
 /** Every page-render function replaces document.body.className wholesale
@@ -3250,14 +3253,37 @@ function renderEpisodeSearchResults(query, myToken) {
    test/home-information-architecture.test.js asserts each of those in both
    directions — absent here, present there — so a future re-add fails CI
    rather than shipping. */
-/* CUTOVER (U-11, founder override 2026-09-06): renderHome() used to branch
-   on ui2On() and render the old four-card Home inline when the flag was
-   off. That branch is now unreachable (ui2On() always returns true) and
-   has been removed; the old implementation is preserved verbatim in
-   archive/legacy-ui-2026-09/app.js.pre-cutover-2026-09-06 (see that
-   directory's README to restore it). */
 function renderHome() {
-  return renderHomeV2();
+  if (ui2On()) return renderHomeV2();
+  setBodyClass("view-home");
+  if (!state.cardSlots.length) buildCards();
+  $("#view").innerHTML = `
+    <div class="home">
+      <div id="banner-slot">${bannerHtml()}</div>
+      <div class="cards4">${state.cardSlots.map(miniCard).join("")}</div>
+    </div>`;
+
+  if (!showFirstTimeExplainerOnce()) showIntroPopupOnce();
+
+  const done = $("#banner-done");
+  if (done) {
+    done.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const c = currentContinue();
+      if (c) {
+        logEvent("finished", { episode_id: c.id, topics: c.topics });
+        boostTopics(c.topics, 0.05);
+      }
+      lsSet("cp_lastpick", null);
+      $("#banner-slot").innerHTML = "";
+    });
+  }
+
+  bindPickLogging($("#view"));
+  bindStars($("#view"));
+  bindUpNext($("#view"));
+  bindPlay($("#view"));
 }
 
 /* ==================================================================== */
@@ -4024,6 +4050,7 @@ function renderPlaylists() {
         <button type="submit">Go</button>
       </form>
       <p id="pl-note" class="note" hidden></p>
+      ${ui2On() ? "" : `<a class="page-link-row" href="#/library">Library ›</a>`}
       ${all.length ? all.map(p => `
         <a class="pl-row" href="#/playlist/${esc(p.id)}">
           <div class="info">
@@ -5703,13 +5730,25 @@ function renderTabBar() {
   });
 }
 
-/** CUTOVER (U-11, founder override 2026-09-06): the flag has no off state
-    left to toggle (ui2On() always returns true), so the Settings entry
-    that flipped it is retired. Old body preserved in
-    archive/legacy-ui-2026-09/app.js.pre-cutover-2026-09-06. */
+/** The Settings entry for the flag itself (U-02: "a Settings toggle"),
+    appended the same way as the diagnostics/delete-my-data controls below.
+    Flipping it re-renders the drawer's own label AND the current page (tab
+    bar included) via renderCurrentPage() — the same path the other three
+    settings toggles use — so nothing needs a reload to take effect. */
 function bindUi2Control() {
-  const existing = $("#ui2-toggle");
-  if (existing) existing.remove();
+  const drawer = $("#drawer");
+  if (!drawer || $("#ui2-toggle")) return;
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "drawer-item as-btn";
+  btn.id = "ui2-toggle";
+  drawer.appendChild(btn);
+  btn.addEventListener("click", () => {
+    lsSet("cp_ui_v2", !ui2On());
+    logEvent("ui_v2_pref", { on: ui2On() });
+    renderDrawer();
+    renderCurrentPage();
+  });
 }
 
 /* The Interests page (#/interests, U-07) is reachable from Settings, but

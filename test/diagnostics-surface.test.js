@@ -53,6 +53,7 @@ class El {
     this.hidden = false;
     this.attributes = {};
     this.style = {};
+    this.dataset = {};
     this.focused = false;
     this.selected = false;
     this._on = new Map();

@@ -959,9 +959,17 @@ test("the vouch row renders on the Shows page and nowhere on Home, so it cannot 
      starvation actually turns on and this harness has no layout engine. The
      pixel evidence lives in the PR.
 
-     MUTATION: add `${vouchForHtml()}` back inside renderHome's `.home`
-     template. The two "must not appear on Home" assertions fail. MUTATION 2:
-     delete `${vouchForHtml()}` from renderAllShows's `above` block. The
+     CUTOVER (U-11, founder override, 2026-09-06, kanban card t_a3f01c8a):
+     Home itself is now always Home v2 (`.home.hv2-home`, no `.cards4` at
+     all — see test/home-information-architecture.test.js and
+     test/home-v2.test.js), so the fixed-height-flex-column starvation this
+     test guards against cannot recur on the retired `.cards4` layout. The
+     sanity check below is updated to Home v2's own shape; the vouch-row
+     absence assertions are unchanged and still the point of this test.
+
+     MUTATION: add `${vouchForHtml()}` back inside renderHomeV2's template.
+     The "must not appear on Home" assertions fail. MUTATION 2: delete
+     `${vouchForHtml()}` from renderAllShows's `above` block. The
      Shows-page assertion fails. */
   const m = await mountBooted();
   assert.ok(
@@ -977,10 +985,10 @@ test("the vouch row renders on the Shows page and nowhere on Home, so it cannot 
 
   m.ctx.renderHome();
   const home = m.view();
-  assert.ok(home.includes('class="cards4"'), "sanity: .cards4 must still be inside .home");
+  assert.ok(home.includes('class="home hv2-home"'), "sanity: renderHome() must still render Home v2");
   assert.ok(
     !home.includes("fy-vouch"),
-    "the vouch row must NOT be a flex sibling inside .home — that is exactly what collapsed the cards to 0px in #433"
+    "the vouch row must NOT be a flex sibling inside Home — that is exactly what collapsed the cards to 0px in #433"
   );
   assert.ok(
     !home.includes("home-below"),
