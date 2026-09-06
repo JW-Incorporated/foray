@@ -207,6 +207,8 @@ final class ForayTtsPluginTests: XCTestCase {
         }
         let atInfinity = ForayTtsPlugin.utteranceRate(playbackMultiplier: .infinity)
         XCTAssertEqual(atInfinity, AVSpeechUtteranceMaximumSpeechRate, accuracy: 0.0001)
+    }
+
     // MARK: - Voice selection
     //
     // These build `VoiceOption` values by hand rather than calling
