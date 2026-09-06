@@ -850,6 +850,32 @@ test("connect-src names exactly the app's own origin, Supabase, and the API", ()
   );
 });
 
+/* U-01 (docs/ui-transition-plan.md, issue #127): self-hosted fonts need
+   `font-src 'self'` and NOTHING wider -- issue #127 explicitly rules out a
+   Google Fonts (or any third-party) origin, and the two legal documents'
+   "no new third-party recipient" claims would be false the day a font-src
+   widens past 'self'.
+
+   MUTATION THAT KILLS THIS: add any origin to font-src in index.html (e.g.
+   `font-src 'self' https://fonts.gstatic.com`), or drop font-src entirely so
+   it falls back to default-src 'none' and self-hosted fonts silently fail to
+   load. Ran both -- red. */
+test("font-src exists and names only 'self' -- no third-party font origin", () => {
+  const csp = /http-equiv="Content-Security-Policy"\s+content="([^"]*)"/
+    .exec(read("index.html"));
+  assert.ok(csp, "index.html's CSP meta tag could not be located");
+  const directive = /font-src ([^;"]*)/.exec(csp[1]);
+  assert.ok(
+    directive,
+    "index.html's CSP has no font-src directive -- self-hosted fonts fall back " +
+      "to default-src 'none' and are blocked outright (issue #127)"
+  );
+  assert.deepStrictEqual(
+    directive[1].trim().split(/\s+/), ["'self'"],
+    `font-src must name only 'self' -- found: ${directive[1].trim()}`
+  );
+});
+
 test("the two input length caps the documents quote are the shipped ones", () => {
   /* Both numbers are claims about user data: 120 bounds text that is searched
      on-device and never sent (the In-app search history answer is No because of

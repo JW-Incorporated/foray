@@ -681,10 +681,37 @@ function withoutLightBlocks(css) {
 
 const CSS_DARK = withoutLightBlocks(CSS);
 
+/** Strips `body.ui-v2 { ... }` blocks (U-01, docs/ui-transition-plan.md).
+    That scope deliberately reuses several v1 token NAMES (`--bg`, `--surface`,
+    `--text`, `--line`) with different values, so a naive last-match-wins scan
+    over the whole file would start reading the v2 value for a v1 (flag-off)
+    measurement the moment ui-v2 shipped. Everything in this suite measures the
+    stylesheet a v1 page (no `body.ui-v2` class) actually resolves, so the v2
+    scope must never be part of what `cssVar` sees. Brace-counted for the same
+    reason `withoutLightBlocks` is above it. */
+function withoutUiV2Blocks(css) {
+  const marker = "body.ui-v2 {";
+  let out = css;
+  for (;;) {
+    const start = out.indexOf(marker);
+    if (start < 0) return out;
+    let i = out.indexOf("{", start);
+    assert.ok(i > 0, "a body.ui-v2 block with no body");
+    let depth = 0;
+    for (; i < out.length; i++) {
+      if (out[i] === "{") depth++;
+      else if (out[i] === "}" && --depth === 0) break;
+    }
+    assert.equal(depth, 0, "unbalanced braces in styles.css");
+    out = out.slice(0, start) + out.slice(i + 1);
+  }
+}
+
 /** The stylesheet as one theme resolves it. Named once and used by everything
     below: two copies of this expression is how the light branch stayed inert in
-    one of them while the other was fixed. */
-const scopeFor = (light) => (light ? CSS : CSS_DARK);
+    one of them while the other was fixed. Both branches also drop the ui-v2
+    scope, per withoutUiV2Blocks above — a v1 page never carries `body.ui-v2`. */
+const scopeFor = (light) => withoutUiV2Blocks(light ? CSS : CSS_DARK);
 
 /** Declared value of a custom property as the named theme resolves it: the LAST
     winning declaration, which is how a browser cascades it. */

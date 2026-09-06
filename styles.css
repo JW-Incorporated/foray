@@ -26,6 +26,110 @@
     --shadow: 0 1px 2px rgba(60,45,20,0.06), 0 6px 16px rgba(60,45,20,0.08);
   }
 }
+
+/* ===========================================================================
+   UI-v2 design tokens, fonts and brand (U-01, docs/ui-transition-plan.md).
+   Everything in this block is scoped to `body.ui-v2` and NOTHING here touches
+   the `:root` tokens above or their `prefers-color-scheme: light` override —
+   those two blocks are v1's and stay exactly as they are so nothing regresses
+   for a v1 (flag-off) light-mode listener. `cp_ui_v2` defaults OFF (U-02), so
+   `body.ui-v2` is only present when a listener has opted in (or a TestFlight
+   build defaulted it on).
+
+   DARK IS THE DESIGN for v2 (docs/ui-transition-plan.md D9/D4, issue #127):
+   the mockup ships one palette, not two, and nothing in the brief asks for a
+   v2 light variant. So this block is intentionally dark-only — an OS set to
+   light with `cp_ui_v2` on keeps the v2 dark palette, which is a deliberate,
+   documented scope decision, not an oversight. If a v2 light palette is ever
+   wanted, it is a new design decision (its own DECISIONS.md entry), not a
+   reuse of the v1 light values above: the two palettes don't share a look.
+
+   NAMING NOTE: four of these names (`--bg`, `--surface`, `--text`, `--line`)
+   already exist on `:root` for v1. That is intentional, not a collision —
+   `body.ui-v2`'s higher specificity means an element inside a `body.ui-v2`
+   page reads the v2 value, while anything still rendering under v1 (the flag
+   off, or a stray element outside `body`) keeps reading `:root`'s v1 value.
+   The other five (`--surface2`, `--muted`, `--faint`, `--amber`, `--violet`)
+   are new names so they never shadow anything from v1. */
+body.ui-v2 {
+  --bg: #151119;
+  --surface: #1F1A26;
+  --surface2: #2A2333;
+  --line: #332B3E;
+  --text: #F4F0E8;
+  --muted: #9C93A8;
+  --faint: #6E6579;
+  /* The amber/violet split does real semantic work and must survive intact
+     (issue #127): amber is the listener's OWN material (their plays, their
+     saves, their playback affordances); violet is what 4a authored (the
+     narrator's voice, Foray badges, editorial framing). Never repurpose one
+     for the other's meaning even where a screen only needs "an accent". */
+  --amber: #F2A33C;
+  --violet: #A78BFA;
+
+  --font-display: "Fraunces", var(--serif);
+  --font-body: "DM Sans", var(--sans);
+}
+
+/* Self-hosted, Latin-subset variable woff2s — `font-src 'self'` in
+   index.html's CSP is the only origin these need, per issue #127's explicit
+   ruling against a Google Fonts (or any third-party) origin. Both files are
+   variable fonts (weight axis), so one `@font-face` per style covers the
+   whole weight range instead of one file per weight. `font-display: swap`
+   matches the system-stack fallback already declared via --serif/--sans, so
+   a slow font fetch never produces invisible text. */
+@font-face {
+  font-family: "Fraunces";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("fonts/fraunces-variable.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Fraunces";
+  font-style: italic;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("fonts/fraunces-italic-variable.woff2") format("woff2");
+}
+@font-face {
+  font-family: "DM Sans";
+  font-style: normal;
+  font-weight: 100 1000;
+  font-display: swap;
+  src: url("fonts/dm-sans-variable.woff2") format("woff2");
+}
+
+body.ui-v2 {
+  font-family: var(--font-body);
+  background: var(--bg);
+  color: var(--text);
+}
+/* The italic wordmark (the "4a" logotype in the topbar and any splash/first-
+   run surface that repeats it) is the one place Fraunces' display italic is
+   used for text rather than decoration. */
+body.ui-v2 .wordmark {
+  font-family: var(--font-display);
+  font-style: italic;
+}
+
+/* Foundational surface/line/text-hierarchy classes so U-02+ cards have
+   something to build on rather than re-declaring the palette per screen.
+   Not a component library — three utility layers over the token set. */
+body.ui-v2 .ui-v2-surface { background: var(--surface); border: 1px solid var(--line); }
+body.ui-v2 .ui-v2-surface-2 { background: var(--surface2); border: 1px solid var(--line); }
+body.ui-v2 .ui-v2-text-muted { color: var(--muted); }
+body.ui-v2 .ui-v2-text-faint { color: var(--faint); }
+
+/* The amber/violet split (issue #127): amber marks the LISTENER's own
+   material (their plays, saves, playback affordances); violet marks what 4a
+   itself authored (narrator voice, editorial framing, Foray badges). U-03+
+   apply these classes to the real Home/Search/Create screens; this
+   foundation card only establishes the two roles so later cards inherit a
+   single definition of each rather than re-deriving the meaning per screen. */
+body.ui-v2 .ui-v2-mine { color: var(--amber); }
+body.ui-v2 .ui-v2-authored { color: var(--violet); }
+
 * { box-sizing: border-box; }
 
 /* `hidden` is this app's ONLY hiding mechanism — app.js and player/client.js

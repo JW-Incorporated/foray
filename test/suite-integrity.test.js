@@ -491,6 +491,12 @@ const FLOORS = {
      count, an auto-merged `test/` change could thin it while the claim stayed
      green. Zero slack from here on, for the reason media-session has none. */
   "test/sw-generation.test.js": 51,
+  /* U-01 (docs/ui-transition-plan.md): the ui-v2 token scope. Four tests --
+     the nine tokens' names+values, the "no raw hex leaks outside the block"
+     mutation guard, the amber/violet consumption check, and the self-hosted
+     font-src proof. Zero slack: each one guards a distinct way the token
+     system could quietly stop being a token system. */
+  "test/ui-tokens.test.js": 4,
   // tools/ is allowlisted for auto-merge too (T3 in automerge-nightly.yml),
   // so suites under it need the same floor.
   /* The icons are generated from tools/brand/4a-logo.png, and this suite is the

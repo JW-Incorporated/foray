@@ -226,6 +226,15 @@ export const SHELL_FILES = [
   "manifest.json",
   "icon-180.png",
   "icon-512.png",
+  /* U-01 (docs/ui-transition-plan.md): the ui-v2 self-hosted fonts styles.css's
+     @font-face rules point at. Binary, so `copy()` handles them (not minify/
+     reserialize) — buildPlan()'s dispatch in prepare-webdir.mjs already falls
+     through to copy() for anything that isn't JS/CSS/JSON, so no dispatch
+     change was needed, only this list. font-src 'self' in index.html's CSP
+     means the shell has nowhere else to fetch them from. */
+  "fonts/fraunces-variable.woff2",
+  "fonts/fraunces-italic-variable.woff2",
+  "fonts/dm-sans-variable.woff2",
 ];
 
 /** Never in the bundle, whatever else changes. See the header. */

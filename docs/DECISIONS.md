@@ -2,6 +2,13 @@
 
 Per-topic ADRs live in `docs/adr/`. This file is the chronological record.
 
+## 2026-09-06 (U-01: ui-v2 design tokens, fonts, brand)
+
+- **`body.ui-v2` token scope adopted, dark-only.** Nine custom properties (`--bg`, `--surface`, `--surface2`, `--line`, `--text`, `--muted`, `--faint`, `--amber`, `--violet`) scoped under `body.ui-v2` per the mockup's palette (issue #127, docs/ui-transition-plan.md U-01). Deliberately reuses four v1 token names (`--bg`/`--surface`/`--text`/`--line`) with new values — CSS specificity means a v2 page reads the v2 value and a v1 page is untouched — and introduces five new names for values v1 never had. **No v2 light-mode palette**: the mockup and the brief ship one (dark) palette for v2; v1's two existing `prefers-color-scheme: light` blocks are untouched and still govern v1. If a v2 light palette is ever wanted it needs its own decision, not a reuse of v1's light values.
+- **Fonts self-hosted, Latin-subset, variable format.** Fraunces (roman + italic) and DM Sans as three self-hosted woff2 files (~212KB combined) under `fonts/`, each a variable font covering its full weight range in one file. `font-src 'self'` added to `index.html`'s CSP — no Google Fonts or other third-party origin, per issue #127's explicit ruling. Mobile bundle (`tools/mobile/prepare-webdir.mjs`) ships all three; delta is ~212KB against the 3MB cap (bundle measured at 1.68MB total after this change).
+- **Amber/violet split preserved as a semantic rule, not just two colours**: amber marks the listener's own material; violet marks what 4a itself authored. Documented in styles.css and enforced by `test/ui-tokens.test.js`'s floor (both tokens must be consumed via `var()`, not merely declared).
+- **Brand check: already clean.** `index.html`'s title/h1/apple-mobile-web-app-title already read "4a" (from the prior 2026-08-21 rename, `test/app-name.test.js`); no remaining "Foray"-as-product-name string was found in chrome, so this card needed no additional renames.
+
 ## 2026-07-07 (overnight web-first sprint)
 
 - **Web-first pivot.** First deliverable is a deployed static site (GitHub Pages), not the iOS app — App Store distribution wasn't feasible for a next-morning test. The site front-loads the M2 curation-quality gate ("would I pick something from this menu?"); the iOS roadmap in `docs/brief/06_ROADMAP.md` is unchanged, just re-sequenced. Audio-session choreography (M0's top risk) is untestable on web and remains the first iOS task.
