@@ -246,7 +246,7 @@ const FLOORS = {
      that Family Mode's pre-existing poolFiltered() filter still fires
      unchanged — the badge is additive, not a replacement for that filter. */
   "test/explicit-badge.test.js": 9,
-  "test/first-time-onboarding.test.js": 10,
+  "test/first-time-onboarding.test.js": 26,
   /* Duplicate-ID guard for HUMAN-ACTIONS.md's own numbering rule (full-repo
      review finding L3, 2026-08-31). Two tests: the file has numbered items,
      and no numeric ID repeats. */
@@ -457,6 +457,20 @@ const FLOORS = {
      path any other suite would notice going missing. Every test names its
      mutation; see the suite header for the full list of what each pins. */
   "test/up-next-autoadvance.test.js": 6,
+  /* U-07's Interests page (docs/ui-transition-plan.md D6, kanban card
+     t_1cb3688a). Floored for the same reason as up-next-queue.test.js: a
+     wrong row set, a wrong slider range, or a drag that silently fails to
+     persist are all silent-wrong-behavior, not a crash any other suite
+     would notice. Every test names its mutation; see the suite header. */
+  "test/interests-page.test.js": 11,
+  /* The root-node interest bug this same card fixes (D6): loadInterests()
+     used to seed leaf nodes only, silently dropping a root-level interest
+     on the next save. Floored separately from interests-page.test.js
+     because it pins the DATA layer (loadInterests/saveInterests/
+     nudgeTopics), not the page — either could regress without the other
+     noticing. Includes the MUTATION TEST the card asks for by name
+     (restore leafNodes() as the seed set -> red). */
+  "test/interests-roots.test.js": 8,
   /* #301's bound, over the REAL catalogue: improving a result the ranking keeps
      below the top one must never empty its query or drop a bar-clearer. One test,
      floored at one, because the alternative to a floor here is a suite that can be
@@ -890,6 +904,13 @@ const FLOORS = {
      identical pair" — spawning the CLI twice with pinned inputs and diffing
      stdout byte-for-byte. */
   "tools/mobile/version.test.mjs": 22,
+  /* R-03 (docs/release-lockstep-plan.md): release.yml's own pure-function
+     decisions (playReadiness/releaseGuard/isAncestorOfMain) and the workflow
+     invariant suite that pins it and the two composite actions it factors
+     shared build steps into. Registered the same day both suites were
+     written, per R-02's own precedent for this map. */
+  "tools/mobile/release-ci.test.mjs": 15,
+  "tools/mobile/release-workflow.test.mjs": 25,
   /* The launch verdict (the `android-smoke` job's brain). ZERO SLACK. This is the
      only thing in the repo that can judge a RUNNING Android app, and its risk is
      entirely one-directional: a verdict too generous reports a launch for a page

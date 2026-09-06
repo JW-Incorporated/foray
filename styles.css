@@ -776,6 +776,45 @@ button.show-star.on { color: var(--gold); border-color: var(--gold); }
 .page-head h2 { margin: 0; font-family: var(--serif); font-size: 1.3rem; font-weight: 700; }
 .page-head .sub { margin: 2px 0 0; color: var(--text-dim); font-size: 0.82rem; }
 
+/* ---------- interests page (#/interests, U-07) ---------- */
+.interest-group { margin-bottom: 20px; }
+.interest-group-label {
+  font-family: var(--serif); font-size: 1rem; font-weight: 700;
+  margin: 0 0 8px; color: var(--text);
+}
+.interest-row {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  padding: 12px;
+  margin-bottom: 8px;
+}
+.interest-row-root { border-color: var(--text-dim); }
+.interest-row-head {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
+  margin-bottom: 8px;
+}
+.interest-row-name { font-weight: 700; font-size: 0.95rem; }
+.interest-row-path { font-size: 0.72rem; color: var(--text-dim); }
+.interest-row-controls { display: flex; align-items: center; gap: 10px; }
+/* The old prototype fixed this exact regression twice (docs/ux/foray-m3-prototype.html):
+   a slider with no touch-action fights the page's own vertical scroll on a
+   phone — every drag attempt to move the thumb instead scrolls the list. */
+.interest-slider {
+  flex: 1; min-width: 0;
+  touch-action: pan-y;
+}
+.interest-row-pct {
+  font-size: 0.8rem; color: var(--text-dim); min-width: 3em; text-align: right; flex: none;
+}
+.interest-reset {
+  flex: none; font-size: 0.78rem; padding: 4px 8px;
+  border-radius: 8px; border: 1px solid var(--line);
+  background: var(--surface-2); color: var(--text);
+}
+.interest-reset:disabled { opacity: 0.5; }
+
 .ep-row, .pl-row {
   display: flex; align-items: center; gap: 10px;
   background: var(--surface);
@@ -1283,6 +1322,17 @@ body.ui-v2.fp-open.fp-expanded {
 .fy-strip--sm { --strip-h: 5px; --seam: 3px; --seg-min: 5px; }
 .fy-strip--md { --strip-h: 8px; --seam: 4px; --seg-min: 6px; }
 .fy-strip--lg { --strip-h: 12px; --seam: 5px; --seg-min: 7px; }
+/* U-04: `segmentStripHtml`'s static strip — a card in a rail (Home's Foray
+   cards, U-03; the show/episode restyle, U-08), not the full player's
+   scrubber. No click handler is bound to it and no press-and-hold zoom
+   gesture (`bindStripZoomScrub`, app.js) reaches it, so the base rule's
+   `touch-action: none` and `cursor: pointer` would be a promise this markup
+   cannot keep — worse, `touch-action: none` on a card would fight the rail's
+   own scroll for every touch that starts on one. */
+.fy-strip--static {
+  cursor: default;
+  touch-action: pan-y;
+}
 .fy-seg {
   flex-basis: 0;
   /* A 6 s narrator bridge inside a 51-minute Foray is 0.2% of the row. Floored
@@ -1548,6 +1598,27 @@ body.fy-sheet-open { overflow: hidden; }
   cursor: pointer;
 }
 .fy-chip.on { border-color: var(--accent); color: var(--text); background: var(--surface); }
+
+/* ---------- U-09: Welcome + Preferences first-run flow ---------- */
+.ft-value-props { display: flex; flex-direction: column; gap: 14px; margin: 4px 0 14px; }
+.ft-value-prop {
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 14px 16px;
+}
+.ft-value-prop h4 { margin: 0 0 6px; font-size: 0.95rem; font-weight: 700; }
+.ft-strip-wrap { margin-top: 12px; }
+.ft-typed-wrap { margin: 4px 0 14px; }
+.ft-typed-input {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit; font-size: 0.86rem;
+}
 
 /* ---------- show page (#/show/:id, Stage 1) ---------- */
 .show-art {

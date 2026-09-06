@@ -395,24 +395,77 @@ function leafNodes() {
   return (state.taxonomy?.nodes || []).filter(n => n.parent !== null);
 }
 
+/* All taxonomy nodes, roots and leaves alike — the seeding/persistence set for
+   interests (see loadInterests's header comment: `leafNodes()` used to be the
+   seed set here too, which is the root-node bug this fixes). Kept distinct
+   from leafNodes() because callers that mean "just the leaves" (none today,
+   but the name invites it) must not silently start seeing roots. */
+function taxonomyNodes() {
+  return state.taxonomy?.nodes || [];
+}
+
+function nodeById(id) {
+  return taxonomyNodes().find(n => n.id === id) || null;
+}
+
+/* Bug fix (kanban t_1cb3688a / docs/ui-transition-plan.md D6): this used to
+   iterate leafNodes() only, so a declared interest in a ROOT node (e.g.
+   `true-crime`) was never seeded into state.interests, and the very next
+   saveInterests() call persisted an object that had silently dropped it —
+   the listener's root-level pick vanished on reload with no error anywhere.
+   Iterating every taxonomy node (roots AND leaves) is the whole fix;
+   saveInterests() itself needed no change, since it always persisted
+   whatever this function put into state.interests. */
 function loadInterests() {
   const saved = lsGet("cp_interests", {});
-  leafNodes().forEach(n => {
+  taxonomyNodes().forEach(n => {
     state.interests[n.id] = saved[n.id] ?? Math.max(0, n.weight);
   });
 }
 
 function saveInterests() { lsSet("cp_interests", state.interests); }
 
+/* How much of a leaf's own nudge also moves its parent root. Stated here per
+   the card's ask ("state the ratio"): a play/thumb on a leaf is signal about
+   the parent subject too, just weaker than a direct signal on the parent
+   itself — half as much moves the root as moves the leaf that caused it. */
+const PARENT_NUDGE_RATIO = 0.5;
+
 /* Move a taxonomy node's weight. Clamped at BOTH ends since thumbs-down made
    the amount negative for the first time — an unclamped floor lets a few
    downvotes drive a node below zero, where it can never climb back into a menu
-   however much the listener later plays of it. */
+   however much the listener later plays of it.
+
+   Propagates to the parent at PARENT_NUDGE_RATIO (D6, docs/ui-transition-plan.md):
+   a nudge on a leaf is also weaker evidence about the root it belongs to, so
+   the root moves too, just damped — HALF as much moves the root as moves any
+   one leaf, by design, not "half per leaf." Propagation is therefore applied
+   ONCE PER DISTINCT PARENT per call, no matter how many sibling leaves under
+   that root the same call names (a multi-topic episode's `topics` array
+   commonly does) — two sibling leaves must not compound into a full-strength
+   nudge on their shared root. Roots have parent === null and so never
+   propagate a second hop; a topic id that resolves to no taxonomy node (some
+   legacy/decorative topics aren't taxonomy ids) simply moves itself, as
+   before, with no parent step. A root named DIRECTLY in `topics` is excluded
+   from propagation entirely (tracked via `directlyNudged`) — otherwise a
+   topics array carrying both a leaf and its own parent root would move the
+   root twice: once at the full amount for its own entry, once more from the
+   leaf's propagation. */
 function nudgeTopics(topics, amount) {
-  (topics || []).forEach(t => {
+  const list = topics || [];
+  const directlyNudged = new Set(list);
+  const parentsToPropagate = new Set();
+  list.forEach(t => {
     if (t in state.interests) {
       state.interests[t] = Math.max(0, Math.min(1, state.interests[t] + amount));
+      const parent = nodeById(t)?.parent;
+      if (parent && parent in state.interests && !directlyNudged.has(parent)) {
+        parentsToPropagate.add(parent);
+      }
     }
+  });
+  parentsToPropagate.forEach(parent => {
+    state.interests[parent] = Math.max(0, Math.min(1, state.interests[parent] + amount * PARENT_NUDGE_RATIO));
   });
   saveInterests();
   /* Bumps the repeated-query cache key (see buildPlaylist's `searchCache`) so
@@ -426,6 +479,122 @@ function nudgeTopics(topics, amount) {
 }
 
 function boostTopics(topics, amount) { nudgeTopics(topics, amount); }
+
+/* ---------- interests page (#/interests, U-07 / docs/ui-transition-plan.md D6) ----------
+
+   Row set: every ROOT is always shown (so the listener always has something
+   to set at the top level, even one they've never touched) — a root can
+   ALSO independently qualify as diverged, but the "always" rule alone
+   guarantees it's on the page. Additionally, any LEAF whose current weight
+   has diverged from its taxonomy-authored default gets a row: exactly a
+   listener override or an observed nudge (plays, thumbs, a prior slider
+   drag). Rows are grouped by root: a leaf's group is its own parent id, a
+   root is its own group.
+
+   Range 0-1 (today's clamped model), NOT the old prototype's -1..1 — see the
+   card: nudgeTopics clamps at zero, so a negative floor here would be a
+   different design than the rest of the app already ships.
+
+   No history feed, no evidence log (D6) — deliberately not built. */
+function interestGroups() {
+  const nodes = taxonomyNodes();
+  const roots = nodes.filter(n => n.parent === null);
+  const diverged = nodes.filter(n =>
+    n.parent !== null && typeof state.interests[n.id] === "number" && state.interests[n.id] !== Math.max(0, n.weight)
+  );
+  const byRoot = new Map(roots.map(r => [r.id, { root: r, rows: [] }]));
+  roots.forEach(r => byRoot.get(r.id).rows.push(r));
+  diverged.forEach(n => {
+    const g = byRoot.get(n.parent);
+    if (g) g.rows.push(n);
+  });
+  // Stable, readable order: alphabetical by root label, leaves under a root
+  // alphabetical by their own label, root row always first in its group.
+  return [...byRoot.values()]
+    .sort((a, b) => a.root.label.localeCompare(b.root.label))
+    .map(g => ({
+      root: g.root,
+      rows: g.rows.sort((a, b) => (a.id === g.root.id ? -1 : b.id === g.root.id ? 1 : a.label.localeCompare(b.label))),
+    }));
+}
+
+function interestSliderRow(node) {
+  const value = typeof state.interests[node.id] === "number" ? state.interests[node.id] : Math.max(0, node.weight);
+  const pct = Math.round(value * 100);
+  const isRoot = node.parent === null;
+  return `<div class="interest-row${isRoot ? " interest-row-root" : ""}">
+    <div class="interest-row-head">
+      <span class="interest-row-name">${esc(node.label)}</span>
+      <span class="interest-row-path">${esc(node.id)}</span>
+    </div>
+    <div class="interest-row-controls">
+      <input type="range" class="interest-slider" role="slider"
+        min="0" max="1" step="0.01" value="${value}"
+        data-interest-id="${esc(node.id)}"
+        aria-label="${esc(node.label)} interest"
+        aria-valuemin="0" aria-valuemax="1" aria-valuenow="${value}"
+        aria-valuetext="${pct}%">
+      <span class="interest-row-pct">${pct}%</span>
+      <button type="button" class="interest-reset" data-interest-reset="${esc(node.id)}"
+        ${value === Math.max(0, node.weight) ? "disabled" : ""}>Reset to learned</button>
+    </div>
+  </div>`;
+}
+
+function renderInterests() {
+  document.body.className = "view-page";
+  const groups = interestGroups();
+  $("#view").innerHTML = `
+    <div class="page">
+      <div class="page-head">
+        <a class="back" href="#/">‹</a>
+        <div><h2>Interests</h2><p class="sub">Drag a slider to overrule what 4a has learned</p></div>
+      </div>
+      ${groups.map(g => `
+        <div class="interest-group">
+          <h3 class="interest-group-label">${esc(g.root.label)}</h3>
+          ${g.rows.map(interestSliderRow).join("")}
+        </div>`).join("")}
+    </div>`;
+  bindInterestsControls($("#view"));
+}
+
+function bindInterestsControls(scope) {
+  scope.querySelectorAll("[data-interest-id]").forEach(input => {
+    if (input._bound) return;
+    input._bound = true;
+    const id = input.dataset.interestId;
+    const apply = () => {
+      const v = Math.max(0, Math.min(1, Number(input.value)));
+      state.interests[id] = v;
+      saveInterests();
+      state._interestsGen = (state._interestsGen || 0) + 1;
+      input.setAttribute("aria-valuenow", String(v));
+      input.setAttribute("aria-valuetext", `${Math.round(v * 100)}%`);
+      const row = input.closest(".interest-row");
+      const pct = row?.querySelector(".interest-row-pct");
+      if (pct) pct.textContent = `${Math.round(v * 100)}%`;
+      const resetBtn = row?.querySelector("[data-interest-reset]");
+      const node = nodeById(id);
+      if (resetBtn && node) resetBtn.disabled = v === Math.max(0, node.weight);
+    };
+    input.addEventListener("input", apply);
+    input.addEventListener("change", apply);
+  });
+  scope.querySelectorAll("[data-interest-reset]").forEach(btn => {
+    if (btn._bound) return;
+    btn._bound = true;
+    btn.addEventListener("click", () => {
+      const id = btn.dataset.interestReset;
+      const node = nodeById(id);
+      if (!node) return;
+      state.interests[id] = Math.max(0, node.weight);
+      saveInterests();
+      state._interestsGen = (state._interestsGen || 0) + 1;
+      renderInterests();
+    });
+  });
+}
 
 /* ---------- pool ---------- */
 
@@ -2329,17 +2498,98 @@ function isGenuineFirstTimeUser() {
   );
 }
 
-/** Explanation + consent, not an interview. The M3 prototype's `finishOnb`/
-    `skipOnb` describe a preference INTERVIEW step that has no counterpart in
-    the real backend (the session doc has no such concept) — this screen does
-    not build one. It explains how interests are actually learned today
-    (weighted signals from what you play/save/skip, per `loadInterests()` /
-    `bump()` — never a fixed picklist), states what data leaves the device and
-    why (docs/legal/privacy-policy.md §§ "The short version", 2), and gives an
-    explicit skip path. Both actions land on today's home screen and set the
-    same cp_intro_dismissed flag showIntroPopupOnce() already uses, so this
-    screen and the older popup can never both show on the same visit and
-    neither shows again after. */
+/* ---------- U-09: Preferences chips — subtree write path ----------
+
+   docs/curation/interest-survey-plan.md §4.1: an answer is a SUBTREE
+   expansion, never an exact match on the chip's own root id — tagging depth
+   is inconsistent (some subjects are tagged only on the root, e.g.
+   `true-crime`; others only on children, e.g. `engineering`), so writing just
+   the root would silently miss the pool entirely for half the chips. The
+   taxonomy is capped at two levels (root -> leaf, taxonomy-review-2026-08.md
+   §3.5), so one parent-lookup covers every descendant — no recursion needed. */
+function expandTaxonomyPick(rootId) {
+  return taxonomyNodes().filter(n => n.id === rootId || n.parent === rootId).map(n => n.id);
+}
+
+/* §4.3: SEED_LIFT = 0.20, damped by /sqrt(d) so picking many chips doesn't
+   overwhelm any one of them ("I like everything" should barely move anything)
+   — worth about four finishes or two and a half thumbs-ups (§4.4), never a
+   fact. Added on top of whatever loadInterests() already seeded (authored
+   default or a returning-format restore), never a replacement value, and
+   through the same clamp nudgeTopics uses elsewhere. */
+const ONBOARDING_SEED_LIFT = 0.20;
+
+/** Applies a Preferences pick: `pickedRootIds` from the chip grid, plus an
+    optional typed subject matched against a real top-level taxonomy label
+    (case-insensitive) — the mockup's "Or type a subject yourself…" field
+    reaches the same write path a chip tap would when it names a real root,
+    and is otherwise a no-op rather than inventing an untagged node nothing
+    in the pool carries. Returns false (no write, no _interestsGen bump) when
+    nothing was picked and nothing typed matched, so a caller can tell a real
+    Skip from a Continue with an empty/unmatched form. */
+function applyOnboardingPicks(pickedRootIds, typedSubject) {
+  const ids = [...(pickedRootIds || [])];
+  const typed = (typedSubject || "").trim();
+  if (typed) {
+    const typedNode = taxonomyNodes().find(
+      n => n.parent === null && n.label.toLowerCase() === typed.toLowerCase()
+    );
+    if (typedNode && !ids.includes(typedNode.id)) ids.push(typedNode.id);
+  }
+  if (!ids.length) return false;
+
+  const lift = ONBOARDING_SEED_LIFT / Math.sqrt(ids.length);
+  const targets = new Set(ids.flatMap(expandTaxonomyPick));
+  targets.forEach(id => {
+    if (id in state.interests) {
+      state.interests[id] = Math.max(0, Math.min(1, state.interests[id] + lift));
+    }
+  });
+  saveInterests();
+  state._interestsGen = (state._interestsGen || 0) + 1;
+  return true;
+}
+
+/* The 17 top-level nodes with measured pool depth (>= 50 items AND several
+   distinct shows — interest-survey-plan.md §3.2), so every chip is backed by
+   enough content to fill a queue on day one. Ids only; labels are read live
+   off state.taxonomy so a taxonomy relabel never drifts out of sync with
+   this list. */
+const PREFS_CHIP_IDS = [
+  "history", "comedy", "engineering", "business", "health", "society",
+  "science", "true-crime", "culture", "psychology", "food", "craft",
+  "nature", "medicine", "music", "personal-journals", "sports",
+];
+
+/** Explanation + consent, not an interview, then an optional Preferences
+    pane — the mockup's Welcome and Preferences screens (docs/ux/foray-
+    mockup.jsx, `WelcomeScreen`/`PrefsScreen`) as ONE modal sheet with two
+    panes swapped in place, per D2 / card U-09 (docs/ui-transition-plan.md,
+    #132). SKIPPABLE AT EVERY STEP:
+
+      Step 1 (Welcome) — two value props, the M3 prototype's `finishOnb`/
+      `skipOnb` preference-INTERVIEW step has no counterpart here and this
+      still does not build one (see the test that pins that). The second
+      prop is illustrated with a live, non-interactive SegmentStrip
+      (player/segment-strip.js's segmentStripHtml, U-04) over the first
+      listable Foray, when one exists — degrades to nothing otherwise, the
+      same "no Foray, no strip" rule the component already guarantees.
+      "Skip for now" dismisses immediately, with no interest write. "Get
+      started" advances to step 2 WITHOUT dismissing yet.
+
+      Step 2 (Preferences) — the taxonomy chip grid (PREFS_CHIP_IDS) plus
+      the mockup's tucked-away "Or type a subject yourself…" field. Neither
+      the mockup's account-connector buttons ("Continue with Apple/Google")
+      nor "Import subscriptions/listening history" are built here —
+      connector features, explicitly out of scope per D2/C5. "Skip" dismisses
+      with no interest write (Generalist: today's taxonomy defaults stand).
+      "Start listening" applies the picks via applyOnboardingPicks() — the
+      FIXED U-07 write path (taxonomyNodes() includes roots, so a root-level
+      chip actually persists) — then dismisses.
+
+    Both steps' exits set the SAME cp_intro_dismissed flag showIntroPopupOnce()
+    already uses, so this flow and the older popup can never both show on the
+    same visit and neither shows again after. */
 function showFirstTimeExplainerOnce() {
   if (!isGenuineFirstTimeUser()) return false;
   if (lsGet("cp_intro_dismissed", false)) return false;
@@ -2354,28 +2604,11 @@ function showFirstTimeExplainerOnce() {
 
   const grab = ddEl("div", "fy-grab");
   grab.setAttribute("aria-hidden", "true");
+  panel.append(grab);
 
-  const title = ddEl("h3", null, "4a picks podcast episodes for you");
-  title.id = "first-time-sheet-title";
-  panel.setAttribute("aria-labelledby", "first-time-sheet-title");
+  const body = ddEl("div", "ft-step-body");
+  panel.append(body);
 
-  const what = ddEl("p", "fy-sheet-sub",
-    "It groups real podcast episodes into short listening sessions built around topics you're into.");
-  const learn = ddEl("p", "fy-sheet-sub",
-    "There's no interview. 4a learns your interests from what you play, save and skip — every weight can change, nothing is locked in.");
-  const data = ddEl("p", "fy-sheet-sub",
-    "Your interests, history and saves stay on this device. A few anonymous events — what you picked, finished, saved and any feedback you leave — are sent to run the app. Nothing is sold or shared.");
-
-  const actions = ddEl("div", "fy-sheet-actions");
-  const skip = ddEl("button", "fy-sheet-cancel", "Skip for now");
-  skip.type = "button";
-  skip.id = "first-time-sheet-skip";
-  const go = ddEl("button", "fy-sheet-go", "Get started");
-  go.type = "button";
-  go.id = "first-time-sheet-go";
-  actions.append(skip, go);
-
-  panel.append(grab, title, what, learn, data, actions);
   wrap.append(scrim, panel);
   document.body.appendChild(wrap);
   document.body.classList.add("fy-sheet-open");
@@ -2386,8 +2619,137 @@ function showFirstTimeExplainerOnce() {
     document.body.classList.remove("fy-sheet-open");
   };
   scrim.addEventListener("click", dismiss);
-  skip.addEventListener("click", dismiss);
-  go.addEventListener("click", dismiss);
+
+  /* Live SegmentStrip illustration for the second value prop — reads off
+     window.ForayPlayer exactly as forayCards()/renderForay() do (app.js is a
+     classic script and cannot import player/segment-strip.js). Absent
+     module, absent forays, or a Foray with no segments all degrade to no
+     strip, never an error. */
+  function welcomeStripHtml() {
+    const player = window.ForayPlayer;
+    if (!player || typeof player.resolve !== "function" || typeof player.segmentStripHtml !== "function") return "";
+    if (!state.forays) return "";
+    const first = forayCards()[0];
+    if (!first) return "";
+    try {
+      const r = player.resolve(state.forays, {
+        id: first.id, segmentsDoc: state.segments, sourcesDoc: state.segmentSources,
+        unlocked: unlockedForays(),
+      });
+      if (!r) return "";
+      return player.segmentStripHtml(r.playable, { size: "sm" }) || "";
+    } catch (_) {
+      // Malformed segments/sources data must not break the first-run Home
+      // render — "degrades to nothing" (this function's own contract) has to
+      // hold even when the player module throws, not just when it's absent.
+      return "";
+    }
+  }
+
+  function renderWelcome() {
+    body.innerHTML = "";
+    const title = ddEl("h3", null, "4a picks podcast episodes for you");
+    title.id = "first-time-sheet-title";
+    panel.setAttribute("aria-labelledby", "first-time-sheet-title");
+    const sub = ddEl("p", "fy-sheet-sub", "A podcast app that listens to you first. Two things make it different:");
+
+    const propLearn = ddEl("div", "ft-value-prop");
+    propLearn.append(
+      ddEl("h4", null, "Suggestions that actually learn"),
+      ddEl("p", "fy-sheet-sub",
+        "Episode picks tuned to your subjects and the voices you trust — sharper every time you listen.")
+    );
+
+    const propForay = ddEl("div", "ft-value-prop");
+    propForay.append(
+      ddEl("h4", null, "Forays: one subject, many shows"),
+      ddEl("p", "fy-sheet-sub",
+        "We clip the best parts of several podcasts on a subject and stitch them into one seamless listen, with a narrator bridging the gaps.")
+    );
+    const stripHtml = welcomeStripHtml();
+    if (stripHtml) {
+      const stripWrap = ddEl("div", "ft-strip-wrap");
+      stripWrap.innerHTML = stripHtml;
+      propForay.append(stripWrap);
+    }
+
+    const props = ddEl("div", "ft-value-props");
+    props.append(propLearn, propForay);
+
+    const actions = ddEl("div", "fy-sheet-actions");
+    const skip = ddEl("button", "fy-sheet-cancel", "Skip for now");
+    skip.type = "button";
+    skip.id = "first-time-sheet-skip";
+    const go = ddEl("button", "fy-sheet-go", "Get started");
+    go.type = "button";
+    go.id = "first-time-sheet-go";
+    actions.append(skip, go);
+
+    body.append(title, sub, props, actions);
+    if (stripHtml) applyStripGrowIfBridged(propForay);
+
+    skip.addEventListener("click", dismiss);
+    go.addEventListener("click", renderPreferences);
+  }
+
+  function applyStripGrowIfBridged(scope) {
+    if (window.ForayPlayer && typeof window.ForayPlayer.applyStripGrow === "function") {
+      window.ForayPlayer.applyStripGrow(scope);
+    }
+  }
+
+  function renderPreferences() {
+    body.innerHTML = "";
+    const picked = new Set();
+
+    const title = ddEl("h3", null, "What are you into?");
+    title.id = "first-time-sheet-title";
+    panel.setAttribute("aria-labelledby", "first-time-sheet-title");
+    const sub = ddEl("p", "fy-sheet-sub", "This is how we tune your suggestions. Pick a few, or skip — we learn either way, from what you play.");
+
+    const chips = ddEl("div", "fy-chips");
+    chips.id = "first-time-sheet-chips";
+    PREFS_CHIP_IDS.forEach(id => {
+      const node = nodeById(id);
+      if (!node) return; // taxonomy drift: never render a chip for a node that no longer exists
+      const chip = ddEl("button", "fy-chip", node.label);
+      chip.type = "button";
+      chip.dataset.chip = id;
+      chip.setAttribute("aria-pressed", "false");
+      chip.addEventListener("click", () => {
+        if (picked.has(id)) { picked.delete(id); chip.classList.remove("on"); chip.setAttribute("aria-pressed", "false"); }
+        else { picked.add(id); chip.classList.add("on"); chip.setAttribute("aria-pressed", "true"); }
+      });
+      chips.append(chip);
+    });
+
+    const typedWrap = ddEl("div", "ft-typed-wrap");
+    const typedInput = ddEl("input");
+    typedInput.type = "text";
+    typedInput.id = "first-time-sheet-typed";
+    typedInput.className = "ft-typed-input";
+    typedInput.placeholder = "Or type a subject yourself…";
+    typedWrap.append(typedInput);
+
+    const actions = ddEl("div", "fy-sheet-actions");
+    const skip = ddEl("button", "fy-sheet-cancel", "Skip");
+    skip.type = "button";
+    skip.id = "first-time-sheet-prefs-skip";
+    const go = ddEl("button", "fy-sheet-go", "Start listening");
+    go.type = "button";
+    go.id = "first-time-sheet-prefs-go";
+    actions.append(skip, go);
+
+    body.append(title, sub, chips, typedWrap, actions);
+
+    skip.addEventListener("click", dismiss);
+    go.addEventListener("click", () => {
+      applyOnboardingPicks([...picked], typedInput.value);
+      dismiss();
+    });
+  }
+
+  renderWelcome();
   return true;
 }
 
@@ -4655,6 +5017,7 @@ function sizeProgressBars(scope) {
 /* ---------- drawer ---------- */
 
 function renderDrawer() {
+  ensureInterestsDrawerLink();
   const recent = [...playlists()]
     .sort((a, b) => (b.last_played_at || b.created).localeCompare(a.last_played_at || a.created))
     .slice(0, 5);
@@ -4778,6 +5141,33 @@ function bindUi2Control() {
     renderDrawer();
     renderCurrentPage();
   });
+}
+
+/* The Interests page (#/interests, U-07) is reachable from Settings, but
+   index.html's drawer markup is not among this card's owned files and is
+   unlisted/human-merge-gated (CLAUDE.md path-policy) — editing it would pull
+   this whole change off the auto-merge path for one nav link. Injected once
+   into the drawer instead, immediately after `.drawer-section-label`
+   ("Settings" — the drawer's only section label today, per index.html), the
+   same place a founder editing index.html by hand would put it. If the
+   drawer ever grows a second `.drawer-section-label`, this must switch to a
+   text-matched lookup rather than "the first one found". Guarded by a flag
+   on the drawer element so repeated renderDrawer() calls (every
+   `openDrawer(true)`) don't stack duplicate links. */
+function ensureInterestsDrawerLink() {
+  const drawer = $("#drawer");
+  if (!drawer || drawer._interestsLinkAdded) return;
+  drawer._interestsLinkAdded = true;
+  const label = document.querySelector(".drawer-section-label");
+  const link = document.createElement("a");
+  link.className = "drawer-item";
+  link.href = "#/interests";
+  link.textContent = "Interests";
+  if (label && label.parentNode) {
+    label.parentNode.insertBefore(link, label.nextSibling);
+  } else {
+    drawer.appendChild(link);
+  }
 }
 
 /* ---------- delete my data (#42) ----------
@@ -5497,6 +5887,7 @@ function renderCurrentPage() {
   else if (h === "#/queue") renderQueue();
   else if (h === "#/library") renderLibrary();
   else if (h === "#/starred-shows") renderStarredShows();
+  else if (h === "#/interests") renderInterests();
   else renderHome();
   /* Called AFTER the page paints, not before: renderTabBar() reads
      document.body's class to decide nothing (it reads ui2On() and

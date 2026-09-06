@@ -1,0 +1,265 @@
+name: "android-bundle"
+description: >-
+  Build, sign (if configured) and upload the Android app bundle to Play's
+  internal testing track — or, if PLAY_SERVICE_ACCOUNT_JSON is absent, upload
+  the signed .aab as a workflow artifact instead and say exactly why. Factored
+  out of android-release.yml for R-03 (docs/release-lockstep-plan.md) so
+  release.yml and the PR-time CI job share one implementation. DOES NOT run
+  the android-smoke emulator job — that stays a separate, much slower job in
+  android-release.yml per its own header ("not needs: android-bundle... this
+  job builds and installs the DEBUG APK"); release.yml ships what android-build/
+  android-release already proved boots, it does not re-prove it on every tag.
+  Callers must `actions/checkout` before invoking this action.
+
+inputs:
+  marketing_version:
+    description: "X.Y.Z, from tools/mobile/version.mjs marketing-version"
+    required: true
+  build_number:
+    description: "Integer YYYYMMDDnn, from tools/mobile/version.mjs build-number — used as versionCode"
+    required: true
+  android_keystore_b64:
+    required: true
+  android_keystore_password:
+    required: true
+  android_key_alias:
+    required: true
+  play_service_account_json:
+    required: true
+
+outputs:
+  signed:
+    description: "signed | unsigned — see mobile/gradle/foray-signing.gradle's foraySigningStatus task"
+    value: ${{ steps.bundle.outputs.signed }}
+  play_state:
+    description: "ready | absent | partial — see tools/mobile/release-ci.mjs playReadiness()"
+    value: ${{ steps.play_gate.outputs.state }}
+  uploaded:
+    description: "true iff the Play upload step actually ran and succeeded"
+    value: ${{ steps.play_upload_result.outputs.uploaded }}
+  aab_path:
+    description: "Absolute path to the built .aab, for the artifact-upload fallback"
+    value: ${{ steps.bundle.outputs.aab_path }}
+
+runs:
+  using: "composite"
+  steps:
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 22
+
+    - uses: actions/setup-java@v4
+      with:
+        distribution: temurin
+        java-version: 21
+
+    - name: Toolchain versions (the first thing to read when this breaks)
+      shell: bash
+      run: |
+        set -euo pipefail
+        echo "ART=$RUNNER_TEMP/android-bundle-release" >> "$GITHUB_ENV"
+        mkdir -p "$RUNNER_TEMP/android-bundle-release"
+        echo "KEYDIR=$RUNNER_TEMP/android-release-keys" >> "$GITHUB_ENV"
+        javac -version 2>&1 | grep -qE '^javac 21\.' \
+          || { echo "javac is not 21 — Capacitor 8 will fail at compileDebugJavaWithJavac"; exit 1; }
+
+    - name: The Android SDK, from the image plus exactly what we pin
+      shell: bash
+      env:
+        SDK_PLATFORM: "platforms;android-36"
+        SDK_BUILD_TOOLS: "build-tools;36.0.0"
+      run: |
+        set -euo pipefail
+        SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+        if [ -z "$SDK" ] || [ ! -d "$SDK" ]; then
+          echo "Neither ANDROID_HOME nor ANDROID_SDK_ROOT points at an SDK on this runner."
+          exit 1
+        fi
+        echo "ANDROID_HOME=$SDK" >> "$GITHUB_ENV"
+        SDKMANAGER=$(command -v sdkmanager 2>/dev/null || true)
+        if [ -z "$SDKMANAGER" ]; then
+          SDKMANAGER=$(ls "$SDK"/cmdline-tools/*/bin/sdkmanager 2>/dev/null | tail -1 || true)
+        fi
+        if [ -z "$SDKMANAGER" ] || [ ! -x "$SDKMANAGER" ]; then
+          echo "no sdkmanager on PATH or under $SDK/cmdline-tools/*/bin/"
+          exit 1
+        fi
+        yes 2>/dev/null | "$SDKMANAGER" --licenses > /dev/null || true
+        "$SDKMANAGER" --install "$SDK_PLATFORM" "$SDK_BUILD_TOOLS"
+
+    - name: Install the shell's dependencies
+      shell: bash
+      working-directory: mobile
+      run: |
+        set -euo pipefail
+        npm ci --no-audit --no-fund
+
+    - name: Build the webDir and generate the Android project
+      shell: bash
+      working-directory: mobile
+      run: |
+        set -euo pipefail
+        npm run add:android 2>&1 | tee "$ART/cap-add-android.log"
+        echo "sdk.dir=$ANDROID_HOME" > android/local.properties
+        chmod +x android/gradlew
+
+    - name: Wire the signing include into the generated project
+      shell: bash
+      run: |
+        set -euo pipefail
+        node tools/mobile/wire-signing.mjs mobile/android
+        node tools/mobile/wire-signing.mjs mobile/android --check
+
+    - name: Materialise the upload key, if the founder has installed one
+      id: key
+      shell: bash
+      env:
+        KEYSTORE_B64: ${{ inputs.android_keystore_b64 }}
+      run: |
+        set -euo pipefail
+        if [ -z "${KEYSTORE_B64:-}" ]; then
+          echo "keyed=false" >> "$GITHUB_OUTPUT"
+          echo "path=" >> "$GITHUB_OUTPUT"
+          echo "No ANDROID_KEYSTORE_B64 secret: this run will produce an UNSIGNED bundle."
+          exit 0
+        fi
+        mkdir -p "$KEYDIR"
+        chmod 700 "$KEYDIR"
+        if ! printf '%s' "$KEYSTORE_B64" | base64 --decode > "$KEYDIR/upload.p12"; then
+          echo "ANDROID_KEYSTORE_B64 is not valid base64"
+          exit 1
+        fi
+        chmod 600 "$KEYDIR/upload.p12"
+        if [ ! -s "$KEYDIR/upload.p12" ]; then
+          echo "ANDROID_KEYSTORE_B64 decoded to an empty file"
+          exit 1
+        fi
+        echo "keyed=true" >> "$GITHUB_OUTPUT"
+        echo "path=$KEYDIR/upload.p12" >> "$GITHUB_OUTPUT"
+
+    - name: bundleRelease — the .aab Play accepts
+      id: bundle
+      shell: bash
+      working-directory: mobile/android
+      env:
+        KEYED: ${{ steps.key.outputs.keyed }}
+        FORAY_KEYSTORE_PATH: ${{ steps.key.outputs.path }}
+        FORAY_KEYSTORE_PASSWORD: ${{ inputs.android_keystore_password }}
+        FORAY_KEY_ALIAS: ${{ inputs.android_key_alias }}
+        # THE VERSION PAIR IS THE CALLER'S, NOT A DISPATCH-INPUT STRING. R-02's
+        # whole point: no more manually typed versionCode. release.yml passes
+        # the same build_number it hands ios-archive as CFBundleVersion.
+        FORAY_VERSION_CODE: ${{ inputs.build_number }}
+        FORAY_VERSION_NAME: ${{ inputs.marketing_version }}
+      run: |
+        set -euo pipefail
+        if [ -n "${FORAY_KEYSTORE_PASSWORD:-}" ] && [ "${#FORAY_KEYSTORE_PASSWORD}" -lt 12 ]; then
+          echo "the keystore password is under 12 characters. Refusing to build."
+          exit 1
+        fi
+        LOG="$RUNNER_TEMP/gradle-bundleRelease.log"
+        ./gradlew foraySigningStatus --no-daemon --console=plain -q | tee "$ART/signing-status.txt"
+        if [ "${KEYED:-false}" = "true" ]; then
+          grep -q 'FORAY_SIGNING_STATUS=keyed' "$ART/signing-status.txt" \
+            || { echo "a keystore was supplied but Gradle configured an UNSIGNED build"; exit 1; }
+        fi
+        set +e
+        ./gradlew bundleRelease --no-daemon --console=plain > "$LOG" 2>&1
+        GRADLE_STATUS=$?
+        set -e
+        if [ -n "${FORAY_KEYSTORE_PASSWORD:-}" ] && grep -qF "$FORAY_KEYSTORE_PASSWORD" "$LOG"; then
+          rm -f "$LOG"
+          echo "the Gradle log contained the keystore password; deleted rather than uploaded."
+          exit 1
+        fi
+        cp "$LOG" "$ART/gradle-bundleRelease.log"
+        if [ "$GRADLE_STATUS" -ne 0 ]; then
+          echo "::group::bundleRelease tail"; tail -300 "$ART/gradle-bundleRelease.log"; echo "::endgroup::"
+          exit 1
+        fi
+        LINTLINE=$(grep -E '^> Task :app:lintVitalRelease( |$)' "$ART/gradle-bundleRelease.log" | tail -1 || true)
+        if [ -z "$LINTLINE" ]; then
+          echo "bundleRelease did not run :app:lintVitalRelease"
+          exit 1
+        fi
+        case "$LINTLINE" in
+          *SKIPPED*|*NO-SOURCE*) echo "lintVitalRelease was registered but did not execute: $LINTLINE"; exit 1 ;;
+        esac
+        AAB=app/build/outputs/bundle/release/app-release.aab
+        test -f "$AAB" || { echo "no .aab at $AAB"; exit 1; }
+        cp "$AAB" "$ART/foray-release.aab"
+        echo "aab_path=$ART/foray-release.aab" >> "$GITHUB_OUTPUT"
+
+        SIGBLOCKS=$(unzip -Z1 "$AAB" | grep -cE '^META-INF/.*\.(RSA|DSA|EC)$' || true)
+        if [ "${KEYED:-false}" = "true" ]; then
+          jarsigner -verify "$AAB" > "$ART/jarsigner.txt" 2>&1 || { cat "$ART/jarsigner.txt"; exit 1; }
+          grep -q 'jar verified' "$ART/jarsigner.txt" || { cat "$ART/jarsigner.txt"; exit 1; }
+          echo "signed=signed" >> "$GITHUB_OUTPUT"
+        else
+          if [ "$SIGBLOCKS" -ne 0 ]; then
+            echo "no keystore was supplied but the bundle carries $SIGBLOCKS signature block(s)"
+            exit 1
+          fi
+          echo "signed=unsigned" >> "$GITHUB_OUTPUT"
+        fi
+
+    - name: Shred the upload key
+      if: always()
+      shell: bash
+      run: |
+        set -euo pipefail
+        if [ -d "${KEYDIR:-}" ]; then
+          find "$KEYDIR" -type f -exec shred -u {} + 2>/dev/null || rm -rf "$KEYDIR"
+          rm -rf "$KEYDIR"
+        fi
+
+    - name: Is the Play upload configured?
+      id: play_gate
+      shell: bash
+      env:
+        PLAY_SERVICE_ACCOUNT_JSON: ${{ inputs.play_service_account_json }}
+      # `state=absent` exits 0 (skip loudly); `state=partial` exits 1 and fails
+      # this job — see tools/mobile/release-ci.mjs playReadiness().
+      run: node tools/mobile/release-ci.mjs play-gate
+
+    - name: Upload the signed .aab to the Play internal testing track
+      id: play_upload
+      if: steps.play_gate.outputs.ready == 'true' && steps.bundle.outputs.signed == 'signed'
+      # PINNED BY SHA, NOT A TAG — the same third-party-action posture
+      # android-release.yml's own header argues for signing key access ("this
+      # is the one workflow in the repo that a signing key passes through").
+      # This is the one exception to that file's "no third-party actions"
+      # rule, because unlike an emulator driver there is no first-party way to
+      # call the Play Developer API's edits.bundles endpoint from a shell in
+      # ~30 lines the way sdkmanager/avdmanager/emulator/adb could be driven
+      # directly — R-03 accepts the action in exchange for the SHA pin plus
+      # every guard already on this key (see 'Shred the upload key' above,
+      # which still fires because it is `if: always()` and runs before this
+      # step's inputs are even read).
+      uses: r0adkll/upload-google-play@935ef9c67dd85a5822618b8f7c50bd85a92e83ba # v1.1.3
+      with:
+        serviceAccountJsonPlainText: ${{ inputs.play_service_account_json }}
+        packageName: ai.jwlabs.foura
+        releaseFiles: ${{ steps.bundle.outputs.aab_path }}
+        track: internal
+        status: completed
+
+    - name: Record the Play upload outcome
+      id: play_upload_result
+      if: always()
+      shell: bash
+      run: |
+        if [ "${{ steps.play_gate.outputs.ready }}" = "true" ] && [ "${{ steps.bundle.outputs.signed }}" = "signed" ] && [ "${{ steps.play_upload.outcome }}" = "success" ]; then
+          echo "uploaded=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "uploaded=false" >> "$GITHUB_OUTPUT"
+        fi
+
+    - name: Upload the .aab as a build artifact (always — the fallback path when Play is skipped)
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: foray-android-release
+        path: ${{ steps.bundle.outputs.aab_path }}
+        if-no-files-found: warn
+        retention-days: 30

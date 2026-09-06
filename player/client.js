@@ -106,7 +106,7 @@ import {
   DiagnosticLog, PlayerDiagnostics, formatDiagnosticReport,
 } from "./diagnostic-log.js";
 import { forayCredits, collectionIdsByShow, creditsSummary, artworkUrlsByShow } from "./foray-sources.js";
-import { mountStrip, stripModel, stripSummary } from "./segment-strip.js";
+import { mountStrip, stripModel, stripSummary, segmentStripHtml, applyStripGrow } from "./segment-strip.js";
 import {
   HOLD_MS, MOVE_TOLERANCE_PX, ZOOM_SCALE,
   startGesture, moveGesture, holdTimeoutGesture, endGesture, zoomOriginPercent,
@@ -1479,6 +1479,17 @@ const ForayPlayer = {
       want next to a strip it renders itself. */
   stripModel,
   stripSummary,
+
+  /* U-04: the string half of the strip, for callers that build markup as
+     template strings interpolated into `innerHTML` — Home's Foray cards
+     (U-03) and the show/episode restyle (U-08) — rather than as live DOM.
+     Bridged for the same reason `stripInto` is: `app.js` is a classic script
+     and cannot `import` from `player/`. `applyStripGrow` is the CSSOM pass a
+     caller must run once the string is in the document, since the CSP blocks
+     the width from being written as a style attribute in the string itself
+     (see `segment-strip.js`'s header on `segmentStripHtml`). */
+  segmentStripHtml,
+  applyStripGrow,
 
   /* ---------- press-and-hold zoom-to-scrub (V1) ----------
 
