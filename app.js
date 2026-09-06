@@ -3798,6 +3798,116 @@ function renderPlaylists() {
   $("#pl-form").addEventListener("submit", bindPlaylistFormSubmit);
 }
 
+/* ---------- Create (#/create, U-06 / docs/ui-transition-plan.md D7+D8) ----------
+
+   The mockup's Create screen (docs/ux/foray-mockup.jsx CreateScreen), restyled
+   under the ui-v2 tokens, with the **Foray | Playlist** toggle rendered but the
+   Foray half permanently disabled: "Foray generation stays out of the UI for
+   now" (D8) -- the pipeline exists, its key and segment pool don't, and a
+   toggle that silently did nothing would be worse than one that says so.
+   Playlist mode is NOT a new builder: it is today's buildPlaylist() (the same
+   function #/playlists' form calls), reached through the new chrome, so a
+   playlist built from here and one built from the old Playlists page produce
+   byte-identical cp_playlists entries (the card's acceptance line).
+
+   The mockup's ~20/~40/~75 minute LENGTH picker is Foray-specific (it sizes a
+   stitched run of segments) and has no meaning for a playlist of whole
+   episodes, so D8 explicitly excludes it here -- showing it would imply a
+   knob that does nothing.
+
+   The mockup's phase machine (idle -> building -> done) fakes progress with a
+   fixed step list and a timer with no backing work. buildPlaylist() is real,
+   synchronous work with no intermediate stages to report, so this reuses only
+   the honest part of that shape -- a "Building…" transient long enough for
+   the browser to paint before the synchronous call blocks the main thread
+   (the same bindPlaylistFormSubmit fix, same reason) -- and then either opens
+   the built playlist (the mockup's "done" destination) or shows why not. No
+   invented step list, because inventing one here would be exactly the kind of
+   promise D8 forbids: a progress bar for work that is not actually happening
+   in stages. */
+
+const CREATE_SUBJECT_SUGGESTIONS = [
+  "The history of the Fed", "Mechanical watches", "Small launch economics",
+];
+
+function createToggleHtml() {
+  return `<div class="cr-toggle" role="group" aria-label="Create mode">
+    <button type="button" class="cr-toggle-btn is-on" data-cr-mode="playlist" aria-pressed="true">Playlist</button>
+    <button type="button" class="cr-toggle-btn is-disabled" data-cr-mode="foray" disabled aria-disabled="true" aria-pressed="false"
+        title="Custom Forays aren't available yet">Foray</button>
+  </div>
+  <p class="note cr-foray-note">Custom Forays aren't available yet — you can still build a playlist below.</p>`;
+}
+
+/** Loading-state guard around #cr-form's submit -- the same shape as
+    bindPlaylistFormSubmit (see that function's header for why the
+    setTimeout(0) is load-bearing) because this calls the exact same
+    buildPlaylist(), just from the new screen's form. Kept as a separate
+    function rather than a shared one because the two forms' DOM (note
+    element id, disabled-label text) differ enough that forcing a shared
+    signature would need extra parameters for no real reuse -- U-02's own
+    history (two `#pl-form` mounts sharing one handler) is the caution here:
+    that ended with only one of the two mounts still using it. */
+function bindCreateFormSubmit(e) {
+  e.preventDefault();
+  const form = e.currentTarget;
+  const input = form.querySelector("input[type='text']");
+  const btn = form.querySelector("button[type='submit']");
+  const query = input.value.trim();
+  if (!query) return;
+  const originalLabel = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = "Building…";
+  const note = $("#cr-note");
+  if (note) note.hidden = true;
+  setTimeout(() => {
+    try {
+      const result = buildPlaylist(query);
+      logEvent("playlist_built", { query, status: result.status, found: result.playlist ? result.playlist.items.length : 0, source: "create" });
+      if (result.status === "ok" || result.status === "sparse") {
+        location.hash = "#/playlist/" + result.playlist.id;
+      } else {
+        if (note) {
+          note.textContent = result.status === "unsaved"
+            ? "That playlist could not be saved — this device has no storage space left. Removing a playlist you have finished with frees enough for a new one."
+            : result.suggestions.length
+              ? `Not much on "${query}" yet — try ${result.suggestions.map(s => s.label).join(", ")} instead.`
+              : `Not much on "${query}" yet — try different words.`;
+          note.hidden = false;
+        }
+      }
+    } finally {
+      btn.disabled = false;
+      btn.textContent = originalLabel;
+    }
+  }, 0);
+}
+
+function renderCreate() {
+  setBodyClass("view-page");
+  $("#view").innerHTML = `
+    <div class="page cr-page">
+      <div class="page-head">
+        <a class="back" href="#/">‹</a>
+        <div><h2>Create</h2><p class="sub">Name a subject and we'll build a playlist from across the catalogue.</p></div>
+      </div>
+      ${createToggleHtml()}
+      <form id="cr-form" autocomplete="off">
+        <input id="cr-input" type="text" maxlength="120" placeholder="e.g. the semiconductor supply chain">
+        <button type="submit">Build</button>
+      </form>
+      <div class="cr-suggestions">
+        ${CREATE_SUBJECT_SUGGESTIONS.map(s => `<button type="button" class="cr-pill" data-cr-subject="${esc(s)}">${esc(s)}</button>`).join("")}
+      </div>
+      <p id="cr-note" class="note" hidden></p>
+    </div>`;
+
+  $("#cr-form").addEventListener("submit", bindCreateFormSubmit);
+  $("#view").querySelectorAll("[data-cr-subject]").forEach(btn => {
+    btn.addEventListener("click", () => { $("#cr-input").value = btn.dataset.crSubject; $("#cr-input").focus(); });
+  });
+}
+
 /* ---------- Forays (#128) ----------
 
    A Foray is one ordered run of 32 SEGMENTS drawn from nine episodes of five
@@ -5294,7 +5404,7 @@ const TAB_ROUTES = [
     icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
       'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
       '<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>' },
-  { key: "create", label: "Create", hash: "#/playlists",
+  { key: "create", label: "Create", hash: "#/create",
     icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
       'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
       '<circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>' },
@@ -5316,7 +5426,7 @@ function tabForHash(hash) {
   const h = hash || "#/";
   if (h === "#/") return "home";
   if (/^#\/(shows$|show\/|category\/|starred-shows$)/.test(h)) return "search";
-  if (/^#\/(playlists$|playlist\/|subject\/)/.test(h)) return "create";
+  if (/^#\/(playlists$|playlist\/|subject\/|create$)/.test(h)) return "create";
   if (/^#\/(library$|queue$|forays$|foray\/)/.test(h)) return "library";
   if (/^#\/episode\//.test(h)) return "search"; // reached from a show/search result
   return null;
@@ -6114,6 +6224,7 @@ function renderCurrentPage() {
   else if ((m = /^#\/category\/(.+)$/.exec(h))) renderCategory(decodeURIComponent(m[1]));
   else if (h === "#/shows") renderAllShows();
   else if (h === "#/playlists") renderPlaylists();
+  else if (h === "#/create") renderCreate();
   else if (h === "#/forays") renderForays();
   else if (h === "#/queue") renderQueue();
   else if (h === "#/library") renderLibrary();
