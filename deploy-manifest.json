@@ -1,7 +1,7 @@
 {
-  "deploy_id": "d0e182f71178cd86",
+  "deploy_id": "e3263b9fecddaf5a",
   "files": {
-    "app.js": "sha256:ffaf113290f88a81245d9ecad44bca9d2dbd284da2478f7adb10b313d62df1bd",
+    "app.js": "sha256:f1f2c2faf50478f6128e45e1e8cb78cd21cda2cd0aa211be34e9804240503f57",
     "data/catalog-client.json": "sha256:83a6a83d4633326dbc422c57677a78438a41c69f3055439a0010d2057aec8864",
     "data/dai-classification.json": "sha256:321fb915e4289a098cbd30ec7cc8e8503345a1c6cadb6cda2803ff656162a545",
     "data/discover.json": "sha256:3d548d541b31ca03aecda5516f88523c33e070e14362346c96dc896962abf468",
@@ -19,7 +19,7 @@
     "icon-512.png": "sha256:1c7c61679d2e6935e361de64a774930230dfaddd1ecef00dc70288e2d38f2451",
     "index.html": "sha256:616c0e5a2aa835d4994f4a064003d25994041295cd2580ec498661f2e79af9bc",
     "manifest.json": "sha256:07da0240401a94520a83e205f723a11160646061a0376b88f10a9a4963cbcba6",
-    "player/client.js": "sha256:4f9f4b122f459aa2f677b08fa2dcf50e776b91cacdcd52a3f77c54a0e6d713e5",
+    "player/client.js": "sha256:dd4d56f237adb247569ce0e1533d8ec3a74826fb20b7080f7a566ddfd31684f0",
     "player/diagnostic-log.js": "sha256:2a751701ab8c03ae2fe021d73985cd081f988c247baf5300fa00a2a3646ef00b",
     "player/durable-store.js": "sha256:64b8a80cc7f0f2b3efb366ce2a595e381f80fd1abe9c9e9e0bc3cdc3f7f6eeeb",
     "player/event-log.js": "sha256:88987f4b3c55ca289bf6e43d3264b05287d130a2a4672a5223054297029c2f9c",
@@ -32,7 +32,7 @@
     "player/media-session.js": "sha256:f143a1ea766c17e4ac93c51ef5d9c69764427f964fcfbeeebf36e342c889afcb",
     "player/playback-rate.js": "sha256:0e7ca3c674afbc11e6da66ff64bd3302fb3ef382c0b98903e31d3e3cabddce58",
     "player/position-store.js": "sha256:f90a88f0d6999d9b42cdea34ff16dbae0fd87f54cecd81cade219fc07e0282bc",
-    "player/queue-manager.js": "sha256:a1789157ccc68ba4c9872ba3683a4b13245a39fd33c972ad3e1e86a6722ffa24",
+    "player/queue-manager.js": "sha256:fbebdb5ab27efe3144f0b9b4b20967533506449714e130ed28d03b57e9ed3c1c",
     "player/queue-state.js": "sha256:a3aca9689e49069518ed00c3229ec3561daa3e08b0089de67368505214ec7c35",
     "player/queue-strategy.js": "sha256:6f6c65f71315bef2e8c85d0f196f15f87d7e24d9c39c002cc98eef5b4999ff3c",
     "player/seam-gap.js": "sha256:d0246bea2b7bc0c1a3b54c9db7614d3675529328483bad63d8622674b04f8e23",
@@ -41,6 +41,6 @@
     "player/strip-scrub-gesture.js": "sha256:88415f256049ee1ac96c6738651819d3b1c76161f6fe685dc6eaeab71b0d487e",
     "player/tts-bridge.js": "sha256:cc600841466cd1f1f644b4940d13ffa6b44548b2c8f3045eddc90e3b3cad356f",
     "search-engine.js": "sha256:680161045b4a907ddb19b45c42ac873066b5a7d6d5913ce91d40b53a28458d3c",
-    "styles.css": "sha256:c057b31658162657641a0d5e462f0cfb6a1b6926118d12687896326b78d84dce"
+    "styles.css": "sha256:33ec22b9d3db339bb670c4336297c5e098f7665bc13d4573598c533baf34593f"
   }
 }
