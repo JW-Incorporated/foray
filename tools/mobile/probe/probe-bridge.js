@@ -70,6 +70,92 @@
       }
     } catch (e) {}
     out.hasServiceWorkerApi = !!navigator.serviceWorker;
+    snapshotMediaSession();
+  }
+
+  /* M-01: is `navigator.mediaSession` exposed in this WKWebView, and does it
+   * behave like the spec, before L-01/L-02 design anything around it. Four
+   * facts, each captured independently so a throw in one does not blank the
+   * others — see `docs/ios-controls-and-voice-plan.md` card M-01.
+   *
+   * NEVER RESTORED. This probe is not the polyfill (L-02's `install()`/
+   * `uninstall()` contract) -- it is a one-shot read of whatever WebKit ships,
+   * run inside a throwaway probe page, so there is nothing to put back. */
+  function snapshotMediaSession() {
+    var ms = { typeofMediaSession: "undefined" };
+    try {
+      ms.typeofMediaSession = typeof navigator.mediaSession;
+    } catch (e) {
+      ms.typeofMediaSession = "threw: " + e.message;
+    }
+    var session = null;
+    try {
+      session = navigator.mediaSession;
+    } catch (e) { /* typeofMediaSession above already records this */ }
+
+    if (!session) {
+      /* Absent by construction -- the three fields below have no meaning when
+         there is nothing to call them on, and reporting `false`/`null` here
+         would read as "measured and found broken" rather than "nothing to
+         measure". Every downstream reader must treat `null` as its own state. */
+      ms.canSetActionHandler = null;
+      ms.setActionHandlerThrew = null;
+      ms.metadataWriteThrew = null;
+      ms.playbackStateWriteThrew = null;
+      ms.setPositionStateThrew = null;
+      ms.setPositionStateAvailable = null;
+      out.mediaSession = ms;
+      return;
+    }
+
+    ms.canSetActionHandler = typeof session.setActionHandler === "function";
+    try {
+      if (ms.canSetActionHandler) {
+        session.setActionHandler("play", function () {});
+        session.setActionHandler("play", null); // leave no handler installed behind us
+        ms.setActionHandlerThrew = false;
+      } else {
+        ms.setActionHandlerThrew = null; // nothing callable to try
+      }
+    } catch (e) {
+      ms.setActionHandlerThrew = true;
+      ms.setActionHandlerError = String(e && e.message);
+    }
+
+    try {
+      /* `MediaMetadata` itself, not only the setter, can be the thing that is
+         missing -- constructing it is part of "does a metadata write throw". */
+      session.metadata = typeof MediaMetadata === "function"
+        ? new MediaMetadata({ title: "foray-probe", artist: "foray-probe", album: "foray-probe" })
+        : null;
+      ms.metadataWriteThrew = false;
+    } catch (e) {
+      ms.metadataWriteThrew = true;
+      ms.metadataWriteError = String(e && e.message);
+    }
+
+    try {
+      session.playbackState = "playing";
+      ms.playbackStateWriteThrew = false;
+    } catch (e) {
+      ms.playbackStateWriteThrew = true;
+      ms.playbackStateWriteError = String(e && e.message);
+    }
+
+    ms.setPositionStateAvailable = typeof session.setPositionState === "function";
+    try {
+      if (ms.setPositionStateAvailable) {
+        session.setPositionState({ duration: 100, playbackRate: 1, position: 0 });
+        ms.setPositionStateThrew = false;
+      } else {
+        ms.setPositionStateThrew = null;
+      }
+    } catch (e) {
+      ms.setPositionStateThrew = true;
+      ms.setPositionStateError = String(e && e.message);
+    }
+
+    out.mediaSession = ms;
   }
 
   snapshot();
