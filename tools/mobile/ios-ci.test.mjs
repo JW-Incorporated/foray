@@ -40,6 +40,8 @@ import {
   collectProbes,
   decodeLocalStorageRows,
   medianMs,
+  mediaSessionVerdict,
+  nowPlayingCoverage,
   outPointVerdict,
   parseConsoleProbes,
   parseDump,
@@ -1840,4 +1842,117 @@ test("a stamp from just BEFORE the app went hidden is not evidence about a suspe
   });
   assert.notEqual(v.verdict, "suspended-while-audible");
   assert.equal(v.verdict, "suspended-audio-unknown");
+});
+
+/* ───────────────────────── M-01: navigator.mediaSession ─────────────────── */
+
+test("no mediaSession probe data is INCONCLUSIVE, not a finding", () => {
+  const v = mediaSessionVerdict(null);
+  assert.equal(v.verdict, "inconclusive");
+  assert.equal(v.typeofMediaSession, null);
+  const v2 = mediaSessionVerdict({ capacitorType: "object" }); // real bridge record, no mediaSession key
+  assert.equal(v2.verdict, "inconclusive");
+});
+
+test("mediaSession exposed and fully functional reads as exposed, with all four facts measured", () => {
+  const v = mediaSessionVerdict({
+    mediaSession: {
+      typeofMediaSession: "object",
+      canSetActionHandler: true,
+      setActionHandlerThrew: false,
+      metadataWriteThrew: false,
+      playbackStateWriteThrew: false,
+      setPositionStateAvailable: true,
+      setPositionStateThrew: false,
+    },
+  });
+  assert.equal(v.verdict, "exposed");
+  assert.equal(v.canSetActionHandler, true);
+  assert.equal(v.setActionHandlerThrew, false);
+  assert.equal(v.metadataWriteThrew, false);
+  assert.equal(v.playbackStateWriteThrew, false);
+  assert.equal(v.setPositionStateThrew, false);
+  assert.match(v.headline, /IS exposed/);
+});
+
+test("mediaSession absent is reported as absent, not as a throw", () => {
+  const v = mediaSessionVerdict({
+    mediaSession: {
+      typeofMediaSession: "undefined",
+      canSetActionHandler: null,
+      setActionHandlerThrew: null,
+      metadataWriteThrew: null,
+      playbackStateWriteThrew: null,
+      setPositionStateAvailable: null,
+      setPositionStateThrew: null,
+    },
+  });
+  assert.equal(v.verdict, "absent");
+  assert.match(v.headline, /is undefined/);
+  assert.match(v.detail, /not applicable — mediaSession absent/);
+});
+
+test("MUTATION: a metadata write that throws must be reported as THREW, not swallowed", () => {
+  const v = mediaSessionVerdict({
+    mediaSession: {
+      typeofMediaSession: "object",
+      canSetActionHandler: true,
+      setActionHandlerThrew: false,
+      metadataWriteThrew: true,
+      metadataWriteError: "TypeError: Illegal constructor",
+      playbackStateWriteThrew: false,
+      setPositionStateAvailable: true,
+      setPositionStateThrew: false,
+    },
+  });
+  assert.equal(v.metadataWriteThrew, true);
+  assert.match(v.detail, /metadata write: THREW \(TypeError: Illegal constructor\)/);
+});
+
+test("a setActionHandler that is not even a function is distinguished from one that throws", () => {
+  const v = mediaSessionVerdict({
+    mediaSession: {
+      typeofMediaSession: "object",
+      canSetActionHandler: false,
+      setActionHandlerThrew: null,
+      metadataWriteThrew: false,
+      playbackStateWriteThrew: false,
+      setPositionStateAvailable: false,
+      setPositionStateThrew: null,
+    },
+  });
+  assert.match(v.detail, /setActionHandler\("play", fn\): NOT a function/);
+  assert.match(v.detail, /setPositionState: not a function on this session/);
+});
+
+/* ────────────────── M-01: Now Playing publication from the log ──────────── */
+
+test("no simulator log at all is no-coverage, never a no", () => {
+  assert.equal(nowPlayingCoverage(null).verdict, "no-coverage");
+  assert.equal(nowPlayingCoverage("").verdict, "no-coverage");
+  assert.equal(nowPlayingCoverage("   ").verdict, "no-coverage");
+});
+
+test("a present, watched log with none of the needles is silent, and that IS a measurement", () => {
+  const v = nowPlayingCoverage(logLine("20:24:10.000", "some unrelated WebKit line"));
+  assert.equal(v.verdict, "silent");
+  assert.equal(v.matchCount, 0);
+});
+
+test("MUTATION: a log carrying MRMediaRemote lines must be read as published, not silent", () => {
+  const text = [
+    logLine("20:24:10.000", "MRMediaRemote publishing now playing info"),
+    logLine("20:24:11.000", "some unrelated WebKit line"),
+  ].join("\n");
+  const v = nowPlayingCoverage(text);
+  assert.equal(v.verdict, "published");
+  assert.equal(v.matchCount, 1);
+  assert.match(v.sampleLines[0], /MRMediaRemote/);
+});
+
+test("every Now Playing needle is recognised, one at a time", () => {
+  for (const needle of ["MRMediaRemote", "NowPlaying", "MPNowPlayingInfoCenter", "MRNowPlayingClientNotification"]) {
+    const v = nowPlayingCoverage(logLine("20:24:10.000", `line carrying ${needle} only`));
+    assert.equal(v.verdict, "published", `${needle} was not recognised`);
+  }
 });

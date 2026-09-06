@@ -2004,6 +2004,142 @@ export function medianMs(intervals) {
   return nums.length % 2 ? nums[mid] : (nums[mid - 1] + nums[mid]) / 2;
 }
 
+/**
+ * M-01. Four facts about `navigator.mediaSession` inside the WKWebView, read
+ * from `probe-bridge.js`'s `mediaSession` sub-record, tagged measured/inferred
+ * per `docs/ios-controls-and-voice-plan.md` card M-01's own instruction.
+ *
+ *   1. typeof navigator.mediaSession
+ *   2. is `setActionHandler("play", fn)` callable, and does calling it throw
+ *   3. do metadata / playbackState / setPositionState writes throw
+ *   4. (separate function, `nowPlayingCoverage` below) does the simulator log
+ *      show WebKit publishing Now Playing info from the `<audio>` element
+ *
+ * `probe` is absent, not merely falsy, until this card's probe-bridge.js ships
+ * — an OLDER bridge record has no `mediaSession` key at all, and that must
+ * read as "not measured this run", never as "absent API".
+ */
+export function mediaSessionVerdict(probe) {
+  const ms = probe && typeof probe === "object" ? probe.mediaSession : undefined;
+  if (!ms || typeof ms !== "object") {
+    return {
+      verdict: "inconclusive",
+      typeofMediaSession: null,
+      canSetActionHandler: null,
+      setActionHandlerThrew: null,
+      metadataWriteThrew: null,
+      playbackStateWriteThrew: null,
+      setPositionStateThrew: null,
+      headline: "No mediaSession probe data came back — M-01 is UNMEASURED this run.",
+      detail:
+        "Either the bridge probe never reported, or it predates this card's mediaSession " +
+        "snapshot. Not a finding either way.",
+    };
+  }
+  const exposed = ms.typeofMediaSession === "object";
+  const headline = !exposed
+    ? `navigator.mediaSession is ${ms.typeofMediaSession} in this WKWebView — MEASURED, not inferred.`
+    : `navigator.mediaSession IS exposed (typeof === "object") in this WKWebView — MEASURED, not inferred.`;
+  const facts = [];
+  facts.push(`typeof navigator.mediaSession: \`${ms.typeofMediaSession}\` (measured)`);
+  facts.push(
+    ms.canSetActionHandler == null
+      ? "setActionHandler(\"play\", fn): not applicable — mediaSession absent (measured)"
+      : `setActionHandler("play", fn): ${ms.canSetActionHandler ? "callable" : "NOT a function"}, call ` +
+        `${ms.setActionHandlerThrew ? `THREW (${ms.setActionHandlerError || "no message"})` : "did not throw"} (measured)`
+  );
+  facts.push(
+    ms.metadataWriteThrew == null
+      ? "metadata write: not applicable — mediaSession absent (measured)"
+      : `metadata write: ${ms.metadataWriteThrew ? `THREW (${ms.metadataWriteError || "no message"})` : "did not throw"} (measured)`
+  );
+  facts.push(
+    ms.playbackStateWriteThrew == null
+      ? "playbackState write: not applicable — mediaSession absent (measured)"
+      : `playbackState write: ${ms.playbackStateWriteThrew ? `THREW (${ms.playbackStateWriteError || "no message"})` : "did not throw"} (measured)`
+  );
+  facts.push(
+    ms.setPositionStateThrew == null
+      ? (ms.setPositionStateAvailable === false
+          ? "setPositionState: not a function on this session (measured)"
+          : "setPositionState: not applicable — mediaSession absent (measured)")
+      : `setPositionState write: ${ms.setPositionStateThrew ? `THREW (${ms.setPositionStateError || "no message"})` : "did not throw"} (measured)`
+  );
+  return {
+    verdict: exposed ? "exposed" : "absent",
+    typeofMediaSession: ms.typeofMediaSession,
+    canSetActionHandler: ms.canSetActionHandler,
+    setActionHandlerThrew: ms.setActionHandlerThrew,
+    metadataWriteThrew: ms.metadataWriteThrew,
+    playbackStateWriteThrew: ms.playbackStateWriteThrew,
+    setPositionStateThrew: ms.setPositionStateThrew,
+    headline,
+    detail: facts.join("; "),
+  };
+}
+
+/** The lines that would show WebKit publishing Now Playing info from the
+ *  `<audio>` element, copied out of a real `MRMediaRemote`/`NowPlaying`
+ *  vocabulary the way `LIFECYCLE_NEEDLES` copies its lines from a real
+ *  `simulator-log-seam.txt` rather than from WebKit's source. Kept separate
+ *  from `LIFECYCLE_NEEDLES` because these are a different question — not
+ *  "was the process suspended" but "did the OS side publish anything at all"
+ *  — and conflating the two lists would make a suspension line look like
+ *  corroborating Now Playing evidence. */
+const NOW_PLAYING_NEEDLES = [
+  "MRMediaRemote",
+  "NowPlaying",
+  "MPNowPlayingInfoCenter",
+  "MRNowPlayingClientNotification",
+];
+
+/**
+ * M-01's fourth fact: does the simulator log show WebKit publishing Now
+ * Playing info from the `<audio>` element? `parseSimulatorLifecycle` already
+ * has the honesty rule this borrows — an empty or absent log reports
+ * "no coverage" rather than "no", because a silent log cannot distinguish
+ * "WebKit published nothing" from "the log never watched".
+ *
+ * @param {string|null} text the contents of `simulator-log-seam.txt` (or the
+ *   plain, non-seam `simulator-log.txt` — either capture predicate matches
+ *   `senderImagePath CONTAINS "WebKit"`, so either file can answer this)
+ */
+export function nowPlayingCoverage(text) {
+  if (typeof text !== "string" || text.trim() === "") {
+    return {
+      verdict: "no-coverage",
+      matchCount: 0,
+      sampleLines: [],
+      headline: "No simulator log was available to check for Now Playing publication — no coverage, not a no.",
+    };
+  }
+  const matches = [];
+  for (const line of text.split("\n")) {
+    for (const needle of NOW_PLAYING_NEEDLES) {
+      if (line.includes(needle)) {
+        matches.push(line.trim());
+        break;
+      }
+    }
+  }
+  if (!matches.length) {
+    return {
+      verdict: "silent",
+      matchCount: 0,
+      sampleLines: [],
+      headline:
+        "The simulator log was present and watched, and named none of MRMediaRemote/NowPlaying/" +
+        "MPNowPlayingInfoCenter — WebKit published nothing this run (measured, on this log's coverage only).",
+    };
+  }
+  return {
+    verdict: "published",
+    matchCount: matches.length,
+    sampleLines: matches.slice(0, 5),
+    headline: `The simulator log shows ${matches.length} Now-Playing-related line(s) from WebKit (measured).`,
+  };
+}
+
 /** A SIMULATOR IS NOT A DEVICE, and this sentence ships with every verdict.
  *  The simulator runs on the host's CPU with the host's power policy: it does
  *  not model true suspension, the freezer, or RunningBoard's assertions. So a
@@ -2026,11 +2162,13 @@ export const SIMULATOR_CAVEAT =
  * the gate and "not configured" in the summary. A report that cannot observe what
  * it asserts should not assert it.
  */
-export function renderReport({ bridge, outPoint, seam, signingState, build, lifecycle }) {
+export function renderReport({ bridge, outPoint, seam, signingState, build, lifecycle, seamLogText }) {
   const b = bridgeVerdict(bridge);
   const o = outPointVerdict(outPoint);
   const s = seamTransitionVerdict(seam ?? null);
   const sus = suspensionVerdict({ seam: seam ?? null, lifecycle: lifecycle ?? null });
+  const ms = mediaSessionVerdict(bridge);
+  const npc = nowPlayingCoverage(typeof seamLogText === "string" ? seamLogText : null);
   const lines = [];
   lines.push("## iOS shell — what this run actually established", "");
   if (build) lines.push(`**Build:** ${build}`, "");
@@ -2061,6 +2199,18 @@ export function renderReport({ bridge, outPoint, seam, signingState, build, life
     ""
   );
   lines.push(`> ${SIMULATOR_CAVEAT}`, "");
+  lines.push(
+    `### 3c. M-01 — \`navigator.mediaSession\` in the WKWebView, before L-01/L-02 design around it — \`${ms.verdict}\``,
+    "",
+    ms.headline,
+    "",
+    ms.detail,
+    "",
+    `Fourth fact — does the simulator log show WebKit publishing Now Playing info from the ` +
+      `\`<audio>\` element — \`${npc.verdict}\`: ${npc.headline}` +
+      (npc.sampleLines.length ? ` Sample: \`${npc.sampleLines[0]}\`` : ""),
+    ""
+  );
   lines.push(
     `### 4. TestFlight upload — \`${signingState || "not reported"}\``,
     "",
@@ -2190,10 +2340,8 @@ if (isMain) {
          argument still wins if someone passes one. */
       const seamLogPath =
         rest[2] || (rest[0] ? path.join(path.dirname(path.resolve(rest[0])), "simulator-log-seam.txt") : null);
-      const lifecycle =
-        seamLogPath && fs.existsSync(seamLogPath)
-          ? parseSimulatorLifecycle(fs.readFileSync(seamLogPath, "utf8"))
-          : null;
+      const seamLogText = seamLogPath && fs.existsSync(seamLogPath) ? fs.readFileSync(seamLogPath, "utf8") : null;
+      const lifecycle = seamLogText != null ? parseSimulatorLifecycle(seamLogText) : null;
       const { bridge, outPoint, outPoints, seam, seams, sources } = collectProbes({ dump, consoleText });
       console.error(
         `read ${Object.keys(dump).length} localStorage key(s) and ${consoleText.length} bytes of ` +
@@ -2210,6 +2358,7 @@ if (isMain) {
         outPoint,
         seam,
         lifecycle,
+        seamLogText,
         signingState: process.env.SIGNING_STATE || null,
         build: process.env.IOS_BUILD_STATUS || null,
       });
@@ -2219,10 +2368,13 @@ if (isMain) {
       const o = outPointVerdict(outPoint);
       const s = seamTransitionVerdict(seam);
       const sus = suspensionVerdict({ seam, lifecycle });
+      const ms = mediaSessionVerdict(bridge);
+      const npc = nowPlayingCoverage(seamLogText);
       if (process.env.GITHUB_OUTPUT) {
         fs.appendFileSync(
           process.env.GITHUB_OUTPUT,
-          `bridge=${b.verdict}\noutpoint=${o.verdict}\nseam=${s.verdict}\nsuspension=${sus.verdict}\n`
+          `bridge=${b.verdict}\noutpoint=${o.verdict}\nseam=${s.verdict}\nsuspension=${sus.verdict}\n` +
+            `mediasession=${ms.verdict}\nnowplaying=${npc.verdict}\n`
         );
       }
       /* Deliberately exit 0 for every verdict, INCLUDING the bad ones. This step

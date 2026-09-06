@@ -855,7 +855,7 @@ const FLOORS = {
          wait. */
   "tools/mobile/inject-app-icon.test.mjs": 27,
   "tools/mobile/inject-background-audio.test.mjs": 41,
-  "tools/mobile/ios-ci.test.mjs": 89,
+  "tools/mobile/ios-ci.test.mjs": 125,
   "tools/mobile/ios-workflow.test.mjs": 45,
   "tools/mobile/probe/install-probe.test.mjs": 39,
   /* The one-shot that gets a newly curated show's back catalogue into the pipeline
