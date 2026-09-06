@@ -852,6 +852,10 @@ test("the deletion writes nothing back: no event row, no fresh profile id", asyn
 });
 
 test("interests fall back to taxonomy defaults without writing anything", async () => {
+  /* Updated for kanban t_1cb3688a: loadInterests() now seeds every taxonomy
+     node, roots included (the root-node persistence bug fix), so the
+     post-deletion default set includes the root "food" alongside its leaf
+     "food.bbq" — not just the leaf, as before that fix. */
   const { arm, ui, ctx, cpKeys } = await mount({ seed: { cp_interests: '{"food":0.9}' } });
   vm.runInContext(
     'state.taxonomy = { nodes: [{ id: "food", parent: null, weight: 0.5 }, { id: "food.bbq", parent: "food", weight: 0.4 }] };',
@@ -860,7 +864,7 @@ test("interests fall back to taxonomy defaults without writing anything", async 
   await arm();
   await ui.go.click();
   const interests = vm.runInContext("JSON.stringify(state.interests)", ctx);
-  assert.deepStrictEqual(JSON.parse(interests), { "food.bbq": 0.4 }, "the profile must be back to defaults");
+  assert.deepStrictEqual(JSON.parse(interests), { food: 0.5, "food.bbq": 0.4 }, "the profile must be back to defaults, roots included");
   assert.deepStrictEqual(cpKeys(), { local: [], idb: [] }, "resetting must not write the defaults back");
 });
 
