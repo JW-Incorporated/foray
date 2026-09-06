@@ -140,7 +140,11 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     /// for our own icon, from the network for a publisher's. `artworkUri` has
     /// already been through `foray-media-session.js`'s `artworkUrl()` gate
     /// (only `https:`/`data:`/same-origin survive), the same trust boundary
-    /// Android's `assetUri()` rewrite sits behind.
+    /// Android's `assetUri()` rewrite sits behind. On iOS the web half marks
+    /// our own icon with the bare `bundle://public/…` scheme
+    /// (`IOS_ASSET_BASE` in `foray-media-session.js` -- L-02, the iOS mirror
+    /// of Android's `file:///android_asset/public/`); this is the one place
+    /// that scheme is resolved, against `Bundle.main`.
     ///
     /// Loading is SYNCHRONOUS-ISH here (best-effort, cache-friendly) rather
     /// than a fully async fetch-then-repost: `setNowPlaying` already runs off
@@ -150,17 +154,47 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     /// the key, which is the same "no artwork, never a guess" rule
     /// `media-session.js`'s `artworkUrl()` already enforces upstream.
     private func artworkItem(for uri: String) -> MPMediaItemArtwork? {
-        guard !uri.isEmpty, let url = URL(string: uri) else { return nil }
+        guard !uri.isEmpty else { return nil }
         let image: UIImage?
-        if url.isFileURL {
-            image = UIImage(contentsOfFile: url.path)
-        } else if let data = try? Data(contentsOf: url) {
-            image = UIImage(data: data)
+        if let bundlePath = Self.bundlePath(for: uri) {
+            // `Bundle.main`, not `URL(string:)` -- `bundle://` is not a real
+            // URL scheme any loader below this line understands, so the path
+            // component is resolved by hand and everything else about the
+            // string is discarded.
+            image = UIImage(contentsOfFile: bundlePath)
+        } else if let url = URL(string: uri) {
+            if url.isFileURL {
+                image = UIImage(contentsOfFile: url.path)
+            } else if let data = try? Data(contentsOf: url) {
+                image = UIImage(data: data)
+            } else {
+                image = nil
+            }
         } else {
             image = nil
         }
         guard let image = image else { return nil }
         return MPMediaItemArtwork(boundsSize: image.size) { _ in image }
+    }
+
+    /// `bundle://public/icon-512.png` -> an absolute path inside `Bundle.main`,
+    /// or `nil` if `uri` does not carry the scheme `IOS_ASSET_BASE` writes, or
+    /// the named resource is not actually in the bundle. TOTAL and never
+    /// throws, same posture as `NowPlayingPayload.from` -- a resource that
+    /// went missing from the bundle degrades to no artwork, not a crash.
+    private static func bundlePath(for uri: String) -> String? {
+        let prefix = "bundle://public/"
+        guard uri.hasPrefix(prefix) else { return nil }
+        // Query/fragment already stripped by the web half's `assetUri`
+        // (`pathname` only, per its own comment) before this ever arrives, so
+        // what remains is a bare relative path -- e.g. `icon-512.png`.
+        let relative = String(uri.dropFirst(prefix.count))
+        guard !relative.isEmpty else { return nil }
+        // `cap copy`'s Android destination is `public/`; on iOS the Capacitor
+        // web assets are copied into the app bundle at `public/` alongside
+        // everything else `Bundle.main` already serves the WebView from --
+        // the same tree, read a second way.
+        return Bundle.main.path(forResource: relative, ofType: nil, inDirectory: "public")
     }
 
     // MARK: - MPRemoteCommandCenter

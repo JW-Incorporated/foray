@@ -803,7 +803,7 @@ const FLOORS = {
      only thing standing between a lock screen that works and one that silently says
      the wrong episode. Section 7 of that doc maps each mechanism to the mutation that
      kills it, which is where to look before concluding these are vacuous. */
-  "tools/mobile/foray-media-session.test.mjs": 67,
+  "tools/mobile/foray-media-session.test.mjs": 75,
   /* iOS on a runner (#38). These four are the only tests in the repo that can be
      run for a macOS-only feature by someone with no Mac, which makes their
      deletion unusually attractive to a future session that finds them

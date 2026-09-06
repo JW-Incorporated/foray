@@ -63,7 +63,7 @@ import {
   createForayMediaSession, mediaSessionApplies, nowPlayingPayload, identityKey,
   transportState, assetUri,
   PLUGIN_NAME, SET_METHOD, TRANSPORT_EVENT, ROUTABLE_ACTIONS,
-  SEEK_BACKWARD_SEC, SEEK_FORWARD_SEC, POSITION_MIN_INTERVAL_MS, ASSET_BASE,
+  SEEK_BACKWARD_SEC, SEEK_FORWARD_SEC, POSITION_MIN_INTERVAL_MS, ASSET_BASE, IOS_ASSET_BASE,
 } from "../../mobile/plugins/foray-audio/web/foray-media-session.js";
 
 /* The real thing, imported rather than re-described: §7 drives the module the page
@@ -229,10 +229,11 @@ function withHandlers(session, nav, actions = ROUTABLE_ACTIONS) {
 
 /* ------------------------------------------------- 1. where it applies at all */
 
-test("mediaSessionApplies only on Android, and only with a bridge that can reach native", () => {
+test("mediaSessionApplies on Android and iOS, and only with a bridge that can reach native", () => {
   assert.equal(mediaSessionApplies(makeCapacitor()), true);
-  assert.equal(mediaSessionApplies(makeCapacitor({ platform: "ios" })), false);
+  assert.equal(mediaSessionApplies(makeCapacitor({ platform: "ios" })), true);
   assert.equal(mediaSessionApplies(makeCapacitor({ platform: "web" })), false);
+  assert.equal(mediaSessionApplies(makeCapacitor({ platform: "ios", omitNativePromise: true })), false);
   assert.equal(mediaSessionApplies(makeCapacitor({ omitNativePromise: true })), false);
   assert.equal(mediaSessionApplies(undefined), false);
   assert.equal(mediaSessionApplies({}), false);
@@ -254,11 +255,12 @@ test("install defines navigator.mediaSession, and uninstall removes it again", (
   assert.equal(session.uninstall(), false);
 });
 
-test("AN ENGINE THAT ALREADY HAS mediaSession IS LEFT ALONE", () => {
+test("AN ENGINE THAT ALREADY HAS mediaSession IS LEFT ALONE — ANDROID ONLY", () => {
   /* The whole premise — that Android WebView switches the API off — is source-derived
      rather than measured (MP1 §5.4). If a WebView ever ships it on, the real
      implementation must win: a polyfill that overwrites a working platform API is how
-     a fix becomes a regression on the next OS release. */
+     a fix becomes a regression on the next OS release. iOS is the opposite case (M-01
+     measured a live, present mediaSession) and is covered in §1b below. */
   const real = { metadata: null, setActionHandler() {} };
   const nav = { mediaSession: real };
   const { session } = setup({ nav });
@@ -266,13 +268,114 @@ test("AN ENGINE THAT ALREADY HAS mediaSession IS LEFT ALONE", () => {
   assert.equal(nav.mediaSession, real);
 });
 
-test("on iOS and on the web navigator is never touched and native is never called", () => {
-  for (const platform of ["ios", "web"]) {
-    const { session, nav, capacitor } = setup({ bridge: { platform } });
-    assert.equal(session.install(), false);
-    assert.equal("mediaSession" in nav, false);
-    assert.equal(capacitor.calls.length, 0);
-  }
+test("on the web navigator is never touched and native is never called", () => {
+  const { session, nav, capacitor } = setup({ bridge: { platform: "web" } });
+  assert.equal(session.install(), false);
+  assert.equal("mediaSession" in nav, false);
+  assert.equal(capacitor.calls.length, 0);
+});
+
+/* --------------------------------------------------- 1b. iOS takeover (L-02) */
+
+test("iOS with no existing mediaSession installs exactly as Android does", () => {
+  const { session, nav } = setup({ bridge: { platform: "ios" } });
+  assert.equal("mediaSession" in nav, false);
+  assert.equal(session.install(), true);
+  assert.equal(nav.mediaSession.forayPolyfill, true);
+  assert.equal(session.uninstall(), true);
+  assert.equal("mediaSession" in nav, false);
+});
+
+test("iOS TAKES OVER a present-but-inert mediaSession when the property is configurable", () => {
+  /* Measured, not assumed: `docs/ios-lock-screen.md` §0 (run 34043193990) found
+     WKWebView exposing a live, writable navigator.mediaSession with WebKit
+     actively publishing to it. `client.js`'s one-time read at init must land on
+     OURS, so install() must replace the property outright when it can. */
+  const fake = { metadata: null, playbackState: "none", setActionHandler() {}, setPositionState() {} };
+  const nav = { mediaSession: fake };
+  const { session } = setup({ bridge: { platform: "ios" }, nav });
+  assert.equal(session.install(), true);
+  assert.notEqual(nav.mediaSession, fake, "client.js would still read WebKit's inert object");
+  assert.equal(nav.mediaSession.forayPolyfill, true, "the marker property a device pass reads");
+});
+
+test("iOS WRAPS an existing mediaSession's methods when the property is not configurable", () => {
+  /* The other half of the plan's conditional: `Object.defineProperty` on the
+     whole property fails when a real engine marked it non-configurable, so
+     install() must fall back to intercepting the existing object's own
+     metadata/playbackState/setPositionState/setActionHandler instead. */
+  const fake = { metadata: null, playbackState: "none", setActionHandler() {}, setPositionState() {} };
+  const nav = {};
+  Object.defineProperty(nav, "mediaSession", {
+    value: fake, writable: true, configurable: false, enumerable: true,
+  });
+  const { session, scheduler, last, turn } = setup({ bridge: { platform: "ios" }, nav });
+  assert.equal(session.install(), true);
+  assert.equal(nav.mediaSession, fake, "a non-configurable property cannot be replaced");
+  assert.equal(nav.mediaSession.forayPolyfill, true, "the marker still lands on the wrapped object");
+  /* client.js's writes now reach us through the wrapped setters/methods. */
+  nav.mediaSession.metadata = meta();
+  return turn().then(() => {
+    assert.equal(last().title, "The brisket episode", "a write through the wrapped object never reached native");
+  });
+});
+
+test("MUTATION: leaving WebKit's original mediaSession in place is caught", () => {
+  /* If install() forgot the takeover branch entirely and simply refused
+     whenever something was already there (the Android rule, applied
+     unconditionally), this is the test that goes red: client.js would keep
+     reading WebKit's inert object and no setNowPlaying call would ever reach
+     native. */
+  const fake = { metadata: null, playbackState: "none", setActionHandler() {}, setPositionState() {} };
+  const nav = { mediaSession: fake };
+  const { session } = setup({ bridge: { platform: "ios" }, nav });
+  session.install();
+  assert.equal(nav.mediaSession.forayPolyfill, true, "ours must be the one client.js finds");
+});
+
+test("iOS takeover (replace path) restores WebKit's original object on uninstall", () => {
+  const fake = { metadata: null, playbackState: "none", setActionHandler() {}, setPositionState() {} };
+  const nav = { mediaSession: fake };
+  const { session } = setup({ bridge: { platform: "ios" }, nav });
+  session.install();
+  assert.equal(session.uninstall(), true);
+  assert.equal(nav.mediaSession, fake, "uninstall must give WebKit's object back, not delete the property");
+});
+
+test("iOS takeover (wrap path) restores the wrapped members on uninstall", () => {
+  const originalSetActionHandler = function () {};
+  const fake = {
+    metadata: null, playbackState: "none",
+    setActionHandler: originalSetActionHandler, setPositionState() {},
+  };
+  const nav = {};
+  Object.defineProperty(nav, "mediaSession", {
+    value: fake, writable: true, configurable: false, enumerable: true,
+  });
+  const { session } = setup({ bridge: { platform: "ios" }, nav });
+  session.install();
+  assert.equal(session.uninstall(), true);
+  assert.equal(nav.mediaSession, fake, "the property itself was never replaced in wrap mode");
+  assert.equal(nav.mediaSession.setActionHandler, originalSetActionHandler, "the original method was not restored");
+  assert.equal(Object.prototype.hasOwnProperty.call(nav.mediaSession, "forayPolyfill"), false, "the marker outlived uninstall");
+});
+
+test("iOS artwork addresses use the bundle scheme, not Android's asset path", () => {
+  assert.equal(
+    assetUri("icon-512.png", { baseUrl: BASE, origin: ORIGIN, assetBase: IOS_ASSET_BASE }),
+    IOS_ASSET_BASE + "icon-512.png"
+  );
+  assert.notEqual(IOS_ASSET_BASE, ASSET_BASE);
+});
+
+test("iOS payloads carry a bundle:// artwork URI end to end, not Android's asset path", async () => {
+  const { session, nav, turn, last } = setup({ bridge: { platform: "ios" } });
+  session.install();
+  nav.mediaSession.metadata = meta({
+    artwork: [{ src: "icon-512.png", sizes: "512x512", type: "image/png" }],
+  });
+  await turn();
+  assert.equal(last().artworkUri, IOS_ASSET_BASE + "icon-512.png");
 });
 
 test("install subscribes to the transport event, by that plugin and event name", () => {
