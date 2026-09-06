@@ -193,6 +193,12 @@ export class PlayerQueueManager {
    *   applied: a constructor that reached into the backend would make building a
    *   manager audible. `setRate()` is what applies it, and `client.js` calls it
    *   once at boot with the stored value.
+   * @param {string}   [opts.voice]  the listener's chosen on-device narration
+   *   voice identifier (V-01, `cp_voice`), or `null`/omitted to let the plugin
+   *   pick its own best-installed tier. Stored the same way `rate` is — set
+   *   from the page, read at speak time — never a `localStorage` read inside
+   *   this pure module. `setVoice()` is the setter; `client.js` calls it once
+   *   at boot with the stored value, the same pairing `rate`/`setRate()` uses.
    * @param {object}   [opts.tts]  the on-device narration bridge
    *   (`mobile/plugins/foray-tts/web/foray-tts.js`'s `speak()`, or a fake with
    *   the same shape: `async speak(text, { rate }) -> { ok, reason? }`).
@@ -205,7 +211,7 @@ export class PlayerQueueManager {
   constructor({
     backend, positionStore = null, strategy = SINGLE_ITEM, telemetry = null, allowMultiple = false,
     seamGapSec: gapSec = SEAM_GAP_SEC, scheduler = REAL_SCHEDULER, onSeamGapChange = null,
-    rate = DEFAULT_RATE, tts = null,
+    rate = DEFAULT_RATE, tts = null, voice = null,
   } = {}) {
     if (!backend) throw new Error("PlayerQueueManager requires a backend");
     if (liveInstance && !allowMultiple) {
@@ -258,6 +264,16 @@ export class PlayerQueueManager {
     /** The on-device TTS bridge (§7 item 1-2 of generation-architecture.md),
         or `null` when none is wired — see the constructor doc above. */
     this._tts = tts && typeof tts.speak === "function" ? tts : null;
+    /** The listener's chosen narration voice identifier (V-01), or `null` to
+        let the plugin pick its own best-installed tier. The one place it
+        lives, same discipline as `_rate` immediately above: `voice` getter
+        reads it, `setVoice()` is the only writer, and `_speakNarration` reads
+        it at call time rather than caching a snapshot from construction. */
+    this._voice = typeof voice === "string" && voice ? voice : null;
+    /** The result of the most recent `_speakNarration` call — read by
+        `lastVoiceFallback` above. `null` until the first narration item
+        speaks. */
+    this._lastSpeakResult = null;
     /** True when the item `_loadedId` refers to was spoken via `_tts` rather
         than loaded into `backend` — nothing in `backend` is playing it, so
         the rate/playback effects below must not touch the backend for it. */
@@ -511,7 +527,6 @@ export class PlayerQueueManager {
       element's live `playbackRate`, which is 1 for the moment after a load
       assigns a src and would make the label flicker at every seam. */
   get rate() { return this._rate; }
-
   /**
    * Change the listener's speed. Survives every seam, because `restoreRate` now
    * reads `this._rate` (§12).
@@ -556,6 +571,45 @@ export class PlayerQueueManager {
     this.backend.setRate(r);
     if (r !== was) this._emit(`rate.set=${r} (was ${was})`);
     return r;
+  }
+
+  /* ---------- the listener's narration voice (V-01) ---------- */
+
+  /** The chosen voice identifier, or `null` for "let the plugin pick its own
+      best-installed tier". */
+  get voice() { return this._voice; }
+
+  /**
+   * Change the listener's narration voice.
+   *
+   * Same shape as `setRate`, minus the mid-narration deferral: a voice only
+   * takes effect on the NEXT `speak()` call, because `AVSpeechSynthesizer`
+   * (like every platform's synthesiser) cannot swap voices mid-utterance —
+   * there is no "audible now" case to guard against the way there is for
+   * rate, so this is a plain synchronous write with no seam-beat interaction
+   * at all.
+   *
+   * @param {string|null} id  a voice identifier from `listVoices()`, or
+   *   `null`/empty to clear the choice and fall back to the plugin's own
+   *   best-installed pick.
+   * @returns {string|null} the voice identifier now in force
+   */
+  setVoice(id) {
+    const v = typeof id === "string" && id ? id : null;
+    this._voice = v;
+    this._emit(`voice.set=${v ?? "(none — plugin picks)"}`);
+    return v;
+  }
+
+  /** Did the most recent `speak()` call fall back to a different voice than
+      the one requested? `null` before any narration item has spoken this
+      session. Read by a page after `itemLoaded`/an `onChange` tick to show
+      V-01's one-line non-blocking notice ("Your chosen voice isn't
+      installed; using the best available") — sourced from the plugin's own
+      `voiceFallback` flag rather than re-derived, because only the plugin
+      knows what is actually installed on this device. */
+  get lastVoiceFallback() {
+    return this._lastSpeakResult ? Boolean(this._lastSpeakResult.voiceFallback) : null;
   }
 
   /** Is the thing making sound right now one of our own narration lines? Read
@@ -978,13 +1032,29 @@ export class PlayerQueueManager {
       script-only item is spoken and the queue does not yet advance past it
       on its own — a follow-up card owns building that signal (or an
       estimate-driven timer off the `duration_sec` this queue item already
-      carries) once §7 item 3 is scoped. */
+      carries) once §7 item 3 is scoped.
+
+      VOICE (V-01): `this._voice`, read here at call time for the same reason
+      `this._rate` is — a choice made from the page while nothing is speaking
+      must reach the very next utterance, not just the one after a rebuild.
+      `null` is passed through unchanged; `foray-tts.js`'s own `speak()`
+      contract treats an absent `voice` as "pick the best installed tier",
+      which is exactly the fallback V-01's design wants. A requested-but-not-
+      installed identifier degrades inside the plugin (`voiceFallback: true`
+      in the result) rather than failing the call — surfaced to the caller
+      unchanged, so a page can show the one-line notice V-01 specifies. */
   async _speakNarration(item) {
     if (!this._tts) throw new Error(`no on-device TTS plugin wired for ${item.id}`);
-    const result = await this._tts.speak(item.script, { rate: this._rate });
+    const result = await this._tts.speak(item.script, { rate: this._rate, voice: this._voice });
     if (result && result.ok === false) {
+      /* A failed speak is not a voice-fallback report — clear the stale flag
+         from whatever spoke last, rather than leaving `lastVoiceFallback`
+         answering a question about an utterance that never happened. */
+      this._lastSpeakResult = null;
       throw new Error(`foray-tts: ${result.reason ?? "speak() refused"}`);
     }
+    this._lastSpeakResult = result || null;
+    return result;
   }
 
   /* ---------- the seam beat ---------- */

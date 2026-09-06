@@ -2735,9 +2735,11 @@ on-device synthesis is resting on a comparison against the worst voice iOS ships
    already installed — note which and move on.)
 3. Write down the exact names of every voice that now shows as downloaded. That is the
    ground truth this repo does not have.
-4. Install/launch the shell build with this change in it, open the
-   **"On-device narration, screen off"** Foray (the same one #29 used), and listen to
-   the first ~20 seconds.
+4. Open **4a**, tap the menu, and choose **Narration voice**. Find the voice you
+   downloaded in the list (it may take a moment to appear — the picker rescans
+   when you return to the app), select it, and tap its **Audition** button. It
+   speaks a counting line at your current playback speed — that replaces the
+   old step of opening the diagnostic Foray by hand.
 5. **Report:** does it sound meaningfully better than what you heard on 2026-09-05?
    Better/same/worse, in your own words — no scale needed. If it sounds identical,
    say so, because that is the informative answer: it would mean the plugin is not
@@ -2755,6 +2757,37 @@ on-device synthesis is resting on a comparison against the worst voice iOS ships
 **Worked if:** there is a written note saying which voice was downloaded and whether the
 narration sounded better with it. Both halves are needed — "sounds better" without the
 voice name cannot be reproduced, and the voice name without a verdict answers nothing.
+
+**Status:** OPEN.
+
+---
+
+### H3. The 2x re-check for #490's rate curve — Audition as the stopwatch
+
+**Tag:** `[BLOCKING]` for confirming #490's rate-mapping curve · **Time:** ~1 minute ·
+**Owner:** whoever has the phone
+
+**Why it matters.** `mobile/plugins/foray-tts/README.md`'s "Which voice speaks" section
+records that the iOS rate mapping is calibrated from **one** device reading: rate `D` =
+1.0x (definitional), rate `1.5·D` ≈ 3.0x (measured 2026-09-05). "One data point does not
+make a curve" — a second reading, at a different speed, either confirms the shape or
+shows it is wrong. V-01's Audition button, which speaks a fixed 20-count line with a
+marker every ten seconds, doubles as that second reading: a stopwatch and a known-length
+line are all the test needs.
+
+**Steps.**
+
+1. Open **4a**, set the playback speed to **2x** (the speed control, not the voice
+   picker).
+2. Open the drawer's **Narration voice** picker and tap **Audition** on any installed
+   voice.
+3. Time it with a stopwatch, start to the final "twenty" plus its closing beat.
+4. **Report the number of seconds.** At the curve's predicted mapping, 2x should land
+   at roughly **50 seconds** (`STATE.md`'s own prediction, same line, same math).
+   Materially off — say by more than a few seconds — means the *shape* of the curve is
+   wrong, not just this one point; matching within a few seconds confirms it.
+
+**Worked if:** there is a written number of seconds, at 2x, for the Audition line.
 
 **Status:** OPEN.
 

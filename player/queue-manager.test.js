@@ -117,7 +117,7 @@ function make(opts = {}) {
   const m = new PlayerQueueManager({
     backend, positionStore, telemetry: (t) => log.push(t), strategy: opts.strategy,
     scheduler, seamGapSec: opts.seamGapSec, onSeamGapChange: opts.onSeamGapChange,
-    rate: opts.rate, tts: opts.tts,
+    rate: opts.rate, tts: opts.tts, voice: opts.voice,
   });
   return { m, backend, saved, log, scheduler };
 }
@@ -655,7 +655,7 @@ function fakeTts() {
   return {
     calls,
     async speak(text, opts = {}) {
-      calls.push({ text, rate: opts.rate });
+      calls.push({ text, rate: opts.rate, voice: opts.voice });
       return { ok: true };
     },
   };
@@ -741,6 +741,81 @@ test("a script-only item with NO plugin wired fails to load and does not stall t
     log.some((l) => l.includes("no on-device TTS plugin wired")),
     `expected a named failure reason in telemetry, got ${JSON.stringify(log)}`
   );
+});
+
+/* ---------- V-01: the listener's chosen narration voice ---------- */
+
+test("a script-only narration item speaks with the constructed voice", async () => {
+  const tts = fakeTts();
+  const { m } = make({ tts, voice: "com.apple.voice.enhanced.en-US.Ava" });
+  await m.playForay(foray([
+    { type: "narration", id: "nar-1", script: "spoken in a chosen voice" },
+    fseg(),
+  ]), { resolveItem });
+
+  assert.equal(tts.calls[0].voice, "com.apple.voice.enhanced.en-US.Ava");
+});
+
+test("setVoice() changes the voice on the NEXT speak() call, not the one already spoken", async () => {
+  const tts = fakeTts();
+  const { m } = make({ tts, voice: "voice-a" });
+  await m.playForay(foray([
+    { type: "narration", id: "nar-1", script: "first line" },
+    fseg(),
+  ]), { resolveItem });
+  assert.equal(tts.calls[0].voice, "voice-a");
+
+  m.setVoice("voice-b");
+  await m.playForay(foray([
+    { type: "narration", id: "nar-2", script: "second line" },
+    fseg(),
+  ]), { resolveItem, allowMultiple: true });
+  assert.equal(tts.calls[1].voice, "voice-b");
+});
+
+test("setVoice(null) clears the choice — the plugin picks its own best tier", async () => {
+  const tts = fakeTts();
+  const { m } = make({ tts, voice: "voice-a" });
+  m.setVoice(null);
+  await m.playForay(foray([
+    { type: "narration", id: "nar-1", script: "no voice requested" },
+    fseg(),
+  ]), { resolveItem });
+
+  assert.equal(tts.calls[0].voice, null);
+});
+
+// MUTATION: drop `voice: this._voice` from the `speak()` call in
+// `_speakNarration` (leave only `{ rate: this._rate }`) — this test goes red.
+test("MUTATION GUARD: the voice option reaches speak() alongside rate", async () => {
+  const tts = fakeTts();
+  const { m } = make({ tts, voice: "the-chosen-voice", rate: 1.5 });
+  await m.playForay(foray([
+    { type: "narration", id: "nar-1", script: "line" },
+    fseg(),
+  ]), { resolveItem });
+
+  assert.equal(tts.calls[0].voice, "the-chosen-voice");
+  assert.equal(tts.calls[0].rate, 1.5);
+});
+
+test("lastVoiceFallback reports the plugin's own voiceFallback flag", async () => {
+  const calls = [];
+  const tts = {
+    calls,
+    async speak(text, opts = {}) {
+      calls.push(opts);
+      return { ok: true, voiceFallback: true };
+    },
+  };
+  const { m } = make({ tts, voice: "not-installed" });
+  assert.equal(m.lastVoiceFallback, null, "nothing has spoken yet");
+  await m.playForay(foray([
+    { type: "narration", id: "nar-1", script: "line" },
+    fseg(),
+  ]), { resolveItem });
+
+  assert.equal(m.lastVoiceFallback, true);
 });
 
 /* ---------- the listener's speed (§12) ----------

@@ -97,6 +97,7 @@ The app also asks the browser to mark its storage as persistent
 | `cp_foray:<id>` | Where you are inside a given foray, and which segment you were in | **No** |
 | `cp_pos:<id>` | Your position in seconds inside an individual episode | **No** |
 | `cp_rate` | Your playback speed | **No** |
+| `cp_voice` | Your chosen narration voice — an identifier the device's own voice list reported | **No** |
 | `cp_player` | Which external podcast app you prefer to open episodes in | **No** |
 | `cp_family` | Family mode on/off — a local content filter that hides explicit-rated episodes | **No** |
 | `cp_autoadvance` | Up Next auto-advance on/off — a local per-device preference for whether finishing an episode played from your Up Next list starts the next queued item. Off by default | **No** (but see `autoadvance_pref` in §2) |
@@ -128,7 +129,7 @@ request that is not to our own origin.
 ## 2. What leaves your device, exactly
 
 The app buffers events locally (in the event queue described above) and
-periodically sends some of them to our database (Supabase — see §3). **Eighteen of the twenty-two event types the app records never leave the device.** The
+periodically sends some of them to our database (Supabase — see §3). **Nineteen of the twenty-three event types the app records never leave the device.** The
 buffer is trimmed to the most recent 5,000 entries.
 
 **Sent** (`app.js:toEventRow()`). Every row carries your anonymous account id
@@ -146,7 +147,8 @@ position; stored about every 15 seconds, recorded as an event at most once a
 minute per episode — `player/position-store.js:save()`), `foray_play`,
 `foray_restart`, `foray_progress_drift`, `source_opened`, `saved`'s counterpart
 `unsaved`, `playlist_built`, `playlist_removed`, `player_pref`, `family_mode`,
-`autoadvance_pref` (toggling Up Next auto-advance on or off), `refreshed_all`,
+`autoadvance_pref` (toggling Up Next auto-advance on or off), `voice_pref`
+(choosing a narration voice — V-01), `refreshed_all`,
 `storage_fault`, `queued` and its counterpart `unqueued`
 (added to your Up Next list, or removed from it), `show_starred` and its
 counterpart `show_unstarred` (starring a show, or removing a star).

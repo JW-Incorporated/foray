@@ -133,6 +133,16 @@ let manager = null;
 let backend = null;
 let positions = null;
 let ui = null;
+/** The one on-device TTS bridge instance for the whole page (V-01, §"the
+    narration voice picker"). Built at module scope, not inside
+    `ensureBooted`, so `ForayPlayer.listVoices()` works before anything has
+    booted — a listener opening the drawer's voice picker before ever
+    pressing play must see installed voices immediately, and `_speakNarration`
+    (via `ensureBooted`'s manager construction) reuses this SAME instance
+    rather than resolving the plugin module a second time. `createTtsBridge`
+    memoises its own module load, so two callers sharing one instance cost
+    exactly one dynamic import either way. */
+const ttsBridge = createTtsBridge();
 /** The lock screen / car / headphone surface (#27). Built once in
     `ensureBooted`, inert where `navigator.mediaSession` does not exist. */
 let media = null;
@@ -606,6 +616,10 @@ function forayStateSnapshot() {
        and a tap on EITHER button has to move BOTH — `applyRate` notifies, so it
        does. */
     rate: currentRate(),
+    /* V-01: did the narration item just spoken fall back from the listener's
+       chosen voice to the plugin's own best pick? Read straight off the
+       manager rather than re-derived, for the same reason `rate` is. */
+    voiceFallback: manager ? manager.lastVoiceFallback : null,
   };
 }
 
@@ -807,7 +821,6 @@ function setNowPlaying(item, why) {
    the wiring, and there is exactly one of each function so the mini-player
    button, the Foray page button and a future lock-screen control cannot hold
    different opinions about what the speed is. */
-
 /** The chosen speed, booted or not. `manager.rate` once there is one, because it
     is the thing that will actually be restored at the next seam; the stored value
     before that, because a listener can set the speed before pressing play. */
@@ -860,6 +873,63 @@ function paintRate(rate = currentRate()) {
   if (!ui) return;
   ui.rateBtn.textContent = rateLabel(rate);
   ui.rateBtn.setAttribute("aria-label", rateAriaLabel(rate));
+}
+
+/* ---------- V-01: the listener's chosen narration voice ----------
+
+   Same split as playback speed just above: this file owns the ONE `cp_voice`
+   key and the ONE write path, `queue-manager.js` owns applying it to the next
+   `speak()` call (its own §"the listener's narration voice"). Deliberately
+   NOT a `player/voice.js` module the way `playback-rate.js` is — there is no
+   ladder, no label table, no snapping-onto-a-stop logic to keep pure and
+   testable in isolation; a voice identifier is an opaque string from
+   `listVoices()`, stored and handed back unchanged. */
+
+/** localStorage key (durable-store.js's `cp_` discipline; CLAUDE.md §
+    Conventions — renaming this wipes a listener's chosen voice). Platform is
+    folded into the identifier's OWN meaning (`listVoices()` reports
+    platform-specific identifiers already — an iOS `AVSpeechSynthesisVoice`
+    identifier and an Android `Voice.getName()` never collide in shape), so
+    one key covers both rather than `cp_voice_ios`/`cp_voice_android` guessing
+    which platform a stored value came from. */
+const VOICE_KEY = "cp_voice";
+
+/** The stored voice identifier, or `null` for "let the plugin pick its own
+    best-installed tier" — the same default `queue-manager.js`'s constructor
+    already treats a missing `voice` option as. */
+function readVoice(store) {
+  if (!store || typeof store.getItem !== "function") return null;
+  try {
+    const raw = store.getItem(VOICE_KEY);
+    return typeof raw === "string" && raw ? raw : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+/** Write the choice down, or clear it. Never throws — same posture as
+    `writeRate`: a value that cannot be stored is still a value that should
+    govern this session, so the caller applies either way. */
+function writeVoice(store, id) {
+  if (!store || typeof store.setItem !== "function") return false;
+  try {
+    if (id) store.setItem(VOICE_KEY, String(id));
+    else if (typeof store.removeItem === "function") store.removeItem(VOICE_KEY);
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
+/** Apply and persist a voice choice. Mirrors `applyRate`: works with nothing
+    booted (`manager` may not exist yet — a listener can pick a voice before
+    ever pressing play), and the write is not guarded on a throw because
+    `writeVoice` never throws. */
+function applyVoice(id) {
+  const v = typeof id === "string" && id ? id : null;
+  writeVoice(storage, v);
+  if (manager) manager.setVoice(v);
+  return v;
 }
 
 /** The mini-player's speed picker (#349). Same fix as the Foray page's
@@ -1206,6 +1276,12 @@ function ensureBooted() {
      function finishes, and a label that paints "1×" and then corrects itself is
      the flicker this whole feature is about. */
   const rate = readRate(storage);
+  /* Same reasoning, for the same reason, for V-01's voice choice: read once
+     here rather than inside the pure `queue-manager.js` (durable-store.js's
+     own `cp_` discipline — a `localStorage` read belongs to the wiring file,
+     not the pure module), and hand the manager the value it should speak
+     with from the very first narration item. */
+  const voice = readVoice(storage);
 
   positions = new PositionStore({
     storage,
@@ -1258,8 +1334,9 @@ function ensureBooted() {
        path differs between the shell and the website — so a page that never
        plays narration never fetches it, and a host with no plugin reports one
        unplayable item instead of taking the player down at import time. */
-    tts: createTtsBridge(),
+    tts: ttsBridge,
     telemetry: onTelemetry,
+    voice,
   });
 
   /* The one sink, for BOTH the manager and the backend (#264). Extracted from the
@@ -1560,6 +1637,62 @@ const ForayPlayer = {
       console; the shipped controls all cycle. */
   setPlaybackRate(rate) {
     return applyRate(rate);
+  },
+
+  /* ---------- V-01: the narration voice picker ---------- */
+
+  /** What `tts.listVoices()` reports for this device — installed voices,
+      best-first, plus a default identifier. Re-exported so app.js's
+      `renderVoiceSettings` never imports `foray-tts.js` directly (it is a
+      classic script; see this file's own header) and never resolves the
+      plugin a second time — the SAME lazily-loaded module `_speakNarration`
+      uses, through the SAME `createTtsBridge()` instance this file already
+      built for the manager. */
+  listVoices(opts = {}) {
+    return ttsBridge.listVoices(opts);
+  },
+
+  /** The chosen voice identifier, or `null` — readable before anything has
+      booted, same as `playbackRate()`. */
+  currentVoice() {
+    return manager ? manager.voice : readVoice(storage);
+  },
+
+  /** Apply and persist a voice choice (V-01's `cp_voice`). */
+  setNarrationVoice(id) {
+    return applyVoice(id);
+  },
+
+  /** Did the most recently spoken narration item fall back from the chosen
+      voice to the plugin's own best-installed pick? `null` before anything
+      has spoken, or with nothing booted at all — a page reads this after an
+      `onChange`/Foray-status tick, never on its own poll. */
+  lastVoiceFallback() {
+    return manager ? manager.lastVoiceFallback : null;
+  },
+
+  /**
+   * Speak the fixed audition line through a SPECIFIC voice, at the listener's
+   * CURRENT playback speed — V-01's stopwatch test for H3 (#490's rate
+   * curve). Deliberately independent of `manager`/a live Foray: auditioning a
+   * voice from the picker must work whether or not anything is playing, and
+   * must never touch the queue (an audition mid-Foray is not "the next
+   * narration item" — it is a one-off the listener asked for by name).
+   *
+   * Goes straight to the shared `ttsBridge`, not through `_speakNarration` —
+   * that method reads `this._voice`/`this._rate` off the LIVE manager, which
+   * is exactly the wrong source here: the picker is choosing a DIFFERENT
+   * voice than whatever is currently selected, possibly before any manager
+   * exists at all.
+   *
+   * @param {string} text  the fixed line the caller supplies (app.js owns the
+   *   copy; this file has no business authoring narration text)
+   * @param {string} voiceId
+   * @returns {Promise<object>} the bridge's own `speak()` result — `ok`,
+   *   `voiceFallback`, etc. — unchanged, so the caller can show V-01's notice.
+   */
+  auditionVoice(text, voiceId) {
+    return ttsBridge.speak(text, { rate: currentRate(), voice: voiceId });
   },
 
   /** Which segment `elapsedSec` lands in, and how far into it — re-exported so
