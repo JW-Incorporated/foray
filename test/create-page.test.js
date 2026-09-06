@@ -347,8 +347,12 @@ test("the mockup's Foray-specific ~20/~40/~75 length options are not shown for p
 test("submitting a matching subject calls buildPlaylist() and navigates to #/playlist/:id, same as the old Playlists page", async () => {
   /* MUTATION: have bindCreateFormSubmit navigate anywhere other than
      "#/playlist/" + result.playlist.id (e.g. hardcode a different route, or
-     never navigate at all). This is the card's acceptance line: building
-     from Create must land in the SAME place building from #/playlists does.
+     a different playlist's id). The final assertion pins the exact hash
+     against the id `buildPlaylist()` actually saved, not merely that SOME
+     #/playlist/ page was reached — a prefix-only check would pass even if
+     the wrong playlist's id were used. This is the card's acceptance line:
+     building from Create must land in the SAME place building from
+     #/playlists does.
      bindCreateFormSubmit defers the real work one tick (setTimeout(0), same
      load-bearing reason as bindPlaylistFormSubmit — see that function's
      header), so this awaits a tick before asserting. */
@@ -361,10 +365,11 @@ test("submitting a matching subject calls buildPlaylist() and navigates to #/pla
   input.value = "physics";
   form._fire("submit", { preventDefault() {}, currentTarget: form });
   await new Promise((r) => setTimeout(r, 0));
-  assert.ok(/^#\/playlist\//.test(m.ctx.location.hash), `expected navigation to a playlist detail page, got "${m.ctx.location.hash}"`);
   const saved = JSON.parse(m.ctx.localStorage.getItem("cp_playlists") || "[]");
   assert.strictEqual(saved.length, 1, "buildPlaylist() must have saved exactly one playlist to cp_playlists");
   assert.strictEqual(saved[0].query, "physics");
+  assert.strictEqual(m.ctx.location.hash, "#/playlist/" + saved[0].id,
+    `expected navigation to the SAME playlist just built, got "${m.ctx.location.hash}"`);
 });
 
 test("a subject with no match shows the honest empty-state note, and does not navigate", async () => {
