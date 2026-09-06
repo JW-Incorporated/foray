@@ -103,13 +103,15 @@ test("no ui-v2 palette hex literal appears outside the token definition block", 
   );
 });
 
-/* KILLED BY: renaming body.ui-v2's --amber to anything else while a rule
-   still relies on the OLD name via var(--amber) -- the reference would
-   silently fall back to inherited/initial with no error, which is exactly
-   the failure mode a design system exists to prevent. This does not assert
-   every consumer (that is style-coverage, out of scope here); it pins that
-   the two tokens issue #127 calls out by name are actually consumed via
-   var(), not merely declared and orphaned. */
+/* KILLED BY: deleting the only consumer of --amber (`.ui-v2-mine`) or
+   --violet (`.ui-v2-authored`) so the declared token becomes orphaned --
+   defined but never read via var(). NOT killed by renaming the DECLARATION
+   alone (e.g. `--amber:` -> `--amber-x:`): that leaves `var(--amber)` in the
+   consuming rule intact, so this test stays green on that mutation -- but
+   the first test above ("every ui-v2 token is defined...") catches that case
+   instead, since the renamed declaration no longer matches `--amber: #F2A33C`.
+   The two tests together cover both failure directions; this one specifically
+   guards against "declared but nothing reads it". */
 test("the amber/violet split is actually consumed, not just declared", () => {
   assert.match(
     CSS, /var\(--amber\)/,
