@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-09-06T00:09:42.950Z",
+  "built_at": "2026-09-06T08:09:09.415Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-09-06-34aa84e2",
+    "last_batch_id": "fresh-2026-09-06-ee1ac1b7",
     "last_batch_tier": 1
   },
   "entries": {
@@ -13752,11 +13752,30 @@
     },
     "700328970": {
       "topics": [
-        "science"
+        "science",
+        "society/law"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.85
+        },
+        {
+          "node": "society/law",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "science content: Double Loop Podcast",
+      "display_title": "Double Loop Podcast",
+      "blurb": "Whether you're a practicing Latent Print Examiner or you're interested in forensics and true crime, the Double Loop Podcast is a weekly show featuring",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-ee1ac1b7",
+      "classified_at": "2026-09-06T08:09:09.415Z"
     },
     "701045710": {
       "topics": [
@@ -13815,9 +13834,23 @@
       "topics": [
         "history"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "history content: Revolutions",
+      "display_title": "Revolutions",
+      "blurb": "Season 12 premiered October 20, 2024 – a nonfictional account of The Martian Revolution of 2247",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-ee1ac1b7",
+      "classified_at": "2026-09-06T08:09:09.415Z"
     },
     "704434205": {
       "topics": [
@@ -14026,11 +14059,25 @@
     },
     "721125504": {
       "topics": [
-        "personal-journals"
+        "history/military-modern"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history/military-modern",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "history content: Witness History: Black history",
+      "display_title": "Witness History: Black history",
+      "blurb": "Listen to and download our programmes",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-ee1ac1b7",
+      "classified_at": "2026-09-06T08:09:09.415Z"
     },
     "722310366": {
       "topics": [
@@ -14094,11 +14141,25 @@
     },
     "732915228": {
       "topics": [
-        "society"
+        "sports"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "sports content: Stuff They Don't Want You To K",
+      "display_title": "Stuff They Don't Want You To Know",
+      "blurb": "From UFOs to psychic powers and government cover-ups, history is riddled with unexplained events",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-ee1ac1b7",
+      "classified_at": "2026-09-06T08:09:09.415Z"
     },
     "733163012": {
       "topics": [
@@ -14174,11 +14235,25 @@
     },
     "740675898": {
       "topics": [
-        "health/mental"
+        "sports"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "sports content: Sleep With Me",
+      "display_title": "Sleep With Me",
+      "blurb": "Insomnia? Mind racing at night? Worries keeping you up? Tune in for a bedtime story that lets you forget your problems and progressively gets more bor",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-ee1ac1b7",
+      "classified_at": "2026-09-06T08:09:09.415Z"
     },
     "741606139": {
       "topics": [
@@ -14198,11 +14273,25 @@
     },
     "751574016": {
       "topics": [
-        "education/language-learning"
+        "business"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "business content: All Ears English Podcast",
+      "display_title": "All Ears English Podcast",
+      "blurb": "Are you looking for a new and fun way to learn American English? Come hang out with Lindsay and Michelle from Boston and New York City and have fun wh",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-ee1ac1b7",
+      "classified_at": "2026-09-06T08:09:09.415Z"
     },
     "754700884": {
       "topics": [
@@ -14313,11 +14402,25 @@
     },
     "782571888": {
       "topics": [
-        "health/sexuality"
+        "education"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "education content: Strictly Anonymous Confessions",
+      "display_title": "Strictly Anonymous Confessions",
+      "blurb": "Strictly Anonymous Confessions is a raw, real podcast where people call in anonymously to share their most personal and intimate stories",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-ee1ac1b7",
+      "classified_at": "2026-09-06T08:09:09.415Z"
     },
     "783201244": {
       "topics": [
@@ -14382,11 +14485,25 @@
     },
     "790864884": {
       "topics": [
-        "computing"
+        "business"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "business content: Daily Tech News Show",
+      "display_title": "Daily Tech News Show",
+      "blurb": "Tom Merritt and the team help you stay up to date with an independent, authoritative and trustworthy tech news briefing",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-ee1ac1b7",
+      "classified_at": "2026-09-06T08:09:09.415Z"
     },
     "791564318": {
       "topics": [
@@ -14470,11 +14587,25 @@
     },
     "796512132": {
       "topics": [
-        "music"
+        "education"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "education content: Fedde Le Grand - Darklight Ses",
+      "display_title": "Fedde Le Grand - Darklight Sessions",
+      "blurb": "The critically acclaimed Darklight Sessions has gone from strength to strength ever since its inception in 2012",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-ee1ac1b7",
+      "classified_at": "2026-09-06T08:09:09.415Z"
     },
     "797737031": {
       "topics": [
@@ -14508,11 +14639,25 @@
     },
     "808511892": {
       "topics": [
-        "personal-journals"
+        "news/politics"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "news content: The Girl Next Door Podcast",
+      "display_title": "The Girl Next Door Podcast",
+      "blurb": "Honest and fun conversations that feel like hanging out with your girl friends",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-ee1ac1b7",
+      "classified_at": "2026-09-06T08:09:09.415Z"
     },
     "808792827": {
       "topics": [
@@ -14597,27 +14742,72 @@
     },
     "818198322": {
       "topics": [
-        "medicine"
+        "medicine/biology"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine/biology",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "medicine content: FoundMyFitness",
+      "display_title": "FoundMyFitness",
+      "blurb": "A podcast about health, science, nutrition, aging, and fitness",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-ee1ac1b7",
+      "classified_at": "2026-09-06T08:09:09.415Z"
     },
     "818817570": {
       "topics": [
-        "gaming"
+        "sports"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "sports content: Total Party Kill",
+      "display_title": "Total Party Kill",
+      "blurb": "Adventuring since 2013, Total Party Kill is an actual-play podcast in which a bunch of friends play D&D on the Internet for your amusement",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-ee1ac1b7",
+      "classified_at": "2026-09-06T08:09:09.415Z"
     },
     "819290316": {
       "topics": [
-        "tv-film"
+        "history/military-modern"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history/military-modern",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "history content: DIZNEY COAST TO COAST: Disney ",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 10w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-ee1ac1b7",
+      "classified_at": "2026-09-06T08:09:09.415Z"
     },
     "820373598": {
       "topics": [
@@ -14704,11 +14894,25 @@
     },
     "827905050": {
       "topics": [
-        "tv-film"
+        "history/military-modern"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history/military-modern",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "history content: Happy Sad Confused",
+      "display_title": "Happy Sad Confused",
+      "blurb": "On Happy Sad Confused, Josh Horowitz gets nerdy and intimate with the biggest movie stars and filmmakers on the planet",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-ee1ac1b7",
+      "classified_at": "2026-09-06T08:09:09.415Z"
     },
     "827919428": {
       "topics": [
@@ -14879,11 +15083,25 @@
     },
     "840986946": {
       "topics": [
-        "comedy"
+        "history/military-modern"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history/military-modern",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "history content: No Such Thing As A Fish",
+      "display_title": "No Such Thing As A Fish",
+      "blurb": "The official channel for the show about everything: four dorks discuss the most amazing facts they’ve learned over the last seven days",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-ee1ac1b7",
+      "classified_at": "2026-09-06T08:09:09.415Z"
     },
     "841758860": {
       "topics": [
@@ -15111,11 +15329,25 @@
     },
     "862312494": {
       "topics": [
-        "music"
+        "history/military-modern"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history/military-modern",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "history content: Cosmic Gate: WYM Radio",
+      "display_title": "Cosmic Gate: WYM Radio",
+      "blurb": "GRAMMY® nominated legend Cosmic Gate aka Nic Chagall has a career that spans more than 27 years at the forefront of electronic music",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-ee1ac1b7",
+      "classified_at": "2026-09-06T08:09:09.415Z"
     },
     "863338913": {
       "topics": [
@@ -15690,11 +15922,25 @@
     },
     "893035230": {
       "topics": [
-        "education/how-to"
+        "history/military-modern"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history/military-modern",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "history content: Teaching in Higher Ed",
+      "display_title": "Teaching in Higher Ed",
+      "blurb": "Thank you for checking out the Teaching in Higher Ed podcast",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-ee1ac1b7",
+      "classified_at": "2026-09-06T08:09:09.415Z"
     },
     "893729387": {
       "topics": [
@@ -15918,11 +16164,25 @@
     },
     "903871206": {
       "topics": [
-        "health/fitness"
+        "medicine/biology"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine/biology",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "medicine content: The Flipping 50 Show",
+      "display_title": "The Flipping 50 Show",
+      "blurb": "The podcast for women in menopause and beyond who want to change the way they age",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-ee1ac1b7",
+      "classified_at": "2026-09-06T08:09:09.415Z"
     },
     "904433031": {
       "topics": [
@@ -16066,11 +16326,25 @@
     },
     "909552816": {
       "topics": [
-        "fiction/sci-fi"
+        "history/military-modern"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history/military-modern",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "history content: Wolf 359",
+      "display_title": "Wolf 359",
+      "blurb": "Life's not easy for Doug Eiffel, the communications officer for the U",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-ee1ac1b7",
+      "classified_at": "2026-09-06T08:09:09.415Z"
     },
     "910048041": {
       "topics": [
@@ -16151,11 +16425,25 @@
     },
     "912241032": {
       "topics": [
-        "education"
+        "craft"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "craft content: Dogman Encounters Radio",
+      "display_title": "Dogman Encounters Radio",
+      "blurb": "Everyone has heard about Bigfoot",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-ee1ac1b7",
+      "classified_at": "2026-09-06T08:09:09.415Z"
     },
     "912451024": {
       "topics": [
@@ -16232,11 +16520,25 @@
     },
     "915355770": {
       "topics": [
-        "education/self-improvement"
+        "sports"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "sports content: Organize 365 Podcast",
+      "display_title": "Organize 365 Podcast",
+      "blurb": "Lisa Woodruff is a home organization expert, productivity specialist, and author of multiple books including The Paper Solution",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-ee1ac1b7",
+      "classified_at": "2026-09-06T08:09:09.415Z"
     },
     "916244917": {
       "topics": [
@@ -16411,11 +16713,25 @@
     },
     "923017416": {
       "topics": [
-        "religion/buddhism"
+        "history/military-modern"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history/military-modern",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "history content: Heart Wisdom with Jack Kornfie",
+      "display_title": "Heart Wisdom with Jack Kornfield",
+      "blurb": "The Jack Kornfield Heart Wisdom hour celebrates Jack’s ability to mash up his long established Buddhist practices with many other mystical traditions,",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-ee1ac1b7",
+      "classified_at": "2026-09-06T08:09:09.415Z"
     },
     "923018685": {
       "topics": [
@@ -16525,11 +16841,25 @@
     },
     "927205926": {
       "topics": [
-        "gaming"
+        "sports"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "sports content: Campaign: Skyjacks",
+      "display_title": "Campaign: Skyjacks",
+      "blurb": "Campaign is long-form actual play podcast",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-ee1ac1b7",
+      "classified_at": "2026-09-06T08:09:09.415Z"
     },
     "927558221": {
       "topics": [
@@ -16640,11 +16970,25 @@
     },
     "934552872": {
       "topics": [
-        "music"
+        "history"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "history content: Switched on Pop",
+      "display_title": "Switched on Pop",
+      "blurb": "Listen closer to pop music, and hear how it moves us",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-ee1ac1b7",
+      "classified_at": "2026-09-06T08:09:09.415Z"
     },
     "934576040": {
       "topics": [
@@ -16761,11 +17105,25 @@
     },
     "939310746": {
       "topics": [
-        "religion"
+        "history"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "history content: Naked Mormonism Podcast",
+      "display_title": "Naked Mormonism Podcast",
+      "blurb": "The Church of Jesus Christ of Latter Day Saints, has been around for almost two centuries",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-ee1ac1b7",
+      "classified_at": "2026-09-06T08:09:09.415Z"
     },
     "939966584": {
       "topics": [
@@ -16837,11 +17195,25 @@
     },
     "942777522": {
       "topics": [
-        "psychology"
+        "medicine/biology"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine/biology",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "medicine content: The Psychology Podcast",
+      "display_title": "The Psychology Podcast",
+      "blurb": "In each episode, we talk with inspiring scientists, thinkers, and other self-actualized individuals who will give you a greater understanding of yours",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-ee1ac1b7",
+      "classified_at": "2026-09-06T08:09:09.415Z"
     },
     "942809988": {
       "topics": [
@@ -17000,11 +17372,25 @@
     },
     "952917216": {
       "topics": [
-        "health/sexuality"
+        "comedy"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "comedy content: How To Talk To Girls Podcast",
+      "display_title": "How To Talk To Girls Podcast",
+      "blurb": "Tripp Kramer (instagram",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-ee1ac1b7",
+      "classified_at": "2026-09-06T08:09:09.415Z"
     },
     "952917333": {
       "topics": [
@@ -17233,11 +17619,25 @@
     },
     "957171516": {
       "topics": [
-        "gaming"
+        "sports"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "sports content: Kinda Funny Gamescast: Video G",
+      "display_title": "Kinda Funny Gamescast: Video Game Podcast",
+      "blurb": "Weekly video game reviews, previews, and analysis of the biggest topics in gaming, covering the latest in PlayStation, Xbox, Nintendo and more! Hosted",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-ee1ac1b7",
+      "classified_at": "2026-09-06T08:09:09.415Z"
     },
     "957216506": {
       "topics": [
@@ -17536,19 +17936,47 @@
     },
     "964902342": {
       "topics": [
-        "personal-journals"
+        "sports"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "sports content: The Mortified Podcast",
+      "display_title": "The Mortified Podcast",
+      "blurb": "The Mortified Podcast is a storytelling series where adults share the embarrassing things they created as kids—diaries, letters, lyrics & beyond—in fr",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-ee1ac1b7",
+      "classified_at": "2026-09-06T08:09:09.415Z"
     },
     "965023632": {
       "topics": [
-        "tv-film/history"
+        "history"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "history content: The Secret History Of Hollywoo",
+      "display_title": "The Secret History Of Hollywood",
+      "blurb": "An ongoing series of specially produced histories, bringing to life the stories and secrets that shaped cinema",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-ee1ac1b7",
+      "classified_at": "2026-09-06T08:09:09.415Z"
     },
     "965163837": {
       "topics": [
@@ -17969,11 +18397,25 @@
     },
     "975392298": {
       "topics": [
-        "food"
+        "business"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "business content: Bourbon Pursuit",
+      "display_title": "Bourbon Pursuit",
+      "blurb": "The Official Podcast of Bourbon! The best in news, reviews and interviews with people making the bourbon whiskey industry happen",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-ee1ac1b7",
+      "classified_at": "2026-09-06T08:09:09.415Z"
     },
     "975730628": {
       "topics": [
@@ -18171,11 +18613,25 @@
     },
     "982003188": {
       "topics": [
-        "history"
+        "sports"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "sports content: The WW2 Podcast",
+      "display_title": "The WW2 Podcast",
+      "blurb": "A military history podcast that looks at all aspects of WWII",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-ee1ac1b7",
+      "classified_at": "2026-09-06T08:09:09.415Z"
     },
     "982530565": {
       "topics": [
@@ -18425,11 +18881,25 @@
     },
     "990835722": {
       "topics": [
-        "business/non-profit"
+        "business"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "business content: Inside Social Innovation",
+      "display_title": "Inside Social Innovation",
+      "blurb": "Social entrepreneurs and leaders from business, government, philanthropy, and the nonprofit sector discuss how they are confronting today's most press",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-ee1ac1b7",
+      "classified_at": "2026-09-06T08:09:09.415Z"
     },
     "990871441": {
       "topics": [
@@ -18465,11 +18935,25 @@
     },
     "991156680": {
       "topics": [
-        "religion"
+        "history/military-modern"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history/military-modern",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "history content: The Eric Metaxas Show",
+      "display_title": "The Eric Metaxas Show",
+      "blurb": "Truth | Humor | Hope The Official podcast for Eric Metaxas!",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-ee1ac1b7",
+      "classified_at": "2026-09-06T08:09:09.415Z"
     },
     "991313597": {
       "topics": [
@@ -18495,11 +18979,25 @@
     },
     "991739142": {
       "topics": [
-        "education/courses"
+        "sports"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "sports content: The School Leadership Show",
+      "display_title": "The School Leadership Show",
+      "blurb": "This is The School Leadership Show",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-ee1ac1b7",
+      "classified_at": "2026-09-06T08:09:09.415Z"
     },
     "992015074": {
       "topics": [
@@ -18562,11 +19060,25 @@
     },
     "993270804": {
       "topics": [
-        "society/government"
+        "business"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "business content: GovLove - A Podcast About Loca",
+      "display_title": "GovLove - A Podcast About Local Government",
+      "blurb": "GovLove is a podcast about the people, policies and profession of local government",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-ee1ac1b7",
+      "classified_at": "2026-09-06T08:09:09.415Z"
     },
     "993284374": {
       "topics": [
@@ -18648,8 +19160,25 @@
         "craft/filmmaking"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/filmmaking",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "craft content: Just Shoot It: A Podcast about",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 10w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-ee1ac1b7",
+      "classified_at": "2026-09-06T08:09:09.415Z"
     },
     "996151267": {
       "topics": [
@@ -18880,11 +19409,25 @@
     },
     "1006030122": {
       "topics": [
-        "gaming"
+        "education"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "education content: Sneak Attack!",
+      "display_title": "Sneak Attack!",
+      "blurb": "Sneak Attack! is a homebrew actual play tabletop RPG podcast set in the world of Brannis, as well as the depths of outer space",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-ee1ac1b7",
+      "classified_at": "2026-09-06T08:09:09.415Z"
     },
     "1006051665": {
       "topics": [
@@ -18924,11 +19467,25 @@
     },
     "1007021910": {
       "topics": [
-        "gaming"
+        "comedy"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "comedy content: The Glass Cannon Podcast",
+      "display_title": "The Glass Cannon Podcast",
+      "blurb": "Welcome to the Glass Cannon Podcast! In the spirit of old-school D&D, a collection of comedians, actors and super-nerds come together to create what i",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-ee1ac1b7",
+      "classified_at": "2026-09-06T08:09:09.415Z"
     },
     "1007053996": {
       "topics": [
@@ -18953,11 +19510,25 @@
     },
     "1010619816": {
       "topics": [
-        "sports/rugby"
+        "sports"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "sports content: Bloke In A Bar",
+      "display_title": "Bloke In A Bar",
+      "blurb": "Bloke In A Bar is all things footy from interviews with NRL players to analysts from former NRL player Denan Kemp",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-ee1ac1b7",
+      "classified_at": "2026-09-06T08:09:09.415Z"
     },
     "1010738108": {
       "topics": [
@@ -19101,11 +19672,28 @@
     },
     "1016715810": {
       "topics": [
-        "education/courses"
+        "sports"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "sports content: Law School Admissions Unplugge",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 14w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-ee1ac1b7",
+      "classified_at": "2026-09-06T08:09:09.415Z"
     },
     "1017074168": {
       "topics": [
@@ -19433,11 +20021,25 @@
     },
     "1025399574": {
       "topics": [
-        "automotive"
+        "sports"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "sports content: Ride the Lightning: Tesla and ",
+      "display_title": "Ride the Lightning: Tesla and EV Podcast",
+      "blurb": "Ride the Lightning: The Tesla Unofficial Podcast is the world's longest-running weekly Tesla show, made for Tesla fans and owners by Tesla community v",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-ee1ac1b7",
+      "classified_at": "2026-09-06T08:09:09.415Z"
     },
     "1025470195": {
       "topics": [
@@ -19509,11 +20111,25 @@
     },
     "1028912310": {
       "topics": [
-        "space"
+        "education"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "education content: Coffee Break: Señal y Ruido",
+      "display_title": "Coffee Break: Señal y Ruido",
+      "blurb": "Coffee Break: Se&ntilde;al y Ruido es la tertulia semanal en la que, medio en broma medio en serio, repasamos las &uacute;ltimas noticias de la actual",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-ee1ac1b7",
+      "classified_at": "2026-09-06T08:09:09.415Z"
     },
     "1029088717": {
       "topics": [
@@ -19751,11 +20367,25 @@
     },
     "1036276968": {
       "topics": [
-        "society"
+        "history"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "history content: Scene on Radio",
+      "display_title": "Scene on Radio",
+      "blurb": "Scene on Radio is a two-time Peabody-nominated podcast that dares to ask big, hard questions about who we are—really—and how we got this way",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-ee1ac1b7",
+      "classified_at": "2026-09-06T08:09:09.415Z"
     },
     "1036379102": {
       "topics": [
@@ -19790,11 +20420,25 @@
     },
     "1037206422": {
       "topics": [
-        "religion/buddhism"
+        "education/language-learning"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "education content: The Wisdom Podcast",
+      "display_title": "The Wisdom Podcast",
+      "blurb": "Wisdom Publications",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-ee1ac1b7",
+      "classified_at": "2026-09-06T08:09:09.415Z"
     },
     "1037423108": {
       "topics": [
@@ -19978,11 +20622,25 @@
     },
     "1041509070": {
       "topics": [
-        "kids-family"
+        "history"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "history content: Life with Sally",
+      "display_title": "Life with Sally",
+      "blurb": "Home is the place where the whispers of God's love are heard regularly, the touch of His hands is given intentionally throughout the day, the words of",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-ee1ac1b7",
+      "classified_at": "2026-09-06T08:09:09.415Z"
     },
     "1041801905": {
       "topics": [
@@ -20125,11 +20783,25 @@
     },
     "1044102900": {
       "topics": [
-        "sports/wrestling"
+        "education"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "education content: The Lapsed Fan",
+      "display_title": "The Lapsed Fan",
+      "blurb": "The Lapsed Fan co-chairmen bring a unique chemistry and perspective to discussion of the pro wrestling of lore, reviewing archived pay-per-views with ",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-ee1ac1b7",
+      "classified_at": "2026-09-06T08:09:09.415Z"
     },
     "1044115915": {
       "topics": [
@@ -20437,8 +21109,22 @@
         "news/politics"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "news content: The New Yorker Radio Hour",
+      "display_title": "The New Yorker Radio Hour",
+      "blurb": "Profiles, storytelling and insightful conversations, hosted by David Remnick",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-ee1ac1b7",
+      "classified_at": "2026-09-06T08:09:09.415Z"
     },
     "1050462261": {
       "topics": [
@@ -20487,11 +21173,28 @@
     },
     "1050862266": {
       "topics": [
-        "tv-film/history"
+        "news"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "news content: The New Flesh Horror Movies Ho",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-ee1ac1b7",
+      "classified_at": "2026-09-06T08:09:09.415Z"
     },
     "1050886056": {
       "topics": [
@@ -20525,11 +21228,25 @@
     },
     "1051557000": {
       "topics": [
-        "science"
+        "food/cooking-science"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food/cooking-science",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "food content: Science Vs",
+      "display_title": "Science Vs",
+      "blurb": "There are a lot of fads, blogs and strong opinions, but then there’s SCIENCE",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-ee1ac1b7",
+      "classified_at": "2026-09-06T08:09:09.415Z"
     },
     "1052346812": {
       "topics": [
@@ -20570,11 +21287,25 @@
     },
     "1052842770": {
       "topics": [
-        "news/commentary"
+        "history/military-modern"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history/military-modern",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "history content: The Rubin Report",
+      "display_title": "The Rubin Report",
+      "blurb": "Care about free speech? Tired of political correctness? Join Dave Rubin for real conversations, real news, and one-on-one interviews with some of the ",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-ee1ac1b7",
+      "classified_at": "2026-09-06T08:09:09.415Z"
     },
     "1052842829": {
       "topics": [
@@ -20585,11 +21316,25 @@
     },
     "1052860428": {
       "topics": [
-        "craft/photography"
+        "sports/basketball"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/basketball",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "sports content: B&H Photography Podcast",
+      "display_title": "B&H Photography Podcast",
+      "blurb": "The B&H Photography Podcast: Join us every other week for a conversation with insightful and entertaining guests",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-ee1ac1b7",
+      "classified_at": "2026-09-06T08:09:09.415Z"
     },
     "1052989183": {
       "topics": [
@@ -20667,11 +21412,25 @@
     },
     "1054540734": {
       "topics": [
-        "nature"
+        "medicine/biology"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine/biology",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "medicine content: The Field Guides",
+      "display_title": "The Field Guides",
+      "blurb": "Nature nerds rejoice! The Field Guides is a monthly podcast that will bring you out on the trail, focusing on the science of our North American wildli",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-ee1ac1b7",
+      "classified_at": "2026-09-06T08:09:09.415Z"
     },
     "1054640091": {
       "topics": [
@@ -20827,11 +21586,25 @@
     },
     "1058911614": {
       "topics": [
-        "sports"
+        "business"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "business content: The Press Box",
+      "display_title": "The Press Box",
+      "blurb": "The Ringer’s Bryan Curtis, David Shoemaker and Joel Anderson catch you up on the biggest media stories, from sports to politics and everything in betw",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-06-ee1ac1b7",
+      "classified_at": "2026-09-06T08:09:09.415Z"
     },
     "1059045374": {
       "topics": [
