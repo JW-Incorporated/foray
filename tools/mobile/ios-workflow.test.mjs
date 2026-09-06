@@ -452,6 +452,55 @@ test("the two measurements are actually invoked", () => {
   assert.match(WF, /simctl launch "\$UDID" com\.apple\./, "the app is never backgrounded");
 });
 
+test("R-01: PR runs never reach signing or the TestFlight upload, even with secrets", () => {
+  /* ROOT CAUSE THIS PINS. Same-repo `pull_request` runs receive the same
+     secrets a push to `main` does — GitHub does not withhold them for PRs from
+     branches in the same repository. Before this pin, "Is signing configured?"
+     and "Archive, export and upload to TestFlight" were gated ONLY on the
+     secrets existing, so any signed same-repo PR shipped an unmerged branch
+     straight to TestFlight testers, which is why Wyatt got a flood of App
+     Store emails for builds nobody had reviewed yet.
+
+     MUTATION: remove `github.event_name != 'pull_request'` from either step's
+     `if:` (leaving only the signing-readiness half, or deleting the condition
+     outright) -> fails on the named assertion below. Weakening it to
+     `github.event_name == 'push'` also fails, because a `workflow_dispatch` on
+     `main` (the acceptance criterion) must still upload, and `!= 'pull_request'`
+     is the only phrasing that admits both push and workflow_dispatch while
+     excluding every pull_request event. */
+  const signing = step(WF, "Is signing configured?");
+  assert.ok(signing, "the signing-gate step is gone");
+  assert.match(
+    signing,
+    /if:\s*github\.event_name\s*!=\s*['"]pull_request['"]/,
+    "the signing gate must refuse to even run on a pull_request event"
+  );
+
+  const upload = step(WF, "Archive, export and upload to TestFlight");
+  assert.ok(upload, "the TestFlight upload step is gone");
+  assert.match(
+    upload,
+    /if:\s*github\.event_name\s*!=\s*['"]pull_request['"]/,
+    "the upload step's `if:` must name `pull_request` — without it, a signed same-repo PR uploads to TestFlight"
+  );
+  /* Both halves of the upload gate, not just the new one: dropping
+     `steps.signing.outputs.ready == 'true'` while keeping the event check
+     would upload an UNSIGNED build attempt on every push/dispatch. */
+  assert.match(
+    upload,
+    /steps\.signing\.outputs\.ready\s*==\s*['"]true['"]/,
+    "the upload step must still require the signing gate to report ready"
+  );
+  /* A `workflow_dispatch` on main is the acceptance criterion for "still
+     works" — so the guard must exclude pull_request specifically, not fire on
+     event_name entirely (e.g. a stray `== 'push'` would break dispatch). */
+  assert.equal(
+    /event_name\s*==\s*['"]push['"]/.test(upload) && !/!=\s*['"]pull_request['"]/.test(upload),
+    false,
+    "the guard must admit workflow_dispatch too, not just push"
+  );
+});
+
 test("`APP_ID` IS THE APP ID — the workflow's copy agrees with capacitor.config.json", () => {
   /* ADDED BY THE 2026-08-25 `ai.jwlabs` MOVE, the THIRD rename of this string
      (docs/DECISIONS.md), because all three had to keep these two files in sync BY
@@ -547,9 +596,14 @@ test("every upload/archive step is gated on the signing gate's own output", () =
   );
   assert.ok(guarded.length >= 1, "no signing/upload step found");
   for (const step of guarded) {
+    /* R-01 added a same-repo-PR exclusion alongside the readiness check
+       (`if: github.event_name != 'pull_request' && steps.signing.outputs.ready
+       == 'true'`), so the readiness half is matched as a clause rather than
+       requiring it to be the step's entire condition. The new R-01 test above
+       pins that the pull_request exclusion is present too. */
     assert.match(
       step,
-      /if: steps\.signing\.outputs\.ready == 'true'/,
+      /if:.*steps\.signing\.outputs\.ready == 'true'/,
       "a signing/upload step is not gated on steps.signing.outputs.ready"
     );
   }

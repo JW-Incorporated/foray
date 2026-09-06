@@ -695,6 +695,13 @@ jobs:
 
       - name: Is signing configured?
         id: signing
+        # PR RUNS NEVER REACH THIS STEP, regardless of signing state. Same-repo
+        # pull_request runs receive the same secrets a push to main does, so
+        # without this an unmerged branch's build would be eligible for the
+        # TestFlight upload below just because it happened to be a same-repo
+        # PR carrying working credentials. R-01: gate on event_name, not just
+        # secrets.
+        if: github.event_name != 'pull_request'
         env:
           IOS_DIST_CERT_P12_BASE64: ${{ secrets.IOS_DIST_CERT_P12_BASE64 }}
           IOS_DIST_CERT_PASSWORD: ${{ secrets.IOS_DIST_CERT_PASSWORD }}
@@ -713,7 +720,14 @@ jobs:
         # — treat the first real run as a debugging session, not as a release.
         # Said plainly here rather than discovered later: this repo has been burned
         # by inferences presented as measurements.
-        if: steps.signing.outputs.ready == 'true'
+        #
+        # `github.event_name != 'pull_request'` IS NOT REDUNDANT with the signing
+        # gate above even though that step now carries the same condition: this
+        # `if:` is evaluated independently by the runner, and repeating it here
+        # is what keeps a same-repo PR (which DOES receive secrets) from ever
+        # uploading an unmerged branch to testers even if the gate step's own
+        # condition were ever loosened later. R-01.
+        if: github.event_name != 'pull_request' && steps.signing.outputs.ready == 'true'
         env:
           IOS_DIST_CERT_P12_BASE64: ${{ secrets.IOS_DIST_CERT_P12_BASE64 }}
           IOS_DIST_CERT_PASSWORD: ${{ secrets.IOS_DIST_CERT_PASSWORD }}
