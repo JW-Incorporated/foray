@@ -441,13 +441,20 @@ const PARENT_NUDGE_RATIO = 0.5;
    the root moves too, just damped. Roots have parent === null and so never
    propagate a second hop; a topic id that resolves to no taxonomy node (some
    legacy/decorative topics aren't taxonomy ids) simply moves itself, as
-   before, with no parent step. */
+   before, with no parent step. If `topics` names a root directly (its own
+   direct nudge, tracked in `directlyNudged`), that root is skipped for
+   damped propagation from a sibling leaf in the same call — otherwise a
+   topics array carrying both a leaf and its own parent root would move the
+   root twice: once at the full amount for its own entry, once more at the
+   damped ratio from the leaf's propagation. */
 function nudgeTopics(topics, amount) {
-  (topics || []).forEach(t => {
+  const list = topics || [];
+  const directlyNudged = new Set(list);
+  list.forEach(t => {
     if (t in state.interests) {
       state.interests[t] = Math.max(0, Math.min(1, state.interests[t] + amount));
       const parent = nodeById(t)?.parent;
-      if (parent && parent in state.interests) {
+      if (parent && parent in state.interests && !directlyNudged.has(parent)) {
         state.interests[parent] = Math.max(0, Math.min(1, state.interests[parent] + amount * PARENT_NUDGE_RATIO));
       }
     }
@@ -484,7 +491,7 @@ function interestGroups() {
   const nodes = taxonomyNodes();
   const roots = nodes.filter(n => n.parent === null);
   const diverged = nodes.filter(n =>
-    n.parent !== null && typeof state.interests[n.id] === "number" && state.interests[n.id] !== n.weight
+    n.parent !== null && typeof state.interests[n.id] === "number" && state.interests[n.id] !== Math.max(0, n.weight)
   );
   const byRoot = new Map(roots.map(r => [r.id, { root: r, rows: [] }]));
   roots.forEach(r => byRoot.get(r.id).rows.push(r));

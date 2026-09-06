@@ -276,6 +276,14 @@ test("dragging a slider changes what buildCards() ranks on the next Home render"
      able to flip which branch buildCards() puts first among items whose
      only topic is that root.
 
+     Drives the REAL `apply()` handler bindInterestsControls wires to the
+     slider's `input` event (via a constructed range element, the same
+     technique the reset test below uses for its button) rather than
+     mutating state.interests directly — a version of this test that pokes
+     state.interests itself would pass even if `apply()` wrote to the wrong
+     key or never called saveInterests() at all, which is exactly the
+     "green test that pins nothing" shape CLAUDE.md warns about.
+
      MUTATION: make the interest-drag handler write to a key OTHER than
      `id` (e.g. always state.interests[A_ROOT_ID]), or skip saveInterests()
      entirely (so the value never reaches the object interestScore reads).
@@ -294,18 +302,22 @@ test("dragging a slider changes what buildCards() ranks on the next Home render"
   const itemB = { topics: [rootB.id] };
   assert.strictEqual(m.ctx.interestScore(itemA), m.ctx.interestScore(itemB), "must start tied");
 
-  // Simulate the slider drag exactly as bindInterestsControls's `apply` does:
-  // it is not reachable as a real DOM event in this harness (no live
-  // querySelectorAll on #view), so the same state mutation + persistence the
-  // handler performs is driven directly, and the render output is checked
-  // to prove that state landed via the real render function's field name.
   m.ctx.location.hash = "#/interests";
   m.ctx.route();
   assert.ok(rangeAttrs(m.view(), rootA.id), "the slider input for rootA must exist to drag");
 
-  m.state.interests[rootA.id] = 0.95;
-  m.ctx.saveInterests();
-  m.state._interestsGen = (m.state._interestsGen || 0) + 1;
+  // Construct a live input element standing in for rootA's rendered
+  // <input type="range">, scope #view's querySelectorAll to return it, bind
+  // the real handler, then fire the same event the browser fires while
+  // dragging — this exercises bindInterestsControls's actual `apply()`.
+  const rangeEl = makeEl("input");
+  rangeEl.dataset = { interestId: rootA.id };
+  rangeEl.value = "0.95";
+  rangeEl.setAttribute = (name, val) => { rangeEl[`_attr_${name}`] = val; };
+  rangeEl.closest = () => null; // no live DOM row to patch — the state write is what's under test
+  m.byId.get("view").querySelectorAll = (sel) => (sel === "[data-interest-id]" ? [rangeEl] : []);
+  m.ctx.bindInterestsControls(m.byId.get("view"));
+  rangeEl._fire("input");
 
   assert.ok(
     m.ctx.interestScore(itemA) > m.ctx.interestScore(itemB),

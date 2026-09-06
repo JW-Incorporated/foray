@@ -242,3 +242,19 @@ test("the propagated parent nudge is also clamped 0..1", async () => {
   assert.ok(m.state.interests[A_ROOT_ID] <= 1, "the parent's nudged weight must stay clamped at 1");
   assert.strictEqual(m.state.interests[A_ROOT_ID], 1);
 });
+
+test("a topics list naming both a leaf and its own parent root does not double-nudge the root", async () => {
+  /* MUTATION: remove the `!directlyNudged.has(parent)` guard in
+     nudgeTopics(). The root would then move by amount (its own direct
+     entry) PLUS amount*0.5 (the leaf's propagation) = 1.5x the intended
+     movement whenever a single nudgeTopics() call names both. */
+  const m = await mountBooted();
+  const leaf = TAXONOMY.nodes.find((n) => n.parent === A_ROOT_ID);
+  const rootBefore = m.state.interests[A_ROOT_ID];
+  m.ctx.nudgeTopics([leaf.id, A_ROOT_ID], 0.08);
+  assert.strictEqual(
+    m.state.interests[A_ROOT_ID],
+    Math.max(0, Math.min(1, rootBefore + 0.08)),
+    "the root must move by exactly its own direct amount, not amount + damped amount"
+  );
+});
