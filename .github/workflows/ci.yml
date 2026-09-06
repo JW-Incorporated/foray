@@ -81,6 +81,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: swift test --package-path ios/ForayKit
+      # L-01 follow-up (docs/ios-controls-and-voice-plan.md, card L-01): foray-audio
+      # and foray-tts each ship an iOS SwiftPM package (mobile/plugins/*/Package.swift)
+      # with their own XCTests, previously exercised nowhere in CI -- ios-build.yml's
+      # `ios-shell` job only *compiles* them transitively via `cap sync`, it never runs
+      # their test targets. Run them the same way as ForayKit above, on the one Mac
+      # this project already pays for in this job.
+      - run: swift test --package-path mobile/plugins/foray-audio
+      - run: swift test --package-path mobile/plugins/foray-tts
       # M5 (full-repo-review-report.md, 2026-08-31): ForayKit's `swift test` above
       # is the pure state-machine floor and never compiles anything under `ios/App/`
       # — PlayerQueueManager (the AVFoundation-facing glue) had NO CI coverage at
