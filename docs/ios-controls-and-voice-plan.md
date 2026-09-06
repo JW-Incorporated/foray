@@ -275,6 +275,39 @@ HUMAN-ACTIONS #29 (RESULT) and #40.
 - **Governance:** all auto-merge paths. `player/` is shared with U-08 (which promises
   not to touch `player/*.js`) — no conflict by construction.
 
+#### L-05 · Pause, stop and resume for spoken narration — **M** — *added 2026-09-06 from founder feedback F12*
+- **What Wyatt hit (TestFlight 2026090603):** *"Once the on-device narration foray
+  test starts, none of the pause buttons work."* **Root cause, measured in code:**
+  `mobile/plugins/foray-tts` exposes `speak`, `state` and `listVoices` only — there
+  is no `pause`, `stop` or `resume` on either platform (`ForayTtsPlugin.swift`
+  `pluginMethods`, `ForayTtsPlugin.java` `@PluginMethod`s), and `queue-manager.js`'s
+  pause effect calls `backend.pause()`, which pauses the `<audio>` element while
+  `AVSpeechSynthesizer` keeps talking. Nothing in the app can silence narration
+  once it starts. For a driving app that is a safety defect, so it outranks L-03's
+  polish and should ship first.
+- **Ask:** three plugin methods on both platforms — `pause()`, `resume()`, `stop()`
+  — with `state()` reporting `speaking | paused | idle`. iOS: `pauseSpeaking(at: .word)`,
+  `continueSpeaking()`, `stopSpeaking(at: .immediate)`. Android's `TextToSpeech`
+  has no pause: implement pause as `stop()` plus remembering the utterance's last
+  `onRangeStart` boundary, and resume as re-speaking from that boundary (say so in
+  the README; it is a documented Android limitation, not ours). Web Speech fallback:
+  `speechSynthesis.pause()/resume()/cancel()`. Then route the reducer's effects:
+  when the current item is narration, `pause`/`resume`/`stop` go to the TTS bridge
+  instead of the element; `isPlaying()` reflects the plugin's state so the button
+  and the lock screen say the truth. Stopping a Foray (`stopAndClose`) must also
+  stop speech.
+- **Owned:** `mobile/plugins/foray-tts/**` (Swift, Java, `web/foray-tts.js`,
+  `foray-tts.test.mjs` floor 38 → raise), `player/tts-bridge.js`,
+  `player/queue-manager.js` (+ test: pause during a narration item calls
+  `tts.pause` and not `backend.pause` — MUTATION: swap them → red), `player/client.js`.
+- **Dependencies:** none. Can start day 0; L-03 builds on it (the `finished` event
+  and this card share the plugin's state machine — land this first, then L-03).
+- **Acceptance:** in Node with a fake bridge, pause/resume/stop during narration
+  call the bridge and leave the element alone; on device (H1's drive test, or a
+  desk test) the mini-player pause and the lock-screen pause both silence
+  narration within a second and resume from the same sentence.
+- **Governance:** `mobile/` and `player/` auto-merge.
+
 #### L-04 · Records, and the drive test written up — **S**
 - **Ask:** finish `docs/ios-lock-screen.md` in the shape of `docs/android-lock-screen.md`
   (§ how every claim was obtained; what the lock screen says; controls exposed and
@@ -363,7 +396,7 @@ HUMAN-ACTIONS #29 (RESULT) and #40.
 ```
 Day 0 (parallel):   M-01 (measure)        V-01 (voice picker; no dependencies)
 Then:               L-01 ← M-01 (design comment needs the measurement)
-Then:               L-02 ← M-01, L-01     L-03 (can start after L-01's design comment; own PR)
+Then:               L-02 ← M-01, L-01     L-05 (day 0, no dependencies; ship before L-03)   L-03 ← L-05
 Then:               D-01 ← V-01           L-04 ← L-01, L-02, one TestFlight build
 Human:              H2, H3 as soon as V-01 is on TestFlight;  H1 after L-02;  H4 with the R-deck label sitting
 ```
