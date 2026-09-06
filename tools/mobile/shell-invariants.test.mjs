@@ -1033,6 +1033,52 @@ test("the plugin name the web half calls is the name the Java registers", () => 
   assert.equal(javaEvent[1], TRANSPORT_EVENT, "the Java's transport event name and the web half's disagree");
 });
 
+test("the iOS plugin's jsName and setNowPlaying method agree with the web half (L-01)", () => {
+  /* Same failure mode as the Java test above, on the OTHER platform: if these
+     disagree, `window.Capacitor.nativePromise("ForayAudio", "setNowPlaying", …)`
+     resolves against a plugin the Swift side never registered under that name,
+     the bridge answers "plugin not implemented", the iOS lock screen stays
+     blank, and every test here stays green — the exact silent failure mode
+     the Java-reading test above exists to catch, mirrored onto Swift. */
+  const swiftPath = path.join(PLUGIN_DIR, "ios/Sources/ForayAudioPlugin/ForayAudioPlugin.swift");
+  assert.ok(
+    fs.existsSync(swiftPath),
+    "mobile/plugins/foray-audio/ios/Sources/ForayAudioPlugin/ForayAudioPlugin.swift is missing — L-01 should have added it"
+  );
+  const swift = fs.readFileSync(swiftPath, "utf8");
+
+  const jsName = /public\s+let\s+jsName\s*=\s*"([^"]+)"/.exec(swift);
+  assert.ok(jsName, "ForayAudioPlugin.swift has no `public let jsName = \"...\"`");
+  assert.equal(
+    jsName[1], MEDIA_PLUGIN_NAME,
+    "the Swift plugin's jsName and foray-media-session.js's PLUGIN_NAME disagree"
+  );
+
+  const declaredMethods = new Set(
+    [...swift.matchAll(/CAPPluginMethod\(name:\s*"(\w+)"/g)].map((m) => m[1])
+  );
+  assert.ok(
+    declaredMethods.has(SET_METHOD),
+    "foray-media-session.js calls ForayAudio." + SET_METHOD + "(), which ForayAudioPlugin.swift does not declare as a CAPPluginMethod"
+  );
+
+  /* The transport event, mirrored the same way as the Java check just above. */
+  const swiftEvent = /static\s+let\s+TRANSPORT_EVENT\s*=\s*"(\w+)"/.exec(swift);
+  assert.ok(swiftEvent, "ForayAudioPlugin.swift no longer declares TRANSPORT_EVENT");
+  assert.equal(
+    swiftEvent[1], TRANSPORT_EVENT,
+    "the Swift plugin's transport event name and the web half's disagree"
+  );
+
+  /* And the Swift package must actually be wired into capacitor.ios.src, or
+     `cap sync` never discovers it and none of the above matters. */
+  const pluginPkg = JSON.parse(fs.readFileSync(path.join(PLUGIN_DIR, "package.json"), "utf8"));
+  assert.equal(
+    pluginPkg.capacitor?.ios?.src, "ios",
+    "foray-audio/package.json must set capacitor.ios.src so cap sync discovers the iOS plugin"
+  );
+});
+
 test("the Java package, the source layout, the Gradle namespace and the manifest's service all name the same thing", () => {
   /* ADDED BY THE FIRST 2026-08-25 PACKAGE RENAME (`com.jwincorporated.foray.audio`
      -> `dev.jwlabs.foura.audio`) and EXERCISED FOR REAL BY THE SECOND THE SAME DAY
@@ -1347,16 +1393,30 @@ test("the service is declared as a mediaPlayback foreground service, with its pe
   );
 });
 
-test("the plugin declares an Android platform and no iOS one", () => {
-  /* Not an omission. MP1 §7.3: WebKit sets the AVAudioSession category itself for an
-     audible <audio> element, so iOS's whole background-audio requirement is the
-     UIBackgroundModes key that tools/mobile/inject-background-audio.mjs writes.
-     Native iOS code here would have nothing to do, and declaring an `ios` src that
-     does not exist makes `cap sync` fail on a Mac. */
+test("the plugin declares both Android and iOS platforms, and each src exists", () => {
+  /* CHANGED by L-01 (docs/ios-controls-and-voice-plan.md, kanban t_44e5da2a).
+     This test used to assert `pkg.capacitor?.ios === undefined` — correct
+     when written (MP1 §7.3: WebKit sets the AVAudioSession category itself
+     for an audible <audio> element, so the AUDIO-KEEPALIVE half genuinely had
+     nothing to do on iOS). That reasoning was always about keeping audio
+     alive, never about controls, and M-01 measured
+     (docs/ios-lock-screen.md §0) that iOS's shipping shell had ZERO
+     lock-screen or Control-Center transport at all. L-01 adds an iOS SwiftPM
+     package that answers THAT gap — MPNowPlayingInfoCenter +
+     MPRemoteCommandCenter — while leaving the keepalive service Android-only,
+     which is why `ios/` exists here without an `ios/` audio-keepalive
+     equivalent to `PlaybackKeepAliveService.java`. See
+     mobile/plugins/foray-audio/package.json's own notes for the same
+     history, kept in sync with this test. */
   const pkg = readJson(path.join(PLUGIN_DIR, "package.json"));
   assert.equal(pkg.capacitor?.android?.src, "android");
-  assert.equal(pkg.capacitor?.ios, undefined, "the plugin claims an iOS platform it does not have");
+  assert.equal(pkg.capacitor?.ios?.src, "ios", "L-01 should have set capacitor.ios.src so cap sync discovers the plugin");
   assert.ok(fs.existsSync(path.join(PLUGIN_DIR, "android", "build.gradle")));
+  assert.ok(
+    fs.existsSync(path.join(PLUGIN_DIR, "ios", "Package.swift")) ||
+      fs.existsSync(path.join(PLUGIN_DIR, "Package.swift")),
+    "capacitor.ios.src is set but no Package.swift exists in that tree"
+  );
   assert.equal(pkg.private, true, "this plugin is not published; keep it private");
 });
 
