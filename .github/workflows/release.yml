@@ -127,8 +127,11 @@ jobs:
 
       - name: This ref may release only from main, or a tag on main
         id: guard
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF: ${{ github.ref }}
         run: |
-          node tools/mobile/release-ci.mjs release-guard "${{ github.event_name }}" "${{ github.ref }}"
+          node tools/mobile/release-ci.mjs release-guard "$EVENT_NAME" "$REF"
 
   version:
     needs: guard

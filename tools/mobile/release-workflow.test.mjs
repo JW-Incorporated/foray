@@ -86,6 +86,18 @@ test("the guard step calls release-ci.mjs release-guard with the real event cont
   assert.match(guardStep, /github\.ref/);
 });
 
+test("the guard step passes event_name/ref through env:, never interpolated directly into the shell command — MUTATION: '\"${{ github.ref }}\"' inline is a script-injection hole since a tag name is attacker-controlled and can contain `$()`/backticks", () => {
+  const guardStep = step(WF, "release-guard") ?? "";
+  assert.ok(guardStep);
+  assert.match(guardStep, /env:/);
+  assert.equal(
+    /release-guard\s+"\$\{\{/.test(guardStep),
+    false,
+    "github.event_name/github.ref must not be interpolated directly into the run: command"
+  );
+  assert.match(guardStep, /release-guard "\$EVENT_NAME" "\$REF"/);
+});
+
 /* ─────────────────────────────── the version job ───────────────────────────── */
 
 test("the version job reads tools/mobile/version.mjs pair, not a run-number-derived value", () => {

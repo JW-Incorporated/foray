@@ -874,7 +874,7 @@ const FLOORS = {
      shared build steps into. Registered the same day both suites were
      written, per R-02's own precedent for this map. */
   "tools/mobile/release-ci.test.mjs": 15,
-  "tools/mobile/release-workflow.test.mjs": 24,
+  "tools/mobile/release-workflow.test.mjs": 25,
   /* The launch verdict (the `android-smoke` job's brain). ZERO SLACK. This is the
      only thing in the repo that can judge a RUNNING Android app, and its risk is
      entirely one-directional: a verdict too generous reports a launch for a page
