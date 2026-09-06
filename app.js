@@ -5480,6 +5480,39 @@ function paintForay(s) {
   // listener can act on, and keep the detail in the console.
   paintForayFailure(s.error);
 
+  /* V-01: the live-narration counterpart of Audition's own notice. Only
+     shown when there is no real error already claiming the line — a load
+     failure is the more urgent message, and this one is informational
+     ("still working, just not with the exact voice you picked"). Reuses the
+     `fy-error`/`is-hint` styling `paintForayFailure` already tones down for
+     the autoplay case, rather than inventing a second notice element on this
+     page.
+
+     SELF-CONTAINED, not dependent on `paintForayFailure`'s own hiding
+     behaviour: the `else` branch explicitly hides/clears the line when the
+     fallback flag is false, rather than relying on the call above having
+     already hidden it for its own unrelated reason. Painted only once per
+     fallback, not every tick: `paintForay` itself is already gated on
+     `state.forayPainted` below for the segment highlight, but this line has
+     to show up (and clear) on the FIRST tick either way, which can be before
+     that gate's own early return — so it is checked here, ahead of it. */
+  if (!s.error) {
+    const err = $("#fy-error");
+    if (err) {
+      if (s.voiceFallback) {
+        err.hidden = false;
+        err.textContent = "Your chosen voice isn't installed; using the best available.";
+        err.classList.add("is-hint");
+      } else if (err.classList.contains("is-hint")) {
+        // Only clear a hint THIS block painted — a real, non-hint error from
+        // `paintForayFailure` above must not be erased by this branch.
+        err.hidden = true;
+        err.textContent = "";
+        err.classList.remove("is-hint");
+      }
+    }
+  }
+
   /* The row and strip classes only change when the segment does, and this runs
      on every position tick. Guard it: 32 rows x 4 Hz of class churn for a value
      that changes once a minute is work nobody asked for.
@@ -6198,6 +6231,320 @@ function paintDeletion(result) {
   syncDeleteCta();
 }
 
+/* ---------- V-01: the narration voice picker ----------
+
+   `docs/ios-controls-and-voice-plan.md` V-01. A drawer item — "Narration
+   voice" — built and bound the same way `bindDiagnosticsControl()`/
+   `bindDeleteControl()` are: appended in JS above "Delete my data", because
+   `index.html`'s drawer markup is outside this card's owned files (same
+   constraint `ensureInterestsDrawerLink` states). Placed BELOW "Playback
+   diagnostics", which the card's own text asks for ("next to Playback
+   diagnostics"), and above the two destructive/settings toggles at the
+   bottom for the same "a scrolled thumb lands here" reason those two apply
+   to each other.
+
+   DESIGN COMMENT (posted to the card before this was written): there is no
+   separate `#/settings` route on `main` post-U-11 — `cp_ui_v2` is retired
+   and "Settings" is the drawer's own section label (`index.html`'s
+   `.drawer-section-label`). So this ships with exactly one home, the drawer,
+   and there is no "before/after U-02" move pending.
+
+   THE THREE ROW KINDS, and why they look different on purpose:
+     - INSTALLED, SELECTABLE — a radio-shaped row with an Audition button.
+     - RECOMMENDED BUT MISSING — greyed, no Audition (there is nothing to
+       audition), with the exact Settings path text — no Open Settings
+       button (see `buildVoiceRow`'s own comment: `@capacitor/app` has no
+       such native method, and a button promising an action the shell
+       cannot perform is worse than no button). iOS constraint stated in the
+       copy itself: a third-party app can only open its OWN Settings page
+       (`UIApplication.openSettingsURLString`), never deep-link to Voices —
+       so the text alone gets a listener there, one screen at a time.
+     - WEB SPEECH (`path: "web-speech"`, quality `"unknown"`) — installed
+       rows only, no greyed section and no Open Settings button, because
+       `speechSynthesis.getVoices()` exposes no install state at all. */
+
+/** Common Enhanced/Premium English voice names iOS ships as free per-language
+    downloads (HUMAN-ACTIONS.md #40's own list: "Ava and Samantha are the
+    usual English (US) ones"), shown greyed with a download hint when a
+    device's own `listVoices()` does not report them as installed. English
+    only, matching the `lang: "en-US"` this page requests — the card's own
+    text names exactly these five. */
+const RECOMMENDED_VOICE_NAMES = Object.freeze(["Ava", "Samantha", "Evan", "Nathan", "Zoe"]);
+
+/** The exact path text V-01 specifies, verbatim — a listener reads this
+    because the button can only open the app's own Settings page, never
+    deep-link to Voices (`UIApplication.openSettingsURLString`'s own limit). */
+const VOICE_SETTINGS_PATH = "Settings \u2192 Accessibility \u2192 Spoken Content \u2192 Voices \u2192 English";
+
+/** The fixed audition line (H3, the stopwatch test for #490's rate curve):
+    "one\u2026 two\u2026" to twenty, with a spoken marker at the halfway point
+    and the end, so a listener can find their place without a transcript.
+    DELIBERATELY NOT LABELLED WITH A CLAIMED SECOND COUNT ("ten seconds",
+    "twenty seconds") the way the diagnostic Foray's line is: that line's
+    timing was authored against narration-craft.md's 17-characters-per-second
+    rate and was correct FOR THAT SCRIPT at 1x. This line's own word count is
+    not tuned to any specific seconds-per-word rate, so a spoken "ten
+    seconds" here would be a claim about elapsed time this text cannot back
+    up, at whatever the listener's chosen playback speed happens to be. H3's
+    own instructions ask for a STOPWATCH reading against the whole line's
+    duration, start to end — the markers below are navigational only,
+    never a claimed timestamp. */
+const AUDITION_LINE = (() => {
+  const words = [
+    "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten",
+    "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen",
+    "eighteen", "nineteen", "twenty",
+  ];
+  const parts = [];
+  words.forEach((w, i) => {
+    parts.push(w);
+    const count = i + 1;
+    if (count === 10) parts.push(". Marker, halfway");
+    if (count === 20) parts.push(". Marker, the end");
+  });
+  return `${parts.join(", ")}.`;
+})();
+
+let voiceUi = null;
+let voiceState = { voices: [], path: "none", loading: false, selected: null, auditioning: null, notice: "" };
+
+/** Quality label from `listVoices()`'s own `quality` field — never re-derived,
+    per the card ("quality label from `qualityRank`"): the plugin already
+    knows its own tiers and this page must not invent a second opinion about
+    what "premium" means on a platform it cannot introspect. `"unknown"`
+    (Web Speech) reads as a bare noun rather than a fabricated tier word. */
+function voiceQualityLabel(v) {
+  if (!v || !v.quality || v.quality === "unknown") return "voice";
+  return v.quality;
+}
+
+function buildVoiceSheet() {
+  const root = ddEl("div", "fy-sheet");
+  root.id = "voice-sheet";
+  root.hidden = true;
+
+  const scrim = ddEl("div", "fy-scrim");
+  const panel = ddEl("div", "fy-panel voice-panel");
+  panel.setAttribute("role", "dialog");
+  panel.setAttribute("aria-modal", "true");
+
+  const title = ddEl("h3", null, "Narration voice");
+  title.id = "voice-title";
+  panel.setAttribute("aria-labelledby", "voice-title");
+
+  const sub = ddEl("p", "fy-sheet-sub",
+    "Pick which voice reads 4a's narration. Tap Audition to hear the counting line at your current playback speed.");
+
+  const list = ddEl("div", "voice-list");
+  list.id = "voice-list";
+
+  const notice = ddEl("p", "dd-status voice-notice");
+  notice.id = "voice-notice";
+  notice.setAttribute("role", "status");
+  notice.setAttribute("aria-live", "polite");
+  notice.hidden = true;
+
+  const actions = ddEl("div", "fy-sheet-actions");
+  const close = ddEl("button", "fy-sheet-cancel", "Close");
+  close.type = "button";
+  actions.append(close);
+
+  panel.append(ddEl("div", "fy-grab"), title, sub, list, notice, actions);
+  root.append(scrim, panel);
+  document.body.appendChild(root);
+  return { root, scrim, panel, list, notice, close };
+}
+
+function voiceSheet() {
+  if (!voiceUi) voiceUi = buildVoiceSheet();
+  return voiceUi;
+}
+
+/** One row: an installed voice (selectable, with Audition) or a recommended
+    name that is not installed (greyed, with the Settings path and an Open
+    Settings button). Built with createElement/textContent like every other
+    sheet in this file — the CSP is strict and index.html is out of reach. */
+function buildVoiceRow({ installed, name, sub, id, selected }) {
+  const row = ddEl("div", `voice-row${installed ? "" : " voice-row-missing"}${selected ? " voice-row-selected" : ""}`);
+  row.setAttribute("role", installed ? "radio" : "listitem");
+  if (installed) row.setAttribute("aria-checked", selected ? "true" : "false");
+
+  const text = ddEl("div", "voice-row-text");
+  text.append(ddEl("div", "voice-row-name", name), ddEl("div", "voice-row-sub", sub));
+  row.append(text);
+
+  if (installed) {
+    const btn = ddEl("button", "voice-row-audition", voiceState.auditioning === id ? "Playing\u2026" : "Audition");
+    btn.type = "button";
+    btn.disabled = voiceState.auditioning === id;
+    btn.addEventListener("click", (e) => { e.stopPropagation(); return auditionVoiceRow(id); });
+    row.append(btn);
+    row.addEventListener("click", () => selectVoiceRow(id));
+    row.tabIndex = 0;
+    row.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); selectVoiceRow(id); }
+    });
+  } else {
+    /* NO OPEN SETTINGS BUTTON HERE, deliberately — confirmed by reading
+       `@capacitor/app@8.1.1`'s own `AppPlugin` interface
+       (`mobile/node_modules/@capacitor/app/dist/esm/definitions.d.ts`):
+       `exitApp`, `getInfo`, `getState`, `getLaunchUrl`, `minimizeApp`,
+       `getAppLanguage`, `toggleBackButtonHandler`, `addListener`,
+       `removeAllListeners` — nothing that opens Settings. A button whose
+       label promises an action the shipped shell cannot perform is worse
+       than no button: the path text below is the ONLY thing this row can
+       honestly offer a listener today. Wiring a real native "open Settings"
+       call needs a small addition to a Capacitor plugin
+       (`mobile/plugins/foray-audio` or a new one) — out of this card's
+       owned files (`app.js`/`player/`/`test/` only) — and is a follow-up
+       card's job, not a silently-swallowed `.catch()` in this one. */
+  }
+  return row;
+}
+
+function paintVoiceNotice(text) {
+  const ui = voiceSheet();
+  ui.notice.textContent = text || "";
+  ui.notice.hidden = !text;
+}
+
+function paintVoiceList() {
+  const ui = voiceSheet();
+  const player = window.ForayPlayer;
+  const selected = player && typeof player.currentVoice === "function" ? player.currentVoice() : null;
+  voiceState.selected = selected;
+
+  const rows = [];
+  for (const v of voiceState.voices) {
+    rows.push(buildVoiceRow({
+      installed: true,
+      name: v.name || v.identifier,
+      sub: `${voiceQualityLabel(v)} \u00b7 ${v.language || "unknown language"}`,
+      id: v.identifier,
+      selected: v.identifier === selected,
+    }));
+  }
+
+  /* Web Speech (`path: "web-speech"`) has no install state at all — no
+     greyed section, no Open Settings button, per the design comment. Native
+     paths (`"native"`) show the recommended-but-missing names the installed
+     list does not already cover. */
+  if (voiceState.path === "native") {
+    const installedNames = new Set(voiceState.voices.map((v) => (v.name || "").toLowerCase()));
+    for (const name of RECOMMENDED_VOICE_NAMES) {
+      if (installedNames.has(name.toLowerCase())) continue;
+      rows.push(buildVoiceRow({
+        installed: false,
+        name,
+        sub: `Not downloaded \u2014 ${VOICE_SETTINGS_PATH}`,
+      }));
+    }
+  }
+
+  ui.list.innerHTML = "";
+  if (voiceState.loading) {
+    ui.list.append(ddEl("p", "voice-loading", "Looking for voices\u2026"));
+  } else if (!rows.length) {
+    ui.list.append(ddEl("p", "voice-loading", "No voices reported by this device."));
+  } else {
+    rows.forEach((r) => ui.list.append(r));
+  }
+}
+
+async function refreshVoiceList() {
+  const player = window.ForayPlayer;
+  if (!player || typeof player.listVoices !== "function") return;
+  voiceState.loading = true;
+  paintVoiceList();
+  try {
+    const out = await player.listVoices({ lang: "en-US" });
+    voiceState.voices = (out && out.voices) || [];
+    voiceState.path = (out && out.path) || "none";
+  } catch (_) {
+    voiceState.voices = [];
+    voiceState.path = "none";
+  } finally {
+    voiceState.loading = false;
+    paintVoiceList();
+  }
+}
+
+function selectVoiceRow(id) {
+  const player = window.ForayPlayer;
+  if (!player || typeof player.setNarrationVoice !== "function") return;
+  player.setNarrationVoice(id);
+  logEvent("voice_pref", { voice: id });
+  paintVoiceNotice("");
+  paintVoiceList();
+}
+
+/** V-01's Audition: speak the fixed counting line, in this row's voice, at
+    the current playback speed — doubling as H3's stopwatch test. Guarded the
+    same way every Foray tap is (#225): a rejected promise here must not
+    become a console line nobody has open. */
+async function auditionVoiceRow(id) {
+  const player = window.ForayPlayer;
+  if (!player || typeof player.auditionVoice !== "function") return;
+  voiceState.auditioning = id;
+  paintVoiceList();
+  try {
+    const result = await player.auditionVoice(AUDITION_LINE, id);
+    if (result && result.voiceFallback) {
+      paintVoiceNotice("Your chosen voice isn't installed; using the best available.");
+    } else {
+      paintVoiceNotice("");
+    }
+  } catch (_) {
+    paintVoiceNotice("That voice could not be auditioned. Try again.");
+  } finally {
+    voiceState.auditioning = null;
+    paintVoiceList();
+  }
+}
+
+function openVoiceSheet() {
+  const ui = voiceSheet();
+  paintVoiceNotice("");
+  ui.root.hidden = false;
+  document.body.classList.add("fy-sheet-open");
+  refreshVoiceList();
+}
+
+function closeVoiceSheet() {
+  if (!voiceUi) return;
+  voiceUi.root.hidden = true;
+  document.body.classList.remove("fy-sheet-open");
+}
+
+/** Appended to the drawer at startup, next to "Playback diagnostics" per the
+    card's own text, and ABOVE it in the drawer's build order (see
+    `bindDiagnosticsControl`'s own comment for the "field record must stay
+    just above Delete my data" rule this respects). Bound once. */
+function bindVoiceControl() {
+  const drawer = $("#drawer");
+  if (!drawer || $("#voice-open")) return;
+  const btn = ddEl("button", "drawer-item as-btn", "Narration voice");
+  btn.type = "button";
+  btn.id = "voice-open";
+  drawer.appendChild(btn);
+  btn.addEventListener("click", openVoiceSheet);
+
+  const ui = voiceSheet();
+  ui.close.addEventListener("click", closeVoiceSheet);
+  ui.scrim.addEventListener("click", closeVoiceSheet);
+
+  /* Refresh on return, per the card: a voice downloaded in Settings must
+     appear without the listener having to close and reopen the sheet. Only
+     while the sheet is actually open — a background tab re-resolving voices
+     for a sheet nobody can see would be wasted work every single time the
+     app regains focus. */
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) return;
+    if (!voiceUi || voiceUi.root.hidden) return;
+    refreshVoiceList();
+  });
+}
+
 /* ---------- playback diagnostics (#264) ----------
 
    THE ENTIRE POINT OF THIS SURFACE IS WHERE IT CAN BE READ. The record it shows
@@ -6758,6 +7105,10 @@ async function init() {
      drawer's last item, because it is the one control in there that cannot be
      undone and the last item is where a scrolled thumb lands. */
   bindDiagnosticsControl();
+  /* Narration voice (V-01), next to Playback diagnostics per the card's own
+     text — appended immediately after it, so it lands between diagnostics
+     and the destructive control at the very bottom. */
+  bindVoiceControl();
   /* The drawer's last item, appended rather than written into index.html — see
      the § delete my data header for why, and note it is deliberately BELOW the
      two settings toggles: it is the one control in there that cannot be undone. */

@@ -257,7 +257,7 @@ test("listVoices: an unreachable module resolves { ok: false }, never rejects", 
 
    Not a behavioural test. See this file's header for why it is here anyway. */
 
-// TO SEE IT FAIL: delete the `tts: createTtsBridge(),` line from client.js's
+// TO SEE IT FAIL: delete the `tts: ttsBridge,` line from client.js's
 // `new PlayerQueueManager({ ... })` call. That deletion is the exact state
 // `main` was in before this change, and no other test in this repo turns red
 // for it.
@@ -266,10 +266,16 @@ test("client.js actually passes a TTS bridge into the queue manager", () => {
 
   assert.match(src, /import \{[^}]*createTtsBridge[^}]*\} from "\.\/tts-bridge\.js";/,
     "client.js does not import createTtsBridge");
+  /* V-01: the bridge is now built ONCE at module scope (`const ttsBridge =
+     createTtsBridge();`), so `ForayPlayer.listVoices()` works before the
+     manager has ever been constructed, and the manager call site below
+     passes that SAME instance rather than calling `createTtsBridge()` again. */
+  assert.match(src, /^const ttsBridge = createTtsBridge\(\);/m,
+    "client.js does not build one shared ttsBridge instance at module scope");
 
   const call = src.slice(src.indexOf("new PlayerQueueManager({"));
   assert.ok(call.startsWith("new PlayerQueueManager({"), "no `new PlayerQueueManager({` in client.js");
   const args = call.slice(0, call.indexOf("\n  });"));
-  assert.match(args, /\btts:\s*createTtsBridge\(\)/,
-    "the queue manager is built without a `tts` bridge — a script-only narration item cannot be spoken");
+  assert.match(args, /\btts:\s*ttsBridge\b/,
+    "the queue manager is built without the shared ttsBridge — a script-only narration item cannot be spoken");
 });

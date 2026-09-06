@@ -36,12 +36,12 @@ collection.
 Read `privacy-policy.md` §1–§4 for the full table. The three facts that decide
 every answer below:
 
-1. **22 `cp_*` storage keys live on the device**, each mirrored into both
+1. **23 `cp_*` storage keys live on the device**, each mirrored into both
    `localStorage` and IndexedDB (`player/durable-store.js` mirrors the whole
-   `cp_` prefix; db `foray`, store `kv`). Two of the 22 are diagnostics rather
+   `cp_` prefix; db `foray`, store `kv`). Two of the 23 are diagnostics rather
    than a listener's data — `cp_storage_health` and `cp_diag` — and neither is
    transmitted.
-2. **Exactly 4 of 22 event types are transmitted**, to one endpoint
+2. **Exactly 4 of 23 event types are transmitted**, to one endpoint
    (`https://qjdllvqdcgacvujhclny.supabase.co`), keyed to an anonymous account.
    Mapping: `app.js:toEventRow()` — the four `case` arms that return a row are
    the whole transmitted set, and every other type falls to `return null`.

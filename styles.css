@@ -1948,6 +1948,45 @@ body.fy-sheet-open { overflow: hidden; }
   cursor: pointer;
 }
 
+/* ---------- V-01: the narration voice picker ----------
+   Reuses the same sheet shell (.fy-sheet / .fy-scrim / .fy-panel /
+   .fy-sheet-actions) as diagnostics and delete-my-data above. Only the row
+   list is new: a scrollable column of rows, each either an installed voice
+   (selectable, with its own Audition button) or a greyed recommended-but-
+   missing name (path text only — no Open Settings button; `app.js`'s
+   `buildVoiceRow` explains why). */
+.voice-panel { padding-bottom: calc(24px + env(safe-area-inset-bottom)); }
+.voice-list {
+  display: flex; flex-direction: column; gap: 8px;
+  max-height: 50vh; overflow-y: auto;
+}
+.voice-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  cursor: pointer;
+}
+.voice-row-missing { opacity: 0.55; cursor: default; }
+.voice-row-selected { border-color: var(--accent); }
+.voice-row-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.voice-row-name { font-size: 0.88rem; font-weight: 600; }
+.voice-row-sub { font-size: 0.74rem; color: var(--text-dim); }
+.voice-row-audition {
+  flex: none;
+  padding: 7px 12px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: none;
+  color: var(--text);
+  font: inherit; font-size: 0.78rem;
+  cursor: pointer;
+}
+.voice-row-audition:disabled { opacity: 0.6; cursor: default; }
+.voice-loading { margin: 6px 0; font-size: 0.82rem; color: var(--text-dim); }
+.voice-notice[hidden] { display: none; }
+
 /* ---------- delete my data (#42) ----------
    The sheet reuses the reason sheet's shell (.fy-sheet / .fy-scrim / .fy-panel /
    .fy-sheet-actions), so only the parts that have no counterpart there are

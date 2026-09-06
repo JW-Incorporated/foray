@@ -273,6 +273,14 @@ const FLOORS = {
      red for a reason in a `.md` file — the 27 line numbers it replaced went stale
      precisely because correcting them was somebody's optional courtesy. */
   "test/legal-citations.test.js": 12,
+  /* V-01: the narration voice picker's drawer surface — reachable in the
+     drawer, the acceptance fixture's 2 installed + N greyed rows, Web
+     Speech's no-install-state case, selecting a row, Audition's exact
+     counting line, the voiceFallback notice, and close controls. Same split
+     as diagnostics-surface.test.js: `player/queue-manager.test.js` covers
+     the manager's own voice logic in isolation; this is the app.js surface
+     nothing else can see. */
+  "test/voice-settings.test.js": 11,
   /* S-08's mechanical privacy tripwire: SHOWS_SEARCH_OFF_DEVICE flag detection
      (source and env), the pinned current-sentence check, the core AND-gate
      that fails release builds only when the flag is on AND the old sentence

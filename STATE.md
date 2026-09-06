@@ -7,6 +7,48 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
+### V-01: Narration voice picker — Audition button + persisted choice (2026-09-06, kanban `t_3c0c7e62`) — `foray/t_3c0c7e62`
+
+- **What:** `docs/ios-controls-and-voice-plan.md` V-01. A **Narration voice**
+  drawer item (`app.js`'s `bindVoiceControl`/`renderVoiceSettings`-equivalent
+  sheet), next to Playback diagnostics — no separate `#/settings` route
+  exists post-U-11, so this is the one home; there is no "before/after U-02"
+  move pending (see the card's design comment). Lists installed voices from
+  `tts.listVoices({lang: "en-US"})` (best-first, quality label from the
+  plugin's own `quality` field) as selectable rows, greys five hard-coded
+  recommended English names (Ava, Samantha, Evan, Nathan, Zoe) not already
+  installed with the exact Settings path (no Open Settings button —
+  `@capacitor/app`'s own `AppPlugin` interface has no such native method;
+  see `app.js`'s `buildVoiceRow` comment). Each
+  installed row has an **Audition** button that speaks a fixed 20-count line
+  at the current playback speed — doubling as the stopwatch test for the new
+  **H3** human-actions item (confirming #490's rate curve). The choice
+  persists under a new durable key `cp_voice` and feeds into
+  `player/queue-manager.js`'s `_speakNarration` (`voice` alongside `rate`,
+  same discipline as the existing rate option). A `voiceFallback: true`
+  result shows one non-blocking notice. The list refreshes on
+  `visibilitychange` so a voice downloaded in Settings appears on return.
+- **Touches:** `app.js` (new voice-picker sheet + drawer entry),
+  `styles.css` (new `.voice-*` rules), `player/queue-manager.js` (`voice`
+  option, `setVoice()`, `lastVoiceFallback`, `_speakNarration` now passes
+  `voice`), `player/client.js` (reads `cp_voice`, `ForayPlayer.listVoices`/
+  `currentVoice`/`setNarrationVoice`/`lastVoiceFallback`/`auditionVoice`),
+  `player/queue-manager.test.js` (new voice tests + MUTATION guard),
+  `player/tts-bridge.test.js` (updated call-site pin for the shared
+  `ttsBridge` instance), `test/voice-settings.test.js` (new, floored at 11),
+  `docs/legal/privacy-policy.md` (`cp_voice` row + `voice_pref` event
+  totals), `test/data-deletion.test.js` (22 → 23 `cp_` key families),
+  `docs/legal/data-safety.md` (22 → 23, 4 of 22 → 4 of 23),
+  `HUMAN-ACTIONS.md` (#40 step 4 rewritten to use Audition; new **H3** item).
+- **A real bug found and fixed along the way:** the Audition button's click
+  handler did not `return` the promise from `auditionVoiceRow`, so a caller
+  awaiting the click (a test, or any future code) would not see the
+  audition's async work complete. Fixed.
+- **Explicitly out of scope:** D-01 (deleting the diagnostic Foray) —
+  depends on this card merging first, per the plan's sequencing.
+- **Branch:** `foray/t_3c0c7e62` — all owned files auto-merge
+  (`app.js`/`player/`/`test/`), no `index.html` touch.
+
 ### U-11 cutover NOW — old UI retired to archive, TestFlight-week wait overridden (2026-09-06, kanban `t_a3f01c8a`) — `foray/t_a3f01c8a-ui-cutover`
 
 - **FOUNDER OVERRIDE, explicit:** Joey, via Discord, 2026-09-06, directed

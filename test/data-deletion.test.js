@@ -443,11 +443,16 @@ test("the shipped source names exactly the 22 cp_ key families the audit found",
      t_a3f01c8a): `cp_ui_v2` retired. ui2On() now always returns true and no
      longer reads or writes the flag — the last legacy screen it gated is
      gone, so there is nothing left to store. See STATE.md and
-     docs/legal/privacy-policy.md §1's note on the retirement. */
+     docs/legal/privacy-policy.md §1's note on the retirement.
+
+     22 -> 23 on 2026-09-06 (V-01, kanban card t_3c0c7e62): `cp_voice`, the
+     narration voice picker's persisted choice. Same mechanism as every prior
+     addition — this count failed first, then the "documented in the privacy
+     policy" test below failed, until privacy-policy.md §1 got the row. */
   const families = [...keyFamiliesInSource().keys()].sort();
   assert.strictEqual(
-    families.length, 22,
-    `expected 22 cp_ key families, found ${families.length}:\n${families.join("\n")}`
+    families.length, 23,
+    `expected 23 cp_ key families, found ${families.length}:\n${families.join("\n")}`
   );
   assert.ok(families.includes("cp_foray:"), "the patterned Foray resume key must be found as a family");
   assert.ok(families.includes("cp_pos:"), "the patterned episode-position key must be found as a family");
