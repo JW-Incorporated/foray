@@ -320,30 +320,31 @@ test("Library renders no external link-out that bypasses the app's own row/summa
 /* 9. REACHABLE FROM THE APP — LINKED OFF THE PLAYLISTS PAGE             */
 /* ==================================================================== */
 
-/* Fable ruling (this merge, 2026-09-06): the founder's later 2026-09-03
-   five-item drawer mandate (test/home-information-architecture.test.js)
-   floors the drawer at exactly Home/Shows/Playlists/Forays/Up Next, so
-   Library is off the drawer -- same precedent as Starred Shows, which
-   left the menu without leaving the app (test/home-information-
-   architecture.test.js, "Starred Shows is NOT dropped"). Library hangs
-   off the Playlists page instead of Shows because its unique content
-   (Saved + History) is personal-collection material, and Playlists is
-   where the other page-link-row precedent already lives. The #/library
-   route itself is unchanged and still fully renders. */
-test("Library left the drawer but stays reachable — the Playlists page links to it", () => {
-  /* MUTATION: delete the `<a class="page-link-row" href="#/library">` line
-     from renderPlaylists(). */
-  const m = mount();
-  m.state.catalog = { shows: [] };
-  m.state.discover = { items: [] };
-  m.state.taxonomy = { nodes: [] };
-  m.state.session = { session_id: "s-1", builder: "test", episodes: {}, cards: [] };
-  m.state.cardSlots = [];
-  m.state.ready = true;
-  m.ctx.renderPlaylists();
-  const html = m.view();
-  assert.ok(
-    /<a class="page-link-row" href="#\/library">/.test(html),
-    "the Playlists page must carry a link to #/library"
-  );
+/* Fable ruling (2026-09-06): the founder's later 2026 five-item drawer
+   mandate (test/home-information-architecture.test.js) floors the drawer
+   at exactly Home/Shows/Playlists/Forays/Up Next, so Library is off the
+   drawer -- same precedent as Starred Shows, which left the menu without
+   leaving the app (test/home-information-architecture.test.js, "Starred
+   Shows is NOT dropped"). As an interim measure this card's Playlists
+   page carried its own `page-link-row` to #/library; now that U-02's
+   four-tab bar (Home/Search/Create/Library) has landed with a real
+   Library tab wired to #/library (test/tab-bar.test.js, "the Library
+   tab's href is #/library"), that interim link has been removed from
+   renderPlaylists() -- the tab bar is the real entry point. The
+   #/library route itself is unchanged and still fully renders. */
+test("Library left the drawer but stays reachable — the tab bar links to it", () => {
+  /* MUTATION: remove the "library" entry from TAB_ROUTES, or point its
+     hash at anything other than #/library.
+     NOTE: this suite's mount() uses the flat by-id DOM stub (see the file
+     header), whose querySelector/querySelectorAll always return null/[] —
+     unlike test/tab-bar.test.js's real DOM harness. renderTabBar() still
+     appends the real bar element to document.body via body.append(), so
+     it is found by walking body.children directly instead. */
+  const m = mount({ seed: { cp_ui_v2: "true" } });
+  m.evalIn("renderTabBar();");
+  const bar = m.body.children.find((el) => el.id === "tab-bar");
+  assert.ok(bar, "the tab bar must exist when cp_ui_v2 is on");
+  const lib = bar.children.find((a) => a.dataset.tabKey === "library");
+  assert.ok(lib, "a library tab must exist");
+  assert.strictEqual(lib.href, "#/library");
 });
