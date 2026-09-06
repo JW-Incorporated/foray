@@ -533,8 +533,23 @@ const FLOORS = {
      on, the Library tab's href, and the two CSS box-model checks that pin
      the "bar and mini-player never overlap content" acceptance line at
      both insets. Zero slack: each one guards a distinct way this flag or
-     its bar could quietly stop doing what U-02 asks. */
-  "test/tab-bar.test.js": 11,
+     its bar could quietly stop doing what U-02 asks.
+     11 -> 12 with U-06 (kanban t_bd3f749a): the Create tab's href moved
+     from #/playlists to its own #/create screen, pinned separately from
+     the route-mapping/all-routes tests above (which were updated in place,
+     not counted here) because a regression that reverted just the href
+     while leaving tabForHash's mapping correct would otherwise pass. */
+  "test/tab-bar.test.js": 12,
+  /* U-06's Create screen (docs/ui-transition-plan.md D7+D8, kanban card
+     t_bd3f749a): the Foray | Playlist toggle with Foray permanently
+     disabled and honestly labelled, and Playlist mode reusing the real
+     buildPlaylist() so a playlist built from Create lands on the same
+     #/playlist/:id destination and cp_playlists entry the old Playlists
+     page's own form produces. Eight tests, floored with no slack: the
+     disabled-Foray control is a product promise (D8 — the pipeline exists,
+     its key/segment pool don't) and each test is one line from silently
+     no longer holding it. Every test names the mutation that kills it. */
+  "test/create-page.test.js": 8,
   // tools/ is allowlisted for auto-merge too (T3 in automerge-nightly.yml),
   // so suites under it need the same floor.
   /* The icons are generated from tools/brand/4a-logo.png, and this suite is the

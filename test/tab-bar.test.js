@@ -115,6 +115,7 @@ const PAGE_IDS = [
   "player-toggle", "autoadvance-toggle", "menu-btn", "refresh-btn", "banner-slot",
   "sh-form", "sh-input", "sh-note", "sh-results", "ep-search-results",
   "pl-form", "pl-input", "pl-note",
+  "cr-form", "cr-input", "cr-note",
   "fy-sheet-note", "fy-scrim", "fy-sheet-cancel", "fy-sheet-go",
   "fy-play", "fy-next", "fy-prev", "fy-strip",
 ];
@@ -274,6 +275,7 @@ test("every route highlights exactly one tab, and it is the right one", () => {
     ["#/playlists", "create"],
     ["#/playlist/abc", "create"],
     ["#/subject/tech", "create"],
+    ["#/create", "create"],
     ["#/library", "library"],
     ["#/queue", "library"],
     ["#/forays", "library"],
@@ -290,16 +292,18 @@ test("every route highlights exactly one tab, and it is the right one", () => {
 });
 
 /* ==================================================================== */
-/* 6. ALL 13 ROUTES STILL RESOLVE WITH THE FLAG ON                       */
+/* 6. ALL 14 ROUTES STILL RESOLVE WITH THE FLAG ON                       */
 /* ==================================================================== */
 
-test("all 13 existing routes still resolve to a real page with cp_ui_v2 on", () => {
+test("all 14 existing routes still resolve to a real page with cp_ui_v2 on", () => {
   /* MUTATION: have renderCurrentPage() return early when ui2On() (i.e.
      accidentally gate page rendering on the flag instead of just the tab
      bar). Every one of these would then render nothing and the innerHTML
      assertion fails. This is the acceptance line from
      docs/ui-transition-plan.md U-02, checked directly rather than assumed
-     from the tab-mapping test above. */
+     from the tab-mapping test above.
+     13 -> 14 with U-06 (docs/ui-transition-plan.md): #/create is a new
+     route, Create's own screen rather than an alias for #/playlists. */
   const m = mount({ seed: { cp_ui_v2: "true" } });
   m.evalIn(
     'state.catalog = { shows: [] }; state.discover = { items: [] }; ' +
@@ -310,9 +314,9 @@ test("all 13 existing routes still resolve to a real page with cp_ui_v2 on", () 
   const routes = [
     "#/", "#/shows", "#/show/abc", "#/category/tech", "#/starred-shows",
     "#/episode/xyz", "#/playlists", "#/playlist/abc", "#/subject/tech",
-    "#/library", "#/queue", "#/forays", "#/foray/xyz",
+    "#/create", "#/library", "#/queue", "#/forays", "#/foray/xyz",
   ];
-  assert.strictEqual(routes.length, 13, "sanity: this suite's own acceptance list must name all 13 routes");
+  assert.strictEqual(routes.length, 14, "sanity: this suite's own acceptance list must name all 14 routes");
   for (const hash of routes) {
     m.ctx.location.hash = hash;
     assert.doesNotThrow(() => m.evalIn("renderCurrentPage()"), `${hash} must render without throwing when cp_ui_v2 is on`);
@@ -332,6 +336,22 @@ test("the Library tab's href is #/library", () => {
   const lib = bar.querySelectorAll(".tab-btn").find((a) => a.dataset.tabKey === "library");
   assert.ok(lib, "a library tab must exist");
   assert.strictEqual(lib.href, "#/library");
+});
+
+/* ==================================================================== */
+/* 7b. CREATE TAB POINTS AT #/create (U-06)                              */
+/* ==================================================================== */
+
+test("the Create tab's href is #/create, not #/playlists", () => {
+  /* MUTATION: revert TAB_ROUTES's create entry's hash back to "#/playlists".
+     U-06 gives Create its own screen (the Foray|Playlist toggle, honest
+     copy) rather than routing straight at the old Playlists page. */
+  const m = mount({ seed: { cp_ui_v2: "true" } });
+  m.evalIn("renderTabBar();");
+  const bar = m.body.querySelector("#tab-bar");
+  const create = bar.querySelectorAll(".tab-btn").find((a) => a.dataset.tabKey === "create");
+  assert.ok(create, "a create tab must exist");
+  assert.strictEqual(create.href, "#/create");
 });
 
 /* ==================================================================== */

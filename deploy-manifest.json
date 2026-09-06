@@ -1,7 +1,7 @@
 {
-  "deploy_id": "9683f25b1c2ff1ce",
+  "deploy_id": "f2d11eb30c77e97e",
   "files": {
-    "app.js": "sha256:fce4d5b7d990806abaabe762c45bfa492bc4cfeee4836ab488da505cc861bc34",
+    "app.js": "sha256:cfc3ae21dd6b23614a83ff83bc8a122efb2cae0196716bea6ba3fbcd40d8a771",
     "data/catalog-client.json": "sha256:83a6a83d4633326dbc422c57677a78438a41c69f3055439a0010d2057aec8864",
     "data/dai-classification.json": "sha256:321fb915e4289a098cbd30ec7cc8e8503345a1c6cadb6cda2803ff656162a545",
     "data/discover.json": "sha256:c466f25c066dae26152fbcb9c23d79d5a362fd22ffb85fbd9fba046514f4bd10",
@@ -41,6 +41,6 @@
     "player/strip-scrub-gesture.js": "sha256:88415f256049ee1ac96c6738651819d3b1c76161f6fe685dc6eaeab71b0d487e",
     "player/tts-bridge.js": "sha256:cc600841466cd1f1f644b4940d13ffa6b44548b2c8f3045eddc90e3b3cad356f",
     "search-engine.js": "sha256:680161045b4a907ddb19b45c42ac873066b5a7d6d5913ce91d40b53a28458d3c",
-    "styles.css": "sha256:8acf61610e0cbef713274cb0fecc50802e6df54a6d7b45efe0ad38fb09d76164"
+    "styles.css": "sha256:9534bb08b58cabbba9a04722bb9c12c7658e810d38d1a10b9a8c6ee54a0d03d3"
   }
 }
