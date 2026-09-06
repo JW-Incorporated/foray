@@ -7,6 +7,30 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
+### L-04: iOS lock-screen records + drive-test writeup (2026-09-06, kanban `t_75ff6a06`) — `foray/t_75ff6a06`
+
+- **What:** `docs/ios-controls-and-voice-plan.md` L-04. Finished
+  `docs/ios-lock-screen.md` in the shape of `docs/android-lock-screen.md` — how
+  every claim was obtained, what the lock screen/Control Center say (unchanged
+  mapping from `player/media-session.js`, delivered to `MPNowPlayingInfoCenter`/
+  `MPRemoteCommandCenter`), controls exposed and declined with reasons, and L-01's
+  Now Playing ownership decision (the plugin wins by construction — its bridge write
+  is structurally later than WebKit's same-tick one; no suppression API needed).
+  Added **H1** to `HUMAN-ACTIONS.md`: Wyatt's ~10-minute drive test, per-control
+  checkboxes, an explicit F6 (backwards-jump) observation slot, and a reminder to
+  update the off-repo `4a-feedback.md` log's F5/F6/F7 entries once done. Added a
+  line to `docs/ios-native-player-gap.md` §4 Tier 0 recording that the shim now
+  exists (that branch merged as PR #349, `4d7fdd0`, confirmed on `main`).
+- **What was NOT available to record:** no TestFlight build had gone out carrying
+  L-01+L-02 before this task started. Dispatched a fresh `ios-build` run
+  (34047876769) against `main` @ `9500012` (L-02's merge commit) — it went green
+  end to end including the TestFlight upload, archiving `CFBundleVersion 229.1`.
+  H1 is written against that build.
+- **Touches:** `docs/ios-lock-screen.md` (extended, §1+), `HUMAN-ACTIONS.md` (new H1),
+  `docs/ios-native-player-gap.md` (§4 Tier 0 line), `STATE.md` (this entry).
+- **Dependencies:** L-01 (`t_44e5da2a`, merged), L-02 (`t_52c7b293`, merged).
+- **Branch:** `foray/t_75ff6a06` — docs only, auto-merges.
+
 ### V-01: Narration voice picker — Audition button + persisted choice (2026-09-06, kanban `t_3c0c7e62`) — `foray/t_3c0c7e62`
 
 - **What:** `docs/ios-controls-and-voice-plan.md` V-01. A **Narration voice**
