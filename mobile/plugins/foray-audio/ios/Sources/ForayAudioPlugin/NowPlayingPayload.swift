@@ -112,8 +112,18 @@ struct NowPlayingPayload: Equatable {
         (data[key] as? NSNumber)?.doubleValue ?? 0
     }
 
+    /// Converts a payload number to `Int64`, TOTAL over every `Double`
+    /// `numberValue` can hand back -- including NaN, infinity, and anything
+    /// outside `Int64`'s range. `Int64(aHugeDouble)` traps at runtime, so the
+    /// clamp to `Int64`'s representable range has to happen here, before the
+    /// conversion, not after it in `clampMs` (which only clamps to the much
+    /// smaller `maxMs`, but assumes the `Int64` it receives already exists).
     private static func longValue(_ data: [String: Any], _ key: String) -> Int64 {
-        Int64(numberValue(data, key))
+        let value = numberValue(data, key)
+        guard value.isFinite else { return 0 }
+        if value <= Double(Int64.min) { return Int64.min }
+        if value >= Double(Int64.max) { return Int64.max }
+        return Int64(value)
     }
 
     private static func rateValue(_ data: [String: Any]) -> Double {
