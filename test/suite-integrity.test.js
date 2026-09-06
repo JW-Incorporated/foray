@@ -858,6 +858,16 @@ const FLOORS = {
      `foray-signing.gradle` directly above the apply line, so a substring check
      would report a commented-out wiring as wired. */
   "tools/mobile/wire-signing.test.mjs": 11,
+  /* R-02 (docs/release-lockstep-plan.md): the single version source both the
+     iOS and Android release workflows call identically. Floored at its full
+     count because every test pins one of the card's own acceptance criteria —
+     monotonicity across a day boundary and within one day, the runOfDay 1-99
+     bound, UTC-only date math, the Play int32 versionCode ceiling
+     (2,099,123,199 < 2,147,483,647), the semver reset rule, and — the one that
+     stands in for "the same call from both workflow shells prints the
+     identical pair" — spawning the CLI twice with pinned inputs and diffing
+     stdout byte-for-byte. */
+  "tools/mobile/version.test.mjs": 22,
   /* The launch verdict (the `android-smoke` job's brain). ZERO SLACK. This is the
      only thing in the repo that can judge a RUNNING Android app, and its risk is
      entirely one-directional: a verdict too generous reports a launch for a page
