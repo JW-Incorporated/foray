@@ -110,24 +110,19 @@ const FLOORS = {
      built to explain — one pins that the message is on screen BEFORE the record is
      touched (the obvious version of it could not see the order at all), and one
      that an error too hostile to read still produces both. */
-  /* 87 -> 95 with #29's wiring: eight tests for the diagnostic Foray
-     (`tts-locked-screen-check`) — that its line is long enough for a 30-second
-     lock to prove anything, that it reaches the queue as SCRIPT and not as a
-     file, that pressing play hands the committed script to the injected plugin
-     at the listener's own speed, that the audio element is left alone, that a
-     manager with no plugin wired reports a load failure rather than passing
-     silently, and that the Foray stays a draft so the public website never
-     lists it. The last of those is the only thing standing between a one-word
-     edit and a diagnostic on the home screen of the live site. */
-  "player/foray-playback.test.js": 95,
+  /* 87 -> 95 with #29's wiring, then 95 -> 87 with D-01 (2026-09-06): the
+     diagnostic Foray (`tts-locked-screen-check`) and its eight tests were
+     deleted once V-01's Audition button replaced it for the human tests it
+     existed to support. See HUMAN-ACTIONS #29 and docs/curation/
+     tts-locked-screen-check.md (kept as the historical record). */
+  "player/foray-playback.test.js": 87,
   "player/foray-progress.test.js": 58,
   "player/foray-queue.test.js": 37,
-  /* 54 -> 59 with #29: `withDiagnosticUnlock`, the one-id exception that lets
-     the native shell open a draft when `?foray=` cannot exist there. Five tests,
-     and the load-bearing one is that the WEBSITE's list comes back untouched —
-     the failure this guards is not "the phone cannot see it" but "everybody
-     can". */
-  "player/foray-resolve.test.js": 59,
+  /* 54 -> 59 with #29's `withDiagnosticUnlock`, then 59 -> 54 with D-01
+     (2026-09-06): the one-id shell-unlock exception and its five tests were
+     deleted with the diagnostic Foray once V-01 shipped an in-app Audition
+     button to replace it. */
+  "player/foray-resolve.test.js": 54,
   "player/foray-sources.test.js": 24,
     /* 108 -> 109 with #264: a telemetry sink that throws must not reject a load. That
      became reachable when `player/client.js` gave this backend its first real sink —
@@ -285,10 +280,11 @@ const FLOORS = {
      (source and env), the pinned current-sentence check, the core AND-gate
      that fails release builds only when the flag is on AND the old sentence
      is still present, and the HUMAN-ACTIONS.md G5 cross-reference. Floored at
-     5 because this is the gate S-05's shard search must ship behind — a test
-     quietly deleted here is a release build free to ship off-device search
-     while the privacy policy still swears it never happens. */
-  "test/release-gates.test.js": 5,
+     5 -> 6 with D-01 (2026-09-06): a sixth test added, scanning player/,
+     app.js and data/ for the diagnostic Foray instrument's three identifying
+     strings (HUMAN-ACTIONS.md #29) so it cannot silently come back into a
+     release build once deleted. */
+  "test/release-gates.test.js": 6,
   /* The shared search matcher (#218/#219). Floored because both of the things it
      pins are invisible when they break. Loosening the prefix guard buys recall
      and reintroduces a documented collision flood that only the ~170-second
@@ -803,7 +799,7 @@ const FLOORS = {
      only thing standing between a lock screen that works and one that silently says
      the wrong episode. Section 7 of that doc maps each mechanism to the mutation that
      kills it, which is where to look before concluding these are vacuous. */
-  "tools/mobile/foray-media-session.test.mjs": 67,
+  "tools/mobile/foray-media-session.test.mjs": 75,
   /* iOS on a runner (#38). These four are the only tests in the repo that can be
      run for a macOS-only feature by someone with no Mac, which makes their
      deletion unusually attractive to a future session that finds them

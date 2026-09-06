@@ -374,6 +374,23 @@ the same state. iOS already has the two things Android lacked:
 run 32021861601), and iOS injects the Capacitor bridge via `WKUserScript` so the CSP
 question that threatens Android does not arise.
 
+**Update, 2026-09-06 — the shim now exists on iOS, not just the Android precedent
+above.** `docs/ios-controls-and-voice-plan.md`'s L-01/L-02 cards shipped exactly this
+shape: `mobile/plugins/foray-audio/ios/` (`ForayAudioPlugin.swift`, a SwiftPM package,
+merged PRs #517/#520) implements `MPNowPlayingInfoCenter`/`MPRemoteCommandCenter`
+behind the same `setNowPlaying` contract Android answers, and
+`foray-media-session.js`'s `install()` takes over WKWebView's own live
+`navigator.mediaSession` (measured present and publishing — M-01, run 34043193990 —
+unlike Android's absent one) rather than merely filling an absence (merged PR #522).
+`player/media-session.js` runs unmodified on both platforms, same as this section
+predicted. Cost, measured: 305 + 132 + 149 = 586 Swift lines
+(`ForayAudioPlugin.swift`/`NowPlayingPayload.swift`/`ForayAudioPluginTests.swift`),
+plus the web-side takeover branch in `foray-media-session.js` (`foray-media-session.test.mjs`
+67 → 75 tests). `docs/ios-lock-screen.md` argues every decision the way
+`docs/android-lock-screen.md` does for Android. **Not yet closed:** the device-level
+verification (H1, drive test) this document's own caveats below say a Simulator
+cannot substitute for.
+
 **What it sacrifices:** every measured WebView playback defect, unchanged.
 - The seam stays **5.1–11.1 s** hidden, against an authored 2.0 s.
 - **Dropped segments at seams are structural, not bad luck** — a hidden load measured

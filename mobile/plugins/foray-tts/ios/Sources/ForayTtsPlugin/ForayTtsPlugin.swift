@@ -92,12 +92,16 @@ public class ForayTtsPlugin: CAPPlugin, CAPBridgedPlugin, AVSpeechSynthesizerDel
     /// with two anchors, infinitely many curves fit, and this one was chosen for
     /// simplicity, not because the device data distinguishes it from any other.
     ///
-    /// **WHAT WOULD SETTLE IT: a second device reading.** Play the 99-second counting
-    /// line from `tts-locked-screen-check` at the ladder's 2.0x stop and time it; this
-    /// mapping predicts a rate of ≈0.658 and therefore ≈2.0x wall clock, so the line
-    /// should finish in ≈50 s. If it does not, the *form* above is what is wrong, and
-    /// the fix is a third anchor, not a nudge to these two. Until someone runs that,
-    /// treat every value here except 1.0x as an estimate with one point behind it.
+    /// **WHAT WOULD SETTLE IT: a second device reading.** This is HUMAN-ACTIONS.md's
+    /// **H3**: pick 2x in the app's Narration voice picker, tap **Audition** on the
+    /// fixed 20-count line, and time it with a stopwatch; this mapping predicts a rate
+    /// of ≈0.658 and therefore ≈2.0x wall clock, so the line should finish in ≈50 s.
+    /// (H3's Audition button replaced an earlier diagnostic instrument for this test
+    /// — see V-01/D-01 in docs/ios-controls-and-voice-plan.md; that instrument and
+    /// its wiring are deleted.) If it does not, the *form* above is what is wrong,
+    /// and the fix is a third anchor, not a nudge to these two. Until someone runs
+    /// that, treat every value here except 1.0x as an estimate with one point
+    /// behind it.
     ///
     /// Consequences worth knowing at the ladder's stops (`[0.75, 1, 1.25, 1.5, 1.75, 2]`):
     /// rates ≈ 0.435, 0.500, 0.551, 0.592, 0.627, 0.658. The old mapping sent 0.750 for

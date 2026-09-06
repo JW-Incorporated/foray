@@ -1,9 +1,9 @@
-# The iOS lock screen: what `navigator.mediaSession` actually does in the WKWebView shell
+# The iOS lock screen: `MPNowPlayingInfoCenter` + `MPRemoteCommandCenter` behind the same shim
 
-Issue **#38** deck, `docs/ios-controls-and-voice-plan.md` card **M-01**. This file starts at
-§0 — the measurement M-01 exists to take, before L-01/L-02 design a native half around an
-assumption. Later cards (L-04) extend this file with §1+ (controls exposed/declined, the
-Now Playing ownership decision, the drive test) once L-01/L-02 land.
+Issue **#38** deck, `docs/ios-controls-and-voice-plan.md`, cards **M-01** (measure),
+**L-01** (native half), **L-02** (web takeover), **L-04** (this file's §1+ and the
+drive test). §0 below is M-01's own measurement, kept verbatim; everything from §1
+on is L-04's, written once L-01 and L-02 had merged.
 
 ## 0. What was measured, run 34043193990, 2026-09-06
 
@@ -29,57 +29,206 @@ measurement pass — no `.github/` change, per M-01's governance note.
 | 3c | Does a `setPositionState(...)` write throw | **No** — `setPositionState` is present as a function and the call did not throw. |
 | 4 | Does the simulator log show WebKit publishing Now Playing info from the `<audio>` element | **Yes — published.** 17 lines matched the `MRMediaRemote`/`NowPlaying`/`MPNowPlayingInfoCenter` vocabulary in `simulator-log-seam.txt`. Sample line: `MediaSessionManageriOS::updateNowPlayingInfo(0) title = "title", isPlaying = true, duration = 150, now = 14.487269708666668, id = 181, registered = false, src = "src"` — this is WebKit's own internal media session manager naming the probe's tone by its `title`/`duration`/`now` fields, confirming it is reading directly off the `<audio>` element the out-point/seam probes create. |
 
-**What this settles for L-01/L-02, verbatim from `docs/ios-controls-and-voice-plan.md` §1's
-open question:**
+**What this settled for L-01/L-02**, verbatim from `docs/ios-controls-and-voice-plan.md`
+§1's open question: WKWebView exposes and actively publishes to `navigator.mediaSession`
+from the `<audio>` element, so L-02 had to **take over an existing, live** object, not
+merely install into an absent one, and L-01's design comment had a real second writer
+to arbitrate rather than a hypothetical one.
 
-> WKWebView on iOS 15+ probably *exposes* `navigator.mediaSession` (Safari does). If it does,
-> `createMediaSession()` in `client.js` believes it is supported, writes to it, and the OS
-> shows whatever WebKit forwards — which F7 suggests is populated once from the `<audio>`
-> element and never refreshed. **This changes L-02's install strategy**: on Android the
-> polyfill installs where the API is *absent*; on iOS it may have to *replace* a
-> present-but-inert one.
+### Caveats on §0, unchanged since M-01
 
-**Measured: yes on both counts.** `navigator.mediaSession` is present (fact 1), fully
-writable with no throws (facts 2–3), and WebKit IS actively publishing Now Playing info from
-the `<audio>` element while it plays (fact 4) — the `MediaSessionManageriOS` line names the
-element's own metadata directly. So:
+- **Simulator, not a device.** The Simulator does not model true suspension or power
+  management; H1 below is what stands in for that.
+- **The probe's own tone metadata, not a real Foray's.** Fact 4 confirms the mechanism,
+  not what a real title/artist/album looks like on a lock screen.
+- **`setPositionState`'s availability is reported, not its accuracy** — a device
+  question, also H1's.
 
-- **L-02 must take over an existing, live `mediaSession`**, not merely install into an absent
-  one. `mediaSessionApplies()` accepting `"ios"` is not sufficient by itself; `install()`
-  needs the takeover path the plan already named as conditional
-  (`Object.defineProperty(navigator, "mediaSession", …)` if configurable, or wrapping the
-  existing object's methods if not — this run does not say which, and that is L-02's own
-  measurement to take, on a built shell, before choosing).
-- **L-01's design comment's first open question — who owns Now Playing when an `<audio>`
-  element is playing, the plugin or WebKit — has a real second writer to arbitrate**, not a
-  hypothetical one: WebKit is confirmed live and publishing from the same element the page's
-  own polyfill would report from. The two writers fighting (§1 of the plan) is not a risk to
-  flag; it is the starting condition.
-- **During spoken narration there is no `<audio>` element** (L-03's problem — no asset, script
-  only), so this measurement says nothing about that path; WebKit has nothing to publish from
-  in that case regardless. This run's tone probes are all `<audio>`-backed, so fact 4 speaks
-  only to the audio case, honestly.
+## 1. How every claim in §1+ was obtained
 
-## Caveats, so nothing above is over-read
+The same table `docs/android-lock-screen.md` §0 keeps, for the same reason: a
+document that reports "measured" when it means "read" is the failure mode this repo
+keeps paying for.
 
-- **Simulator, not a device.** Per `tools/mobile/ios-ci.mjs`'s `SIMULATOR_CAVEAT`: the
-  Simulator does not model true suspension or power management. A `present`/`published`
-  finding here is stronger evidence than an absence would have been (the API existing is a
-  binary, present-in-source-derived-WebKit-build fact, not a power-management-dependent one),
-  but H1's drive test still stands for anything about the *lock screen surface* behaving the
-  same on a real device.
-- **This run's probe object (`title`/`duration`/`now`, a generic tone) is not the app's real
-  Foray metadata.** Fact 4's sample line names the tone probe's own generic fields; it
-  confirms the *mechanism* (WebKit reads `<audio>` element metadata into
-  `MediaSessionManageriOS`), not what a real Foray's title/artist/album would look like on a
-  lock screen. That is L-02/L-04's to show once the takeover path exists.
-- **`setPositionState`'s availability is reported, not its accuracy.** The probe measures
-  "did the call throw", not "does the OS extrapolate correctly from it" — that is a device
-  question for H1.
+| Claim | How |
+|---|---|
+| WKWebView exposes and actively publishes to `navigator.mediaSession` from `<audio>` | **Measured** — §0, run 34043193990 (M-01). |
+| `ForayAudioPlugin.swift` maps the web payload onto `MPNowPlayingInfoCenter`/`MPRemoteCommandCenter` exactly as described below | **Read from source** — `mobile/plugins/foray-audio/ios/Sources/ForayAudioPlugin/ForayAudioPlugin.swift`, merged to `main` in PR #517 (L-01) and #522 (L-02). |
+| `ios-shell` builds green with the plugin folded in, and both plugins' XCTests are compiled | **Executed** — L-01's own CI run (PR #517) and the follow-up compile-error fix (PR #520). `ios-kit` still only runs `swift test` against `ios/ForayKit`, not this plugin's XCTests — H4 (the `founder-approved` label, `t_2510470c`) is the open item that wires that in; the plugin's own `ForayAudioPluginTests.swift` (149 lines) is compiled locally but not yet CI-run. |
+| `player/*.js` is unmodified by L-01/L-02 | **Executed** — both PRs assert `git diff origin/main -- 'player/*.js'` is empty; re-confirmed here by inspection of the merged tree. |
+| `mediaSessionApplies()` accepts `"ios"`, and `install()` takes over a live `navigator.mediaSession` (replacing when configurable, wrapping when not) | **Read from source** — `mobile/plugins/foray-audio/web/foray-media-session.js`, merged in PR #522 (L-02); backed by 75 tests in `tools/mobile/foray-media-session.test.mjs` (67 → 75). |
+| Whether a real Foray's title/artist/album renders correctly on a **device** lock screen, whether position tracks true, whether F6 (the backwards jump) recurs | **NEITHER MEASURED NOR INFERRED — the H1 drive test, below, is what answers it.** Nothing in CI or the Simulator can substitute for a locked, moving car. |
+| Whether the `ios-shell` simulator build carrying L-01+L-02 is green, post-merge | **Executed** — dispatched run [34047876769](https://github.com/JW-Incorporated/foray/actions/runs/34047876769) against `main` @ `9500012` (L-02's merge commit), as part of writing this file. See §5. |
 
-## Not this card's to answer
+## 2. The decision this file delivers to a second platform
 
-L-01's own three-part design-comment question (who wins between plugin and WebKit; whether
-the plugin may re-set the audio session category while `ForayTts` speaks; whether `stop` is
-offered on a finished Foray) is **not settled here** — this card only supplies the
-measurement it needs. L-01 must read the table above before writing that comment.
+**Nothing about what the lock screen *says* was decided here.** `player/media-session.js`
+decided all of it — three metadata fields, previous/next are segments, the position is
+the **Foray's** clock, a finished Foray reports `"none"`, the 2.0 s seam beat reads as
+playing — and `docs/android-lock-screen.md` §2 already argues why. iOS's job, like
+Android's, is to **deliver** that decision to a second platform's native surface, not
+re-litigate it. What follows is what changes because the surface is
+`MPNowPlayingInfoCenter`/`MPRemoteCommandCenter` instead of a Media3 `MediaSession`,
+and what the two platforms had to decide differently because WebKit — unlike Android
+WebView — already had a live opinion of its own.
+
+### 2.1 Now Playing ownership: the plugin wins, by construction (L-01's design comment)
+
+Android has no second writer: `navigator.mediaSession` is absent in Android WebView,
+so the polyfill is the only writer. iOS is not that simple — §0 measured WebKit
+**actively publishing** to a live `navigator.mediaSession` from the `<audio>` element,
+so L-01's design comment had to settle who wins when both write.
+
+**The plugin wins, and no suppression of WebKit was needed.** WebKit publishes
+synchronously off the `<audio>` element's own events, on the same JS tick.
+`player/client.js`'s `syncMediaSession()` runs from that same event and calls
+`setNowPlaying`, which crosses the Capacitor bridge — an inherently async hop that
+lands on a later runloop turn than WebKit's same-tick write. So the plugin's write is
+structurally the later one on every seam. There is no public API to silence WebKit's
+own publishing, and none was needed: the last writer wins the display, and the last
+writer is always ours. During narration there is no `<audio>` element playing at all,
+so there is no second writer in that case regardless — L-03's problem, not L-01's.
+
+L-02 extends the same decision to the *page's own* read of `navigator.mediaSession`:
+since WKWebView's object is live and writable (§0), `install()` **takes it over**
+rather than merely filling an absence — replacing the whole property when
+configurable, or wrapping the existing object's own methods in place when not — so
+`player/client.js`'s one-time read at init lands on the polyfill's object, not
+WebKit's, and the page's writes reach the plugin the same way they do on Android.
+
+### 2.2 Audio-session policy: the plugin never claims the category
+
+**The plugin calls only `AVAudioSession.setActive(true)`, never `setCategory`.**
+WebKit (for the `<audio>` path) and `ForayTtsPlugin` (for narration) already set
+`.playback`/`.spokenAudio` before this plugin ever runs; re-asserting a category would
+risk interrupting an already-correctly-configured, possibly-rendering session.
+`setActive(true)` on an already-active session with default options is a documented
+Apple no-op, and the plugin never calls `setActive(false)` — it never tears the
+session down, only nudges it active so remote commands are guaranteed delivered.
+
+### 2.3 `stop`: declined outright on iOS, not just on a finished Foray
+
+Android's `stop` command exists because a foreground-service notification needs a
+one-press exit whenever anything is loaded, ended included — `docs/android-lock-screen.md`
+§4.1's "load-bearing, not decorative." **iOS has no equivalent ongoing surface.** There
+is no foreground-service notification to dismiss; Now Playing / Control Center
+transport simply disappears once the plugin reports `state: "none"`. So
+`ForayAudioPlugin.swift` registers `stopCommand` (MPRemoteCommandCenter requires every
+command it might show to have a target) but sets `stopCommand.isEnabled = false`
+**permanently** — not gated on `state`, the way every other command is. There is
+nothing for it to exit.
+
+## 3. What the lock screen and Control Center say — the mapping, unchanged from Android
+
+| Field | Maps to | Note |
+|---|---|---|
+| title | `MPMediaItemPropertyTitle` | the source episode's title, per `player/media-session.js` — unchanged from Android's mapping |
+| artist | `MPMediaItemPropertyArtist` | the source show's name |
+| album | `MPMediaItemPropertyAlbumTitle` | the Foray's title, plus "part N of M" |
+| duration | `MPMediaItemPropertyPlaybackDuration` | the **Foray's** clock, not the segment's — §3.5 below |
+| position | `MPNowPlayingInfoPropertyElapsedPlaybackTime` | written once per report; the OS extrapolates from the rate |
+| rate | `MPNowPlayingInfoPropertyPlaybackRate` / `…DefaultPlaybackRate` | `0` when not `playing`, so the OS stops extrapolating a paused Foray |
+| artwork | `MPMediaItemPropertyArtwork` via `MPMediaItemArtwork` | loaded from the app bundle's `public/` for our own icon (`bundle://public/…`, resolved against `Bundle.main`), from the network for a publisher's; a failed or missing load omits the key rather than guessing — same "no artwork, never a guess" rule `media-session.js`'s `artworkUrl()` already enforces upstream |
+
+**Written once per report, not once per `timeupdate`.** Same reasoning as Android's
+1 s floor: `MPNowPlayingInfoPropertyPlaybackRate` lets the OS extrapolate the playhead
+between reports, so the plugin does not need — and does not attempt — 4 Hz bridge
+traffic.
+
+### 3.1 Exposed
+
+| Control | `MPRemoteCommandCenter` command | Routes to | Note |
+|---|---|---|---|
+| play / pause | `playCommand` / `pauseCommand` / `togglePlayPauseCommand` | `transport {action: "play"\|"pause"}` | `togglePlayPause` is mapped to `"play"` — the page's own handler resolves the actual toggle |
+| next / previous | `nextTrackCommand` / `previousTrackCommand` | `transport {action: "nexttrack"\|"previoustrack"}` | **the next and previous SEGMENT** — identical to Android's §4.2 argument; a Foray has no other boundary |
+| seek −15 / +30 | `skipBackwardCommand` (`preferredIntervals: [15]`) / `skipForwardCommand` (`[30]`) | `transport {action: "seekbackward"\|"seekforward", offsetMs}` | sent as an **offset**, not an absolute target, so the page's own `foraySeek` runs the arithmetic |
+| scrub | `changePlaybackPositionCommand` | `transport {action: "seekto", positionMs}` | on the **Foray's** clock — the same clock `positionMs` was reported on |
+| stop | registered, permanently disabled | — | §2.3 |
+
+Every command is additionally gated on the payload's own `can*`/`has*` flags
+(`applyCommandAvailability`), mirroring `WebViewPlayer`'s command-set-from-flags
+mapping on Android: **a finished Foray (`state: "none"`) disables every transport
+command**, mirroring `NowPlaying.acceptsTransport()` — the same "a control that does
+nothing is worse than no control" rule Android's §4.1 states.
+
+### 3.2 Declined, and why — same reasons as Android, delivered to a different surface
+
+- **Shuffle, repeat, jump-to-arbitrary-item, volume.** `docs/android-lock-screen.md`
+  §4.3's reasons carry over verbatim: a Foray is an authored running order, nothing
+  repeats a 51-minute Foray, and Control Center has no chapter-jump surface to offer
+  it on regardless. Volume is the OS's own slider.
+- **Speed.** Reported (the OS extrapolates the playhead with it) and not accepted —
+  the rate is a durable preference the page owns and re-applies at every seam.
+- **A CarPlay template.** Not this card's to build — §7 of the plan names it a
+  non-goal requiring Apple's CarPlay entitlement and a founder request; F5 (car
+  controls not working) is served by `MPRemoteCommandCenter` alone, which needs no
+  entitlement.
+
+### 3.3 The timeline and the clock: identical argument, no iOS-specific wrinkle
+
+Android's §4.4/§4.5 arguments — a three-window "something before / now / something
+after" timeline because the process only knows the current item's metadata, and
+`durationMs`/`positionMs` spanning the whole Foray so a scrub lands on the Foray's own
+clock — do not need restating for a different reason: `MPRemoteCommandCenter` does not
+model a timeline the way Media3's `Player` interface does. There is no `hasNextItem()`
+capability query to satisfy; `nextTrackCommand.isEnabled` is a plain boolean the plugin
+sets directly from `payload.hasNext`. So iOS needed no three-window construction at
+all — the same `can*`/`has*` flags that already existed for Android's `WebViewPlayer`
+map onto Control Center's command-enablement one field at a time.
+
+## 4. What changed from Android, named plainly
+
+- **No foreground service, no notification, no `POST_NOTIFICATIONS` permission.**
+  iOS's Now Playing surface is presented by the system whenever
+  `MPNowPlayingInfoCenter.default().nowPlayingInfo` is non-nil and the app holds an
+  active, appropriately-categorized audio session — nothing here asks the user for
+  anything.
+- **No service lifetime to manage.** Android's §5.1 (the `isTransportable` foreground-service
+  lifetime, closing the "paused but the controls vanish in 25s" defect) has no iOS
+  analogue: there is no service to keep alive or stop. Setting
+  `MPNowPlayingInfoCenter.default().nowPlayingInfo = nil` when `state == .none` is the
+  entire lifecycle.
+- **No `PendingIntent` request-code collision class of bug.** Android's §5.2 found and
+  fixed a defect class specific to `PendingIntent` equality; `MPRemoteCommandCenter`
+  targets are closures with no analogous identity pitfall.
+- **A second writer existed and had to be out-raced rather than filled in** — §2.1,
+  the one place iOS's problem was harder than Android's, because Android's
+  `navigator.mediaSession` was simply absent.
+
+## 5. Post-merge build check (2026-09-06, run 34047876769) — GREEN, TestFlight build 229.1
+
+L-04 dispatched a fresh `ios-build` run against `main` @ `9500012` (L-02's merge
+commit, carrying both L-01 and L-02) to confirm the shell still builds with the
+native half folded in, before writing this file and the H1 drive-test item:
+run [34047876769](https://github.com/JW-Incorporated/foray/actions/runs/34047876769).
+
+**Result: green end to end, including the TestFlight upload.** All 22 steps passed
+in 13m32s — probes, signing, archive/export, and upload — and it archived
+`CFBundleVersion 229.1` (`CFBundleShortVersionString 1.0`), the first build to carry
+L-01/L-02's iOS Now Playing plugin. **This satisfies the plan's own "ideally one
+TestFlight build has actually gone out" note for H1** — the drive test below can run
+against build 229.1 as soon as it appears in TestFlight on Wyatt's phone (TestFlight
+processing/notification is outside this repo's visibility, so H1 still tells Wyatt to
+check for a new build rather than assuming it has already propagated).
+
+**No probe/report data specific to media-session state was captured by this run**,
+because `PROBES: true` on this workflow drives the existing out-point/seam-transition
+pass (the same one M-01 read its §0 table from) — it was not re-parsed for a second
+`mediaSessionVerdict()` reading here, since M-01's own measurement (§0) already
+answered the question this run needed to settle (does the shell still build and ship
+with the plugin folded in) and a second Simulator reading of the same API would not
+add evidence a device test doesn't already supersede.
+
+**No TestFlight build had gone out carrying L-01+L-02 before this run** — the
+dependency `docs/ios-controls-and-voice-plan.md` names as "ideally" is now satisfied
+by build 229.1.
+
+## 6. Not this file's to answer
+
+Whether F6 (the ~2-minute backwards jump, 4a-feedback.md) recurs is exactly what H1
+asks Wyatt to observe, not something this file can settle by inspection — L-01/L-02
+make Now Playing structurally truthful (§2.1), which is the fix the plan's own §1
+hypothesized F6 might depend on, but "the hypothesis is now plausible" is not "the bug
+is fixed." Whether a real Foray's artwork, title and position look right on an actual
+locked phone in an actual car is likewise H1's, not the Simulator's — §0's caveats
+already say why.

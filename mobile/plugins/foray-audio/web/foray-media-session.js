@@ -165,6 +165,22 @@ export const POSITION_MIN_INTERVAL_MS = 1000;
  *  goes through `DefaultDataSource`, which routes that prefix to it. */
 export const ASSET_BASE = "file:///android_asset/public/";
 
+/** The iOS mirror of `ASSET_BASE` (L-02). There is no WebView-served origin to
+ *  translate on iOS the way `assetUri` translates `https://localhost/…` on
+ *  Android — the app's own icon is just a file inside `Bundle.main`. A bare
+ *  scheme rather than a real one (`https:`, `data:`, `file:`) is deliberate:
+ *  it must be visibly NOT a network or same-device-filesystem URL, so nothing
+ *  downstream mistakes it for one and tries to fetch it, and it must survive
+ *  `new URL()` parsing the same way `file:` does. The Swift side resolves the
+ *  path against `Bundle.main` — this file's job is only the address-space
+ *  MARKING, the same division of labour `ASSET_BASE` already has with
+ *  `AssetDataSource` on Android: one place decides the scheme, the native side
+ *  decides what it means. A `bundle:` URI the native side does not yet resolve
+ *  degrades to no artwork (`artworkItem(for:)` already returns nil for any URL
+ *  it cannot load) rather than a crash — the same silent degrade every failed
+ *  artwork load on either platform already gets. */
+export const IOS_ASSET_BASE = "bundle://public/";
+
 /* ------------------------------------------------------------------ helpers */
 
 const isNum = (n) => typeof n === "number" && Number.isFinite(n);
@@ -357,8 +373,18 @@ export function identityKey(payload) {
   ].join(KEY_SEPARATOR);
 }
 
+/** Every platform this file may install on. Android: the API is absent
+ *  (MP1 §5.4) and this file supplies it from nothing. iOS: measured, not
+ *  inferred (`docs/ios-lock-screen.md` §0, run 34043193990) — the API IS
+ *  present and WebKit is actively publishing to it from the `<audio>`
+ *  element, so `install()` on iOS takes over rather than fills a gap. Both
+ *  platforms are listed here, together, because this is the one place that
+ *  decides which platforms the polyfill runs on at all; `install()` decides
+ *  the DIFFERENT thing each of those two platforms then needs. */
+const SUPPORTED_PLATFORMS = Object.freeze(["android", "ios"]);
+
 /**
- * Is this the one platform this file is for? Same test, same reasoning and the same
+ * Is this a platform this file is for? Same test, same reasoning and the same
  * deliberate omission of `isNativePlatform()` as `foray-audio-shell.js`'s
  * `shellApplies` — see the comment there.
  */
@@ -366,10 +392,21 @@ export function mediaSessionApplies(capacitor) {
   try {
     if (!capacitor) return false;
     if (typeof capacitor.getPlatform !== "function") return false;
-    if (capacitor.getPlatform() !== "android") return false;
+    if (!SUPPORTED_PLATFORMS.includes(capacitor.getPlatform())) return false;
     return typeof capacitor.nativePromise === "function";
   } catch (e) {
     return false;
+  }
+}
+
+/** `capacitor.getPlatform()`, defensively — the same posture `mediaSessionApplies`
+ *  takes, needed a second time because `install()` must know WHICH supported
+ *  platform it is on, not just that it is on one. */
+function currentPlatform(capacitor) {
+  try {
+    return capacitor && typeof capacitor.getPlatform === "function" ? capacitor.getPlatform() : "";
+  } catch (e) {
+    return "";
   }
 }
 
@@ -409,7 +446,16 @@ export function createForayMediaSession(env) {
   const minInterval = isNum(env.positionMinIntervalMs)
     ? env.positionMinIntervalMs
     : POSITION_MIN_INTERVAL_MS;
-  const uriEnv = { baseUrl: env.baseUrl || "", origin: env.origin || "", assetBase: ASSET_BASE };
+  const uriEnv = {
+    baseUrl: env.baseUrl || "",
+    origin: env.origin || "",
+    /* Android's `AssetDataSource` prefix, or iOS's `bundle:` marker — decided
+     * ONCE, here, from the platform this session is actually running on,
+     * exactly as the plan asks ("decide in one place and test it"). Every
+     * other reader of `uriEnv` (`nowPlayingPayload` inside `flush`/`peek`)
+     * stays platform-blind; this is the one place the branch exists. */
+    assetBase: currentPlatform(capacitor) === "ios" ? IOS_ASSET_BASE : ASSET_BASE,
+  };
   const log = typeof env.log === "function" ? env.log : function () {};
 
   /** Action name -> the handler `client.js` installed. */
@@ -421,13 +467,30 @@ export function createForayMediaSession(env) {
   let installed = false;
   /** The object we put on `navigator`, so `uninstall` can tell whether it is still
    *  the one there — the same care `foray-audio-shell.js`'s `uninstall` takes over
-   *  the `play` prototype patch, for the same reason. */
+   *  the `play` prototype patch, for the same reason. On a "wrap" takeover (see
+   *  below) this is the SAME object as `previous`: there is nothing else to put
+   *  there, only methods to intercept on the object already there. */
   let session = null;
   /** What `navigator.mediaSession` was before we touched it. `undefined` is the
-   *  expected value on Android and is restored as an absent property. */
+   *  expected value on Android and is restored as an absent property. On iOS it
+   *  is WebKit's own live object (measured, `docs/ios-lock-screen.md` §0) and is
+   *  restored AS that object, not as absent. */
   let hadOwn = false;
   let previous;
   let subscription = null;
+  /** How `install()` took the property, so `uninstall()` knows how to give it
+   *  back: `"replace"` swapped the whole `navigator.mediaSession` property (the
+   *  Android path, and the iOS path when the existing property is configurable);
+   *  `"wrap"` left WebKit's object in place and intercepted its own methods
+   *  instead, for the one case the plan calls out — a non-configurable existing
+   *  property. `null` before `install()` has run. */
+  let takeoverMode = null;
+  /** Only set in `"wrap"` mode: each wrapped property's ORIGINAL own descriptor,
+   *  or `null` for a property that had none (an inherited accessor, the normal
+   *  shape for a real `MediaSession` IDL object) — the same "was it there at all"
+   *  distinction `hadOwn` makes for the whole-property case, kept per-property
+   *  because a wrap touches several. */
+  let wrappedDescriptors = null;
 
   let flushQueued = false;
   let lastIdentity = null;
@@ -754,32 +817,160 @@ export function createForayMediaSession(env) {
 
   /* ------------------------------------------------------------- lifecycle */
 
+  /** Intercept an EXISTING session object's methods in place, for the one case
+   *  the plan names as conditional: the property is not configurable, so
+   *  `Object.defineProperty(nav, "mediaSession", …)` cannot replace it — measured
+   *  as a real possibility (`docs/ios-lock-screen.md` §0 leaves it open which of
+   *  the two this run's WebKit is), not merely a defensive branch nobody expects
+   *  to take.
+   *
+   *  Each intercepted member is redefined as an OWN property on the target,
+   *  shadowing whatever accessor/method WebKit's `MediaSession` IDL binding put
+   *  on its prototype — the same trick `client.js`'s one-time read at init relies
+   *  on: whatever is found AT `navigator.mediaSession` when it is read wins,
+   *  regardless of whether it lives on the instance or the prototype chain.
+   *  `built` (a normal `buildSession()`) is the single source of truth for state;
+   *  the wrapped members are thin forwarders so every other function in this file
+   *  — `flush`, `peek`, `inspect` — keeps reading `built`'s closure state exactly
+   *  as it does in "replace" mode, unaware which mode is active.
+   *
+   *  Returns `null` (never throws) if even ONE member cannot be redefined — a
+   *  half-wrapped session is worse than none, because it would silently mix
+   *  WebKit's stale reads with our fresh writes.
+   */
+  function wrapExistingSession(target) {
+    const built = buildSession();
+    const props = ["metadata", "playbackState", "setPositionState", "setActionHandler"];
+    const originals = {};
+    for (const prop of props) {
+      originals[prop] = Object.prototype.hasOwnProperty.call(target, prop)
+        ? Object.getOwnPropertyDescriptor(target, prop)
+        : null;
+    }
+    try {
+      Object.defineProperty(target, "metadata", {
+        configurable: true,
+        enumerable: true,
+        get() { return built.metadata; },
+        set(value) { built.metadata = value; },
+      });
+      Object.defineProperty(target, "playbackState", {
+        configurable: true,
+        enumerable: true,
+        get() { return built.playbackState; },
+        set(value) { built.playbackState = value; },
+      });
+      Object.defineProperty(target, "setPositionState", {
+        configurable: true,
+        enumerable: true,
+        writable: true,
+        value(state) { return built.setPositionState(state); },
+      });
+      Object.defineProperty(target, "setActionHandler", {
+        configurable: true,
+        enumerable: true,
+        writable: true,
+        value(action, handler) { return built.setActionHandler(action, handler); },
+      });
+      /* So a device pass can tell, exactly as in "replace" mode — see
+         `buildSession`'s own comment. Also an own property here, for the same
+         shadow-the-prototype reason as the four members above. */
+      Object.defineProperty(target, "forayPolyfill", {
+        configurable: true, enumerable: true, writable: true, value: true,
+      });
+    } catch (e) {
+      log("foray-media-session: could not wrap the existing navigator.mediaSession", e);
+      /* Best-effort unwind of whatever DID get redefined before the throw, so a
+         failed wrap does not leave the real session half-shadowed. */
+      for (const prop of props.concat(["forayPolyfill"])) {
+        const original = originals[prop];
+        try {
+          if (original) Object.defineProperty(target, prop, original);
+          else if (Object.prototype.hasOwnProperty.call(target, prop)) delete target[prop];
+        } catch (undoError) {
+          log("foray-media-session: could not undo a partial wrap of " + prop, undoError);
+        }
+      }
+      return null;
+    }
+    wrappedDescriptors = originals;
+    return target;
+  }
+
   function install() {
     if (installed) return false;
     if (!mediaSessionApplies(capacitor)) return false;
     if (!nav || typeof nav !== "object") return false;
-    /* IF THE ENGINE ALREADY HAS ONE, LEAVE IT ALONE. The whole premise is that
-       Android WebView switches the API off (MP1 §5.4), and that premise is
-       source-derived rather than measured — so if a WebView is ever shipped with it
-       on, the real implementation must win. A polyfill that overwrites a working
-       platform API is how a fix becomes a regression on the next OS release. */
-    if (nav.mediaSession) return false;
 
-    session = buildSession();
+    const ios = currentPlatform(capacitor) === "ios";
+    const existing = nav.mediaSession;
+
+    /* ANDROID: IF THE ENGINE ALREADY HAS ONE, LEAVE IT ALONE. The whole premise
+       is that Android WebView switches the API off (MP1 §5.4), and that premise
+       is source-derived rather than measured — so if a WebView is ever shipped
+       with it on, the real implementation must win. A polyfill that overwrites a
+       working platform API is how a fix becomes a regression on the next OS
+       release.
+
+       iOS is the opposite, and MEASURED rather than assumed
+       (`docs/ios-lock-screen.md` §0, run 34043193990): WKWebView exposes a live
+       `navigator.mediaSession` and WebKit is actively publishing to it from the
+       `<audio>` element. Leaving it alone on iOS would mean this file NEVER
+       installs there, and the lock screen would stay on WebKit's version forever
+       — populated once from the element and never refreshed (F7). So on iOS this
+       function's job flips from "fill an absence" to "take over a live one". */
+    if (existing && !ios) return false;
+
     hadOwn = Object.prototype.hasOwnProperty.call(nav, "mediaSession");
-    previous = nav.mediaSession;
-    try {
-      /* `defineProperty` rather than assignment: `Navigator.prototype` may carry an
-         accessor for this name even with the feature disabled, and a plain assignment
-         to an inherited getter-only property fails silently in sloppy mode and
-         throws in strict — and this module is strict, being a module. */
-      Object.defineProperty(nav, "mediaSession", {
-        value: session, writable: true, configurable: true, enumerable: true,
-      });
-    } catch (e) {
-      log("foray-media-session: could not define navigator.mediaSession", e);
-      session = null;
-      return false;
+    previous = existing;
+
+    if (!existing) {
+      /* The ordinary case on both platforms: nothing there yet (Android always;
+         iOS only if a future WebKit ever ships the API off, or a non-WebKit iOS
+         engine). Same "replace" path as before this card. */
+      session = buildSession();
+      try {
+        /* `defineProperty` rather than assignment: `Navigator.prototype` may carry
+           an accessor for this name even with the feature disabled, and a plain
+           assignment to an inherited getter-only property fails silently in
+           sloppy mode and throws in strict — and this module is strict, being a
+           module. */
+        Object.defineProperty(nav, "mediaSession", {
+          value: session, writable: true, configurable: true, enumerable: true,
+        });
+      } catch (e) {
+        log("foray-media-session: could not define navigator.mediaSession", e);
+        session = null;
+        return false;
+      }
+      takeoverMode = "replace";
+    } else {
+      /* The iOS takeover. Prefer replacing the whole property — simpler, and it
+         means every member of `session` is genuinely ours rather than a
+         forwarder — and fall back to wrapping the existing object's own methods
+         only when the property itself refuses to be redefined. Which of the two
+         a real WKWebView needs is exactly what M-01's run did not (and could not,
+         short of trying it) settle; this is that trial, at install time, on
+         whichever shell actually runs it. */
+      const descriptor = Object.getOwnPropertyDescriptor(nav, "mediaSession");
+      const configurable = !descriptor || descriptor.configurable !== false;
+      if (configurable) {
+        session = buildSession();
+        try {
+          Object.defineProperty(nav, "mediaSession", {
+            value: session, writable: true, configurable: true, enumerable: true,
+          });
+        } catch (e) {
+          log("foray-media-session: could not take over navigator.mediaSession", e);
+          session = null;
+          return false;
+        }
+        takeoverMode = "replace";
+      } else {
+        session = wrapExistingSession(existing);
+        if (!session) return false;
+        takeoverMode = "wrap";
+      }
     }
 
     installed = true;
@@ -810,10 +1001,35 @@ export function createForayMediaSession(env) {
     subscription = null;
     /* ONLY IF OURS IS STILL THE ONE THERE. If something replaced it after we
        installed, restoring blindly would delete that — the mirror of the care
-       `foray-audio-shell.js` takes over the `play` patch. */
+       `foray-audio-shell.js` takes over the `play` patch. In "wrap" mode "ours"
+       means the SAME object as before (we never replaced the property), so this
+       check still answers the right question: has something ELSE since replaced
+       the whole property out from under our wrap. */
     try {
       if (nav.mediaSession === session) {
-        if (hadOwn) {
+        if (takeoverMode === "wrap") {
+          /* Restore each member to its ORIGINAL descriptor — or delete it, if it
+             had none of its own and was reaching the prototype's accessor. Every
+             member is attempted even if one fails, so a single stubborn property
+             cannot leave the rest wrapped. */
+          const descriptors = wrappedDescriptors || {};
+          for (const prop of Object.keys(descriptors)) {
+            try {
+              const original = descriptors[prop];
+              if (original) Object.defineProperty(session, prop, original);
+              else if (Object.prototype.hasOwnProperty.call(session, prop)) delete session[prop];
+            } catch (e) {
+              log("foray-media-session: could not restore wrapped " + prop, e);
+            }
+          }
+          try {
+            if (Object.prototype.hasOwnProperty.call(session, "forayPolyfill")) {
+              delete session.forayPolyfill;
+            }
+          } catch (e) {
+            log("foray-media-session: could not remove the forayPolyfill marker", e);
+          }
+        } else if (hadOwn) {
           Object.defineProperty(nav, "mediaSession", {
             value: previous, writable: true, configurable: true, enumerable: true,
           });
@@ -827,6 +1043,8 @@ export function createForayMediaSession(env) {
       log("foray-media-session: could not restore navigator.mediaSession", e);
     }
     session = null;
+    takeoverMode = null;
+    wrappedDescriptors = null;
     handlers.clear();
     metadata = null;
     positionState = null;
