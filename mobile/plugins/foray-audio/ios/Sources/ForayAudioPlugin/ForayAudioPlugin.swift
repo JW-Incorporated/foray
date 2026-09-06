@@ -88,7 +88,7 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     /// missing/garbage field to the honest empty value rather than throwing,
     /// the same rule `NowPlaying.java` states for Android.
     @objc func setNowPlaying(_ call: CAPPluginCall) {
-        let payload = NowPlayingPayload.from(call.getData() as? [String: Any] ?? [:])
+        let payload = NowPlayingPayload.from(call.options as? [String: Any] ?? [:])
         applyNowPlayingInfo(payload)
         applyCommandAvailability(payload)
 
@@ -252,10 +252,10 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         var event = JSObject()
         event["action"] = action
         if let positionMs = positionMs {
-            event["positionMs"] = positionMs
+            event["positionMs"] = Int(positionMs)
         }
         if let offsetMs = offsetMs {
-            event["offsetMs"] = offsetMs
+            event["offsetMs"] = Int(offsetMs)
         }
         notifyListeners(Self.TRANSPORT_EVENT, data: event)
     }
