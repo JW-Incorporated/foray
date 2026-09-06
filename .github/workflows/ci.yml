@@ -85,10 +85,61 @@ jobs:
       # and foray-tts each ship an iOS SwiftPM package (mobile/plugins/*/Package.swift)
       # with their own XCTests, previously exercised nowhere in CI -- ios-build.yml's
       # `ios-shell` job only *compiles* them transitively via `cap sync`, it never runs
-      # their test targets. Run them the same way as ForayKit above, on the one Mac
-      # this project already pays for in this job.
-      - run: swift test --package-path mobile/plugins/foray-audio
-      - run: swift test --package-path mobile/plugins/foray-tts
+      # their test targets. Unlike ForayKit (pure Swift, no dependencies), both of
+      # these link against the Capacitor binary framework, which only ships iOS/
+      # iOS-Simulator slices -- a plain host-platform `swift test` fails with "no
+      # such module 'Capacitor'". So these run via `xcodebuild test` against an iOS
+      # Simulator destination instead, same simulator-discovery pattern the
+      # `xcodebuild test -scheme Foray` step below already uses, letting `xcodebuild`
+      # auto-derive the package's own test scheme rather than pinning one by name.
+      - name: swift test (foray-audio, iOS Simulator)
+        working-directory: mobile/plugins/foray-audio
+        run: |
+          set -euo pipefail
+          DEVICE_ID=$(xcrun simctl list devices available -j \
+            | node -e '
+                const data = JSON.parse(require("fs").readFileSync(0, "utf8"));
+                const devices = Object.values(data.devices).flat();
+                const iphone = devices.find(d => /^iPhone/.test(d.name));
+                if (!iphone) { console.error("no available iPhone simulator found"); process.exit(1); }
+                console.log(iphone.udid);
+              ')
+          SCHEME=$(xcodebuild -list -json \
+            | node -e '
+                const data = JSON.parse(require("fs").readFileSync(0, "utf8"));
+                const schemes = data.project.schemes;
+                if (!schemes.length) { console.error("no schemes found"); process.exit(1); }
+                console.log(schemes[0]);
+              ')
+          echo "Using simulator: $DEVICE_ID, scheme: $SCHEME"
+          xcodebuild test \
+            -scheme "$SCHEME" \
+            -destination "platform=iOS Simulator,id=$DEVICE_ID" \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=""
+      - name: swift test (foray-tts, iOS Simulator)
+        working-directory: mobile/plugins/foray-tts
+        run: |
+          set -euo pipefail
+          DEVICE_ID=$(xcrun simctl list devices available -j \
+            | node -e '
+                const data = JSON.parse(require("fs").readFileSync(0, "utf8"));
+                const devices = Object.values(data.devices).flat();
+                const iphone = devices.find(d => /^iPhone/.test(d.name));
+                if (!iphone) { console.error("no available iPhone simulator found"); process.exit(1); }
+                console.log(iphone.udid);
+              ')
+          SCHEME=$(xcodebuild -list -json \
+            | node -e '
+                const data = JSON.parse(require("fs").readFileSync(0, "utf8"));
+                const schemes = data.project.schemes;
+                if (!schemes.length) { console.error("no schemes found"); process.exit(1); }
+                console.log(schemes[0]);
+              ')
+          echo "Using simulator: $DEVICE_ID, scheme: $SCHEME"
+          xcodebuild test \
+            -scheme "$SCHEME" \
+            -destination "platform=iOS Simulator,id=$DEVICE_ID" \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=""
       # M5 (full-repo-review-report.md, 2026-08-31): ForayKit's `swift test` above
       # is the pure state-machine floor and never compiles anything under `ios/App/`
       # — PlayerQueueManager (the AVFoundation-facing glue) had NO CI coverage at
