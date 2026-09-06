@@ -593,6 +593,95 @@ button.show-star.on { color: var(--gold); border-color: var(--gold); }
    sections up: dim + no pointer, not hidden, so the label ("Building…") stays
    legible as an explanation rather than the control just vanishing. */
 #pl-form button:disabled { opacity: 0.6; cursor: default; box-shadow: none; }
+
+/* ---------- Create (#/create, U-06, docs/ui-transition-plan.md D7+D8) ----------
+   Reuses `#pl-form`'s tokens/shape via `#cr-form`'s own rules below (kept
+   separate ids on purpose -- the two forms live on different pages and a
+   shared selector here would make a future #/playlists-only tweak leak onto
+   Create, or vice versa) so #cr-input/#cr-form's button read visually as the
+   same control family without literally being the same element. */
+#cr-form {
+  flex: none;
+  display: flex; gap: 8px;
+  margin: 14px 0;
+}
+#cr-input {
+  flex: 1;
+  min-height: 52px;
+  padding: 0 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  color: var(--text);
+  font-size: 1rem;
+}
+#cr-form button {
+  flex: none;
+  min-width: 72px;
+  border-radius: var(--radius);
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: #fff;
+  font-weight: 700;
+  font-size: 1rem;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+}
+/* Same loading-state guard as #pl-form button:disabled above, and for the
+   identical reason -- buildPlaylist() is synchronous and can stall for
+   seconds; see bindCreateFormSubmit's header in app.js. */
+#cr-form button:disabled { opacity: 0.6; cursor: default; box-shadow: none; }
+
+.cr-suggestions {
+  display: flex; flex-wrap: wrap; gap: 8px;
+  margin-bottom: 6px;
+}
+.cr-pill {
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text-dim);
+  font-size: 0.8rem;
+  padding: 7px 13px;
+  cursor: pointer;
+}
+.cr-pill:hover { color: var(--text); border-color: var(--accent); }
+
+/* The Foray | Playlist toggle (D7): Playlist is the only real control here.
+   Foray is rendered -- the affordance must be VISIBLE, per the card -- but
+   permanently disabled with `disabled` (not merely styled to look off), so
+   it is not focusable/actionable by mouse, touch or keyboard (the card's
+   acceptance line: "the disabled Foray option is not focusable as a
+   control"). `title` gives a hover explanation; the honest-copy sentence
+   itself lives in the paragraph below the toggle so it is legible without
+   a hover too (mobile has no hover). */
+.cr-toggle {
+  display: flex; gap: 8px;
+  margin-bottom: 4px;
+}
+.cr-toggle-btn {
+  flex: 1;
+  padding: 10px 8px;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text-dim);
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+  text-align: center;
+}
+.cr-toggle-btn.is-on { color: var(--text); border-color: var(--accent); background: var(--surface-2); }
+/* Disabled reads as disabled, not merely muted: no pointer affordance and a
+   dimmer opacity than the enabled-but-unselected state would ever use, so
+   it never gets mistaken for "selectable, just not selected right now". */
+.cr-toggle-btn.is-disabled,
+.cr-toggle-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.cr-foray-note { margin: 0 0 14px; }
 .note { color: var(--text-dim); font-size: 0.85rem; margin: 0; flex: none; }
 
 /* ---------- Shows search (Stage 2, docs/show-pages-plan.md) ----------
