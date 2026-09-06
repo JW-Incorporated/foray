@@ -404,7 +404,7 @@ async function mount({
 
 /* ================= 1. enumeration, not a list ================= */
 
-test("the shipped source names exactly the 23 cp_ key families the audit found", () => {
+test("the shipped source names exactly the 22 cp_ key families the audit found", () => {
   /* The count is pinned deliberately. 20-not-11 is the whole reason this control
      enumerates instead of carrying a list, and a new key is a privacy-policy
      change as much as a code change — see the next test.

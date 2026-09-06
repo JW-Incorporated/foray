@@ -23,11 +23,17 @@ Per-topic ADRs live in `docs/adr/`. This file is the chronological record.
 - **Two dead-code cleanups found while doing this, both fixed:** the interim
   `page-link-row` link to `#/library` on the Playlists page (only rendered
   when `!ui2On()`, now unreachable) was removed from `app.js`; and
-  `toEventRow`'s `"finished"` case (only ever emitted from the retired v1
-  `renderHome()`'s Done-banner click handler, so genuinely unreachable now)
-  was removed, with `docs/legal/privacy-policy.md` §1/§2 and
+  `toEventRow`'s `"finished"` case (nothing left emits it — it was only
+  ever produced by the retired v1 `renderHome()`'s Done-banner click
+  handler) was removed, with `docs/legal/privacy-policy.md` §1/§2 and
   `docs/legal/data-safety.md`'s event/key counts updated to match (23→22
-  `cp_*` key families, 24→22 event types, 5→4 transmitted).
+  `cp_*` key families, 24→22 event types, 24→22 storage keys, 5→4
+  transmitted). Note: this is the same "local-only event type" mechanism
+  `trySyncEvents()` already uses for every event type that has no
+  `toEventRow` case — any already-buffered `finished` row still sitting
+  unsynced on a listener's device is marked synced and dropped on the next
+  sync pass rather than transmitted, exactly as any other local-only event
+  type already was; no new behavior, no change to `trySyncEvents()` itself.
 - **Test suite:** every flag-off/native-shell-default test that pinned the
   now-unreachable old behaviour was either rewritten to pin the new
   always-on shape or removed with an inline `CUTOVER (U-11, ...)` comment
