@@ -1,0 +1,283 @@
+# One release run, both stores, skip loudly on a missing credential.
+#
+# R-03 (docs/release-lockstep-plan.md), following R-01 (PR builds no longer
+# upload to TestFlight) and R-02 (one version source for both platforms).
+#
+# ── WHY THIS FILE EXISTS ──────────────────────────────────────────────────────
+#
+# Before this, iOS uploaded to TestFlight from every same-repo PR (R-01 fixed
+# that) and Android had never uploaded anywhere at all — a founder downloaded
+# the .aab from a workflow artifact and submitted it by hand. Two consequences
+# followed directly (see release-lockstep-plan.md §0): the App Store email
+# flood was PR noise, not releases, and Play received nothing ever. This file
+# is the third and final piece: one workflow, triggered deliberately (a tag or
+# a manual button), that builds both platforms from the SAME commit and the
+# SAME version pair and uploads both, or says exactly why it didn't.
+#
+# ── THE GUARD, AND WHY IT IS A SEPARATE JOB ──────────────────────────────────
+#
+# `github.ref == refs/heads/main` for workflow_dispatch, or a `refs/tags/v*`
+# ref that is verifiably an ANCESTOR of origin/main for a tag push — checked
+# with `git merge-base --is-ancestor`, not inferred from the event payload,
+# because a tag can be pushed pointing at any commit and this repo's release
+# posture (docs/release-lockstep-plan.md §1) is "one run, one SHA, one
+# version" from a state a founder actually reviewed. It is its own job, ahead
+# of `version`, so a rejected run costs nothing beyond a few seconds on
+# ubuntu-latest — no checkout of the mobile shell, no Xcode, no emulator SDK.
+#
+# ── THE VERSION JOB, AND THE ONE THING IT DOES NOT DO ────────────────────────
+#
+# `tools/mobile/version.mjs pair` gives both platforms the same
+# MARKETING_VERSION/BUILD_NUMBER pair, computed once and passed as job outputs
+# to `ios` and `android` so a slow iOS build and a fast Android build can never
+# observe two different "today"s if the run crosses midnight UTC. `run-of-day`
+# is `github.run_number` clamped into version.mjs's 1-99 slot (documented
+# there) — NOT re-derived per platform.
+#
+# This job does NOT push a version bump to `main` on `workflow_dispatch` with
+# a non-`none` `bump` input. `main` here is protected by the `protect-main`
+# ruleset with `bypass_actors: []` / `current_user_can_bypass: never` (checked
+# live against the GitHub API while writing this file, not assumed) — so a
+# `git push origin HEAD:main` from this job would simply fail, and failing
+# with a clear message is better than a job that appears to bump the version
+# and then silently doesn't land it. **The founder-facing consequence, stated
+# plainly:** `bump` other than `none` requires `mobile/VERSION` to already
+# carry the version you want released — bump it in an ordinary PR first (it is
+# `mobile/`, so it is UNLISTED in path-policy and always waits for a human,
+# per CLAUDE.md's "A NOTE ON THE TWO WORDS" — this is the same human review a
+# version bump should have), merge it, THEN dispatch this workflow. The `bump`
+# input still exists because R-03's ask names it, but this job asserts that
+# `none` is the only value that does not require a pre-bumped file, and
+# documents in its own summary line exactly what a founder must do for the
+# others rather than attempting a push that the branch ruleset already
+# guarantees will fail. On a TAG push, `bump` is ignored entirely: the job
+# instead asserts the tag name matches `mobile/VERSION` exactly (`v1.2.0` for
+# `1.2.0`), because a mismatch there means the tag was cut against the wrong
+# commit or the wrong file, and shipping either silently is exactly the
+# "green and wrong" failure this repo keeps a whole DECISIONS.md section on.
+#
+# ── PARALLEL FROM ONE SHA, NOT TWO CHECKOUTS DRIFTING ────────────────────────
+#
+# `ios` and `android` both `actions/checkout@v4` with no `ref:` override — the
+# default is the SHA that triggered the run, so "one run, one SHA" is a
+# property of the trigger, not something either job has to assert. Both call
+# a composite action (`.github/actions/ios-archive`, `.github/actions/android-
+# bundle`) that factors out the ~700 lines `ios-build.yml` / `android-
+# release.yml` already have, rather than copying them a second time — see
+# each composite's own header for what it reuses and what it deliberately
+# does not (neither runs release.yml's slow verification jobs: no simulator
+# probes, no emulator smoke test — those stay CI-time concerns).
+#
+# ── THE SUMMARY, AND WHAT COUNTS AS A FAILURE ────────────────────────────────
+#
+# Four cells: version, build number, iOS result, Android result. The run FAILS
+# only when both platforms report `ready` credentials and their `uploaded`
+# outcomes disagree — one uploaded, one didn't, with no missing-secret excuse
+# for either. A documented-absent Play secret (`state=absent`) is a WARNING,
+# never a failure: that is the acceptance criterion in
+# docs/release-lockstep-plan.md verbatim ("summary shows the mismatch as a
+# warning not a failure while the secret is documented-absent"), and it is
+# what lets Track A (this whole file) ship before Track B's human gates (G1-G3)
+# clear.
+#
+# ── CONCURRENCY: NEVER CANCEL A RELEASE MID-UPLOAD ───────────────────────────
+#
+# `cancel-in-progress: false`, unlike every other workflow in this repo. Those
+# cancel superseded CI runs because a stale simulator probe or a stale Gradle
+# build is worthless once superseded. A release run that is mid-archive or
+# mid-upload is not worthless if superseded — cancelling it there could leave
+# a keystore or a TestFlight session half-finished, and a queued second run
+# would then race the first's cleanup steps. `group: release` (not keyed on
+# ref) is deliberate too: only one release, of any kind, runs at a time.
+
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: "Version bump before release. 'none' requires mobile/VERSION to already hold the target version (see this file's own header for why bumping here is not built)."
+        type: choice
+        options: [patch, minor, major, none]
+        default: none
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      allowed: ${{ steps.guard.outputs.allowed }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: This ref may release only from main, or a tag on main
+        id: guard
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF: ${{ github.ref }}
+        run: |
+          node tools/mobile/release-ci.mjs release-guard "$EVENT_NAME" "$REF"
+
+  version:
+    needs: guard
+    if: needs.guard.outputs.allowed == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      marketing_version: ${{ steps.pair.outputs.marketing_version }}
+      build_number: ${{ steps.pair.outputs.build_number }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: On a tag push, the tag must name the tracked version exactly
+        if: github.event_name == 'push'
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF#refs/tags/v}"
+          TRACKED=$(node tools/mobile/version.mjs marketing-version)
+          if [ "$TAG" != "$TRACKED" ]; then
+            echo "::error::tag v$TAG does not match mobile/VERSION ($TRACKED). Release from a tag that names the version already committed to main, or bump mobile/VERSION first."
+            exit 1
+          fi
+
+      - name: On workflow_dispatch with a real bump, main must already carry it
+        if: github.event_name == 'workflow_dispatch' && inputs.bump != 'none'
+        run: |
+          echo "::error::bump='${{ inputs.bump }}' is not implemented as an in-workflow push — main is protected with no bypass actors, so this job cannot land a version commit itself. Bump mobile/VERSION in an ordinary PR (node tools/mobile/version.mjs bump ${{ inputs.bump }}), merge it, then re-run this workflow with bump=none. See this file's own header comment for the full reasoning."
+          exit 1
+
+      - name: The version pair both platforms will use
+        id: pair
+        run: |
+          set -euo pipefail
+          RUN_OF_DAY=$(( (${{ github.run_number }} - 1) % 99 + 1 ))
+          OUT=$(node tools/mobile/version.mjs pair --run-of-day "$RUN_OF_DAY")
+          echo "$OUT"
+          MV=$(echo "$OUT" | sed -n 's/^MARKETING_VERSION=//p')
+          BN=$(echo "$OUT" | sed -n 's/^BUILD_NUMBER=//p')
+          echo "marketing_version=$MV" >> "$GITHUB_OUTPUT"
+          echo "build_number=$BN" >> "$GITHUB_OUTPUT"
+
+  ios:
+    needs: version
+    runs-on: macos-latest
+    timeout-minutes: 60
+    outputs:
+      state: ${{ steps.ios.outputs.state }}
+      uploaded: ${{ steps.ios.outputs.uploaded }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Release gate — the privacy tripwire (S-08)
+        # Same gate ios-build.yml and android-release.yml both run first —
+        # see either file's identical step for the full rationale.
+        run: node --test test/release-gates.test.js
+
+      - uses: ./.github/actions/ios-archive
+        id: ios
+        with:
+          marketing_version: ${{ needs.version.outputs.marketing_version }}
+          build_number: ${{ needs.version.outputs.build_number }}
+          ios_dist_cert_p12_base64: ${{ secrets.IOS_DIST_CERT_P12_BASE64 }}
+          ios_dist_cert_password: ${{ secrets.IOS_DIST_CERT_PASSWORD }}
+          ios_provisioning_profile_base64: ${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}
+          apple_team_id: ${{ secrets.APPLE_TEAM_ID }}
+          app_store_connect_key_id: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          app_store_connect_issuer_id: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          app_store_connect_private_key_base64: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY_BASE64 }}
+
+  android:
+    needs: version
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    outputs:
+      play_state: ${{ steps.android.outputs.play_state }}
+      uploaded: ${{ steps.android.outputs.uploaded }}
+      signed: ${{ steps.android.outputs.signed }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Release gate — the privacy tripwire (S-08)
+        run: node --test test/release-gates.test.js
+
+      - uses: ./.github/actions/android-bundle
+        id: android
+        with:
+          marketing_version: ${{ needs.version.outputs.marketing_version }}
+          build_number: ${{ needs.version.outputs.build_number }}
+          android_keystore_b64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+          android_keystore_password: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          android_key_alias: ${{ secrets.ANDROID_KEY_ALIAS }}
+          play_service_account_json: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+
+  summary:
+    needs: [version, ios, android]
+    if: always() && needs.version.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: One table — version, build, both store results — and the disagreement rule
+        env:
+          MARKETING_VERSION: ${{ needs.version.outputs.marketing_version }}
+          BUILD_NUMBER: ${{ needs.version.outputs.build_number }}
+          IOS_STATE: ${{ needs.ios.outputs.state }}
+          IOS_UPLOADED: ${{ needs.ios.outputs.uploaded }}
+          ANDROID_STATE: ${{ needs.android.outputs.play_state }}
+          ANDROID_UPLOADED: ${{ needs.android.outputs.uploaded }}
+        run: |
+          set -euo pipefail
+          {
+            echo "## Release ${MARKETING_VERSION} (build ${BUILD_NUMBER})"
+            echo
+            echo "| | credential state | uploaded |"
+            echo "|---|---|---|"
+            echo "| iOS / TestFlight | ${IOS_STATE:-not reached} | ${IOS_UPLOADED:-false} |"
+            echo "| Android / Play (internal) | ${ANDROID_STATE:-not reached} | ${ANDROID_UPLOADED:-false} |"
+            echo
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          # FAILS ONLY WHEN BOTH SIDES HAD CREDENTIALS AND DISAGREED ON THE
+          # OUTCOME. A documented-absent secret on either side is a warning —
+          # docs/release-lockstep-plan.md's acceptance criterion says so
+          # verbatim, and Track A (this whole file) has to ship correctly
+          # before Track B's human gates (G1-G3, the Play service account)
+          # ever clear.
+          if [ "${IOS_STATE:-}" = "ready" ] && [ "${ANDROID_STATE:-}" = "ready" ]; then
+            if [ "${IOS_UPLOADED:-false}" != "${ANDROID_UPLOADED:-false}" ]; then
+              echo "::error::the stores disagree: iOS uploaded=${IOS_UPLOADED:-false}, Android uploaded=${ANDROID_UPLOADED:-false}, and both had credentials configured." \
+                | tee -a "$GITHUB_STEP_SUMMARY"
+              exit 1
+            fi
+            echo "Both stores had credentials and agree (uploaded=${IOS_UPLOADED:-false})." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "**Not both platforms have credentials yet — this is a documented-absent state, not a failure.**" \
+              >> "$GITHUB_STEP_SUMMARY"
+            if [ "${ANDROID_STATE:-}" != "ready" ]; then
+              echo "See docs/release-lockstep-plan.md G2/G3 and HUMAN-ACTIONS.md for what unblocks Android." \
+                >> "$GITHUB_STEP_SUMMARY"
+            fi
+          fi
+
+          if [ "${IOS_STATE:-}" = "partial" ] || [ "${ANDROID_STATE:-}" = "partial" ]; then
+            echo "::error::a half-configured signing/upload credential set was detected — see the job logs above."
+            exit 1
+          fi
