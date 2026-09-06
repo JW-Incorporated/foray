@@ -265,10 +265,11 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     /// Enable/disable each command from the `can*`/`has*` flags -- exactly
     /// `nowPlayingPayload()`'s contract, and exactly what `WebViewPlayer`
     /// does with the same flags on Android. A finished Foray
-    /// (`state == .none`) disables every transport command, mirroring
-    /// `NowPlaying.acceptsTransport()`.
+    /// (`state == .none` OR `state == .ended`) disables every transport
+    /// command, mirroring `NowPlaying.acceptsTransport()`, which declines
+    /// transport for both IDLE and ENDED.
     private func applyCommandAvailability(_ payload: NowPlayingPayload) {
-        let transportable = payload.state != .none
+        let transportable = payload.state != .none && payload.state != .ended
 
         commandCenter.playCommand.isEnabled = transportable && payload.canPlay
         commandCenter.pauseCommand.isEnabled = transportable && payload.canPause

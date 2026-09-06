@@ -54,8 +54,10 @@ final class ForayAudioPluginTests: XCTestCase {
     /// Loaded (ended state parses) is a distinct concept from "accepts
     /// transport" -- exercised at the command-availability layer below,
     /// since `NowPlayingPayload` itself carries no `acceptsTransport()` (the
-    /// plugin computes `transportable` inline from `state != .none`, per
-    /// design comment #3's "none disables every transport command").
+    /// plugin computes `transportable` inline from
+    /// `state != .none && state != .ended`, per design comment #3's "none
+    /// disables every transport command" and `NowPlaying.acceptsTransport()`
+    /// declining both IDLE and ENDED).
     func testEndedState_parsesButIsNotNone() {
         let payload = NowPlayingPayload.from([
             "state": "ended", "title": "Episode 4", "canPlay": true, "canPause": true,
@@ -113,7 +115,7 @@ final class ForayAudioPluginTests: XCTestCase {
     // any divergence is a bug in the plugin, not in this test.
 
     private func transportable(_ payload: NowPlayingPayload) -> Bool {
-        payload.state != .none
+        payload.state != .none && payload.state != .ended
     }
 
     /// MUTATION: enable `nextTrack` when `hasNext` is false -> this goes red.
