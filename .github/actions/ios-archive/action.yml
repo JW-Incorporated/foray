@@ -109,6 +109,13 @@ runs:
         node tools/mobile/inject-app-icon.mjs mobile/ios/App/App/Assets.xcassets/AppIcon.appiconset
         node tools/mobile/inject-app-icon.mjs mobile/ios/App/App/Assets.xcassets/AppIcon.appiconset --check
 
+    - name: Put the REAL splash screen in the generated asset catalog
+      shell: bash
+      run: |
+        set -euo pipefail
+        node tools/mobile/inject-splash.mjs ios mobile/ios/App/App/Assets.xcassets/Splash.imageset
+        node tools/mobile/inject-splash.mjs ios mobile/ios/App/App/Assets.xcassets/Splash.imageset --check
+
     - name: Is signing configured?
       id: signing
       shell: bash

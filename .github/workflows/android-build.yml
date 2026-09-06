@@ -278,6 +278,14 @@ jobs:
           # so reordering or skipping one build cannot leave the other unable to run.
           chmod +x android/gradlew
 
+      - name: Put the REAL splash screen and launcher icon in the generated project
+        # See .github/actions/android-bundle/action.yml for why; same script, same
+        # byte-level --check. tools/mobile/inject-splash.test.mjs covers it.
+        run: |
+          set -euo pipefail
+          node tools/mobile/inject-splash.mjs android mobile/android/app/src/main/res
+          node tools/mobile/inject-splash.mjs android mobile/android/app/src/main/res --check
+
       - name: Record the generated versions (drift is visible, not fatal)
         # READ, NOT ASSERTED, and that is a deliberate choice. Gradle 8.14.3, AGP
         # 8.13.0, minSdk 24, compileSdk/targetSdk 36 are all Capacitor 8.5.0
