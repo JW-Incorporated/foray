@@ -70,7 +70,7 @@ happen only from `release.yml`.
 | # | Who | What | Unblocks |
 |---|---|---|---|
 | G1 | Joey | **Publish the Play listing** — `HUMAN-ACTIONS.md` #26, everything is pre-written in `docs/store/play/` | Play can accept any build at all |
-| G2 | Joey/Wyatt | In Play Console: **Setup → API access → link a Google Cloud project → create a service account** with the *Release manager* role, download its JSON key, add it as repo secret **`PLAY_SERVICE_ACCOUNT_JSON`** | R-03's Play upload goes live |
+| G2 | Joey/Wyatt | Create a Google Cloud **service account** with a JSON key, enable the *Google Play Android Developer API* on its project, then in Play Console **Users and permissions → Invite new users** add the service account's email with *Release apps to testing tracks* on 4a (the old *Setup → API access* page no longer exists — HUMAN-ACTIONS #41 has the current steps); add the JSON as repo secret **`PLAY_SERVICE_ACCOUNT_JSON`** | R-03's Play upload goes live |
 | G3 | Joey/Wyatt | **The first `.aab` for a brand-new app must be uploaded by hand in the Console** — Google's API refuses to create the initial release. One manual internal-testing upload, using the artifact from `android-release.yml`, with `versionCode` set to a value *below* what R-02 will generate (e.g. `1`), so automation never collides with it | R-03's first automated upload succeeds |
 | G4 | Wyatt | Confirm release cadence: tag-driven (`v*`) with `workflow_dispatch` as the manual button. Default assumed below | R-03 trigger shape |
 | G5 | Wyatt | Reconcile #30 — three keystore secrets already exist in the repo; mark it DONE or say what is still missing | R-06 bookkeeping |
