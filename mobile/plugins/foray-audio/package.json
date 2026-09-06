@@ -3,15 +3,21 @@
   "version": "0.1.0",
   "private": true,
   "license": "UNLICENSED",
-  "description": "Foray's own Capacitor plugin: the mediaPlayback foreground service the Android shell needs to keep backgrounded <audio> alive. NOT published, NOT a third-party dependency — it is this repo's hand-written native code, kept in its own directory so it survives `cap add android` regenerating mobile/android/ and so a reviewer can read the whole of it. See docs/android-native-code.md for why this directory exists rather than a committed mobile/android/.",
-  "//no-ios": "Deliberately Android-only. docs/research/mp1-background-audio.md §7.3: on iOS WebKit sets the AVAudioSession category itself for an audible <audio> element, so the entire iOS requirement is the UIBackgroundModes key — which tools/mobile/inject-background-audio.mjs already writes. Adding an ios/ src here would be native code with nothing to do.",
+  "description": "Foray's own Capacitor plugin: the mediaPlayback foreground service the Android shell needs to keep backgrounded <audio> alive, and (as of L-01) the iOS half that answers a different gap — MPNowPlayingInfoCenter + MPRemoteCommandCenter lock-screen/Control-Center transport. NOT published, NOT a third-party dependency — it is this repo's hand-written native code, kept in its own directory so it survives `cap add android`/`cap add ios` regenerating mobile/android/ and mobile/ios/, and so a reviewer can read the whole of it. See docs/android-native-code.md and docs/ios-controls-and-voice-plan.md for why.",
+  "//audio-keepalive-is-android-only": "The audio-KEEPALIVE half (android/, the mediaPlayback foreground service) stays Android-only. docs/research/mp1-background-audio.md §7.3: on iOS WebKit sets the AVAudioSession category itself for an audible <audio> element, so the entire iOS keepalive requirement is the UIBackgroundModes key — which tools/mobile/inject-background-audio.mjs already writes. There is nothing for a keepalive service to do on iOS.",
+  "//ios-src-is-now-playing-only": "CHANGED by L-01 (docs/ios-controls-and-voice-plan.md, kanban t_44e5da2a): ios/ was added, but it answers a DIFFERENT gap than android/ does — MPNowPlayingInfoCenter + MPRemoteCommandCenter, the lock-screen/Control-Center transport iOS had zero of (M-01 measured this: docs/ios-lock-screen.md §0). It is the same setNowPlaying/transport contract Android answers, behind the same PLUGIN_NAME/SET_METHOD, so foray-media-session.js's web half needs no platform branch beyond mediaSessionApplies() accepting \"ios\" (L-02). It is NOT the keepalive half — see the note above, still true, still Android-only.",
   "//no-js-entry": "No main/module/types on purpose. The web half of this plugin is web/foray-audio-shell.js, which the app loads as an ordinary same-origin <script type=module> placed by tools/mobile/prepare-webdir.mjs. There is no bundler in this repo (the root is dependency-free with no build step), so the shell talks to native through window.Capacitor.nativePromise() rather than through an imported @capacitor/core proxy.",
   "capacitor": {
+    "ios": {
+      "src": "ios"
+    },
     "android": {
       "src": "android"
     }
   },
   "files": [
+    "ios/Sources/",
+    "ios/Package.swift",
     "android/src/main/",
     "android/build.gradle",
     "web/"
