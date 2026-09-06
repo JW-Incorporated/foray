@@ -395,24 +395,77 @@ function leafNodes() {
   return (state.taxonomy?.nodes || []).filter(n => n.parent !== null);
 }
 
+/* All taxonomy nodes, roots and leaves alike — the seeding/persistence set for
+   interests (see loadInterests's header comment: `leafNodes()` used to be the
+   seed set here too, which is the root-node bug this fixes). Kept distinct
+   from leafNodes() because callers that mean "just the leaves" (none today,
+   but the name invites it) must not silently start seeing roots. */
+function taxonomyNodes() {
+  return state.taxonomy?.nodes || [];
+}
+
+function nodeById(id) {
+  return taxonomyNodes().find(n => n.id === id) || null;
+}
+
+/* Bug fix (kanban t_1cb3688a / docs/ui-transition-plan.md D6): this used to
+   iterate leafNodes() only, so a declared interest in a ROOT node (e.g.
+   `true-crime`) was never seeded into state.interests, and the very next
+   saveInterests() call persisted an object that had silently dropped it —
+   the listener's root-level pick vanished on reload with no error anywhere.
+   Iterating every taxonomy node (roots AND leaves) is the whole fix;
+   saveInterests() itself needed no change, since it always persisted
+   whatever this function put into state.interests. */
 function loadInterests() {
   const saved = lsGet("cp_interests", {});
-  leafNodes().forEach(n => {
+  taxonomyNodes().forEach(n => {
     state.interests[n.id] = saved[n.id] ?? Math.max(0, n.weight);
   });
 }
 
 function saveInterests() { lsSet("cp_interests", state.interests); }
 
+/* How much of a leaf's own nudge also moves its parent root. Stated here per
+   the card's ask ("state the ratio"): a play/thumb on a leaf is signal about
+   the parent subject too, just weaker than a direct signal on the parent
+   itself — half as much moves the root as moves the leaf that caused it. */
+const PARENT_NUDGE_RATIO = 0.5;
+
 /* Move a taxonomy node's weight. Clamped at BOTH ends since thumbs-down made
    the amount negative for the first time — an unclamped floor lets a few
    downvotes drive a node below zero, where it can never climb back into a menu
-   however much the listener later plays of it. */
+   however much the listener later plays of it.
+
+   Propagates to the parent at PARENT_NUDGE_RATIO (D6, docs/ui-transition-plan.md):
+   a nudge on a leaf is also weaker evidence about the root it belongs to, so
+   the root moves too, just damped — HALF as much moves the root as moves any
+   one leaf, by design, not "half per leaf." Propagation is therefore applied
+   ONCE PER DISTINCT PARENT per call, no matter how many sibling leaves under
+   that root the same call names (a multi-topic episode's `topics` array
+   commonly does) — two sibling leaves must not compound into a full-strength
+   nudge on their shared root. Roots have parent === null and so never
+   propagate a second hop; a topic id that resolves to no taxonomy node (some
+   legacy/decorative topics aren't taxonomy ids) simply moves itself, as
+   before, with no parent step. A root named DIRECTLY in `topics` is excluded
+   from propagation entirely (tracked via `directlyNudged`) — otherwise a
+   topics array carrying both a leaf and its own parent root would move the
+   root twice: once at the full amount for its own entry, once more from the
+   leaf's propagation. */
 function nudgeTopics(topics, amount) {
-  (topics || []).forEach(t => {
+  const list = topics || [];
+  const directlyNudged = new Set(list);
+  const parentsToPropagate = new Set();
+  list.forEach(t => {
     if (t in state.interests) {
       state.interests[t] = Math.max(0, Math.min(1, state.interests[t] + amount));
+      const parent = nodeById(t)?.parent;
+      if (parent && parent in state.interests && !directlyNudged.has(parent)) {
+        parentsToPropagate.add(parent);
+      }
     }
+  });
+  parentsToPropagate.forEach(parent => {
+    state.interests[parent] = Math.max(0, Math.min(1, state.interests[parent] + amount * PARENT_NUDGE_RATIO));
   });
   saveInterests();
   /* Bumps the repeated-query cache key (see buildPlaylist's `searchCache`) so
@@ -426,6 +479,122 @@ function nudgeTopics(topics, amount) {
 }
 
 function boostTopics(topics, amount) { nudgeTopics(topics, amount); }
+
+/* ---------- interests page (#/interests, U-07 / docs/ui-transition-plan.md D6) ----------
+
+   Row set: every ROOT is always shown (so the listener always has something
+   to set at the top level, even one they've never touched) — a root can
+   ALSO independently qualify as diverged, but the "always" rule alone
+   guarantees it's on the page. Additionally, any LEAF whose current weight
+   has diverged from its taxonomy-authored default gets a row: exactly a
+   listener override or an observed nudge (plays, thumbs, a prior slider
+   drag). Rows are grouped by root: a leaf's group is its own parent id, a
+   root is its own group.
+
+   Range 0-1 (today's clamped model), NOT the old prototype's -1..1 — see the
+   card: nudgeTopics clamps at zero, so a negative floor here would be a
+   different design than the rest of the app already ships.
+
+   No history feed, no evidence log (D6) — deliberately not built. */
+function interestGroups() {
+  const nodes = taxonomyNodes();
+  const roots = nodes.filter(n => n.parent === null);
+  const diverged = nodes.filter(n =>
+    n.parent !== null && typeof state.interests[n.id] === "number" && state.interests[n.id] !== Math.max(0, n.weight)
+  );
+  const byRoot = new Map(roots.map(r => [r.id, { root: r, rows: [] }]));
+  roots.forEach(r => byRoot.get(r.id).rows.push(r));
+  diverged.forEach(n => {
+    const g = byRoot.get(n.parent);
+    if (g) g.rows.push(n);
+  });
+  // Stable, readable order: alphabetical by root label, leaves under a root
+  // alphabetical by their own label, root row always first in its group.
+  return [...byRoot.values()]
+    .sort((a, b) => a.root.label.localeCompare(b.root.label))
+    .map(g => ({
+      root: g.root,
+      rows: g.rows.sort((a, b) => (a.id === g.root.id ? -1 : b.id === g.root.id ? 1 : a.label.localeCompare(b.label))),
+    }));
+}
+
+function interestSliderRow(node) {
+  const value = typeof state.interests[node.id] === "number" ? state.interests[node.id] : Math.max(0, node.weight);
+  const pct = Math.round(value * 100);
+  const isRoot = node.parent === null;
+  return `<div class="interest-row${isRoot ? " interest-row-root" : ""}">
+    <div class="interest-row-head">
+      <span class="interest-row-name">${esc(node.label)}</span>
+      <span class="interest-row-path">${esc(node.id)}</span>
+    </div>
+    <div class="interest-row-controls">
+      <input type="range" class="interest-slider" role="slider"
+        min="0" max="1" step="0.01" value="${value}"
+        data-interest-id="${esc(node.id)}"
+        aria-label="${esc(node.label)} interest"
+        aria-valuemin="0" aria-valuemax="1" aria-valuenow="${value}"
+        aria-valuetext="${pct}%">
+      <span class="interest-row-pct">${pct}%</span>
+      <button type="button" class="interest-reset" data-interest-reset="${esc(node.id)}"
+        ${value === Math.max(0, node.weight) ? "disabled" : ""}>Reset to learned</button>
+    </div>
+  </div>`;
+}
+
+function renderInterests() {
+  document.body.className = "view-page";
+  const groups = interestGroups();
+  $("#view").innerHTML = `
+    <div class="page">
+      <div class="page-head">
+        <a class="back" href="#/">‹</a>
+        <div><h2>Interests</h2><p class="sub">Drag a slider to overrule what 4a has learned</p></div>
+      </div>
+      ${groups.map(g => `
+        <div class="interest-group">
+          <h3 class="interest-group-label">${esc(g.root.label)}</h3>
+          ${g.rows.map(interestSliderRow).join("")}
+        </div>`).join("")}
+    </div>`;
+  bindInterestsControls($("#view"));
+}
+
+function bindInterestsControls(scope) {
+  scope.querySelectorAll("[data-interest-id]").forEach(input => {
+    if (input._bound) return;
+    input._bound = true;
+    const id = input.dataset.interestId;
+    const apply = () => {
+      const v = Math.max(0, Math.min(1, Number(input.value)));
+      state.interests[id] = v;
+      saveInterests();
+      state._interestsGen = (state._interestsGen || 0) + 1;
+      input.setAttribute("aria-valuenow", String(v));
+      input.setAttribute("aria-valuetext", `${Math.round(v * 100)}%`);
+      const row = input.closest(".interest-row");
+      const pct = row?.querySelector(".interest-row-pct");
+      if (pct) pct.textContent = `${Math.round(v * 100)}%`;
+      const resetBtn = row?.querySelector("[data-interest-reset]");
+      const node = nodeById(id);
+      if (resetBtn && node) resetBtn.disabled = v === Math.max(0, node.weight);
+    };
+    input.addEventListener("input", apply);
+    input.addEventListener("change", apply);
+  });
+  scope.querySelectorAll("[data-interest-reset]").forEach(btn => {
+    if (btn._bound) return;
+    btn._bound = true;
+    btn.addEventListener("click", () => {
+      const id = btn.dataset.interestReset;
+      const node = nodeById(id);
+      if (!node) return;
+      state.interests[id] = Math.max(0, node.weight);
+      saveInterests();
+      state._interestsGen = (state._interestsGen || 0) + 1;
+      renderInterests();
+    });
+  });
+}
 
 /* ---------- pool ---------- */
 
@@ -1136,8 +1305,13 @@ function moveQueueItem(id, dir) {
    `cp_saved` snapshot for one that has aged out but was starred, then a bare
    id for one that has neither — still a real row (archivedRow already
    renders an id-only part honestly), not a silently dropped one. */
-function queueRows() {
-  return queueIds().map(id => {
+/* Shared by queueRows() and the Library screen's Saved/History sections
+   (`docs/ux/foray-mockup.jsx`'s LibraryScreen, kanban card t_a1e7a69c) — all
+   three are "an id list plus this same three-way resolution", and having one
+   definition means a fix to the liveness rule (see the comment above
+   resolveParts, #276) cannot land in one caller and not the others. */
+function rowsForIds(ids) {
+  return ids.map(id => {
     const live = state.poolIds.has(id) ? state.itemIndex[id] : null;
     if (live) return { item: live, id, state: "live" };
     const saved = savedMap()[id];
@@ -1145,6 +1319,8 @@ function queueRows() {
     return { item: { id }, id, state: "unnamed" };
   });
 }
+
+function queueRows() { return rowsForIds(queueIds()); }
 
 /* ---------- Up Next auto-advance (docs/listening-queue-plan.md §4 addendum,
    kanban card t_b9880844) ----------
@@ -3001,6 +3177,126 @@ function bindUpNextReorder(scope) {
   });
 }
 
+/* ---------- Library (#/library, docs/ux/foray-mockup.jsx's LibraryScreen) ----------
+
+   Card t_a1e7a69c. One AGGREGATE view over four things that already live in
+   localStorage and already have their own render paths — this page adds no
+   new per-item UI, only a new place that lists what is already there:
+
+     Saved     cp_saved   via savedMap()     — reuses epRow/archivedRow
+     History   cp_history via pickedHistory()— reuses epRow/archivedRow
+     Playlists cp_playlists via playlists()  — reuses the same summary row
+                                                renderPlaylists() prints, capped
+     Up Next   cp_queue   via queueIds()     — same treatment as playlists,
+                                                for the reason below
+
+   Playlists and Up Next are LINKED, not embedded (Joey's call is made here,
+   for the PR to explain): both already have a real page (#/playlists,
+   #/queue) with its own controls (build/remove, reorder/dequeue) that this
+   aggregate view has no room for at mobile width — Library shows a short
+   summary (title + count, capped at 5) that opens straight into the real
+   page, the same "browse here, act there" split the mockup itself draws
+   between LibraryScreen and the screens it links out to (`playForay`/
+   `openShow` in the mockup, `#/playlist/:id` and `#/show/:id` here). Saved
+   and History get the FULL row treatment (epRow/archivedRow) because
+   Library IS their only page — there is no separate #/saved or #/history to
+   defer to.
+
+   Every link on this page is in-app: episode rows resolve through
+   epRow/archivedRow (which already only ever link within 4a or, for a part
+   with no in-app audio, out to the episode's own listening app — the same
+   fallback every other row in the app already uses, never a new one), and
+   the Playlists/Up Next summaries link to their own in-app pages. Nothing
+   here introduces a new external link-out.
+
+   History is newest-first (`pickedHistory()` appends, so the raw array is
+   oldest-first) and capped at the same 20 rows for the same reason renderHome
+   caps its rails — a scroll-forever list is not what "recently listened"
+   means. Saved has no cap: an unbounded star list is the one honest reading
+   of "everything you saved". */
+/* This one's href is `#${...}` rather than a bare `${...}` — the leading `#`
+   is a literal prefix, not part of the interpolation, so it reads the same
+   as every other in-app hash link (`#/playlist/` + esc(id), etc.) rather
+   than a URL built entirely from a variable, which is exactly the shape
+   test/app-security.test.js's static safeUrl-guard checks for
+   (CLAUDE.md § Conventions: "all href/src through safeUrl()" — that rule is
+   for links that can carry an attacker-controlled scheme; an in-app hash
+   route built from this module's own constant strings and `playlists()`/
+   `queueIds()` ids, which esc() already escapes, is not one). */
+function libSummaryRow(hashPath, title, sub) {
+  return `<a class="pl-row" href="#${esc(hashPath)}">
+    <div class="info">
+      <div class="t">${esc(title)}</div>
+      <div class="s">${esc(sub)}</div>
+    </div>
+    <span class="chev">›</span>
+  </a>`;
+}
+
+function libSection(title, bodyHtml) {
+  return `<div class="lib-section">
+    <div class="lib-section-head">${esc(title)}</div>
+    ${bodyHtml}
+  </div>`;
+}
+
+function renderLibrary() {
+  document.body.className = "view-page";
+  fullPool(); // populate itemIndex/poolIds so saved/history rows can play in-app
+
+  const savedRows = rowsForIds(Object.keys(savedMap()));
+  const historyIds = pickedHistory().slice().reverse().slice(0, 20);
+  const historyRows = rowsForIds(historyIds);
+  const allPlaylists = playlists();
+  const queued = queueIds();
+
+  const rowHtml = (r, i, ctx) => r.state === "live" ? epRow(r.item, i, ctx, -1) : archivedRow(r.item, i, ctx);
+  // History's "unnamed" case (an id neither live in the pool nor covered by a
+  // cp_saved snapshot) is real and common -- unlike Saved, a history entry was
+  // never necessarily starred. archivedRow's "unnamed" copy ("Saved before 4a
+  // kept episode details") is written for the saved/playlist snapshot path and
+  // would misname what happened here, so History gets its own honest fallback
+  // for that one state rather than reusing archivedRow's wording.
+  const historyRowHtml = (r, i) => r.state === "unnamed"
+    ? `<div class="ep-row gone"><span class="q-num">${i + 1}</span><div class="info"><div class="t">No longer available</div><div class="s">Previously played, no longer in 4a's catalogue</div></div></div>`
+    : rowHtml(r, i, "library-history");
+
+  const savedHtml = savedRows.length
+    ? savedRows.map((r, i) => rowHtml(r, i, "library-saved")).join("")
+    : `<p class="note">Nothing saved yet — tap ☆ on an episode to keep it here.</p>`;
+
+  const historyHtml = historyRows.length
+    ? historyRows.map((r, i) => historyRowHtml(r, i)).join("")
+    : `<p class="note">No listening history yet — episodes you play show up here.</p>`;
+
+  const playlistsHtml = allPlaylists.length
+    ? allPlaylists.slice(0, 5).map(p =>
+        libSummaryRow(`/playlist/${p.id}`, p.title, `${resolveParts(p).length} part${resolveParts(p).length === 1 ? "" : "s"}`)).join("")
+      + (allPlaylists.length > 5 ? `<a class="lib-more" href="#/playlists">All ${allPlaylists.length} playlists ›</a>` : "")
+    : `<p class="note">No playlists yet — build one from the home screen.</p>`;
+
+  const queueHtml = queued.length
+    ? libSummaryRow("/queue", "Up Next", `${queued.length} queued`)
+    : `<p class="note">Nothing in Up Next yet — add an episode from any row's "+ Up Next" button.</p>`;
+
+  $("#view").innerHTML = `
+    <div class="page">
+      <div class="page-head">
+        <a class="back" href="#/">‹</a>
+        <div><h2>Library</h2><p class="sub">saved, history, playlists &amp; Up Next</p></div>
+      </div>
+      ${libSection("Saved", savedHtml)}
+      ${libSection("Playlists", playlistsHtml)}
+      ${libSection("Up Next", queueHtml)}
+      ${libSection("History", historyHtml)}
+    </div>`;
+
+  bindPickLogging($("#view"));
+  bindStars($("#view"));
+  bindUpNext($("#view"));
+  bindPlay($("#view"));
+}
+
 function renderPlaylists() {
   document.body.className = "view-page";
   const all = playlists();
@@ -3015,6 +3311,7 @@ function renderPlaylists() {
         <button type="submit">Go</button>
       </form>
       <p id="pl-note" class="note" hidden></p>
+      <a class="page-link-row" href="#/library">Library ›</a>
       ${all.length ? all.map(p => `
         <a class="pl-row" href="#/playlist/${esc(p.id)}">
           <div class="info">
@@ -4479,6 +4776,7 @@ function sizeProgressBars(scope) {
 /* ---------- drawer ---------- */
 
 function renderDrawer() {
+  ensureInterestsDrawerLink();
   const recent = [...playlists()]
     .sort((a, b) => (b.last_played_at || b.created).localeCompare(a.last_played_at || a.created))
     .slice(0, 5);
@@ -4494,6 +4792,33 @@ function openDrawer(open) {
   $("#drawer").hidden = !open;
   $("#drawer-overlay").hidden = !open;
   if (open) renderDrawer();
+}
+
+/* The Interests page (#/interests, U-07) is reachable from Settings, but
+   index.html's drawer markup is not among this card's owned files and is
+   unlisted/human-merge-gated (CLAUDE.md path-policy) — editing it would pull
+   this whole change off the auto-merge path for one nav link. Injected once
+   into the drawer instead, immediately after `.drawer-section-label`
+   ("Settings" — the drawer's only section label today, per index.html), the
+   same place a founder editing index.html by hand would put it. If the
+   drawer ever grows a second `.drawer-section-label`, this must switch to a
+   text-matched lookup rather than "the first one found". Guarded by a flag
+   on the drawer element so repeated renderDrawer() calls (every
+   `openDrawer(true)`) don't stack duplicate links. */
+function ensureInterestsDrawerLink() {
+  const drawer = $("#drawer");
+  if (!drawer || drawer._interestsLinkAdded) return;
+  drawer._interestsLinkAdded = true;
+  const label = document.querySelector(".drawer-section-label");
+  const link = document.createElement("a");
+  link.className = "drawer-item";
+  link.href = "#/interests";
+  link.textContent = "Interests";
+  if (label && label.parentNode) {
+    label.parentNode.insertBefore(link, label.nextSibling);
+  } else {
+    drawer.appendChild(link);
+  }
 }
 
 /* ---------- delete my data (#42) ----------
@@ -5211,7 +5536,9 @@ function renderCurrentPage() {
   else if (h === "#/playlists") renderPlaylists();
   else if (h === "#/forays") renderForays();
   else if (h === "#/queue") renderQueue();
+  else if (h === "#/library") renderLibrary();
   else if (h === "#/starred-shows") renderStarredShows();
+  else if (h === "#/interests") renderInterests();
   else renderHome();
 }
 

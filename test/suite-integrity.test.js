@@ -432,6 +432,14 @@ const FLOORS = {
      Every test names its mutation; see the suite header for the full list
      of what each test pins. */
   "test/up-next-queue.test.js": 13,
+  /* Library screen (#/library, `docs/ux/foray-mockup.jsx`'s LibraryScreen,
+     kanban card t_a1e7a69c). Floored for the same reason up-next-queue is:
+     the four sections' decay path (an aged-out saved/history id, an empty
+     playlist/queue) is the #276 shape, silently wrong rather than a crash.
+     Also pins that Playlists/Up Next stay LINKED summaries rather than
+     embedded row lists, and that no interpolated href on the page bypasses
+     the in-app hash-route/safeUrl composition every other page uses. */
+  "test/library-screen.test.js": 11,
   /* Settings drawer stays open on toggle (Joey, 2026-08-31, t_0c09d83a): the
      three toggles' click handlers, plus the two real-navigation regression
      guards. */
@@ -444,6 +452,20 @@ const FLOORS = {
      path any other suite would notice going missing. Every test names its
      mutation; see the suite header for the full list of what each pins. */
   "test/up-next-autoadvance.test.js": 6,
+  /* U-07's Interests page (docs/ui-transition-plan.md D6, kanban card
+     t_1cb3688a). Floored for the same reason as up-next-queue.test.js: a
+     wrong row set, a wrong slider range, or a drag that silently fails to
+     persist are all silent-wrong-behavior, not a crash any other suite
+     would notice. Every test names its mutation; see the suite header. */
+  "test/interests-page.test.js": 11,
+  /* The root-node interest bug this same card fixes (D6): loadInterests()
+     used to seed leaf nodes only, silently dropping a root-level interest
+     on the next save. Floored separately from interests-page.test.js
+     because it pins the DATA layer (loadInterests/saveInterests/
+     nudgeTopics), not the page — either could regress without the other
+     noticing. Includes the MUTATION TEST the card asks for by name
+     (restore leafNodes() as the seed set -> red). */
+  "test/interests-roots.test.js": 8,
   /* #301's bound, over the REAL catalogue: improving a result the ranking keeps
      below the top one must never empty its query or drop a bar-clearer. One test,
      floored at one, because the alternative to a floor here is a suite that can be
@@ -850,6 +872,16 @@ const FLOORS = {
      `foray-signing.gradle` directly above the apply line, so a substring check
      would report a commented-out wiring as wired. */
   "tools/mobile/wire-signing.test.mjs": 11,
+  /* R-02 (docs/release-lockstep-plan.md): the single version source both the
+     iOS and Android release workflows call identically. Floored at its full
+     count because every test pins one of the card's own acceptance criteria —
+     monotonicity across a day boundary and within one day, the runOfDay 1-99
+     bound, UTC-only date math, the Play int32 versionCode ceiling
+     (2,099,123,199 < 2,147,483,647), the semver reset rule, and — the one that
+     stands in for "the same call from both workflow shells prints the
+     identical pair" — spawning the CLI twice with pinned inputs and diffing
+     stdout byte-for-byte. */
+  "tools/mobile/version.test.mjs": 22,
   /* The launch verdict (the `android-smoke` job's brain). ZERO SLACK. This is the
      only thing in the repo that can judge a RUNNING Android app, and its risk is
      entirely one-directional: a verdict too generous reports a launch for a page
