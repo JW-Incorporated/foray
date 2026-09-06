@@ -2800,6 +2800,82 @@ line are all the test needs.
 
 ---
 
+### H1. The drive test — iOS lock-screen and car controls, on a real phone in a real car
+
+**Tag:** `[BLOCKING]` for closing founder-feedback F5/F7, and for whether F6 recurs ·
+**Time:** ~10 minutes, in the car · **Owner:** Wyatt · **Depends on:** a TestFlight
+build carrying L-01 and L-02 (both merged to `main` — PRs #517/#520 and #522; no
+build has gone out with this work yet as of this item's writing, `docs/ios-lock-screen.md`
+§5).
+
+**Why it matters.** `docs/ios-controls-and-voice-plan.md`'s H1 gate, closing the loop
+on the founder feedback log's F5 (*"car controls do not work when the app is
+backgrounded / screen off … this is also a safety issue"*), F6 (*"playback jumped
+backwards ~2 minutes mid-podcast, unprompted"*) and F7 (*"lock screen showed 'paused'
+while audio was playing, and a position ~1 minute behind actual"*). L-01/L-02 give
+iOS a real `MPNowPlayingInfoCenter`/`MPRemoteCommandCenter` back end for the first
+time — `docs/ios-lock-screen.md` argues what it says and why — but nothing about a
+lock screen, Bluetooth or a steering wheel can be verified by a machine. The
+Simulator does not model true suspension, power management, or a car's Bluetooth
+stack at all.
+
+**A build now exists.** `docs/ios-lock-screen.md` §5: `ios-build` run 34047876769,
+dispatched against `main` @ `9500012` (carrying both L-01 and L-02), went green end
+to end including the TestFlight upload — `CFBundleVersion 229.1`. Check TestFlight
+for build 229.1 or higher; if a newer build has landed by the time you read this,
+use that one instead and note the build number in your report.
+
+**Steps.**
+
+1. Confirm you have build **229.1 or newer** installed via TestFlight on the iPhone.
+   If TestFlight has not surfaced it yet, wait for Apple's processing or check
+   **Actions → ios-build → Run workflow** on `main` for a newer green run.
+2. Start a Foray playing, then **lock the phone** (side button) while it plays.
+3. **On the lock screen / Control Center**, try each control below and write down
+   what happened — worked, did nothing, or did the wrong thing:
+   - [ ] Play / pause
+   - [ ] Next (should move to the next **segment**, not the next episode or a 30 s nudge)
+   - [ ] Previous (should restart the current segment, or go back one, per
+     `player/media-session.js`'s window — not jump to episode start)
+   - [ ] Seek back 15 s
+   - [ ] Seek forward 30 s
+   - [ ] Scrub the position bar (should land on the **Foray's** own clock, not the
+     current segment's)
+   - [ ] Stop — **expected: no stop button appears at all.** iOS declines it outright
+     (`docs/ios-lock-screen.md` §2.3); if one shows up and does something, that is a
+     defect, not a missing feature.
+4. **In the car**, with the phone connected over Bluetooth (or CarPlay's audio-only
+   surface, not a CarPlay app — none exists), repeat play/pause, next/previous and
+   the steering-wheel transport buttons if the car has them. Write down the same
+   worked/nothing/wrong-thing verdict per control.
+5. **Position tracking:** while playing, does the lock screen's elapsed time actually
+   move at roughly the right pace, including right after a pause/resume and right
+   after a seam (segment change)? Note anything that looked frozen, jumped, or was
+   noticeably behind the audio.
+6. **The F6 observation — write this down explicitly, whatever it is:**
+   Did playback jump backwards unexpectedly at any point during the test (the ~2-minute
+   backwards jump from F6)? Yes/no, and if yes, roughly how far back and when
+   (right after a lock-screen action, right after a seam, or with no obvious trigger).
+   "It did not recur" is itself the useful answer — silence on this question is not
+   the same as a clean result.
+7. **Report back in this exact form:**
+   `H1 drive test, build <TestFlight build number>: play=<worked/nothing/wrong>,
+   pause=<...>, next=<...>, previous=<...>, seek-15=<...>, seek+30=<...>,
+   scrub=<...>, stop=<appeared/did not appear, and what it did>,
+   position tracked audio=<yes/no, detail>, F6 recurred=<yes/no, detail>.`
+
+**Worked if:** there is a written verdict for every control above, an explicit
+position-tracking answer, and an explicit F6 answer — a report that skips any one
+of the three cannot close F5/F6/F7.
+
+**Once this is done:** update this item's Status line below, and **please update
+your off-repo `4a-feedback.md` log's F5/F6/F7 entries** with the outcome — this repo
+cannot read that file, so the record only exists once you write it there yourself.
+
+**Status:** OPEN.
+
+---
+
 ## DONE
 
 *(Finished items move here with the date they were done and keep their
