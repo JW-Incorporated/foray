@@ -432,6 +432,14 @@ const FLOORS = {
      Every test names its mutation; see the suite header for the full list
      of what each test pins. */
   "test/up-next-queue.test.js": 13,
+  /* Library screen (#/library, `docs/ux/foray-mockup.jsx`'s LibraryScreen,
+     kanban card t_a1e7a69c). Floored for the same reason up-next-queue is:
+     the four sections' decay path (an aged-out saved/history id, an empty
+     playlist/queue) is the #276 shape, silently wrong rather than a crash.
+     Also pins that Playlists/Up Next stay LINKED summaries rather than
+     embedded row lists, and that no interpolated href on the page bypasses
+     the in-app hash-route/safeUrl composition every other page uses. */
+  "test/library-screen.test.js": 11,
   /* Settings drawer stays open on toggle (Joey, 2026-08-31, t_0c09d83a): the
      three toggles' click handlers, plus the two real-navigation regression
      guards. */
