@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "built_at": "2026-09-05T11:46:12.982Z",
+  "built_at": "2026-09-06T11:42:19.141Z",
   "items": [
     {
       "id": "lex-fridman-podcast--don-lincoln-physics",
@@ -41886,6 +41886,90 @@
       ],
       "hook": "This week in bourbon: new KBB Reserve, a whiskey scholars program, and fresh Starlight releases.",
       "explicit": true
+    },
+    {
+      "id": "within-tolerance--within-tolerance-episode-283-5-years",
+      "show": "Within Tolerance",
+      "title": "Within Tolerance Episode 283 - 5 Years of Change With Andrew Henry",
+      "apple_collection_id": 1474857063,
+      "apple_track_id": 1000788064112,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/within-tolerance-episode-283-5-years-of-change/id1474857063?i=1000788064112&uo=4",
+      "release_date": "2026-09-05",
+      "duration_min": 130,
+      "duration_sec": 7829,
+      "audio_url": "https://anchor.fm/s/ca43718/podcast/play/125255679/https%3A%2F%2Fd3ctxlq1ktw2nl.cloudfront.net%2Fstaging%2F2026-8-5%2F431256834-44100-2-fd0cf52b4e2ba.mp3",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 125269889,
+      "dai_suspected": false,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts125/v4/83/6e/ba/836ebae9-68ae-7506-52aa-57d847536a8f/mza_6383185451985653612.jpg/600x600bb.jpg",
+      "topics": [
+        "engineering/precision-mfg"
+      ],
+      "hook": "Andrew Henry returns after 5 years: 11 to 30+ employees and running the stack for others.",
+      "explicit": false
+    },
+    {
+      "id": "the-ancients--human-origins-did-we-begin-in",
+      "show": "The Ancients",
+      "title": "Human Origins: Did We Begin in Africa?",
+      "apple_collection_id": 1520403988,
+      "apple_track_id": 1000787657023,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/human-origins-did-we-begin-in-africa/id1520403988?i=1000787657023&uo=4",
+      "release_date": "2026-09-06",
+      "duration_min": 59,
+      "duration_sec": 3534,
+      "audio_url": "https://sphinx.acast.com/p/acast/s/the-ancients/e/6a99741dd54ec94380c7e84c/media.mp3?tk=eyJ0ayI6ImRlZmF1bHQiLCJhZHMiOnRydWUsInNwb25zIjp0cnVlLCJzdGF0dXMiOiJwdWJsaWMifQ==&sig=UzubqlBq8PWJdfGt6FPOKNlyv6h75FlaJGJUEb9I3BM",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 56550295,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/6c/94/31/6c943113-5484-a41d-5cb7-bf606ff289ef/mza_6401313720037127611.jpeg/600x600bb.jpg",
+      "topics": [
+        "history/archaeology"
+      ],
+      "hook": "A palaeoanthropologist dismantles the simple out-of-Africa story with fossil and ancient DNA evidence of multiple migrations.",
+      "explicit": false
+    },
+    {
+      "id": "engines-of-our-ingenuity--the-engines-of-our-ingenuity-1626",
+      "show": "Engines of Our Ingenuity",
+      "title": "The Engines of Our Ingenuity 1626: The Yellow River",
+      "apple_collection_id": 121493645,
+      "apple_track_id": 1000788089022,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/the-engines-of-our-ingenuity-1626-the-yellow-river/id121493645?i=1000788089022&uo=4",
+      "release_date": "2026-09-06",
+      "duration_min": 4,
+      "duration_sec": 223,
+      "audio_url": "https://op3.dev/e/dts.podtrac.com/redirect.mp3/ondemand.houstonpublicmedia.org/engines-of-our-ingenuity/KUHF_20260906.mp3?srcid=apple-podcasts",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 1783298,
+      "dai_suspected": false,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts113/v4/d9/48/5f/d9485f01-660b-d928-e85f-d61b6f877982/mza_8721609852467453666.png/600x600bb.jpg",
+      "topics": [
+        "history/technology"
+      ],
+      "hook": "China's Yellow River becomes a lens for thinking through the history and engineering of flood control.",
+      "explicit": false
+    },
+    {
+      "id": "founders--432-the-mind-of-napoleon",
+      "show": "Founders",
+      "title": "#432 The Mind of Napoleon",
+      "apple_collection_id": 1141877104,
+      "apple_track_id": 1000788032837,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/432-the-mind-of-napoleon/id1141877104?i=1000788032837&uo=4",
+      "release_date": "2026-09-05",
+      "duration_min": 56,
+      "duration_sec": 3332,
+      "audio_url": "https://traffic.megaphone.fm/DSLLC8997503523.mp3",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": null,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/ed/71/4f/ed714f67-f095-a4ef-f38e-d8c02300666a/mza_11432355988627368701.jpg/600x600bb.jpg",
+      "topics": [
+        "business/startups"
+      ],
+      "hook": "What Napoleon's own writing reveals about combining relentless thought with relentless action.",
+      "explicit": false
     }
   ]
 }

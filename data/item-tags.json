@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "built_at": "2026-09-05T11:46:12.982Z",
+  "built_at": "2026-09-06T11:42:19.141Z",
   "tags": {
     "lex-fridman-podcast--don-lincoln-physics": [
       "physics",
@@ -17048,6 +17048,43 @@
       "food",
       "drinks",
       "news"
+    ],
+    "within-tolerance--within-tolerance-episode-283-5-years": [
+      "machining",
+      "manufacturing",
+      "entrepreneurship",
+      "leadership",
+      "hiring",
+      "small-business",
+      "interview",
+      "craftsmanship"
+    ],
+    "the-ancients--human-origins-did-we-begin-in": [
+      "human-evolution",
+      "hominins",
+      "fossils",
+      "archaeology",
+      "africa",
+      "ancient-dna",
+      "prehistory",
+      "interview"
+    ],
+    "engines-of-our-ingenuity--the-engines-of-our-ingenuity-1626": [
+      "history-of-technology",
+      "civil-engineering",
+      "water-engineering",
+      "china",
+      "natural-disasters",
+      "engineering"
+    ],
+    "founders--432-the-mind-of-napoleon": [
+      "founders",
+      "biography",
+      "leadership",
+      "military-history",
+      "business-history",
+      "ambition",
+      "strategy"
     ]
   }
 }
