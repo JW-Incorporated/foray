@@ -88,7 +88,7 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     /// missing/garbage field to the honest empty value rather than throwing,
     /// the same rule `NowPlaying.java` states for Android.
     @objc func setNowPlaying(_ call: CAPPluginCall) {
-        let payload = NowPlayingPayload.from(call.getData() as? [String: Any] ?? [:])
+        let payload = NowPlayingPayload.from(fieldsOf(call))
         applyNowPlayingInfo(payload)
         applyCommandAvailability(payload)
 
@@ -104,6 +104,30 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         result["platform"] = "ios"
         result["reason"] = ""
         call.resolve(result)
+    }
+
+    /// `CAPPluginCall` has no `getData()` (that is the Android `PluginCall`'s
+    /// API) -- fields are pulled individually and handed to
+    /// `NowPlayingPayload.from` as a plain dictionary, which is total over a
+    /// missing/wrongly-typed key exactly the way `NowPlaying.from` is total
+    /// over a nullable `JSObject` on Android.
+    private func fieldsOf(_ call: CAPPluginCall) -> [String: Any] {
+        var data: [String: Any] = [:]
+        for key in [
+            "state", "title", "artist", "album", "artworkUri",
+        ] {
+            if let value = call.getString(key) { data[key] = value }
+        }
+        for key in ["durationMs", "positionMs", "playbackRate"] {
+            if let value = call.getDouble(key) { data[key] = value }
+        }
+        for key in [
+            "canPlay", "canPause", "canStop", "hasNext", "hasPrevious",
+            "canSeekBack", "canSeekForward", "canSeekTo",
+        ] {
+            if let value = call.getBool(key) { data[key] = value }
+        }
+        return data
     }
 
     // MARK: - MPNowPlayingInfoCenter
@@ -252,10 +276,10 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         var event = JSObject()
         event["action"] = action
         if let positionMs = positionMs {
-            event["positionMs"] = positionMs
+            event["positionMs"] = Double(positionMs)
         }
         if let offsetMs = offsetMs {
-            event["offsetMs"] = offsetMs
+            event["offsetMs"] = Double(offsetMs)
         }
         notifyListeners(Self.TRANSPORT_EVENT, data: event)
     }
