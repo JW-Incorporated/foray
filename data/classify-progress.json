@@ -1,5 +1,222 @@
 {
-  "in_flight": {},
+  "in_flight": {
+    "1221085548": {
+      "batch_id": "fresh-2026-09-07-90ed97cc",
+      "reserved_at": "2026-09-07T00:07:36.107Z"
+    },
+    "1225077306": {
+      "batch_id": "fresh-2026-09-07-90ed97cc",
+      "reserved_at": "2026-09-07T00:07:36.107Z"
+    },
+    "1229532498": {
+      "batch_id": "fresh-2026-09-07-90ed97cc",
+      "reserved_at": "2026-09-07T00:07:36.107Z"
+    },
+    "1230953658": {
+      "batch_id": "fresh-2026-09-07-90ed97cc",
+      "reserved_at": "2026-09-07T00:07:36.107Z"
+    },
+    "1231455072": {
+      "batch_id": "fresh-2026-09-07-90ed97cc",
+      "reserved_at": "2026-09-07T00:07:36.107Z"
+    },
+    "1231472946": {
+      "batch_id": "fresh-2026-09-07-90ed97cc",
+      "reserved_at": "2026-09-07T00:07:36.107Z"
+    },
+    "1231521180": {
+      "batch_id": "fresh-2026-09-07-90ed97cc",
+      "reserved_at": "2026-09-07T00:07:36.107Z"
+    },
+    "1236901698": {
+      "batch_id": "fresh-2026-09-07-90ed97cc",
+      "reserved_at": "2026-09-07T00:07:36.107Z"
+    },
+    "1240841298": {
+      "batch_id": "fresh-2026-09-07-90ed97cc",
+      "reserved_at": "2026-09-07T00:07:36.107Z"
+    },
+    "1244649384": {
+      "batch_id": "fresh-2026-09-07-90ed97cc",
+      "reserved_at": "2026-09-07T00:07:36.107Z"
+    },
+    "1245002988": {
+      "batch_id": "fresh-2026-09-07-90ed97cc",
+      "reserved_at": "2026-09-07T00:07:36.107Z"
+    },
+    "1246319802": {
+      "batch_id": "fresh-2026-09-07-90ed97cc",
+      "reserved_at": "2026-09-07T00:07:36.107Z"
+    },
+    "1247343210": {
+      "batch_id": "fresh-2026-09-07-90ed97cc",
+      "reserved_at": "2026-09-07T00:07:36.107Z"
+    },
+    "1247694648": {
+      "batch_id": "fresh-2026-09-07-90ed97cc",
+      "reserved_at": "2026-09-07T00:07:36.107Z"
+    },
+    "1251078708": {
+      "batch_id": "fresh-2026-09-07-90ed97cc",
+      "reserved_at": "2026-09-07T00:07:36.107Z"
+    },
+    "1257957660": {
+      "batch_id": "fresh-2026-09-07-90ed97cc",
+      "reserved_at": "2026-09-07T00:07:36.107Z"
+    },
+    "1260504024": {
+      "batch_id": "fresh-2026-09-07-90ed97cc",
+      "reserved_at": "2026-09-07T00:07:36.107Z"
+    },
+    "1261515078": {
+      "batch_id": "fresh-2026-09-07-90ed97cc",
+      "reserved_at": "2026-09-07T00:07:36.107Z"
+    },
+    "1262231136": {
+      "batch_id": "fresh-2026-09-07-90ed97cc",
+      "reserved_at": "2026-09-07T00:07:36.107Z"
+    },
+    "1270581396": {
+      "batch_id": "fresh-2026-09-07-90ed97cc",
+      "reserved_at": "2026-09-07T00:07:36.107Z"
+    },
+    "1277873664": {
+      "batch_id": "fresh-2026-09-07-90ed97cc",
+      "reserved_at": "2026-09-07T00:07:36.107Z"
+    },
+    "1279562874": {
+      "batch_id": "fresh-2026-09-07-90ed97cc",
+      "reserved_at": "2026-09-07T00:07:36.107Z"
+    },
+    "1286485146": {
+      "batch_id": "fresh-2026-09-07-90ed97cc",
+      "reserved_at": "2026-09-07T00:07:36.107Z"
+    },
+    "1288412022": {
+      "batch_id": "fresh-2026-09-07-90ed97cc",
+      "reserved_at": "2026-09-07T00:07:36.107Z"
+    },
+    "1288601760": {
+      "batch_id": "fresh-2026-09-07-90ed97cc",
+      "reserved_at": "2026-09-07T00:07:36.107Z"
+    },
+    "1291423644": {
+      "batch_id": "fresh-2026-09-07-90ed97cc",
+      "reserved_at": "2026-09-07T00:07:36.107Z"
+    },
+    "1293488412": {
+      "batch_id": "fresh-2026-09-07-90ed97cc",
+      "reserved_at": "2026-09-07T00:07:36.107Z"
+    },
+    "1296636702": {
+      "batch_id": "fresh-2026-09-07-90ed97cc",
+      "reserved_at": "2026-09-07T00:07:36.107Z"
+    },
+    "1311040782": {
+      "batch_id": "fresh-2026-09-07-90ed97cc",
+      "reserved_at": "2026-09-07T00:07:36.107Z"
+    },
+    "1311523824": {
+      "batch_id": "fresh-2026-09-07-90ed97cc",
+      "reserved_at": "2026-09-07T00:07:36.107Z"
+    },
+    "1314522588": {
+      "batch_id": "fresh-2026-09-07-90ed97cc",
+      "reserved_at": "2026-09-07T00:07:36.107Z"
+    },
+    "1314667752": {
+      "batch_id": "fresh-2026-09-07-90ed97cc",
+      "reserved_at": "2026-09-07T00:07:36.107Z"
+    },
+    "1315040130": {
+      "batch_id": "fresh-2026-09-07-90ed97cc",
+      "reserved_at": "2026-09-07T00:07:36.107Z"
+    },
+    "1315159668": {
+      "batch_id": "fresh-2026-09-07-90ed97cc",
+      "reserved_at": "2026-09-07T00:07:36.107Z"
+    },
+    "1315888074": {
+      "batch_id": "fresh-2026-09-07-90ed97cc",
+      "reserved_at": "2026-09-07T00:07:36.107Z"
+    },
+    "1318113264": {
+      "batch_id": "fresh-2026-09-07-90ed97cc",
+      "reserved_at": "2026-09-07T00:07:36.107Z"
+    },
+    "1321898058": {
+      "batch_id": "fresh-2026-09-07-90ed97cc",
+      "reserved_at": "2026-09-07T00:07:36.107Z"
+    },
+    "1325753838": {
+      "batch_id": "fresh-2026-09-07-90ed97cc",
+      "reserved_at": "2026-09-07T00:07:36.107Z"
+    },
+    "1331283666": {
+      "batch_id": "fresh-2026-09-07-90ed97cc",
+      "reserved_at": "2026-09-07T00:07:36.107Z"
+    },
+    "1333127700": {
+      "batch_id": "fresh-2026-09-07-90ed97cc",
+      "reserved_at": "2026-09-07T00:07:36.107Z"
+    },
+    "1333552422": {
+      "batch_id": "fresh-2026-09-07-90ed97cc",
+      "reserved_at": "2026-09-07T00:07:36.107Z"
+    },
+    "1334808138": {
+      "batch_id": "fresh-2026-09-07-90ed97cc",
+      "reserved_at": "2026-09-07T00:07:36.107Z"
+    },
+    "1335892956": {
+      "batch_id": "fresh-2026-09-07-90ed97cc",
+      "reserved_at": "2026-09-07T00:07:36.107Z"
+    },
+    "1336060206": {
+      "batch_id": "fresh-2026-09-07-90ed97cc",
+      "reserved_at": "2026-09-07T00:07:36.107Z"
+    },
+    "1336384602": {
+      "batch_id": "fresh-2026-09-07-90ed97cc",
+      "reserved_at": "2026-09-07T00:07:36.107Z"
+    },
+    "1338558972": {
+      "batch_id": "fresh-2026-09-07-90ed97cc",
+      "reserved_at": "2026-09-07T00:07:36.107Z"
+    },
+    "1339966878": {
+      "batch_id": "fresh-2026-09-07-90ed97cc",
+      "reserved_at": "2026-09-07T00:07:36.107Z"
+    },
+    "1341478446": {
+      "batch_id": "fresh-2026-09-07-90ed97cc",
+      "reserved_at": "2026-09-07T00:07:36.107Z"
+    },
+    "1343850006": {
+      "batch_id": "fresh-2026-09-07-90ed97cc",
+      "reserved_at": "2026-09-07T00:07:36.107Z"
+    },
+    "1344003690": {
+      "batch_id": "fresh-2026-09-07-90ed97cc",
+      "reserved_at": "2026-09-07T00:07:36.107Z"
+    },
+    "1346314086": {
+      "batch_id": "fresh-2026-09-07-90ed97cc",
+      "reserved_at": "2026-09-07T00:07:36.107Z"
+    },
+    "1346866422": {
+      "batch_id": "fresh-2026-09-07-90ed97cc",
+      "reserved_at": "2026-09-07T00:07:36.107Z"
+    },
+    "1348469682": {
+      "batch_id": "fresh-2026-09-07-90ed97cc",
+      "reserved_at": "2026-09-07T00:07:36.107Z"
+    },
+    "1348777092": {
+      "batch_id": "fresh-2026-09-07-90ed97cc",
+      "reserved_at": "2026-09-07T00:07:36.107Z"
+    }
+  },
   "failed_fetch": {
     "118796495": {
       "attempts": 1,
@@ -37,34 +254,34 @@
       "last_attempt_at": "2026-07-25T05:07:28.864Z"
     },
     "260832564": {
-      "attempts": 1,
-      "last_error": "timeout",
-      "last_attempt_at": "2026-09-06T16:06:28.307Z"
+      "attempts": 2,
+      "last_error": "no <rss><channel> found",
+      "last_attempt_at": "2026-09-07T00:07:36.107Z"
     },
     "282825594": {
-      "attempts": 1,
+      "attempts": 2,
       "last_error": "no <rss><channel> found",
-      "last_attempt_at": "2026-09-06T16:06:28.307Z"
+      "last_attempt_at": "2026-09-07T00:07:36.107Z"
     },
     "316019334": {
-      "attempts": 1,
+      "attempts": 2,
       "last_error": "no <rss><channel> found",
-      "last_attempt_at": "2026-09-06T16:06:28.307Z"
+      "last_attempt_at": "2026-09-07T00:07:36.107Z"
     },
     "350159142": {
-      "attempts": 1,
+      "attempts": 2,
       "last_error": "HTTP 503",
-      "last_attempt_at": "2026-09-06T16:06:28.307Z"
+      "last_attempt_at": "2026-09-07T00:07:36.107Z"
     },
     "611020422": {
-      "attempts": 1,
+      "attempts": 2,
       "last_error": "Maximum nested tags exceeded",
-      "last_attempt_at": "2026-09-06T16:06:28.307Z"
+      "last_attempt_at": "2026-09-07T00:07:36.107Z"
     },
     "625271688": {
-      "attempts": 1,
+      "attempts": 2,
       "last_error": "HTTP 404",
-      "last_attempt_at": "2026-09-06T16:06:28.307Z"
+      "last_attempt_at": "2026-09-07T00:07:36.107Z"
     }
   }
 }
