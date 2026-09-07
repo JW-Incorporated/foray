@@ -786,12 +786,21 @@ function fmtDur(min) {
 /* A1.2: episode publish date, plain-English formatting shared by epRow,
    archivedRow, and renderEpisode. Returns "" (never "Invalid Date") for a
    missing or unparseable value — absence is a real state, not an error,
-   matching every other formatter on this page. */
+   matching every other formatter on this page.
+
+   Formats in UTC deliberately: both source shapes this ever sees are
+   effectively date-only — discover.json's `release_date` (a bare
+   YYYY-MM-DD) and Stage 3b's `published_at` (typically UTC-midnight
+   ISO). Formatting in the *runtime's local* timezone (the previous
+   version's bug) rolls a UTC-midnight timestamp back to the previous
+   calendar day for anyone west of UTC — most of the Americas — showing
+   a wrong publish date for a large share of the real user base. UTC is
+   the one timezone every visitor and every CI runner agrees on. */
 function fmtDate(dateStr) {
   if (!dateStr) return "";
   const d = new Date(dateStr);
   if (Number.isNaN(d.getTime())) return "";
-  return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+  return d.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric", timeZone: "UTC" });
 }
 
 function branchOf(item) {
@@ -1577,14 +1586,21 @@ function showById(id) {
    episodes), not an error.
 
    Sorted newest-first by `release_date` (Joey's Q7 answer: "Newest first, no
-   filter for now") — a missing/unparseable date sorts last rather than
-   throwing off the whole order. */
+   filter for now"). `dateValue` treats a missing OR unparseable date as
+   epoch-0 so it always sorts last and the comparator is never NaN (an
+   unparseable-but-present string previously produced `Invalid Date - Invalid
+   Date` = NaN, which sorts indeterminately, not last as the old comment
+   claimed). */
+function dateValue(dateStr) {
+  const t = dateStr ? new Date(dateStr).getTime() : NaN;
+  return Number.isNaN(t) ? 0 : t;
+}
 function episodesForShow(show) {
   if (!show) return [];
   const pool = (state.discover?.items || []);
   const wanted = new Set([show.title, TITLE_ALIASES[show.title]].filter(Boolean));
   return pool.filter(it => wanted.has(it.show))
-    .sort((a, b) => new Date(b.release_date || 0) - new Date(a.release_date || 0));
+    .sort((a, b) => dateValue(b.release_date) - dateValue(a.release_date));
 }
 
 /* A show's artwork, with the discover pool as the fallback source.

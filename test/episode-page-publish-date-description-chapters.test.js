@@ -240,6 +240,24 @@ test("episodesForShow sorts an item with a missing release_date to the end, neve
   assert.deepStrictEqual(result, ["new", "no-date"]);
 });
 
+test("episodesForShow sorts an item with an unparseable (non-empty) release_date to the end, never NaN-ordering", () => {
+  /* MUTATION: revert dateValue to `new Date(x || 0) - new Date(y || 0)`
+     directly in the comparator. This assertion is the one that catches a
+     present-but-garbage date string producing NaN (indeterminate order)
+     instead of sorting last like a genuinely missing date. */
+  const m = mount();
+  m.state.discover = {
+    items: [
+      { id: "garbage", show: "Show A", title: "Garbage Date Ep", release_date: "not-a-date" },
+      { id: "new", show: "Show A", title: "New Ep", release_date: "2026-06-01" },
+    ],
+  };
+  const show = { show_id: "show-a", title: "Show A" };
+  let result;
+  assert.doesNotThrow(() => { result = m.ctx.episodesForShow(show).map((e) => e.id); });
+  assert.deepStrictEqual(result, ["new", "garbage"]);
+});
+
 /* ==================================================================== */
 /* 5. STAGE 3B ROWS CARRY release_date/description/chapters THROUGH      */
 /* ==================================================================== */

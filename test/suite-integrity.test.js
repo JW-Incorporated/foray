@@ -363,7 +363,7 @@ const FLOORS = {
      page's newest-first sort with no filter controls (Joey's Q7 answer).
      Every test names its mutation; see the suite header for the full list
      of what each test pins. */
-  "test/episode-page-publish-date-description-chapters.test.js": 11,
+  "test/episode-page-publish-date-description-chapters.test.js": 12,
 
   /* Episodes section under Shows search (S-07, kanban t_6baccaa0): six
      mutations named and killed in the file's own header — rendering,
