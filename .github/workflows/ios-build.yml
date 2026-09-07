@@ -80,15 +80,20 @@
 # ios/ForayKit`) keeps running exactly as before: `ios/` is the separate SwiftUI
 # target #209 deliberately left in place, and `mobile/ios/` is the shell.
 #
-# ── WHAT IS BLOCKED ON A HUMAN ───────────────────────────────────────────────
+# ── R-05: THIS WORKFLOW NO LONGER SIGNS OR UPLOADS ANYTHING ──────────────────
 #
-# The BUILD is unsigned and always runs. Signing and the TestFlight upload need
-# an Apple Developer account, a distribution certificate, a provisioning profile
-# and an App Store Connect API key — none of which exist (`HUMAN-ACTIONS.md`
-# #19). Those steps are gated on the secrets being present, and the gate has
-# three outcomes rather than two: all set -> upload, none set -> skip loudly,
-# SOME set -> fail the job. A half-configured signing setup that silently skips
-# the upload on a green run is the worst of the three.
+# Retired 2026-09-07 (docs/release-lockstep-plan.md R-05), once R-03's
+# `release.yml` had a green run on `main`. Before R-05 this file archived,
+# signed and uploaded to TestFlight from any push or dispatch on `main` — a
+# second, independently-drifting copy of exactly what `release.yml`'s
+# `.github/actions/ios-archive` composite now does as the ONE upload path.
+# `ios-build.yml` is CI now, not release: it proves the shell builds and runs
+# the bridge/out-point/seam probes, and it stops there. The build stays
+# UNSIGNED by construction (`CODE_SIGNING_ALLOWED=NO`), which is what keeps it
+# runnable with no Apple account at all. See `docs/releases.md` for how a real
+# release (and its TestFlight upload) actually happens now, and
+# `docs/ios-ci.md` §5's old "download and submit by hand" text for why that is
+# the exception path today, not the process.
 
 name: ios-build
 
@@ -708,211 +713,13 @@ jobs:
           echo "read $i local-storage database(s)"
           ls -l "$ART" || true
 
-      # ── signing and TestFlight: gated, and never yet executed ───────────────
-
-      - name: Is signing configured?
-        id: signing
-        # PR RUNS NEVER REACH THIS STEP, regardless of signing state. Same-repo
-        # pull_request runs receive the same secrets a push to main does, so
-        # without this an unmerged branch's build would be eligible for the
-        # TestFlight upload below just because it happened to be a same-repo
-        # PR carrying working credentials. R-01: gate on event_name, not just
-        # secrets.
-        if: github.event_name != 'pull_request'
-        env:
-          IOS_DIST_CERT_P12_BASE64: ${{ secrets.IOS_DIST_CERT_P12_BASE64 }}
-          IOS_DIST_CERT_PASSWORD: ${{ secrets.IOS_DIST_CERT_PASSWORD }}
-          IOS_PROVISIONING_PROFILE_BASE64: ${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
-          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
-          APP_STORE_CONNECT_PRIVATE_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY_BASE64 }}
-        # `state=absent` is the expected answer today and exits 0. `state=partial`
-        # exits 1 on purpose — see tools/mobile/ios-ci.mjs signingReadiness().
-        run: node tools/mobile/ios-ci.mjs signing-gate
-
-      - name: Archive, export and upload to TestFlight
-        # NEVER EXECUTED. There is no Apple Developer account on this project, so
-        # every line below is written from Apple's documentation and is unverified
-        # — treat the first real run as a debugging session, not as a release.
-        # Said plainly here rather than discovered later: this repo has been burned
-        # by inferences presented as measurements.
-        #
-        # `github.event_name != 'pull_request'` IS NOT REDUNDANT with the signing
-        # gate above even though that step now carries the same condition: this
-        # `if:` is evaluated independently by the runner, and repeating it here
-        # is what keeps a same-repo PR (which DOES receive secrets) from ever
-        # uploading an unmerged branch to testers even if the gate step's own
-        # condition were ever loosened later. R-01.
-        if: github.event_name != 'pull_request' && steps.signing.outputs.ready == 'true'
-        env:
-          IOS_DIST_CERT_P12_BASE64: ${{ secrets.IOS_DIST_CERT_P12_BASE64 }}
-          IOS_DIST_CERT_PASSWORD: ${{ secrets.IOS_DIST_CERT_PASSWORD }}
-          IOS_PROVISIONING_PROFILE_BASE64: ${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
-          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
-          APP_STORE_CONNECT_PRIVATE_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY_BASE64 }}
-        run: |
-          set -euo pipefail
-          KEYCHAIN="${{ runner.temp }}/signing.keychain-db"
-          KEYCHAIN_PASSWORD=$(uuidgen)
-          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
-          security set-keychain-settings -lut 3600 "$KEYCHAIN"
-          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
-          echo "$IOS_DIST_CERT_P12_BASE64" | base64 --decode > "${{ runner.temp }}/cert.p12"
-          security import "${{ runner.temp }}/cert.p12" -k "$KEYCHAIN" -P "$IOS_DIST_CERT_PASSWORD" \
-            -T /usr/bin/codesign -A
-          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
-          security list-keychains -d user -s "$KEYCHAIN"
-
-          # Install the profile in BOTH locations Xcode has used. The classic
-          # path is ~/Library/MobileDevice/Provisioning Profiles; Xcode 16+ reads
-          # ~/Library/Developer/Xcode/UserData/Provisioning Profiles instead, and
-          # the runner is on Xcode 26.6. Writing only the old one is invisible to
-          # a modern Xcode, and the resulting error names the *wrong* problem
-          # ("no profiles were found"), which is what run 33814319302 hit.
-          PROFILES="$HOME/Library/MobileDevice/Provisioning Profiles"
-          mkdir -p "$PROFILES"
-          echo "$IOS_PROVISIONING_PROFILE_BASE64" | base64 --decode > "$PROFILES/foray.mobileprovision"
-
-          # Read the profile's own UUID rather than hardcoding it: the profile is
-          # a secret and it is reissued whenever the certificate is, so a literal
-          # here would go stale silently. `security cms -D` unwraps the CMS
-          # signature the .mobileprovision is wrapped in.
-          security cms -D -i "$PROFILES/foray.mobileprovision" > "${{ runner.temp }}/profile.plist"
-          # `export`, NOT `>> $GITHUB_ENV`. Everything here — install, archive,
-          # export, upload — is one `run:` block, and $GITHUB_ENV only reaches
-          # LATER steps. Written to $GITHUB_ENV this would be empty in the very
-          # node call and xcodebuild invocation below that need it, and an empty
-          # PROVISIONING_PROFILE_SPECIFIER fails the same way this fix repairs.
-          export PROFILE_UUID
-          PROFILE_UUID=$(/usr/libexec/PlistBuddy -c "Print :UUID" "${{ runner.temp }}/profile.plist")
-          echo "profile UUID: $PROFILE_UUID"
-
-          XC_PROFILES="$HOME/Library/Developer/Xcode/UserData/Provisioning Profiles"
-          mkdir -p "$XC_PROFILES"
-          cp "$PROFILES/foray.mobileprovision" "$XC_PROFILES/$PROFILE_UUID.mobileprovision"
-
-          mkdir -p "$HOME/.appstoreconnect/private_keys"
-          echo "$APP_STORE_CONNECT_PRIVATE_KEY_BASE64" | base64 --decode \
-            > "$HOME/.appstoreconnect/private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8"
-
-          # Written with node rather than a heredoc: a YAML block scalar plus a
-          # shell heredoc plus XML is three quoting rules stacked, and this file
-          # has to survive edits by people who cannot run it.
-          node -e '
-            const fs = require("node:fs");
-            fs.writeFileSync(process.argv[1],
-              `<?xml version="1.0" encoding="UTF-8"?>\n` +
-              `<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n` +
-              `<plist version="1.0"><dict>` +
-              `<key>method</key><string>app-store-connect</string>` +
-              `<key>teamID</key><string>${process.env.APPLE_TEAM_ID}</string>` +
-              `<key>uploadSymbols</key><true/>` +
-              // Manual signing here too. -exportArchive re-signs, so if it is
-              // left to guess it repeats the archive step`s failure one stage
-              // later, and the profile has to be named per bundle id.
-              `<key>signingStyle</key><string>manual</string>` +
-              `<key>provisioningProfiles</key><dict>` +
-              `<key>${process.env.APP_ID}</key><string>${process.env.PROFILE_UUID}</string>` +
-              `</dict>` +
-              `</dict></plist>\n`);
-          ' "${{ runner.temp }}/ExportOptions.plist"
-          plutil -lint "${{ runner.temp }}/ExportOptions.plist"
-          cat "${{ runner.temp }}/ExportOptions.plist"
-
-          # CODE_SIGN_STYLE=Manual is the fix for run 33814319302. Capacitor`s
-          # generated project ships CODE_SIGN_STYLE = Automatic, and automatic
-          # signing looks for a *Development* profile, cannot find one (we only
-          # install a distribution profile), and cannot mint one either because
-          # -allowProvisioningUpdates is not passed. The error it prints names
-          # the missing development profile, which reads like the distribution
-          # profile failed to install — it had not. Passing DEVELOPMENT_TEAM
-          # alone, as this step used to, does not switch the style.
-          #
-          # ── THE BUILD NUMBER, WHICH BLOCKED EVERY UPLOAD AFTER THE FIRST ────
-          #
-          # Run 33817797333 archived, exported, and then died at altool:
-          #
-          #   ERROR: The provided entity includes an attribute with a value that
-          #   has already been used (-19232)
-          #   The bundle version must be higher than the previously uploaded
-          #   version: '1'.
-          #
-          # Capacitor's generated project ships CURRENT_PROJECT_VERSION = 1 and
-          # never moves it, so run 33815045229 took version 1 and EVERY later
-          # build re-uploaded version 1. App Store Connect rejects a duplicate,
-          # which means the founder could not receive any new build at all —
-          # including one carrying a fix.
-          #
-          # VERIFIED, not assumed, against what `cap add ios` actually generated
-          # (run 33819135977's own $ART/Info.plist): the plist reads
-          # `<key>CFBundleVersion</key><string>$(CURRENT_PROJECT_VERSION)</string>`,
-          # so it IS the build setting and passing it here reaches the bundle. Had
-          # the plist hardcoded a literal `1`, this line would have done nothing
-          # and failed at altool again on a green-looking run — which is why the
-          # value is READ BACK OUT of the archive below rather than trusted.
-          #
-          # WHY run_number.run_attempt AND NOT run_number ALONE. `run_number` is
-          # monotonic per workflow and needs no stored state — but RE-RUNNING a
-          # run keeps its run_number and only increments `run_attempt`, so a
-          # re-run of a run that already uploaded would reproduce this exact
-          # duplicate. CFBundleVersion takes up to three period-separated
-          # integers and is compared component-wise, so `144.1` sorts above `1`
-          # and below `144.2` and `145.1`. At the time of writing the workflow is
-          # on run 143, so the next value emitted is >= 144.1 — strictly greater
-          # than the `1` already uploaded, which is the ordering requirement.
-          #
-          # MARKETING_VERSION (the user-visible 1.0) is deliberately untouched:
-          # only CFBundleVersion has to be unique per upload, and bumping the
-          # marketing version per build would tell TestFlight users a new release
-          # shipped every time CI ran.
-          BUILD_NUMBER="${{ github.run_number }}.${{ github.run_attempt }}"
-          echo "CFBundleVersion for this upload: $BUILD_NUMBER"
-          # A build number that is not strictly above the `1` already uploaded is
-          # a wasted archive and a confusing altool error ten minutes later.
-          case "$BUILD_NUMBER" in 1|1.*) echo "::error::refusing to archive at build number $BUILD_NUMBER"; exit 1 ;; esac
-
-          # -allowProvisioningUpdates is deliberately NOT the fix: it would let
-          # CI mint certificates and profiles in the account on its own.
-          xcodebuild "$XC_FLAG" "$XC_PATH" -scheme App -configuration Release \
-            -sdk iphoneos -destination 'generic/platform=iOS' \
-            -archivePath "${{ runner.temp }}/Foray.xcarchive" \
-            CODE_SIGN_STYLE=Manual \
-            CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
-            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
-            PROVISIONING_PROFILE_SPECIFIER="$PROFILE_UUID" \
-            CODE_SIGN_IDENTITY="Apple Distribution" \
-            archive | tail -20
-
-          # READ IT BACK OUT OF THE ARCHIVED APP, with Apple's own parser, before
-          # spending the export and the upload on it. A build-setting override
-          # that silently does not reach the bundle is the "fails green" shape
-          # this file keeps getting burned by, and its only other symptom is the
-          # altool error above, minutes later, with nothing pointing here.
-          ARCHIVED_PLIST="${{ runner.temp }}/Foray.xcarchive/Products/Applications/App.app/Info.plist"
-          test -f "$ARCHIVED_PLIST"
-          BUILT_VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleVersion" "$ARCHIVED_PLIST")
-          BUILT_MARKETING=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$ARCHIVED_PLIST")
-          echo "archived CFBundleVersion=$BUILT_VERSION CFBundleShortVersionString=$BUILT_MARKETING" \
-            | tee "$ART/archived-version.txt"
-          if [ "$BUILT_VERSION" != "$BUILD_NUMBER" ]; then
-            echo "::error::CFBundleVersion in the archive is '$BUILT_VERSION', not '$BUILD_NUMBER'." \
-                 "The CURRENT_PROJECT_VERSION override did not reach the bundle; altool would reject" \
-                 "this upload as a duplicate. Check whether the generated Info.plist still uses" \
-                 "\$(CURRENT_PROJECT_VERSION) for CFBundleVersion."
-            exit 1
-          fi
-
-          xcodebuild -exportArchive \
-            -archivePath "${{ runner.temp }}/Foray.xcarchive" \
-            -exportOptionsPlist "${{ runner.temp }}/ExportOptions.plist" \
-            -exportPath "${{ runner.temp }}/export" | tail -20
-          xcrun altool --upload-app -f "${{ runner.temp }}/export/App.ipa" -t ios \
-            --apiKey "$APP_STORE_CONNECT_KEY_ID" --apiIssuer "$APP_STORE_CONNECT_ISSUER_ID"
-
-      # ── the report, last, so it can see every outcome it describes ──────────
+      # ── signing and TestFlight upload: retired here, R-05 ────────────────────
+      #
+      # This job no longer signs or uploads anything — that is `release.yml`'s
+      # job via `.github/actions/ios-archive`, exercised on a tag or a manual
+      # dispatch on `main`, not on every PR that touches the shell. See this
+      # file's own header for why, and `docs/releases.md` for the operational
+      # walkthrough of a real release.
 
       - name: Report what the probes established
         # AFTER the signing gate on purpose. Its section 3 reads
