@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-09-06T16:16:50.662Z",
+  "built_at": "2026-09-07T00:15:52.713Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-09-06-c9a328ab",
+    "last_batch_id": "fresh-2026-09-07-b5861135",
     "last_batch_tier": 1,
     "transcript_labels": "descriptive cost label, never an eligibility test — see tools/classify/labels.mjs"
   },
@@ -213029,10 +213029,44 @@
     },
     "1724086897": {
       "topics": [
+        "computing",
         "business/management"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/management",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Using AI at Work: AI in the Workplace & Generative AI for Business Leaders covers comput.",
+      "display_title": "Using AI at Work: AI in the Workplace",
+      "blurb": "On \"Using AI at Work\", your host Chris Daigle and his expert guests help business leaders, executives, and teams who.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 32,
+        "transcript_types": {
+          "text/html": 8,
+          "application/json": 8,
+          "application/x-subrip": 8,
+          "text/vtt": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-07-b5861135",
+      "classified_at": "2026-09-07T00:15:52.713Z"
     },
     "1724120477": {
       "topics": [
@@ -213066,10 +213100,39 @@
     },
     "1724209160": {
       "topics": [
-        "medicine"
+        "computing",
+        "business/management"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/management",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Mayo Clinic Health Matters covers computing & business/management topics.",
+      "display_title": "Mayo Clinic Health Matters",
+      "blurb": "Mayo Clinic Health Matters brings you the latest medical advice, news and research to help you live a happier,.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-07-b5861135",
+      "classified_at": "2026-09-07T00:15:52.713Z"
     },
     "1724258920": {
       "topics": [
@@ -213108,10 +213171,39 @@
     },
     "1724276610": {
       "topics": [
-        "sports/tennis"
+        "computing",
+        "business/management"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/management",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Around The Netpost- Talking Tennis covers computing & business/management topics.",
+      "display_title": "Around The Netpost- Talking Tennis",
+      "blurb": "Welcome to \"Around The Netpost\", your go-to podcast for all things tennis! Whether you're a die-hard fan or just.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-07-b5861135",
+      "classified_at": "2026-09-07T00:15:52.713Z"
     },
     "1724284031": {
       "topics": [
@@ -213377,10 +213469,39 @@
     },
     "1724982131": {
       "topics": [
-        "science/chemistry"
+        "computing",
+        "business/management"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/management",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Electrochemistry Podcast covers computing & business/management topics.",
+      "display_title": "The Electrochemistry Podcast",
+      "blurb": "Dr.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-07-b5861135",
+      "classified_at": "2026-09-07T00:15:52.713Z"
     },
     "1724982367": {
       "topics": [
@@ -213465,10 +213586,39 @@
     },
     "1725028272": {
       "topics": [
-        "fiction/sci-fi"
+        "fiction/drama",
+        "paranormal"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/drama",
+          "confidence": 0.75
+        },
+        {
+          "node": "paranormal",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Relatos por Santiago Segovia covers fiction/drama & paranormal topics.",
+      "display_title": "Relatos por Santiago Segovia",
+      "blurb": "Lo paranormal y misterioso se unen en este podcast donde la espesa voz de Santiago Segovia, investigador paranormal,.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-07-b5861135",
+      "classified_at": "2026-09-07T00:15:52.713Z"
     },
     "1725030195": {
       "topics": [
@@ -213729,11 +213879,39 @@
     },
     "1725552098": {
       "topics": [
-        "news/tech",
-        "computing"
+        "computing",
+        "business/management"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/management",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "AI Space covers computing & business/management topics.",
+      "display_title": "AI Space",
+      "blurb": "AI Space keeps you up to date on everything happening in artificial intelligence.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-07-b5861135",
+      "classified_at": "2026-09-07T00:15:52.713Z"
     },
     "1725552690": {
       "topics": [
@@ -213772,11 +213950,39 @@
     },
     "1725553091": {
       "topics": [
-        "news/tech",
-        "computing"
+        "computing",
+        "business/management"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/management",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Personal AI covers computing & business/management topics.",
+      "display_title": "Personal AI",
+      "blurb": "Personal AI brings you the latest AI news in clear and simple terms.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-07-b5861135",
+      "classified_at": "2026-09-07T00:15:52.713Z"
     },
     "1725553221": {
       "topics": [
@@ -214041,8 +214247,32 @@
       "topics": [
         "philosophy"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Astrology for Beginners covers philosophy topics.",
+      "display_title": "Astrology for Beginners",
+      "blurb": "A step-by-step guide to reading a natal chart, understanding the stars, and rediscovering your cosmic self.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-07-b5861135",
+      "classified_at": "2026-09-07T00:15:52.713Z"
     },
     "1726048251": {
       "topics": [
@@ -214162,10 +214392,38 @@
     },
     "1726117889": {
       "topics": [
-        "fiction/sci-fi"
+        "fiction/drama"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/drama",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Consumed covers fiction/drama topics.",
+      "display_title": "Consumed",
+      "blurb": "When struggling journalist Sarah Simmons finds herself stranded in an idyllic New Hampshire town, her unexpected visit.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 24,
+        "transcript_types": {
+          "application/srt": 8,
+          "text/vtt": 8,
+          "text/plain": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-07-b5861135",
+      "classified_at": "2026-09-07T00:15:52.713Z"
     },
     "1726135306": {
       "topics": [
@@ -214447,7 +214705,37 @@
         "computing"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "This Week in Privacy covers news/tech & computing topics.",
+      "display_title": "This Week in Privacy",
+      "blurb": "A weekly live podcast from Privacy Guides - We cover updates on what we’re working on, privacy news from around the.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 6,
+        "episodes_with_timed_transcript": 6,
+        "transcript_tags": 6,
+        "transcript_types": {
+          "text/vtt": 6
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-07-b5861135",
+      "classified_at": "2026-09-07T00:15:52.713Z"
     },
     "1726838629": {
       "topics": [
@@ -214575,11 +214863,39 @@
     },
     "1727164529": {
       "topics": [
-        "health/nutrition",
-        "food"
+        "computing",
+        "business/management"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/management",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Gut Health Dialogues covers computing & business/management topics.",
+      "display_title": "The Gut Health Dialogues",
+      "blurb": "I'm Alyssa Simpson, a Registered Dietitian specializing in digestive health.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-07-b5861135",
+      "classified_at": "2026-09-07T00:15:52.713Z"
     },
     "1727186270": {
       "topics": [
@@ -214642,11 +214958,39 @@
     },
     "1727309782": {
       "topics": [
-        "sports/endurance",
-        "health/fitness"
+        "computing",
+        "business/management"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/management",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "In at the Deep End covers computing & business/management topics.",
+      "display_title": "In at the Deep End",
+      "blurb": "A safe space for swimmers and non-swimmers to be able to talk about their peaks and troughs of life, love, mental.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 7,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-07-b5861135",
+      "classified_at": "2026-09-07T00:15:52.713Z"
     },
     "1727382805": {
       "topics": [
@@ -214800,10 +215144,39 @@
     },
     "1727715688": {
       "topics": [
-        "music"
+        "computing",
+        "business/management"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/management",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Organ Podcast covers computing & business/management topics.",
+      "display_title": "The Organ Podcast",
+      "blurb": "The Organ Podcast is a fortnightly show designed to inform and entertain organists and organ enthusiasts alike,.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-07-b5861135",
+      "classified_at": "2026-09-07T00:15:52.713Z"
     },
     "1727769913": {
       "topics": [
@@ -214942,7 +215315,31 @@
         "music"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "KSHMR - DHARMA RADIO covers music topics.",
+      "display_title": "KSHMR - DHARMA RADIO",
+      "blurb": "The man behind so many of the biggest tracks in EDM and who’s sounds have influenced a generation of producers, KSHMR.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-07-b5861135",
+      "classified_at": "2026-09-07T00:15:52.713Z"
     },
     "1728121248": {
       "topics": [
@@ -215063,11 +215460,39 @@
     },
     "1728367398": {
       "topics": [
-        "health/nutrition",
-        "food"
+        "computing",
+        "business/management"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/management",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Lose Weight Mindfully | weight loss, mindful eating, healthy recipes, emotional eating, .",
+      "display_title": "Lose Weight Mindfully | weight loss, mindful eating,",
+      "blurb": "Do you wish you could lose weight without dieting, calorie counting, or feeling deprived? Are you tired of starting.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-07-b5861135",
+      "classified_at": "2026-09-07T00:15:52.713Z"
     },
     "1728398501": {
       "topics": [
@@ -215222,10 +215647,39 @@
     },
     "1728724856": {
       "topics": [
-        "medicine"
+        "computing",
+        "business/management"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/management",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Continuum Audio covers computing & business/management topics.",
+      "display_title": "Continuum Audio",
+      "blurb": "Continuum Audio features conversations with the guest editors and authors of Continuum: Lifelong Learning in Neurology,.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-07-b5861135",
+      "classified_at": "2026-09-07T00:15:52.713Z"
     },
     "1728746260": {
       "topics": [
@@ -215236,18 +215690,75 @@
     },
     "1728746467": {
       "topics": [
-        "craft/diy-home"
+        "computing",
+        "business/management"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/management",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Barndo Show: A Barndominium Podcast covers computing & business/management topics.",
+      "display_title": "The Barndo Show: A Barndominium Podcast",
+      "blurb": "Welcome to The Barndo Show! Where TJ Norris from the Barndo Co talks everything Barndominiums! From buying, building,.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-07-b5861135",
+      "classified_at": "2026-09-07T00:15:52.713Z"
     },
     "1728762148": {
       "topics": [
-        "sports/endurance",
-        "health/fitness"
+        "computing",
+        "business/management"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/management",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Boulder Boys Show covers computing & business/management topics.",
+      "display_title": "The Boulder Boys Show",
+      "blurb": "professional trail boys from Boulder, CO who like to run up and down things and talk about it.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-07-b5861135",
+      "classified_at": "2026-09-07T00:15:52.713Z"
     },
     "1728765294": {
       "topics": [
@@ -215266,11 +215777,34 @@
     },
     "1728812320": {
       "topics": [
-        "sports",
-        "news"
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "The KewCast with John & Eddie covers sports topics.",
+      "display_title": "The KewCast with John & Eddie",
+      "blurb": "We discuss pickleball with an emphasis on gear and equipment.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-07-b5861135",
+      "classified_at": "2026-09-07T00:15:52.713Z"
     },
     "1728921446": {
       "topics": [
@@ -215360,11 +215894,41 @@
     },
     "1728952817": {
       "topics": [
-        "space",
-        "science"
+        "computing",
+        "business/management"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/management",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Star Trails: From Backyard Astronomy to Cosmic Wonder covers computing & business/manage.",
+      "display_title": "Star Trails: From Backyard Astronomy to Cosmic Wonder",
+      "blurb": "Star Trails is a weekly astronomy podcast that begins in your backyard and expands outward to the edge of the universe.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 8,
+        "transcript_types": {
+          "text/vtt": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-07-b5861135",
+      "classified_at": "2026-09-07T00:15:52.713Z"
     },
     "1728988170": {
       "topics": [
@@ -215398,8 +215962,32 @@
       "topics": [
         "sports/fantasy"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/fantasy",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "BDGE Dynasty Fantasy Football covers sports/fantasy topics.",
+      "display_title": "BDGE Dynasty Fantasy Football",
+      "blurb": "BDGE, yapping about dynasty fantasy football.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-07-b5861135",
+      "classified_at": "2026-09-07T00:15:52.713Z"
     },
     "1729082998": {
       "topics": [
@@ -215498,11 +216086,39 @@
     },
     "1729251944": {
       "topics": [
-        "health/nutrition",
-        "food"
+        "computing",
+        "business/management"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/management",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Nutrition for Mamas covers computing & business/management topics.",
+      "display_title": "Nutrition for Mamas",
+      "blurb": "Stop just surviving motherhood.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-07-b5861135",
+      "classified_at": "2026-09-07T00:15:52.713Z"
     },
     "1729257611": {
       "topics": [
@@ -215649,10 +216265,39 @@
     },
     "1729575866": {
       "topics": [
-        "sports/rugby"
+        "computing",
+        "business/management"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/management",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "8/9 Rugby covers computing & business/management topics.",
+      "display_title": "8/9 Rugby",
+      "blurb": "The long-ish tradition of Great Rugby Chats continues on 8/9 Rugby with an incredible array of guests, and available on.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-07-b5861135",
+      "classified_at": "2026-09-07T00:15:52.713Z"
     },
     "1729639495": {
       "topics": [
@@ -215774,8 +216419,32 @@
       "topics": [
         "religion/islam"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/islam",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Women of Qurān covers religion/islam topics.",
+      "display_title": "Women of Qurān",
+      "blurb": "A new podcast series following Muslimah Qurān journeys with the book of Allah.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-07-b5861135",
+      "classified_at": "2026-09-07T00:15:52.713Z"
     },
     "1730259479": {
       "topics": [
@@ -215909,10 +216578,43 @@
     },
     "1730596733": {
       "topics": [
-        "news/commentary"
+        "computing",
+        "business/management"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/management",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "LARRY with Larry O'Connor covers computing & business/management topics.",
+      "display_title": "LARRY with Larry O'Connor",
+      "blurb": "Want to make sense of the seismic shifts in American news, politics and entertainment? Larry O&rsquo;Connor has a way.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 7,
+        "episodes_with_timed_transcript": 7,
+        "transcript_tags": 21,
+        "transcript_types": {
+          "application/srt": 7,
+          "text/vtt": 7,
+          "text/plain": 7
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-07-b5861135",
+      "classified_at": "2026-09-07T00:15:52.713Z"
     },
     "1730598122": {
       "topics": [
@@ -215938,11 +216640,41 @@
     },
     "1730664032": {
       "topics": [
-        "nature/earth-science",
-        "science"
+        "computing",
+        "business/management"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/management",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Deep Seed - Regenerative Agriculture covers computing & business/management topics.",
+      "display_title": "Deep Seed - Regenerative Agriculture",
+      "blurb": "Welcome to the Deep Seed Podcast, your ultimate source for all things regenerative agriculture, soil health, and.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 7,
+        "episodes_with_timed_transcript": 7,
+        "transcript_tags": 7,
+        "transcript_types": {
+          "text/vtt": 7
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-07-b5861135",
+      "classified_at": "2026-09-07T00:15:52.713Z"
     },
     "1730738769": {
       "topics": [
@@ -215973,11 +216705,37 @@
     },
     "1730751738": {
       "topics": [
-        "sports/endurance",
-        "health/fitness"
+        "sports/endurance"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Tauchtalk: Der Podcast rund ums tauchen covers sports/endurance topics.",
+      "display_title": "Tauchtalk: Der Podcast rund ums tauchen",
+      "blurb": "Willkommen bei \"TauchTalk\", dem offiziellen Podcast von ActionSport, der euch tief in die Welt des Tauchsports und der.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 16,
+        "transcript_types": {
+          "application/json": 8,
+          "text/vtt": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-07-b5861135",
+      "classified_at": "2026-09-07T00:15:52.713Z"
     },
     "1730764168": {
       "topics": [
@@ -216249,10 +217007,39 @@
     },
     "1731266576": {
       "topics": [
-        "nature/pets"
+        "computing",
+        "business/management"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/management",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Petty Betty Barrel Racing Podcast covers computing & business/management topics.",
+      "display_title": "The Petty Betty Barrel Racing Podcast",
+      "blurb": "A podcast to talk about the hot topics and subjects people don't want to address in the industry.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 3,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-07-b5861135",
+      "classified_at": "2026-09-07T00:15:52.713Z"
     },
     "1731270573": {
       "topics": [
@@ -216338,10 +217125,39 @@
     },
     "1731441128": {
       "topics": [
-        "aviation"
+        "computing",
+        "business/management"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/management",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Let's Talk Drones covers computing & business/management topics.",
+      "display_title": "Let's Talk Drones",
+      "blurb": "A podcast about anything and everything tailored to the interests of drone enthusiasts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-07-b5861135",
+      "classified_at": "2026-09-07T00:15:52.713Z"
     },
     "1731455602": {
       "topics": [
@@ -217180,8 +217996,32 @@
       "topics": [
         "sports/hockey"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/hockey",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "2 For Talking with Josh Yohe and Joe Bartnick covers sports/hockey topics.",
+      "display_title": "2 For Talking with Josh Yohe and Joe",
+      "blurb": "Pittsburgh Penguins, NHL, Pop Culture.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-07-b5861135",
+      "classified_at": "2026-09-07T00:15:52.713Z"
     },
     "1733934094": {
       "topics": [
@@ -217471,17 +218311,75 @@
     },
     "1734511738": {
       "topics": [
-        "science/physics"
+        "computing",
+        "business/management"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/management",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Non Linear Engineer Podcast covers computing & business/management topics.",
+      "display_title": "Non Linear Engineer Podcast",
+      "blurb": "Hello, welcome to the Non-Linear Engineer podcast, the Podcast that records Tony and Jose’s conversations with.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-07-b5861135",
+      "classified_at": "2026-09-07T00:15:52.713Z"
     },
     "1734624762": {
       "topics": [
-        "craft/diy-home"
+        "news/tech",
+        "computing"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Chromologist covers news/tech & computing topics.",
+      "display_title": "The Chromologist",
+      "blurb": "If you had to choose four key colours that have shaped your life, what would they be? Host Patrick O’Donnell.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-07-b5861135",
+      "classified_at": "2026-09-07T00:15:52.713Z"
     },
     "1734654238": {
       "topics": [
@@ -217950,10 +218848,39 @@
     },
     "1735977478": {
       "topics": [
-        "tv-film/interviews"
+        "computing",
+        "business/management"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/management",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Star City Murders Podcast covers computing & business/management topics.",
+      "display_title": "The Star City Murders Podcast",
+      "blurb": "After 3 murders are committed in Star City, Detective Frank Brody and his team must stop a serial killer before he.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-07-b5861135",
+      "classified_at": "2026-09-07T00:15:52.713Z"
     },
     "1735991276": {
       "topics": [
@@ -218172,11 +219099,34 @@
     },
     "1736625150": {
       "topics": [
-        "fiction/comedy",
-        "comedy"
+        "fiction/comedy"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/comedy",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Cypress Creek covers fiction/comedy topics.",
+      "display_title": "Cypress Creek",
+      "blurb": "A dark comedy audio drama that looks behind the doors of your friends and neighbors.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-07-b5861135",
+      "classified_at": "2026-09-07T00:15:52.713Z"
     },
     "1736729543": {
       "topics": [
@@ -218217,11 +219167,34 @@
     },
     "1736761973": {
       "topics": [
-        "music",
-        "history"
+        "music"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Theoretikally R & B covers music topics.",
+      "display_title": "Theoretikally R & B",
+      "blurb": "Founded in 2023, Theoretikally R&B (TRNB) is the passion project of longtime college friends.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-07-b5861135",
+      "classified_at": "2026-09-07T00:15:52.713Z"
     },
     "1736775791": {
       "topics": [
@@ -218402,10 +219375,39 @@
     },
     "1737271114": {
       "topics": [
-        "automotive"
+        "computing",
+        "business/management"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/management",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Cycle World Podcast covers computing & business/management topics.",
+      "display_title": "Cycle World Podcast",
+      "blurb": "Join Technical Editor Kevin Cameron and Editor-in-Chief Mark Hoyer for the weekly Cycle World podcast for lively.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-07-b5861135",
+      "classified_at": "2026-09-07T00:15:52.713Z"
     },
     "1737278150": {
       "topics": [
@@ -218486,8 +219488,32 @@
       "topics": [
         "sports/volleyball"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/volleyball",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Ember's Nest covers sports/volleyball topics.",
+      "display_title": "Ember's Nest",
+      "blurb": "This is the official fan podcast of the Grand Rapids Rise, or the unofficial Grand Rapids Rise podcast depending on how.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-07-b5861135",
+      "classified_at": "2026-09-07T00:15:52.713Z"
     },
     "1737643651": {
       "topics": [
@@ -218691,17 +219717,75 @@
     },
     "1738285800": {
       "topics": [
-        "religion/spirituality"
+        "computing",
+        "business/management"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/management",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Magic Hour with Taylor Paige covers computing & business/management topics.",
+      "display_title": "Magic Hour with Taylor Paige",
+      "blurb": "Magic Hour with Taylor Paige is your guided pathway to remembering your birthright of magic, intuition, and spiritual.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-07-b5861135",
+      "classified_at": "2026-09-07T00:15:52.713Z"
     },
     "1738311008": {
       "topics": [
-        "tv-film/interviews"
+        "computing",
+        "business/management"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/management",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "HORROR 101 with Dr. AC covers computing & business/management topics.",
+      "display_title": "HORROR 101 with Dr. AC",
+      "blurb": "HORROR 101 with Dr.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-07-b5861135",
+      "classified_at": "2026-09-07T00:15:52.713Z"
     },
     "1738325869": {
       "topics": [
@@ -218744,10 +219828,39 @@
     },
     "1738529568": {
       "topics": [
-        "culture/art"
+        "computing",
+        "business/management"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/management",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Tales From The Trip! covers computing & business/management topics.",
+      "display_title": "Tales From The Trip!",
+      "blurb": "Streaming horror trip reports and The Trip Sitters Podcast!.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-07-b5861135",
+      "classified_at": "2026-09-07T00:15:52.713Z"
     },
     "1738537069": {
       "topics": [
@@ -218759,10 +219872,39 @@
     },
     "1738545065": {
       "topics": [
-        "culture/books"
+        "computing",
+        "business/management"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/management",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "No Write Way with V. E. Schwab covers computing & business/management topics.",
+      "display_title": "No Write Way with V. E. Schwab",
+      "blurb": "V.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-07-b5861135",
+      "classified_at": "2026-09-07T00:15:52.713Z"
     },
     "1738650060": {
       "topics": [
@@ -218893,11 +220035,39 @@
     },
     "1739161374": {
       "topics": [
-        "news/tech",
-        "computing"
+        "computing",
+        "business/management"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/management",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "TrashTech (טראשטק) covers computing & business/management topics.",
+      "display_title": "TrashTech (טראשטק)",
+      "blurb": "טראשטק מכסים את האקוסיסטם הטכנולוגי מנושאים אקטואליים, דרך דיונים שונים המסבירים מושגים מורכבים בצורה ברורה ועד רכילות.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-07-b5861135",
+      "classified_at": "2026-09-07T00:15:52.713Z"
     },
     "1739196034": {
       "topics": [
@@ -218931,10 +220101,39 @@
     },
     "1739369446": {
       "topics": [
-        "business/marketing"
+        "computing",
+        "business/management"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/management",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Marketing Operators covers computing & business/management topics.",
+      "display_title": "Marketing Operators",
+      "blurb": "Some call it the greatest ecommerce podcast in existence.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-07-b5861135",
+      "classified_at": "2026-09-07T00:15:52.713Z"
     },
     "1739440703": {
       "topics": [
@@ -218946,10 +220145,39 @@
     },
     "1739476858": {
       "topics": [
-        "music"
+        "computing",
+        "business/management"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/management",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Jazz Therapy covers computing & business/management topics.",
+      "display_title": "Jazz Therapy",
+      "blurb": "I am a Depth-oriented, jazz-loving psychotherapist using jazz as a means to promote self-reflection, process current.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-07-b5861135",
+      "classified_at": "2026-09-07T00:15:52.713Z"
     },
     "1739491069": {
       "topics": [
@@ -218975,10 +220203,39 @@
     },
     "1739642851": {
       "topics": [
-        "fiction/sci-fi"
+        "space",
+        "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.85
+        },
+        {
+          "node": "science",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Trader's Tales From the Golden Age of the Solar Clipper covers space & science topics.",
+      "display_title": "Trader's Tales From the Golden Age of the",
+      "blurb": "Newly orphaned Ishmael Wang finds himself forced off the only planet he knows and thrust into deep space when he takes.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-07-b5861135",
+      "classified_at": "2026-09-07T00:15:52.713Z"
     },
     "1739653481": {
       "topics": [
@@ -219000,8 +220257,32 @@
       "topics": [
         "religion/hinduism"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/hinduism",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Voice of 'Maheedhar' Planet Leaf covers religion/hinduism topics.",
+      "display_title": "Voice of 'Maheedhar' Planet Leaf",
+      "blurb": "Welcome to Voice of 'Maheedhar' Planet Leaf (M Planet Leaf - MPL), Behind the secrets Youtube Channel.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-07-b5861135",
+      "classified_at": "2026-09-07T00:15:52.713Z"
     },
     "1739682007": {
       "topics": [
@@ -219035,10 +220316,39 @@
     },
     "1739799133": {
       "topics": [
-        "aviation"
+        "computing",
+        "business/management"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/management",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Pilots Say What? covers computing & business/management topics.",
+      "display_title": "Pilots Say What?",
+      "blurb": "The ultimate podcast for aviation! Join us as we dive into the world of aviation, with each episode featuring candid.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-07-b5861135",
+      "classified_at": "2026-09-07T00:15:52.713Z"
     },
     "1739838765": {
       "topics": [
@@ -219078,10 +220388,39 @@
     },
     "1739961271": {
       "topics": [
-        "nature/pets"
+        "computing",
+        "business/management"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/management",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Holistic Horsemanship and Husbandry Podcast covers computing & business/management t.",
+      "display_title": "The Holistic Horsemanship and Husbandry Podcast",
+      "blurb": "Welcome to The Holistic Horsemanship and Husbandry Podcast where your hosts, Laura & Cindy are coming together to.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-09-07-b5861135",
+      "classified_at": "2026-09-07T00:15:52.713Z"
     },
     "1739978449": {
       "topics": [
