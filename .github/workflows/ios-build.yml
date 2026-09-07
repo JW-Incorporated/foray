@@ -722,12 +722,13 @@ jobs:
       # walkthrough of a real release.
 
       - name: Report what the probes established
-        # AFTER the signing gate on purpose. Its section 3 reads
-        # `steps.signing.outputs.state`; an earlier version recomputed it from
-        # `process.env`, which this step is deliberately not given the secrets for
-        # — so it said "no signing secrets set" unconditionally, and would have
-        # started contradicting the gate step in the same run the day
-        # HUMAN-ACTIONS.md #19 was done.
+        # R-05: this step no longer sets SIGNING_STATE. The signing gate and
+        # the TestFlight upload live in `.github/actions/ios-archive` now
+        # (consumed by `release.yml`), not in this workflow, so there is no
+        # `steps.signing` output here to read — `ios-ci.mjs verdict` receives
+        # no signingState and Section 4 of its report reads `not reported`,
+        # which is correct for a CI-only run rather than a stale reference to
+        # a step this file no longer has.
         #
         # NOT `continue-on-error`. `ios-ci.mjs verdict` exits 0 for every verdict
         # including the bad ones, by design, so the only thing the flag could hide
@@ -740,7 +741,6 @@ jobs:
             simulator=${{ steps.build_sim.outcome }},
             device=${{ steps.build_dev.outcome }},
             probes=${{ steps.probe_run.outcome }}
-          SIGNING_STATE: ${{ steps.signing.outputs.state }}
         run: |
           set -euo pipefail
           # `if: always()` means this can run even when the very first step failed
