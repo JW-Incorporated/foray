@@ -1183,6 +1183,32 @@ body.ui-v2.fp-open.fp-expanded {
    the existing .fp-s-why, both already used by the player sheet. */
 .ep-art { width: 100%; max-width: 320px; display: block; border-radius: 10px; margin: 0 0 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
 .ep-actions { display: flex; align-items: center; gap: 12px; }
+/* A1.1: full publisher episode description — additive to .fp-s-why (4a's
+   curated hook), never replacing it, so both stay visible with distinct
+   section labelling. Plain paragraph text, matches the app's existing
+   body-copy scale rather than inventing a second one. */
+.ep-description { margin: 20px 0 0; }
+.ep-description h3, .ep-chapters h3 {
+  margin: 0 0 8px;
+  font-family: var(--serif);
+  font-size: 0.86rem; font-weight: 700;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--text-dim);
+}
+.ep-description-text { font-size: 0.88rem; color: var(--text); line-height: 1.5; white-space: pre-line; margin: 0; }
+/* A1.5: chapter markers — a genuinely separate mechanism from the foray
+   segment-strip (player/segment-strip.js), per Joey's Q5 answer. Plain list,
+   no shared classes with the strip's capsule/gap/bridge visual language. */
+.ep-chapters { margin: 20px 0 0; }
+.ep-chapters-list { list-style: none; margin: 0; padding: 0; }
+.ep-chapters-list li {
+  display: flex; gap: 10px; align-items: baseline;
+  padding: 6px 0; border-bottom: 1px solid var(--line);
+  font-size: 0.85rem; color: var(--text);
+}
+.ep-chapters-list li:last-child { border-bottom: none; }
+.ep-chapter-time { flex: none; font-variant-numeric: tabular-nums; color: var(--text-dim); min-width: 3.5em; }
+.ep-chapter-title { flex: 1 1 auto; }
 /* A1.8 "More from this show" — same section-label language as .fy-slot h3. */
 .ep-more { margin: 24px 0 0; }
 .ep-more h3 {
