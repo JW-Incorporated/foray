@@ -232,37 +232,47 @@ test("playlistMatchesQuery returns false for an empty or whitespace-only query",
 /* 2. generatedPlaylistCandidatesForQuery, PURE — REUSES U-03's GENERATOR */
 /* ==================================================================== */
 
-test("generatedPlaylistCandidatesForQuery reads today's subject queues (state.cardSlots), not a new backend", () => {
-  /* MUTATION: have this function build its own item list instead of
-     reading state.cardSlots — the whole point (D5: "no new backend") is
-     that this is the SAME data U-03's "Playlists for you" already
-     generates, not a fresh computation. */
+test("generatedPlaylistCandidatesForQuery reads the generated interest playlists, not the card slots (F14)", () => {
+  /* MUTATION: have this function read state.cardSlots again — the F14
+     regression (Playlists for you == Episodes for you). A card slot on
+     "tech" must NOT surface as a generated candidate; the interest leaf
+     "history/rome" filled from the discover pool must. */
   const m = mount();
-  m.state.taxonomy = { nodes: [{ id: "history", parent: null, label: "History", weight: 0.5 }] };
-  m.state.cardSlots = [{ slot: 1, branch: "history", role: "top", item: { id: "e1" }, items: [{ id: "e1", title: "Rome", show: "S1" }] }];
-  const cands = m.evalIn("generatedPlaylistCandidatesForQuery")("history");
+  seedV2Empty(m);
+  m.state.taxonomy = { nodes: [
+    { id: "history", parent: null, label: "History", weight: 0.5 },
+    { id: "history/rome", parent: "history", label: "Rome", weight: 0.5 },
+  ] };
+  m.state.interests = { history: 0.5, "history/rome": 0.8 };
+  m.state.discover = { items: [1, 2, 3].map(i => ({ id: "r" + i, title: "Rome " + i, show: "S1", topics: ["history/rome"], release_date: "2026-09-0" + i })) };
+  m.state.cardSlots = [{ slot: 1, branch: "tech", role: "top", item: { id: "e1" }, items: [{ id: "e1", title: "Chips", show: "S2" }] }];
+  const cands = m.evalIn("generatedPlaylistCandidatesForQuery")("rome");
   assert.strictEqual(cands.length, 1);
-  assert.strictEqual(cands[0].id, "subject-history");
-  assert.strictEqual(cands[0].isSubject, true, "must be the same shape subjectQueueById already produces");
+  assert.strictEqual(cands[0].id, "gen-history/rome");
+  assert.strictEqual(cands[0].isGenerated, true, "must be the same shape generatedPlaylists() produces");
+  assert.strictEqual(m.evalIn("generatedPlaylistCandidatesForQuery")("chips").length, 0, "a card slot is not a generated playlist");
 });
 
-test("generatedPlaylistCandidatesForQuery filters to branches whose label matches the query", () => {
-  /* MUTATION: drop the `.filter(...)` call, returning every cardSlot
-     regardless of the query. A "bbq" search would then surface a
-     "Technology" generated candidate. */
+test("generatedPlaylistCandidatesForQuery filters to generated playlists whose title matches the query", () => {
+  /* MUTATION: drop the `.filter(...)` call, returning every generated
+     playlist regardless of the query. A "bbq" search would then surface a
+     "Rome" generated candidate. */
   const m = mount();
-  m.state.taxonomy = {
-    nodes: [
-      { id: "history", parent: null, label: "History", weight: 0.5 },
-      { id: "tech", parent: null, label: "Technology", weight: 0.5 },
-    ],
-  };
-  m.state.cardSlots = [
-    { slot: 1, branch: "history", role: "top", item: { id: "e1" }, items: [{ id: "e1" }] },
-    { slot: 2, branch: "tech", role: "top", item: { id: "e2" }, items: [{ id: "e2" }] },
-  ];
-  const cands = m.evalIn("generatedPlaylistCandidatesForQuery")("hist");
-  assert.deepStrictEqual(cands.map((c) => c.id), ["subject-history"]);
+  seedV2Empty(m);
+  m.state.taxonomy = { nodes: [
+    { id: "history", parent: null, label: "History", weight: 0.5 },
+    { id: "history/rome", parent: "history", label: "Rome", weight: 0.5 },
+    { id: "food", parent: null, label: "Food", weight: 0.5 },
+    { id: "food/bbq", parent: "food", label: "Barbecue", weight: 0.5 },
+  ] };
+  m.state.interests = { "history/rome": 0.8, "food/bbq": 0.7 };
+  const mk = (t, n) => [1, 2, 3].map(i => ({ id: t + i, title: t + i, show: "S", topics: [n], release_date: "2026-09-0" + i }));
+  m.state.discover = { items: mk("rome", "history/rome").concat(mk("bbq", "food/bbq")) };
+  const all = m.evalIn("generatedPlaylists")();
+  assert.strictEqual(all.length, 2, "both interest leaves generate a playlist");
+  const cands = m.evalIn("generatedPlaylistCandidatesForQuery")("barbe");
+  assert.strictEqual(cands.length, 1);
+  assert.strictEqual(cands[0].id, "gen-food/bbq");
 });
 
 test("generatedPlaylistCandidatesForQuery returns nothing for an empty query", () => {
@@ -307,8 +317,12 @@ test("own playlists rank before generated candidates, and a generated one is bad
      indistinguishable, which is exactly what U-03's own badge rule forbids. */
   const m = mount({ seed: { cp_ui_v2: "true" } });
   seedV2Empty(m);
-  m.state.taxonomy = { nodes: [{ id: "history", parent: null, label: "History", weight: 0.5 }] };
-  m.state.cardSlots = [{ slot: 1, branch: "history", role: "top", item: { id: "e2" }, items: [{ id: "e2", title: "Rome Ep", show: "S1" }] }];
+  m.state.taxonomy = { nodes: [
+    { id: "history", parent: null, label: "History", weight: 0.5 },
+    { id: "history/rome", parent: "history", label: "Rome history", weight: 0.5 },
+  ] };
+  m.state.interests = { "history/rome": 0.8 };
+  m.state.discover = { items: [1, 2, 3].map(i => ({ id: "r" + i, title: "Rome " + i, show: "S1", topics: ["history/rome"], release_date: "2026-09-0" + i })) };
   m.store.set("cp_playlists", JSON.stringify([
     { id: "p1", title: "My History Mix", items: [{ id: "e1", title: "Ep", topics: ["history/rome"] }] },
   ]));
@@ -320,7 +334,7 @@ test("own playlists rank before generated candidates, and a generated one is bad
 
   const html = m.byId.get("pl-search-results").innerHTML;
   const ownIdx = html.indexOf("My History Mix");
-  const genIdx = html.indexOf("subject-history");
+  const genIdx = html.indexOf("gen-history/rome");
   assert.ok(ownIdx !== -1 && genIdx !== -1, "both an own and a generated result must be present");
   assert.ok(ownIdx < genIdx, "the own playlist must rank before the generated candidate");
   assert.ok(html.includes("Generated for you"), "the generated candidate must carry the badge");
