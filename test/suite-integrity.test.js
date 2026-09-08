@@ -454,7 +454,7 @@ const FLOORS = {
      of thing that regresses silently — nobody notices a personalization
      feed slowly stopped surprising anyone. Every test names its mutation;
      see the suite header. */
-  "test/home-v2.test.js": 7,
+  "test/home-v2.test.js": 9, // F14 (2026-09-08): generated playlists are interest leaves, not card slots
   /* Starred shows (follow-lite), requirement A2.4 / Joey's Q2 answer.
      Kanban card "Build: starred shows (follow-lite) + dedicated Starred
      Shows page". Floored because this is exactly the #276/show-pages
