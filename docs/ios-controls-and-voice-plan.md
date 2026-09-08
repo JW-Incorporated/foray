@@ -308,6 +308,39 @@ HUMAN-ACTIONS #29 (RESULT) and #40.
   narration within a second and resume from the same sentence.
 - **Governance:** `mobile/` and `player/` auto-merge.
 
+#### M-02 · Reproduce the dead play/pause taps in the iOS Simulator with a UI-tap probe — **M** — *added 2026-09-08 from founder feedback F11 and F13*
+- **What Wyatt hit:** F11 (build 2026090603, show page): play needed two taps, then the
+  pause button did nothing. F13 (build 2026090705, a playlist): neither play nor pause
+  works. **Measured 2026-09-08:** headless Chromium on the web code — the pre-cutover
+  build (`872030a`) and current `main` — plays on the first tap and pauses, on a subject
+  playlist row, with the real network. So the web player is not the defect; the shell is.
+  The candidates are all iOS-side: the WKWebView first-tap gesture rules
+  (`html-audio-backend.js` `notePlayGesture`), the new native media-session takeover
+  (L-01/L-02, build 2026090705 only — F11 predates it, so it cannot be the whole story),
+  and the tab-bar router's click handling under WebKit. A hidden page (`document.hidden`)
+  never starts the media load at all and reports "did not settle within 20000ms"; if the
+  shell's WebView is ever `hidden` at tap time (a sheet, the first-run overlay, an
+  occluded state after the tab-bar switch), that is exactly the symptom reported.
+- **Ask:** a fourth probe beside `probe-bridge` / `probe-outpoint` / `probe-seam` in
+  `tools/mobile/probe/`, run by `ios-build.yml`'s simulator step: boot the **real app**
+  (not a fixture page), navigate to a subject playlist, dispatch a real tap on the first
+  `.play-btn` (XCUITest tap or `simctl io` tap at the button's rect; a synthetic
+  `.click()` is NOT a gesture and proves nothing), wait 8 s, record
+  `ForayPlayer.isPlaying(id)`, `document.visibilityState` at tap time, the mini-player's
+  main button label, and the `cp_diag` tail; then tap the mini-player's pause and record
+  again. Write it as `foray_probe_tap` in localStorage the way the others do, and have
+  `ios-ci.mjs verdict` fail the job when play did not start or pause did not stop.
+  Run it twice: once with `foray-media-session.js`'s iOS install disabled (env flag), once
+  enabled — that isolates L-02.
+- **Owned:** `tools/mobile/probe/probe-tap.js` (+ install wiring in `install-probe.mjs`),
+  `tools/mobile/ios-ci.mjs` (+ test, floor 125 → raise), `.github/workflows/ios-build.yml`
+  (one step; → `founder-approved`), `docs/ios-ci.md` (a §4d with the measurement).
+- **Acceptance:** a run id in `docs/ios-ci.md` with the probe record; either the defect
+  reproduces in the simulator (then the record names the stage and the fix is a
+  follow-up card with the cause) or it does not (then the record is the evidence that
+  it is device- or build-specific, and the next step is Wyatt's diagnostics copy).
+- **Governance:** `tools/mobile/` auto-merges; the workflow line needs the label.
+
 #### L-04 · Records, and the drive test written up — **S**
 - **Ask:** finish `docs/ios-lock-screen.md` in the shape of `docs/android-lock-screen.md`
   (§ how every claim was obtained; what the lock screen says; controls exposed and
