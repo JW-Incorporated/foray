@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "built_at": "2026-09-06T11:42:19.141Z",
+  "built_at": "2026-09-08T11:57:51.280Z",
   "tags": {
     "lex-fridman-podcast--don-lincoln-physics": [
       "physics",
@@ -17085,6 +17085,424 @@
       "business-history",
       "ambition",
       "strategy"
+    ],
+    "cbc-ideas--what-mussolini-s-rise-and-fall": [
+      "fascism",
+      "mussolini",
+      "italy",
+      "politics",
+      "geopolitics",
+      "20th-century",
+      "world-history"
+    ],
+    "stuff-you-should-know--nickelodeon-the-best-of-slimes": [
+      "tv-history",
+      "television",
+      "media",
+      "pop-culture",
+      "kids-family",
+      "business-history"
+    ],
+    "the-rest-is-history--703-roman-civil-war-marching-on": [
+      "ancient-rome",
+      "roman-history",
+      "ancient-history",
+      "military-history",
+      "politics",
+      "civil-war"
+    ],
+    "conan-obrien-needs-a-friend--matt-groening": [
+      "comedy",
+      "interviews",
+      "animation",
+      "television",
+      "cartooning",
+      "celebrity"
+    ],
+    "smartless--andrew-garfield": [
+      "comedy",
+      "interviews",
+      "celebrity",
+      "actors",
+      "hollywood"
+    ],
+    "my-brother-my-brother-and-me--mbmbam-830-on-the-goku": [
+      "comedy",
+      "casual-hangs",
+      "banter",
+      "humor",
+      "pop-culture"
+    ],
+    "making-chips--build-your-workforce-before-you-need": [
+      "manufacturing",
+      "apprenticeship",
+      "workforce-development",
+      "careers",
+      "precision-manufacturing"
+    ],
+    "engines-of-our-ingenuity--the-engines-of-our-ingenuity-2999": [
+      "ancient-history",
+      "military-history",
+      "carthage",
+      "ancient-rome",
+      "strategy"
+    ],
+    "engines-of-our-ingenuity--the-engines-of-our-ingenuity-3406": [
+      "film-history",
+      "cinema",
+      "movies",
+      "history",
+      "american-history"
+    ],
+    "twenty-minute-vc--20vc-the-100-billion-ai-assistant": [
+      "startups",
+      "venture-capital",
+      "ai",
+      "ai-adoption",
+      "business"
+    ],
+    "bad-friends--bobby-s-beef-with-adam-ray": [
+      "comedy",
+      "casual-hangs",
+      "celebrity",
+      "banter",
+      "comedians"
+    ],
+    "flight-safety-detectives--new-findings-in-the-crash-that": [
+      "aviation",
+      "aviation-safety",
+      "accident-investigation",
+      "nascar",
+      "1990s"
+    ],
+    "science-for-sport-podcast--336-how-the-nfl-s-best": [
+      "sports-science",
+      "biomechanics",
+      "nfl",
+      "football",
+      "analytics"
+    ],
+    "99-percent-invisible--kobuk-the-destroyer": [
+      "engineering",
+      "product-design",
+      "testing",
+      "industrial-design",
+      "innovation"
+    ],
+    "spycast--25-years-after-9-11-the": [
+      "espionage",
+      "cia",
+      "afghanistan",
+      "911",
+      "military-history"
+    ],
+    "software-engineering-daily--sed-news-the-nvidia-hugging-face": [
+      "ai",
+      "tech-news",
+      "software-engineering",
+      "business",
+      "china"
+    ],
+    "odd-lots--why-money-launderers-love-100-bills": [
+      "economics",
+      "markets",
+      "money-laundering",
+      "finance",
+      "crime"
+    ],
+    "hidden-brain--blowing-up-your-life": [
+      "psychology",
+      "decision-making",
+      "behavioral-science",
+      "self-improvement",
+      "life-changes"
+    ],
+    "choiceology--the-commuter-s-paradox-why-we": [
+      "psychology",
+      "decision-making",
+      "behavioral-science",
+      "social-connection",
+      "commuting"
+    ],
+    "the-race-f1-podcast--italian-gp-ferrari-s-bruising-home": [
+      "f1",
+      "racing",
+      "motorsports",
+      "ferrari",
+      "mercedes"
+    ],
+    "energy-gang--a-new-market-for-ai-compute": [
+      "energy",
+      "ai",
+      "ai-infrastructure",
+      "data-centers",
+      "commodities"
+    ],
+    "partially-examined-life--pel-presents-closereads-donald-davidson-on": [
+      "philosophy",
+      "philosophy-of-mind",
+      "epistemology",
+      "ideas",
+      "academic-philosophy"
+    ],
+    "how-i-built-this--bogg-bag-kim-vaccarella-the-100": [
+      "entrepreneurship",
+      "business",
+      "founders",
+      "small-business",
+      "retail"
+    ],
+    "we-have-ways-of-making-you-talk--one-man-s-war-operation-compass": [
+      "world-war-2",
+      "military-history",
+      "north-africa",
+      "british-army",
+      "desert-war"
+    ],
+    "history-of-wwii-podcast--episode-652-chesty-puller-chooses-death": [
+      "world-war-2",
+      "guadalcanal",
+      "pacific-theater",
+      "military-history",
+      "marines"
+    ],
+    "the-war-on-cars--fine-we-re-doing-a-helmet": [
+      "cities",
+      "urbanism",
+      "bike-safety",
+      "cycling",
+      "transportation"
+    ],
+    "strong-towns-podcast--is-homeownership-still-part-of-the": [
+      "urbanism",
+      "housing",
+      "cities",
+      "homeownership",
+      "economics"
+    ],
+    "talking-headways--episode-198-mondays-at-the-overhead": [
+      "urbanism",
+      "cities",
+      "transit",
+      "transportation",
+      "urban-planning"
+    ],
+    "huberman-lab--how-mitochondria-control-your-metabolism-dr": [
+      "neuroscience",
+      "biology",
+      "metabolism",
+      "mitochondria",
+      "health"
+    ],
+    "the-matt-walker-podcast--the-neuroscience-of-d-j-vu": [
+      "neuroscience",
+      "memory",
+      "brain",
+      "psychology",
+      "cognitive-science"
+    ],
+    "shipwrecks-and-sea-dogs--into-the-devil-s-jaw-the": [
+      "maritime-history",
+      "navy",
+      "shipwreck",
+      "disaster",
+      "1920s"
+    ],
+    "mwa-woodworking--623-jon-joffe-5-other-questions": [
+      "woodworking",
+      "craft",
+      "cnc",
+      "tools",
+      "diy"
+    ],
+    "happiness-lab--stop-doing-things-the-hard-way": [
+      "psychology",
+      "self-improvement",
+      "grit",
+      "motivation",
+      "mental-health"
+    ],
+    "ten-percent-happier--the-science-of-building-the-life": [
+      "happiness",
+      "self-improvement",
+      "psychology",
+      "purpose",
+      "well-being"
+    ],
+    "sigma-nutrition-radio--619-how-much-fish-should-a": [
+      "nutrition",
+      "health",
+      "fish",
+      "diet",
+      "evidence-based"
+    ],
+    "mel-robbins-podcast--stop-making-excuses-how-to-change": [
+      "self-improvement",
+      "motivation",
+      "mental-health",
+      "mindset",
+      "entrepreneurship"
+    ],
+    "happier-gretchen-rubin--little-happier-after-his-death-i": [
+      "self-improvement",
+      "grief",
+      "family",
+      "reflection",
+      "personal-growth"
+    ],
+    "good-inside-dr-becky--how-misty-copeland-turned-instability-into": [
+      "parenting",
+      "psychology",
+      "ballet",
+      "resilience",
+      "biography"
+    ],
+    "ask-lisa-parenting--288-how-do-i-help-my": [
+      "parenting",
+      "psychology",
+      "teenagers",
+      "organization",
+      "family"
+    ],
+    "armchair-expert--lizzo": [
+      "comedy",
+      "interviews",
+      "celebrity",
+      "music",
+      "biography"
+    ],
+    "comedy-bang-bang--chipmunk-scream-queen-patty-guggenheim-alex": [
+      "comedy",
+      "casual-hangs",
+      "improv",
+      "sketch-comedy",
+      "humor"
+    ],
+    "2-bears-1-cave--jelly-roll-called-the-president-a": [
+      "comedy",
+      "casual-hangs",
+      "celebrity-news",
+      "banter",
+      "pop-culture"
+    ],
+    "handsome--john-ross-bowie-asks-about-time": [
+      "comedy",
+      "casual-hangs",
+      "celebrity",
+      "banter",
+      "pop-culture"
+    ],
+    "criminal--he-was-told-it-was-a": [
+      "true-crime",
+      "investigative",
+      "organ-trafficking",
+      "human-trafficking",
+      "nigeria"
+    ],
+    "lore--lore-314-hive-mind": [
+      "paranormal",
+      "folklore",
+      "mythology",
+      "storytelling",
+      "history"
+    ],
+    "crime-junkie--update-the-sodder-children": [
+      "true-crime",
+      "cold-cases",
+      "missing-persons",
+      "investigative",
+      "unsolved"
+    ],
+    "morbid--the-mysterious-death-of-kathleen-peterson": [
+      "true-crime",
+      "murder-trial",
+      "investigative",
+      "forensics",
+      "courtroom"
+    ],
+    "dateline--the-grudge": [
+      "true-crime",
+      "crime",
+      "justice",
+      "shooting",
+      "law"
+    ],
+    "wicked-words--steve-meyers-shawn-johnson-how-to": [
+      "true-crime",
+      "bank-robbery",
+      "fbi",
+      "1990s",
+      "investigative"
+    ],
+    "this-american-life--449-middle-school": [
+      "storytelling",
+      "personal-journals",
+      "coming-of-age",
+      "school",
+      "narrative-storytelling"
+    ],
+    "the-moth--fresh-starts-the-moth-radio-hour": [
+      "storytelling",
+      "personal-journals",
+      "narrative-storytelling",
+      "performing-arts",
+      "memoir"
+    ],
+    "storycorps--it-will-always-be-yesterday-25": [
+      "911",
+      "personal-journals",
+      "oral-history",
+      "storytelling",
+      "american-history"
+    ],
+    "death-sex-money--pay-what-you-want-defies-logic": [
+      "economics",
+      "business",
+      "entrepreneurship",
+      "pricing",
+      "psychology"
+    ],
+    "we-can-do-hard-things--why-we-never-fight-is-a": [
+      "relationships",
+      "psychology",
+      "conflict-resolution",
+      "communication",
+      "mental-health"
+    ],
+    "story-pirates--dj-squirm-a-lot-s-back": [
+      "kids-family",
+      "stories",
+      "music",
+      "comedy",
+      "back-to-school"
+    ],
+    "broken-record--tom-morello": [
+      "music",
+      "guitar",
+      "rock",
+      "music-history",
+      "rage-against-the-machine"
+    ],
+    "whiskycast--a-busy-month-at-george-washington": [
+      "whiskey",
+      "whiskey-history",
+      "rye",
+      "distilling",
+      "american-history"
+    ],
+    "inside-winemaking--221-jj-mcnab-l-amiti-wines": [
+      "wine",
+      "winemaking",
+      "entrepreneurship",
+      "career-change",
+      "food"
+    ],
+    "bourbon-pursuit--whiskey-quickie-maker-s-mark-goes": [
+      "whiskey",
+      "bourbon",
+      "tasting",
+      "spirits",
+      "reviews"
     ]
   }
 }
