@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-09-08T08:12:30.673Z",
+  "built_at": "2026-09-08T16:10:53.377Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-09-08-9fc15aa2",
+    "last_batch_id": "fresh-2026-09-08-33d0b161",
     "last_batch_tier": 1
   },
   "entries": {
@@ -4897,9 +4897,23 @@
       "topics": [
         "personal-journals"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "personal-journals",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified as Personal Journals based on description and episode content.",
+      "display_title": "Retirement Talk for Boomers, Seniors, and Retirees",
+      "blurb": "Retirement Talk for Boomers, Seniors, and Retirees",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-08-33d0b161",
+      "classified_at": "2026-09-08T16:10:53.377Z"
     },
     "260843816": {
       "topics": [
@@ -6831,11 +6845,45 @@
     },
     "316019334": {
       "topics": [
-        "society/government"
+        "society/government",
+        "news/politics",
+        "history",
+        "society",
+        "news"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society/government",
+          "confidence": 0.65
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.65
+        },
+        {
+          "node": "history",
+          "confidence": 0.5
+        },
+        {
+          "node": "society",
+          "confidence": 0.45
+        },
+        {
+          "node": "news",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified as Government based on description and episode content.",
+      "display_title": "Show Archives – Armed American Radio |",
+      "blurb": "Show Archives – Armed American Radio |",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-08-33d0b161",
+      "classified_at": "2026-09-08T16:10:53.377Z"
     },
     "316045799": {
       "topics": [
@@ -7596,11 +7644,30 @@
     },
     "350159142": {
       "topics": [
-        "science"
+        "science",
+        "nature"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.65
+        },
+        {
+          "node": "nature",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified as Science based on description and episode content.",
+      "display_title": "omega tau - English only",
+      "blurb": "omega tau - English only",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-08-33d0b161",
+      "classified_at": "2026-09-08T16:10:53.377Z"
     },
     "350181080": {
       "topics": [
@@ -12443,11 +12510,30 @@
     },
     "611020422": {
       "topics": [
-        "gaming"
+        "gaming",
+        "hobbies"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.65
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified as Gaming based on description and episode content.",
+      "display_title": "Brainstorm Brewery",
+      "blurb": "Brainstorm Brewery",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-08-33d0b161",
+      "classified_at": "2026-09-08T16:10:53.377Z"
     },
     "611229475": {
       "topics": [
@@ -12680,11 +12766,30 @@
     },
     "625271688": {
       "topics": [
-        "education/courses"
+        "education/courses",
+        "education"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/courses",
+          "confidence": 0.65
+        },
+        {
+          "node": "education",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified as Courses based on description and episode content.",
+      "display_title": "Latest 300 | LSE Public lectures and events",
+      "blurb": "Latest 300 | LSE Public lectures and events | Audio and pdf",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-08-33d0b161",
+      "classified_at": "2026-09-08T16:10:53.377Z"
     },
     "625276860": {
       "topics": [
@@ -68133,11 +68238,40 @@
     },
     "1515932214": {
       "topics": [
-        "culture"
+        "society",
+        "culture",
+        "true-crime",
+        "news"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.65
+        },
+        {
+          "node": "culture",
+          "confidence": 0.65
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.5
+        },
+        {
+          "node": "news",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified as Society based on description and episode content.",
+      "display_title": "heretics. | andrew gold",
+      "blurb": "Journalist Andrew Gold talks t...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-08-33d0b161",
+      "classified_at": "2026-09-08T16:10:53.377Z"
     },
     "1515943362": {
       "topics": [
@@ -68242,11 +68376,50 @@
     },
     "1516104108": {
       "topics": [
-        "sports/endurance"
+        "space",
+        "sports/endurance",
+        "health/fitness",
+        "business",
+        "sports",
+        "health"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.7
+        },
+        {
+          "node": "sports/endurance",
+          "confidence": 0.65
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.65
+        },
+        {
+          "node": "business",
+          "confidence": 0.5
+        },
+        {
+          "node": "sports",
+          "confidence": 0.45
+        },
+        {
+          "node": "health",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Classified as Space based on description and episode content.",
+      "display_title": "Stories from the Water",
+      "blurb": "Where land meets water, an inv...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-08-33d0b161",
+      "classified_at": "2026-09-08T16:10:53.377Z"
     },
     "1516180720": {
       "topics": [
@@ -68303,11 +68476,45 @@
     },
     "1516326666": {
       "topics": [
-        "tv-film/animation"
+        "tv-film/animation",
+        "food",
+        "education",
+        "nature",
+        "tv-film"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/animation",
+          "confidence": 0.65
+        },
+        {
+          "node": "food",
+          "confidence": 0.5
+        },
+        {
+          "node": "education",
+          "confidence": 0.5
+        },
+        {
+          "node": "nature",
+          "confidence": 0.5
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified as Animation & Manga based on description and episode content.",
+      "display_title": "Shonen Flop",
+      "blurb": "Not every manga can make it in...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-08-33d0b161",
+      "classified_at": "2026-09-08T16:10:53.377Z"
     },
     "1516336058": {
       "topics": [
@@ -68548,11 +68755,45 @@
     },
     "1517092086": {
       "topics": [
-        "business/non-profit"
+        "business/non-profit",
+        "society",
+        "sports",
+        "news",
+        "business"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/non-profit",
+          "confidence": 0.65
+        },
+        {
+          "node": "society",
+          "confidence": 0.65
+        },
+        {
+          "node": "sports",
+          "confidence": 0.5
+        },
+        {
+          "node": "news",
+          "confidence": 0.5
+        },
+        {
+          "node": "business",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified as Non-Profit based on description and episode content.",
+      "display_title": "AAMVAcast",
+      "blurb": "Welcome to AAMVAcast, featurin...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-08-33d0b161",
+      "classified_at": "2026-09-08T16:10:53.377Z"
     },
     "1517116280": {
       "topics": [
@@ -68866,11 +69107,45 @@
     },
     "1518326010": {
       "topics": [
-        "education/how-to"
+        "education/how-to",
+        "education",
+        "science",
+        "food",
+        "sports"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/how-to",
+          "confidence": 0.85
+        },
+        {
+          "node": "education",
+          "confidence": 0.6
+        },
+        {
+          "node": "science",
+          "confidence": 0.5
+        },
+        {
+          "node": "food",
+          "confidence": 0.5
+        },
+        {
+          "node": "sports",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified as How To based on description and episode content.",
+      "display_title": "Elevate Construction",
+      "blurb": "Elevating construction with in...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-08-33d0b161",
+      "classified_at": "2026-09-08T16:10:53.377Z"
     },
     "1518376121": {
       "topics": [
@@ -68882,11 +69157,49 @@
     "1518409554": {
       "topics": [
         "society/government",
-        "society/law"
+        "news/politics",
+        "engineering",
+        "true-crime",
+        "society",
+        "news"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society/government",
+          "confidence": 0.65
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.65
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.5
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.5
+        },
+        {
+          "node": "society",
+          "confidence": 0.45
+        },
+        {
+          "node": "news",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified as Government based on description and episode content.",
+      "display_title": "Law for VA LEOs",
+      "blurb": "Podcast by E from UE Recent ep...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-08-33d0b161",
+      "classified_at": "2026-09-08T16:10:53.377Z"
     },
     "1518475264": {
       "topics": [
@@ -69108,11 +69421,35 @@
     },
     "1519225032": {
       "topics": [
-        "news/tech"
+        "news/tech",
+        "computing",
+        "news"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.65
+        },
+        {
+          "node": "computing",
+          "confidence": 0.65
+        },
+        {
+          "node": "news",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified as Tech News based on description and episode content.",
+      "display_title": "בזמן שעבדתם",
+      "blurb": "מבית קשת, mako ו-N12: דני פלד,...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-08-33d0b161",
+      "classified_at": "2026-09-08T16:10:53.377Z"
     },
     "1519234952": {
       "topics": [
@@ -69159,11 +69496,40 @@
     },
     "1519456164": {
       "topics": [
-        "true-crime"
+        "true-crime",
+        "history",
+        "business",
+        "fiction"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.5
+        },
+        {
+          "node": "business",
+          "confidence": 0.5
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified as True Crime based on description and episode content.",
+      "display_title": "Serialously with Annie Elise",
+      "blurb": "Serialously is hosted by Annie...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-08-33d0b161",
+      "classified_at": "2026-09-08T16:10:53.377Z"
     },
     "1519458581": {
       "topics": [
@@ -69241,12 +69607,50 @@
     },
     "1519689024": {
       "topics": [
+        "history",
+        "nature",
         "society/government",
-        "news/politics"
+        "news/politics",
+        "society",
+        "news"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.7
+        },
+        {
+          "node": "nature",
+          "confidence": 0.7
+        },
+        {
+          "node": "society/government",
+          "confidence": 0.65
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.65
+        },
+        {
+          "node": "society",
+          "confidence": 0.45
+        },
+        {
+          "node": "news",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Classified as History based on description and episode content.",
+      "display_title": "Democracy Paradox",
+      "blurb": "Is it possible for a democracy...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-08-33d0b161",
+      "classified_at": "2026-09-08T16:10:53.377Z"
     },
     "1519708675": {
       "topics": [
@@ -69406,11 +69810,40 @@
     },
     "1520189814": {
       "topics": [
-        "nature/pets"
+        "nature/pets",
+        "sports",
+        "education",
+        "nature"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/pets",
+          "confidence": 0.65
+        },
+        {
+          "node": "sports",
+          "confidence": 0.5
+        },
+        {
+          "node": "education",
+          "confidence": 0.5
+        },
+        {
+          "node": "nature",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified as Pets & Animals based on description and episode content.",
+      "display_title": "Shaped by Dog with Susan Garrett",
+      "blurb": "Susan Garrett, world-renowned ...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-08-33d0b161",
+      "classified_at": "2026-09-08T16:10:53.377Z"
     },
     "1520209791": {
       "topics": [
@@ -69445,11 +69878,45 @@
     },
     "1520280492": {
       "topics": [
-        "culture/performing-arts"
+        "music",
+        "business",
+        "culture/performing-arts",
+        "history",
+        "culture"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.7
+        },
+        {
+          "node": "business",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.65
+        },
+        {
+          "node": "history",
+          "confidence": 0.5
+        },
+        {
+          "node": "culture",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Classified as Music based on description and episode content.",
+      "display_title": "The Poetry Cafe",
+      "blurb": "Open Mic, Spoken Word Poetry, ...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-08-33d0b161",
+      "classified_at": "2026-09-08T16:10:53.377Z"
     },
     "1520304490": {
       "topics": [
@@ -69539,11 +70006,30 @@
     },
     "1520679444": {
       "topics": [
+        "science",
         "nature"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.65
+        },
+        {
+          "node": "nature",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified as Science based on description and episode content.",
+      "display_title": "CREEK DEVIL",
+      "blurb": "Weekly interviews with eye wit...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-08-33d0b161",
+      "classified_at": "2026-09-08T16:10:53.377Z"
     },
     "1520702541": {
       "topics": [
@@ -69680,11 +70166,44 @@
     "1521164316": {
       "topics": [
         "sports/volleyball",
-        "culture/design"
+        "sports",
+        "history",
+        "food",
+        "sports"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/volleyball",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports",
+          "confidence": 0.6
+        },
+        {
+          "node": "history",
+          "confidence": 0.5
+        },
+        {
+          "node": "food",
+          "confidence": 0.5
+        },
+        {
+          "node": "sports",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified as Volleyball based on description and episode content.",
+      "display_title": "The Volleyball By Design Podcast",
+      "blurb": "The Volleyball By Design podca...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-08-33d0b161",
+      "classified_at": "2026-09-08T16:10:53.377Z"
     },
     "1521180246": {
       "topics": [
@@ -69779,11 +70298,45 @@
     },
     "1521483126": {
       "topics": [
-        "nature"
+        "science",
+        "adventure/exploration",
+        "nature",
+        "sports",
+        "adventure"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.7
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.65
+        },
+        {
+          "node": "nature",
+          "confidence": 0.65
+        },
+        {
+          "node": "sports",
+          "confidence": 0.5
+        },
+        {
+          "node": "adventure",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Classified as Science based on description and episode content.",
+      "display_title": "Gamekeeper Podcast",
+      "blurb": "Highlighting hunters and wildl...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-08-33d0b161",
+      "classified_at": "2026-09-08T16:10:53.377Z"
     },
     "1521502684": {
       "topics": [
@@ -69853,11 +70406,40 @@
     },
     "1521578868": {
       "topics": [
-        "comedy"
+        "space",
+        "comedy",
+        "food",
+        "sports"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.7
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.65
+        },
+        {
+          "node": "food",
+          "confidence": 0.5
+        },
+        {
+          "node": "sports",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Classified as Space based on description and episode content.",
+      "display_title": "SmartLess",
+      "blurb": "\"SmartLess\" with Jason Bateman...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-08-33d0b161",
+      "classified_at": "2026-09-08T16:10:53.377Z"
     },
     "1521589583": {
       "topics": [
@@ -69919,11 +70501,45 @@
     },
     "1521758802": {
       "topics": [
-        "science/physics"
+        "science/physics",
+        "science",
+        "sports",
+        "education",
+        "philosophy"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/physics",
+          "confidence": 0.85
+        },
+        {
+          "node": "science",
+          "confidence": 0.6
+        },
+        {
+          "node": "sports",
+          "confidence": 0.5
+        },
+        {
+          "node": "education",
+          "confidence": 0.5
+        },
+        {
+          "node": "philosophy",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified as Physics based on description and episode content.",
+      "display_title": "Theories of Everything with Curt Jaimungal",
+      "blurb": "Exploring theoretical physics,...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-08-33d0b161",
+      "classified_at": "2026-09-08T16:10:53.377Z"
     },
     "1521795741": {
       "topics": [
@@ -70083,11 +70699,45 @@
     },
     "1522162686": {
       "topics": [
-        "culture/fashion"
+        "science",
+        "culture/fashion",
+        "business",
+        "health",
+        "culture"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture/fashion",
+          "confidence": 0.65
+        },
+        {
+          "node": "business",
+          "confidence": 0.5
+        },
+        {
+          "node": "health",
+          "confidence": 0.5
+        },
+        {
+          "node": "culture",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Classified as Science based on description and episode content.",
+      "display_title": "Skin Anarchy",
+      "blurb": "Skin Anarchy is where beauty m...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-08-33d0b161",
+      "classified_at": "2026-09-08T16:10:53.377Z"
     },
     "1522215911": {
       "topics": [
@@ -70506,11 +71156,44 @@
     "1523312400": {
       "topics": [
         "science/physics",
-        "space"
+        "philosophy",
+        "science",
+        "history",
+        "fiction"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/physics",
+          "confidence": 0.85
+        },
+        {
+          "node": "philosophy",
+          "confidence": 0.7
+        },
+        {
+          "node": "science",
+          "confidence": 0.6
+        },
+        {
+          "node": "history",
+          "confidence": 0.5
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified as Physics based on description and episode content.",
+      "display_title": "Why This Universe?",
+      "blurb": "The biggest ideas in physics, ...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-08-33d0b161",
+      "classified_at": "2026-09-08T16:10:53.377Z"
     },
     "1523318778": {
       "topics": [
@@ -70600,11 +71283,40 @@
     },
     "1523486568": {
       "topics": [
-        "kids-family"
+        "history",
+        "kids-family",
+        "food",
+        "sports"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.7
+        },
+        {
+          "node": "kids-family",
+          "confidence": 0.65
+        },
+        {
+          "node": "food",
+          "confidence": 0.5
+        },
+        {
+          "node": "sports",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Classified as History based on description and episode content.",
+      "display_title": "Million Bazillion",
+      "blurb": "Million Bazillion is a podcast...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-08-33d0b161",
+      "classified_at": "2026-09-08T16:10:53.377Z"
     },
     "1523505575": {
       "topics": [
@@ -70644,11 +71356,40 @@
     },
     "1523584878": {
       "topics": [
-        "computing"
+        "engineering",
+        "computing",
+        "science",
+        "sports"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.65
+        },
+        {
+          "node": "science",
+          "confidence": 0.5
+        },
+        {
+          "node": "sports",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Classified as Engineering based on description and episode content.",
+      "display_title": "MIT Technology Review Narrated",
+      "blurb": "Welcome to MIT Technology Revi...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-08-33d0b161",
+      "classified_at": "2026-09-08T16:10:53.377Z"
     },
     "1523614693": {
       "topics": [
@@ -70666,11 +71407,35 @@
     },
     "1523684874": {
       "topics": [
-        "economics/markets"
+        "economics/markets",
+        "business",
+        "economics"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.65
+        },
+        {
+          "node": "business",
+          "confidence": 0.65
+        },
+        {
+          "node": "economics",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified as Markets based on description and episode content.",
+      "display_title": "The Ramsey Show Highlights",
+      "blurb": "The Ramsey Show Highlights is ...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-08-33d0b161",
+      "classified_at": "2026-09-08T16:10:53.377Z"
     },
     "1523705334": {
       "topics": [
@@ -70726,11 +71491,45 @@
     },
     "1523767362": {
       "topics": [
-        "comedy/stand-up"
+        "comedy/stand-up",
+        "history",
+        "food",
+        "sports",
+        "comedy"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/stand-up",
+          "confidence": 0.65
+        },
+        {
+          "node": "history",
+          "confidence": 0.5
+        },
+        {
+          "node": "food",
+          "confidence": 0.5
+        },
+        {
+          "node": "sports",
+          "confidence": 0.5
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified as Stand-Up based on description and episode content.",
+      "display_title": "Lewis Black's Rantcast",
+      "blurb": "Lewis Black has some things to...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-08-33d0b161",
+      "classified_at": "2026-09-08T16:10:53.377Z"
     },
     "1523778228": {
       "topics": [
@@ -70854,11 +71653,43 @@
     },
     "1524108558": {
       "topics": [
-        "education"
+        "education",
+        "science",
+        "history",
+        "news"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.65
+        },
+        {
+          "node": "science",
+          "confidence": 0.5
+        },
+        {
+          "node": "history",
+          "confidence": 0.5
+        },
+        {
+          "node": "news",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Classified as Education based on description and episode content.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-08-33d0b161",
+      "classified_at": "2026-09-08T16:10:53.377Z"
     },
     "1524124841": {
       "topics": [
@@ -70958,11 +71789,45 @@
     },
     "1524487980": {
       "topics": [
-        "economics/markets"
+        "economics/markets",
+        "business",
+        "economics",
+        "engineering",
+        "education"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.65
+        },
+        {
+          "node": "economics",
+          "confidence": 0.6
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.5
+        },
+        {
+          "node": "education",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified as Markets based on description and episode content.",
+      "display_title": "Halftime Report",
+      "blurb": "Halftime Report is on the fron...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-08-33d0b161",
+      "classified_at": "2026-09-08T16:10:53.377Z"
     },
     "1524503061": {
       "topics": [
@@ -71321,11 +72186,45 @@
     },
     "1525449420": {
       "topics": [
-        "health/fitness"
+        "health/fitness",
+        "health",
+        "fiction",
+        "health",
+        "society"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.85
+        },
+        {
+          "node": "health",
+          "confidence": 0.6
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.5
+        },
+        {
+          "node": "health",
+          "confidence": 0.5
+        },
+        {
+          "node": "society",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified as Fitness based on description and episode content.",
+      "display_title": "Walking is Fitness",
+      "blurb": "Use this podcast to change you...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-08-33d0b161",
+      "classified_at": "2026-09-08T16:10:53.377Z"
     },
     "1525459182": {
       "topics": [
@@ -71395,19 +72294,77 @@
     },
     "1525609638": {
       "topics": [
-        "fiction"
+        "fiction",
+        "food",
+        "travel"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction",
+          "confidence": 0.65
+        },
+        {
+          "node": "food",
+          "confidence": 0.5
+        },
+        {
+          "node": "travel",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified as Fiction & Audio Drama based on description and episode content.",
+      "display_title": "Bedtime Stories - Mrs. Honeybee",
+      "blurb": "My name is Mrs. Honeybee and I...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-08-33d0b161",
+      "classified_at": "2026-09-08T16:10:53.377Z"
     },
     "1525610340": {
       "topics": [
-        "craft/diy-home"
+        "food",
+        "craft/diy-home",
+        "history",
+        "health",
+        "craft"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.7
+        },
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.65
+        },
+        {
+          "node": "history",
+          "confidence": 0.5
+        },
+        {
+          "node": "health",
+          "confidence": 0.5
+        },
+        {
+          "node": "craft",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Classified as Food based on description and episode content.",
+      "display_title": "Everyday Homesteading",
+      "blurb": "Desperate to grow, cook, and p...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-08-33d0b161",
+      "classified_at": "2026-09-08T16:10:53.377Z"
     },
     "1525619563": {
       "topics": [
@@ -71479,11 +72436,47 @@
     "1525689066": {
       "topics": [
         "kids-family/parenting",
-        "psychology"
+        "food",
+        "kids-family",
+        "sports",
+        "health"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.85
+        },
+        {
+          "node": "food",
+          "confidence": 0.7
+        },
+        {
+          "node": "kids-family",
+          "confidence": 0.6
+        },
+        {
+          "node": "sports",
+          "confidence": 0.5
+        },
+        {
+          "node": "health",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Classified as Parenting based on description and episode content.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-08-33d0b161",
+      "classified_at": "2026-09-08T16:10:53.377Z"
     },
     "1525724630": {
       "topics": [
@@ -71502,11 +72495,40 @@
     },
     "1525750530": {
       "topics": [
-        "history"
+        "history",
+        "music",
+        "sports",
+        "true-crime"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.85
+        },
+        {
+          "node": "music",
+          "confidence": 0.7
+        },
+        {
+          "node": "sports",
+          "confidence": 0.5
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified as History based on description and episode content.",
+      "display_title": "Haunted American History",
+      "blurb": "A daily campfire-style podcast...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-08-33d0b161",
+      "classified_at": "2026-09-08T16:10:53.377Z"
     },
     "1525750966": {
       "topics": [
@@ -71519,12 +72541,45 @@
     },
     "1525760514": {
       "topics": [
+        "science",
         "education/courses",
-        "medicine/biology"
+        "food",
+        "education",
+        "education"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.7
+        },
+        {
+          "node": "education/courses",
+          "confidence": 0.65
+        },
+        {
+          "node": "food",
+          "confidence": 0.5
+        },
+        {
+          "node": "education",
+          "confidence": 0.5
+        },
+        {
+          "node": "education",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Classified as Science based on description and episode content.",
+      "display_title": "Teach Me Biology",
+      "blurb": "A Revision Podcast for A-Level...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-08-33d0b161",
+      "classified_at": "2026-09-08T16:10:53.377Z"
     },
     "1525795747": {
       "topics": [
@@ -71543,11 +72598,40 @@
     },
     "1525807626": {
       "topics": [
-        "true-crime"
+        "true-crime",
+        "history",
+        "fiction",
+        "education"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.65
+        },
+        {
+          "node": "history",
+          "confidence": 0.5
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.5
+        },
+        {
+          "node": "education",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified as True Crime based on description and episode content.",
+      "display_title": "The Binge Cases: U R NEXT",
+      "blurb": "Seven years ago, journalist Ju...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-08-33d0b161",
+      "classified_at": "2026-09-08T16:10:53.377Z"
     },
     "1525899214": {
       "topics": [
@@ -71634,11 +72718,45 @@
     },
     "1526052972": {
       "topics": [
-        "health/sexuality"
+        "health/sexuality",
+        "relationships",
+        "science",
+        "food",
+        "health"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/sexuality",
+          "confidence": 0.65
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.65
+        },
+        {
+          "node": "science",
+          "confidence": 0.5
+        },
+        {
+          "node": "food",
+          "confidence": 0.5
+        },
+        {
+          "node": "health",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified as Sexuality based on description and episode content.",
+      "display_title": "Sexual Heroes",
+      "blurb": "Through interviews with author...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-08-33d0b161",
+      "classified_at": "2026-09-08T16:10:53.377Z"
     },
     "1526066728": {
       "topics": [
@@ -71687,11 +72805,40 @@
     },
     "1526220636": {
       "topics": [
-        "tv-film"
+        "tv-film",
+        "news",
+        "history",
+        "music"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.65
+        },
+        {
+          "node": "news",
+          "confidence": 0.65
+        },
+        {
+          "node": "history",
+          "confidence": 0.5
+        },
+        {
+          "node": "music",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified as TV & Film based on description and episode content.",
+      "display_title": "Illuminati Radio",
+      "blurb": "The worlds most dangerous podc...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-08-33d0b161",
+      "classified_at": "2026-09-08T16:10:53.377Z"
     },
     "1526245986": {
       "topics": [
@@ -71753,11 +72900,44 @@
     "1526470404": {
       "topics": [
         "culture/design",
-        "transport/maritime"
+        "engineering",
+        "sports",
+        "education",
+        "culture"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/design",
+          "confidence": 0.65
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.5
+        },
+        {
+          "node": "sports",
+          "confidence": 0.5
+        },
+        {
+          "node": "education",
+          "confidence": 0.5
+        },
+        {
+          "node": "culture",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified as Design based on description and episode content.",
+      "display_title": "The Good Ship Illustration",
+      "blurb": "Welcome to The Good Ship Illus...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-08-33d0b161",
+      "classified_at": "2026-09-08T16:10:53.377Z"
     },
     "1526477480": {
       "topics": [
@@ -71921,12 +73101,44 @@
     "1526731368": {
       "topics": [
         "tv-film/reviews",
-        "tv-film",
-        "math"
+        "business",
+        "fiction",
+        "education",
+        "tv-film"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.65
+        },
+        {
+          "node": "business",
+          "confidence": 0.5
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.5
+        },
+        {
+          "node": "education",
+          "confidence": 0.5
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified as Film & TV Reviews based on description and episode content.",
+      "display_title": "Random Number Generator Horror Podcast No. 9",
+      "blurb": "Helping to make horror films m...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-08-33d0b161",
+      "classified_at": "2026-09-08T16:10:53.377Z"
     },
     "1526743863": {
       "topics": [
@@ -71991,11 +73203,45 @@
     },
     "1526892024": {
       "topics": [
-        "sports/hockey"
+        "sports/hockey",
+        "sports",
+        "sports",
+        "education",
+        "travel"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/hockey",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports",
+          "confidence": 0.7
+        },
+        {
+          "node": "sports",
+          "confidence": 0.6
+        },
+        {
+          "node": "education",
+          "confidence": 0.5
+        },
+        {
+          "node": "travel",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified as Hockey based on description and episode content.",
+      "display_title": "Missin Curfew",
+      "blurb": "Former NHL players and off-ice...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-08-33d0b161",
+      "classified_at": "2026-09-08T16:10:53.377Z"
     },
     "1526912253": {
       "topics": [
@@ -72137,11 +73383,40 @@
     },
     "1527138540": {
       "topics": [
-        "sports"
+        "sports",
+        "food",
+        "news",
+        "education"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.85
+        },
+        {
+          "node": "food",
+          "confidence": 0.5
+        },
+        {
+          "node": "news",
+          "confidence": 0.5
+        },
+        {
+          "node": "education",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified as Sports based on description and episode content.",
+      "display_title": "UnSportsmanLike with Evan, Canty and Michelle",
+      "blurb": "Start your day off your right ...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-08-33d0b161",
+      "classified_at": "2026-09-08T16:10:53.377Z"
     },
     "1527139771": {
       "topics": [
@@ -72264,11 +73539,45 @@
     },
     "1527468906": {
       "topics": [
-        "health/sexuality"
+        "sports",
+        "society",
+        "health/sexuality",
+        "relationships",
+        "health"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.7
+        },
+        {
+          "node": "society",
+          "confidence": 0.7
+        },
+        {
+          "node": "health/sexuality",
+          "confidence": 0.65
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.65
+        },
+        {
+          "node": "health",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Classified as Sports based on description and episode content.",
+      "display_title": "Consenting Adults",
+      "blurb": "Life STARTS at 40, and is fabu...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-08-33d0b161",
+      "classified_at": "2026-09-08T16:10:53.377Z"
     },
     "1527477975": {
       "topics": [
@@ -72289,11 +73598,40 @@
     },
     "1527495372": {
       "topics": [
-        "hobbies"
+        "hobbies",
+        "food",
+        "music",
+        "news"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.65
+        },
+        {
+          "node": "food",
+          "confidence": 0.5
+        },
+        {
+          "node": "music",
+          "confidence": 0.5
+        },
+        {
+          "node": "news",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified as Hobbies & Leisure based on description and episode content.",
+      "display_title": "Bonsai Wire",
+      "blurb": "Plants, art, and experience wi...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-08-33d0b161",
+      "classified_at": "2026-09-08T16:10:53.377Z"
     },
     "1527536282": {
       "topics": [
@@ -72454,11 +73792,45 @@
     },
     "1527946812": {
       "topics": [
-        "education/how-to"
+        "education/how-to",
+        "education",
+        "business",
+        "health",
+        "education"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/how-to",
+          "confidence": 0.85
+        },
+        {
+          "node": "education",
+          "confidence": 0.6
+        },
+        {
+          "node": "business",
+          "confidence": 0.5
+        },
+        {
+          "node": "health",
+          "confidence": 0.5
+        },
+        {
+          "node": "education",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified as How To based on description and episode content.",
+      "display_title": "Beekeeping For Newbees®",
+      "blurb": "Here we will discuss everythin...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-08-33d0b161",
+      "classified_at": "2026-09-08T16:10:53.377Z"
     },
     "1527948382": {
       "topics": [
@@ -72523,11 +73895,35 @@
     },
     "1528202364": {
       "topics": [
-        "tv-film"
+        "tv-film",
+        "sports",
+        "education"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.65
+        },
+        {
+          "node": "sports",
+          "confidence": 0.5
+        },
+        {
+          "node": "education",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified as TV & Film based on description and episode content.",
+      "display_title": "Ruined with Alison Leiby and Halle Kiefer",
+      "blurb": "Ruined is a weekly movie podca...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-08-33d0b161",
+      "classified_at": "2026-09-08T16:10:53.377Z"
     },
     "1528209872": {
       "topics": [
@@ -72539,11 +73935,40 @@
     },
     "1528221174": {
       "topics": [
-        "tv-film/interviews"
+        "history",
+        "sports",
+        "music",
+        "comedy"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.7
+        },
+        {
+          "node": "sports",
+          "confidence": 0.7
+        },
+        {
+          "node": "music",
+          "confidence": 0.7
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Classified as History based on description and episode content.",
+      "display_title": "Backstage With Gentry Thomas",
+      "blurb": "GO BACKSTAGE WITH GENTRY THOMA...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-08-33d0b161",
+      "classified_at": "2026-09-08T16:10:53.377Z"
     },
     "1528234628": {
       "topics": [
@@ -72717,11 +74142,50 @@
     },
     "1528667640": {
       "topics": [
-        "society/government"
+        "society/government",
+        "news/politics",
+        "true-crime",
+        "fiction",
+        "society",
+        "news"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society/government",
+          "confidence": 0.65
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.65
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.5
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.5
+        },
+        {
+          "node": "society",
+          "confidence": 0.45
+        },
+        {
+          "node": "news",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified as Government based on description and episode content.",
+      "display_title": "Generation Green New Deal",
+      "blurb": "A new generation has pushed th...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-08-33d0b161",
+      "classified_at": "2026-09-08T16:10:53.377Z"
     },
     "1528782563": {
       "topics": [
@@ -72748,11 +74212,44 @@
     "1528861092": {
       "topics": [
         "nature/earth-science",
-        "space"
+        "science",
+        "history",
+        "nature",
+        "food"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.85
+        },
+        {
+          "node": "science",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.7
+        },
+        {
+          "node": "nature",
+          "confidence": 0.6
+        },
+        {
+          "node": "food",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified as Earth Science based on description and episode content.",
+      "display_title": "PlanetGeo: The Geology Podcast",
+      "blurb": "A Geology and Earth Science Po...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-08-33d0b161",
+      "classified_at": "2026-09-08T16:10:53.377Z"
     },
     "1528874993": {
       "topics": [
@@ -73097,11 +74594,50 @@
     },
     "1529632122": {
       "topics": [
-        "society/government"
+        "history",
+        "society/government",
+        "news/politics",
+        "fiction",
+        "society",
+        "news"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.7
+        },
+        {
+          "node": "society/government",
+          "confidence": 0.65
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.65
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.5
+        },
+        {
+          "node": "society",
+          "confidence": 0.45
+        },
+        {
+          "node": "news",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Classified as History based on description and episode content.",
+      "display_title": "No Compromise",
+      "blurb": "Winner of the 2021 Pulitzer Pr...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-08-33d0b161",
+      "classified_at": "2026-09-08T16:10:53.377Z"
     },
     "1529653651": {
       "topics": [
@@ -73263,11 +74799,40 @@
     },
     "1530064872": {
       "topics": [
-        "nature"
+        "history",
+        "nature",
+        "food",
+        "sports"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.7
+        },
+        {
+          "node": "nature",
+          "confidence": 0.65
+        },
+        {
+          "node": "food",
+          "confidence": 0.5
+        },
+        {
+          "node": "sports",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Classified as History based on description and episode content.",
+      "display_title": "Tooth & Claw: True Stories of Animal Attacks",
+      "blurb": "True stories of the most extre...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-08-33d0b161",
+      "classified_at": "2026-09-08T16:10:53.377Z"
     },
     "1530075336": {
       "topics": [
@@ -73447,11 +75012,34 @@
     "1530700134": {
       "topics": [
         "tv-film/animation",
-        "gaming"
+        "history",
+        "tv-film"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/animation",
+          "confidence": 0.65
+        },
+        {
+          "node": "history",
+          "confidence": 0.5
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified as Animation & Manga based on description and episode content.",
+      "display_title": "The Millennium Microphone - A Yu-Gi-Oh! Podcast",
+      "blurb": "ShibuyaGato, Shorah, Bio-Roxas...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-08-33d0b161",
+      "classified_at": "2026-09-08T16:10:53.377Z"
     },
     "1530704458": {
       "topics": [
@@ -73557,11 +75145,40 @@
     },
     "1530979002": {
       "topics": [
-        "hobbies"
+        "sports",
+        "space",
+        "hobbies",
+        "education"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.7
+        },
+        {
+          "node": "space",
+          "confidence": 0.7
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.65
+        },
+        {
+          "node": "education",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Classified as Sports based on description and episode content.",
+      "display_title": "Golden Age of Cardboard | A vintage sports",
+      "blurb": "Are you interested in vintage ...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-08-33d0b161",
+      "classified_at": "2026-09-08T16:10:53.377Z"
     },
     "1530996749": {
       "topics": [
@@ -73594,11 +75211,45 @@
     },
     "1531023690": {
       "topics": [
-        "sports/football"
+        "sports/football",
+        "sports",
+        "sports",
+        "fiction",
+        "education"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/football",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports",
+          "confidence": 0.6
+        },
+        {
+          "node": "sports",
+          "confidence": 0.5
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.5
+        },
+        {
+          "node": "education",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classified as Football based on description and episode content.",
+      "display_title": "Club Shay Shay",
+      "blurb": "NFL legend Shannon Sharpe—3x S...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-08-33d0b161",
+      "classified_at": "2026-09-08T16:10:53.377Z"
     },
     "1531030448": {
       "topics": [
@@ -73966,11 +75617,40 @@
     },
     "1532125728": {
       "topics": [
-        "tv-film"
+        "music",
+        "tv-film",
+        "news",
+        "food"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.7
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.65
+        },
+        {
+          "node": "news",
+          "confidence": 0.65
+        },
+        {
+          "node": "food",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Classified as Music based on description and episode content.",
+      "display_title": "Gagging With Jason Lee",
+      "blurb": "Get ready to gag as Hollywood ...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-08-33d0b161",
+      "classified_at": "2026-09-08T16:10:53.377Z"
     },
     "1532129830": {
       "topics": [
@@ -74078,11 +75758,45 @@
     },
     "1532493678": {
       "topics": [
-        "health/sexuality"
+        "food",
+        "health/sexuality",
+        "relationships",
+        "fiction",
+        "health"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.7
+        },
+        {
+          "node": "health/sexuality",
+          "confidence": 0.65
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.65
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.5
+        },
+        {
+          "node": "health",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Classified as Food based on description and episode content.",
+      "display_title": "4OURPLAY - A Swinger Podcast",
+      "blurb": "Join the journey, experiences,...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-08-33d0b161",
+      "classified_at": "2026-09-08T16:10:53.377Z"
     },
     "1532498535": {
       "topics": [
@@ -74110,11 +75824,40 @@
     },
     "1532606850": {
       "topics": [
-        "nature"
+        "science",
+        "nature",
+        "education",
+        "travel"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.7
+        },
+        {
+          "node": "nature",
+          "confidence": 0.65
+        },
+        {
+          "node": "education",
+          "confidence": 0.5
+        },
+        {
+          "node": "travel",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Classified as Science based on description and episode content.",
+      "display_title": "The Science of Birds",
+      "blurb": "The Science of Birds is a ligh...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-08-33d0b161",
+      "classified_at": "2026-09-08T16:10:53.377Z"
     },
     "1532610595": {
       "topics": [
@@ -74213,11 +75956,40 @@
     },
     "1532823144": {
       "topics": [
+        "sports",
+        "comedy",
+        "true-crime",
         "comedy/stand-up"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.7
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.7
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.7
+        },
+        {
+          "node": "comedy/stand-up",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Classified as Sports based on description and episode content.",
+      "display_title": "The Josh Potter Show",
+      "blurb": "Josh Potter sits down weekly t...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-08-33d0b161",
+      "classified_at": "2026-09-08T16:10:53.377Z"
     },
     "1532825728": {
       "topics": [
@@ -74531,11 +76303,40 @@
     },
     "1533675150": {
       "topics": [
-        "tv-film"
+        "space",
+        "tv-film",
+        "news",
+        "engineering"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.7
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.65
+        },
+        {
+          "node": "news",
+          "confidence": 0.65
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Classified as Space based on description and episode content.",
+      "display_title": "The Other Side of Midnight with Walter Sterling",
+      "blurb": "The Other Side of Midnight wit...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-08-33d0b161",
+      "classified_at": "2026-09-08T16:10:53.377Z"
     },
     "1533675756": {
       "topics": [
