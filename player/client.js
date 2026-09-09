@@ -358,7 +358,9 @@ function buildUI() {
      what was playing — the founder lost an episode mid-listen to a control whose
      only visible job was "get this off my screen". It now collapses to the mini
      bar, the same thing `fp-collapse` below does, and stopping has its own
-     separately labelled control (`fp-stop`, also below). Nothing about the stop
+     separately labelled control (`fp-stop`, also below). styles.css shows it only
+     while the sheet is expanded — see the rule under `.fp-close` there — because
+     on an already-collapsed bar it would be a control with nothing left to do. Nothing about the stop
      itself changed — same `stopAndClose()`, same effects — only which control
      reaches it. Deliberately NOT a long-press: a destructive action hidden behind
      a timed gesture is undiscoverable and, in a car, unsafe. */

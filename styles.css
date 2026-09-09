@@ -1225,6 +1225,18 @@ body.ui-v2.fp-open.fp-expanded {
 }
 .fp-play { background: var(--accent); border-color: var(--accent); color: #fff; box-shadow: var(--shadow); }
 .fp-close { font-size: 0.75rem; color: var(--text-dim); }
+/* U-13 follow-up: the ✕ belongs to the EXPANDED sheet, not to the mini bar it
+   sits in. Once closing means collapse (client.js's `fp-close` comment), a ✕ on
+   an already-collapsed bar has nothing to collapse — a visible control that does
+   nothing is a dead target, and on the mini bar it would also read as the
+   dismiss this card deliberately removed. Stopping is `.fp-stop`, in the sheet.
+
+   `display: none` rather than the `hidden` attribute, on purpose: `[hidden]` is
+   a UA-stylesheet rule and ANY author `display` declaration beats it (the trap
+   test/home-layout.test.js's BUG 3 documents and app.js's `renderTabBar` comment
+   restates). `.fp-play, .fp-close` declares no `display` today, so `hidden` would
+   work — and would silently stop working the day one is added. */
+body:not(.fp-expanded) .fp-close { display: none; }
 
 .fp-sheet { padding: 4px 16px 16px; border-top: 1px solid var(--line); }
 .fp-s-title { font-family: var(--serif); font-size: 1.1rem; font-weight: 700; margin: 8px 0 2px; color: var(--text); }

@@ -19,8 +19,13 @@
  *  2. F18 — closing collapses, it does not stop. Tapping the ✕ leaves the
  *     audio element playing and the mini bar docked above the tab bar, tab
  *     navigation still works, and only the separately labelled Stop ends it.
- *     MUTATION: point `fp-close` back at `stopAndClose()` -> the element is
- *     paused and the bar is gone at the first assertion after the tap.
+ *     The collapsed bar then exposes NO close-or-stop control at all — the ✕
+ *     belongs to the expanded sheet, and a ✕ on the mini bar would be a
+ *     visible control with nothing left to close. MUTATION: point `fp-close`
+ *     back at `stopAndClose()` -> the element is paused and the bar is gone at
+ *     the first assertion after the tap. MUTATION: drop
+ *     `body:not(.fp-expanded) .fp-close { display: none }` from styles.css ->
+ *     the dead-target sweep finds a visible "Collapse player" on the bar.
  *
  *  3. F18 — no control anywhere still carries the old "Stop and close
  *     player" accessible name. MUTATION: restore that aria-label on any
@@ -183,6 +188,9 @@ test("closing the expanded sheet collapses to a mini bar that keeps playing, and
   await page.locator(".fp-info").click();
   await expect(page.locator(".fp-sheet")).toBeVisible();
 
+  /* The ✕ is the expanded sheet's control, so it is reachable exactly here. */
+  await expect(page.locator(".fp-close")).toBeVisible();
+
   const beforeClose = await audioState(page);
   await page.locator(".fp-close").click();
 
@@ -224,6 +232,22 @@ test("closing the expanded sheet collapses to a mini bar that keeps playing, and
     stack.hitInsidePlayer,
     `the mini bar is not hit-testable — a tap on it lands on "${stack.landedOn}"`
   ).toBe(true);
+
+  /* 3b. And the collapsed bar offers no way to close or stop. The ✕ went with
+         the sheet; Stop lives inside it. Asserted as a sweep of every control
+         the listener can actually SEE rather than as `.fp-close` being hidden,
+         because the defect is "a visible control that does nothing", which any
+         future control could reintroduce under a different class name. */
+  const exposed = await page.evaluate(() =>
+    [...document.querySelectorAll("#foray-player button, #foray-player a")]
+      .filter((el) => el.getClientRects().length > 0)
+      .map((el) => (el.getAttribute("aria-label") || el.textContent || "").trim())
+  );
+  expect(exposed.length, "the collapsed mini bar exposes no controls at all").toBeGreaterThan(0);
+  expect(
+    exposed.filter((name) => /\b(stop|close|collapse|dismiss)\b/i.test(name)),
+    `the collapsed mini bar still exposes a close/stop control; visible controls are ${JSON.stringify(exposed)}`
+  ).toEqual([]);
 
   /* 4. The app is usable again: tab navigation works with the bar up, and
         the bar survives the navigation (it is the way back). */
