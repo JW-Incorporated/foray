@@ -1426,7 +1426,13 @@ const BACKEND_FLOORS = {
      through the two-step, per-slot writer — the fabricated citation, the
      griddle slug, the two-word span, the purpose quoted back, the
      zero-source Frame — and pins the dry-run path to quoting real held text. */
-  "test/writeNarration.test.ts": 40,
+  /* F-50/F-51 (generation run 2) raised this from 40: run 2's own act 1 p2 —
+     a purpose the retrieved document contradicts — is now a fixture, and the
+     suite pins both halves of the fix (a page that reports the tension passes
+     and is flagged on both sides; a third rejection keeps the page unverified
+     instead of throwing), plus the per-slot resume hooks and the cue provider
+     the default evidence gatherer was silently dropping. */
+  "test/writeNarration.test.ts": 55,
   /* Stage 3b (kanban t_567b570f, docs/show-pages-plan.md §Stage 3): shared
      catalogue store CRUD (scoping by show_id, upsert-not-duplicate on
      (show_id, guid), published_at ordering, feed-state round-trip). */
@@ -1466,7 +1472,9 @@ const BACKEND_FLOORS = {
   /* WS-D2 streaming publish (generation fix plan 2026-09-09): the partial
      candidate written after each act, the driver's per-act rewrite, and the
      private status read path. */
-  "test/generateForays.test.ts": 4,
+  /* Requirements §8.10 raised this from 4: the driver passes the checkpoint
+     key as `sessionId`, which is the only thing that arms EPISODE_BUDGET_USD. */
+  "test/generateForays.test.ts": 5,
   "test/generationStatus.test.ts": 4,
   "test/partialCandidate.test.ts": 6,
   /* WS-F robustness (docs/curation/generation-fix-plan-2026-09-09.md), closing
@@ -1485,7 +1493,11 @@ const BACKEND_FLOORS = {
   "test/generateForaysArgs.test.ts": 10,
   "test/models.test.ts": 7,
   "test/researchTopicFilter.test.ts": 17,
-  "test/runPipelineCheckpoint.test.ts": 10,
+  /* F-51 raised this from 10: `narrate:<act>:<slot>` keys, so a run that dies
+     partway through an act re-pays only for the slots that never landed, and
+     the per-Foray budget cap the batch path left inert by never passing a
+     sessionId. */
+  "test/runPipelineCheckpoint.test.ts": 13,
   "test/spineStructure.test.ts": 14,
   /* WS-C: §4.5's topic gate (taxonomyFamily.ts). A family is a node's LINEAGE
      in data/taxonomy.json — itself, its ancestors, its descendants — not a
@@ -1498,7 +1510,10 @@ const BACKEND_FLOORS = {
      attribution-stability / tape-relevance metrics and the publish gate, plus
      the process-wide token-usage collector every Anthropic builder feeds. */
   "test/usageTracking.test.ts": 4,
-  "test/veracityMetrics.test.ts": 31,
+  /* F-50/F-51 raised this from 31: `unverifiedPages` (the count the publish
+     gate now refuses on, replacing writeNarration's throw) and
+     `purposeRevisedPages` (reported, never gated). */
+  "test/veracityMetrics.test.ts": 40,
   /* WS-A evidence-first narration (generation fix plan 2026-09-09): the
      per-beat evidence pack (tape cue window + up to three retrieved print
      passages, cached by claim hash) and the mechanical narration rules run 1's

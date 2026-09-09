@@ -60,6 +60,9 @@ const RawVerifyResultSchema = z.object({
       pageId: z.string(),
       claimsSupported: z.boolean(),
       purposeAccomplished: z.boolean(),
+      /* F-50, and optional for the same reason as the writer's flag: a
+         reply that does not answer it has not said "no". */
+      purposeRevised: z.boolean().optional(),
       contestedHandled: z.boolean(),
       notes: z.string().optional()
     })
@@ -148,8 +151,10 @@ function buildVerifyPrompt(request: NarrationVerifyRequest): string {
     "",
     "1. claimsSupported — does every statement the script makes about the world follow from the quote attached to it?",
     "   A quote that is about the right subject but does not say what the claim says is NOT support.",
-    "2. purposeAccomplished — does the script do the job its purpose describes? A page that is accurate but",
-    "   re-tells what earlier pages covered, or that drops the concept its purpose names, fails this.",
+    "2. purposeAccomplished — does the script address the SUBJECT its purpose names, using the evidence it was given?",
+    "   Contradicting or qualifying the purpose from the documents ACCOMPLISHES it — a purpose is editorial direction and can",
+    "   be wrong. Only a page that ignores the subject, or re-tells what earlier pages covered, fails this.",
+    "   purposeRevised — true when the page departs from its purpose because the evidence did. Your own judgement, not the writer's.",
     "3. contestedHandled — read the sources: if reputable sources actively disagree about something the script",
     "   asserts, the script must say the point is disputed, in any natural wording. If nothing is genuinely",
     "   contested, this is true. Judge the substance, not the presence of any particular phrase.",
@@ -159,8 +164,8 @@ function buildVerifyPrompt(request: NarrationVerifyRequest): string {
     request.pages.map(verifyPageBlock).join("\n\n"),
     "",
     "Respond with ONLY a single JSON object, no markdown fences, no other text, matching exactly:",
-    '{"pages": [{"pageId": string, "claimsSupported": boolean, "purposeAccomplished": boolean, "contestedHandled": boolean, ' +
-      '"notes": string (required and specific whenever any answer is false)}]}'
+    '{"pages": [{"pageId": string, "claimsSupported": boolean, "purposeAccomplished": boolean, "purposeRevised": boolean, ' +
+      '"contestedHandled": boolean, "notes": string (required and specific whenever any answer is false)}]}'
   ].join("\n");
 }
 

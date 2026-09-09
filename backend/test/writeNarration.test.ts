@@ -6,11 +6,19 @@ import {
   writeNarration,
   decideConnectiveNarration,
   allWrittenNarration,
+  evidenceGathererFor,
   heldDocsOf,
   NarrationWriteError,
   type WriteNarrationOptions,
-  type WrittenAct
+  type WrittenAct,
+  type WrittenSlot
 } from "../src/generation/writeNarration";
+import { DefaultEvidenceGatherer } from "../src/generation/gatherEvidence";
+import { StubExternalResearcher } from "../src/generation/StubExternalResearcher";
+import { NullTranscriptCueProvider } from "../src/generation/transcriptArchiveLookup";
+import { scriptIsAboutPurpose } from "../src/generation/StubNarrationVerifierBuilder";
+import type { CatalogueData } from "../src/generation/catalogueLookup";
+import type { TranscriptCue, TranscriptCueProvider, TranscriptDigestEntry } from "../src/generation/transcriptArchiveLookup";
 import { StubNarrationWriterBuilder } from "../src/generation/StubNarrationWriterBuilder";
 import { StubNarrationVerifierBuilder } from "../src/generation/StubNarrationVerifierBuilder";
 import { createNarrationWriterBuilder } from "../src/generation/createNarrationWriterBuilder";
@@ -36,6 +44,7 @@ import {
   disclosureNarratedBeat,
   disclosureTemplate,
   normalizeForQuoteMatch,
+  purposeWasRevised,
   validateNarratedBeat,
   type NarrationMode,
   type NarratedBeat
@@ -122,7 +131,7 @@ function tapeAct(claim: string, itemId = "item-1"): SourcedAct[] {
  * can replay a run-1 failure and then its correction.
  */
 function scriptedWriter(
-  attempts: Array<{ claims: SelectedClaim[]; script?: string; usedClaims?: number[] }>
+  attempts: Array<{ claims: SelectedClaim[]; script?: string; usedClaims?: number[]; purposeRevised?: boolean }>
 ): NarrationWriterBuilder & { selectCalls: number; writeCalls: number; retryNotes: Array<string | undefined> } {
   const w = {
     providerName: "scripted",
@@ -143,6 +152,7 @@ function scriptedWriter(
           pageId: p.pageId,
           script: turn.script ?? DEFAULT_SCRIPT,
           usedClaims: turn.usedClaims ?? p.claims.map((_, i) => i),
+          ...(turn.purposeRevised === undefined ? {} : { purposeRevised: turn.purposeRevised }),
           pronunciationHints: []
         }))
       };
@@ -445,11 +455,19 @@ describe("writeNarration — the verifier is a genuinely separate call from the 
     async (field) => {
       const writer = scriptedWriter([{ claims: [GOOD_CLAIM] }]);
       const verifier = rejectingVerifier(field);
-      await expect(
-        writeNarration(narrationAct("A claim about the connection."), { writer, verifier, evidence: fixtureGatherer() }, voice, ctx)
-      ).rejects.toThrow(NarrationWriteError);
+      /* F-51: three rejections no longer throw — the page is kept
+         unverified and the gate refuses it downstream. What this test is
+         about is unchanged: the rejection is REAL (three attempts were
+         spent) and its reason reached the next attempt. */
+      const written = await writeNarration(
+        narrationAct("A claim about the connection."),
+        { writer, verifier, evidence: fixtureGatherer() },
+        voice,
+        ctx
+      );
       expect(verifier.calls).toBe(3);
       expect(writer.retryNotes[1]).toMatch(/simulated rejection/);
+      expect(allWrittenNarration(written)[0]!.verified).toBe(false);
     }
   );
 
@@ -768,12 +786,18 @@ describe("writeNarration — generation run 1 (2026-09-09) regressions", () => {
     expect(allWrittenNarration(written)).toHaveLength(0);
   });
 
-  it("still fails the Foray when a NARRATION beat's page is rejected three times — its page is the beat's content", async () => {
+  it("keeps a NARRATION beat's page unverified after three rejections instead of failing the Foray (F-51)", async () => {
     const verifier = rejectingVerifier();
-    await expect(
-      writeNarration(narrationAct("A claim about the connection."), { writer: new StubNarrationWriterBuilder(), verifier, evidence: fixtureGatherer() }, voice, ctx)
-    ).rejects.toThrow(NarrationWriteError);
+    const written = await writeNarration(
+      narrationAct("A claim about the connection."),
+      { writer: new StubNarrationWriterBuilder(), verifier, evidence: fixtureGatherer() },
+      voice,
+      ctx
+    );
     expect(verifier.calls).toBe(3);
+    const page = allWrittenNarration(written)[0]!;
+    expect(page.verified).toBe(false);
+    expect(page.script.length).toBeGreaterThan(0);
   });
 
   it("a Patch page with no evidence at all is rejected rather than written unsourced", async () => {
@@ -801,5 +825,445 @@ describe("containsContestedLanguage — F-43: natural phrasings count, not only 
   });
   it("still rejects a script that asserts without hedging", () => {
     expect(containsContestedLanguage("The screens choked the channel and the dam went over the top.")).toBe(false);
+  });
+});
+
+
+/* ------------------------------------------------------------------ *
+ * F-50 / F-51 — generation run 2, act 1, slot "Where Did This Number
+ * Come From?", page p2. The real case, used as the fixture for both
+ * findings because it is the one that ended the run.
+ * ------------------------------------------------------------------ */
+
+/** The deepen stage's purpose for p2, verbatim. It asserts a causal
+ * account of why feature stores exist. */
+const FEATURE_STORE_PURPOSE =
+  "The feature store exists as a product category for one reason: those two code paths drift apart silently, " +
+  "and the drift stays invisible until the model's live performance quietly diverges from its offline numbers " +
+  "and someone finally goes looking.";
+
+/** One of the documents WS-A's retrieval actually returned for that beat,
+ * and the reason the page could not be written: it contradicts the
+ * purpose it was gathered for. */
+const SKEW_DOC: EvidenceDoc = {
+  docId: "print:feature-stores-skew",
+  kind: "print" as const,
+  title: "Why Feature Stores Didn't Fix Training-Serving Skew",
+  url: "https://example.org/feature-stores-skew",
+  retrievedAt: "2026-09-09T15:00:00.000Z",
+  text:
+    "Feature stores manage data artifacts. They do not control execution. " +
+    "Skew is caused by movement - every time a feature crosses a system boundary, execution context changes, " +
+    "and consistency becomes probabilistic rather than guaranteed."
+};
+
+/** The claim attempts 2 and 3 were allowed to make. */
+const SKEW_CLAIM: SelectedClaim = {
+  claimText: "the people who build feature stores say they do not control execution",
+  quote: "Feature stores manage data artifacts. They do not control execution.",
+  docId: SKEW_DOC.docId,
+  contested: false
+};
+
+/** The page neither prompt permitted before F-50: it names the purpose's
+ * subject and then reports what the documents say about it. Patch band. */
+const TENSION_SCRIPT =
+  "The feature store was sold as the fix for exactly this. Ask the people who built them and you get a flatter answer: " +
+  "they manage data artifacts, and they do not control execution. Skew comes from movement. Every time a feature crosses " +
+  "a system boundary the execution context changes, and consistency stops being a guarantee and starts being a probability. " +
+  "So the category exists, and the drift it was meant to end is still there, one boundary further down.";
+
+/** A verifier that answers F-50's question the way the fix defines it:
+ * the page addressed the purpose's subject with the evidence it had,
+ * including by contradicting the purpose, and it says so. */
+function purposeAwareVerifier(): NarrationVerifierBuilder & { calls: number } {
+  const v = {
+    providerName: "purpose-aware",
+    calls: 0,
+    async verifySlot(request: NarrationVerifyRequest): Promise<NarrationVerifyResult> {
+      v.calls++;
+      return {
+        pages: request.pages.map((p) => ({
+          pageId: p.pageId,
+          claimsSupported: true,
+          purposeAccomplished: scriptIsAboutPurpose(p.script, p.purpose),
+          purposeRevised: /do not control execution/.test(p.script),
+          contestedHandled: true,
+          ...(scriptIsAboutPurpose(p.script, p.purpose) ? {} : { notes: "the concept the purpose names is dropped" })
+        }))
+      };
+    }
+  };
+  return v;
+}
+
+describe("F-50 — a page may correct its purpose from the evidence", () => {
+  it("passes the page that reports the contradiction, and flags it on both sides", async () => {
+    /* Run 2's attempt 1 asserted the purpose and was rejected as
+       unsupported; attempts 2 and 3 narrowed to the documents, dropped the
+       words "feature store" entirely, and were rejected for abandoning the
+       purpose. This is the third page — the one that was always the right
+       answer — and it now passes. */
+    const writer = scriptedWriter([{ claims: [SKEW_CLAIM], script: TENSION_SCRIPT, purposeRevised: true }]);
+    const verifier = purposeAwareVerifier();
+
+    const written = await writeNarration(
+      narrationAct(FEATURE_STORE_PURPOSE),
+      { writer, verifier, evidence: fixtureGatherer([SKEW_DOC]) },
+      voice,
+      ctx
+    );
+
+    const page = allWrittenNarration(written)[0]!;
+    expect(page.verified).toBe(true);
+    expect(verifier.calls).toBe(1);
+    expect(writer.writeCalls).toBe(1);
+    expect(page.purposeAccomplished).toBe(true);
+    /* Both flags, kept separately: the writer declared the departure and
+       the verifier judged it independently (§4.7 rule 2). */
+    expect(page.purposeRevised).toBe(true);
+    expect(page.purposeRevisedByVerifier).toBe(true);
+    expect(purposeWasRevised(page)).toBe(true);
+  });
+
+  it("the writer's flag alone is enough to find the page, and the verifier's alone is too", () => {
+    expect(purposeWasRevised({ purposeRevised: true })).toBe(true);
+    expect(purposeWasRevised({ purposeRevisedByVerifier: true })).toBe(true);
+    expect(purposeWasRevised({})).toBe(false);
+    expect(purposeWasRevised({ purposeRevised: false, purposeRevisedByVerifier: false })).toBe(false);
+  });
+
+  it("leaves an ordinary page unflagged — the permission is recorded only when it is taken", async () => {
+    const written = await writeNarration(narrationAct("Show what the connection was asked to hold."), makeOptions(), voice, ctx);
+    const page = allWrittenNarration(written)[0]!;
+    expect(page.purposeRevised).toBeUndefined();
+    expect(purposeWasRevised(page)).toBe(false);
+  });
+
+  it("the structural purpose test passes a script that contradicts its purpose but keeps its subject", () => {
+    /* The stub verifier's `purposeAccomplished` is the same question F-50
+       narrowed the real one to — "did the page keep the subject", not "did
+       the page agree" — so a contradiction passes and a page about
+       something else does not. */
+    expect(scriptIsAboutPurpose(TENSION_SCRIPT, FEATURE_STORE_PURPOSE)).toBe(true);
+    expect(scriptIsAboutPurpose("A single welded rod held both walkways, and nobody redrew it.", FEATURE_STORE_PURPOSE)).toBe(false);
+  });
+
+  it("still rejects the page that drops the purpose's subject altogether (F-41 is not weakened)", async () => {
+    /* Run 2's attempts 2 and 3, exactly: sourced, accurate, and never once
+       about feature stores. */
+    const droppedSubjectScript =
+      "Movement is what does it. Every time a value crosses a boundary, the context around it changes, and what came out " +
+      "of one side is not quite what arrives at the other. Consistency stops being something anyone can promise and becomes " +
+      "something you can only measure afterwards. That is a different kind of engineering problem than the one most teams " +
+      "believe they are solving when they draw the diagram on the whiteboard.";
+    const writer = scriptedWriter([{ claims: [SKEW_CLAIM], script: droppedSubjectScript }]);
+    const written = await writeNarration(
+      narrationAct(FEATURE_STORE_PURPOSE),
+      { writer, verifier: purposeAwareVerifier(), evidence: fixtureGatherer([SKEW_DOC]) },
+      voice,
+      ctx
+    );
+    const page = allWrittenNarration(written)[0]!;
+    expect(page.verified).toBe(false);
+    expect(page.verifierNotes ?? "").toMatch(/the concept the purpose names is dropped/);
+  });
+});
+
+describe("F-51 — a page never kills the Foray; the gate decides", () => {
+  it("keeps the last attempt with verified:false, its attempts history and the verifier's final objection", async () => {
+    const writer = scriptedWriter([{ claims: [SKEW_CLAIM], script: TENSION_SCRIPT }]);
+    const verifier = rejectingVerifier("purposeAccomplished");
+
+    const written = await writeNarration(
+      narrationAct(FEATURE_STORE_PURPOSE),
+      { writer, verifier, evidence: fixtureGatherer([SKEW_DOC]) },
+      voice,
+      ctx
+    );
+
+    const page = allWrittenNarration(written)[0]!;
+    expect(page.verified).toBe(false);
+    expect(page.script).toBe(TENSION_SCRIPT);
+    expect(page.purposeAccomplished).toBe(false);
+    expect(page.verifierNotes).toMatch(/simulated rejection/);
+    expect(page.attempts).toHaveLength(3);
+    expect(page.attempts!.every((a) => a.rejected)).toBe(true);
+    /* The evidence still travels with it, so WS-B can score the page it
+       refuses rather than reporting it as unmeasurable. */
+    expect(page.evidence!.some((d) => d.docId === SKEW_DOC.docId)).toBe(true);
+  });
+
+  it("the rest of the slot survives the page that failed — run 2 lost ten verified pages to one", async () => {
+    /* Two narration beats in one slot: one the verifier accepts, one it
+       never will. Before F-51 the second threw and took the first with it. */
+    const acts: SourcedAct[] = [
+      {
+        title: "Act",
+        slots: [
+          {
+            title: "Where Did This Number Come From?",
+            beats: [
+              {
+                sourcing: "narration",
+                claim: "Show what the connection was asked to hold.",
+                exploration: false,
+                narration: { mode: "Patch", reason: "t" }
+              },
+              { sourcing: "narration", claim: FEATURE_STORE_PURPOSE, exploration: false, narration: { mode: "Patch", reason: "t" } }
+            ]
+          }
+        ]
+      }
+    ];
+    const verifier: NarrationVerifierBuilder = {
+      providerName: "one-bad-page",
+      async verifySlot(request: NarrationVerifyRequest): Promise<NarrationVerifyResult> {
+        return {
+          pages: request.pages.map((p) => {
+            const doomed = p.purpose === FEATURE_STORE_PURPOSE;
+            return {
+              pageId: p.pageId,
+              claimsSupported: !doomed,
+              purposeAccomplished: true,
+              contestedHandled: true,
+              ...(doomed ? { notes: "the quote does not say what the claim says" } : {})
+            };
+          })
+        };
+      }
+    };
+
+    const written = await writeNarration(
+      acts,
+      { writer: new StubNarrationWriterBuilder(), verifier, evidence: fixtureGatherer([SKEW_DOC]) },
+      voice,
+      ctx
+    );
+    const pages = allWrittenNarration(written);
+    expect(pages).toHaveLength(2);
+    expect(pages.filter((p) => p.verified)).toHaveLength(1);
+    expect(pages.filter((p) => !p.verified)).toHaveLength(1);
+  });
+
+  it("still throws NarrationWriteError when no page was ever written at all", async () => {
+    /* The one unrecoverable case left: every attempt was rejected before
+       the prose call ran, so there is no script to keep. */
+    const writer = scriptedWriter([{ claims: [] }]);
+    await expect(
+      writeNarration(
+        narrationAct("A claim nothing could be retrieved for."),
+        { writer, verifier: passingVerifier(), evidence: fixtureGatherer([]) },
+        voice,
+        ctx
+      )
+    ).rejects.toThrow(NarrationWriteError);
+  });
+
+  it("a connective page is still DROPPED rather than kept unverified — its beat is the tape", async () => {
+    const verifier = rejectingVerifier();
+    const written = await writeNarration(
+      tapeAct("Tape about a discovery."),
+      { writer: new StubNarrationWriterBuilder(), verifier, evidence: fixtureGatherer() },
+      voice,
+      ctx
+    );
+    const beat = written[0]!.slots[0]!.beats[0]!;
+    expect(beat.sourcing === "tape" && beat.connectiveNarration).toBeFalsy();
+    expect(allWrittenNarration(written)).toHaveLength(0);
+  });
+});
+
+describe("F-51 — per-slot checkpoint inside an act", () => {
+  function twoSlotAct(): SourcedAct[] {
+    return [
+      {
+        title: "Act",
+        slots: [
+          {
+            title: "Slot A",
+            beats: [
+              {
+                sourcing: "narration",
+                claim: "Claim A about the connection.",
+                exploration: false,
+                narration: { mode: "Patch", reason: "t" }
+              }
+            ]
+          },
+          {
+            title: "Slot B",
+            beats: [
+              {
+                sourcing: "narration",
+                claim: "Claim B about the connection.",
+                exploration: false,
+                narration: { mode: "Patch", reason: "t" }
+              }
+            ]
+          }
+        ]
+      }
+    ];
+  }
+
+  it("replays only the slot the resume hook does not already have", async () => {
+    const banked: Array<{ act: number; slot: number; title: string }> = [];
+    const writer = new StubNarrationWriterBuilder();
+    let writeCalls = 0;
+    const realWrite = writer.writePages.bind(writer);
+    writer.writePages = async (request, buildCtx) => {
+      writeCalls++;
+      return realWrite(request, buildCtx);
+    };
+
+    /* Slot A as a previous run left it on disk. */
+    const first = await writeNarration(twoSlotAct(), makeOptions(), voice, ctx);
+    const slotA: WrittenSlot = first[0]!.slots[0]!;
+
+    const written = await writeNarration(
+      twoSlotAct(),
+      {
+        writer,
+        verifier: new StubNarrationVerifierBuilder(),
+        evidence: fixtureGatherer(),
+        resume: (actIndex, slotIndex) => (actIndex === 0 && slotIndex === 0 ? slotA : undefined),
+        onSlotWritten: (act, slot, value) => {
+          banked.push({ act, slot, title: value.title });
+        }
+      },
+      voice,
+      ctx
+    );
+
+    /* One slot written, one replayed: the re-run pays for what is missing
+       and nothing else. */
+    expect(writeCalls).toBe(1);
+    expect(written[0]!.slots[0]).toEqual(slotA);
+    expect(written[0]!.slots[1]!.title).toBe("Slot B");
+    /* And only the slot actually written is banked — a resumed slot is
+       already stored. */
+    expect(banked).toEqual([{ act: 0, slot: 1, title: "Slot B" }]);
+  });
+
+  it("banks a finished slot even when a sibling slot throws", async () => {
+    const banked: string[] = [];
+    const writer = new StubNarrationWriterBuilder();
+    const realWrite = writer.writePages.bind(writer);
+    let firstSlotTitle: string | null = null;
+    writer.writePages = async (request, buildCtx) => {
+      if (firstSlotTitle === null) firstSlotTitle = request.slotTitle;
+      if (request.slotTitle !== firstSlotTitle) {
+        /* Slow enough that the healthy slot certainly finished and banked
+           first — which is the property under test. */
+        await new Promise((r) => setTimeout(r, 10));
+        throw new Error("provider went away mid-slot");
+      }
+      return realWrite(request, buildCtx);
+    };
+
+    await expect(
+      writeNarration(
+        twoSlotAct(),
+        {
+          writer,
+          verifier: new StubNarrationVerifierBuilder(),
+          evidence: fixtureGatherer(),
+          onSlotWritten: (_act, _slot, value) => {
+            banked.push(value.title);
+          }
+        },
+        voice,
+        ctx
+      )
+    ).rejects.toThrow(/provider went away/);
+
+    expect(banked).toHaveLength(1);
+  });
+
+  it("behaves exactly as before when no hooks are supplied", async () => {
+    const written = await writeNarration(twoSlotAct(), makeOptions(), voice, ctx);
+    expect(written[0]!.slots.map((s) => s.title)).toEqual(["Slot A", "Slot B"]);
+    expect(allWrittenNarration(written)).toHaveLength(2);
+  });
+});
+
+describe("the evidence gatherer this stage builds carries the cue provider (requirements §8.1)", () => {
+  const DIGEST: TranscriptDigestEntry = {
+    show_id: "bread-from-home",
+    show_title: "Bread From Home",
+    guid: "bfh-0042",
+    title: "The griddle and the bakestone",
+    cues: 3
+  };
+  const CATALOGUE: CatalogueData = {
+    items: [
+      { id: "bread-from-home--griddle-bakestone", show: "Bread From Home", title: "The griddle and the bakestone", topics: [], hook: "" }
+    ],
+    itemTags: {},
+    concepts: {},
+    shows: [{ show_id: "bread-from-home", title: "Bread From Home", taxonomy_node_ids: [] }]
+  };
+  const CUES: TranscriptCue[] = [
+    { text: "So the bakestone came first, and the iron griddle only arrives once cast iron is cheap.", start_sec: 100, end_sec: 115 },
+    { text: "And that is the part everybody gets backwards.", start_sec: 115, end_sec: 125 }
+  ];
+  class FixedCueProvider implements TranscriptCueProvider {
+    getCues(): TranscriptCue[] | null {
+      return CUES;
+    }
+  }
+
+  it("passes a supplied cue provider through to the default gatherer instead of dropping it", () => {
+    /* The bug: `writeNarration` called `createEvidenceGatherer()` with no
+       arguments, so every tape beat's pack was built against
+       `NullTranscriptCueProvider` — the episode title and nothing the
+       episode said — even on the machine holding the transcripts. */
+    const probe = new FixedCueProvider();
+    const withProvider = evidenceGathererFor({
+      writer: new StubNarrationWriterBuilder(),
+      verifier: new StubNarrationVerifierBuilder(),
+      cueProvider: probe
+    });
+    expect(withProvider).toBeInstanceOf(DefaultEvidenceGatherer);
+    expect((withProvider as DefaultEvidenceGatherer).cueProvider).toBe(probe);
+
+    const without = evidenceGathererFor({ writer: new StubNarrationWriterBuilder(), verifier: new StubNarrationVerifierBuilder() });
+    expect((without as DefaultEvidenceGatherer).cueProvider).toBeInstanceOf(NullTranscriptCueProvider);
+  });
+
+  it("an injected gatherer is used as given — the cue-provider option is for the default only", () => {
+    const injected = fixtureGatherer();
+    expect(
+      evidenceGathererFor({
+        writer: new StubNarrationWriterBuilder(),
+        verifier: new StubNarrationVerifierBuilder(),
+        evidence: injected,
+        cueProvider: new FixedCueProvider()
+      })
+    ).toBe(injected);
+  });
+
+  it("a tape beat's page then holds a tape: document carrying the cue window, not just the episode title", async () => {
+    const gatherer = new DefaultEvidenceGatherer({
+      researcher: new StubExternalResearcher(),
+      cueProvider: new FixedCueProvider(),
+      catalogue: CATALOGUE,
+      transcriptArchive: [DIGEST],
+      cacheDir: null
+    });
+
+    const written = await writeNarration(
+      tapeAct("Tape about the bakestone.", "bread-from-home--griddle-bakestone"),
+      { writer: new StubNarrationWriterBuilder(), verifier: new StubNarrationVerifierBuilder(), evidence: gatherer },
+      voice,
+      ctx
+    );
+
+    const page = allWrittenNarration(written)[0]!;
+    const tapeDoc = page.evidence!.find((d) => d.docId.startsWith("tape:"));
+    expect(tapeDoc).toBeDefined();
+    expect(tapeDoc!.text).toContain("the bakestone came first");
+    expect(tapeDoc!.title).toBe("Bread From Home \u2014 The griddle and the bakestone");
   });
 });

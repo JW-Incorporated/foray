@@ -6,6 +6,8 @@ import {
   computePurposeFidelity,
   computeTapeRelevance,
   computePagesDropped,
+  computeUnverifiedPages,
+  computePurposeRevisedPages,
   computeCallsPerBeat,
   countAttemptedPages,
   buildVeracityMetrics,
@@ -387,6 +389,9 @@ describe("evaluateVeracityGate", () => {
     firstAttemptPassRate: 0.8,
     callsPerBeat: 1.4,
     pagesDropped: 0,
+    unverifiedPages: 0,
+    unverifiedPageDetails: [],
+    purposeRevisedPages: 0,
     pipelineTokens: 1000,
     stageTimings: []
   });
@@ -448,5 +453,133 @@ describe("evaluateVeracityGate", () => {
       tapeRelevanceAnchors: [{ itemId: "i1", claim: "c1", onTopic: null, families: [] }]
     });
     expect(gate.ok).toBe(false);
+  });
+});
+
+
+/* ------------------------------------------------------------------ *
+ * F-50 / F-51 — the two metrics the run-2 fixes added, and the gate
+ * condition that replaces the throw.
+ * ------------------------------------------------------------------ */
+
+describe("computeUnverifiedPages (F-51)", () => {
+  it("is zero for a candidate whose pages all passed verification", () => {
+    const result = computeUnverifiedPages(actsOf([narrationBeat("c", narratedBeat())]));
+    expect(result.count).toBe(0);
+    expect(result.pages).toEqual([]);
+  });
+
+  it("counts and names a page kept with verified:false, quoting the verifier's objection", () => {
+    /* Run 2's act 1 p2, as the pipeline now finishes it: ten verified
+       pages, one kept unverified, and a candidate that exists. */
+    const acts = actsOf([
+      narrationBeat("Show what the connection was asked to hold.", narratedBeat()),
+      narrationBeat("The feature store exists as a product category for one reason.", narratedBeat({
+        verified: false,
+        verifierNotes: "the concept the purpose names is dropped",
+        attempts: [
+          { attempt: 1, sources: [], rejected: true, rejectionNote: "unsupported by its quotes" },
+          { attempt: 2, sources: [], rejected: true, rejectionNote: "the concept the purpose names is dropped" },
+          { attempt: 3, sources: [], rejected: true, rejectionNote: "the concept the purpose names is dropped" }
+        ]
+      }))
+    ]);
+
+    const result = computeUnverifiedPages(acts);
+    expect(result.count).toBe(1);
+    expect(result.pages[0]!.reason).toBe("unverified-page");
+    expect(result.pages[0]!.claim).toMatch(/feature store/);
+    expect(result.pages[0]!.detail).toMatch(/the concept the purpose names is dropped/);
+  });
+
+  it("still names a page that has no verifier notes at all", () => {
+    const result = computeUnverifiedPages(actsOf([narrationBeat("c", narratedBeat({ verified: false, attempts: [] }))]));
+    expect(result.count).toBe(1);
+    expect(result.pages[0]!.detail).toMatch(/kept unverified/);
+  });
+});
+
+describe("computePurposeRevisedPages (F-50)", () => {
+  it("counts a page the writer flagged, a page the verifier flagged, and a page both did — once each", () => {
+    const acts = actsOf([
+      narrationBeat("writer said so", narratedBeat({ purposeRevised: true })),
+      narrationBeat("verifier said so", narratedBeat({ purposeRevisedByVerifier: true })),
+      narrationBeat("both said so", narratedBeat({ purposeRevised: true, purposeRevisedByVerifier: true })),
+      narrationBeat("neither", narratedBeat())
+    ]);
+    expect(computePurposeRevisedPages(acts)).toBe(3);
+  });
+
+  it("is zero, not null, for a candidate where no page took the permission", () => {
+    expect(computePurposeRevisedPages(actsOf([narrationBeat("c", narratedBeat())]))).toBe(0);
+  });
+});
+
+describe("the publish gate refuses an unverified page (F-51)", () => {
+  const passing = (): VeracityMetrics => ({
+    groundedQuoteRate: 1,
+    groundedQuoteCounts: { checkable: 4, grounded: 4 },
+    ungroundedPages: [],
+    attributionStability: 1,
+    purposeFidelity: 0.9,
+    tapeRelevance: 0.95,
+    tapeRelevanceAnchors: [{ itemId: "i1", claim: "c1", onTopic: true, families: ["food"] }],
+    firstAttemptPassRate: 0.8,
+    callsPerBeat: 1.4,
+    pagesDropped: 0,
+    unverifiedPages: 0,
+    unverifiedPageDetails: [],
+    purposeRevisedPages: 0,
+    pipelineTokens: 1000,
+    stageTimings: []
+  });
+
+  it("refuses on a single unverified page and names it", () => {
+    const gate = evaluateVeracityGate({
+      ...passing(),
+      unverifiedPages: 1,
+      unverifiedPageDetails: [
+        {
+          claim: "The feature store exists as a product category for one reason.",
+          mode: "Patch",
+          reason: "unverified-page",
+          detail: "kept unverified after every attempt - the concept the purpose names is dropped"
+        }
+      ]
+    });
+    expect(gate.ok).toBe(false);
+    expect(gate.failures.some((f) => /never satisfied the verifier/.test(f))).toBe(true);
+    expect(gate.failures.some((f) => /feature store/.test(f))).toBe(true);
+  });
+
+  it("does not refuse a candidate that revised a purpose — that is reported, never gated", () => {
+    const gate = evaluateVeracityGate({ ...passing(), purposeRevisedPages: 3 });
+    expect(gate.ok).toBe(true);
+  });
+
+  it("passes a clean candidate, so the new condition is not always-on", () => {
+    expect(evaluateVeracityGate(passing()).ok).toBe(true);
+  });
+});
+
+describe("buildVeracityMetrics surfaces the run-2 fields", () => {
+  it("reports unverifiedPages, its detail list and purposeRevisedPages", () => {
+    const veracity = buildVeracityMetrics({
+      sourcedActs: [],
+      writtenActs: actsOf([
+        narrationBeat("kept unverified", narratedBeat({ verified: false, verifierNotes: "the concept the purpose names is dropped" })),
+        narrationBeat("corrected its purpose", narratedBeat({ purposeRevised: true }))
+      ]),
+      topic: "engineering/software",
+      writerCalls: 2,
+      verifierCalls: 2,
+      pipelineTokens: 0,
+      stageTimings: []
+    });
+
+    expect(veracity.unverifiedPages).toBe(1);
+    expect(veracity.unverifiedPageDetails).toHaveLength(1);
+    expect(veracity.purposeRevisedPages).toBe(1);
+    expect(evaluateVeracityGate(veracity).ok).toBe(false);
   });
 });

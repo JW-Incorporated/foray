@@ -78,6 +78,10 @@ const RawProseSchema = z.object({
       pageId: z.string(),
       script: z.string(),
       usedClaims: z.array(z.number()),
+      /* F-50. Optional in the SCHEMA so a reply that omits it is still
+         valid JSON for this stage — an absent flag means "not claimed",
+         which is what a page that simply did its purpose should say. */
+      purposeRevised: z.boolean().optional(),
       pronunciationHints: z.array(z.object({ word: z.string(), hint: z.string() }))
     })
   )
@@ -202,6 +206,7 @@ function buildSelectionPrompt(request: ClaimSelectionRequest): string {
     `A quote must be copied character for character out of the document you name, and must be at least ${MIN_QUOTE_WORDS} words or one whole sentence.`,
     "Never quote the purpose or this prompt: they are direction, not documents.",
     "If a document does not support a claim worth making, select no claim for that page rather than a weak one.",
+    "If the documents contradict or complicate the purpose, select the claims that show that: the page's job is then to report the tension, not to assert the purpose.",
     '"contested" means reputable sources actively disagree about the fact itself — not that you are unsure.',
     "",
     request.pages.map(evidenceBlock).join("\n\n"),
@@ -219,6 +224,7 @@ function buildProsePrompt(request: ProseWriteRequest): string {
       `sentence rhythm: ${voice.sentenceRhythm}; narrator presence: ${voice.narratorPresence}`,
     "",
     "Write each page from its listed claims and nothing else. The claims are already sourced; you do not return sources.",
+    "If the claims contradict or complicate the purpose, write the tension — that page accomplishes its purpose — and set purposeRevised true for it.",
     "List the indices of the claims your script actually asserts. A page that asserts none must be a question or a hand-off to the listener, with no statement about the world in it.",
     "Do not say what the record does or does not contain unless a claim below says it.",
     "",
@@ -233,7 +239,8 @@ function buildProsePrompt(request: ProseWriteRequest): string {
     "Also list any hard-to-pronounce or foreign words with a plain-English pronunciation hint.",
     "",
     "Respond with ONLY a single JSON object, no markdown fences, no other text, matching exactly:",
-    '{"pages": [{"pageId": string, "script": string, "usedClaims": [number], "pronunciationHints": [{"word": string, "hint": string}]}]}'
+    '{"pages": [{"pageId": string, "script": string, "usedClaims": [number], "purposeRevised": boolean, ' +
+      '"pronunciationHints": [{"word": string, "hint": string}]}]}'
   ].join("\n");
 }
 

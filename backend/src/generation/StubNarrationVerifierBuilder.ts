@@ -29,11 +29,19 @@ import type {
  *     bounded by `writeNarration.ts`, which proved in code that the quote
  *     is a verbatim span of a document the pipeline holds before this is
  *     ever called.
- *   - purposeAccomplished: the script has to be about the purpose it was
- *     given — at least one content word in common (F-41's page 7 dropped
- *     its named concept entirely and re-told the collapse from the top).
- *     A purpose with no content words is not evidence of anything and
- *     passes.
+ *   - purposeAccomplished: the script has to be about the SUBJECT of the
+ *     purpose it was given — at least one content word in common (F-41's
+ *     page 7 dropped its named concept entirely and re-told the collapse
+ *     from the top). A purpose with no content words is not evidence of
+ *     anything and passes. F-50 narrowed this question to exactly what
+ *     this structural test already measured — "did the page wander off its
+ *     subject entirely", not "did the page agree with its purpose" — so a
+ *     page that CONTRADICTS its purpose from the documents passes here,
+ *     which is the outcome run 2 needed and did not get.
+ *   - purposeRevised: never claimed. Whether a page departed from its
+ *     purpose because the evidence did is an editorial reading; a stub
+ *     that guessed it would put a flag on a dry-run page that nothing
+ *     decided.
  *   - contestedHandled: a source marked contested whose script never says
  *     so fails — the one rule of the three a string can actually decide.
  */
@@ -64,7 +72,7 @@ function verdictFor(page: VerifyPageBrief): PageVerdict {
 
   const purposeAccomplished = scriptIsAboutPurpose(page.script, page.purpose);
   if (!purposeAccomplished) {
-    notes.push(`The script shares no content word with the purpose it was given ("${page.purpose.slice(0, 60)}").`);
+    notes.push(`The script shares no content word with the subject its purpose names ("${page.purpose.slice(0, 60)}").`);
   }
 
   const contestedHandled = !page.sources.some((s) => s.contested) || containsContestedLanguage(page.script);
@@ -77,13 +85,14 @@ function verdictFor(page: VerifyPageBrief): PageVerdict {
      as a page that quietly passes. */
   if (page.sources.length === 0 && hasDeclarativeSentence(page.script)) {
     notes.push("A zero-source page reached verification with a declarative script — the structural rule upstream did not run.");
-    return { pageId: page.pageId, claimsSupported: false, purposeAccomplished, contestedHandled, notes: notes.join(" ") };
+    return { pageId: page.pageId, claimsSupported: false, purposeAccomplished, purposeRevised: false, contestedHandled, notes: notes.join(" ") };
   }
 
   return {
     pageId: page.pageId,
     claimsSupported,
     purposeAccomplished,
+    purposeRevised: false,
     contestedHandled,
     ...(notes.length > 0 ? { notes: notes.join(" ") } : {})
   };

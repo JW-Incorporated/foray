@@ -77,6 +77,13 @@ export class StubNarrationWriterBuilder implements NarrationWriterBuilder {
              `validateNarratedBeat` allows zero sources only there
              (F-36/F-37/F-44). */
           usedClaims: page.claims.map((_, i) => i),
+          /* F-50's permission exists for the live writer; a stub that
+             claimed it would be asserting an editorial judgement it has no
+             way to make ("did the documents contradict the purpose?"), and
+             a dry-run candidate would carry a flag nothing decided. Always
+             false, and the field is present rather than omitted so the
+             dry-run path exercises the same shape production does. */
+          purposeRevised: false,
           pronunciationHints: hintsFor(page)
         };
       })

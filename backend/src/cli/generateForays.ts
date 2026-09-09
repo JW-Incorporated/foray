@@ -258,7 +258,14 @@ export async function generateOneCandidate(
        behaves exactly as before — pool segments only. */
     outcome = await runPipeline(
       request,
-      { userId: args.authorId, topic: spec.topic, checkpointKey },
+      /* `sessionId` is what turns EPISODE_BUDGET_USD on: `BudgetGuard.checkAndRecord`
+         only compares a Foray's own spend against the per-Foray cap when the call
+         carries one (`budgetGuard.ts`), and this driver passed none — so the cap
+         requirements §8.10 specifies was inert in the batch path, the only path
+         that generates anything. The checkpoint key (the candidate's basename) is
+         the right value: one key per Foray, stable across a resume, and already
+         the name a human reads when a run stops. */
+      { userId: args.authorId, topic: spec.topic, checkpointKey, sessionId: checkpointKey },
       { cueProvider: deps.cueProvider, checkpoint: args.dryRun ? undefined : checkpointStore, onActReady }
     );
   } catch (err) {

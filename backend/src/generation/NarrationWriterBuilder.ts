@@ -102,6 +102,13 @@ export interface WrittenPage {
    * contain a declarative sentence (F-36/F-37/F-44). */
   usedClaims: number[];
   pronunciationHints: PronunciationHint[];
+  /** F-50: true when this script departs from its purpose BECAUSE the
+   * documents contradicted or complicated it — the page reports the
+   * tension instead of asserting the purpose. Self-reported by the
+   * writer, so it is recorded rather than trusted: the verifier answers
+   * the same question separately and both answers reach the page
+   * (`NarratedBeat.purposeRevised` / `purposeRevisedByVerifier`). */
+  purposeRevised?: boolean;
 }
 
 export interface ProseWriteResult {

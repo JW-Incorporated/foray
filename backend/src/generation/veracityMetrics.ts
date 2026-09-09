@@ -4,7 +4,7 @@ import type { StageTiming } from "./stageTiming";
 import type { SourcedAct, SourcedSlot, TapeRelevanceInput } from "../types/tapeSourcing";
 import type { WrittenAct } from "./writeNarration";
 import { decideConnectiveNarration } from "./writeNarration";
-import type { NarratedBeat, NarrationAttemptRecord } from "../types/narration";
+import { purposeWasRevised, type NarratedBeat, type NarrationAttemptRecord } from "../types/narration";
 import { loadCatalogueData, type CatalogueShow } from "./catalogueLookup";
 import { loadSegmentPool, type SegmentRecord } from "./segmentPoolLookup";
 
@@ -57,7 +57,7 @@ export function flattenWrittenPages(acts: WrittenAct[]): FlatWrittenPage[] {
 export interface FailingPage {
   claim: string;
   mode: string;
-  reason: "ungrounded-quote" | "off-topic-tape";
+  reason: "ungrounded-quote" | "off-topic-tape" | "unverified-page";
   detail: string;
 }
 
@@ -435,6 +435,65 @@ export function computeCallsPerBeat(sourcedActs: SourcedAct[], writerCalls: numb
 }
 
 /* ------------------------------------------------------------------ */
+/* unverifiedPages (F-51)                                               */
+/* ------------------------------------------------------------------ */
+
+export interface UnverifiedPagesResult {
+  count: number;
+  pages: FailingPage[];
+}
+
+/**
+ * Pages the candidate carries that never passed verification — F-51's
+ * whole point made visible. Before it, a narration page rejected three
+ * times threw `NarrationWriteError` and took the Foray with it (run 2 died
+ * at act 1 p2 with ten of twelve pages verified); now `writeNarration.ts`
+ * keeps the last attempt with `verified: false` and the verifier's final
+ * objection, and THIS is what stops it reaching listeners:
+ * `evaluateVeracityGate` refuses to publish while the count is above zero.
+ *
+ * Read the count, not the rate. One unverified page is a stop, so there is
+ * nothing for an average to say — and unlike `pagesDropped` (a connective
+ * page nobody hears the absence of), each of these is a page a listener
+ * WOULD hear, carrying an objection somebody has to answer.
+ */
+export function computeUnverifiedPages(writtenActs: WrittenAct[]): UnverifiedPagesResult {
+  const pages: FailingPage[] = [];
+  for (const { claim, page } of flattenWrittenPages(writtenActs)) {
+    if (page.verified) continue;
+    pages.push({
+      claim,
+      mode: page.mode,
+      reason: "unverified-page",
+      detail: page.verifierNotes
+        ? `kept unverified after every attempt — ${page.verifierNotes.slice(0, 200)}`
+        : `kept unverified after every attempt (${page.attempts?.length ?? 0} recorded)`
+    });
+  }
+  return { count: pages.length, pages };
+}
+
+/* ------------------------------------------------------------------ */
+/* purposeRevisedPages (F-50)                                           */
+/* ------------------------------------------------------------------ */
+
+/**
+ * How many pages corrected their purpose from the evidence — the writer
+ * said so, the verifier said so, or both (`purposeWasRevised` in
+ * `types/narration.ts` is the one definition of the disjunction).
+ *
+ * NOT a failure count, and deliberately not gated on. A page that reports
+ * a contradiction between its brief and its documents is the single most
+ * valuable thing evidence-first narration can produce (F-50), and the
+ * pipeline now permits it; this number exists so an editor can FIND those
+ * pages, and so a deepen stage that keeps writing purposes the evidence
+ * contradicts shows up as a rising count rather than as a dead run.
+ */
+export function computePurposeRevisedPages(writtenActs: WrittenAct[]): number {
+  return flattenWrittenPages(writtenActs).filter(({ page }) => purposeWasRevised(page)).length;
+}
+
+/* ------------------------------------------------------------------ */
 /* Assembly                                                             */
 /* ------------------------------------------------------------------ */
 
@@ -449,6 +508,13 @@ export interface VeracityMetrics {
   firstAttemptPassRate: number | null;
   callsPerBeat: number | null;
   pagesDropped: number;
+  /** F-51: pages kept with `verified: false`. Any is a publish stop. */
+  unverifiedPages: number;
+  /** The same pages, named, so the gate can print which ones. */
+  unverifiedPageDetails: FailingPage[];
+  /** F-50: pages that corrected their purpose from the evidence. Reported,
+   * never gated — see `computePurposeRevisedPages`. */
+  purposeRevisedPages: number;
   pipelineTokens: number;
   /** Pipeline-stage wall times (`stageTiming.ts`'s `StageTiming[]`),
    * `finalizeForay`'s own internal breakdown appended with a `finalize.`
@@ -475,6 +541,7 @@ export interface BuildVeracityMetricsInput {
 
 export function buildVeracityMetrics(input: BuildVeracityMetricsInput): VeracityMetrics {
   const grounded = computeGroundedQuoteRate(input.writtenActs);
+  const unverified = computeUnverifiedPages(input.writtenActs);
   const tape = input.tapeRelevanceRows
     ? tapeRelevanceFromRows(input.tapeRelevanceRows)
     : computeTapeRelevance(input.sourcedActs, input.topic, input.root);
@@ -490,6 +557,9 @@ export function buildVeracityMetrics(input: BuildVeracityMetricsInput): Veracity
     firstAttemptPassRate: computeFirstAttemptPassRate(input.writtenActs),
     callsPerBeat: computeCallsPerBeat(input.sourcedActs, input.writerCalls, input.verifierCalls),
     pagesDropped: computePagesDropped(input.sourcedActs, input.writtenActs),
+    unverifiedPages: unverified.count,
+    unverifiedPageDetails: unverified.pages,
+    purposeRevisedPages: computePurposeRevisedPages(input.writtenActs),
     pipelineTokens: input.pipelineTokens,
     stageTimings: input.stageTimings
   };
@@ -521,6 +591,12 @@ export interface VeracityGateResult {
  * shows shipping fabricated citations (F-27, F-32, F-46), so a REAL
  * publish attempt should require an explicit `--force` until the metrics
  * that would catch that can actually be computed.
+ *
+ * F-51 added a fourth, absolute condition: any page kept with
+ * `verified: false`. It is not a floor — one such page refuses the whole
+ * candidate — because the pipeline now finishes a Foray that contains one
+ * rather than throwing the Foray away, and this is the only thing standing
+ * between that page and a listener.
  *
  * `tapeRelevance` gets one exception: a candidate with NO tape anchors at
  * all (`tapeRelevanceAnchors.length === 0`) has nothing for this metric to
@@ -554,6 +630,19 @@ export function evaluateVeracityGate(veracity: VeracityMetrics | null | undefine
     );
   } else if (veracity.purposeFidelity < GATE_MIN_PURPOSE_FIDELITY) {
     failures.push(`purposeFidelity ${veracity.purposeFidelity.toFixed(3)} < ${GATE_MIN_PURPOSE_FIDELITY}`);
+  }
+
+  /* F-51. `writeNarration.ts` no longer throws when a narration page is
+     rejected for the third time — it keeps the page unverified and lets
+     the run finish, on the explicit understanding that THIS refuses it.
+     Listed before the tape check because it is the most concrete failure
+     in the set: not a rate below a floor, but a specific page with a
+     specific unanswered objection. */
+  if (veracity.unverifiedPages > 0) {
+    failures.push(
+      `${veracity.unverifiedPages} page(s) were kept without passing verification — a page that never satisfied the verifier is not publishable (F-51)`
+    );
+    for (const p of veracity.unverifiedPageDetails) failures.push(`  [${p.mode}] ${p.claim.slice(0, 80)} — ${p.detail}`);
   }
 
   if (veracity.tapeRelevanceAnchors.length === 0) {

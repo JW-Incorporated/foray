@@ -196,6 +196,26 @@ export const NarratedBeatSchema = z
      * `WrittenAct` — so averaging it would print 1.0 forever. WS-B's
      * `purposeFidelity` averages THIS. */
     purposeAccomplished: z.boolean().optional(),
+    /** F-50, THE WRITER'S OWN FLAG: this page departs from the purpose it
+     * was given because the evidence did — the documents contradicted or
+     * complicated the purpose, and the page reports that tension instead
+     * of asserting the purpose. Run 2 died on the beat where that was the
+     * only honest page and no prompt permitted it: the purpose said the
+     * feature store exists because training and serving code paths drift
+     * apart silently, and the retrieved document said feature stores
+     * "manage data artifacts. They do not control execution." Asserting
+     * the purpose was unsupported; dropping the subject failed
+     * `purposeAccomplished`; reporting the contradiction was allowed by
+     * neither. It is now allowed, and flagged here so an editor can find
+     * every page that took the permission. */
+    purposeRevised: z.boolean().optional(),
+    /** F-50, THE VERIFIER'S INDEPENDENT ANSWER to the same question. Kept
+     * as its own field rather than merged into `purposeRevised`: the two
+     * are different agents answering separately (§4.7 rule 2), and a page
+     * the writer did not flag but the verifier did — or the reverse — is
+     * exactly the page an editor most wants to see. `purposeWasRevised`
+     * below is the OR of the two, for anything that just wants the set. */
+    purposeRevisedByVerifier: z.boolean().optional(),
     verifierNotes: z.string().trim().min(1).optional(),
     /** The documents this page's quotes were looked up in (WS-A). Optional
      * so nothing upstream of the evidence pack has to change; WS-B reads
@@ -211,6 +231,15 @@ export const NarratedBeatSchema = z
   })
   .strict();
 export type NarratedBeat = z.infer<typeof NarratedBeatSchema>;
+
+/** True when EITHER agent said this page corrected its purpose from the
+ * evidence (F-50). The one place the two flags are combined, so a
+ * consumer that only wants "which pages departed from their brief" —
+ * `veracityMetrics.ts`'s `purposeRevisedPages`, an editor's filter —
+ * cannot get the disjunction subtly wrong in its own copy of it. */
+export function purposeWasRevised(beat: Pick<NarratedBeat, "purposeRevised" | "purposeRevisedByVerifier">): boolean {
+  return beat.purposeRevised === true || beat.purposeRevisedByVerifier === true;
+}
 
 export interface NarratedBeatValidationIssue {
   code:
