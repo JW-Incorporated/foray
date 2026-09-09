@@ -281,6 +281,12 @@ passing silently; `spokenLineErrors` runs over every `NarratedBeat.script`; and 
 double-encodes a section sign. F-57's band per tier and F-58's severity for each lifted rule are founder
 calls — bring them a proposal, do not pick them in code.
 
+**Added 2026-09-09 (requirements refresh, PR #561):** two sourcing outputs never leave the run — `sourcingTrace` (per-beat, F-49) and
+`transcriptionQueueCandidates` (§8.2's open half) are checkpointed and printed but are on neither `RunPipelineOutcome` nor
+`report.json`, and the checkpoint is deleted when the candidate is written. Surface both in `report.json` (trace summarised per
+slot, candidates listed) so a run's sourcing evidence survives its success. Also: `purposeFidelity` can now see a `false` from a
+kept-unverified page — say so in `veracityMetrics.ts`'s doc comment.
+
 ## WS-K — Narration follow-ups (closes F-19; settles F-37 in the design doc; closes F-41's repetition half)
 
 Three things the evidence-first rewrite left behind. **F-19 / F-25:** a Frame's 70–170 characters and §4.7
