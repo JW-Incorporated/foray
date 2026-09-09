@@ -199,6 +199,111 @@ machine-local, provider-shaped like `TranscriptCueProvider` so CI without the DB
 **Done when.** The F-49 fixture (`backend/test/fixtures/run2-deepen-2026-09-09.json`) yields ≥ 1 tape beat offline on
 this machine with a trace that names the window test as the deciding gate, and no run-1 regression case flips.
 
+## WS-G — Keyed-run readiness (closes F-05, F-47, F-48)
+
+Every number in the run doc arrived through the relay, and the relay is exactly the transport that cannot
+exercise a real API call's economics. Three findings are open for that reason alone. **F-47:**
+`claude-opus-5` and `claude-sonnet-5` run adaptive thinking by default, its tokens bill as output and count
+against `max_tokens`, and no builder sets `thinking` or `output_config` — with caps at continuity 500,
+understander 400/600, researcher 800 and verifier 2,000, a keyed run truncates a JSON reply inside the
+thinking budget (F-39's failure, now systematic) and `BudgetGuard`'s estimate under-counts every call.
+**F-48:** `retrievePassages` holds the retrieval model's *restatement* of a search result as the document,
+so the substring gate proves a quote is consistent with what that call wrote rather than with the page at
+the url — `groundedQuoteRate = 1.0` overstates the veracity chain by exactly that step. **F-05:** the
+researcher that decides a topic's "genuine controversies" is the cheapest tier at 800 output tokens, which
+is the same cap under the same new thinking budget. Set `output_config: { effort: "low" }` on the per-page
+calls (writer, verifier, continuity, understander), leave the spine at default effort, raise the small caps
+by a thinking allowance, teach `env.ts`'s estimate to include it, and move retrieval to `web_fetch` +
+`citations: { enabled: true }` on the `_20260209` tool types, holding server-attested `cited_text` spans as
+the document.
+
+**Files.** `config/models.ts`, `config/env.ts`, `cost/budgetGuard.ts`, `AnthropicExternalResearcher.ts`, the
+narration writer/verifier and continuity builders, `AnthropicPromptUnderstander.ts`, tests.
+
+**Done when.** No builder can be called with a cap a thinking budget can exhaust (asserted in a test, not
+noted in a comment); the budget estimate names its thinking allowance; a retrieved passage carries a
+`cited_text` span the retrieval model did not author, and `groundedQuoteRate`'s doc comment stops
+disclaiming itself; and a keyed smoke run of one medium Foray completes with no truncated reply.
+
+## WS-I — Paraphrase-tolerant anchoring (closes F-61, F-62; depends on WS-H)
+
+WS-H moved tier 2's gate from "no title matched" to "the tape itself does not say this", and #553's own
+numbers say the second wall is higher than the first: all 23 searching beats of the run-2 fixture reach real
+*Practical AI* transcripts (BM25 13–21, `foundBy: text-index`) and every one stops at `tier2:no-anchor`.
+`resolveAnchorFromCues` requires a contiguous run of ≥ 4 of the CLAIM's own words spoken verbatim; across 63
+bodies exactly one claim has such a run, in an episode ranked 53rd, and the window test correctly refuses it.
+The rule conflates two jobs — *which window carries the beat*, a relevance judgement already answered by BM25
+plus the anchored-window overlap, and *which spoken phrases mark that window's edges* for ADR-0007's
+drift-tolerant seeking, which must be verbatim tape words, but the **tape's**, not the claim's (F-61). The
+same PR's one successful mint shows the second defect: `cutSpanToCueBoundaries` grows a short window
+symmetrically to reach `MIN_TAPE_SEGMENT_SEC` (45 s), and this archive's cues average ≈ 28 s, so the listener
+hears half a minute of Underwriters Laboratories before the passage the beat is about (F-62). Pick the window
+by overlap; mint `startAnchor`/`endAnchor` from the first and last distinctive phrases *inside* it; keep the
+≥ 3 content-word overlap and the lineage gate; add a relevance floor so a weak window is refused rather than
+padded; and grow toward the side whose next cue shares claim terms — a shorter segment beats an off-claim
+lead-in.
+
+**Work is already in flight** on `fix/f61-anchors-from-tape`. This card records the spec and the acceptance
+that PR has to meet; it is not a new assignment.
+
+**Files.** `transcriptArchiveLookup.ts` (`resolveAnchorFromCues`, `cutSpanToCueBoundaries`), `sourceBeats.ts`
+(trace rows), tests.
+
+**Done when.** The F-49 fixture (`backend/test/fixtures/run2-deepen-2026-09-09.json`) yields ≥ 1 tape beat
+whose anchors are phrases spoken in the tape rather than written in the claim; no minted segment opens on a
+cue that shares no claim term; the trace names the deciding gate; and run 1's Chernobyl-for-Hyatt, griddle
+and San Bruno anchors are all still refused.
+
+## WS-J — Finalize-time hygiene (closes F-20, F-55, F-56, F-57, F-58, I-15)
+
+Five defects that all surface at finalize, after every stage has been paid for, and one host lesson.
+`slotsFromSpine` de-duplicates slot ids while `toForayItem` re-slugifies without de-duplication, so two slots
+sharing a title both emit `slot: "foo"`, the declared `foo-2` gets no items, and non-adjacent slots fail the
+contiguity rule at the end of a run (F-55). The minted title is capped at 120 characters while
+`check-forays.mjs` rejects anything over 18 words, and nothing between them catches the gap (F-56).
+`generation-architecture.md` makes the ± 15 % runtime tolerance a publishability condition, and the code
+bounds only act/slot/beat counts, so a *medium* Foray can finalize at 25 or 100 minutes (F-57).
+`check-narration.mjs` gates the hand-authored curation artifacts the pipeline never writes, so its
+digit-in-a-spoken-line, reference-leak, sentence-rhythm, numeric-facts and hedge rules never touch a
+generated page — even though the prose prompt asks for three of them in words (F-58). The driver's own error
+text double-encodes `§` on a Windows console (F-20). And I-15: the harness killed the shell wrapping run 1
+attempt 4 for low system memory, and only the completion notification was lost because the process tree
+happened to survive — a production batch run must be detached (service or container), not a child of an
+interactive shell.
+
+**Files.** `runPipeline.ts` (`slotsFromSpine`, the title mint), `forayItems.ts`, `spineStructure.ts`,
+`finalizeForay.ts`, `narrationRules.ts`/`validateNarratedBeat`, `cli/generateForays.ts`, tests; one line each
+in `generation-architecture.md` for the runtime band and for detached execution.
+
+**Done when.** Two slots sharing a title either finalize contiguously or are refused at the spine; a title
+over 18 words cannot be minted; a Foray outside its tier's runtime band fails a named check instead of
+passing silently; `spokenLineErrors` runs over every `NarratedBeat.script`; and no console output
+double-encodes a section sign. F-57's band per tier and F-58's severity for each lifted rule are founder
+calls — bring them a proposal, do not pick them in code.
+
+## WS-K — Narration follow-ups (closes F-19; settles F-37 in the design doc; closes F-41's repetition half)
+
+Three things the evidence-first rewrite left behind. **F-19 / F-25:** a Frame's 70–170 characters and §4.7
+rule 3 are still close to incompatible — narrowing the definition of *contested* and moving rule 3 to the
+verifier lowered the cost without removing the conflict, and a contested source on a Frame page still has to
+be voiced inside 170 characters. Either let the budget flex when a source is contested, or forbid contested
+sources on connective pages and say so in the selection prompt. **F-37:** the design's disagreement about
+whether a connective page needs sources was settled *in code* (`sources: []` only for a page with no
+declarative sentence) and never written down; `narration-craft.md` still says nothing about it, so the next
+reader re-derives the argument from scratch. **F-41:** the verifier now asks whether a page accomplishes its
+purpose, and nothing asks whether it repeats an earlier one — run 1's beat 7 re-told the Hyatt collapse from
+the top, date, tea dance, phone call and doubled load, all already covered by beats 1–5, and the
+stitch/continuity stage only sees that after every page is paid for. Give the writer a one-line summary of
+each previous page in the act, and give the verifier a repetition question alongside `purposeAccomplished`.
+
+**Files.** `AnthropicNarrationWriterBuilder.ts` (selection and prose prompts),
+`AnthropicNarrationVerifierBuilder.ts`, `writeNarration.ts`, `types/narration.ts`,
+`docs/curation/narration-craft.md`, tests.
+
+**Done when.** A Frame carrying a contested source either fits its budget or cannot be selected;
+`narration-craft.md` states the source-free-connective-page rule the code already enforces; and a page that
+re-states an earlier page's claims is rejected with that reason, with run 1's beat 7 as the fixture.
+
 ## Rules for the agents
 
 - Work on a branch from `generation-run-2026-09-09` (it carries the run-1 fixes); one PR per workstream,
