@@ -1449,6 +1449,12 @@ const BACKEND_FLOORS = {
      why no live-generation-lead monitoring is built here). */
   "test/finalizeForay.test.ts": 5,
   "test/stageTiming.test.ts": 5,
+  /* WS-D2 streaming publish (generation fix plan 2026-09-09): the partial
+     candidate written after each act, the driver's per-act rewrite, and the
+     private status read path. */
+  "test/generateForays.test.ts": 4,
+  "test/generationStatus.test.ts": 4,
+  "test/partialCandidate.test.ts": 6,
 };
 
 /* `it(` as well as `test(`: backend's suites use both spellings. */
