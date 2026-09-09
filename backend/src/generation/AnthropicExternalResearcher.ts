@@ -3,7 +3,13 @@ import { z } from "zod";
 import { env } from "../config/env";
 import { defaultBudgetGuard, type BudgetGuard } from "../cost/budgetGuard";
 import { parseLastJsonBlock } from "./parseWithRetry";
-import type { ExternalResearcher, ExternalResearchContext, ExternalResearchResult } from "./ExternalResearcher";
+import type {
+  ExternalResearcher,
+  ExternalResearchContext,
+  ExternalResearchResult,
+  PassageRetrievalRequest,
+  RetrievedPassage
+} from "./ExternalResearcher";
 
 /**
  * Real §4.2 external research via the Anthropic API's server-side web
@@ -28,6 +34,16 @@ const MAX_SEARCHES_PER_TOPIC = 3;
 const ResearchSchema = z.object({
   notes: z.string(),
   controversies: z.array(z.string())
+});
+
+const PassagesSchema = z.object({
+  passages: z.array(
+    z.object({
+      title: z.string(),
+      url: z.string().optional(),
+      text: z.string()
+    })
+  )
 });
 
 function roughTokenEstimate(text: string): number {
@@ -83,8 +99,77 @@ export class AnthropicExternalResearcher implements ExternalResearcher {
 
     return parseLastJsonBlock(ResearchSchema, textBlock.text, "External research output");
   }
+
+  /**
+   * The same web-search capability, asked a different question: not "what
+   * is the shape of this sub-topic" but "give me the TEXT a narration page
+   * can quote". WS-A's whole design rests on this call — a writer handed
+   * real passages quotes them (run 1's one accidental demonstration of
+   * that, I-20, produced the best-grounded page of the run), and a writer
+   * handed nothing invents them (F-14/F-27/F-32).
+   *
+   * Nothing here trusts the model with attribution: `gatherEvidence.ts`
+   * turns each passage into a held document, and `writeNarration.ts`
+   * derives every `publication` from that document's title. A passage
+   * whose text the model wrote rather than retrieved simply becomes a
+   * document nothing can be quoted from that is not in it.
+   */
+  async retrievePassages(request: PassageRetrievalRequest, ctx: ExternalResearchContext): Promise<RetrievedPassage[]> {
+    const promptText = buildRetrievalPrompt(request);
+    await this.budgetGuard.checkAndRecord({
+      userId: ctx.userId,
+      operation: "evidence_retrieval",
+      provider: this.providerName,
+      model: MODEL,
+      estimatedUsd:
+        roughTokenEstimate(promptText) * USD_PER_INPUT_TOKEN +
+        request.maxPassages * request.maxChars * 0.25 * USD_PER_OUTPUT_TOKEN +
+        MAX_SEARCHES_PER_TOPIC * USD_PER_SEARCH,
+      sessionId: ctx.sessionId
+    });
+
+    const response = await this.client.messages.create({
+      model: MODEL,
+      max_tokens: 2000,
+      messages: [{ role: "user", content: promptText }],
+      tools: [
+        {
+          type: "web_search_20250305",
+          name: "web_search",
+          max_uses: MAX_SEARCHES_PER_TOPIC
+        } satisfies Anthropic.WebSearchTool20250305
+      ]
+    });
+
+    const textBlock = response.content.find((b: Anthropic.ContentBlock): b is Anthropic.TextBlock => b.type === "text");
+    if (!textBlock) throw new Error("Anthropic evidence-retrieval response had no text block");
+
+    const parsed = parseLastJsonBlock(PassagesSchema, textBlock.text, "Evidence retrieval output");
+    const retrievedAt = new Date().toISOString();
+    return parsed.passages.slice(0, request.maxPassages).map((p, i) => ({
+      docId: `print:${i + 1}`,
+      title: p.title,
+      ...(p.url ? { url: p.url } : {}),
+      retrievedAt,
+      text: p.text.slice(0, request.maxChars)
+    }));
+  }
 }
 
+
+function buildRetrievalPrompt(request: PassageRetrievalRequest): string {
+  return [
+    `Find published text that bears on this claim: "${request.claim}".`,
+    "",
+    `Search the web, then COPY passages out of the pages you retrieved — up to ${request.maxPassages}, each at most ${request.maxChars} characters.`,
+    "Every passage must be the page's own wording, character for character: do not paraphrase, do not join separated",
+    "sentences, do not write a sentence the page does not contain. Prefer a primary or reported source over an",
+    "encyclopaedia. If the search finds nothing usable, return an empty array — that is a correct answer.",
+    "",
+    "Respond with ONLY a single JSON object as your FINAL message, no markdown fences, matching exactly:",
+    '{"passages": [{"title": string, "url": string, "text": string}]}'
+  ].join("\n");
+}
 
 function buildResearchPrompt(topic: string): string {
   return [
