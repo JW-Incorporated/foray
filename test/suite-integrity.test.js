@@ -1314,7 +1314,10 @@ const BACKEND_FLOORS = {
   "test/AnthropicEnricher.test.ts": 10,
   "test/AnthropicExternalResearcher.test.ts": 9,
   "test/AnthropicPromptUnderstander.test.ts": 9,
-  "test/AnthropicSpineBuilder.test.ts": 8,
+  /* Raised from 8 by WS-L (F-63): what actually reaches the model — the quoted
+     transcript windows and the one seed rule when the research map has them,
+     neither when it does not, and the seed the reply carries back. */
+  "test/AnthropicSpineBuilder.test.ts": 11,
   "test/archetypes.test.ts": 7,
   "test/budgetGuard.test.ts": 6,
   "test/candidateExtractor.test.ts": 8,
@@ -1386,7 +1389,12 @@ const BACKEND_FLOORS = {
     accuracy, and the cheap-first ordering (external research fires ONLY
     for a genuine catalogue gap) against an injected no-tape fixture so the
     assertion doesn't drift as the real catalogue grows. */
-  "test/researchShape.test.ts": 11,
+  /* Raised from 11 by WS-L (F-63): §4.2 now also returns what the tape SAYS
+     about each candidate — the top transcript windows, quoted — and the added
+     cases pin the quoting, the four honest reasons a window list can be empty,
+     the lineage gate running before any episode is opened, and one window per
+     episode, best first. */
+  "test/researchShape.test.ts": 16,
   /* The §4.0-§4.9 orchestrator (runPipeline.ts). Floored because it is the ONLY
      suite that exercises the chain as a chain: every stage has its own tests and
      all of them stayed green while nothing joined the stages together, which is
@@ -1406,7 +1414,10 @@ const BACKEND_FLOORS = {
      duration tier (shape budgets, claim-shape, exploration floor,
      single spine-level voice all actually hold), plus InvalidSpineError
      on a deliberately broken builder. Kanban card t_96a97be9. */
-  "test/buildSpine.test.ts": 6,
+  /* Raised from 6 by WS-L (F-63): the stub writes beats FROM the research map's
+     quoted tape windows, out of the window's own words, and leaves the spine
+     seedless when the map quoted nothing. */
+  "test/buildSpine.test.ts": 9,
   /* §4.4 end to end (kanban card t_c963701a): deepenActs() fans out
      builder.deepenAct() once per act IN PARALLEL, always passing the
      FULL spine. Covers shape/count correctness, the full-spine-context
@@ -1417,7 +1428,11 @@ const BACKEND_FLOORS = {
      to §4.5's skip-tape branch). The added cases pin the rounding, the
      re-tagging order, the warning field, idempotence, the resumed-act path, the
      stub's own obedience, and a replay over run 2's real deepen output. */
-  "test/deepenActs.test.ts": 21,
+  /* Raised from 21 by WS-L (F-63): a beat's tape seed has to survive the stage —
+     kept by the stub, restored in code when a builder drops it, never re-pointed
+     when the builder changed a slot's beat count, and restored on a resumed act
+     checkpointed before seeds existed. */
+  "test/deepenActs.test.ts": 25,
   /* §4.5-4.6 end to end (kanban card t_648fbae7): sourceBeats() resolves
      every beat to a tier-1 segments.json hit, a tier-2 transcript-archive
      extraction, a tier-3 transcription-queue-candidate narration fallback,
@@ -1450,7 +1465,12 @@ const BACKEND_FLOORS = {
      verbatim rule that used to carry them. The offline cases now find the real
      bodies however the machine holds them, and skip by name when it holds
      none. */
-  "test/sourceBeats.test.ts": 72,
+  /* Raised from 72 by WS-L (F-63): a seeded beat opens its own episode first,
+     the seed never lowers a floor or slips an off-branch show past the lineage
+     gate, the trace says whether the seed won, and one offline case runs the
+     run-2 intent through research-shape, a stub spine seeded from its windows,
+     deepening and sourcing against the real archive. */
+  "test/sourceBeats.test.ts": 79,
   /* WS-H’s new module: the BM25 index over the normalised cue text, its disk
      cache and the invalidation that makes a re-transcribed episode rebuild it,
      and the Null implementation CI actually runs. Raised to 12 by F-61: the
@@ -1558,7 +1578,10 @@ const BACKEND_FLOORS = {
      the per-Foray budget cap the batch path left inert by never passing a
      sessionId. */
   "test/runPipelineCheckpoint.test.ts": 13,
-  "test/spineStructure.test.ts": 14,
+  /* Raised from 14 by WS-L (F-63): the per-act seeded-beat floor — enforced only
+     when the research map quoted windows, never satisfiable by an invented
+     episode id, and thrown rather than reported. */
+  "test/spineStructure.test.ts": 19,
   /* WS-C: §4.5's topic gate (taxonomyFamily.ts). A family is a node's LINEAGE
      in data/taxonomy.json — itself, its ancestors, its descendants — not a
      shared first path segment, which would put every sibling trade in scope of

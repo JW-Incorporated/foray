@@ -89,6 +89,47 @@ export function capArgumentBeats(act: DeepenedAct): DeepenedAct {
 }
 
 /**
+ * THE SEED SURVIVES DEEPENING (fix plan WS-L; finding F-63).
+ *
+ * §4.3 writes some of its `account` beats FROM a quoted transcript window and
+ * names the episode on the beat (`BeatSeedSchema`); §4.5 opens that episode
+ * before anything its own index ranks. Between the two sits this stage, whose
+ * job is to sharpen wording — and a model asked to re-emit a JSON object will
+ * sometimes drop a field it was not asked to change. Losing the seed there costs
+ * exactly what F-63 costs: the tape stops being what the beat was written from.
+ *
+ * SO IT IS RESTORED IN CODE, NOT REQUESTED IN THE PROMPT. The deepened beat
+ * keeps its own seed when it returned one (a builder that legitimately re-points
+ * a reworded beat is obeyed); otherwise the original beat's seed is put back.
+ * The join is positional and only within a slot whose beat COUNT is unchanged —
+ * §4.4 refines beats, it does not add or remove them, and where that assumption
+ * does not hold this restores nothing rather than attaching one beat's tape to
+ * another beat's claim.
+ *
+ * Returns the act unchanged (the same object) when nothing had to be restored,
+ * so an act from a spine with no seeds is byte-identical to what the builder
+ * returned. Idempotent, like `capArgumentBeats`, and applied on the same path.
+ */
+export function carryBeatSeeds(original: Act, deepened: DeepenedAct): DeepenedAct {
+  let restoredAnywhere = 0;
+  const slots: Slot[] = deepened.slots.map((slot, slotIndex) => {
+    const originalSlot = original.slots[slotIndex];
+    if (!originalSlot || originalSlot.beats.length !== slot.beats.length) return slot;
+    let restoredHere = 0;
+    const beats = slot.beats.map((beat, beatIndex) => {
+      const seed = originalSlot.beats[beatIndex]?.seed;
+      if (beat.seed || !seed) return beat;
+      restoredHere += 1;
+      return { ...beat, seed };
+    });
+    if (restoredHere === 0) return slot;
+    restoredAnywhere += restoredHere;
+    return { title: slot.title, beats };
+  });
+  return restoredAnywhere === 0 ? deepened : { ...deepened, slots };
+}
+
+/**
  * §4.4 end to end (docs/curation/generation-architecture.md §4.4 / §5):
  * takes the frozen §4.3 spine and produces one deepened act per input act,
  * by invoking `builder.deepenAct()` ONCE PER ACT, IN PARALLEL
@@ -159,8 +200,9 @@ async function deepenOneActWithRetry(
 
       /* The cap is applied AFTER validation, on the way out: it is this
          stage's own structural rule about the act it returns, not a schema
-         property of what the builder said (F-49). */
-      return capArgumentBeats(deepened);
+         property of what the builder said (F-49). The seed restore rides the
+         same seam for the same reason (WS-L, F-63). */
+      return capArgumentBeats(carryBeatSeeds(act, deepened));
     } catch (err) {
       lastError = err;
     }
@@ -205,8 +247,9 @@ export async function deepenActs(
        checkpointed after this rule existed comes back untouched; an act
        checkpointed BEFORE it (run 2's own checkpoint — 29 arguments in 35
        beats) is corrected on resume, rather than the resume faithfully
-       replaying the defect it exists to avoid re-paying for. */
-    if (resumed) return capArgumentBeats(resumed);
+       replaying the defect it exists to avoid re-paying for. A checkpoint
+       written before beats carried seeds gets them restored the same way. */
+    if (resumed) return capArgumentBeats(carryBeatSeeds(act, resumed));
     const deepened = await deepenOneActWithRetry(spine, act, index, builder, ctx);
     /* Persisted BEFORE `Promise.all` settles, so an act that succeeded is
        banked even when a sibling act's retry budget runs out and fails the

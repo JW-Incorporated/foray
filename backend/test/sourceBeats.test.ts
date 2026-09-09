@@ -2,10 +2,19 @@ import { describe, it, expect } from "vitest";
 import { existsSync, readFileSync } from "fs";
 import { join } from "path";
 import { sourceBeats, summarizeSourcing, deriveItemId, M4_ITEM_SHARE_MAX } from "../src/generation/sourceBeats";
-import { capArgumentBeats } from "../src/generation/deepenActs";
+import { capArgumentBeats, deepenActs } from "../src/generation/deepenActs";
+import { buildResearchShape } from "../src/generation/researchShape";
+import { buildSpine } from "../src/generation/buildSpine";
+import { resolveTopic } from "../src/generation/resolveTopic";
+import { StubSpineBuilder } from "../src/generation/StubSpineBuilder";
+import { StubDeepenActBuilder } from "../src/generation/StubDeepenActBuilder";
+import { StubExternalResearcher } from "../src/generation/StubExternalResearcher";
+import { InMemoryCostEventSink } from "../src/cost/costEvents";
+import { BudgetGuard } from "../src/cost/budgetGuard";
+import type { IntentUnderstanding } from "../src/types/generation";
 import { mintSegmentSource } from "../src/generation/audioSourceLookup";
 import { validateSourcing, allSourcedBeats } from "../src/types/tapeSourcing";
-import type { DeepenedAct } from "../src/types/spine";
+import { SPINE_MIN_SEEDED_BEATS_PER_ACT, type DeepenedAct } from "../src/types/spine";
 import type { SegmentRecord } from "../src/generation/segmentPoolLookup";
 import type { TranscriptDigestEntry, TranscriptCue, TranscriptCueProvider } from "../src/generation/transcriptArchiveLookup";
 import {
@@ -2147,6 +2156,157 @@ describe("sourceBeats — F-62: a short window grows toward the claim, never sym
   });
 });
 
+/* WS-L (F-63): §4.3 now writes some beats FROM a stretch of tape and says which,
+   and §4.5 opens that episode first. What these cases pin is that the seed
+   changes the ORDER of the search and nothing else — no threshold moves, and a
+   seed whose tape will not carry the claim is refused exactly as loudly as an
+   unseeded beat is. */
+describe("sourceBeats — WS-L: a seeded beat opens its own episode first (F-63)", () => {
+  const seededEpisode: TranscriptDigestEntry = {
+    show_id: "practical-ai",
+    show_title: "Practical AI",
+    guid: "pa-900",
+    title: "Episode 900",
+    cues: 5,
+    feed_duration_sec: 3600,
+    enclosure_url: "https://cdn.example/pa-900.mp3"
+  };
+  /** The same conversation, said twice as often — so BM25 ranks it FIRST and it
+   * wins any beat the seed does not steer. */
+  const decoyEpisode: TranscriptDigestEntry = { ...seededEpisode, guid: "pa-901", title: "Episode 901" };
+
+  const labelCues: TranscriptCue[] = [
+    { text: "welcome back to the show today we are talking about benchmarks", start_sec: 70, end_sec: 100 },
+    { text: "the labels in that benchmark were wrong more often than anyone admitted", start_sec: 100, end_sec: 108 },
+    { text: "an audit found thousands of mislabelled validation images across the whole benchmark", start_sec: 108, end_sec: 120 },
+    { text: "and those wrong labels put a ceiling on the accuracy anyone could report", start_sec: 120, end_sec: 132 },
+    { text: "we will come back to that after the break", start_sec: 132, end_sec: 150 }
+  ];
+  const louderCues: TranscriptCue[] = [
+    ...labelCues,
+    { text: "an audit found thousands of mislabelled validation images across the whole benchmark", start_sec: 150, end_sec: 175 },
+    { text: "and those wrong labels put a ceiling on the accuracy anyone could report", start_sec: 175, end_sec: 200 }
+  ];
+  const claim =
+    "An audit found thousands of mislabelled validation images across the whole benchmark, and those wrong labels put a ceiling on the accuracy anyone could report.";
+
+  const cuesByGuid: Record<string, TranscriptCue[]> = { "pa-900": labelCues, "pa-901": louderCues };
+  const archive = [seededEpisode, decoyEpisode];
+
+  function indexOver(entries: TranscriptDigestEntry[], cues: Record<string, TranscriptCue[]>): TranscriptTextIndex {
+    const bodies: TranscriptBodySource = {
+      getCues: (entry) => cues[entry.guid] ?? null,
+      bodyStat: (entry) => (cues[entry.guid] ? { mtimeMs: 1, size: 1 } : null)
+    };
+    return new FileTranscriptTextIndex({ archive: entries, bodies, cache: false });
+  }
+
+  function actFor(seed?: { episodeId: string; startSec: number; endSec: number }): DeepenedAct[] {
+    return [
+      makeDeepenedAct(
+        { slots: [{ title: "Labels", beats: [{ claim, exploration: false, kind: "account", ...(seed ? { seed } : {}) }] }] },
+        "WSL"
+      )
+    ];
+  }
+
+  function run(seed?: { episodeId: string; startSec: number; endSec: number }) {
+    return sourceBeats(actFor(seed), {
+      segmentPool: [],
+      transcriptArchive: archive,
+      cueProvider: { getCues: (entry) => cuesByGuid[entry.guid] ?? null },
+      textIndex: indexOver(archive, cuesByGuid),
+      topic: "engineering/ai-robotics"
+    });
+  }
+
+  it("takes the seeded episode even though the text index ranks another one first", () => {
+    /* Without a seed the louder episode wins, which is the correct answer when
+       nothing upstream knows better. With one, the episode the spine actually
+       wrote the beat from is the one the listener hears. */
+    const unseeded = allSourcedBeats(run().acts)[0]!;
+    expect(unseeded.sourcing).toBe("tape");
+    if (unseeded.sourcing === "tape") expect(unseeded.tape.itemId).toBe("practical-ai--episode-901");
+
+    const result = run({ episodeId: "practical-ai--episode-900", startSec: 100, endSec: 132 });
+    const beat = allSourcedBeats(result.acts)[0]!;
+    expect(beat.sourcing).toBe("tape");
+    if (beat.sourcing === "tape") {
+      expect(beat.tape.itemId).toBe("practical-ai--episode-900");
+      expect(beat.tape.tier).toBe(2);
+    }
+    /* And the run can be asked whether reading the tape first is what produced
+       the tape, without anyone re-deriving the join by hand. */
+    const row = result.tapeRelevance[0]!;
+    expect(row.seededEpisode).toBe("practical-ai--episode-900");
+    expect(row.seedWindowWon).toBe(true);
+  });
+
+  it("accepts a seed that names the episode by guid as well as by item id", () => {
+    const result = run({ episodeId: "pa-900", startSec: 100, endSec: 132 });
+    const beat = allSourcedBeats(result.acts)[0]!;
+    if (beat.sourcing === "tape") expect(beat.tape.itemId).toBe("practical-ai--episode-900");
+    expect(result.tapeRelevance[0]!.seedWindowWon).toBe(true);
+  });
+
+  it("does not lower the floor for a seeded episode whose tape is not about the claim", () => {
+    /* The rule the whole workstream stands on: a seed is a hint about where to
+       look, never a permission to use what is found there. This episode says a
+       few of the claim's words and then talks about something else — F-24's own
+       shape — and the relevance floor refuses it exactly as it would unseeded. */
+    const offClaim: TranscriptCue[] = [
+      { text: "we looked at images across the whole benchmark last spring", start_sec: 10, end_sec: 40 },
+      { text: "and then we spent an hour on procurement paperwork and hiring", start_sec: 40, end_sec: 90 },
+      { text: "which is not what any of you came here for but there it is", start_sec: 90, end_sec: 140 }
+    ];
+    const only = [seededEpisode];
+    const result = sourceBeats(actFor({ episodeId: "practical-ai--episode-900", startSec: 10, endSec: 90 }), {
+      segmentPool: [],
+      transcriptArchive: only,
+      cueProvider: { getCues: () => offClaim },
+      textIndex: indexOver(only, { "pa-900": offClaim }),
+      topic: "engineering/ai-robotics"
+    });
+
+    expect(allSourcedBeats(result.acts)[0]!.sourcing).toBe("narration");
+    const tier2 = result.sourcingTrace[0]!.tier2!;
+    expect(tier2.gate).toBe("window-overlap");
+    expect(tier2.windowWeightedShare).toBeLessThan(TIER2_WINDOW_MIN_SHARE);
+    /* And the trace says the seed was tried and lost, which is the row a person
+       tuning this reads first. */
+    expect(tier2.seededEpisode).toBe("practical-ai--episode-900");
+    expect(tier2.seedWindowWon).toBe(false);
+  });
+
+  it("passes over a seeded episode the topic gate refuses, instead of admitting it", () => {
+    /* A seed cannot smuggle an off-branch show past the lineage gate (F-23/F-29)
+       — the seeded candidate is never even added when `isUsable` says no. */
+    const result = sourceBeats(actFor({ episodeId: "practical-ai--episode-900", startSec: 100, endSec: 132 }), {
+      segmentPool: [],
+      transcriptArchive: archive,
+      cueProvider: { getCues: (entry) => cuesByGuid[entry.guid] ?? null },
+      textIndex: indexOver(archive, cuesByGuid),
+      topic: "food/grilling-bbq"
+    });
+    expect(allSourcedBeats(result.acts)[0]!.sourcing).toBe("narration");
+    expect(result.newSegments).toHaveLength(0);
+    /* Nothing was opened at all: the gate emptied the candidate list before the
+       walk, so what the trace reports is the search that found nothing to open,
+       and the seed is recorded as tried and lost like any other. */
+    expect(result.sourcingTrace[0]!.tier2!.gate).toBe("text-index:no-candidate");
+    expect(result.sourcingTrace[0]!.tier2!.seededEpisode).toBe("practical-ai--episode-900");
+    expect(result.sourcingTrace[0]!.tier2!.seedWindowWon).toBe(false);
+  });
+
+  it("changes nothing for a beat with no seed", () => {
+    const seedless = run();
+    const beat = allSourcedBeats(seedless.acts)[0]!;
+    expect(beat.sourcing).toBe("tape");
+    expect(seedless.tapeRelevance[0]!.seededEpisode).toBeNull();
+    expect(seedless.tapeRelevance[0]!.seedWindowWon).toBe(false);
+  });
+});
+
 /* THE OFFLINE HALF: the same code against the REAL transcript archive, which
    lives in `data-local/` and is on the generation machine only. These cases
    skip themselves, loudly and by name, anywhere else — a checkout without the
@@ -2346,5 +2506,98 @@ describe("sourceBeats — WS-H/F-61 offline: the real archive on the generation 
     }
     expect(minted).toBeGreaterThan(0);
   });
+
+  it(
+    "WS-L: reads the tape into the research map, and a spine seeded from it sources real Practical AI tape (F-63)",
+    async (ctx) => {
+      const real = realArchive();
+      if (!real) {
+        console.log(`[WS-L] skipping tape-first spine case: ${SKIP_REASON}`);
+        ctx.skip();
+        return;
+      }
+      /* F-63 END TO END, KEYLESS, ON THE PROMPT THAT PRODUCED IT.
+         Run 2 asked for "how AI systems really get built and put to work" three
+         times and got 0 tape beats of 35 — the last time with WS-H, F-59 and
+         F-61 all merged and every account beat reaching real *Practical AI*
+         transcripts, refused by the relevance floor because the spine had been
+         written from item counts and the archive never says `imagenet` or
+         `feature store`. This case runs the same intent through the new §4.2,
+         builds a spine from the windows it comes back with (the stub, so this
+         is keyless and reproducible), deepens it and sources it. What it proves
+         is not that the stub writes good prose — it does not — but that beats
+         written FROM the tape are beats the tape will carry, with the F-61
+         floor untouched. */
+      const fixture = JSON.parse(readFileSync(join(__dirname, "fixtures", "run2-deepen-2026-09-09.json"), "utf8")) as {
+        subject: string;
+        angle: string;
+      };
+      const intent: IntentUnderstanding = {
+        subject: fixture.subject,
+        angle: fixture.angle,
+        priorKnowledge: "has heard of machine learning, not of what it takes to keep one running",
+        disappointment: "stays at the level of model architectures"
+      };
+      const guard = new BudgetGuard(new InMemoryCostEventSink(), 10);
+      const buildCtx = { userId: "ws-l-offline" };
+
+      const shape = await buildResearchShape(intent, {
+        researcher: new StubExternalResearcher(guard),
+        ctx: buildCtx,
+        /* The production wiring: the same index and cue provider §4.5 sources
+           with. The topic is left for the stage to resolve, as `runPipeline`
+           leaves it. */
+        textIndex: real.textIndex,
+        cueProvider: real.cueProvider
+      });
+
+      const fromPracticalAi = shape.subtopics.filter((s) => s.tapeWindows.some((w) => w.showTitle.includes("Practical AI")));
+      expect(fromPracticalAi.length).toBeGreaterThanOrEqual(3);
+
+      /* Printed, not just asserted: the windows are the evidence a human has to
+         read to say whether a spine written from them would be about the
+         subject the founder asked for. */
+      for (const subtopic of fromPracticalAi.slice(0, 3)) {
+        const w = subtopic.tapeWindows[0]!;
+        console.log(
+          `[WS-L] ${subtopic.label} (${subtopic.tape.itemCount} items) -> ${w.showTitle} / ${w.episodeTitle} ` +
+            `${Math.round(w.startSec)}-${Math.round(w.endSec)}s (score ${w.score})\n       "${w.text}"`
+        );
+      }
+
+      const spine = await buildSpine(intent, shape, "medium", new StubSpineBuilder(guard), buildCtx);
+      const seededBeats = spine.acts.flatMap((a) => a.slots.flatMap((s) => s.beats)).filter((b) => b.seed);
+      expect(seededBeats.length).toBeGreaterThanOrEqual(SPINE_MIN_SEEDED_BEATS_PER_ACT * spine.acts.length);
+
+      const deepened = await deepenActs(spine, new StubDeepenActBuilder(guard), buildCtx);
+      const topic = resolveTopic(`${intent.subject} ${intent.angle}`).resolved;
+      const result = sourceBeats(deepened, {
+        segmentPool: [],
+        cueProvider: real.cueProvider,
+        textIndex: real.textIndex,
+        topic
+      });
+
+      const throughTheSeed = result.tapeRelevance.filter((r) => r.seedWindowWon);
+      console.log(
+        `[WS-L] ${real.kind} bodies, topic ${topic}: ${result.tapeRelevance.length} tape beats of ` +
+          `${result.tapeRelevance.length + result.sourcingTrace.length}, ${throughTheSeed.length} through the seeded episode; ` +
+          `first anchors: ${result.newSegments.slice(0, 2).map((s) => `"${s.startAnchor}"`).join(" | ")}`
+      );
+      /* And, for the seeded beats that did NOT make it, the gate and the share
+         that refused them — the evidence this workstream's next threshold
+         argument has to be made from. */
+      const refusedSeeds = result.sourcingTrace.filter((t) => t.tier2?.seededEpisode);
+      console.log(
+        `[WS-L] seeded beats refused (${refusedSeeds.length}): ` +
+          refusedSeeds.map((t) => `${t.tier2!.gate}@${t.tier2!.windowWeightedShare ?? "-"}`).join(", ")
+      );
+      expect(throughTheSeed.length).toBeGreaterThanOrEqual(1);
+      /* The floor did not move: every one of those beats cleared F-61's window
+         test on the tape it was written from. */
+      for (const row of throughTheSeed) expect(row.itemId).toBe(row.seededEpisode);
+    },
+    300000
+  );
 });
 

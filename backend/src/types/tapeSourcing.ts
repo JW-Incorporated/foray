@@ -183,6 +183,26 @@ export interface TapeRelevanceInput {
    * nothing could be established, which WS-B excludes from the metric's
    * numerator AND denominator. "Unknown" is never "fine". */
   onTopic: boolean | null;
+  /**
+   * The episode §4.3 wrote this beat's claim from, when it wrote it from tape at
+   * all (WS-L, F-63) — `null` for an unseeded beat, which is every beat of every
+   * Foray built before the research map quoted windows.
+   *
+   * Optional so nothing that constructs one of these rows had to change.
+   */
+  seededEpisode?: string | null;
+  /**
+   * Whether the tape this beat took came from that episode: the seed's window
+   * WON, rather than being beaten by something the text index ranked or refused
+   * by the relevance floor.
+   *
+   * This is the number WS-L is measured by. "Seeded from tape" is a claim about
+   * the spine; "the seed won" is a claim about the finished Foray, and the two
+   * come apart exactly when the spine wrote a beat the tape does not support —
+   * which is the failure mode this whole workstream exists to make visible
+   * rather than to hide.
+   */
+  seedWindowWon?: boolean;
 }
 
 /**
@@ -315,6 +335,18 @@ export interface Tier2TraceRow {
   textMatchedTerms?: number;
   /** How many episodes tier 2 opened for this beat before giving up. */
   candidatesConsidered?: number;
+  /* WS-L (F-63): the seed, and what became of it. Present only for a beat §4.3
+     wrote from a quoted transcript window. */
+
+  /** The episode the spine seeded this beat from. Tier 2 opens it FIRST, before
+   * anything the text index ranked. */
+  seededEpisode?: string;
+  /** Whether the seeded episode's window is the one that won. Always false in a
+   * row of this array — a trace row exists only for a beat that ended up
+   * narrated — and the field is here so the two sides of the sourcing evidence
+   * (`tapeRelevance` and `sourcingTrace`) answer the same question in the same
+   * words. */
+  seedWindowWon?: boolean;
 }
 
 /** One narration-degraded beat's account of itself. */

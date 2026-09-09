@@ -57,6 +57,22 @@ export class StubDeepenActBuilder implements DeepenActBuilder {
  * claim-shaped by construction — see spine.ts's isClaimShaped — and this
  * only appends detail, never rewrites the verb). */
 function sharpenBeat(beat: Beat, subject: string): Beat {
+  /* WS-L (F-63): A SEEDED BEAT IS LEFT ALONE.
+     Its claim is made of the words a person actually spoke in the window §4.2
+     quoted, and §4.5's relevance floor asks whether the tape says the claim —
+     so appending a generated sentence about the subject to it is exactly the
+     dilution the floor exists to catch, and it would make the dry-run path
+     unable to source the beats this stub was extended to produce. A real deepen
+     call sharpens wording; it does not paste a fixed sentence onto every beat.
+     The seed itself travels with the beat either way: §4.4 does not re-decide
+     which stretch of tape a beat was written from, and a stub that dropped the
+     field would let a regression in the real builder's pass-through go
+     unnoticed in every keyless test. */
+  if (beat.seed) {
+    /* `account` by construction: the claim came off a recording, so a recording
+       can carry it — the one case where the kind is not a judgement. */
+    return { claim: beat.claim, exploration: beat.exploration, kind: beat.kind ?? "account", seed: beat.seed };
+  }
   return {
     claim: `${beat.claim} This detail sharpens the picture of ${subject} for the listener.`,
     exploration: beat.exploration,

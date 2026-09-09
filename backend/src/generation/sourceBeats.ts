@@ -1,4 +1,4 @@
-import type { Beat, DeepenedAct } from "../types/spine";
+import type { Beat, BeatSeed, DeepenedAct } from "../types/spine";
 import type {
   NewSegment,
   SourcedAct,
@@ -42,6 +42,7 @@ import {
   bestTranscriptArchiveCandidate,
   cueWindowText,
   cutWindowToSegment,
+  deriveItemId,
   findTranscriptArchiveMatch,
   loadTranscriptArchive,
   selectTapeWindow,
@@ -271,7 +272,13 @@ export function sourceBeats(deepenedActs: DeepenedAct[], options: SourceBeatsOpt
             families: familiesOfNodes(resolution.nodes),
             forayTopic,
             forayFamily: taxonomyRoot(forayTopic),
-            onTopic: isOnTopic(forayTopic, resolution.nodes, state.root)
+            onTopic: isOnTopic(forayTopic, resolution.nodes, state.root),
+            /* WS-L (F-63): which episode the spine wrote this beat from, and
+               whether that is where the tape came from. The pair is how a run
+               can be asked "did reading the tape first actually produce the
+               tape?" without anyone re-deriving the join by hand. */
+            seededEpisode: beat.seed?.episodeId ?? null,
+            seedWindowWon: resolution.fromSeed
           });
           return { sourcing: "tape", claim: beat.claim, exploration: beat.exploration, kind: beat.kind, tape: resolution.pointer };
         }
@@ -407,8 +414,10 @@ interface SourcingDiagnosis {
 
 type BeatResolution =
   /** `nodes` — every taxonomy node this anchor resolved to, the same union the
-   * gate judged it on and the one WS-B's metric recomputes from disk. */
-  | { kind: "tape"; pointer: TapePointer; nodes: string[] }
+   * gate judged it on and the one WS-B's metric recomputes from disk.
+   * `fromSeed` — the tape came from the episode §4.3 seeded the beat from
+   * (WS-L). */
+  | { kind: "tape"; pointer: TapePointer; nodes: string[]; fromSeed: boolean }
   | { kind: "narration"; reason: string; diagnosis: SourcingDiagnosis };
 
 /**
@@ -506,6 +515,10 @@ function resolveOneBeat(beat: Beat, state: SourcingState): BeatResolution {
     state.usedCountByItem.set(tier1.segment.item_id, (state.usedCountByItem.get(tier1.segment.item_id) ?? 0) + 1);
     return {
       kind: "tape",
+      /* A pool segment is not the seeded episode's minted window even when it
+         comes from the same episode: the seed names a stretch of transcript, and
+         what won here is a segment a curator already cut. */
+      fromSeed: false,
       nodes: nodesForSegment(tier1.segment, state),
       pointer: {
         segmentId: tier1.segment.id,
@@ -550,7 +563,7 @@ function resolveOneBeat(beat: Beat, state: SourcingState): BeatResolution {
      is the gate a person would go and argue with. */
   const archiveIsUsable = (entry: TranscriptDigestEntry) =>
     familyGateAllows(state.forayTopic, nodesForArchiveEntry(entry, state), state.root);
-  const candidates = tier2Candidates(claim, state, archiveIsUsable);
+  const candidates = tier2Candidates(claim, state, archiveIsUsable, beat.seed);
 
   let furthest: Tier2Progress | null = null;
   for (const candidate of candidates) {
@@ -612,6 +625,7 @@ function resolveOneBeat(beat: Beat, state: SourcingState): BeatResolution {
     });
     return {
       kind: "tape",
+      fromSeed: candidate.fromSeed === true,
       nodes: nodesForArchiveEntry(candidate.entry, state),
       pointer: {
         segmentId,
@@ -626,7 +640,7 @@ function resolveOneBeat(beat: Beat, state: SourcingState): BeatResolution {
     };
   }
 
-  const tier2Trace = tier2TraceFor(claim, state, archiveIsUsable, candidates, furthest);
+  const tier2Trace = tier2TraceFor(claim, state, archiveIsUsable, candidates, furthest, beat.seed);
 
   /* Tier 3: nothing in the archive could be cut for this beat. Log ONE
      transcription-queue candidate saying how far the search got — this
@@ -650,6 +664,8 @@ interface Tier2Candidate {
   titleScore: number;
   /** The text-index row that produced it, or `null` for the title fallback. */
   text: TranscriptTextCandidate | null;
+  /** This is the episode §4.3 wrote the beat's claim from (WS-L, F-63). */
+  fromSeed?: boolean;
 }
 
 /** How far one candidate got, for the trace. */
@@ -699,7 +715,12 @@ function furtherOf(current: Tier2Progress | null, next: Tier2Progress): Tier2Pro
  * every candidate as the tie-breaker `transcriptTextIndex` ranks equal-text
  * episodes by.
  */
-function tier2Candidates(claim: string, state: SourcingState, isUsable: (entry: TranscriptDigestEntry) => boolean): Tier2Candidate[] {
+function tier2Candidates(
+  claim: string,
+  state: SourcingState,
+  isUsable: (entry: TranscriptDigestEntry) => boolean,
+  seed: BeatSeed | undefined
+): Tier2Candidate[] {
   const claimTokens = new Set(tokenizeForSourcing(claim));
   const candidates: Tier2Candidate[] = [];
   const seen = new Set<string>();
@@ -715,7 +736,53 @@ function tier2Candidates(claim: string, state: SourcingState, isUsable: (entry: 
   if (byTitle && !seen.has(key(byTitle.entry))) {
     candidates.push({ entry: byTitle.entry, titleScore: byTitle.score, text: null });
   }
-  return candidates;
+  return seededFirst(candidates, claimTokens, state, isUsable, seed);
+}
+
+/**
+ * THE SEEDED EPISODE IS OPENED FIRST (fix plan WS-L; finding F-63).
+ *
+ * When §4.3 wrote a beat FROM a stretch of tape, the episode it was written from
+ * is the best-informed guess in this pipeline about where that beat's tape is —
+ * better than a BM25 ranking of the claim's words, because the claim's words
+ * came out of that episode's mouth. So it goes to the front of the walk.
+ *
+ * ORDER IS ALL IT CHANGES. The seeded candidate then faces the same window
+ * search, the same relevance floor, the same lineage gate, the same anchor mint
+ * and the same audio-source check as any other, and the walk continues past it
+ * when it fails one — a seed is a hint, never a permission. Nothing here lowers
+ * a threshold, and a seeded episode the topic gate refuses (`isUsable`) is never
+ * added at all.
+ *
+ * WHEN THE SEEDED EPISODE IS ALSO IN THE TEXT RESULTS it is MOVED rather than
+ * re-added, so it keeps the `idf` weights that search computed — the window
+ * search is measurably better with them (F-61's weighted share). When it is not,
+ * it is prepended without them, which is exactly the title-path candidate's
+ * situation and weighs every term one.
+ */
+function seededFirst(
+  candidates: Tier2Candidate[],
+  claimTokens: Set<string>,
+  state: SourcingState,
+  isUsable: (entry: TranscriptDigestEntry) => boolean,
+  seed: BeatSeed | undefined
+): Tier2Candidate[] {
+  if (!seed) return candidates;
+  const existing = candidates.findIndex((c) => entryMatchesSeed(c.entry, seed));
+  if (existing >= 0) {
+    const [found] = candidates.splice(existing, 1);
+    return [{ ...found!, fromSeed: true }, ...candidates];
+  }
+  const entry = state.transcriptArchive.find((e) => entryMatchesSeed(e, seed) && isUsable(e));
+  if (!entry) return candidates;
+  return [{ entry, titleScore: titleTokenScore(claimTokens, entry), text: null, fromSeed: true }, ...candidates];
+}
+
+/** The seed names an episode by `deriveItemId` — what §4.2's research window
+ * carried — and a guid is accepted too, because that is the archive's own key
+ * and a hand-written seed is likelier to use it than to re-derive a slug. */
+function entryMatchesSeed(entry: TranscriptDigestEntry, seed: BeatSeed): boolean {
+  return deriveItemId(entry) === seed.episodeId || entry.guid === seed.episodeId;
 }
 
 /** The row that says what tier 2 saw and which gate decided (F-49). */
@@ -724,8 +791,15 @@ function tier2TraceFor(
   state: SourcingState,
   isUsable: (entry: TranscriptDigestEntry) => boolean,
   candidates: Tier2Candidate[],
-  furthest: Tier2Progress | null
+  furthest: Tier2Progress | null,
+  seed: BeatSeed | undefined
 ): Tier2TraceRow {
+  /* WS-L: a seeded beat that ended up narrated is the case worth reading — the
+     spine wrote a claim from this episode and the tape there would not carry it.
+     Stamped on every branch below, including the ones that never opened an
+     episode at all. */
+  const withSeed = (row: Tier2TraceRow): Tier2TraceRow =>
+    seed ? { ...row, seededEpisode: seed.episodeId, seedWindowWon: false } : row;
   if (!furthest) {
     /* Nothing was even worth opening. When the text index ran, that IS the
        deciding gate; when the topic gate is what emptied the field, `lineage`
@@ -734,9 +808,9 @@ function tier2TraceFor(
        title-token bar, exactly as before. */
     const rejected = traceTier2Rejected(claim, state, isUsable);
     if (state.textIndex.enabled && rejected.gate === "title-tokens") {
-      return { ...rejected, gate: "text-index:no-candidate", candidatesConsidered: 0 };
+      return withSeed({ ...rejected, gate: "text-index:no-candidate", candidatesConsidered: 0 });
     }
-    return rejected;
+    return withSeed(rejected);
   }
   const { candidate, gate, window, span } = furthest;
   const row: Tier2TraceRow = {
@@ -765,7 +839,7 @@ function tier2TraceFor(
     row.startAnchor = span.startAnchor;
     row.endAnchor = span.endAnchor;
   }
-  return row;
+  return withSeed(row);
 }
 
 /** The narration reason a beat carries into §4.7, keyed to how far tier 2 got. */
@@ -890,22 +964,11 @@ function makeSegmentWindowText(archive: TranscriptDigestEntry[], cueProvider: Tr
   };
 }
 
-/** Mirrors `tools/segments/prepare-segment-batch.mjs`'s `slugify` +
- * `mintItemIds` shape (`<show_id>--<slug>`) closely enough to be
- * recognizable as the same id family, without importing that ESM build
- * script into a CJS backend module (same rationale as
- * `transcriptArchiveLookup.ts`'s `canonicalizeForAnchorMatch`). */
-export function deriveItemId(entry: TranscriptDigestEntry): string {
-  const slug = entry.title
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 60)
-    .replace(/-+$/g, "");
-  return `${entry.show_id}--${slug || "episode"}`;
-}
+/* `deriveItemId` moved to `transcriptArchiveLookup.ts` with WS-L \u2014 it derives an
+   id from a digest row and now has callers two stages earlier (\u00a74.2's research
+   windows name their episode with it, \u00a74.3's beat seed carries that name back).
+   Re-exported here, unchanged, so every existing importer is untouched. */
+export { deriveItemId };
 
 /** Same id shape as `data/segments.json`'s existing rows
  * (`<item_id>#<start_sec rounded>`), with a numeric suffix to resolve a

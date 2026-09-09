@@ -1,8 +1,20 @@
 import * as crypto from "crypto";
 import { defaultBudgetGuard, type BudgetGuard } from "../cost/budgetGuard";
 import type { IntentUnderstanding } from "../types/generation";
-import type { ResearchShape } from "../types/research";
-import { DURATION_SHAPE_BUDGETS, type Act, type Beat, type DurationTier, type Slot, type Spine, type Voice } from "../types/spine";
+import type { ResearchShape, ResearchTapeWindow } from "../types/research";
+import {
+  DURATION_SHAPE_BUDGETS,
+  SPINE_MIN_SEEDED_BEATS_PER_ACT,
+  isClaimShaped,
+  type Act,
+  type Beat,
+  type DurationTier,
+  type Slot,
+  type Spine,
+  type Voice
+} from "../types/spine";
+import { tokenizeForSourcing } from "./catalogueLookup";
+import { countSentences, normalizeClaim, MAX_BEAT_CLAIM_WORDS } from "./spineStructure";
 import type { SpineBuildContext, SpineBuilder } from "./SpineBuilder";
 
 /**
@@ -48,6 +60,14 @@ export class StubSpineBuilder implements SpineBuilder {
 
     const subtopicLabels = researchShape.subtopics.length > 0 ? researchShape.subtopics.map((s) => s.label) : [intent.subject];
 
+    /* WS-L (F-63): the transcript windows §4.2 quoted, in map order. When there
+       are none — CI, a checkout with no transcript bodies, a subject the archive
+       is silent on — every line below behaves exactly as it did before, which is
+       what keeps every pre-WS-L dry run and fixture byte-identical. */
+    const windows = researchShape.subtopics.flatMap((s) => s.tapeWindows);
+    const usedClaims = new Set<string>();
+    let seedCursor = 0;
+
     const slotsPerAct = distributeEvenly(slotCount, actCount);
     const beatsPerSlot = distributeEvenly(itemCount, slotCount);
 
@@ -65,6 +85,11 @@ export class StubSpineBuilder implements SpineBuilder {
       const seed = hashToInt(`${intent.subject}::act::${a}`);
       const actSlots: Slot[] = [];
       const nSlotsThisAct = slotsPerAct[a]!;
+      /* The floor `spineStructure.ts` enforces, met exactly — a fixture
+         generator that could not satisfy the gate it is used to test would be
+         no fixture at all (the same argument F-13's `CLAIM_QUALIFIERS` were
+         added under). */
+      let seededThisAct = 0;
 
       for (let s = 0; s < nSlotsThisAct; s++) {
         const nBeatsThisSlot = beatsPerSlot[slotCursor]!;
@@ -73,7 +98,25 @@ export class StubSpineBuilder implements SpineBuilder {
         for (let b = 0; b < nBeatsThisSlot; b++) {
           const label = subtopicLabels[beatCursor % subtopicLabels.length]!;
           const exploration = explorationIndices.has(beatCursor);
-          beats.push({ claim: claimFor(intent.subject, label, beatCursor, exploration), exploration });
+          const window = windows.length > 0 && seededThisAct < SPINE_MIN_SEEDED_BEATS_PER_ACT ? windows[seedCursor % windows.length]! : null;
+          if (window) {
+            /* WHICH sentence of the window, so two acts seeded from the same
+               window do not write the same claim: the window cycles on the
+               seed cursor, the sentence on how many times round it has been. */
+            const claim = claimFromWindow(window, Math.floor(seedCursor / windows.length), usedClaims);
+            beats.push({
+              claim,
+              exploration,
+              seed: { episodeId: window.episodeId, startSec: window.startSec, endSec: window.endSec }
+            });
+            usedClaims.add(normalizeClaim(claim));
+            seededThisAct += 1;
+            seedCursor += 1;
+          } else {
+            const claim = claimFor(intent.subject, label, beatCursor, exploration);
+            beats.push({ claim, exploration });
+            usedClaims.add(normalizeClaim(claim));
+          }
           beatCursor += 1;
         }
         actSlots.push({ title: `${capitalize(intent.subject)} — slot ${slotCursor}`, beats });
@@ -257,6 +300,101 @@ function claimFor(subject: string, label: string, index: number, exploration: bo
   const base = templates[index % templates.length]!(subject, label);
   const qualifier = CLAIM_QUALIFIERS[Math.floor(index / templates.length) % CLAIM_QUALIFIERS.length]!;
   return `${base.replace(/\.\s*$/, "")}, ${qualifier}.`;
+}
+
+/* WS-L (F-63): the stub's half of the tape-first spine.
+ *
+ * A seeded beat's claim is made of the WINDOW'S OWN WORDS, not of a template
+ * about them, and that is the property being fixtured: §4.5's relevance floor
+ * asks whether the tape says the claim, so a stub whose seeded claims were
+ * generated prose would produce a dry run in which the seed path can never
+ * succeed — the run-2 failure, reproduced in the fixture generator. The claim is
+ * a real sentence out of the window where the tape has punctuation to find one,
+ * and a run of its words where it does not (word-level transcripts exist, and a
+ * stub that only worked on tidy tape would be a stub that only worked in
+ * tests). */
+
+/** The longest claim a window sentence may be — well under
+ * `MAX_BEAT_CLAIM_WORDS`, because a beat is a claim and a 60-word one is a
+ * paragraph that happens to fit. */
+const MAX_SEEDED_CLAIM_WORDS = 40;
+/** And the shortest: below this a spoken fragment says nothing a beat could be. */
+const MIN_SEEDED_CLAIM_WORDS = 6;
+/**
+ * How many DISTINCT content words a seeded claim must carry — the same integer
+ * as §4.5's `TIER2_WINDOW_MIN_TERMS`, and here for the same reason.
+ *
+ * Measured, not guessed: without this the stub happily made a beat out of "I, I
+ * don't know what your thinking is" — eight words, two of them content words —
+ * and §4.5 then refused it at `window-overlap` with a weighted share of 1.0,
+ * because a claim with two content words cannot clear a floor that asks for
+ * three. Seven of eight seeded beats died that way on the run-2 offline replay.
+ * A sentence this thin is not a claim in the first place; the filter belongs
+ * where the claim is chosen.
+ */
+const MIN_SEEDED_CLAIM_CONTENT_WORDS = 6;
+
+/**
+ * The `index`-th usable claim in `window`, skipping anything already used
+ * elsewhere in this spine (the duplicate-claim gate is structural — see
+ * `spineStructure.ts`). Deterministic in every branch.
+ */
+function claimFromWindow(window: ResearchTapeWindow, index: number, used: Set<string>): string {
+  /* RICHEST FIRST, and this is not cosmetic. §4.5's relevance floor asks for
+     three claim words the corpus considers RARE for that claim
+     (`TIER2_DISTINCTIVE_WEIGHT`), so a bland spoken sentence — every word of it
+     said in the window, and not one of them distinctive — is refused at
+     `window-overlap` with a weighted share of 1.0. That is the floor working;
+     what the stub owes it is the sentence of the window that actually carries
+     something. Deterministic: content-word count, then the text itself. */
+  const candidates = [...sentenceClaims(window.text), ...runClaims(window.text)].sort(
+    (a, b) => contentWordCount(b) - contentWordCount(a) || (a < b ? -1 : a > b ? 1 : 0)
+  );
+  const usable = candidates.filter((c) => !used.has(normalizeClaim(c)));
+  if (usable.length > 0) return usable[index % usable.length]!;
+  /* Every sentence of this window is already a beat somewhere. Fall back to a
+     claim that still carries the window's own opening words, qualified by the
+     timestamp so it is unique to this window and this position. */
+  const words = window.text.split(/\s+/).filter(Boolean).slice(0, 20).join(" ").replace(/[.!?]+/g, "");
+  return `At ${Math.round(window.startSec)} seconds, the tape says: ${words} (${index + 1}).`;
+}
+
+/** Sentences of the window that are already claim-shaped — the good case, and
+ * the one that keeps the claim verbatim to the tape. */
+function sentenceClaims(text: string): string[] {
+  const parts = text.match(/[^.!?]+[.!?]+/g) ?? [];
+  const claims: string[] = [];
+  for (const part of parts) {
+    const sentence = part.trim();
+    const words = sentence.split(/\s+/).filter(Boolean).length;
+    if (words < MIN_SEEDED_CLAIM_WORDS || words > MAX_SEEDED_CLAIM_WORDS) continue;
+    if (contentWordCount(sentence) < MIN_SEEDED_CLAIM_CONTENT_WORDS) continue;
+    if (countSentences(sentence) !== 1 || !isClaimShaped(sentence)) continue;
+    claims.push(capitalize(sentence));
+  }
+  return claims;
+}
+
+/** And the fallback for tape with no sentence punctuation: fixed runs of its
+ * words, with sentence marks stripped so the result is the one sentence
+ * `checkSpineStructure` requires. */
+function runClaims(text: string): string[] {
+  const words = text.replace(/[.!?]+/g, "").split(/\s+/).filter(Boolean);
+  const claims: string[] = [];
+  for (let i = 0; i + MIN_SEEDED_CLAIM_WORDS <= words.length; i += MAX_SEEDED_CLAIM_WORDS) {
+    const run = words.slice(i, i + MAX_SEEDED_CLAIM_WORDS).join(" ");
+    const claim = `The tape says: ${run}.`;
+    if (claim.split(/\s+/).length > MAX_BEAT_CLAIM_WORDS) continue;
+    if (contentWordCount(run) < MIN_SEEDED_CLAIM_CONTENT_WORDS) continue;
+    claims.push(claim);
+  }
+  return claims;
+}
+
+/** Distinct content words, by §4.5's own tokenizer — so "enough to be a claim"
+ * means here exactly what "enough to be about the claim" means there. */
+function contentWordCount(text: string): number {
+  return new Set(tokenizeForSourcing(text)).size;
 }
 
 function stubVoice(intent: IntentUnderstanding): Voice {
