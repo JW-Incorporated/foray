@@ -9,7 +9,8 @@ import { StubNarrationVerifierBuilder } from "../src/generation/StubNarrationVer
 import { StubContinuityBuilder } from "../src/generation/StubContinuityBuilder";
 import { FakeCheckpointStore } from "./helpers/fakeCheckpointStore";
 import { checkpointFingerprint } from "../src/generation/checkpoint";
-import { BudgetExceededError, EpisodeBudgetExceededError, BudgetStopError } from "../src/cost/budgetGuard";
+import { BudgetExceededError, BudgetGuard, EpisodeBudgetExceededError, BudgetStopError } from "../src/cost/budgetGuard";
+import { InMemoryCostEventSink } from "../src/cost/costEvents";
 import type { FinalizeForayInput, FinalizeForayResult } from "../src/generation/finalizeForay";
 import type { GenerationRequest } from "../src/types/generation";
 import type { SpineBuilder } from "../src/generation/SpineBuilder";
@@ -143,6 +144,59 @@ describe("per-stage checkpoint and resume inside one Foray (F-17/F-18)", () => {
        a failure in one act not costing the acts that already finished. */
     expect(staged.filter((s) => s.startsWith("deepen:")).length).toBeGreaterThan(0);
     expect(staged.filter((s) => s.startsWith("narrate:")).length).toBeGreaterThan(0);
+    /* F-51: per-SLOT keys inside the act, too. `narrate:0` is only written
+       when the whole act finishes, so run 2's death at act 1 page p2 left
+       nothing banked and its re-run would have re-paid for all twelve
+       pages to reach the one that failed. */
+    expect(staged.filter((s) => /^narrate:\d+:\d+$/.test(s)).length).toBeGreaterThan(0);
+  });
+
+  it("a slot that finished is banked even though the act never did, and the re-run pays only for the rest (F-51)", async () => {
+    const store = new FakeCheckpointStore(FP);
+    const failing = countingDeps();
+
+    /* One slot of act 0 writes; every other slot's provider goes away. The
+       short tier is one act of two slots (`DURATION_SHAPE_BUDGETS`), so
+       this is exactly run 2's shape: part of an act done, the act itself
+       unfinished. */
+    const realWrite = failing.deps.narrationWriter.writePages.bind(failing.deps.narrationWriter);
+    let firstSlotTitle: string | null = null;
+    failing.deps.narrationWriter.writePages = async (request, buildCtx) => {
+      if (firstSlotTitle === null) firstSlotTitle = request.slotTitle;
+      if (request.slotTitle !== firstSlotTitle) {
+        await new Promise((r) => setTimeout(r, 10));
+        throw new Error("provider went away mid-slot");
+      }
+      return realWrite(request, buildCtx);
+    };
+
+    await expect(
+      runForayPipeline(request, { userId: "u", checkpointKey: KEY }, { ...failing.deps, finalize: fakeFinalize().fn, checkpoint: store })
+    ).rejects.toThrow(/provider went away/);
+
+    const staged = store.stageKeys(KEY);
+    /* The ACT key is absent — the act never finished — but the slot that
+       did is on disk. */
+    expect(staged).not.toContain("narrate:0");
+    const bankedBeforeRetry = staged.filter((s) => /^narrate:0:\d+$/.test(s));
+    expect(bankedBeforeRetry).toHaveLength(1);
+
+    const retry = countingDeps();
+    const outcome = await runForayPipeline(
+      request,
+      { userId: "u", checkpointKey: KEY, now: () => new Date("2026-09-09T00:00:00Z") },
+      { ...retry.deps, finalize: fakeFinalize().fn, checkpoint: store }
+    );
+
+    expect(outcome.outcome).toBe("generated");
+    expect(retry.calls.spine).toBe(0);
+    expect(retry.calls.deepen).toBe(0);
+    /* Exactly the slots that never landed — not the whole act. Counted
+       against the act's real slot count rather than a hard-coded one, so
+       the test says what it means when the duration tier's shape moves. */
+    const slotsInAct = store.stageKeys(KEY).filter((s) => /^narrate:0:\d+$/.test(s)).length;
+    expect(slotsInAct).toBeGreaterThan(bankedBeforeRetry.length);
+    expect(retry.calls.write).toBe(slotsInAct - bankedBeforeRetry.length);
   });
 
   it("a second run with the same prompt makes no model calls at all", async () => {
@@ -323,5 +377,48 @@ describe("a budget stop names the stage and the spend (F-04)", () => {
     await expect(runForayPipeline(request, { userId: "u" }, { ...deps, finalize: fakeFinalize().fn })).rejects.toThrow(
       "the model returned nonsense"
     );
+  });
+});
+
+
+describe("the per-Foray cap only exists when the run carries a sessionId (requirements §8.10)", () => {
+  /** A pipeline whose FIRST stage bills against a guard that already holds
+   * more per-Foray spend than the cap allows. Nothing else is changed. */
+  function overspentDeps(sessionId: string) {
+    const sink = new InMemoryCostEventSink();
+    /* Recorded straight onto the sink rather than through the guard: this
+       is spend the Foray already made, not a call being authorised now. */
+    void sink.record({ userId: "u", operation: "spine_build", provider: "anthropic", estimatedUsd: 5, sessionId });
+    const guard = new BudgetGuard(sink, 1000, 1);
+    const deps = countingDeps().deps;
+    return { ...deps, understander: new StubPromptUnderstander(guard) };
+  }
+
+  it("stops the run when one Foray has spent past EPISODE_BUDGET_USD", async () => {
+    const session = "the-history-of-grilling-and-barbecue-deadbeef";
+    const err = await runForayPipeline(
+      request,
+      { userId: "u", sessionId: session },
+      { ...overspentDeps(session), finalize: fakeFinalize().fn }
+    ).then(
+      () => null,
+      (e: unknown) => e
+    );
+
+    expect(err).toBeInstanceOf(BudgetStopError);
+    const stop = err as BudgetStopError;
+    expect(stop.scope).toBe("per-foray");
+    expect(stop.cause).toBeInstanceOf(EpisodeBudgetExceededError);
+    expect(stop.stage).toBe("understand");
+  });
+
+  it("and does not, with the same spend, when no sessionId is carried — the inert case this fixes", async () => {
+    const session = "the-history-of-grilling-and-barbecue-deadbeef";
+    const outcome = await runForayPipeline(
+      request,
+      { userId: "u" },
+      { ...overspentDeps(session), finalize: fakeFinalize().fn }
+    );
+    expect(outcome.outcome).toBe("generated");
   });
 });

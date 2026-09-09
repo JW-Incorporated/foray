@@ -41,7 +41,7 @@ import type { DeepenActBuilder } from "./DeepenActBuilder";
 import type { NarrationWriterBuilder } from "./NarrationWriterBuilder";
 import type { NarrationVerifierBuilder } from "./NarrationVerifierBuilder";
 import type { ContinuityBuilder } from "./ContinuityBuilder";
-import type { WrittenAct } from "./writeNarration";
+import type { WrittenAct, WrittenSlot } from "./writeNarration";
 import type { TranscriptCueProvider } from "./transcriptArchiveLookup";
 import type { TapeRelevanceInput } from "../types/tapeSourcing";
 import type { Spine } from "../types/spine";
@@ -363,9 +363,10 @@ const WrittenBeatSchema = z.union([
     narration: NarratedBeatSchema
   })
 ]);
+const WrittenSlotSchema = z.object({ title: z.string(), beats: z.array(WrittenBeatSchema) });
 const WrittenActSchema = z.object({
   title: z.string(),
-  slots: z.array(z.object({ title: z.string(), beats: z.array(WrittenBeatSchema) }))
+  slots: z.array(WrittenSlotSchema)
 });
 
 const StitchCheckpointSchema = z.object({ items: z.array(ForayItemSchema) });
@@ -619,12 +620,19 @@ export async function runForayPipeline(
 
   /* §4.7 — write narration, then verify it independently (distinct instances,
      enforced there). Driven ONE ACT AT A TIME rather than in a single call, so
-     each act's pages are checkpointed as they finish: `writeNarration` throws
-     `NarrationWriteError` out of the stage when a narration beat fails its
-     third attempt (F-17/F-31), and run 1 lost two finished acts that way. Act
-     order and the writer/verifier instances are unchanged — `writeNarration`
-     iterates the acts it is given in order, so N calls of one act and one call
-     of N acts produce the same result. */
+     each act's pages are checkpointed as they finish. Act order and the
+     writer/verifier instances are unchanged — `writeNarration` iterates the
+     acts it is given in order, so N calls of one act and one call of N acts
+     produce the same result.
+
+     TWO CHECKPOINT KEYS, NOT ONE (F-51). `narrate:<i>` is still the outer
+     record: once an act is finished, one key holds it and nothing inside it is
+     consulted again. But `narrate:<i>` is only WRITTEN when the whole act
+     finishes, so a run that dies partway through act 1 re-paid for every page
+     of it — run 2 would have re-paid for twelve pages to reach the one that
+     failed. `narrate:<i>:<slot>` banks each slot the moment it is written, and
+     `writeNarration`'s `resume` hook reads them back, so a re-run pays only
+     for the slots that never landed. */
   const written: WrittenAct[] = [];
   for (let i = 0; i < sourced.acts.length; i++) {
     const act = sourced.acts[i]!;
@@ -633,7 +641,24 @@ export async function runForayPipeline(
         `narrate:${i}`,
         (raw) => WrittenActSchema.parse(raw) as WrittenAct,
         async () => {
-          const [one] = await writeNarration([act], { writer: countingNarrationWriter, verifier: countingNarrationVerifier }, spine.voice, ctx);
+          const [one] = await writeNarration(
+            [act],
+            {
+              writer: countingNarrationWriter,
+              verifier: countingNarrationVerifier,
+              /* Requirements §8.1: the same cue provider §4.5 sources
+                 against, so a tape beat's evidence pack holds the cue
+                 window and not just the episode title. */
+              ...(deps.cueProvider ? { cueProvider: deps.cueProvider } : {}),
+              /* `writeNarration` is handed ONE act, so its own act index is
+                 always 0; `i` is what names the slot's key. */
+              resume: (_actIndex, slotIndex) =>
+                checkpoint.resumeSync(`narrate:${i}:${slotIndex}`, (raw) => WrittenSlotSchema.parse(raw) as WrittenSlot),
+              onSlotWritten: (_actIndex, slotIndex, slot) => checkpoint.save(`narrate:${i}:${slotIndex}`, slot)
+            },
+            spine.voice,
+            ctx
+          );
           return one!;
         }
       )

@@ -170,6 +170,17 @@ export async function finalizeForay(input: FinalizeForayInput, root: string = RE
     // See module doc comment: this validates whatever curation artifacts
     // already exist on disk, not this candidate Foray's own content —
     // there is no per-Foray input to pass it, by design of that file.
+    //
+    // F-51 CHECKED AND LEFT ALONE. A narration page kept with
+    // `verified: false` (writeNarration.ts's no-longer-fatal third
+    // rejection) passes both checkers untouched: this one never sees the
+    // candidate at all, `check-forays.mjs` reads no such field, and
+    // `forayItems.ts` does not emit one into a published item. So the only
+    // thing between an unverified page and a listener is the veracity gate
+    // (`evaluateVeracityGate`, which refuses on `unverifiedPages > 0`) —
+    // which is where F-51 deliberately put the decision. Teaching a
+    // checker about `verified` would move that decision back into a gate
+    // that cannot see the metric.
     return mod.checkNarration(root);
   });
 

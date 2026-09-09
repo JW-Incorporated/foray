@@ -237,3 +237,41 @@ describe("generateOneCandidate — against the real §4.9 validator", () => {
     }
   });
 });
+
+
+describe("the batch driver arms the per-Foray budget cap (requirements §8.10)", () => {
+  let dir: string;
+
+  beforeEach(() => {
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), "foray-candidates-session-"));
+  });
+
+  afterEach(() => {
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  it("passes a sessionId, and it is the checkpoint key", async () => {
+    /* `BudgetGuard.checkAndRecord` only compares a Foray's own spend
+       against EPISODE_BUDGET_USD when the call carries a `sessionId`. This
+       driver passed none, so the per-Foray cap was inert in the only path
+       that generates anything: a runaway Foray was bounded by the DAILY
+       cap alone. The checkpoint key is one id per Foray, stable across a
+       resume, and already the name a human sees when a run stops. */
+    const spec = { prompt: "the history of grilling and barbecue" };
+    const args = baseArgs(dir);
+
+    let seen: Parameters<typeof runForayPipeline>[1] | null = null;
+    await generateOneCandidate(spec, args, {
+      cueProvider,
+      runPipeline: (request, options, deps) => {
+        seen = options;
+        return stubPipeline()(request, options, deps);
+      }
+    });
+
+    const options = seen as unknown as { sessionId?: string; checkpointKey?: string };
+    expect(typeof options.sessionId).toBe("string");
+    expect(options.sessionId!.length).toBeGreaterThan(0);
+    expect(options.sessionId).toBe(options.checkpointKey);
+  });
+});

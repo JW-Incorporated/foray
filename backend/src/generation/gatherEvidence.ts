@@ -156,7 +156,14 @@ export interface EvidenceGathererOptions {
 
 export class DefaultEvidenceGatherer implements EvidenceGatherer {
   private readonly researcher: ExternalResearcher;
-  private readonly cueProvider: TranscriptCueProvider;
+  /** Public and readonly so a caller can PROVE it got the provider it
+   * passed. Requirements §8.1: `writeNarration` built this gatherer with
+   * no options at all, so every tape page was written against
+   * `NullTranscriptCueProvider` — no cue window, only the episode title —
+   * on the same machine where §4.5 was anchoring against real cues. A
+   * silent default is exactly the kind of wrong that needs an assertion
+   * rather than a comment. */
+  readonly cueProvider: TranscriptCueProvider;
   private readonly cacheDir: string | null;
   private readonly now: () => Date;
   private catalogue: CatalogueData | null;

@@ -18,6 +18,7 @@ import {
   type Source
 } from "../types/narration";
 import type { Voice } from "../types/spine";
+import type { TranscriptCueProvider } from "./transcriptArchiveLookup";
 import { beatKindOf, createEvidenceGatherer, emptyEvidencePack, type EvidenceGatherer, type EvidencePack } from "./gatherEvidence";
 import type {
   NarrationBuildContext,
@@ -26,7 +27,7 @@ import type {
   ProsePageBrief,
   SelectedClaim
 } from "./NarrationWriterBuilder";
-import type { NarrationVerifierBuilder, VerifyPageBrief } from "./NarrationVerifierBuilder";
+import type { NarrationVerifierBuilder, PageVerdict, VerifyPageBrief } from "./NarrationVerifierBuilder";
 
 /**
  * §4.7 end to end (docs/curation/generation-architecture.md §4.7): takes
@@ -66,11 +67,35 @@ import type { NarrationVerifierBuilder, VerifyPageBrief } from "./NarrationVerif
  * `writeNarration` throwing if a caller passes the SAME object reference
  * for both.
  *
- * FAILURE POLICY: three informed attempts per page, each retry carrying
- * EVERY prior rejection (F-35). A connective page that still fails is
- * dropped and its tape kept (§4.8's silence-is-a-valid-bridge rule covers
- * the seam); a narration-sourced page failing takes the run down, because
- * dropping it would drop the beat's content.
+ * FAILURE POLICY (F-51): three informed attempts per page, each retry
+ * carrying EVERY prior rejection (F-35). A connective page that still
+ * fails is dropped and its tape kept (§4.8's silence-is-a-valid-bridge
+ * rule covers the seam). A NARRATION page that still fails is KEPT, with
+ * `verified: false`, its whole `attempts` history and the verifier's final
+ * objection in `verifierNotes` — and the run continues.
+ *
+ * That is a reversal of the previous policy, and the reason is that the
+ * thing which used to justify throwing now exists downstream. Run 2 died
+ * at act 1 page p2 with ten of twelve pages verified, 34 model calls
+ * spent, and a veracity gate (WS-B, `veracityMetrics.ts` ->
+ * `cli/publishForay.ts`) sitting unused behind it whose entire job is to
+ * judge a flawed candidate and refuse to publish it. Throwing here
+ * discards eleven good pages to prevent a twelfth from being published
+ * that the gate would have refused anyway. So: a page never kills the
+ * Foray, the gate decides. `unverifiedPages` in `meta.veracity` counts
+ * these pages and the gate refuses on any of them.
+ *
+ * `NarrationWriteError` survives for the one genuinely unrecoverable
+ * case: no page at all — every attempt was rejected before the prose call
+ * ran, typically because nothing was retrieved for the beat, so there is
+ * no script to keep and nothing for an editor to fix.
+ *
+ * PER-SLOT CHECKPOINT (F-51's second half): `resume`/`onSlotWritten` in
+ * `WriteNarrationOptions` are the same pair of callbacks `deepenActs` has
+ * for acts, at slot granularity — the driver keys them `narrate:<act>:<slot>`
+ * so a re-run pays only for the slots not yet written. Run 2's re-run
+ * would have re-paid for all twelve of act 1's pages to reach the one
+ * that failed.
  */
 
 export class NarrationWriteError extends Error {
@@ -119,6 +144,30 @@ export interface WriteNarrationOptions {
    * which is stub-backed whenever ANTHROPIC_API_KEY is absent — so a
    * dry-run still runs the whole lookup path for real. */
   evidence?: EvidenceGatherer;
+  /** The transcript cue provider the DEFAULT gatherer is built with, so a
+   * tape beat's evidence pack carries the +/-90 s cue window WS-A specifies
+   * and not only the show/episode titles (requirements §8.1). Ignored when
+   * `evidence` is supplied — that caller built its own gatherer.
+   *
+   * This parameter exists because the default was silently wrong: this
+   * stage called `createEvidenceGatherer()` with no options, so
+   * `DefaultEvidenceGatherer` fell back to `NullTranscriptCueProvider` and
+   * every tape page was written without a word of the tape it frames, even
+   * on the machine that holds the transcript bodies. §4.5 was threaded the
+   * provider (`sourceBeats`); §4.7 was not. */
+  cueProvider?: TranscriptCueProvider;
+  /** F-51's per-slot resume. Returns an already-written slot for
+   * `(actIndex, slotIndex)`, or undefined to write it. Deliberately a
+   * callback pair rather than a store object, exactly as `deepenActs`
+   * takes one for acts: this stage owns the attempt/failure policy above
+   * and keeps owning it; where a written slot is kept is the driver's
+   * business (`runPipeline.ts` keys it `narrate:<act>:<slot>`). */
+  resume?: (actIndex: number, slotIndex: number) => WrittenSlot | undefined;
+  /** Called with each slot the moment it is written — never for a resumed
+   * one, which is already stored. Awaited BEFORE the act's `Promise.all`
+   * settles, so a slot that finished is banked even when a sibling slot
+   * throws, which is the whole point of the key. */
+  onSlotWritten?: (actIndex: number, slotIndex: number, slot: WrittenSlot) => void | Promise<void>;
 }
 
 /**
@@ -194,20 +243,41 @@ export async function writeNarration(acts: SourcedAct[], options: WriteNarration
   if (writer === (verifier as unknown as NarrationWriterBuilder)) {
     throw new Error("writeNarration: writer and verifier must be distinct builder instances (§4.7 rule 2 — verification must never be the writer)");
   }
-  const evidence = options.evidence ?? createEvidenceGatherer();
+  const evidence = evidenceGathererFor(options);
 
   const writtenActs: WrittenAct[] = [];
-  for (const act of acts) {
+  for (let actIndex = 0; actIndex < acts.length; actIndex++) {
+    const act = acts[actIndex]!;
     /* WS-D1: every slot in an act is written in parallel. Nothing in a
        slot depends on another slot's text — the running order and the M3/M4
        episode-ordering guarantees were both fixed at sourcing time, over the
        whole Foray, before any of this runs — so the only thing serialising
        them bought was wall time, and narration is the largest stage. Acts
        stay sequential here; WS-D2 is what makes act 1 playable early. */
-    const slots = await Promise.all(act.slots.map((slot) => writeSlot(slot, writer, verifier, evidence, voice, ctx)));
+    const slots = await Promise.all(
+      act.slots.map(async (slot, slotIndex) => {
+        const resumed = options.resume?.(actIndex, slotIndex);
+        if (resumed) return resumed;
+        const written = await writeSlot(slot, writer, verifier, evidence, voice, ctx);
+        await options.onSlotWritten?.(actIndex, slotIndex, written);
+        return written;
+      })
+    );
     writtenActs.push({ title: act.title, slots });
   }
   return writtenActs;
+}
+
+/**
+ * The gatherer a call runs with: the injected one, or a default built WITH
+ * the caller's cue provider. Exported because the bug it closes
+ * (requirements §8.1) was invisible by construction — `createEvidenceGatherer()`
+ * with no arguments is valid, silent, and gives every tape beat a pack
+ * with no tape in it — so a test asserts the provider arrives rather than
+ * a comment promising it does.
+ */
+export function evidenceGathererFor(options: WriteNarrationOptions): EvidenceGatherer {
+  return options.evidence ?? createEvidenceGatherer(options.cueProvider ? { cueProvider: options.cueProvider } : {});
 }
 
 /** A page in flight: what it is for, what it may quote, what has been
@@ -222,6 +292,15 @@ interface PendingPage {
   rejections: string[];
   attempts: NarrationAttemptRecord[];
   result?: NarratedBeat;
+  /* F-51's two salvage slots. `kept` is the most recent page that cleared
+     every MECHANICAL rule and was rejected only by the verifier — the page
+     an editor can actually work with, and the one preferred when the third
+     attempt is spent. `lastBeat` is the most recent page produced at all,
+     including one the structural validator refused, kept only so a beat
+     that never once cleared the mechanical rules still leaves something
+     behind rather than ending the Foray. */
+  kept?: { beat: NarratedBeat; verdict?: PageVerdict };
+  lastBeat?: NarratedBeat;
 }
 
 async function writeSlot(
@@ -278,14 +357,20 @@ async function writeSlot(
     const page = pages.find((p) => p.beatIndex === i);
 
     if (beat.sourcing === "narration") {
-      if (!page?.result) {
+      /* F-51. A narration page is the beat's content, so it cannot be
+         dropped the way a connective page can — but it no longer takes the
+         Foray down either. The last attempt is kept unverified and the
+         run continues; `meta.veracity.unverifiedPages` counts it and
+         `evaluateVeracityGate` refuses to publish over it. */
+      const result = page?.result ?? (page ? unverifiedResultFor(page, slot.title) : undefined);
+      if (!result) {
         throw new NarrationWriteError(
           beat.claim,
           beat.narration.mode,
           new InvalidNarratedBeatError(beat.claim, beat.narration.mode, page?.rejections ?? ["no page was produced"])
         );
       }
-      beats.push({ sourcing: "narration", claim: beat.claim, exploration: beat.exploration, narration: page.result });
+      beats.push({ sourcing: "narration", claim: beat.claim, exploration: beat.exploration, narration: result });
       continue;
     }
 
@@ -361,8 +446,14 @@ async function runSlotAttempt(
       script: decodeEntities(written.script),
       sources,
       pronunciationHints: written.pronunciationHints ?? [],
-      verified: true
+      verified: true,
+      /* F-50: recorded, not trusted. The verifier answers the same
+         question independently below and its answer lands in
+         `purposeRevisedByVerifier`. Only ever set when claimed, so a page
+         that simply did its purpose carries no flag at all. */
+      ...(written.purposeRevised === true ? { purposeRevised: true } : {})
     };
+    page.lastBeat = beat;
 
     const structural = validateNarratedBeat(beat, {
       bannedPhrasePatterns: BANNED,
@@ -380,6 +471,11 @@ async function runSlotAttempt(
       continue;
     }
 
+    /* Cleared every mechanical rule. Banked as the salvage candidate
+       BEFORE the verifier is called, so a page the verifier goes on to
+       reject three times is still the page F-51 keeps — a page that broke
+       a substring rule is not. */
+    page.kept = { beat };
     toVerify.push({ page, brief: { ...brief, script: beat.script, sources }, beat });
   }
   if (toVerify.length === 0) return;
@@ -396,6 +492,7 @@ async function runSlotAttempt(
     if (!verdict.purposeAccomplished) failures.push("the page does not accomplish the purpose the beat was given");
     if (!verdict.contestedHandled) failures.push("a genuinely contested point is not handled as §4.7 rule 3 requires");
     if (failures.length > 0) {
+      page.kept = { beat, verdict };
       reject(page, [`${failures.join("; ")}${verdict.notes ? ` — ${verdict.notes}` : ""}`], beat.sources);
       continue;
     }
@@ -414,11 +511,47 @@ async function runSlotAttempt(
     page.result = {
       ...beat,
       purposeAccomplished: verdict.purposeAccomplished,
+      ...(verdict.purposeRevised === true ? { purposeRevisedByVerifier: true } : {}),
       ...(verdict.notes ? { verifierNotes: verdict.notes } : {}),
       evidence: heldDocsOf(page.evidence),
       attempts: page.attempts
     };
   }
+}
+
+/**
+ * F-51's salvage: the page a narration beat carries out of a slot where
+ * every attempt was rejected. Prefers the last MECHANICALLY clean page
+ * (quotes held, spans long enough, attribution read off the document) that
+ * the verifier nonetheless refused, and falls back to the last page
+ * produced at all. Returns undefined when no prose call ever produced one
+ * — the unrecoverable case `NarrationWriteError` still exists for.
+ *
+ * `verified: false` is the whole contract. Nothing downstream reads it as
+ * a licence to publish: `veracityMetrics.ts` counts these pages as
+ * `unverifiedPages` and `evaluateVeracityGate` refuses on any of them,
+ * naming this one. What the field buys is the eleven finished pages that
+ * used to be discarded alongside it.
+ */
+function unverifiedResultFor(page: PendingPage, slotTitle: string): NarratedBeat | undefined {
+  const salvage = page.kept ?? (page.lastBeat ? { beat: page.lastBeat, verdict: undefined } : undefined);
+  if (!salvage) return undefined;
+
+  const notes = (salvage.verdict?.notes ?? page.rejections[page.rejections.length - 1] ?? "").trim();
+  console.warn(
+    `writeNarration: keeping the ${page.mode} page for "${page.claim.slice(0, 80)}" (slot "${slotTitle}") UNVERIFIED after ` +
+      `${NARRATION_PAGE_ATTEMPTS} rejected attempts — the Foray continues and the veracity gate decides (F-51): ${notes.slice(0, 200)}`
+  );
+
+  return {
+    ...salvage.beat,
+    verified: false,
+    ...(typeof salvage.verdict?.purposeAccomplished === "boolean" ? { purposeAccomplished: salvage.verdict.purposeAccomplished } : {}),
+    ...(salvage.verdict?.purposeRevised === true ? { purposeRevisedByVerifier: true } : {}),
+    ...(notes ? { verifierNotes: notes } : {}),
+    evidence: heldDocsOf(page.evidence),
+    attempts: page.attempts
+  };
 }
 
 function newPage(pageId: string, beatIndex: number, claim: string, mode: NarrationMode, contextNote?: string): PendingPage {

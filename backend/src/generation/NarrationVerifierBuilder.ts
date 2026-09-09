@@ -26,7 +26,12 @@ export type { NarrationBuildContext, NarrationPageBrief };
  * three questions instead of one:
  *
  *   1. is every claim actually supported by the quote attached to it;
- *   2. does the page accomplish the purpose it was given (F-41);
+ *   2. does the page accomplish the purpose it was given (F-41) — which,
+ *      since F-50, means "does it address the purpose's SUBJECT with the
+ *      evidence available", INCLUDING by contradicting or qualifying the
+ *      purpose. Only a page that ignores the subject fails. It also says
+ *      whether the page did depart from its purpose that way, which is
+ *      `purposeRevised` below;
  *   3. is rule 3 satisfied — is anything genuinely contested handled, with
  *      the sources in hand rather than guessed at (F-43).
  *
@@ -57,8 +62,15 @@ export interface PageVerdict {
   pageId: string;
   /** Q1: every claim the script makes is backed by its quote. */
   claimsSupported: boolean;
-  /** Q2: the script does the job the beat purpose describes (F-41). */
+  /** Q2: the script engages the SUBJECT its purpose names, with the
+   * evidence it was given (F-41, as F-50 redefined it). A page that
+   * contradicts or qualifies its purpose from the documents accomplishes
+   * it; only a page that drops the subject does not. */
   purposeAccomplished: boolean;
+  /** Q2b, F-50: the verifier's own judgement that this page departed from
+   * its purpose because the evidence did. Optional — a verifier that does
+   * not answer it says nothing, rather than saying "no". */
+  purposeRevised?: boolean;
   /** Q3: §4.7 rule 3, judged with the sources in hand (F-43). */
   contestedHandled: boolean;
   /** Required whenever any answer is false — what the page asserted with
