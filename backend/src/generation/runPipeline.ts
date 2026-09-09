@@ -22,6 +22,7 @@ import { slugifySlotTitle } from "./forayItems";
 import { loadSegmentPool, type SegmentRecord } from "./segmentPoolLookup";
 import { NARRATION_CHARS_PER_SEC } from "../types/narration";
 import { disclosureTemplate } from "../types/narration";
+import { buildPartialCandidate, type PartialCandidate } from "./partialCandidate";
 import { resetUsageTracking, getUsageTotals } from "./usageTracking";
 import { buildVeracityMetrics } from "./veracityMetrics";
 
@@ -114,6 +115,23 @@ export interface RunPipelineDeps {
    */
   finalize?: (input: FinalizeForayInput, root?: string) => Promise<FinalizeForayResult>;
   /**
+   * WS-D2 (docs/curation/generation-fix-plan-2026-09-09.md, "D2 (streaming
+   * publish)"): "If the runPipeline stage structure makes act-by-act
+   * emission require a callback (`onActReady`), add it as an optional
+   * dependency in `runForayPipeline`'s deps object and keep all existing
+   * call sites working." This is that callback — optional, so every
+   * existing caller (the batch CLI's earlier tests, `publishForay.ts`'s own
+   * input shape) is unaffected by its absence.
+   *
+   * Fired once per act, the instant that act's items are stitched and
+   * coverage-validated (`stitchForay.ts`'s own `onActReady`), with a
+   * complete, listener-ready `PartialCandidate` — disclosure item
+   * prepended, `visibility: "private"`, `acts[]` marked `"ready"` through
+   * this act and `"pending"` after it. `generateForays.ts` is the one
+   * caller today: it writes/rewrites the partial file on every act.
+   */
+  onActReady?: (candidate: PartialCandidate) => void | Promise<void>;
+  /**
    * Per-stage resume (F-17/F-18). Omit it and the pipeline behaves exactly as
    * it did before checkpoints existed: nothing is written, nothing is skipped.
    * Supply it (with `options.checkpointKey`) and every stage's output is
@@ -170,6 +188,12 @@ export type RunPipelineOutcome =
        * not. */
       tapeRelevance: TapeRelevanceInput[];
       timings: StageTiming[];
+      /** WS-D2: prompt received -> Act 1 ready, in milliseconds. `null` only
+       * when `deps.onActReady` was never supplied (no act-boundary clock was
+       * ever read) — see `report.json`'s own `ttlA1Ms` field, which is where
+       * `generateForays.ts` surfaces this per §4.9/D2's "measure it and
+       * print ttlA1Ms in the report." */
+      ttlA1Ms: number | null;
     };
 
 /** The Foray-level `slots` record: §4.9 wants `{id, title}` per act slot. */
@@ -264,6 +288,17 @@ export function disclosureItem(subject: string, firstSlotId: string): ForayItem 
   } as ForayItem;
 }
 
+/** How many of `slotsFromSpine(spine)`'s flattened slots belong to acts
+ * `0..actIndex` inclusive. `slotsFromSpine` iterates acts in the same order
+ * (§4.3/§6.1: the spine is frozen, acts never reorder), so a prefix count is
+ * exactly that act range's own slots. Used only by WS-D2's partial-candidate
+ * path — the whole-Foray path never needs a sub-range. */
+function slotCountThroughAct(spine: Spine, actIndex: number): number {
+  let n = 0;
+  for (let i = 0; i <= actIndex; i++) n += spine.acts[i]?.slots.length ?? 0;
+  return n;
+}
+
 /* ------------------------------------------------------------------------ *
  * Checkpoint schemas (F-17/F-18).
  *
@@ -344,6 +379,12 @@ export async function runForayPipeline(
   const timings = new StageTimingLog();
   const now = options.now ?? (() => new Date());
   const ctx = { userId: options.userId, sessionId: options.sessionId };
+  // WS-D2: prompt-received clock. `Date.now()`, not `now()` — `now()` is the
+  // injected-for-determinism stamp clock (`startedAt`/`generatedAt`, and so
+  // `forayIdFor`'s seed), which tests pin to a fixed instant; ttlA1Ms measures
+  // real wall time, exactly like `StageTimingLog` does elsewhere in this
+  // module.
+  const pipelineStartMs = Date.now();
 
   /* F-17/F-18. `open` returns an inert session when there is no store, no key,
      or a checkpoint written for a different request — so everything below is
@@ -406,6 +447,7 @@ export async function runForayPipeline(
   const narrationWriter = deps.narrationWriter ?? createNarrationWriterBuilder();
   const narrationVerifier = deps.narrationVerifier ?? createNarrationVerifierBuilder();
   const continuityBuilder = deps.continuityBuilder ?? createContinuityBuilder();
+  const finalize = deps.finalize ?? finalizeForay;
 
   /* WS-B: `callsPerBeat` counts every §4.7 writer/verifier call, including
      rejected attempts — wrapping here (rather than instrumenting
@@ -524,6 +566,36 @@ export async function runForayPipeline(
     };
   }
 
+  /* WS-D2 (fix plan, "D2 (streaming publish)") needs four Foray-level facts
+     before Act 1 can be handed to a listener, and all four are knowable the
+     moment the spine is frozen and the topic resolves — so they are hoisted
+     here rather than recomputed inside `onActReady` on every act.
+
+     WHICH TIMESTAMP THE PARTIAL CANDIDATE CARRIES, AND WHY. `startedAt` comes
+     from the SAME injected `now()` clock the final `generatedAt` below comes
+     from — the deterministic one tests pin, never `Date.now()` — but it is
+     read HERE, so it is the time the run reached the frozen spine and not the
+     time the Foray finished. A partial candidate has no finish time to stamp:
+     it exists, by construction, only while the run is still going. It
+     therefore carries `builtAt: startedAt`, and that is the honest reading of
+     the field rather than a finish time back-dated or invented.
+
+     `generatedAt` itself is deliberately NOT hoisted — the note just above
+     stands: it is the time the Foray was finished, and stamping it here would
+     date every published Foray several minutes before it existed.
+
+     `forayId` IS hoisted, seeded from `startedAt`, and the finished candidate
+     below reuses it instead of re-deriving one from `generatedAt`. The id is
+     the streaming contract: the listener polling the partial and the candidate
+     that eventually replaces it have to be the same Foray, and two timestamps
+     would mint two ids for one piece of work. Determinism is untouched —
+     both stamps are read from the injected clock, so the same request and the
+     same clock still produce the same id (`runPipeline.test.ts`). */
+  const startedAt = now().toISOString();
+  const forayId = forayIdFor(title, startedAt);
+  const slots = slotsFromSpine(spine);
+  const allActTitles = spine.acts.map((a) => a.title);
+
   /* §4.4 — deepen every act, in parallel across acts, each act checkpointed on
      its own (F-17): an act that succeeded is banked even when a sibling act
      exhausts its retry budget and fails the stage. */
@@ -568,15 +640,67 @@ export async function runForayPipeline(
     );
   }
 
-  // §4.8 — stitch, smoothing each act's introduction against the one before it.
+  /* WS-D2's clock: set once, the first time `onActReady` fires for act index
+     0, then carried unchanged on every later act's rewrite — matching
+     `PartialCandidate.ttlA1Ms`'s own doc comment.
+
+     IT STAYS `null` ON A RESUMED RUN, and that is correct rather than a gap.
+     When F-17/F-18's checkpoint already holds the stitch stage, `stage()`
+     below returns the stored items and never calls `stitchForay` at all, so
+     `onActReady` never fires and no act boundary is ever timed. The resumed
+     process did not take that long, and the process that did is gone; a
+     number measured from THIS run's start would be a fiction. Reported as
+     "not measured" instead. The same is true of any run that supplied no
+     `deps.onActReady` — there was no act-boundary clock to read. */
+  let ttlA1Ms: number | null = null;
+
+  /* §4.8 — stitch, smoothing each act's introduction against the one before
+     it. Checkpointed like every other stage (F-17/F-18); WS-D2's per-act
+     emission is wired INSIDE the checkpointed function, not around it, so a
+     resume that skips stitch also skips the partial writes — there is nothing
+     to stream when the items were already on disk. */
   const stitched = await stage(
     "stitch",
     (raw) => StitchCheckpointSchema.parse(raw) as { items: ForayItem[] },
-    () => stitchForay(deepened, written, { continuity: { builder: continuityBuilder } }, ctx)
+    () =>
+      stitchForay(
+        deepened,
+        written,
+        {
+          continuity: { builder: continuityBuilder },
+          onActReady: deps.onActReady
+            ? async ({ actIndex, itemsSoFar }) => {
+                if (actIndex === 0) ttlA1Ms = Date.now() - pipelineStartMs;
+                /* The disclosure is prepended here for the SAME reason the
+                   whole-Foray path prepends it below: it is a Foray-level
+                   obligation stitch has no concept of, and `check-forays.mjs`
+                   requires items[0] to be it — a partial candidate is
+                   something `finalizeForay` inside `buildPartialCandidate`
+                   validates with those same gates, so it needs the same
+                   opening item the final candidate gets. */
+                const itemsWithDisclosure = [disclosureItem(intent.subject, slots[0]!.id), ...itemsSoFar];
+                const candidate = await buildPartialCandidate(
+                  {
+                    actIndex,
+                    totalActs: allActTitles.length,
+                    allActTitles,
+                    items: itemsWithDisclosure,
+                    slots: slots.slice(0, slotCountThroughAct(spine, actIndex)),
+                    runtimeSec: runtimeSecFor(itemsWithDisclosure),
+                    ttlA1Ms
+                  },
+                  { id: forayId, title, topic, summary: intent.subject, authorId: options.userId, builtAt: startedAt, root: options.root },
+                  finalize
+                );
+                await deps.onActReady!(candidate);
+              }
+            : undefined
+        },
+        ctx
+      )
   );
 
   const generatedAt = now().toISOString();
-  const slots = slotsFromSpine(spine);
   /* The disclosure is prepended here rather than inside stitch: it is a
      Foray-level obligation, not an act's content, and stitch has no concept of
      "the whole Foray" to attach it to. Prepending also keeps it out of the
@@ -601,7 +725,7 @@ export async function runForayPipeline(
   });
 
   const input: FinalizeForayInput = {
-    id: forayIdFor(title, generatedAt),
+    id: forayId,
     title,
     topic,
     summary: intent.subject,
@@ -613,7 +737,6 @@ export async function runForayPipeline(
   };
 
   // §4.9 — validate against the same two checkers CI runs. Writes nothing.
-  const finalize = deps.finalize ?? finalizeForay;
   const result = await timed("finalize", () => finalize(input, options.root));
 
   /* `finalize`'s own internal breakdown (build-record/check-forays/check-
@@ -622,5 +745,5 @@ export async function runForayPipeline(
      already holds a reference to, rather than rebuilding `input`. */
   veracity.stageTimings = [...timings.all(), ...result.timings.map((t) => ({ ...t, name: `finalize.${t.name}` }))];
 
-  return { outcome: "generated", input, result, spine, tapeRelevance: sourced.tapeRelevance, timings: timings.all() };
+  return { outcome: "generated", input, result, spine, tapeRelevance: sourced.tapeRelevance, timings: timings.all(), ttlA1Ms };
 }
