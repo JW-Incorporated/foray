@@ -1,7 +1,11 @@
 # Foray generation and storage — requirements
 
 **Status:** authoritative reference for the pipeline **as built** on branch
-`generation-run-2026-09-09`, read out of the code on 2026-09-09.
+`generation-run-2026-09-09`, read out of the code on 2026-09-09 and **refreshed the
+same day against the tip after PRs #551–#555** (F-49, F-50, F-51, F-59, F-60, and
+WS-H's text-level tier 2 for F-06 — plus the three wiring defects the first pass of
+this document found, F-52/F-53/F-54). Every prompt below was re-read from source
+for that refresh.
 **Audience:** founders and agents. It assumes no knowledge of the codebase.
 **Relationship to the other documents:**
 
@@ -9,8 +13,8 @@
 |---|---|---|
 | `docs/curation/generation-architecture.md` | The design prompt. Its own header says "design prompt. Nothing described here is built." | Design intent only. Where it and the code disagree, **the code is what runs** and this document says so explicitly. |
 | `docs/curation/narration-craft.md` | The narration craft doctrine — six modes, budgets, seam rules, the ratio. | Source of the numbers the code mirrors (`MODE_CHAR_BANDS`, 17 chars/s). |
-| `docs/curation/generation-run-2026-09-09.md` | The findings table (F-01…F-48) and interventions ledger from run 1. | The evidence base. Finding ids cited throughout. |
-| `docs/curation/generation-fix-plan-2026-09-09.md` | The workstream spec (WS-A…WS-F) built against those findings. | What this branch implements. |
+| `docs/curation/generation-run-2026-09-09.md` | The findings table (F-01…F-62) and interventions ledger from runs 1 and 2. | The evidence base. Finding ids cited throughout. |
+| `docs/curation/generation-fix-plan-2026-09-09.md` | The workstream spec (WS-A…WS-F, plus WS-H) built against those findings. | What this branch implements. |
 | **This document** | What the code on this branch actually does, stage by stage, prompt by prompt. | The single reference. Every claim cites `path:function`. |
 
 Nothing here is invented. Where behaviour is absent, this document says
@@ -55,11 +59,16 @@ Consequences the code enforces:
   audio. This is checked structurally, not promised: `sourceBeats.noFetch.test.ts`
   greps the module sources for fetch/http/download call sites
   (`backend/src/generation/sourceBeats.ts` module doc comment).
-- Exactly **one** module under `backend/src/generation/` may write to disk —
-  `backend/src/generation/evidenceCache.ts`, and it writes retrieved public text
-  keyed by a hash, never a user's words. `backend/test/promptNoPersistence.test.ts`
-  names it as the sole permitted exception and scans every other file in the
-  directory for a persistence primitive.
+- Exactly **two** modules under `backend/src/generation/` may write to disk, and
+  both write public text about the world rather than a user's words:
+  `backend/src/generation/evidenceCache.ts` (retrieved passages, keyed by a claim
+  hash) and — new with WS-H — `backend/src/generation/transcriptTextIndex.ts`
+  (an inverted index over podcast cue text, keyed by `show_id`).
+  `backend/test/promptNoPersistence.test.ts` names both as the only permitted
+  exceptions (`PERSISTENCE_EXEMPT`), scans every other file in the directory for a
+  persistence primitive, and holds each exemption to §9.4 with its own test — the
+  index test asserts that the claim a search ran for never appears in the cache
+  file.
 
 ### 1.3 What this document governs
 
@@ -83,9 +92,12 @@ Consequences the code enforces:
 - **The player.** How `player/foray-queue.js` and `app.js` turn a published Foray
   into audio is out of scope except where the checker mirrors it (§5.1).
 - **Segment extraction as a standing pipeline.** `docs/curation/segment-extraction-pipeline.md`
-  owns how a transcript becomes a committed segment. The generation pipeline can
-  *mint* a tier-2 segment in memory but never writes one to `data/segments.json`
-  (§3.6.6, §8.2).
+  owns how a transcript becomes a committed segment. The generation pipeline
+  *mints* a tier-2 segment in memory, carries it on the candidate, and — only at
+  publish time, in the same PR as the Foray — `publishForay.ts` appends it to
+  `data/segments.json` and its episode row to `data/segment-sources.json`, flagged
+  `source: "generation-tier-2"` and `needs_review: true` (§3.6.6, §3.10, §6.5).
+  No generation-stage module writes either file.
 - **Transcript acquisition.** `docs/adr/0004-transcript-acquisition-ladder.md` and
   `docs/curation/transcription-scale-plan.md` own it.
 - **TTS.** Whether on-device speech survives a locked screen is
@@ -115,12 +127,15 @@ document uses the measured one.
 | `data/catalog.json` | `{version, built_at, notes, shows[]}` | **220** shows | `catalogueLookup.ts:loadCatalogueData`, `taxonomyFamily.ts:loadShowNodes` |
 | `data/discover.json` | `{version, built_at, items[]}` | **2,050** items (the architecture doc's "1,855" is stale) | `catalogueLookup.ts:loadCatalogueData`, `gatherEvidence.ts:titlesForItem` |
 | `data/item-tags.json` | `{version, built_at, tags: {itemId: string[]}}` | **2,077** keys | `catalogueLookup.ts:queryTapeAvailability` |
-| `data/semantic-index.json` | `{version, built_at, concepts: {key: {terms, topics, related}}, modifiers}` | **120** concepts | `catalogueLookup.ts:matchConceptsInText` |
-| `data/taxonomy.json` | `{version, notes, nodes[], episode_attributes}` | **194** nodes | `resolveTopic.ts:loadTaxonomyNodes`, `taxonomyFamily.ts:buildLineages`, `check-forays.mjs` |
+| `data/semantic-index.json` | `{version, built_at, concepts: {key: {terms, topics, related}}, modifiers}` | **120** concepts; **361** multi-word terms attached to at least one topic | `catalogueLookup.ts:matchConceptsInText`, `resolveTopic.ts:loadConceptTermWeights` |
+| `data/taxonomy.json` | `{version, notes, nodes[], episode_attributes}` | **194** nodes, **1** of which carries a `terms` list (`engineering/energy-fusion`) | `resolveTopic.ts:loadTaxonomyNodes`, `taxonomyFamily.ts:buildLineages`, `check-forays.mjs` |
 | `data/forays.json` | `{version, built_at, notes, forays[]}` | **4** Forays, none `generated` | `finalizeForay.ts:loadCandidateFiles`, `publishForay.ts`, the app at runtime |
 | `data/transcript-digests.json` | `{version, generated_at, policy, selection, summary, transcripts[]}` | **587** entries (curated shows) | `transcriptArchiveLookup.ts:loadTranscriptArchive` |
 | `data/breadth-transcript-digests.json` | same shape | **1,131** entries (breadth shows) | same |
 | `data/breadth-classification.json` | `{entries: {collectionId: {topics[]}}}`, ~17 MB | lazily loaded, **only** for a numeric (Apple collection) show id | `taxonomyFamily.ts:loadBreadthNodes` |
+| `data/transcript-availability.json` | `{version, generated_at, policy, summary, shows[]}` | **220** shows | `audioSourceLookup.ts:loadShowAudioMeta` |
+| `data/breadth-transcript-yield.json` | same `shows[]` shape | **3,000** shows | same |
+| `data/dai-classification.json` | `{built_at, shows: {appleCollectionId: {dai}}}` | **220** entries | same — the resolved DAI verdict, which wins over the two sweep files |
 
 **Digest totals.** 587 + 1,131 = **1,718** entries; `loadTranscriptArchive` keeps
 the **1,708** with `cues > 0` and `span_implausible !== true`, across **15**
@@ -143,6 +158,13 @@ transcript_source, dai_suspected, source, batch_id, needs_review   (optional)
 ```
 
 Typed at `backend/src/generation/segmentPoolLookup.ts:SegmentRecord`.
+
+A row **this pipeline** mints for a tier-2 anchor
+(`finalizeForay.ts:mintedSegmentRow`) fills the same field names, carries the
+Foray's resolved `topic` (the lineage the topic gate admitted the episode on),
+sets `source: "generation-tier-2"` and `needs_review: true`, and deliberately
+carries **no `why`** — that field is a curator's own note and nothing machine-made
+belongs in it (§3.10).
 
 **`data/segment-sources.json` `sources[]`** — how an episode is played:
 
@@ -176,8 +198,14 @@ related[]}}`. `terms` are matched against the intent text; `topics` are taxonomy
 node ids; `related` supplies breadth (§3.2.2).
 
 **`data/taxonomy.json` `nodes[]`** — `id` (`"engineering/disasters"`), `parent`
-(`"engineering"` or `null`), `label`, plus `apple_anchor`, `weight`,
-`confidence`, `last_evidence_at` which generation ignores. Two levels.
+(`"engineering"` or `null`), `label`, an **optional `terms[]`** (distinctive
+vocabulary the node advertises, added with F-59 — see §3.4), plus `apple_anchor`,
+`weight`, `confidence`, `last_evidence_at` which generation ignores. Two levels.
+`terms` is optional in `backend/src/types/taxonomy.ts:TaxonomyNodeSchema`, and
+exactly one node carries one today: `engineering/energy-fusion`, whose eleven
+terms are `fusion`, `fusion-energy`, `tokamak`, `stellarator`, `plasma`,
+`plasma-physics`, `reactor`, `iter`, `inertial-confinement`,
+`magnetic-confinement`, `ignition`.
 
 **`data/transcript-digests.json` / `data/breadth-transcript-digests.json`
 `transcripts[]`** — metadata only, never transcript text:
@@ -191,8 +219,11 @@ feed_duration_sec, speakers, warnings
 ```
 
 Typed at `backend/src/generation/transcriptArchiveLookup.ts:TranscriptDigestEntry`
-(only `show_id`, `show_title`, `guid`, `title`, `cues`, `feed_duration_sec`,
-`span_implausible` are declared).
+(`show_id`, `show_title`, `guid`, `title`, `cues`, `feed_duration_sec`,
+`span_implausible`, and — since a tier-2 segment has to be playable —
+**`enclosure_url`**, optional, because a digest row without one is a row this
+pipeline may not mint tape from rather than a parse error; see §3.6.6's
+audio-source lookup).
 
 **`data/forays.json` `forays[]`** — the published record; see §6.5 for the exact
 shape the pipeline writes.
@@ -236,8 +267,9 @@ This is why the topic gate unions two signals rather than trusting either
 
 **Ownership.** All of `data/` is committed and founder-owned; it changes by PR.
 The generation pipeline **never writes to `data/`** — the only writer is
-`backend/src/cli/publishForay.ts`, and only to `data/forays.json`, and only
-through a branch + PR (§6.5).
+`backend/src/cli/publishForay.ts`, only to `data/forays.json` and (when the run
+minted tier-2 tape) `data/segments.json` and `data/segment-sources.json`, all in
+one commit, and only through a branch + PR (§6.5).
 
 ### 2.2 Machine-local files (`data-local/`, gitignored)
 
@@ -245,21 +277,26 @@ through a branch + PR (§6.5).
 |---|---|---|---|
 | `data-local/transcripts/normalized/<show_id>-<hash>/<guid-slug>-<hash>.json` | `{show_id, guid, source_url, cues: [{start_sec, end_sec, text, speaker}], warnings[]}` | **1,713** files across **15** show directories | `tools/segments/` fetch/normalise step |
 | `data-local/transcripts/raw/…` | the fetched SRT/VTT before normalisation | 1,713 files | same |
+| `data-local/transcripts/index/<show_id>.json` | `{version, showId, builtAt, docs: [{guid, length, mtimeMs, size}], postings: {term: [[docIndex, tf]]}}` | **1** file (`practical-ai.json`, 613 KB) — one per show tier 2 has searched | `transcriptTextIndex.ts:FileTranscriptTextIndex` |
 | `data-local/evidence/<claim-hash>.json` | `{cachedAt, docs: EvidenceDoc[]}` | **empty** (no keyed run yet) | `evidenceCache.ts` |
 | `data-local/corpus/corpus.db` | SQLite: `sources`, `documents`, `chunks`, `chunks_fts` (FTS5), `chunk_embeddings`, `embedding_models` | **558** chunks over 54 markdown documents | the corpus tooling |
 | `data-local/corpus/{markdown,raw,hostgate}/` | fetched reference documents + per-host fetch policy | 54 markdown | same |
 | `data-local/foray-candidates/` | the pipeline's own output (§6) | empty | `generateForays.ts` |
 
-**`corpus.db` is not read by the generation pipeline at all.** Nothing under
-`backend/src/generation/` opens it. It exists, it has an FTS index over 558
-chunks, and F-06 named it as the obvious fix for title-only episode matching; it
-remains unused (§8.3).
+**`corpus.db` is still not read by the generation pipeline at all.** Nothing
+under `backend/src/generation/` opens it. F-06 named it as the obvious fix for
+title-only episode matching; WS-H solved that problem a different way, with its
+own BM25 index over the normalised **episode transcripts** in
+`data-local/transcripts/normalized/` (§3.6.6), because `corpus.db` holds reference
+documents rather than podcast cue text. `corpus.db` remains unused.
 
 **The transcript archive is the binding constraint and it is machine-local.** A
 checkout without `data-local/transcripts/` gets
-`transcriptArchiveLookup.ts:NullTranscriptCueProvider` behaviour — every episode
-returns `null` cues, tier 2 can never anchor, and the only tape available is the
-212-row committed pool. The generation machine is therefore not
+`transcriptArchiveLookup.ts:NullTranscriptCueProvider` **and**
+`transcriptTextIndex.ts:NullTranscriptTextIndex` behaviour — every episode returns
+`null` cues, the text search returns no candidates and reports `enabled: false`,
+tier 2 falls back to the title path and can never anchor, and the only tape
+available is the 212-row committed pool. The generation machine is therefore not
 interchangeable with a CI runner (§7.5).
 
 ### 2.3 The request
@@ -332,16 +369,26 @@ Stage order, with the checkpoint key each is persisted under:
 | — | Resolve topic | *(not checkpointed)* | none — deterministic | 0 |
 | 4 | Deepen acts, in parallel | `deepen:0`, `deepen:1`, … | sonnet, 1 per act | acts (×2 on retry) |
 | 5 | Source beats | `source` | none — deterministic | 0 |
-| 6 | Gather evidence | *(runs inside stage 7)* | haiku, 1 per uncached beat | beats |
-| 7 | Write narration, one act at a time | `narrate:0`, `narrate:1`, … | sonnet | 3 per slot per attempt |
+| 6 | Gather evidence | *(runs inside stage 7)* | haiku, 1–2 per uncached beat | beats |
+| 7 | Write narration, one act at a time | `narrate:0`, `narrate:1`, … plus a per-slot `narrate:0:0`, `narrate:0:1`, … | sonnet | ≤ 3 per slot per attempt |
 | 8 | Stitch + cross-act continuity | `stitch` | sonnet, 1 per act boundary | acts − 1 |
 | 9 | Finalize (validate) | *(not checkpointed)* | none | 0 |
 
 Every dependency is injectable (`runPipeline.ts:RunPipelineDeps`): the seven
-builders, the transcript cue provider, the `finalize` function, the `onActReady`
-callback and the checkpoint store. The defaults are the `create*()` factories,
-each of which returns a **Stub** when `ANTHROPIC_API_KEY` is absent and an
-**Anthropic-backed** builder when it is present. One code path serves both (§4.6).
+builders, the transcript **cue provider**, the tier-2 **text index**
+(`textIndex`, WS-H), the **audio-source resolver** (`audioSourceFor`, defaulting
+to the real `createDigestAudioSourceResolver`), the `finalize` function, the
+`onActReady` callback and the checkpoint store. The defaults are the `create*()`
+factories, each of which returns a **Stub** when `ANTHROPIC_API_KEY` is absent and
+an **Anthropic-backed** builder when it is present. One code path serves both
+(§4.6). `cueProvider` and `textIndex` both default to honest-nothing
+implementations, so a caller that supplies neither gets exactly the pre-WS-H
+behaviour rather than a guess.
+
+After sourcing, `runPipeline` prints one line per slot — `summarizeSourcing`'s
+tape/narration split and the single most common reason its narrated beats found
+no tape (§3.6.9). Run 2 finished with zero tape beats and the operator's first
+evidence of it was an all-narration candidate half an hour later.
 
 Three seams wrap the stages:
 
@@ -838,20 +885,94 @@ expensive stages.
 **Input text:** `[intent.subject, intent.angle, every act title].join(" ")`.
 **Title:** `` `${subject}${angle ? ": " + angle : ""}`.slice(0, 120) ``.
 
-**Scoring** (`resolveTopic.ts:scoreTopics`): tokenise the query with
-`tokenizeForCatalogueQuery`; for each of the 194 nodes, tokenise `id` (path
-separators and hyphens split into words) plus `label`; score = one point per
-distinct shared token, **+0.5** if the node has a parent (a child beats its own
-root, because `history/technology` says more than `history`); ties broken by id so
-the order is stable and pinnable in a test.
+**What F-59 changed, and why counting shared tokens was not enough.** Run 2's
+topic text — *"the end-to-end engineering pipeline of building and operating
+machine learning systems in production…"* — resolved to
+**`engineering/energy-fusion`**, and §3.6.5's lineage gate then refused every
+AI-adjacent show in the archive as off-topic (every slot's trace read
+`tier2:lineage`). Nothing about fusion appears anywhere in that prompt. The node
+won on exactly two words: `engineering`, which all seven nodes under that root get
+free from their own ids, and `systems`, from the label *"Fusion & energy systems"*
+— the only label in the tree containing it, so the rarity rule scored it as the
+most distinctive word there is. Meanwhile `engineering/ai-robotics`, the right
+answer, could match **nothing**: the shared tokenizer drops two-letter words, so
+`ai` is not even a token, and "Ai Robotics" advertises no vocabulary a
+production-ML prompt uses. The same magnet appears in show classification (#547).
 
-**The bar:**
-- `MIN_TOKEN_OVERLAP = 2` whole tokens → resolved.
-- Otherwise, a **rare-token escape hatch**: a single shared token resolves it if
-  that token appears in at most `RARE_TOKEN_MAX_NODES = 2` nodes ("fusion", "bbq"
-  are decisive; "history" is not).
-- Otherwise `resolved: null` plus the top 5 ranked candidates, and the run ends
-  with outcome `unresolved-topic`.
+**Scoring** (`resolveTopic.ts:scoreTopics`) now separates two kinds of evidence,
+and only the second can resolve a topic. Tokenise the query with
+`tokenizeForCatalogueQuery`; for each of the 194 nodes, tokenise `id` (path
+separators and hyphens split into words) plus `label`, then:
+
+| Signal | Weight | Constant |
+|---|---|---|
+| an **advertised term** the query contains | `TERM_MATCH_WEIGHT = 2`, divided for a concept phrase by how many topics its concept names | `TERM_MATCH_WEIGHT` |
+| a shared **distinctive** id/label token | 1 | — |
+| a shared **generic** token | `GENERIC_TOKEN_WEIGHT = 0.25` | `GENERIC_TOKEN_MAX_NODES`, `GENERIC_LABEL_WORDS` |
+| the node has a parent (a child beats its own root) | **+0.5**, a tie-breaker between matches only | — |
+
+Ties are broken by id, so the order is stable and pinnable in a test. A node with
+no shared token **and** no matched term is not a candidate at all.
+
+**A token is generic** when it is carried by more than
+`GENERIC_TOKEN_MAX_NODES = 3` nodes (`engineering`, `history`, `music`), **or**
+when it is one of `GENERIC_LABEL_WORDS` — words that name a *form* rather than a
+subject: `system`, `systems`, `general`, `misc`, `other`, `topics`, `studies`,
+`modern`, `world`. That second list exists because the node-count rule cannot
+catch them: "systems" appears in exactly one label and would otherwise score as
+the rarest word in the tree. It is kept short and evidence-led on purpose — a word
+that names a real subject for some node (`technology`, `management`, `design`,
+`history`, `science`, `energy`) is deliberately **not** on it, because listing it
+would stop that node ever resolving; the suite asserts that.
+
+**Advertised terms** come from two places, merged
+(`nodeTermWeights` ∪ `loadConceptTermWeights`, `mergeTermWeights` keeping the
+higher weight per term):
+
+- **`terms` on the node itself** in `data/taxonomy.json` — curated against the
+  node, so no restriction on length. One node has one today (§2.1.1).
+- **The multi-word phrases `data/semantic-index.json` already maps to a node.**
+  "machine learning" has pointed at `engineering/ai-robotics` all along (the `ai`
+  concept); the resolver was the one matcher in the pipeline not reading that file.
+  **Multi-word only**: a concept's single words are corpus vocabulary, not
+  node-distinguishing vocabulary — the concepts pointing at
+  `engineering/precision-mfg` list "production", "systems" and "engineering", and a
+  prototype using them replaced one magnet with a worse one (precision-mfg
+  outscored everything on run 2's text *and* pulled run 1's disasters prompt to
+  `architecture/infrastructure`). **A phrase hit is divided by its concept's topic
+  count**: "machine-learning" is listed by `ai` (1 topic) and by `machine-learning`
+  (2 topics), and a term that names one node is decisive where the same term spread
+  over three is a hint.
+
+Term matching (`queryHasTerm`) is the **strict** subset of `catalogueLookup`'s
+rule — an exact token, or an adjacent word run for a hyphenated term, **no
+stems**. A wrong concept in the research map is one line in a prompt; a wrong node
+here is every sourcing decision in the run.
+
+**The bar** (`resolveTopic`), in order:
+- the best candidate matched **any advertised term** → resolved. It was written
+  against that node and nothing else.
+- otherwise, if its `distinctiveTokens` is **empty** → `resolved: null`. Generic
+  words accumulate score for ranking and can never resolve, however many there are
+  — this is exactly what stops "engineering … systems" reaching the fusion node.
+- otherwise `MIN_TOKEN_OVERLAP = 2` **matched** tokens (generic ones count toward
+  this second bar, once a distinctive one exists) → resolved.
+- otherwise the **rare-token escape hatch**: a single *distinctive* token resolves
+  it if that token appears in at most `RARE_TOKEN_MAX_NODES = 2` nodes ("fusion",
+  "bbq" are decisive; "history" is not).
+- otherwise `resolved: null`, and the run ends with outcome `unresolved-topic`.
+
+**Diagnostics.** `TopicCandidate` carries `matchedTokens`, `distinctiveTokens` and
+`matchedTerms` beside `score`, and the **top-5 shortlist is returned on the
+resolved path as well as the unresolved one** — F-59 needed an offline replay to
+diagnose precisely because a resolved topic reported nothing about why it resolved.
+
+Pinned regressions: run 2's text resolves to `engineering/ai-robotics` on the
+phrase with `distinctiveTokens: []`; `engineering/energy-fusion` still *matches*
+that text on `["engineering", "systems"]` and cannot resolve on them, and is not
+even on the shortlist; run 1's engineering-disasters prompt still resolves to
+`engineering/disasters`; a genuinely fusion prompt still resolves via `terms`;
+"the history of grilling" → `food/grilling-bbq` and "roman concrete…" → `null`.
 
 **It fails rather than guesses**, and the module says why: `check-forays.mjs` only
 asks whether the node *exists*, never whether it is the *right* one, so a
@@ -935,9 +1056,12 @@ Your job:
    are still high-level. Do NOT add or remove slots. You may refine beat wording but every beat must
    remain a CLAIM, never a topic (e.g. "Charcoal briquettes were a Ford Motor Company waste-disposal
    scheme" is a beat; "Briquettes" is not).
-2. Tag every beat `kind`: "account" if a person could be recorded describing this specific event,
-   place or experience; "argument" if it is a thesis or generalisation about a class of events, which
-   no recording is ever about. Arguments are narrated, never illustrated with tape.
+2. Tag every beat `kind`. "account" is the DEFAULT and covers most beats: an event, a practice, a
+   measurement, or a mechanism someone could be heard describing — a person explaining how a thing
+   is done is an account, not an argument. Use "argument" ONLY for a claim about what something
+   MEANS or what someone SHOULD do, which no recording of an event, a person or a practice could
+   carry. Arguments are narrated, never illustrated with tape, so a beat wrongly tagged "argument"
+   silently loses its tape; at most a third of any one slot's beats may be arguments.
 3. Write this act's own INTRODUCTION — what a listener hears entering this act. Use the full spine so
    act {{n}} does not re-explain what an earlier act already established.
 4. Write this act's EXIT — the connective tissue into the next act (its own half of the handoff; a
@@ -951,6 +1075,16 @@ Instruction 2 is **WS-C.1**, closing **F-38**: run 1 ran the same token scorer
 over a thesis ("every link in a failure chain gets evaluated against a local
 question and almost never against the global one") and anchored it to a *Geology
 Bites* episode on banded iron formations.
+
+**Instruction 2's narrowing is F-49's fix.** Told only that an argument is a
+"thesis or generalisation", the deepen stage tagged **29 of run 2's 35 beats**
+`argument`, §3.6.3 skipped the tape search for all 29, and the pipeline produced
+an all-narration Foray on the subject this archive is richest in. On an
+angle-driven spine ("the unglamorous reality of production ML is engineering
+discipline, not research") every beat reads as evidence for the thesis. So the
+line is now drawn at what a *recording* can carry, `account` is stated as the
+default, and — because the prompt is exactly what drifted — the ratio is also
+bounded in code (§3.5.3a).
 
 #### 3.5.2 Response schema
 
@@ -979,7 +1113,8 @@ search-for-tape behaviour that predates the field
 (`types/spine.ts:BeatKindSchema`, `gatherEvidence.ts:beatKindOf`).
 
 Re-parsed at the stage level against `types/spine.ts:DeepenedActSchema`
-(`ActSchema` extended with non-empty `introduction` and `exit`, `.strict()`).
+(`ActSchema` extended with non-empty `introduction` and `exit`, an optional
+**`warnings: string[]`** — see §3.5.3a — and `.strict()`).
 
 #### 3.5.3 Mechanical validation
 
@@ -993,6 +1128,48 @@ Re-parsed at the stage level against `types/spine.ts:DeepenedActSchema`
 | `exit-missing` | empty exit |
 
 A failure throws `InvalidDeepenedActError`.
+
+#### 3.5.3a The argument cap — a structural rule, not a prompt line (F-49)
+
+`deepenActs.ts:capArgumentBeats`, applied **after** validation, on the way out of
+`deepenOneActWithRetry`: it is this stage's own rule about the act it returns, not
+a schema property of what the builder said.
+
+- **The cap:** `argumentCapFor(beatCount) = max(1, ceil(beatCount × MAX_ARGUMENT_SHARE_PER_SLOT))`
+  with `MAX_ARGUMENT_SHARE_PER_SLOT = 1/3`. A 3-beat slot may hold 1 argument, a
+  6-beat slot 2, a 1-beat slot 1 (a cap of zero would stop a single-beat slot
+  holding an argument at all, which is a different rule than the one asked for).
+- **Which beats are re-tagged:** the ones over the cap, appearing **last in the
+  slot, in slot order**. Ranking beats by how argument-shaped they look would have
+  this module re-judge the model's judgement with a worse instrument, and the
+  ranking would be a second silent heuristic; slot order is deterministic,
+  explicable in one sentence, and a slot states its thesis at the top.
+- **Re-tagging is the safe direction.** `account` only means "§3.6 may look for
+  tape for this"; the search still has to clear every threshold and gate, so a
+  re-tagged beat with no real tape simply becomes narration — which it was going to
+  be anyway. The reverse mistake is the one that costs tape silently.
+- **What it records:** a line per corrected slot pushed onto the act's own
+  `warnings` array — *"Slot "X": 5 of 6 beats came back tagged "argument"; at most
+  2 may be (one third of the slot, rounded up). The last 3 were re-tagged
+  "account", so §4.5 looks for tape for them."* A field rather than a
+  `console.warn`, because a field is checkpointed with the act, survives a resume,
+  and can be asserted in a test. Run 2's only symptom was the absence of tape four
+  stages later.
+- **Unchanged acts are unchanged.** With nothing over the cap the function returns
+  the **same object**, so an act that needed no correction is byte-identical to
+  what the builder returned and carries no `warnings` key.
+- **Idempotent, and applied to a resumed act too** — an act checkpointed before
+  this rule existed (run 2's own checkpoint, 29 arguments in 35 beats) is corrected
+  on resume rather than faithfully replaying the defect the resume exists to avoid
+  re-paying for.
+- **The stub goes through the same function**, not a second copy of it: a dry run
+  that could hand back a slot of six arguments would let a regression in the cap
+  pass every keyless test.
+
+Replayed over run 2's real deepen output
+(`backend/test/fixtures/run2-deepen-2026-09-09.json`, lifted verbatim from that
+run's checkpoint): **29 arguments → 12**, every slot at or under its cap, six
+warnings.
 
 #### 3.5.4 Retries, checkpointing, failure
 
@@ -1013,8 +1190,10 @@ A failure throws `InvalidDeepenedActError`.
 **Stub behaviour** (`StubDeepenActBuilder.ts`): appends a fixed sharpening clause
 to each claim, derives `kind` from a generalisation-marker regex (`every`,
 `always`, `never`, `almost`, `tends`, `generally`, `typically`, `in general`,
-`means that`, `is why`) so the dry-run path exercises §4.5's argument branch, and
-composes deterministic introduction/exit strings.
+`means that`, `is why`) — defaulting to `account` for everything else, for the
+same reason the real prompt does — so the dry-run path exercises §4.5's argument
+branch, composes deterministic introduction/exit strings, and returns the act
+through `capArgumentBeats` (§3.5.3a).
 
 ---
 
@@ -1024,7 +1203,13 @@ composes deterministic introduction/exit strings.
 **Purpose:** decide, per beat, whether real tape carries it (and resolve the
 pointer) or whether it becomes narration.
 **Inputs:** the deepened acts; the segment pool; the transcript archive; a
-`TranscriptCueProvider`; the resolved `topic`.
+`TranscriptCueProvider`; a `TranscriptTextIndex` (§3.6.6a); an
+`AudioSourceResolver` (§3.6.6c); the resolved `topic`. Every one of the last four
+is **inert when omitted** — the Null cue provider returns no cues, the Null text
+index returns no candidates, an absent resolver leaves tier 2 exactly as it was
+before a minted segment had to be playable, and an absent topic makes the gate
+inert. A caller that supplies none behaves exactly as this module did before those
+seams existed, which is what keeps CI and every pre-existing test on one path.
 
 **No model call happens in this stage at all.** It is a deterministic
 tokenize-and-score matcher against fixed thresholds — the task brief's own
@@ -1136,20 +1321,25 @@ A hit produces a `TapePointer` with `tier: 1` and the segment's own `confidence`
 
 #### 3.6.6 Tier 2 — the transcript archive
 
-Three checks in sequence, all of which must pass:
+**WS-H changed the candidate search, and only that.** Until this branch the only
+way to reach an episode's tape was for its **title** to share three content words
+with the claim, so run 2's 23 searching beats never got past the title bar —
+*Practical AI*, 63 of 63 transcript bodies present on the generation machine, best
+title scoring **one** against a claim about ImageNet's label errors. Every gate
+that decides whether tape is *about* a claim was working and was never reached.
+Lowering `TIER2_MATCH_THRESHOLD` re-admits run 1's Chernobyl-for-Hyatt class
+(pinned by tests), because a title is not evidence about a claim in the first
+place. So the search now runs over the transcripts' own words, and the title bar
+survives as a **fallback candidate and a tie-breaker, never as a gate** — which is
+the whole of **F-06**.
 
-1. **Episode selection** (`transcriptArchiveLookup.ts:findTranscriptArchiveMatch`).
-   Score = one point per claim content-token found in the **episode title**, plus
-   at most **one** point for the show title. `if (score === 0) continue` — a
-   show-title-only overlap is not a match at all. Bar:
-   `TIER2_MATCH_THRESHOLD = 3` (raised from 2 as I-16). The topic gate is applied
-   as the caller's veto inside this search.
-   *This is F-23/F-24(a)'s fix*: `Causality — Engineered Network`'s own title
-   tokens overlapped most engineering claims, so nearly every Causality episode
-   "matched" nearly every beat and the first in file order won — a Kansas City
-   hanger-rod beat anchored to the Chernobyl episode.
-2. **Anchor location** (`transcriptArchiveLookup.ts:resolveAnchorFromCues`). The
-   cue provider must return cues. The claim's content words (> 2 chars) are
+Tier 2 builds a candidate list (§3.6.6a), then walks it in order and takes the
+**first candidate that passes every one of the following gates**, unchanged from
+before WS-H. A beat still takes at most one tier-2 segment.
+
+1. **Cue text must exist** — `cueProvider.getCues(entry)`. Gate `no-body`.
+2. **Anchor location** (`transcriptArchiveLookup.ts:resolveAnchorFromCues`), gate
+   `no-anchor`. The claim's content words (> 2 chars) are
    searched for as a **contiguous verbatim run** in the canonicalised token
    stream, longest window first: `MAX_ANCHOR_WORDS = 12` down to
    `MIN_ANCHOR_WORDS = 4`. Canonicalisation
@@ -1158,7 +1348,7 @@ Three checks in sequence, all of which must pass:
    non-alphanumeric collapsed to one space — so an anchor this module accepts is
    still verbatim to the real merge validator.
 3. **The anchored-window check** (`anchoredWindowEvidence` +
-   `anchoredWindowIsOnTopic`). *This is F-24(b)'s fix.* An anchor proves a phrase
+   `anchoredWindowIsOnTopic`), gate `window-overlap`. *This is F-24(b)'s fix.* An anchor proves a phrase
    was spoken; it does not prove the tape there is about the claim (run 1's
    anchors were runs like "the original design required", which occur in almost
    any hour of talk). So the claim's content words must also turn up **around** the
@@ -1168,6 +1358,9 @@ Three checks in sequence, all of which must pass:
    **or** if the anchor phrase itself carries
    `>= TIER2_SELF_SUFFICIENT_ANCHOR_WORDS = 6` content words (a six-content-word
    verbatim run is a person saying the claim).
+
+4. **The audio-source check** (§3.6.6c), gate `no-audio-source`. Tape nothing can
+   play is not tape.
 
 **The minted segment** (`cutSpanToCueBoundaries`) — *F-24(c)'s fix.* Run 1 minted
 the anchor's own few seconds. Now the span is cut to **whole cues** (never opening
@@ -1181,31 +1374,189 @@ length. A cut whose anchors fall below `MIN_ANCHOR_WORDS`, or with no duration, 
 rejected and the search continues.
 
 A tier-2 hit produces:
-- a `TapePointer` with `tier: 2`, `confidence: "medium"`, and
+- a `TapePointer` with `tier: 2`, `confidence: "medium"`, whose `startSec`/`endSec`
+  are the **cue boundaries** `cutSpanToCueBoundaries` chose, not the matched
+  phrase's own few seconds;
 - a `NewSegment` pushed onto `newSegments` with
   `id = "{itemId}#{round(startSec)}"` (suffixed `-2`, `-3`… on collision),
-  `referenceDurationSec = entry.feed_duration_sec ?? span.endSec`.
+  `referenceDurationSec = entry.feed_duration_sec ?? span.endSec`; and
+- a `MintedSegmentSource` put into `newSegmentSources`, keyed by item id so two
+  beats taking two segments from one episode produce exactly one registry row
+  (§3.6.6c).
 
-**`newSegments` is returned and then dropped.** Nothing consumes it — not
-`runPipeline`, not `finalizeForay`, not the CLI (verified: the only references are
-its declaration, its checkpoint schema and its construction). See §8.2, which
-explains why this makes any tier-2 anchor a publish-blocking failure today.
+**`newSegments` and `newSegmentSources` are now consumed.** `runPipeline` merges
+the minted rows into the pool it measures `runtimeSecFor` against, carries both
+arrays on the candidate as `segments`/`segmentSources`, `finalizeForay` merges them
+into the files it hands the checkers, and `publishForay` writes them to
+`data/segments.json` and `data/segment-sources.json` in the same commit as
+`data/forays.json` (§3.10, §6.1, §6.5). Before this branch both arrays were
+returned and dropped, which made any tier-2 anchor a publish-blocking failure —
+see §8.2, now closed.
+
+#### 3.6.6a The tier-2 candidate search — transcript text (WS-H)
+
+**Module:** `backend/src/generation/transcriptTextIndex.ts`. **No model call.**
+
+`sourceBeats.ts:tier2Candidates(claim, state, isUsable)` returns, best first:
+
+1. the text index's top `TRANSCRIPT_TEXT_CANDIDATES = 8` episodes for the claim,
+   with the caller's **lineage veto applied before anything is indexed or scored**,
+   then
+2. `findTranscriptArchiveMatch`'s title-metadata match, appended **last** if it is
+   not already among them.
+
+Keeping (2) means this change can only **add** candidates: a beat that found tape
+by title before still finds it, and a checkout with no transcript bodies walks
+exactly the title path it always did.
+
+**The index itself** (`FileTranscriptTextIndex`):
+
+- A read-only **inverted index over the normalised cue text**, tokenised with the
+  same `tokenizeForSourcing` (and the same stopword lists) the two §3.6 scorers
+  use, so "content word" means one thing in this pipeline.
+- **BM25** with document-length normalisation, `k1 = 1.2`, `b = 0.75`. The length
+  half is the one that matters here: episodes in this archive run from 12 minutes
+  to three hours, and without it the longest episode wins every query. Neither
+  constant is tuned against a labelled set and the module says so.
+- **One corpus, not one per show.** Indexes are stored per show — that is what can
+  be built and invalidated independently — but the `idf` a candidate is scored with
+  is computed across every show the query touches, because two BM25 scores from two
+  corpora are not comparable and tier 2 has to rank them against each other.
+- **The demoted title bar is the tie-breaker.** `scored.sort` orders by BM25, then
+  by `titleTokenScore(queryTokens, entry)` — the same function the tier-2 threshold
+  uses, extracted so one rule has one implementation — then by `guid`, so the order
+  is total and a replay is reproducible. The title cannot decide whether an episode
+  is worth opening; between two episodes the text ranks equally it is a real, free
+  signal.
+- **Built lazily, per show, and only for shows the lineage gate admits.** In a real
+  run that is one show of fifteen. Building costs one pass over that show's bodies,
+  through the provider's own read.
+- **Cached** at `data-local/transcripts/index/<show>.json`, keyed by **every body
+  file's mtime + size** (not a count, not a build timestamp — a re-transcribed
+  episode keeps its guid, and that is the change most likely to make an index
+  quietly wrong). A cache whose `version !== TRANSCRIPT_TEXT_INDEX_VERSION = 1`, or
+  whose stats disagree, is discarded and rebuilt. Written through a temp file and a
+  rename; an unreadable, half-written or unwritable cache costs a rebuild and never
+  fails a run.
+- **It reads `data-local/` only through a provider.** The cue text and the file
+  stats both come from a `TranscriptBodySource` — `TranscriptCueProvider` plus
+  `bodyStat(entry)`, implemented by `FileTranscriptCueProvider` — never from a path
+  this module opens itself.
+- **`NullTranscriptTextIndex` is the default**: no candidates, `enabled: false`.
+  That flag is load-bearing for the trace — a beat that failed a search which never
+  happened must not be reported as one the text index had no candidate for.
+
+`TranscriptTextCandidate` carries `entry`, `score` (BM25), `matchedTerms` (how many
+distinct claim content words are spoken in the episode at all) and `rank`.
+
+**What it is not:** a relevance verdict. It says which episodes are worth
+*opening*; gates 1–4 above still decide whether the tape is about the claim.
+
+#### 3.6.6b What WS-H measured, offline, on the real archive
+
+Sourcing run keyless over run 2's own 35 deepened beats
+(`backend/test/fixtures/run2-deepen-2026-09-09.json`), real digests, real bodies,
+real `data/segments.json`:
+
+| run | tape beats | where the search stopped |
+|---|---|---|
+| as run 2 ran (topic `engineering/energy-fusion`) | **0 of 35** | 29 `skipped:argument`, 6 `tier2:lineage` — the topic gate refuses *Practical AI* before anything else runs (**F-59**, §3.4) |
+| topic corrected to `engineering/ai-robotics` | **0 of 35** | 29 `skipped:argument`, **6 `tier2:no-anchor`, all inside *Practical AI*** |
+| corrected topic + the argument cap (§3.5.3a) | **0 of 35** | 12 `skipped:argument`, **23 `tier2:no-anchor`, all inside *Practical AI*** |
+
+The gate moved from "no title matched" to "the tape itself does not say this",
+which is what WS-H set out to do: the episodes reached are real bodies chosen by
+text (`foundBy: "text-index"`, 8 candidates opened per beat, BM25 13–21), where the
+same episodes scored `0` against a `requiredScore` of 3 on their titles.
+
+**Tape yield is still 0 for that fixture, and that is a finding rather than a bug
+in the search.** `resolveAnchorFromCues` needs a contiguous run of ≥ 4 of the
+*claim's own* words spoken verbatim; across all 63 *Practical AI* bodies exactly
+one of the 23 account claims has such a run anywhere, and the anchored-window test
+correctly refuses it. **These claims are written prose, tape is speech** — the
+verbatim-anchor rule is now the binding constraint (**F-61**, §8.3).
+
+That the path works end to end is pinned by a case that quotes the show: a beat
+claiming "aviation treats a crash as a regression test… food safety… medical
+adverse event reporting" mints
+`practical-ai--ai-incidents-audits-and-the-limits-of-benchmarks#316`,
+**316.13 → 382.79 s (66.7 s)**, anchored `"and you see this in aviation a plane"` →
+`"price before and after and theres an impact"`. The same beat with the index
+removed gets no tape at all — F-06 stated as a test. Its one blemish is **F-62**
+(§8.3): the cut grows symmetrically to reach `MIN_TAPE_SEGMENT_SEC`, and this
+archive's ~28 s cues meant one leading cue is off-claim.
+
+#### 3.6.6c The audio-source lookup — tape nothing can play is not tape
+
+**Module:** `backend/src/generation/audioSourceLookup.ts`. Injected as
+`SourceBeatsOptions.audioSourceFor`; `runPipeline` always supplies
+`createDigestAudioSourceResolver`, and an omitted resolver leaves tier 2 exactly as
+it behaved before one existed.
+
+A minted segment is a pointer into an episode's audio, and `check-forays.mjs`
+refuses a pool item id with no `data/segment-sources.json` row ("nothing can
+resolve its audio"). So the row is minted here, from committed data only, or the
+candidate episode is **passed over**.
+
+`mintSegmentSource(entry, itemId, showMeta)` returns a
+`MintedSegmentSource` — `{id, show, title, feed_url, episode_guid, audio_url,
+audio_type, duration_sec, dai_suspected, source: "generation-tier-2"}` — built from
+the digest's own `enclosure_url` and `feed_duration_sec`, the show title, and a DAI
+verdict. `audio_type` comes from `enclosureMime(url)`, the URL path extension
+(`m4a`/`mp4` → `audio/mp4`, `aac`, `ogg`/`opus`, `wav`, else `audio/mpeg`),
+mirroring `prepare-segment-batch.mjs`.
+
+**The DAI precedence is mirrored, not imported** (that file is ESM, this is a CJS
+backend module): the per-show sweep verdicts in `data/transcript-availability.json`
+and `data/breadth-transcript-yield.json` are the fallback, and
+`data/dai-classification.json`'s resolved chain — joined by
+`apple_collection_id` — wins where it exists.
+
+**It refuses rather than invents.** Every one of these returns `null`, and the beat
+gets narration with trace gate `no-audio-source`:
+
+| Refusal | The rule it would otherwise break |
+|---|---|
+| no `enclosure_url` | nothing to play |
+| a non-`https://` URL, or one whose query carries `token`/`auth`/`api_key`/`secret`/`password`/`session` | the registry's own two lexical checks (§5.1.1) |
+| `feed_duration_sec` not `> 0` | the registry needs a positive `duration_sec`, and it is what a minted `reference_duration_sec` is compared against to 2 s |
+| an empty show or episode title | both must be non-empty strings |
+| no **boolean** DAI verdict for the show | defaulting `dai_suspected` to `false` is the exact value `merge-segments.mjs` and `check-forays.mjs` both exist to reject; ADR-0007 gates seek precision on it |
+
+The per-show table is cached per process and bust by
+`FORAY_SKIP_CATALOGUE_CACHE=1`, like every other catalogue read. `itemId` is
+**passed in** rather than re-derived, because it must be the same id the minted
+segment carries and two modules deriving it separately is how a slug rule drifts.
 
 #### 3.6.7 Tier 3 and the fall-through
 
-Anything that reaches here becomes narration and logs a
-`TranscriptionQueueCandidate` — this pipeline's own log, never written into
-`data/transcription-queue.json`, which has its own producer. Three distinct
-reasons are recorded:
+Anything that reaches here becomes narration and logs **one**
+`TranscriptionQueueCandidate` naming the episode the search got **furthest** into
+and what stopped it there — this pipeline's own log, never written into
+`data/transcription-queue.json`, which has its own producer
+(`tools/transcribe/build-transcription-queue.mjs`). `{found}` below is
+`"Transcript text matched"` when the candidate came from the text index and
+`"Transcript-archive metadata matched"` when it came from the title fallback:
 
 | Situation | `reason` |
 |---|---|
-| tier-2 metadata matched, anchor found, window too thin | "Transcript-archive metadata matched (…) and a N-content-word anchor was located, but only M further claim content words are spoken within 30 s of it — below the 3 needed to call the tape there on topic." |
-| tier-2 metadata matched, no cue text on this machine | "Transcript-archive metadata matched (…) but no cue text was available to locate a verbatim anchor." |
-| nothing matched anywhere | "No hit in data/segments.json or the transcript archive; logged for future transcription/extraction, not acted on here." |
+| audio could not be registered | "Transcript-archive tape was located in "…", but no data/segment-sources.json row can be written for it (no resolvable https audio URL, feed duration, or DAI verdict), so nothing could play it." |
+| anchor found, window too thin | "{found} ("…") and a N-content-word anchor was located, but only M further claim content words are spoken within 30 s of it — below the 3 needed to call the tape there on topic." |
+| body present, no verbatim run | "{found} ("…") but no run of 4 of the claim's own words is spoken verbatim anywhere in it, so no anchor could be located." |
+| no cue text on this machine | "{found} ("…") but no cue text was available to locate a verbatim anchor." |
+| nothing was worth opening at all | "No hit in data/segments.json or the transcript archive; logged for future transcription/extraction, not acted on here." |
 
-**`transcriptionQueueCandidates` is also dropped** — it is checkpointed and never
-surfaced in the outcome or in `report.json` (§8.2).
+The beat's own narration `reason` (carried into §3.8) is keyed to the same
+furthest gate: `no-audio-source` → *"Tape was found for this beat but its
+episode's audio cannot be resolved, so it cannot be played."*; `window-overlap` →
+*"A transcript anchor was found but the tape around it is not about this claim."*;
+everything else → *"No tape found anywhere in the §4.5 search order for this
+beat."*
+
+**`transcriptionQueueCandidates` is still dropped** — it is checkpointed and never
+surfaced in the outcome or in `report.json`. What replaced it as the readable
+account of a run is `sourcingTrace` (§3.6.9a), which *is* checkpointed and *is*
+printed.
 
 #### 3.6.8 The Patch/Carry decision
 
@@ -1225,12 +1576,17 @@ is carried on the beat for §4.7.
 
 ```ts
 {
-  acts: SourcedAct[],                      // beats annotated with sourcing
-  newSegments: NewSegment[],               // dropped downstream — §8.2
-  transcriptionQueueCandidates: [...],     // dropped downstream — §8.2
-  tapeRelevance: TapeRelevanceInput[]      // one row per TAPE beat, WS-B's input
+  acts: SourcedAct[],                        // beats annotated with sourcing
+  newSegments: NewSegment[],                 // tier-2 cuts — carried to finalize/publish
+  newSegmentSources: MintedSegmentSource[],  // their episode registry rows, deduped by item id
+  transcriptionQueueCandidates: [...],       // logged, still dropped downstream
+  tapeRelevance: TapeRelevanceInput[],       // one row per TAPE beat, WS-B's input
+  sourcingTrace: SourcingTrace[]             // one row per NARRATION beat (§3.6.9a)
 }
 ```
+
+`tapeRelevance` and `sourcingTrace` **partition the Foray's beats**: every beat
+appears in exactly one of them.
 
 Each `TapeRelevanceInput` row carries `actIndex`, `slotIndex`, `beatIndex`,
 `claim`, `itemId`, `segmentId`, `tier`, `taxonomyNodeIds`, `families` (the nodes'
@@ -1239,9 +1595,88 @@ only stage that knows all of it at once; run 1 had to count "5 of 22 anchors on
 topic" by hand from the narration prompts.
 
 - **Checkpoint key:** `source`, re-validated by `runPipeline.ts:SourceCheckpointSchema`.
+  `sourcingTrace` and `newSegmentSources` are `.default([])` in that schema, so a
+  checkpoint written before they existed still resumes — and resumes to the same
+  Foray it would have produced.
 - **Parallelism:** none needed — the whole stage is synchronous and in-memory.
 - **Failure:** only the beat-preservation guardrail throws, and it is
   structurally unreachable. A beat with no tape is not a failure; it is narration.
+
+#### 3.6.9a The sourcing trace, and the per-slot summary line (F-49)
+
+Run 2 finished with zero tape beats out of 35, and the only evidence was one
+sentence repeated six times — *"No tape found anywhere in the §4.5 search order"* —
+while the research map for the same prompt reported *Ai: 761 items* as strong tape
+and the machine held every *Practical AI* transcript. That sentence cannot
+distinguish "the pool has nothing about AI" from "the best episode was two title
+tokens short" from "the taxonomy gate refused it" from "the body is not on this
+machine": four faults with four different fixes. Every threshold in this stage was
+therefore tuned by argument rather than against data.
+
+**`SourcingTrace`** (`types/tapeSourcing.ts`) is that data — one row per
+narration-degraded beat: `actIndex`, `slotIndex`, `beatIndex`, `claim`, an
+`outcome` of `skipped:argument` (both tiers `null`, no search ran) or `no-tape`,
+and a row per tier.
+
+**`Tier1TraceRow`** — `bestSegmentId`, `bestItemId`, `score`, `requiredScore` (the
+bar *that* candidate had to clear, per `requiredOverlapFor`), `matchedIn`
+(`transcript` | `metadata` | `null`), and `gate`:
+
+| `Tier1Gate` | Meaning |
+|---|---|
+| `no-candidates` | no segment shares a single content word |
+| `threshold` | the best candidate scored below its own bar |
+| `topic-lineage` | it cleared the bar and is in another taxonomy family |
+| `exhausted` | it cleared everything, but another beat of this Foray already played it |
+| `m4-share` | its episode already holds its quarter of the Foray |
+| `m3-order` | it sits earlier in an episode already joined later |
+
+It is computed **before any ledger is updated for this beat**, or the vetoes it
+reports would be the beat's own footprint.
+
+**`Tier2TraceRow`** — `bestShowId`, `bestEpisodeTitle`, `score` (the title score),
+`requiredScore` (`TIER2_MATCH_THRESHOLD`), `gate`, plus, once an anchor was
+located, `anchorContentWords` and `beyondAnchorOverlap`; and, from WS-H,
+`foundBy` (`"text-index"` | `"title"`), `textScore` (BM25, 3 dp), `textRank`,
+`textMatchedTerms` and `candidatesConsidered`. Without those last five a row saying
+`no-anchor` could not be told from one where no text search ran at all — the
+confusion that let run 2's result look like an empty archive rather than a title
+bar.
+
+| `Tier2Gate` | Meaning |
+|---|---|
+| `text-index:no-candidate` | the text index ran and no lineage-admissible episode was worth opening — the search reached the transcripts' own words and they had nothing |
+| `title-tokens` | **no** text search ran (no bodies on this machine) and no episode reached the title bar |
+| `lineage` | the best-scoring episode's show is in another family |
+| `no-body` | matched, but no transcript body is on this machine |
+| `no-anchor` | the body is here, but no run of `MIN_ANCHOR_WORDS` claim words is spoken verbatim |
+| `window-overlap` | an anchor was located, but the tape around it is not about the claim (F-24) |
+| `no-audio-source` | everything matched, but no honest registry row can be written (§3.6.6c) |
+
+**The reported row is the candidate that got FURTHEST**, not the last one walked or
+the highest-ranked one (`TIER2_GATE_PROGRESS` orders the gates exactly as the table
+above). A beat that reached the window test on one episode and a bare title on
+seven others is a beat whose story is the window test; the furthest gate is the one
+a person would go and argue with. When nothing was worth opening at all,
+`traceTier2Rejected` reports the best **on-topic** episode against the title bar,
+or — when the lineage gate is what emptied the field — the best episode of *any*
+family, named as `lineage`; and when the text index was enabled and that would have
+read `title-tokens`, the row is reported as `text-index:no-candidate` with
+`candidatesConsidered: 0`.
+
+**The per-slot summary** (`sourceBeats.ts:summarizeSourcing`) is a pure function
+returning strings — the pipeline prints them, tests read them, a report could carry
+them without this module knowing about any of the three:
+
+```text
+source: act 1 slot 2 "Where Did This Number Come From?" — 0 tape / 6 narration; top reason: skipped:argument (5 of 6)
+```
+
+`topReasonFor` picks the label the same way: `skipped:argument` outright; else
+`tier2:<gate>` when the search reached a real episode; else `tier1:<gate>`. Ties
+break toward the reason appearing first in the slot, so a slot's line is stable.
+Every pre-existing output of this stage is byte-identical; the trace is a new array
+beside `tapeRelevance`.
 
 ---
 
@@ -1265,6 +1700,13 @@ source) is a symptom of the same missing thing: text.
 #### 3.7.1 What goes in a pack
 
 `gatherEvidence.ts:EvidencePack`:
+
+The request (`gatherEvidence.ts:EvidenceBeat`) is `{claim, kind?, tape?,
+requiresEvidence?}`. **`requiresEvidence`** is set by `writeNarration.ts:writeSlot`
+from the page's mode — true for a `Patch` or a `Carry`, which carry the beat's
+content, false for a connective page, which may legitimately be written from no
+documents at all. It is the one input that decides whether an empty retrieval is
+retried (§3.7.2a).
 
 ```ts
 {
@@ -1303,7 +1745,8 @@ Two sources, in this order:
 moment on tape that *is* an argument, and anchoring one to tape is what produced
 run 1's off-topic anchors.
 
-**(b) Print evidence — for every beat.** `gatherEvidence.ts:printEvidenceFor`:
+**(b) Print evidence — for every beat.** `gatherEvidence.ts:printEvidenceFor`
+drives at most **two** retrievals (§3.7.2a); each one, `retrieveFor`, is:
 - **Cache first.** `claimHash(claim)` = first 16 hex of
   `sha1(claim.toLowerCase().replace(/\s+/g," ").trim())`. A hit in
   `data-local/evidence/<hash>.json` returns immediately and costs nothing.
@@ -1319,7 +1762,9 @@ run 1's off-topic anchors.
   warning, and the page is written from whatever evidence did arrive — and if that
   is nothing, the mechanical rules downstream refuse to let it assert anything,
   which is the correct outcome and a much better one than a page that invents a
-  citation because retrieval was down.
+  citation because retrieval was down. Since **F-60** an empty pack on a
+  content-carrying page does not even cost a writer call: §3.8.2a degrades the page
+  instead.
 
 #### 3.7.2 The retrieval call
 
@@ -1370,11 +1815,41 @@ not with the page at that url — so `groundedQuoteRate = 1.0` overstates what h
 been checked. The tool type is also still the basic `web_search_20250305`. See
 §8.4.
 
+#### 3.7.2a One rephrased retry, and never a third query (F-60)
+
+Run 2's act 1 page **p5** asked once, got `{"passages": []}`, cached the emptiness,
+and handed the writer a `Carry` page with no documents — which the mechanical rule
+then refused three times over, once per selection call, before ending the Foray.
+`printEvidenceFor` now:
+
+1. runs the first retrieval on the beat's purpose verbatim;
+2. if it returned documents, **or** the beat is not `requiresEvidence`, stops;
+3. otherwise builds a second query with `rephraseClaimForRetrieval(purpose)` and
+   runs it **once**, cached under **its own** claim hash so the first query's
+   emptiness is never served in its place. If the rephrasing is empty, or hashes to
+   the same string as the original, no second call is made at all.
+
+`rephraseClaimForRetrieval` is deliberately mechanical — a model call to rewrite a
+query is exactly the kind of spend this finding is about. Take the words of the
+**first sentence** (a purpose's later clauses are analogy and consequence); drop
+words under 4 characters, duplicates, and a ~140-word `RETRIEVAL_STOPWORDS` list;
+keep the **longest** remaining `REPHRASED_QUERY_MAX_WORDS = 8` (length is a free
+and good proxy for rarity in English, and rarity is what makes a search term
+distinctive), ties broken by first appearance; emit them **in their original
+order** so the query still reads as a phrase. Fewer than 3 candidate words → `""`,
+and no second call. A one-clause purpose shorter than the query tops up from the
+rest of the text rather than returning three words.
+
+For p5 the second query is
+`"Mature pipelines dataset out-of-range outright compile letting corrupted"`
+rather than the whole editorial sentence. There is never a third query.
+
 #### 3.7.3 The evidence cache
 
-`backend/src/generation/evidenceCache.ts` — the **one** place a generation-stage
-module writes to disk, isolated into its own file so the rule it is an exception
-to stays enforceable.
+`backend/src/generation/evidenceCache.ts` — one of the **two** places a
+generation-stage module writes to disk (the other is `transcriptTextIndex.ts`,
+§3.6.6a), isolated into its own file so the rule it is an exception to stays
+enforceable.
 
 - Directory: `data-local/evidence/`, chosen by
   `DefaultEvidenceGatherer`'s constructor as
@@ -1387,30 +1862,51 @@ to stays enforceable.
   by a hash and there is no field for the claim text, so nothing on disk can be
   read back as a prompt or a beat purpose; and what is written is passages from
   published documents, which is public text about the world, not text about the
-  listener. `backend/test/promptNoPersistence.test.ts` names this file as the sole
-  permitted writer and asserts both rules.
+  listener. `backend/test/promptNoPersistence.test.ts` names this file as one of the
+  two permitted writers and asserts both rules.
 - Reads and writes both fail soft: a corrupt cache is a miss, and a cache that
   cannot be written logs a warning and never takes a run down.
+- **An EMPTY entry expires** (`EMPTY_EVIDENCE_TTL_MS = 24 h`, F-60). Documents are
+  cached forever — a passage retrieved yesterday is the same passage today, and
+  re-paying for it is the waste this file exists to stop. An empty result is not
+  that kind of fact: it says one query, run once, against a moving web, matched
+  nothing. `readEvidenceCache(dir, hash, now)` treats a zero-document entry as a
+  **miss** once it is `>= 24 h` old, and a missing or unparseable `cachedAt` counts
+  as stale — ask again rather than serve nothing. Run 2's p5 is what treating an
+  empty result as durable costs.
 
-#### 3.7.4 The wiring gap: the cue provider never reaches the gatherer
+#### 3.7.4 The cue provider now reaches the gatherer (was §8.1)
 
-`writeNarration.ts:writeNarration` constructs the gatherer as
-`options.evidence ?? createEvidenceGatherer()` — **with no options** — and
-`runPipeline.ts` calls `writeNarration([act], {writer, verifier}, voice, ctx)`
-without an `evidence` dependency. `DefaultEvidenceGatherer`'s constructor
-therefore defaults `cueProvider` to `NullTranscriptCueProvider`, whose `getCues`
-always returns `null`.
+Until this branch `writeNarration` built its gatherer as
+`createEvidenceGatherer()` — **with no options** — so `DefaultEvidenceGatherer`
+fell back to `NullTranscriptCueProvider` and a tape beat's pack carried the show
+and episode **titles** and not one word of the ±90 s cue window, on the same
+machine where §3.6 was anchoring against real cues. WS-A's first bullet was
+half-built: the who, yes; the words, no (**F-52**).
 
-**Consequence, in a real run today:** for a tape beat, `tapeEvidenceFor` resolves
-the show and episode titles (so `pack.tape` is populated and the writer is told
-what it is framing) but `cues` is `null`, so **no tape transcript document is ever
-added to the pack**. The `EVIDENCE_TAPE_WINDOW_SEC = 90` window, the
-`EVIDENCE_MAX_TAPE_CHARS` cap and the `docId: "tape:…"` document exist and are
-tested, but the production path cannot reach them — the cue provider
-`generateForays.ts` builds is passed to `sourceBeats` only. WS-A's first bullet
-("the transcript cue window of the anchored segment (± 90 s)… so the writer knows
-*who* is on tape and can say so") is therefore **half-built**: the who, yes; the
-words, no. See §8.1.
+It is wired now, in two call sites:
+
+- `WriteNarrationOptions` gains **`cueProvider`**, and
+  `writeNarration.ts:evidenceGathererFor(options)` returns
+  `options.evidence ?? createEvidenceGatherer(options.cueProvider ? {cueProvider} : {})`
+  — ignored when a caller injects its own `evidence`, since that caller built its
+  own gatherer.
+- `runPipeline` passes `deps.cueProvider` into every per-act `writeNarration` call
+  — the same provider §3.6 sources against.
+
+`DefaultEvidenceGatherer.cueProvider` is **public readonly** so a test can prove
+the provider arrives rather than a comment promising it does; both that assertion
+and `evidenceGathererFor` are exported for exactly that reason, because
+`createEvidenceGatherer()` with no arguments is valid, silent, and gives every tape
+beat a pack with no tape in it.
+
+**Consequence in a real run:** for an `account` beat with a tape pointer whose
+episode has a body on this machine, the pack now carries the
+`docId: "tape:{segmentId}"` document — the `EVIDENCE_TAPE_WINDOW_SEC = 90` window,
+capped at `EVIDENCE_MAX_TAPE_CHARS = 3000` — and a quote on a tape-adjacent page
+can be looked up in the tape itself. Where no body exists the pack still carries
+`pack.tape` (the titles) and no tape document, which is the honest degraded case
+rather than a silent default.
 
 ---
 
@@ -1428,6 +1924,8 @@ spine's `Voice`, `ctx`.
 
 ```
 evidence  → the documents this page may quote          (gatherEvidence.ts)
+CODE      → a content page with NO documents is degraded here and never
+            enters `pending` — zero model calls for it (§3.8.2a, F-60)
 select    → ONE call per slot: which claims, and the span behind each
 CODE      → is that span really in that document? long enough? not the purpose
             read back?  — decided by substring checks, never by a model
@@ -1447,7 +1945,8 @@ over the whole Foray. **Acts stay sequential**, driven one at a time by
 `runPipeline` so each act can be checkpointed as it finishes.
 
 **Call count:** at most **3 model calls per slot per attempt**, whatever the page
-count — down from run 1's 4.2 calls *per beat*.
+count — down from run 1's 4.2 calls *per beat*. And **zero** for a slot whose every
+content page arrived with an empty evidence pack (§3.8.2a).
 
 #### 3.8.2 Which beats get a page
 
@@ -1472,6 +1971,60 @@ The connective page carries a `contextNote`:
 ```text
 This page hands the listener into or out of real tape — segment {{segmentId}}. It does not restate what the tape itself says (narration-craft.md's spoiler rule).
 ```
+
+#### 3.8.2a The no-evidence guard, before any model call (F-60)
+
+`writeSlot` gathers every page's evidence pack in parallel, and then — **before the
+attempt loop** — walks the pages once:
+
+```
+if (pageCarriesContent(page.mode) && page.evidence.docs.length === 0)
+    → page.result = handOffPage("no-evidence", …)      // no writer call, ever
+```
+
+`pageCarriesContent(mode)` is `mode === "Patch" || mode === "Carry"` — the two
+modes `validateNarratedBeat` requires a source from, and therefore the two that
+cannot be written from an empty pack. Marking the page here takes it out of
+`pending`, so **a slot whose every content page is in this state makes zero writer
+and zero verifier calls**. Run 2 spent three selection calls discovering this per
+page, on a prompt whose own text said *"Documents: none were retrieved for this
+page"*, each rejection telling the writer to fix something it had no way to fix.
+
+The degraded page (`handOffPage`) is:
+
+```ts
+{
+  mode: HANDOFF_MODE = "Hinge",
+  script: HANDOFF_SCRIPT,
+  sources: [], pronunciationHints: [],
+  verified: false,
+  unverifiedReason: "no-evidence",
+  verifierNotes: NO_EVIDENCE_NOTE = "no evidence retrieved after two queries",
+  evidence: heldDocsOf(pack),   // empty
+  attempts: []
+}
+```
+
+`HANDOFF_SCRIPT` is *"Where does this part of the story go next? Keep listening —
+the thread picks it up on the other side."* That shape is not decorative: it is the
+**only** shape `validateNarratedBeat` permits with zero sources (F-36/F-37/F-44's
+rule), because every sentence is a question or opens with a listener imperative, so
+`hasDeclarativeSentence` finds nothing to demand a source for. A test pins that the
+degraded page's *only* validation issue is `not-verified`. `Hinge` rather than the
+beat's original Carry mode, because a ~100-character page claiming a 765–1,870
+character budget would fail its own band.
+
+**Why the page is kept rather than dropped.** A connective page can be dropped
+because its beat survives as its tape (`WrittenBeat`'s tape variant simply carries
+no `connectiveNarration`). A narration beat **is** its page — the narration variant
+has no page-less form — so dropping the page drops the beat, and §3.6's guarantee
+that the beat list comes out of the pipeline exactly as it went in
+(`validateSourcing`, plus `stitchAct`'s coverage and `computePagesDropped`, which
+index written beats positionally against sourced ones) would break. Counting it in
+`pagesDropped` would also mislabel it: that counter means "a connective page nobody
+hears the absence of", and this is a page a listener *would* hear. So the page
+stays, marked, counted in `meta.veracity.unverifiedPages`, and refused by the
+publish gate.
 
 #### 3.8.3 Call A — claim selection
 
@@ -1507,6 +2060,7 @@ For each page, choose the claims it should make and, for each claim, COPY the sp
 A quote must be copied character for character out of the document you name, and must be at least 8 words or one whole sentence.
 Never quote the purpose or this prompt: they are direction, not documents.
 If a document does not support a claim worth making, select no claim for that page rather than a weak one.
+If the documents contradict or complicate the purpose, select the claims that show that: the page's job is then to report the tension, not to assert the purpose.
 "contested" means reputable sources actively disagree about the fact itself — not that you are unsure.
 
 {{evidenceBlocks}}
@@ -1601,6 +2155,7 @@ You are writing the narration pages of one slot ("{{slotTitle}}") of an audio do
 Voice (decided once for the whole Foray — do not vary it): style: {{style}}; register: {{register}}; sentence rhythm: {{sentenceRhythm}}; narrator presence: {{narratorPresence}}
 
 Write each page from its listed claims and nothing else. The claims are already sourced; you do not return sources.
+If the claims contradict or complicate the purpose, write the tension — that page accomplishes its purpose — and set purposeRevised true for it.
 List the indices of the claims your script actually asserts. A page that asserts none must be a question or a hand-off to the listener, with no statement about the world in it.
 Do not say what the record does or does not contain unless a claim below says it.
 
@@ -1615,7 +2170,7 @@ Copy rules, unchanged and non-negotiable:
 Also list any hard-to-pronounce or foreign words with a plain-English pronunciation hint.
 
 Respond with ONLY a single JSON object, no markdown fences, no other text, matching exactly:
-{"pages": [{"pageId": string, "script": string, "usedClaims": [number], "pronunciationHints": [{"word": string, "hint": string}]}]}
+{"pages": [{"pageId": string, "script": string, "usedClaims": [number], "purposeRevised": boolean, "pronunciationHints": [{"word": string, "hint": string}]}]}
 ```
 
 Response schema (`AnthropicNarrationWriterBuilder.ts:RawProseSchema`):
@@ -1626,10 +2181,17 @@ z.object({
     pageId: z.string(),
     script: z.string(),
     usedClaims: z.array(z.number()),
+    purposeRevised: z.boolean().optional(),   // F-50 — see below
     pronunciationHints: z.array(z.object({ word: z.string(), hint: z.string() }))
   }))
 })
 ```
+
+**`purposeRevised` is asked for in the contract line and optional in the schema.**
+A reply that omits it is still valid JSON for this stage, and an absent flag means
+"not claimed" — which is what a page that simply did its purpose should say. It is
+**recorded, not trusted**: `runSlotAttempt` copies it onto the beat only when it is
+literally `true`, and the verifier answers the same question independently (§3.8.8).
 
 **The writer never returns a source.** `writeNarration.ts:sourcesFor(usedClaims,
 claims, pack)` builds the `sources[]` array itself: for each valid, unique index
@@ -1750,8 +2312,10 @@ You did NOT write these pages. For each page below, answer three questions indep
 
 1. claimsSupported — does every statement the script makes about the world follow from the quote attached to it?
    A quote that is about the right subject but does not say what the claim says is NOT support.
-2. purposeAccomplished — does the script do the job its purpose describes? A page that is accurate but
-   re-tells what earlier pages covered, or that drops the concept its purpose names, fails this.
+2. purposeAccomplished — does the script address the SUBJECT its purpose names, using the evidence it was given?
+   Contradicting or qualifying the purpose from the documents ACCOMPLISHES it — a purpose is editorial direction and can
+   be wrong. Only a page that ignores the subject, or re-tells what earlier pages covered, fails this.
+   purposeRevised — true when the page departs from its purpose because the evidence did. Your own judgement, not the writer's.
 3. contestedHandled — read the sources: if reputable sources actively disagree about something the script
    asserts, the script must say the point is disputed, in any natural wording. If nothing is genuinely
    contested, this is true. Judge the substance, not the presence of any particular phrase.
@@ -1761,7 +2325,7 @@ Do NOT check whether a quote exists in its source — that was already proven me
 {{verifyPageBlocks}}
 
 Respond with ONLY a single JSON object, no markdown fences, no other text, matching exactly:
-{"pages": [{"pageId": string, "claimsSupported": boolean, "purposeAccomplished": boolean, "contestedHandled": boolean, "notes": string (required and specific whenever any answer is false)}]}
+{"pages": [{"pageId": string, "claimsSupported": boolean, "purposeAccomplished": boolean, "purposeRevised": boolean, "contestedHandled": boolean, "notes": string (required and specific whenever any answer is false)}]}
 ```
 
 Response schema (`AnthropicNarrationVerifierBuilder.ts:RawVerifyResultSchema`):
@@ -1772,6 +2336,8 @@ z.object({
     pageId: z.string(),
     claimsSupported: z.boolean(),
     purposeAccomplished: z.boolean(),
+    purposeRevised: z.boolean().optional(),   // F-50 — a reply that does not
+                                              // answer it has not said "no"
     contestedHandled: z.boolean(),
     notes: z.string().optional()
   }))
@@ -1785,6 +2351,28 @@ Kansas City claim in five seconds (**F-27**), never asked whether a page did the
 job its beat existed for (**F-41**), and decided the zero-source case by sampling
 — ten rejections and one pass on the same shape of page (**F-44**). Question 3
 also takes rule 3 away from the keyword detector (**F-43**).
+
+**Question 2 was redefined by F-50, and that is the change that ended run 2's
+class of failure.** The old question — "does the script do the job its purpose
+describes?" — made the purpose unfalsifiable. Run 2's act 1 page **p2** had a
+deepen-stage purpose asserting that the feature store exists because training and
+serving code paths drift apart silently; retrieval returned *Why Feature Stores
+Didn't Fix Training–Serving Skew* — *"Feature stores manage data artifacts. They do
+not control execution."* Attempt 1 asserted the purpose and was rejected as
+unsupported by its quotes and contested by its own source; attempts 2–3 narrowed to
+what the documents supported and never said "feature store", and were rejected for
+dropping the concept the purpose names. **Every verdict was correct**, and the page
+that would have passed — *the feature store was sold as the fix, and the people who
+built them say it isn't* — was permitted by neither prompt.
+
+So `purposeAccomplished` now asks whether the page **addresses the purpose's
+subject with the evidence available**, *including by contradicting or qualifying
+the purpose*. Only a page that ignores the subject — or re-tells what earlier pages
+covered — fails. **F-41 is not weakened**: a test replays attempts 2–3 verbatim in
+shape and they still fail. The verifier additionally returns its own
+`purposeRevised`, kept separately from the writer's flag (§3.8.11) because two
+agents answering independently is §4.7 rule 2, and a page one flagged and the other
+did not is exactly the page an editor most wants to see.
 
 **It is deliberately not asked whether a quote exists**; that is proven in code
 against the held documents before it is ever called.
@@ -1822,12 +2410,35 @@ Every attempt is recorded on the page as a `NarrationAttemptRecord`
 that is what makes WS-B's `firstAttemptPassRate` and `attributionStability`
 computable from data rather than from side effects.
 
-#### 3.8.10 Failure policy
+#### 3.8.10 Failure policy — a page never kills the Foray (F-51, F-60)
 
 | Case | Outcome |
 |---|---|
-| A **connective** page (Frame/Hinge/Marker/Correction around a tape beat) fails all 3 attempts | **The page is dropped and the tape is kept.** A `console.warn` names the mode, the first 80 chars of the claim and the joined rejections. §4.8's silence-is-a-valid-bridge rule covers the seam. Run 1 attempt 3 died at beat 5 of 31 because a hand-off line failed twice — thirty beats of finished work discarded (**F-17 / F-31**). |
-| A **narration-sourced** page (Patch/Carry) fails all 3 attempts | `NarrationWriteError` is thrown, wrapping an `InvalidNarratedBeatError` with every recorded rejection. **The act, and therefore the Foray, fails** — dropping it would drop the beat's content. Run 1 attempt 4 ended exactly this way, at beat 23 of 31. |
+| A **connective** page (Frame/Hinge/Marker/Correction around a tape beat) fails all 3 attempts | **The page is dropped and the tape is kept**, unchanged. A `console.warn` names the mode, the first 80 chars of the claim and the joined rejections. §4.8's silence-is-a-valid-bridge rule covers the seam. Run 1 attempt 3 died at beat 5 of 31 because a hand-off line failed twice — thirty beats of finished work discarded (**F-17 / F-31**). |
+| A **narration-sourced** page (Patch/Carry) fails all 3 attempts | **The page is KEPT, `verified: false`, and the run continues** (`unverifiedResultFor`). The salvage prefers the last **mechanically clean** page — quotes held, spans long enough, attribution read off the document — that the verifier nonetheless refused (`page.kept`, banked *before* the verifier is called), and falls back to the last page produced at all (`page.lastBeat`). It carries its whole `attempts` history, the verifier's final objection in `verifierNotes`, and `purposeAccomplished`/`purposeRevisedByVerifier` when the verdict supplied them. A `console.warn` names it. |
+| A narration page for which **no prose call ever produced a page** | The same hand-off shape as §3.8.2a, with `unverifiedReason: "no-page"` and the last rejection as `verifierNotes`, plus the full `attempts` history — so an editor can tell "there was evidence and nothing usable came back" from "no evidence behind this beat at all". |
+| A **content page whose evidence pack is empty** after both retrieval queries | Degraded before any model call — §3.8.2a, `unverifiedReason: "no-evidence"`. |
+
+**This is a reversal of the previous policy, and the thing that justifies it is
+downstream.** Run 2 died at act 1 page p2 with **10 of 12 pages verified and 34
+model calls spent**, while a veracity gate whose entire job is to judge a flawed
+candidate and refuse to publish it sat unused behind it. Throwing here discards
+eleven good pages to prevent a twelfth from being published that the gate would
+have refused anyway. So: **a page never kills the Foray, the gate decides.**
+`meta.veracity.unverifiedPages` counts every page above and
+`evaluateVeracityGate` refuses on any of them (§5.4, §5.5).
+
+**`NarrationWriteError` is no longer thrown from any per-page path.** It survives
+as the guard on the one thing this stage cannot honestly return — a slot that came
+out with fewer beats than it went in with — which is unreachable by construction
+(every narration beat leaves a page behind and every tape beat leaves its tape) and
+is pinned as unreachable by a test. It stays because the invariant is worth more
+than the branch costs: §3.6's beat list must survive §3.8 unchanged, or every
+positional consumer downstream (`stitchAct`'s coverage, `computePagesDropped`)
+quietly misattributes pages to beats. `InvalidNarratedBeatError` is likewise kept
+and no longer thrown by this module — it remains the typed shape of "this page did
+not validate, and here is every reason", the record an editor tool would build from
+`NarratedBeat.attempts`.
 
 #### 3.8.11 Output and checkpointing
 
@@ -1842,19 +2453,42 @@ carries:
 ```ts
 {
   mode, script, sources[], pronunciationHints[],
-  verified: true,
+  verified: boolean,               // false on a kept-unverified or degraded page
   purposeAccomplished?: boolean,   // the verifier's Q2 — WS-B's purposeFidelity
+  purposeRevised?: boolean,             // F-50, the WRITER's own flag
+  purposeRevisedByVerifier?: boolean,   // F-50, the VERIFIER's independent answer
   verifierNotes?: string,
+  unverifiedReason?: "no-evidence" | "no-page",   // F-60
   evidence?: EvidenceDoc[],        // the held documents — WS-B's groundedQuoteRate
   attempts?: NarrationAttemptRecord[]
 }
 ```
+
+`NarratedBeatSchema` stays `.strict()`. The two purpose flags are kept **separate**
+rather than merged, because they are two agents answering the same question
+independently; `types/narration.ts:purposeWasRevised(beat)` is the single
+definition of the disjunction, so no consumer can get it subtly wrong in its own
+copy (`veracityMetrics.ts:computePurposeRevisedPages` uses it). A page the verifier
+simply refused carries **no** `unverifiedReason` at all — its `verifierNotes` is
+the objection, which is the more useful thing to read.
 
 - **Checkpoint keys:** `narrate:0`, `narrate:1`, … — one per act, because
   `runPipeline` drives `writeNarration([act], …)` one act at a time precisely so a
   finished act is banked. Re-validated on resume by
   `runPipeline.ts:WrittenActSchema` (declared there because `WrittenAct` is an
   interface, not a zod type).
+- **Per-slot checkpoint keys:** `narrate:<act>:<slot>` (F-51's second half).
+  `WriteNarrationOptions` takes a `resume(actIndex, slotIndex)` / `onSlotWritten`
+  callback pair — the same pair `deepenActs` has for acts, at slot granularity —
+  and `runPipeline` wires them to `checkpoint.resumeSync`/`checkpoint.save` under
+  that key, re-validated by `WrittenSlotSchema`. `narrate:<i>` remains the **outer**
+  record: once an act finishes, one key holds it and nothing inside it is consulted
+  again. But `narrate:<i>` is only *written* when the whole act finishes, so a run
+  that died partway through act 1 re-paid for every page of it — run 2's re-run
+  would have re-paid for all twelve of act 1's pages to reach the one that failed.
+  `onSlotWritten` is awaited **before** the act's `Promise.all` settles, so a slot
+  that finished is banked even when a sibling slot throws. `writeNarration` is
+  handed one act, so its own act index is always 0; the outer `i` names the key.
 - **Call counting:** `runPipeline` wraps both builders in counting proxies, so
   `callsPerBeat` counts **requests** — a four-page slot that passes first time
   costs 2 writer calls and 1 verifier call, not 8 and 4. Selection and prose are
@@ -1868,13 +2502,22 @@ purpose-overlap check all run for real in `--dry-run`. When no evidence arrived 
 selects nothing and writes a question-only script (the one shape allowed zero
 sources), padding to the mode's band from a filler list that contains no banned
 word, no digit, no citation token and no negative-record claim.
+It always returns `purposeRevised: false`: F-50's permission exists for the live
+writer, and a stub claiming it would assert an editorial judgement it has no way to
+make ("did the documents contradict the purpose?"). The field is present rather
+than omitted so the dry-run path exercises the same shape production does.
+
 `StubNarrationVerifierBuilder` answers each of the three questions with the
 strongest **structural** signal available and says nothing it cannot support —
 `claimsSupported` fails only on a source attached to no claim; `purposeAccomplished`
-requires at least one shared content word between script and purpose (F-41's own
-failure mode); `contestedHandled` is the string rule. It additionally *asserts*
-F-44's settled case: a zero-source page with a declarative script reaching
-verification means the upstream structural rule did not run, and it fails loudly.
+requires at least one shared content word between script and the **subject its
+purpose names** (F-41's own failure mode), which is exactly what F-50 narrowed the
+live question to, so a page that *contradicts* its purpose from the documents
+passes here too; `contestedHandled` is the string rule; `purposeRevised` is never
+claimed, for the same reason the writer stub never claims it. It additionally
+*asserts* F-44's settled case: a zero-source page with a declarative script
+reaching verification means the upstream structural rule did not run, and it fails
+loudly.
 
 ---
 
@@ -2038,11 +2681,37 @@ real validators. **It writes nothing.**
 mandatory `mode` on every narration item, script-or-asset). None of the four
 committed Forays carries it.
 
-`loadCandidateFiles` reads `data/forays.json`, `data/segments.json`,
-`data/segment-sources.json` and (optionally) `data/taxonomy.json`, and substitutes
-a copy of the forays file with this candidate **appended** — never written to
-disk, so a failing validation leaves `data/forays.json` untouched. A duplicate id
-throws before validation.
+`buildCandidateFiles` (formerly `loadCandidateFiles`, and now **exported** so a
+test can assert the merge without loading the `.mjs` checkers) reads
+`data/forays.json`, `data/segments.json`, `data/segment-sources.json` and
+(optionally) `data/taxonomy.json`, and substitutes:
+
+- a copy of the forays file with this candidate **appended** — a duplicate id
+  throws before validation;
+- a copy of the pool with this run's **minted tier-2 segments** appended, each
+  through `mintedSegmentRow(segment, input.topic)`;
+- a copy of the registry with their **episode source rows** appended.
+
+Both merges skip any id already on disk: a committed row is the authority for a
+segment a curator's batch has already merged. **Nothing is written** — a failing
+validation leaves every data file untouched, exactly as before.
+
+**Why the candidate has to carry them** (`FinalizeForayInput.segments` /
+`segmentSources`). A tier-2 pointer names a segment that is not in
+`data/segments.json` yet: it was cut from a transcript this run, and the merge path
+that would write it (`tools/segments/merge-segments.mjs`) runs on a curator's
+batch, not inside a generation run. `check-forays.mjs` resolves every item against
+the pool it is given, so without these it calls the item an *"unknown segment_id"*,
+drops it before every ordering rule, counts its seconds nowhere, and the Foray
+fails — which is what would have happened to the first Foray this pipeline sourced
+any tier-2 tape for (§8.2, now closed). `tools/foray/check-forays.test.mjs` pins the
+end-to-end case: a Foray using a segment tier 2 minted this run resolves with zero
+errors and its 120 s land on the listener's clock; dropping either pushed row turns
+it red with the two messages above.
+
+`finalizeForay.ts:mintedSegmentRow` is the single producer of a minted pool row
+(§2.1.1) and is shared with `publishForay.ts`, so the row the checker validated is
+byte-for-byte the row that gets committed.
 
 Both checkers are then **imported and called as-is** via dynamic `import()`, never
 reimplemented: a second backend-side copy of D1/D5/L2/L3 would drift from the CI
@@ -2059,13 +2728,16 @@ The real implementation is the default; a test that injects a fake says so.
 `checkForaysErrors`, `checkForaysWarnings`, `checkNarrationErrors`,
 `checkNarrationWarnings`.
 
-**Runtime arithmetic** (`runPipeline.ts:runtimeSecFor`) — the listener's clock,
-computed the way the checker recomputes it:
+**Runtime arithmetic** (`runPipeline.ts:runtimeSecFor(items, pool = loadSegmentPool())`)
+— the listener's clock, computed the way the checker recomputes it:
 
-- a `segment` item contributes `end_sec − start_sec` **resolved from
-  `data/segments.json`**, because a `ForayItem` deliberately carries no duration;
-  an unresolvable segment contributes **0** (the checker fails it on the missing
-  reference, with a better message than a runtime mismatch would give);
+- a `segment` item contributes `end_sec − start_sec` resolved from the **pool it is
+  given**, because a `ForayItem` deliberately carries no duration. `runPipeline`
+  passes `runtimePool` = the committed pool **plus this run's minted tier-2 rows**;
+  without that a tier-2 item would contribute 0 s and `check-forays.mjs` would fail
+  the Foray for a `runtime_sec` that disagrees with its own items. An unresolvable
+  segment still contributes **0** (the checker fails it on the missing reference,
+  with a better message than a runtime mismatch would give);
 - a `jingle` contributes `JINGLE_DURATION_SEC = 1.5`;
 - a narration item contributes `round(script.length / 17 × 1000) / 1000`.
 
@@ -2134,7 +2806,15 @@ budget: two budget checks that can disagree is worse than one.
 | Cap | Env var | Default | Enforced |
 |---|---|---|---|
 | Daily, per user | `DAILY_BUDGET_USD` | **$25.00** | always |
-| Per Foray, per generation run | `EPISODE_BUDGET_USD` | **$10.00** | **only when the caller passes a `sessionId`** |
+| Per Foray, per generation run | `EPISODE_BUDGET_USD` | **$10.00** | **only when the caller passes a `sessionId`** — which the batch driver now does |
+
+**The per-Foray cap is live in the batch path** (was §8.10, F-54).
+`generateForays.ts:generateOneCandidate` passes `sessionId: checkpointKey` into
+`runForayPipeline`'s options, and `runPipeline` forwards `options.sessionId` into
+every builder's `ctx`. The checkpoint key — the candidate's basename — is the right
+value: one id per Foray, stable across a resume, and already the name a human reads
+when a run stops. Before this branch nothing set it, so in the only path that
+generates anything a runaway Foray was bounded by the daily cap alone.
 
 `checkAndRecord` computes the tier from the operation name prefix
 (`tier0`/`tier1`/`tier2`); **no generation operation is tier-prefixed**, so they
@@ -2223,8 +2903,11 @@ the orchestrator's answer four times over was to hand the pipeline the previous
 attempt's answers by hand and log it as an intervention (I-11, I-14).
 
 **Keys:** `understand`, `research-shape`, `spine`, `deepen:<n>`, `source`,
-`narrate:<n>`, `stitch`. Deepening and narration are keyed **per act**, which is
-what makes a beat-23 failure cost act 3's narration rather than the Foray.
+`narrate:<n>`, `narrate:<n>:<slot>`, `stitch`. Deepening and narration are keyed
+**per act**, which is what makes a beat-23 failure cost act 3's narration rather
+than the Foray — and narration is additionally keyed **per slot** inside the act
+(F-51), because `narrate:<n>` is only written when the whole act finishes, so a run
+that died partway through act 1 used to re-pay for every page of it.
 
 **Fingerprint** (`checkpoint.ts:checkpointFingerprint`): first 12 hex of
 `sha1(prompt + "\n" + duration + "\n" + (topic ?? ""))`. Everything that changes
@@ -2248,9 +2931,16 @@ founders generating the same prompt at the same duration are doing the same work
 **Re-validation is the point, not ceremony**: a checkpoint file is JSON a person
 can edit and a killed process can truncate. Every read goes through the same
 schema the stage's own output is checked against. Two stages had no zod schema of
-their own (§4.7's `WrittenAct[]` and §4.8's items are interfaces), so
-`runPipeline.ts` declares `WrittenActSchema` and `StitchCheckpointSchema` rather
-than trusting them unparsed.
+their own (§4.7's `WrittenAct[]`/`WrittenSlot` and §4.8's items are interfaces), so
+`runPipeline.ts` declares `WrittenActSchema`, `WrittenSlotSchema` and
+`StitchCheckpointSchema` rather than trusting them unparsed.
+
+**New fields are `.default([])`, not required.** `SourceCheckpointSchema`'s
+`sourcingTrace` and `newSegmentSources`, and every WS-H field inside a
+`Tier2TraceRow`, are optional or defaulted, so a checkpoint written before those
+fields existed still resumes rather than being discarded as malformed. The one
+place a resumed value is deliberately *corrected* rather than replayed is
+`deepen:<n>`, which goes through the idempotent argument cap (§3.5.3a).
 
 **Write discipline** (`FileCheckpointStore.save`): the whole file is rewritten
 through a temp file and a rename, because a run killed mid-write — precisely the
@@ -2504,6 +3194,13 @@ item to inherit one from and the checker rejects that case explicitly.
 | slots | — | slot blocks must be contiguous and in the declared order |
 | audio | — | a `dai_suspected` source fails every segment of that episode; `end_sec` may not exceed the episode's `duration_sec + 2` |
 
+**Tier-2 tape resolves here now.** The checker itself is unchanged; what changed is
+the *pool it is handed* — `finalizeForay` merges this run's minted segments and
+their episode rows into the files it passes in (§3.10), so a tier-2 `segment_id`
+resolves, its seconds land on the listener's clock, and every ordering rule sees
+the item. `tools/foray/check-forays.test.mjs` pins both halves and the two failure
+messages that appear when either row is missing.
+
 **What this means for a generated Foray today:** `forayItems.ts:toForayItem` emits
 no `role` and no `label`, so **D4 is warned-not-evaluated and L2/L3/L4 never run**.
 The rules that bind are the shape rules, the disclosure, D1, D2, D3, D5, M3, M4,
@@ -2569,6 +3266,15 @@ character bands by `validateNarratedBeat` (§3.8.6), and the banned-phrase list 
 `copy/rules.js:BANNED`. The digit rule, the reference-leak rule and the sentence
 rules are **not** applied to generated narration at all — see §8.9.
 
+**Neither checker was changed for F-51, deliberately.** An unverified page
+(§3.8.10) passes both untouched: this one never sees the candidate, `check-forays.mjs`
+reads no `verified` field (`grep -n verified tools/foray/check-narration.mjs` is
+likewise empty), and `forayItems.ts` does not emit one into a published item — its
+internal-field-leak guard covers that. So the only thing between an unverified page
+and a listener is the veracity gate (§5.5), which is exactly where F-51 put the
+decision; teaching a checker about `verified` would move it back into a gate that
+cannot see the metric. Recorded at `finalizeForay.ts`'s `check-narration` call site.
+
 ### 5.3 The spine structural gate
 
 `spineStructure.ts:assertSpineStructure`, run between §4.3 and §4.4. Full rule
@@ -2599,6 +3305,9 @@ the same bug wearing a metrics hat.
 | `firstAttemptPassRate` | share of **kept** pages with `attempts.length === 1`. Honest scope: a connective page dropped after 3 failures never reaches the written acts, so its 0-for-3 record is invisible here — `pagesDropped` counts those separately | no page carries `attempts` |
 | `callsPerBeat` | `(writerCalls + verifierCalls) / attemptedPages`, where attempted pages are recomputed deterministically from the sourced acts (every narration beat plus every tape beat `decideConnectiveNarration` assigned a mode) | zero attempted pages |
 | `pagesDropped` | connective pages `decideConnectiveNarration` asked for that are absent from the final acts. Recomputed from the sourced acts with the same pure function the pipeline used, because a dropped page and a page never wanted look identical in the output | — (an integer) |
+| `unverifiedPages` | **F-51.** How many kept pages carry `verified: false` — a page the verifier refused three times, a page no prose call ever produced (`no-page`), or a page with no evidence to write from (`no-evidence`). **Read the count, not a rate**: one is a stop, so there is nothing for an average to say, and unlike `pagesDropped` each of these is a page a listener *would* hear, carrying an objection somebody has to answer | — (an integer) |
+| `unverifiedPageDetails` | the same pages as `FailingPage` rows — `{claim, mode, reason: "unverified-page", detail}`, the detail being the verifier's note (first 200 chars) or the recorded attempt count — so the gate can print which ones | — |
+| `purposeRevisedPages` | **F-50.** How many pages corrected their purpose from the evidence: the writer said so, the verifier said so, or both (`types/narration.ts:purposeWasRevised` is the one definition of that disjunction). **Reported, never gated** — a page that reports a contradiction between its brief and its documents is the most valuable thing evidence-first narration can produce. It exists so an editor can *find* those pages, and so a deepen stage that keeps writing purposes the evidence contradicts shows up as a rising count rather than as a dead run | — (an integer) |
 | `pipelineTokens` | sum of every reply's `usage` for this run (§4.4) | — |
 | `stageTimings` | the pipeline's stage list plus `finalize.*` | — |
 
@@ -2612,12 +3321,25 @@ anything is written:
 |---|---|---|
 | `groundedQuoteRate` | `GATE_MIN_GROUNDED_QUOTE_RATE` | **1** (every quote must be grounded) |
 | `purposeFidelity` | `GATE_MIN_PURPOSE_FIDELITY` | **0.8** |
+| `unverifiedPages` | — | **0**, absolute (F-51) |
 | `tapeRelevance` | `GATE_MIN_TAPE_RELEVANCE` | **0.9** |
 
 - A missing `meta.veracity` **fails**: "groundedQuoteRate/purposeFidelity/tapeRelevance
   were never computed".
 - **`null` fails** for `groundedQuoteRate` and `purposeFidelity` — unmeasured is
   not passing.
+- **Any `unverifiedPages` fails.** Not a floor — one such page refuses the whole
+  candidate: *"N page(s) were kept without passing verification — a page that never
+  satisfied the verifier is not publishable (F-51)"*, with each
+  `unverifiedPageDetails` row printed beneath as `  [mode] claim — detail`. It is
+  listed **before** the tape check because it is the most concrete failure in the
+  set: not a rate below a floor, but a specific page with a specific unanswered
+  objection. §3.8 now finishes a Foray that contains one rather than throwing the
+  Foray away, and this is the only thing standing between that page and a listener
+  — neither checker reads `verified`, and `forayItems.ts` does not emit it into a
+  published item (§5.2, and the note at `finalizeForay`'s `check-narration` call
+  site).
+- `purposeRevisedPages` is **reported and never gated**.
 - `tapeRelevance` gets one exception: a candidate with **no tape anchors at all**
   has nothing to judge and does not block. A candidate **with** anchors where none
   resolved **does** block — that is a real "cannot confirm" gap, not an absence of
@@ -2656,9 +3378,17 @@ Written by `generateForays.ts` to
   "items":      [ /* ForayItem[] — see below */ ],
   "runtimeSec": 3512.412,
   "builtAt":    "2026-09-09T04:11:02.145Z",
-  "meta": { "veracity": { /* §5.4 */ } }
+  "meta": { "veracity": { /* §5.4 */ } },
+  "segments":       [ /* NewSegment[]          — this run's tier-2 cuts */ ],
+  "segmentSources": [ /* MintedSegmentSource[] — their episode registry rows */ ]
 }
 ```
+
+`segments`/`segmentSources` are present (and usually empty) on every candidate.
+They are what makes a tier-2 anchor publishable: `finalizeForay` merges them into
+the pool and registry it validates against (§3.10) and `publishForay` commits them
+(§6.5). Nothing else in the candidate refers to them — a tier-2 tape item is an
+ordinary `{type: "segment", segment_id}` row.
 
 **Filename** (`generateForays.ts:candidateFilename`):
 `slug(prompt).slice(0,40)` + `-` + first 8 hex of `sha1(prompt)` + `.json`. It is
@@ -2740,11 +3470,20 @@ zero publishable candidates.
   "stages": {
     "understand": { ... }, "research-shape": { ... }, "spine": { ... },
     "deepen:0": { ... }, "deepen:1": { ... },
-    "source": { "acts": [...], "newSegments": [...], "transcriptionQueueCandidates": [...], "tapeRelevance": [...] },
+    "source": {
+      "acts": [...], "newSegments": [...], "newSegmentSources": [...],
+      "transcriptionQueueCandidates": [...], "tapeRelevance": [...], "sourcingTrace": [...]
+    },
+    "narrate:0:0": { "title": "...", "beats": [...] },
+    "narrate:0:1": { ... },
     "narrate:0": { ... }, "stitch": { "items": [...] }
   }
 }
 ```
+
+A finished act's `narrate:<n>` supersedes its own `narrate:<n>:<slot>` keys — the
+per-slot ones are written first and are never consulted again once the act key
+exists (§3.8.11).
 
 Rules in §4.2. It sits beside the candidate the same prompt will eventually
 produce, so a human can see which prompt a half-finished run belongs to.
@@ -2761,7 +3500,17 @@ produce, so a human can see which prompt a half-finished run belongs to.
 3. `--dry-run` prints the record and stops.
 4. Otherwise: append `forayRecord` to `data/forays.json` and write it back
    pretty-printed with a trailing newline.
-5. `git switch -c generate/<foray id>`, `git add data/forays.json`,
+4a. **Append this run's tier-2 tape**, if any: each minted segment
+   (`mintedSegmentRow`, the same producer `finalizeForay` validated against) to
+   `data/segments.json`, and each episode row to `data/segment-sources.json`, both
+   skipping ids already on disk (a committed row is the authority). Publishing the
+   Foray without them would ship a `segment_id` no reader can resolve — the same
+   "unknown segment_id" failure, moved from the checker to the player. Written in
+   the same commit so the three files are never out of step. Each write prints its
+   own line (`Wrote data/segments.json (+N tier-2 segment(s), flagged needs_review).`).
+5. `git switch -c generate/<foray id>`, `git add` **every file actually written**
+   (`data/forays.json`, plus `data/segments.json` and `data/segment-sources.json`
+   when tier-2 tape was minted),
    `git commit -m "Generated Foray: <title> (<id>)"`, `git push -u origin HEAD`.
 6. `gh pr create --base main --title "Generated Foray: <title>" --body <body>` —
    **never a direct commit to main**.
@@ -2871,12 +3620,12 @@ never logged; `envPresenceSummary()` reports booleans only.
 |---|---|---|
 | `ANTHROPIC_API_KEY` | unset | **The one switch between stub and live.** Unset → every `create*()` returns a Stub, `$0`, no network. Set → the Anthropic builders. |
 | `DAILY_BUDGET_USD` | `25.00` | Daily per-user cap. Schema-validated: finite, ≥ 0, ≤ 1000; a present-but-malformed value **fails startup**. |
-| `EPISODE_BUDGET_USD` | `10.00` | Per-Foray cap — **only enforced when a caller passes a `sessionId`**, which the batch driver does not (§8.10). Leniently parsed. |
+| `EPISODE_BUDGET_USD` | `10.00` | Per-Foray cap — enforced only when a caller passes a `sessionId`, which the batch driver **now does** (the checkpoint key; §4.1). Leniently parsed. |
 | `FORAY_MODEL_OPUS` | `claude-opus-5` | Override the id a tier resolves to. |
 | `FORAY_MODEL_SONNET` | `claude-sonnet-5` | Same. |
 | `FORAY_MODEL_HAIKU` | `claude-haiku-4-5-20251001` | Same. Pinned to a **dated snapshot** deliberately: it is the only tier whose alias still resolves to a 4.x model, and pinning makes "this is deliberately last-generation, not stale" reviewable — exactly what F-03 found missing. |
 | `FORAY_MODEL_{OPUS,SONNET,HAIKU}_USD_PER_MTOK_IN` / `_OUT` | opus 5/25, sonnet 2/10, haiku 1/5 | Per-million-token prices for the budget estimate. **An id override does not change the price** — the guard would rather over-estimate against a cheaper substitute than under-estimate against a dearer one, so override the price alongside the id when it matters. |
-| `FORAY_SKIP_CATALOGUE_CACHE` | unset | `=1` disables the per-process caches in `catalogueLookup`, `segmentPoolLookup`, `transcriptArchiveLookup`, `taxonomyFamily` and `veracityMetrics`, for tests that mutate a fixture directory. |
+| `FORAY_SKIP_CATALOGUE_CACHE` | unset | `=1` disables the per-process caches in `catalogueLookup`, `segmentPoolLookup`, `transcriptArchiveLookup`, `taxonomyFamily`, `audioSourceLookup` and `veracityMetrics`, for tests that mutate a fixture directory. |
 | `ANTHROPIC_BASE_URL` | unset | Read by the **Anthropic SDK**, not by this repo. This is what pointed run 1 at the relay (§4.7). |
 | `PODCASTINDEX_API_KEY` / `_SECRET`, `DATABASE_URL` | unset | Read by `env.ts`; **not used by generation**. |
 
@@ -2892,16 +3641,20 @@ unchanged"); nothing in `backend/src/` references it. Every narration call is
 | Safety check | Clarity and intent |
 | Catalogue lookup and the tape-availability signal | External research and evidence retrieval |
 | Topic resolution | The spine |
-| Beat sourcing (both tiers, the anchor maths, the topic gate) | Act deepening |
+| Beat sourcing (both tiers, the transcript text index, the anchor maths, the topic gate, the audio-source lookup) | Act deepening |
 | Stitching's within-act rules and the item mapping | Narration selection, prose and verification |
 | `check-forays.mjs`, `check-narration.mjs`, the veracity metrics, the publish gate | Cross-act continuity |
 
 **Machine requirements.** The generation machine must hold
 `data-local/transcripts/normalized/` — it is gitignored and machine-local, so a CI
 runner or a fresh clone has no transcript bodies and **tier-2 sourcing can never
-fire** there (`NullTranscriptCueProvider` returns `null` for every episode). On
-this machine there are 1,713 normalised bodies across 15 shows. Everything else
-the pipeline reads is committed. Node with `tsx` (already a dependency) and,
+fire** there: `NullTranscriptCueProvider` returns `null` for every episode and
+`NullTranscriptTextIndex` returns no candidates and reports `enabled: false`, so
+tier 2 falls back to the title path and stops at `no-body`. On this machine there
+are 1,713 normalised bodies across 15 shows, and the text index writes its own
+cache beside them under `data-local/transcripts/index/` (rebuilt automatically when
+a body's mtime or size changes, so it never needs clearing by hand). Everything
+else the pipeline reads is committed. Node with `tsx` (already a dependency) and,
 for publishing, `git` and the `gh` CLI authenticated against the repo.
 
 The founder's own plan (`C:\Users\wjduv\Desktop\4a-forays-in-app-plan.md`,
@@ -2913,54 +3666,70 @@ present on this PC and the key is the missing one.
 ## 8. Known gaps and open decisions
 
 Ordered by what would hurt a real keyed run soonest. Each ends with what it would
-take.
+take. **Section numbers are stable**: §8.1, §8.2, §8.3 and §8.10 are cited from
+earlier sections and from the run doc, so a closed gap keeps its number and says
+what closed it rather than being deleted and shifting the rest.
 
-### 8.1 The transcript cue window never reaches the writer
+### 8.1 The transcript cue window never reached the writer — **closed by #551**
 
-`writeNarration.ts:writeNarration` builds its evidence gatherer with
-`createEvidenceGatherer()` and no options, and `runPipeline.ts` passes no
-`evidence` dependency, so `DefaultEvidenceGatherer` defaults its `cueProvider` to
-`NullTranscriptCueProvider`. The cue provider `generateForays.ts` constructs
-reaches `sourceBeats` only. A tape beat's pack therefore carries the show and
-episode **titles** but never the `tape:<segmentId>` transcript document — WS-A's
-first bullet is half-built, and every quote on a tape-adjacent page must come from
-retrieved print evidence instead.
-**To close:** thread `deps.cueProvider` through `writeNarration`'s options into
-`createEvidenceGatherer({cueProvider})`. Two call sites.
+`writeNarration` built its evidence gatherer with `createEvidenceGatherer()` and no
+options, and `runPipeline` passed no `evidence` dependency, so
+`DefaultEvidenceGatherer` fell back to `NullTranscriptCueProvider`: a tape beat's
+pack carried the show and episode **titles** and never the `tape:<segmentId>`
+transcript document, on the same machine where §3.6 was anchoring against real cues
+(**F-52**). `WriteNarrationOptions` now takes a `cueProvider`, `runPipeline` passes
+`deps.cueProvider`, and `DefaultEvidenceGatherer.cueProvider` is public readonly so
+a test proves the provider arrives. Mechanics in §3.7.4.
 
-### 8.2 A tier-2 anchor makes the Foray unpublishable
+### 8.2 A tier-2 anchor made the Foray unpublishable — **closed by #552**
 
-`sourceBeats` mints a `NewSegment` for every tier-2 hit and returns it. **Nothing
-consumes `newSegments`** — not `runPipeline`, not `finalizeForay`, not the CLI.
-The minted segment id is written into the candidate's `items[].segment_id`, but
-the segment is not in `data/segments.json`, so:
+`sourceBeats` minted a `NewSegment` per tier-2 hit and **nothing consumed it**, so
+the candidate named a `segment_id` in no file on disk: `runtimeSecFor` scored it 0 s
+and `check-forays.mjs` failed it with `unknown segment_id "…"` (**F-53**). The
+moment F-49's and WS-H's fixes yielded tier-2 tape, finalize would have failed the
+Foray. Closed end to end: sourcing also returns `newSegmentSources` built by
+`audioSourceLookup.ts` and refuses to mint tape it cannot register (§3.6.6c); the
+candidate carries `segments`/`segmentSources` (§6.1); `finalizeForay` merges both
+into the pool and registry it validates against and `runtimeSecFor` measures against
+the merged pool (§3.10); `publishForay` commits them beside `data/forays.json`
+(§6.5); and `tools/foray/check-forays.test.mjs` pins the whole path.
 
-- `runtimeSecFor` scores it **0 seconds**, and
-- `check-forays.mjs` fails it with `unknown segment_id "…" — not in data/segments.json`.
+**One half is still open, and it is a small one.** `transcriptionQueueCandidates`
+is produced, checkpointed and never surfaced in the outcome or `report.json`, so
+the "log it for transcription" behaviour §3.6.7 describes still produces no
+artefact anybody reads. What replaced it in practice is `sourcingTrace` (§3.6.9a),
+which *is* checkpointed and printed per slot.
+**To close:** put the queue rows in `report.json`, or drop the array and let the
+trace be the record.
 
-Any Foray with even one tier-2 anchor therefore cannot pass validation today. The
-same is true of `transcriptionQueueCandidates`, which is produced and dropped, so
-the "log it for transcription" behaviour §4.5 describes produces no artefact
-anybody can read.
-**To close:** a founder decision on where minted segments go — surfaced through
-the outcome and `report.json`, handed to `tools/segments/merge-segments.mjs` as a
-proposed batch, or written into the candidate for `publishForay` to merge. This is
-a schema/ownership call (`generation-architecture.md` line 23's rule), not a
-liberty for an implementer.
+### 8.3 F-61 — the verbatim-anchor rule is the wall after WS-H
 
-### 8.3 F-06 — tier-2 episode selection is still title-only
+F-06 is closed (§3.6.6a): tier 2 now chooses its candidate episodes by BM25 over
+the transcripts' own words, and the offline replay shows every one of run 2's 23
+searching beats reaching real *Practical AI* bodies. **Tape yield is still zero on
+that fixture**, and the gate that now decides is `resolveAnchorFromCues`: it
+requires a contiguous run of **≥ 4 of the claim's own words** spoken verbatim.
+Claims are written prose; tape is speech. Across all 63 bodies exactly one of the
+23 claims has such a run anywhere — in an episode BM25 ranks 53rd — and the
+anchored-window test correctly refuses it, because it is precisely the generic run
+F-24 exists to reject.
 
-`findTranscriptArchiveMatch` scores the claim against `title` + (at most one
-point for) `show_title`. The transcript **text** is never searched to *choose* an
-episode; it is only used afterwards, to locate an anchor and corroborate it.
-`data-local/corpus/corpus.db` has an FTS5 index over 558 chunks and is not opened
-by any generation module. The post-selection checks (§3.6.6) make a *wrong*
-selection much less likely to mint tape, but the recall ceiling F-06 named is
-unchanged: a beat about a specific point inside an episode can only reach that
-episode if its title happens to share three content words with the claim.
-**To close:** score candidates against transcript text (FTS or embeddings) before
-the anchor step. Needs a decision on where that index lives, since `corpus.db` is
-machine-local and holds reference documents, not episode transcripts.
+The rule conflates two different things: **which window carries the beat** (a
+relevance judgement, now answered by BM25 plus the anchored-window overlap) and
+**which spoken phrases mark that window's edges** for ADR-0007's drift-tolerant
+anchoring — which must be verbatim tape words, but the *tape's*, not the claim's.
+**To close:** pick the window by overlap, then mint `startAnchor`/`endAnchor` from
+the first/last distinctive phrases **inside** that window's cue text; keep the ≥ 3
+content-word overlap and the lineage gate; add a relevance floor so a weak window is
+refused. Regression: run 1's Chernobyl/griddle/San Bruno anchors must stay refused.
+
+**F-62 rides with it.** `cutSpanToCueBoundaries` grows a short window
+**symmetrically** to reach `MIN_TAPE_SEGMENT_SEC = 45`, and this archive's cues
+average ~28 s, so WS-H's one successful mint pulls in a leading cue that is off-claim
+— roughly 28 s about Underwriters Laboratories before the passage the claim
+describes. **To close:** grow by overlap (prefer the side whose next cue shares
+claim terms), never symmetrically, and allow a shorter segment over an off-claim
+lead-in.
 
 ### 8.4 F-48 — print evidence is the retrieval model's restatement
 
@@ -2991,7 +3760,7 @@ exercise this**, so run 1's data says nothing about it.
 raise the small caps by a thinking allowance, and make `env.ts`'s estimate include
 it.
 
-### 8.6 Duplicate slot titles collapse in the item mapping
+### 8.6 F-55 — duplicate slot titles collapse in the item mapping
 
 `runPipeline.ts:slotsFromSpine` de-duplicates slot ids with a numeric suffix
 (`foo`, `foo-2`) so `check-forays` can join items to slots. `forayItems.ts:toForayItem`
@@ -3003,7 +3772,7 @@ contiguous".
 **To close:** pass the resolved slot-id list into the mapping instead of
 re-slugifying, or forbid duplicate slot titles in `spineStructure.ts`.
 
-### 8.7 The Foray title can exceed the 18-word copy limit
+### 8.7 F-56 — the Foray title can exceed the 18-word copy limit
 
 `runPipeline` builds `title = "{subject}: {angle}"` truncated to **120
 characters**; `check-forays.mjs` rejects a title over **18 words**. A wordy
@@ -3039,7 +3808,7 @@ stream progress or return a job id the app polls.
 **To close:** the four decisions above, then a small tailnet HTTP service wrapping
 `runForayPipeline` plus a player-side append path.
 
-### 8.9 Generated narration is never checked against `check-narration.mjs`'s rules
+### 8.9 F-58 — generated narration is never checked against `check-narration.mjs`'s rules
 
 The pipeline writes no `docs/curation/narration/<id>/` artifacts, so that
 validator inspects other Forays' files and contributes nothing about this one
@@ -3052,18 +3821,17 @@ them in words.
 pure function over one sentence), or have §4.7 emit the curation artifacts the
 validator already understands.
 
-### 8.10 The per-Foray budget cap is inert in the batch path
+### 8.10 The per-Foray budget cap was inert in the batch path — **closed by #551**
 
-`BudgetGuard.checkAndRecord` enforces `EPISODE_BUDGET_USD` **only when the caller
-passes a `sessionId`**. `runPipeline` forwards `options.sessionId` into every
-builder's `ctx`, but `generateForays.ts` never sets it. So in the batch path only
-the daily cap binds, and `--budget-usd` effectively sets the daily ceiling. A
-single runaway Foray can consume the whole day's budget without ever tripping the
-per-Foray ceiling that exists for exactly that case.
-**To close:** pass a per-Foray `sessionId` (the checkpoint key is a natural one)
-from `generateOneCandidate`.
+`BudgetGuard.checkAndRecord` enforces `EPISODE_BUDGET_USD` only when the caller
+passes a `sessionId`, and `generateForays.ts` never set one, so in the only path
+that generates anything a runaway Foray was bounded by the daily cap alone
+(**F-54**). `generateOneCandidate` now passes `sessionId: checkpointKey` — one id
+per Foray, stable across a resume, already the name a human reads when a run stops
+(§4.1). `--budget-usd` still re-caps both ceilings together, because generation
+calls score tier 1.
 
-### 8.11 The ±15 % runtime tolerance is not implemented
+### 8.11 F-57 — the ±15 % runtime tolerance is not implemented
 
 `generation-architecture.md` §3/§8 make runtime tolerance a publishability
 condition. The code bounds **counts** (acts/slots/beats) and never compares the
@@ -3086,18 +3854,31 @@ decision on the error margin (`generation-architecture.md` §7.3, itself open).
 | **Listener feedback on a bad Foray** (§9.5) | Open. |
 | **Phase 2 (any user prompts, published to the shared catalogue)** | Open, and App Store Guideline 1.2 applies the moment it ships: content filtering, a report mechanism, a way to block abusive users, published developer contact. None exist. |
 
-### 8.13 Findings from run 1 still open or only partly closed
+### 8.13 Findings from runs 1 and 2 still open or only partly closed
 
 | Finding | State on this branch |
 |---|---|
 | **F-05** — the cheapest tier (haiku, 800 output tokens) decides a topic's "genuine controversies" | unchanged |
-| **F-06** — tier-2 episode matching is title-only; `corpus.db` FTS unused | §8.3 |
+| **F-06** — tier-2 episode matching is title-only; `corpus.db` FTS unused | **closed** by WS-H (#553): tier 2 ranks candidates by BM25 over transcript text and the title bar is demoted to a tie-breaker (§3.6.6a). `corpus.db` is still unused, deliberately — it holds reference documents, not episode transcripts |
 | **F-07** — the SDK's 10-minute timeout and 2 retries can mint duplicate requests on a slow transport | unchanged; irrelevant with a real key, relevant to any queued transport |
 | **F-12** — external research fires only for catalogue-gap seeds | unchanged by design; F-11's fix is what makes a gap detectable |
 | **F-19 / F-25** — a Frame's 70–170 characters and rule 3 are close to incompatible | *mitigated*, not resolved: "contested" is now narrowly defined in the selection prompt and rule 3 is judged by the verifier rather than a keyword list, but a contested source on a Frame page still has to be voiced inside 170 characters |
 | **F-20** — the driver's error text double-encodes `§` on a Windows console | unchanged, cosmetic |
-| **F-47**, **F-48** | §8.5, §8.4 |
-| **I-01** | closed by `--budget-usd` and the new defaults — but see §8.10 |
+| **F-47** — adaptive thinking bills as output inside tight `max_tokens`; no builder sets `thinking`/`output_config` | **open**, §8.5. Still verified by grep over `backend/src/`; the tight caps (continuity 500, understander 400/600, researcher 800, verifier 2000) are unchanged on this branch |
+| **F-48** — print evidence is the retrieval model's restatement, not fetched bytes; still `web_search_20250305` | **open**, §8.4. Unchanged: `groundedQuoteRate = 1.0` still overstates what has been proven |
+| **F-49** — run 2 sourced zero tape for 35 beats | **closed** in both halves: the `kind` definition plus the per-slot argument cap (§3.5.3a) and the sourcing trace (§3.6.9a) from #552, the text-level candidate search from #553. What remains is F-61, a different rule |
+| **F-50** — evidence that contradicts the purpose left the page no honest move | **closed** by #551 (§3.8.3, §3.8.5, §3.8.8, `purposeRevisedPages`) |
+| **F-51** — a narration beat's third rejection failed the whole Foray | **closed** by #551 (§3.8.10, `unverifiedPages`, the gate) |
+| **F-52 / F-53 / F-54** — the requirements-doc audit's three wiring defects | **closed**: §8.1, §8.2, §8.10 |
+| **F-55** — duplicate slot titles collapse in the item mapping | **open**, §8.6. Low: `slotsFromSpine` de-duplicates, `toForayItem` re-slugifies without |
+| **F-56** — the minted title is capped at 120 characters, `check-forays` rejects over 18 words | **open**, §8.7. Low: cap by words at mint time |
+| **F-57** — the ±15 % runtime tolerance is not implemented anywhere | **open**, §8.11. Medium: a `medium` Foray can finalize far from ~60 min |
+| **F-58** — `check-narration.mjs` structurally cannot validate generated narration | **open**, §8.9. Medium: a whole checker believed to be in the path is not. Reconfirmed while ruling that F-51 needed no checker change (§5.2) |
+| **F-59** — `resolveTopic` resolved run 2's AI/ML prompt to `engineering/energy-fusion` | **closed** for the resolver by #554 (§3.4). The **show-classification half is untouched** — #547's magnet, where CBC Ideas, Lex Fridman and Catalyst all carry `energy-fusion` as their only node — and should reuse `GENERIC_LABEL_WORDS`, the `GENERIC_TOKEN_MAX_NODES` rarity rule and the node `terms` field rather than re-deriving them |
+| **F-60** — a page with no evidence still cost three model calls | **closed** by #555 (§3.7.2a, §3.8.2a, the 24 h empty-cache TTL) |
+| **F-61** — the verbatim-anchor rule is the next wall after WS-H | **open, Critical for tape yield**, §8.3 |
+| **F-62** — the cut grows symmetrically and pulls in an off-claim lead-in | **open**, §8.3. Medium, listener-visible once tape flows |
+| **I-01** | closed by `--budget-usd`, the new defaults, and (since #551) a real per-Foray cap — §8.10 |
 
 ---
 
@@ -3116,20 +3897,22 @@ passing on the first attempt. A rejected page costs its slot another full
 | 1b | Intent | same | haiku | 600 | 1 | `understand` | schema failure after one re-ask |
 | 2 | Research shape | `researchShape.ts` + `AnthropicExternalResearcher` | haiku (+ web_search ×3) | 800 | 0–8 | `research-shape` | any throw |
 | 3 | Spine | `AnthropicSpineBuilder` | **opus · `claude-opus-5`** | **8000** | **1** | `spine` | `validateSpine` or `assertSpineStructure` — **no retry** |
-| — | Topic | `resolveTopic.ts` | — | — | 0 | — | no node clears the bar → `unresolved-topic` |
-| 4 | Deepen acts | `AnthropicDeepenActBuilder` | sonnet · `claude-sonnet-5` | 4000 | **4** (×2 on retry) | `deepen:0…3` | second failure of any act → `ActDeepeningError` |
-| 5 | Source beats | `sourceBeats.ts` | — | — | 0 | `source` | only the beat-preservation guardrail (unreachable) |
-| 6 | Gather evidence | `gatherEvidence.ts` + retriever | haiku (+ web_search ×3) | 2000 | ≤ 32, cached by claim hash | (inside `narrate:*`) | never — retrieval failure degrades to no print evidence |
-| 7a | Select claims | `AnthropicNarrationWriterBuilder` | sonnet | 4000 | **6** (1/slot) | `narrate:0…3` | ungrounded/short/echoing quote → retry |
-| 7b | Write prose | same | sonnet | 4000 | **6** | `narrate:0…3` | band, copy, negative-claim, empty-source, slug rules → retry |
-| 7c | Verify | `AnthropicNarrationVerifierBuilder` | sonnet | 2000 | **6** | `narrate:0…3` | any of the three answers false → retry; 3rd failure drops a connective page, **fails the Foray** for a Patch/Carry |
+| — | Topic | `resolveTopic.ts` | — | — | 0 | — | no distinctive evidence, or no node clears the bar → `unresolved-topic` |
+| 4 | Deepen acts | `AnthropicDeepenActBuilder` | sonnet · `claude-sonnet-5` | 4000 | **4** (×2 on retry) | `deepen:0…3` | second failure of any act → `ActDeepeningError`. The argument cap re-tags rather than fails, and records a `warnings` line |
+| 5 | Source beats | `sourceBeats.ts` (+ `transcriptTextIndex.ts`, `audioSourceLookup.ts`) | — | — | 0 | `source` | only the beat-preservation guardrail (unreachable). Prints one summary line per slot |
+| 6 | Gather evidence | `gatherEvidence.ts` + retriever | haiku (+ web_search ×3) | 2000 | ≤ 32, **≤ 2 queries per content page**, cached by query hash | (inside `narrate:*`) | never — retrieval failure degrades to no print evidence, and an empty pack degrades the page with **zero** writer calls |
+| 7a | Select claims | `AnthropicNarrationWriterBuilder` | sonnet | 4000 | **6** (1/slot) | `narrate:0…3`, `narrate:<act>:<slot>` | ungrounded/short/echoing quote → retry |
+| 7b | Write prose | same | sonnet | 4000 | **6** | same | band, copy, negative-claim, empty-source, slug rules → retry |
+| 7c | Verify | `AnthropicNarrationVerifierBuilder` | sonnet | 2000 | **6** | same | any of the three answers false → retry; 3rd failure drops a connective page and **keeps a Patch/Carry page `verified: false`** — the veracity gate refuses it, nothing throws |
 | 8a | Continuity | `AnthropicContinuityBuilder` | sonnet | **500** | **3** (acts − 1) | `stitch` | empty or < 50 % of the original → `SeamSmoothingError`, fatal |
 | 8b | Stitch + map | `stitchAct.ts`, `forayItems.ts` | — | — | 0 | `stitch` | coverage gap → `ActCoverageFailedError`; a leaked internal field → throw |
-| 9 | Finalize | `finalizeForay.ts` | — | — | 0 | — | any `check-forays` / `check-narration` error → `validation.ok === false`, no candidate written |
+| 9 | Finalize | `finalizeForay.ts` | — | — | 0 | — | any `check-forays` / `check-narration` error → `validation.ok === false`, no candidate written. Minted tier-2 segments and their source rows are merged in-memory before the checkers run |
 
 **Total: ~28 model calls** for a clean medium Foray (1 opus, ~5 haiku + up to 32
 evidence retrievals, ~22 sonnet), against run 1's **103** for 22 of 31 beats.
-Estimated ceiling per the budget arithmetic: **≈ $3.35** (§4.1).
+Estimated ceiling per the budget arithmetic: **≈ $3.35** (§4.1). A page whose
+retrieval comes back empty adds at most one extra haiku call and **subtracts**
+three sonnet calls (§3.8.2a).
 
 ### 9.2 Glossary
 
@@ -3159,9 +3942,38 @@ enclosure. Radio's word.
 anchored, already confidence-rated, the cheapest possible hit.
 
 **Tier-2 sourcing** — a hit in the transcript archive: an episode we hold a
-transcript for but have not cut into segments. Produces a **new** segment via a
-real verbatim anchor located in the episode's own cue text. Requires transcript
+transcript for but have not cut into segments. Candidates are chosen by **BM25 over
+the episode's own cue text** (§3.6.6a), then gated by a real verbatim anchor, the
+anchored-window overlap test, the taxonomy lineage, a cut to whole cues and a
+playable audio row. Produces a **new** segment plus its `segment-sources` row, both
+carried on the candidate and committed by `publishForay`. Requires transcript
 bodies on the local machine.
+
+**Transcript text index** — `transcriptTextIndex.ts`: a read-only, per-show
+inverted index over normalised cue text, BM25-scored, cached under
+`data-local/transcripts/index/` and keyed by each body's mtime+size. Says which
+episodes are worth *opening*; never whether tape is about a claim.
+
+**Sourcing trace** — one row per narration-degraded beat saying what each tier's
+best candidate was, what it scored, what bar it had to clear and **which gate**
+refused it (§3.6.9a). The machine-readable half of a run; the per-slot summary line
+is the human half.
+
+**Minted segment source** — the `data/segment-sources.json` row
+`audioSourceLookup.ts` writes for a tier-2 episode, from the digest's own enclosure
+plus a real DAI verdict. It **refuses rather than invents**: no honest row, no tape.
+
+**Unverified page** — a page kept with `verified: false` because the verifier
+refused it three times, because no prose call ever produced one (`no-page`), or
+because no evidence could be retrieved for it (`no-evidence`). It holds its beat's
+place, asserts nothing it cannot source, is counted by `unverifiedPages`, and is
+refused by the publish gate.
+
+**Purpose revised** — a page that departs from its brief *because the evidence
+did*: the documents contradict or complicate the purpose and the page reports that
+tension. Flagged independently by the writer (`purposeRevised`) and the verifier
+(`purposeRevisedByVerifier`), counted by `purposeRevisedPages`, and **never gated**
+— it is the most valuable thing evidence-first narration can produce.
 
 **Tier 3** — a catalogue episode with no transcript. Cannot be cut, so it is
 logged as a transcription-queue candidate and the beat becomes narration.
@@ -3205,8 +4017,8 @@ bridge *and* a gap.
 an unmarked cross-episode cut, or on the measured 155 s texture cadence.
 
 **Evidence pack** — the documents a page's quotes must be looked up in: a tape
-transcript window (when wired — §8.1) and up to three retrieved print passages of
-≤ 1,500 characters each.
+transcript window (± 90 s, wired since #551 — §3.7.4) and up to three retrieved
+print passages of ≤ 1,500 characters each, from at most two retrieval queries.
 
 **Grounded quote** — a quote that is a whitespace-normalised substring of a
 document the pipeline actually holds. The opposite of a recollection.
