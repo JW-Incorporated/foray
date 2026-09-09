@@ -199,8 +199,20 @@ describe("runForayPipeline", () => {
     // Stub builders make no real Anthropic calls, so real token spend is 0 —
     // a genuine computed number, not a stand-in for "unmeasured" (null).
     expect(veracity.pipelineTokens).toBe(0);
-    // purposeFidelity is always null in this checkout — see veracityMetrics.ts.
-    expect(veracity.purposeFidelity).toBeNull();
+    /* WS-A: the verifier answers F-41's question per page and
+       `purposeAccomplished` carries it, so this is a real number now. It
+       reads 1.0 on a healthy run by construction — a page that never gets a
+       yes is retried, then dropped or fatal — which is what makes it a
+       regression alarm rather than a score (see veracityMetrics.ts). */
+    expect(veracity.purposeFidelity).toBe(1);
+    /* WS-A x WS-B, joined: every page carries the documents it quoted from,
+       so the grounded-quote rate is computed rather than null — and it is 1,
+       BY CONSTRUCTION, because writeNarration.ts refuses in code any quote
+       that is not a verbatim span of a held document. This is the assertion
+       that fails if the two workstreams ever stop agreeing on the shape of
+       `NarratedBeat.evidence`. */
+    expect(veracity.groundedQuoteRate).toBe(1);
+    expect(veracity.firstAttemptPassRate).toBe(1);
     expect(typeof veracity.pagesDropped).toBe("number");
     expect(Array.isArray(veracity.tapeRelevanceAnchors)).toBe(true);
     // Stage timings are attached AFTER `finalize` runs (its own internal

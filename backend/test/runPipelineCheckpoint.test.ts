@@ -89,8 +89,12 @@ function countingDeps() {
   };
 
   const narrationWriter = new StubNarrationWriterBuilder();
-  const realWrite = narrationWriter.writePage.bind(narrationWriter);
-  narrationWriter.writePage = async (...args: Parameters<NarrationWriterBuilder["writePage"]>) => {
+  /* WS-A: the prose call is the one that writes a page, and it takes a whole
+     slot at a time — so this counts slot-writes, not page-writes. The
+     assertions below only ask whether narration was PAID FOR again after a
+     resume, which that answers exactly. */
+  const realWrite = narrationWriter.writePages.bind(narrationWriter);
+  narrationWriter.writePages = async (...args: Parameters<NarrationWriterBuilder["writePages"]>) => {
     calls.write++;
     return realWrite(...args);
   };
@@ -194,7 +198,7 @@ describe("per-stage checkpoint and resume inside one Foray (F-17/F-18)", () => {
        the spine and three deepened acts with it. */
     const store = new FakeCheckpointStore(FP);
     const failing = countingDeps();
-    failing.deps.narrationWriter.writePage = async () => {
+    failing.deps.narrationWriter.writePages = async () => {
       throw new Error("page rejected three times");
     };
 

@@ -364,7 +364,8 @@ describe("buildVeracityMetrics", () => {
     });
 
     expect(veracity.groundedQuoteRate).toBe(null); // no evidence on this beat
-    expect(veracity.purposeFidelity).toBe(null); // always null in this checkout
+    // WS-A: null only when no page carries `purposeAccomplished` — these fixtures do not.
+    expect(veracity.purposeFidelity).toBe(null);
     expect(veracity.tapeRelevance).toBe(1);
     expect(veracity.tapeRelevanceAnchors).toHaveLength(1);
     expect(veracity.pagesDropped).toBe(0);

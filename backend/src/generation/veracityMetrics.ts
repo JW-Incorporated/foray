@@ -200,24 +200,36 @@ export function computeFirstAttemptPassRate(writtenActs: WrittenAct[]): number |
 /* ------------------------------------------------------------------ */
 
 /**
- * "Verifier's yes/no per page, averaged" (WS-B spec) — deliberately
- * `null`, always, in this checkout. `NarrationVerifyResult` (see
- * `NarrationVerifierBuilder.ts`) exposes exactly one boolean, `verified`,
- * which conflates "every claim is backed by its quote" with "the page
- * accomplishes the beat's purpose" (F-41's whole complaint: nothing asks
- * the second question at all). Worse, `verified` is trivially `true` for
- * every `NarratedBeat` this module can ever see: `writePageAndVerify`
- * (`writeNarration.ts`) only ever RETURNS a beat once verification passes
- * — an unverified attempt is retried or the whole page is dropped/thrown,
- * so it never reaches a `WrittenAct[]`. Averaging `verified` over the kept
- * pages would print `1.0` on every candidate, always, including the ones
- * run 1 actually shipped fabricated citations in — exactly the false
- * "fine" this metrics stage exists to prevent. This returns `null` until
- * WS-A's verifier answers "does this page accomplish its purpose" as its
- * OWN field, distinct from `verified`.
+ * "Verifier's yes/no per page, averaged" (WS-B spec). This function was
+ * written to return `null`, always, and said so: pre-WS-A the verifier
+ * exposed one boolean, `verified`, which conflated "every claim is backed
+ * by its quote" with "the page accomplishes the beat's purpose" — F-41's
+ * whole complaint being that nothing asked the second question at all.
+ *
+ * WS-A now asks it, and `NarratedBeat.purposeAccomplished` carries the
+ * answer as its own field, so this averages that instead. The reason it is
+ * NOT `verified` still stands and is worth keeping in view: `verified` is
+ * trivially `true` on every page this module can ever see, because
+ * `writeNarration.ts` only returns a page once verification passes.
+ *
+ * `purposeAccomplished` is close to that by construction too — a page that
+ * never gets a yes is retried, then dropped or fatal — so read this as a
+ * REGRESSION ALARM rather than a score: below 1.0 means the question
+ * stopped being asked or stopped being enforced. Pages that carry no such
+ * field are skipped rather than counted as failures (a hand-built fixture,
+ * or the disclosure beat, is not evidence about the verifier), and `null`
+ * still means "nothing in this candidate could be checked" — which the
+ * publish gate below treats as failing, not as passing.
  */
-export function computePurposeFidelity(_writtenActs: WrittenAct[]): number | null {
-  return null;
+export function computePurposeFidelity(writtenActs: WrittenAct[]): number | null {
+  let accomplished = 0;
+  let total = 0;
+  for (const { page } of flattenWrittenPages(writtenActs)) {
+    if (typeof page.purposeAccomplished !== "boolean") continue;
+    total++;
+    if (page.purposeAccomplished) accomplished++;
+  }
+  return total > 0 ? accomplished / total : null;
 }
 
 /* ------------------------------------------------------------------ */

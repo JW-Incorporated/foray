@@ -101,30 +101,18 @@ export const SourceSchema = z
   .strict();
 export type Source = z.infer<typeof SourceSchema>;
 
-/** §4.7's pronunciation-control hint, per hard/foreign word. Nothing
- * consumes this yet (§9.1 owns the actual TTS-facing mechanism) — the
- * field exists so the data shape does not need retrofitting later. */
-export const PronunciationHintSchema = z
-  .object({
-    word: z.string().trim().min(1),
-    /** Plain-English or phonetic guide — deliberately untyped beyond
-     * "non-empty string", since §9.1 has not chosen a notation yet. */
-    hint: z.string().trim().min(1)
-  })
-  .strict();
-export type PronunciationHint = z.infer<typeof PronunciationHintSchema>;
-
 /**
- * WS-A (docs/curation/generation-fix-plan-2026-09-09.md): one document the
- * writer was actually given to quote from — a transcript cue window, a
- * fetched/cached web passage, whatever `gatherEvidence.ts` retrieves for
- * the beat. Optional and not yet populated by anything in this checkout;
- * added here (WS-B) so a `NarratedBeat`'s `groundedQuoteRate` is
- * MECHANICALLY checkable (`quote` is a substring of some `evidence[].text`)
- * the day WS-A starts populating it, without a second schema migration.
- * Until then every page's `evidence` is absent and the metric that reads
- * it reports `null` — see `veracityMetrics.ts`'s own comment on why that is
- * never silently treated as 1.0.
+ * One document the pipeline HOLDS the text of, as a narration page sees
+ * it. WS-A's whole design turns on this type: a quote is a LOOKUP in one
+ * of these, not a claim the writer makes, and a `publication` is one of
+ * these documents' `title` rather than free text (F-27, F-30, F-32).
+ *
+ * Declared HERE, not in `gatherEvidence.ts`, so this types module stays
+ * free of any dependency on the generation stages that use it — the
+ * gatherer's own doc type EXTENDS this one with the two fields only
+ * retrieval cares about (`kind`, `retrievedAt`), rather than restating it.
+ * WS-B's `veracityMetrics.ts` reads this exact shape off `NarratedBeat`
+ * to compute `groundedQuoteRate`.
  */
 export const EvidenceDocSchema = z
   .object({
@@ -132,23 +120,24 @@ export const EvidenceDocSchema = z
     title: z.string().trim().min(1),
     url: z.string().trim().min(1).optional(),
     /** Held text the writer may quote from — a transcript cue window or a
-     * fetched passage. Not trimmed to non-empty: an evidence doc that
-     * failed to retrieve any text is still worth recording as "we tried
-     * and got nothing" rather than dropped silently. */
+     * fetched passage. Not trimmed to non-empty: a document that failed to
+     * retrieve any text is still worth recording as "we tried and got
+     * nothing" rather than dropped silently (WS-B). */
     text: z.string()
   })
   .strict();
 export type EvidenceDoc = z.infer<typeof EvidenceDocSchema>;
 
 /**
- * WS-B: one recorded attempt at writing a page, kept even when the attempt
- * was rejected — `writeNarration.ts`'s retry loop already computes
- * everything this needs (the written sources, whether it was rejected, and
- * the rejection note it feeds back into the next attempt's prompt); this
- * type just gives that history a place to live so `firstAttemptPassRate`
- * and `attributionStability` (a quote's publication should not move
- * between attempts — F-32) can be computed from real data instead of
- * inferred from side effects.
+ * One attempt at a page, kept whether it passed or not, so the retry note
+ * can accumulate every prior rejection (F-35) and so WS-B can measure
+ * `firstAttemptPassRate` and `attributionStability` — did the same quote's
+ * publication move between attempts (F-32) — from recorded data rather
+ * than from side effects.
+ *
+ * SHAPE PINNED TO WS-B. `veracityMetrics.ts` on `ws-b-veracity-metrics`
+ * reads exactly these four fields; this declaration is deliberately
+ * identical to that branch's so the two land as one hunk.
  */
 export const NarrationAttemptRecordSchema = z
   .object({
@@ -161,6 +150,19 @@ export const NarrationAttemptRecordSchema = z
   })
   .strict();
 export type NarrationAttemptRecord = z.infer<typeof NarrationAttemptRecordSchema>;
+
+/** §4.7's pronunciation-control hint, per hard/foreign word. Nothing
+ * consumes this yet (§9.1 owns the actual TTS-facing mechanism) — the
+ * field exists so the data shape does not need retrofitting later. */
+export const PronunciationHintSchema = z
+  .object({
+    word: z.string().trim().min(1),
+    /** Plain-English or phonetic guide — deliberately untyped beyond
+     * "non-empty string", since §9.1 has not chosen a notation yet. */
+    hint: z.string().trim().min(1)
+  })
+  .strict();
+export type PronunciationHint = z.infer<typeof PronunciationHintSchema>;
 
 /**
  * One written-and-verified narration page — the §4.7 output for a single
@@ -185,15 +187,26 @@ export const NarratedBeatSchema = z
      * self-reported by the writer. `writeNarration.ts`'s orchestrator is
      * the only code path allowed to flip this to `true`. */
     verified: z.boolean(),
+    /** The verifier's SECOND question, kept as its own field rather than
+     * folded into `verified` (F-41: nothing in run 1 asked whether a page
+     * did the job its beat existed for, and page 7 re-told the collapse
+     * from the top instead of introducing its named concept). Distinct
+     * from `verified` because `verified` is trivially true on every kept
+     * page — an unverified page is retried or dropped and never reaches a
+     * `WrittenAct` — so averaging it would print 1.0 forever. WS-B's
+     * `purposeFidelity` averages THIS. */
+    purposeAccomplished: z.boolean().optional(),
     verifierNotes: z.string().trim().min(1).optional(),
-    /** WS-A: the documents this page's writer actually held while
-     * quoting. Absent until WS-A's `gatherEvidence.ts` lands. */
+    /** The documents this page's quotes were looked up in (WS-A). Optional
+     * so nothing upstream of the evidence pack has to change; WS-B reads
+     * it to compute `groundedQuoteRate`. */
     evidence: z.array(EvidenceDocSchema).optional(),
-    /** WS-B: every attempt at this page, successful or not, in order —
-     * `writeNarration.ts`'s `writePageAndVerify` populates this today.
+    /** Every attempt at this page, successful or not, oldest first
+     * (F-35/F-32) — `writeNarration.ts` records one entry per page per
+     * attempt, so `attempts.length === 1` is WS-B's first-attempt pass and
+     * a publication that moves between two entries is F-32 recurring.
      * Still optional: `disclosureNarratedBeat` and any hand-built
-     * `NarratedBeat` in a test fixture carry none, and a `NarratedBeat`
-     * constructed before this field existed must keep parsing. */
+     * `NarratedBeat` in a test fixture carry none. */
     attempts: z.array(NarrationAttemptRecordSchema).optional()
   })
   .strict();
@@ -206,7 +219,25 @@ export interface NarratedBeatValidationIssue {
     | "missing-sources"
     | "contested-not-flagged-in-text"
     | "banned-copy"
-    | "not-verified";
+    | "not-verified"
+    /** The quote is not a substring of any document the pipeline holds —
+     * i.e. it was recalled, not looked up (F-14/F-27/F-32). */
+    | "quote-not-held"
+    /** Short enough that any text on the subject contains it, so it
+     * "supports" anything (F-42's `"debris"`). */
+    | "quote-too-short"
+    /** The quote is the beat's own purpose (or the prompt) read back as
+     * if it were a source (F-46). */
+    | "quote-echoes-purpose"
+    /** The publication is not the title or url of a held document — free
+     * text, a slug, or a plausibility label (F-30/F-32). */
+    | "publication-not-held"
+    /** The script says what the record does or does not contain, with no
+     * source whose own quote says so (F-45). */
+    | "unsourced-negative-claim"
+    /** Zero sources on a page that nonetheless asserts something
+     * (F-36/F-37/F-44, settled here so the verifier never sees it). */
+    | "sources-empty-with-claims";
   message: string;
 }
 export interface NarratedBeatValidationResult {
@@ -251,6 +282,179 @@ export function containsContestedLanguage(script: string): boolean {
   return CONTESTED_PHRASES.some((p) => low.includes(p));
 }
 
+/* ------------------------------------------------------------------ *
+ * WS-A's mechanical rules. Every one of these is a rule a MODEL was
+ * asked to follow in run 1 and did not; each is now checked in code,
+ * before any verifier call, because "put every rule that can be checked
+ * in code, in code" is what the run cost us the hard way.
+ * ------------------------------------------------------------------ */
+
+/**
+ * The comparison form for "is this quote actually in that document".
+ * Whitespace-collapsed, case-folded, and with the typographic characters
+ * a transcript, a web page and a model's output disagree about (curly
+ * quotes, en/em dashes, ellipses, non-breaking spaces) folded to their
+ * ASCII forms. Everything else — every word, in order — must match
+ * exactly. The forgiveness is deliberately limited to characters no
+ * reader hears: a "quote" that differs from the document in any WORD is
+ * not a quote, which is the whole point.
+ */
+export function normalizeForQuoteMatch(text: string): string {
+  return String(text ?? "")
+    .normalize("NFKC")
+    .replace(/[‘’ʼ′`´]/gu, "'")
+    .replace(/[“”″]/gu, '"')
+    .replace(/[‐-―−]/gu, "-")
+    .replace(/[…]/gu, "...")
+    .replace(/\s+/gu, " ")
+    .trim()
+    .toLowerCase();
+}
+
+/** Minimum quoted span, in words. F-42: run 1's writer learned that a
+ * one-word quote is never contradicted, and its spans shrank across the
+ * run to `"debris"`, `"spillway"`, `"fish screen"` — spans any text on
+ * the subject contains, so they support anything and can be looked up in
+ * nothing. */
+export const MIN_QUOTE_WORDS = 8;
+
+/** How many words of the beat's own purpose a quote may share with it
+ * before it is a quote OF the purpose. Set below `MIN_QUOTE_WORDS` so a
+ * quote that IS the purpose (F-46) can never slip through on length. */
+export const MAX_PURPOSE_OVERLAP_WORDS = 6;
+
+export function quoteWords(quote: string): string[] {
+  const n = normalizeForQuoteMatch(quote).replace(/[^a-z0-9' ]+/g, " ").replace(/\s+/g, " ").trim();
+  return n ? n.split(" ") : [];
+}
+
+/**
+ * A short span is acceptable when it is a WHOLE SENTENCE — "The dam
+ * failed." is checkable in a way "debris" is not. Recognised
+ * structurally: an initial capital, a terminal mark, and at least three
+ * words. When the holding document is known, the span must also sit at a
+ * real sentence boundary in it, so a mid-sentence fragment cannot be
+ * dressed up as a sentence by capitalising it.
+ */
+export function isCompleteSentence(quote: string, docText?: string): boolean {
+  const trimmed = String(quote ?? "").trim().replace(/^["'“”‘’(]+/, "").replace(/["'“”‘’)]+$/, "");
+  if (!/^[A-Z]/.test(trimmed)) return false;
+  if (!/[.!?]$/.test(trimmed)) return false;
+  if (quoteWords(trimmed).length < 3) return false;
+  if (docText === undefined) return true;
+  const doc = normalizeForQuoteMatch(docText);
+  const at = doc.indexOf(normalizeForQuoteMatch(trimmed));
+  if (at < 0) return false;
+  if (at === 0) return true;
+  return /[.!?]\s?$/.test(doc.slice(Math.max(0, at - 2), at));
+}
+
+/**
+ * True when the quote is the beat's own purpose (or any other prompt
+ * text) handed back as a source — F-46, the failure that ended run 1:
+ * the deepen stage's sentence, word for word, attributed to Engineering
+ * News-Record. Caught by a shared word run rather than only by equality,
+ * because the writer trims and re-punctuates.
+ */
+export function quoteEchoesPurpose(quote: string, purposeText: string): boolean {
+  const purposeWords = quoteWords(purposeText);
+  const words = quoteWords(quote);
+  /* Compared as WORD sequences, never as raw strings: a one-word purpose
+     ("c" in a test fixture, a bare subject in production) is a substring
+     of almost any quote, and a character-level containment check would
+     reject every page it appeared on. */
+  if (purposeWords.length < 3 || words.length === 0) return false;
+  const purposeRun = ` ${purposeWords.join(" ")} `;
+  const quoteRun = ` ${words.join(" ")} `;
+  if (purposeRun.includes(quoteRun) || quoteRun.includes(purposeRun)) return true;
+
+  if (words.length < MAX_PURPOSE_OVERLAP_WORDS || purposeWords.length < MAX_PURPOSE_OVERLAP_WORDS) return false;
+  for (let i = 0; i + MAX_PURPOSE_OVERLAP_WORDS <= words.length; i++) {
+    if (purposeRun.includes(` ${words.slice(i, i + MAX_PURPOSE_OVERLAP_WORDS).join(" ")} `)) return true;
+  }
+  return false;
+}
+
+/** The document `quote` is a verbatim (whitespace-normalised) substring
+ * of, or `null`. `docId`, when given, restricts the search to the
+ * document the writer SAID the quote came from — quoting doc A and
+ * citing doc B is its own kind of mis-attribution. */
+export function findHoldingDoc(quote: string, docs: EvidenceDoc[], docId?: string): EvidenceDoc | null {
+  const needle = normalizeForQuoteMatch(quote);
+  if (!needle) return null;
+  const pool = docId ? docs.filter((d) => d.docId === docId) : docs;
+  for (const doc of pool) {
+    if (normalizeForQuoteMatch(doc.text).includes(needle)) return doc;
+  }
+  return null;
+}
+
+/* F-45: beat 18's retry replaced an unsourced true claim with a sourced-
+   looking false one — "Exactly where, the record doesn't say", when the
+   NTSB report says exactly where. An assertion about what the record
+   CONTAINS is a factual claim about a document, and needs a document
+   that says it, like any other. Stems and contractions included; the
+   list is explicit rather than inferred so a page can be told precisely
+   what tripped it. */
+const NEGATIVE_RECORD_PATTERNS: RegExp[] = [
+  /\bthe (?:record|file|archive|documentation)\b[^.?!]{0,40}?\b(?:does not|doesn't|do not|don't|never|cannot|can't|could not|couldn't|will not|won't|fails? to)\b/i,
+  /\b(?:the )?(?:records?|sources?|documents?|accounts?|files|archives)\b[^.?!]{0,40}?\b(?:are|is) silent\b/i,
+  /\b(?:no one|nobody|no-one) (?:knows|knew|recorded|wrote|said|documented|noted|remembers)\b/i,
+  /\b(?:there is|there's|there was|there were) no (?:record|account|documentation|evidence|paper trail)\b/i,
+  /\bno (?:record|account|documentation|note|memo) (?:says|shows|survives|exists|remains|was kept)\b/i,
+  /\b(?:we|historians?|investigators?) (?:do not|don't|does not|doesn't|still don't|never) know\b/i,
+  /\b(?:is|was|were|are) (?:not|never) recorded\b/i,
+  /\bwas never written down\b/i
+];
+
+/** True when `text` asserts something about what the record does or does
+ * not contain. Applied to the SCRIPT to find the claim, and to each
+ * source's QUOTE to find the document that backs it. */
+export function containsNegativeRecordClaim(text: string): boolean {
+  const t = String(text ?? "");
+  return NEGATIVE_RECORD_PATTERNS.some((rx) => rx.test(t));
+}
+
+/* F-37/F-44: the design disagreed with itself about whether a connective
+   page needs sources, and the verifier decided it by sampling (one
+   zero-source Frame passed in eleven). Settled here, structurally, so the
+   verifier never sees the case: a page may declare zero sources only if
+   it ASSERTS nothing — a question, or a hand-off addressed to the
+   listener. The imperative list is deliberately narrow and explicit; a
+   sentence that is not a question and not one of these openings is
+   treated as an assertion about the world and needs a source. */
+const LISTENER_IMPERATIVES = [
+  "listen", "notice", "watch", "hear", "keep", "stay", "think", "consider",
+  "remember", "picture", "imagine", "follow", "hold", "wait", "note", "ask"
+];
+
+export function hasDeclarativeSentence(script: string): boolean {
+  const sentences = String(script ?? "")
+    .split(/(?<=[.!?…])\s+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+  for (const sentence of sentences) {
+    if (/[?]\s*$/.test(sentence)) continue;
+    const words = quoteWords(sentence);
+    if (words.length < 3) continue;
+    if (LISTENER_IMPERATIVES.includes(words[0]!)) continue;
+    return true;
+  }
+  return false;
+}
+
+export interface ValidateNarratedBeatOptions {
+  bannedPhrasePatterns?: RegExp[];
+  /** Every document the pipeline holds for this page. When supplied, a
+   * quote MUST be a substring of one of them and a publication MUST be
+   * one of their titles or urls. When absent (a caller that has no
+   * evidence pack) those two rules are skipped and the rest still run. */
+  heldDocs?: EvidenceDoc[];
+  /** The beat purpose plus any other prompt text the writer was handed,
+   * so a quote of it can be rejected (F-46). */
+  purposeText?: string;
+}
+
 /**
  * Structural + copy-rule validation for one written-and-verified page.
  * Pure: takes the beat and an (optional) copy-rule checker so callers can
@@ -260,7 +464,7 @@ export function containsContestedLanguage(script: string): boolean {
  */
 export function validateNarratedBeat(
   beat: NarratedBeat,
-  opts: { bannedPhrasePatterns?: RegExp[] } = {}
+  opts: ValidateNarratedBeatOptions = {}
 ): NarratedBeatValidationResult {
   const issues: NarratedBeatValidationIssue[] = [];
 
@@ -293,6 +497,60 @@ export function validateNarratedBeat(
     issues.push({
       code: "contested-not-flagged-in-text",
       message: "a source is marked contested but the script does not say so explicitly (§4.7 rule 3)"
+    });
+  }
+
+  /* Zero sources is legitimate for a page that asserts nothing, and only
+     for that page. Checked before the per-source rules so an empty page
+     is told the one thing wrong with it. */
+  if (beat.sources.length === 0 && hasDeclarativeSentence(beat.script)) {
+    issues.push({
+      code: "sources-empty-with-claims",
+      message:
+        "the page declares no sources but its script states something about the world — a page with no sources may only ask a question or hand off to the listener (F-36/F-37/F-44)"
+    });
+  }
+
+  const heldDocs = opts.heldDocs;
+  const purposeText = opts.purposeText;
+  for (const source of beat.sources) {
+    const holding = heldDocs ? findHoldingDoc(source.quote, heldDocs) : null;
+
+    if (heldDocs) {
+      if (!holding) {
+        issues.push({
+          code: "quote-not-held",
+          message: `quote "${source.quote.slice(0, 60)}" is not a verbatim span of any document this page was given — a quote is a lookup, not a recollection (F-14/F-27)`
+        });
+      } else if (source.publication.trim() !== holding.title.trim() && (!holding.url || source.publication.trim() !== holding.url.trim())) {
+        issues.push({
+          code: "publication-not-held",
+          message: `publication "${source.publication}" is not the title or url of the document the quote comes from ("${holding.title}") — attribution is read off the document, never written (F-30/F-32)`
+        });
+      }
+    }
+
+    const words = quoteWords(source.quote).length;
+    if (words < MIN_QUOTE_WORDS && !isCompleteSentence(source.quote, holding?.text)) {
+      issues.push({
+        code: "quote-too-short",
+        message: `quote "${source.quote.slice(0, 60)}" is ${words} word(s); a span must be at least ${MIN_QUOTE_WORDS} words or a complete sentence to be checkable (F-42)`
+      });
+    }
+
+    if (purposeText && quoteEchoesPurpose(source.quote, purposeText)) {
+      issues.push({
+        code: "quote-echoes-purpose",
+        message: `quote "${source.quote.slice(0, 60)}" repeats the beat's own purpose or prompt text — the purpose is editorial direction, never a source (F-28/F-46)`
+      });
+    }
+  }
+
+  if (containsNegativeRecordClaim(beat.script) && !beat.sources.some((s) => containsNegativeRecordClaim(s.quote))) {
+    issues.push({
+      code: "unsourced-negative-claim",
+      message:
+        "the script asserts what the record does or does not contain, but no source's quote says so — drop the assertion rather than turning an unsourced true claim into a sourced-looking false one (F-45)"
     });
   }
 

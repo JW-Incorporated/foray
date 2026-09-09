@@ -1,47 +1,111 @@
 import type { Voice } from "../types/spine";
-import type { NarrationMode, PronunciationHint, Source } from "../types/narration";
+import type { NarrationMode, PronunciationHint } from "../types/narration";
+import type { EvidencePack } from "./gatherEvidence";
 
 /**
  * §4.7's writing collaborator (docs/curation/generation-architecture.md
  * §4.7), behind the same stub/real-provider split as every other
  * generation-stage collaborator (`SpineBuilder`, `DeepenActBuilder`).
- * Writes ONE PAGE at a time — a single narration beat, in a single mode,
- * inside that mode's budget — never a whole act or Foray in one call, so
- * the same interface serves every mode from an 8-word Hinge to a
- * 312-word Carry without a shape mismatch.
+ *
+ * TWO CALLS, NOT ONE, AND BATCHED PER SLOT — the WS-A shape, and a
+ * deliberate replacement of the previous "one `writePage` per page":
+ *
+ *   1. `selectClaims` reads the evidence pack and returns, per page, the
+ *      claims it intends to make and the exact span of a held document
+ *      that backs each. Whether that span really is in that document is
+ *      then decided IN CODE (`writeNarration.ts`), never by a model, so
+ *      the prose call can only ever be given claims that are already
+ *      grounded.
+ *   2. `writePages` writes the scripts from those claims and nothing
+ *      else. It does not return sources: attribution is derived from the
+ *      documents the pipeline holds, so a publication cannot be free
+ *      text, a slug, or a plausibility label (F-30/F-32). A page says
+ *      which of its claims it used, by index, and that is all.
+ *
+ * BOTH take the whole slot at once. Run 1 spent 4.2 narration calls per
+ * beat over 31 beats; a call per slot rather than per page is most of the
+ * way to the ≤1.5 target, and slots within an act run in parallel
+ * (WS-D1). The M3/M4 ordering guarantees are not affected — they were
+ * enforced at sourcing time, over the whole Foray, before any of this
+ * runs.
  *
  * NEVER the same class/instance as a `NarrationVerifierBuilder` — §5's
  * topology table and this stage's own task brief both require the
- * verification pass to be "a DIFFERENT agent than the writer... a
- * genuinely separate call/builder instance". `writeNarration.ts`'s
- * orchestrator is what enforces this at the call-site level (see its
- * doc comment); this interface only defines the writer's own contract.
+ * verification pass to be "a DIFFERENT agent than the writer".
+ * `writeNarration.ts`'s orchestrator enforces this at the call site.
  */
 export interface NarrationWriterBuilder {
   readonly providerName: string;
 
-  writePage(request: NarrationWriteRequest, ctx: NarrationBuildContext): Promise<NarrationWriteResult>;
+  selectClaims(request: ClaimSelectionRequest, ctx: NarrationBuildContext): Promise<ClaimSelectionResult>;
+  writePages(request: ProseWriteRequest, ctx: NarrationBuildContext): Promise<ProseWriteResult>;
 }
 
-export interface NarrationWriteRequest {
+/** One page's brief, shared by both calls and by the verifier. */
+export interface NarrationPageBrief {
+  /** Identifies this page within its slot batch, in both directions. */
+  pageId: string;
   /** The beat's claim (narration-sourced) or the editorial job this
    * connective item exists to do (tape-adjacent) — always the thing the
-   * page has to accomplish, stated as prose, never a bare topic. */
-  claim: string;
+   * page has to accomplish, stated as prose, never a bare topic. It is
+   * EDITORIAL DIRECTION, never a source: quoting it back is F-46, and
+   * `writeNarration.ts` rejects a quote that overlaps it. */
+  purpose: string;
   mode: NarrationMode;
-  /** The spine's single voice (§4.3: decided once, inherited by every
-   * downstream writer — never re-invented per beat). */
-  voice: Voice;
   /** Extra grounding a connective item needs and a Patch/Carry does not:
-   * e.g. the adjacent tape's subject, for a Frame or Hinge. Optional
-   * because a Patch/Carry beat is self-contained. */
+   * e.g. that the page hands the listener into real tape. */
   contextNote?: string;
+  /** Every prior rejection of this page, accumulated in order (F-35). */
+  retryNote?: string;
+  /** The documents this page may quote. Nothing else is quotable. */
+  evidence: EvidencePack;
 }
 
-export interface NarrationWriteResult {
+/** One claim a page intends to make, and the span that backs it. */
+export interface SelectedClaim {
+  claimText: string;
+  /** Must be an exact (whitespace-normalised) substring of the document
+   * named by `docId` — checked mechanically, not by a model. */
+  quote: string;
+  docId: string;
+  /** §4.7 rule 3, narrowly: reputable sources actively disagree about the
+   * fact itself. Not the writer's own uncertainty. */
+  contested: boolean;
+}
+
+export interface ClaimSelectionRequest {
+  slotTitle: string;
+  voice: Voice;
+  pages: NarrationPageBrief[];
+}
+
+export interface ClaimSelectionResult {
+  pages: Array<{ pageId: string; claims: SelectedClaim[] }>;
+}
+
+export interface ProsePageBrief extends NarrationPageBrief {
+  /** The validated claims — the only material the script may assert. */
+  claims: SelectedClaim[];
+}
+
+export interface ProseWriteRequest {
+  slotTitle: string;
+  voice: Voice;
+  pages: ProsePageBrief[];
+}
+
+export interface WrittenPage {
+  pageId: string;
   script: string;
-  sources: Source[];
+  /** Indices into the page's `claims`, for the claims the script actually
+   * asserts. A page that asserts nothing returns none — and then may not
+   * contain a declarative sentence (F-36/F-37/F-44). */
+  usedClaims: number[];
   pronunciationHints: PronunciationHint[];
+}
+
+export interface ProseWriteResult {
+  pages: WrittenPage[];
 }
 
 export interface NarrationBuildContext {

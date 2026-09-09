@@ -1347,7 +1347,7 @@ const BACKEND_FLOORS = {
      ("prompts are discarded") enforced structurally — this suite scans the
      generation-stage source for persistence primitives and proves a full
      understand-prompt run touches no file on disk. */
-  "test/promptNoPersistence.test.ts": 3,
+  "test/promptNoPersistence.test.ts": 4,
   "test/property/dedup.property.test.ts": 5,
   "test/property/duration.property.test.ts": 5,
   "test/property/html.property.test.ts": 4,
@@ -1422,7 +1422,11 @@ const BACKEND_FLOORS = {
      proven with a spy test), the exact check-forays.mjs-compatible
      disclosure template, and decideConnectiveNarration()'s seam-position
      table for tape-adjacent beats needing short connective narration. */
-  "test/writeNarration.test.ts": 25,
+  /* WS-A raised this from 25: the suite now replays run 1's own failures
+     through the two-step, per-slot writer — the fabricated citation, the
+     griddle slug, the two-word span, the purpose quoted back, the
+     zero-source Frame — and pins the dry-run path to quoting real held text. */
+  "test/writeNarration.test.ts": 40,
   /* Stage 3b (kanban t_567b570f, docs/show-pages-plan.md §Stage 3): shared
      catalogue store CRUD (scoping by show_id, upsert-not-duplicate on
      (show_id, guid), published_at ordering, feed-state round-trip). */
@@ -1495,6 +1499,13 @@ const BACKEND_FLOORS = {
      the process-wide token-usage collector every Anthropic builder feeds. */
   "test/usageTracking.test.ts": 4,
   "test/veracityMetrics.test.ts": 31,
+  /* WS-A evidence-first narration (generation fix plan 2026-09-09): the
+     per-beat evidence pack (tape cue window + up to three retrieved print
+     passages, cached by claim hash) and the mechanical narration rules run 1's
+     writer kept breaking — every fixture in the second suite is a span,
+     publication or sentence a page actually shipped in that run. */
+  "test/gatherEvidence.test.ts": 19,
+  "test/narrationRules.test.ts": 21,
 };
 
 /* `it(` as well as `test(`: backend's suites use both spellings. */

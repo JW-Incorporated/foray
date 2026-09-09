@@ -453,24 +453,43 @@ export async function runForayPipeline(
      rejected attempts — wrapping here (rather than instrumenting
      `AnthropicNarrationWriterBuilder`/`StubNarrationWriterBuilder`
      themselves) counts real AND stub/test builders alike with one code
-     path, and survives WS-D's later per-slot/per-act parallelisation
+     path, and survives WS-D's per-slot/per-act parallelisation
      untouched (a plain counter, no ordering assumed — contrast
      `usageTracking.ts`'s per-process caveat, which does not apply here
-     since these two counters are local to this one call). */
+     since these two counters are local to this one call).
+
+     WHAT A "CALL" MEANS NOW (WS-A). The narration stage is no longer one
+     writer call per page. A slot is written in two batched calls — claim
+     selection, then prose — and verified in one, whatever the page count,
+     and slots within an act run in parallel. Each of those is counted ONCE
+     here, because each is one request to the model, which is what
+     `callsPerBeat` is measuring: the run-1 baseline of 4.2 calls per beat
+     was 4.2 REQUESTS per beat, and the target of ≤1.5 is met precisely by
+     serving many pages from one request. A four-page slot that passes
+     first time therefore costs 2 writer calls and 1 verifier call, not 8
+     and 4 — and if it did not count that way the metric would report no
+     improvement from the change that produced it. Selection and prose are
+     summed into the one writer counter deliberately: they are two halves
+     of writing a page, and splitting them would make the number
+     incomparable with run 1's. */
   let narrationWriterCalls = 0;
   let narrationVerifierCalls = 0;
   const countingNarrationWriter: NarrationWriterBuilder = {
     providerName: narrationWriter.providerName,
-    writePage: (writeRequest, writeCtx) => {
+    selectClaims: (selectRequest, selectCtx) => {
       narrationWriterCalls++;
-      return narrationWriter.writePage(writeRequest, writeCtx);
+      return narrationWriter.selectClaims(selectRequest, selectCtx);
+    },
+    writePages: (writeRequest, writeCtx) => {
+      narrationWriterCalls++;
+      return narrationWriter.writePages(writeRequest, writeCtx);
     }
   };
   const countingNarrationVerifier: NarrationVerifierBuilder = {
     providerName: narrationVerifier.providerName,
-    verifyPage: (verifyRequest, verifyCtx) => {
+    verifySlot: (verifyRequest, verifyCtx) => {
       narrationVerifierCalls++;
-      return narrationVerifier.verifyPage(verifyRequest, verifyCtx);
+      return narrationVerifier.verifySlot(verifyRequest, verifyCtx);
     }
   };
 

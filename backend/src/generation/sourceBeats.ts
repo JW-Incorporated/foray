@@ -485,7 +485,7 @@ function makeSegmentWindowText(archive: TranscriptDigestEntry[], cueProvider: Tr
  * recognizable as the same id family, without importing that ESM build
  * script into a CJS backend module (same rationale as
  * `transcriptArchiveLookup.ts`'s `canonicalizeForAnchorMatch`). */
-function deriveItemId(entry: TranscriptDigestEntry): string {
+export function deriveItemId(entry: TranscriptDigestEntry): string {
   const slug = entry.title
     .normalize("NFKD")
     .replace(/[\u0300-\u036f]/g, "")
