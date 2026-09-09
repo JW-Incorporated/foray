@@ -352,6 +352,57 @@ HUMAN-ACTIONS #29 (RESULT) and #40.
 - **Dependencies:** L-01, L-02 merged; ideally one TestFlight build in Wyatt's hands.
 - **Governance:** docs only; auto-merge.
 
+#### L-06 · Now Playing fields match Apple Podcasts — and the record shows what was sent — **M** — *added 2026-09-09 from founder feedback F15*
+- **Ask:** on the lock screen and in the car the founder saw only "4a" — no title,
+  artist or album. Two halves. (1) **Instrument before designing:** the playback
+  diagnostics record (`player/diagnostic-log.js`) gains a `nowplaying` entry per
+  `setNowPlaying` call carrying `title`/`artist`/`album` (truncated to 40 chars each,
+  no artwork bytes) and the platform verdict (`ok`/`reason`) the plugin returns, so the
+  next founder copy says which of the three explanations applies: a narration line with
+  no `nextItem` and an empty Foray title (`mediaMetadata()` then emits title AND artist
+  `"4a"`), an item with empty `title`/`show`, or a payload that never reached
+  `MPNowPlayingInfoCenter` (WebKit's default is the app name). (2) **Parity rule,
+  written into `media-session.js` §1 and applied on both platforms:** what Apple
+  Podcasts shows is title = episode, artist = show, album = show, artwork = show art.
+  For a segment that is exactly what we send; keep it. For a narration line: title =
+  `"Up next: <episode>"` as now, **artist = the Foray's title** (a collection name,
+  never the app's), album = the Foray title with the part counter; **`"4a"` may not
+  appear as the title or artist of anything a listener hears** — the fallback for a
+  missing Foray title is the first act's title, then the show of the next item.
+  Single-episode play keeps album empty. Artwork for narration stays our icon.
+- **Owned:** `mobile/www/player/media-session.js` (+ its tests, floor raise),
+  `player/diagnostic-log.js`, `ForayAudioPlugin.swift` only if a field is dropped
+  there (verify with the M-01 probe's `nowPlayingCoverage()`), Android `NowPlayingHub`
+  unchanged unless the parity rule changes a field it reads.
+- **Acceptance:** a unit test per rule above with the F15 inputs; the diagnostics copy
+  from a TestFlight build shows a `nowplaying` line with three non-empty fields for a
+  Foray segment AND for a narration line; H1's drive test re-run for the display only.
+- **Governance:** `mobile/www/` and `tools/mobile/` auto-merge.
+
+#### M-03 · Why did it stop? — native interruption and lifecycle events in the record, then the screen-off reproduction — **M** — *added 2026-09-09 from founder feedback F16 (#548)*
+- **Ask:** the founder's record shows ONE `stop element pausedUnexpectedly` +
+  `reconcile unexplainedPause` at `hidden=y`, `seams 0` — not #224's seam path, and not
+  the F11/F13 loop #537 closed — about 30 s (his clock; the record has no play entries)
+  after play with the screen off. The record cannot say why, so make it able to:
+  (a) `ForayAudioPlugin` and `ForayTtsPlugin` observe `AVAudioSession.interruptionNotification`
+  (type, `shouldResume`), `routeChangeNotification` (reason), `mediaServicesWereReset`,
+  and `UIApplication` `didEnterBackground`/`willEnterForeground`, and emit one
+  `session` event to the web with `{kind, reason, at}`; (b) `client.js` records every
+  play/pause SOURCE (tap, remote command, reconcile, session event) as its own
+  diagnostics entry and the element's `pause` with WebKit's interruption reason where
+  exposed; (c) the M-02 simulator probe (#536) gains a screen-off/backgrounded pass:
+  play, background the app (`simctl` lock where available, else the `UIApplication`
+  suspend path M-02 already drives), wait 60 s, and parse the log for the same three
+  signals. Then fix whichever cause the record names — the candidates are listed in
+  #548 — as a follow-up card with the evidence attached, not as part of this one.
+- **Owned:** both iOS plugins (+ XCTests), `player/diagnostic-log.js`, `client.js`,
+  `tools/mobile/ios-ci.mjs` probe + parser + tests.
+- **Acceptance:** a diagnostics copy where a stop is preceded by the session/lifecycle
+  event that caused it, or by nothing — which is itself the finding; the simulator pass
+  reports coverage honestly (`parseSimulatorLifecycle`'s "no coverage" convention).
+- **Governance:** `tools/mobile/`, `mobile/plugins/` auto-merge; a workflow-line change
+  needs the label.
+
 ### Track V — the voice picker
 
 #### V-01 · Settings gains a voice picker, an Audition button, and a persisted choice — **M** — *design comment first*
@@ -431,6 +482,7 @@ Day 0 (parallel):   M-01 (measure)        V-01 (voice picker; no dependencies)
 Then:               L-01 ← M-01 (design comment needs the measurement)
 Then:               L-02 ← M-01, L-01     L-05 (day 0, no dependencies; ship before L-03)   L-03 ← L-05
 Then:               D-01 ← V-01           L-04 ← L-01, L-02, one TestFlight build
+2026-09-09:         L-06 (instrument, then parity)   M-03 (instrument, then reproduce) — both day 0, no dependencies
 Human:              H2, H3 as soon as V-01 is on TestFlight;  H1 after L-02;  H4 with the R-deck label sitting
 ```
 
