@@ -59,6 +59,12 @@ export interface TranscriptDigestEntry {
   cues: number;
   feed_duration_sec?: number;
   span_implausible?: boolean;
+  /** The episode's own audio, straight from the feed. Already in both committed
+   * digest files; modelled here because a tier-2 minted segment cannot be
+   * played — or pass `check-forays.mjs`'s source registry — without it (see
+   * `audioSourceLookup.ts`). Optional: a digest row that lacks it is a row this
+   * pipeline may not mint tape from, not a parse error. */
+  enclosure_url?: string;
 }
 
 let cachedDigests: TranscriptDigestEntry[] | null = null;
@@ -97,28 +103,34 @@ export interface TranscriptArchiveMatch {
  * shorter than a segment's why-line, so the bar stays low but nonzero. */
 export const TIER2_MATCH_THRESHOLD = 3;
 
-export function findTranscriptArchiveMatch(
+/**
+ * The best-scoring episode in `archive` for `claimText`, BEFORE the threshold
+ * is applied — the same walk `findTranscriptArchiveMatch` makes, stopping one
+ * step earlier.
+ *
+ * Split out for the sourcing trace (F-49): "no tape" was indistinguishable
+ * from "the best episode was one title token short", and the two want opposite
+ * fixes. A caller that wants the decision calls `findTranscriptArchiveMatch`;
+ * a caller that wants to know what the search SAW calls this.
+ *
+ * WHY THE SHOW TITLE COUNTS FOR AT MOST ONE. Every episode of a show shares its
+ * show-title tokens, so a show whose name overlaps the subject ("Causality —
+ * Engineered Network" vs. an engineering claim) used to clear the threshold for
+ * EVERY one of its episodes on show tokens alone, and the first such episode in
+ * file order won: generation run 1 anchored a Kansas City hanger-rod beat to
+ * the Chernobyl episode and a box-beam beat to Three Mile Island (findings
+ * F-23/F-24). The episode title is the only per-episode signal in a digest, so
+ * a match must include at least one episode-title token; the show title can
+ * then add one point of confidence, never carry the match by itself.
+ */
+export function bestTranscriptArchiveCandidate(
   claimText: string,
   archive: TranscriptDigestEntry[] = loadTranscriptArchive(),
-  /** Caller's veto, applied INSIDE the search for the same reason
-   * `findTier1Match`'s is — §4.5's topic gate lives here, so an episode from
-   * another taxonomy family is never the "best" match, it is not a match at
-   * all. */
   isUsable: (entry: TranscriptDigestEntry) => boolean = () => true
 ): TranscriptArchiveMatch | null {
   const claimTokens = new Set(tokenizeForSourcing(claimText));
   if (claimTokens.size === 0) return null;
 
-  /* WHY THE SHOW TITLE COUNTS FOR AT MOST ONE. Every episode of a show
-     shares its show-title tokens, so a show whose name overlaps the subject
-     ("Causality — Engineered Network" vs. an engineering claim) used to clear
-     the threshold for EVERY one of its episodes on show tokens alone, and the
-     first such episode in file order won: generation run 1 anchored a Kansas
-     City hanger-rod beat to the Chernobyl episode and a box-beam beat to
-     Three Mile Island (findings F-23/F-24). The episode title is the only
-     per-episode signal in a digest, so a match must include at least one
-     episode-title token; the show title can then add one point of
-     confidence, never carry the match by itself. */
   let best: TranscriptArchiveMatch | null = null;
   for (const entry of archive) {
     if (!isUsable(entry)) continue;
@@ -134,6 +146,19 @@ export function findTranscriptArchiveMatch(
     score += showHit;
     if (!best || score > best.score) best = { entry, score };
   }
+  return best;
+}
+
+export function findTranscriptArchiveMatch(
+  claimText: string,
+  archive: TranscriptDigestEntry[] = loadTranscriptArchive(),
+  /** Caller's veto, applied INSIDE the search for the same reason
+   * `findTier1Match`'s is — §4.5's topic gate lives here, so an episode from
+   * another taxonomy family is never the "best" match, it is not a match at
+   * all. */
+  isUsable: (entry: TranscriptDigestEntry) => boolean = () => true
+): TranscriptArchiveMatch | null {
+  const best = bestTranscriptArchiveCandidate(claimText, archive, isUsable);
   if (!best || best.score < TIER2_MATCH_THRESHOLD) return null;
   return best;
 }

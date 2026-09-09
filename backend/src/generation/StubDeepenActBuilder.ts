@@ -1,5 +1,6 @@
 import { defaultBudgetGuard, type BudgetGuard } from "../cost/budgetGuard";
 import type { Act, Beat, DeepenedAct, Slot, Spine } from "../types/spine";
+import { capArgumentBeats } from "./deepenActs";
 import type { DeepenActBuilder, DeepenActContext } from "./DeepenActBuilder";
 
 /**
@@ -35,7 +36,11 @@ export class StubDeepenActBuilder implements DeepenActBuilder {
       beats: slot.beats.map((beat) => sharpenBeat(beat, fullSpine.subject))
     }));
 
-    return {
+    /* The stub obeys the same structural rule the stage does (F-49), through
+       the same function rather than a second copy of it: a dry run that could
+       hand back a slot of six arguments would let a regression in the cap pass
+       every keyless test, which is the exact shape of the run-2 failure. */
+    return capArgumentBeats({
       title: targetAct.title,
       thesis: targetAct.thesis,
       startState: targetAct.startState,
@@ -43,7 +48,7 @@ export class StubDeepenActBuilder implements DeepenActBuilder {
       slots,
       introduction: introductionFor(targetAct, targetActIndex, fullSpine),
       exit: exitFor(targetAct, nextAct, fullSpine)
-    };
+    });
   }
 }
 
@@ -63,7 +68,9 @@ function sharpenBeat(beat: Beat, subject: string): Beat {
  * fixture generator, not a judge — but it must emit BOTH kinds, or the dry-run
  * path would never exercise §4.5's argument branch (a beat tagged `argument`
  * skips tape lookup entirely) and a regression there would be invisible without
- * a key. */
+ * a key. `account` is the default here for the same reason it is the default in
+ * the real prompt (F-49): a marker word is weak evidence that no recording
+ * could carry the claim. */
 function kindOf(claim: string): "account" | "argument" {
   return /\b(every|always|never|almost|tends?|generally|typically|in general|means that|is why)\b/i.test(claim) ? "argument" : "account";
 }

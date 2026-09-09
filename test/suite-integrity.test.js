@@ -662,7 +662,11 @@ const FLOORS = {
      The control is the one to look at first if this ever has to be lowered: "the
      boundary fixture itself passes with zero errors" is what stops every proof
      below it from becoming a demonstration that broken data is broken. */
-  "tools/foray/check-forays.test.mjs": 110,
+  /* +1 (generation finding F-49): a Foray whose tape §4.5 tier 2 minted THIS
+     RUN resolves against the pool the candidate carries, and its seconds land
+     on the listener's clock. Before it, a generated Foray with any tier-2 tape
+     failed here on an unknown segment_id. */
+  "tools/foray/check-forays.test.mjs": 111,
   /* The narration evidence gate (#247, and the founder's citation rulings of
      2026-08-19). Zero slack, and for a sharper reason than most suites here.
 
@@ -1385,7 +1389,10 @@ const BACKEND_FLOORS = {
      how the pipeline reached "all nine stages built" with no way to run them.
      Four of its cases pin whole-Foray properties the first real run failed on —
      the §4.7 disclosure, and the runtime the checker recomputes. */
-  "test/runPipeline.test.ts": 11,
+  /* +1 (F-49): the orchestrator hands finalize the tier-2 segments and source
+     rows sourcing minted, without which the candidate names tape nothing can
+     resolve. */
+  "test/runPipeline.test.ts": 12,
   /* §4.3's spine types: SpineSchema (strict, no per-act voice field),
      isClaimShaped (claim- vs topic-shaped beats), and validateSpine
      (§3's shape budgets with ±15% tolerance, the ~30% exploration
@@ -1401,7 +1408,12 @@ const BACKEND_FLOORS = {
      FULL spine. Covers shape/count correctness, the full-spine-context
      regression guard, genuine-parallelism proof, and explicit
      failure-isolation (one retry per act, then fail the whole build). */
-  "test/deepenActs.test.ts": 12,
+  /* Raised from 12 by F-49's argument cap: at most a third of a slot's beats
+     may be tagged `argument` (run 2 tagged 29 of 35 and lost every one of them
+     to §4.5's skip-tape branch). The added cases pin the rounding, the
+     re-tagging order, the warning field, idempotence, the resumed-act path, the
+     stub's own obedience, and a replay over run 2's real deepen output. */
+  "test/deepenActs.test.ts": 21,
   /* §4.5-4.6 end to end (kanban card t_648fbae7): sourceBeats() resolves
      every beat to a tier-1 segments.json hit, a tier-2 transcript-archive
      extraction, a tier-3 transcription-queue-candidate narration fallback,
@@ -1415,7 +1427,11 @@ const BACKEND_FLOORS = {
      a word run (F-24/F-33), and a candidate must share the Foray's taxonomy
      lineage (F-23/F-29) — plus a replay of the real beat-4/beat-5 claims
      against the real data/segments.json. */
-  "test/sourceBeats.test.ts": 35,
+  /* Raised from 35 by F-49: sourcing now says WHY each narrated beat got no
+     tape (best candidate, score, bar, gate — per tier), refuses to mint tape
+     whose audio cannot be honestly registered, and is replayed over run 2's own
+     35 beats so the diagnosis is a test rather than a paragraph. */
+  "test/sourceBeats.test.ts": 49,
   /* §4.7 end to end (kanban card t_5a8b77c3): writeNarration() writes one
      page per narration beat (mode budgets, per-claim sources array),
      always through a genuinely separate verifier call (never the writer —
@@ -1461,7 +1477,14 @@ const BACKEND_FLOORS = {
      is §6.3's minimal batch-pipeline scope (real per-stage wall-clock
      timing, nothing speculative — see that module's own doc comment for
      why no live-generation-lead monitoring is built here). */
-  "test/finalizeForay.test.ts": 5,
+  /* +3 (F-49): the candidate's own minted tier-2 segments and source rows are
+     merged into the pool and registry the checker is handed, never shadowing a
+     committed row. */
+  "test/finalizeForay.test.ts": 8,
+  /* The `data/segment-sources.json` row a minted tier-2 segment needs, and the
+     refusals that stop this pipeline writing one it cannot vouch for — an
+     unknown DAI verdict above all, which ADR-0007 gates seek precision on. */
+  "test/audioSourceLookup.test.ts": 9,
   "test/stageTiming.test.ts": 5,
   /* WS-D2 streaming publish (generation fix plan 2026-09-09): the partial
      candidate written after each act, the driver's per-act rewrite, and the

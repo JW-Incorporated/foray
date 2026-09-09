@@ -69,6 +69,18 @@ export const EXPLORATION_FLOOR = 0.3;
  * schema on purpose: §4.3's spine writes beats before anything has judged them,
  * and an absent `kind` means `account` — the search-everything behaviour that
  * predates this field.
+ *
+ * HOW NARROW "ARGUMENT" IS, AFTER RUN 2 (F-49). Told only that an argument is a
+ * "thesis or generalisation", the deepen stage tagged 29 of 35 beats of an
+ * AI-engineering Foray `argument` — on an angle-driven spine almost every beat
+ * can be read as a thesis — and §4.5 skipped tape lookup for all 29. So the
+ * line is drawn at what a RECORDING can carry: `account` is the default and
+ * covers an event, a practice, a measurement or a mechanism someone could be
+ * heard describing; `argument` is only a claim about what something MEANS or
+ * what someone SHOULD do, which no recording of an event, a person or a
+ * practice could carry. `deepenActs.ts` also caps arguments at one third of a
+ * slot's beats, so a prompt that drifts again costs a warning rather than a
+ * Foray's worth of tape.
  */
 export const BeatKindSchema = z.enum(["account", "argument"]);
 export type BeatKind = z.infer<typeof BeatKindSchema>;
@@ -146,7 +158,20 @@ export type Spine = z.infer<typeof SpineSchema>;
  */
 export const DeepenedActSchema = ActSchema.extend({
   introduction: z.string().trim().min(1),
-  exit: z.string().trim().min(1)
+  exit: z.string().trim().min(1),
+  /**
+   * Structural complaints the deepen STAGE has about what the builder handed
+   * back, carried on the act itself rather than written to a console (F-49).
+   *
+   * Run 2 tagged 29 of 35 beats `argument` and nobody saw it until the run
+   * had finished with zero tape: the only trace was the absence of tape, four
+   * stages later. A warning that travels with the act is checkpointed with it,
+   * survives a resume, and can be asserted in a test; a `console.warn` is
+   * none of those things. Optional and absent when the act needed no
+   * correction, so an untouched act is byte-identical to what it was before
+   * this field existed.
+   */
+  warnings: z.array(z.string().trim().min(1)).optional()
 }).strict();
 export type DeepenedAct = z.infer<typeof DeepenedActSchema>;
 

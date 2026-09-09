@@ -1,6 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
+import type { MintedSegmentSource } from "./audioSourceLookup";
 import type { ForayItem } from "./forayItems";
+import type { NewSegment } from "../types/tapeSourcing";
 import { StageTimingLog, type StageTiming } from "./stageTiming";
 import type { VeracityMetrics } from "./veracityMetrics";
 
@@ -87,6 +89,28 @@ export interface FinalizeForayInput {
    * ("`meta.veracity` on every candidate") and `publishForay.ts` can read
    * it back to gate the PR. */
   meta?: { veracity: VeracityMetrics };
+  /**
+   * The segments §4.5 tier 2 MINTED for this Foray, and the source rows that
+   * make them playable (`sourceBeats.ts`, `audioSourceLookup.ts`).
+   *
+   * WHY THE CANDIDATE HAS TO CARRY THEM. A tier-2 pointer names a segment that
+   * is not in `data/segments.json` yet — it was cut from a transcript this run,
+   * and the merge path that would write it (`tools/segments/merge-segments.mjs`)
+   * runs on a curator's batch, not inside a generation run. `check-forays.mjs`
+   * resolves every item against the pool it is given, so without these the
+   * checker calls the item an "unknown segment_id", drops it before every
+   * ordering rule, counts its seconds nowhere, and the Foray fails §4.9 — which
+   * is what would have happened to the first Foray this pipeline sourced any
+   * tier-2 tape for. `finalizeForay` therefore merges them into the pool and the
+   * registry it hands the checker, and `publishForay.ts` writes them to
+   * `data/segments.json` and `data/segment-sources.json` alongside
+   * `data/forays.json`, so the published Foray resolves for everyone else too.
+   *
+   * They are NOT written by this module (it writes nothing) and the merge is
+   * in-memory only, exactly like the candidate Foray itself.
+   */
+  segments?: NewSegment[];
+  segmentSources?: MintedSegmentSource[];
 }
 
 export interface FinalizeForayValidation {
@@ -127,20 +151,73 @@ function buildForayRecord(input: FinalizeForayInput): Record<string, unknown> {
   };
 }
 
+/**
+ * One minted tier-2 segment in `data/segments.json`'s own field names.
+ *
+ * `topic` is the FORAY's resolved node, which is not a guess: §4.5's topic gate
+ * only admitted this episode because it shares that node's lineage. `why` is
+ * left off rather than invented — the pool's `why` is a curator's 18-word note
+ * about why a human cut this piece of tape, `check-forays.mjs` does not read it,
+ * and writing a machine-made sentence into that field would put copy nobody
+ * wrote into a curated file. `needs_review` says the same thing in the field
+ * that exists for it.
+ */
+export function mintedSegmentRow(segment: NewSegment, topic: string): Record<string, unknown> {
+  return {
+    id: segment.id,
+    item_id: segment.itemId,
+    topic,
+    start_sec: segment.startSec,
+    end_sec: segment.endSec,
+    reference_duration_sec: segment.referenceDurationSec,
+    start_anchor: segment.startAnchor,
+    end_anchor: segment.endAnchor,
+    confidence: segment.confidence,
+    source: "generation-tier-2",
+    needs_review: true
+  };
+}
+
 /** Loads the four files `check-forays.mjs` validates against, with this
- * candidate Foray substituted/appended for `forays` — never written to
- * disk, so a failing validation leaves `data/forays.json` untouched. */
-function loadCandidateFiles(candidateRecord: Record<string, unknown>, root: string): { forays: unknown; segments: unknown; sources: unknown; taxonomy: unknown } {
+ * candidate Foray substituted/appended for `forays` and this run's minted
+ * tier-2 segments/sources merged into the pool and the registry — never written
+ * to disk, so a failing validation leaves every data file untouched.
+ *
+ * Exported so a test can assert the merge without loading the `.mjs` checkers,
+ * which a Vitest run on a path containing a space cannot do (see
+ * `RunPipelineDeps.finalize`). */
+export function buildCandidateFiles(
+  candidateRecord: Record<string, unknown>,
+  root: string,
+  minted: { segments?: NewSegment[]; sources?: MintedSegmentSource[]; topic: string } = { topic: "" }
+): { forays: unknown; segments: unknown; sources: unknown; taxonomy: unknown } {
   const readJson = (rel: string): unknown => JSON.parse(fs.readFileSync(path.join(root, rel), "utf8"));
   const live = readJson("data/forays.json") as { forays: unknown[] };
   const existingIds = new Set((live.forays as Array<{ id?: unknown }>).map((f) => f.id));
   if (existingIds.has(candidateRecord.id)) {
     throw new Error(`finalizeForay: a Foray with id "${String(candidateRecord.id)}" already exists in data/forays.json — choose a new id or supersede it explicitly (see grilling-history-1's own superseded_by/superseded_note pattern)`);
   }
+
+  const pool = readJson("data/segments.json") as { segments?: unknown[] };
+  const registry = readJson("data/segment-sources.json") as { sources?: unknown[] };
+  /* A minted id that somehow already exists on disk is the committed row's, not
+     this run's: the pool is the authority for a segment that has been merged. */
+  const poolIds = new Set((pool.segments ?? []).map((s) => (s as { id?: unknown }).id));
+  const registryIds = new Set((registry.sources ?? []).map((s) => (s as { id?: unknown }).id));
+
   return {
     forays: { ...live, forays: [...live.forays, candidateRecord] },
-    segments: readJson("data/segments.json"),
-    sources: readJson("data/segment-sources.json"),
+    segments: {
+      ...pool,
+      segments: [
+        ...(pool.segments ?? []),
+        ...(minted.segments ?? []).filter((s) => !poolIds.has(s.id)).map((s) => mintedSegmentRow(s, minted.topic))
+      ]
+    },
+    sources: {
+      ...registry,
+      sources: [...(registry.sources ?? []), ...(minted.sources ?? []).filter((s) => !registryIds.has(s.id))]
+    },
     taxonomy: fs.existsSync(path.join(root, "data/taxonomy.json")) ? readJson("data/taxonomy.json") : null
   };
 }
@@ -159,7 +236,11 @@ export async function finalizeForay(input: FinalizeForayInput, root: string = RE
     const mod = (await import("../../../tools/foray/check-forays.mjs")) as unknown as {
       checkForays: (files: unknown) => { errors: string[]; warnings: string[] };
     };
-    const files = loadCandidateFiles(candidateRecord, root);
+    const files = buildCandidateFiles(candidateRecord, root, {
+      segments: input.segments,
+      sources: input.segmentSources,
+      topic: input.topic
+    });
     return mod.checkForays(files);
   });
 

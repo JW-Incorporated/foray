@@ -13,10 +13,11 @@ import { understandPrompt } from "./understandPrompt";
 import { buildResearchShape } from "./researchShape";
 import { buildSpine } from "./buildSpine";
 import { deepenActs } from "./deepenActs";
-import { sourceBeats } from "./sourceBeats";
+import { sourceBeats, summarizeSourcing } from "./sourceBeats";
+import { createDigestAudioSourceResolver, type AudioSourceResolver } from "./audioSourceLookup";
 import { writeNarration } from "./writeNarration";
 import { stitchForay } from "./stitchForay";
-import { finalizeForay, type FinalizeForayInput, type FinalizeForayResult, type ForaySlot } from "./finalizeForay";
+import { finalizeForay, mintedSegmentRow, type FinalizeForayInput, type FinalizeForayResult, type ForaySlot } from "./finalizeForay";
 import { resolveTopic, forayIdFor, type TopicCandidate } from "./resolveTopic";
 import { slugifySlotTitle } from "./forayItems";
 import { loadSegmentPool, type SegmentRecord } from "./segmentPoolLookup";
@@ -92,6 +93,10 @@ export interface RunPipelineDeps {
   continuityBuilder?: ContinuityBuilder;
   /** §4.5 tier-2: supplies real cue text so a beat can be anchored to tape. */
   cueProvider?: TranscriptCueProvider;
+  /** §4.5 tier-2: resolves the `data/segment-sources.json` row that makes a
+   * minted segment playable. Defaults to the real catalogue-reading resolver;
+   * injectable so a test can exercise the refusal path without a checkout. */
+  audioSourceFor?: AudioSourceResolver;
   /**
    * §4.9's validate step. Defaults to the real `finalizeForay`, which runs the
    * candidate through `tools/foray/check-forays.mjs` and `check-narration.mjs`
@@ -341,11 +346,63 @@ const TapeRelevanceInputSchema = z.object({
   onTopic: z.boolean().nullable()
 });
 
+/* Mirrors `SourcingTrace` (types/tapeSourcing.ts, F-49): why each narrated beat
+   got no tape. Checkpointed with the stage for the same reason `tapeRelevance`
+   is — a resumed run must be able to say what the search saw, or the evidence
+   the thresholds are tuned against disappears on the first resume. */
+const SourcingTraceSchema = z.object({
+  actIndex: z.number().int(),
+  slotIndex: z.number().int(),
+  beatIndex: z.number().int(),
+  claim: z.string(),
+  outcome: z.enum(["skipped:argument", "no-tape"]),
+  tier1: z
+    .object({
+      bestSegmentId: z.string().nullable(),
+      bestItemId: z.string().nullable(),
+      score: z.number(),
+      requiredScore: z.number(),
+      matchedIn: z.enum(["transcript", "metadata"]).nullable(),
+      gate: z.enum(["no-candidates", "threshold", "topic-lineage", "exhausted", "m4-share", "m3-order"])
+    })
+    .nullable(),
+  tier2: z
+    .object({
+      bestShowId: z.string().nullable(),
+      bestEpisodeTitle: z.string().nullable(),
+      score: z.number(),
+      requiredScore: z.number(),
+      gate: z.enum(["title-tokens", "lineage", "no-body", "no-anchor", "window-overlap", "no-audio-source"]),
+      anchorContentWords: z.number().optional(),
+      beyondAnchorOverlap: z.number().optional()
+    })
+    .nullable()
+});
+
+/* The `data/segment-sources.json` row for each minted segment's episode
+   (`audioSourceLookup.ts`). Without it the checker cannot resolve the audio. */
+const MintedSegmentSourceSchema = z.object({
+  id: z.string(),
+  show: z.string(),
+  title: z.string(),
+  feed_url: z.string().nullable(),
+  episode_guid: z.string(),
+  audio_url: z.string(),
+  audio_type: z.string(),
+  duration_sec: z.number(),
+  dai_suspected: z.boolean(),
+  source: z.literal("generation-tier-2")
+});
+
 const SourceCheckpointSchema = z.object({
   acts: z.array(SourcedActSchema),
   newSegments: z.array(NewSegmentSchema),
   transcriptionQueueCandidates: z.array(TranscriptionQueueCandidateSchema),
-  tapeRelevance: z.array(TapeRelevanceInputSchema)
+  tapeRelevance: z.array(TapeRelevanceInputSchema),
+  /* Defaulted, not required: a checkpoint written before these fields existed
+     still resumes, and resumes to the same Foray it would have produced. */
+  sourcingTrace: z.array(SourcingTraceSchema).default([]),
+  newSegmentSources: z.array(MintedSegmentSourceSchema).default([])
 });
 
 const WrittenBeatSchema = z.union([
@@ -614,8 +671,31 @@ export async function runForayPipeline(
   const sourced = await stage(
     "source",
     (raw) => SourceCheckpointSchema.parse(raw),
-    async () => sourceBeats(deepened, { cueProvider: deps.cueProvider, topic, root: options.root })
+    async () =>
+      sourceBeats(deepened, {
+        cueProvider: deps.cueProvider,
+        topic,
+        root: options.root,
+        /* Tier 2 may only mint tape whose audio can be honestly registered
+           (F-49 plumbing) — see `audioSourceLookup.ts`. */
+        audioSourceFor: deps.audioSourceFor ?? createDigestAudioSourceResolver({ root: options.root })
+      })
   );
+
+  /* ONE LINE PER SLOT, SAYING WHAT §4.5 DID (F-49). Run 2 finished with zero
+     tape beats and nothing in the run log said so until the Foray was built;
+     the operator's first evidence was an all-narration candidate 30 minutes
+     later. These are printed, not returned, because they are for the person
+     watching the run — the machine-readable form is `sourced.sourcingTrace`. */
+  for (const line of summarizeSourcing(sourced)) console.log(`  ${line}`);
+
+  /* The pool the runtime clock is measured against has to include what tier 2
+     just minted, or a tier-2 tape item contributes 0 s to `runtime_sec` and
+     `check-forays.mjs` fails the Foray for a runtime that disagrees with its
+     own items. The cast is the shape difference only: a minted row carries no
+     curator `why`, and nothing that reads this pool asks for one. */
+  const mintedPool = sourced.newSegments.map((s) => mintedSegmentRow(s, topic) as unknown as SegmentRecord);
+  const runtimePool = mintedPool.length ? [...loadSegmentPool(), ...mintedPool] : loadSegmentPool();
 
   /* §4.7 — write narration, then verify it independently (distinct instances,
      enforced there). Driven ONE ACT AT A TIME rather than in a single call, so
@@ -686,7 +766,7 @@ export async function runForayPipeline(
                     allActTitles,
                     items: itemsWithDisclosure,
                     slots: slots.slice(0, slotCountThroughAct(spine, actIndex)),
-                    runtimeSec: runtimeSecFor(itemsWithDisclosure),
+                    runtimeSec: runtimeSecFor(itemsWithDisclosure, runtimePool),
                     ttlA1Ms
                   },
                   { id: forayId, title, topic, summary: intent.subject, authorId: options.userId, builtAt: startedAt, root: options.root },
@@ -731,9 +811,14 @@ export async function runForayPipeline(
     summary: intent.subject,
     slots,
     items,
-    runtimeSec: runtimeSecFor(items),
+    runtimeSec: runtimeSecFor(items, runtimePool),
     builtAt: generatedAt,
-    meta: { veracity }
+    meta: { veracity },
+    /* What §4.5 tier 2 cut this run, travelling WITH the candidate: nothing
+       else can resolve a segment id that is not in `data/segments.json` yet
+       (see `FinalizeForayInput.segments`). */
+    segments: sourced.newSegments,
+    segmentSources: sourced.newSegmentSources
   };
 
   // §4.9 — validate against the same two checkers CI runs. Writes nothing.

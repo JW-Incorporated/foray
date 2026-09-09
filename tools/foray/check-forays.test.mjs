@@ -2119,3 +2119,64 @@ function runCli(root) {
     return { status: e.status, stdout: String(e.stdout ?? ""), stderr: String(e.stderr ?? "") };
   }
 }
+
+/* ============================================================================
+   6. A GENERATED FORAY'S OWN TIER-2 TAPE (generation finding F-49)
+   ========================================================================= */
+
+test("a Foray using a segment §4.5 tier 2 minted this run resolves, and its seconds count", () => {
+  /* THE HOLE THIS CLOSES. `sourceBeats` cuts a tier-2 segment out of a
+     transcript during a generation run, so it is in no file on disk yet: the
+     merge path that writes `data/segments.json` runs on a curator's batch, not
+     inside the run. Until F-49 nothing carried those rows anywhere, so the
+     candidate named a `segment_id` this checker could not resolve — "unknown
+     segment_id", the item dropped before every ordering rule, its seconds
+     counted nowhere, and the Foray failed on a runtime that disagreed with its
+     own items. `finalizeForay` now merges the minted segment and its
+     `segment-sources` row into the files handed to this function, and
+     `publishForay` writes them beside `data/forays.json`; the rows below are
+     exactly what those two produce (`mintedSegmentRow` /
+     `MintedSegmentSource`).
+
+     MUTATION THAT KILLS THIS: drop either pushed row. Without the segment the
+     checker reports an unknown segment_id and the runtime is 120 s short;
+     without the source row it reports that the pool references an item id
+     "with no entry in data/segment-sources.json — nothing can resolve its
+     audio". Ran both — red, with those messages. */
+  const f = fx();
+  const MINTED_SEC = 120;
+  f.segments.segments.push({
+    id: "practical-ai--minted-episode#900",
+    item_id: "practical-ai--minted-episode",
+    topic: "fixture/boundary",
+    start_sec: 900,
+    end_sec: 900 + MINTED_SEC,
+    reference_duration_sec: 3600,
+    start_anchor: "so the first thing we did was",
+    end_anchor: "and that is how the pipeline ended up",
+    confidence: "medium",
+    source: "generation-tier-2",
+    needs_review: true,
+  });
+  f.sources.sources.push({
+    id: "practical-ai--minted-episode",
+    show: "Practical AI",
+    title: "A minted episode",
+    feed_url: "https://example.invalid/feed.xml",
+    episode_guid: "guid-1",
+    audio_url: "https://cdn.example/practical-ai-minted.mp3",
+    audio_type: "audio/mpeg",
+    duration_sec: 3600,
+    dai_suspected: false,
+    source: "generation-tier-2",
+  });
+
+  const b = boundary(f);
+  b.items.push({ type: "segment", slot: "three", segment_id: "practical-ai--minted-episode#900", role: "explanation" });
+  b.runtime_sec = +(b.runtime_sec + MINTED_SEC).toFixed(2);
+
+  assert.deepEqual(errorsFor(f), [], "a minted tier-2 segment that travels with its source row is resolvable tape");
+  const r = checkForays(f).report.forays.find((x) => x.id === b.id);
+  assert.equal(r.segments, segmentItems(boundary(fixture)).length + 1, "the minted segment is counted, not dropped");
+  assert.equal(r.runtime_sec, FIXTURE_RUNTIME + MINTED_SEC, "its seconds are on the listener's clock");
+});
