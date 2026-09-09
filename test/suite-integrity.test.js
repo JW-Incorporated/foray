@@ -1449,6 +1449,11 @@ const BACKEND_FLOORS = {
      why no live-generation-lead monitoring is built here). */
   "test/finalizeForay.test.ts": 5,
   "test/stageTiming.test.ts": 5,
+  /* WS-B veracity metrics (generation fix plan 2026-09-09): the grounded-quote /
+     attribution-stability / tape-relevance metrics and the publish gate, plus
+     the process-wide token-usage collector every Anthropic builder feeds. */
+  "test/usageTracking.test.ts": 4,
+  "test/veracityMetrics.test.ts": 31,
 };
 
 /* `it(` as well as `test(`: backend's suites use both spellings. */
