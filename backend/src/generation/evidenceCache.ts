@@ -34,20 +34,47 @@ export interface EvidenceCacheEntry {
   docs: EvidenceDoc[];
 }
 
+/**
+ * How long a retrieval that found NOTHING counts as a cache hit (F-60).
+ *
+ * Documents are cached forever: a passage retrieved yesterday is the same
+ * passage today, and re-paying for it is the waste this file exists to
+ * stop. An EMPTY result is not that kind of fact. It says one query, run
+ * once, against a moving web, matched nothing — and run 2's act 1 p5 shows
+ * what treating it as durable costs: `{"passages": []}` was cached, every
+ * later run was served that emptiness for free, and the page went to the
+ * writer unsourceable three times over. So emptiness expires, and a run a
+ * day later asks again.
+ */
+export const EMPTY_EVIDENCE_TTL_MS = 24 * 60 * 60 * 1000;
+
 /** Reads a cached retrieval, or `null` for any miss — a corrupt or
  * unreadable cache file is a miss, never an error: the worst case is
- * paying for one retrieval again. */
-export function readEvidenceCache(dir: string, hash: string): EvidenceDoc[] | null {
+ * paying for one retrieval again. An entry holding NO documents is a miss
+ * once it is older than `EMPTY_EVIDENCE_TTL_MS` (F-60). */
+export function readEvidenceCache(dir: string, hash: string, now: () => Date = () => new Date()): EvidenceDoc[] | null {
   try {
     const file = cacheFile(dir, hash);
     // eslint-disable-next-line security/detect-non-literal-fs-filename -- dir is caller-owned and hash is hex this pipeline computed.
     if (!fs.existsSync(file)) return null;
     // eslint-disable-next-line security/detect-non-literal-fs-filename -- see above.
     const parsed = JSON.parse(fs.readFileSync(file, "utf8")) as Partial<EvidenceCacheEntry>;
-    return Array.isArray(parsed.docs) ? (parsed.docs as EvidenceDoc[]) : null;
+    if (!Array.isArray(parsed.docs)) return null;
+    const docs = parsed.docs as EvidenceDoc[];
+    if (docs.length === 0 && emptyEntryIsStale(parsed.cachedAt, now)) return null;
+    return docs;
   } catch {
     return null;
   }
+}
+
+/** An empty entry is a hit only while it is fresh. No timestamp at all, a
+ * timestamp that does not parse, and one older than the TTL all mean the
+ * same thing: ask again rather than serve nothing. */
+function emptyEntryIsStale(cachedAt: string | undefined, now: () => Date): boolean {
+  const at = Date.parse(String(cachedAt ?? ""));
+  if (!Number.isFinite(at)) return true;
+  return now().getTime() - at >= EMPTY_EVIDENCE_TTL_MS;
 }
 
 /** Writes one retrieval's documents. Never throws: a cache that cannot be

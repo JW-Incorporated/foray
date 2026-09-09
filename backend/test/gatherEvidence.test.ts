@@ -12,6 +12,8 @@ import {
   cueWindowText,
   createEvidenceGatherer,
   findDigestForItem,
+  rephraseClaimForRetrieval,
+  REPHRASED_QUERY_MAX_WORDS,
   titlesForItem
 } from "../src/generation/gatherEvidence";
 import { StubExternalResearcher } from "../src/generation/StubExternalResearcher";
@@ -79,6 +81,20 @@ class FakeRetriever implements ExternalResearcher {
   async retrievePassages(request: PassageRetrievalRequest): Promise<RetrievedPassage[]> {
     this.calls.push(request);
     return this.passages;
+  }
+}
+
+/** Answers the calls in order, repeating its last answer thereafter. */
+class SequenceRetriever implements ExternalResearcher {
+  readonly providerName = "sequence";
+  calls: PassageRetrievalRequest[] = [];
+  constructor(private readonly answers: RetrievedPassage[][]) {}
+  async research(): Promise<ExternalResearchResult> {
+    return { notes: "", controversies: [] };
+  }
+  async retrievePassages(request: PassageRetrievalRequest): Promise<RetrievedPassage[]> {
+    this.calls.push(request);
+    return this.answers[Math.min(this.calls.length - 1, this.answers.length - 1)] ?? [];
   }
 }
 
@@ -259,6 +275,121 @@ describe("the retrieval cache — a re-run is free", () => {
     const g = createEvidenceGatherer({ researcher: new StubExternalResearcher(), catalogue: CATALOGUE, transcriptArchive: [] });
     const pack = await g.gather({ claim }, ctx);
     expect(findHoldingDoc("It exists so that a quoted span can be looked up", pack.docs)).not.toBeNull();
+  });
+});
+
+describe("F-60 — an empty retrieval is asked once more, rephrased", () => {
+  /* Run 2 attempt 2, act 1 page p5's purpose, verbatim: one long editorial
+     sentence, framing and all. Asked as a search query it returned
+     `{"passages": []}`, the empty result was cached, and the page then
+     cost three claim-selection calls and the Foray. */
+  const P5_PURPOSE =
+    "Mature pipelines treat a dataset the way a build system treats source code: a schema check — wrong type, " +
+    "an out-of-range value, a null where one shouldn't be — fails the run outright, the same way a type error " +
+    "fails a compile, rather than letting a corrupted batch train a model that ships anyway.";
+
+  const FOUND: RetrievedPassage[] = [{ title: "Great Expectations documentation", text: "A failed expectation halts the pipeline run before the batch is written." }];
+
+  it("asks a SECOND, differently-worded query when a content beat's first query finds nothing", async () => {
+    const retriever = new SequenceRetriever([[], FOUND]);
+    const pack = await gatherer(retriever).gather({ claim: P5_PURPOSE, requiresEvidence: true }, ctx);
+
+    expect(retriever.calls).toHaveLength(2);
+    expect(retriever.calls[0]!.claim).toBe(P5_PURPOSE);
+    expect(retriever.calls[1]!.claim).not.toBe(P5_PURPOSE);
+    expect(retriever.calls[1]!.claim).toBe(rephraseClaimForRetrieval(P5_PURPOSE));
+    expect(pack.docs.map((d) => d.title)).toEqual(["Great Expectations documentation"]);
+  });
+
+  it("asks once more and then stops — two queries per page, never three", async () => {
+    const retriever = new SequenceRetriever([[]]);
+    const pack = await gatherer(retriever).gather({ claim: P5_PURPOSE, requiresEvidence: true }, ctx);
+    expect(retriever.calls).toHaveLength(2);
+    /* And the pack really is empty, which is the signal writeNarration
+       degrades on rather than paying a writer to fail (F-60). */
+    expect(pack.docs).toEqual([]);
+  });
+
+  it("never spends the second query on a page that can be written from no documents at all", async () => {
+    const retriever = new SequenceRetriever([[], FOUND]);
+    const pack = await gatherer(retriever).gather({ claim: P5_PURPOSE }, ctx);
+    expect(retriever.calls).toHaveLength(1);
+    expect(pack.docs).toEqual([]);
+  });
+
+  it("does not ask twice when the first query found something", async () => {
+    const retriever = new SequenceRetriever([FOUND]);
+    await gatherer(retriever).gather({ claim: P5_PURPOSE, requiresEvidence: true }, ctx);
+    expect(retriever.calls).toHaveLength(1);
+  });
+
+  it("caches the retry under its OWN key, so the first query's emptiness is never served in its place", async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "foray-evidence-f60-"));
+    try {
+      const retriever = new SequenceRetriever([[], FOUND]);
+      const options = { researcher: retriever, cacheDir: dir, catalogue: CATALOGUE, transcriptArchive: [] };
+      const first = await new DefaultEvidenceGatherer(options).gather({ claim: P5_PURPOSE, requiresEvidence: true }, ctx);
+      // A fresh gatherer, as a re-run would be: both queries are cache hits.
+      const second = await new DefaultEvidenceGatherer(options).gather({ claim: P5_PURPOSE, requiresEvidence: true }, ctx);
+
+      expect(retriever.calls).toHaveLength(2);
+      expect(second.docs).toEqual(first.docs);
+      expect(fs.readdirSync(dir).sort()).toEqual(
+        [`${claimHash(P5_PURPOSE)}.json`, `${claimHash(rephraseClaimForRetrieval(P5_PURPOSE))}.json`].sort()
+      );
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("stops treating a cached EMPTY result as a hit after 24 hours", async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "foray-evidence-ttl-"));
+    try {
+      /* Too few distinctive words to rephrase, so this claim asks exactly
+         one query per gather and the count is unambiguous. */
+      const claim = "a claim nothing knows";
+      const retriever = new SequenceRetriever([[]]);
+      const at = (iso: string) => new DefaultEvidenceGatherer({
+        researcher: retriever,
+        cacheDir: dir,
+        catalogue: CATALOGUE,
+        transcriptArchive: [],
+        now: () => new Date(iso)
+      });
+
+      expect(rephraseClaimForRetrieval(claim)).toBe("");
+      await at("2026-09-09T12:00:00.000Z").gather({ claim, requiresEvidence: true }, ctx);
+      expect(retriever.calls).toHaveLength(1);
+
+      // An hour later the emptiness is still a fact about now: no new call.
+      await at("2026-09-09T13:00:00.000Z").gather({ claim, requiresEvidence: true }, ctx);
+      expect(retriever.calls).toHaveLength(1);
+
+      // A day later it is a fact about yesterday, and the web has moved.
+      await at("2026-09-10T13:00:00.000Z").gather({ claim, requiresEvidence: true }, ctx);
+      expect(retriever.calls).toHaveLength(2);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("rephrases a purpose to its distinctive nouns, in order, without the framing", () => {
+    const query = rephraseClaimForRetrieval(P5_PURPOSE);
+    const words = query.split(" ");
+    expect(words.length).toBeLessThanOrEqual(REPHRASED_QUERY_MAX_WORDS);
+    expect(words).toContain("pipelines");
+    expect(words).toContain("dataset");
+    // The framing the search engine matched instead of the subject.
+    expect(words).not.toContain("the");
+    expect(words).not.toContain("way");
+    expect(words).not.toContain("rather");
+    // Original order, so the query still reads as a phrase.
+    expect(query).toBe(words.slice().sort((a, b) => P5_PURPOSE.indexOf(a) - P5_PURPOSE.indexOf(b)).join(" "));
+  });
+
+  it("returns nothing to ask when a claim has too few distinctive words to ask differently", () => {
+    expect(rephraseClaimForRetrieval("It was over.")).toBe("");
+    expect(rephraseClaimForRetrieval("")).toBe("");
   });
 });
 
