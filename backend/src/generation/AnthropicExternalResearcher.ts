@@ -81,7 +81,22 @@ export class AnthropicExternalResearcher implements ExternalResearcher {
     const textBlock = response.content.find((b: Anthropic.ContentBlock): b is Anthropic.TextBlock => b.type === "text");
     if (!textBlock) throw new Error("Anthropic external-research response had no text block");
 
-    return parseLastJsonBlock(ResearchSchema, textBlock.text, "External research output");
+    const reask = async (): Promise<string> => {
+      const retryResponse = await this.client.messages.create({
+        model: MODEL,
+        max_tokens: 800,
+        messages: [
+          { role: "user", content: promptText },
+          { role: "assistant", content: textBlock.text },
+          { role: "user", content: "Your previous reply was not valid JSON; reply with the JSON object only." }
+        ]
+      });
+      const retryTextBlock = retryResponse.content.find((b: Anthropic.ContentBlock): b is Anthropic.TextBlock => b.type === "text");
+      if (!retryTextBlock) throw new Error("Anthropic external-research re-ask response had no text block");
+      return retryTextBlock.text;
+    };
+
+    return parseLastJsonBlock(ResearchSchema, textBlock.text, "External research output", reask);
   }
 }
 

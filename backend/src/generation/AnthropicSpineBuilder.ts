@@ -90,7 +90,22 @@ export class AnthropicSpineBuilder implements SpineBuilder {
     const textBlock = response.content.find((b: Anthropic.ContentBlock): b is Anthropic.TextBlock => b.type === "text");
     if (!textBlock) throw new Error("Anthropic spine response had no text block");
 
-    const raw = parseWithRetry(RawSpineSchema, textBlock.text, "Anthropic spine output");
+    const reask = async (): Promise<string> => {
+      const retryResponse = await this.client.messages.create({
+        model: MODEL,
+        max_tokens: MAX_OUTPUT_TOKENS,
+        messages: [
+          { role: "user", content: promptText },
+          { role: "assistant", content: textBlock.text },
+          { role: "user", content: "Your previous reply was not valid JSON; reply with the JSON object only." }
+        ]
+      });
+      const retryTextBlock = retryResponse.content.find((b: Anthropic.ContentBlock): b is Anthropic.TextBlock => b.type === "text");
+      if (!retryTextBlock) throw new Error("Anthropic spine re-ask response had no text block");
+      return retryTextBlock.text;
+    };
+
+    const raw = await parseWithRetry(RawSpineSchema, textBlock.text, "Anthropic spine output", reask);
     return {
       subject: intent.subject,
       angle: intent.angle,

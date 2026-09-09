@@ -106,10 +106,25 @@ export class AnthropicEnricher implements Enricher {
     const textBlock = response.content.find((b: Anthropic.ContentBlock): b is Anthropic.TextBlock => b.type === "text");
     if (!textBlock) throw new Error("Anthropic classification response had no text block");
 
+    const reask = async (): Promise<string> => {
+      const retryResponse = await this.client.messages.create({
+        model: MODEL,
+        max_tokens: 512,
+        messages: [
+          { role: "user", content: prompt },
+          { role: "assistant", content: textBlock.text },
+          { role: "user", content: "Your previous reply was not valid JSON; reply with the JSON object only." }
+        ]
+      });
+      const retryTextBlock = retryResponse.content.find((b: Anthropic.ContentBlock): b is Anthropic.TextBlock => b.type === "text");
+      if (!retryTextBlock) throw new Error("Anthropic classification re-ask response had no text block");
+      return retryTextBlock.text;
+    };
+
     // corner case 32: schema-validated JSON, retry once on failure, then throw
     // (caller is responsible for dead-lettering — this module only guarantees
     // "never return malformed data").
-    const parsed = parseWithRetry(ClassificationSchema, textBlock.text, "Anthropic classification output");
+    const parsed = await parseWithRetry(ClassificationSchema, textBlock.text, "Anthropic classification output", reask);
     return parsed;
   }
 
@@ -135,7 +150,22 @@ export class AnthropicEnricher implements Enricher {
     const textBlock = response.content.find((b: Anthropic.ContentBlock): b is Anthropic.TextBlock => b.type === "text");
     if (!textBlock) throw new Error("Anthropic why-line response had no text block");
 
-    return parseWithRetry(WhyLineSchema, textBlock.text, "Anthropic why-line output");
+    const reask = async (): Promise<string> => {
+      const retryResponse = await this.client.messages.create({
+        model: MODEL,
+        max_tokens: 128,
+        messages: [
+          { role: "user", content: prompt },
+          { role: "assistant", content: textBlock.text },
+          { role: "user", content: "Your previous reply was not valid JSON; reply with the JSON object only." }
+        ]
+      });
+      const retryTextBlock = retryResponse.content.find((b: Anthropic.ContentBlock): b is Anthropic.TextBlock => b.type === "text");
+      if (!retryTextBlock) throw new Error("Anthropic why-line re-ask response had no text block");
+      return retryTextBlock.text;
+    };
+
+    return await parseWithRetry(WhyLineSchema, textBlock.text, "Anthropic why-line output", reask);
   }
 }
 

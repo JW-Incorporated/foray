@@ -1,6 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
-import { parseWithRetry as parseWithRetryShared } from "./parseWithRetry";
+import { parseWithRetry } from "./parseWithRetry";
 import { env } from "../config/env";
 import { defaultBudgetGuard, type BudgetGuard } from "../cost/budgetGuard";
 import { MODE_CHAR_BANDS } from "../types/narration";
@@ -76,7 +76,22 @@ export class AnthropicNarrationWriterBuilder implements NarrationWriterBuilder {
     const textBlock = response.content.find((b: Anthropic.ContentBlock): b is Anthropic.TextBlock => b.type === "text");
     if (!textBlock) throw new Error("Anthropic narration-write response had no text block");
 
-    return parseWithRetry(RawWriteResultSchema, textBlock.text);
+    const reask = async (): Promise<string> => {
+      const retryResponse = await this.client.messages.create({
+        model: MODEL,
+        max_tokens: MAX_OUTPUT_TOKENS,
+        messages: [
+          { role: "user", content: promptText },
+          { role: "assistant", content: textBlock.text },
+          { role: "user", content: "Your previous reply was not valid JSON; reply with the JSON object only." }
+        ]
+      });
+      const retryTextBlock = retryResponse.content.find((b: Anthropic.ContentBlock): b is Anthropic.TextBlock => b.type === "text");
+      if (!retryTextBlock) throw new Error("Anthropic narration-write re-ask response had no text block");
+      return retryTextBlock.text;
+    };
+
+    return parseWithRetry(RawWriteResultSchema, textBlock.text, "LLM output", reask);
   }
 }
 
@@ -112,8 +127,4 @@ function buildWritePrompt(request: NarrationWriteRequest): string {
   ]
     .filter(Boolean)
     .join("\n");
-}
-
-function parseWithRetry<T>(schema: z.ZodType<T>, raw: string): T {
-  return parseWithRetryShared(schema, raw, "LLM output");
 }

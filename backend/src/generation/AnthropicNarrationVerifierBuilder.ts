@@ -1,6 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
-import { parseWithRetry as parseWithRetryShared } from "./parseWithRetry";
+import { parseWithRetry } from "./parseWithRetry";
 import { env } from "../config/env";
 import { defaultBudgetGuard, type BudgetGuard } from "../cost/budgetGuard";
 import type { NarrationBuildContext, NarrationVerifierBuilder, NarrationVerifyRequest, NarrationVerifyResult } from "./NarrationVerifierBuilder";
@@ -68,7 +68,22 @@ export class AnthropicNarrationVerifierBuilder implements NarrationVerifierBuild
     const textBlock = response.content.find((b: Anthropic.ContentBlock): b is Anthropic.TextBlock => b.type === "text");
     if (!textBlock) throw new Error("Anthropic narration-verify response had no text block");
 
-    return parseWithRetry(RawVerifyResultSchema, textBlock.text);
+    const reask = async (): Promise<string> => {
+      const retryResponse = await this.client.messages.create({
+        model: MODEL,
+        max_tokens: MAX_OUTPUT_TOKENS,
+        messages: [
+          { role: "user", content: promptText },
+          { role: "assistant", content: textBlock.text },
+          { role: "user", content: "Your previous reply was not valid JSON; reply with the JSON object only." }
+        ]
+      });
+      const retryTextBlock = retryResponse.content.find((b: Anthropic.ContentBlock): b is Anthropic.TextBlock => b.type === "text");
+      if (!retryTextBlock) throw new Error("Anthropic narration-verify re-ask response had no text block");
+      return retryTextBlock.text;
+    };
+
+    return parseWithRetry(RawVerifyResultSchema, textBlock.text, "LLM output", reask);
   }
 }
 
@@ -97,8 +112,4 @@ function buildVerifyPrompt(request: NarrationVerifyRequest): string {
     "Respond with ONLY a single JSON object, no markdown fences, no other text, matching exactly:",
     '{"verified": boolean, "verifierNotes": string (required and specific when verified is false, describing exactly what is unsupported)}'
   ].join("\n");
-}
-
-function parseWithRetry<T>(schema: z.ZodType<T>, raw: string): T {
-  return parseWithRetryShared(schema, raw, "LLM output");
 }

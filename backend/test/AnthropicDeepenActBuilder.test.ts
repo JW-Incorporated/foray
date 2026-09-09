@@ -85,8 +85,11 @@ describe("AnthropicDeepenActBuilder", () => {
     const { client } = makeFakeAnthropicClient([textBlock("not json")]);
     const builder = new AnthropicDeepenActBuilder(new BudgetGuard(new InMemoryCostEventSink(), 100), client);
 
+    // The fake client returns the same invalid content on every call, so the
+    // one re-ask (see parseWithRetry.ts) also fails and the final error names
+    // that.
     await expect(builder.deepenAct(spine, spine.acts[0]!, 0, ctx)).rejects.toThrow(
-      /failed schema validation \(no retry available in this build\)/
+      /failed schema validation after one re-ask/
     );
   });
 

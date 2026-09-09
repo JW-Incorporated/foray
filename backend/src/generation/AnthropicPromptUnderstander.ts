@@ -75,7 +75,22 @@ export class AnthropicPromptUnderstander implements PromptUnderstander {
     const textBlock = response.content.find((b: Anthropic.ContentBlock): b is Anthropic.TextBlock => b.type === "text");
     if (!textBlock) throw new Error("Anthropic clarity response had no text block");
 
-    return parseWithRetry(ClaritySchema, textBlock.text, "Anthropic clarity output");
+    const reask = async (): Promise<string> => {
+      const retryResponse = await this.client.messages.create({
+        model: MODEL,
+        max_tokens: 400,
+        messages: [
+          { role: "user", content: promptText },
+          { role: "assistant", content: textBlock.text },
+          { role: "user", content: "Your previous reply was not valid JSON; reply with the JSON object only." }
+        ]
+      });
+      const retryTextBlock = retryResponse.content.find((b: Anthropic.ContentBlock): b is Anthropic.TextBlock => b.type === "text");
+      if (!retryTextBlock) throw new Error("Anthropic clarity re-ask response had no text block");
+      return retryTextBlock.text;
+    };
+
+    return parseWithRetry(ClaritySchema, textBlock.text, "Anthropic clarity output", reask);
   }
 
   async extractIntent(prompt: string, ctx: PromptUnderstandContext): Promise<IntentUnderstanding> {
@@ -99,7 +114,22 @@ export class AnthropicPromptUnderstander implements PromptUnderstander {
     const textBlock = response.content.find((b: Anthropic.ContentBlock): b is Anthropic.TextBlock => b.type === "text");
     if (!textBlock) throw new Error("Anthropic intent response had no text block");
 
-    return parseWithRetry(IntentSchema, textBlock.text, "Anthropic intent output");
+    const reask = async (): Promise<string> => {
+      const retryResponse = await this.client.messages.create({
+        model: MODEL,
+        max_tokens: 600,
+        messages: [
+          { role: "user", content: promptText },
+          { role: "assistant", content: textBlock.text },
+          { role: "user", content: "Your previous reply was not valid JSON; reply with the JSON object only." }
+        ]
+      });
+      const retryTextBlock = retryResponse.content.find((b: Anthropic.ContentBlock): b is Anthropic.TextBlock => b.type === "text");
+      if (!retryTextBlock) throw new Error("Anthropic intent re-ask response had no text block");
+      return retryTextBlock.text;
+    };
+
+    return parseWithRetry(IntentSchema, textBlock.text, "Anthropic intent output", reask);
   }
 }
 
