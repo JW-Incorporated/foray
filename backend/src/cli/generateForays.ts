@@ -4,6 +4,7 @@ import * as path from "path";
 import { runForayPipeline, type RunPipelineOutcome } from "../generation/runPipeline";
 import { FileTranscriptCueProvider } from "../generation/transcriptArchiveLookup";
 import type { GenerationRequest } from "../types/generation";
+import type { PartialCandidate } from "../generation/partialCandidate";
 import { env } from "../config/env";
 
 /**
@@ -45,7 +46,7 @@ interface PromptSpec {
   topic?: string;
 }
 
-interface CliArgs {
+export interface CliArgs {
   prompts: string | null;
   out: string;
   duration: "short" | "medium" | "long";
@@ -95,6 +96,14 @@ export function candidateFilename(prompt: string): string {
   return `${slug || "prompt"}-${hash}.json`;
 }
 
+/** WS-D2's partial-candidate file, next to `candidateFilename`'s own file and
+ * keyed the same way (same slug+hash, so a reader can find both without a
+ * lookup table). `readPartialCandidate` (`generationStatus.ts`) is the
+ * counterpart that reads this back for a status request. */
+export function partialCandidateFilename(prompt: string): string {
+  return candidateFilename(prompt).replace(/\.json$/, ".partial.json");
+}
+
 /** One line per prompt, so a 200-prompt run reads as a table and not a log. */
 export function summarize(outcome: RunPipelineOutcome): string {
   switch (outcome.outcome) {
@@ -109,6 +118,101 @@ export function summarize(outcome: RunPipelineOutcome): string {
         ? `OK ${outcome.input.id} (${outcome.input.items.length} items, ${outcome.input.runtimeSec}s)`
         : `INVALID ${outcome.input.id} — ${outcome.result.validation.checkForaysErrors.slice(0, 2).join("; ")}`;
   }
+}
+
+export type ReportEntry = { prompt: string; outcome: string; detail: string; ms: number; file?: string; ttlA1Ms?: number | null };
+
+/**
+ * One prompt's worth of `main()`'s loop body, extracted so a test can drive
+ * it directly — same reason `parseArgs`/`normalizePrompts`/`candidateFilename`
+ * are already exported. `deps.runPipeline` defaults to the real
+ * `runForayPipeline`; `deps.onPartialWrite` is a TEST-ONLY hook (no
+ * production caller passes it) fired synchronously right after each partial
+ * write lands on disk, so a test can assert on the file's on-disk content at
+ * the exact moment WS-D2's "rewrites it on each act" happens, rather than
+ * only at the very end once (on success) the partial file has already been
+ * cleaned up.
+ */
+export async function generateOneCandidate(
+  spec: PromptSpec,
+  args: CliArgs,
+  deps: {
+    cueProvider: FileTranscriptCueProvider;
+    runPipeline?: typeof runForayPipeline;
+    onPartialWrite?: (candidate: PartialCandidate, partialFile: string) => void;
+  }
+): Promise<{ skipped: boolean; entry?: ReportEntry; file?: string }> {
+  const runPipeline = deps.runPipeline ?? runForayPipeline;
+  const file = path.join(path.resolve(args.out), candidateFilename(spec.prompt));
+  if (fs.existsSync(file)) {
+    console.log(`  skip   ${spec.prompt.slice(0, 60)} (already built)`);
+    return { skipped: true, file };
+  }
+
+  const request: GenerationRequest = {
+    prompt: spec.prompt,
+    duration: spec.duration ?? args.duration,
+    author_id: args.authorId,
+    visibility: "catalogue"
+  };
+
+  /* WS-D2 (docs/curation/generation-fix-plan-2026-09-09.md, "D2 (streaming
+     publish)"): "generateForays writes the partial file and rewrites it on
+     each act." The partial file lives next to the eventual candidate file,
+     under the SAME resumable-batch directory this CLI already writes to —
+     no new location, no `data/`/`data-local/` write this CLI didn't already
+     make. `--dry-run` writes nothing here either, matching the
+     final-candidate path's own `--dry-run` behaviour just below. */
+  const partialFile = path.join(path.resolve(args.out), partialCandidateFilename(spec.prompt));
+  const onActReady = args.dryRun
+    ? undefined
+    : (candidate: PartialCandidate) => {
+        fs.writeFileSync(partialFile, `${JSON.stringify(candidate, null, 2)}\n`);
+        deps.onPartialWrite?.(candidate, partialFile);
+      };
+
+  let outcome: RunPipelineOutcome;
+  try {
+    /* The machine this driver runs on holds the transcript bodies (data-local/,
+       gitignored), so §4.5 tier 2 gets the real cue provider. On a checkout
+       without them the provider returns null for every episode and the run
+       behaves exactly as before — pool segments only. */
+    outcome = await runPipeline(request, { userId: args.authorId, topic: spec.topic }, { cueProvider: deps.cueProvider, onActReady });
+  } catch (err) {
+    /* One prompt's failure must not end the batch — a rate limit or a budget
+       stop on prompt 7 should still leave prompts 1-6 on disk and prompt 8
+       attempted. The error is recorded, not swallowed. */
+    const detail = err instanceof Error ? err.message : String(err);
+    console.log(`  ERROR  ${spec.prompt.slice(0, 60)} — ${detail.slice(0, 120)}`);
+    return { skipped: false, entry: { prompt: spec.prompt, outcome: "error", detail, ms: 0 } };
+  }
+
+  const ms = outcome.timings.reduce((sum, t) => sum + t.ms, 0);
+  const line = summarize(outcome);
+  const ttlA1Ms = outcome.outcome === "generated" ? outcome.ttlA1Ms : null;
+  console.log(
+    `  ${outcome.outcome === "generated" ? "built " : "stop  "} ${spec.prompt.slice(0, 60)} — ${line}` +
+      (ttlA1Ms != null ? ` (ttlA1=${ttlA1Ms}ms)` : "")
+  );
+
+  const entry: ReportEntry = { prompt: spec.prompt, outcome: outcome.outcome, detail: line, ms, ttlA1Ms };
+  if (outcome.outcome === "generated" && outcome.result.validation.ok) {
+    if (!args.dryRun) {
+      fs.writeFileSync(file, `${JSON.stringify(outcome.input, null, 2)}\n`);
+      /* The whole Foray is finalized — the partial file's job (letting the
+         requesting listener start early) is done, and leaving it on disk
+         next to the real candidate would just be a second, staler copy of
+         the same content for anyone reading the output directory by hand.
+         Best-effort: its absence is not an error. */
+      try {
+        fs.unlinkSync(partialFile);
+      } catch {
+        /* nothing to clean up — fine */
+      }
+    }
+    return { skipped: false, entry: { ...entry, file: args.dryRun ? undefined : file }, file };
+  }
+  return { skipped: false, entry };
 }
 
 async function main(): Promise<void> {
@@ -137,54 +241,20 @@ async function main(): Promise<void> {
 
   fs.mkdirSync(path.resolve(args.out), { recursive: true });
 
-  const report: Array<{ prompt: string; outcome: string; detail: string; ms: number; file?: string }> = [];
+  const report: ReportEntry[] = [];
   let generated = 0;
   let skipped = 0;
   const cueProvider = new FileTranscriptCueProvider();
 
   for (const spec of queue) {
-    const file = path.join(path.resolve(args.out), candidateFilename(spec.prompt));
-    if (fs.existsSync(file)) {
+    const result = await generateOneCandidate(spec, args, { cueProvider });
+    if (result.skipped) {
       skipped++;
-      console.log(`  skip   ${spec.prompt.slice(0, 60)} (already built)`);
       continue;
     }
-
-    const request: GenerationRequest = {
-      prompt: spec.prompt,
-      duration: spec.duration ?? args.duration,
-      author_id: args.authorId,
-      visibility: "catalogue"
-    };
-
-    let outcome: RunPipelineOutcome;
-    try {
-      /* The machine this driver runs on holds the transcript bodies (data-local/,
-         gitignored), so §4.5 tier 2 gets the real cue provider. On a checkout
-         without them the provider returns null for every episode and the run
-         behaves exactly as before — pool segments only. */
-      outcome = await runForayPipeline(request, { userId: args.authorId, topic: spec.topic }, { cueProvider });
-    } catch (err) {
-      /* One prompt's failure must not end the batch — a rate limit or a budget
-         stop on prompt 7 should still leave prompts 1-6 on disk and prompt 8
-         attempted. The error is recorded, not swallowed. */
-      const detail = err instanceof Error ? err.message : String(err);
-      report.push({ prompt: spec.prompt, outcome: "error", detail, ms: 0 });
-      console.log(`  ERROR  ${spec.prompt.slice(0, 60)} — ${detail.slice(0, 120)}`);
-      continue;
-    }
-
-    const ms = outcome.timings.reduce((sum, t) => sum + t.ms, 0);
-    const line = summarize(outcome);
-    console.log(`  ${outcome.outcome === "generated" ? "built " : "stop  "} ${spec.prompt.slice(0, 60)} — ${line}`);
-
-    const entry = { prompt: spec.prompt, outcome: outcome.outcome, detail: line, ms };
-    if (outcome.outcome === "generated" && outcome.result.validation.ok) {
-      if (!args.dryRun) fs.writeFileSync(file, `${JSON.stringify(outcome.input, null, 2)}\n`);
-      generated++;
-      report.push({ ...entry, file: args.dryRun ? undefined : file });
-    } else {
-      report.push(entry);
+    if (result.entry) {
+      report.push(result.entry);
+      if (result.file) generated++;
     }
   }
 

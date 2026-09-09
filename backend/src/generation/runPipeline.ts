@@ -14,6 +14,7 @@ import { slugifySlotTitle } from "./forayItems";
 import { loadSegmentPool, type SegmentRecord } from "./segmentPoolLookup";
 import { NARRATION_CHARS_PER_SEC } from "../types/narration";
 import { disclosureTemplate } from "../types/narration";
+import { buildPartialCandidate, type PartialCandidate } from "./partialCandidate";
 
 import { createPromptUnderstander } from "./createPromptUnderstander";
 import { createExternalResearcher } from "./createExternalResearcher";
@@ -101,6 +102,23 @@ export interface RunPipelineDeps {
    * reason named rather than the failure hidden.
    */
   finalize?: (input: FinalizeForayInput, root?: string) => Promise<FinalizeForayResult>;
+  /**
+   * WS-D2 (docs/curation/generation-fix-plan-2026-09-09.md, "D2 (streaming
+   * publish)"): "If the runPipeline stage structure makes act-by-act
+   * emission require a callback (`onActReady`), add it as an optional
+   * dependency in `runForayPipeline`'s deps object and keep all existing
+   * call sites working." This is that callback — optional, so every
+   * existing caller (the batch CLI's earlier tests, `publishForay.ts`'s own
+   * input shape) is unaffected by its absence.
+   *
+   * Fired once per act, the instant that act's items are stitched and
+   * coverage-validated (`stitchForay.ts`'s own `onActReady`), with a
+   * complete, listener-ready `PartialCandidate` — disclosure item
+   * prepended, `visibility: "private"`, `acts[]` marked `"ready"` through
+   * this act and `"pending"` after it. `generateForays.ts` is the one
+   * caller today: it writes/rewrites the partial file on every act.
+   */
+  onActReady?: (candidate: PartialCandidate) => void | Promise<void>;
 }
 
 export interface RunPipelineOptions {
@@ -131,6 +149,12 @@ export type RunPipelineOutcome =
       result: FinalizeForayResult;
       spine: Spine;
       timings: StageTiming[];
+      /** WS-D2: prompt received -> Act 1 ready, in milliseconds. `null` only
+       * when `deps.onActReady` was never supplied (no act-boundary clock was
+       * ever read) — see `report.json`'s own `ttlA1Ms` field, which is where
+       * `generateForays.ts` surfaces this per §4.9/D2's "measure it and
+       * print ttlA1Ms in the report." */
+      ttlA1Ms: number | null;
     };
 
 /** The Foray-level `slots` record: §4.9 wants `{id, title}` per act slot. */
@@ -225,6 +249,17 @@ export function disclosureItem(subject: string, firstSlotId: string): ForayItem 
   } as ForayItem;
 }
 
+/** How many of `slotsFromSpine(spine)`'s flattened slots belong to acts
+ * `0..actIndex` inclusive. `slotsFromSpine` iterates acts in the same order
+ * (§4.3/§6.1: the spine is frozen, acts never reorder), so a prefix count is
+ * exactly that act range's own slots. Used only by WS-D2's partial-candidate
+ * path — the whole-Foray path never needs a sub-range. */
+function slotCountThroughAct(spine: Spine, actIndex: number): number {
+  let n = 0;
+  for (let i = 0; i <= actIndex; i++) n += spine.acts[i]?.slots.length ?? 0;
+  return n;
+}
+
 export async function runForayPipeline(
   request: GenerationRequest,
   options: RunPipelineOptions,
@@ -234,6 +269,11 @@ export async function runForayPipeline(
   const timings = new StageTimingLog();
   const now = options.now ?? (() => new Date());
   const ctx = { userId: options.userId, sessionId: options.sessionId };
+  // WS-D2: prompt-received clock. `Date.now()`, not `now()` — `now()` is the
+  // injected-for-determinism ID clock (`forayIdFor`'s `generatedAt`), which
+  // tests pin to a fixed instant; ttlA1Ms measures real wall time, exactly
+  // like `StageTimingLog` does elsewhere in this module.
+  const pipelineStartMs = Date.now();
 
   const understander = deps.understander ?? createPromptUnderstander();
   const researcher = deps.researcher ?? createExternalResearcher();
@@ -242,6 +282,7 @@ export async function runForayPipeline(
   const narrationWriter = deps.narrationWriter ?? createNarrationWriterBuilder();
   const narrationVerifier = deps.narrationVerifier ?? createNarrationVerifierBuilder();
   const continuityBuilder = deps.continuityBuilder ?? createContinuityBuilder();
+  const finalize = deps.finalize ?? finalizeForay;
 
   /* §4.0-4.1 — safety, then intent. Both non-"understood" outcomes end the run:
      a rejected prompt must not be researched, and a prompt we cannot read one
@@ -274,6 +315,39 @@ export async function runForayPipeline(
   // §4.3 — the spine, frozen from here on (§6.1's invariant, batch-true).
   const spine = await timings.run("spine", () => buildSpine(intent, researchShape, req.duration, spineBuilder, ctx));
 
+  /* The Foray-level fields §4.9 says nothing upstream owns, resolved HERE —
+     right after the spine, not after stitch as a batch-only pipeline could
+     get away with before WS-D2. Two reasons, both real:
+     (1) PURE RELOCATION, no behaviour change: `resolveTopic`'s only inputs
+         are `intent` and `spine.acts`' titles, both already final at this
+         point, so the answer is identical to computing it later — WS-C
+         (docs/curation/generation-fix-plan-2026-09-09.md, "topic gate")
+         owns changing what topic resolution DOES (e.g. feeding it into
+         sourcing); this only moves WHEN the existing computation runs, and
+         does not touch sourceBeats/segmentPoolLookup at all.
+     (2) WS-D2's partial-candidate emission (below, via `stitchForay`'s
+         `onActReady`) needs a real id/title/topic/slots to hand the
+         requesting listener as Act 1 finishes — building those from a
+         stitched result that does not exist yet is impossible.
+     A nice side effect, not the point: an unresolvable topic now stops the
+     run BEFORE deepen/source/narrate spend anything, rather than after all
+     three run only to be discarded. */
+  const generatedAt = now().toISOString();
+  const title = `${intent.subject}${intent.angle ? `: ${intent.angle}` : ""}`.slice(0, 120);
+  const topicText = [intent.subject, intent.angle, spine.acts.map((a) => a.title).join(" ")].join(" ");
+  const topic = options.topic ?? resolveTopic(topicText, { root: options.root }).resolved;
+  if (!topic) {
+    return {
+      outcome: "unresolved-topic",
+      title,
+      candidates: resolveTopic(topicText, { root: options.root }).candidates,
+      timings: timings.all()
+    };
+  }
+  const forayId = forayIdFor(title, generatedAt);
+  const slots = slotsFromSpine(spine);
+  const allActTitles = spine.acts.map((a) => a.title);
+
   // §4.4 — deepen every act, in parallel across acts.
   const deepened = await timings.run("deepen", () => deepenActs(spine, deepenBuilder, ctx));
 
@@ -290,31 +364,50 @@ export async function runForayPipeline(
     writeNarration(sourced.acts, { writer: narrationWriter, verifier: narrationVerifier }, spine.voice, ctx)
   );
 
+  /* WS-D2's clock: set once, the first time `onActReady` fires for act
+     index 0, then carried unchanged on every later act's rewrite — matches
+     `PartialCandidate.ttlA1Ms`'s own doc comment. */
+  let ttlA1Ms: number | null = null;
+
   // §4.8 — stitch, smoothing each act's introduction against the one before it.
   const stitched = await timings.run("stitch", () =>
-    stitchForay(deepened, written, { continuity: { builder: continuityBuilder } }, ctx)
+    stitchForay(
+      deepened,
+      written,
+      {
+        continuity: { builder: continuityBuilder },
+        onActReady: deps.onActReady
+          ? async ({ actIndex, itemsSoFar }) => {
+              if (actIndex === 0) ttlA1Ms = Date.now() - pipelineStartMs;
+              /* The disclosure is prepended here for the SAME reason the
+                 whole-Foray path prepends it below: it is a Foray-level
+                 obligation stitch has no concept of, and `check-forays.mjs`
+                 requires items[0] to be it — a partial candidate is
+                 something `finalizeForay` inside `buildPartialCandidate`
+                 validates with those same gates, so it needs the same
+                 opening item the final candidate gets. */
+              const itemsWithDisclosure = [disclosureItem(intent.subject, slots[0]!.id), ...itemsSoFar];
+              const candidate = await buildPartialCandidate(
+                {
+                  actIndex,
+                  totalActs: allActTitles.length,
+                  allActTitles,
+                  items: itemsWithDisclosure,
+                  slots: slots.slice(0, slotCountThroughAct(spine, actIndex)),
+                  runtimeSec: runtimeSecFor(itemsWithDisclosure),
+                  ttlA1Ms
+                },
+                { id: forayId, title, topic, summary: intent.subject, authorId: options.userId, builtAt: generatedAt, root: options.root },
+                finalize
+              );
+              await deps.onActReady!(candidate);
+            }
+          : undefined
+      },
+      ctx
+    )
   );
 
-  /* The Foray-level fields §4.9 says nothing upstream owns. Resolved here
-     because this is the first place that has both the intent and the finished
-     spine to resolve them from. An unresolvable topic stops the run BEFORE
-     finalize: publishing under a wrong-but-valid taxonomy node is the one
-     failure `check-forays.mjs` cannot catch, since it only asks whether the
-     node exists. */
-  const generatedAt = now().toISOString();
-  const title = `${intent.subject}${intent.angle ? `: ${intent.angle}` : ""}`.slice(0, 120);
-  const topicText = [intent.subject, intent.angle, spine.acts.map((a) => a.title).join(" ")].join(" ");
-  const topic = options.topic ?? resolveTopic(topicText, { root: options.root }).resolved;
-  if (!topic) {
-    return {
-      outcome: "unresolved-topic",
-      title,
-      candidates: resolveTopic(topicText, { root: options.root }).candidates,
-      timings: timings.all()
-    };
-  }
-
-  const slots = slotsFromSpine(spine);
   /* The disclosure is prepended here rather than inside stitch: it is a
      Foray-level obligation, not an act's content, and stitch has no concept of
      "the whole Foray" to attach it to. Prepending also keeps it out of the
@@ -322,7 +415,7 @@ export async function runForayPipeline(
   const items = [disclosureItem(intent.subject, slots[0]!.id), ...stitched.items];
 
   const input: FinalizeForayInput = {
-    id: forayIdFor(title, generatedAt),
+    id: forayId,
     title,
     topic,
     summary: intent.subject,
@@ -333,8 +426,7 @@ export async function runForayPipeline(
   };
 
   // §4.9 — validate against the same two checkers CI runs. Writes nothing.
-  const finalize = deps.finalize ?? finalizeForay;
   const result = await timings.run("finalize", () => finalize(input, options.root));
 
-  return { outcome: "generated", input, result, spine, timings: timings.all() };
+  return { outcome: "generated", input, result, spine, timings: timings.all(), ttlA1Ms };
 }
