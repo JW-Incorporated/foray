@@ -1345,7 +1345,7 @@ const BACKEND_FLOORS = {
      ("prompts are discarded") enforced structurally — this suite scans the
      generation-stage source for persistence primitives and proves a full
      understand-prompt run touches no file on disk. */
-  "test/promptNoPersistence.test.ts": 3,
+  "test/promptNoPersistence.test.ts": 4,
   "test/property/dedup.property.test.ts": 5,
   "test/property/duration.property.test.ts": 5,
   "test/property/html.property.test.ts": 4,
@@ -1412,7 +1412,7 @@ const BACKEND_FLOORS = {
      proven with a spy test), the exact check-forays.mjs-compatible
      disclosure template, and decideConnectiveNarration()'s seam-position
      table for tape-adjacent beats needing short connective narration. */
-  "test/writeNarration.test.ts": 19,
+  "test/writeNarration.test.ts": 39,
   /* Stage 3b (kanban t_567b570f, docs/show-pages-plan.md §Stage 3): shared
      catalogue store CRUD (scoping by show_id, upsert-not-duplicate on
      (show_id, guid), published_at ordering, feed-state round-trip). */
@@ -1449,6 +1449,13 @@ const BACKEND_FLOORS = {
      why no live-generation-lead monitoring is built here). */
   "test/finalizeForay.test.ts": 5,
   "test/stageTiming.test.ts": 5,
+  /* WS-A evidence-first narration (generation fix plan 2026-09-09): the
+     per-beat evidence pack (tape cue window + up to three retrieved print
+     passages, cached by claim hash) and the mechanical narration rules run 1's
+     writer kept breaking — every fixture in the second suite is a span,
+     publication or sentence a page actually shipped in that run. */
+  "test/gatherEvidence.test.ts": 19,
+  "test/narrationRules.test.ts": 21,
 };
 
 /* `it(` as well as `test(`: backend's suites use both spellings. */
