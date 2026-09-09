@@ -118,6 +118,14 @@ export interface EvidenceBeat {
   claim: string;
   kind?: BeatKind;
   tape?: TapePointer;
+  /** This beat's page CARRIES content (a Patch or a Carry), so a pack with
+   * no print documents in it is not a page that says less — it is no page
+   * at all, and `writeNarration.ts` will not call the writer for it. Only
+   * for such a beat is an empty retrieval retried once with a rephrased
+   * query (F-60); a connective page can legitimately be written from no
+   * documents, and paying for a second search on its behalf buys nothing.
+   * Absent means false. */
+  requiresEvidence?: boolean;
 }
 
 export interface EvidenceGatherer {
@@ -142,6 +150,84 @@ export function beatKindOf(beat: { kind?: unknown }): BeatKind {
 export function claimHash(claim: string): string {
   const normalized = String(claim ?? "").toLowerCase().replace(/\s+/g, " ").trim();
   return crypto.createHash("sha1").update(normalized).digest("hex").slice(0, 16);
+}
+
+/** Words that carry no retrieval signal: they appear in every English
+ * sentence, so a query built from them matches everything and finds
+ * nothing. Includes the contractions a purpose sentence uses ("shouldn't")
+ * because the apostrophe form survives the tokenizer. */
+const RETRIEVAL_STOPWORDS = new Set([
+  "about", "after", "again", "against", "already", "also", "another", "anything", "because", "been",
+  "before", "being", "below", "between", "both", "cannot", "could", "couldn't", "does", "doesn't",
+  "doing", "done", "down", "during", "each", "either", "else", "even", "ever", "every", "from",
+  "further", "gets", "goes", "gone", "have", "haven't", "having", "here", "how", "however", "into",
+  "isn't", "itself", "just", "keeps", "kind", "less", "like", "little", "lots", "made", "make",
+  "makes", "many", "might", "more", "most", "much", "must", "never", "nothing", "often", "once",
+  "only", "other", "others", "over", "own", "part", "particular", "perhaps", "rather", "really",
+  "same", "several", "should", "shouldn't", "simply", "since", "some", "someone", "something",
+  "still", "such", "sure", "take", "takes", "than", "that", "their", "them", "then", "there",
+  "these", "they", "thing", "things", "this", "those", "though", "through", "thus", "time", "under",
+  "until", "upon", "used", "uses", "very", "wasn't", "well", "were", "what", "when", "where",
+  "whether", "which", "while", "whole", "will", "with", "within", "without", "won't", "would",
+  "wouldn't", "your", "yours"
+]);
+
+/** How many words the rephrased query keeps. The fix plan's number: six to
+ * eight distinctive nouns is a search query; a whole purpose sentence is
+ * an essay, and a search engine handed an essay matches the framing rather
+ * than the subject. */
+export const REPHRASED_QUERY_MAX_WORDS = 8;
+
+/**
+ * F-60's second query. The first retrieval is the beat purpose verbatim —
+ * a full editorial sentence, framing and all ("Mature pipelines treat a
+ * dataset the way a build system treats source code: a schema check … fails
+ * the run outright"). When that returns nothing, asking the same question
+ * the same way again is not a retry, so this strips the sentence to the
+ * nouns a librarian would have searched for.
+ *
+ * The rule is deliberately mechanical, because a model call to rewrite a
+ * query is exactly the kind of spend this finding is about: keep the words
+ * of the FIRST sentence (the subject and what it is predicated of; a
+ * purpose's later clauses are analogy and consequence), drop the
+ * stopwords, and keep the longest remaining ones — length is a free and
+ * surprisingly good proxy for rarity in English, and rarity is what makes
+ * a search term distinctive. Ties break on first appearance, and the words
+ * are emitted in their original order so the query still reads as a
+ * phrase.
+ *
+ * Returns "" when the purpose has too few distinctive words to say
+ * anything different from what was already asked — the caller then makes
+ * no second call at all.
+ */
+export function rephraseClaimForRetrieval(claim: string, maxWords: number = REPHRASED_QUERY_MAX_WORDS): string {
+  const text = String(claim ?? "").trim();
+  if (!text) return "";
+  const firstSentence = text.split(/(?<=[.!?…])\s+/)[0] ?? text;
+
+  const candidates: Array<{ word: string; index: number }> = [];
+  const seen = new Set<string>();
+  const consider = (source: string): void => {
+    for (const raw of source.split(/[^A-Za-z'-]+/)) {
+      const word = raw.replace(/^[-']+|[-']+$/g, "");
+      const key = word.toLowerCase();
+      if (word.length < 4 || seen.has(key) || RETRIEVAL_STOPWORDS.has(key)) continue;
+      seen.add(key);
+      candidates.push({ word, index: candidates.length });
+    }
+  };
+  consider(firstSentence);
+  // A one-clause purpose can be shorter than the query; top up from the
+  // rest of the text rather than returning three words.
+  if (candidates.length < 6 && firstSentence !== text) consider(text.slice(firstSentence.length));
+
+  if (candidates.length < 3) return "";
+  const kept = [...candidates]
+    .sort((a, b) => b.word.length - a.word.length || a.index - b.index)
+    .slice(0, maxWords)
+    .sort((a, b) => a.index - b.index)
+    .map((c) => c.word);
+  return kept.join(" ");
 }
 
 export interface EvidenceGathererOptions {
@@ -197,7 +283,7 @@ export class DefaultEvidenceGatherer implements EvidenceGatherer {
       }
     }
 
-    for (const doc of await this.printEvidenceFor(beat.claim, ctx)) pack.docs.push(doc);
+    for (const doc of await this.printEvidenceFor(beat.claim, ctx, beat.requiresEvidence === true)) pack.docs.push(doc);
     return pack;
   }
 
@@ -243,7 +329,37 @@ export class DefaultEvidenceGatherer implements EvidenceGatherer {
     };
   }
 
-  private async printEvidenceFor(claim: string, ctx: ExternalResearchContext): Promise<EvidenceDoc[]> {
+  /**
+   * The print half of a pack, in at most TWO queries (F-60).
+   *
+   * Run 2's act 1 p5 asked once, got `{"passages": []}`, cached it, and
+   * handed the writer a Carry page with no documents — which the
+   * mechanical rule then refused three times over, once per selection
+   * call, before ending the Foray. The first of those wasted calls is
+   * replaced here by a second RETRIEVAL: same beat, a query rephrased to
+   * its distinctive nouns, cached under its own hash so the first query's
+   * emptiness is never served in its place.
+   *
+   * Only for a page that carries content, and only ever once — a beat that
+   * genuinely has no published text behind it must reach
+   * `writeNarration.ts` with an empty pack, so that stage can degrade the
+   * page instead of paying a model to fail.
+   */
+  private async printEvidenceFor(claim: string, ctx: ExternalResearchContext, requiresEvidence: boolean): Promise<EvidenceDoc[]> {
+    const first = await this.retrieveFor(claim, ctx);
+    if (first.length > 0 || !requiresEvidence) return first;
+
+    const rephrased = rephraseClaimForRetrieval(claim);
+    if (!rephrased || claimHash(rephrased) === claimHash(claim)) return first;
+
+    console.warn(
+      `gatherEvidence: nothing was retrieved for "${claim.slice(0, 60)}" — asking once more for "${rephrased}" (F-60)`
+    );
+    return this.retrieveFor(rephrased, ctx);
+  }
+
+  /** One retrieval, cached by ITS OWN query's hash. */
+  private async retrieveFor(claim: string, ctx: ExternalResearchContext): Promise<EvidenceDoc[]> {
     const hash = claimHash(claim);
     const cached = this.readCache(hash);
     if (cached) return cached;
@@ -283,7 +399,7 @@ export class DefaultEvidenceGatherer implements EvidenceGatherer {
   }
 
   private readCache(hash: string): EvidenceDoc[] | null {
-    return this.cacheDir ? readEvidenceCache(this.cacheDir, hash) : null;
+    return this.cacheDir ? readEvidenceCache(this.cacheDir, hash, this.now) : null;
   }
 
   private writeCache(hash: string, docs: EvidenceDoc[]): void {

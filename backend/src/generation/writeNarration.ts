@@ -15,7 +15,8 @@ import {
   type NarratedBeat,
   type NarrationAttemptRecord,
   type NarrationMode,
-  type Source
+  type Source,
+  type UnverifiedReason
 } from "../types/narration";
 import type { Voice } from "../types/spine";
 import type { TranscriptCueProvider } from "./transcriptArchiveLookup";
@@ -85,10 +86,32 @@ import type { NarrationVerifierBuilder, PageVerdict, VerifyPageBrief } from "./N
  * Foray, the gate decides. `unverifiedPages` in `meta.veracity` counts
  * these pages and the gate refuses on any of them.
  *
- * `NarrationWriteError` survives for the one genuinely unrecoverable
- * case: no page at all — every attempt was rejected before the prose call
- * ran, typically because nothing was retrieved for the beat, so there is
- * no script to keep and nothing for an editor to fix.
+ * NO EVIDENCE IS NOT A FAILURE EITHER (F-60). Run 2's act 1 p5 asked for
+ * evidence, got `{"passages": []}`, and then spent THREE claim-selection
+ * calls on a prompt whose own text said "Documents: none were retrieved
+ * for this page" — each one rejected by a mechanical rule ("a Carry page
+ * cannot be written unsourced") before any model could have helped, each
+ * retry note telling the writer to fix a rejection it had no way to fix,
+ * and the third leaving no page at all, which was fatal. Both halves are
+ * closed: `gatherEvidence` asks a second, rephrased query before giving
+ * up, and a content page whose pack is STILL empty never reaches the
+ * writer at all. It becomes an unverified hand-off — a question and a
+ * bridge, asserting nothing, `unverifiedReason: "no-evidence"` — counted
+ * by `unverifiedPages` and refused by the same gate.
+ *
+ * The beat KEEPS ITS PAGE rather than losing it the way a connective page
+ * is dropped, and that is forced rather than chosen: a connective page's
+ * beat survives as its tape, while a narration beat IS its page, so
+ * dropping one would drop a beat — and §4.5's guarantee that the beat list
+ * comes out of the pipeline exactly as it went in (`validateSourcing`,
+ * and `stitchAct`/`computePagesDropped`, which index written beats
+ * positionally against sourced ones) would break.
+ *
+ * `NarrationWriteError` therefore no longer fires for any page. It
+ * survives as the guard on the one thing left that this stage cannot
+ * honestly return — a slot that came out with fewer beats than it went in
+ * with — which is unreachable by construction and pinned as unreachable by
+ * a test.
  *
  * PER-SLOT CHECKPOINT (F-51's second half): `resume`/`onSlotWritten` in
  * `WriteNarrationOptions` are the same pair of callbacks `deepenActs` has
@@ -98,6 +121,15 @@ import type { NarrationVerifierBuilder, PageVerdict, VerifyPageBrief } from "./N
  * that failed.
  */
 
+/**
+ * A slot that lost beats — the one unrecoverable outcome left in §4.7.
+ *
+ * It used to mean "this page could not be written", and that is precisely
+ * what it must no longer mean: a page that cannot be written is kept
+ * unverified (F-51) or, when there was nothing to write it from, degraded
+ * to a hand-off (F-60), and the veracity gate decides. Nothing in the
+ * per-page path throws.
+ */
 export class NarrationWriteError extends Error {
   constructor(
     public readonly claim: string,
@@ -109,6 +141,17 @@ export class NarrationWriteError extends Error {
   }
 }
 
+/**
+ * One page's validation failure, with every rejection that produced it.
+ *
+ * Kept, and no longer thrown by this module: F-51 turned a page's third
+ * rejection into an unverified page and F-60 turned an unwritable one into
+ * a hand-off, so there is no path left that ends a run over a page. It
+ * remains the typed shape of "this page did not validate, and here is
+ * every reason" — the record `foray-generation-requirements.md` §8's
+ * failure table still describes, and the type an editor tool would build
+ * from `NarratedBeat.attempts`.
+ */
 export class InvalidNarratedBeatError extends Error {
   constructor(
     public readonly claim: string,
@@ -338,12 +381,32 @@ async function writeSlot(
         {
           claim: page.claim,
           kind: beatKindOf(beat as unknown as { kind?: unknown }),
+          /* F-60: only a page that CARRIES content is worth a second,
+             rephrased retrieval query when the first comes back empty. A
+             connective page can be written from no documents at all. */
+          requiresEvidence: pageCarriesContent(page.mode),
           ...(beat.sourcing === "tape" ? { tape: beat.tape } : {})
         },
         ctx
       );
     })
   );
+
+  /* F-60, THE GUARD THAT SPENDS NOTHING. A Patch/Carry page whose pack is
+     empty after `gatherEvidence`'s two queries cannot be written by any
+     model: `validateSelectedClaims` will reject whatever comes back, in
+     code, before the prose call — which is exactly what run 2 paid three
+     selection calls to discover. Marking the page here takes it out of
+     `pending`, so a slot whose every page is in this state makes ZERO
+     writer calls. */
+  for (const page of pages) {
+    if (!pageCarriesContent(page.mode) || page.evidence.docs.length > 0) continue;
+    console.warn(
+      `writeNarration: no evidence for the ${page.mode} page "${page.claim.slice(0, 80)}" (slot "${slot.title}") after two retrieval queries — ` +
+        "degrading it to an unverified hand-off without calling the writer; the veracity gate refuses to publish over it (F-60)"
+    );
+    page.result = handOffPage("no-evidence", NO_EVIDENCE_NOTE, [], heldDocsOf(page.evidence));
+  }
 
   for (let attempt = 0; attempt < NARRATION_PAGE_ATTEMPTS; attempt++) {
     const pending = pages.filter((p) => !p.result);
@@ -362,14 +425,8 @@ async function writeSlot(
          Foray down either. The last attempt is kept unverified and the
          run continues; `meta.veracity.unverifiedPages` counts it and
          `evaluateVeracityGate` refuses to publish over it. */
-      const result = page?.result ?? (page ? unverifiedResultFor(page, slot.title) : undefined);
-      if (!result) {
-        throw new NarrationWriteError(
-          beat.claim,
-          beat.narration.mode,
-          new InvalidNarratedBeatError(beat.claim, beat.narration.mode, page?.rejections ?? ["no page was produced"])
-        );
-      }
+      const result =
+        page?.result ?? (page ? unverifiedResultFor(page, slot.title) : undefined) ?? noPageFor(page, slot.title, beat.claim);
       beats.push({ sourcing: "narration", claim: beat.claim, exploration: beat.exploration, narration: result });
       continue;
     }
@@ -394,7 +451,106 @@ async function writeSlot(
     });
   }
 
+  /* THE LAST PLACE `NarrationWriteError` CAN FIRE — and it cannot. Every
+     narration beat above leaves a page behind (verified, unverified, or a
+     degraded hand-off) and every tape beat leaves its tape, so `beats` is
+     built one entry per input beat with no branch that skips one. The
+     check stays because the invariant is worth more than the branch costs:
+     if a future edit ever does drop a beat, §4.5's beat list would silently
+     stop matching §4.7's output and every positional consumer downstream
+     (`stitchAct`'s coverage, `computePagesDropped`) would quietly
+     misattribute pages to beats. `writeNarration.test.ts` pins this as
+     unreachable rather than as behaviour. */
+  if (beats.length !== slot.beats.length) {
+    const first = slot.beats[0]!;
+    throw new NarrationWriteError(
+      first.claim,
+      first.sourcing === "narration" ? first.narration.mode : "Frame",
+      new Error(
+        `slot "${slot.title}" came out with ${beats.length} of ${slot.beats.length} beats — §4.5's beat list must survive §4.7 unchanged`
+      )
+    );
+  }
+
   return { title: slot.title, beats };
+}
+
+/** A Patch or a Carry IS the beat's content (§4.7 rule 1) — the two modes
+ * `validateNarratedBeat` requires a source from, and therefore the two
+ * that cannot be written from an empty evidence pack. Every other mode is
+ * connective: a hand-off may legitimately assert nothing and cite nothing. */
+export function pageCarriesContent(mode: NarrationMode): boolean {
+  return mode === "Patch" || mode === "Carry";
+}
+
+/** What `verifierNotes` says on a page no verifier ever saw (F-60). */
+export const NO_EVIDENCE_NOTE = "no evidence retrieved after two queries";
+
+/**
+ * The script a page with nothing to say is allowed to have: one question
+ * and one instruction to the listener, and NOT ONE CLAIM ABOUT THE WORLD.
+ *
+ * That shape is not decorative — it is the only shape
+ * `validateNarratedBeat` lets through with zero sources
+ * (F-36/F-37/F-44's rule, settled in code so the verifier never has to
+ * sample it): every sentence is either a question or opens with a listener
+ * imperative, so `hasDeclarativeSentence` finds nothing to demand a source
+ * for. A listener hears a beat of narration that hands them onward; what
+ * they must never hear is this stage inventing content for a beat whose
+ * evidence never arrived.
+ */
+export const HANDOFF_SCRIPT =
+  "Where does this part of the story go next? Keep listening — the thread picks it up on the other side.";
+
+/** Connective, because the page IS a hand-off now: a Hinge's 50-135
+ * character band is the one `HANDOFF_SCRIPT` sits inside, and holding the
+ * beat's original Carry mode would leave a 100-character page claiming a
+ * 765-1870 character budget it has no content to fill. */
+export const HANDOFF_MODE: NarrationMode = "Hinge";
+
+/** A page that holds its beat's place without asserting anything —
+ * `verified: false` and a reason, so `unverifiedPages` counts it, the
+ * gate refuses it, and an editor can see at a glance whether there is a
+ * draft to fix (`no-page`) or a beat with no evidence behind it at all
+ * (`no-evidence`). */
+function handOffPage(
+  reason: UnverifiedReason,
+  notes: string,
+  attempts: NarrationAttemptRecord[],
+  evidence: EvidenceDoc[]
+): NarratedBeat {
+  return {
+    mode: HANDOFF_MODE,
+    script: HANDOFF_SCRIPT,
+    sources: [],
+    pronunciationHints: [],
+    verified: false,
+    unverifiedReason: reason,
+    verifierNotes: notes,
+    evidence,
+    attempts
+  };
+}
+
+/**
+ * The narration beat that produced no page at all: evidence existed, but
+ * no attempt ever cleared the mechanical rules far enough to reach the
+ * prose call, so there is no draft to keep unverified (F-51's salvage
+ * returned nothing).
+ *
+ * This used to be `NarrationWriteError`, i.e. the end of the Foray. It is
+ * now the same hand-off an evidence-less page gets, carrying `no-page` and
+ * the last rejection — because the gate refusing to publish a Foray with
+ * one placeholder page in it is strictly better than discarding every
+ * other page in the run to prevent that page from existing.
+ */
+function noPageFor(page: PendingPage | undefined, slotTitle: string, claim: string): NarratedBeat {
+  const notes = (page?.rejections[page.rejections.length - 1] ?? "no page was produced").trim();
+  console.warn(
+    `writeNarration: no page was ever produced for "${claim.slice(0, 80)}" (slot "${slotTitle}") — ` +
+      `keeping an unverified hand-off in its place so the rest of the Foray survives (F-51/F-60): ${notes.slice(0, 200)}`
+  );
+  return handOffPage("no-page", notes, page?.attempts ?? [], page ? heldDocsOf(page.evidence) : []);
 }
 
 /** One attempt over the slot's still-pending pages: select, check, write,

@@ -8,11 +8,16 @@ import {
   allWrittenNarration,
   evidenceGathererFor,
   heldDocsOf,
+  pageCarriesContent,
+  HANDOFF_MODE,
+  HANDOFF_SCRIPT,
+  NO_EVIDENCE_NOTE,
   NarrationWriteError,
   type WriteNarrationOptions,
   type WrittenAct,
   type WrittenSlot
 } from "../src/generation/writeNarration";
+import { computeUnverifiedPages } from "../src/generation/veracityMetrics";
 import { DefaultEvidenceGatherer } from "../src/generation/gatherEvidence";
 import { StubExternalResearcher } from "../src/generation/StubExternalResearcher";
 import { NullTranscriptCueProvider } from "../src/generation/transcriptArchiveLookup";
@@ -37,12 +42,13 @@ import type {
   NarrationVerifyRequest,
   NarrationVerifyResult
 } from "../src/generation/NarrationVerifierBuilder";
-import type { EvidenceDoc, EvidenceGatherer, EvidencePack } from "../src/generation/gatherEvidence";
+import type { EvidenceBeat, EvidenceDoc, EvidenceGatherer, EvidencePack } from "../src/generation/gatherEvidence";
 import {
   MODE_CHAR_BANDS,
   containsContestedLanguage,
   disclosureNarratedBeat,
   disclosureTemplate,
+  hasDeclarativeSentence,
   normalizeForQuoteMatch,
   purposeWasRevised,
   validateNarratedBeat,
@@ -800,16 +806,24 @@ describe("writeNarration — generation run 1 (2026-09-09) regressions", () => {
     expect(page.script.length).toBeGreaterThan(0);
   });
 
-  it("a Patch page with no evidence at all is rejected rather than written unsourced", async () => {
+  it("a Patch page with no evidence at all is never written unsourced — it is not written at all (F-60)", async () => {
+    /* This used to assert the rejection message. The rejection was correct
+       and useless: it was produced three times, one selection call each,
+       for a page no model could have written. The page is now degraded
+       before the first call, and what the old test really protected — that
+       nothing unsourced is ever asserted — is asserted here instead. */
     const writer = scriptedWriter([{ claims: [] }]);
-    await expect(
-      writeNarration(
-        narrationAct("A claim nothing could be retrieved for."),
-        { writer, verifier: passingVerifier(), evidence: fixtureGatherer([]) },
-        voice,
-        ctx
-      )
-    ).rejects.toThrow(/no evidence could be gathered/);
+    const written = await writeNarration(
+      narrationAct("A claim nothing could be retrieved for."),
+      { writer, verifier: passingVerifier(), evidence: fixtureGatherer([]) },
+      voice,
+      ctx
+    );
+    const page = allWrittenNarration(written)[0]!;
+    expect(writer.selectCalls).toBe(0);
+    expect(page.sources).toEqual([]);
+    expect(page.verified).toBe(false);
+    expect(hasDeclarativeSentence(page.script)).toBe(false);
   });
 });
 
@@ -1046,18 +1060,27 @@ describe("F-51 — a page never kills the Foray; the gate decides", () => {
     expect(pages.filter((p) => !p.verified)).toHaveLength(1);
   });
 
-  it("still throws NarrationWriteError when no page was ever written at all", async () => {
-    /* The one unrecoverable case left: every attempt was rejected before
-       the prose call ran, so there is no script to keep. */
+  it("keeps a hand-off instead of throwing when no page was ever written at all (F-60 closes F-51's last fatal branch)", async () => {
+    /* Evidence existed, but the writer selected nothing from it on all
+       three attempts, so no prose call ever ran and F-51's salvage has
+       nothing to keep. That used to throw `NarrationWriteError` and end the
+       Foray. It now leaves the same listener-safe hand-off an
+       evidence-less page gets, marked `no-page` so an editor can tell the
+       two apart, with the attempt history that explains it. */
     const writer = scriptedWriter([{ claims: [] }]);
-    await expect(
-      writeNarration(
-        narrationAct("A claim nothing could be retrieved for."),
-        { writer, verifier: passingVerifier(), evidence: fixtureGatherer([]) },
-        voice,
-        ctx
-      )
-    ).rejects.toThrow(NarrationWriteError);
+    const written = await writeNarration(
+      narrationAct("A claim the writer never selected anything for."),
+      { writer, verifier: passingVerifier(), evidence: fixtureGatherer([NBS_DOC]) },
+      voice,
+      ctx
+    );
+    const page = allWrittenNarration(written)[0]!;
+    expect(writer.selectCalls).toBe(3);
+    expect(page.verified).toBe(false);
+    expect(page.unverifiedReason).toBe("no-page");
+    expect(page.script).toBe(HANDOFF_SCRIPT);
+    expect(page.attempts).toHaveLength(3);
+    expect(page.verifierNotes).toMatch(/must select at least one claim/);
   });
 
   it("a connective page is still DROPPED rather than kept unverified — its beat is the tape", async () => {
@@ -1071,6 +1094,189 @@ describe("F-51 — a page never kills the Foray; the gate decides", () => {
     const beat = written[0]!.slots[0]!.beats[0]!;
     expect(beat.sourcing === "tape" && beat.connectiveNarration).toBeFalsy();
     expect(allWrittenNarration(written)).toHaveLength(0);
+  });
+});
+
+describe("F-60 — a page with no evidence never costs a selection call", () => {
+  /* Run 2 attempt 2, act 1, slot 2, page p5, verbatim. Retrieval returned
+     `{"passages": []}`; three claim-selection calls followed, each on a
+     prompt that said "Documents: none were retrieved for this page", each
+     rejected in code before any model could help, and the third left no
+     page at all — which was fatal. */
+  const P5_PURPOSE =
+    "Mature pipelines treat a dataset the way a build system treats source code: a schema check — wrong type, " +
+    "an out-of-range value, a null where one shouldn't be — fails the run outright, the same way a type error " +
+    "fails a compile, rather than letting a corrupted batch train a model that ships anyway.";
+  const P5_SLOT = "Where Did This Number Come From?";
+
+  function emptyPackAct(mode: "Patch" | "Carry" = "Carry"): SourcedAct[] {
+    return [
+      {
+        title: "How AI systems get built",
+        slots: [{ title: P5_SLOT, beats: [{ sourcing: "narration", claim: P5_PURPOSE, exploration: false, narration: { mode, reason: "t" } }] }]
+      }
+    ];
+  }
+
+  /** Records what the writer stage asked the gatherer for, and hands back
+   * documents per claim — the run-2 slot had one of each. */
+  function recordingGatherer(docsFor: (claim: string) => EvidenceDoc[], seen: EvidenceBeat[] = []): EvidenceGatherer & { seen: EvidenceBeat[] } {
+    return {
+      seen,
+      async gather(beat): Promise<EvidencePack> {
+        seen.push(beat);
+        return { purpose: beat.claim, beatKind: "account", docs: docsFor(beat.claim) };
+      }
+    };
+  }
+
+  it("makes ZERO writer and verifier calls for a Carry page whose pack is empty", async () => {
+    const writer = scriptedWriter([{ claims: [GOOD_CLAIM] }]);
+    const verifier = passingVerifier();
+    const evidence = recordingGatherer(() => []);
+
+    const written = await writeNarration(emptyPackAct(), { writer, verifier, evidence }, voice, ctx);
+
+    expect(writer.selectCalls).toBe(0);
+    expect(writer.writeCalls).toBe(0);
+    expect(verifier.calls).toBe(0);
+    /* And the gatherer was told this page carries content, which is what
+       licenses its own second, rephrased query (gatherEvidence.test.ts). */
+    expect(evidence.seen[0]!.requiresEvidence).toBe(true);
+    expect(pageCarriesContent("Carry")).toBe(true);
+    expect(pageCarriesContent("Frame")).toBe(false);
+
+    const page = allWrittenNarration(written)[0]!;
+    expect(page.verified).toBe(false);
+    expect(page.unverifiedReason).toBe("no-evidence");
+    expect(page.verifierNotes).toBe(NO_EVIDENCE_NOTE);
+    expect(page.attempts).toEqual([]);
+    expect(page.mode).toBe(HANDOFF_MODE);
+    expect(page.script).toBe(HANDOFF_SCRIPT);
+  });
+
+  it("the degraded page's ONLY fault is that it is unverified — it asserts nothing and cites nothing", async () => {
+    const written = await writeNarration(
+      emptyPackAct(),
+      { writer: new StubNarrationWriterBuilder(), verifier: passingVerifier(), evidence: fixtureGatherer([]) },
+      voice,
+      ctx
+    );
+    const page = allWrittenNarration(written)[0]!;
+    const result = validateNarratedBeat(page, { bannedPhrasePatterns: BANNED, heldDocs: [], purposeText: P5_PURPOSE });
+    /* Zero sources is legal only for a page that states nothing about the
+       world (F-36/F-37/F-44), the script sits inside its mode's band, and
+       no copy rule is broken. What is left is the one thing that IS true
+       of this page. */
+    expect(result.issues.map((i) => i.code)).toEqual(["not-verified"]);
+  });
+
+  it("is counted in unverifiedPages, so the publish gate refuses it exactly as it refuses F-51's pages", async () => {
+    const written = await writeNarration(
+      emptyPackAct(),
+      { writer: new StubNarrationWriterBuilder(), verifier: passingVerifier(), evidence: fixtureGatherer([]) },
+      voice,
+      ctx
+    );
+    const unverified = computeUnverifiedPages(written);
+    expect(unverified.count).toBe(1);
+    expect(unverified.pages[0]!.claim).toBe(P5_PURPOSE);
+  });
+
+  it("degrades the PAGE, never the beat — §4.5's beat list survives §4.7 unchanged", async () => {
+    /* The reason a content page is kept rather than dropped the way a
+       connective page is: a connective page's beat is its tape and
+       survives without it, while a narration beat IS its page. Dropping
+       one would drop a beat, and `stitchAct`'s coverage and
+       `computePagesDropped` both index written beats positionally against
+       sourced ones. */
+    const acts = emptyPackAct();
+    const written = await writeNarration(
+      acts,
+      { writer: new StubNarrationWriterBuilder(), verifier: passingVerifier(), evidence: fixtureGatherer([]) },
+      voice,
+      ctx
+    );
+    const inBeats = acts[0]!.slots[0]!.beats;
+    const outBeats = written[0]!.slots[0]!.beats;
+    expect(outBeats).toHaveLength(inBeats.length);
+    expect(outBeats[0]!.claim).toBe(inBeats[0]!.claim);
+    expect(outBeats[0]!.sourcing).toBe("narration");
+  });
+
+  it("replays run 2's slot: the evidence-less page degrades, its neighbour is written, and ONE selection call is spent", async () => {
+    const sourced = "Show what the schema check was asked to catch.";
+    const acts: SourcedAct[] = [
+      {
+        title: "How AI systems get built",
+        slots: [
+          {
+            title: P5_SLOT,
+            beats: [
+              { sourcing: "narration", claim: sourced, exploration: false, narration: { mode: "Patch", reason: "t" } },
+              { sourcing: "narration", claim: P5_PURPOSE, exploration: false, narration: { mode: "Carry", reason: "t" } }
+            ]
+          }
+        ]
+      }
+    ];
+    const writer = scriptedWriter([{ claims: [GOOD_CLAIM] }]);
+    const verifier = passingVerifier();
+
+    const written = await writeNarration(
+      acts,
+      { writer, verifier, evidence: recordingGatherer((claim) => (claim === sourced ? [NBS_DOC] : [])) },
+      voice,
+      ctx
+    );
+
+    /* One selection call, one prose call, one verify call — for the ONE
+       page that had documents. Run 2 spent three selection calls on the
+       other one and then ended the Foray. */
+    expect(writer.selectCalls).toBe(1);
+    expect(writer.writeCalls).toBe(1);
+    expect(verifier.calls).toBe(1);
+
+    const pages = allWrittenNarration(written);
+    expect(pages).toHaveLength(2);
+    expect(pages[0]!.verified).toBe(true);
+    expect(pages[1]!.unverifiedReason).toBe("no-evidence");
+  });
+
+  it("leaves NarrationWriteError guarding the beat count only, and nothing reaches it", async () => {
+    /* The class survives for a slot that came out with fewer beats than it
+       went in with — unreachable, because every branch above pushes one
+       written beat per sourced beat. Both former throw sites are exercised
+       here in one call: a page with no evidence, and a page whose writer
+       never selected anything from the evidence it had. */
+    const acts: SourcedAct[] = [
+      {
+        title: "How AI systems get built",
+        slots: [
+          {
+            title: P5_SLOT,
+            beats: [
+              { sourcing: "narration", claim: P5_PURPOSE, exploration: false, narration: { mode: "Carry", reason: "t" } },
+              { sourcing: "narration", claim: "A claim the writer selects nothing for.", exploration: false, narration: { mode: "Patch", reason: "t" } }
+            ]
+          }
+        ]
+      }
+    ];
+    const written = await writeNarration(
+      acts,
+      {
+        writer: scriptedWriter([{ claims: [] }]),
+        verifier: passingVerifier(),
+        evidence: recordingGatherer((claim) => (claim === P5_PURPOSE ? [] : [NBS_DOC]))
+      },
+      voice,
+      ctx
+    );
+    expect(written[0]!.slots[0]!.beats).toHaveLength(2);
+    expect(allWrittenNarration(written).map((p) => p.unverifiedReason)).toEqual(["no-evidence", "no-page"]);
+    // Still exported, still a distinct error type — for the invariant, not for a page.
+    expect(new NarrationWriteError("c", "Carry", new Error("x")).name).toBe("NarrationWriteError");
   });
 });
 

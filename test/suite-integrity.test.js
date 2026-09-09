@@ -1462,7 +1462,12 @@ const BACKEND_FLOORS = {
      and is flagged on both sides; a third rejection keeps the page unverified
      instead of throwing), plus the per-slot resume hooks and the cue provider
      the default evidence gatherer was silently dropping. */
-  "test/writeNarration.test.ts": 55,
+  /* F-60 raised this from 55: run 2's act 1 p5 — a Carry page whose retrieval
+     came back empty — now makes ZERO writer calls and comes out as an
+     unverified hand-off the gate refuses, and the two former throw sites (no
+     evidence, and no page ever produced) are pinned as degrade paths so the
+     surviving `NarrationWriteError` guards the beat count and nothing else. */
+  "test/writeNarration.test.ts": 61,
   /* Stage 3b (kanban t_567b570f, docs/show-pages-plan.md §Stage 3): shared
      catalogue store CRUD (scoping by show_id, upsert-not-duplicate on
      (show_id, guid), published_at ordering, feed-state round-trip). */
@@ -1564,7 +1569,11 @@ const BACKEND_FLOORS = {
      passages, cached by claim hash) and the mechanical narration rules run 1's
      writer kept breaking — every fixture in the second suite is a span,
      publication or sentence a page actually shipped in that run. */
-  "test/gatherEvidence.test.ts": 19,
+  /* F-60 raised this from 19: an empty retrieval for a page that CARRIES
+     content is asked once more with the purpose stripped to its distinctive
+     nouns, cached under that second query's own key, and a cached emptiness
+     stops being a cache hit after 24 hours. */
+  "test/gatherEvidence.test.ts": 27,
   "test/narrationRules.test.ts": 21,
 };
 

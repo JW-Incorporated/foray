@@ -172,6 +172,10 @@ export type PronunciationHint = z.infer<typeof PronunciationHintSchema>;
  * both optional so every existing producer/consumer of this schema is
  * unaffected until something actually populates them.
  */
+/** See `NarratedBeat.unverifiedReason`. */
+export const UnverifiedReasonSchema = z.enum(["no-evidence", "no-page"]);
+export type UnverifiedReason = z.infer<typeof UnverifiedReasonSchema>;
+
 export const NarratedBeatSchema = z
   .object({
     mode: NarrationModeSchema,
@@ -217,6 +221,24 @@ export const NarratedBeatSchema = z
      * below is the OR of the two, for anything that just wants the set. */
     purposeRevisedByVerifier: z.boolean().optional(),
     verifierNotes: z.string().trim().min(1).optional(),
+    /** WHY this page is unverified, when the answer is not "the verifier
+     * read it and objected" (F-60). Two shapes of page reach a listener
+     * with `verified: false`, and an editor triaging them needs to tell
+     * them apart at a glance:
+     *
+     *   "no-evidence" — nothing was retrieved for the beat, in two
+     *      differently-phrased queries, so no writer call was ever made
+     *      and the page is a listener-safe hand-off holding the beat's
+     *      place. There is no draft to fix; the beat needs evidence or it
+     *      needs cutting.
+     *   "no-page" — evidence existed but no attempt ever cleared the
+     *      mechanical rules far enough to produce prose, so the same
+     *      hand-off holds the place and `attempts` records what was tried.
+     *
+     * A page the verifier simply refused carries no reason at all: its
+     * `verifierNotes` is the objection, which is the more useful thing to
+     * read. */
+    unverifiedReason: UnverifiedReasonSchema.optional(),
     /** The documents this page's quotes were looked up in (WS-A). Optional
      * so nothing upstream of the evidence pack has to change; WS-B reads
      * it to compute `groundedQuoteRate`. */
