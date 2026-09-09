@@ -1,6 +1,6 @@
 import * as fs from "fs";
 import * as path from "path";
-import { tokenizeForCatalogueQuery } from "./catalogueLookup";
+import { tokenizeForSourcing } from "./catalogueLookup";
 
 /**
  * §4.5 tier-1 lookup: a deterministic (non-LLM) matcher against the
@@ -79,13 +79,13 @@ export const TIER1_MATCH_THRESHOLD = 2;
  * text (all fields a beat's claim could plausibly echo), highest first.
  */
 export function scoreSegmentsAgainstClaim(claimText: string, pool: SegmentRecord[]): SegmentMatch[] {
-  const claimTokens = new Set(tokenizeForCatalogueQuery(claimText));
+  const claimTokens = new Set(tokenizeForSourcing(claimText));
   if (claimTokens.size === 0) return [];
 
   const scored: SegmentMatch[] = [];
   for (const segment of pool) {
     const haystack = [segment.topic, segment.why, segment.start_anchor, segment.end_anchor].join(" ");
-    const haystackTokens = new Set(tokenizeForCatalogueQuery(haystack));
+    const haystackTokens = new Set(tokenizeForSourcing(haystack));
     let score = 0;
     for (const t of claimTokens) {
       if (haystackTokens.has(t)) score += 1;

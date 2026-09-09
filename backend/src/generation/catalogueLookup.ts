@@ -94,6 +94,34 @@ export function tokenizeForCatalogueQuery(text: string): string[] {
   return tokenize(text);
 }
 
+/** Function words that carry no topical signal. `tokenize`'s 27-word list is
+ * tuned for short catalogue queries; a beat CLAIM is a full sentence, and on
+ * 2026-09-09 (generation run 1) the tier-1 scorer matched a Kansas City
+ * walkway claim to a British hearth-cooking segment on `have, one, people,
+ * would` — four "shared tokens", zero shared meaning. Anything a claim about
+ * any subject would contain belongs here. */
+const SOURCING_STOPWORDS = new Set([
+  "about", "above", "after", "again", "all", "also", "although", "always", "among", "any", "because", "been",
+  "before", "being", "below", "between", "both", "but", "can", "cannot", "could", "did", "does", "doing",
+  "done", "down", "during", "each", "either", "else", "even", "ever", "every", "few", "first", "found",
+  "from", "further", "get", "got", "had", "has", "have", "having", "her", "here", "hers", "him", "his",
+  "however", "into", "just", "last", "later", "least", "less", "like", "likely", "made", "make", "many",
+  "may", "might", "more", "most", "much", "must", "near", "never", "new", "next", "nor", "now", "off",
+  "often", "once", "one", "ones", "only", "other", "others", "our", "out", "over", "own", "part", "people",
+  "per", "rather", "roughly", "same", "she", "should", "since", "some", "still", "such", "take", "taken",
+  "than", "their", "them", "then", "there", "these", "they", "thing", "things", "those", "though", "three",
+  "through", "thus", "time", "times", "too", "toward", "towards", "two", "under", "until", "upon", "use",
+  "used", "very", "way", "well", "when", "where", "whether", "which", "while", "will", "within",
+  "without", "would", "year", "years", "yet", "you", "your"
+]);
+
+/** The tokenizer the §4.5 SOURCING scorers use: `tokenize` minus function
+ * words. Kept separate from `tokenizeForCatalogueQuery` so a catalogue query
+ * typed by a person ("how to...") keeps its current behaviour. */
+export function tokenizeForSourcing(text: string): string[] {
+  return tokenize(text).filter((w) => !SOURCING_STOPWORDS.has(w));
+}
+
 /**
  * Finds semantic-index concepts whose terms overlap with the given text
  * (whole-token match, hyphens normalized to spaces on both sides so

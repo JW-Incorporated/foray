@@ -344,3 +344,75 @@ describe("pronunciation hints — the field exists structurally, even though not
     expect(Array.isArray(page.pronunciationHints)).toBe(true);
   });
 });
+
+describe("writeNarration — generation run 1 (2026-09-09) regressions", () => {
+  function scriptedWriter(pages: NarrationWriteResult[]): NarrationWriterBuilder & { calls: number; notes: Array<string | undefined> } {
+    const w = {
+      providerName: "scripted",
+      calls: 0,
+      notes: [] as Array<string | undefined>,
+      async writePage(req: NarrationWriteRequest): Promise<NarrationWriteResult> {
+        w.notes.push(req.contextNote);
+        const page = pages[Math.min(w.calls, pages.length - 1)]!;
+        w.calls++;
+        return page;
+      }
+    };
+    return w;
+  }
+  const okSource: Source = { claimText: "one welded joint carried both walkways", quote: "one welded joint carried both walkways", publication: "National Bureau of Standards, Building Science Series 143 (1982)", contested: false };
+  const framePage = (publication: string): NarrationWriteResult => ({
+    script: "One welded joint now carried both walkways' weight. Neither firm checked whether it could hold that load.",
+    sources: [{ ...okSource, publication }],
+    pronunciationHints: []
+  });
+
+  it("rejects a publication that is a tape item id and tells the writer why on the retry", async () => {
+    const writer = scriptedWriter([framePage("bfh-griddle-bakestone"), framePage(okSource.publication)]);
+    const acts: SourcedAct[] = [
+      { title: "Act", slots: [{ title: "Slot", beats: [{ sourcing: "tape", claim: "c", exploration: false, tape: tapePointer("bfh-griddle-bakestone") }] }] }
+    ];
+    const written = await writeNarration(acts, { writer, verifier: new StubNarrationVerifierBuilder() }, voice, ctx);
+    expect(writer.calls).toBe(2);
+    expect(writer.notes[1]).toMatch(/is a tape item id, not a publication/);
+    expect(allWrittenNarration(written)[0]!.sources[0]!.publication).toBe(okSource.publication);
+  });
+
+  it("gives a page three informed attempts, then drops a CONNECTIVE page but keeps the tape beat", async () => {
+    const writer = new StubNarrationWriterBuilder();
+    let verifyCalls = 0;
+    const alwaysRejects: NarrationVerifierBuilder = {
+      providerName: "always-reject",
+      async verifyPage(): Promise<NarrationVerifyResult> {
+        verifyCalls++;
+        return { verified: false, verifierNotes: "simulated rejection" };
+      }
+    };
+    const acts: SourcedAct[] = [
+      { title: "Act", slots: [{ title: "Slot", beats: [{ sourcing: "tape", claim: "Tape about a discovery.", exploration: false, tape: tapePointer("item-1") }] }] }
+    ];
+    const written = await writeNarration(acts, { writer, verifier: alwaysRejects }, voice, ctx);
+    expect(verifyCalls).toBe(3);
+    const beat = written[0]!.slots[0]!.beats[0]!;
+    expect(beat.sourcing).toBe("tape");
+    expect(beat.sourcing === "tape" && beat.connectiveNarration).toBeFalsy();
+    expect(allWrittenNarration(written)).toHaveLength(0);
+  });
+
+  it("still fails the Foray when a NARRATION beat's page is rejected three times — its page is the beat's content", async () => {
+    const writer = new StubNarrationWriterBuilder();
+    let verifyCalls = 0;
+    const alwaysRejects: NarrationVerifierBuilder = {
+      providerName: "always-reject",
+      async verifyPage(): Promise<NarrationVerifyResult> {
+        verifyCalls++;
+        return { verified: false, verifierNotes: "simulated rejection" };
+      }
+    };
+    const acts: SourcedAct[] = [
+      { title: "Act", slots: [{ title: "Slot", beats: [{ sourcing: "narration", claim: "A claim.", exploration: false, narration: { mode: "Patch", reason: "test" } }] }] }
+    ];
+    await expect(writeNarration(acts, { writer, verifier: alwaysRejects }, voice, ctx)).rejects.toThrow(NarrationWriteError);
+    expect(verifyCalls).toBe(3);
+  });
+});

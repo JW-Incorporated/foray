@@ -1,6 +1,6 @@
 import * as fs from "fs";
 import * as path from "path";
-import { tokenizeForCatalogueQuery } from "./catalogueLookup";
+import { tokenizeForSourcing } from "./catalogueLookup";
 
 /**
  * §4.5 tier-2 lookup: the transcript archive — "episodes we hold
@@ -98,17 +98,32 @@ export interface TranscriptArchiveMatch {
 export const TIER2_MATCH_THRESHOLD = 2;
 
 export function findTranscriptArchiveMatch(claimText: string, archive: TranscriptDigestEntry[] = loadTranscriptArchive()): TranscriptArchiveMatch | null {
-  const claimTokens = new Set(tokenizeForCatalogueQuery(claimText));
+  const claimTokens = new Set(tokenizeForSourcing(claimText));
   if (claimTokens.size === 0) return null;
 
+  /* WHY THE SHOW TITLE COUNTS FOR AT MOST ONE. Every episode of a show
+     shares its show-title tokens, so a show whose name overlaps the subject
+     ("Causality — Engineered Network" vs. an engineering claim) used to clear
+     the threshold for EVERY one of its episodes on show tokens alone, and the
+     first such episode in file order won: generation run 1 anchored a Kansas
+     City hanger-rod beat to the Chernobyl episode and a box-beam beat to
+     Three Mile Island (findings F-23/F-24). The episode title is the only
+     per-episode signal in a digest, so a match must include at least one
+     episode-title token; the show title can then add one point of
+     confidence, never carry the match by itself. */
   let best: TranscriptArchiveMatch | null = null;
   for (const entry of archive) {
-    const haystackTokens = new Set(tokenizeForCatalogueQuery(`${entry.show_title} ${entry.title}`));
+    const titleTokens = new Set(tokenizeForSourcing(entry.title));
+    const showTokens = new Set(tokenizeForSourcing(entry.show_title));
     let score = 0;
+    let showHit = 0;
     for (const t of claimTokens) {
-      if (haystackTokens.has(t)) score += 1;
+      if (titleTokens.has(t)) score += 1;
+      else if (showTokens.has(t)) showHit = 1;
     }
-    if (score > 0 && (!best || score > best.score)) best = { entry, score };
+    if (score === 0) continue; // show-title-only overlap is not a match
+    score += showHit;
+    if (!best || score > best.score) best = { entry, score };
   }
   if (!best || best.score < TIER2_MATCH_THRESHOLD) return null;
   return best;
@@ -142,6 +157,115 @@ export class NullTranscriptCueProvider implements TranscriptCueProvider {
   getCues(): TranscriptCue[] | null {
     return null;
   }
+}
+
+/**
+ * The provider a generation MACHINE runs with (2026-09-09, first agent-driven
+ * production run). Reads the normalized transcript bodies that
+ * `tools/segments/` writes to `data-local/transcripts/normalized/<show_id>-<hash>/
+ * <guid-slug>-<hash>.json` — `{ show_id, guid, cues: [{ start_sec, end_sec,
+ * text }] }` — and hands the cues to `resolveAnchorFromCues`. Until this
+ * existed, §4.5 tier 2 could never fire: `NullTranscriptCueProvider` was the
+ * only implementation, so every beat that matched an archived episode fell
+ * through to "unresolved" and the only tape a Foray could use was the 212-row
+ * pre-cut pool. On the machine that ran the first three agent-built Forays,
+ * 1,346 of the archive's 1,718 digest entries had a body on disk.
+ *
+ * Returns `null` (never throws) when the body is absent, unreadable, or has no
+ * usable cues — the same honest answer the Null provider gives, so a checkout
+ * without `data-local/` behaves exactly as before. The show directory is found
+ * by `show_id` prefix and the file by the guid's slug prefix, falling back to
+ * opening each file in the show directory and matching `guid` exactly, which
+ * covers guids the slug rule mangles (URLs, `Buzzsprout-…`). Reads are cached
+ * per process; a batch run asks for the same episode from many beats.
+ */
+export class FileTranscriptCueProvider implements TranscriptCueProvider {
+  private readonly root: string;
+  private readonly dirByShow = new Map<string, string | null>();
+  private readonly cuesByKey = new Map<string, TranscriptCue[] | null>();
+  private readonly guidIndexByDir = new Map<string, Map<string, string>>();
+
+  constructor(root: string = path.join(REPO_ROOT, "data-local", "transcripts", "normalized")) {
+    this.root = root;
+  }
+
+  getCues(entry: TranscriptDigestEntry): TranscriptCue[] | null {
+    const key = `${entry.show_id} ${entry.guid}`;
+    if (this.cuesByKey.has(key)) return this.cuesByKey.get(key) ?? null;
+    let result: TranscriptCue[] | null = null;
+    try {
+      const file = this.locate(String(entry.show_id), String(entry.guid));
+      if (file) result = readCues(file);
+    } catch {
+      result = null;
+    }
+    this.cuesByKey.set(key, result);
+    return result;
+  }
+
+  private showDir(showId: string): string | null {
+    if (this.dirByShow.has(showId)) return this.dirByShow.get(showId) ?? null;
+    let found: string | null = null;
+    if (fs.existsSync(this.root)) {
+      for (const d of fs.readdirSync(this.root)) {
+        if (d === showId || d.startsWith(`${showId}-`)) {
+          found = path.join(this.root, d);
+          break;
+        }
+      }
+    }
+    this.dirByShow.set(showId, found);
+    return found;
+  }
+
+  private locate(showId: string, guid: string): string | null {
+    const dir = this.showDir(showId);
+    if (!dir) return null;
+    const slug = guidSlug(guid);
+    const files = fs.readdirSync(dir).filter((f) => f.endsWith(".json"));
+    if (slug) {
+      const byName = files.find((f) => f.toLowerCase().startsWith(`${slug}-`) || f.toLowerCase() === `${slug}.json`);
+      if (byName) return path.join(dir, byName);
+    }
+    // Fallback: index the directory's real guids once, then look the guid up.
+    let index = this.guidIndexByDir.get(dir);
+    if (!index) {
+      index = new Map();
+      for (const f of files) {
+        try {
+          const j = JSON.parse(fs.readFileSync(path.join(dir, f), "utf8")) as { guid?: unknown };
+          if (typeof j.guid === "string") index.set(j.guid, path.join(dir, f));
+        } catch {
+          /* an unreadable body is simply not indexed */
+        }
+      }
+      this.guidIndexByDir.set(dir, index);
+    }
+    return index.get(guid) ?? null;
+  }
+}
+
+/** The slug `tools/segments/` uses for the file name: lowercase, non-alphanumerics to `-`. */
+function guidSlug(guid: string): string {
+  return String(guid ?? "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80);
+}
+
+function readCues(file: string): TranscriptCue[] | null {
+  const j = JSON.parse(fs.readFileSync(file, "utf8")) as { cues?: unknown };
+  if (!Array.isArray(j.cues)) return null;
+  const cues: TranscriptCue[] = [];
+  for (const c of j.cues as Array<Record<string, unknown>>) {
+    const text = typeof c?.text === "string" ? c.text : null;
+    const start = typeof c?.start_sec === "number" ? c.start_sec : null;
+    const end = typeof c?.end_sec === "number" ? c.end_sec : null;
+    if (text === null || start === null || end === null || !Number.isFinite(start) || !Number.isFinite(end) || end < start) continue;
+    cues.push({ text, start_sec: start, end_sec: end });
+  }
+  return cues.length ? cues : null;
 }
 
 /** Mirrors `tools/segments/merge-segments.mjs`'s `canonical()` exactly:

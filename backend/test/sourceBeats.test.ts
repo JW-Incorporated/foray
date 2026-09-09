@@ -443,3 +443,82 @@ describe("sourceBeats — Foray-wide assembly constraints", () => {
     expect(beats.filter((b) => b.sourcing === "narration")).toHaveLength(2);
   });
 });
+
+describe("sourceBeats — generation run 1 (2026-09-09) regressions: cross-domain false positives", () => {
+  // Beat 4 of run 1: the Kansas City code-load claim was tier-1-matched to a
+  // British hearth-cooking segment on the shared tokens `have, one, people,
+  // would`. Function words are not evidence of a shared subject.
+  const kansasCityClaim =
+    "The original, unrevised design was already carrying roughly half the load required by the Kansas City building code, so a full structural review — had one occurred — would likely have found the walkway inadequate even without the phone-call revision, meaning the design was failing before the failure that killed people.";
+
+  function griddleSegment(): SegmentRecord {
+    return {
+      id: "bfh-griddle-bakestone#740",
+      item_id: "bfh-griddle-bakestone",
+      topic: "food/food-history",
+      start_sec: 739.88,
+      end_sec: 865.1,
+      reference_duration_sec: 2764.45,
+      start_anchor: "I tossed a few things over a fire, not a historic reenactment with my girdle",
+      end_anchor: "the utility has been preserved because it's so it's still tied to our current food culture",
+      why: "Most British cooking happened at an open hearth until the mid-19th century, with no home oven. People would have had one hearth.",
+      confidence: "medium",
+      transcript_source: "asr-local",
+      dai_suspected: false,
+      source: "agent-v1",
+      batch_id: "seg-2026-08-16-bfh-hearth-a",
+      needs_review: false
+    };
+  }
+
+  it("does not anchor an engineering claim to a food-history segment that shares only function words", () => {
+    const spine: DeepenedAct[] = [
+      makeDeepenedAct({ slots: [{ title: "Hyatt", beats: [{ claim: kansasCityClaim, exploration: true }] }] })
+    ];
+    const result = sourceBeats(spine, { segmentPool: [griddleSegment()], transcriptArchive: [], cueProvider: { getCues: () => null } });
+    const beat = allSourcedBeats(result.acts)[0]!;
+    expect(beat.sourcing).toBe("narration");
+  });
+
+  it("against the REAL pool, a Kansas City walkway claim lands on the Hyatt Regency segment or on nothing — never on another topic", () => {
+    const spine: DeepenedAct[] = [
+      makeDeepenedAct({ slots: [{ title: "Hyatt", beats: [{ claim: kansasCityClaim, exploration: true }] }] })
+    ];
+    const result = sourceBeats(spine, { segmentPool: loadSegmentPool(), transcriptArchive: [], cueProvider: { getCues: () => null } });
+    const beat = allSourcedBeats(result.acts)[0]!;
+    if (beat.sourcing === "tape") {
+      expect(beat.tape.itemId).toMatch(/hyatt/);
+    }
+  });
+
+  it("tier 2 does not match an episode on show-title tokens alone (Causality/Chernobyl for a Hyatt beat)", () => {
+    const archive: TranscriptDigestEntry[] = [
+      {
+        show_id: "causality-engineered-network",
+        show_title: "Causality — Engineered Network",
+        guid: "c22",
+        title: "22: Chernobyl",
+        cues: 3,
+        feed_duration_sec: 3600,
+        span_implausible: false
+      }
+    ];
+    const cues: TranscriptCue[] = [
+      { text: "the original design called for a single hanger rod", start_sec: 10, end_sec: 14 },
+      { text: "the fabricator found the connection impractical", start_sec: 14, end_sec: 18 }
+    ];
+    const spine: DeepenedAct[] = [
+      makeDeepenedAct({
+        slots: [
+          {
+            title: "Hyatt",
+            beats: [{ claim: "The engineered hanger-rod network of the Kansas City walkway: the original design called for a single hanger rod.", exploration: false }]
+          }
+        ]
+      })
+    ];
+    const result = sourceBeats(spine, { segmentPool: [], transcriptArchive: archive, cueProvider: { getCues: () => cues } });
+    const beat = allSourcedBeats(result.acts)[0]!;
+    expect(beat.sourcing).toBe("narration");
+  });
+});

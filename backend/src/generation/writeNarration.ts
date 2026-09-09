@@ -54,7 +54,7 @@ export class NarrationWriteError extends Error {
     public readonly mode: NarrationMode,
     public readonly cause: unknown
   ) {
-    super(`Writing narration for "${claim}" (mode ${mode}) failed after 1 retry: ${(cause as Error)?.message ?? String(cause)}`);
+    super(`Writing narration for "${claim}" (mode ${mode}) failed after ${NARRATION_PAGE_ATTEMPTS} attempts: ${(cause as Error)?.message ?? String(cause)}`);
     this.name = "NarrationWriteError";
   }
 }
@@ -182,17 +182,39 @@ async function writeOneBeat(
   if (!connectiveMode) {
     return { sourcing: "tape", claim: beat.claim, exploration: beat.exploration, tape: beat.tape };
   }
-  const connective = await writePageAndVerify(
-    beat.claim,
-    connectiveMode,
-    voice,
-    writer,
-    verifier,
-    ctx,
-    `This is connective narration around real tape (source item ${beat.tape.itemId}); it hands the listener into or out of that tape, it does not restate the tape's own content (narration-craft.md's spoiler rule).`
-  );
-  return { sourcing: "tape", claim: beat.claim, exploration: beat.exploration, tape: beat.tape, connectiveNarration: connective };
+  /* A CONNECTIVE PAGE THAT CANNOT BE WRITTEN DOES NOT TAKE THE FORAY DOWN.
+     The beat's content is the tape; the Frame around it is a courtesy to the
+     listener that §4.8's silence-is-a-valid-bridge rule already covers when
+     no page exists. Run 1 attempt 3 died at beat 5 of 31 because a connective
+     page failed verification twice — thirty beats of finished work discarded
+     for one hand-off line. After the informed attempts are exhausted the beat
+     keeps its tape, the page is dropped, and the reason is logged so the
+     report shows it. A NARRATION-sourced beat still fails hard: dropping its
+     page would drop the beat's content. */
+  try {
+    const connective = await writePageAndVerify(
+      beat.claim,
+      connectiveMode,
+      voice,
+      writer,
+      verifier,
+      ctx,
+      `This is connective narration around real tape (source item ${beat.tape.itemId}); it hands the listener into or out of that tape, it does not restate the tape's own content (narration-craft.md's spoiler rule).`
+    );
+    return { sourcing: "tape", claim: beat.claim, exploration: beat.exploration, tape: beat.tape, connectiveNarration: connective };
+  } catch (err) {
+    if (!(err instanceof NarrationWriteError)) throw err;
+    console.warn(
+      `writeNarration: dropping the ${connectiveMode} page for tape beat "${beat.claim.slice(0, 80)}" after ${NARRATION_PAGE_ATTEMPTS} rejected attempts — tape kept, silence bridges (${err.message.slice(0, 200)})`
+    );
+    return { sourcing: "tape", claim: beat.claim, exploration: beat.exploration, tape: beat.tape };
+  }
 }
+
+export const NARRATION_PAGE_ATTEMPTS = 3;
+/** Lower-case hyphenated tokens with no spaces — the shape of every
+ * `data/segments.json` item id and of a tier-2 minted id. */
+const SLUG_LIKE = /^[a-z0-9]+(?:[-#][a-z0-9]+){2,}$/;
 
 async function writePageAndVerify(
   claim: string,
@@ -204,9 +226,25 @@ async function writePageAndVerify(
   contextNote?: string
 ): Promise<NarratedBeat> {
   let lastError: unknown;
-  for (let attempt = 0; attempt < 2; attempt++) {
+  /* THE RETRY IS INFORMED (2026-09-09, generation run 1). The first version of
+     this loop re-asked with the identical prompt, so a deterministic-enough
+     model returned the identical page and the second attempt failed for the
+     identical reason — run 1 died on its first Frame page exactly that way
+     ("a source is marked contested but the script does not say so"). A retry
+     that does not tell the writer what was wrong is a coin flip at best. The
+     rejected page's issues are appended to the context note so the second
+     attempt can fix them; the prompt is otherwise unchanged. */
+  let retryNote: string | undefined;
+  /* THREE ATTEMPTS, NOT TWO (attempt 3 of run 1). First attempts were rejected
+     5 times out of 5 and second attempts once in 5; with two attempts and ~31
+     pages the chance of finishing a medium Foray was (0.8)^31 — three runs died
+     at beats 1, 1 and 5. Each attempt is informed, so a third is not a coin
+     flip; a page that fails three informed attempts has a problem in its
+     purpose, which the caller decides how to handle. */
+  for (let attempt = 0; attempt < NARRATION_PAGE_ATTEMPTS; attempt++) {
     try {
-      const written = await writer.writePage({ claim, mode, voice, contextNote }, ctx);
+      const noteForAttempt = retryNote ? [contextNote, retryNote].filter(Boolean).join(" ") : contextNote;
+      const written = await writer.writePage({ claim, mode, voice, contextNote: noteForAttempt }, ctx);
 
       const structural = validateNarratedBeat(
         { mode, script: written.script, sources: written.sources, pronunciationHints: written.pronunciationHints, verified: true },
@@ -214,6 +252,18 @@ async function writePageAndVerify(
       );
       if (!structural.valid) {
         throw new InvalidNarratedBeatError(claim, mode, structural.issues.map((i) => i.message));
+      }
+      /* A publication that looks like an item id ("bfh-griddle-bakestone") is
+         the writer citing the tape slug it was handed as context (run 1, page
+         4 retry) — the verifier reads only the declared sources and passed it.
+         Cheap to catch here; the informed retry tells the writer why. */
+      const slugCited = written.sources.filter((s) => SLUG_LIKE.test(s.publication.trim()));
+      if (slugCited.length > 0) {
+        throw new InvalidNarratedBeatError(
+          claim,
+          mode,
+          slugCited.map((s) => `publication "${s.publication}" is a tape item id, not a publication — cite the real work the quote comes from, or drop the claim`)
+        );
       }
 
       const verification = await verifier.verifyPage({ claim, mode, voice, contextNote, ...written }, ctx);
@@ -231,6 +281,10 @@ async function writePageAndVerify(
       };
     } catch (err) {
       lastError = err;
+      const issues = err instanceof InvalidNarratedBeatError ? err.issues : [err instanceof Error ? err.message : String(err)];
+      retryNote =
+        `YOUR PREVIOUS ATTEMPT AT THIS PAGE WAS REJECTED for: ${issues.join("; ")}. ` +
+        "Write a corrected page that fixes every listed problem while keeping all other rules.";
     }
   }
   throw new NarrationWriteError(claim, mode, lastError);

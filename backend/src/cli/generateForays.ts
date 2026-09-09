@@ -2,6 +2,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import { runForayPipeline, type RunPipelineOutcome } from "../generation/runPipeline";
+import { FileTranscriptCueProvider } from "../generation/transcriptArchiveLookup";
 import type { GenerationRequest } from "../types/generation";
 import { env } from "../config/env";
 
@@ -139,6 +140,7 @@ async function main(): Promise<void> {
   const report: Array<{ prompt: string; outcome: string; detail: string; ms: number; file?: string }> = [];
   let generated = 0;
   let skipped = 0;
+  const cueProvider = new FileTranscriptCueProvider();
 
   for (const spec of queue) {
     const file = path.join(path.resolve(args.out), candidateFilename(spec.prompt));
@@ -157,7 +159,11 @@ async function main(): Promise<void> {
 
     let outcome: RunPipelineOutcome;
     try {
-      outcome = await runForayPipeline(request, { userId: args.authorId, topic: spec.topic });
+      /* The machine this driver runs on holds the transcript bodies (data-local/,
+         gitignored), so §4.5 tier 2 gets the real cue provider. On a checkout
+         without them the provider returns null for every episode and the run
+         behaves exactly as before — pool segments only. */
+      outcome = await runForayPipeline(request, { userId: args.authorId, topic: spec.topic }, { cueProvider });
     } catch (err) {
       /* One prompt's failure must not end the batch — a rate limit or a budget
          stop on prompt 7 should still leave prompts 1-6 on disk and prompt 8

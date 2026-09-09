@@ -1,0 +1,159 @@
+# Generation run 2026-09-09 — three Forays through the production pipeline, driven by agents
+
+*Learning exercise requested by Wyatt: "kick off the machinery as-designed and monitor
+process successfulness, robustness, etc., logging errors and things to fix along the
+way. The main outputs are learnings and things to improve." Same architecture, same
+prompts, same model tiers as production; the only substitution is the transport — each
+Anthropic Messages API call is answered by a Claude Code subagent at the matching tier
+instead of by the API. Built in series; anything reasonable is fixed between runs.*
+
+## 0. Method, so the numbers can be trusted
+
+- **Pipeline:** `backend/src/generation/runForayPipeline` via the batch driver
+  `npm run generate-forays -- --prompts <one prompt> --duration medium` — "~1 hour" is
+  the **medium** tier (§3: ~60 min, 3–4 acts, 5–7 slots, 28–36 items, "the proven
+  shape"); *long* is "up to ~180 min, unproven at every layer" and was not what was asked.
+- **Transport:** `ANTHROPIC_BASE_URL` points the official SDK at a local relay
+  (`scratchpad/relay/relay.mjs`). The relay receives each request **unchanged** (model
+  name, `max_tokens`, the prompt text the builder composed), parks it, and returns
+  whatever the orchestrator writes back, in the Messages API shape. The orchestrator
+  dispatches one subagent per request with the exact prompt and the mapped tier:
+  `claude-opus-4-1 → opus`, `claude-sonnet-4-5 → sonnet`, `claude-haiku-4-5 → haiku`.
+  `parseWithRetry` / `parseLastJsonBlock` then parse the reply exactly as they would a
+  real one. Zero pipeline code changed for the transport.
+- **KPIs** come from two taps: the relay's `kpi.jsonl` (per call: model, ~tokens in,
+  ~tokens out, wall time) and the driver's `report.json` (per Foray: outcome, wall ms
+  from `outcome.timings`, per-stage timings via `measureStage`). Token counts are
+  estimates (chars/4) because there is no API meter on this path — recorded as such.
+- **"Time until the user can start listening"** = the whole pipeline + publish. §6's
+  progressive generation ("playback starts before generation finishes") is not built:
+  `runForayPipeline` returns one finished candidate. Recorded honestly below.
+
+- **Transport overhead is the orchestrator, not the model.** Call #1 (Haiku clarity
+  check): the subagent answered in 6 s; the relay saw 59.6 s wall because a human-paced
+  orchestration turn sat between request and answer. Per-call `agent_ms`/`wall_ms` are
+  both recorded so the pipeline's own latency can be read separately from this
+  transport's. A keyed run would see roughly the agent time.
+
+## 1. Findings before the first Foray (state of the machinery as found)
+
+| # | Finding | Severity | Action |
+|---|---|---|---|
+| F-01 | **§4.5 tier-2 beat sourcing could never fire.** `NullTranscriptCueProvider` was the only `TranscriptCueProvider`; its own comment calls itself the "production default" and says wiring a file reader is "future work." So on any machine, a beat that matched an archived episode fell through, and the only tape was the 212-row pre-cut pool — while this machine holds **1,346 transcript bodies** (of 1,718 digest entries) in exactly the shape the anchor resolver needs. | High — the plan's tape-sourcing layer was unwired | **Fixed before run 1:** `FileTranscriptCueProvider` (reads `data-local/transcripts/normalized/<show>/<guid>.json`, cached, returns null when absent) and the batch driver passes it. |
+| F-02 | `parseWithRetry` **has no retry** — its body says "no retry available in this build." One malformed JSON reply from a model kills the stage and the Foray. | High for robustness | Logged; watch how often it bites. Candidate fix: one re-ask with the schema error appended. |
+| F-03 | **Model ids are last-generation:** `claude-opus-4-1`, `claude-sonnet-4-5`, `claude-haiku-4-5`. The Claude 5 family is current. Production would be calling superseded models. | Medium (cost/quality) | Logged; tier mapping used the same *levels*. Recommend pinning current ids in one config. |
+| F-04 | `DAILY_BUDGET_USD` defaults to **$2.00**. The spine call alone estimates Opus at several thousand tokens; a medium Foray's estimated spend would trip the guard mid-run. | Medium — a real keyed run would halt | Set `DAILY_BUDGET_USD=1000 EPISODE_BUDGET_USD=1000` for this run; recommend a per-run budget flag on the driver. |
+| F-05 | `AnthropicExternalResearcher` uses the server-side `web_search` tool. Fine with a key; on the relay the subagent does the searching itself. Note the researcher is **Haiku-tier with 800 output tokens** — the cheapest stage decides a topic's "genuine controversies." | Low/observe | Logged. |
+| F-06 | Tier-2 **episode matching is by title tokens only** (`show_title + title` vs. the beat's claim, threshold). The transcript *text* is never searched, though `data-local/corpus/corpus.db` has an FTS index over 558 chunks. A beat about a specific point inside an episode can only match if the episode's title happens to share words with the claim. | Medium (recall) | Logged; likely the biggest lever on tape yield. |
+| F-07 | The SDK's default **timeout is 10 min, 2 retries**. A relay answer slower than that produces an identical retried request; the relay dedupes by body hash. A real key never hits this, but any future async/queued transport will. | Low | Relay handles it. |
+| F-09 | `backend` **does not typecheck**: `npx tsc --noEmit -p .` reports pre-existing errors (`import.meta` under the configured module setting in `publishForay.ts`/`finalizeForay.ts`, a non-exported `NarrationBuildContext` type imported by two builders, missing declarations for the `.mjs` checkers). `tsx` tolerates all of it at runtime, so nothing fails until it does. | Medium (hygiene) | Logged. |
+| F-10 | Subagents (like models) **ignore "no markdown fences" ~half the time**: call #1 came back fenced. `parseWithRetry` already strips one fence pair, so this is survivable — but it is the same class of fragility F-02 makes fatal for any *other* formatting slip. | Low | Relay-side strip added; logged. |
+| F-11 | **The research map leaks off-topic concepts.** The spine prompt for the disasters Foray listed "Ai (semantic-concept, tape: strong, 761 items)" among eight candidate subtopics — the catalogue lookup matches on shared tokens ("engineering") and the Practical AI corpus dominates the archive by volume. Opus is told there is strong tape for AI on a bridge-collapse documentary. | Medium (steers the spine toward what the archive has, not what the prompt asked) | Logged; the lookup needs topic-node filtering or a relevance threshold. |
+| F-12 | **No external research call was made before the spine.** The order is understand → research-shape (catalogue lookup) → spine; `AnthropicExternalResearcher` (web search) was not invoked in the first three calls. Either it runs later per subtopic or the stage is conditional — worth confirming against §4.2, which describes research as establishing SHAPE before the spine. | Observe | Track when/if it fires. |
+| M-1 | *(orchestrator, not pipeline)* Attempt 1 of run 1 was aborted at call #3: the em dash in call #2's answer was double-encoded by the answer helper (Windows stdin defaulted to cp1252) and the mojibake was already inside the spine prompt. Fixed (stdin forced to UTF-8, verified round-trip), run restarted from call #1 with the identical first two answers. Cost: two Haiku calls, ~3 min. | — | Fixed. |
+| P-01 | *(positive)* **Act deepening is parallel.** After the spine, the pipeline issued the three Sonnet deepen-act calls at once (#4/#5/#6 arrived within the same second), each carrying the full spine for context and owning one act. Wall time for this stage is one call, not three. | Good | Keep; note the relay/orchestrator must answer concurrently to preserve it. |
+| F-13 | **No confirmation loop after the spine.** §4.3 ("Build the spine") flows straight into §4.4 deepening with no validation of the spine's counts before three more model calls are spent — a spine outside 28–36 beats or below the 30 % exploration floor would only be caught at finalize, after every downstream stage has paid for it. Run 1's spine happened to land at 3 acts / 6 slots / 31 beats. | Medium (cost of late failure) | Logged; a cheap structural check between §4.3 and §4.4 would fail fast. |
+| P-02 | *(positive, and the payoff of F-01)* **Tier-2 tape sourcing fired.** The first narration prompt of run 1 says: *"connective narration around real tape (source item causality-engineered-network--47-hyatt-regency-kansas-city)"* — the Hyatt beat was anchored to a *Causality* episode's transcript cues, a segment the 212-row pool never had. Before `FileTranscriptCueProvider`, that beat would have fallen through. | Good | Count tier-1 vs tier-2 vs unresolved beats in the candidate when it lands. |
+| F-14 | **The narration writer is asked for verbatim-quoted sources it has no way to look up.** Sonnet, no tools, must return `sources[].quote` + `publication` for every factual claim. A model without search will *reconstruct* quotations. Whether §4.7's verifier stage (also Sonnet, also tool-less) can tell an invented quote from a real one is the open question this run tests. | High (fabricated citations are the failure `narration-craft.md` most fears) | Observe the verifier's verdicts; likely fix: give the writer the cue text it is framing (it already has the segment id) and require quotes to come from the tape or the archive. |
+| F-15 | **Narration is fully serial.** `writeNarration` awaits one beat at a time (nested `for` loops), and each beat is a writer call *and* a verifier call. A 31-beat spine is ~60+ sequential Sonnet calls — the dominant wall-clock cost of a Foray, and the reason §6's "listen before generation finishes" is architecturally far off. Slots (and certainly acts) are independent and could be written in parallel the way deepening already is (P-01). | High (time-to-listen) | Logged; parallelise per slot, keep the per-beat verifier. |
+| F-12 → resolved | External research fires only for **catalogue-gap** subtopics (`fanOutExternalResearch` over seeds whose tape is weak). Every seed for run 1 reported strong/moderate tape (because of F-11's inflated concept matches), so the web-search stage never ran. The Foray was shaped entirely from what the archive's titles suggested. | Medium (F-11 and F-12 compound) | Logged. |
+| F-16 | **The narration retry was uninformed.** `writePageAndVerify` retried a rejected page with the byte-identical prompt. A model deterministic enough to repeat itself fails identically; a temperature-varied one gets a coin flip. Run 1 died this way on its first Frame page. | High | **Fixed before run 1 attempt 3:** the rejection reasons are appended to the writer's context note on the second attempt (prompt otherwise unchanged). |
+| F-17 | **One beat's narration failure kills the whole Foray.** After the (failed) retry, `NarrationWriteError` propagated out of the stage; seven calls of spine and deepening were discarded. No fallback (shorter mode, drop the contested source, narrate-less beat), no partial candidate. | High (cost of late failure; compounds F-13) | Logged; design question for §4.7. |
+| F-18 | **The batch driver is not resumable within a Foray.** Its resume key is the prompt's candidate *file*, which a failed run never writes, so a re-run repeats every stage from the clarity check. | Medium | Logged; a per-stage checkpoint would make F-17 cheap. |
+| F-19 | **Frame mode's 70–170 character budget and §4.7 rule 3 are close to incompatible.** Rule 3 requires a contested claim to *say so in the script*; a Frame page that names a contested source has no room to voice the contestation. The structural validator (`contested-not-flagged-in-text`) then rejects it. Either Frame pages must not carry contested sources (a writer rule) or the budget must flex when a source is contested. | Medium | Logged. The informed retry (F-16) gives the model a chance to resolve it either way. |
+| F-20 | Cosmetic: the driver's own error text double-encodes `§` (`Â§4.7`) on this Windows console — the pipeline has its own encoding edge, separate from I-04. | Low | Logged. |
+| P-03 | *(positive, F-16's fix observed)* On attempt 3 the pipeline re-asked for the rejected Frame page with the reason appended verbatim — *"YOUR PREVIOUS ATTEMPT AT THIS PAGE WAS REJECTED for: a source is marked contested but the script does not say so explicitly (§4.7 rule 3)"* — and the writer's prompt was otherwise byte-identical. | Good | Whether the second attempt passes is the next data point. |
+| F-21 | `test/writeNarration.test.ts` has one failing case on this machine (the disclosure template round-trip through `check-forays.mjs`), matching the documented Vitest defect for checkouts under a path with a space (`runPipeline.ts`'s own comment). Pre-existing; not re-verified beyond the pattern. | Low | Logged. |
+| F-22 | **The verifier cannot catch a fabricated quote — by design.** Its prompt says: *"Read it against ONLY its declared sources below."* It checks that the script is consistent with the quotes the *writer supplied*; it has no way to know whether "Engineering News-Record" ever printed that sentence. So the §4.7 "independent verification" guards against internal inconsistency and contested-not-flagged, not against invented sourcing (F-14). The two stages share the blind spot. | High | Logged; verification against the archive's own cue text (for tape-adjacent pages) or a retrieval step is the real fix. |
+| F-23 | **Mis-anchored tape (F-06 in action).** Beat 2 of run 1 — the Hyatt hanger-rod design change — was sourced to `causality-engineered-network--22-chernobyl`: a *Chernobyl* episode, matched on shared title tokens. Nothing between `findTranscriptArchiveMatch` and the narration writer checks that the matched episode is *about* the claim; the writer is told only the item id, so it wrote a Frame handing the listener into tape about the wrong disaster. The M4 gates check show concentration, not topical fit. **Running tally in run 1: beat 1 → Hyatt (correct), beat 2 → Chernobyl, beat 3 → Three Mile Island** — every *Causality* episode qualifies on the show-title tokens alone. | **High** (listener-facing wrong tape) | Logged; tier-2 needs a relevance check (cue-text match against the claim, not title tokens) and the writer needs to see the tape's own words. |
+| F-24 | **Why F-23 is structural, not bad luck.** (a) `TIER2_MATCH_THRESHOLD = 2`: an episode matches a claim on two shared tokens between the claim and `show_title + title` — and *Causality — Engineered Network*'s own title tokens ("engineered", "network"…) overlap most engineering claims, so nearly every Causality episode "matches" nearly every beat. (b) `resolveAnchorFromCues` then accepts the **first contiguous run of ≥ 4 claim words (>2 letters) found anywhere in the transcript** — generic runs like "the original design required" or "was not proposed as" occur in almost any hour-long transcript. (c) The minted segment spans **only that anchor window** (`startSec` of its first word to `endSec` of its last) — a few seconds of audio, not a segment. Net: tier-2 as built will confidently mint tiny, off-topic "tape" for most beats once bodies are available. Before F-01's fix it never fired, which is why this was invisible. | **High** | Logged; fix = match on cue *text* (FTS/embeddings over `corpus.db`), require topical anchors (distinctive words, not stopword-adjacent runs), and cut segments to sentence/cue boundaries with a minimum duration. |
+| F-25 | **Contested-marking is the writer's default, and Frame pages cannot carry it.** Pages 1 and 2 of run 1 both marked sources `contested: true` (the second marked two of four) with no room in 70–170 characters to say so, and both were rejected on rule 3 and retried. If this holds, most Frame pages cost two writer calls — a ~2× multiplier on the largest stage (F-15). Note the prompt asks the model to declare `contested` for each source with no guidance on what "genuinely contested" means; a model hedging on quote fidelity (F-14) has every incentive to say "contested". | High (cost) | Logged; either define "contested" narrowly in the writer prompt, or let Frame pages reference a contested source without voicing it (rule 3 exemption for connective modes). |
+| F-26 | The writer emitted HTML entities (`&amp;`) inside `publication` strings. Harmless to JSON parsing; would be spoken/displayed literally downstream. | Low | Logged; normalise entities in `parseWithRetry` or validate publications. |
+| F-27 | **Fabricated citation, induced by the mis-anchor.** Retry #11 (Hyatt hanger-rod page) cited all three quotes to *"New Safe Confinement Construction Engineering Interviews"* — the New Safe Confinement is the Chernobyl reactor shelter. The only Chernobyl signal the writer had was the item id `causality-engineered-network--22-chernobyl` in its context note (F-23); it produced Chernobyl-flavoured "sources" for a Kansas City claim, with verbatim-looking quotes that cannot exist. The script says "That account is disputed", so rule 3 passes, and the verifier reads only the declared sources (F-22), so it will pass too — **and it did: call #12 returned `{"verified": true}` in 5 s.** This is the exact failure mode `narration-craft.md` is written to prevent, and nothing in §4.7 can see it.** | **Critical** (published falsehood with a fake citation) | Logged. Fix stack: F-24 (correct tape), give the writer the tape's actual cue text, and verify quotes against the archive/corpus rather than against the writer's own declarations. |
+| F-28 | **Claim-text overreach: the writer's `claimText` asserts more than its own `quote` contains, and the script voices the overreach.** Page 13 (box-beam load) scripted "Nobody at either firm drew one [diagram]" and sourced it to a claim field saying "No one at either firm drew that diagram", whose quote only says the connection was not "checked for adequacy". The verifier (call #14, 20 s) caught it — the first rule-based rejection that was actually about facts rather than the contested flag — but only because the overreach was visible *inside* the writer's own declaration. Combined with F-27 this shows the verifier's true scope: it checks internal consistency between quote and claim, never whether the quote exists. Cost: one more writer call (#15) plus one more verify. | Medium (cost; also a signal that the beat purpose itself carries an unsourceable assertion — 'the record shows no one drew it' was written into the beat by the deepen stage, F-13) | Logged. Purpose text from deepen-acts should be marked as *direction*, not as *fact the page may assert*; the writer prompt should say the beat purpose is not a source. |
+| F-29 | **Tier 1 has the same disease as tier 2, plus a fallback that guarantees garbage.** Beat 4 (Kansas City code-load) was anchored to `bfh-griddle-bakestone` — a British food-history segment about hearth cooking. Replicating `scoreSegmentsAgainstClaim` on the beat's claim: the *right* segment (Causality #47 Hyatt Regency) scored 5 (`call, load, one, phone, walkway`) but was excluded by the M3/M4 filters (already used by beat 1); the next candidates were a plate-tectonics segment at 4 (`before, have, likely, would`) and the griddle at 4 (`have, one, people, would`), and 29 of 212 pool segments cleared `TIER1_MATCH_THRESHOLD = 2`. Three causes: (a) the 27-word stopword list in `catalogueLookup.ts` treats `have`, `would`, `one`, `before`, `people`, `had`, `found`, `likely` as signal; (b) no topic gate — the pool carries a `topic` field (`food/food-history`) and the Foray has a resolved taxonomy node, and the scorer never compares them; (c) when the best segment is filtered out, `findTier1Match` falls through to the next candidate over the threshold instead of returning null, so exhaustion of the one relevant episode *guarantees* a cross-domain hit. Net for this Foray: after 4 beats, 3 of 4 tape anchors point at tape unrelated to the beat (Chernobyl, Three Mile Island, griddles). | **Critical** (the product is tape + narration; the tape is wrong) | Logged. Fix before run 2: require topic-prefix agreement (or a shared concept) before counting tokens; raise threshold to 3 and drop function words; on filter-exhaustion return null so §4.5 falls to tier 2 / unresolved rather than to the next-best stranger. |
+| F-30 | **The writer treats the tape item id in its context note as a citable publication.** Retry #19 (beat 4) kept a real NBS figure ("about 60 percent of the minimum required") but set `publication: "bfh-griddle-bakestone"` — the segment id from "connective narration around real tape (source item …)". Same root as F-27 (the only concrete noun the writer is given is the item id, so it becomes the citation) but a cleaner demonstration: the quote is genuine and the attribution is a podcast about griddles. Any downstream surface that shows sources will print a slug as a publication. | High | Logged. Fold into the F-27 fix: give the writer the tape's real show/episode title *and* the cue text, and state in the prompt that tape is tape, not a print source; validate `publication` against a slug pattern in `writeNarration`. |
+| F-31 | **Under the as-designed retry policy a medium Foray is statistically unreachable.** Attempt 3 wrote 5 pages before dying. First-attempt outcomes: 5 of 5 rejected (3 on rule 3 / contested, 1 on claim overreach, 1 on a number the *beat purpose itself* mis-stated). Second-attempt outcomes: 4 passed, 1 rejected — and `writePageAndVerify` allows exactly 2 attempts, after which `NarrationWriteError` propagates and the batch driver records the whole Foray as `error` (F-17). With a ~20 % second-attempt failure rate per page and ~31 pages, the chance of finishing is (0.8)^31 ≈ 0.1 %. Three attempts at run 1 have now failed at beats 1, 1 and 5 for this reason; nothing about the fourth would differ. | **Critical** (blocks any Foray of the target length) | Fix before attempt 4: 3 attempts; a tape beat whose *connective* page still fails keeps its tape and drops the page (the design's own rule that "a beat's existence never depends on" one stage); define *contested* and *purpose ≠ source* in the writer prompt so first attempts stop failing. |
+| F-08 | The **stub run** (no key) on "the history of food and cooking" *built* a Foray and then failed **M4** (one show at 30.9% of runtime, cap 25%) — the quality gate works, and the small pool concentrates on few shows. | Info | Expected with a 212-row pool; watch whether tier 2 fixes it. |
+
+## 1b. Interventions ledger — every deviation from the as-designed workflow
+
+Rule (Wyatt, 2026-09-09): *any time the orchestrator has to intervene, that is a deviation
+from the final workflow and therefore an issue.* Logged exhaustively, including the ones
+that were necessary to run at all.
+
+| # | Intervention | Why it was needed | What it deviates from | Status |
+|---|---|---|---|---|
+| I-01 | Set `DAILY_BUDGET_USD=1000 EPISODE_BUDGET_USD=1000` in the run environment. | Default `$2.00/day` would have halted a medium Foray mid-run (F-04). | Production would run into the guard; the run env hides it. | Open — needs a per-run budget flag or a realistic default. |
+| I-02 | Wrote `FileTranscriptCueProvider` and wired it into the batch driver before run 1. | Tier-2 sourcing was unwired (F-01); without it the run could only use the 212-row pool. | Code change to the pipeline. Necessary; but it means run 1 tests code that did not exist an hour earlier. | Fixed (F-01). Needs tests + PR. |
+| I-03 | The relay transport itself (`ANTHROPIC_BASE_URL` → local relay → subagent). | Requested by Wyatt: agents instead of an API key. | Answers arrive minutes later than an API call; token counts are estimates; the "model" is a subagent at the same tier, not the pinned id. | By design of this exercise; not a production deviation. |
+| I-04 | Aborted attempt 1 of run 1 at call #3 and restarted from call #1. | Orchestrator bug: the answer helper decoded stdin as cp1252, double-encoding the em dash in call #2's reply; the mojibake was already in the spine prompt. | Restart. Cost: 2 Haiku calls, ~3 min. | Fixed (stdin forced to UTF-8, verified). |
+| I-05 | Reused calls #1 and #2's answers from attempt 1 instead of re-dispatching agents. | Identical prompts; saved two calls. | A production run would make fresh calls; determinism of Haiku on these two prompts was assumed, not measured. | Accepted deviation; noted. |
+| I-06 | The answer helper strips one markdown fence pair before the reply reaches the relay. | Subagents fence their JSON ~half the time (F-10). | `parseWithRetry` already strips one fence pair, so behaviour is the same — but the helper masks how often the model does it. Frequency logged from the raw agent replies instead. | Kept; frequency tracked separately. |
+| I-07 | For call #7 (narration writer) the transport wrapper added: *"where you cannot reproduce a source verbatim, quote only what you are confident is real and mark anything uncertain as contested rather than inventing a citation."* | Reflex to avoid fabricated citations. | **A prompt deviation.** Production's writer gets no such instruction, so this biases the F-14 observation for call #7. | **Error.** Stopped after call #7: from call #8 on, the wrapper carries only the transport necessities (JSON-only reply, no tools — production Sonnet has no tools either). Call #7's answer is flagged in the KPI log. |
+| I-08 | `--duration medium` chosen for "aim for about an hour". | §3 maps ~60 min to *medium*; *long* is up to 180 min and unproven. | Interpretation, not deviation; recorded so the choice is visible. | — |
+| I-10 | **Relay bug served the pipeline's retry a stale answer.** The dedupe (I-09) keyed only on body hash, so the writer's legitimate re-ask (identical prompt, F-16) was treated as an SDK retry and given the previous reply — guaranteeing the retry failed. | Orchestrator error. | Directly contributed to run 1 attempt 2's failure (together with I-07 and F-16/F-19). | **Fixed:** dedupe now applies only to an *in-flight* duplicate. |
+| I-11 | Run 1 attempt 3 reuses the answers to calls #1–#6 from attempt 2 (identical prompts: clarity, intent, spine, three deepen-acts). | Saves ~10 min of orchestration and re-tests the stage that failed rather than the ones that passed. | A production re-run would regenerate everything (F-18). | Accepted deviation; the reused answers are the exact JSON the pipeline already accepted. |
+| I-12 | Code change to `writeNarration.ts`: the retry now appends the rejection reasons (F-16). | Reasonable fix between runs, per the brief. | Pipeline code differs from what run 1 attempt 2 exercised. | Fixed; needs a unit test + PR. |
+| I-09 | Relay dedupes identical retried requests (SDK 10-min timeout). | A slow orchestrator turn would otherwise mint duplicate requests. | Production never sees this path. | Transport-only. |
+| I-13 | **Fix set applied between attempt 3 and attempt 4 (2026-09-09 ~03:00Z).** Five code/prompt changes in `backend/src/generation`, each traced to a finding: (1) `tokenizeForSourcing` — a function-word stopword list for the two §4.5 scorers (F-29); (2) tier-2 scoring requires ≥1 *episode-title* token and caps the show title's contribution at 1 (F-23/F-24); (3) writer prompt gains three lines: purpose is direction not a source (F-28), tape is not a publication (F-30), and a narrow definition of *contested* (F-19/F-25); (4) `writePageAndVerify` rejects a slug-shaped `publication` with an informed retry (F-30); (5) 3 informed attempts per page, and a tape beat whose connective page still fails keeps its tape and drops the page with a warning; narration beats still fail hard (F-17/F-31). 6 regression tests added (`test/sourceBeats.test.ts`, `test/writeNarration.test.ts`); 42/43 pass, the 1 failure is pre-existing (F-21). | Deviation by design — the user asked for fixes between runs. Everything else in the pipeline (models, stage order, other prompts, budgets) is unchanged. |
+| I-14 | Attempt 4 reuses attempt 3's answers to calls 1–6 (understand, research-shape, spine, 3× deepen) via `reuse.py`, because those prompts are byte-identical and re-asking would only add noise to the KPIs. Calls from §4.7 on are fresh — the writer prompt changed. | Same rationale as I-11; the reused answers are the ones whose defects are already logged (F-11, F-13). |
+
+## 2. Runs (filled in as each completes)
+
+### Run 1 — engineering disasters
+
+*Prompt:* "How engineering disasters actually happen: the chains of small decisions
+behind collapsed bridges, failed dams and machines that broke."
+*Sourcing expected:* `engineering/disasters` pool segments (23), *Causality* (12 bodies),
+*Being an Engineer* (337 bodies).
+
+**Attempt 2 (2026-09-09 02:10:10Z → 02:19:42Z, 9 m 32 s wall) — FAILED at the first narration page.**
+
+| KPI | Value |
+|---|---|
+| Model calls | 7 (1 Opus spine, 3 Sonnet deepen-act in parallel, 1 Sonnet narration + 1 retry served stale by I-10, 2 Haiku) |
+| Est. prompt tokens (chars/4) | 6,322 |
+| Est. completion tokens | 7,678 |
+| Subagent tokens incl. agent overhead | 310,427 |
+| Agent compute time (sum) | 870 s |
+| Relay wall (sum) | 873 s — the orchestrator's turn latency dominated: agents themselves took 6–49 s per call |
+| Stage reached | §4.7 narration, beat 1 of ~31 |
+| Time until a listener could start | never (no candidate) |
+| Tier-2 tape hits | ≥ 1 confirmed (Hyatt beat → *Causality* transcript) before the failure |
+| Failure | `contested-not-flagged-in-text` on a Frame page (F-19), uninformed retry (F-16) served a stale answer (I-10), no per-beat fallback (F-17) |
+
+**Attempt 3 (02:24:08Z → 02:54:28Z, 30 m 20 s wall) — FAILED at beat 5 of 31 (page rejected twice, F-17/F-31).**
+
+| KPI | Value |
+|---|---|
+| Model calls | 23 total: 1 Opus (spine), 2 Haiku (understand, research-shape), 20 Sonnet (3 deepen-act, 10 writer incl. 5 retries, 7 verifier). Calls 1–6 reused from attempt 2 (I-11). |
+| Est. prompt tokens (chars/4) | 15,643 |
+| Est. completion tokens | 10,665 |
+| Subagent tokens incl. agent overhead (16 fresh calls) | 634,581 — ≈ 40 k per call, of which the prompt itself is < 1 k: the Claude Code subagent harness costs ~40× the pipeline's own tokens |
+| Agent compute time (sum, fresh calls) | 470 s (3–86 s per call; verifiers 3–21 s, writers 19–86 s) |
+| Relay wall (sum) | 1,817 s — orchestrator turn latency ≈ 75 % of wall |
+| Beats written | 5 (pages passed: 4; 10 writer calls for 4 pages = 2.5 calls/page) |
+| First-attempt pass rate | 0 / 5 |
+| Tape anchors correct | 1 of 5 (Hyatt); wrong: Chernobyl, Three Mile Island, griddle-bakestone, San Bruno (F-23/24/29) |
+| Fabricated or mis-attributed citations that passed verification | 2 (#11 "New Safe Confinement…", #19 publication = tape slug) — F-27/F-30 |
+| Time until a listener could start | never (no candidate) |
+| Projected wall to a 31-beat candidate at this rate | ≈ 3 h 10 m — if no page ever failed twice |
+
+*(attempt 4 pending fixes — see §4)*
+
+### Run 2 — how AI systems get built
+
+(pending)
+
+### Run 3 — cider and wine
+
+(pending)
+
+## 3. KPIs (aggregate; per-run tables above)
+
+(pending)
+
+## 4. Things to fix, ranked
+
+(pending — consolidated at the end)
