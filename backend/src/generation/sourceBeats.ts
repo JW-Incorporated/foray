@@ -5,11 +5,16 @@ import type {
   SourcedBeat,
   SourcedSlot,
   SourceBeatsResult,
+  SourcingTrace,
   TapePointer,
   TapeRelevanceInput,
+  Tier1Gate,
+  Tier1TraceRow,
+  Tier2TraceRow,
   TranscriptionQueueCandidate
 } from "../types/tapeSourcing";
 import { validateSourcing } from "../types/tapeSourcing";
+import type { AudioSourceResolver, MintedSegmentSource } from "./audioSourceLookup";
 import {
   familiesOfNodes,
   familyGateAllows,
@@ -23,16 +28,26 @@ import {
 /** check-forays' M4 cap, mirrored. The checker stays the authority; this only
     keeps sourcing from building something it will certainly reject. */
 export const M4_ITEM_SHARE_MAX = 0.25;
-import { findTier1Match, loadSegmentPool, type SegmentRecord, type SegmentWindowText } from "./segmentPoolLookup";
+import {
+  findTier1Match,
+  loadSegmentPool,
+  requiredOverlapFor,
+  scoreSegmentsAgainstClaim,
+  TIER1_MATCH_THRESHOLD,
+  type SegmentRecord,
+  type SegmentWindowText
+} from "./segmentPoolLookup";
 import {
   ANCHOR_WINDOW_PAD_SEC,
   anchoredWindowEvidence,
   anchoredWindowIsOnTopic,
+  bestTranscriptArchiveCandidate,
   cueWindowText,
   findTranscriptArchiveMatch,
   loadTranscriptArchive,
   resolveAnchorFromCues,
   NullTranscriptCueProvider,
+  TIER2_MATCH_THRESHOLD,
   TIER2_WINDOW_OVERLAP_MIN,
   type TranscriptCueProvider,
   type TranscriptDigestEntry
@@ -121,6 +136,19 @@ export interface SourceBeatsOptions {
   topic?: string | null;
   /** Repo root for the catalogue reads the topic gate makes. Tests only. */
   root?: string;
+  /**
+   * Resolves the `data/segment-sources.json` row for an episode tier 2 wants to
+   * mint a segment from (`audioSourceLookup.ts`).
+   *
+   * INERT WHEN OMITTED, like `topic` above and for the same reason: a caller
+   * with no way to resolve audio behaves exactly as this module did before the
+   * resolver existed. `runPipeline.ts` always supplies one, and with it in place
+   * tier 2 will not mint tape for an episode whose audio cannot be honestly
+   * registered — a segment nothing can play is not tape, and
+   * `check-forays.mjs` rejects the Foray that references it ("nothing can
+   * resolve its audio").
+   */
+  audioSourceFor?: AudioSourceResolver;
 }
 
 /**
@@ -134,6 +162,10 @@ export function sourceBeats(deepenedActs: DeepenedAct[], options: SourceBeatsOpt
   const cueProvider = options.cueProvider ?? new NullTranscriptCueProvider();
 
   const newSegments: NewSegment[] = [];
+  /* One row per episode a segment was minted from, deduplicated by item id:
+     `check-forays.mjs` requires exactly one registry entry per item id, and two
+     beats commonly take two segments from one episode. */
+  const newSegmentSources = new Map<string, MintedSegmentSource>();
   const transcriptionQueueCandidates: TranscriptionQueueCandidate[] = [];
   const mintedIds = new Set<string>(segmentPool.map((s) => s.id));
   /* What THIS Foray has already committed to. Both are Foray-wide, not
@@ -173,8 +205,10 @@ export function sourceBeats(deepenedActs: DeepenedAct[], options: SourceBeatsOpt
     windowText: makeSegmentWindowText(transcriptArchive, cueProvider),
     forayTopic,
     root: options.root,
+    audioSourceFor: options.audioSourceFor,
     mintedIds,
     newSegments,
+    newSegmentSources,
     transcriptionQueueCandidates,
     usedSegmentIds,
     lastStartByItem,
@@ -182,6 +216,9 @@ export function sourceBeats(deepenedActs: DeepenedAct[], options: SourceBeatsOpt
     maxPerItem
   };
   const tapeRelevance: TapeRelevanceInput[] = [];
+  /* One row per narration-degraded beat, saying what each tier saw and which
+     gate refused it (F-49). The two arrays partition the Foray's beats. */
+  const sourcingTrace: SourcingTrace[] = [];
 
   const acts: SourcedAct[] = deepenedActs.map((act, actIndex) => {
     const slots: SourcedSlot[] = act.slots.map((slot, slotIndex) => {
@@ -212,6 +249,15 @@ export function sourceBeats(deepenedActs: DeepenedAct[], options: SourceBeatsOpt
           });
           return { sourcing: "tape", claim: beat.claim, exploration: beat.exploration, kind: beat.kind, tape: resolution.pointer };
         }
+        sourcingTrace.push({
+          actIndex,
+          slotIndex,
+          beatIndex,
+          claim: beat.claim,
+          outcome: resolution.diagnosis.outcome,
+          tier1: resolution.diagnosis.tier1,
+          tier2: resolution.diagnosis.tier2
+        });
         // Narration: Patch when this slot has other tape-sourced beats
         // (this beat supplies what that tape misses); Carry when the
         // slot has no tape at all (this beat IS the content).
@@ -236,7 +282,65 @@ export function sourceBeats(deepenedActs: DeepenedAct[], options: SourceBeatsOpt
     throw new Error(`sourceBeats violated the beat-preservation guardrail: ${validation.issues.map((i) => i.message).join("; ")}`);
   }
 
-  return { acts, newSegments, transcriptionQueueCandidates, tapeRelevance };
+  return { acts, newSegments, transcriptionQueueCandidates, tapeRelevance, sourcingTrace, newSegmentSources: [...newSegmentSources.values()] };
+}
+
+/**
+ * One line per slot: how much of it is tape, how much is narration, and the
+ * single most common reason its narrated beats got no tape (F-49).
+ *
+ * A pure function returning strings rather than something that prints: the
+ * pipeline prints these, tests read them, and a batch driver could put them in
+ * a report without this module knowing about any of the three.
+ *
+ * THE "TOP REASON" IS WHERE THE BEATS GOT FURTHEST. A beat that never reached
+ * tier 2 is reported against tier 1; a beat whose search reached a real episode
+ * is reported against tier 2, because that is the gate whose threshold a human
+ * would go and look at. Ties break toward the reason that appears first in the
+ * slot, so the line is stable for a given slot.
+ */
+export function summarizeSourcing(result: SourceBeatsResult): string[] {
+  const traceByBeat = new Map<string, SourcingTrace>();
+  for (const t of result.sourcingTrace) traceByBeat.set(`${t.actIndex}:${t.slotIndex}:${t.beatIndex}`, t);
+
+  const lines: string[] = [];
+  result.acts.forEach((act, actIndex) => {
+    act.slots.forEach((slot, slotIndex) => {
+      let tape = 0;
+      const reasons = new Map<string, number>();
+      slot.beats.forEach((beat, beatIndex) => {
+        if (beat.sourcing === "tape") {
+          tape += 1;
+          return;
+        }
+        const trace = traceByBeat.get(`${actIndex}:${slotIndex}:${beatIndex}`);
+        const reason = trace ? topReasonFor(trace) : "unknown";
+        reasons.set(reason, (reasons.get(reason) ?? 0) + 1);
+      });
+      const narration = slot.beats.length - tape;
+      let top: string | null = null;
+      let topCount = 0;
+      for (const [reason, count] of reasons) {
+        if (count > topCount) {
+          top = reason;
+          topCount = count;
+        }
+      }
+      lines.push(
+        `source: act ${actIndex + 1} slot ${slotIndex + 1} "${slot.title}" — ${tape} tape / ${narration} narration` +
+          (top ? `; top reason: ${top} (${topCount} of ${narration})` : "")
+      );
+    });
+  });
+  return lines;
+}
+
+/** The one label that best explains a narrated beat — see `summarizeSourcing`. */
+export function topReasonFor(trace: SourcingTrace): string {
+  if (trace.outcome === "skipped:argument") return "skipped:argument";
+  if (trace.tier2 && trace.tier2.bestEpisodeTitle) return `tier2:${trace.tier2.gate}`;
+  if (trace.tier1) return `tier1:${trace.tier1.gate}`;
+  return trace.tier2 ? `tier2:${trace.tier2.gate}` : "no-tape";
 }
 
 /** Everything `resolveOneBeat` needs, gathered once so the beat-level function
@@ -251,8 +355,12 @@ interface SourcingState {
    * side. Null when the caller had none, which makes the gate inert. */
   forayTopic: string | null;
   root: string | undefined;
+  /** See `SourceBeatsOptions.audioSourceFor` — undefined leaves tier 2 exactly
+   * as it was before a minted segment had to be resolvable to audio. */
+  audioSourceFor: AudioSourceResolver | undefined;
   mintedIds: Set<string>;
   newSegments: NewSegment[];
+  newSegmentSources: Map<string, MintedSegmentSource>;
   transcriptionQueueCandidates: TranscriptionQueueCandidate[];
   usedSegmentIds: Set<string>;
   lastStartByItem: Map<string, number>;
@@ -260,11 +368,83 @@ interface SourcingState {
   maxPerItem: number;
 }
 
+/** The trace rows a narration-degraded beat carries out with it — the caller
+ * adds the beat's own position and claim (F-49). */
+interface SourcingDiagnosis {
+  outcome: "skipped:argument" | "no-tape";
+  tier1: Tier1TraceRow | null;
+  tier2: Tier2TraceRow | null;
+}
+
 type BeatResolution =
   /** `nodes` — every taxonomy node this anchor resolved to, the same union the
    * gate judged it on and the one WS-B's metric recomputes from disk. */
   | { kind: "tape"; pointer: TapePointer; nodes: string[] }
-  | { kind: "narration"; reason: string };
+  | { kind: "narration"; reason: string; diagnosis: SourcingDiagnosis };
+
+/**
+ * Whether a pool segment may be used, and if not, WHICH rule refused it.
+ *
+ * Extracted from `findTier1Match`'s inline predicate so the trace can name the
+ * gate that stopped the best candidate instead of reporting a bare "no match"
+ * (F-49). The check order is unchanged, and `tier1IsUsable` below is the same
+ * predicate the search has always been given — a boolean view of this one.
+ */
+function tier1VetoFor(segment: SegmentRecord, state: SourcingState): Exclude<Tier1Gate, "no-candidates" | "threshold"> | null {
+  /* THE TOPIC GATE (F-29). The pool has always carried a `topic` node per
+     segment and the Foray has always had one; nothing compared them, which is
+     how a Kansas City walkway beat took a British hearth-cooking segment.
+     Checked inside the ranked walk, like the assembly rules below, so the
+     search falls through to the next ON-TOPIC candidate instead of giving up. */
+  if (!familyGateAllows(state.forayTopic, nodesForSegment(segment, state), state.root)) return "topic-lineage";
+  /* Already spoken for by an earlier beat of this Foray — F-29's "exhaustion of
+     the one relevant episode", which is what sent run 1 to a griddle segment. */
+  if (state.usedSegmentIds.has(segment.id)) return "exhausted";
+  if ((state.usedCountByItem.get(segment.item_id) ?? 0) >= state.maxPerItem) return "m4-share";
+  const lastStart = state.lastStartByItem.get(segment.item_id);
+  // Same episode, earlier in the tape than one already placed -> M3 violation.
+  if (lastStart !== undefined && segment.start_sec < lastStart) return "m3-order";
+  return null;
+}
+
+function tier1IsUsable(segment: SegmentRecord, state: SourcingState): boolean {
+  return tier1VetoFor(segment, state) === null;
+}
+
+/** What tier 1 saw, once it has decided it has nothing (F-49). Must be called
+ * BEFORE any ledger is updated for this beat, or the vetoes it reports would be
+ * the beat's own footprint. */
+function traceTier1(claim: string, state: SourcingState): Tier1TraceRow {
+  const best = scoreSegmentsAgainstClaim(claim, state.segmentPool, { windowText: state.windowText })[0];
+  if (!best) {
+    return { bestSegmentId: null, bestItemId: null, score: 0, requiredScore: TIER1_MATCH_THRESHOLD, matchedIn: null, gate: "no-candidates" };
+  }
+  const requiredScore = requiredOverlapFor(best.matchedIn, best.claimTokenCount);
+  const gate: Tier1Gate = best.score < requiredScore ? "threshold" : (tier1VetoFor(best.segment, state) ?? "exhausted");
+  return {
+    bestSegmentId: best.segment.id,
+    bestItemId: best.segment.item_id,
+    score: best.score,
+    requiredScore,
+    matchedIn: best.matchedIn,
+    gate
+  };
+}
+
+/** What tier 2 saw when no episode cleared its threshold: the best on-topic
+ * episode and the title-token bar it missed, or — when the topic gate is what
+ * emptied the field — the best episode of any family, named as such (F-49). */
+function traceTier2Rejected(claim: string, state: SourcingState, isUsable: (entry: TranscriptDigestEntry) => boolean): Tier2TraceRow {
+  const onTopic = bestTranscriptArchiveCandidate(claim, state.transcriptArchive, isUsable);
+  if (onTopic) return archiveTraceRow(onTopic.entry, onTopic.score, "title-tokens");
+  const anyFamily = bestTranscriptArchiveCandidate(claim, state.transcriptArchive);
+  if (anyFamily) return archiveTraceRow(anyFamily.entry, anyFamily.score, "lineage");
+  return { bestShowId: null, bestEpisodeTitle: null, score: 0, requiredScore: TIER2_MATCH_THRESHOLD, gate: "title-tokens" };
+}
+
+function archiveTraceRow(entry: TranscriptDigestEntry, score: number, gate: Tier2TraceRow["gate"]): Tier2TraceRow {
+  return { bestShowId: entry.show_id, bestEpisodeTitle: entry.title, score, requiredScore: TIER2_MATCH_THRESHOLD, gate };
+}
 
 function resolveOneBeat(beat: Beat, state: SourcingState): BeatResolution {
   const claim = beat.claim;
@@ -282,32 +462,15 @@ function resolveOneBeat(beat: Beat, state: SourcingState): BeatResolution {
   if (beat.kind === "argument") {
     return {
       kind: "narration",
-      reason: "This beat is an argument, not an account — §4.5 does not look for tape for a claim no recording can be about."
+      reason: "This beat is an argument, not an account — §4.5 does not look for tape for a claim no recording can be about.",
+      diagnosis: { outcome: "skipped:argument", tier1: null, tier2: null }
     };
   }
 
   // Tier 1: existing data/segments.json pool. Cheapest possible hit,
   // tried first, per §4.5's own search order — no new segment is ever
   // created here.
-  const tier1 = findTier1Match(
-    claim,
-    state.segmentPool,
-    (segment) => {
-      /* THE TOPIC GATE (F-29). The pool has always carried a `topic` node per
-         segment and the Foray has always had one; nothing compared them, which
-         is how a Kansas City walkway beat took a British hearth-cooking
-         segment. Checked inside the ranked walk, like the assembly rules below,
-         so the search falls through to the next ON-TOPIC candidate instead of
-         giving up. */
-      if (!familyGateAllows(state.forayTopic, nodesForSegment(segment, state), state.root)) return false;
-      if (state.usedSegmentIds.has(segment.id)) return false;
-      if ((state.usedCountByItem.get(segment.item_id) ?? 0) >= state.maxPerItem) return false; // M4
-      const lastStart = state.lastStartByItem.get(segment.item_id);
-      // Same episode, earlier in the tape than one already placed -> M3 violation.
-      return lastStart === undefined || segment.start_sec >= lastStart;
-    },
-    { windowText: state.windowText }
-  );
+  const tier1 = findTier1Match(claim, state.segmentPool, (segment) => tier1IsUsable(segment, state), { windowText: state.windowText });
   if (tier1) {
     state.usedSegmentIds.add(tier1.segment.id);
     state.lastStartByItem.set(tier1.segment.item_id, tier1.segment.start_sec);
@@ -328,6 +491,10 @@ function resolveOneBeat(beat: Beat, state: SourcingState): BeatResolution {
     };
   }
 
+  /* Tier 1 has nothing. Record what it saw NOW, while the Foray-wide ledgers
+     still hold only what earlier beats committed to (F-49). */
+  const tier1Trace = traceTier1(claim, state);
+
   // Tier 2: transcript archive. A hit here PRODUCES a new segment via a
   // real, verbatim anchor located in the episode's actual cue text —
   // never a raw timestamp, never an invented anchor. If cue text is not
@@ -335,9 +502,16 @@ function resolveOneBeat(beat: Beat, state: SourcingState): BeatResolution {
   // NullTranscriptCueProvider's doc comment), the episode-level match is
   // real but unresolved this run and the beat falls through, same as no
   // match at all.
-  const tier2 = findTranscriptArchiveMatch(claim, state.transcriptArchive, (entry) =>
-    familyGateAllows(state.forayTopic, nodesForArchiveEntry(entry, state), state.root)
-  );
+  const archiveIsUsable = (entry: TranscriptDigestEntry) =>
+    familyGateAllows(state.forayTopic, nodesForArchiveEntry(entry, state), state.root);
+  const tier2 = findTranscriptArchiveMatch(claim, state.transcriptArchive, archiveIsUsable);
+  /* The gate tier 2 stopped at, refined as the episode gets further through the
+     search: it matched but its body is not on this machine, or the body is here
+     but says none of the claim verbatim, or an anchor was found in tape that
+     turned out to be about something else. */
+  let tier2Trace: Tier2TraceRow = tier2
+    ? archiveTraceRow(tier2.entry, tier2.score, "no-body")
+    : traceTier2Rejected(claim, state, archiveIsUsable);
   if (tier2) {
     const cues = state.cueProvider.getCues(tier2.entry);
     if (cues) {
@@ -349,8 +523,33 @@ function resolveOneBeat(beat: Beat, state: SourcingState): BeatResolution {
          claim's content words must also turn up AROUND the anchor — not
          somewhere else in the episode — before this is tape. */
       const evidence = span ? anchoredWindowEvidence(claim, cues, span) : null;
+      tier2Trace = span
+        ? { ...tier2Trace, gate: "window-overlap", anchorContentWords: evidence?.anchorContentWords, beyondAnchorOverlap: evidence?.beyondAnchorOverlap }
+        : { ...tier2Trace, gate: "no-anchor" };
       if (span && evidence && anchoredWindowIsOnTopic(evidence)) {
         const itemId = deriveItemId(tier2.entry);
+        /* TAPE NOTHING CAN PLAY IS NOT TAPE. A minted segment is a pointer into
+           an episode's audio, and `check-forays.mjs` refuses a pool item id with
+           no `data/segment-sources.json` row ("nothing can resolve its audio").
+           So the row is minted here, from the digest's own enclosure and a real
+           DAI verdict, or the beat gets narration — never a segment id that
+           would fail §4.9 four stages later. Inert for a caller that supplied no
+           resolver (see `SourceBeatsOptions.audioSourceFor`). */
+        const audioSource = state.audioSourceFor ? state.audioSourceFor(tier2.entry, itemId) : null;
+        if (state.audioSourceFor && !audioSource) {
+          tier2Trace = { ...tier2Trace, gate: "no-audio-source" };
+          state.transcriptionQueueCandidates.push({
+            claim,
+            showId: tier2.entry.show_id,
+            reason: `Transcript-archive tape was located in "${tier2.entry.title}", but no data/segment-sources.json row can be written for it (no resolvable https audio URL, feed duration, or DAI verdict), so nothing could play it.`
+          });
+          return {
+            kind: "narration",
+            reason: "Tape was found for this beat but its episode's audio cannot be resolved, so it cannot be played.",
+            diagnosis: { outcome: "no-tape", tier1: tier1Trace, tier2: tier2Trace }
+          };
+        }
+        if (audioSource) state.newSegmentSources.set(itemId, audioSource);
         const segmentId = mintSegmentId(itemId, span.startSec, state.mintedIds);
         const referenceDurationSec = tier2.entry.feed_duration_sec ?? span.endSec;
         state.newSegments.push({
@@ -384,7 +583,11 @@ function resolveOneBeat(beat: Beat, state: SourcingState): BeatResolution {
           showId: tier2.entry.show_id,
           reason: `Transcript-archive metadata matched ("${tier2.entry.title}") and a ${evidence.anchorContentWords}-content-word anchor was located, but only ${evidence.beyondAnchorOverlap} further claim content words are spoken within ${ANCHOR_WINDOW_PAD_SEC} s of it — below the ${TIER2_WINDOW_OVERLAP_MIN} needed to call the tape there on topic.`
         });
-        return { kind: "narration", reason: "A transcript anchor was found but the tape around it is not about this claim." };
+        return {
+          kind: "narration",
+          reason: "A transcript anchor was found but the tape around it is not about this claim.",
+          diagnosis: { outcome: "no-tape", tier1: tier1Trace, tier2: tier2Trace }
+        };
       }
     }
   }
@@ -408,7 +611,11 @@ function resolveOneBeat(beat: Beat, state: SourcingState): BeatResolution {
     });
   }
 
-  return { kind: "narration", reason: "No tape found anywhere in the §4.5 search order for this beat." };
+  return {
+    kind: "narration",
+    reason: "No tape found anywhere in the §4.5 search order for this beat.",
+    diagnosis: { outcome: "no-tape", tier1: tier1Trace, tier2: tier2Trace }
+  };
 }
 
 /**

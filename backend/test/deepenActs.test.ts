@@ -1,5 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { deepenActs, ActDeepeningError, InvalidDeepenedActError } from "../src/generation/deepenActs";
+import * as fs from "fs";
+import * as path from "path";
+import { argumentCapFor, capArgumentBeats, deepenActs, ActDeepeningError, InvalidDeepenedActError } from "../src/generation/deepenActs";
 import { StubDeepenActBuilder } from "../src/generation/StubDeepenActBuilder";
 import { createDeepenActBuilder } from "../src/generation/createDeepenActBuilder";
 import type { DeepenActBuilder, DeepenActContext } from "../src/generation/DeepenActBuilder";
@@ -312,5 +314,136 @@ describe("createDeepenActBuilder", () => {
     const builder = createDeepenActBuilder();
     expect(builder).toBeInstanceOf(StubDeepenActBuilder);
     expect(builder.providerName).toBe("stub");
+  });
+});
+
+describe("deepenActs — the argument cap (F-49)", () => {
+  /**
+   * Run 2's deepen stage tagged 29 of 35 beats `argument`, §4.5 skipped tape
+   * lookup for every one of them, and the Foray shipped as pure narration on
+   * the subject this archive holds the most tape about. The fixture below is
+   * that run's own deepen output, lifted verbatim from its checkpoint file.
+   */
+  const RUN2: DeepenedAct[] = (
+    JSON.parse(fs.readFileSync(path.join(__dirname, "fixtures", "run2-deepen-2026-09-09.json"), "utf8")) as { acts: DeepenedAct[] }
+  ).acts;
+
+  const kindsOf = (acts: DeepenedAct[]): Array<string | undefined> => acts.flatMap((a) => a.slots.flatMap((s) => s.beats.map((b) => b.kind)));
+
+  function slotOf(beats: Array<{ claim: string; exploration: boolean; kind?: "account" | "argument" }>): DeepenedAct {
+    return {
+      title: "Act with one slot",
+      thesis: "It establishes something.",
+      startState: "before",
+      endState: "after",
+      slots: [{ title: "The only slot", beats }],
+      introduction: "intro",
+      exit: "exit"
+    };
+  }
+
+  const argumentBeat = (n: number) => ({ claim: `Every ${n}th failure means the same thing about engineering.`, exploration: false, kind: "argument" as const });
+
+  it("caps a slot's arguments at one third of its beats, rounded up", () => {
+    expect(argumentCapFor(1)).toBe(1);
+    expect(argumentCapFor(2)).toBe(1);
+    expect(argumentCapFor(3)).toBe(1);
+    expect(argumentCapFor(4)).toBe(2);
+    expect(argumentCapFor(5)).toBe(2);
+    expect(argumentCapFor(6)).toBe(2);
+    expect(argumentCapFor(35)).toBe(12);
+  });
+
+  it("re-tags the beats over the cap `account`, keeping the first ones in slot order", () => {
+    const act = slotOf([argumentBeat(1), argumentBeat(2), argumentBeat(3), argumentBeat(4), argumentBeat(5), argumentBeat(6)]);
+    const capped = capArgumentBeats(act);
+    expect(capped.slots[0]!.beats.map((b) => b.kind)).toEqual(["argument", "argument", "account", "account", "account", "account"]);
+    // Nothing but the tag moves: same beats, same order, same claims.
+    expect(capped.slots[0]!.beats.map((b) => b.claim)).toEqual(act.slots[0]!.beats.map((b) => b.claim));
+  });
+
+  it("records what it did as a WARNING ON THE ACT — a field, not a console line", () => {
+    /* Run 2's only symptom was the absence of tape four stages later. A warning
+       that travels with the act is checkpointed, survives a resume, and can be
+       asserted; a console.warn is none of those. MUTATION THAT KILLS THIS:
+       drop the warning and keep the re-tagging — the fix goes silent again. */
+    const capped = capArgumentBeats(slotOf([argumentBeat(1), argumentBeat(2), argumentBeat(3)]));
+    expect(capped.warnings).toHaveLength(1);
+    expect(capped.warnings![0]).toContain('Slot "The only slot"');
+    expect(capped.warnings![0]).toMatch(/3 of 3 beats came back tagged "argument"; at most 1 may be/);
+    expect(capped.warnings![0]).toMatch(/last 2 were re-tagged "account"/);
+  });
+
+  it("returns an act inside the cap untouched, with no warnings and no copy", () => {
+    const act = slotOf([argumentBeat(1), { claim: "The walkway fell into the atrium.", exploration: false, kind: "account" }]);
+    const capped = capArgumentBeats(act);
+    expect(capped).toBe(act);
+    expect(capped.warnings).toBeUndefined();
+  });
+
+  it("is idempotent — a second pass changes nothing and adds no second warning", () => {
+    const once = capArgumentBeats(slotOf([argumentBeat(1), argumentBeat(2), argumentBeat(3)]));
+    const twice = capArgumentBeats(once);
+    expect(twice).toBe(once);
+    expect(twice.warnings).toHaveLength(1);
+  });
+
+  it("re-tags run 2's own deepen output from 29 arguments to 12", () => {
+    /* The measurement F-49 was written from, replayed against the rule. 35
+       beats over 6 slots of 6/6/6/5/6/6 — every slot's cap is 2, so at most 12
+       beats can skip tape lookup where 29 did. */
+    expect(kindsOf(RUN2).filter((k) => k === "argument")).toHaveLength(29);
+    const capped = RUN2.map((a) => capArgumentBeats(a));
+    const kinds = kindsOf(capped);
+    expect(kinds).toHaveLength(35);
+    expect(kinds.filter((k) => k === "argument")).toHaveLength(12);
+    expect(kinds.filter((k) => k === "argument").length).toBeLessThan(29);
+  });
+
+  it("holds the cap in every single slot of the run-2 fixture, and warns on each one it corrected", () => {
+    const capped = RUN2.map((a) => capArgumentBeats(a));
+    for (const act of capped) {
+      for (const slot of act.slots) {
+        const args = slot.beats.filter((b) => b.kind === "argument").length;
+        expect(args).toBeLessThanOrEqual(argumentCapFor(slot.beats.length));
+      }
+    }
+    // Every one of the six slots was over the cap in run 2.
+    expect(capped.flatMap((a) => a.warnings ?? [])).toHaveLength(6);
+  });
+
+  it("applies the cap to a RESUMED act too, so an old checkpoint is corrected rather than replayed", async () => {
+    /* F-17's resume exists so a run does not re-pay for finished acts. It must
+       not also faithfully reproduce the defect that made the run worth
+       redoing. MUTATION THAT KILLS THIS: `if (resumed) return resumed`. */
+    const spine = makeSpine({ acts: [makeAct({}, "R")] });
+    const stored = slotOf([argumentBeat(1), argumentBeat(2), argumentBeat(3)]);
+    const builder = new StubDeepenActBuilder();
+    const out = await deepenActs(spine, builder, ctx, { resume: () => stored });
+    expect(out[0]!.slots[0]!.beats.map((b) => b.kind)).toEqual(["argument", "account", "account"]);
+    expect(out[0]!.warnings).toHaveLength(1);
+  });
+
+  it("the stub builder obeys the same cap, so the keyless path cannot regress silently", () => {
+    /* Every dry run and every keyless test goes through the stub. If it could
+       hand back a slot of six arguments, a regression in the cap would be
+       invisible without an API key — which is exactly how run 2 happened. */
+    const builder = new StubDeepenActBuilder();
+    const act = makeAct(
+      {
+        slots: [
+          {
+            title: "All generalisations",
+            beats: [1, 2, 3, 4, 5, 6].map((n) => ({ claim: `Every ${n}th deployment always fails in generally the same way.`, exploration: false }))
+          }
+        ]
+      },
+      "S"
+    );
+    return builder.deepenAct(makeSpine({ acts: [act] }), act, 0, ctx).then((deepened) => {
+      const kinds = deepened.slots[0]!.beats.map((b) => b.kind);
+      expect(kinds.filter((k) => k === "argument")).toHaveLength(2);
+      expect(kinds.filter((k) => k === "account")).toHaveLength(4);
+    });
   });
 });

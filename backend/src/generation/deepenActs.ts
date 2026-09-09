@@ -1,6 +1,92 @@
-import type { Act, DeepenedAct, Spine } from "../types/spine";
+import type { Act, DeepenedAct, Slot, Spine } from "../types/spine";
 import { DeepenedActSchema, validateDeepenedAct } from "../types/spine";
 import type { DeepenActBuilder, DeepenActContext } from "./DeepenActBuilder";
+
+/**
+ * THE ARGUMENT CAP (finding F-49).
+ *
+ * Run 2 asked for a Foray on how AI systems get built, and the deepen stage
+ * came back with 29 of its 35 beats tagged `argument`. §4.5 skips tape lookup
+ * for an argument by design (F-38), so 29 beats never went looking for tape,
+ * the remaining 6 found none, and the pipeline produced an all-narration Foray
+ * on the one subject this archive is richest in (337 *Practical AI* bodies).
+ *
+ * Nothing was wrong with any single judgement. On an angle-driven spine — "the
+ * unglamorous reality of production ML is engineering discipline, not research"
+ * — every beat can be read as evidence for the angle, and a model asked "is
+ * this a thesis?" keeps saying yes. A prompt line alone cannot hold that back,
+ * because the prompt is exactly what drifted.
+ *
+ * So the shape of a slot is asserted here, in code, where a run cannot argue
+ * with it: AT MOST ONE THIRD of a slot's beats may be `argument`, rounded up —
+ * a 3-beat slot may have 1, a 6-beat slot 2, a 1-beat slot 1 (a cap of zero
+ * would stop a single-beat slot holding an argument at all, which is a
+ * different rule than the one asked for). One third is the three-to-one ratio
+ * of things-that-happened to claims-about-them that a documentary slot reads
+ * as; it is a bound on drift, not a target.
+ *
+ * WHICH ONES ARE RE-TAGGED, AND WHY IT IS THE LAST ONES. The beats over the cap
+ * are the ones appearing LAST in the slot, in slot order. The alternative —
+ * ranking beats by how argument-shaped they look and keeping the strongest —
+ * would have this module re-judge the model's own judgement with a worse
+ * instrument than the model had, and the ranking would be a second, silent
+ * heuristic nobody could read off the output. Slot order is deterministic,
+ * explicable in one sentence, and a slot's opening beats are where its thesis
+ * is normally stated.
+ *
+ * RE-TAGGING IS THE SAFE DIRECTION. `account` only means "§4.5 may look for
+ * tape for this"; the search still has to clear every threshold and gate, so a
+ * re-tagged beat with no real tape simply becomes narration — which is what it
+ * was going to be anyway. The reverse mistake (a real account tagged
+ * `argument`) is the one that costs tape silently, and it is the one that
+ * happened.
+ */
+export const MAX_ARGUMENT_SHARE_PER_SLOT = 1 / 3;
+
+/** How many of a slot's `beatCount` beats may be `argument` — one third,
+ * rounded up, floored at 1 so a one-beat slot can still hold one. */
+export function argumentCapFor(beatCount: number): number {
+  return Math.max(1, Math.ceil(beatCount * MAX_ARGUMENT_SHARE_PER_SLOT));
+}
+
+/**
+ * Applies the cap to one deepened act, re-tagging the surplus `argument` beats
+ * `account` and recording what it did in the act's own `warnings` — a field, so
+ * it is checkpointed with the act, survives a resume and can be asserted in a
+ * test. Run 2's only symptom was the absence of tape four stages later; a
+ * `console.warn` would have been no better.
+ *
+ * Returns the act UNCHANGED (the same object, not a copy) when nothing is over
+ * the cap, so an act that needed no correction is byte-identical to what the
+ * builder returned. Idempotent: a second pass changes nothing, which is what
+ * lets it be applied to a resumed act as safely as to a fresh one.
+ */
+export function capArgumentBeats(act: DeepenedAct): DeepenedAct {
+  const warnings: string[] = [];
+  const slots: Slot[] = act.slots.map((slot) => {
+    const cap = argumentCapFor(slot.beats.length);
+    let kept = 0;
+    let retagged = 0;
+    const beats = slot.beats.map((beat) => {
+      if (beat.kind !== "argument") return beat;
+      if (kept < cap) {
+        kept += 1;
+        return beat;
+      }
+      retagged += 1;
+      return { ...beat, kind: "account" as const };
+    });
+    if (retagged === 0) return slot;
+    warnings.push(
+      `Slot "${slot.title}": ${kept + retagged} of ${slot.beats.length} beats came back tagged "argument"; at most ${cap} may be ` +
+        `(one third of the slot, rounded up). The last ${retagged} were re-tagged "account", so §4.5 looks for tape for them.`
+    );
+    return { title: slot.title, beats };
+  });
+
+  if (warnings.length === 0) return act;
+  return { ...act, slots, warnings: [...(act.warnings ?? []), ...warnings] };
+}
 
 /**
  * §4.4 end to end (docs/curation/generation-architecture.md §4.4 / §5):
@@ -71,7 +157,10 @@ async function deepenOneActWithRetry(
         );
       }
 
-      return deepened;
+      /* The cap is applied AFTER validation, on the way out: it is this
+         stage's own structural rule about the act it returns, not a schema
+         property of what the builder said (F-49). */
+      return capArgumentBeats(deepened);
     } catch (err) {
       lastError = err;
     }
@@ -112,7 +201,12 @@ export async function deepenActs(
 ): Promise<DeepenedAct[]> {
   const calls = spine.acts.map(async (act, index) => {
     const resumed = options.resume?.(index);
-    if (resumed) return resumed;
+    /* A resumed act goes through the cap too. It is idempotent, so an act
+       checkpointed after this rule existed comes back untouched; an act
+       checkpointed BEFORE it (run 2's own checkpoint — 29 arguments in 35
+       beats) is corrected on resume, rather than the resume faithfully
+       replaying the defect it exists to avoid re-paying for. */
+    if (resumed) return capArgumentBeats(resumed);
     const deepened = await deepenOneActWithRetry(spine, act, index, builder, ctx);
     /* Persisted BEFORE `Promise.all` settles, so an act that succeeded is
        banked even when a sibling act's retry budget runs out and fails the

@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { sourceBeats, M4_ITEM_SHARE_MAX } from "../src/generation/sourceBeats";
+import { readFileSync } from "fs";
+import { join } from "path";
+import { sourceBeats, summarizeSourcing, M4_ITEM_SHARE_MAX } from "../src/generation/sourceBeats";
+import { capArgumentBeats } from "../src/generation/deepenActs";
+import { mintSegmentSource } from "../src/generation/audioSourceLookup";
 import { validateSourcing, allSourcedBeats } from "../src/types/tapeSourcing";
 import type { DeepenedAct } from "../src/types/spine";
 import type { SegmentRecord } from "../src/generation/segmentPoolLookup";
@@ -1140,5 +1144,332 @@ describe("sourceBeats — F-33: two shared trade words inside one topic are not 
     expect(beats[0]!.sourcing).toBe("tape");
     const second = beats[1]!;
     if (second.sourcing === "tape") expect(second.tape.itemId).not.toMatch(/chernobyl/);
+  });
+});
+
+describe("sourceBeats — F-49: every narrated beat says which gate refused it", () => {
+  /**
+   * Run 2 produced 35 beats, 0 of them tape, and the only account it could give
+   * of itself was one sentence repeated six times ("No tape found anywhere in
+   * the §4.5 search order") — which cannot tell "the pool holds nothing about
+   * AI" apart from "the best episode was one title token short" apart from "the
+   * taxonomy gate refused it". Every threshold in §4.5 was being tuned by
+   * argument. These cases pin the evidence rows that replace the argument.
+   */
+  function oneBeat(claim: string, kind?: "account" | "argument"): DeepenedAct[] {
+    return [
+      makeDeepenedAct(
+        { slots: [{ title: "The only slot", beats: [{ claim, exploration: false, ...(kind ? { kind } : {}) }] }] },
+        "Trace"
+      )
+    ];
+  }
+
+  it("says `skipped:argument`, with no tier rows at all, for a beat §4.4 tagged an argument", () => {
+    const result = sourceBeats(oneBeat("Every link in a failure chain is judged against a local question.", "argument"), {
+      segmentPool: fixtureSegmentPool(),
+      transcriptArchive: []
+    });
+    expect(result.sourcingTrace).toHaveLength(1);
+    const trace = result.sourcingTrace[0]!;
+    expect(trace.outcome).toBe("skipped:argument");
+    expect(trace.tier1).toBeNull();
+    expect(trace.tier2).toBeNull();
+    expect(trace).toMatchObject({ actIndex: 0, slotIndex: 0, beatIndex: 0 });
+  });
+
+  it("names tier 1's best candidate, its score, its bar and the gate that refused it", () => {
+    /* The claim shares one content word ("criterion") with the pooled segment's
+       metadata, so the best candidate is real but under its own threshold.
+       MUTATION THAT KILLS THIS: report the gate without the score — the row
+       stops saying how far off the bar was, which is the only number a
+       threshold decision can be made from. */
+    const result = sourceBeats(oneBeat("The Lawson criterion was printed on a poster in the hallway."), {
+      segmentPool: fixtureSegmentPool(),
+      transcriptArchive: []
+    });
+    const tier1 = result.sourcingTrace[0]!.tier1!;
+    expect(tier1.bestSegmentId).toBe("lex-353-whyte#2530");
+    expect(tier1.bestItemId).toBe("lex-353-whyte");
+    expect(tier1.matchedIn).toBe("metadata");
+    expect(tier1.score).toBeGreaterThan(0);
+    expect(tier1.score).toBeLessThan(tier1.requiredScore);
+    expect(tier1.gate).toBe("threshold");
+  });
+
+  it("reports `no-candidates` when nothing in the pool shares a single content word", () => {
+    const result = sourceBeats(oneBeat("Briquette manufacturing consumed enormous quantities of sawdust."), {
+      segmentPool: [],
+      transcriptArchive: []
+    });
+    expect(result.sourcingTrace[0]!.tier1).toMatchObject({ bestSegmentId: null, score: 0, matchedIn: null, gate: "no-candidates" });
+  });
+
+  it("reports tier 1's `exhausted` gate when an earlier beat of the same Foray already played the best segment", () => {
+    /* F-29's "exhaustion of the one relevant episode" — the state that sent run
+       1's Kansas City beat to a British hearth-cooking segment. Two beats, one
+       segment: the second one's trace must say the segment was taken, not that
+       nothing matched. */
+    const claim = "The Lawson criterion is a statement about plasma confinement in a tokamak.";
+    const acts: DeepenedAct[] = [
+      makeDeepenedAct(
+        {
+          slots: [
+            {
+              title: "Twice over",
+              beats: [
+                { claim, exploration: false },
+                { claim, exploration: false }
+              ]
+            }
+          ]
+        },
+        "Exhaust"
+      )
+    ];
+    const result = sourceBeats(acts, { segmentPool: fixtureSegmentPool(), transcriptArchive: [] });
+    expect(result.tapeRelevance).toHaveLength(1);
+    expect(result.sourcingTrace).toHaveLength(1);
+    expect(result.sourcingTrace[0]!.tier1!.gate).toBe("exhausted");
+    expect(result.sourcingTrace[0]!.tier1!.bestSegmentId).toBe("lex-353-whyte#2530");
+  });
+
+  it("names tier 2's best episode and the title-token bar it missed", () => {
+    const archive: TranscriptDigestEntry[] = [
+      {
+        show_id: "geology-bites",
+        show_title: "Geology Bites",
+        guid: "geo-ep-42",
+        title: "How volcanic ash layers date the Roman eruption record",
+        cues: 3,
+        feed_duration_sec: 3600
+      }
+    ];
+    const result = sourceBeats(oneBeat("Volcanic sediment accumulated slowly."), { segmentPool: [], transcriptArchive: archive });
+    const tier2 = result.sourcingTrace[0]!.tier2!;
+    expect(tier2.bestEpisodeTitle).toBe("How volcanic ash layers date the Roman eruption record");
+    expect(tier2.bestShowId).toBe("geology-bites");
+    expect(tier2.score).toBeLessThan(tier2.requiredScore);
+    expect(tier2.gate).toBe("title-tokens");
+  });
+
+  it("distinguishes `no-body` (the episode matched, the transcript is not on this machine) from a miss", () => {
+    const archive: TranscriptDigestEntry[] = [
+      {
+        show_id: "geology-bites",
+        show_title: "Geology Bites",
+        guid: "geo-ep-42",
+        title: "How volcanic ash layers date the Roman eruption record",
+        cues: 3,
+        feed_duration_sec: 3600
+      }
+    ];
+    const result = sourceBeats(oneBeat("Volcanic ash layers date the Roman eruption record precisely."), {
+      segmentPool: [],
+      transcriptArchive: archive,
+      cueProvider: { getCues: () => null }
+    });
+    const tier2 = result.sourcingTrace[0]!.tier2!;
+    expect(tier2.gate).toBe("no-body");
+    expect(tier2.score).toBeGreaterThanOrEqual(tier2.requiredScore);
+  });
+
+  it("reports `window-overlap`, with the anchor's own numbers, when the tape around the anchor is about something else", () => {
+    /* F-24 in trace form: the anchor proves the phrase was spoken, the window
+       says the tape there is not about the claim, and the row carries both
+       counts so the `TIER2_WINDOW_OVERLAP_MIN` bar can be argued from data. */
+    const archive: TranscriptDigestEntry[] = [
+      {
+        show_id: "geology-bites",
+        show_title: "Geology Bites",
+        guid: "geo-ep-9",
+        title: "Banded iron formations and the great oxidation event",
+        cues: 4,
+        feed_duration_sec: 3600
+      }
+    ];
+    const cues: TranscriptCue[] = [
+      { text: "and then the great oxidation event happened", start_sec: 10, end_sec: 16 },
+      { text: "banded iron formations and the great oxidation", start_sec: 16, end_sec: 22 },
+      { text: "which is a completely different subject entirely", start_sec: 22, end_sec: 28 },
+      { text: "anyway back to the rocks we were discussing", start_sec: 28, end_sec: 34 }
+    ];
+    const result = sourceBeats(oneBeat("Banded iron formations and the great oxidation event reshaped atmospheric chemistry worldwide forever."), {
+      segmentPool: [],
+      transcriptArchive: archive,
+      cueProvider: { getCues: () => cues }
+    });
+    const tier2 = result.sourcingTrace[0]!.tier2!;
+    expect(["window-overlap", "no-anchor"]).toContain(tier2.gate);
+    if (tier2.gate === "window-overlap") {
+      expect(typeof tier2.anchorContentWords).toBe("number");
+      expect(typeof tier2.beyondAnchorOverlap).toBe("number");
+    }
+  });
+
+  it("summarises each slot in one line: how much tape, how much narration, and the top reason", () => {
+    const acts: DeepenedAct[] = [
+      makeDeepenedAct(
+        {
+          slots: [
+            {
+              title: "Mixed slot",
+              beats: [
+                { claim: "The Lawson criterion is a statement about plasma confinement in a tokamak.", exploration: false },
+                { claim: "Every failure chain is generally judged locally.", exploration: false, kind: "argument" },
+                { claim: "Briquette manufacturing consumed enormous quantities of sawdust.", exploration: false }
+              ]
+            }
+          ]
+        },
+        "Summary"
+      )
+    ];
+    const result = sourceBeats(acts, { segmentPool: fixtureSegmentPool(), transcriptArchive: [] });
+    const lines = summarizeSourcing(result);
+    expect(lines).toHaveLength(1);
+    expect(lines[0]).toMatch(/^source: act 1 slot 1 "Mixed slot" — 1 tape \/ 2 narration; top reason: /);
+  });
+});
+
+describe("sourceBeats — F-49: tier 2 will not mint tape nothing can play", () => {
+  const archive: TranscriptDigestEntry[] = [
+    {
+      show_id: "geology-bites",
+      show_title: "Geology Bites",
+      guid: "geo-ep-42",
+      title: "How volcanic ash layers date the Roman eruption record",
+      cues: 3,
+      feed_duration_sec: 3600,
+      enclosure_url: "https://cdn.example/geo-ep-42.mp3"
+    }
+  ];
+  const cues: TranscriptCue[] = [
+    { text: "Today we discuss how volcanic ash layers", start_sec: 100, end_sec: 105 },
+    { text: "date the Roman eruption record precisely using", start_sec: 105, end_sec: 111 },
+    { text: "radiometric methods developed over decades of fieldwork", start_sec: 111, end_sec: 118 }
+  ];
+  const claim = "Volcanic ash layers date the Roman eruption record precisely using radiometric methods.";
+  const acts = (): DeepenedAct[] => [
+    makeDeepenedAct({ slots: [{ title: "Volcanic dating", beats: [{ claim, exploration: false }] }] }, "Volcano")
+  ];
+
+  it("emits the episode's segment-sources row alongside the minted segment", () => {
+    /* Without the row, `check-forays.mjs` refuses the pool item id ("nothing
+       can resolve its audio") and the Foray fails §4.9 — which is what would
+       have happened to the first Foray this pipeline sourced tier-2 tape for. */
+    const result = sourceBeats(acts(), {
+      segmentPool: [],
+      transcriptArchive: archive,
+      cueProvider: { getCues: () => cues },
+      audioSourceFor: (entry, itemId) =>
+        mintSegmentSource(entry, itemId, new Map([["geology-bites", { dai: false, feedUrl: "https://example.invalid/f.xml", appleCollectionId: null }]]))
+    });
+    expect(result.newSegments).toHaveLength(1);
+    expect(result.newSegmentSources).toHaveLength(1);
+    expect(result.newSegmentSources[0]!.id).toBe(result.newSegments[0]!.itemId);
+    expect(result.newSegmentSources[0]!.audio_url).toBe("https://cdn.example/geo-ep-42.mp3");
+    expect(result.newSegmentSources[0]!.duration_sec).toBe(3600);
+  });
+
+  it("degrades the beat to narration, with gate `no-audio-source`, when no honest source row can be written", () => {
+    const result = sourceBeats(acts(), {
+      segmentPool: [],
+      transcriptArchive: archive,
+      cueProvider: { getCues: () => cues },
+      audioSourceFor: () => null
+    });
+    expect(result.newSegments).toHaveLength(0);
+    expect(result.newSegmentSources).toHaveLength(0);
+    expect(allSourcedBeats(result.acts)[0]!.sourcing).toBe("narration");
+    expect(result.sourcingTrace[0]!.tier2!.gate).toBe("no-audio-source");
+  });
+
+  it("is inert when no resolver is supplied, so every caller that predates one is unaffected", () => {
+    const result = sourceBeats(acts(), { segmentPool: [], transcriptArchive: archive, cueProvider: { getCues: () => cues } });
+    expect(result.newSegments).toHaveLength(1);
+    expect(result.newSegmentSources).toHaveLength(0);
+  });
+});
+
+describe("sourceBeats — run 2 replay: why 35 beats found no tape (F-49)", () => {
+  /**
+   * The deepen output of generation run 2, lifted verbatim from its checkpoint,
+   * sourced against the real `data/segments.json` and the real transcript
+   * digests with NO transcript bodies (the state a fresh checkout is in). This
+   * is the run F-49 was written from; what it pins is the DIAGNOSIS, not a
+   * count of tape — the archive's answer for these claims is a fact about the
+   * catalogue, not about this module.
+   */
+  const RUN2: DeepenedAct[] = (
+    JSON.parse(readFileSync(join(__dirname, "fixtures", "run2-deepen-2026-09-09.json"), "utf8")) as { acts: DeepenedAct[] }
+  ).acts;
+
+  /* The topic run 2 resolved, passed explicitly so this case does not depend on
+     `resolveTopic` — which resolved an AI/ML prompt to `engineering/energy-fusion`,
+     itself worth a finding, and not one this test should be hostage to. */
+  const RUN2_TOPIC = "engineering/energy-fusion";
+
+  it("as it ran: 29 of 35 beats never searched at all, and the six that did are traced tier by tier", () => {
+    const result = sourceBeats(RUN2, { topic: RUN2_TOPIC, cueProvider: { getCues: () => null } });
+    expect(result.sourcingTrace).toHaveLength(35);
+    expect(result.tapeRelevance).toHaveLength(0);
+
+    const skipped = result.sourcingTrace.filter((t) => t.outcome === "skipped:argument");
+    expect(skipped).toHaveLength(29);
+
+    const searched = result.sourcingTrace.filter((t) => t.outcome === "no-tape");
+    expect(searched).toHaveLength(6);
+    for (const trace of searched) {
+      expect(trace.tier1).not.toBeNull();
+      expect(trace.tier2).not.toBeNull();
+    }
+  });
+
+  it("names the gate for the ImageNet beat and the Amazon-latency beat — the two the fix has to answer for", () => {
+    const result = sourceBeats(RUN2, { topic: RUN2_TOPIC, cueProvider: { getCues: () => null } });
+    const byClaim = (needle: string) => result.sourcingTrace.find((t) => t.claim.includes(needle))!;
+
+    /* ImageNet: the pool's best candidate is a *Causality* episode scoring
+       under its own bar, and tier 2's best episode of any family is a
+       divorce-attorney episode — which two shared title tokens would have
+       admitted. This is the row that says lowering `TIER2_MATCH_THRESHOLD`
+       to 2 buys run 1's Chernobyl mis-anchor back. */
+    const imagenet = byClaim("ImageNet");
+    expect(imagenet.outcome).toBe("no-tape");
+    expect(imagenet.tier1!.score).toBeLessThan(imagenet.tier1!.requiredScore);
+    expect(imagenet.tier1!.gate).toBe("threshold");
+    expect(imagenet.tier2!.score).toBeLessThan(imagenet.tier2!.requiredScore);
+    expect(["title-tokens", "lineage"]).toContain(imagenet.tier2!.gate);
+
+    /* Amazon latency: tier 1's best candidate CLEARED the score bar (3 of 3) —
+       and was refused by the taxonomy gate, because it is the San Bruno gas
+       pipeline explosion. The gate doing its job is the difference between
+       this run and run 1, and the trace is what makes it visible. */
+    const latency = byClaim("Greg Linden");
+    expect(latency.tier1!.score).toBeGreaterThanOrEqual(latency.tier1!.requiredScore);
+    expect(latency.tier1!.gate).toBe("topic-lineage");
+    expect(latency.tier1!.bestItemId).toContain("causality");
+  });
+
+  it("with the argument cap applied, 23 beats search instead of 6 — and the archive still has nothing for them", () => {
+    /* The other half of F-49's diagnosis, and the reason this PR does not touch
+       a threshold: even with four times as many beats searching, tier 2 stops
+       at the title-token bar every time. Tier 2 reads episode TITLES, never
+       transcript text (F-06), and no *Practical AI* title shares three content
+       words with a claim about ImageNet's label errors. */
+    const capped = RUN2.map((a) => capArgumentBeats(a));
+    const result = sourceBeats(capped, { topic: RUN2_TOPIC, cueProvider: { getCues: () => null } });
+    const searched = result.sourcingTrace.filter((t) => t.outcome === "no-tape");
+    expect(searched).toHaveLength(23);
+    expect(result.tapeRelevance).toHaveLength(0);
+    for (const trace of searched) {
+      /* Every one of them stops before the tape itself: either no episode
+         cleared the title-token bar, or the taxonomy gate emptied the field, or
+         the episode that did clear it has no transcript body in this checkout.
+         None reaches `no-anchor`/`window-overlap`, the two gates that mean tier
+         2 got as far as what was actually said. */
+      expect(["title-tokens", "lineage", "no-body"]).toContain(trace.tier2!.gate);
+    }
   });
 });

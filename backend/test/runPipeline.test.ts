@@ -319,6 +319,31 @@ describe("runtimeSecFor", () => {
   });
 });
 
+describe("runForayPipeline — the tier-2 tape the candidate has to carry (F-49)", () => {
+  it("hands finalize the segments and source rows §4.5 minted this run", async () => {
+    /* A tier-2 pointer names a segment that is in no file on disk yet. Unless
+       the candidate carries the minted rows, `check-forays.mjs` cannot resolve
+       the id, drops the item before every ordering rule and counts its seconds
+       nowhere — so the Foray fails §4.9 the first time sourcing finds any
+       tier-2 tape. The stub pipeline mints none, so what is pinned here is the
+       PLUMBING: both arrays reach `FinalizeForayInput`.
+
+       MUTATION THAT KILLS THIS: drop `segments`/`segmentSources` from the
+       `FinalizeForayInput` literal. Ran it — red (undefined, not an array). */
+    const out = await runForayPipeline(request, options, stubDeps());
+    expect(out.outcome).toBe("generated");
+    if (out.outcome !== "generated") return;
+    expect(Array.isArray(out.input.segments)).toBe(true);
+    expect(Array.isArray(out.input.segmentSources)).toBe(true);
+    /* Every minted segment's episode is registered exactly once — the join
+       `check-forays.mjs` makes between a pool row and the audio registry. */
+    const itemIds = new Set((out.input.segments ?? []).map((s) => s.itemId));
+    for (const id of itemIds) {
+      expect((out.input.segmentSources ?? []).filter((s) => s.id === id)).toHaveLength(1);
+    }
+  });
+});
+
 describe("runForayPipeline against the REAL §4.9 validator", () => {
   it("produces a candidate the real check-forays/check-narration act on, on their own terms", async () => {
     /* THE ONE TEST THAT DOES NOT FAKE FINALIZE. Everything above proves the
