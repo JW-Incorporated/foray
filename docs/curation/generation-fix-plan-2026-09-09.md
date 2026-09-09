@@ -184,6 +184,21 @@ re-run pays only for narration; a budget stop says which stage and how much; no 
 spine with a duplicated or multi-sentence beat claim never reaches a deepen call; and `Ai` is not in the
 research map for run 1's own prompt.
 
+## WS-H — Tier 2 matches transcript text, not titles (closes F-06, F-49's cause; depends on WS-C's gates)
+
+Run 2 (#552's offline replay) proved the archive holds the tape and the search never reaches it: the title-token bar
+rejects every candidate before the anchored-window test runs. Build a text-level candidate search for tier 2: for each
+`account` beat, query `data-local/corpus/corpus.db`'s FTS index (or, where a show has no corpus chunks, a BM25 over the
+normalised cue text of the beat's lineage-admissible episodes) with the claim's content words; take the top N episodes;
+run the EXISTING `resolveAnchorFromCues` + anchored-window overlap + lineage gate + cut-to-cue-boundaries on those; keep
+the title bar only as a tie-breaker. Emit the same `sourcingTrace` rows so the replay test can show which gate now
+decides. Regression: run 1's Chernobyl-for-Hyatt and griddle anchors must still be refused (tests pinned in
+`sourceBeats.test.ts`); run 2's ImageNet-label-errors beat must reach the window test against *Practical AI*.
+**Files.** `transcriptArchiveLookup.ts` (candidate search), a small `corpusSearch.ts` over `corpus.db` (read-only,
+machine-local, provider-shaped like `TranscriptCueProvider` so CI without the DB degrades to the title path), tests.
+**Done when.** The F-49 fixture (`backend/test/fixtures/run2-deepen-2026-09-09.json`) yields ≥ 1 tape beat offline on
+this machine with a trace that names the window test as the deciding gate, and no run-1 regression case flips.
+
 ## Rules for the agents
 
 - Work on a branch from `generation-run-2026-09-09` (it carries the run-1 fixes); one PR per workstream,
