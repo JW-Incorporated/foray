@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import { env } from "../config/env";
+import { costFor, modelFor } from "../config/models";
 import { defaultBudgetGuard, type BudgetGuard } from "../cost/budgetGuard";
 import { parseWithRetry } from "./parseWithRetry";
 import type { IntentUnderstanding } from "../types/generation";
@@ -22,9 +23,14 @@ import type { SpineBuildContext, SpineBuilder } from "./SpineBuilder";
  * except explicit, human-invoked production code paths.
  */
 
-const MODEL = "claude-opus-4-1";
-const USD_PER_INPUT_TOKEN = 15.0 / 1_000_000;
-const USD_PER_OUTPUT_TOKEN = 75.0 / 1_000_000;
+/* Model id and per-token rates come from `src/config/models.ts`, the one
+ * place a Claude model id is written down (F-03). Which TIER this stage
+ * needs stays this stage's decision; which model serves that tier does not.
+ * An id and its price are read from the same row, so they cannot drift
+ * apart the way seven hand-copied pairs did. */
+const MODEL = modelFor("opus");
+const USD_PER_INPUT_TOKEN = costFor("opus").usdPerInputToken;
+const USD_PER_OUTPUT_TOKEN = costFor("opus").usdPerOutputToken;
 const MAX_OUTPUT_TOKENS = 8000;
 
 const BeatSchema = z.object({ claim: z.string(), exploration: z.boolean() });

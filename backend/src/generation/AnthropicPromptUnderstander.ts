@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import { env } from "../config/env";
+import { costFor, modelFor } from "../config/models";
 import { defaultBudgetGuard, type BudgetGuard } from "../cost/budgetGuard";
 import { parseWithRetry } from "./parseWithRetry";
 import type { ClarityResult, IntentUnderstanding } from "../types/generation";
@@ -9,17 +10,23 @@ import type { PromptUnderstander, PromptUnderstandContext } from "./PromptUnders
 /**
  * Real §4.1 clarity/intent understanding via the Anthropic API, mirroring
  * AnthropicEnricher's structure and model choice (backend/src/enrich/AnthropicEnricher.ts):
- * claude-haiku-4-5, cheap enough for two short calls per prompt under §9.2's
- * generous ~$5-10/Foray phase-1 ceiling.
+ * the `haiku` tier, cheap enough for two short calls per prompt under §9.2's
+ * generous ~$5-10/Foray phase-1 ceiling. The id that tier resolves to lives in
+ * `src/config/models.ts`, never here (F-03).
  *
  * NEVER instantiate this class in a test — same rule as AnthropicEnricher.
  * Use createPromptUnderstander() everywhere except explicit, human-invoked
  * production code paths.
  */
 
-const MODEL = "claude-haiku-4-5";
-const USD_PER_INPUT_TOKEN = 1.0 / 1_000_000;
-const USD_PER_OUTPUT_TOKEN = 5.0 / 1_000_000;
+/* Model id and per-token rates come from `src/config/models.ts`, the one
+ * place a Claude model id is written down (F-03). Which TIER this stage
+ * needs stays this stage's decision; which model serves that tier does not.
+ * An id and its price are read from the same row, so they cannot drift
+ * apart the way seven hand-copied pairs did. */
+const MODEL = modelFor("haiku");
+const USD_PER_INPUT_TOKEN = costFor("haiku").usdPerInputToken;
+const USD_PER_OUTPUT_TOKEN = costFor("haiku").usdPerOutputToken;
 
 const ClaritySchema = z.object({
   ambiguous: z.boolean(),

@@ -114,8 +114,12 @@ describe("runForayPipeline", () => {
     const out = await runForayPipeline(request, options, stubDeps());
     const names = out.timings.map((t) => t.name);
 
+    /* `narrate` is keyed per ACT (`narrate:0`, `narrate:1`, ...) since the
+       F-17/F-18 checkpoint landed: narration is driven one act at a time so a
+       failure in act 3 does not discard acts 1 and 2. `request` is the short
+       tier, which is one act, so there is exactly one here. */
     expect(names).toEqual([
-      "understand", "research", "spine", "deepen", "source", "narrate", "stitch", "finalize"
+      "understand", "research-shape", "spine", "deepen", "source", "narrate:0", "stitch", "finalize"
     ]);
     for (const t of out.timings) expect(t.ms).toBeGreaterThanOrEqual(0);
   });

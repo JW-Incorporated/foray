@@ -1,6 +1,7 @@
 import type { IntentUnderstanding } from "../types/generation";
 import type { ResearchShape } from "../types/research";
 import { SpineSchema, validateSpine, type DurationTier, type Spine, type SpineValidationResult } from "../types/spine";
+import { assertSpineStructure } from "./spineStructure";
 import type { SpineBuildContext, SpineBuilder } from "./SpineBuilder";
 
 /**
@@ -44,6 +45,15 @@ export async function buildSpine(
   if (!validation.valid) {
     throw new InvalidSpineError(validation);
   }
+
+  /* The confirmation loop F-13 found missing. `validateSpine` above checks
+     counts, claim SHAPE and the exploration floor per beat; this checks the
+     relationships a per-beat schema cannot see — the same claim written into
+     two acts, a paragraph where a claim belongs, two sentences in one beat, an
+     act with no start or end state. Placed here, between §4.3 and §4.4,
+     because that is the last point at which a bad spine costs one Opus call
+     rather than three deepen calls plus sourcing plus 31 narration pages. */
+  assertSpineStructure(spine);
 
   return spine;
 }

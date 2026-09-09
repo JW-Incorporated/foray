@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import { parseWithRetry } from "./parseWithRetry";
 import { env } from "../config/env";
+import { costFor, modelFor } from "../config/models";
 import { defaultBudgetGuard, type BudgetGuard } from "../cost/budgetGuard";
 import { MODE_CHAR_BANDS } from "../types/narration";
 import type { NarrationBuildContext, NarrationWriteRequest, NarrationWriteResult, NarrationWriterBuilder } from "./NarrationWriterBuilder";
@@ -18,9 +19,14 @@ import type { NarrationBuildContext, NarrationWriteRequest, NarrationWriteResult
  * Anthropic* class in this codebase. Use createNarrationWriterBuilder().
  */
 
-const MODEL = "claude-sonnet-4-5";
-const USD_PER_INPUT_TOKEN = 3.0 / 1_000_000;
-const USD_PER_OUTPUT_TOKEN = 15.0 / 1_000_000;
+/* Model id and per-token rates come from `src/config/models.ts`, the one
+ * place a Claude model id is written down (F-03). Which TIER this stage
+ * needs stays this stage's decision; which model serves that tier does not.
+ * An id and its price are read from the same row, so they cannot drift
+ * apart the way seven hand-copied pairs did. */
+const MODEL = modelFor("sonnet");
+const USD_PER_INPUT_TOKEN = costFor("sonnet").usdPerInputToken;
+const USD_PER_OUTPUT_TOKEN = costFor("sonnet").usdPerOutputToken;
 const MAX_OUTPUT_TOKENS = 2000;
 
 const SourceSchema = z.object({

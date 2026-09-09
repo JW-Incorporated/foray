@@ -8,6 +8,7 @@ import {
   tokenizeForCatalogueQuery,
   type CatalogueData
 } from "./catalogueLookup";
+import { resolveTopic } from "./resolveTopic";
 import type { ExternalResearcher, ExternalResearchContext } from "./ExternalResearcher";
 
 /**
@@ -80,9 +81,9 @@ interface CandidateSeed {
  * guardrail cares most about: a genuinely untaped subject must still
  * produce a real candidate, not an empty map.
  */
-function buildCandidateSeeds(intent: IntentUnderstanding, catalogue: CatalogueData): CandidateSeed[] {
+function buildCandidateSeeds(intent: IntentUnderstanding, catalogue: CatalogueData, topic: string | null): CandidateSeed[] {
   const queryText = `${intent.subject} ${intent.angle}`;
-  const matched = matchConceptsInText(queryText, catalogue.concepts);
+  const matched = matchConceptsInText(queryText, catalogue.concepts, { topic });
 
   if (matched.length === 0) {
     return [{ label: intent.subject, source: "literal-term", terms: tokenizeSubject(intent.subject) }];
@@ -144,6 +145,45 @@ export interface BuildResearchShapeOptions {
   ctx: ExternalResearchContext;
   /** Injectable for tests; defaults to the real on-disk catalogue. */
   catalogue?: CatalogueData;
+  /**
+   * The Foray's taxonomy node, used to keep off-branch concepts out of the map
+   * (F-11). Pass it when a human has already pinned the topic; leave it out
+   * and this stage resolves one from the intent itself.
+   *
+   * Pass `null` EXPLICITLY to disable the filter — distinct from omitting it,
+   * which means "resolve one". A test asserting the old unfiltered behaviour
+   * and a caller who knows the taxonomy cannot place this subject are the two
+   * cases that want it.
+   */
+  topic?: string | null;
+  /** Repo root for the taxonomy read, when resolving the topic here. */
+  root?: string;
+}
+
+/**
+ * The topic the F-11 filter is keyed on.
+ *
+ * RESOLVED HERE, FROM THE INTENT, rather than taken from later in the
+ * pipeline: `runPipeline` resolves the topic after narration (it needs the
+ * finished spine's act titles to do it well), and §4.2 runs six stages
+ * earlier. The subject and angle are enough for the coarse question this
+ * filter asks — which branch of the taxonomy is this Foray in — and run 1's
+ * own intent text resolves to `engineering/disasters` from the subject alone.
+ *
+ * A MISS DISABLES THE FILTER RATHER THAN FAILING. `resolveTopic` deliberately
+ * returns null instead of guessing, and a subject it cannot place is exactly
+ * the case §4.2's guardrail protects: "a genuinely untaped subject must still
+ * produce a real candidate, not an empty map". Filtering on a topic nobody
+ * resolved would empty the map for precisely those subjects.
+ */
+function resolveFilterTopic(intent: IntentUnderstanding, root: string | undefined): string | null {
+  try {
+    return resolveTopic(`${intent.subject} ${intent.angle}`, { root }).resolved;
+  } catch {
+    /* No taxonomy on disk (a checkout without `data/`, a fixture directory) —
+       the research map is not the place to fail for that. */
+    return null;
+  }
 }
 
 /**
@@ -158,7 +198,8 @@ export async function buildResearchShape(
   options: BuildResearchShapeOptions
 ): Promise<ResearchShape> {
   const catalogue = options.catalogue ?? loadCatalogueData();
-  const seeds = buildCandidateSeeds(intent, catalogue);
+  const topic = options.topic !== undefined ? options.topic : resolveFilterTopic(intent, options.root);
+  const seeds = buildCandidateSeeds(intent, catalogue, topic);
 
   const withTape = seeds.map((seed) => ({ seed, tape: buildTapeAvailability(seed.terms, catalogue) }));
   const gaps = withTape.filter((s) => s.tape.signal === "none");

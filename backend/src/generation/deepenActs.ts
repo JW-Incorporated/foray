@@ -84,7 +84,42 @@ async function deepenOneActWithRetry(
  * pipeline orchestrator (§4.0-§4.9 wired end-to-end) can call this as one
  * step — building that orchestrator is explicitly NOT this stage's job.
  */
-export async function deepenActs(spine: Spine, builder: DeepenActBuilder, ctx: DeepenActContext): Promise<DeepenedAct[]> {
-  const calls = spine.acts.map((act, index) => deepenOneActWithRetry(spine, act, index, builder, ctx));
+/**
+ * Per-act checkpoint seam (generation run 2026-09-09, findings F-17/F-18).
+ *
+ * Deliberately a pair of callbacks rather than a store object: this stage owns
+ * the retry and failure-isolation policy above and must keep owning it, so all
+ * it exposes is "do you already have act N?" and "here is act N". Where those
+ * answers are kept — an in-memory map in a test, a JSON file beside the
+ * candidate in the batch driver — is not this module's business.
+ *
+ * Both are optional, and a caller that passes neither gets exactly the
+ * behaviour this function had before they existed.
+ */
+export interface DeepenActsOptions {
+  /** Returns an already-deepened act for `index`, or undefined to build it. */
+  resume?: (index: number) => DeepenedAct | undefined;
+  /** Called with each act as soon as it is built and validated — never for a
+   * resumed one, which is already stored. */
+  onActDeepened?: (index: number, act: DeepenedAct) => void | Promise<void>;
+}
+
+export async function deepenActs(
+  spine: Spine,
+  builder: DeepenActBuilder,
+  ctx: DeepenActContext,
+  options: DeepenActsOptions = {}
+): Promise<DeepenedAct[]> {
+  const calls = spine.acts.map(async (act, index) => {
+    const resumed = options.resume?.(index);
+    if (resumed) return resumed;
+    const deepened = await deepenOneActWithRetry(spine, act, index, builder, ctx);
+    /* Persisted BEFORE `Promise.all` settles, so an act that succeeded is
+       banked even when a sibling act's retry budget runs out and fails the
+       whole stage. That is the F-17 case: the run dies, and the next attempt
+       does not re-pay for the acts that worked. */
+    await options.onActDeepened?.(index, deepened);
+    return deepened;
+  });
   return Promise.all(calls);
 }
