@@ -39,7 +39,11 @@ const IntentSchema = z.object({
   subject: z.string(),
   angle: z.string(),
   priorKnowledge: z.string(),
-  disappointment: z.string()
+  disappointment: z.string(),
+  /* F-64 — see `IntentUnderstandingSchema`. Optional here too: a model that
+     drops them costs a clamped fallback, not a re-ask. */
+  title: z.string().optional(),
+  summary: z.string().optional()
 });
 
 function roughTokenEstimate(text: string): number {
@@ -200,14 +204,19 @@ function buildIntentPrompt(prompt: string): string {
     "",
     `"${prompt}"`,
     "",
-    "Produce a structured understanding of the request with exactly these four fields:",
-    "- subject: the concrete subject of the Foray",
+    "Produce a structured understanding of the request with exactly these six fields:",
+    "- subject: the concrete subject of the Foray, as a short noun phrase of at most 8 words —",
+    "  NOT a restatement of the prompt",
     "- angle: the specific angle or thesis worth taking, not just the topic",
     "- priorKnowledge: what the listener probably already knows about this",
     "- disappointment: what would make this Foray a disappointment to the listener — this is",
     "  the most important field; be concrete, not generic",
+    "- title: the Foray's public title, at most 10 words, no trailing punctuation",
+    "- summary: one plain sentence of at most 16 words that a listener sees under the title —",
+    "  what they will come away knowing, not a list of subtopics",
     "",
     "Respond with ONLY a single JSON object, no markdown fences, no other text, matching exactly:",
-    '{"subject": string, "angle": string, "priorKnowledge": string, "disappointment": string}'
+    '{"subject": string, "angle": string, "priorKnowledge": string, "disappointment": string, ' +
+      '"title": string, "summary": string}'
   ].join("\n");
 }

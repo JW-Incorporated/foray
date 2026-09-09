@@ -146,6 +146,11 @@ export function summarize(outcome: RunPipelineOutcome): string {
       return `AMBIGUOUS — ${outcome.question}`;
     case "unresolved-topic":
       return `NO TOPIC — nearest: ${outcome.candidates.slice(0, 3).map((c) => c.id).join(", ") || "(none)"}`;
+    case "no-tape":
+      /* F-65: every beat degraded to narration, so §4.9 would refuse the Foray
+         and the run stopped before narrating it. The per-slot lines name the
+         top reason each slot lost its tape. */
+      return `NO TAPE — every beat sourced to narration; ${outcome.sourcing.join(" | ")}`;
     case "generated":
       return outcome.result.validation.ok
         ? `OK ${outcome.input.id} (${outcome.input.items.length} items, ${outcome.input.runtimeSec}s)`

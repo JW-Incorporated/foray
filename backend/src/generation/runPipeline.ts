@@ -183,6 +183,10 @@ export type RunPipelineOutcome =
   | { outcome: "needs-clarification"; question: string; readings: string[]; timings: StageTiming[] }
   /** The pipeline ran but no taxonomy node could be resolved — nothing is published. */
   | { outcome: "unresolved-topic"; title: string; candidates: TopicCandidate[]; timings: StageTiming[] }
+  /** §4.5 sourced every beat to narration (F-65). A Foray with no tape cannot
+   * pass §4.9, so the run stops before paying for narration. `sourcing` is
+   * `summarizeSourcing`'s one line per slot, top reason included. */
+  | { outcome: "no-tape"; title: string; sourcing: string[]; timings: StageTiming[] }
   /** A Foray was built. `validation.ok` says whether it may be published. */
   | {
       outcome: "generated";
@@ -207,6 +211,54 @@ export type RunPipelineOutcome =
     };
 
 /** The Foray-level `slots` record: §4.9 wants `{id, title}` per act slot. */
+/** `check-forays.mjs`'s `MAX_WHY_LINE_WORDS`, applied to `title` and `summary`
+ * (and every slot title) as "our own prose". Mirrored rather than imported:
+ * that file is `.mjs` and Vitest cannot load it on every checkout (see
+ * `RunPipelineDeps.finalize`). `check-forays.test.mjs` pins the number. */
+export const MAX_COPY_WORDS = 18;
+
+function wordCount(text: string): number {
+  return text.trim().split(/\s+/).filter(Boolean).length;
+}
+
+/** Cuts `text` at a word boundary so it has at most `max` words, then strips a
+ * dangling separator. Never invents words: a clamped line is an honest prefix. */
+export function clampWords(text: string, max: number = MAX_COPY_WORDS): string {
+  const words = text.trim().split(/\s+/).filter(Boolean);
+  if (words.length <= max) return words.join(" ");
+  return words.slice(0, max).join(" ").replace(/[\s,;:—–-]+$/u, "");
+}
+
+/**
+ * The two listener-facing lines §4.9 puts on the record, derived ONCE here
+ * (F-64). Run 2 attempt 3 spent 76 minutes narrating a Foray whose `summary`
+ * was the understander's 26-word restatement of the prompt, and
+ * `check-forays.mjs` refused it at finalize for being over 18 words — the
+ * one rule in the whole run that no model ever saw. Now: the understander is
+ * asked for a bounded `title` and `summary` by name; whatever comes back is
+ * clamped to the checker's own limit so the record cannot fail this rule; and
+ * a clamp that actually cut something is reported, because it means the
+ * understander ignored the instruction and the prompt needs looking at.
+ *
+ * `title` keeps its old shape (`subject: angle`) when the understander gave
+ * none, so every id minted by `forayIdFor(title, …)` for a pre-F-64 request
+ * is unchanged (`runPipeline.test.ts` pins one).
+ */
+export function forayCopy(intent: { subject: string; angle?: string; title?: string; summary?: string }): {
+  title: string;
+  summary: string;
+  clamped: string[];
+} {
+  const clamped: string[] = [];
+  const rawTitle = intent.title?.trim() || `${intent.subject}${intent.angle ? `: ${intent.angle}` : ""}`.slice(0, 120);
+  const rawSummary = intent.summary?.trim() || intent.subject;
+  const title = clampWords(rawTitle);
+  const summary = clampWords(rawSummary);
+  if (wordCount(rawTitle) > MAX_COPY_WORDS) clamped.push(`title (${wordCount(rawTitle)} words)`);
+  if (wordCount(rawSummary) > MAX_COPY_WORDS) clamped.push(`summary (${wordCount(rawSummary)} words)`);
+  return { title, summary, clamped };
+}
+
 export function slotsFromSpine(spine: Spine): ForaySlot[] {
   const slots: ForaySlot[] = [];
   const seen = new Set<string>();
@@ -654,7 +706,10 @@ export async function runForayPipeline(
      the right one. `generatedAt` deliberately did NOT move with it: it is the
      time the Foray was finished, and stamping it here would date every Foray
      several minutes before it existed. */
-  const title = `${intent.subject}${intent.angle ? `: ${intent.angle}` : ""}`.slice(0, 120);
+  const { title, summary, clamped: clampedCopy } = forayCopy(intent);
+  for (const what of clampedCopy) {
+    console.warn(`runPipeline: ${what} exceeded the ${MAX_COPY_WORDS}-word copy rule and was clamped — the understander ignored its length instruction (F-64)`);
+  }
   const topicText = [intent.subject, intent.angle, spine.acts.map((a) => a.title).join(" ")].join(" ");
   const resolvedTopic = resolveTopic(topicText, { root: options.root });
   const topic = options.topic ?? resolvedTopic.resolved;
@@ -732,7 +787,25 @@ export async function runForayPipeline(
      the operator's first evidence was an all-narration candidate 30 minutes
      later. These are printed, not returned, because they are for the person
      watching the run — the machine-readable form is `sourced.sourcingTrace`. */
-  for (const line of summarizeSourcing(sourced)) console.log(`  ${line}`);
+  const sourcingLines = summarizeSourcing(sourced);
+  for (const line of sourcingLines) console.log(`  ${line}`);
+
+  /* NO TAPE, NO FORAY — SAID NOW, NOT AFTER NARRATION (F-65). A Foray with no
+     segment item fails `check-forays.mjs` ("no resolvable segment items")
+     without exception, so once §4.5 has sourced every beat to narration the
+     run's only remaining product is a 76-minute demonstration of that. Run 2
+     attempt 3 was exactly that: the sourcing lines above said "0 tape" 51
+     seconds in, and the checker said the same thing 76 minutes and 139,803
+     tokens later. Stopping here returns the sourcing summary as the outcome so
+     the report names the top reason per slot; the fix is upstream of this line
+     (the spine reads the tape — WS-L), never a looser check. */
+  const tapeBeats = sourced.acts.reduce(
+    (sum, act) => sum + act.slots.reduce((s, slot) => s + slot.beats.filter((b) => b.sourcing === "tape").length, 0),
+    0
+  );
+  if (tapeBeats === 0) {
+    return { outcome: "no-tape", title, sourcing: sourcingLines, timings: timings.all() };
+  }
 
   /* The pool the runtime clock is measured against has to include what tier 2
      just minted, or a tier-2 tape item contributes 0 s to `runtime_sec` and
@@ -838,7 +911,7 @@ export async function runForayPipeline(
                     runtimeSec: runtimeSecFor(itemsWithDisclosure, runtimePool),
                     ttlA1Ms
                   },
-                  { id: forayId, title, topic, summary: intent.subject, authorId: options.userId, builtAt: startedAt, root: options.root },
+                  { id: forayId, title, topic, summary, authorId: options.userId, builtAt: startedAt, root: options.root },
                   finalize
                 );
                 await deps.onActReady!(candidate);
@@ -877,7 +950,7 @@ export async function runForayPipeline(
     id: forayId,
     title,
     topic,
-    summary: intent.subject,
+    summary,
     slots,
     items,
     runtimeSec: runtimeSecFor(items, runtimePool),

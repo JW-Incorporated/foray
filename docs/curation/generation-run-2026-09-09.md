@@ -111,6 +111,9 @@ instead of by the API. Built in series; anything reasonable is fixed between run
 | F-62 | *(from #553's one successful mint)* The cut-to-cue-boundaries step grows a short window symmetrically to reach `MIN_TAPE_SEGMENT_SEC` (45 s); this archive's cues average ~28 s, so the padding pulled in a leading cue that is off-claim — ~28 s of unrelated tape before the relevant passage. | Medium (listener-visible once tape flows) | Grow by overlap (prefer the side whose next cue shares claim terms), never symmetrically; allow a shorter segment over an off-claim lead-in. |
 | I-24 | *(environment incident)* **The machine-local transcript archive was emptied mid-session.** `data-local/transcripts/normalized/` (1,713 bodies) had its contents deleted at 2026-09-09 18:46:26Z (directory mtime), 62 s after the text index wrote its first cache file at 18:45:24Z; `raw/` (876 srt + 837 vtt) and `index/` were untouched. Found by the F-61 agent when the two WS-H offline tests failed; every generation run after that time would have sourced zero tape from an archive that looked present. No code on the branch deletes under that path (`rmSync` audit: only temp dirs and the checkpoint file); the process that did it is not identified. Regenerated at 20:40Z from `raw/` with `tools/segments/transcript-normalize.mjs` (587 via `selectTargets`, 1,126 by filename; 0 failures; byte-shape identical to `fetch-transcripts.mjs`'s writer, with `regenerated_from` on the second set). | High (silent zero-tape) | Guard: the cue provider must report *how many* bodies it can read at run start and the driver must refuse to run sourcing against an archive whose body count fell below the digest's (an `archive:empty` trace + a hard stop); keep the raw bodies as the source of truth and make regeneration a documented one-liner. Forensics: add an audit log line to every `data-local/` writer. |
 | F-63 | **The spine is written without reading the tape, so its beats claim things the archive never says.** Run 2 attempt 3, with WS-H, F-59 and F-61 all merged and the archive restored: every one of the 29 `account` beats reached real *Practical AI* transcripts by text and was refused by the relevance floor (`tier2:window-overlap`, best-window shares 0.08–0.20 against 0.35); the F-61 replay counted zero occurrences of `imagenet`, `hidden technical debt`, `garbage in`, `feature store`, `concept drift` across all 63 bodies. The matcher is now right to refuse. The cause is upstream: §4.2's research map hands the spine *concept labels and item counts* ("Ai: 761 items, tape: strong"), never a line of what those items say, so Opus writes a spine from its own knowledge of the subject and the tape is asked to illustrate claims it was never consulted on. Three attempts, three matchers, zero tape — and the archive holds 63 episodes on the subject. | **Critical** (the product premise: a Foray plays the tape) | Tape-first spine: research-shape returns, per candidate subtopic, the 3–5 highest-BM25 transcript windows (episode, 60–120 s, the actual sentences) so the spine prompt can build `account` beats *around* what the archive says (with a rule: every act carries ≥ N beats seeded from a listed window); keep the current path for subjects with weak tape. Card WS-L. |
+| F-64 | **The record's `summary` is the understander's restatement of the prompt, and nothing bounds it.** Run 2 attempt 3 reached finalize after 76 minutes and `check-forays.mjs` refused the Foray for a `summary` of 26 words (limit 18): `runPipeline` sets `summary: intent.subject` and `title: subject: angle` cut at 120 characters (the title passed at 16 words only because the cut landed there, ending in a comma). The understand prompt never mentioned a length; the checker's copy rule was the one rule in the run no model had seen, and it was applied last. | High (a full run lost to a sentence) | The understander is asked for `title` (≤ 10 words) and `summary` (≤ 16 words) by name, `subject` is bounded to 8 words; `forayCopy` clamps both to the checker's 18 at a word boundary and warns when it had to. Fixed on the branch before attempt 4. |
+| F-65 | **A zero-tape run is a guaranteed loss and the pipeline only says so at the end.** `check-forays.mjs` rejects any Foray with no resolvable segment item, so once §4.5 sources every beat to narration the run cannot produce a publishable Foray — attempt 3's sourcing lines said "0 tape" 51 s in, and the checker said "no resolvable segment items" 76 minutes and 139,803 tokens later, after 66 fresh model calls. | High (cost; three attempts have now run to or towards this wall) | `runPipeline` returns a new `no-tape` outcome straight after §4.5 when the tape count is zero, carrying the per-slot sourcing summary so the report names the deciding gate; the CLI prints `NO TAPE — …`. The fix for the tape itself stays upstream (WS-L). Fixed on the branch before attempt 4. |
+| F-66 | **WS-D2's "time to first listen" is measured after every act is narrated, so it is the whole run.** The partial candidate is written by `stitchForay`'s `onActReady`, and stitch runs once, after the sequential narration of all acts — so attempt 3's `ttlA1Ms` is 4,579,741 ms (76.3 min, the full run) although act 1's narration was checkpointed at 18 min. A listener could not have started at 18 min either: nothing wrote a candidate until stitch. The streaming design (WS-D) is wired one stage too late. | Medium (KPI is wrong; the streaming promise is not kept) | Stitch act *i* as soon as act *i* is narrated (`stitchAct` already exists; continuity only smooths the act's introduction against the previous act, which is complete by then) and write the partial there; `ttlA1` then measures what its name says. Card: WS-D follow-up. |
 | F-08 | The **stub run** (no key) on "the history of food and cooking" *built* a Foray and then failed **M4** (one show at 30.9% of runtime, cap 25%) — the quality gate works, and the small pool concentrates on few shows. | Info | Expected with a 212-row pool; watch whether tier 2 fixes it. |
 
 ## 1b. Interventions ledger — every deviation from the as-designed workflow
@@ -262,7 +265,7 @@ behind collapsed bridges, failed dams and machines that broke."
 
 *Fixes between attempt 2 and attempt 3 (in progress):* F-59 (topic resolver), F-60 (empty evidence: one rephrased retry, then degrade, never fatal), WS-H (text-level tier 2) if ready.
 
-**Attempt 3 (20:18Z → in progress)** — pipeline = generation branch after #553 (WS-H), #554 (F-59), #555 (F-60), #565 (F-61); archive regenerated (I-24). Calls 1–7 replayed from attempt 2 (identical prompts); evidence cache served 10 of 12 pages, 2 fresh retrieval calls. **Sourcing: 0 tape of 35 beats, deciding gate `tier2:window-overlap` on every slot** — tier 2 now reaches the transcripts and the relevance floor refuses them honestly (F-63).
+**Attempt 3 (20:21:39Z → 21:37:55Z, 76 m 16 s wall) — COMPLETED narration, stitch and finalize; the Foray was REFUSED by `check-forays.mjs` (F-64 summary length, F-65 zero tape). Nothing published.** Pipeline = generation branch after #553 (WS-H), #554 (F-59), #555 (F-60), #565 (F-61); archive regenerated (I-24). Calls 1–7 replayed from attempt 2 (identical prompts); evidence cache served 10 of 12 pages, 2 fresh retrieval calls. **Sourcing: 0 tape of 35 beats, deciding gate `tier2:window-overlap` on every slot** — tier 2 now reaches the transcripts and the relevance floor refuses them honestly (F-63).
 
 **Act 1 checkpoint (attempt 3):** the first act ever completed on the new pipeline — `narrate:0`, `narrate:0:0`, `narrate:0:1` written. 12 pages: 2 dropped at the F-60 guard (no evidence after the rephrased retry, no writer call spent), **10 verified** — slot 1 five of five on the first attempt, slot 2 three of four first time (two accepted as `purposeRevised`, one corrected a statistic the purpose overstated) and the fourth on attempt 2. Narration calls for the act: 9 (3 selection, 3 prose, 3 verify) for 10 pages = **0.9 per page** (run 1: 4.6 per beat); retrieval 2 fresh calls, 10 evidence-cache hits.
 
@@ -271,6 +274,29 @@ behind collapsed bridges, failed dams and machines that broke."
 **Act 3 checkpoint (attempt 3):** `narrate:2` written; one slot, 6 pages, **6 verified** (two first time, three on attempt 2, one on attempt 3). Narration calls: 9 for 6 pages = 1.5 per page; retrieval 6 fresh. Acts 1–3 together: 27 verified of 29 kept pages, 1 kept unverified, 2 dropped for no evidence; 30 narration calls for 29 pages ≈ 1.0 per page.
 
 **Act 4 checkpoint (attempt 3):** `narrate:3` written — narration complete for all 35 beats. One slot, 6 pages, 6 verified (four first time, three of them `purposeRevised`; one on attempt 2; one dropped to the F-60 hand-off? — see the report). Retrieval 6 fresh + 2 rephrased retries, both of which found passages (one off-topic — a prediction-market page — refused at selection: F-48 in miniature). Stitch (§4.8 continuity, 3 Sonnet calls at 500 tokens) started at call #71.
+
+**Finalize (attempt 3).** Stitch took 2 m 24 s (3 Sonnet continuity calls); finalize 8 ms. The record: 4 acts / 6 slots / **44 items, all narration** (disclosure + 33 pages + markers), `runtime_sec` 2,684 — a 45-minute all-narration Foray. `check-forays.mjs` refused it on two rules: *summary is 26 words, over the 18-word limit* (F-64) and *no resolvable segment items* (F-65, the consequence of F-63). The veracity gate was never consulted — validation failed first — but `meta.veracity` was computed and is in `report.json`: **86 of 86 checkable quotes grounded** in their documents, 0 ungrounded pages, purpose fidelity 1.0, 10 pages accepted as `purposeRevised`, 3 pages kept unverified (2 no-evidence hand-offs from F-60, 1 F-45 collision), first-attempt pass rate 0.67, 1.0 narration calls per page, 139,803 pipeline tokens. `ttlA1Ms` = 4,579,741 — the whole run, because the partial candidate is only written during stitch (F-66).
+
+| KPI (attempt 3) | Value |
+|---|---|
+| Outcome | INVALID at finalize (F-64, F-65); veracity gate not reached |
+| Wall clock | 76 m 16 s: understand 40 s (replayed), spine 5 s (replayed), deepen 6 s (replayed), source 2 s, narrate 17.1 + 20.5 + 20.7 + 14.8 min, stitch 2.4 min, finalize 8 ms |
+| Model calls | 73: 30 Haiku (2 understand replayed + 28 evidence retrieval incl. 4 rephrased retries), 1 Opus (spine, replayed), 42 Sonnet (4 deepen replayed, 35 narration = selection/prose/verify, 3 continuity); 7 replayed, 66 fresh |
+| Pipeline tokens | 139,803 (SDK usage); est. 96,848 in / 42,955 out by chars/4 |
+| Agent compute (sum) / relay wall (sum) | ≈ 7,750 s / 7,794 s — orchestrator share < 1 % |
+| Pages | 35 beats → 33 pages written, 30 verified, 3 kept unverified (2 no-evidence, 1 F-45), 0 fatal (F-51 held for the whole run) |
+| Narration calls per page | 35 for 33 = **1.06** (run 1: 4.6 per beat) |
+| First-attempt page pass rate | 0.67 (`meta.veracity.firstAttemptPassRate`) |
+| Grounded quotes | 86 of 86 checkable — zero fabricated or mis-attributed citations reached the verifier |
+| Pages passed as `purposeRevised` | 10 (F-50 working as designed) |
+| Empty retrievals | 4 first queries empty → rephrased retry (F-60): 2 found passages, 2 did not (pages handed off unverified, no writer call spent) |
+| Tape anchors | 0 of 35 — every trace `tier2:window-overlap` (F-63) |
+| Beat kinds | 29 account / 6 argument |
+| Time until a listener could start | never (nothing publishable); `ttlA1Ms` reads 76.3 min because the partial is written at stitch (F-66) |
+
+*What attempt 3 proved:* the narration pipeline now runs end to end on a 35-beat spine with no fatal page, ~1 call per page, and every quote it reads to the listener is in the document it names. *What it disproved:* that fixing the matchers would produce tape — the spine has to be written from the tape (WS-L, merged, untested until attempt 4).
+
+*Fixes between attempt 3 and attempt 4:* F-64 (bounded title/summary, clamped to the checker's rule), F-65 (`no-tape` outcome after §4.5), WS-L (tape-first spine, #566). F-66 routed to a card.
 
 **What the two fixes changed, and one thing they deliberately did not.** F-50: the claim-selection and prose prompts now permit a page to report a contradiction between its purpose and its documents, the prose reply carries `purposeRevised`, and the verifier's `purposeAccomplished` asks whether the page addressed the purpose's SUBJECT with the evidence available — contradicting the purpose accomplishes it; only dropping the subject fails. Both flags (writer's `purposeRevised`, verifier's `purposeRevisedByVerifier`) are kept on `NarratedBeat` and counted as `meta.veracity.purposeRevisedPages`, reported and never gated. F-51: a narration beat's third rejection keeps the page with `verified: false`, its `attempts` history and the verifier's final `verifierNotes`, and the run continues; `meta.veracity.unverifiedPages` counts them, lists them in `unverifiedPageDetails`, and `evaluateVeracityGate` refuses to publish over any of them (`--force` unchanged). `NarrationWriteError` survives only for a beat that never produced a page at all. `narrate:<act>:<slot>` keys bank each slot as it is written, so a re-run pays only for the slots that never landed.
 
@@ -282,32 +308,33 @@ behind collapsed bridges, failed dams and machines that broke."
 
 ## 3. KPIs (aggregate; per-run tables above)
 
-Every number here is copied from a per-run table above; `—` means that run did not measure it. The three
+Every number here is copied from a per-run table above; `—` means that run did not measure it. The four
 columns are the only attempts that reached narration: run 1's attempt 4 (the as-found pipeline plus the
-between-attempt fixes I-13/I-16), run 2's attempt 1 (the merged fix fleet WS-A/B/C/D/E/F) and run 2's
-attempt 2 (that plus #551 and #552).
+between-attempt fixes I-13/I-16), run 2's attempt 1 (the merged fix fleet WS-A/B/C/D/E/F), run 2's
+attempt 2 (that plus #551 and #552) and run 2's attempt 3 (that plus #553/#554/#555/#565 — the first
+attempt to reach finalize on the new pipeline).
 
-| KPI | Run 1, attempt 4 | Run 2, attempt 1 | Run 2, attempt 2 |
-|---|---|---|---|
-| Outcome | FAILED at beat 23 of 31 (F-46) | FAILED at act 1, page p2 (F-50/F-51) | FAILED at act 1, the no-evidence page (F-60) |
-| Wall clock | 2 h 35 m | 33 m 07 s | ~40 min |
-| Spine | 3 acts / 6 slots / 31 beats | 4 acts / 6 slots / 35 beats | same spine (calls 1–3 replayed) |
-| Progress | 22 of 31 beats (acts 1–2 complete) | act 1 only; 12 pages, 10 verified by attempt 2 | act 1 only; 13 pages judged, 9 passed |
-| Pipeline model calls | 103 (6 reused + 97 fresh: 1 Opus, 2 Haiku, 100 Sonnet) | 34 (14 Haiku, 1 Opus, 19 Sonnet) | 34 (14 Haiku, 1 Opus, 19 Sonnet incl. 1 orphaned) |
-| Narration calls per beat / page | 4.2 per beat (52 writer, 45 verifier) | 1.25 per page (15 for 12), plus 1 retrieval call each | — |
-| First-attempt page pass rate | 5 of 23 | 6 of 11 verified pages | 6 of 9 (first round) |
-| Pipeline tokens (est., chars/4) | ≈ 70 k in / 22 k out | 50,662 in / 24,796 out | 41,725 in / 20,591 out |
-| Subagent tokens incl. harness | 4,257,478 (97 agents, ≈ 44 k each) | — | — |
-| Agent compute (sum) | 5,560 s | 4,847 s | 3,893 s (fresh calls) |
-| Relay wall (sum) | 9,240 s | 4,863 s | — |
-| Orchestrator share of relay wall | 52 % (act 1) → 21 % (act 2) after I-19 | ≈ 0 % | — |
-| Beat kinds (`account` / `argument`) | — (the field did not exist) | 6 / 29 | 29 / 6 |
-| Tape anchors | 5 of 22 on topic | 0 of 35 (F-49) | 0 of 35 (every trace: `tier2:lineage`, F-59) |
-| Fabricated or mis-attributed citations reaching the verifier | ≥ 6 (F-27, F-30, F-32 ×3, F-46) | 0 — the mechanical gate passed first time on all 5 selection calls | — |
-| Pages kept / dropped / fatal | 18 / 4 / 1 | — | — |
-| Pages passed as `purposeRevised` | — (no such flag) | — (no such flag) | 3 |
-| Empty retrievals | — | — | 2 of 12 pages (F-60) |
-| Time until a listener could start | never | never | never |
+| KPI | Run 1, attempt 4 | Run 2, attempt 1 | Run 2, attempt 2 | Run 2, attempt 3 |
+|---|---|---|---|---|
+| Outcome | FAILED at beat 23 of 31 (F-46) | FAILED at act 1, page p2 (F-50/F-51) | FAILED at act 1, the no-evidence page (F-60) | REFUSED at finalize: summary length (F-64), zero tape (F-65) — narration complete |
+| Wall clock | 2 h 35 m | 33 m 07 s | ~40 min | 76 m 16 s |
+| Spine | 3 acts / 6 slots / 31 beats | 4 acts / 6 slots / 35 beats | same spine (calls 1–3 replayed) | same spine (calls 1–7 replayed) |
+| Progress | 22 of 31 beats (acts 1–2 complete) | act 1 only; 12 pages, 10 verified by attempt 2 | act 1 only; 13 pages judged, 9 passed | all 35 beats; 33 pages, 30 verified, 3 kept unverified; stitched and finalized |
+| Pipeline model calls | 103 (6 reused + 97 fresh: 1 Opus, 2 Haiku, 100 Sonnet) | 34 (14 Haiku, 1 Opus, 19 Sonnet) | 34 (14 Haiku, 1 Opus, 19 Sonnet incl. 1 orphaned) | 73 (30 Haiku, 1 Opus, 42 Sonnet; 7 replayed) |
+| Narration calls per beat / page | 4.2 per beat (52 writer, 45 verifier) | 1.25 per page (15 for 12), plus 1 retrieval call each | — | 1.06 per page (35 for 33), plus ≈ 1 retrieval call each |
+| First-attempt page pass rate | 5 of 23 | 6 of 11 verified pages | 6 of 9 (first round) | 0.67 |
+| Pipeline tokens (est., chars/4) | ≈ 70 k in / 22 k out | 50,662 in / 24,796 out | 41,725 in / 20,591 out | 96,848 in / 42,955 out (SDK usage: 139,803) |
+| Subagent tokens incl. harness | 4,257,478 (97 agents, ≈ 44 k each) | — | — | — |
+| Agent compute (sum) | 5,560 s | 4,847 s | 3,893 s (fresh calls) | ≈ 7,750 s |
+| Relay wall (sum) | 9,240 s | 4,863 s | — | 7,794 s |
+| Orchestrator share of relay wall | 52 % (act 1) → 21 % (act 2) after I-19 | ≈ 0 % | — | < 1 % |
+| Beat kinds (`account` / `argument`) | — (the field did not exist) | 6 / 29 | 29 / 6 | 29 / 6 |
+| Tape anchors | 5 of 22 on topic | 0 of 35 (F-49) | 0 of 35 (every trace: `tier2:lineage`, F-59) | 0 of 35 (every trace: `tier2:window-overlap`, F-63) |
+| Fabricated or mis-attributed citations reaching the verifier | ≥ 6 (F-27, F-30, F-32 ×3, F-46) | 0 — the mechanical gate passed first time on all 5 selection calls | — | 0 — 86 of 86 checkable quotes grounded |
+| Pages kept / dropped / fatal | 18 / 4 / 1 | — | — | 33 / 2 (no evidence, kept as unverified hand-offs) / 0 |
+| Pages passed as `purposeRevised` | — (no such flag) | — (no such flag) | 3 | 10 |
+| Empty retrievals | — | — | 2 of 12 pages (F-60) | 4 first queries; 2 recovered by the rephrased retry |
+| Time until a listener could start | never | never | never | never (refused); `ttlA1Ms` = 76.3 min is the whole run (F-66) |
 
 ## 4. Things to fix, ranked
 

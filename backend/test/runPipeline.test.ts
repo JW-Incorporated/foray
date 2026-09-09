@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { runForayPipeline, slotsFromSpine, runtimeSecFor } from "../src/generation/runPipeline";
+import { runForayPipeline, slotsFromSpine, runtimeSecFor, forayCopy, clampWords, MAX_COPY_WORDS } from "../src/generation/runPipeline";
 import { StubPromptUnderstander } from "../src/generation/StubPromptUnderstander";
 import { StubExternalResearcher } from "../src/generation/StubExternalResearcher";
 import { StubSpineBuilder } from "../src/generation/StubSpineBuilder";
@@ -383,5 +383,75 @@ describe("runForayPipeline against the REAL §4.9 validator", () => {
     expect(out.result.validation).toBeDefined();
     expect(Array.isArray(out.result.validation.checkForaysErrors)).toBe(true);
     expect(out.input.items[0]).toMatchObject({ type: "narration", id: "disclosure" });
+  });
+});
+
+describe("runForayPipeline — the record's own copy cannot fail the copy rule (F-64)", () => {
+  const twentySix =
+    "The end-to-end engineering pipeline of building and operating machine learning systems in production: " +
+    "data preparation, model development, deployment infrastructure, monitoring, and the iterative cycle of refinement";
+
+  it("clamps a summary the understander wrote past 18 words, at a word boundary, and says so", () => {
+    /* Run 2 attempt 3: `summary` was this exact 26-word restatement and
+       `check-forays.mjs` refused the Foray at finalize, 76 minutes after the
+       line was written. MUTATION THAT KILLS THIS: return `intent.subject`
+       unclamped from `forayCopy`. Ran it — red on the word count. */
+    const copy = forayCopy({ subject: twentySix, angle: "how it is really done" });
+    expect(copy.summary.split(/\s+/).length).toBeLessThanOrEqual(MAX_COPY_WORDS);
+    expect(copy.summary.endsWith(",")).toBe(false);
+    expect(copy.summary.endsWith(":")).toBe(false);
+    expect(twentySix.startsWith(copy.summary)).toBe(true);
+    expect(copy.clamped.some((c) => c.startsWith("summary (26 words)"))).toBe(true);
+  });
+
+  it("keeps the pre-F-64 title shape when the understander gives no title, so minted ids do not move", () => {
+    const copy = forayCopy({ subject: "grilling", angle: "the surprising origin story" });
+    expect(copy.title).toBe("grilling: the surprising origin story");
+    expect(copy.summary).toBe("grilling");
+    expect(copy.clamped).toEqual([]);
+  });
+
+  it("prefers the understander's own bounded title and summary when it gave them", () => {
+    const copy = forayCopy({
+      subject: twentySix,
+      angle: "x",
+      title: "How Machine Learning Really Ships",
+      summary: "Why most of an ML system is plumbing, and what the plumbing has to get right."
+    });
+    expect(copy.title).toBe("How Machine Learning Really Ships");
+    expect(copy.summary).toBe("Why most of an ML system is plumbing, and what the plumbing has to get right.");
+    expect(copy.clamped).toEqual([]);
+  });
+
+  it("clampWords never invents a word and leaves a short line untouched", () => {
+    expect(clampWords("one two three", 5)).toBe("one two three");
+    expect(clampWords("one two three four five six", 3)).toBe("one two three");
+    expect(clampWords("a b c — d", 3)).toBe("a b c");
+  });
+});
+
+describe("runForayPipeline — no tape, no Foray, said before narration (F-65)", () => {
+  it("stops after §4.5 with a `no-tape` outcome when every beat sourced to narration", async () => {
+    /* A grilling spine sourced under a fusion-energy topic: the lineage gate
+       (WS-C) refuses every pool segment, so §4.5 hands back zero tape. Before
+       F-65 the run went on to narrate, stitch and finalize, and the real
+       checker then refused the Foray for "no resolvable segment items" — the
+       stop only moved earlier; the verdict is the checker's. MUTATION THAT
+       KILLS THIS: delete the `tapeBeats === 0` return in runPipeline.ts —
+       the outcome comes back "generated". Ran it — red. */
+    const out = await runForayPipeline(request, { ...options, topic: "engineering/energy-fusion" }, stubDeps());
+    expect(out.outcome).toBe("no-tape");
+    if (out.outcome !== "no-tape") return;
+    expect(out.title.length).toBeGreaterThan(0);
+    expect(out.sourcing.length).toBeGreaterThan(0);
+    expect(out.sourcing.every((line) => /0 tape/.test(line))).toBe(true);
+    /* It stopped where it said: no narration stage was timed. */
+    expect(out.timings.some((t) => t.name.startsWith("narrate"))).toBe(false);
+    expect(out.timings.some((t) => t.name === "source")).toBe(true);
+  });
+
+  it("still generates when at least one beat has tape", async () => {
+    const out = await runForayPipeline(request, options, stubDeps());
+    expect(out.outcome).toBe("generated");
   });
 });
