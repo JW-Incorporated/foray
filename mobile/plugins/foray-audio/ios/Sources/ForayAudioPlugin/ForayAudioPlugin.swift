@@ -36,13 +36,22 @@ import Capacitor
 ///    every seam, with no need to suppress WebKit (there is no public API to
 ///    do that anyway). During narration there is no `<audio>` element, so
 ///    there is no second writer at all.
-/// 2. **Audio-session policy.** This plugin calls ONLY
-///    `AVAudioSession.setActive(true)`, never `setCategory`. WebKit and
-///    `ForayTtsPlugin` both already set `.playback`/`.spokenAudio` before this
-///    plugin ever runs; re-asserting a category risks interrupting an
-///    already-correctly-configured, possibly-rendering session.
-///    `setActive(true)` on an already-active session is a documented no-op.
-///    This plugin never calls `setActive(false)`.
+/// 2. **Audio-session policy: this plugin NEVER touches the session.** It sets
+///    no category and does not change the session's active state — not
+///    `setActive(true)`, not `setActive(false)`. WebKit activates the shared
+///    `.playback` session for the audible `<audio>` element, and
+///    `ForayTtsPlugin` activates `.spokenAudio` for narration; each of the two
+///    real audio producers owns its own activation. An earlier version called
+///    `setActive(true)` from `setNowPlaying` "to ensure commands are delivered,"
+///    believing it a no-op on an already-active session. It is not harmless on
+///    the 4 Hz hot path: re-asserting activation on the session WebKit holds
+///    interrupts WebKit's element, which pauses; the player reconciles and
+///    resumes; the next position write repeats it — the F11/F13 pause loop
+///    (founder device diagnostics, 2026-09-08/09, loop period == the position
+///    write cadence). `MPRemoteCommandCenter` handlers are process-level and are
+///    delivered whichever producer activated the session, so this plugin needs
+///    no activation of its own. `shell-invariants.test.mjs` pins that
+///    `setNowPlaying` contains no `setActive` call so this cannot regress.
 /// 3. **`stop` on iOS: declined outright**, not merely on a finished Foray.
 ///    Android exposes it because an ongoing foreground-service notification
 ///    needs a one-press exit; iOS has no equivalent ongoing surface -- Now
@@ -92,12 +101,20 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         applyNowPlayingInfo(payload)
         applyCommandAvailability(payload)
 
-        // See design comment §2: ensure the session is ACTIVE so remote
-        // commands are delivered, but never re-assert a category WebKit or
-        // ForayTts may already have set for a session that is actively
-        // rendering. `setActive(true)` on an already-active session with
-        // default options is a documented no-op.
-        try? AVAudioSession.sharedInstance().setActive(true)
+        // This plugin does NOT touch the audio session's active state. See
+        // design comment §2: `setNowPlaying` runs on `render()`'s hot path up to
+        // 4 Hz, and calling `AVAudioSession.setActive(true)` there — even though
+        // it reads as a no-op — repeatedly re-asserts activation on the SHARED
+        // session that WebKit is holding for the audible `<audio>` element. On a
+        // real device that reactivation interrupts WebKit's element, which fires
+        // an unheard `pause`; the player reconciles it, resumes, and the next
+        // ~1 s position write does it again — the F11/F13 pause loop, whose
+        // period matched this write cadence exactly (founder diagnostics,
+        // 2026-09-08/09). The two real audio producers each own activation:
+        // WebKit activates for the `<audio>` element, `ForayTtsPlugin` for
+        // narration. `MPRemoteCommandCenter` handlers are process-level and are
+        // delivered regardless of which of them activated the session, so
+        // nothing here needs to activate it.
 
         var result = JSObject()
         result["ok"] = true
