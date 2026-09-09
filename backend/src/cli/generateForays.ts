@@ -6,6 +6,7 @@ import { FileTranscriptCueProvider } from "../generation/transcriptArchiveLookup
 import { checkpointFingerprint } from "../generation/checkpoint";
 import { FileCheckpointStore } from "./checkpointStore";
 import type { GenerationRequest } from "../types/generation";
+import type { PartialCandidate } from "../generation/partialCandidate";
 import type { VeracityMetrics } from "../generation/veracityMetrics";
 import { env } from "../config/env";
 import { modelSummary } from "../config/models";
@@ -62,7 +63,7 @@ interface PromptSpec {
   topic?: string;
 }
 
-interface CliArgs {
+export interface CliArgs {
   prompts: string | null;
   out: string;
   duration: "short" | "medium" | "long";
@@ -127,6 +128,14 @@ export function candidateFilename(prompt: string): string {
   return `${slug || "prompt"}-${hash}.json`;
 }
 
+/** WS-D2's partial-candidate file, next to `candidateFilename`'s own file and
+ * keyed the same way (same slug+hash, so a reader can find both without a
+ * lookup table). `readPartialCandidate` (`generationStatus.ts`) is the
+ * counterpart that reads this back for a status request. */
+export function partialCandidateFilename(prompt: string): string {
+  return candidateFilename(prompt).replace(/\.json$/, ".partial.json");
+}
+
 /** One line per prompt, so a 200-prompt run reads as a table and not a log. */
 export function summarize(outcome: RunPipelineOutcome): string {
   switch (outcome.outcome) {
@@ -141,6 +150,174 @@ export function summarize(outcome: RunPipelineOutcome): string {
         ? `OK ${outcome.input.id} (${outcome.input.items.length} items, ${outcome.input.runtimeSec}s)`
         : `INVALID ${outcome.input.id} — ${outcome.result.validation.checkForaysErrors.slice(0, 2).join("; ")}`;
   }
+}
+
+/** One row of `report.json`. `veracity` is WS-B's per-candidate metric block
+ * and `ttlA1Ms` is WS-D2's time-to-first-listen; both are optional because
+ * neither exists for a rejected, ambiguous or errored prompt. */
+export type ReportEntry = {
+  prompt: string;
+  outcome: string;
+  detail: string;
+  ms: number;
+  file?: string;
+  ttlA1Ms?: number | null;
+  veracity?: VeracityMetrics;
+};
+
+/**
+ * One prompt's worth of `main()`'s loop body, extracted so a test can drive
+ * it directly — same reason `parseArgs`/`normalizePrompts`/`candidateFilename`
+ * are already exported. `deps.runPipeline` defaults to the real
+ * `runForayPipeline`; `deps.onPartialWrite` is a TEST-ONLY hook (no
+ * production caller passes it) fired synchronously right after each partial
+ * write lands on disk, so a test can assert on the file's on-disk content at
+ * the exact moment WS-D2's "rewrites it on each act" happens, rather than
+ * only at the very end once (on success) the partial file has already been
+ * cleaned up.
+ */
+export async function generateOneCandidate(
+  spec: PromptSpec,
+  args: CliArgs,
+  deps: {
+    cueProvider: FileTranscriptCueProvider;
+    runPipeline?: typeof runForayPipeline;
+    onPartialWrite?: (candidate: PartialCandidate, partialFile: string) => void;
+  }
+): Promise<{ skipped: boolean; entry?: ReportEntry; file?: string }> {
+  const runPipeline = deps.runPipeline ?? runForayPipeline;
+  const basename = candidateFilename(spec.prompt);
+  const file = path.join(path.resolve(args.out), basename);
+  if (fs.existsSync(file)) {
+    console.log(`  skip   ${spec.prompt.slice(0, 60)} (already built)`);
+    return { skipped: true, file };
+  }
+
+  const request: GenerationRequest = {
+    prompt: spec.prompt,
+    duration: spec.duration ?? args.duration,
+    author_id: args.authorId,
+    visibility: "catalogue"
+  };
+
+  /* F-17/F-18. The skip above is the OUTER resume — a prompt whose candidate
+     exists costs nothing — and it is unchanged. This is the inner one: a
+     prompt whose candidate does NOT exist because the run died at beat 23 of
+     31 still has 22 beats on disk, and this is what hands them back. The
+     checkpoint key is the candidate's basename minus `.json`, so the two
+     files sit side by side and a human can see which prompt a half-finished
+     run belongs to. */
+  const checkpointKey = basename.replace(/\.json$/, "");
+  const checkpointStore = new FileCheckpointStore(
+    path.resolve(args.out),
+    checkpointFingerprint({ prompt: spec.prompt, duration: request.duration, topic: spec.topic })
+  );
+  if (args.noResume) checkpointStore.discard(checkpointKey);
+  const resumable = !args.noResume && checkpointStore.load(checkpointKey) !== null;
+  if (resumable) {
+    const stages = Object.keys(checkpointStore.load(checkpointKey)!.stages);
+    console.log(`  resume ${spec.prompt.slice(0, 60)} — ${stages.length} stage(s) already done: ${stages.join(", ")}`);
+  }
+
+  /* WS-D2 (docs/curation/generation-fix-plan-2026-09-09.md, "D2 (streaming
+     publish)"): "generateForays writes the partial file and rewrites it on
+     each act." The partial file lives next to the eventual candidate file and
+     the checkpoint, under the SAME resumable-batch directory this CLI already
+     writes to — no new location, no `data/`/`data-local/` write this CLI
+     didn't already make. `--dry-run` writes nothing here either, matching the
+     final-candidate and checkpoint paths' own `--dry-run` behaviour below.
+
+     NOTHING IS WRITTEN ON A RESUMED RUN WHOSE STITCH STAGE IS CHECKPOINTED:
+     `runPipeline.ts` fires `onActReady` from inside the stitch stage, which a
+     resume skips entirely. That run's `ttlA1Ms` is `null` too, for the same
+     reason — see that module's own comment. */
+  const partialFile = path.join(path.resolve(args.out), partialCandidateFilename(spec.prompt));
+  const onActReady = args.dryRun
+    ? undefined
+    : (candidate: PartialCandidate) => {
+        fs.writeFileSync(partialFile, `${JSON.stringify(candidate, null, 2)}\n`);
+        deps.onPartialWrite?.(candidate, partialFile);
+      };
+  /* The partial is discarded wherever the CHECKPOINT is, and kept wherever the
+     checkpoint is kept — the two answer the same question ("is there more to
+     do for this prompt?") and must not disagree. Best-effort: the absence of a
+     file this run never wrote is not an error. */
+  const discardPartial = (): void => {
+    try {
+      fs.unlinkSync(partialFile);
+    } catch {
+      /* nothing to clean up — fine */
+    }
+  };
+
+  let outcome: RunPipelineOutcome;
+  try {
+    /* The machine this driver runs on holds the transcript bodies (data-local/,
+       gitignored), so §4.5 tier 2 gets the real cue provider. On a checkout
+       without them the provider returns null for every episode and the run
+       behaves exactly as before — pool segments only. */
+    outcome = await runPipeline(
+      request,
+      { userId: args.authorId, topic: spec.topic, checkpointKey },
+      { cueProvider: deps.cueProvider, checkpoint: args.dryRun ? undefined : checkpointStore, onActReady }
+    );
+  } catch (err) {
+    /* One prompt's failure must not end the batch — a rate limit or a budget
+       stop on prompt 7 should still leave prompts 1-6 on disk and prompt 8
+       attempted. The error is recorded, not swallowed. */
+    const detail = err instanceof Error ? err.message : String(err);
+    /* Not truncated for a budget stop: its message is the whole point (F-04)
+       and cutting it at 120 characters removes the spend and the resume
+       instruction, which is exactly the half a person needs. */
+    console.log(`  ERROR  ${spec.prompt.slice(0, 60)} — ${err instanceof BudgetStopError ? detail : detail.slice(0, 120)}`);
+    if (!args.dryRun && !(err instanceof BudgetStopError)) {
+      console.log(`         checkpoint kept at ${checkpointStore.filePathFor(checkpointKey)} — re-run to resume`);
+    }
+    return { skipped: false, entry: { prompt: spec.prompt, outcome: "error", detail, ms: 0 } };
+  }
+
+  const ms = outcome.timings.reduce((sum, t) => sum + t.ms, 0);
+  const line = summarize(outcome);
+  const ttlA1Ms = outcome.outcome === "generated" ? outcome.ttlA1Ms : null;
+  console.log(
+    `  ${outcome.outcome === "generated" ? "built " : "stop  "} ${spec.prompt.slice(0, 60)} — ${line}` +
+      (ttlA1Ms != null ? ` (ttlA1=${ttlA1Ms}ms)` : "")
+  );
+
+  /* WS-B: `meta.veracity` rides along on `outcome.input` for every
+     "generated" outcome (`runPipeline.ts` attaches it before finalize
+     runs, win or lose) — carried into `report.json` here so a candidate
+     that FAILED check-forays/check-narration still shows why the
+     veracity numbers looked the way they did, not just candidates that
+     made it to disk. */
+  const veracity = outcome.outcome === "generated" ? outcome.input.meta?.veracity : undefined;
+  const entry: ReportEntry = { prompt: spec.prompt, outcome: outcome.outcome, detail: line, ms, ttlA1Ms, veracity };
+  if (outcome.outcome === "generated" && outcome.result.validation.ok) {
+    if (!args.dryRun) {
+      fs.writeFileSync(file, `${JSON.stringify(outcome.input, null, 2)}\n`);
+      /* The candidate now IS the resume record — the outer skip above will
+         see it. A checkpoint left beside a finished candidate is only a trap
+         for the next reader, and so is the partial candidate: its job (letting
+         the requesting listener start early) is done the moment the whole
+         Foray exists, and leaving it would just be a second, staler copy of
+         the same content in the output directory. */
+      checkpointStore.discard(checkpointKey);
+      discardPartial();
+    }
+    return { skipped: false, entry: { ...entry, file: args.dryRun ? undefined : file }, file };
+  }
+  /* A rejected or clarification-needing prompt is TERMINAL: re-running it
+     unchanged produces the same answer, and a changed prompt has a
+     different fingerprint and so a different checkpoint. Leaving the file
+     behind would litter the output directory with checkpoints no run will
+     ever resume. A validation failure is NOT terminal — the stages are
+     sound and the checkers refused the assembly — so that one keeps its
+     checkpoint (and its partial) and the re-run pays only for what it must. */
+  if (!args.dryRun && outcome.outcome !== "generated") {
+    checkpointStore.discard(checkpointKey);
+    discardPartial();
+  }
+  return { skipped: false, entry };
 }
 
 async function main(): Promise<void> {
@@ -187,105 +364,20 @@ async function main(): Promise<void> {
 
   fs.mkdirSync(path.resolve(args.out), { recursive: true });
 
-  const report: Array<{ prompt: string; outcome: string; detail: string; ms: number; file?: string; veracity?: VeracityMetrics }> = [];
+  const report: ReportEntry[] = [];
   let generated = 0;
   let skipped = 0;
   const cueProvider = new FileTranscriptCueProvider();
 
   for (const spec of queue) {
-    const basename = candidateFilename(spec.prompt);
-    const file = path.join(path.resolve(args.out), basename);
-    if (fs.existsSync(file)) {
+    const result = await generateOneCandidate(spec, args, { cueProvider });
+    if (result.skipped) {
       skipped++;
-      console.log(`  skip   ${spec.prompt.slice(0, 60)} (already built)`);
       continue;
     }
-
-    const request: GenerationRequest = {
-      prompt: spec.prompt,
-      duration: spec.duration ?? args.duration,
-      author_id: args.authorId,
-      visibility: "catalogue"
-    };
-
-    /* F-17/F-18. The skip above is the OUTER resume — a prompt whose candidate
-       exists costs nothing — and it is unchanged. This is the inner one: a
-       prompt whose candidate does NOT exist because the run died at beat 23 of
-       31 still has 22 beats on disk, and this is what hands them back. The
-       checkpoint key is the candidate's basename minus `.json`, so the two
-       files sit side by side and a human can see which prompt a half-finished
-       run belongs to. */
-    const checkpointKey = basename.replace(/\.json$/, "");
-    const checkpointStore = new FileCheckpointStore(
-      path.resolve(args.out),
-      checkpointFingerprint({ prompt: spec.prompt, duration: request.duration, topic: spec.topic })
-    );
-    if (args.noResume) checkpointStore.discard(checkpointKey);
-    const resumable = !args.noResume && checkpointStore.load(checkpointKey) !== null;
-    if (resumable) {
-      const stages = Object.keys(checkpointStore.load(checkpointKey)!.stages);
-      console.log(`  resume ${spec.prompt.slice(0, 60)} — ${stages.length} stage(s) already done: ${stages.join(", ")}`);
-    }
-
-    let outcome: RunPipelineOutcome;
-    try {
-      /* The machine this driver runs on holds the transcript bodies (data-local/,
-         gitignored), so §4.5 tier 2 gets the real cue provider. On a checkout
-         without them the provider returns null for every episode and the run
-         behaves exactly as before — pool segments only. */
-      outcome = await runForayPipeline(
-        request,
-        { userId: args.authorId, topic: spec.topic, checkpointKey },
-        { cueProvider, checkpoint: args.dryRun ? undefined : checkpointStore }
-      );
-    } catch (err) {
-      /* One prompt's failure must not end the batch — a rate limit or a budget
-         stop on prompt 7 should still leave prompts 1-6 on disk and prompt 8
-         attempted. The error is recorded, not swallowed. */
-      const detail = err instanceof Error ? err.message : String(err);
-      report.push({ prompt: spec.prompt, outcome: "error", detail, ms: 0 });
-      /* Not truncated for a budget stop: its message is the whole point (F-04)
-         and cutting it at 120 characters removes the spend and the resume
-         instruction, which is exactly the half a person needs. */
-      console.log(`  ERROR  ${spec.prompt.slice(0, 60)} — ${err instanceof BudgetStopError ? detail : detail.slice(0, 120)}`);
-      if (!args.dryRun && !(err instanceof BudgetStopError)) {
-        console.log(`         checkpoint kept at ${checkpointStore.filePathFor(checkpointKey)} — re-run to resume`);
-      }
-      continue;
-    }
-
-    const ms = outcome.timings.reduce((sum, t) => sum + t.ms, 0);
-    const line = summarize(outcome);
-    console.log(`  ${outcome.outcome === "generated" ? "built " : "stop  "} ${spec.prompt.slice(0, 60)} — ${line}`);
-
-    /* WS-B: `meta.veracity` rides along on `outcome.input` for every
-       "generated" outcome (`runPipeline.ts` attaches it before finalize
-       runs, win or lose) — carried into `report.json` here so a candidate
-       that FAILED check-forays/check-narration still shows why the
-       veracity numbers looked the way they did, not just candidates that
-       made it to disk. */
-    const veracity = outcome.outcome === "generated" ? outcome.input.meta?.veracity : undefined;
-    const entry = { prompt: spec.prompt, outcome: outcome.outcome, detail: line, ms, veracity };
-    if (outcome.outcome === "generated" && outcome.result.validation.ok) {
-      if (!args.dryRun) {
-        fs.writeFileSync(file, `${JSON.stringify(outcome.input, null, 2)}\n`);
-        /* The candidate now IS the resume record — the outer skip above will
-           see it. A checkpoint left beside a finished candidate is only a trap
-           for the next reader. */
-        checkpointStore.discard(checkpointKey);
-      }
-      generated++;
-      report.push({ ...entry, file: args.dryRun ? undefined : file });
-    } else {
-      /* A rejected or clarification-needing prompt is TERMINAL: re-running it
-         unchanged produces the same answer, and a changed prompt has a
-         different fingerprint and so a different checkpoint. Leaving the file
-         behind would litter the output directory with checkpoints no run will
-         ever resume. A validation failure is NOT terminal — the stages are
-         sound and the checkers refused the assembly — so that one keeps its
-         checkpoint and the re-run pays only for what it must. */
-      if (!args.dryRun && outcome.outcome !== "generated") checkpointStore.discard(checkpointKey);
-      report.push(entry);
+    if (result.entry) {
+      report.push(result.entry);
+      if (result.file) generated++;
     }
   }
 

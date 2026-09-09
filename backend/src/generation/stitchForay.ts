@@ -58,6 +58,30 @@ export class ActCoverageFailedError extends Error {
 
 export interface StitchForayOptions {
   continuity: SmoothActsOptions;
+  /**
+   * WS-D2 (docs/curation/generation-fix-plan-2026-09-09.md, "D2 (streaming
+   * publish)"): fired once per act, the instant that act's own items are
+   * assembled and its coverage validated (see the loop below) — before the
+   * NEXT act's stitching begins. Optional; omitting it changes nothing,
+   * matching every other Builder-shaped dependency in this pipeline
+   * (`RunPipelineDeps`'s own pattern).
+   *
+   * `actItems`/`itemsSoFar` are already mapped to the `data/forays.json` item
+   * shape (§4.8's own `toForayItems`), so a caller (`runForayPipeline`) can
+   * hand them straight to a partial-candidate path without knowing this
+   * stage's internal `StitchedItem` representation. `itemsSoFar` does NOT
+   * include the disclosure item — that is a Foray-level obligation §4.9
+   * prepends outside this stage (see `runPipeline.ts`'s own comment on
+   * `disclosureItem`), so a caller building a playable partial candidate
+   * must prepend it itself, exactly as the whole-Foray path already does.
+   */
+  onActReady?: (info: {
+    actIndex: number;
+    actTitle: string;
+    totalActs: number;
+    actItems: ForayItem[];
+    itemsSoFar: ForayItem[];
+  }) => void | Promise<void>;
 }
 
 export interface StitchForayResult {
@@ -105,6 +129,7 @@ export async function stitchForay(deepenedActs: DeepenedAct[], writtenActs: Writ
     // (possibly smoothed) introduction opens it, its own exit closes it
     // — mirroring `disclosureNarratedBeat`'s "seam" role but for a
     // whole-act boundary rather than the Foray's own opening.
+    const actStart = allStitchedItems.length;
     allStitchedItems.push({
       kind: "narration",
       narrationKind: "seam",
@@ -122,6 +147,25 @@ export async function stitchForay(deepenedActs: DeepenedAct[], writtenActs: Writ
       script: deepened.exit,
       id: `${actLabel}-exit`
     });
+
+    // WS-D2: this act's own items are now complete and coverage-checked —
+    // the earliest point in this stage a partial candidate could be built
+    // from. Mapped through the SAME `toForayItems` the final return uses
+    // (see module doc comment on `onActReady`), so nothing downstream sees
+    // a shape that differs from the whole-Foray path.
+    if (options.onActReady) {
+      const actItems = toForayItems(allStitchedItems.slice(actStart));
+      const itemsSoFar = toForayItems(allStitchedItems);
+      assertNoInternalFieldsLeaked(actItems);
+      assertNoInternalFieldsLeaked(itemsSoFar);
+      await options.onActReady({
+        actIndex: i,
+        actTitle: deepened.title,
+        totalActs: writtenActs.length,
+        actItems,
+        itemsSoFar
+      });
+    }
   }
 
   // (c) Final mapping into the forays.json-shaped item list.
