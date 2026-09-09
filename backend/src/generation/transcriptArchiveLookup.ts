@@ -97,7 +97,15 @@ export interface TranscriptArchiveMatch {
  * shorter than a segment's why-line, so the bar stays low but nonzero. */
 export const TIER2_MATCH_THRESHOLD = 3;
 
-export function findTranscriptArchiveMatch(claimText: string, archive: TranscriptDigestEntry[] = loadTranscriptArchive()): TranscriptArchiveMatch | null {
+export function findTranscriptArchiveMatch(
+  claimText: string,
+  archive: TranscriptDigestEntry[] = loadTranscriptArchive(),
+  /** Caller's veto, applied INSIDE the search for the same reason
+   * `findTier1Match`'s is — §4.5's topic gate lives here, so an episode from
+   * another taxonomy family is never the "best" match, it is not a match at
+   * all. */
+  isUsable: (entry: TranscriptDigestEntry) => boolean = () => true
+): TranscriptArchiveMatch | null {
   const claimTokens = new Set(tokenizeForSourcing(claimText));
   if (claimTokens.size === 0) return null;
 
@@ -113,6 +121,7 @@ export function findTranscriptArchiveMatch(claimText: string, archive: Transcrip
      confidence, never carry the match by itself. */
   let best: TranscriptArchiveMatch | null = null;
   for (const entry of archive) {
+    if (!isUsable(entry)) continue;
     const titleTokens = new Set(tokenizeForSourcing(entry.title));
     const showTokens = new Set(tokenizeForSourcing(entry.show_title));
     let score = 0;
@@ -190,7 +199,7 @@ export class FileTranscriptCueProvider implements TranscriptCueProvider {
   }
 
   getCues(entry: TranscriptDigestEntry): TranscriptCue[] | null {
-    const key = `${entry.show_id} ${entry.guid}`;
+    const key = `${entry.show_id}\u0000${entry.guid}`;
     if (this.cuesByKey.has(key)) return this.cuesByKey.get(key) ?? null;
     let result: TranscriptCue[] | null = null;
     try {
@@ -293,12 +302,108 @@ export interface ResolvedAnchorSpan {
   endAnchor: string;
   startSec: number;
   endSec: number;
+  /**
+   * The verbatim run of CLAIM words that proved this episode says this — the
+   * whole of what the pre-run-1 span used to be.
+   *
+   * Kept separate from `startAnchor`/`endAnchor` now that the span is cut wider
+   * than the phrase (see `cutSpanToCueBoundaries`), because two different
+   * questions need two different pieces of text: the boundaries locate the
+   * SEGMENT, and this locates the EVIDENCE. `anchoredWindowEvidence` needs the
+   * latter and must not be allowed to count the phrase's own words as
+   * corroboration of itself.
+   */
+  matchedPhrase: string;
+  /** Where the matched phrase itself was spoken. */
+  matchStartSec: number;
+  matchEndSec: number;
 }
 
 /** Same floor as `merge-segments.mjs`'s `MIN_ANCHOR_WORDS`. */
 export const MIN_ANCHOR_WORDS = 4;
 /** Longest contiguous window of claim tokens tried as an anchor phrase. */
 const MAX_ANCHOR_WORDS = 12;
+/** Words quoted as a boundary anchor. ADR-0007 asks for 8-12; take the floor. */
+const ANCHOR_TEXT_WORDS = 8;
+
+/**
+ * A minted tier-2 segment is a SEGMENT, not a soundbite (F-24(c): run 1's
+ * minted spans were "`startSec` of the anchor's first word to `endSec` of its
+ * last — a few seconds of audio, not a segment"). The real pool's shortest
+ * segment is 50 s and its median is 124 s; 45 s is under the shortest thing a
+ * curator has ever cut, so a span that reaches it is at least in the same
+ * category of object.
+ */
+export const MIN_TAPE_SEGMENT_SEC = 45;
+/** And not the whole episode either — the pool's longest segment is 260 s. */
+export const MAX_TAPE_SEGMENT_SEC = 240;
+
+/**
+ * Cuts a matched phrase out to a real segment: whole cues, never a word run.
+ *
+ * Two rules, both from F-24(c). CUE BOUNDARIES: the span starts where a cue
+ * starts and ends where a cue ends, so it never opens or closes mid-sentence —
+ * cues are the transcript's own sentence-ish units and are the only boundary
+ * information a normalised transcript carries. MINIMUM DURATION: cues are added
+ * either side, alternating so the phrase stays near the middle, until the span
+ * reaches `MIN_TAPE_SEGMENT_SEC` or the transcript runs out — a segment can
+ * only ever be as long as the tape that exists, so a short transcript yields a
+ * short segment rather than no segment.
+ *
+ * The returned anchors are the first/last `ANCHOR_TEXT_WORDS` words of the
+ * boundary cues, canonicalised. `merge-segments.mjs` canonicalises both sides
+ * before comparing, so a canonical anchor is still verbatim to its validator,
+ * and taking them from the token stream (rather than one cue's raw text) means
+ * a word-level transcript — every cue one or two words long — still produces an
+ * anchor of the required length instead of failing the boundary check.
+ */
+function cutSpanToCueBoundaries(
+  tokens: string[],
+  startTimes: number[],
+  endTimes: number[],
+  cueOfToken: number[],
+  cueFirstToken: number[],
+  cueLastToken: number[],
+  matchFirst: number,
+  matchLast: number
+): { startAnchor: string; endAnchor: string; startSec: number; endSec: number } | null {
+  const cueCount = cueFirstToken.length;
+  let firstCue = cueOfToken[matchFirst]!;
+  let lastCue = cueOfToken[matchLast]!;
+
+  const startOf = (cue: number) => startTimes[cueFirstToken[cue]!]!;
+  const endOf = (cue: number) => endTimes[cueLastToken[cue]!]!;
+  const duration = () => endOf(lastCue) - startOf(firstCue);
+
+  let grew = true;
+  while (grew && duration() < MIN_TAPE_SEGMENT_SEC) {
+    grew = false;
+    if (firstCue > 0 && endOf(lastCue) - startOf(firstCue - 1) <= MAX_TAPE_SEGMENT_SEC) {
+      firstCue--;
+      grew = true;
+    }
+    if (duration() >= MIN_TAPE_SEGMENT_SEC) break;
+    if (lastCue < cueCount - 1 && endOf(lastCue + 1) - startOf(firstCue) <= MAX_TAPE_SEGMENT_SEC) {
+      lastCue++;
+      grew = true;
+    }
+  }
+
+  const lo = cueFirstToken[firstCue]!;
+  const hi = cueLastToken[lastCue]!;
+  const startAnchor = tokens.slice(lo, Math.min(lo + ANCHOR_TEXT_WORDS, hi + 1)).join(" ");
+  const endAnchor = tokens.slice(Math.max(hi + 1 - ANCHOR_TEXT_WORDS, lo), hi + 1).join(" ");
+  const startSec = startOf(firstCue);
+  const endSec = endOf(lastCue);
+
+  /* An anchor shorter than the merge validator's floor, or a span with no
+     duration, is not a segment — say so rather than mint something that would
+     be rejected downstream or point at nothing. */
+  if (startAnchor.split(" ").length < MIN_ANCHOR_WORDS) return null;
+  if (endAnchor.split(" ").length < MIN_ANCHOR_WORDS) return null;
+  if (!(endSec > startSec)) return null;
+  return { startAnchor, endAnchor, startSec, endSec };
+}
 
 /**
  * Finds a REAL, verbatim anchor span for `claimText` inside `cues`,
@@ -309,17 +414,32 @@ const MAX_ANCHOR_WORDS = 12;
  * `MIN_ANCHOR_WORDS` claim words appears verbatim anywhere in the
  * transcript (the honest "cannot resolve" answer — never a fabricated
  * anchor).
+ *
+ * The span it returns is the CUT segment (see `cutSpanToCueBoundaries`), not
+ * the matched phrase; the phrase itself comes back as `matchedPhrase` with its
+ * own times.
  */
 export function resolveAnchorFromCues(claimText: string, cues: TranscriptCue[]): ResolvedAnchorSpan | null {
   const tokens: string[] = [];
   const startTimes: number[] = [];
   const endTimes: number[] = [];
+  /* Cue bookkeeping, so a token index can be turned back into the cue it came
+     from — that mapping is what makes a cue-boundary cut possible at all. */
+  const cueOfToken: number[] = [];
+  const cueFirstToken: number[] = [];
+  const cueLastToken: number[] = [];
   for (const cue of cues) {
-    for (const w of canonicalWords(cue.text)) {
+    const words = canonicalWords(cue.text);
+    if (words.length === 0) continue;
+    const cueIndex = cueFirstToken.length;
+    cueFirstToken.push(tokens.length);
+    for (const w of words) {
       tokens.push(w);
       startTimes.push(cue.start_sec);
       endTimes.push(cue.end_sec);
+      cueOfToken.push(cueIndex);
     }
+    cueLastToken.push(tokens.length - 1);
   }
   if (tokens.length === 0) return null;
 
@@ -334,17 +454,100 @@ export function resolveAnchorFromCues(claimText: string, cues: TranscriptCue[]):
       const phrase = claimWords.slice(start, start + windowLen);
       const at = findFirstOccurrence(tokens, phrase);
       if (at !== -1) {
-        const anchorText = phrase.join(" ");
+        const cut = cutSpanToCueBoundaries(tokens, startTimes, endTimes, cueOfToken, cueFirstToken, cueLastToken, at, at + windowLen - 1);
+        if (!cut) continue; // this occurrence cannot be cut into a segment; keep looking
         return {
-          startAnchor: anchorText,
-          endAnchor: anchorText,
-          startSec: startTimes[at]!,
-          endSec: endTimes[at + windowLen - 1]!
+          startAnchor: cut.startAnchor,
+          endAnchor: cut.endAnchor,
+          startSec: cut.startSec,
+          endSec: cut.endSec,
+          matchedPhrase: phrase.join(" "),
+          matchStartSec: startTimes[at]!,
+          matchEndSec: endTimes[at + windowLen - 1]!
         };
       }
     }
   }
   return null;
+}
+
+/**
+ * How far either side of a resolved anchor still counts as "where the tape is
+ * talking about this". Half a minute is roughly the sentence before and the
+ * sentence after — enough that a claim's supporting words can land near the
+ * anchor without stretching to a whole episode, which is the failure this
+ * window exists to stop.
+ */
+export const ANCHOR_WINDOW_PAD_SEC = 30;
+
+/** The text spoken between two timestamps, cues joined in order. */
+export function cueWindowText(cues: TranscriptCue[], startSec: number, endSec: number): string {
+  const parts: string[] = [];
+  for (const cue of cues) {
+    if (cue.end_sec < startSec) continue;
+    if (cue.start_sec > endSec) continue;
+    parts.push(cue.text);
+  }
+  return parts.join(" ");
+}
+
+/** Claim content words the window must carry BEYOND the anchor phrase itself. */
+export const TIER2_WINDOW_OVERLAP_MIN = 3;
+
+/**
+ * An anchor this many content words long is evidence on its own. A run of six
+ * of a claim's meaning-bearing words, spoken verbatim and in order, is not
+ * something an unrelated hour of tape produces — that is a person saying the
+ * claim. Below it, the anchor has to be corroborated by its surroundings.
+ */
+export const TIER2_SELF_SUFFICIENT_ANCHOR_WORDS = 6;
+
+export interface AnchoredWindowEvidence {
+  /** Content words in the anchor phrase itself. */
+  anchorContentWords: number;
+  /** Claim content words spoken within the window that are NOT in the anchor. */
+  beyondAnchorOverlap: number;
+}
+
+/**
+ * How much of the claim is actually spoken NEAR the anchor — and, crucially,
+ * how much of it beyond the anchor's own words.
+ *
+ * `resolveAnchorFromCues` answers a different question — "does this phrase
+ * occur anywhere in this episode, verbatim" — and F-24 is what that costs when
+ * it is asked alone: a four-word run like "the original design required",
+ * counted with no stopword filter, occurs in almost any hour of talk, and the
+ * minted segment was those few seconds.
+ *
+ * THE ANCHOR IS NOT ALLOWED TO VOUCH FOR ITSELF. A plain overlap count over the
+ * window would be satisfied by the anchor alone — the anchor is inside the
+ * window and is made of claim words — so it would pass everything F-24
+ * describes. What has to be true for the tape to be about the claim is that the
+ * talk AROUND the anchor is also about it, which is what
+ * `beyondAnchorOverlap` measures.
+ */
+export function anchoredWindowEvidence(claimText: string, cues: TranscriptCue[], span: ResolvedAnchorSpan): AnchoredWindowEvidence {
+  /* The MATCHED PHRASE, not the span's boundary anchors: the span is now cut
+     out to whole cues and a minimum duration, so its boundaries are ordinary
+     transcript text that has nothing to do with the claim. What must not vouch
+     for itself is the phrase. */
+  const anchorTokens = new Set(tokenizeForSourcing(span.matchedPhrase));
+  const claimTokens = new Set(tokenizeForSourcing(claimText));
+  const windowTokens = new Set(
+    tokenizeForSourcing(cueWindowText(cues, span.matchStartSec - ANCHOR_WINDOW_PAD_SEC, span.matchEndSec + ANCHOR_WINDOW_PAD_SEC))
+  );
+  let beyondAnchorOverlap = 0;
+  for (const t of claimTokens) {
+    if (anchorTokens.has(t)) continue;
+    if (windowTokens.has(t)) beyondAnchorOverlap += 1;
+  }
+  return { anchorContentWords: anchorTokens.size, beyondAnchorOverlap };
+}
+
+/** Tier 2's verdict on an anchor: corroborated by its surroundings, or long
+ * and specific enough to stand alone. */
+export function anchoredWindowIsOnTopic(evidence: AnchoredWindowEvidence): boolean {
+  return evidence.beyondAnchorOverlap >= TIER2_WINDOW_OVERLAP_MIN || evidence.anchorContentWords >= TIER2_SELF_SUFFICIENT_ANCHOR_WORDS;
 }
 
 function findFirstOccurrence(tokens: string[], phrase: string[]): number {

@@ -1,7 +1,8 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
-import { parseWithRetry as parseWithRetryShared } from "./parseWithRetry";
+import { parseWithRetry } from "./parseWithRetry";
 import { env } from "../config/env";
+import { costFor, modelFor } from "../config/models";
 import { defaultBudgetGuard, type BudgetGuard } from "../cost/budgetGuard";
 import { MIN_QUOTE_WORDS, MODE_CHAR_BANDS } from "../types/narration";
 import type {
@@ -14,6 +15,7 @@ import type {
   ProseWriteRequest,
   ProseWriteResult
 } from "./NarrationWriterBuilder";
+import { recordUsage } from "./usageTracking";
 
 /**
  * Real §4.7 narration writing via the Anthropic API, mirroring
@@ -38,9 +40,20 @@ import type {
  * Anthropic* class in this codebase. Use createNarrationWriterBuilder().
  */
 
-const MODEL = "claude-sonnet-4-5";
-const USD_PER_INPUT_TOKEN = 3.0 / 1_000_000;
-const USD_PER_OUTPUT_TOKEN = 15.0 / 1_000_000;
+/* Model id and per-token rates come from `src/config/models.ts`, the one
+ * place a Claude model id is written down (F-03). Which TIER this stage
+ * needs stays this stage's decision; which model serves that tier does not.
+ * An id and its price are read from the same row, so they cannot drift
+ * apart the way seven hand-copied pairs did. */
+const MODEL = modelFor("sonnet");
+const USD_PER_INPUT_TOKEN = costFor("sonnet").usdPerInputToken;
+const USD_PER_OUTPUT_TOKEN = costFor("sonnet").usdPerOutputToken;
+/* A whole slot's pages come back in one reply now, not one page's, so the
+ * ceiling is per-slot rather than per-page. Sized for the largest realistic
+ * slot (7 beats, the medium tier's upper bound) with Carry-band scripts.
+ * F-47's caveat applies: if a tier moves to a model whose adaptive thinking
+ * bills against `max_tokens`, both of these need a thinking allowance on
+ * top, exactly like every other builder's. */
 const MAX_OUTPUT_TOKENS = 4000;
 
 const RawSelectionSchema = z.object({
@@ -88,18 +101,26 @@ export class AnthropicNarrationWriterBuilder implements NarrationWriterBuilder {
   }
 
   async selectClaims(request: ClaimSelectionRequest, ctx: NarrationBuildContext): Promise<ClaimSelectionResult> {
-    const promptText = buildSelectionPrompt(request);
-    const raw = await this.ask(promptText, "narration_select_claims", ctx);
-    return parseWithRetry(RawSelectionSchema, raw);
+    return this.askJson(RawSelectionSchema, buildSelectionPrompt(request), "narration_select_claims", ctx);
   }
 
   async writePages(request: ProseWriteRequest, ctx: NarrationBuildContext): Promise<ProseWriteResult> {
-    const promptText = buildProsePrompt(request);
-    const raw = await this.ask(promptText, "narration_write", ctx);
-    return parseWithRetry(RawProseSchema, raw);
+    return this.askJson(RawProseSchema, buildProsePrompt(request), "narration_write", ctx);
   }
 
-  private async ask(promptText: string, operation: string, ctx: NarrationBuildContext): Promise<string> {
+  /**
+   * The one place this class talks to the model, shared by both of its
+   * calls: meter, ask, record the usage WS-B's `pipelineTokens` sums, and
+   * hand the reply to the shared parser with a re-ask that is metered in
+   * its own right (F-39/F-40 — a malformed reply used to cost a whole page
+   * attempt, and the re-ask that fixes that is a second real API call).
+   */
+  private async askJson<T>(
+    schema: z.ZodType<T>,
+    promptText: string,
+    operation: "narration_select_claims" | "narration_write",
+    ctx: NarrationBuildContext
+  ): Promise<T> {
     await this.budgetGuard.checkAndRecord({
       userId: ctx.userId,
       operation,
@@ -115,9 +136,41 @@ export class AnthropicNarrationWriterBuilder implements NarrationWriterBuilder {
       messages: [{ role: "user", content: promptText }]
     });
 
+    recordUsage(response.usage);
     const textBlock = response.content.find((b: Anthropic.ContentBlock): b is Anthropic.TextBlock => b.type === "text");
     if (!textBlock) throw new Error("Anthropic narration-write response had no text block");
-    return textBlock.text;
+
+    const reask = async (): Promise<string> => {
+      const reaskLine = "Your previous reply was not valid JSON; reply with the JSON object only.";
+      // The re-ask is its own real API call — it re-sends the whole prompt
+      // plus the bad reply, so it is its own metered spend, gated the same
+      // way as the original call (see parseWithRetry.ts's BUDGET note).
+      const reaskEstimatedInputTokens = roughTokenEstimate(promptText + textBlock.text + reaskLine);
+      await this.budgetGuard.checkAndRecord({
+        userId: ctx.userId,
+        operation,
+        provider: this.providerName,
+        model: MODEL,
+        estimatedUsd: reaskEstimatedInputTokens * USD_PER_INPUT_TOKEN + MAX_OUTPUT_TOKENS * USD_PER_OUTPUT_TOKEN,
+        sessionId: ctx.sessionId
+      });
+
+      const retryResponse = await this.client.messages.create({
+        model: MODEL,
+        max_tokens: MAX_OUTPUT_TOKENS,
+        messages: [
+          { role: "user", content: promptText },
+          { role: "assistant", content: textBlock.text },
+          { role: "user", content: reaskLine }
+        ]
+      });
+      recordUsage(retryResponse.usage);
+      const retryTextBlock = retryResponse.content.find((b: Anthropic.ContentBlock): b is Anthropic.TextBlock => b.type === "text");
+      if (!retryTextBlock) throw new Error("Anthropic narration-write re-ask response had no text block");
+      return retryTextBlock.text;
+    };
+
+    return parseWithRetry(schema, textBlock.text, "LLM output", reask);
   }
 }
 
@@ -201,8 +254,4 @@ function prosePageBlock(page: ProsePageBrief): string {
   );
   if (page.retryNote) lines.push(`REJECTIONS SO FAR: ${page.retryNote}`);
   return lines.join("\n");
-}
-
-function parseWithRetry<T>(schema: z.ZodType<T>, raw: string): T {
-  return parseWithRetryShared(schema, raw, "LLM output");
 }

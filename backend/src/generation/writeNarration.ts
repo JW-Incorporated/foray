@@ -1,4 +1,5 @@
 import { BANNED } from "../copy/rules";
+import { decodeEntities } from "../feeds/html";
 import type { SourcedAct, SourcedBeat, SourcedSlot, TapePointer } from "../types/tapeSourcing";
 import {
   containsContestedLanguage,
@@ -327,7 +328,7 @@ async function runSlotAttempt(
   const proseBriefs: ProsePageBrief[] = [];
   const byPageId = new Map(pending.map((p) => [p.pageId, p]));
   for (const page of pending) {
-    const claims = selection.pages.find((s) => s.pageId === page.pageId)?.claims ?? [];
+    const claims = decodeClaimEntities(selection.pages.find((s) => s.pageId === page.pageId)?.claims ?? []);
     const issues = validateSelectedClaims(claims, page);
     if (issues.length > 0) {
       /* The prose call is skipped for this page entirely: writing a script
@@ -354,7 +355,10 @@ async function runSlotAttempt(
     const sources = sourcesFor(written.usedClaims, brief.claims, page.evidence);
     const beat: NarratedBeat = {
       mode: page.mode,
-      script: written.script,
+      // The script is the other half of the entity boundary — see
+      // `decodeClaimEntities`. This one is about what a listener hears:
+      // a narrator does not say "ampersand a-m-p semicolon" (F-26).
+      script: decodeEntities(written.script),
       sources,
       pronunciationHints: written.pronunciationHints ?? [],
       verified: true
@@ -468,6 +472,34 @@ function reject(page: PendingPage, issues: string[], sources: Source[]): void {
  * about how they were found. */
 export function heldDocsOf(pack: EvidencePack): EvidenceDoc[] {
   return pack.docs.map((d) => ({ docId: d.docId, title: d.title, ...(d.url ? { url: d.url } : {}), text: d.text }));
+}
+
+/**
+ * Decodes HTML/XML entities (`&amp;`, `&quot;`, `&#39;`, numeric refs, …)
+ * out of the claim-selection call's text fields — reusing
+ * `feeds/html.ts`'s `decodeEntities`, already exercised against real feed
+ * titles, rather than a second private implementation. Run 1 observed a
+ * writer emit `&amp;` in an attribution ("Simon &amp; Schuster"), and a
+ * model can put an entity in any prose field it writes (F-26).
+ *
+ * IT MUST RUN BEFORE THE SUBSTRING CHECK, not after. The held documents
+ * are text — a transcript cue window, a retrieved passage — so they carry
+ * `&`, not `&amp;`. A quote that arrives entity-encoded is the SAME span
+ * of the same document; decoding first is what lets it resolve, and
+ * decoding after `validateSelectedClaims` would reject a perfectly good
+ * quote for a difference no reader can see.
+ *
+ * `publication` is not in this list, and that is the WS-A change rather
+ * than an omission: it is no longer writer-supplied text at all. It is
+ * read off the held document in `sourcesFor`, so an entity could only
+ * reach it from a document title, which is upstream of this boundary.
+ */
+export function decodeClaimEntities(claims: SelectedClaim[]): SelectedClaim[] {
+  return claims.map((claim) => ({
+    ...claim,
+    claimText: decodeEntities(String(claim.claimText ?? "")),
+    quote: decodeEntities(String(claim.quote ?? ""))
+  }));
 }
 
 /**

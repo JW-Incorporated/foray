@@ -119,6 +119,10 @@ export const EvidenceDocSchema = z
     docId: z.string().trim().min(1),
     title: z.string().trim().min(1),
     url: z.string().trim().min(1).optional(),
+    /** Held text the writer may quote from — a transcript cue window or a
+     * fetched passage. Not trimmed to non-empty: a document that failed to
+     * retrieve any text is still worth recording as "we tried and got
+     * nothing" rather than dropped silently (WS-B). */
     text: z.string()
   })
   .strict();
@@ -164,7 +168,9 @@ export type PronunciationHint = z.infer<typeof PronunciationHintSchema>;
  * One written-and-verified narration page — the §4.7 output for a single
  * narration beat. Matches this stage's task brief's output shape
  * exactly: `{ mode, script, sources, pronunciationHints, verified,
- * verifierNotes? }`.
+ * verifierNotes? }`, plus two WS-B additions (`evidence`, `attempts`),
+ * both optional so every existing producer/consumer of this schema is
+ * unaffected until something actually populates them.
  */
 export const NarratedBeatSchema = z
   .object({
@@ -195,7 +201,12 @@ export const NarratedBeatSchema = z
      * so nothing upstream of the evidence pack has to change; WS-B reads
      * it to compute `groundedQuoteRate`. */
     evidence: z.array(EvidenceDocSchema).optional(),
-    /** Every attempt at this page, oldest first (F-35/F-32). */
+    /** Every attempt at this page, successful or not, oldest first
+     * (F-35/F-32) — `writeNarration.ts` records one entry per page per
+     * attempt, so `attempts.length === 1` is WS-B's first-attempt pass and
+     * a publication that moves between two entries is F-32 recurring.
+     * Still optional: `disclosureNarratedBeat` and any hand-built
+     * `NarratedBeat` in a test fixture carry none. */
     attempts: z.array(NarrationAttemptRecordSchema).optional()
   })
   .strict();

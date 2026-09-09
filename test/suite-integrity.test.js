@@ -1304,7 +1304,9 @@ const BACKEND_FLOORS = {
      malformed-JSON/no-text-block error paths across all 5 real provider classes,
      plus the shared parseWithRetry helper extracted from their copy-pasted
      private implementations. */
-  "test/AnthropicDeepenActBuilder.test.ts": 7,
+  /* +2 (WS-C): the §4.4 side of F-38 — the prompt asks for a beat `kind`
+     and the parser accepts one, while a reply that omits it still parses. */
+  "test/AnthropicDeepenActBuilder.test.ts": 9,
   "test/AnthropicEnricher.test.ts": 10,
   "test/AnthropicExternalResearcher.test.ts": 9,
   "test/AnthropicPromptUnderstander.test.ts": 9,
@@ -1323,7 +1325,7 @@ const BACKEND_FLOORS = {
   /* DAILY_BUDGET_USD env parsing (L5): rejects negative / NaN / empty /
      over-cap values at startup instead of silently substituting the
      default, and leaves a genuinely unset variable on its fallback. */
-  "test/env.test.ts": 10,
+  "test/env.test.ts": 11,
   "test/events.test.ts": 15,
   "test/html.test.ts": 8,
   "test/interestLearning.test.ts": 30,
@@ -1335,7 +1337,7 @@ const BACKEND_FLOORS = {
   /* Anthropic provider error-path coverage (kanban card t_550d289f): the
      shared parseWithRetry/parseLastJsonBlock helper extracted from the 5
      real Anthropic provider classes' identical private copies. */
-  "test/parseWithRetry.test.ts": 9,
+  "test/parseWithRetry.test.ts": 17,
   "test/parser.test.ts": 29,
   "test/personas.test.ts": 6,
   "test/podcastIndex.test.ts": 3,
@@ -1388,7 +1390,7 @@ const BACKEND_FLOORS = {
      isClaimShaped (claim- vs topic-shaped beats), and validateSpine
      (§3's shape budgets with ±15% tolerance, the ~30% exploration
      floor). Kanban card t_96a97be9. */
-  "test/spineTypes.test.ts": 26,
+  "test/spineTypes.test.ts": 28,
   /* §4.3 end to end: buildSpine() against StubSpineBuilder for every
      duration tier (shape budgets, claim-shape, exploration floor,
      single spine-level voice all actually hold), plus InvalidSpineError
@@ -1399,20 +1401,32 @@ const BACKEND_FLOORS = {
      FULL spine. Covers shape/count correctness, the full-spine-context
      regression guard, genuine-parallelism proof, and explicit
      failure-isolation (one retry per act, then fail the whole build). */
-  "test/deepenActs.test.ts": 10,
+  "test/deepenActs.test.ts": 12,
   /* §4.5-4.6 end to end (kanban card t_648fbae7): sourceBeats() resolves
      every beat to a tier-1 segments.json hit, a tier-2 transcript-archive
      extraction, a tier-3 transcription-queue-candidate narration fallback,
      or a Patch/Carry narration assignment — never changing which beats
      exist, and never fetching/persisting any audio bytes. */
-  "test/sourceBeats.test.ts": 8,
+  /* WS-C (docs/curation/generation-fix-plan-2026-09-09.md) raised this from 8:
+     run 1's tape anchors were 5-of-22 on topic, and the added cases pin each of
+     the four things that fixes — argument beats skip tape (F-38), tier 1 scores
+     against the transcript window not a curator note (F-06/F-29), tier 2 needs
+     the claim's words around its anchor and mints a cue-cut segment rather than
+     a word run (F-24/F-33), and a candidate must share the Foray's taxonomy
+     lineage (F-23/F-29) — plus a replay of the real beat-4/beat-5 claims
+     against the real data/segments.json. */
+  "test/sourceBeats.test.ts": 35,
   /* §4.7 end to end (kanban card t_5a8b77c3): writeNarration() writes one
      page per narration beat (mode budgets, per-claim sources array),
      always through a genuinely separate verifier call (never the writer —
      proven with a spy test), the exact check-forays.mjs-compatible
      disclosure template, and decideConnectiveNarration()'s seam-position
      table for tape-adjacent beats needing short connective narration. */
-  "test/writeNarration.test.ts": 39,
+  /* WS-A raised this from 25: the suite now replays run 1's own failures
+     through the two-step, per-slot writer — the fabricated citation, the
+     griddle slug, the two-word span, the purpose quoted back, the
+     zero-source Frame — and pins the dry-run path to quoting real held text. */
+  "test/writeNarration.test.ts": 40,
   /* Stage 3b (kanban t_567b570f, docs/show-pages-plan.md §Stage 3): shared
      catalogue store CRUD (scoping by show_id, upsert-not-duplicate on
      (show_id, guid), published_at ordering, feed-state round-trip). */
@@ -1449,14 +1463,43 @@ const BACKEND_FLOORS = {
      why no live-generation-lead monitoring is built here). */
   "test/finalizeForay.test.ts": 5,
   "test/stageTiming.test.ts": 5,
+  /* WS-F robustness (docs/curation/generation-fix-plan-2026-09-09.md), closing
+     F-03, F-04, F-11, F-13, F-17 and F-18 from generation run 1:
+       checkpoint / runPipelineCheckpoint — per-stage resume inside ONE Foray,
+         the store's own rules and then the whole pipeline driven through it
+         (a narration failure costs the narration, not the spine);
+       spineStructure — the §4.3->§4.4 gate, with run 1's real 3-act / 6-slot /
+         31-beat spine as the fixture it must keep passing;
+       researchTopicFilter — the `Ai` leak, asserted against the REAL semantic
+         index and taxonomy because the leak is a property of that data;
+       models — one file holds every model id, plus the grep that fails when a
+         new literal appears anywhere in src/;
+       generateForaysArgs — the --budget-usd flag and what it actually moves. */
+  "test/checkpoint.test.ts": 14,
+  "test/generateForaysArgs.test.ts": 10,
+  "test/models.test.ts": 7,
+  "test/researchTopicFilter.test.ts": 17,
+  "test/runPipelineCheckpoint.test.ts": 10,
+  "test/spineStructure.test.ts": 14,
+  /* WS-C: §4.5's topic gate (taxonomyFamily.ts). A family is a node's LINEAGE
+     in data/taxonomy.json — itself, its ancestors, its descendants — not a
+     shared first path segment, which would put every sibling trade in scope of
+     every other. Unit-tested against the REAL committed catalogue files,
+     pinning relationships rather than counts, because the finding it closes
+     (F-29) is precisely two real files that were never joined. */
+  "test/taxonomyFamily.test.ts": 17,
+  /* WS-B veracity metrics (generation fix plan 2026-09-09): the grounded-quote /
+     attribution-stability / tape-relevance metrics and the publish gate, plus
+     the process-wide token-usage collector every Anthropic builder feeds. */
+  "test/usageTracking.test.ts": 4,
+  "test/veracityMetrics.test.ts": 31,
   /* WS-A evidence-first narration (generation fix plan 2026-09-09): the
      per-beat evidence pack (tape cue window + up to three retrieved print
      passages, cached by claim hash) and the mechanical narration rules run 1's
      writer kept breaking — every fixture in the second suite is a span,
      publication or sentence a page actually shipped in that run. */
   "test/gatherEvidence.test.ts": 19,
-  "test/narrationRules.test.ts": 21,
-};
+  "test/narrationRules.test.ts": 21,};
 
 /* `it(` as well as `test(`: backend's suites use both spellings. */
 const TS_TEST_RE = /^\s*(test|it)\(/gm;

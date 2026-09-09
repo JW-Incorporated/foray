@@ -36,9 +36,23 @@ describe("DAILY_BUDGET_USD parsing", () => {
     process.env = { ...ORIGINAL_ENV };
   });
 
-  it("falls back to the default (2.0) when unset", async () => {
+  /* The default moved 2.0 -> 25.0 when the §4 generation pipeline landed
+     (F-04): $2.00 was sized for the enrichment pipeline alone and stops a
+     medium Foray mid-run. The number is asserted, not just its existence,
+     because the whole point of F-04 is that a default nobody checks against
+     a real workload is how a run halts in production. env.ts carries the
+     arithmetic. */
+  it("falls back to the default (25.0 — one medium Foray plus headroom) when unset", async () => {
     const { env } = await loadEnvWith(undefined);
-    expect(env.dailyBudgetUsd).toBe(2.0);
+    expect(env.dailyBudgetUsd).toBe(25.0);
+  });
+
+  it("keeps the daily default at or above the per-Foray ceiling", async () => {
+    const { env } = await loadEnvWith(undefined);
+    /* Generation calls are not tier-prefixed, so BudgetGuard scores them
+       tier 1, whose cutoff is the FULL daily budget. A daily default below
+       the episode default would make the per-Foray cap unreachable. */
+    expect(env.dailyBudgetUsd).toBeGreaterThanOrEqual(env.episodeBudgetUsd);
   });
 
   it("accepts a valid positive value", async () => {

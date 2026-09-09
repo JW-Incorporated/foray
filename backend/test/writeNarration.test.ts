@@ -1,4 +1,7 @@
 import { describe, it, expect } from "vitest";
+import { pathToFileURL } from "node:url";
+import { resolve as resolvePath } from "node:path";
+import { execFileSync } from "node:child_process";
 import {
   writeNarration,
   decideConnectiveNarration,
@@ -233,6 +236,55 @@ describe("writeNarration — every factual claim carries a non-empty sources arr
     const result = validateNarratedBeat(beat);
     expect(result.valid).toBe(false);
     expect(result.issues.some((i) => i.code === "missing-sources")).toBe(true);
+  });
+});
+
+describe("writeNarration — HTML entities in writer output are decoded (F-26)", () => {
+  /* WS-E's rule, at WS-A's boundary. The held document is TEXT — it
+     carries "&", not "&amp;" — so decoding has to happen BEFORE the
+     substring check, or a quote that is character-for-character correct
+     apart from an entity the listener never hears would be rejected as
+     ungrounded. This test fails in exactly that way if the decode ever
+     moves after `validateSelectedClaims`. */
+  const PUBLISHER_DOC: EvidenceDoc = {
+    docId: "print:publisher",
+    kind: "print",
+    title: "Simon & Schuster Press",
+    text: "Simon & Schuster acquired the rights to the collection in nineteen eighty, and the editor said yes within a week."
+  };
+
+  it("decodes &amp;/&quot;/&#39; in the script and in a selected claim (the real \"Simon &amp; Schuster\" case)", async () => {
+    const rawScript =
+      "Simon &amp; Schuster published the collection, and the editor said &quot;yes&quot; right away " +
+      "— it&#39;s a true story about a slow, careful decision." +
+      " The publisher spent years building a catalog of accessible nonfiction, one careful title at a time," +
+      " and this was simply the next entry on a long, patient list that nobody outside the building was watching at the time.";
+    const entityClaim: SelectedClaim = {
+      claimText: "Simon &amp; Schuster published the book.",
+      // Entity-encoded here, plain "&" in PUBLISHER_DOC.text above.
+      quote: "Simon &amp; Schuster acquired the rights to the collection in nineteen eighty",
+      docId: PUBLISHER_DOC.docId,
+      contested: false
+    };
+    const writer = scriptedWriter([{ claims: [entityClaim], script: rawScript }]);
+
+    const written = await writeNarration(
+      narrationAct("A claim about publishing."),
+      { writer, verifier: passingVerifier(), evidence: fixtureGatherer([PUBLISHER_DOC]) },
+      voice,
+      ctx
+    );
+    const page = allWrittenNarration(written)[0]!;
+
+    // It resolved at all: the decode ran before the substring check.
+    expect(writer.selectCalls).toBe(1);
+    expect(page.sources).toHaveLength(1);
+    expect(page.script).toContain("Simon & Schuster");
+    expect(page.script).not.toMatch(/&(amp|quot|#39);/);
+    expect(page.sources[0]!.claimText).toBe("Simon & Schuster published the book.");
+    expect(page.sources[0]!.quote).toBe("Simon & Schuster acquired the rights to the collection in nineteen eighty");
+    // Attribution is read off the document, so it was never encoded (WS-A).
+    expect(page.sources[0]!.publication).toBe("Simon & Schuster Press");
   });
 });
 
@@ -513,16 +565,22 @@ describe("disclosureTemplate / disclosureNarratedBeat — the mandatory first it
     );
   });
 
-  it("round-trips through check-forays.mjs's own DISCLOSURE_RX", async () => {
-    // The dynamic ESM import of tools/foray/check-forays.mjs can take several
-    // seconds in a cold / IO-throttled sandbox (observed ~8s here, well over
-    // vitest's 10s default) — bump this single test's timeout rather than
-    // the suite's, since it's the only test paying that one-time import cost.
-    const mod = (await import("../../tools/foray/check-forays.mjs")) as unknown as { checkForays: (files: unknown) => { errors: string[] } };
+  it("round-trips through check-forays.mjs's own DISCLOSURE_RX", () => {
+    // check-forays.mjs is loaded by dynamic import, and Vitest re-resolves
+    // that import through its own vite-node loader — which mishandles a
+    // space in the checkout path (this repo lives under "Vibe Coding"),
+    // producing "Invalid or unexpected token" whether the specifier is
+    // relative, an absolute path, or a pathToFileURL'd file:// URL, with or
+    // without a `/* @vite-ignore */` hint (see the `finalize` seam comment
+    // in runPipeline.ts for the fuller account of the same defect). A plain
+    // Node subprocess started outside vite-node does not have that problem,
+    // so do the ESM import and the checkForays() call there instead.
+    //
     // DISCLOSURE_RX itself is not exported, so exercise it the way the real
     // validator does: build a minimal generated foray whose items[0] is this
     // stage's disclosure beat, and confirm checkForays raises no
     // disclosure-related error for it.
+    const checkForaysUrl = pathToFileURL(resolvePath(__dirname, "../../tools/foray/check-forays.mjs")).href;
     const beat = disclosureNarratedBeat("marine navigation before satellites");
     const foray = {
       id: "test-foray",
@@ -533,9 +591,15 @@ describe("disclosureTemplate / disclosureNarratedBeat — the mandatory first it
       hook: "A short test hook.",
       items: [{ type: "narration", script: beat.script }]
     };
-    const result = mod.checkForays({ forays: { forays: [foray] }, segments: { segments: [] }, sources: { sources: [] }, taxonomy: {} });
+    const input = { forays: { forays: [foray] }, segments: { segments: [] }, sources: { sources: [] }, taxonomy: {} };
+    const script =
+      `import(${JSON.stringify(checkForaysUrl)}).then((mod) => {` +
+      `process.stdout.write(JSON.stringify(mod.checkForays(${JSON.stringify(input)})));` +
+      `});`;
+    const stdout = execFileSync(process.execPath, ["--input-type=module", "-e", script], { encoding: "utf8" });
+    const result = JSON.parse(stdout) as { errors: string[] };
     expect(result.errors.some((e: string) => e.toLowerCase().includes("disclosure"))).toBe(false);
-  }, 60000);
+  });
 
   it("throws on an empty subject rather than silently emitting a malformed disclosure", () => {
     expect(() => disclosureTemplate("   ")).toThrow();

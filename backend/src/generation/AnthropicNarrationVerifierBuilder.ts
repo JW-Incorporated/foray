@@ -1,7 +1,8 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
-import { parseWithRetry as parseWithRetryShared } from "./parseWithRetry";
+import { parseWithRetry } from "./parseWithRetry";
 import { env } from "../config/env";
+import { costFor, modelFor } from "../config/models";
 import { defaultBudgetGuard, type BudgetGuard } from "../cost/budgetGuard";
 import type {
   NarrationBuildContext,
@@ -10,6 +11,7 @@ import type {
   NarrationVerifyResult,
   VerifyPageBrief
 } from "./NarrationVerifierBuilder";
+import { recordUsage } from "./usageTracking";
 
 /**
  * Real §4.7 verification via the Anthropic API — a SEPARATE call, and
@@ -39,9 +41,17 @@ import type {
  * NEVER instantiate this class in a test. Use createNarrationVerifierBuilder().
  */
 
-const MODEL = "claude-sonnet-4-5";
-const USD_PER_INPUT_TOKEN = 3.0 / 1_000_000;
-const USD_PER_OUTPUT_TOKEN = 15.0 / 1_000_000;
+/* Model id and per-token rates come from `src/config/models.ts`, the one
+ * place a Claude model id is written down (F-03). Which TIER this stage
+ * needs stays this stage's decision; which model serves that tier does not.
+ * An id and its price are read from the same row, so they cannot drift
+ * apart the way seven hand-copied pairs did. */
+const MODEL = modelFor("sonnet");
+const USD_PER_INPUT_TOKEN = costFor("sonnet").usdPerInputToken;
+const USD_PER_OUTPUT_TOKEN = costFor("sonnet").usdPerOutputToken;
+/* A verdict per page for a whole slot, not one page's verdict — see the
+ * writer's note on this same number, and F-47's caveat about a thinking
+ * allowance if a tier moves to a model that bills it against max_tokens. */
 const MAX_OUTPUT_TOKENS = 2000;
 
 const RawVerifyResultSchema = z.object({
@@ -91,10 +101,43 @@ export class AnthropicNarrationVerifierBuilder implements NarrationVerifierBuild
       messages: [{ role: "user", content: promptText }]
     });
 
+    recordUsage(response.usage);
     const textBlock = response.content.find((b: Anthropic.ContentBlock): b is Anthropic.TextBlock => b.type === "text");
     if (!textBlock) throw new Error("Anthropic narration-verify response had no text block");
 
-    return parseWithRetry(RawVerifyResultSchema, textBlock.text);
+    const reask = async (): Promise<string> => {
+      const reaskLine = "Your previous reply was not valid JSON; reply with the JSON object only.";
+      // The re-ask is its own real API call — it re-sends the whole prompt
+      // plus the bad reply, so it is its own metered spend, gated the same
+      // way as the original call (see parseWithRetry.ts's BUDGET note).
+      // Run 1's verifier call #34 returned an unclosed object and charged a
+      // page one of its three attempts for it (F-39); this is that fix.
+      const reaskEstimatedInputTokens = roughTokenEstimate(promptText + textBlock.text + reaskLine);
+      await this.budgetGuard.checkAndRecord({
+        userId: ctx.userId,
+        operation: "narration_verify",
+        provider: this.providerName,
+        model: MODEL,
+        estimatedUsd: reaskEstimatedInputTokens * USD_PER_INPUT_TOKEN + MAX_OUTPUT_TOKENS * USD_PER_OUTPUT_TOKEN,
+        sessionId: ctx.sessionId
+      });
+
+      const retryResponse = await this.client.messages.create({
+        model: MODEL,
+        max_tokens: MAX_OUTPUT_TOKENS,
+        messages: [
+          { role: "user", content: promptText },
+          { role: "assistant", content: textBlock.text },
+          { role: "user", content: reaskLine }
+        ]
+      });
+      recordUsage(retryResponse.usage);
+      const retryTextBlock = retryResponse.content.find((b: Anthropic.ContentBlock): b is Anthropic.TextBlock => b.type === "text");
+      if (!retryTextBlock) throw new Error("Anthropic narration-verify re-ask response had no text block");
+      return retryTextBlock.text;
+    };
+
+    return parseWithRetry(RawVerifyResultSchema, textBlock.text, "LLM output", reask);
   }
 }
 
@@ -136,8 +179,4 @@ function verifyPageBlock(page: VerifyPageBrief): string {
   ];
   if (docs) lines.push(`Documents the page was written from:\n${docs}`);
   return lines.join("\n");
-}
-
-function parseWithRetry<T>(schema: z.ZodType<T>, raw: string): T {
-  return parseWithRetryShared(schema, raw, "LLM output");
 }

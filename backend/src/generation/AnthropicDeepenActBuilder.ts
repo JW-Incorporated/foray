@@ -1,10 +1,12 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import { env } from "../config/env";
+import { costFor, modelFor } from "../config/models";
 import { defaultBudgetGuard, type BudgetGuard } from "../cost/budgetGuard";
 import { parseWithRetry } from "./parseWithRetry";
 import type { Act, DeepenedAct, Spine } from "../types/spine";
 import type { DeepenActBuilder, DeepenActContext } from "./DeepenActBuilder";
+import { recordUsage } from "./usageTracking";
 
 /**
  * Real §4.4 act-deepening via the Anthropic API, mirroring
@@ -16,12 +18,21 @@ import type { DeepenActBuilder, DeepenActContext } from "./DeepenActBuilder";
  * Anthropic* class in this codebase. Use createDeepenActBuilder().
  */
 
-const MODEL = "claude-sonnet-4-5";
-const USD_PER_INPUT_TOKEN = 3.0 / 1_000_000;
-const USD_PER_OUTPUT_TOKEN = 15.0 / 1_000_000;
+/* Model id and per-token rates come from `src/config/models.ts`, the one
+ * place a Claude model id is written down (F-03). Which TIER this stage
+ * needs stays this stage's decision; which model serves that tier does not.
+ * An id and its price are read from the same row, so they cannot drift
+ * apart the way seven hand-copied pairs did. */
+const MODEL = modelFor("sonnet");
+const USD_PER_INPUT_TOKEN = costFor("sonnet").usdPerInputToken;
+const USD_PER_OUTPUT_TOKEN = costFor("sonnet").usdPerOutputToken;
 const MAX_OUTPUT_TOKENS = 4000;
 
-const BeatSchema = z.object({ claim: z.string(), exploration: z.boolean() });
+/* `kind` is optional here and defaulted downstream rather than required: a
+   model that omits it must not cost the whole act a retry, and an absent kind
+   means "account", which is the search-for-tape behaviour that predates the
+   field (see BeatKindSchema in types/spine.ts). */
+const BeatSchema = z.object({ claim: z.string(), exploration: z.boolean(), kind: z.enum(["account", "argument"]).optional() });
 const SlotSchema = z.object({ title: z.string(), beats: z.array(BeatSchema) });
 const RawDeepenedActSchema = z.object({
   title: z.string(),
@@ -71,10 +82,40 @@ export class AnthropicDeepenActBuilder implements DeepenActBuilder {
       messages: [{ role: "user", content: promptText }]
     });
 
+    recordUsage(response.usage);
     const textBlock = response.content.find((b: Anthropic.ContentBlock): b is Anthropic.TextBlock => b.type === "text");
     if (!textBlock) throw new Error("Anthropic deepen-act response had no text block");
 
-    return parseWithRetry(RawDeepenedActSchema, textBlock.text, "Anthropic deepen-act output");
+    const reask = async (): Promise<string> => {
+      const reaskLine = "Your previous reply was not valid JSON; reply with the JSON object only.";
+      // The re-ask is its own real API call — it re-sends the whole prompt
+      // plus the bad reply, so it is its own metered spend, gated the same
+      // way as the original call (see parseWithRetry.ts's BUDGET note).
+      const reaskEstimatedInputTokens = roughTokenEstimate(promptText + textBlock.text + reaskLine);
+      await this.budgetGuard.checkAndRecord({
+        userId: ctx.userId,
+        operation: "deepen_act",
+        provider: this.providerName,
+        model: MODEL,
+        estimatedUsd: reaskEstimatedInputTokens * USD_PER_INPUT_TOKEN + MAX_OUTPUT_TOKENS * USD_PER_OUTPUT_TOKEN,
+        sessionId: ctx.sessionId
+      });
+
+      const retryResponse = await this.client.messages.create({
+        model: MODEL,
+        max_tokens: MAX_OUTPUT_TOKENS,
+        messages: [
+          { role: "user", content: promptText },
+          { role: "assistant", content: textBlock.text },
+          { role: "user", content: reaskLine }
+        ]
+      });
+      const retryTextBlock = retryResponse.content.find((b: Anthropic.ContentBlock): b is Anthropic.TextBlock => b.type === "text");
+      if (!retryTextBlock) throw new Error("Anthropic deepen-act re-ask response had no text block");
+      return retryTextBlock.text;
+    };
+
+    return parseWithRetry(RawDeepenedActSchema, textBlock.text, "Anthropic deepen-act output", reask);
   }
 }
 
@@ -113,14 +154,17 @@ function buildDeepenActPrompt(spine: Spine, targetAct: Act, targetActIndex: numb
     "   are still high-level. Do NOT add or remove slots. You may refine beat wording but every beat must",
     "   remain a CLAIM, never a topic (e.g. \"Charcoal briquettes were a Ford Motor Company waste-disposal",
     "   scheme\" is a beat; \"Briquettes\" is not).",
-    "2. Write this act's own INTRODUCTION — what a listener hears entering this act. Use the full spine so",
+    "2. Tag every beat `kind`: \"account\" if a person could be recorded describing this specific event,",
+    "   place or experience; \"argument\" if it is a thesis or generalisation about a class of events, which",
+    "   no recording is ever about. Arguments are narrated, never illustrated with tape.",
+    "3. Write this act's own INTRODUCTION — what a listener hears entering this act. Use the full spine so",
     `   act ${targetActIndex + 1} does not re-explain what an earlier act already established.`,
-    "3. Write this act's EXIT — the connective tissue into the next act (its own half of the handoff; a",
+    "4. Write this act's EXIT — the connective tissue into the next act (its own half of the handoff; a",
     "   later continuity pass reconciles the full cross-act seam, this is just this act's side of it).",
     "",
     "Respond with ONLY a single JSON object, no markdown fences, no other text, matching exactly:",
     '{"title": string, "thesis": string, "startState": string, "endState": string, ' +
-      '"slots": [{"title": string, "beats": [{"claim": string, "exploration": boolean}]}], ' +
+      '"slots": [{"title": string, "beats": [{"claim": string, "exploration": boolean, "kind": "account" | "argument"}]}], ' +
       '"introduction": string, "exit": string}'
   ].join("\n");
 }
