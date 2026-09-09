@@ -1,6 +1,5 @@
 import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import type { ForayItem } from "./forayItems";
 import { StageTimingLog, type StageTiming } from "./stageTiming";
 
@@ -54,7 +53,7 @@ import { StageTimingLog, type StageTiming } from "./stageTiming";
  * narration content it never touched.
  */
 
-const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
+const REPO_ROOT = path.resolve(__dirname, "..", "..", "..");
 
 export interface ForaySlot {
   id: string;
