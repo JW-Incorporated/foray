@@ -6,6 +6,7 @@ import { defaultBudgetGuard, type BudgetGuard } from "../cost/budgetGuard";
 import { parseWithRetry } from "./parseWithRetry";
 import type { ClarityResult, IntentUnderstanding } from "../types/generation";
 import type { PromptUnderstander, PromptUnderstandContext } from "./PromptUnderstander";
+import { recordUsage } from "./usageTracking";
 
 /**
  * Real §4.1 clarity/intent understanding via the Anthropic API, mirroring
@@ -79,6 +80,7 @@ export class AnthropicPromptUnderstander implements PromptUnderstander {
       messages: [{ role: "user", content: promptText }]
     });
 
+    recordUsage(response.usage);
     const textBlock = response.content.find((b: Anthropic.ContentBlock): b is Anthropic.TextBlock => b.type === "text");
     if (!textBlock) throw new Error("Anthropic clarity response had no text block");
 
@@ -132,6 +134,7 @@ export class AnthropicPromptUnderstander implements PromptUnderstander {
       messages: [{ role: "user", content: promptText }]
     });
 
+    recordUsage(response.usage);
     const textBlock = response.content.find((b: Anthropic.ContentBlock): b is Anthropic.TextBlock => b.type === "text");
     if (!textBlock) throw new Error("Anthropic intent response had no text block");
 

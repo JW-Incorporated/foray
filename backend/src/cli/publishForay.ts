@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { finalizeForay, type FinalizeForayInput } from "../generation/finalizeForay";
+import { evaluateVeracityGate } from "../generation/veracityMetrics";
 
 /**
  * `npm run publish-foray` — §4.9's finalize-and-publish CLI
@@ -50,10 +51,22 @@ import { finalizeForay, type FinalizeForayInput } from "../generation/finalizeFo
  *      NOT-built-here automated-publish behaviour) is the point where
  *      this hold would come off — not this stage.
  *
+ * WS-B VERACITY GATE (docs/curation/generation-fix-plan-2026-09-09.md):
+ * between validation and writing anything, this also checks the
+ * candidate's `meta.veracity` (computed by `runPipeline.ts`, see
+ * `veracityMetrics.ts`) against three floors — `groundedQuoteRate < 1`,
+ * `purposeFidelity < 0.8`, or `tapeRelevance < 0.9` all refuse to publish,
+ * printing which pages/anchors failed. `null` on any of those three counts
+ * as failing (unmeasured is not passing — see `evaluateVeracityGate`'s own
+ * comment). `--force` overrides the gate and notes the override, with the
+ * specific failures, in the PR body — it does NOT skip check-forays.mjs/
+ * check-narration.mjs, which have no override.
+ *
  * Usage:
  *   npm run publish-foray -- --input path/to/candidate.json
  *   npm run publish-foray -- --input path/to/candidate.json --dry-run
  *   npm run publish-foray -- --input path/to/candidate.json --no-hold
+ *   npm run publish-foray -- --input path/to/candidate.json --force
  */
 
 const REPO_ROOT = path.resolve(__dirname, "..", "..", "..");
@@ -62,6 +75,7 @@ interface CliArgs {
   input: string | null;
   dryRun: boolean;
   hold: boolean;
+  force: boolean;
 }
 
 function parseArgs(argv: string[]): CliArgs {
@@ -72,7 +86,8 @@ function parseArgs(argv: string[]): CliArgs {
   return {
     input: get("--input") ?? null,
     dryRun: argv.includes("--dry-run"),
-    hold: !argv.includes("--no-hold")
+    hold: !argv.includes("--no-hold"),
+    force: argv.includes("--force")
   };
 }
 
@@ -83,7 +98,7 @@ function run(cmd: string, args: string[], opts: { cwd?: string } = {}): string {
 async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
   if (!args.input) {
-    console.error("Usage: npm run publish-foray -- --input path/to/candidate.json [--dry-run] [--no-hold]");
+    console.error("Usage: npm run publish-foray -- --input path/to/candidate.json [--dry-run] [--no-hold] [--force]");
     process.exitCode = 1;
     return;
   }
@@ -107,6 +122,19 @@ async function main(): Promise<void> {
   for (const w of result.validation.checkNarrationWarnings) console.warn(`  check-narration WARN: ${w}`);
   console.log(`Foray "${input.id}" passed validation.`);
 
+  // WS-B veracity gate — see this file's own doc comment.
+  const gate = evaluateVeracityGate(input.meta?.veracity);
+  if (!gate.ok) {
+    console.error(`Foray "${input.id}" FAILED the veracity gate:`);
+    for (const f of gate.failures) console.error(`  ${f}`);
+    if (!args.force) {
+      console.error('Refusing to publish. Use --force to override (the override will be noted in the PR body).');
+      process.exitCode = 1;
+      return;
+    }
+    console.warn("--force: publishing despite the veracity gate failures above.");
+  }
+
   if (args.dryRun) {
     console.log("--dry-run: not writing data/forays.json, not opening a PR.");
     console.log(JSON.stringify(result.forayRecord, null, 2));
@@ -129,7 +157,12 @@ async function main(): Promise<void> {
   const prBody =
     `Automated §4.9 finalize/publish. Foray "${input.id}" passed check-forays.mjs and ` +
     `check-narration.mjs. Phase 1 (docs/curation/generation-architecture.md §1.3): this PR ` +
-    "is for a founder to review before it reaches the catalogue — it does not auto-merge.";
+    "is for a founder to review before it reaches the catalogue — it does not auto-merge." +
+    (!gate.ok
+      ? `\n\n**WS-B veracity gate overridden with --force.** Failures at publish time:\n${gate.failures
+          .map((f) => `- ${f}`)
+          .join("\n")}`
+      : "");
   const prUrl = run("gh", ["pr", "create", "--base", "main", "--title", `Generated Foray: ${input.title}`, "--body", prBody]);
   console.log(`Opened PR: ${prUrl}`);
 

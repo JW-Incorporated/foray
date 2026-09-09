@@ -172,7 +172,21 @@ describe("per-stage checkpoint and resume inside one Foray (F-17/F-18)", () => {
     const resumed = fakeFinalize();
     await runForayPipeline(request, { userId: "u", checkpointKey: KEY, now: at }, { ...countingDeps().deps, finalize: resumed.fn, checkpoint: store });
 
-    expect(resumed.seen[0]).toEqual(fresh.seen[0]);
+    /* The FORAY is identical. `meta.veracity` is not, and must not be: it
+       records the run that produced the candidate (WS-B), and a resumed run
+       made no narration calls and paid nothing for the stages it reloaded —
+       exactly what F-17/F-18 exist to make true. */
+    const stripVeracity = (input: unknown) => {
+      const { meta, ...rest } = input as { meta?: { veracity?: unknown } & Record<string, unknown> };
+      const { veracity: _veracity, ...metaRest } = meta ?? {};
+      return { ...rest, meta: metaRest };
+    };
+    expect(stripVeracity(resumed.seen[0])).toEqual(stripVeracity(fresh.seen[0]));
+    const resumedVeracity = (resumed.seen[0] as { meta: { veracity: { callsPerBeat: number | null; stageTimings: Array<{ name: string; resumed?: boolean }> } } }).meta.veracity;
+    expect(resumedVeracity.callsPerBeat).toBe(0);
+    expect(resumedVeracity.stageTimings.filter((t) => t.resumed).map((t) => t.name)).toEqual(
+      expect.arrayContaining(["understand", "research-shape", "spine", "source", "narrate:0", "stitch"])
+    );
   });
 
   it("a narration failure costs the narration, not the spine or the deepening", async () => {

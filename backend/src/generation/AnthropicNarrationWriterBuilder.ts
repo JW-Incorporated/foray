@@ -6,6 +6,7 @@ import { costFor, modelFor } from "../config/models";
 import { defaultBudgetGuard, type BudgetGuard } from "../cost/budgetGuard";
 import { MODE_CHAR_BANDS } from "../types/narration";
 import type { NarrationBuildContext, NarrationWriteRequest, NarrationWriteResult, NarrationWriterBuilder } from "./NarrationWriterBuilder";
+import { recordUsage } from "./usageTracking";
 
 /**
  * Real §4.7 narration writing via the Anthropic API, mirroring
@@ -79,6 +80,7 @@ export class AnthropicNarrationWriterBuilder implements NarrationWriterBuilder {
       messages: [{ role: "user", content: promptText }]
     });
 
+    recordUsage(response.usage);
     const textBlock = response.content.find((b: Anthropic.ContentBlock): b is Anthropic.TextBlock => b.type === "text");
     if (!textBlock) throw new Error("Anthropic narration-write response had no text block");
 

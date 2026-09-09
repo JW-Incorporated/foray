@@ -5,6 +5,7 @@ import { env } from "../config/env";
 import { costFor, modelFor } from "../config/models";
 import { defaultBudgetGuard, type BudgetGuard } from "../cost/budgetGuard";
 import type { NarrationBuildContext, NarrationVerifierBuilder, NarrationVerifyRequest, NarrationVerifyResult } from "./NarrationVerifierBuilder";
+import { recordUsage } from "./usageTracking";
 
 /**
  * Real §4.7 verification via the Anthropic API — a SEPARATE call, and
@@ -71,6 +72,7 @@ export class AnthropicNarrationVerifierBuilder implements NarrationVerifierBuild
       messages: [{ role: "user", content: promptText }]
     });
 
+    recordUsage(response.usage);
     const textBlock = response.content.find((b: Anthropic.ContentBlock): b is Anthropic.TextBlock => b.type === "text");
     if (!textBlock) throw new Error("Anthropic narration-verify response had no text block");
 

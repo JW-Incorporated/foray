@@ -1484,6 +1484,11 @@ const BACKEND_FLOORS = {
      pinning relationships rather than counts, because the finding it closes
      (F-29) is precisely two real files that were never joined. */
   "test/taxonomyFamily.test.ts": 17,
+  /* WS-B veracity metrics (generation fix plan 2026-09-09): the grounded-quote /
+     attribution-stability / tape-relevance metrics and the publish gate, plus
+     the process-wide token-usage collector every Anthropic builder feeds. */
+  "test/usageTracking.test.ts": 4,
+  "test/veracityMetrics.test.ts": 31,
 };
 
 /* `it(` as well as `test(`: backend's suites use both spellings. */
