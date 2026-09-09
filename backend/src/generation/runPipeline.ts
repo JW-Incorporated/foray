@@ -31,6 +31,7 @@ import type { NarrationWriterBuilder } from "./NarrationWriterBuilder";
 import type { NarrationVerifierBuilder } from "./NarrationVerifierBuilder";
 import type { ContinuityBuilder } from "./ContinuityBuilder";
 import type { TranscriptCueProvider } from "./transcriptArchiveLookup";
+import type { TapeRelevanceInput } from "../types/tapeSourcing";
 import type { Spine } from "../types/spine";
 import type { ForayItem } from "./forayItems";
 
@@ -130,6 +131,14 @@ export type RunPipelineOutcome =
       input: FinalizeForayInput;
       result: FinalizeForayResult;
       spine: Spine;
+      /** WS-C: one row per tape-sourced beat, carrying the topic gate's own
+       * verdict on the anchor it took (see `TapeRelevanceInput`). Surfaced here
+       * because §4.5 is the only stage that knows all of it at once, and
+       * because WS-B's `tapeRelevance` metric otherwise has to re-derive the
+       * join from disk — and can only do so for anchors that resolve against
+       * `data/segment-sources.json`, which a freshly minted tier-2 segment need
+       * not. */
+      tapeRelevance: TapeRelevanceInput[];
       timings: StageTiming[];
     };
 
@@ -274,15 +283,45 @@ export async function runForayPipeline(
   // §4.3 — the spine, frozen from here on (§6.1's invariant, batch-true).
   const spine = await timings.run("spine", () => buildSpine(intent, researchShape, req.duration, spineBuilder, ctx));
 
+  /* THE FORAY'S TOPIC, RESOLVED HERE AND NOT AFTER NARRATION.
+     It used to be resolved at the end, next to the other §4.9 fields it is
+     grouped with, because nothing before §4.9 needed it. §4.5's topic gate does
+     (fix plan WS-C, finding F-29): the taxonomy node is the only thing that can
+     tell sourcing that a barbecue episode is not tape for an engineering-
+     disasters Foray, and sourcing runs long before finalize. Resolving it here
+     — the first point where both the intent and the frozen spine exist — also
+     means an unresolvable topic stops the run before the two most expensive
+     stages instead of after them.
+
+     The unresolved-topic OUTCOME is unchanged: same shape, same title, same
+     ranked candidates, still returned rather than guessed at, because
+     `check-forays.mjs` only asks whether a node exists and never whether it is
+     the right one. `generatedAt` deliberately did NOT move with it: it is the
+     time the Foray was finished, and stamping it here would date every Foray
+     several minutes before it existed. */
+  const title = `${intent.subject}${intent.angle ? `: ${intent.angle}` : ""}`.slice(0, 120);
+  const topicText = [intent.subject, intent.angle, spine.acts.map((a) => a.title).join(" ")].join(" ");
+  const resolvedTopic = resolveTopic(topicText, { root: options.root });
+  const topic = options.topic ?? resolvedTopic.resolved;
+  if (!topic) {
+    return {
+      outcome: "unresolved-topic",
+      title,
+      candidates: resolvedTopic.candidates,
+      timings: timings.all()
+    };
+  }
+
   // §4.4 — deepen every act, in parallel across acts.
   const deepened = await timings.run("deepen", () => deepenActs(spine, deepenBuilder, ctx));
 
   /* §4.5-4.6 — source each beat against tape, then resolve the pointer. Purely
      deterministic and keyless: no LLM call happens in here at all. The cue
      provider is what decides whether tier-2 can anchor a real span or whether
-     the beat degrades to narration for this run. */
+     the beat degrades to narration for this run; `topic` is what decides
+     whether a candidate is even in the right subject. */
   const sourced = await timings.run("source", async () =>
-    sourceBeats(deepened, { cueProvider: deps.cueProvider })
+    sourceBeats(deepened, { cueProvider: deps.cueProvider, topic, root: options.root })
   );
 
   // §4.7 — write narration, then verify it independently (distinct instances, enforced there).
@@ -295,25 +334,7 @@ export async function runForayPipeline(
     stitchForay(deepened, written, { continuity: { builder: continuityBuilder } }, ctx)
   );
 
-  /* The Foray-level fields §4.9 says nothing upstream owns. Resolved here
-     because this is the first place that has both the intent and the finished
-     spine to resolve them from. An unresolvable topic stops the run BEFORE
-     finalize: publishing under a wrong-but-valid taxonomy node is the one
-     failure `check-forays.mjs` cannot catch, since it only asks whether the
-     node exists. */
   const generatedAt = now().toISOString();
-  const title = `${intent.subject}${intent.angle ? `: ${intent.angle}` : ""}`.slice(0, 120);
-  const topicText = [intent.subject, intent.angle, spine.acts.map((a) => a.title).join(" ")].join(" ");
-  const topic = options.topic ?? resolveTopic(topicText, { root: options.root }).resolved;
-  if (!topic) {
-    return {
-      outcome: "unresolved-topic",
-      title,
-      candidates: resolveTopic(topicText, { root: options.root }).candidates,
-      timings: timings.all()
-    };
-  }
-
   const slots = slotsFromSpine(spine);
   /* The disclosure is prepended here rather than inside stitch: it is a
      Foray-level obligation, not an act's content, and stitch has no concept of
@@ -336,5 +357,5 @@ export async function runForayPipeline(
   const finalize = deps.finalize ?? finalizeForay;
   const result = await timings.run("finalize", () => finalize(input, options.root));
 
-  return { outcome: "generated", input, result, spine, timings: timings.all() };
+  return { outcome: "generated", input, result, spine, tapeRelevance: sourced.tapeRelevance, timings: timings.all() };
 }

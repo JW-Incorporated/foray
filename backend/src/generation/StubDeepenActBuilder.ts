@@ -54,8 +54,18 @@ export class StubDeepenActBuilder implements DeepenActBuilder {
 function sharpenBeat(beat: Beat, subject: string): Beat {
   return {
     claim: `${beat.claim} This detail sharpens the picture of ${subject} for the listener.`,
-    exploration: beat.exploration
+    exploration: beat.exploration,
+    kind: beat.kind ?? kindOf(beat.claim)
   };
+}
+
+/** Generalisation markers a real deepen call judges by meaning. The stub is a
+ * fixture generator, not a judge — but it must emit BOTH kinds, or the dry-run
+ * path would never exercise §4.5's argument branch (a beat tagged `argument`
+ * skips tape lookup entirely) and a regression there would be invisible without
+ * a key. */
+function kindOf(claim: string): "account" | "argument" {
+  return /\b(every|always|never|almost|tends?|generally|typically|in general|means that|is why)\b/i.test(claim) ? "argument" : "account";
 }
 
 function introductionFor(act: Act, index: number, spine: Spine): string {

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { type Beat, type DeepenedAct } from "./spine";
+import { BeatKindSchema, type Beat, type DeepenedAct } from "./spine";
 
 /**
  * §4.5-4.6 output types (docs/curation/generation-architecture.md §4.5,
@@ -70,9 +70,25 @@ export type NarrationAssignment = z.infer<typeof NarrationAssignmentSchema>;
  * `sourcing` so a beat can never carry both a tape pointer and a
  * narration assignment, or neither. */
 export const SourcedBeatSchema = z.discriminatedUnion("sourcing", [
-  z.object({ sourcing: z.literal("tape"), claim: z.string().trim().min(1), exploration: z.boolean(), tape: TapePointerSchema }).strict(),
   z
-    .object({ sourcing: z.literal("narration"), claim: z.string().trim().min(1), exploration: z.boolean(), narration: NarrationAssignmentSchema })
+    .object({
+      sourcing: z.literal("tape"),
+      claim: z.string().trim().min(1),
+      exploration: z.boolean(),
+      /** Carried through from §4.4 so §4.7 knows what it is writing around;
+       * absent means `account` (see BeatKindSchema in types/spine.ts). */
+      kind: BeatKindSchema.optional(),
+      tape: TapePointerSchema
+    })
+    .strict(),
+  z
+    .object({
+      sourcing: z.literal("narration"),
+      claim: z.string().trim().min(1),
+      exploration: z.boolean(),
+      kind: BeatKindSchema.optional(),
+      narration: NarrationAssignmentSchema
+    })
     .strict()
 ]);
 export type SourcedBeat = z.infer<typeof SourcedBeatSchema>;
@@ -128,12 +144,54 @@ export const NewSegmentSchema = z
   .strict();
 export type NewSegment = z.infer<typeof NewSegmentSchema>;
 
+/**
+ * One row of evidence for the `tapeRelevance` metric the veracity gate is built
+ * on (fix plan WS-B): "share of tape anchors whose episode shares a taxonomy
+ * family with the Foray's resolved topic, plus the list of anchors for human
+ * spot-check".
+ *
+ * §4.5 is the only stage that knows all four of these things at once, so it
+ * emits them rather than leaving a later stage to re-derive a join it cannot
+ * see. Run 1 could not measure this at all — the number (5 of 22 anchors on
+ * topic) had to be counted by hand from the narration prompts.
+ */
+export interface TapeRelevanceInput {
+  /** Where the beat sits, so a failing anchor can be found by a human. */
+  actIndex: number;
+  slotIndex: number;
+  beatIndex: number;
+  /** Named to match WS-B's `TapeAnchorNote`, which carries the same two fields
+   * for the same reason: a human spot-checking the list needs to see which
+   * claim took which item. */
+  claim: string;
+  itemId: string;
+  /** The anchor itself. */
+  segmentId: string;
+  tier: 1 | 2;
+  /** Every taxonomy node this anchor resolved to — the segment's own `topic`
+   * unioned with its show's `taxonomy_node_ids` (tier 1), or the show's nodes
+   * (tier 2). The set the topic gate actually judged. */
+  taxonomyNodeIds: string[];
+  /** Those nodes' roots, and the field name/values WS-B's `TapeAnchorNote`
+   * already uses, so its aggregation can read these rows unchanged. */
+  families: string[];
+  /** The Foray's resolved node and its root; null when sourcing ran without one. */
+  forayTopic: string | null;
+  forayFamily: string | null;
+  /** Whether the anchor shares the Foray's taxonomy LINEAGE — `null` when
+   * nothing could be established, which WS-B excludes from the metric's
+   * numerator AND denominator. "Unknown" is never "fine". */
+  onTopic: boolean | null;
+}
+
 export interface SourceBeatsResult {
   acts: SourcedAct[];
   /** Every NEW segment tier 2 produced this run — see `NewSegmentSchema`'s
    * doc comment on why these are not written to disk here. */
   newSegments: NewSegment[];
   transcriptionQueueCandidates: TranscriptionQueueCandidate[];
+  /** One row per TAPE-sourced beat, in Foray order — see `TapeRelevanceInput`. */
+  tapeRelevance: TapeRelevanceInput[];
 }
 
 export interface SourcingValidationIssue {

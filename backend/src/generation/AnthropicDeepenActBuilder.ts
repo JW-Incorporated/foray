@@ -21,7 +21,11 @@ const USD_PER_INPUT_TOKEN = 3.0 / 1_000_000;
 const USD_PER_OUTPUT_TOKEN = 15.0 / 1_000_000;
 const MAX_OUTPUT_TOKENS = 4000;
 
-const BeatSchema = z.object({ claim: z.string(), exploration: z.boolean() });
+/* `kind` is optional here and defaulted downstream rather than required: a
+   model that omits it must not cost the whole act a retry, and an absent kind
+   means "account", which is the search-for-tape behaviour that predates the
+   field (see BeatKindSchema in types/spine.ts). */
+const BeatSchema = z.object({ claim: z.string(), exploration: z.boolean(), kind: z.enum(["account", "argument"]).optional() });
 const SlotSchema = z.object({ title: z.string(), beats: z.array(BeatSchema) });
 const RawDeepenedActSchema = z.object({
   title: z.string(),
@@ -113,14 +117,17 @@ function buildDeepenActPrompt(spine: Spine, targetAct: Act, targetActIndex: numb
     "   are still high-level. Do NOT add or remove slots. You may refine beat wording but every beat must",
     "   remain a CLAIM, never a topic (e.g. \"Charcoal briquettes were a Ford Motor Company waste-disposal",
     "   scheme\" is a beat; \"Briquettes\" is not).",
-    "2. Write this act's own INTRODUCTION — what a listener hears entering this act. Use the full spine so",
+    "2. Tag every beat `kind`: \"account\" if a person could be recorded describing this specific event,",
+    "   place or experience; \"argument\" if it is a thesis or generalisation about a class of events, which",
+    "   no recording is ever about. Arguments are narrated, never illustrated with tape.",
+    "3. Write this act's own INTRODUCTION — what a listener hears entering this act. Use the full spine so",
     `   act ${targetActIndex + 1} does not re-explain what an earlier act already established.`,
-    "3. Write this act's EXIT — the connective tissue into the next act (its own half of the handoff; a",
+    "4. Write this act's EXIT — the connective tissue into the next act (its own half of the handoff; a",
     "   later continuity pass reconciles the full cross-act seam, this is just this act's side of it).",
     "",
     "Respond with ONLY a single JSON object, no markdown fences, no other text, matching exactly:",
     '{"title": string, "thesis": string, "startState": string, "endState": string, ' +
-      '"slots": [{"title": string, "beats": [{"claim": string, "exploration": boolean}]}], ' +
+      '"slots": [{"title": string, "beats": [{"claim": string, "exploration": boolean, "kind": "account" | "argument"}]}], ' +
       '"introduction": string, "exit": string}'
   ].join("\n");
 }
