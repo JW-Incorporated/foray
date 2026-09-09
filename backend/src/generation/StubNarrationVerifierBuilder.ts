@@ -1,5 +1,5 @@
 import { defaultBudgetGuard, type BudgetGuard } from "../cost/budgetGuard";
-import { containsContestedLanguage } from "../types/narration";
+import { containsContestedLanguage, hasDeclarativeSentence } from "../types/narration";
 import type { NarrationBuildContext, NarrationVerifierBuilder, NarrationVerifyRequest, NarrationVerifyResult } from "./NarrationVerifierBuilder";
 
 /**
@@ -38,22 +38,32 @@ export class StubNarrationVerifierBuilder implements NarrationVerifierBuilder {
 
     const notes: string[] = [];
 
+    /* A page that asserts something with no source behind it, in either
+       direction: the mode's own content obligation, and the general rule
+       that a script stating anything about the world needs a source
+       (F-36/F-37). */
     const needsSource = request.mode === "Patch" || request.mode === "Carry";
     if (needsSource && request.sources.length === 0) {
       notes.push(`${request.mode} narration asserts "${request.claim}" with zero sources attached.`);
+    } else if (request.sources.length === 0 && hasDeclarativeSentence(request.script)) {
+      notes.push("The script states something about the world with no source attached.");
     }
 
+    /* WHAT THIS STUB NO LONGER DOES, and why. It used to require a
+       significant word of the claim to appear inside its own quote — a
+       stand-in for reading comprehension. That test is now both wrong and
+       unnecessary: wrong, because a real retrieved passage supports a
+       claim without repeating its wording, and the fixture passage
+       deliberately shares no word with the beat purpose (quoting the
+       purpose back is F-46); unnecessary, because whether a quote exists
+       at all is now decided mechanically against the documents the
+       pipeline holds, before any verifier is called. What a verifier is
+       for — does this quote actually SUPPORT this claim, does the page do
+       what the beat is for — needs a model, and a stub says so rather
+       than faking it. */
     for (const source of request.sources) {
-      // The stub's own textual-overlap check: at least some non-trivial
-      // token from the claim should appear in the quote it is meant to
-      // back. A real Anthropic verifier does actual reading comprehension
-      // here; this stub does the mechanical version so the pipeline's
-      // shape (a real, separate check) is exercised even in dry-run.
-      const claimTokens = significantTokens(source.claimText);
-      const quoteLower = source.quote.toLowerCase();
-      const overlap = claimTokens.some((t) => quoteLower.includes(t));
-      if (!overlap) {
-        notes.push(`Source for "${source.claimText}" shares no significant word with its own quote — cannot confirm it supports the claim.`);
+      if (source.claimText.trim().length === 0) {
+        notes.push("A source is attached to no claim at all.");
       }
     }
 
@@ -67,8 +77,4 @@ export class StubNarrationVerifierBuilder implements NarrationVerifierBuilder {
       verifierNotes: notes.length > 0 ? notes.join(" ") : undefined
     };
   }
-}
-
-function significantTokens(text: string): string[] {
-  return (text.toLowerCase().match(/[a-z0-9]{5,}/g) ?? []).slice(0, 8);
 }

@@ -34,17 +34,25 @@ export class StubNarrationWriterBuilder implements NarrationWriterBuilder {
     const target = Math.round((min + max) / 2);
     const script = padToBand(scriptSeedSentence(request), min, max, target, request.mode);
 
-    const needsSource = request.mode === "Patch" || request.mode === "Carry";
-    const sources: Source[] = needsSource
-      ? [
-          {
-            claimText: request.claim,
-            quote: `Verbatim span standing in for the claim: "${request.claim}"`,
-            publication: "Stub source (dry-run — no ANTHROPIC_API_KEY configured)",
-            contested: false
-          }
-        ]
-      : [];
+    /* EVERY MODE CARRIES A SOURCE NOW (F-36/F-37, settled in
+       `validateNarratedBeat`): a page may declare none only if it asserts
+       nothing, and this stub's fixture script always asserts something.
+       Run 1's stub encoded the opposite intent (`needsSource = Patch ||
+       Carry`), which is how the dry-run kept producing zero-source Frames
+       that the real verifier rejected every time.
+
+       THE QUOTE IS NOT BUILT FROM THE CLAIM. A stub that quoted the beat's
+       own purpose back would be reproducing F-46 in the fixture path and
+       would fail the purpose-overlap rule; the fixture span shares no word
+       with the claim on purpose. */
+    const sources: Source[] = [
+      {
+        claimText: request.claim,
+        quote: STUB_QUOTE,
+        publication: "Stub source (dry-run — no ANTHROPIC_API_KEY configured)",
+        contested: false
+      }
+    ];
 
     const pronunciationHints: PronunciationHint[] = hardWordsIn(request.claim).map((word) => ({
       word,
@@ -54,6 +62,11 @@ export class StubNarrationWriterBuilder implements NarrationWriterBuilder {
     return { script, sources, pronunciationHints };
   }
 }
+
+/** A fixed, twelve-word span: long enough to clear `MIN_QUOTE_WORDS`,
+ * fixed so a dry-run is reproducible, and about nothing so it cannot be
+ * mistaken for a real citation. */
+const STUB_QUOTE = "This passage stands in for a document the pipeline would have retrieved.";
 
 function scriptSeedSentence(request: NarrationWriteRequest): string {
   const modeVerb: Record<string, string> = {

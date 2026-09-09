@@ -139,7 +139,16 @@ describe("writeNarration — the verifier is a genuinely separate call from the 
         const [min] = MODE_CHAR_BANDS[request.mode];
         return {
           script: "A".repeat(min + 5),
-          sources: [{ claimText: request.claim, quote: `Quote backing: ${request.claim}`, publication: "Test pub", contested: false }],
+          sources: [
+            {
+              claimText: request.claim,
+              // Eight words or more and sharing no run with the beat purpose:
+              // the two mechanical rules (F-42, F-46) a fixture has to honour.
+              quote: "The connection was never checked for adequacy at any stage.",
+              publication: "Test pub",
+              contested: false
+            }
+          ],
           pronunciationHints: []
         };
       }
@@ -360,7 +369,12 @@ describe("writeNarration — generation run 1 (2026-09-09) regressions", () => {
     };
     return w;
   }
-  const okSource: Source = { claimText: "one welded joint carried both walkways", quote: "one welded joint carried both walkways", publication: "National Bureau of Standards, Building Science Series 143 (1982)", contested: false };
+  const okSource: Source = {
+    claimText: "one welded joint carried both walkways",
+    quote: "The box beam-hanger rod connections were not checked for adequacy at any stage of the design.",
+    publication: "National Bureau of Standards, Building Science Series 143 (1982)",
+    contested: false
+  };
   const framePage = (publication: string): NarrationWriteResult => ({
     script: "One welded joint now carried both walkways' weight. Neither firm checked whether it could hold that load.",
     sources: [{ ...okSource, publication }],
@@ -376,6 +390,33 @@ describe("writeNarration — generation run 1 (2026-09-09) regressions", () => {
     expect(writer.calls).toBe(2);
     expect(writer.notes[1]).toMatch(/is a tape item id, not a publication/);
     expect(allWrittenNarration(written)[0]!.sources[0]!.publication).toBe(okSource.publication);
+  });
+
+  it("F-35: the retry note accumulates every prior rejection, not just the latest one", async () => {
+    /* Run 1's attempt 3 was told about attempt 2 only, so it regularly fixed
+       the last complaint while reviving the first. Both earlier rejections
+       have to be visible on the third attempt. */
+    const shortQuote: NarrationWriteResult = {
+      script: framePage(okSource.publication).script,
+      sources: [{ ...okSource, quote: "debris" }],
+      pronunciationHints: []
+    };
+    const slugPublication = framePage("bfh-griddle-bakestone");
+    const writer = scriptedWriter([shortQuote, slugPublication, framePage(okSource.publication)]);
+    const acts: SourcedAct[] = [
+      { title: "Act", slots: [{ title: "Slot", beats: [{ sourcing: "tape", claim: "c", exploration: false, tape: tapePointer("bfh-griddle-bakestone") }] }] }
+    ];
+
+    await writeNarration(acts, { writer, verifier: new StubNarrationVerifierBuilder() }, voice, ctx);
+
+    expect(writer.calls).toBe(3);
+    expect(writer.notes[1]).toMatch(/Attempt 1 was rejected for/);
+    expect(writer.notes[2]).toMatch(/Attempt 1 was rejected for/);
+    expect(writer.notes[2]).toMatch(/Attempt 2 was rejected for/);
+    // The first attempt's complaint (a two-word span) is still on the record
+    // when the third is written, alongside the second's (a slug publication).
+    expect(writer.notes[2]).toMatch(/word\(s\)/);
+    expect(writer.notes[2]).toMatch(/tape item id/);
   });
 
   it("gives a page three informed attempts, then drops a CONNECTIVE page but keeps the tape beat", async () => {
@@ -438,7 +479,14 @@ describe("writeNarration — F-36/F-37: a content page with zero sources is reje
         if (calls === 1) return { script: pad("Listen for what breaks the plan, and for who noticed first."), sources: [], pronunciationHints: [] };
         return {
           script: pad("One welded joint now carried both walkways' weight. Neither firm checked whether it could hold that load."),
-          sources: [{ claimText: "one welded joint carried both walkways", quote: "one welded joint carried both walkways", publication: "National Bureau of Standards, Building Science Series 143 (1982)", contested: false }],
+          sources: [
+            {
+              claimText: "one welded joint carried both walkways",
+              quote: "The box beam-hanger rod connections were not checked for adequacy at any stage of the design.",
+              publication: "National Bureau of Standards, Building Science Series 143 (1982)",
+              contested: false
+            }
+          ],
           pronunciationHints: []
         };
       }

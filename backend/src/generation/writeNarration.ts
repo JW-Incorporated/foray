@@ -233,7 +233,15 @@ async function writePageAndVerify(
      ("a source is marked contested but the script does not say so"). A retry
      that does not tell the writer what was wrong is a coin flip at best. The
      rejected page's issues are appended to the context note so the second
-     attempt can fix them; the prompt is otherwise unchanged. */
+     attempt can fix them; the prompt is otherwise unchanged.
+
+     AND IT ACCUMULATES (F-35). The first informed version overwrote the note
+     on every failure, so attempt 3 was told about attempt 2 only — and run 1's
+     attempt-3 pages regularly fixed the last complaint while reviving the
+     first. Every prior rejection is carried, in order, so the writer can see
+     that two attempts failed for the same reason, and that the fix for one is
+     not a reintroduction of another. */
+  const rejections: string[] = [];
   let retryNote: string | undefined;
   /* THREE ATTEMPTS, NOT TWO (attempt 3 of run 1). First attempts were rejected
      5 times out of 5 and second attempts once in 5; with two attempts and ~31
@@ -248,7 +256,7 @@ async function writePageAndVerify(
 
       const structural = validateNarratedBeat(
         { mode, script: written.script, sources: written.sources, pronunciationHints: written.pronunciationHints, verified: true },
-        { bannedPhrasePatterns: BANNED }
+        { bannedPhrasePatterns: BANNED, purposeText: [claim, contextNote].filter(Boolean).join(" ") }
       );
       if (!structural.valid) {
         throw new InvalidNarratedBeatError(claim, mode, structural.issues.map((i) => i.message));
@@ -282,9 +290,10 @@ async function writePageAndVerify(
     } catch (err) {
       lastError = err;
       const issues = err instanceof InvalidNarratedBeatError ? err.issues : [err instanceof Error ? err.message : String(err)];
+      rejections.push(issues.join("; "));
       retryNote =
-        `YOUR PREVIOUS ATTEMPT AT THIS PAGE WAS REJECTED for: ${issues.join("; ")}. ` +
-        "Write a corrected page that fixes every listed problem while keeping all other rules.";
+        `${rejections.map((r, i) => `Attempt ${i + 1} was rejected for: ${r}.`).join(" ")} ` +
+        "Write a corrected page that fixes every problem listed above — including the earlier ones — while keeping all other rules.";
     }
   }
   throw new NarrationWriteError(claim, mode, lastError);
