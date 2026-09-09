@@ -672,6 +672,8 @@ export async function runForayPipeline(
         researcher,
         ctx,
         root: options.root,
+        /* F-67: the listener's own words join the topic text. */
+        prompt: req.prompt,
         /* WS-L (F-63): the same text index and cue provider §4.5 sources with,
            handed to §4.2 so the map carries what the tape SAYS about each
            candidate and the spine can write its beats from that rather than
@@ -710,7 +712,10 @@ export async function runForayPipeline(
   for (const what of clampedCopy) {
     console.warn(`runPipeline: ${what} exceeded the ${MAX_COPY_WORDS}-word copy rule and was clamped — the understander ignored its length instruction (F-64)`);
   }
-  const topicText = [intent.subject, intent.angle, spine.acts.map((a) => a.title).join(" ")].join(" ");
+  /* F-67: the user's prompt leads the topic text. The understander's
+     paraphrase can drop the one token the taxonomy knows ("ML" for "machine
+     learning"), and the act titles are the spine's framing, not the subject. */
+  const topicText = [req.prompt, intent.subject, intent.angle, spine.acts.map((a) => a.title).join(" ")].join(" ");
   const resolvedTopic = resolveTopic(topicText, { root: options.root });
   const topic = options.topic ?? resolvedTopic.resolved;
   if (!topic) {

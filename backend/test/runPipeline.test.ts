@@ -170,8 +170,10 @@ describe("runForayPipeline", () => {
         disappointment: "none"
       })
     };
+    /* F-67: the listener's prompt now joins the topic text, so the prompt has
+       to be as unmatchable as the intent — otherwise "grilling" resolves. */
     const out = await runForayPipeline(
-      request,
+      { ...request, prompt: "qqzzx wubbleflunk zzzqqx" },
       { userId: "founder-1", now: options.now },
       { ...stubDeps(), understander: understander as never }
     );

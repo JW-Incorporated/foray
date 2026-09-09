@@ -311,6 +311,11 @@ async function fanOutExternalResearch(
 export interface BuildResearchShapeOptions {
   researcher: ExternalResearcher;
   ctx: ExternalResearchContext;
+  /** The listener's own prompt, verbatim. Joins the intent's subject and angle
+   * in the topic text the lineage filter resolves from (F-67) — see
+   * `resolveFilterTopic`. Optional so every pre-F-67 caller and test is
+   * unchanged. */
+  prompt?: string;
   /** Injectable for tests; defaults to the real on-disk catalogue. */
   catalogue?: CatalogueData;
   /**
@@ -358,9 +363,16 @@ export interface BuildResearchShapeOptions {
  * produce a real candidate, not an empty map". Filtering on a topic nobody
  * resolved would empty the map for precisely those subjects.
  */
-function resolveFilterTopic(intent: IntentUnderstanding, root: string | undefined): string | null {
+function resolveFilterTopic(intent: IntentUnderstanding, root: string | undefined, prompt: string | undefined): string | null {
   try {
-    return resolveTopic(`${intent.subject} ${intent.angle}`, { root }).resolved;
+    /* F-67: the user's own words lead. `subject`/`angle` are the understander's
+       paraphrase, and a paraphrase can drop the one token the taxonomy knows —
+       run 2 attempt 4's 8-word subject said "ML" where the prompt said
+       "machine learning", the resolver placed it under
+       architecture/infrastructure, and the lineage gate then refused every AI
+       episode the text index found. The prompt is what the listener typed;
+       it is the most reliable statement of what the Foray is about. */
+    return resolveTopic(`${prompt ?? ""} ${intent.subject} ${intent.angle}`, { root }).resolved;
   } catch {
     /* No taxonomy on disk (a checkout without `data/`, a fixture directory) —
        the research map is not the place to fail for that. */
@@ -380,7 +392,7 @@ export async function buildResearchShape(
   options: BuildResearchShapeOptions
 ): Promise<ResearchShape> {
   const catalogue = options.catalogue ?? loadCatalogueData();
-  const topic = options.topic !== undefined ? options.topic : resolveFilterTopic(intent, options.root);
+  const topic = options.topic !== undefined ? options.topic : resolveFilterTopic(intent, options.root, options.prompt);
   const seeds = buildCandidateSeeds(intent, catalogue, topic);
 
   const withTape = seeds.map((seed) => ({ seed, tape: buildTapeAvailability(seed.terms, catalogue) }));

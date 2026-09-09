@@ -175,3 +175,26 @@ describe("resolveTopic — generic words rank, distinctive words resolve", () =>
     expect(unresolved.resolved).toBeNull();
   });
 });
+
+describe("resolveTopic — F-67, the AI node advertises its own vocabulary", () => {
+  it("places run 2 attempt 4's 8-word subject under engineering/ai-robotics once the prompt joins the text", () => {
+    /* The understander's paraphrase said "ML"; the prompt said "machine
+       learning" and "AI systems". Subject + angle alone resolved to
+       architecture/infrastructure (the word "infrastructure", nothing else),
+       and the lineage gate refused every AI episode. MUTATION THAT KILLS
+       THIS: remove `terms` from engineering/ai-robotics in data/taxonomy.json
+       AND drop the prompt from the text — the resolver falls back to
+       "infrastructure". */
+    const prompt =
+      "How AI systems really get built and put to work: the practical engineering behind deploying machine learning, from data to production";
+    const subject = "Real-world ML production: infrastructure, data, and operational challenges";
+    const angle =
+      "Production ML is primarily systems engineering, not algorithm research — the hard parts are data pipelines, model serving, monitoring, and debugging failures at scale";
+    expect(resolveTopic(`${prompt} ${subject} ${angle}`).resolved).toBe("engineering/ai-robotics");
+  });
+
+  it("resolves the abbreviation on its own: 'ML' and 'MLOps' are the AI node's terms", () => {
+    const r = resolveTopic("Real-world ML production: what MLOps teams actually do");
+    expect(r.resolved).toBe("engineering/ai-robotics");
+  });
+});
