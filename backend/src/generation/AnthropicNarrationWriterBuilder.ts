@@ -101,7 +101,7 @@ function buildWritePrompt(request: NarrationWriteRequest): string {
     `What this page must accomplish: ${request.claim}`,
     request.contextNote ? `Additional context: ${request.contextNote}` : "",
     "",
-    "The purpose above is editorial direction, not a source. If part of it cannot be supported by a real, quotable source, narrow the script to what can be — never voice the direction's own wording as fact.",
+    "The purpose above is editorial direction, not a source. State at least one fact from it that you can support with a real, quotable source, and narrow or drop any part you cannot support; never voice the direction's own wording as fact. A page may declare zero sources ONLY if its script asserts no fact at all (a pure question or hand-off) — any statement about the world, however general, needs a source.",
     "A tape item named in the context is audio, not a print source: never use an item id or slug as a publication, and never invent a publication to fit the tape.",
     "\"Contested\" means reputable sources actively disagree about the fact itself. Your own uncertainty about exact wording, or about whether a source exists, is NOT contested — drop or narrow such a claim instead of marking it contested. Mark a source contested only when the script itself says the point is disputed.",
     "",

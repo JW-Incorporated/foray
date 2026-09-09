@@ -416,3 +416,40 @@ describe("writeNarration — generation run 1 (2026-09-09) regressions", () => {
     expect(verifyCalls).toBe(3);
   });
 });
+
+describe("writeNarration — F-36/F-37: a content page with zero sources is rejected by the validator, not the verifier", () => {
+  it("sends the writer an informed retry and never calls the verifier for the empty page", async () => {
+    let verifyCalls = 0;
+    const verifier: NarrationVerifierBuilder = {
+      providerName: "counting",
+      async verifyPage(): Promise<NarrationVerifyResult> {
+        verifyCalls++;
+        return { verified: true, verifierNotes: "" };
+      }
+    };
+    const notes: Array<string | undefined> = [];
+    let calls = 0;
+    const writer: NarrationWriterBuilder = {
+      providerName: "scripted",
+      async writePage(req: NarrationWriteRequest): Promise<NarrationWriteResult> {
+        notes.push(req.contextNote);
+        calls++;
+        const pad = (t: string) => `${t} `.repeat(Math.ceil(400 / (t.length + 1))).trim();
+        if (calls === 1) return { script: pad("Listen for what breaks the plan, and for who noticed first."), sources: [], pronunciationHints: [] };
+        return {
+          script: pad("One welded joint now carried both walkways' weight. Neither firm checked whether it could hold that load."),
+          sources: [{ claimText: "one welded joint carried both walkways", quote: "one welded joint carried both walkways", publication: "National Bureau of Standards, Building Science Series 143 (1982)", contested: false }],
+          pronunciationHints: []
+        };
+      }
+    };
+    const acts: SourcedAct[] = [
+      { title: "Act", slots: [{ title: "Slot", beats: [{ sourcing: "narration", claim: "c", exploration: false, narration: { mode: "Patch", reason: "test" } }] }] }
+    ];
+    const written = await writeNarration(acts, { writer, verifier }, voice, ctx);
+    expect(calls).toBe(2);
+    expect(verifyCalls).toBe(1);
+    expect(notes[1]).toMatch(/at least one source/);
+    expect(allWrittenNarration(written)).toHaveLength(1);
+  });
+});
