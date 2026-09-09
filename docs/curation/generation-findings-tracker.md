@@ -99,6 +99,7 @@ nothing left to track: **I-04** (attempt 1 aborted on a cp1252 mojibake, fixed t
 | I-21 | Haiku subagents did not perform the delivery step; the orchestrator delivered by hand. | — (transport) | accepted | Wrapper now makes the subagent start with a tool call | Reply text unchanged; not a pipeline deviation. |
 | I-22 | Evidence-retrieval subagents are allowed WebSearch/WebFetch, capped at `max_uses`. | — (transport) | accepted | By design of the exercise; the relay records `tools` per request | Same limitation as F-48: the passages are the subagent's copy, not fetched bytes. |
 | I-23 | The relay's in-memory body-hash dedupe deadlocked attempt 2's first call. | — (harness) | fixed | `/reset` added so the map clears with the queue | Cost ~15 min and no model calls. A production transport keys idempotency on the SDK's request id (see F-07/I-09). |
+| I-24 | the normalised transcript archive was emptied mid-session by an unidentified process; regenerated from raw | High | card | WS-J (archive-count guard + data-local write audit) | identify the process; add the guard |
 
 ## 2. By status
 
