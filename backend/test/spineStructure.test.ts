@@ -7,7 +7,7 @@ import {
   InvalidSpineStructureError,
   MAX_BEAT_CLAIM_WORDS
 } from "../src/generation/spineStructure";
-import type { Act, Beat, Spine } from "../src/types/spine";
+import { SPINE_MIN_SEEDED_BEATS_PER_ACT, type Act, type Beat, type Spine } from "../src/types/spine";
 
 /**
  * F-13: "No confirmation loop after the spine. §4.3 flows straight into §4.4
@@ -198,5 +198,73 @@ describe("countSentences — accept-biased, like every heuristic in this pipelin
 describe("normalizeClaim", () => {
   it("collapses everything that is not a word", () => {
     expect(normalizeClaim("  The Hyatt-Regency WALKWAY, 1981!  ")).toBe("the hyatt regency walkway 1981");
+  });
+});
+
+/* WS-L (F-63): the spine has to be written from the tape the research map
+   quoted, and "at least N beats an act, naming a window the map actually
+   listed" is the form of that rule a machine can check. Run 1's real spine is
+   the fixture here for the same reason it is above — the rule has to leave a
+   good spine alone. */
+describe("checkSpineStructure — WS-L: the per-act seeded-beat floor (F-63)", () => {
+  const listed = ["practical-ai--episode-900", "practical-ai--episode-901"];
+
+  /** Run 1's spine with the first `perAct[i]` beats of act i seeded from
+   * `episodeIds` (cycling), everything else untouched. */
+  function seeded(perAct: number[], episodeIds: string[] = listed): Spine {
+    const spine = runOneSpine();
+    let cursor = 0;
+    spine.acts.forEach((act, actIndex) => {
+      let left = perAct[actIndex] ?? 0;
+      for (const slot of act.slots) {
+        slot.beats = slot.beats.map((b) => {
+          if (left <= 0) return b;
+          left -= 1;
+          return { ...b, seed: { episodeId: episodeIds[cursor++ % episodeIds.length]!, startSec: 100, endSec: 180 } };
+        });
+      }
+    });
+    return spine;
+  }
+
+  function floorIssues(spine: Spine, seedableEpisodeIds?: string[]) {
+    const options = seedableEpisodeIds === undefined ? {} : { seedableEpisodeIds };
+    return checkSpineStructure(spine, options).filter((i) => i.code === "act-below-seeded-beat-floor");
+  }
+
+  it("refuses an act that carries fewer seeded beats than the floor, naming the act and the floor", () => {
+    const issues = floorIssues(seeded([1, 2, 2]), listed);
+    expect(issues).toHaveLength(1);
+    expect(issues[0]!.message).toContain("act 1");
+    expect(issues[0]!.message).toContain(`at least ${SPINE_MIN_SEEDED_BEATS_PER_ACT}`);
+  });
+
+  it("passes a spine whose every act meets the floor", () => {
+    expect(floorIssues(seeded([2, 2, 3]), listed)).toEqual([]);
+  });
+
+  it("does not apply the floor at all when the research map quoted no windows", () => {
+    /* §4.2's guardrail, carried one stage forward: a subject the archive is
+       silent on is narrated by design, and refusing its spine for the archive's
+       silence would be the opposite of what F-63 asks for. */
+    expect(floorIssues(runOneSpine())).toEqual([]);
+    expect(floorIssues(runOneSpine(), [])).toEqual([]);
+    expect(checkSpineStructure(runOneSpine(), { seedableEpisodeIds: [] })).toEqual([]);
+  });
+
+  it("does not count a seed naming an episode the research map never listed, and says how many there were", () => {
+    /* The rule is only worth having if it cannot be satisfied by inventing an
+       episode id — the failure mode of every "cite your source" instruction
+       given to a model with no lookup behind it. */
+    const spine = seeded([2, 2, 2], ["practical-ai--invented-episode"]);
+    const issues = floorIssues(spine, listed);
+    expect(issues).toHaveLength(3);
+    expect(issues[0]!.message).toContain("0 beat(s) seeded");
+    expect(issues[0]!.message).toContain("2 further beat(s)");
+  });
+
+  it("throws through assertSpineStructure, so the gate stops the run rather than reporting", () => {
+    expect(() => assertSpineStructure(seeded([0, 2, 2]), { seedableEpisodeIds: listed })).toThrow(InvalidSpineStructureError);
+    expect(() => assertSpineStructure(seeded([2, 2, 2]), { seedableEpisodeIds: listed })).not.toThrow();
   });
 });

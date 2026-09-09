@@ -580,6 +580,20 @@ export interface SelectTapeWindowOptions {
    * candidate (`TranscriptTextCandidate.idf`). Absent — a title-path candidate,
    * or a caller with no index — every term weighs one. */
   idf?: ReadonlyMap<string, number>;
+  /**
+   * The duration band a window may occupy, defaulting to
+   * `TAPE_WINDOW_MIN_SEC`/`TAPE_WINDOW_MAX_SEC` — the §4.5 values, which is
+   * what every tier-2 caller uses and what every existing test measures.
+   *
+   * Overridable for ONE caller and one reason (WS-L): §4.2's research map
+   * quotes windows into the spine prompt, where a window is something a person
+   * reads rather than a candidate segment, so it wants a tighter band (a
+   * minute or two of speech) than a segment a listener will hear. Nothing about
+   * the scoring, the relevance floor or the anchoring changes with it, and no
+   * §4.5 path passes it.
+   */
+  minSec?: number;
+  maxSec?: number;
 }
 
 /**
@@ -603,6 +617,8 @@ export function selectTapeWindow(claimText: string, cues: TranscriptCue[], optio
   const index = indexCues(cues);
   const n = index.cues.length;
   if (n === 0) return null;
+  const minSec = options.minSec ?? TAPE_WINDOW_MIN_SEC;
+  const maxSec = options.maxSec ?? TAPE_WINDOW_MAX_SEC;
 
   /* The claim's terms in the claim's own order, deduplicated — the order is
      what makes `matchedTerms` readable in a trace row. */
@@ -640,7 +656,7 @@ export function selectTapeWindow(claimText: string, cues: TranscriptCue[], optio
   for (let i = 0; i < n; i++) {
     const matched = new Set<string>();
     let score = 0;
-    /* The widest window from `i` that never reached `TAPE_WINDOW_MIN_SEC` —
+    /* The widest window from `i` that never reached the minimum duration —
        used only when nothing from `i` could: the end of a short transcript, or
        a stretch closed off by a gap wider than the maximum (an ad break, a
        missing chunk). Cleared as soon as a full-length window exists. */
@@ -654,7 +670,7 @@ export function selectTapeWindow(claimText: string, cues: TranscriptCue[], optio
       const startSec = index.cues[i]!.start_sec;
       const endSec = index.cues[j]!.end_sec;
       const duration = endSec - startSec;
-      if (j > i && duration > TAPE_WINDOW_MAX_SEC) break;
+      if (j > i && duration > maxSec) break;
       const matchedTerms = claimTerms.filter((t) => matched.has(t));
       const window: TapeWindow = {
         firstCue: i,
@@ -668,7 +684,7 @@ export function selectTapeWindow(claimText: string, cues: TranscriptCue[], optio
         weightedShare: score / totalWeight,
         score
       };
-      if (duration >= TAPE_WINDOW_MIN_SEC) {
+      if (duration >= minSec) {
         best = betterWindow(best, window);
         short = null;
       } else {
@@ -867,6 +883,31 @@ export function mintEndAnchor(words: string[]): string | null {
 
 function contentWordCount(words: string[]): number {
   return new Set(tokenizeForSourcing(words.join(" "))).size;
+}
+
+/**
+ * Mirrors `tools/segments/prepare-segment-batch.mjs`'s `slugify` + `mintItemIds`
+ * shape (`<show_id>--<slug>`) closely enough to be recognizable as the same id
+ * family, without importing that ESM build script into a CJS backend module
+ * (same rationale as `canonicalizeForAnchorMatch` above).
+ *
+ * HERE RATHER THAN IN `sourceBeats.ts`, WHERE IT LIVED (WS-L). It derives an id
+ * from a digest ROW and knows nothing about beats or sourcing, and it now has a
+ * second caller two stages earlier: §4.2's research map names the episode each
+ * quoted window came from, and §4.3's beat seed carries that name back, so both
+ * sides of the seed have to spell an episode id the same way. `sourceBeats.ts`
+ * re-exports it, so every existing import is unchanged.
+ */
+export function deriveItemId(entry: TranscriptDigestEntry): string {
+  const slug = entry.title
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60)
+    .replace(/-+$/g, "");
+  return `${entry.show_id}--${slug || "episode"}`;
 }
 
 /** The text spoken between two timestamps, cues joined in order. */

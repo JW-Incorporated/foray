@@ -348,7 +348,12 @@ const TapeRelevanceInputSchema = z.object({
   families: z.array(z.string()),
   forayTopic: z.string().nullable(),
   forayFamily: z.string().nullable(),
-  onTopic: z.boolean().nullable()
+  onTopic: z.boolean().nullable(),
+  /* WS-L (F-63): the episode §4.3 seeded the beat from, and whether that seed's
+     window is the tape the beat took. Optional so a checkpoint written before
+     WS-L still resumes. */
+  seededEpisode: z.string().nullable().optional(),
+  seedWindowWon: z.boolean().optional()
 });
 
 /* Mirrors `SourcingTrace` (types/tapeSourcing.ts, F-49): why each narrated beat
@@ -395,7 +400,11 @@ const SourcingTraceSchema = z.object({
       textScore: z.number().optional(),
       textRank: z.number().optional(),
       textMatchedTerms: z.number().optional(),
-      candidatesConsidered: z.number().optional()
+      candidatesConsidered: z.number().optional(),
+      /* WS-L: the seed a narrated beat carried, and the standing answer for a
+         row in this array — the seed's window did not win. */
+      seededEpisode: z.string().optional(),
+      seedWindowWon: z.boolean().optional()
     })
     .nullable()
 });
@@ -606,7 +615,20 @@ export async function runForayPipeline(
   const researchShape = await stage(
     "research-shape",
     (raw) => ResearchShapeSchema.parse(raw),
-    () => buildResearchShape(intent, { researcher, ctx, root: options.root, ...(options.topic ? { topic: options.topic } : {}) })
+    () =>
+      buildResearchShape(intent, {
+        researcher,
+        ctx,
+        root: options.root,
+        /* WS-L (F-63): the same text index and cue provider §4.5 sources with,
+           handed to §4.2 so the map carries what the tape SAYS about each
+           candidate and the spine can write its beats from that rather than
+           from an item count. Both default to their Null implementations, so a
+           driver that wires neither gets the pre-WS-L map. */
+        ...(deps.textIndex ? { textIndex: deps.textIndex } : {}),
+        ...(deps.cueProvider ? { cueProvider: deps.cueProvider } : {}),
+        ...(options.topic ? { topic: options.topic } : {})
+      })
   );
 
   // §4.3 — the spine, frozen from here on (§6.1's invariant, batch-true).

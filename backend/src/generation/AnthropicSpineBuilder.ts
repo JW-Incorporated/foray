@@ -6,7 +6,7 @@ import { defaultBudgetGuard, type BudgetGuard } from "../cost/budgetGuard";
 import { parseWithRetry } from "./parseWithRetry";
 import type { IntentUnderstanding } from "../types/generation";
 import type { ResearchShape } from "../types/research";
-import { DURATION_SHAPE_BUDGETS, type DurationTier, type Spine } from "../types/spine";
+import { DURATION_SHAPE_BUDGETS, SPINE_MIN_SEEDED_BEATS_PER_ACT, type DurationTier, type Spine } from "../types/spine";
 import type { SpineBuildContext, SpineBuilder } from "./SpineBuilder";
 import { recordUsage } from "./usageTracking";
 
@@ -34,7 +34,13 @@ const USD_PER_INPUT_TOKEN = costFor("opus").usdPerInputToken;
 const USD_PER_OUTPUT_TOKEN = costFor("opus").usdPerOutputToken;
 const MAX_OUTPUT_TOKENS = 8000;
 
-const BeatSchema = z.object({ claim: z.string(), exploration: z.boolean() });
+/* `seed` is optional and passed through: WS-L asks for at least
+   `SPINE_MIN_SEEDED_BEATS_PER_ACT` beats per act written from a quoted
+   transcript window, and the seed is how the beat says which one. A missing or
+   malformed seed must not cost the whole spine a re-ask — `spineStructure.ts`
+   is what enforces the floor, with a message that says what to fix. */
+const BeatSeedSchema = z.object({ episodeId: z.string(), startSec: z.number(), endSec: z.number() });
+const BeatSchema = z.object({ claim: z.string(), exploration: z.boolean(), seed: BeatSeedSchema.optional() });
 const SlotSchema = z.object({ title: z.string(), beats: z.array(BeatSchema) });
 const ActSchema = z.object({
   title: z.string(),
@@ -140,6 +146,30 @@ export class AnthropicSpineBuilder implements SpineBuilder {
 }
 
 
+/**
+ * WHAT THE TAPE SAYS, UNDER THE SUBTOPIC IT SAYS IT ABOUT (WS-L; finding F-63).
+ *
+ * This is the change F-63 asks for, in the one place it can be made: run 2's
+ * spine prompt said "Ai (semantic-concept, tape: strong, 761 items)" and not one
+ * word of what those 761 items contain, so Opus wrote 35 beats from its own
+ * knowledge of production machine learning and the archive was asked, four
+ * stages later, to illustrate claims about ImageNet and feature stores that
+ * nobody in it has ever uttered. The windows below are the archive's own
+ * sentences, with the episode and the seconds they were spoken at.
+ */
+function tapeWindowLines(researchShape: ResearchShape): string[] {
+  const lines: string[] = [];
+  for (const subtopic of researchShape.subtopics) {
+    if (subtopic.tapeWindows.length === 0) continue;
+    lines.push(`  ${subtopic.label} — what the tape says:`);
+    for (const w of subtopic.tapeWindows) {
+      lines.push(`    [${w.episodeId} ${Math.round(w.startSec)}-${Math.round(w.endSec)}s] ${w.showTitle} — ${w.episodeTitle}`);
+      lines.push(`      "${w.text}"`);
+    }
+  }
+  return lines;
+}
+
 function buildSpinePrompt(intent: IntentUnderstanding, researchShape: ResearchShape, duration: DurationTier): string {
   const budget = DURATION_SHAPE_BUDGETS[duration];
   const subtopicLines = researchShape.subtopics
@@ -158,6 +188,21 @@ function buildSpinePrompt(intent: IntentUnderstanding, researchShape: ResearchSh
     )
     .join("\n");
 
+  const windowLines = tapeWindowLines(researchShape);
+  /* ONE RULE, ADDED ONLY WHEN THERE IS TAPE TO OBEY IT WITH. A subject the
+     archive is silent on keeps exactly today's prompt — §4.2's guardrail again:
+     tape is a signal, never a filter. */
+  const seedRule =
+    windowLines.length === 0
+      ? []
+      : [
+          "",
+          `Every act must carry at least ${SPINE_MIN_SEEDED_BEATS_PER_ACT} beats whose claim states something one of the quoted`,
+          "windows above actually says. Each of those beats carries \"seed\": {\"episodeId\": ..., \"startSec\": ...,",
+          "\"endSec\": ...} copied from the bracketed window it was written from. Beats written from anything else",
+          "omit \"seed\"."
+        ];
+
   return [
     `Build the SPINE for an audio documentary ("Foray") on: "${intent.subject}".`,
     `Angle: ${intent.angle}`,
@@ -166,6 +211,8 @@ function buildSpinePrompt(intent: IntentUnderstanding, researchShape: ResearchSh
     "",
     "Research map (candidate subtopics found so far):",
     subtopicLines,
+    ...windowLines,
+    ...seedRule,
     "",
     `Duration tier: ${duration}. Target exactly, within a small tolerance: ${budget.acts[0]}-${budget.acts[1]} acts, ` +
       `${budget.slots[0]}-${budget.slots[1]} slots total, ${budget.items[0]}-${budget.items[1]} beats total.`,
@@ -186,6 +233,7 @@ function buildSpinePrompt(intent: IntentUnderstanding, researchShape: ResearchSh
     "Respond with ONLY a single JSON object, no markdown fences, no other text, matching exactly:",
     '{"voice": {"style": string, "register": string, "sentenceRhythm": string, "narratorPresence": string}, ' +
       '"acts": [{"title": string, "thesis": string, "startState": string, "endState": string, ' +
-      '"slots": [{"title": string, "beats": [{"claim": string, "exploration": boolean}]}]}]}'
+      '"slots": [{"title": string, "beats": [{"claim": string, "exploration": boolean, ' +
+      '"seed"?: {"episodeId": string, "startSec": number, "endSec": number}}]}]}]}'
   ].join("\n");
 }

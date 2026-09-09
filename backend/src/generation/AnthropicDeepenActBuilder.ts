@@ -32,7 +32,19 @@ const MAX_OUTPUT_TOKENS = 4000;
    model that omits it must not cost the whole act a retry, and an absent kind
    means "account", which is the search-for-tape behaviour that predates the
    field (see BeatKindSchema in types/spine.ts). */
-const BeatSchema = z.object({ claim: z.string(), exploration: z.boolean(), kind: z.enum(["account", "argument"]).optional() });
+/* `seed` (WS-L, F-63) is parsed rather than dropped: a beat the spine wrote from
+   a quoted transcript window names that window, and §4.5 opens the named episode
+   first. It is optional here for the same reason `kind` is — a model that omits
+   it must not cost the act a retry — and `deepenActs.ts` puts back any seed the
+   reply lost, so the pass-through is guaranteed in code rather than asked for in
+   a prompt. */
+const BeatSeedSchema = z.object({ episodeId: z.string(), startSec: z.number(), endSec: z.number() });
+const BeatSchema = z.object({
+  claim: z.string(),
+  exploration: z.boolean(),
+  kind: z.enum(["account", "argument"]).optional(),
+  seed: BeatSeedSchema.optional()
+});
 const SlotSchema = z.object({ title: z.string(), beats: z.array(BeatSchema) });
 const RawDeepenedActSchema = z.object({
   title: z.string(),
@@ -130,7 +142,20 @@ function buildDeepenActPrompt(spine: Spine, targetAct: Act, targetActIndex: numb
     .join("\n");
 
   const targetSlotLines = targetAct.slots
-    .map((slot, i) => `  Slot ${i + 1}: "${slot.title}"\n${slot.beats.map((b) => `    - ${b.claim}${b.exploration ? " [exploration]" : ""}`).join("\n")}`)
+    .map(
+      (slot, i) =>
+        `  Slot ${i + 1}: "${slot.title}"\n${slot.beats
+          .map(
+            (b) =>
+              `    - ${b.claim}${b.exploration ? " [exploration]" : ""}` +
+              /* WS-L: a seeded beat was written from a stretch of real tape.
+                 Shown so the refinement stays about what that tape says, and
+                 echoed back on the beat (`deepenActs.ts` restores it either
+                 way). */
+              (b.seed ? ` [seed: ${b.seed.episodeId} ${Math.round(b.seed.startSec)}-${Math.round(b.seed.endSec)}s]` : "")
+          )
+          .join("\n")}`
+    )
     .join("\n");
 
   return [
@@ -167,7 +192,8 @@ function buildDeepenActPrompt(spine: Spine, targetAct: Act, targetActIndex: numb
     "",
     "Respond with ONLY a single JSON object, no markdown fences, no other text, matching exactly:",
     '{"title": string, "thesis": string, "startState": string, "endState": string, ' +
-      '"slots": [{"title": string, "beats": [{"claim": string, "exploration": boolean, "kind": "account" | "argument"}]}], ' +
+      '"slots": [{"title": string, "beats": [{"claim": string, "exploration": boolean, "kind": "account" | "argument", ' +
+      '"seed"?: {"episodeId": string, "startSec": number, "endSec": number}}]}], ' +
       '"introduction": string, "exit": string}'
   ].join("\n");
 }

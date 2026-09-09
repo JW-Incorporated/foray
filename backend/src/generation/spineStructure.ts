@@ -1,4 +1,12 @@
-import { DURATION_SHAPE_BUDGETS, SHAPE_TOLERANCE, countActs, countBeats, countSlots, type Spine } from "../types/spine";
+import {
+  DURATION_SHAPE_BUDGETS,
+  SHAPE_TOLERANCE,
+  SPINE_MIN_SEEDED_BEATS_PER_ACT,
+  countActs,
+  countBeats,
+  countSlots,
+  type Spine
+} from "../types/spine";
 
 /**
  * The cheap structural gate between §4.3 and §4.4 (generation run 2026-09-09,
@@ -46,7 +54,11 @@ export type SpineStructureIssueCode =
   | "beat-claim-too-long"
   | "beat-claim-not-single-sentence"
   | "act-missing-start-state"
-  | "act-missing-end-state";
+  | "act-missing-end-state"
+  /* WS-L (F-63): the act carries fewer beats seeded from a research window than
+     `SPINE_MIN_SEEDED_BEATS_PER_ACT`, even though the research map quoted
+     windows this spine could have been written from. */
+  | "act-below-seeded-beat-floor";
 
 export interface SpineStructureIssue {
   code: SpineStructureIssueCode;
@@ -144,11 +156,32 @@ function withinTolerance(actual: number, [min, max]: [number, number]): boolean 
   return actual >= min * (1 - SHAPE_TOLERANCE) && actual <= max * (1 + SHAPE_TOLERANCE);
 }
 
+/**
+ * What §4.2 gave §4.3 to write from, as far as this check is concerned (WS-L,
+ * finding F-63).
+ *
+ * THE FLOOR IS CONDITIONAL, AND THIS IS THE CONDITION. A spine must carry
+ * `SPINE_MIN_SEEDED_BEATS_PER_ACT` beats per act written from a quoted
+ * transcript window — but only when there were windows to write from. A subject
+ * the archive has nothing about produces a research map with no windows, and
+ * that Foray is narrated by design (§4.2's guardrail: tape availability is a
+ * signal, never a filter). Requiring seeds there would refuse the spine for the
+ * archive's silence, which is the opposite of what F-63 asks for.
+ *
+ * `seedableEpisodeIds` is also what makes the rule CHECKABLE rather than
+ * cosmetic: a seed counts only when it names an episode the map actually
+ * listed, so a spine cannot satisfy the floor by inventing episode ids.
+ */
+export interface SpineStructureOptions {
+  seedableEpisodeIds?: Iterable<string>;
+}
+
 /** Every structural defect in one pass, so a re-ask can fix them all at once
  * rather than one Opus call per issue. */
-export function checkSpineStructure(spine: Spine): SpineStructureIssue[] {
+export function checkSpineStructure(spine: Spine, options: SpineStructureOptions = {}): SpineStructureIssue[] {
   const issues: SpineStructureIssue[] = [];
   const budget = DURATION_SHAPE_BUDGETS[spine.duration];
+  const seedable = new Set(options.seedableEpisodeIds ?? []);
 
   const acts = countActs(spine);
   const slots = countSlots(spine);
@@ -186,6 +219,33 @@ export function checkSpineStructure(spine: Spine): SpineStructureIssue[] {
     }
     if (act.endState.trim().length === 0) {
       issues.push({ code: "act-missing-end-state", message: `${actLabel} has no endState` });
+    }
+
+    /* WS-L (F-63): how many of this act's beats were written FROM a window the
+       research map quoted, and how many claim a window it never listed. The
+       second number is in the message because an act that fails the floor while
+       carrying three invented episode ids is a different failure from one that
+       carries no seeds at all, and the re-ask needs to know which. */
+    if (seedable.size > 0) {
+      let seeded = 0;
+      let unlisted = 0;
+      for (const slot of act.slots) {
+        for (const beat of slot.beats) {
+          if (!beat.seed) continue;
+          if (seedable.has(beat.seed.episodeId)) seeded += 1;
+          else unlisted += 1;
+        }
+      }
+      if (seeded < SPINE_MIN_SEEDED_BEATS_PER_ACT) {
+        issues.push({
+          code: "act-below-seeded-beat-floor",
+          message:
+            `${actLabel} carries ${seeded} beat(s) seeded from a transcript window the research map listed; ` +
+            `every act needs at least ${SPINE_MIN_SEEDED_BEATS_PER_ACT}` +
+            (unlisted > 0 ? ` (${unlisted} further beat(s) name an episode the map did not list)` : "") +
+            `. The map quoted windows from ${seedable.size} episode(s) — write the act's account beats from what they say.`
+        });
+      }
     }
 
     for (const slot of act.slots) {
@@ -227,7 +287,7 @@ export function checkSpineStructure(spine: Spine): SpineStructureIssue[] {
 /** Throws `InvalidSpineStructureError` when anything is wrong; returns
  * otherwise. The throwing wrapper is what `buildSpine` calls — F-13's whole
  * point is that this stage stops the run, not that it reports. */
-export function assertSpineStructure(spine: Spine): void {
-  const issues = checkSpineStructure(spine);
+export function assertSpineStructure(spine: Spine, options: SpineStructureOptions = {}): void {
+  const issues = checkSpineStructure(spine, options);
   if (issues.length > 0) throw new InvalidSpineStructureError(issues);
 }

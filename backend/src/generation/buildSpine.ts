@@ -52,8 +52,19 @@ export async function buildSpine(
      two acts, a paragraph where a claim belongs, two sentences in one beat, an
      act with no start or end state. Placed here, between §4.3 and §4.4,
      because that is the last point at which a bad spine costs one Opus call
-     rather than three deepen calls plus sourcing plus 31 narration pages. */
-  assertSpineStructure(spine);
+     rather than three deepen calls plus sourcing plus 31 narration pages.
+
+     WS-L (F-63) adds one relationship to that list, between the spine and the
+     RESEARCH MAP: when §4.2 quoted transcript windows, every act has to carry
+     at least `SPINE_MIN_SEEDED_BEATS_PER_ACT` beats written from one of them,
+     naming the episode. The episode ids come from here rather than from the
+     spine because the check's whole point is that a seed must match something
+     the map actually listed — a spine cannot pass by inventing one. When the
+     map quoted nothing (a subject with no tape, a machine with no transcript
+     bodies, CI) the set is empty and the rule does not apply. */
+  assertSpineStructure(spine, {
+    seedableEpisodeIds: researchShape.subtopics.flatMap((s) => s.tapeWindows.map((w) => w.episodeId))
+  });
 
   return spine;
 }

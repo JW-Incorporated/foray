@@ -2,7 +2,17 @@ import { describe, it, expect } from "vitest";
 import { buildSpine, InvalidSpineError } from "../src/generation/buildSpine";
 import { StubSpineBuilder } from "../src/generation/StubSpineBuilder";
 import type { SpineBuilder, SpineBuildContext } from "../src/generation/SpineBuilder";
-import { DURATION_SHAPE_BUDGETS, EXPLORATION_FLOOR, allBeats, countActs, countSlots, isClaimShaped, type DurationTier, type Spine } from "../src/types/spine";
+import {
+  DURATION_SHAPE_BUDGETS,
+  EXPLORATION_FLOOR,
+  SPINE_MIN_SEEDED_BEATS_PER_ACT,
+  allBeats,
+  countActs,
+  countSlots,
+  isClaimShaped,
+  type DurationTier,
+  type Spine
+} from "../src/types/spine";
 import type { IntentUnderstanding } from "../src/types/generation";
 import type { ResearchShape } from "../src/types/research";
 import { InMemoryCostEventSink } from "../src/cost/costEvents";
@@ -30,7 +40,9 @@ function makeResearchShape(overrides: Partial<ResearchShape> = {}): ResearchShap
         tape: { signal: "strong", itemCount: 30, showCount: 5, exampleItemIds: [] },
         controversies: ["whether Henry Ford or Edward Kingsford deserves credit"],
         externalNotes: null,
-        externallyResearched: false
+        externallyResearched: false,
+        tapeWindows: [],
+        windowsUnavailable: "no transcript text index in this fixture"
       },
       {
         label: "postwar suburban grilling culture",
@@ -38,7 +50,9 @@ function makeResearchShape(overrides: Partial<ResearchShape> = {}): ResearchShap
         tape: { signal: "moderate", itemCount: 12, showCount: 3, exampleItemIds: [] },
         controversies: [],
         externalNotes: null,
-        externallyResearched: false
+        externallyResearched: false,
+        tapeWindows: [],
+        windowsUnavailable: "no transcript text index in this fixture"
       },
       {
         label: "briquette chemistry",
@@ -46,7 +60,9 @@ function makeResearchShape(overrides: Partial<ResearchShape> = {}): ResearchShap
         tape: { signal: "thin", itemCount: 2, showCount: 1, exampleItemIds: [] },
         controversies: [],
         externalNotes: null,
-        externallyResearched: false
+        externallyResearched: false,
+        tapeWindows: [],
+        windowsUnavailable: "no transcript text index in this fixture"
       },
       {
         label: "grill design evolution",
@@ -54,7 +70,9 @@ function makeResearchShape(overrides: Partial<ResearchShape> = {}): ResearchShap
         tape: { signal: "none", itemCount: 0, showCount: 0, exampleItemIds: [] },
         controversies: [],
         externalNotes: "no external research available in dry-run",
-        externallyResearched: true
+        externallyResearched: true,
+        tapeWindows: [],
+        windowsUnavailable: "no transcript text index in this fixture"
       }
     ],
     nonObviousAngle: "how an industrial waste product became a backyard ritual",
@@ -206,5 +224,95 @@ describe("buildSpine — rejects an invalid spine rather than silently accepting
       expect(invalidErr.validation.valid).toBe(false);
       expect(invalidErr.validation.issues.length).toBeGreaterThan(0);
     }
+  });
+});
+
+/* WS-L (F-63): the dry-run path has to be able to produce the thing the real
+   path is now asked for — a spine whose account beats were written FROM quoted
+   tape — or every keyless test of the seed path would be testing an empty
+   feature. */
+describe("buildSpine — WS-L: the stub writes beats from the research map's tape windows (F-63)", () => {
+  const windowText =
+    "the labels in that benchmark were wrong more often than anyone admitted. " +
+    "An audit found thousands of mislabelled validation images across the whole benchmark. " +
+    "Those wrong labels put a ceiling on the accuracy anyone could report.";
+
+  function shapeWithWindows(): ResearchShape {
+    const base = makeResearchShape();
+    return {
+      ...base,
+      subtopics: base.subtopics.map((s, i) =>
+        i > 0
+          ? s
+          : {
+              ...s,
+              windowsUnavailable: null,
+              tapeWindows: [
+                {
+                  episodeId: "practical-ai--episode-900",
+                  showTitle: "Practical AI",
+                  episodeTitle: "Episode 900",
+                  startSec: 100,
+                  endSec: 165,
+                  text: windowText,
+                  score: 3.2
+                },
+                {
+                  episodeId: "practical-ai--episode-901",
+                  showTitle: "Practical AI",
+                  episodeTitle: "Episode 901",
+                  startSec: 300,
+                  endSec: 380,
+                  text:
+                    "we retrain on a fixed calendar rather than on a signal. " +
+                    "The inventory feed goes stale on a Friday and nobody notices until Monday. " +
+                    "That is the whole of what monitoring buys you in practice.",
+                  score: 2.1
+                }
+              ]
+            }
+      )
+    };
+  }
+
+  it("gives every act its seeded beats, each naming a window the map actually listed", async () => {
+    const { guard } = guardAndSink();
+    const shape = shapeWithWindows();
+    const spine = await buildSpine(makeIntent(), shape, "medium", new StubSpineBuilder(guard), ctx);
+
+    const listed = new Set(shape.subtopics.flatMap((s) => s.tapeWindows.map((w) => w.episodeId)));
+    for (const [i, act] of spine.acts.entries()) {
+      const seeded = act.slots.flatMap((s) => s.beats).filter((b) => b.seed && listed.has(b.seed.episodeId));
+      expect(seeded.length, `act ${i + 1}`).toBeGreaterThanOrEqual(SPINE_MIN_SEEDED_BEATS_PER_ACT);
+    }
+  });
+
+  it("writes those beats out of the window's own words, not out of a template about them", async () => {
+    /* The property that makes the seed worth anything downstream: §4.5's
+       relevance floor asks whether the tape says the claim, so a claim assembled
+       from the window's own sentences can pass it and a claim generated about
+       the window cannot. This is run 2's failure in miniature. */
+    const { guard } = guardAndSink();
+    const spine = await buildSpine(makeIntent(), shapeWithWindows(), "medium", new StubSpineBuilder(guard), ctx);
+    const seededClaims = spine.acts
+      .flatMap((a) => a.slots.flatMap((s) => s.beats))
+      .filter((b) => b.seed?.episodeId === "practical-ai--episode-900")
+      .map((b) => b.claim);
+
+    expect(seededClaims.length).toBeGreaterThan(0);
+    for (const claim of seededClaims) {
+      const words = claim.toLowerCase().replace(/[^a-z0-9 ]+/g, " ").split(/\s+/).filter(Boolean);
+      const spoken = windowText.toLowerCase();
+      const shared = words.filter((w) => w.length > 3 && spoken.includes(w)).length;
+      expect(shared, claim).toBeGreaterThanOrEqual(5);
+    }
+    /* And they are distinct claims, which the duplicate-claim gate requires. */
+    expect(new Set(seededClaims).size).toBe(seededClaims.length);
+  });
+
+  it("leaves the spine seedless — and valid — when the research map quoted nothing", async () => {
+    const { guard } = guardAndSink();
+    const spine = await buildSpine(makeIntent(), makeResearchShape(), "medium", new StubSpineBuilder(guard), ctx);
+    expect(allBeats(spine).every((b) => b.seed === undefined)).toBe(true);
   });
 });

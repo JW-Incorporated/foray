@@ -447,3 +447,102 @@ describe("deepenActs — the argument cap (F-49)", () => {
     });
   });
 });
+
+/* WS-L (F-63): §4.4 sharpens wording; it does not get to forget which stretch
+   of tape the beat was written from. Everything below is about the field
+   surviving the stage, because a lost seed costs exactly what F-63 costs — the
+   tape stops being what the beat came from. */
+describe("deepenActs — WS-L: the beat seed survives deepening (F-63)", () => {
+  const seed = { episodeId: "practical-ai--episode-900", startSec: 100, endSec: 165 };
+
+  /** A spine whose first beat of every act was written from a tape window. */
+  function seededSpine(): Spine {
+    const spine = makeSpine();
+    for (const act of spine.acts) {
+      act.slots[0]!.beats[0] = { ...act.slots[0]!.beats[0]!, seed };
+    }
+    return spine;
+  }
+
+  it("keeps the seed through the stub builder, on the beat it belongs to and no other", async () => {
+    const { guard } = guardAndSink();
+    const deepened = await deepenActs(seededSpine(), new StubDeepenActBuilder(guard), ctx);
+    for (const act of deepened) {
+      expect(act.slots[0]!.beats[0]!.seed).toEqual(seed);
+      expect(act.slots[0]!.beats[1]!.seed).toBeUndefined();
+    }
+  });
+
+  it("puts back a seed a builder dropped, rather than trusting a prompt to ask for it", async () => {
+    /* The realistic failure: a model asked to re-emit a JSON object silently
+       omits a field it was not asked to change. Prompted or not, the stage
+       restores it. */
+    const forgetful: DeepenActBuilder = {
+      providerName: "forgetful",
+      async deepenAct(_spine, act) {
+        return {
+          ...act,
+          slots: act.slots.map((s) => ({
+            title: s.title,
+            beats: s.beats.map((b) => ({ claim: b.claim, exploration: b.exploration, kind: "account" as const }))
+          })),
+          introduction: "Intro.",
+          exit: "Exit."
+        };
+      }
+    };
+    const deepened = await deepenActs(seededSpine(), forgetful, ctx);
+    for (const act of deepened) {
+      expect(act.slots[0]!.beats[0]!.seed).toEqual(seed);
+    }
+  });
+
+  it("does not re-point a beat when the builder changed the slot's beat count", async () => {
+    /* The restore is positional, so it only runs where position still means the
+       same thing. Attaching one beat's tape to another beat's claim is worse
+       than losing the seed: the sourcing search would open an episode chosen
+       for a claim nobody wrote. */
+    const splitter: DeepenActBuilder = {
+      providerName: "splitter",
+      async deepenAct(_spine, act) {
+        return {
+          ...act,
+          slots: act.slots.map((s) => ({
+            title: s.title,
+            beats: [
+              { claim: "Somebody rewrote this beat as two.", exploration: false, kind: "account" as const },
+              ...s.beats.map((b) => ({ claim: b.claim, exploration: b.exploration, kind: "account" as const }))
+            ]
+          })),
+          introduction: "Intro.",
+          exit: "Exit."
+        };
+      }
+    };
+    const deepened = await deepenActs(seededSpine(), splitter, ctx);
+    for (const act of deepened) {
+      for (const slot of act.slots) {
+        for (const beat of slot.beats) expect(beat.seed).toBeUndefined();
+      }
+    }
+  });
+
+  it("restores the seed on a RESUMED act too, so a checkpoint written before seeds existed still sources them", async () => {
+    const { guard } = guardAndSink();
+    const spine = seededSpine();
+    /* An act checkpointed by an older pipeline: same beats, no seed field. */
+    const stale: DeepenedAct = {
+      ...spine.acts[0]!,
+      slots: spine.acts[0]!.slots.map((s) => ({
+        title: s.title,
+        beats: s.beats.map((b) => ({ claim: b.claim, exploration: b.exploration, kind: "account" as const }))
+      })),
+      introduction: "Intro from the checkpoint.",
+      exit: "Exit from the checkpoint."
+    };
+    const deepened = await deepenActs(spine, new StubDeepenActBuilder(guard), ctx, {
+      resume: (index) => (index === 0 ? stale : undefined)
+    });
+    expect(deepened[0]!.slots[0]!.beats[0]!.seed).toEqual(seed);
+  });
+});

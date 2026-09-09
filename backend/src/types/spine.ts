@@ -85,14 +85,58 @@ export const EXPLORATION_FLOOR = 0.3;
 export const BeatKindSchema = z.enum(["account", "argument"]);
 export type BeatKind = z.infer<typeof BeatKindSchema>;
 
+/**
+ * THE STRETCH OF TAPE A BEAT WAS WRITTEN FROM (fix plan WS-L; finding F-63).
+ *
+ * §4.2 now hands §4.3 the transcript windows themselves — show, episode, times
+ * and the sentences spoken in them (`types/research.ts`'s
+ * `ResearchTapeWindowSchema`) — and a seeded beat is one whose claim was
+ * written FROM one of those windows rather than from the model's own knowledge
+ * of the subject. The seed is the return trip: it names the window, so §4.5 can
+ * open that episode before anything the text index ranks and ask F-61's window
+ * search whether the tape there is still about the claim as finally worded.
+ *
+ * IT IS A POINTER, NOT A PROMISE. Nothing downstream trusts it: the seeded
+ * episode goes through the same relevance floor, the same lineage gate and the
+ * same anchor minting as any other candidate, and a seeded beat whose claim
+ * drifted away from its window is narrated exactly like an unseeded one. What
+ * the seed buys is the ORDER of the search, and the trace says whether it won.
+ *
+ * Optional, and absent is the normal case: a beat the spine wrote from
+ * knowledge, every beat of a subject with no tape, and every spine written
+ * before this field existed.
+ */
+export const BeatSeedSchema = z
+  .object({
+    /** `deriveItemId`'s id for the episode, copied from the research window. */
+    episodeId: z.string().trim().min(1),
+    startSec: z.number().nonnegative(),
+    endSec: z.number().positive()
+  })
+  .strict();
+export type BeatSeed = z.infer<typeof BeatSeedSchema>;
+
 export const BeatSchema = z
   .object({
     claim: z.string().trim().min(1),
     exploration: z.boolean(),
-    kind: BeatKindSchema.optional()
+    kind: BeatKindSchema.optional(),
+    seed: BeatSeedSchema.optional()
   })
   .strict();
 export type Beat = z.infer<typeof BeatSchema>;
+
+/**
+ * How many `account` beats per act must be seeded from a research window
+ * (WS-L). A FLOOR, and a low one: two beats an act is the least that makes a
+ * Foray's tape a consequence of what the archive holds rather than a coincidence
+ * — run 2 shipped 35 beats seeded from none.
+ *
+ * Enforced in `spineStructure.ts`, and ONLY when the research map actually
+ * listed windows: a subject the archive has nothing for still gets today's
+ * spine, which is §4.2's guardrail carried one stage forward.
+ */
+export const SPINE_MIN_SEEDED_BEATS_PER_ACT = 2;
 
 /** The persistence-layer subdivision an act decomposes into (§2's
  * reconciliation rule: "one act may contain several slots"). This is a
