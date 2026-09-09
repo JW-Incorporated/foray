@@ -301,7 +301,7 @@ attempt 2 (that plus #551 and #552).
 
 **The consolidated list is `generation-findings-tracker.md`** — one row for every finding F-01…F-62 and
 every non-historical intervention I-01…I-23, with the PR and the file that closed it, or the home proposed
-for it. As of the branch tip: **55 fixed, 1 on a card, 13 accepted, 12 open**. What follows is the top ten
+for it. As of the branch tip: **55 fixed, 13 on cards, 13 accepted, 0 open**. What follows is the top ten
 of what is *not* closed, ranked by the severity each was logged with.
 
 1. **F-61 — Critical.** The verbatim-anchor rule refuses every window: claims are written prose, tape is
@@ -325,4 +325,4 @@ of what is *not* closed, ranked by the severity each was logged with.
 10. **F-56 — Low.** The minted title is capped at 120 characters while `check-forays` rejects anything over
     18 words; the mismatch surfaces only at finalize.
 
-The remaining open items — **F-05**, **F-20** and **I-15** — are in the tracker with proposed homes.
+The rest — **F-05**, **F-20** and **I-15** — are in the tracker, on cards WS-G and WS-J of the fix plan.
