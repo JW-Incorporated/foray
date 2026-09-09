@@ -243,6 +243,21 @@ behind collapsed bridges, failed dams and machines that broke."
 
 *Fixes between attempt 1 and attempt 2 (in progress):* F-49 (deepen `kind` definition + sourcing diagnostics), F-50 (purpose may be corrected by evidence), F-51 (a page never kills the Foray; the gate decides).
 
+**Attempt 2 (17:50:37Z → ~18:30Z, ~40 min wall) — FAILED at act 1 on the no-evidence page (F-60 → F-51's remaining fatal branch).** Pipeline = generation branch after #551 (F-50/F-51, cue provider, budget session) and #552 (F-49, sourcing trace, tier-2 segments). Calls 1–3 replayed from attempt 1 (identical prompts, I-11); deepen re-asked (prompt changed).
+
+| KPI (attempt 2) | Value |
+|---|---|
+| Beat kinds after F-49 | **29 account / 6 argument** (attempt 1: 6 / 29) — the cap and the narrowed definition work |
+| Tape anchors | 0 of 35 — every slot's trace names `tier2:lineage` as the deciding gate = F-59 (topic resolved to `engineering/energy-fusion`) |
+| Model calls | 34: 14 Haiku (2 replayed + 12 retrieval), 1 Opus (replayed), 19 Sonnet (4 deepen, 6 selection, 4 prose, 4 verify, 1 orphaned) |
+| Pipeline tokens (est.) | 41,725 in / 20,591 out |
+| Agent compute | 3,893 s (fresh calls) |
+| Verifier verdicts | 13 pages judged: **9 passed**, 4 rejected (all overreach beyond the quote); first round 6 of 9; **3 pages passed as `purposeRevised: true`** — F-50 working: a page reported where the evidence departed from its purpose and was accepted |
+| Empty retrievals | 2 of 12 pages (`passages: []`) → each cost 3 selection calls on "Documents: none" (F-60); one of them ended the run |
+| Time until a listener could start | never — act 1 never finalised; nothing narrated was checkpointed because neither slot completed |
+
+*Fixes between attempt 2 and attempt 3 (in progress):* F-59 (topic resolver), F-60 (empty evidence: one rephrased retry, then degrade, never fatal), WS-H (text-level tier 2) if ready.
+
 **What the two fixes changed, and one thing they deliberately did not.** F-50: the claim-selection and prose prompts now permit a page to report a contradiction between its purpose and its documents, the prose reply carries `purposeRevised`, and the verifier's `purposeAccomplished` asks whether the page addressed the purpose's SUBJECT with the evidence available — contradicting the purpose accomplishes it; only dropping the subject fails. Both flags (writer's `purposeRevised`, verifier's `purposeRevisedByVerifier`) are kept on `NarratedBeat` and counted as `meta.veracity.purposeRevisedPages`, reported and never gated. F-51: a narration beat's third rejection keeps the page with `verified: false`, its `attempts` history and the verifier's final `verifierNotes`, and the run continues; `meta.veracity.unverifiedPages` counts them, lists them in `unverifiedPageDetails`, and `evaluateVeracityGate` refuses to publish over any of them (`--force` unchanged). `NarrationWriteError` survives only for a beat that never produced a page at all. `narrate:<act>:<slot>` keys bank each slot as it is written, so a re-run pays only for the slots that never landed.
 
 **`check-narration.mjs` needed no change, and the reason is worth recording.** It gates the hand-authored curation artifacts under `docs/curation/narration/<foray_id>/` (arc/threads/beats JSON), not a generated candidate — `finalizeForay` calls it with a repo root and no per-Foray input, as that module's own comment says. It never reads a `verified` field (`grep -n verified tools/foray/check-narration.mjs` is empty), and neither does `check-forays.mjs`; `forayItems.ts` does not emit one into a published item (its internal-field-leak guard covers that). So an unverified page passes both checkers today, and the ONLY thing standing between it and a listener is the veracity gate — which is exactly where F-51 put the decision. The least-invasive change was therefore no change to either checker.
