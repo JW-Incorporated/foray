@@ -270,8 +270,59 @@ behind collapsed bridges, failed dams and machines that broke."
 
 ## 3. KPIs (aggregate; per-run tables above)
 
-(pending)
+Every number here is copied from a per-run table above; `—` means that run did not measure it. The three
+columns are the only attempts that reached narration: run 1's attempt 4 (the as-found pipeline plus the
+between-attempt fixes I-13/I-16), run 2's attempt 1 (the merged fix fleet WS-A/B/C/D/E/F) and run 2's
+attempt 2 (that plus #551 and #552).
+
+| KPI | Run 1, attempt 4 | Run 2, attempt 1 | Run 2, attempt 2 |
+|---|---|---|---|
+| Outcome | FAILED at beat 23 of 31 (F-46) | FAILED at act 1, page p2 (F-50/F-51) | FAILED at act 1, the no-evidence page (F-60) |
+| Wall clock | 2 h 35 m | 33 m 07 s | ~40 min |
+| Spine | 3 acts / 6 slots / 31 beats | 4 acts / 6 slots / 35 beats | same spine (calls 1–3 replayed) |
+| Progress | 22 of 31 beats (acts 1–2 complete) | act 1 only; 12 pages, 10 verified by attempt 2 | act 1 only; 13 pages judged, 9 passed |
+| Pipeline model calls | 103 (6 reused + 97 fresh: 1 Opus, 2 Haiku, 100 Sonnet) | 34 (14 Haiku, 1 Opus, 19 Sonnet) | 34 (14 Haiku, 1 Opus, 19 Sonnet incl. 1 orphaned) |
+| Narration calls per beat / page | 4.2 per beat (52 writer, 45 verifier) | 1.25 per page (15 for 12), plus 1 retrieval call each | — |
+| First-attempt page pass rate | 5 of 23 | 6 of 11 verified pages | 6 of 9 (first round) |
+| Pipeline tokens (est., chars/4) | ≈ 70 k in / 22 k out | 50,662 in / 24,796 out | 41,725 in / 20,591 out |
+| Subagent tokens incl. harness | 4,257,478 (97 agents, ≈ 44 k each) | — | — |
+| Agent compute (sum) | 5,560 s | 4,847 s | 3,893 s (fresh calls) |
+| Relay wall (sum) | 9,240 s | 4,863 s | — |
+| Orchestrator share of relay wall | 52 % (act 1) → 21 % (act 2) after I-19 | ≈ 0 % | — |
+| Beat kinds (`account` / `argument`) | — (the field did not exist) | 6 / 29 | 29 / 6 |
+| Tape anchors | 5 of 22 on topic | 0 of 35 (F-49) | 0 of 35 (every trace: `tier2:lineage`, F-59) |
+| Fabricated or mis-attributed citations reaching the verifier | ≥ 6 (F-27, F-30, F-32 ×3, F-46) | 0 — the mechanical gate passed first time on all 5 selection calls | — |
+| Pages kept / dropped / fatal | 18 / 4 / 1 | — | — |
+| Pages passed as `purposeRevised` | — (no such flag) | — (no such flag) | 3 |
+| Empty retrievals | — | — | 2 of 12 pages (F-60) |
+| Time until a listener could start | never | never | never |
 
 ## 4. Things to fix, ranked
 
-(pending — consolidated at the end)
+**The consolidated list is `generation-findings-tracker.md`** — one row for every finding F-01…F-62 and
+every non-historical intervention I-01…I-23, with the PR and the file that closed it, or the home proposed
+for it. As of the branch tip: **55 fixed, 1 on a card, 13 accepted, 12 open**. What follows is the top ten
+of what is *not* closed, ranked by the severity each was logged with.
+
+1. **F-61 — Critical.** The verbatim-anchor rule refuses every window: claims are written prose, tape is
+   speech, so tape yield stays 0 even after WS-H reaches real transcripts.
+2. **F-15 — High.** Nothing serves the partial candidate: there is no HTTP server in the repo, and Path B
+   needs four founder decisions before a listener can start Act 1.
+3. **F-47 — High.** Claude 5 runs adaptive thinking by default inside `max_tokens` caps of 400–2,000; a
+   keyed run can truncate a JSON reply, and the budget guard under-counts.
+4. **F-19 — Medium.** A Frame's 70–170 characters still cannot voice a contested source; narrowly defining
+   *contested* mitigated the cost without resolving the conflict.
+5. **F-48 — Medium.** Print evidence is the retrieval model's restatement, not fetched bytes, so
+   `groundedQuoteRate = 1.0` overstates what has actually been checked.
+6. **F-57 — Medium.** The ± 15 % runtime tolerance is a publishability condition nowhere in the code; a
+   *medium* Foray can finalize at 25 or 100 minutes.
+7. **F-58 — Medium.** `check-narration.mjs`'s digit, reference-leak and sentence rules never touch generated
+   narration — a whole checker believed to be in the path is not.
+8. **F-62 — Medium.** Symmetric padding to the 45 s minimum pulls roughly 28 s of off-claim tape in front of
+   the passage the beat is about.
+9. **F-55 — Low.** Duplicate slot titles collapse in the item mapping and can fail the contiguity rule at
+   finalize, after every stage has been paid for.
+10. **F-56 — Low.** The minted title is capped at 120 characters while `check-forays` rejects anything over
+    18 words; the mismatch surfaces only at finalize.
+
+The remaining open items — **F-05**, **F-20** and **I-15** — are in the tracker with proposed homes.
