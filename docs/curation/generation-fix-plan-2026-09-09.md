@@ -310,6 +310,20 @@ each previous page in the act, and give the verifier a repetition question along
 `narration-craft.md` states the source-free-connective-page rule the code already enforces; and a page that
 re-states an earlier page's claims is rejected with that reason, with run 1's beat 7 as the fixture.
 
+## WS-L — Tape-first spine (closes F-63; depends on WS-H)
+
+Three attempts of run 2 proved the matcher is no longer the wall: tier 2 reaches the right transcripts by text and the
+relevance floor refuses every beat because the spine never consulted the tape. Change what §4.2 hands §4.3: for each
+candidate subtopic with strong tape, `researchShape` runs the WS-H text index over the subtopic's terms and returns the
+top 3–5 windows (episode, show, start–end, the window's own sentences, BM25). The spine prompt lists them under each
+subtopic as *what the tape says* and the prompt gains one rule: each act must carry at least N `account` beats whose
+claim is seeded from a listed window (say which, by episode id) — the deepen stage keeps that seed on the beat so §4.5
+can open with the seeded episode. Subjects with weak tape keep today's path. **Files.** `researchShape.ts`,
+`catalogueLookup.ts` (`queryTapeAvailability` → windows), `AnthropicSpineBuilder.ts` (+ stub), `types/research.ts`,
+`types/spine.ts` (`seedWindow?` on a beat), `sourceBeats.ts` (seeded episode first), tests with the run-2 fixture.
+**Done when.** The run-2 prompt yields ≥ 8 tape beats offline on this machine with the F-61 floor unchanged, every
+seeded anchor judged on-claim by a human spot-check of five, and run 1's regressions stay refused.
+
 ## Rules for the agents
 
 - Work on a branch from `generation-run-2026-09-09` (it carries the run-1 fixes); one PR per workstream,
