@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import { env } from "../config/env";
+import { costFor, modelFor, USD_PER_WEB_SEARCH } from "../config/models";
 import { defaultBudgetGuard, type BudgetGuard } from "../cost/budgetGuard";
 import { parseLastJsonBlock } from "./parseWithRetry";
 import type { ExternalResearcher, ExternalResearchContext, ExternalResearchResult } from "./ExternalResearcher";
@@ -17,12 +18,19 @@ import type { ExternalResearcher, ExternalResearchContext, ExternalResearchResul
  * Anthropic* class in this codebase. Use createExternalResearcher().
  */
 
-const MODEL = "claude-haiku-4-5";
-const USD_PER_INPUT_TOKEN = 1.0 / 1_000_000;
-const USD_PER_OUTPUT_TOKEN = 5.0 / 1_000_000;
+/* Model id and per-token rates come from `src/config/models.ts`, the one
+ * place a Claude model id is written down (F-03). Which TIER this stage
+ * needs stays this stage's decision; which model serves that tier does not.
+ * An id and its price are read from the same row, so they cannot drift
+ * apart the way seven hand-copied pairs did. */
+const MODEL = modelFor("haiku");
+const USD_PER_INPUT_TOKEN = costFor("haiku").usdPerInputToken;
+const USD_PER_OUTPUT_TOKEN = costFor("haiku").usdPerOutputToken;
 // Anthropic's server-side web_search tool bills per search in addition to
-// tokens; $0.01/search is the published rate at the time of this build.
-const USD_PER_SEARCH = 0.01;
+// tokens. The rate lives beside the token rates in `src/config/models.ts` for
+// the same reason they do: it is a price, and this stage's estimate is only as
+// honest as the prices it is given (F-03).
+const USD_PER_SEARCH = USD_PER_WEB_SEARCH;
 const MAX_SEARCHES_PER_TOPIC = 3;
 
 const ResearchSchema = z.object({

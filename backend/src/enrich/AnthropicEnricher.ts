@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import { env } from "../config/env";
+import { costFor, modelFor } from "../config/models";
 import { defaultBudgetGuard, type BudgetGuard } from "../cost/budgetGuard";
 import { parseWithRetry } from "../generation/parseWithRetry";
 import type {
@@ -14,7 +15,7 @@ import type {
 
 /**
  * Real Tier-1 enrichment via the Anthropic API (02_ARCHITECTURE.md cheap-first
- * cascade). Model choice: claude-haiku-4-5 — the cheapest current model
+ * cascade). Model choice: the `haiku` tier — the cheapest current model
  * ($1.00/$5.00 per MTok), appropriate for metadata-only classification and
  * short why-line generation per the cost-discipline constraint
  * (01_PROMPT.md #8). Tier-2 (transcript-based) enrichment would warrant a
@@ -27,10 +28,15 @@ import type {
  * tests rather than relying on env-based selection.
  */
 
-const MODEL = "claude-haiku-4-5";
-// Pricing as of the model catalog consulted for this build (USD per token).
-const USD_PER_INPUT_TOKEN = 1.0 / 1_000_000;
-const USD_PER_OUTPUT_TOKEN = 5.0 / 1_000_000;
+/* Model id and per-token rates come from `src/config/models.ts`, the one
+ * place a Claude model id is written down (F-03). This file is not part of
+ * the §4 generation pipeline F-03 was raised against, but it was the seventh
+ * hardcoded copy of the same id — leaving it behind would have made "one
+ * place" false on the day it was written. Same tier, same rates, so routing
+ * it through the map changes nothing about what this class does. */
+const MODEL = modelFor("haiku");
+const USD_PER_INPUT_TOKEN = costFor("haiku").usdPerInputToken;
+const USD_PER_OUTPUT_TOKEN = costFor("haiku").usdPerOutputToken;
 
 const ClassificationSchema = z.object({
   topics: z.array(z.string()).min(1).max(4),
