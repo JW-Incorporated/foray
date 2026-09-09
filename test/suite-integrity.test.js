@@ -1323,7 +1323,7 @@ const BACKEND_FLOORS = {
   /* DAILY_BUDGET_USD env parsing (L5): rejects negative / NaN / empty /
      over-cap values at startup instead of silently substituting the
      default, and leaves a genuinely unset variable on its fallback. */
-  "test/env.test.ts": 10,
+  "test/env.test.ts": 11,
   "test/events.test.ts": 15,
   "test/html.test.ts": 8,
   "test/interestLearning.test.ts": 30,
@@ -1449,6 +1449,24 @@ const BACKEND_FLOORS = {
      why no live-generation-lead monitoring is built here). */
   "test/finalizeForay.test.ts": 5,
   "test/stageTiming.test.ts": 5,
+  /* WS-F robustness (docs/curation/generation-fix-plan-2026-09-09.md), closing
+     F-03, F-04, F-11, F-13, F-17 and F-18 from generation run 1:
+       checkpoint / runPipelineCheckpoint — per-stage resume inside ONE Foray,
+         the store's own rules and then the whole pipeline driven through it
+         (a narration failure costs the narration, not the spine);
+       spineStructure — the §4.3->§4.4 gate, with run 1's real 3-act / 6-slot /
+         31-beat spine as the fixture it must keep passing;
+       researchTopicFilter — the `Ai` leak, asserted against the REAL semantic
+         index and taxonomy because the leak is a property of that data;
+       models — one file holds every model id, plus the grep that fails when a
+         new literal appears anywhere in src/;
+       generateForaysArgs — the --budget-usd flag and what it actually moves. */
+  "test/checkpoint.test.ts": 14,
+  "test/generateForaysArgs.test.ts": 10,
+  "test/models.test.ts": 7,
+  "test/researchTopicFilter.test.ts": 17,
+  "test/runPipelineCheckpoint.test.ts": 10,
+  "test/spineStructure.test.ts": 14,
 };
 
 /* `it(` as well as `test(`: backend's suites use both spellings. */
