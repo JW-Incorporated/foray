@@ -177,6 +177,37 @@ describe("runForayPipeline", () => {
     expect(Array.isArray(out.candidates)).toBe(true);
   });
 
+  it("WS-B: attaches meta.veracity to the candidate, computed from the real run", async () => {
+    /* MUTATION THAT KILLS THIS: never build/attach `veracity` on `input`
+       (drop the `buildVeracityMetrics` call and the `meta` field). The
+       candidate this pipeline hands to `generateForays.ts`/`publishForay.ts`
+       would then carry no veracity data at all — `evaluateVeracityGate`
+       treats an absent `meta.veracity` as an unconditional publish refusal,
+       so this is load-bearing, not decorative. Ran the mutant — red. */
+    const out = await runForayPipeline(request, options, stubDeps());
+    expect(out.outcome).toBe("generated");
+    if (out.outcome !== "generated") return;
+
+    const veracity = out.input.meta?.veracity;
+    expect(veracity).toBeDefined();
+    if (!veracity) return;
+
+    // Stub builders make no real Anthropic calls, so real token spend is 0 —
+    // a genuine computed number, not a stand-in for "unmeasured" (null).
+    expect(veracity.pipelineTokens).toBe(0);
+    // purposeFidelity is always null in this checkout — see veracityMetrics.ts.
+    expect(veracity.purposeFidelity).toBeNull();
+    expect(typeof veracity.pagesDropped).toBe("number");
+    expect(Array.isArray(veracity.tapeRelevanceAnchors)).toBe(true);
+    // Stage timings are attached AFTER `finalize` runs (its own internal
+    // breakdown, when present, is folded in with a `finalize.` prefix —
+    // the stubbed `finalize` here returns none, but the outer pipeline
+    // stages, including "finalize" itself, must all be present).
+    expect(veracity.stageTimings.map((t) => t.name)).toEqual(
+      expect.arrayContaining(["understand", "research", "spine", "deepen", "source", "narrate", "stitch", "finalize"])
+    );
+  });
+
   it("is deterministic: the same request and clock produce the same Foray id", async () => {
     /* A batch driver that retries a failed prompt must not create a second,
        differently-identified Foray for the same work.

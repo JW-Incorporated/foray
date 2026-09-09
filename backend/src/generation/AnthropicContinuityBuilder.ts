@@ -4,6 +4,7 @@ import { parseWithRetry as parseWithRetryShared } from "./parseWithRetry";
 import { env } from "../config/env";
 import { defaultBudgetGuard, type BudgetGuard } from "../cost/budgetGuard";
 import type { ContinuityBuilder, ContinuityBuildContext, ContinuitySmoothRequest, ContinuitySmoothResult } from "./ContinuityBuilder";
+import { recordUsage } from "./usageTracking";
 
 /**
  * Real §4.8 cross-act continuity smoothing via the Anthropic API,
@@ -60,6 +61,7 @@ export class AnthropicContinuityBuilder implements ContinuityBuilder {
       messages: [{ role: "user", content: promptText }]
     });
 
+    recordUsage(response.usage);
     const textBlock = response.content.find((b: Anthropic.ContentBlock): b is Anthropic.TextBlock => b.type === "text");
     if (!textBlock) throw new Error("Anthropic continuity-smooth response had no text block");
 

@@ -4,6 +4,7 @@ import { env } from "../config/env";
 import { defaultBudgetGuard, type BudgetGuard } from "../cost/budgetGuard";
 import { parseLastJsonBlock } from "./parseWithRetry";
 import type { ExternalResearcher, ExternalResearchContext, ExternalResearchResult } from "./ExternalResearcher";
+import { recordUsage } from "./usageTracking";
 
 /**
  * Real §4.2 external research via the Anthropic API's server-side web
@@ -78,6 +79,7 @@ export class AnthropicExternalResearcher implements ExternalResearcher {
       ]
     });
 
+    recordUsage(response.usage);
     const textBlock = response.content.find((b: Anthropic.ContentBlock): b is Anthropic.TextBlock => b.type === "text");
     if (!textBlock) throw new Error("Anthropic external-research response had no text block");
 

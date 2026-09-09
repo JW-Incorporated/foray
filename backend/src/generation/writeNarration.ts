@@ -6,6 +6,7 @@ import {
   MODE_CHAR_BANDS,
   validateNarratedBeat,
   type NarratedBeat,
+  type NarrationAttemptRecord,
   type NarrationMode
 } from "../types/narration";
 import type { Voice } from "../types/spine";
@@ -235,6 +236,15 @@ async function writePageAndVerify(
      rejected page's issues are appended to the context note so the second
      attempt can fix them; the prompt is otherwise unchanged. */
   let retryNote: string | undefined;
+  /* WS-B (docs/curation/generation-fix-plan-2026-09-09.md): every attempt's
+     outcome, successful or not, kept so `veracityMetrics.ts` can compute
+     `firstAttemptPassRate` (did `attempts.length === 1`?) and
+     `attributionStability` (did a quote's publication move between
+     attempts — F-32) from real data instead of re-deriving it from side
+     effects. Does not change what gets written or how a retry is judged —
+     every check below is byte-for-byte the pre-WS-B logic; this only
+     records what already happens. */
+  const attempts: NarrationAttemptRecord[] = [];
   /* THREE ATTEMPTS, NOT TWO (attempt 3 of run 1). First attempts were rejected
      5 times out of 5 and second attempts once in 5; with two attempts and ~31
      pages the chance of finishing a medium Foray was (0.8)^31 — three runs died
@@ -242,9 +252,10 @@ async function writePageAndVerify(
      flip; a page that fails three informed attempts has a problem in its
      purpose, which the caller decides how to handle. */
   for (let attempt = 0; attempt < NARRATION_PAGE_ATTEMPTS; attempt++) {
+    let written: Awaited<ReturnType<typeof writer.writePage>> | undefined;
     try {
       const noteForAttempt = retryNote ? [contextNote, retryNote].filter(Boolean).join(" ") : contextNote;
-      const written = await writer.writePage({ claim, mode, voice, contextNote: noteForAttempt }, ctx);
+      written = await writer.writePage({ claim, mode, voice, contextNote: noteForAttempt }, ctx);
 
       const structural = validateNarratedBeat(
         { mode, script: written.script, sources: written.sources, pronunciationHints: written.pronunciationHints, verified: true },
@@ -271,17 +282,20 @@ async function writePageAndVerify(
         throw new InvalidNarratedBeatError(claim, mode, [verification.verifierNotes ?? "verifier rejected the page with no notes"]);
       }
 
+      attempts.push({ attempt: attempt + 1, sources: written.sources, rejected: false });
       return {
         mode,
         script: written.script,
         sources: written.sources,
         pronunciationHints: written.pronunciationHints,
         verified: true,
-        verifierNotes: verification.verifierNotes
+        verifierNotes: verification.verifierNotes,
+        attempts
       };
     } catch (err) {
       lastError = err;
       const issues = err instanceof InvalidNarratedBeatError ? err.issues : [err instanceof Error ? err.message : String(err)];
+      attempts.push({ attempt: attempt + 1, sources: written?.sources ?? [], rejected: true, rejectionNote: issues.join("; ") });
       retryNote =
         `YOUR PREVIOUS ATTEMPT AT THIS PAGE WAS REJECTED for: ${issues.join("; ")}. ` +
         "Write a corrected page that fixes every listed problem while keeping all other rules.";

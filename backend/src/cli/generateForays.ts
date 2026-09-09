@@ -4,6 +4,7 @@ import * as path from "path";
 import { runForayPipeline, type RunPipelineOutcome } from "../generation/runPipeline";
 import { FileTranscriptCueProvider } from "../generation/transcriptArchiveLookup";
 import type { GenerationRequest } from "../types/generation";
+import type { VeracityMetrics } from "../generation/veracityMetrics";
 import { env } from "../config/env";
 
 /**
@@ -137,7 +138,7 @@ async function main(): Promise<void> {
 
   fs.mkdirSync(path.resolve(args.out), { recursive: true });
 
-  const report: Array<{ prompt: string; outcome: string; detail: string; ms: number; file?: string }> = [];
+  const report: Array<{ prompt: string; outcome: string; detail: string; ms: number; file?: string; veracity?: VeracityMetrics }> = [];
   let generated = 0;
   let skipped = 0;
   const cueProvider = new FileTranscriptCueProvider();
@@ -178,7 +179,14 @@ async function main(): Promise<void> {
     const line = summarize(outcome);
     console.log(`  ${outcome.outcome === "generated" ? "built " : "stop  "} ${spec.prompt.slice(0, 60)} — ${line}`);
 
-    const entry = { prompt: spec.prompt, outcome: outcome.outcome, detail: line, ms };
+    /* WS-B: `meta.veracity` rides along on `outcome.input` for every
+       "generated" outcome (`runPipeline.ts` attaches it before finalize
+       runs, win or lose) — carried into `report.json` here so a candidate
+       that FAILED check-forays/check-narration still shows why the
+       veracity numbers looked the way they did, not just candidates that
+       made it to disk. */
+    const veracity = outcome.outcome === "generated" ? outcome.input.meta?.veracity : undefined;
+    const entry = { prompt: spec.prompt, outcome: outcome.outcome, detail: line, ms, veracity };
     if (outcome.outcome === "generated" && outcome.result.validation.ok) {
       if (!args.dryRun) fs.writeFileSync(file, `${JSON.stringify(outcome.input, null, 2)}\n`);
       generated++;

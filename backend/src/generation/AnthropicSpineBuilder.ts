@@ -7,6 +7,7 @@ import type { IntentUnderstanding } from "../types/generation";
 import type { ResearchShape } from "../types/research";
 import { DURATION_SHAPE_BUDGETS, type DurationTier, type Spine } from "../types/spine";
 import type { SpineBuildContext, SpineBuilder } from "./SpineBuilder";
+import { recordUsage } from "./usageTracking";
 
 /**
  * Real §4.3 spine construction via the Anthropic API, mirroring
@@ -87,6 +88,7 @@ export class AnthropicSpineBuilder implements SpineBuilder {
       messages: [{ role: "user", content: promptText }]
     });
 
+    recordUsage(response.usage);
     const textBlock = response.content.find((b: Anthropic.ContentBlock): b is Anthropic.TextBlock => b.type === "text");
     if (!textBlock) throw new Error("Anthropic spine response had no text block");
 

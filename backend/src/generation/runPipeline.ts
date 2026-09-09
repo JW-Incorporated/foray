@@ -14,6 +14,8 @@ import { slugifySlotTitle } from "./forayItems";
 import { loadSegmentPool, type SegmentRecord } from "./segmentPoolLookup";
 import { NARRATION_CHARS_PER_SEC } from "../types/narration";
 import { disclosureTemplate } from "../types/narration";
+import { resetUsageTracking, getUsageTotals } from "./usageTracking";
+import { buildVeracityMetrics } from "./veracityMetrics";
 
 import { createPromptUnderstander } from "./createPromptUnderstander";
 import { createExternalResearcher } from "./createExternalResearcher";
@@ -235,6 +237,15 @@ export async function runForayPipeline(
   const now = options.now ?? (() => new Date());
   const ctx = { userId: options.userId, sessionId: options.sessionId };
 
+  /* WS-B (docs/curation/generation-fix-plan-2026-09-09.md): `pipelineTokens`
+     sums every Anthropic reply's `usage` across the whole run — see
+     `usageTracking.ts`'s own doc comment on why this is a single
+     process-wide counter and why that is only correct for ONE run at a
+     time (true today: this function runs to completion before
+     `generateForays.ts`'s batch loop starts the next one). Reset here,
+     read after finalize below. */
+  resetUsageTracking();
+
   const understander = deps.understander ?? createPromptUnderstander();
   const researcher = deps.researcher ?? createExternalResearcher();
   const spineBuilder = deps.spineBuilder ?? createSpineBuilder();
@@ -242,6 +253,31 @@ export async function runForayPipeline(
   const narrationWriter = deps.narrationWriter ?? createNarrationWriterBuilder();
   const narrationVerifier = deps.narrationVerifier ?? createNarrationVerifierBuilder();
   const continuityBuilder = deps.continuityBuilder ?? createContinuityBuilder();
+
+  /* WS-B: `callsPerBeat` counts every §4.7 writer/verifier call, including
+     rejected attempts — wrapping here (rather than instrumenting
+     `AnthropicNarrationWriterBuilder`/`StubNarrationWriterBuilder`
+     themselves) counts real AND stub/test builders alike with one code
+     path, and survives WS-D's later per-slot/per-act parallelisation
+     untouched (a plain counter, no ordering assumed — contrast
+     `usageTracking.ts`'s per-process caveat, which does not apply here
+     since these two counters are local to this one call). */
+  let narrationWriterCalls = 0;
+  let narrationVerifierCalls = 0;
+  const countingNarrationWriter: NarrationWriterBuilder = {
+    providerName: narrationWriter.providerName,
+    writePage: (writeRequest, writeCtx) => {
+      narrationWriterCalls++;
+      return narrationWriter.writePage(writeRequest, writeCtx);
+    }
+  };
+  const countingNarrationVerifier: NarrationVerifierBuilder = {
+    providerName: narrationVerifier.providerName,
+    verifyPage: (verifyRequest, verifyCtx) => {
+      narrationVerifierCalls++;
+      return narrationVerifier.verifyPage(verifyRequest, verifyCtx);
+    }
+  };
 
   /* §4.0-4.1 — safety, then intent. Both non-"understood" outcomes end the run:
      a rejected prompt must not be researched, and a prompt we cannot read one
@@ -287,7 +323,7 @@ export async function runForayPipeline(
 
   // §4.7 — write narration, then verify it independently (distinct instances, enforced there).
   const written = await timings.run("narrate", () =>
-    writeNarration(sourced.acts, { writer: narrationWriter, verifier: narrationVerifier }, spine.voice, ctx)
+    writeNarration(sourced.acts, { writer: countingNarrationWriter, verifier: countingNarrationVerifier }, spine.voice, ctx)
   );
 
   // §4.8 — stitch, smoothing each act's introduction against the one before it.
@@ -321,6 +357,22 @@ export async function runForayPipeline(
      runtime sum below by construction — it is a spoken marker, not tape. */
   const items = [disclosureItem(intent.subject, slots[0]!.id), ...stitched.items];
 
+  /* WS-B: computed here, with the resolved `topic` (`tapeRelevance` needs
+     it) and before `finalize` runs, so `meta.veracity` rides along on
+     EVERY candidate this function returns — including one that fails
+     check-forays/check-narration below, which `generateForays.ts` still
+     records in `report.json` even though it never writes a candidate file. */
+  const veracity = buildVeracityMetrics({
+    sourcedActs: sourced.acts,
+    writtenActs: written,
+    topic,
+    writerCalls: narrationWriterCalls,
+    verifierCalls: narrationVerifierCalls,
+    pipelineTokens: getUsageTotals().total,
+    stageTimings: timings.all(),
+    root: options.root
+  });
+
   const input: FinalizeForayInput = {
     id: forayIdFor(title, generatedAt),
     title,
@@ -329,12 +381,19 @@ export async function runForayPipeline(
     slots,
     items,
     runtimeSec: runtimeSecFor(items),
-    builtAt: generatedAt
+    builtAt: generatedAt,
+    meta: { veracity }
   };
 
   // §4.9 — validate against the same two checkers CI runs. Writes nothing.
   const finalize = deps.finalize ?? finalizeForay;
   const result = await timings.run("finalize", () => finalize(input, options.root));
+
+  /* `finalize`'s own internal breakdown (build-record/check-forays/check-
+     narration) plus this function's now-complete stage list — appended
+     after the fact by mutating the SAME `veracity` object `input.meta`
+     already holds a reference to, rather than rebuilding `input`. */
+  veracity.stageTimings = [...timings.all(), ...result.timings.map((t) => ({ ...t, name: `finalize.${t.name}` }))];
 
   return { outcome: "generated", input, result, spine, timings: timings.all() };
 }

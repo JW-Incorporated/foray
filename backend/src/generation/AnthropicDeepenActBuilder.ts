@@ -5,6 +5,7 @@ import { defaultBudgetGuard, type BudgetGuard } from "../cost/budgetGuard";
 import { parseWithRetry } from "./parseWithRetry";
 import type { Act, DeepenedAct, Spine } from "../types/spine";
 import type { DeepenActBuilder, DeepenActContext } from "./DeepenActBuilder";
+import { recordUsage } from "./usageTracking";
 
 /**
  * Real §4.4 act-deepening via the Anthropic API, mirroring
@@ -71,6 +72,7 @@ export class AnthropicDeepenActBuilder implements DeepenActBuilder {
       messages: [{ role: "user", content: promptText }]
     });
 
+    recordUsage(response.usage);
     const textBlock = response.content.find((b: Anthropic.ContentBlock): b is Anthropic.TextBlock => b.type === "text");
     if (!textBlock) throw new Error("Anthropic deepen-act response had no text block");
 
