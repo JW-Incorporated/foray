@@ -37,10 +37,11 @@ import {
  *
  * WHAT IT IS NOT. It is not a relevance verdict. It returns the top N episodes
  * most worth OPENING for a claim; every gate that decides whether tape is
- * actually about the claim — `resolveAnchorFromCues`, the anchored-window
- * overlap test, the taxonomy lineage gate, the cut to cue boundaries — still
- * runs afterwards, unchanged, in `sourceBeats.ts`. The title bar survives as a
- * TIE-BREAKER between episodes the text ranks equally, never as a gate.
+ * actually about the claim — the window search and its relevance floor
+ * (`selectTapeWindow`/`tapeWindowIsRelevant`), the taxonomy lineage gate, the
+ * cut to cue boundaries — still runs afterwards in `sourceBeats.ts`. The title
+ * bar survives as a TIE-BREAKER between episodes the text ranks equally, never
+ * as a gate.
  *
  * PROVIDER-SHAPED, LIKE `TranscriptCueProvider`, AND FOR THE SAME REASON. The
  * transcript bodies live in `data-local/` (gitignored, machine-local), so CI
@@ -85,6 +86,18 @@ export interface TranscriptTextCandidate {
   matchedTerms: number;
   /** 0-based position in the returned ranking. */
   rank: number;
+  /**
+   * The idf this search computed for each query term, shared by every candidate
+   * of one search (one map, not one per row).
+   *
+   * Carried out of the index because tier 2's WINDOW search needs it (F-61):
+   * choosing which stretch of an episode carries a claim means preferring the
+   * stretch that says "imagenet" over the one that says "system", and the
+   * corpus is the only thing that knows which of those two is rare. Optional on
+   * the type so the title-path candidate and a four-line test stub stay valid;
+   * a window search without it weighs every term one.
+   */
+  idf?: ReadonlyMap<string, number>;
 }
 
 export interface TranscriptTextSearchOptions {
@@ -262,16 +275,23 @@ export class FileTranscriptTextIndex implements TranscriptTextIndex {
 
     const avgLength = totalLength / docCount;
     const queryTokens = new Set(terms);
+    /* One idf map for the whole search: BM25's own term weights, and the same
+       numbers tier 2's window search reuses to prefer the rare word (F-61). */
+    const idfByTerm = new Map<string, number>();
+    for (const term of terms) {
+      const n = df.get(term);
+      if (n === undefined) continue;
+      idfByTerm.set(term, Math.log(1 + (docCount - n + 0.5) / (n + 0.5)));
+    }
     const scored: TranscriptTextCandidate[] = [];
     for (const hit of hits.values()) {
       let score = 0;
       for (const [term, tf] of hit.tf) {
-        const n = df.get(term) ?? 1;
-        const idf = Math.log(1 + (docCount - n + 0.5) / (n + 0.5));
+        const idf = idfByTerm.get(term) ?? 0;
         const denominator = tf + BM25_K1 * (1 - BM25_B + (BM25_B * hit.length) / (avgLength || 1));
         score += idf * ((tf * (BM25_K1 + 1)) / (denominator || 1));
       }
-      scored.push({ entry: hit.entry, score, matchedTerms: hit.tf.size, rank: 0 });
+      scored.push({ entry: hit.entry, score, matchedTerms: hit.tf.size, rank: 0, idf: idfByTerm });
     }
 
     /* THE TITLE BAR, DEMOTED TO WHAT IT IS GOOD FOR. It cannot decide whether

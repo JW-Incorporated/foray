@@ -39,21 +39,20 @@ import {
   type SegmentWindowText
 } from "./segmentPoolLookup";
 import {
-  ANCHOR_WINDOW_PAD_SEC,
-  anchoredWindowEvidence,
-  type AnchoredWindowEvidence,
-  anchoredWindowIsOnTopic,
   bestTranscriptArchiveCandidate,
   cueWindowText,
+  cutWindowToSegment,
   findTranscriptArchiveMatch,
   loadTranscriptArchive,
-  MIN_ANCHOR_WORDS,
-  resolveAnchorFromCues,
+  selectTapeWindow,
+  tapeWindowIsRelevant,
   titleTokenScore,
   NullTranscriptCueProvider,
   TIER2_MATCH_THRESHOLD,
-  TIER2_WINDOW_OVERLAP_MIN,
-  type ResolvedAnchorSpan,
+  TIER2_WINDOW_MIN_SHARE,
+  TIER2_WINDOW_MIN_TERMS,
+  type TapeSpan,
+  type TapeWindow,
   type TranscriptCueProvider,
   type TranscriptDigestEntry
 } from "./transcriptArchiveLookup";
@@ -118,10 +117,12 @@ import { tokenizeForSourcing } from "./catalogueLookup";
  *   2. tier 1 scores the claim against the TRANSCRIPT the segment was cut from
  *      when a cue provider can supply it, falling back to metadata only when it
  *      cannot;
- *   3. tier 2 must find the claim's words spoken AROUND its anchor, not merely
- *      somewhere in the same hour of tape, and what it mints is cut to whole
- *      cues with a minimum duration instead of being the anchor's own few
- *      seconds;
+ *   3. tier 2 must find the claim's words spoken in one STRETCH of the tape,
+ *      not merely somewhere in the same hour of it, and what it mints is that
+ *      stretch cut to whole cues with a minimum duration instead of a few
+ *      seconds around a phrase (F-61 later moved the relevance judgement onto
+ *      the window itself and the anchors onto the tape's own words — see the
+ *      tier-2 block in `resolveOneBeat`);
  *   4. a candidate must share a taxonomy family — a LINEAGE, see
  *      `taxonomyFamily.ts` — with the Foray's resolved topic, which is why
  *      `runPipeline.ts` now resolves the topic before sourcing.
@@ -534,12 +535,14 @@ function resolveOneBeat(beat: Beat, state: SourcingState): BeatResolution {
      the title bar — *Practical AI*, 63 of 63 bodies present, best title score
      ONE against a claim about ImageNet's label errors (F-49's resolved cause).
      Now the claim's content words are put to an index over the archive's own
-     cue text (`textIndex`), the top few episodes are opened, and every gate
-     that decides whether the tape is about the claim runs on them EXACTLY as
-     before: `resolveAnchorFromCues`, the anchored-window overlap test (F-24),
-     the taxonomy lineage gate (F-23/F-29), the cut to whole cues, and the
-     audio-source check. The title bar survives as a fallback candidate and a
-     tie-breaker, never as a gate — which is the whole of F-06.
+     cue text (`textIndex`), the top few episodes are opened, and the gates that
+     decide whether the tape is about the claim run on them: the window search
+     and its relevance floor (`selectTapeWindow`/`tapeWindowIsRelevant` — F-61's
+     replacement for the verbatim-run rule, and F-24's heir), the taxonomy
+     lineage gate (F-23/F-29), the cut to whole cues with anchors quoted from
+     the tape (`cutWindowToSegment`), and the audio-source check. The title bar
+     survives as a fallback candidate and a tie-breaker, never as a gate — which
+     is the whole of F-06.
 
      Candidates are walked in order and the FIRST one that passes every gate
      wins, so a beat still takes at most one tier-2 segment. What the trace
@@ -556,20 +559,25 @@ function resolveOneBeat(beat: Beat, state: SourcingState): BeatResolution {
       furthest = furtherOf(furthest, { candidate, gate: "no-body" });
       continue;
     }
-    const span = resolveAnchorFromCues(claim, cues);
-    if (!span) {
-      furthest = furtherOf(furthest, { candidate, gate: "no-anchor" });
+    /* WHICH WINDOW CARRIES THE BEAT (F-61, and F-24 before it). The relevance
+       judgement is made on a STRETCH of tape scored by how much of the claim's
+       vocabulary is spoken inside it — not on a verbatim run of the claim's own
+       words, which is prose asked to be speech and which run 2 proved does not
+       exist (23 of 23 searching beats died on it). A window that clears the
+       floor is tape about the claim; run 1's Chernobyl-for-Hyatt anchor and
+       F-24's passing mention do not clear it. */
+    const window = selectTapeWindow(claim, cues, { idf: candidate.text?.idf });
+    if (!tapeWindowIsRelevant(window)) {
+      furthest = furtherOf(furthest, { candidate, gate: "window-overlap", window });
       continue;
     }
-    /* THE ANCHORED-WINDOW CHECK (F-24). An anchor proves a phrase was spoken;
-       it does not prove the tape there is about the claim. Run 1's anchors were
-       runs like "the original design required", which occur in almost any hour
-       of talk, and the minted segment was those few seconds. The claim's
-       content words must also turn up AROUND the anchor — not somewhere else in
-       the episode — before this is tape. */
-    const evidence = anchoredWindowEvidence(claim, cues, span);
-    if (!anchoredWindowIsOnTopic(evidence)) {
-      furthest = furtherOf(furthest, { candidate, gate: "window-overlap", evidence, span });
+    /* AND WHICH WORDS MARK ITS EDGES (ADR-0007). The anchors are quoted from
+       the tape at the window's own boundary cues, so they can be found again in
+       a listener's differently-stitched copy; growth to segment length follows
+       the claim rather than padding symmetrically (F-62). */
+    const span = cutWindowToSegment(claim, cues, window!);
+    if (!span) {
+      furthest = furtherOf(furthest, { candidate, gate: "no-anchor", window });
       continue;
     }
     const itemId = deriveItemId(candidate.entry);
@@ -582,15 +590,16 @@ function resolveOneBeat(beat: Beat, state: SourcingState): BeatResolution {
        (see `SourceBeatsOptions.audioSourceFor`). */
     const audioSource = state.audioSourceFor ? state.audioSourceFor(candidate.entry, itemId) : null;
     if (state.audioSourceFor && !audioSource) {
-      furthest = furtherOf(furthest, { candidate, gate: "no-audio-source", evidence, span });
+      furthest = furtherOf(furthest, { candidate, gate: "no-audio-source", window, span });
       continue;
     }
     if (audioSource) state.newSegmentSources.set(itemId, audioSource);
     const segmentId = mintSegmentId(itemId, span.startSec, state.mintedIds);
     const referenceDurationSec = candidate.entry.feed_duration_sec ?? span.endSec;
-    /* `span.startSec`/`span.endSec` are the CUE BOUNDARIES `cutSpanToCueBoundaries`
-       chose, not the matched phrase's own few seconds (F-24(c)) — the minted
-       segment's times are the tape's own times. */
+    /* `span.startSec`/`span.endSec` are the CUE BOUNDARIES `cutWindowToSegment`
+       chose for the window, not a phrase's own few seconds (F-24(c)) — the
+       minted segment's times are the tape's own times, and its anchors are the
+       tape's own words (F-61). */
     state.newSegments.push({
       id: segmentId,
       itemId,
@@ -647,8 +656,11 @@ interface Tier2Candidate {
 interface Tier2Progress {
   candidate: Tier2Candidate;
   gate: Tier2Gate;
-  evidence?: AnchoredWindowEvidence;
-  span?: ResolvedAnchorSpan;
+  /** The best window this candidate's tape had for the claim — present from the
+   * window search onwards, `null` only when the episode had no usable cues. */
+  window?: TapeWindow | null;
+  /** The cut span, when the search got as far as minting anchors from it. */
+  span?: TapeSpan;
 }
 
 /**
@@ -662,8 +674,12 @@ const TIER2_GATE_PROGRESS: Record<Tier2Gate, number> = {
   lineage: 1,
   "title-tokens": 2,
   "no-body": 3,
-  "no-anchor": 4,
-  "window-overlap": 5,
+  /* `window-overlap` now comes FIRST of the two tape gates and `no-anchor`
+     after it, because F-61 swapped their order: relevance is decided on the
+     window, and only a window that passed is asked for anchors. A beat that
+     reached `no-anchor` therefore got further than one that did not. */
+  "window-overlap": 4,
+  "no-anchor": 5,
   "no-audio-source": 6
 };
 
@@ -722,7 +738,7 @@ function tier2TraceFor(
     }
     return rejected;
   }
-  const { candidate, gate, evidence } = furthest;
+  const { candidate, gate, window, span } = furthest;
   const row: Tier2TraceRow = {
     ...archiveTraceRow(candidate.entry, candidate.titleScore, gate),
     candidatesConsidered: candidates.length,
@@ -733,9 +749,21 @@ function tier2TraceFor(
     row.textRank = candidate.text.rank;
     row.textMatchedTerms = candidate.text.matchedTerms;
   }
-  if (evidence) {
-    row.anchorContentWords = evidence.anchorContentWords;
-    row.beyondAnchorOverlap = evidence.beyondAnchorOverlap;
+  /* WHICH CLAIM WORDS THE TAPE ACTUALLY SAID, AND WHERE (F-61). A share and a
+     count can be argued with; "no anchor" could not. */
+  if (window) {
+    row.windowMatchedTerms = window.matchedTerms;
+    row.windowDistinctiveTerms = window.distinctiveTerms;
+    row.windowTermShare = Number(window.share.toFixed(3));
+    row.windowWeightedShare = Number(window.weightedShare.toFixed(3));
+    row.windowStartSec = window.startSec;
+    row.windowEndSec = window.endSec;
+  }
+  /* And, when the search got far enough to quote the tape, the anchors it
+     minted — the thing a person spot-checking a run reads first. */
+  if (span) {
+    row.startAnchor = span.startAnchor;
+    row.endAnchor = span.endAnchor;
   }
   return row;
 }
@@ -746,7 +774,9 @@ function narrationReasonFor(furthest: Tier2Progress | null): string {
     case "no-audio-source":
       return "Tape was found for this beat but its episode's audio cannot be resolved, so it cannot be played.";
     case "window-overlap":
-      return "A transcript anchor was found but the tape around it is not about this claim.";
+      return "The tape was searched for this claim and no stretch of it is about the claim.";
+    case "no-anchor":
+      return "A stretch of tape about this claim was found, but its edges yield no phrase that could anchor a boundary.";
     default:
       return "No tape found anywhere in the §4.5 search order for this beat.";
   }
@@ -761,7 +791,7 @@ function transcriptionQueueRow(claim: string, furthest: Tier2Progress | null): T
       reason: "No hit in data/segments.json or the transcript archive; logged for future transcription/extraction, not acted on here."
     };
   }
-  const { candidate, gate, evidence } = furthest;
+  const { candidate, gate, window } = furthest;
   const found = candidate.text ? "Transcript text matched" : "Transcript-archive metadata matched";
   switch (gate) {
     case "no-audio-source":
@@ -774,13 +804,13 @@ function transcriptionQueueRow(claim: string, furthest: Tier2Progress | null): T
       return {
         claim,
         showId: candidate.entry.show_id,
-        reason: `${found} ("${candidate.entry.title}") and a ${evidence?.anchorContentWords ?? 0}-content-word anchor was located, but only ${evidence?.beyondAnchorOverlap ?? 0} further claim content words are spoken within ${ANCHOR_WINDOW_PAD_SEC} s of it — below the ${TIER2_WINDOW_OVERLAP_MIN} needed to call the tape there on topic.`
+        reason: `${found} ("${candidate.entry.title}") but its best window of tape speaks ${window?.matchedTerms.length ?? 0} of the claim's ${window?.claimTermCount ?? 0} content words, ${window?.distinctiveTerms.length ?? 0} of them rare (${Math.round((window?.weightedShare ?? 0) * 100)} % of the claim, weighted by rarity) — below the ${TIER2_WINDOW_MIN_TERMS} rare words and ${Math.round(TIER2_WINDOW_MIN_SHARE * 100)} % needed to call the tape there on topic.`
       };
     case "no-anchor":
       return {
         claim,
         showId: candidate.entry.show_id,
-        reason: `${found} ("${candidate.entry.title}") but no run of ${MIN_ANCHOR_WORDS} of the claim's own words is spoken verbatim anywhere in it, so no anchor could be located.`
+        reason: `${found} ("${candidate.entry.title}") and a window of its tape is about the claim, but neither boundary cue yields a quotable phrase, so no anchor could be minted.`
       };
     default:
       return {

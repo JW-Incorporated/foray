@@ -378,8 +378,17 @@ const SourcingTraceSchema = z.object({
       score: z.number(),
       requiredScore: z.number(),
       gate: z.enum(["text-index:no-candidate", "title-tokens", "lineage", "no-body", "no-anchor", "window-overlap", "no-audio-source"]),
-      anchorContentWords: z.number().optional(),
-      beyondAnchorOverlap: z.number().optional(),
+      /* F-61: the window search's own numbers, and the anchors minted from the
+         tape. Optional, like the WS-H fields below, so a checkpoint written
+         before this change still parses on resume. */
+      windowMatchedTerms: z.array(z.string()).optional(),
+      windowDistinctiveTerms: z.array(z.string()).optional(),
+      windowTermShare: z.number().optional(),
+      windowWeightedShare: z.number().optional(),
+      windowStartSec: z.number().optional(),
+      windowEndSec: z.number().optional(),
+      startAnchor: z.string().optional(),
+      endAnchor: z.string().optional(),
       /* WS-H: what tier 2's text search saw (`types/tapeSourcing.ts`). Optional
          so a checkpoint written before WS-H still parses on resume. */
       foundBy: z.enum(["text-index", "title"]).optional(),
