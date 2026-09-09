@@ -237,10 +237,11 @@ export async function generateOneCandidate(
      didn't already make. `--dry-run` writes nothing here either, matching the
      final-candidate and checkpoint paths' own `--dry-run` behaviour below.
 
-     NOTHING IS WRITTEN ON A RESUMED RUN WHOSE STITCH STAGE IS CHECKPOINTED:
-     `runPipeline.ts` fires `onActReady` from inside the stitch stage, which a
-     resume skips entirely. That run's `ttlA1Ms` is `null` too, for the same
-     reason — see that module's own comment. */
+     NOTHING IS WRITTEN FOR AN ACT WHOSE STITCH IS ALREADY CHECKPOINTED:
+     `runPipeline.ts` fires `onActReady` from inside a `stitch:<i>` stage (one
+     per act since F-66), which a resume skips. A run that resumes act 1's
+     stitch therefore has `ttlA1Ms` `null` too, for the same reason — see that
+     module's own comment. */
   const partialFile = path.join(path.resolve(args.out), partialCandidateFilename(spec.prompt));
   const onActReady = args.dryRun
     ? undefined
