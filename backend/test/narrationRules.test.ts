@@ -9,7 +9,7 @@ import {
   quoteEchoesPurpose,
   quoteWords,
   validateNarratedBeat,
-  type HeldDoc,
+  type EvidenceDoc,
   type NarratedBeat,
   type Source
 } from "../src/types/narration";
@@ -28,7 +28,7 @@ import {
  *   F-36/F-37/F-44 the zero-source connective page.
  */
 
-const NBS_DOC: HeldDoc = {
+const NBS_DOC: EvidenceDoc = {
   docId: "print:nbs-143",
   title: "National Bureau of Standards, Building Science Series 143 (1982)",
   url: "https://nvlpubs.nist.gov/nistpubs/Legacy/BSS/nbsbuildingscience143.pdf",
@@ -37,7 +37,7 @@ const NBS_DOC: HeldDoc = {
     "The as-built connection could support about sixty percent of the load required by the Kansas City Building Code."
 };
 
-const TAPE_DOC: HeldDoc = {
+const TAPE_DOC: EvidenceDoc = {
   docId: "tape:bfh-griddle-bakestone#310",
   title: "Bread from Home — The griddle and the bakestone",
   text: "So the bakestone came first, and the iron griddle only really arrives once cast iron is cheap enough to sit on every hearth."
@@ -72,7 +72,7 @@ describe("normalizeForQuoteMatch — a quote is a lookup, and only typography is
   });
 
   it("does NOT forgive a changed word: a near-quote is not a quote", () => {
-    const doc: HeldDoc = { docId: "d", title: "T", text: "the connection was never checked for adequacy" };
+    const doc: EvidenceDoc = { docId: "d", title: "T", text: "the connection was never checked for adequacy" };
     expect(findHoldingDoc("the connection was never checked for adequacy", [doc])).toBe(doc);
     expect(findHoldingDoc("the connection was never reviewed for adequacy", [doc])).toBeNull();
   });
@@ -99,7 +99,7 @@ describe("F-42 — a quote too short to be checkable is rejected", () => {
   });
 
   it("accepts a SHORT span when it is a complete sentence standing at a sentence boundary in the document", () => {
-    const doc: HeldDoc = { docId: "d", title: "T", text: "Everyone agreed on that. The dam failed. Nobody could say when." };
+    const doc: EvidenceDoc = { docId: "d", title: "T", text: "Everyone agreed on that. The dam failed. Nobody could say when." };
     expect(isCompleteSentence("The dam failed.", doc.text)).toBe(true);
     // Capitalising a mid-sentence fragment does not make it a sentence.
     expect(isCompleteSentence("Nobody could say when.", "and then nobody could say when the water rose")).toBe(false);
@@ -233,7 +233,7 @@ describe("F-45 — a claim about what the record contains needs a source that sa
   });
 
   it("accepts it when a source's own quote says the record is silent", () => {
-    const doc: HeldDoc = {
+    const doc: EvidenceDoc = {
       docId: "print:ntsb",
       title: "NTSB Highway Accident Report HAR-83/03",
       text: "The position of the staged material at the time of the collapse is not recorded in any surviving document."

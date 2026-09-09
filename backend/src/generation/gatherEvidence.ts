@@ -12,6 +12,7 @@ import {
   type TranscriptDigestEntry
 } from "./transcriptArchiveLookup";
 import type { ExternalResearcher, ExternalResearchContext } from "./ExternalResearcher";
+import type { EvidenceDoc as HeldEvidenceDoc } from "../types/narration";
 import type { TapePointer } from "../types/tapeSourcing";
 
 /**
@@ -81,15 +82,16 @@ export type BeatKind = "account" | "argument";
 
 /** One document the pipeline HOLDS the text of. A page's quote must be a
  * substring of exactly one of these, and its publication is this
- * document's own `title` — never free text the writer supplies. */
-export interface EvidenceDoc {
-  docId: string;
+ * document's own `title` — never free text the writer supplies.
+ *
+ * Extends `types/narration.ts`'s `EvidenceDoc` (the shape that rides on a
+ * `NarratedBeat` and that WS-B's `groundedQuoteRate` reads) with the two
+ * fields only the retrieval side has an opinion about, so there is ONE
+ * declaration of `{docId, title, url, text}` in the codebase rather than
+ * two that can drift apart. */
+export interface EvidenceDoc extends HeldEvidenceDoc {
   kind: "tape" | "print";
-  /** What a source's `publication` becomes, verbatim. */
-  title: string;
-  url?: string;
   retrievedAt?: string;
-  text: string;
 }
 
 /** Who is on the tape this beat is anchored to — the thing run 1's
@@ -242,7 +244,7 @@ export class DefaultEvidenceGatherer implements EvidenceGatherer {
     const retrieve = this.researcher.retrievePassages?.bind(this.researcher);
     if (!retrieve) return [];
 
-    let docs: EvidenceDoc[] = [];
+    let docs: EvidenceDoc[];
     try {
       const passages = await retrieve(
         { claim, maxPassages: EVIDENCE_MAX_PRINT_PASSAGES, maxChars: EVIDENCE_MAX_PASSAGE_CHARS },

@@ -107,12 +107,14 @@ export type Source = z.infer<typeof SourceSchema>;
  * of these, not a claim the writer makes, and a `publication` is one of
  * these documents' `title` rather than free text (F-27, F-30, F-32).
  *
- * Structurally identical to `gatherEvidence.ts`'s `EvidenceDoc` minus the
- * fields validation does not need, and declared HERE rather than imported
- * from there so this types module stays free of any dependency on the
- * generation stages that use it.
+ * Declared HERE, not in `gatherEvidence.ts`, so this types module stays
+ * free of any dependency on the generation stages that use it — the
+ * gatherer's own doc type EXTENDS this one with the two fields only
+ * retrieval cares about (`kind`, `retrievedAt`), rather than restating it.
+ * WS-B's `veracityMetrics.ts` reads this exact shape off `NarratedBeat`
+ * to compute `groundedQuoteRate`.
  */
-export const HeldDocSchema = z
+export const EvidenceDocSchema = z
   .object({
     docId: z.string().trim().min(1),
     title: z.string().trim().min(1),
@@ -120,18 +122,30 @@ export const HeldDocSchema = z
     text: z.string()
   })
   .strict();
-export type HeldDoc = z.infer<typeof HeldDocSchema>;
+export type EvidenceDoc = z.infer<typeof EvidenceDocSchema>;
 
-/** One rejected attempt at a page, kept so the retry note can accumulate
- * (F-35) and so WS-B can measure attribution stability across attempts
- * (F-32). */
-export const NarrationAttemptSchema = z
+/**
+ * One attempt at a page, kept whether it passed or not, so the retry note
+ * can accumulate every prior rejection (F-35) and so WS-B can measure
+ * `firstAttemptPassRate` and `attributionStability` — did the same quote's
+ * publication move between attempts (F-32) — from recorded data rather
+ * than from side effects.
+ *
+ * SHAPE PINNED TO WS-B. `veracityMetrics.ts` on `ws-b-veracity-metrics`
+ * reads exactly these four fields; this declaration is deliberately
+ * identical to that branch's so the two land as one hunk.
+ */
+export const NarrationAttemptRecordSchema = z
   .object({
+    /** 1-based — the Nth attempt at this page. */
+    attempt: z.number().int().min(1),
     sources: z.array(SourceSchema),
-    rejection: z.string()
+    rejected: z.boolean(),
+    /** Required when `rejected`; absent on the attempt that finally passed. */
+    rejectionNote: z.string().trim().min(1).optional()
   })
   .strict();
-export type NarrationAttempt = z.infer<typeof NarrationAttemptSchema>;
+export type NarrationAttemptRecord = z.infer<typeof NarrationAttemptRecordSchema>;
 
 /** §4.7's pronunciation-control hint, per hard/foreign word. Nothing
  * consumes this yet (§9.1 owns the actual TTS-facing mechanism) — the
@@ -167,13 +181,22 @@ export const NarratedBeatSchema = z
      * self-reported by the writer. `writeNarration.ts`'s orchestrator is
      * the only code path allowed to flip this to `true`. */
     verified: z.boolean(),
+    /** The verifier's SECOND question, kept as its own field rather than
+     * folded into `verified` (F-41: nothing in run 1 asked whether a page
+     * did the job its beat existed for, and page 7 re-told the collapse
+     * from the top instead of introducing its named concept). Distinct
+     * from `verified` because `verified` is trivially true on every kept
+     * page — an unverified page is retried or dropped and never reaches a
+     * `WrittenAct` — so averaging it would print 1.0 forever. WS-B's
+     * `purposeFidelity` averages THIS. */
+    purposeAccomplished: z.boolean().optional(),
     verifierNotes: z.string().trim().min(1).optional(),
     /** The documents this page's quotes were looked up in (WS-A). Optional
      * so nothing upstream of the evidence pack has to change; WS-B reads
      * it to compute `groundedQuoteRate`. */
-    evidence: z.array(HeldDocSchema).optional(),
-    /** Every rejected attempt at this page, oldest first (F-35/F-32). */
-    attempts: z.array(NarrationAttemptSchema).optional()
+    evidence: z.array(EvidenceDocSchema).optional(),
+    /** Every attempt at this page, oldest first (F-35/F-32). */
+    attempts: z.array(NarrationAttemptRecordSchema).optional()
   })
   .strict();
 export type NarratedBeat = z.infer<typeof NarratedBeatSchema>;
@@ -345,7 +368,7 @@ export function quoteEchoesPurpose(quote: string, purposeText: string): boolean 
  * of, or `null`. `docId`, when given, restricts the search to the
  * document the writer SAID the quote came from — quoting doc A and
  * citing doc B is its own kind of mis-attribution. */
-export function findHoldingDoc(quote: string, docs: HeldDoc[], docId?: string): HeldDoc | null {
+export function findHoldingDoc(quote: string, docs: EvidenceDoc[], docId?: string): EvidenceDoc | null {
   const needle = normalizeForQuoteMatch(quote);
   if (!needle) return null;
   const pool = docId ? docs.filter((d) => d.docId === docId) : docs;
@@ -415,7 +438,7 @@ export interface ValidateNarratedBeatOptions {
    * quote MUST be a substring of one of them and a publication MUST be
    * one of their titles or urls. When absent (a caller that has no
    * evidence pack) those two rules are skipped and the rest still run. */
-  heldDocs?: HeldDoc[];
+  heldDocs?: EvidenceDoc[];
   /** The beat purpose plus any other prompt text the writer was handed,
    * so a quote of it can be rejected (F-46). */
   purposeText?: string;

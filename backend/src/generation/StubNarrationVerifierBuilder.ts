@@ -1,6 +1,13 @@
 import { defaultBudgetGuard, type BudgetGuard } from "../cost/budgetGuard";
-import { containsContestedLanguage, hasDeclarativeSentence } from "../types/narration";
-import type { NarrationBuildContext, NarrationVerifierBuilder, NarrationVerifyRequest, NarrationVerifyResult } from "./NarrationVerifierBuilder";
+import { containsContestedLanguage, hasDeclarativeSentence, quoteWords } from "../types/narration";
+import type {
+  NarrationBuildContext,
+  NarrationVerifierBuilder,
+  NarrationVerifyRequest,
+  NarrationVerifyResult,
+  PageVerdict,
+  VerifyPageBrief
+} from "./NarrationVerifierBuilder";
 
 /**
  * Deterministic fake narration verifier, used whenever ANTHROPIC_API_KEY
@@ -8,25 +15,34 @@ import type { NarrationBuildContext, NarrationVerifierBuilder, NarrationVerifyRe
  * `StubNarrationWriterBuilder` — never share a class or instance between
  * the two roles, per §4.7 rule 2 / §5's topology table.
  *
- * Re-derives a verdict from the page + its sources alone (never reads
- * anything the writer produced beyond the `NarrationVerifyRequest`
- * contract), the same structural independence the real
- * AnthropicNarrationVerifierBuilder must also honour: a page whose
- * claim(s) find no textual echo in its own `sources[].quote` fails, and
- * a page with a `contested: true` source that never says so in the
- * script also fails (mirrors `validateNarratedBeat`'s
- * `contested-not-flagged-in-text` check, run independently here so the
- * verifier does not merely rubber-stamp what the schema already
- * enforces — a real LLM verifier is asked to catch content the schema
- * cannot see, e.g. a source quote that does not actually support the
- * claim it is attached to).
+ * WHAT A STUB CAN HONESTLY ANSWER, AND WHAT IT CANNOT. The three
+ * questions the real verifier is asked (does each quote support its
+ * claim; does the page accomplish its purpose; is a genuinely contested
+ * point handled) are reading-comprehension questions — a model's job, and
+ * faking them with a token overlap is what run 1's stub did and what made
+ * the dry-run path a weaker check than production rather than the same
+ * one. So this class answers each question with the strongest STRUCTURAL
+ * signal available and says nothing it cannot support:
+ *
+ *   - claimsSupported: a source attached to no claim at all fails. The
+ *     harder half — does this quote support this claim — is already
+ *     bounded by `writeNarration.ts`, which proved in code that the quote
+ *     is a verbatim span of a document the pipeline holds before this is
+ *     ever called.
+ *   - purposeAccomplished: the script has to be about the purpose it was
+ *     given — at least one content word in common (F-41's page 7 dropped
+ *     its named concept entirely and re-told the collapse from the top).
+ *     A purpose with no content words is not evidence of anything and
+ *     passes.
+ *   - contestedHandled: a source marked contested whose script never says
+ *     so fails — the one rule of the three a string can actually decide.
  */
 export class StubNarrationVerifierBuilder implements NarrationVerifierBuilder {
   readonly providerName = "stub";
 
   constructor(private readonly budgetGuard: BudgetGuard = defaultBudgetGuard) {}
 
-  async verifyPage(request: NarrationVerifyRequest, ctx: NarrationBuildContext): Promise<NarrationVerifyResult> {
+  async verifySlot(request: NarrationVerifyRequest, ctx: NarrationBuildContext): Promise<NarrationVerifyResult> {
     await this.budgetGuard.checkAndRecord({
       userId: ctx.userId,
       operation: "narration_verify",
@@ -36,45 +52,56 @@ export class StubNarrationVerifierBuilder implements NarrationVerifierBuilder {
       sessionId: ctx.sessionId
     });
 
-    const notes: string[] = [];
-
-    /* A page that asserts something with no source behind it, in either
-       direction: the mode's own content obligation, and the general rule
-       that a script stating anything about the world needs a source
-       (F-36/F-37). */
-    const needsSource = request.mode === "Patch" || request.mode === "Carry";
-    if (needsSource && request.sources.length === 0) {
-      notes.push(`${request.mode} narration asserts "${request.claim}" with zero sources attached.`);
-    } else if (request.sources.length === 0 && hasDeclarativeSentence(request.script)) {
-      notes.push("The script states something about the world with no source attached.");
-    }
-
-    /* WHAT THIS STUB NO LONGER DOES, and why. It used to require a
-       significant word of the claim to appear inside its own quote — a
-       stand-in for reading comprehension. That test is now both wrong and
-       unnecessary: wrong, because a real retrieved passage supports a
-       claim without repeating its wording, and the fixture passage
-       deliberately shares no word with the beat purpose (quoting the
-       purpose back is F-46); unnecessary, because whether a quote exists
-       at all is now decided mechanically against the documents the
-       pipeline holds, before any verifier is called. What a verifier is
-       for — does this quote actually SUPPORT this claim, does the page do
-       what the beat is for — needs a model, and a stub says so rather
-       than faking it. */
-    for (const source of request.sources) {
-      if (source.claimText.trim().length === 0) {
-        notes.push("A source is attached to no claim at all.");
-      }
-    }
-
-    const anyContested = request.sources.some((s) => s.contested);
-    if (anyContested && !containsContestedLanguage(request.script)) {
-      notes.push("A source is marked contested but the script never says so explicitly.");
-    }
-
-    return {
-      verified: notes.length === 0,
-      verifierNotes: notes.length > 0 ? notes.join(" ") : undefined
-    };
+    return { pages: request.pages.map(verdictFor) };
   }
+}
+
+function verdictFor(page: VerifyPageBrief): PageVerdict {
+  const notes: string[] = [];
+
+  const claimsSupported = !page.sources.some((s) => s.claimText.trim().length === 0);
+  if (!claimsSupported) notes.push("A source is attached to no claim at all.");
+
+  const purposeAccomplished = scriptIsAboutPurpose(page.script, page.purpose);
+  if (!purposeAccomplished) {
+    notes.push(`The script shares no content word with the purpose it was given ("${page.purpose.slice(0, 60)}").`);
+  }
+
+  const contestedHandled = !page.sources.some((s) => s.contested) || containsContestedLanguage(page.script);
+  if (!contestedHandled) notes.push("A source is marked contested but the script never says so explicitly.");
+
+  /* F-44's coin flip, settled: a zero-source page that asserts something
+     is not this stage's decision to make by sampling — `writeNarration.ts`
+     already rejected it in code before any verifier saw it. Asserted here
+     so a regression in that order shows up as a stub failure rather than
+     as a page that quietly passes. */
+  if (page.sources.length === 0 && hasDeclarativeSentence(page.script)) {
+    notes.push("A zero-source page reached verification with a declarative script — the structural rule upstream did not run.");
+    return { pageId: page.pageId, claimsSupported: false, purposeAccomplished, contestedHandled, notes: notes.join(" ") };
+  }
+
+  return {
+    pageId: page.pageId,
+    claimsSupported,
+    purposeAccomplished,
+    contestedHandled,
+    ...(notes.length > 0 ? { notes: notes.join(" ") } : {})
+  };
+}
+
+/* Words too common to mean anything as a shared token between a purpose
+ * and a script. Deliberately short: the test is "did the page wander off
+ * its subject entirely", not "did it paraphrase well". */
+const STOPWORDS = new Set([
+  "about", "after", "again", "against", "because", "before", "being", "between", "could", "every",
+  "first", "from", "have", "into", "just", "like", "more", "most", "only", "other", "over", "same",
+  "some", "such", "than", "that", "them", "then", "there", "these", "they", "this", "those",
+  "through", "under", "very", "were", "what", "when", "where", "which", "while", "will", "with",
+  "would", "your"
+]);
+
+export function scriptIsAboutPurpose(script: string, purpose: string): boolean {
+  const wanted = new Set(quoteWords(purpose).filter((w) => w.length > 3 && !STOPWORDS.has(w)));
+  if (wanted.size === 0) return true;
+  return quoteWords(script).some((w) => wanted.has(w));
 }
