@@ -1530,6 +1530,14 @@ const BACKEND_FLOORS = {
   "test/generateForaysArgs.test.ts": 10,
   "test/models.test.ts": 7,
   "test/researchTopicFilter.test.ts": 17,
+  /* F-59 (docs/curation/generation-run-2026-09-09.md): the topic resolver's
+     fusion magnet. Run 2's production-ML prompt resolved to
+     `engineering/energy-fusion` on two words — `engineering`, free to every
+     child of that root, and `systems`, from the label — and §4.5's lineage gate
+     then refused every AI show in the archive. Asserted against the REAL
+     taxonomy and semantic index, with run 2's own topic text, plus run 1's as
+     the resolution the fix must not move. */
+  "test/resolveTopic.test.ts": 14,
   /* F-51 raised this from 10: `narrate:<act>:<slot>` keys, so a run that dies
      partway through an act re-pays only for the slots that never landed, and
      the per-Foray budget cap the batch path left inert by never passing a
