@@ -636,7 +636,9 @@ function snapshot(id, src) {
     // the curated pool (discover.json's own `release_date`) but this
     // whitelist projection dropped it the same way it dropped audio_url
     // above — every epRow/archivedRow/renderEpisode caller has always had
-    // the raw field one layer up and never seen it here.
+    // the raw field one layer up and never seen it here. Also kept so a
+    // generated playlist (F14) can order a leaf's episodes newest first
+    // from the snapshot alone; null when the source has none.
     release_date: src.release_date ?? null,
     // Full publisher description (requirement A1.1/Q8, resolved by Stage 3b:
     // RSS-sourced text is the real source, docs/show-pages-plan.md). Additive
@@ -1070,6 +1072,55 @@ function subjectQueueById(id) {
   });
 }
 
+/* Generated playlists (D5, and founder feedback F14, 2026-09-08: "playlists are
+   now the same as Episodes for you, which is not the intent"). The first
+   implementation projected the day's card slots (state.cardSlots) into
+   playlist cards, so "Playlists for you" was "Episodes for you" regrouped.
+   A generated playlist is a THEMED LIST: the listener's strongest interest
+   LEAVES (never the roots the card slots already cover), each filled from the
+   discover pool with the newest episodes on that leaf, excluding any episode a
+   card slot is already showing. Pure over state, no persistence, no backend;
+   recomputed per render and resolvable by id for the detail page. */
+const GENERATED_PLAYLIST_COUNT = 3;
+const GENERATED_PLAYLIST_SIZE = 6;
+const GENERATED_PLAYLIST_MIN = 3;
+function generatedPlaylists() {
+  const pool = poolFiltered();
+  const slots = state.cardSlots || [];
+  const slotBranches = new Set(slots.map(sl => sl.branch));
+  const slotItemIds = new Set(slots.flatMap(sl => (sl.items || []).map(it => it.id)).concat(slots.map(sl => sl.item?.id)).filter(Boolean));
+  const byTopic = new Map();
+  for (const it of pool) {
+    for (const t of (it.topics || [])) {
+      if (!byTopic.has(t)) byTopic.set(t, []);
+      byTopic.get(t).push(it);
+    }
+  }
+  const leaves = taxonomyNodes()
+    .filter(n => n.parent !== null && !slotBranches.has(n.parent) && byTopic.has(n.id))
+    .map(n => ({ n, w: state.interests[n.id] ?? 0 }))
+    .filter(x => x.w > 0)
+    .sort((a, b) => (b.w - a.w) || a.n.id.localeCompare(b.n.id));
+  const out = [];
+  for (const { n } of leaves) {
+    const items = byTopic.get(n.id)
+      .filter(it => !slotItemIds.has(it.id))
+      .sort((a, b) => String(b.release_date || "").localeCompare(String(a.release_date || "")) || String(a.id).localeCompare(String(b.id)))
+      .slice(0, GENERATED_PLAYLIST_SIZE);
+    if (items.length < GENERATED_PLAYLIST_MIN) continue;
+    out.push(withMirror({
+      id: "gen-" + n.id, branch: n.id, title: n.label || n.id,
+      items: items.map(playlistPart), sparse: false, isSubject: false, isGenerated: true,
+    }));
+    if (out.length >= GENERATED_PLAYLIST_COUNT) break;
+  }
+  return out;
+}
+function generatedPlaylistById(id) {
+  if (!/^gen-/.test(String(id || ""))) return null;
+  return generatedPlaylists().find(p => p.id === id) || null;
+}
+
 /* U-05 (docs/ui-transition-plan.md D7): does one of the listener's OWN
    saved playlists (cp_playlists) already cover this query? A plain
    substring check, same shape as searchShows() -- title first (the
@@ -1101,10 +1152,7 @@ function playlistMatchesQuery(playlist, query) {
 function generatedPlaylistCandidatesForQuery(query) {
   const q = String(query || "").trim().toLowerCase();
   if (!q) return [];
-  return (state.cardSlots || [])
-    .filter(slot => subjectLabel(slot.branch).toLowerCase().includes(q))
-    .map(slot => subjectQueueById(`subject-${slot.branch}`))
-    .filter(Boolean);
+  return generatedPlaylists().filter(p => String(p.title).toLowerCase().includes(q));
 }
 
 /* Hand-crafted why-lines survive where they exist. */
@@ -3508,20 +3556,14 @@ function playlistCardV2Html(p, { generated = false } = {}) {
 }
 
 /** "Playlists for you" (D5): the listener's own recent playlists first,
-    then 2-3 generated from state.interests against the subject queues —
-    which is exactly what state.cardSlots already is (buildCards()'s
-    output), so "generate a playlist from interests" costs nothing new:
-    each card slot IS a subject queue, reachable at #/subject/<branch>
-    (subjectQueueById), and is rendered here as a playlist card rather
-    than a mini-card. No new backend, per the card's own text. */
+    then up to three generated from state.interests (generatedPlaylists():
+    the strongest interest leaves, filled from the discover pool). NOT the
+    card slots — F14: that made this section "Episodes for you" regrouped. */
 function playlistsForYouHtml() {
   const own = [...playlists()]
     .sort((a, b) => (b.last_played_at || b.created || "").localeCompare(a.last_played_at || a.created || ""))
     .slice(0, 3);
-  const generated = (state.cardSlots || []).slice(0, 3).map(sl => ({
-    id: "subject-" + sl.branch, branch: sl.branch, isSubject: true,
-    title: subjectLabel(sl.branch), items: sl.items,
-  }));
+  const generated = generatedPlaylists();
   if (!own.length && !generated.length) return "";
   const cards = own.map(p => playlistCardV2Html(p, { generated: false }))
     .concat(generated.map(p => playlistCardV2Html(p, { generated: true })));
@@ -3715,7 +3757,7 @@ function partsNote(rows) {
 
 function renderPlaylistDetail(id) {
   setBodyClass("view-page");
-  const p = playlistById(id) || subjectQueueById(id);
+  const p = playlistById(id) || subjectQueueById(id) || generatedPlaylistById(id);
   /* A gone playlist still gets a real page head, ‹ included: with ‹ now
      going back one real step (see § in-app history) instead of always
      Home, an entry for a just-removed playlist sits one step behind the
@@ -3751,7 +3793,7 @@ function renderPlaylistDetail(id) {
   /* Played is an id-in-history question, not a liveness one: a part played before
      it aged out stays played, and so does an unnamed one whose id is in history. */
   const played = rows.filter(r => r.item.id && history.has(r.item.id)).length;
-  const ctx = (p.isSubject ? "subject-" : "playlist-") + p.id;
+  const ctx = (p.isSubject ? "subject-" : (p.isGenerated ? "generated-" : "playlist-")) + p.id;
 
   $("#view").innerHTML = `
     <div class="page">
@@ -3759,16 +3801,16 @@ function renderPlaylistDetail(id) {
         <a class="back" href="#/">‹</a>
         <div>
           <h2>${esc(p.title)}</h2>
-          <p class="sub">${rows.length} episode${rows.length === 1 ? "" : "s"}${p.isSubject ? " · today's queue" : " playlist"} · ${played} played</p>
+          <p class="sub">${rows.length} episode${rows.length === 1 ? "" : "s"}${p.isSubject ? " · today's queue" : (p.isGenerated ? " · generated for you" : " playlist")} · ${played} played</p>
         </div>
       </div>
       ${p.sparse ? `<p class="note">Only found a few on this — here's what we've got.</p>` : ""}
       ${partsNote(rows)}
       ${rows.map((r, i) => r.state === "live" ? epRow(r.item, i, ctx, nextIdx) : archivedRow(r.item, i, ctx)).join("")}
-      ${p.isSubject ? "" : `<button class="danger" id="pl-remove">remove this playlist</button>`}
+      ${(p.isSubject || p.isGenerated) ? "" : `<button class="danger" id="pl-remove">remove this playlist</button>`}
     </div>`;
 
-  if (!p.isSubject) $("#pl-remove")?.addEventListener("click", () => {
+  if (!p.isSubject && !p.isGenerated) $("#pl-remove")?.addEventListener("click", () => {
     savePlaylists(playlists().filter(x => x.id !== p.id));
     logEvent("playlist_removed", { playlist_id: p.id });
     leaveRemovedPlaylist();

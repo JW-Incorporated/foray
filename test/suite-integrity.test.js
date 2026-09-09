@@ -463,7 +463,7 @@ const FLOORS = {
      of thing that regresses silently — nobody notices a personalization
      feed slowly stopped surprising anyone. Every test names its mutation;
      see the suite header. */
-  "test/home-v2.test.js": 7,
+  "test/home-v2.test.js": 9, // F14 (2026-09-08): generated playlists are interest leaves, not card slots
   /* Starred shows (follow-lite), requirement A2.4 / Joey's Q2 answer.
      Kanban card "Build: starred shows (follow-lite) + dedicated Starred
      Shows page". Floored because this is exactly the #276/show-pages
@@ -758,7 +758,7 @@ const FLOORS = {
      `shell-invariants` gained one: the same slice against TODAY'S real documents,
      independently of the fixture suite. */
   "tools/mobile/prepare-webdir.test.mjs": 72,
-  "tools/mobile/shell-invariants.test.mjs": 51,
+  "tools/mobile/shell-invariants.test.mjs": 52, // +1: iOS plugin never calls setActive (F11/F13 pause loop, 2026-09-09)
   /* 2026-09-04: the bundle's JS/CSS is minified (comments + whitespace, identifiers
      kept) and its JSON re-serialised on the way in — docs/mobile-shell.md §3.4.
      `minify.test.mjs` pins the transform (nothing renamed, nothing rewritten, only
