@@ -1,5 +1,13 @@
-import { GenerationRequestSchema, type GenerationRequest } from "../types/generation";
+import { z } from "zod";
+import { GenerationRequestSchema, IntentUnderstandingSchema, SAFETY_CATEGORIES, type GenerationRequest, type UnderstandPromptResult } from "../types/generation";
 import { StageTimingLog, type StageTiming } from "./stageTiming";
+import { BudgetStopError, EpisodeBudgetExceededError, findBudgetError } from "../cost/budgetGuard";
+import { CheckpointSession, checkpointFingerprint, type CheckpointStore } from "./checkpoint";
+import { DeepenedActSchema, SpineSchema } from "../types/spine";
+import { NewSegmentSchema, SourcedActSchema, TapePointerSchema, TranscriptionQueueCandidateSchema } from "../types/tapeSourcing";
+import { ResearchShapeSchema } from "../types/research";
+import { ForayItemSchema } from "./forayItems";
+import { NarratedBeatSchema } from "../types/narration";
 
 import { understandPrompt } from "./understandPrompt";
 import { buildResearchShape } from "./researchShape";
@@ -30,6 +38,7 @@ import type { DeepenActBuilder } from "./DeepenActBuilder";
 import type { NarrationWriterBuilder } from "./NarrationWriterBuilder";
 import type { NarrationVerifierBuilder } from "./NarrationVerifierBuilder";
 import type { ContinuityBuilder } from "./ContinuityBuilder";
+import type { WrittenAct } from "./writeNarration";
 import type { TranscriptCueProvider } from "./transcriptArchiveLookup";
 import type { Spine } from "../types/spine";
 import type { ForayItem } from "./forayItems";
@@ -101,6 +110,17 @@ export interface RunPipelineDeps {
    * reason named rather than the failure hidden.
    */
   finalize?: (input: FinalizeForayInput, root?: string) => Promise<FinalizeForayResult>;
+  /**
+   * Per-stage resume (F-17/F-18). Omit it and the pipeline behaves exactly as
+   * it did before checkpoints existed: nothing is written, nothing is skipped.
+   * Supply it (with `options.checkpointKey`) and every stage's output is
+   * persisted the moment it exists, so a re-run of the same request pays only
+   * for the stages that had not finished.
+   *
+   * See `checkpoint.ts` for what run 1 lost without this: 2 h 35 m, 103 model
+   * calls and 22 of 31 finished beats, discarded because beat 23 failed.
+   */
+  checkpoint?: CheckpointStore;
 }
 
 export interface RunPipelineOptions {
@@ -115,6 +135,14 @@ export interface RunPipelineOptions {
   now?: () => Date;
   /** Repo root, for the taxonomy and validation file reads. */
   root?: string;
+  /**
+   * Names this Foray's checkpoint (F-17/F-18) — the batch driver passes the
+   * candidate file's basename, so the checkpoint sits beside the candidate the
+   * same prompt will eventually produce. Without it, `deps.checkpoint` is
+   * ignored: a checkpoint with no key would be a checkpoint shared by every
+   * prompt in the batch.
+   */
+  checkpointKey?: string;
 }
 
 export type RunPipelineOutcome =
@@ -225,6 +253,58 @@ export function disclosureItem(subject: string, firstSlotId: string): ForayItem 
   } as ForayItem;
 }
 
+/* ------------------------------------------------------------------------ *
+ * Checkpoint schemas (F-17/F-18).
+ *
+ * Every stage's stored output is re-validated on the way back IN, against the
+ * same schema its own type is built from wherever one exists. Two stages had
+ * no schema — §4.7's `WrittenAct[]` and §4.8's stitched items are interfaces,
+ * not zod types — so they get one here rather than being trusted unparsed: a
+ * checkpoint file is JSON a person can edit and a killed process can truncate,
+ * and an unvalidated resume turns that into a failure four stages later with
+ * nothing pointing back at the file. See `CheckpointSession`.
+ * ------------------------------------------------------------------------ */
+
+const UnderstandCheckpointSchema = z.union([
+  z.object({
+    outcome: z.literal("rejected"),
+    rejection: z.object({ category: z.enum(SAFETY_CATEGORIES), explanation: z.string() })
+  }),
+  z.object({
+    outcome: z.literal("needs_clarification"),
+    clarification: z.object({ question: z.string(), readings: z.array(z.string()) })
+  }),
+  z.object({ outcome: z.literal("understood"), intent: IntentUnderstandingSchema })
+]);
+
+const SourceCheckpointSchema = z.object({
+  acts: z.array(SourcedActSchema),
+  newSegments: z.array(NewSegmentSchema),
+  transcriptionQueueCandidates: z.array(TranscriptionQueueCandidateSchema)
+});
+
+const WrittenBeatSchema = z.union([
+  z.object({
+    sourcing: z.literal("tape"),
+    claim: z.string(),
+    exploration: z.boolean(),
+    tape: TapePointerSchema,
+    connectiveNarration: NarratedBeatSchema.optional()
+  }),
+  z.object({
+    sourcing: z.literal("narration"),
+    claim: z.string(),
+    exploration: z.boolean(),
+    narration: NarratedBeatSchema
+  })
+]);
+const WrittenActSchema = z.object({
+  title: z.string(),
+  slots: z.array(z.object({ title: z.string(), beats: z.array(WrittenBeatSchema) }))
+});
+
+const StitchCheckpointSchema = z.object({ items: z.array(ForayItemSchema) });
+
 export async function runForayPipeline(
   request: GenerationRequest,
   options: RunPipelineOptions,
@@ -234,6 +314,51 @@ export async function runForayPipeline(
   const timings = new StageTimingLog();
   const now = options.now ?? (() => new Date());
   const ctx = { userId: options.userId, sessionId: options.sessionId };
+
+  /* F-17/F-18. `open` returns an inert session when there is no store, no key,
+     or a checkpoint written for a different request — so everything below is
+     one code path whether or not the caller wants resume. */
+  const checkpoint = await CheckpointSession.open(
+    deps.checkpoint,
+    options.checkpointKey,
+    checkpointFingerprint({ prompt: req.prompt, duration: req.duration, topic: options.topic })
+  );
+  const resumeHint = options.checkpointKey
+    ? `Everything finished so far is checkpointed under "${options.checkpointKey}", so a re-run restarts at this stage.`
+    : undefined;
+
+  /**
+   * The one seam every stage goes through, doing three things a bare `await`
+   * cannot:
+   *
+   *   - RESUME. Returns the checkpointed output instead of calling the stage,
+   *     and records it as resumed rather than as a stage that took 0 ms.
+   *   - PERSIST. Writes the stage's output the moment it exists (F-18).
+   *   - NAME THE STAGE ON A BUDGET STOP (F-04). `BudgetGuard` throws from
+   *     inside a builder and knows only a tier and a dollar figure; this is
+   *     the only place that also knows which stage was running and that the
+   *     work so far is on disk.
+   */
+  const timed = async <T>(name: string, fn: () => Promise<T>): Promise<T> => {
+    try {
+      return await timings.run(name, fn);
+    } catch (err) {
+      /* Walks `cause`, because §4.4 wraps an act's failure in its own
+         `ActDeepeningError` and would otherwise bury the dollar figures. */
+      const budget = findBudgetError(err);
+      if (budget) {
+        const scope = budget instanceof EpisodeBudgetExceededError ? "per-foray" : "daily";
+        throw new BudgetStopError(name, budget.spentUsd, budget.capUsd, scope, budget, resumeHint);
+      }
+      throw err;
+    }
+  };
+
+  const stage = async <T>(name: string, parse: (raw: unknown) => T, fn: () => Promise<T>): Promise<T> => {
+    const { value, resumed } = await checkpoint.stage(name, parse, () => timed(name, fn));
+    if (resumed) timings.markResumed(name);
+    return value;
+  };
 
   const understander = deps.understander ?? createPromptUnderstander();
   const researcher = deps.researcher ?? createExternalResearcher();
@@ -246,7 +371,11 @@ export async function runForayPipeline(
   /* §4.0-4.1 — safety, then intent. Both non-"understood" outcomes end the run:
      a rejected prompt must not be researched, and a prompt we cannot read one
      way must not be guessed at. */
-  const understood = await timings.run("understand", () => understandPrompt(req.prompt, understander, ctx));
+  const understood = await stage<UnderstandPromptResult>(
+    "understand",
+    (raw) => UnderstandCheckpointSchema.parse(raw) as UnderstandPromptResult,
+    () => understandPrompt(req.prompt, understander, ctx)
+  );
   if (understood.outcome === "rejected") {
     return {
       outcome: "rejected",
@@ -266,33 +395,71 @@ export async function runForayPipeline(
 
   const intent = understood.intent;
 
-  // §4.2 — research to establish shape.
-  const researchShape = await timings.run("research", () =>
-    buildResearchShape(intent, { researcher, ctx })
+  /* §4.2 — research to establish shape. `topic` is left unset so the stage
+     resolves one from the intent itself and keeps off-branch concepts out of
+     the map (F-11); a caller who pinned the taxonomy node by hand has already
+     decided, so that decision wins. */
+  const researchShape = await stage(
+    "research-shape",
+    (raw) => ResearchShapeSchema.parse(raw),
+    () => buildResearchShape(intent, { researcher, ctx, root: options.root, ...(options.topic ? { topic: options.topic } : {}) })
   );
 
   // §4.3 — the spine, frozen from here on (§6.1's invariant, batch-true).
-  const spine = await timings.run("spine", () => buildSpine(intent, researchShape, req.duration, spineBuilder, ctx));
+  const spine = await stage(
+    "spine",
+    (raw) => SpineSchema.parse(raw),
+    () => buildSpine(intent, researchShape, req.duration, spineBuilder, ctx)
+  );
 
-  // §4.4 — deepen every act, in parallel across acts.
-  const deepened = await timings.run("deepen", () => deepenActs(spine, deepenBuilder, ctx));
+  /* §4.4 — deepen every act, in parallel across acts, each act checkpointed on
+     its own (F-17): an act that succeeded is banked even when a sibling act
+     exhausts its retry budget and fails the stage. */
+  const deepened = await timed("deepen", () =>
+    deepenActs(spine, deepenBuilder, ctx, {
+      resume: (index) => checkpoint.resumeSync(`deepen:${index}`, (raw) => DeepenedActSchema.parse(raw)),
+      onActDeepened: (index, act) => checkpoint.save(`deepen:${index}`, act)
+    })
+  );
 
   /* §4.5-4.6 — source each beat against tape, then resolve the pointer. Purely
      deterministic and keyless: no LLM call happens in here at all. The cue
      provider is what decides whether tier-2 can anchor a real span or whether
      the beat degrades to narration for this run. */
-  const sourced = await timings.run("source", async () =>
-    sourceBeats(deepened, { cueProvider: deps.cueProvider })
+  const sourced = await stage(
+    "source",
+    (raw) => SourceCheckpointSchema.parse(raw),
+    async () => sourceBeats(deepened, { cueProvider: deps.cueProvider })
   );
 
-  // §4.7 — write narration, then verify it independently (distinct instances, enforced there).
-  const written = await timings.run("narrate", () =>
-    writeNarration(sourced.acts, { writer: narrationWriter, verifier: narrationVerifier }, spine.voice, ctx)
-  );
+  /* §4.7 — write narration, then verify it independently (distinct instances,
+     enforced there). Driven ONE ACT AT A TIME rather than in a single call, so
+     each act's pages are checkpointed as they finish: `writeNarration` throws
+     `NarrationWriteError` out of the stage when a narration beat fails its
+     third attempt (F-17/F-31), and run 1 lost two finished acts that way. Act
+     order and the writer/verifier instances are unchanged — `writeNarration`
+     iterates the acts it is given in order, so N calls of one act and one call
+     of N acts produce the same result. */
+  const written: WrittenAct[] = [];
+  for (let i = 0; i < sourced.acts.length; i++) {
+    const act = sourced.acts[i]!;
+    written.push(
+      await stage(
+        `narrate:${i}`,
+        (raw) => WrittenActSchema.parse(raw) as WrittenAct,
+        async () => {
+          const [one] = await writeNarration([act], { writer: narrationWriter, verifier: narrationVerifier }, spine.voice, ctx);
+          return one!;
+        }
+      )
+    );
+  }
 
   // §4.8 — stitch, smoothing each act's introduction against the one before it.
-  const stitched = await timings.run("stitch", () =>
-    stitchForay(deepened, written, { continuity: { builder: continuityBuilder } }, ctx)
+  const stitched = await stage(
+    "stitch",
+    (raw) => StitchCheckpointSchema.parse(raw) as { items: ForayItem[] },
+    () => stitchForay(deepened, written, { continuity: { builder: continuityBuilder } }, ctx)
   );
 
   /* The Foray-level fields §4.9 says nothing upstream owns. Resolved here
@@ -334,7 +501,7 @@ export async function runForayPipeline(
 
   // §4.9 — validate against the same two checkers CI runs. Writes nothing.
   const finalize = deps.finalize ?? finalizeForay;
-  const result = await timings.run("finalize", () => finalize(input, options.root));
+  const result = await timed("finalize", () => finalize(input, options.root));
 
   return { outcome: "generated", input, result, spine, timings: timings.all() };
 }
