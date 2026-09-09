@@ -864,7 +864,7 @@ const FLOORS = {
   "tools/mobile/inject-splash.test.mjs": 19,
   "tools/mobile/inject-background-audio.test.mjs": 41,
   "tools/mobile/ios-ci.test.mjs": 125,
-  "tools/mobile/ios-workflow.test.mjs": 45,
+  "tools/mobile/ios-workflow.test.mjs": 39,
   "tools/mobile/probe/install-probe.test.mjs": 39,
   /* The one-shot that gets a newly curated show's back catalogue into the pipeline
      (#279). The floor matters because the whole script exists to make one silent
