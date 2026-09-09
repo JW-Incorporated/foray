@@ -139,7 +139,7 @@ describe("per-stage checkpoint and resume inside one Foray (F-17/F-18)", () => {
     expect(staged).toContain("research-shape");
     expect(staged).toContain("spine");
     expect(staged).toContain("source");
-    expect(staged).toContain("stitch");
+    expect(staged).toContain("stitch:0");
     /* Per-ACT keys, not one `deepen`/`narrate` key: F-17 is specifically about
        a failure in one act not costing the acts that already finished. */
     expect(staged.filter((s) => s.startsWith("deepen:")).length).toBeGreaterThan(0);
@@ -243,7 +243,7 @@ describe("per-stage checkpoint and resume inside one Foray (F-17/F-18)", () => {
     const resumedVeracity = (resumed.seen[0] as { meta: { veracity: { callsPerBeat: number | null; stageTimings: Array<{ name: string; resumed?: boolean }> } } }).meta.veracity;
     expect(resumedVeracity.callsPerBeat).toBe(0);
     expect(resumedVeracity.stageTimings.filter((t) => t.resumed).map((t) => t.name)).toEqual(
-      expect.arrayContaining(["understand", "research-shape", "spine", "source", "narrate:0", "stitch"])
+      expect.arrayContaining(["understand", "research-shape", "spine", "source", "narrate:0", "stitch:0"])
     );
   });
 

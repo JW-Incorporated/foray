@@ -16,7 +16,7 @@ import { deepenActs } from "./deepenActs";
 import { sourceBeats, summarizeSourcing } from "./sourceBeats";
 import { createDigestAudioSourceResolver, type AudioSourceResolver } from "./audioSourceLookup";
 import { writeNarration } from "./writeNarration";
-import { stitchForay } from "./stitchForay";
+import { ForayStitcher } from "./stitchForay";
 import { finalizeForay, mintedSegmentRow, type FinalizeForayInput, type FinalizeForayResult, type ForaySlot } from "./finalizeForay";
 import { resolveTopic, forayIdFor, type TopicCandidate } from "./resolveTopic";
 import { slugifySlotTitle } from "./forayItems";
@@ -508,7 +508,19 @@ const WrittenActSchema = z.object({
   slots: z.array(WrittenSlotSchema)
 });
 
+/* PRE-F-66 SHAPE, STILL READ. Until F-66 the whole of §4.8 was one stage under
+   one `stitch` key holding the whole Foray's items. A checkpoint written by
+   that code is still on disk in every output directory run 2 touched, and it
+   still describes finished work — so `runForayPipeline` reads it and skips
+   per-act stitching entirely when it is there. Nothing WRITES this key any
+   more; see `StitchActCheckpointSchema`. */
 const StitchCheckpointSchema = z.object({ items: z.array(ForayItemSchema) });
+
+/* F-66: §4.8's unit is now an ACT, keyed `stitch:<i>`, matching `deepen:<i>` /
+   `narrate:<i>`. A bare array rather than `{items}` because that is exactly
+   what `ForayStitcher.stitchNextAct` returns, and a checkpoint that mirrors the
+   function's own return value is one less shape to keep in step. */
+const StitchActCheckpointSchema = z.array(ForayItemSchema);
 
 export async function runForayPipeline(
   request: GenerationRequest,
@@ -565,10 +577,18 @@ export async function runForayPipeline(
     }
   };
 
+  /** `stage`, but saying whether the value was RESUMED rather than produced.
+   * Only F-66's per-act stitching needs to know: a `ForayStitcher` whose act
+   * came off disk must still be told about that act, or the next act's
+   * `itemsSoFar` would be missing everything before it. */
+  const stageDetail = async <T>(name: string, parse: (raw: unknown) => T, fn: () => Promise<T>): Promise<{ value: T; resumed: boolean }> => {
+    const result = await checkpoint.stage(name, parse, () => timed(name, fn));
+    if (result.resumed) timings.markResumed(name);
+    return result;
+  };
+
   const stage = async <T>(name: string, parse: (raw: unknown) => T, fn: () => Promise<T>): Promise<T> => {
-    const { value, resumed } = await checkpoint.stage(name, parse, () => timed(name, fn));
-    if (resumed) timings.markResumed(name);
-    return value;
+    return (await stageDetail(name, parse, fn)).value;
   };
 
   /* WS-B (docs/curation/generation-fix-plan-2026-09-09.md): `pipelineTokens`
@@ -829,105 +849,140 @@ export async function runForayPipeline(
      of it — run 2 would have re-paid for twelve pages to reach the one that
      failed. `narrate:<i>:<slot>` banks each slot the moment it is written, and
      `writeNarration`'s `resume` hook reads them back, so a re-run pays only
-     for the slots that never landed. */
-  const written: WrittenAct[] = [];
-  for (let i = 0; i < sourced.acts.length; i++) {
-    const act = sourced.acts[i]!;
-    written.push(
-      await stage(
-        `narrate:${i}`,
-        (raw) => WrittenActSchema.parse(raw) as WrittenAct,
-        async () => {
-          const [one] = await writeNarration(
-            [act],
-            {
-              writer: countingNarrationWriter,
-              verifier: countingNarrationVerifier,
-              /* Requirements §8.1: the same cue provider §4.5 sources
-                 against, so a tape beat's evidence pack holds the cue
-                 window and not just the episode title. */
-              ...(deps.cueProvider ? { cueProvider: deps.cueProvider } : {}),
-              /* `writeNarration` is handed ONE act, so its own act index is
-                 always 0; `i` is what names the slot's key. */
-              resume: (_actIndex, slotIndex) =>
-                checkpoint.resumeSync(`narrate:${i}:${slotIndex}`, (raw) => WrittenSlotSchema.parse(raw) as WrittenSlot),
-              onSlotWritten: (_actIndex, slotIndex, slot) => checkpoint.save(`narrate:${i}:${slotIndex}`, slot)
-            },
-            spine.voice,
-            ctx
-          );
-          return one!;
-        }
-      )
-    );
-  }
+     for the slots that never landed.
+
+     AND §4.8 NOW RUNS INSIDE THIS SAME LOOP (F-66). Stitching used to be one
+     stage AFTER the loop, so act 1's items — and with them WS-D2's partial
+     candidate and `ttlA1Ms` — did not exist until the LAST act had been
+     narrated. Run 2 attempt 3 is the measurement: act 1 was narrated and
+     checkpointed at 18 minutes, the partial candidate was first written at 76
+     minutes, and `ttlA1Ms` came back 4,579,741 ms — the whole run, not the
+     time to first listen. Nothing in act N's stitch depends on act N+1 (see
+     `ForayStitcher`), so act N is stitched the instant it is narrated and the
+     listener's clock finally measures what its name says. */
 
   /* WS-D2's clock: set once, the first time `onActReady` fires for act index
-     0, then carried unchanged on every later act's rewrite — matching
-     `PartialCandidate.ttlA1Ms`'s own doc comment.
+     0 — now immediately after act 0 is narrated — then carried unchanged on
+     every later act's rewrite, matching `PartialCandidate.ttlA1Ms`'s own doc
+     comment.
 
      IT STAYS `null` ON A RESUMED RUN, and that is correct rather than a gap.
-     When F-17/F-18's checkpoint already holds the stitch stage, `stage()`
-     below returns the stored items and never calls `stitchForay` at all, so
-     `onActReady` never fires and no act boundary is ever timed. The resumed
-     process did not take that long, and the process that did is gone; a
-     number measured from THIS run's start would be a fiction. Reported as
+     When F-17/F-18's checkpoint already holds act 0's stitch, `stageDetail()`
+     returns the stored items and act 0 never goes through the stitcher, so
+     `onActReady` never fires for it and no act boundary is ever timed. The
+     resumed process did not take that long, and the process that did is gone;
+     a number measured from THIS run's start would be a fiction. Reported as
      "not measured" instead. The same is true of any run that supplied no
      `deps.onActReady` — there was no act-boundary clock to read. */
   let ttlA1Ms: number | null = null;
 
-  /* §4.8 — stitch, smoothing each act's introduction against the one before
-     it. Checkpointed like every other stage (F-17/F-18); WS-D2's per-act
-     emission is wired INSIDE the checkpointed function, not around it, so a
-     resume that skips stitch also skips the partial writes — there is nothing
-     to stream when the items were already on disk. */
-  const stitched = await stage(
-    "stitch",
-    (raw) => StitchCheckpointSchema.parse(raw) as { items: ForayItem[] },
-    () =>
-      stitchForay(
-        deepened,
-        written,
-        {
-          continuity: { builder: continuityBuilder },
-          onActReady: deps.onActReady
-            ? async ({ actIndex, itemsSoFar }) => {
-                if (actIndex === 0) ttlA1Ms = Date.now() - pipelineStartMs;
-                /* The disclosure is prepended here for the SAME reason the
-                   whole-Foray path prepends it below: it is a Foray-level
-                   obligation stitch has no concept of, and `check-forays.mjs`
-                   requires items[0] to be it — a partial candidate is
-                   something `finalizeForay` inside `buildPartialCandidate`
-                   validates with those same gates, so it needs the same
-                   opening item the final candidate gets. */
-                const itemsWithDisclosure = [disclosureItem(intent.subject, slots[0]!.id), ...itemsSoFar];
-                const candidate = await buildPartialCandidate(
-                  {
-                    actIndex,
-                    totalActs: allActTitles.length,
-                    allActTitles,
-                    items: itemsWithDisclosure,
-                    slots: slots.slice(0, slotCountThroughAct(spine, actIndex)),
-                    runtimeSec: runtimeSecFor(itemsWithDisclosure, runtimePool),
-                    ttlA1Ms
-                  },
-                  { id: forayId, title, topic, summary, authorId: options.userId, builtAt: startedAt, root: options.root },
-                  finalize
-                );
-                await deps.onActReady!(candidate);
-              }
-            : undefined
-        },
-        ctx
-      )
+  /* F-66 BACK-COMPAT: a checkpoint written before §4.8 was split per act holds
+     one `stitch` key carrying the whole Foray's items. That work really was
+     done and paid for, so it is read rather than discarded — and when it is
+     there, the per-act path below is skipped entirely, exactly as the old
+     single stage was. Nothing WRITES this key any more (see
+     `StitchActCheckpointSchema`); the next fresh run for the prompt keys per
+     act. */
+  const legacyStitched = checkpoint.resumeSync("stitch", (raw) => StitchCheckpointSchema.parse(raw) as { items: ForayItem[] });
+  if (legacyStitched) timings.markResumed("stitch");
+
+  /* §4.8's per-act driver. Constructed BEFORE narration starts because it
+     needs nothing narration produces: its continuity smoothing reads act
+     N-1's exit and act N's introduction, both of them §4.4 output (see
+     `smoothActIntroduction`). */
+  const stitcher = new ForayStitcher(
+    deepened,
+    {
+      continuity: { builder: continuityBuilder },
+      onActReady: deps.onActReady
+        ? async ({ actIndex, itemsSoFar }) => {
+            if (actIndex === 0) ttlA1Ms = Date.now() - pipelineStartMs;
+            /* The disclosure is prepended here for the SAME reason the
+               whole-Foray path prepends it below: it is a Foray-level
+               obligation stitch has no concept of, and `check-forays.mjs`
+               requires items[0] to be it — a partial candidate is
+               something `finalizeForay` inside `buildPartialCandidate`
+               validates with those same gates, so it needs the same
+               opening item the final candidate gets. */
+            const itemsWithDisclosure = [disclosureItem(intent.subject, slots[0]!.id), ...itemsSoFar];
+            const candidate = await buildPartialCandidate(
+              {
+                actIndex,
+                totalActs: allActTitles.length,
+                allActTitles,
+                items: itemsWithDisclosure,
+                slots: slots.slice(0, slotCountThroughAct(spine, actIndex)),
+                runtimeSec: runtimeSecFor(itemsWithDisclosure, runtimePool),
+                ttlA1Ms
+              },
+              { id: forayId, title, topic, summary, authorId: options.userId, builtAt: startedAt, root: options.root },
+              finalize
+            );
+            await deps.onActReady!(candidate);
+          }
+        : undefined
+    },
+    ctx
   );
+
+  const written: WrittenAct[] = [];
+  for (let i = 0; i < sourced.acts.length; i++) {
+    const act = sourced.acts[i]!;
+    const writtenAct = await stage(
+      `narrate:${i}`,
+      (raw) => WrittenActSchema.parse(raw) as WrittenAct,
+      async () => {
+        const [one] = await writeNarration(
+          [act],
+          {
+            writer: countingNarrationWriter,
+            verifier: countingNarrationVerifier,
+            /* Requirements §8.1: the same cue provider §4.5 sources
+               against, so a tape beat's evidence pack holds the cue
+               window and not just the episode title. */
+            ...(deps.cueProvider ? { cueProvider: deps.cueProvider } : {}),
+            /* `writeNarration` is handed ONE act, so its own act index is
+               always 0; `i` is what names the slot's key. */
+            resume: (_actIndex, slotIndex) =>
+              checkpoint.resumeSync(`narrate:${i}:${slotIndex}`, (raw) => WrittenSlotSchema.parse(raw) as WrittenSlot),
+            onSlotWritten: (_actIndex, slotIndex, slot) => checkpoint.save(`narrate:${i}:${slotIndex}`, slot)
+          },
+          spine.voice,
+          ctx
+        );
+        return one!;
+      }
+    );
+    written.push(writtenAct);
+
+    if (legacyStitched) continue;
+
+    /* THIS act, stitched now — not after the last act (F-66). Timed and
+       checkpointed under its own `stitch:<i>` key, so a resume does not re-pay
+       for an act that was already assembled and so the stage timing names the
+       act rather than pretending §4.8 was one 58-minute step. */
+    const { value: actItems, resumed } = await stageDetail(
+      `stitch:${i}`,
+      (raw) => StitchActCheckpointSchema.parse(raw) as ForayItem[],
+      () => stitcher.stitchNextAct(writtenAct)
+    );
+    /* A resumed act never went through the stitcher, so it has to be told:
+       act i+1's `itemsSoFar` is every act before it, banked or built. */
+    if (resumed) stitcher.acceptStitchedAct(actItems);
+  }
+
+  /* §4.8's product, however it was assembled this run: every act's items in
+     act order, each one either stitched inside the loop above or read back
+     from its own `stitch:<i>` checkpoint (or, for a pre-F-66 checkpoint, the
+     whole thing at once). */
+  const stitchedItems = legacyStitched ? legacyStitched.items : stitcher.items();
 
   const generatedAt = now().toISOString();
   /* The disclosure is prepended here rather than inside stitch: it is a
      Foray-level obligation, not an act's content, and stitch has no concept of
      "the whole Foray" to attach it to. Prepending also keeps it out of the
      runtime sum below by construction — it is a spoken marker, not tape. */
-  const items = [disclosureItem(intent.subject, slots[0]!.id), ...stitched.items];
+  const items = [disclosureItem(intent.subject, slots[0]!.id), ...stitchedItems];
 
   /* WS-B: computed here, with the resolved `topic` (`tapeRelevance` needs
      it) and before `finalize` runs, so `meta.veracity` rides along on
