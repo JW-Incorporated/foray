@@ -134,19 +134,35 @@ export function bestTranscriptArchiveCandidate(
   let best: TranscriptArchiveMatch | null = null;
   for (const entry of archive) {
     if (!isUsable(entry)) continue;
-    const titleTokens = new Set(tokenizeForSourcing(entry.title));
-    const showTokens = new Set(tokenizeForSourcing(entry.show_title));
-    let score = 0;
-    let showHit = 0;
-    for (const t of claimTokens) {
-      if (titleTokens.has(t)) score += 1;
-      else if (showTokens.has(t)) showHit = 1;
-    }
+    const score = titleTokenScore(claimTokens, entry);
     if (score === 0) continue; // show-title-only overlap is not a match
-    score += showHit;
     if (!best || score > best.score) best = { entry, score };
   }
   return best;
+}
+
+/**
+ * The title-metadata score for one episode: one point per claim content word in
+ * the EPISODE title, plus at most one for the show title, and zero when the
+ * episode title contributes nothing (see `bestTranscriptArchiveCandidate` for
+ * why the show title may never carry a match by itself — it is F-23/F-24).
+ *
+ * Extracted so the one rule has one implementation now that it has two callers
+ * with two different jobs. Here it is still the tier-2 threshold's input. In
+ * `transcriptTextIndex.ts` it is only a TIE-BREAKER between episodes the
+ * transcript text ranks equally — WS-H's demotion of the title bar (F-06),
+ * which is a change in what the number is used for, not in how it is computed.
+ */
+export function titleTokenScore(claimTokens: Set<string>, entry: TranscriptDigestEntry): number {
+  const titleTokens = new Set(tokenizeForSourcing(entry.title));
+  const showTokens = new Set(tokenizeForSourcing(entry.show_title));
+  let score = 0;
+  let showHit = 0;
+  for (const t of claimTokens) {
+    if (titleTokens.has(t)) score += 1;
+    else if (showTokens.has(t)) showHit = 1;
+  }
+  return score === 0 ? 0 : score + showHit;
 }
 
 export function findTranscriptArchiveMatch(
@@ -235,6 +251,30 @@ export class FileTranscriptCueProvider implements TranscriptCueProvider {
     }
     this.cuesByKey.set(key, result);
     return result;
+  }
+
+  /**
+   * The identity of the body file behind an episode — `null` when there is
+   * none on this machine.
+   *
+   * Here rather than in the index that needs it (`transcriptTextIndex.ts`)
+   * because of the rule this module already states: `data-local/` is reached
+   * only through a provider. A cached index has to know whether the transcript
+   * it was built from is still the transcript on disk, and mtime+size is that
+   * question asked of the filesystem; letting the index open the path itself
+   * would put a second reader of `data-local/` in the pipeline, which is
+   * exactly what the provider seam exists to prevent.
+   */
+  bodyStat(entry: TranscriptDigestEntry): { mtimeMs: number; size: number } | null {
+    try {
+      const file = this.locate(String(entry.show_id), String(entry.guid));
+      if (!file) return null;
+      // eslint-disable-next-line security/detect-non-literal-fs-filename -- path came from this provider's own directory walk.
+      const stat = fs.statSync(file);
+      return { mtimeMs: stat.mtimeMs, size: stat.size };
+    } catch {
+      return null;
+    }
   }
 
   private showDir(showId: string): string | null {

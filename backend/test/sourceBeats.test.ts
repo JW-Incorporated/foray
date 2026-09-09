@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { readFileSync } from "fs";
+import { existsSync, readFileSync } from "fs";
 import { join } from "path";
 import { sourceBeats, summarizeSourcing, M4_ITEM_SHARE_MAX } from "../src/generation/sourceBeats";
 import { capArgumentBeats } from "../src/generation/deepenActs";
@@ -9,6 +9,9 @@ import type { DeepenedAct } from "../src/types/spine";
 import type { SegmentRecord } from "../src/generation/segmentPoolLookup";
 import type { TranscriptDigestEntry, TranscriptCue, TranscriptCueProvider } from "../src/generation/transcriptArchiveLookup";
 import { MIN_TAPE_SEGMENT_SEC, MAX_TAPE_SEGMENT_SEC } from "../src/generation/transcriptArchiveLookup";
+import { FileTranscriptCueProvider } from "../src/generation/transcriptArchiveLookup";
+import { FileTranscriptTextIndex } from "../src/generation/transcriptTextIndex";
+import type { TranscriptBodySource, TranscriptTextIndex } from "../src/generation/transcriptTextIndex";
 import { loadSegmentPool } from "../src/generation/segmentPoolLookup";
 
 function makeDeepenedAct(overrides: Partial<DeepenedAct> = {}, label = "A"): DeepenedAct {
@@ -284,7 +287,13 @@ describe("sourceBeats — no audio bytes fetched or written anywhere in this mod
       path.resolve(__dirname, "../src/generation/transcriptArchiveLookup.ts"),
       // The topic gate's catalogue reader, added with WS-C: it reads committed
       // `data/` files and must be held to the same rule as the rest.
-      path.resolve(__dirname, "../src/generation/taxonomyFamily.ts")
+      path.resolve(__dirname, "../src/generation/taxonomyFamily.ts"),
+      /* Tier 2's text index, added with WS-H. It is the one module here that
+         WRITES — its own inverted index, under
+         `data-local/transcripts/index/` — and everything it writes is derived
+         from cue TEXT a provider handed it. No audio, no network, and no read
+         of `data-local/` that does not go through the cue provider. */
+      path.resolve(__dirname, "../src/generation/transcriptTextIndex.ts")
     ];
     for (const file of files) {
       const source = fs.readFileSync(file, "utf8");
@@ -1470,6 +1479,361 @@ describe("sourceBeats — run 2 replay: why 35 beats found no tape (F-49)", () =
          None reaches `no-anchor`/`window-overlap`, the two gates that mean tier
          2 got as far as what was actually said. */
       expect(["title-tokens", "lineage", "no-body"]).toContain(trace.tier2!.gate);
+    }
+  });
+});
+
+/* WS-H (docs/curation/generation-fix-plan-2026-09-09.md; findings F-06, F-49).
+   Tier 2 chooses its candidate episode by what the archive SAYS, not by what
+   its titles are called. Everything after the choice — `resolveAnchorFromCues`,
+   the anchored-window test, the lineage gate, the cut to cue boundaries, the
+   audio-source check — is unchanged, and the cases below are as interested in
+   what the new search still REFUSES as in what it now finds. */
+
+describe("sourceBeats — WS-H: tier 2 matches transcript text, not titles (F-06)", () => {
+  /** An episode whose title says nothing about anything — exactly the case the
+   * title bar cannot admit and 63 of 63 *Practical AI* bodies are made of. */
+  const untitledEpisode: TranscriptDigestEntry = {
+    show_id: "practical-ai",
+    show_title: "Practical AI",
+    guid: "pa-172",
+    title: "Episode 172",
+    cues: 5,
+    feed_duration_sec: 3600,
+    enclosure_url: "https://cdn.example/pa-172.mp3"
+  };
+
+  const labelCues: TranscriptCue[] = [
+    { text: "welcome back to the show today we are talking about benchmarks", start_sec: 70, end_sec: 100 },
+    { text: "the labels in that benchmark were wrong more often than anyone admitted", start_sec: 100, end_sec: 108 },
+    { text: "an audit found thousands of mislabelled validation images across the whole benchmark", start_sec: 108, end_sec: 120 },
+    { text: "and those wrong labels put a ceiling on the accuracy anyone could report", start_sec: 120, end_sec: 132 },
+    { text: "we will come back to that after the break", start_sec: 132, end_sec: 150 }
+  ];
+
+  const labelClaim =
+    "An audit found thousands of mislabelled validation images across the whole benchmark, and those wrong labels put a ceiling on the accuracy anyone could report.";
+
+  /** A body source over cues held in memory — the same contract
+   * `FileTranscriptCueProvider` implements, so the REAL index does the ranking
+   * in these cases rather than a stub that could agree with the code by
+   * accident. `cache: false`: nothing here should touch a disk cache. */
+  function textIndexOver(archive: TranscriptDigestEntry[], cuesByGuid: Record<string, TranscriptCue[]>): TranscriptTextIndex {
+    const bodies: TranscriptBodySource = {
+      getCues: (entry) => cuesByGuid[entry.guid] ?? null,
+      bodyStat: (entry) => (cuesByGuid[entry.guid] ? { mtimeMs: 1, size: 1 } : null)
+    };
+    return new FileTranscriptTextIndex({ archive, bodies, cache: false });
+  }
+
+  function beatFor(claim: string): DeepenedAct[] {
+    return [makeDeepenedAct({ slots: [{ title: "Labels", beats: [{ claim, exploration: false, kind: "account" }] }] }, "WSH")];
+  }
+
+  it("mints tape from an episode whose TITLE shares nothing with the claim, because its transcript says it", () => {
+    const result = sourceBeats(beatFor(labelClaim), {
+      segmentPool: [],
+      transcriptArchive: [untitledEpisode],
+      cueProvider: { getCues: () => labelCues },
+      textIndex: textIndexOver([untitledEpisode], { "pa-172": labelCues }),
+      topic: "engineering/ai-robotics"
+    });
+
+    const beat = allSourcedBeats(result.acts)[0]!;
+    expect(beat.sourcing).toBe("tape");
+    if (beat.sourcing === "tape") {
+      expect(beat.tape.tier).toBe(2);
+      expect(beat.tape.itemId).toContain("practical-ai");
+      /* The minted times are CUE boundaries, not the matched phrase's own few
+         seconds (F-24(c)): the span opens where a cue opens and closes where a
+         cue closes, and it grew past the phrase to reach segment length. */
+      expect(beat.tape.startSec).toBe(100);
+      expect(beat.tape.endSec).toBe(150);
+      expect(beat.tape.endSec - beat.tape.startSec).toBeGreaterThanOrEqual(MIN_TAPE_SEGMENT_SEC);
+      expect(beat.tape.endSec - beat.tape.startSec).toBeLessThanOrEqual(MAX_TAPE_SEGMENT_SEC);
+    }
+    expect(result.newSegments).toHaveLength(1);
+    expect(result.newSegments[0]!.startSec).toBe(100);
+    expect(result.newSegments[0]!.endSec).toBe(150);
+  });
+
+  it("is the whole difference: the same beat, the same archive, no text index — no tape, refused on the title bar", () => {
+    /* F-06 stated as a test. The episode, the transcript and the claim are
+       identical; the only thing removed is the search over the text. This is
+       what every one of run 2's 23 searching beats hit. */
+    const result = sourceBeats(beatFor(labelClaim), {
+      segmentPool: [],
+      transcriptArchive: [untitledEpisode],
+      cueProvider: { getCues: () => labelCues },
+      topic: "engineering/ai-robotics"
+    });
+    expect(allSourcedBeats(result.acts)[0]!.sourcing).toBe("narration");
+    const tier2 = result.sourcingTrace[0]!.tier2!;
+    expect(tier2.gate).toBe("title-tokens");
+    expect(tier2.bestEpisodeTitle).toBeNull();
+    expect(tier2.foundBy).toBeUndefined();
+  });
+
+  /** The same episode, saying a few of the claim's words in a row and then
+   * talking about something else — F-24's own shape: an anchor exists, and the
+   * tape around it is not about the claim. */
+  const offTopicCues: TranscriptCue[] = [
+    { text: "we looked at images across the whole benchmark last spring", start_sec: 10, end_sec: 20 },
+    { text: "anyway that was a completely different conversation about hiring", start_sec: 20, end_sec: 30 },
+    { text: "and we never went back to it", start_sec: 30, end_sec: 40 }
+  ];
+
+  it("records the BM25 score, the rank and how many episodes it opened on the row that decided", () => {
+    const result = sourceBeats(beatFor(labelClaim), {
+      segmentPool: [],
+      transcriptArchive: [untitledEpisode],
+      cueProvider: { getCues: () => offTopicCues },
+      textIndex: textIndexOver([untitledEpisode], { "pa-172": offTopicCues }),
+      topic: "engineering/ai-robotics"
+    });
+
+    expect(allSourcedBeats(result.acts)[0]!.sourcing).toBe("narration");
+    const tier2 = result.sourcingTrace[0]!.tier2!;
+    expect(tier2.gate).toBe("window-overlap");
+    expect(tier2.foundBy).toBe("text-index");
+    expect(tier2.textScore).toBeGreaterThan(0);
+    expect(tier2.textRank).toBe(0);
+    expect(tier2.textMatchedTerms).toBeGreaterThanOrEqual(3);
+    expect(tier2.candidatesConsidered).toBe(1);
+    /* And the title bar's own number is still reported — as a number, not as a
+       verdict: the episode is called "Episode 172" and scores zero. */
+    expect(tier2.score).toBe(0);
+  });
+
+  it("says `text-index:no-candidate` when the search ran and the archive had nothing worth opening", () => {
+    const result = sourceBeats(beatFor("Tokamak plasma confinement obeys the Lawson criterion."), {
+      segmentPool: [],
+      transcriptArchive: [untitledEpisode],
+      cueProvider: { getCues: () => labelCues },
+      textIndex: textIndexOver([untitledEpisode], { "pa-172": labelCues }),
+      topic: "engineering/ai-robotics"
+    });
+    const tier2 = result.sourcingTrace[0]!.tier2!;
+    expect(tier2.gate).toBe("text-index:no-candidate");
+    expect(tier2.candidatesConsidered).toBe(0);
+  });
+
+  it("reports the candidate that got FURTHEST, not the one the text ranked first", () => {
+    /* Eight candidates a beat cannot use are one story; one candidate whose
+       tape was reached and refused is another, and it is the one a person tunes
+       a threshold against (F-49). */
+    const absent: TranscriptDigestEntry = { ...untitledEpisode, guid: "pa-999", title: "Episode 999" };
+    const cuesByGuid: Record<string, TranscriptCue[]> = {
+      // The top-ranked episode says the most about the claim...
+      "pa-999": [...offTopicCues, { text: "mislabelled validation images benchmark labels accuracy audit ceiling", start_sec: 40, end_sec: 50 }],
+      "pa-172": offTopicCues
+    };
+    const result = sourceBeats(beatFor(labelClaim), {
+      segmentPool: [],
+      transcriptArchive: [absent, untitledEpisode],
+      // ...but its BODY is not on this machine, so only the second can be opened.
+      cueProvider: { getCues: (entry) => (entry.guid === "pa-172" ? offTopicCues : null) },
+      textIndex: textIndexOver([absent, untitledEpisode], cuesByGuid),
+      topic: "engineering/ai-robotics"
+    });
+
+    const tier2 = result.sourcingTrace[0]!.tier2!;
+    expect(tier2.candidatesConsidered).toBe(2);
+    expect(tier2.gate).toBe("window-overlap");
+    expect(tier2.bestEpisodeTitle).toBe("Episode 172");
+  });
+
+  it("refuses the run-1 Chernobyl-for-Hyatt anchor even when the text search offers the episode", () => {
+    /* F-23/F-24 with the new search in front of them. The *Causality* Chernobyl
+       episode shares the trade's vocabulary with a Hyatt Regency claim — design,
+       load, review, failure — so the text index will happily rank it. What
+       refuses it is what has always refused it once the tape is actually read:
+       the claim's own words are not spoken there. */
+    const chernobyl: TranscriptDigestEntry = {
+      show_id: "causality-engineered-network",
+      show_title: "Causality — Engineered Network",
+      guid: "c22",
+      title: "22: Chernobyl",
+      cues: 4,
+      feed_duration_sec: 3600
+    };
+    const chernobylCues: TranscriptCue[] = [
+      { text: "the reactor design carried a positive void coefficient at low power", start_sec: 10, end_sec: 20 },
+      { text: "the test procedure had been reviewed and then changed on the night", start_sec: 20, end_sec: 30 },
+      { text: "the load on the turbines was never the thing that failed here", start_sec: 30, end_sec: 40 },
+      { text: "and the review that would have caught it was never run", start_sec: 40, end_sec: 50 }
+    ];
+    const hyattClaim =
+      "The original, unrevised design was already carrying roughly half the load required by the Kansas City building code, so a full structural review would likely have found the walkway inadequate.";
+
+    const result = sourceBeats(beatFor(hyattClaim), {
+      segmentPool: [],
+      transcriptArchive: [chernobyl],
+      cueProvider: { getCues: () => chernobylCues },
+      textIndex: textIndexOver([chernobyl], { c22: chernobylCues })
+    });
+
+    expect(allSourcedBeats(result.acts)[0]!.sourcing).toBe("narration");
+    expect(result.newSegments).toHaveLength(0);
+    const tier2 = result.sourcingTrace[0]!.tier2!;
+    expect(tier2.foundBy).toBe("text-index");
+    expect(["no-anchor", "window-overlap"]).toContain(tier2.gate);
+  });
+
+  it("refuses the run-1 griddle anchor: a food-history episode is off-lineage however much vocabulary it shares", () => {
+    /* F-29. The text index is given the episode and the topic gate never lets
+       the search reach it — the gate runs BEFORE any body is opened, which is
+       also why a 1,700-episode archive is cheap to search. */
+    const griddle: TranscriptDigestEntry = {
+      show_id: "british-food-history",
+      show_title: "British Food History",
+      guid: "bfh-griddle",
+      title: "The griddle and the bakestone",
+      cues: 3,
+      feed_duration_sec: 2764
+    };
+    const griddleCues: TranscriptCue[] = [
+      { text: "most british cooking happened at an open hearth until the mid nineteenth century", start_sec: 10, end_sec: 20 },
+      { text: "people would have had one hearth and would have used it for everything", start_sec: 20, end_sec: 30 },
+      { text: "the load of the bakestone was carried on an iron bar", start_sec: 30, end_sec: 40 }
+    ];
+    const kansasCity =
+      "The original, unrevised design was already carrying roughly half the load required by the Kansas City building code, so a full structural review would likely have found the walkway inadequate even without the phone-call revision.";
+
+    const result = sourceBeats(beatFor(kansasCity), {
+      segmentPool: [],
+      transcriptArchive: [griddle],
+      cueProvider: { getCues: () => griddleCues },
+      textIndex: textIndexOver([griddle], { "bfh-griddle": griddleCues }),
+      topic: "engineering/disasters"
+    });
+
+    expect(allSourcedBeats(result.acts)[0]!.sourcing).toBe("narration");
+    expect(result.newSegments).toHaveLength(0);
+    expect(result.sourcingTrace[0]!.tier2!.gate).not.toBe("window-overlap");
+  });
+
+  it("refuses the run-2 San Bruno anchor for an AI latency beat: the lineage gate runs before the text search", () => {
+    /* Run 2's Greg Linden beat found `causality-engineered-network--35-san-bruno`
+       at full score in tier 1 and was refused by the taxonomy gate. Tier 2's new
+       search must not be a way around that gate. */
+    const sanBruno: TranscriptDigestEntry = {
+      show_id: "causality-engineered-network",
+      show_title: "Causality — Engineered Network",
+      guid: "c35",
+      title: "35: San Bruno",
+      cues: 3,
+      feed_duration_sec: 3600
+    };
+    const sanBrunoCues: TranscriptCue[] = [
+      { text: "the latency between the alarm and the response was measured in minutes", start_sec: 10, end_sec: 20 },
+      { text: "every hundred milliseconds of delay cost them something measurable", start_sec: 20, end_sec: 30 },
+      { text: "the record of the test was never filed with the regulator", start_sec: 30, end_sec: 40 }
+    ];
+    const latencyClaim =
+      "Greg Linden's internal test at Amazon showed that every hundred milliseconds of delay cost them something measurable in revenue.";
+
+    const result = sourceBeats(beatFor(latencyClaim), {
+      segmentPool: [],
+      transcriptArchive: [sanBruno],
+      cueProvider: { getCues: () => sanBrunoCues },
+      textIndex: textIndexOver([sanBruno], { c35: sanBrunoCues }),
+      topic: "engineering/ai-robotics"
+    });
+
+    expect(allSourcedBeats(result.acts)[0]!.sourcing).toBe("narration");
+    expect(result.newSegments).toHaveLength(0);
+    expect(["lineage", "text-index:no-candidate"]).toContain(result.sourcingTrace[0]!.tier2!.gate);
+  });
+});
+
+/* THE OFFLINE HALF: the same code against the REAL transcript archive, which
+   lives in `data-local/` and is on the generation machine only. These cases
+   skip themselves, loudly and by name, anywhere else — a checkout without the
+   bodies is exactly the checkout `NullTranscriptTextIndex` is the default for,
+   and a green tick there must not be read as evidence about tape. */
+describe("sourceBeats — WS-H offline: the real archive on the generation machine", () => {
+  const NORMALIZED_ROOT = join(__dirname, "..", "..", "data-local", "transcripts", "normalized");
+  const HAS_ARCHIVE = existsSync(NORMALIZED_ROOT);
+  const RUN2_ACTS: DeepenedAct[] = (
+    JSON.parse(readFileSync(join(__dirname, "fixtures", "run2-deepen-2026-09-09.json"), "utf8")) as { acts: DeepenedAct[] }
+  ).acts;
+  const SKIP_REASON = `no transcript bodies at ${NORMALIZED_ROOT} — tier 2 degrades to the title path here, which is what CI tests above`;
+
+  function realIndex(): { cueProvider: FileTranscriptCueProvider; textIndex: FileTranscriptTextIndex } {
+    const cueProvider = new FileTranscriptCueProvider(NORMALIZED_ROOT);
+    return { cueProvider, textIndex: new FileTranscriptTextIndex({ bodies: cueProvider }) };
+  }
+
+  it("mints real Practical AI tape for a claim the show actually makes, and refuses it without the index", (ctx) => {
+    if (!HAS_ARCHIVE) {
+      console.log(`[WS-H] skipping real-archive case: ${SKIP_REASON}`);
+      ctx.skip();
+      return;
+    }
+    /* The claim quotes *Practical AI*'s own words on AI incident reporting
+       ("AI incidents, audits, and the limits of benchmarks"), which is what a
+       beat about safety culture in production ML would say. No title in the
+       show shares three content words with it. */
+    const claim =
+      "Aviation treats a crash as a regression test nobody wants to repeat, and the same primitive shows up in food safety and in medical adverse event reporting: a bad thing happens, and the industry records it so that it does not happen again.";
+    const spine = [
+      makeDeepenedAct({ slots: [{ title: "Incidents", beats: [{ claim, exploration: false, kind: "account" }] }] }, "Incidents")
+    ];
+    const { cueProvider, textIndex } = realIndex();
+
+    const withIndex = sourceBeats(spine, { segmentPool: [], cueProvider, textIndex, topic: "engineering/ai-robotics" });
+    const beat = allSourcedBeats(withIndex.acts)[0]!;
+    expect(beat.sourcing).toBe("tape");
+    if (beat.sourcing === "tape") {
+      expect(beat.tape.tier).toBe(2);
+      expect(beat.tape.itemId).toContain("practical-ai");
+      /* Real cue boundaries out of a real transcript, not the anchor's own
+         seconds: a segment-length piece of tape with a real duration. */
+      expect(beat.tape.endSec).toBeGreaterThan(beat.tape.startSec);
+      expect(beat.tape.endSec - beat.tape.startSec).toBeGreaterThanOrEqual(MIN_TAPE_SEGMENT_SEC);
+      expect(beat.tape.endSec - beat.tape.startSec).toBeLessThanOrEqual(MAX_TAPE_SEGMENT_SEC);
+      expect(beat.tape.startAnchor.split(" ").length).toBeGreaterThanOrEqual(4);
+    }
+
+    /* And the same beat, on the same machine, with tier 2 back on titles. */
+    const titlesOnly = sourceBeats(spine, { segmentPool: [], cueProvider, topic: "engineering/ai-robotics" });
+    expect(allSourcedBeats(titlesOnly.acts)[0]!.sourcing).toBe("narration");
+  });
+
+  it("replays run 2's own beats: tier 2 now reaches Practical AI's words, and the anchor rule is what stops it", (ctx) => {
+    if (!HAS_ARCHIVE) {
+      console.log(`[WS-H] skipping run-2 replay: ${SKIP_REASON}`);
+      ctx.skip();
+      return;
+    }
+    /* Run 2's deepen output, the real digests, the real bodies, and the topic
+       the resolver SHOULD have produced (`engineering/ai-robotics`; it produced
+       `engineering/energy-fusion`, which is F-59's own finding and refuses
+       *Practical AI* at the lineage gate before any of this runs).
+       WHAT CHANGED: every one of these beats used to stop at `title-tokens` —
+       the best *Practical AI* title scores 1 (F-49's resolved cause). They now
+       stop inside the episode's own transcript, which is the gate WS-H set out
+       to reach. WHAT DID NOT: none of them yields tape, because none of these
+       written claims is spoken verbatim in the show. That is the next binding
+       constraint and it is a finding, not a failure of this test. */
+    const { cueProvider, textIndex } = realIndex();
+    const result = sourceBeats(RUN2_ACTS, { cueProvider, textIndex, topic: "engineering/ai-robotics" });
+
+    /* The six beats run 2's deepen stage tagged `account`. (With F-49's
+       argument cap applied it is 23, and the offline run in this PR's body
+       reports the same answer for all 23; the six are what this suite pays
+       for — each beat opens eight hour-long transcripts.) */
+    const searched = result.sourcingTrace.filter((t) => t.outcome === "no-tape");
+    expect(searched).toHaveLength(6);
+    const reachedTheTape = searched.filter((t) => t.tier2 && ["no-anchor", "window-overlap"].includes(t.tier2.gate));
+    expect(reachedTheTape.length).toBeGreaterThan(0);
+    for (const trace of reachedTheTape) {
+      expect(trace.tier2!.bestShowId).toBe("practical-ai");
+      expect(trace.tier2!.foundBy).toBe("text-index");
+      expect(trace.tier2!.textScore).toBeGreaterThan(0);
+      /* The title bar it used to die on is still measured, and still low. */
+      expect(trace.tier2!.score).toBeLessThan(trace.tier2!.requiredScore);
     }
   });
 });

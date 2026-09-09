@@ -44,6 +44,7 @@ import type { NarrationVerifierBuilder } from "./NarrationVerifierBuilder";
 import type { ContinuityBuilder } from "./ContinuityBuilder";
 import type { WrittenAct, WrittenSlot } from "./writeNarration";
 import type { TranscriptCueProvider } from "./transcriptArchiveLookup";
+import type { TranscriptTextIndex } from "./transcriptTextIndex";
 import type { TapeRelevanceInput } from "../types/tapeSourcing";
 import type { Spine } from "../types/spine";
 import type { ForayItem } from "./forayItems";
@@ -93,6 +94,10 @@ export interface RunPipelineDeps {
   continuityBuilder?: ContinuityBuilder;
   /** §4.5 tier-2: supplies real cue text so a beat can be anchored to tape. */
   cueProvider?: TranscriptCueProvider;
+  /** §4.5 tier-2: the candidate search over transcript TEXT (WS-H, F-06).
+   * Omitted, tier 2 keeps to the title-metadata path — see
+   * `SourceBeatsOptions.textIndex`. */
+  textIndex?: TranscriptTextIndex;
   /** §4.5 tier-2: resolves the `data/segment-sources.json` row that makes a
    * minted segment playable. Defaults to the real catalogue-reading resolver;
    * injectable so a test can exercise the refusal path without a checkout. */
@@ -372,9 +377,16 @@ const SourcingTraceSchema = z.object({
       bestEpisodeTitle: z.string().nullable(),
       score: z.number(),
       requiredScore: z.number(),
-      gate: z.enum(["title-tokens", "lineage", "no-body", "no-anchor", "window-overlap", "no-audio-source"]),
+      gate: z.enum(["text-index:no-candidate", "title-tokens", "lineage", "no-body", "no-anchor", "window-overlap", "no-audio-source"]),
       anchorContentWords: z.number().optional(),
-      beyondAnchorOverlap: z.number().optional()
+      beyondAnchorOverlap: z.number().optional(),
+      /* WS-H: what tier 2's text search saw (`types/tapeSourcing.ts`). Optional
+         so a checkpoint written before WS-H still parses on resume. */
+      foundBy: z.enum(["text-index", "title"]).optional(),
+      textScore: z.number().optional(),
+      textRank: z.number().optional(),
+      textMatchedTerms: z.number().optional(),
+      candidatesConsidered: z.number().optional()
     })
     .nullable()
 });
@@ -675,6 +687,7 @@ export async function runForayPipeline(
     async () =>
       sourceBeats(deepened, {
         cueProvider: deps.cueProvider,
+        textIndex: deps.textIndex,
         topic,
         root: options.root,
         /* Tier 2 may only mint tape whose audio can be honestly registered

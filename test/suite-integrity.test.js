@@ -1351,7 +1351,11 @@ const BACKEND_FLOORS = {
      ("prompts are discarded") enforced structurally — this suite scans the
      generation-stage source for persistence primitives and proves a full
      understand-prompt run touches no file on disk. */
-  "test/promptNoPersistence.test.ts": 4,
+  /* WS-H raised this from 4: `transcriptTextIndex.ts` is the second module
+     allowed to write under `data-local/`, and the added case holds its cache
+     to §9.4 the way the evidence cache’s is — podcast words keyed by show id,
+     never the claim a search ran for. */
+  "test/promptNoPersistence.test.ts": 5,
   "test/property/dedup.property.test.ts": 5,
   "test/property/duration.property.test.ts": 5,
   "test/property/html.property.test.ts": 4,
@@ -1431,7 +1435,17 @@ const BACKEND_FLOORS = {
      tape (best candidate, score, bar, gate — per tier), refuses to mint tape
      whose audio cannot be honestly registered, and is replayed over run 2's own
      35 beats so the diagnosis is a test rather than a paragraph. */
-  "test/sourceBeats.test.ts": 49,
+  /* WS-H (F-06/F-49) raised this from 49: tier 2 now finds its candidate
+     episodes by searching the archive’s transcript TEXT, so the suite pins
+     both halves — tape minted from an episode whose title says nothing, and
+     run 1’s Chernobyl/griddle/San Bruno mis-anchors still refused with the
+     text search switched on — plus two offline cases that skip by name on a
+     checkout without `data-local/transcripts/`. */
+  "test/sourceBeats.test.ts": 59,
+  /* WS-H’s new module: the BM25 index over the normalised cue text, its disk
+     cache and the invalidation that makes a re-transcribed episode rebuild it,
+     and the Null implementation CI actually runs. */
+  "test/transcriptTextIndex.test.ts": 11,
   /* §4.7 end to end (kanban card t_5a8b77c3): writeNarration() writes one
      page per narration beat (mode budgets, per-claim sources array),
      always through a genuinely separate verifier call (never the writer —

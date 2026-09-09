@@ -10,6 +10,7 @@ import type {
   TapeRelevanceInput,
   Tier1Gate,
   Tier1TraceRow,
+  Tier2Gate,
   Tier2TraceRow,
   TranscriptionQueueCandidate
 } from "../types/tapeSourcing";
@@ -40,18 +41,29 @@ import {
 import {
   ANCHOR_WINDOW_PAD_SEC,
   anchoredWindowEvidence,
+  type AnchoredWindowEvidence,
   anchoredWindowIsOnTopic,
   bestTranscriptArchiveCandidate,
   cueWindowText,
   findTranscriptArchiveMatch,
   loadTranscriptArchive,
+  MIN_ANCHOR_WORDS,
   resolveAnchorFromCues,
+  titleTokenScore,
   NullTranscriptCueProvider,
   TIER2_MATCH_THRESHOLD,
   TIER2_WINDOW_OVERLAP_MIN,
+  type ResolvedAnchorSpan,
   type TranscriptCueProvider,
   type TranscriptDigestEntry
 } from "./transcriptArchiveLookup";
+import {
+  NullTranscriptTextIndex,
+  TRANSCRIPT_TEXT_CANDIDATES,
+  type TranscriptTextCandidate,
+  type TranscriptTextIndex
+} from "./transcriptTextIndex";
+import { tokenizeForSourcing } from "./catalogueLookup";
 
 /**
  * §4.5-4.6 orchestrator (docs/curation/generation-architecture.md §4.5,
@@ -126,6 +138,17 @@ export interface SourceBeatsOptions {
   transcriptArchive?: TranscriptDigestEntry[];
   cueProvider?: TranscriptCueProvider;
   /**
+   * §4.5 tier-2's CANDIDATE SEARCH over what the archive actually says
+   * (`transcriptTextIndex.ts`; fix plan WS-H, findings F-06 and F-49).
+   *
+   * Defaults to `NullTranscriptTextIndex`, which returns nothing — so a caller
+   * that supplies no index (CI, every test written before WS-H) gets exactly
+   * the title-metadata path tier 2 has always walked, and a machine that holds
+   * the transcript bodies gets a search over the text. Same shape and same
+   * default-to-honest-nothing contract as `cueProvider` above.
+   */
+  textIndex?: TranscriptTextIndex;
+  /**
    * The Foray's resolved `data/taxonomy.json` node (§4.5's TOPIC GATE).
    *
    * Supplied by `runPipeline.ts`, which now resolves the topic BEFORE sourcing
@@ -160,6 +183,7 @@ export function sourceBeats(deepenedActs: DeepenedAct[], options: SourceBeatsOpt
   const segmentPool = options.segmentPool ?? loadSegmentPool();
   const transcriptArchive = options.transcriptArchive ?? loadTranscriptArchive();
   const cueProvider = options.cueProvider ?? new NullTranscriptCueProvider();
+  const textIndex = options.textIndex ?? new NullTranscriptTextIndex();
 
   const newSegments: NewSegment[] = [];
   /* One row per episode a segment was minted from, deduplicated by item id:
@@ -202,6 +226,7 @@ export function sourceBeats(deepenedActs: DeepenedAct[], options: SourceBeatsOpt
     segmentPool,
     transcriptArchive,
     cueProvider,
+    textIndex,
     windowText: makeSegmentWindowText(transcriptArchive, cueProvider),
     forayTopic,
     root: options.root,
@@ -350,6 +375,9 @@ interface SourcingState {
   segmentPool: SegmentRecord[];
   transcriptArchive: TranscriptDigestEntry[];
   cueProvider: TranscriptCueProvider;
+  /** See `SourceBeatsOptions.textIndex` — the Null index makes tier 2's
+   * candidate search exactly the title search it was before WS-H. */
+  textIndex: TranscriptTextIndex;
   windowText: SegmentWindowText;
   /** The Foray's resolved `data/taxonomy.json` node — the gate's left-hand
    * side. Null when the caller had none, which makes the gate inert. */
@@ -495,127 +523,272 @@ function resolveOneBeat(beat: Beat, state: SourcingState): BeatResolution {
      still hold only what earlier beats committed to (F-49). */
   const tier1Trace = traceTier1(claim, state);
 
-  // Tier 2: transcript archive. A hit here PRODUCES a new segment via a
-  // real, verbatim anchor located in the episode's actual cue text —
-  // never a raw timestamp, never an invented anchor. If cue text is not
-  // available (the common case in this checkout — see
-  // NullTranscriptCueProvider's doc comment), the episode-level match is
-  // real but unresolved this run and the beat falls through, same as no
-  // match at all.
+  /* TIER 2: THE TRANSCRIPT ARCHIVE, ASKED WHAT IT SAYS (WS-H; F-06, F-49).
+     A hit here PRODUCES a new segment via a real, verbatim anchor located in
+     the episode's actual cue text — never a raw timestamp, never an invented
+     anchor.
+
+     WHAT WS-H CHANGED IS THE CANDIDATE SEARCH, AND ONLY THAT. Until now the
+     only way to reach an episode's tape was for its TITLE to share three
+     content words with the claim, so run 2's 23 searching beats never got past
+     the title bar — *Practical AI*, 63 of 63 bodies present, best title score
+     ONE against a claim about ImageNet's label errors (F-49's resolved cause).
+     Now the claim's content words are put to an index over the archive's own
+     cue text (`textIndex`), the top few episodes are opened, and every gate
+     that decides whether the tape is about the claim runs on them EXACTLY as
+     before: `resolveAnchorFromCues`, the anchored-window overlap test (F-24),
+     the taxonomy lineage gate (F-23/F-29), the cut to whole cues, and the
+     audio-source check. The title bar survives as a fallback candidate and a
+     tie-breaker, never as a gate — which is the whole of F-06.
+
+     Candidates are walked in order and the FIRST one that passes every gate
+     wins, so a beat still takes at most one tier-2 segment. What the trace
+     reports when none passes is the candidate that got FURTHEST, because that
+     is the gate a person would go and argue with. */
   const archiveIsUsable = (entry: TranscriptDigestEntry) =>
     familyGateAllows(state.forayTopic, nodesForArchiveEntry(entry, state), state.root);
-  const tier2 = findTranscriptArchiveMatch(claim, state.transcriptArchive, archiveIsUsable);
-  /* The gate tier 2 stopped at, refined as the episode gets further through the
-     search: it matched but its body is not on this machine, or the body is here
-     but says none of the claim verbatim, or an anchor was found in tape that
-     turned out to be about something else. */
-  let tier2Trace: Tier2TraceRow = tier2
-    ? archiveTraceRow(tier2.entry, tier2.score, "no-body")
-    : traceTier2Rejected(claim, state, archiveIsUsable);
-  if (tier2) {
-    const cues = state.cueProvider.getCues(tier2.entry);
-    if (cues) {
-      const span = resolveAnchorFromCues(claim, cues);
-      /* THE ANCHORED-WINDOW CHECK (F-24). An anchor proves a phrase was spoken;
-         it does not prove the tape there is about the claim. Run 1's anchors
-         were runs like "the original design required", which occur in almost
-         any hour of talk, and the minted segment was those few seconds. The
-         claim's content words must also turn up AROUND the anchor — not
-         somewhere else in the episode — before this is tape. */
-      const evidence = span ? anchoredWindowEvidence(claim, cues, span) : null;
-      tier2Trace = span
-        ? { ...tier2Trace, gate: "window-overlap", anchorContentWords: evidence?.anchorContentWords, beyondAnchorOverlap: evidence?.beyondAnchorOverlap }
-        : { ...tier2Trace, gate: "no-anchor" };
-      if (span && evidence && anchoredWindowIsOnTopic(evidence)) {
-        const itemId = deriveItemId(tier2.entry);
-        /* TAPE NOTHING CAN PLAY IS NOT TAPE. A minted segment is a pointer into
-           an episode's audio, and `check-forays.mjs` refuses a pool item id with
-           no `data/segment-sources.json` row ("nothing can resolve its audio").
-           So the row is minted here, from the digest's own enclosure and a real
-           DAI verdict, or the beat gets narration — never a segment id that
-           would fail §4.9 four stages later. Inert for a caller that supplied no
-           resolver (see `SourceBeatsOptions.audioSourceFor`). */
-        const audioSource = state.audioSourceFor ? state.audioSourceFor(tier2.entry, itemId) : null;
-        if (state.audioSourceFor && !audioSource) {
-          tier2Trace = { ...tier2Trace, gate: "no-audio-source" };
-          state.transcriptionQueueCandidates.push({
-            claim,
-            showId: tier2.entry.show_id,
-            reason: `Transcript-archive tape was located in "${tier2.entry.title}", but no data/segment-sources.json row can be written for it (no resolvable https audio URL, feed duration, or DAI verdict), so nothing could play it.`
-          });
-          return {
-            kind: "narration",
-            reason: "Tape was found for this beat but its episode's audio cannot be resolved, so it cannot be played.",
-            diagnosis: { outcome: "no-tape", tier1: tier1Trace, tier2: tier2Trace }
-          };
-        }
-        if (audioSource) state.newSegmentSources.set(itemId, audioSource);
-        const segmentId = mintSegmentId(itemId, span.startSec, state.mintedIds);
-        const referenceDurationSec = tier2.entry.feed_duration_sec ?? span.endSec;
-        state.newSegments.push({
-          id: segmentId,
-          itemId,
-          startSec: span.startSec,
-          endSec: span.endSec,
-          referenceDurationSec,
-          startAnchor: span.startAnchor,
-          endAnchor: span.endAnchor,
-          confidence: "medium"
-        });
-        return {
-          kind: "tape",
-          nodes: nodesForArchiveEntry(tier2.entry, state),
-          pointer: {
-            segmentId,
-            itemId,
-            startSec: span.startSec,
-            endSec: span.endSec,
-            startAnchor: span.startAnchor,
-            endAnchor: span.endAnchor,
-            tier: 2,
-            confidence: "medium"
-          }
-        };
-      }
-      if (span && evidence) {
-        state.transcriptionQueueCandidates.push({
-          claim,
-          showId: tier2.entry.show_id,
-          reason: `Transcript-archive metadata matched ("${tier2.entry.title}") and a ${evidence.anchorContentWords}-content-word anchor was located, but only ${evidence.beyondAnchorOverlap} further claim content words are spoken within ${ANCHOR_WINDOW_PAD_SEC} s of it — below the ${TIER2_WINDOW_OVERLAP_MIN} needed to call the tape there on topic.`
-        });
-        return {
-          kind: "narration",
-          reason: "A transcript anchor was found but the tape around it is not about this claim.",
-          diagnosis: { outcome: "no-tape", tier1: tier1Trace, tier2: tier2Trace }
-        };
-      }
+  const candidates = tier2Candidates(claim, state, archiveIsUsable);
+
+  let furthest: Tier2Progress | null = null;
+  for (const candidate of candidates) {
+    const cues = state.cueProvider.getCues(candidate.entry);
+    if (!cues) {
+      furthest = furtherOf(furthest, { candidate, gate: "no-body" });
+      continue;
     }
+    const span = resolveAnchorFromCues(claim, cues);
+    if (!span) {
+      furthest = furtherOf(furthest, { candidate, gate: "no-anchor" });
+      continue;
+    }
+    /* THE ANCHORED-WINDOW CHECK (F-24). An anchor proves a phrase was spoken;
+       it does not prove the tape there is about the claim. Run 1's anchors were
+       runs like "the original design required", which occur in almost any hour
+       of talk, and the minted segment was those few seconds. The claim's
+       content words must also turn up AROUND the anchor — not somewhere else in
+       the episode — before this is tape. */
+    const evidence = anchoredWindowEvidence(claim, cues, span);
+    if (!anchoredWindowIsOnTopic(evidence)) {
+      furthest = furtherOf(furthest, { candidate, gate: "window-overlap", evidence, span });
+      continue;
+    }
+    const itemId = deriveItemId(candidate.entry);
+    /* TAPE NOTHING CAN PLAY IS NOT TAPE. A minted segment is a pointer into an
+       episode's audio, and `check-forays.mjs` refuses a pool item id with no
+       `data/segment-sources.json` row ("nothing can resolve its audio"). So the
+       row is minted here, from the digest's own enclosure and a real DAI
+       verdict, or this candidate is passed over — never a segment id that would
+       fail §4.9 four stages later. Inert for a caller that supplied no resolver
+       (see `SourceBeatsOptions.audioSourceFor`). */
+    const audioSource = state.audioSourceFor ? state.audioSourceFor(candidate.entry, itemId) : null;
+    if (state.audioSourceFor && !audioSource) {
+      furthest = furtherOf(furthest, { candidate, gate: "no-audio-source", evidence, span });
+      continue;
+    }
+    if (audioSource) state.newSegmentSources.set(itemId, audioSource);
+    const segmentId = mintSegmentId(itemId, span.startSec, state.mintedIds);
+    const referenceDurationSec = candidate.entry.feed_duration_sec ?? span.endSec;
+    /* `span.startSec`/`span.endSec` are the CUE BOUNDARIES `cutSpanToCueBoundaries`
+       chose, not the matched phrase's own few seconds (F-24(c)) — the minted
+       segment's times are the tape's own times. */
+    state.newSegments.push({
+      id: segmentId,
+      itemId,
+      startSec: span.startSec,
+      endSec: span.endSec,
+      referenceDurationSec,
+      startAnchor: span.startAnchor,
+      endAnchor: span.endAnchor,
+      confidence: "medium"
+    });
+    return {
+      kind: "tape",
+      nodes: nodesForArchiveEntry(candidate.entry, state),
+      pointer: {
+        segmentId,
+        itemId,
+        startSec: span.startSec,
+        endSec: span.endSec,
+        startAnchor: span.startAnchor,
+        endAnchor: span.endAnchor,
+        tier: 2,
+        confidence: "medium"
+      }
+    };
   }
 
-  // Tier 3: the catalogue without transcripts (or a tier-2 match whose
-  // cue text was unavailable/unresolvable) cannot be cut. Log it as a
-  // transcription-queue candidate — this pipeline's OWN log, distinct
-  // from and never written into `data/transcription-queue.json`, which
-  // has its own producer (`tools/transcribe/build-transcription-queue.mjs`)
-  // — and let the beat become narration.
-  if (tier2) {
-    state.transcriptionQueueCandidates.push({
-      claim,
-      showId: tier2.entry.show_id,
-      reason: `Transcript-archive metadata matched ("${tier2.entry.title}") but no cue text was available to locate a verbatim anchor.`
-    });
-  } else {
-    state.transcriptionQueueCandidates.push({
-      claim,
-      reason: "No hit in data/segments.json or the transcript archive; logged for future transcription/extraction, not acted on here."
-    });
-  }
+  const tier2Trace = tier2TraceFor(claim, state, archiveIsUsable, candidates, furthest);
+
+  /* Tier 3: nothing in the archive could be cut for this beat. Log ONE
+     transcription-queue candidate saying how far the search got — this
+     pipeline's OWN log, distinct from and never written into
+     `data/transcription-queue.json`, which has its own producer
+     (`tools/transcribe/build-transcription-queue.mjs`) — and let the beat
+     become narration. */
+  state.transcriptionQueueCandidates.push(transcriptionQueueRow(claim, furthest));
 
   return {
     kind: "narration",
-    reason: "No tape found anywhere in the §4.5 search order for this beat.",
+    reason: narrationReasonFor(furthest),
     diagnosis: { outcome: "no-tape", tier1: tier1Trace, tier2: tier2Trace }
   };
+}
+
+/** One episode tier 2 is willing to open for a claim, and how it was found. */
+interface Tier2Candidate {
+  entry: TranscriptDigestEntry;
+  /** The title-metadata score — now a tie-breaker and a trace field, not a bar. */
+  titleScore: number;
+  /** The text-index row that produced it, or `null` for the title fallback. */
+  text: TranscriptTextCandidate | null;
+}
+
+/** How far one candidate got, for the trace. */
+interface Tier2Progress {
+  candidate: Tier2Candidate;
+  gate: Tier2Gate;
+  evidence?: AnchoredWindowEvidence;
+  span?: ResolvedAnchorSpan;
+}
+
+/**
+ * How much progress each gate represents. A beat that reached the window test
+ * on one episode and a bare title on seven others is a beat whose story is the
+ * window test — reporting the last candidate walked, or the highest-ranked one,
+ * would hide the only row worth reading (F-49).
+ */
+const TIER2_GATE_PROGRESS: Record<Tier2Gate, number> = {
+  "text-index:no-candidate": 0,
+  lineage: 1,
+  "title-tokens": 2,
+  "no-body": 3,
+  "no-anchor": 4,
+  "window-overlap": 5,
+  "no-audio-source": 6
+};
+
+function furtherOf(current: Tier2Progress | null, next: Tier2Progress): Tier2Progress {
+  if (!current) return next;
+  return TIER2_GATE_PROGRESS[next.gate] > TIER2_GATE_PROGRESS[current.gate] ? next : current;
+}
+
+/**
+ * The episodes tier 2 will open, best first: the text index's top N, then the
+ * title-metadata match if it is not already among them.
+ *
+ * THE TITLE MATCH IS STILL HERE, LAST. It is what tier 2 ran on before WS-H and
+ * it is what a checkout without transcript bodies (`NullTranscriptTextIndex`,
+ * every CI run) has: keeping it means this change can only ADD candidates, so
+ * no beat that found tape before can stop finding it. Its score is carried on
+ * every candidate as the tie-breaker `transcriptTextIndex` ranks equal-text
+ * episodes by.
+ */
+function tier2Candidates(claim: string, state: SourcingState, isUsable: (entry: TranscriptDigestEntry) => boolean): Tier2Candidate[] {
+  const claimTokens = new Set(tokenizeForSourcing(claim));
+  const candidates: Tier2Candidate[] = [];
+  const seen = new Set<string>();
+  const key = (entry: TranscriptDigestEntry) => `${entry.show_id}\u0000${entry.guid}`;
+
+  for (const hit of state.textIndex.search(claim, { limit: TRANSCRIPT_TEXT_CANDIDATES, isUsable })) {
+    if (seen.has(key(hit.entry))) continue;
+    seen.add(key(hit.entry));
+    candidates.push({ entry: hit.entry, titleScore: titleTokenScore(claimTokens, hit.entry), text: hit });
+  }
+
+  const byTitle = findTranscriptArchiveMatch(claim, state.transcriptArchive, isUsable);
+  if (byTitle && !seen.has(key(byTitle.entry))) {
+    candidates.push({ entry: byTitle.entry, titleScore: byTitle.score, text: null });
+  }
+  return candidates;
+}
+
+/** The row that says what tier 2 saw and which gate decided (F-49). */
+function tier2TraceFor(
+  claim: string,
+  state: SourcingState,
+  isUsable: (entry: TranscriptDigestEntry) => boolean,
+  candidates: Tier2Candidate[],
+  furthest: Tier2Progress | null
+): Tier2TraceRow {
+  if (!furthest) {
+    /* Nothing was even worth opening. When the text index ran, that IS the
+       deciding gate; when the topic gate is what emptied the field, `lineage`
+       is the more specific answer and keeps precedence; and when no index ran
+       at all (CI, and every caller that predates WS-H) the answer is the
+       title-token bar, exactly as before. */
+    const rejected = traceTier2Rejected(claim, state, isUsable);
+    if (state.textIndex.enabled && rejected.gate === "title-tokens") {
+      return { ...rejected, gate: "text-index:no-candidate", candidatesConsidered: 0 };
+    }
+    return rejected;
+  }
+  const { candidate, gate, evidence } = furthest;
+  const row: Tier2TraceRow = {
+    ...archiveTraceRow(candidate.entry, candidate.titleScore, gate),
+    candidatesConsidered: candidates.length,
+    foundBy: candidate.text ? "text-index" : "title"
+  };
+  if (candidate.text) {
+    row.textScore = Number(candidate.text.score.toFixed(3));
+    row.textRank = candidate.text.rank;
+    row.textMatchedTerms = candidate.text.matchedTerms;
+  }
+  if (evidence) {
+    row.anchorContentWords = evidence.anchorContentWords;
+    row.beyondAnchorOverlap = evidence.beyondAnchorOverlap;
+  }
+  return row;
+}
+
+/** The narration reason a beat carries into §4.7, keyed to how far tier 2 got. */
+function narrationReasonFor(furthest: Tier2Progress | null): string {
+  switch (furthest?.gate) {
+    case "no-audio-source":
+      return "Tape was found for this beat but its episode's audio cannot be resolved, so it cannot be played.";
+    case "window-overlap":
+      return "A transcript anchor was found but the tape around it is not about this claim.";
+    default:
+      return "No tape found anywhere in the §4.5 search order for this beat.";
+  }
+}
+
+/** One queue row per narrated beat, naming the episode the search got furthest
+ * into and what stopped it there. */
+function transcriptionQueueRow(claim: string, furthest: Tier2Progress | null): TranscriptionQueueCandidate {
+  if (!furthest) {
+    return {
+      claim,
+      reason: "No hit in data/segments.json or the transcript archive; logged for future transcription/extraction, not acted on here."
+    };
+  }
+  const { candidate, gate, evidence } = furthest;
+  const found = candidate.text ? "Transcript text matched" : "Transcript-archive metadata matched";
+  switch (gate) {
+    case "no-audio-source":
+      return {
+        claim,
+        showId: candidate.entry.show_id,
+        reason: `Transcript-archive tape was located in "${candidate.entry.title}", but no data/segment-sources.json row can be written for it (no resolvable https audio URL, feed duration, or DAI verdict), so nothing could play it.`
+      };
+    case "window-overlap":
+      return {
+        claim,
+        showId: candidate.entry.show_id,
+        reason: `${found} ("${candidate.entry.title}") and a ${evidence?.anchorContentWords ?? 0}-content-word anchor was located, but only ${evidence?.beyondAnchorOverlap ?? 0} further claim content words are spoken within ${ANCHOR_WINDOW_PAD_SEC} s of it — below the ${TIER2_WINDOW_OVERLAP_MIN} needed to call the tape there on topic.`
+      };
+    case "no-anchor":
+      return {
+        claim,
+        showId: candidate.entry.show_id,
+        reason: `${found} ("${candidate.entry.title}") but no run of ${MIN_ANCHOR_WORDS} of the claim's own words is spoken verbatim anywhere in it, so no anchor could be located.`
+      };
+    default:
+      return {
+        claim,
+        showId: candidate.entry.show_id,
+        reason: `${found} ("${candidate.entry.title}") but no cue text was available to locate a verbatim anchor.`
+      };
+  }
 }
 
 /**
