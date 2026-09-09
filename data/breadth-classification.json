@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-09-08T16:10:53.377Z",
+  "built_at": "2026-09-09T00:11:00.038Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-09-08-33d0b161",
+    "last_batch_id": "fresh-2026-09-09-edc95f91",
     "last_batch_tier": 1
   },
   "entries": {
@@ -76580,11 +76580,30 @@
     },
     "1534167756": {
       "topics": [
-        "kids-family/parenting"
+        "kids-family/parenting",
+        "kids-family"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.85
+        },
+        {
+          "node": "kids-family",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focuses on parenting strategies and family advice.",
+      "display_title": "The Whinypaluza Podcast",
+      "blurb": "Parenthood is an adventure",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-09-edc95f91",
+      "classified_at": "2026-09-09T00:11:00.038Z"
     },
     "1534207145": {
       "topics": [
@@ -76885,11 +76904,30 @@
     },
     "1534771206": {
       "topics": [
-        "religion"
+        "kids-family/parenting",
+        "kids-family"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.85
+        },
+        {
+          "node": "kids-family",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focuses on parenting strategies and family advice.",
+      "display_title": "Ensign College Devotionals",
+      "blurb": "Devotionals given by various speakers from The Church of Jesus Christ of Latter-day Saints",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-09-edc95f91",
+      "classified_at": "2026-09-09T00:11:00.038Z"
     },
     "1534780078": {
       "topics": [
@@ -77077,11 +77115,30 @@
     },
     "1535358924": {
       "topics": [
-        "education/how-to"
+        "kids-family/parenting",
+        "kids-family"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.85
+        },
+        {
+          "node": "kids-family",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focuses on parenting strategies and family advice.",
+      "display_title": "Art of Homeschooling Podcast",
+      "blurb": "Welcome to the Art of Homeschooling Podcast , where homeschooling mentor Jean Miller helps parents create a personalized homeschooling experience that's simple, creative, and do...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-09-edc95f91",
+      "classified_at": "2026-09-09T00:11:00.038Z"
     },
     "1535384390": {
       "topics": [
@@ -77160,11 +77217,33 @@
     },
     "1535524824": {
       "topics": [
-        "health/mental"
+        "education/language-learning",
+        "linguistics/language"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.9
+        },
+        {
+          "node": "linguistics/language",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "French language learning through conversational content.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-09-edc95f91",
+      "classified_at": "2026-09-09T00:11:00.038Z"
     },
     "1535567788": {
       "topics": [
@@ -77537,11 +77616,35 @@
     },
     "1536861162": {
       "topics": [
-        "gaming"
+        "gaming",
+        "gaming/design",
+        "hobbies"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.9
+        },
+        {
+          "node": "gaming/design",
+          "confidence": 0.6
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Tabletop roleplaying game podcast.",
+      "display_title": "Cast Party: A Dungeons & Dragons Podcast",
+      "blurb": "Welcome to Cast Party, the PERFECT Blend of Comedy & Tragedy Like what you hear",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-09-edc95f91",
+      "classified_at": "2026-09-09T00:11:00.038Z"
     },
     "1536873187": {
       "topics": [
@@ -77819,11 +77922,33 @@
     },
     "1537788786": {
       "topics": [
-        "history"
+        "education/language-learning",
+        "linguistics/language"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.9
+        },
+        {
+          "node": "linguistics/language",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "French language learning through conversational content.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /deep[\\s-]dive/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-09-edc95f91",
+      "classified_at": "2026-09-09T00:11:00.038Z"
     },
     "1537791756": {
       "topics": [
@@ -78008,11 +78133,30 @@
     },
     "1538306196": {
       "topics": [
-        "society/government"
+        "education/language-learning",
+        "linguistics/language"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.9
+        },
+        {
+          "node": "linguistics/language",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "French language learning through conversational content.",
+      "display_title": "Permission To Speak Freely",
+      "blurb": "Damon and Damo (active duty Command Master Chiefs) share sea stories and have unfiltered conversations about current events, policies, and everyday life as a service member",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-09-edc95f91",
+      "classified_at": "2026-09-09T00:11:00.038Z"
     },
     "1538307470": {
       "topics": [
@@ -78093,11 +78237,30 @@
     },
     "1538493948": {
       "topics": [
-        "education/how-to"
+        "education/language-learning",
+        "linguistics/language"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.9
+        },
+        {
+          "node": "linguistics/language",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "French language learning through conversational content.",
+      "display_title": "Only Girl On The Jobsite",
+      "blurb": "Welcome to Only Girl On The Jobsite, the podcast for designers ready to step up their project management game and make confident decisions on the jobsite",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-09-edc95f91",
+      "classified_at": "2026-09-09T00:11:00.038Z"
     },
     "1538513554": {
       "topics": [
@@ -78220,11 +78383,30 @@
     },
     "1539292794": {
       "topics": [
-        "news/commentary"
+        "education/language-learning",
+        "linguistics/language"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.9
+        },
+        {
+          "node": "linguistics/language",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "French language learning through conversational content.",
+      "display_title": "Call Me Back - with Dan Senor",
+      "blurb": "Presenting the challenges and dilemmas facing Israelis and Jews around the world",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-09-edc95f91",
+      "classified_at": "2026-09-09T00:11:00.038Z"
     },
     "1539296304": {
       "topics": [
@@ -78453,8 +78635,22 @@
         "sports/tennis"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/tennis",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Tennis coaching and professional tour coverage.",
+      "display_title": "Doubles Only Tennis Podcast",
+      "blurb": "The only tennis podcast with a focus on doubles",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-09-edc95f91",
+      "classified_at": "2026-09-09T00:11:00.038Z"
     },
     "1540228676": {
       "topics": [
@@ -78502,11 +78698,29 @@
     },
     "1540370040": {
       "topics": [
-        "tv-film"
+        "true-crime"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": true,
+      "rationale": "True crime investigation and storytelling.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: 32w > 30",
+        "blurb: banned /deep[\\s-]dive/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-09-edc95f91",
+      "classified_at": "2026-09-09T00:11:00.038Z"
     },
     "1540373581": {
       "topics": [
@@ -78657,11 +78871,30 @@
     },
     "1540650504": {
       "topics": [
-        "education/self-improvement"
+        "education/language-learning",
+        "linguistics/language"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.9
+        },
+        {
+          "node": "linguistics/language",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "French language learning through conversational content.",
+      "display_title": "The Art of Accomplishment",
+      "blurb": "Applied self-exploration",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-09-edc95f91",
+      "classified_at": "2026-09-09T00:11:00.038Z"
     },
     "1540651174": {
       "topics": [
@@ -78680,13 +78913,35 @@
     },
     "1540683012": {
       "topics": [
-        "religion",
-        "history/military-ancient",
-        "culture/mythology"
+        "gaming",
+        "gaming/design",
+        "hobbies"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.9
+        },
+        {
+          "node": "gaming/design",
+          "confidence": 0.6
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Tabletop roleplaying game podcast.",
+      "display_title": "Garner's Greek Mythology",
+      "blurb": "A unique view of mythology",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-09-edc95f91",
+      "classified_at": "2026-09-09T00:11:00.038Z"
     },
     "1540705227": {
       "topics": [
@@ -78926,11 +79181,25 @@
     },
     "1541793618": {
       "topics": [
-        "tv-film"
+        "true-crime"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "True crime investigation and storytelling.",
+      "display_title": "Dr death Podcast",
+      "blurb": "True Crime Podcast on Dr Death",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-09-edc95f91",
+      "classified_at": "2026-09-09T00:11:00.038Z"
     },
     "1541797253": {
       "topics": [
@@ -78942,20 +79211,52 @@
     },
     "1541849586": {
       "topics": [
-        "personal-journals"
+        "true-crime"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "True crime investigation and storytelling.",
+      "display_title": "Stories From The Stage",
+      "blurb": "Stories from the Stage showcases ordinary people sharing extraordinary stories, spotlighting diverse tellers who share moments — from the everyday to the life-altering — that ce...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-09-edc95f91",
+      "classified_at": "2026-09-09T00:11:00.038Z"
     },
     "1541856876": {
       "topics": [
         "education/language-learning",
         "linguistics/language"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.9
+        },
+        {
+          "node": "linguistics/language",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "French language learning through conversational content.",
+      "display_title": "Little Talk in Slow French",
+      "blurb": "Through interesting conversations (or at least I hope so",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-09-edc95f91",
+      "classified_at": "2026-09-09T00:11:00.038Z"
     },
     "1541860793": {
       "topics": [
@@ -79358,11 +79659,25 @@
     },
     "1543230162": {
       "topics": [
-        "society/government"
+        "history"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Deep-dive historical storytelling and analysis.",
+      "display_title": "Understanding Congress",
+      "blurb": "Congress is the least liked and perhaps least understood part of government",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-09-edc95f91",
+      "classified_at": "2026-09-09T00:11:00.038Z"
     },
     "1543252280": {
       "topics": [
@@ -79479,11 +79794,33 @@
     },
     "1543641174": {
       "topics": [
-        "health/sexuality"
+        "education/language-learning",
+        "linguistics/language"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.9
+        },
+        {
+          "node": "linguistics/language",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "French language learning through conversational content.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: 31w > 30"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-09-edc95f91",
+      "classified_at": "2026-09-09T00:11:00.038Z"
     },
     "1543643203": {
       "topics": [
@@ -79556,11 +79893,25 @@
     },
     "1543842894": {
       "topics": [
-        "tv-film/after-shows"
+        "sports/tennis"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/tennis",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Tennis coaching and professional tour coverage.",
+      "display_title": "Are You My Podcast?",
+      "blurb": "Comedians Sarah Colonna and Mary Radzinski laugh their way through trending topics, pop culture, and entertainment — peppering in personal stories along the way",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-09-edc95f91",
+      "classified_at": "2026-09-09T00:11:00.038Z"
     },
     "1543871378": {
       "topics": [
@@ -79813,9 +80164,23 @@
       "topics": [
         "aviation"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Pilot experiences and aviation expertise.",
+      "display_title": "I Learned About Flying From That",
+      "blurb": "Tune in for the rest of the story—with exclusive interviews with pilots who have shared their emergencies, crises, and mistakes over 950-plus installments of Flying's iconic ser...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-09-edc95f91",
+      "classified_at": "2026-09-09T00:11:00.038Z"
     },
     "1544879607": {
       "topics": [
@@ -79963,11 +80328,30 @@
     },
     "1545433056": {
       "topics": [
-        "religion/christianity"
+        "education/language-learning",
+        "linguistics/language"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.9
+        },
+        {
+          "node": "linguistics/language",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "French language learning through conversational content.",
+      "display_title": "followHIM",
+      "blurb": "Do you ever feel that preparing for your weekly Come, Follow Me lesson falls short",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-09-edc95f91",
+      "classified_at": "2026-09-09T00:11:00.038Z"
     },
     "1545437195": {
       "topics": [
@@ -80088,11 +80472,35 @@
     },
     "1545886584": {
       "topics": [
-        "sports/endurance"
+        "tv-film",
+        "tv-film/interviews",
+        "culture/pop-culture"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.85
+        },
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.6
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "TV show recaps and entertainment analysis.",
+      "display_title": "Abcdefghijklmnopqrstuvwxyz",
+      "blurb": "Abcdefghijklmnopqrstuvwxyz",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-09-edc95f91",
+      "classified_at": "2026-09-09T00:11:00.038Z"
     },
     "1545953110": {
       "topics": [
@@ -80426,11 +80834,30 @@
     },
     "1547039220": {
       "topics": [
-        "science/chemistry"
+        "science/chemistry",
+        "education"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/chemistry",
+          "confidence": 0.9
+        },
+        {
+          "node": "education",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Chemistry education and scientific concepts.",
+      "display_title": "Chemistry 101 with Miss Shorter",
+      "blurb": "This podcast is about everything chemistry",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-09-edc95f91",
+      "classified_at": "2026-09-09T00:11:00.038Z"
     },
     "1547053698": {
       "topics": [
@@ -80708,11 +81135,25 @@
     },
     "1547670966": {
       "topics": [
-        "tv-film/interviews"
+        "true-crime"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "True crime investigation and storytelling.",
+      "display_title": "The Joe Vulpis Podcast",
+      "blurb": "The Joe Vulpis Podcast dives into the most exciting parts of the guests unique story",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-09-edc95f91",
+      "classified_at": "2026-09-09T00:11:00.038Z"
     },
     "1547672733": {
       "topics": [
@@ -80796,12 +81237,35 @@
     },
     "1547906034": {
       "topics": [
-        "business/non-profit",
-        "kids-family/parenting"
+        "gaming",
+        "gaming/design",
+        "hobbies"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.9
+        },
+        {
+          "node": "gaming/design",
+          "confidence": 0.6
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Tabletop roleplaying game podcast.",
+      "display_title": "All About Capital Campaigns",
+      "blurb": "All About Capital Campaigns is your weekly source for nonprofit fundraising advice",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-09-edc95f91",
+      "classified_at": "2026-09-09T00:11:00.038Z"
     },
     "1547919832": {
       "topics": [
@@ -80910,11 +81374,30 @@
     },
     "1548251094": {
       "topics": [
-        "comedy"
+        "education/language-learning",
+        "linguistics/language"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.9
+        },
+        {
+          "node": "linguistics/language",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "French language learning through conversational content.",
+      "display_title": "We Might Be Drunk",
+      "blurb": "Mark Normand and Sam Morril Might Be Drunk",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-09-edc95f91",
+      "classified_at": "2026-09-09T00:11:00.038Z"
     },
     "1548290490": {
       "topics": [
@@ -80947,11 +81430,33 @@
     },
     "1548409212": {
       "topics": [
-        "business/non-profit"
+        "education/language-learning",
+        "linguistics/language"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.9
+        },
+        {
+          "node": "linguistics/language",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "French language learning through conversational content.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /deep[\\s-]dive/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-09-edc95f91",
+      "classified_at": "2026-09-09T00:11:00.038Z"
     },
     "1548416919": {
       "topics": [
@@ -81066,11 +81571,30 @@
     },
     "1548979818": {
       "topics": [
-        "gaming"
+        "education/language-learning",
+        "linguistics/language"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.9
+        },
+        {
+          "node": "linguistics/language",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "French language learning through conversational content.",
+      "display_title": "The Pub Trivia Group",
+      "blurb": "Hosted by Sam, a minivan-driving suburban dad who needed a hobby, The Pub Trivia Group podcast is your opportunity to geek out about pop culture and everything you may-or-may-no...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-09-edc95f91",
+      "classified_at": "2026-09-09T00:11:00.038Z"
     },
     "1548990173": {
       "topics": [
@@ -81338,12 +81862,25 @@
     },
     "1549943658": {
       "topics": [
-        "hobbies",
-        "transport/trains"
+        "history"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Deep-dive historical storytelling and analysis.",
+      "display_title": "The Crossing Gate. Model railroad discussion.",
+      "blurb": "Discussion of model railroading and operations",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-09-edc95f91",
+      "classified_at": "2026-09-09T00:11:00.038Z"
     },
     "1550035505": {
       "topics": [
@@ -81538,11 +82075,25 @@
     },
     "1550684472": {
       "topics": [
-        "education/self-improvement"
+        "true-crime"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "True crime investigation and storytelling.",
+      "display_title": "Listen Then Speak",
+      "blurb": "Our desire is to sit and chop it up with anyone from best selling authors to successful entrepreneurs and get a sense of the highs and lows of their journey",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-09-edc95f91",
+      "classified_at": "2026-09-09T00:11:00.038Z"
     },
     "1550709885": {
       "topics": [
@@ -81605,11 +82156,35 @@
     },
     "1550795646": {
       "topics": [
-        "health/sexuality"
+        "tv-film",
+        "tv-film/interviews",
+        "culture/pop-culture"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.85
+        },
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.6
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "TV show recaps and entertainment analysis.",
+      "display_title": "KiKi’s Sexual ASMR",
+      "blurb": "Wel-CUMMM",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-09-edc95f91",
+      "classified_at": "2026-09-09T00:11:00.038Z"
     },
     "1550805633": {
       "topics": [
@@ -82297,11 +82872,33 @@
     },
     "1552667574": {
       "topics": [
-        "society/government"
+        "kids-family/parenting",
+        "kids-family"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.85
+        },
+        {
+          "node": "kids-family",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast focuses on parenting strategies and family advice.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-09-edc95f91",
+      "classified_at": "2026-09-09T00:11:00.038Z"
     },
     "1552673209": {
       "topics": [
@@ -82352,11 +82949,25 @@
     },
     "1552772082": {
       "topics": [
-        "history"
+        "true-crime"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "True crime investigation and storytelling.",
+      "display_title": "Done & Dunne",
+      "blurb": "A podcast exploring writer Dominick Dunne's quest for justice amidst his incisive commentary of the high society set",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-09-edc95f91",
+      "classified_at": "2026-09-09T00:11:00.038Z"
     },
     "1552801033": {
       "topics": [
@@ -82479,8 +83090,22 @@
         "tv-film/animation"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/animation",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unable to determine primary classification from available signal.",
+      "display_title": "菠萝油子丨成年人听的动漫播客",
+      "blurb": "菠萝油子，是青岛80、90后最熟悉的一条小路，那里充斥着令人向往的市井气息，也是在那条小路上，有影响无数少年的漫画书摊位，可以说，我们一代的人动漫启蒙，就是由那里开启。",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-09-edc95f91",
+      "classified_at": "2026-09-09T00:10:23.781Z"
     },
     "1553069673": {
       "topics": [
@@ -82573,11 +83198,30 @@
     },
     "1553334816": {
       "topics": [
-        "society"
+        "education/language-learning",
+        "linguistics/language"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.9
+        },
+        {
+          "node": "linguistics/language",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "French language learning through conversational content.",
+      "display_title": "A Little Bit Culty",
+      "blurb": "Think you might be in a cult",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-09-edc95f91",
+      "classified_at": "2026-09-09T00:11:00.038Z"
     },
     "1553335461": {
       "topics": [
@@ -82611,12 +83255,30 @@
     },
     "1553412228": {
       "topics": [
-        "education/courses",
-        "nature"
+        "education/language-learning",
+        "linguistics/language"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.9
+        },
+        {
+          "node": "linguistics/language",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "French language learning through conversational content.",
+      "display_title": "The Birds & Bees",
+      "blurb": "Hi",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-09-edc95f91",
+      "classified_at": "2026-09-09T00:11:00.038Z"
     },
     "1553413866": {
       "topics": [
@@ -82744,11 +83406,30 @@
     },
     "1553627334": {
       "topics": [
-        "health/sexuality"
+        "education/language-learning",
+        "linguistics/language"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.9
+        },
+        {
+          "node": "linguistics/language",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "French language learning through conversational content.",
+      "display_title": "Pink Kink",
+      "blurb": "Welcome to Pink Kink, where empowerment starts with education",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-09-edc95f91",
+      "classified_at": "2026-09-09T00:11:00.038Z"
     },
     "1553666191": {
       "topics": [
@@ -82767,12 +83448,25 @@
     },
     "1553694252": {
       "topics": [
-        "psychology",
-        "history/military-modern"
+        "sports/tennis"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/tennis",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Tennis coaching and professional tour coverage.",
+      "display_title": "Military Psychology Podcast",
+      "blurb": "Stay up to date with the most important issues in military psychology with the Society for Military Psychology, Division 19 of the American Psychological Association",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-09-edc95f91",
+      "classified_at": "2026-09-09T00:11:00.038Z"
     },
     "1553697959": {
       "topics": [
@@ -82903,11 +83597,30 @@
     },
     "1554045522": {
       "topics": [
-        "religion/spirituality"
+        "education/language-learning",
+        "linguistics/language"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.9
+        },
+        {
+          "node": "linguistics/language",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "French language learning through conversational content.",
+      "display_title": "Become New with John Ortberg",
+      "blurb": "Join John Ortberg each day for 10 minutes of spiritual guidance on the person we are becoming",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-09-edc95f91",
+      "classified_at": "2026-09-09T00:11:00.038Z"
     },
     "1554048931": {
       "topics": [
@@ -83057,11 +83770,25 @@
     },
     "1554535518": {
       "topics": [
-        "culture"
+        "true-crime"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "True crime investigation and storytelling.",
+      "display_title": "The CRUX: True Survival Stories",
+      "blurb": "Are you drawn to thrilling survival stories where characters overcome impossible odds",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-09-edc95f91",
+      "classified_at": "2026-09-09T00:11:00.038Z"
     },
     "1554535631": {
       "topics": [
@@ -83540,11 +84267,25 @@
     },
     "1555769970": {
       "topics": [
-        "travel"
+        "aviation"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Pilot experiences and aviation expertise.",
+      "display_title": "The Atlas Obscura Podcast",
+      "blurb": "Your guide to the world's strange, incredible, and wondrous places",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-09-edc95f91",
+      "classified_at": "2026-09-09T00:11:00.038Z"
     },
     "1555777775": {
       "topics": [
@@ -83576,12 +84317,33 @@
     },
     "1555922064": {
       "topics": [
-        "personal-journals",
+        "education/language-learning",
         "linguistics/language"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.9
+        },
+        {
+          "node": "linguistics/language",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "French language learning through conversational content.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-09-edc95f91",
+      "classified_at": "2026-09-09T00:11:00.038Z"
     },
     "1555951088": {
       "topics": [
@@ -83650,11 +84412,25 @@
     },
     "1556170236": {
       "topics": [
-        "nature"
+        "history"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Deep-dive historical storytelling and analysis.",
+      "display_title": "The Guide Post",
+      "blurb": "A community hub where anglers, fishing guides, scientists, and policymakers connect to discuss fisheries, their history, their futures, and the importance of effective management",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-09-edc95f91",
+      "classified_at": "2026-09-09T00:11:00.038Z"
     },
     "1556224567": {
       "topics": [
@@ -83665,11 +84441,25 @@
     },
     "1556240298": {
       "topics": [
-        "tv-film"
+        "true-crime"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "True crime investigation and storytelling.",
+      "display_title": "TST RADIO",
+      "blurb": "Retrouvez ici tous les podcasts produits par l'équipe de TST Radio lors de l'Hebdo",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-09-edc95f91",
+      "classified_at": "2026-09-09T00:11:00.038Z"
     },
     "1556249417": {
       "topics": [
@@ -84146,11 +84936,30 @@
     },
     "1557969246": {
       "topics": [
-        "nature"
+        "education/language-learning",
+        "linguistics/language"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.9
+        },
+        {
+          "node": "linguistics/language",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "French language learning through conversational content.",
+      "display_title": "The Immunology Podcast",
+      "blurb": "A podcast featuring conversations with immunologists from around the globe",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-09-edc95f91",
+      "classified_at": "2026-09-09T00:11:00.038Z"
     },
     "1557988738": {
       "topics": [
@@ -84192,11 +85001,25 @@
     },
     "1558069188": {
       "topics": [
-        "psychology"
+        "sports/tennis"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/tennis",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Tennis coaching and professional tour coverage.",
+      "display_title": "Dear Social Worker, Let's Talk",
+      "blurb": "Welcome to 'Dear Social Worker, Let's Talk' - the #1 personal growth podcast for social workers by Le'Siran Edwards",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-09-edc95f91",
+      "classified_at": "2026-09-09T00:11:00.038Z"
     },
     "1558088443": {
       "topics": [
@@ -84223,11 +85046,30 @@
     },
     "1558163730": {
       "topics": [
-        "business/non-profit"
+        "education/language-learning",
+        "linguistics/language"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.9
+        },
+        {
+          "node": "linguistics/language",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "French language learning through conversational content.",
+      "display_title": "GSA Momentum Discussions",
+      "blurb": "The Gerontological Society of America (GSA) brings together researchers, educators, and practitioners to stimulate dialogue on trends with great momentum to advance gerontology",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-09-edc95f91",
+      "classified_at": "2026-09-09T00:11:00.038Z"
     },
     "1558211702": {
       "topics": [
@@ -84341,11 +85183,30 @@
     },
     "1558606464": {
       "topics": [
-        "religion"
+        "education/language-learning",
+        "linguistics/language"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.9
+        },
+        {
+          "node": "linguistics/language",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "French language learning through conversational content.",
+      "display_title": "I was a Teenage Fundamentalist. An Exvangelical podcast.",
+      "blurb": "Brian and Troy used to be loyal Christian megachurch leaders",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-09-edc95f91",
+      "classified_at": "2026-09-09T00:11:00.038Z"
     },
     "1558608802": {
       "topics": [
@@ -84403,11 +85264,25 @@
     },
     "1558869948": {
       "topics": [
-        "culture"
+        "sports/tennis"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/tennis",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Tennis coaching and professional tour coverage.",
+      "display_title": "Death on the Lot",
+      "blurb": "We’re getting into 1950s Hollywood, ground zero for a cultural transformation that would upend every aspect of Americans’ lives",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-09-edc95f91",
+      "classified_at": "2026-09-09T00:11:00.038Z"
     },
     "1558889546": {
       "topics": [
@@ -84625,12 +85500,30 @@
     },
     "1559564016": {
       "topics": [
-        "business",
-        "economics/markets"
+        "education/language-learning",
+        "linguistics/language"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.9
+        },
+        {
+          "node": "linguistics/language",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "French language learning through conversational content.",
+      "display_title": "Money Rehab with Nicole Lapin",
+      "blurb": "Ever notice that we will talk about everything before we talk about money",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-09-edc95f91",
+      "classified_at": "2026-09-09T00:11:00.038Z"
     },
     "1559564610": {
       "topics": [
@@ -84800,11 +85693,30 @@
     },
     "1559984586": {
       "topics": [
-        "religion/christianity"
+        "education/language-learning",
+        "linguistics/language"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.9
+        },
+        {
+          "node": "linguistics/language",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "French language learning through conversational content.",
+      "display_title": "Deepen with Pastor Joby Martin",
+      "blurb": "Have you ever wanted to dig deeper into a message and develop a deeper relationship with God",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-09-edc95f91",
+      "classified_at": "2026-09-09T00:11:00.038Z"
     },
     "1560010348": {
       "topics": [
@@ -85096,11 +86008,30 @@
     },
     "1560925098": {
       "topics": [
-        "psychology"
+        "education/language-learning",
+        "linguistics/language"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.9
+        },
+        {
+          "node": "linguistics/language",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "French language learning through conversational content.",
+      "display_title": "Queens of Social Work",
+      "blurb": "“Afro-Caribbean American Social Workers sharing our first hand experiences in the field",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-09-edc95f91",
+      "classified_at": "2026-09-09T00:11:00.038Z"
     },
     "1560925561": {
       "topics": [
@@ -85322,11 +86253,25 @@
     },
     "1561279836": {
       "topics": [
-        "culture/performing-arts"
+        "true-crime"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "True crime investigation and storytelling.",
+      "display_title": "Choice Classic Radio Detectives | Old Time Radio",
+      "blurb": "Old time radio fans",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-09-edc95f91",
+      "classified_at": "2026-09-09T00:11:00.038Z"
     },
     "1561365870": {
       "topics": [
@@ -85577,12 +86522,30 @@
     },
     "1562025210": {
       "topics": [
-        "education/self-improvement",
-        "psychology"
+        "science/chemistry",
+        "education"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/chemistry",
+          "confidence": 0.9
+        },
+        {
+          "node": "education",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Chemistry education and scientific concepts.",
+      "display_title": "The Resilient Mind",
+      "blurb": "The Resilient Mind is more than a channel — it’s a movement for those ready to reclaim their power, rise above adversity, and master mental strength",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-09-edc95f91",
+      "classified_at": "2026-09-09T00:11:00.038Z"
     },
     "1562048245": {
       "topics": [
@@ -85742,11 +86705,38 @@
     },
     "1562626230": {
       "topics": [
-        "gaming"
+        "gaming",
+        "gaming/design",
+        "hobbies"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.9
+        },
+        {
+          "node": "gaming/design",
+          "confidence": 0.6
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Tabletop roleplaying game podcast.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: 32w > 30"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-09-edc95f91",
+      "classified_at": "2026-09-09T00:11:00.038Z"
     },
     "1562654725": {
       "topics": [
@@ -85789,11 +86779,34 @@
     },
     "1562764710": {
       "topics": [
-        "comedy"
+        "kids-family/parenting",
+        "kids-family"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.85
+        },
+        {
+          "node": "kids-family",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast focuses on parenting strategies and family advice.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 11w > 8",
+        "display_title: banned /deep[\\s-]dive/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-09-edc95f91",
+      "classified_at": "2026-09-09T00:11:00.038Z"
     },
     "1562792453": {
       "topics": [
@@ -86023,19 +87036,52 @@
     },
     "1563573558": {
       "topics": [
-        "culture"
+        "science/chemistry",
+        "education"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/chemistry",
+          "confidence": 0.9
+        },
+        {
+          "node": "education",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Chemistry education and scientific concepts.",
+      "display_title": "Stuff Matters with Ed Conway",
+      "blurb": "We tell the hidden stories of the objects around you",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-09-edc95f91",
+      "classified_at": "2026-09-09T00:11:00.038Z"
     },
     "1563775446": {
       "topics": [
-        "history"
+        "true-crime"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "True crime investigation and storytelling.",
+      "display_title": "British Scandal",
+      "blurb": "In a country obsessed with gossip, the great and the good fear one thing more than any other - scandal",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-09-edc95f91",
+      "classified_at": "2026-09-09T00:11:00.038Z"
     },
     "1563792491": {
       "topics": [
@@ -86047,11 +87093,35 @@
     },
     "1563814788": {
       "topics": [
-        "gaming"
+        "gaming",
+        "gaming/design",
+        "hobbies"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.9
+        },
+        {
+          "node": "gaming/design",
+          "confidence": 0.6
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Tabletop roleplaying game podcast.",
+      "display_title": "Tales from the Stinky Dragon",
+      "blurb": "Tales from the Stinky Dragon is an actual-play D&D comedy podcast that features four foolish friends and their (very patient) dungeon master",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-09-edc95f91",
+      "classified_at": "2026-09-09T00:11:00.038Z"
     },
     "1563966720": {
       "topics": [
