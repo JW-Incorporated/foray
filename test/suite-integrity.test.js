@@ -356,6 +356,15 @@ const FLOORS = {
   "test/show-page-pagination.test.js": 5,
   "test/show-page-search.test.js": 7,
 
+  /* Kanban t_d5079285 (recreated — was mistakenly archived as t_623d16a7) —
+     episode page: publish date (A1.2), full episode description additive to
+     the curated hook (A1.1), chapter markers as a genuinely separate
+     mechanism from foray segments (A1.5, Joey's Q5 answer), and the show
+     page's newest-first sort with no filter controls (Joey's Q7 answer).
+     Every test names its mutation; see the suite header for the full list
+     of what each test pins. */
+  "test/episode-page-publish-date-description-chapters.test.js": 12,
+
   /* Episodes section under Shows search (S-07, kanban t_6baccaa0): six
      mutations named and killed in the file's own header — rendering,
      Apple-vs-live captioning, empty-result absence, offline skip, stale

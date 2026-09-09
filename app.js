@@ -632,9 +632,27 @@ function snapshot(id, src) {
     // otherwise silently lose the flag here, one snapshot() call after the
     // caller thought it kept it.
     explicit: src.explicit ?? null,
-    // Kept so a generated playlist (F14) can order a leaf's episodes newest
-    // first from the snapshot alone; null when the source has none.
+    // Publish date (requirement A1.2, kanban t_d5079285): present on 100% of
+    // the curated pool (discover.json's own `release_date`) but this
+    // whitelist projection dropped it the same way it dropped audio_url
+    // above — every epRow/archivedRow/renderEpisode caller has always had
+    // the raw field one layer up and never seen it here. Also kept so a
+    // generated playlist (F14) can order a leaf's episodes newest first
+    // from the snapshot alone; null when the source has none.
     release_date: src.release_date ?? null,
+    // Full publisher description (requirement A1.1/Q8, resolved by Stage 3b:
+    // RSS-sourced text is the real source, docs/show-pages-plan.md). Additive
+    // to `hook` above, which stays 4a's own curated one-line editorial voice
+    // — this is the publisher's own words, never a replacement for it.
+    // Absent (null) for curated-pool items, which only ever had a `hook`.
+    description: src.description ?? null,
+    // Chapter markers (requirement A1.5, Joey's Q5: "these are two different
+    // use cases" from foray segments — rendered as a wholly separate section,
+    // never merged into the segment-strip UI). Stage 3b's ingestion pass
+    // stores this lazily (null until a per-episode chapters-body fetch backs
+    // it, see backend/src/catalog/showEpisodesStore.ts) — absence here is a
+    // real, expected state, not a bug.
+    chapters: src.chapters ?? null,
   };
   state.itemIndex[id] = snap;
   return snap;
@@ -765,6 +783,26 @@ function explicitBadge(isExplicit) {
 function fmtDur(min) {
   if (!min) return "";
   return min >= 60 ? `${Math.floor(min / 60)}h ${min % 60}m` : `${min} min`;
+}
+
+/* A1.2: episode publish date, plain-English formatting shared by epRow,
+   archivedRow, and renderEpisode. Returns "" (never "Invalid Date") for a
+   missing or unparseable value — absence is a real state, not an error,
+   matching every other formatter on this page.
+
+   Formats in UTC deliberately: both source shapes this ever sees are
+   effectively date-only — discover.json's `release_date` (a bare
+   YYYY-MM-DD) and Stage 3b's `published_at` (typically UTC-midnight
+   ISO). Formatting in the *runtime's local* timezone (the previous
+   version's bug) rolls a UTC-midnight timestamp back to the previous
+   calendar day for anyone west of UTC — most of the Americas — showing
+   a wrong publish date for a large share of the real user base. UTC is
+   the one timezone every visitor and every CI runner agrees on. */
+function fmtDate(dateStr) {
+  if (!dateStr) return "";
+  const d = new Date(dateStr);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric", timeZone: "UTC" });
 }
 
 function branchOf(item) {
@@ -1593,12 +1631,24 @@ function showById(id) {
    falling back to a title match (with the one known alias) for the show
    catalog.json doesn't carry an id-matched title for. Never assumes the join —
    an empty result is a real, renderable state (a valid show_id with zero
-   episodes), not an error. */
+   episodes), not an error.
+
+   Sorted newest-first by `release_date` (Joey's Q7 answer: "Newest first, no
+   filter for now"). `dateValue` treats a missing OR unparseable date as
+   epoch-0 so it always sorts last and the comparator is never NaN (an
+   unparseable-but-present string previously produced `Invalid Date - Invalid
+   Date` = NaN, which sorts indeterminately, not last as the old comment
+   claimed). */
+function dateValue(dateStr) {
+  const t = dateStr ? new Date(dateStr).getTime() : NaN;
+  return Number.isNaN(t) ? 0 : t;
+}
 function episodesForShow(show) {
   if (!show) return [];
   const pool = (state.discover?.items || []);
   const wanted = new Set([show.title, TITLE_ALIASES[show.title]].filter(Boolean));
-  return pool.filter(it => wanted.has(it.show));
+  return pool.filter(it => wanted.has(it.show))
+    .sort((a, b) => dateValue(b.release_date) - dateValue(a.release_date));
 }
 
 /* A show's artwork, with the discover pool as the fallback source.
@@ -1843,6 +1893,14 @@ function fullCatalogueRowToEpRowItem(show, ep) {
     duration_min: ep.duration_seconds ? Math.round(ep.duration_seconds / 60) : null,
     duration_sec: ep.duration_seconds ?? null,
     topics: [],
+    // A1.2/A1.1/A1.5: Stage 3b's endpoint carries the publisher's own
+    // publish date/description/chapters directly on each episode row —
+    // pass them straight through so renderEpisode/epRow/archivedRow can
+    // render them. `description` is deliberately the full text, kept
+    // separate from `hook` above (4a's curated one-liner stays as-is).
+    release_date: ep.published_at || null,
+    description: ep.description_text || null,
+    chapters: Array.isArray(ep.chapters) ? ep.chapters : null,
   });
 }
 
@@ -3614,11 +3672,12 @@ function renderForays() {
 function epRow(item, idx, ctx, nextIdx) {
   const inApp = playBtn(item);
   const unavailable = inApp ? "" : notPlayableNote();
+  const dateStr = fmtDate(item.release_date);
   return `<div class="ep-row">
     <span class="q-num ${idx === nextIdx ? "next" : ""}">${idx + 1}</span>
     <div class="info">
       <div class="t"><a class="ep-title-link" href="#/episode/${esc(encodeURIComponent(item.id))}">${esc(item.title)}</a>${explicitBadge(item.explicit)}</div>
-      <div class="s">${showNameLink(item.show)} · ${fmtDur(item.duration_min)}</div>
+      <div class="s">${showNameLink(item.show)} · ${fmtDur(item.duration_min)}${dateStr ? ` · ${esc(dateStr)}` : ""}</div>
     </div>
     ${inApp}${starBtn(item.id)}${upNextBtn(item.id)}${unavailable}
   </div>`;
@@ -3659,12 +3718,13 @@ function notPlayableNote() {
 function archivedRow(item, idx, ctx) {
   const named = !!item.title;
   const unavailable = named ? notPlayableNote() : "";
+  const dateStr = named ? fmtDate(item.release_date) : "";
   return `<div class="ep-row gone">
     <span class="q-num">${idx + 1}</span>
     <div class="info">
       <div class="t">${named ? `<a class="ep-title-link" href="#/episode/${esc(encodeURIComponent(item.id))}">${esc(item.title)}</a>${explicitBadge(item.explicit)}` : "Part no longer in the catalogue"}</div>
       <div class="s">${named
-        ? `${showNameLink(item.show)}${item.duration_min ? ` · ${fmtDur(item.duration_min)}` : ""} · not in 4a's catalogue right now`
+        ? `${showNameLink(item.show)}${item.duration_min ? ` · ${fmtDur(item.duration_min)}` : ""}${dateStr ? ` · ${esc(dateStr)}` : ""} · not in 4a's catalogue right now`
         : "Saved before 4a kept episode details"}</div>
     </div>
     ${named ? starBtn(item.id) : ""}${named ? upNextBtn(item.id) : ""}${unavailable}
@@ -3796,6 +3856,36 @@ function moreFromShow(item) {
   </section>`;
 }
 
+/* A1.5: chapter markers, requirement-doc "these are two different use cases
+   and need two different solutions" (Joey's Q5 answer). Deliberately its own
+   <section>, never touching player/segment-strip.js's markup or classes —
+   a chapter is the PUBLISHER's own structure for one episode; a foray
+   segment is 4a's own cross-episode stitch. Conflating the two would make
+   an episode's own chapter list look like it was 4a's editorial work, which
+   it explicitly is not. Renders nothing (not an empty section) when there
+   are no chapters — matches every other absence-is-a-real-state section on
+   this page (moreFromShow, similarShowsSection, showForaysHtml). */
+function fmtChapterTime(seconds) {
+  const s = Math.max(0, Math.round(Number(seconds) || 0));
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  const mm = String(m).padStart(h ? 2 : 1, "0");
+  const ss = String(sec).padStart(2, "0");
+  return h ? `${h}:${String(m).padStart(2, "0")}:${ss}` : `${mm}:${ss}`;
+}
+
+function episodeChaptersHtml(item) {
+  const chapters = Array.isArray(item.chapters) ? item.chapters : [];
+  if (!chapters.length) return "";
+  return `<section class="ep-chapters">
+    <h3>Chapters</h3>
+    <ol class="ep-chapters-list">
+      ${chapters.map(c => `<li><span class="ep-chapter-time">${esc(fmtChapterTime(c.start_time_seconds))}</span><span class="ep-chapter-title">${esc(c.title || "")}</span></li>`).join("")}
+    </ol>
+  </section>`;
+}
+
 function renderEpisode(id) {
   setBodyClass("view-page");
   const item = resolveEpisode(id);
@@ -3809,18 +3899,21 @@ function renderEpisode(id) {
   if (state.session && state.session.episodes) {
     try { fullPool(); } catch (_) { /* catalogue not really there yet */ }
   }
+  const dateStr = fmtDate(item.release_date);
   $("#view").innerHTML = `
     <div class="page">
       <div class="page-head">
         <a class="back" href="#/">‹</a>
         <div>
           <h2 class="fp-s-title">${esc(item.title)}${explicitBadge(item.explicit)}</h2>
-          <p class="fp-s-show">${item.show ? showNameLink(item.show) : ""}${item.duration_min ? ` · ${fmtDur(item.duration_min)}` : ""}</p>
+          <p class="fp-s-show">${item.show ? showNameLink(item.show) : ""}${item.duration_min ? ` · ${fmtDur(item.duration_min)}` : ""}${dateStr ? ` · ${esc(dateStr)}` : ""}</p>
         </div>
       </div>
       ${item.artwork_url ? `<img class="ep-art" src="${esc(safeUrl(item.artwork_url))}" alt="">` : ""}
       ${item.hook ? `<p class="fp-s-why">${esc(item.hook)}</p>` : ""}
       <div class="ep-actions">${item.audio_url ? playBtn(item) : notPlayableNote()}${starBtn(item.id)}${upNextBtn(item.id)}</div>
+      ${item.description ? `<section class="ep-description"><h3>Episode description</h3><p class="ep-description-text">${esc(item.description)}</p></section>` : ""}
+      ${episodeChaptersHtml(item)}
       ${moreFromShow(item)}
     </div>`;
   bindPickLogging($("#view"));
