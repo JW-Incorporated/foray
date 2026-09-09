@@ -89,18 +89,46 @@ export function capArgumentBeats(act: DeepenedAct): DeepenedAct {
 }
 
 /**
- * THE SEED SURVIVES DEEPENING (fix plan WS-L; finding F-63).
+ * A SEEDED BEAT COMES OUT OF DEEPENING AS §4.3 WROTE IT (fix plan WS-L;
+ * findings F-63 and F-68).
  *
  * §4.3 writes some of its `account` beats FROM a quoted transcript window and
- * names the episode on the beat (`BeatSeedSchema`); §4.5 opens that episode
- * before anything its own index ranks. Between the two sits this stage, whose
- * job is to sharpen wording — and a model asked to re-emit a JSON object will
- * sometimes drop a field it was not asked to change. Losing the seed there costs
- * exactly what F-63 costs: the tape stops being what the beat was written from.
+ * names the episode and the seconds on the beat (`BeatSeedSchema`); §4.5 opens
+ * that episode before anything its own index ranks, and then scores THE BEAT'S
+ * OWN WORDS against the tape there. Between the two sits this stage, whose job
+ * is to sharpen wording — and both halves of that pairing get lost here:
  *
- * SO IT IS RESTORED IN CODE, NOT REQUESTED IN THE PROMPT. The deepened beat
- * keeps its own seed when it returned one (a builder that legitimately re-points
- * a reworded beat is obeyed); otherwise the original beat's seed is put back.
+ *   F-63, THE SEED. A model asked to re-emit a JSON object will sometimes drop a
+ *   field it was not asked to change, and the tape stops being what the beat was
+ *   written from.
+ *
+ *   F-68, THE CLAIM. Run 2 attempt 4b: the spine wrote 16 beats from quoted tape
+ *   and the deepen stage kept every seed and PARAPHRASED 11 of the claims —
+ *   "…was an aspiration that one person could figure out the modeling" became
+ *   "…was a hiring aspiration built around one person -- someone who could pick
+ *   the model … and that job description mostly did not survive contact with a
+ *   production incident." Better prose, and words ("hiring", "production
+ *   incident") the recording never says. §4.5's relevance floor
+ *   (`TIER2_WINDOW_MIN_SHARE`, `TIER2_WINDOW_MIN_TERMS`) then measures the
+ *   paraphrase against the tape, the share falls under the floor — 0.349 against
+ *   0.35 in that very beat — and 11 of 16 seeded beats went to narration. The
+ *   floor is right; what was wrong is that the claim being scored was no longer
+ *   the claim written from the tape.
+ *
+ * SO BOTH ARE RESTORED IN CODE, NOT REQUESTED IN THE PROMPT. The prompt does ask
+ * (`AnthropicDeepenActBuilder`), because a model that complies produces a better
+ * act than one that is silently corrected — but the guarantee lives here. For a
+ * beat whose §4.3 counterpart carries a seed, the SPINE's claim and the SPINE's
+ * seed are put back whatever the builder returned; everything else the deepen
+ * stage wrote for that beat (`kind`, `exploration`) is kept. The claim and the
+ * seed travel together on purpose: freezing one and letting a model re-point the
+ * other would score §4.3's words against a stretch of tape §4.3 never read.
+ *
+ * A PARAPHRASE IS NOT A FAILURE, IT IS A CORRECTION. This runs after
+ * `validateDeepenedAct`, so an ignored instruction costs the act nothing — no
+ * retry, no failed build — and does not survive either. Each restored claim is
+ * logged once, so a run log shows how often the model ignored the rule.
+ *
  * The join is positional and only within a slot whose beat COUNT is unchanged —
  * §4.4 refines beats, it does not add or remove them, and where that assumption
  * does not hold this restores nothing rather than attaching one beat's tape to
@@ -117,10 +145,26 @@ export function carryBeatSeeds(original: Act, deepened: DeepenedAct): DeepenedAc
     if (!originalSlot || originalSlot.beats.length !== slot.beats.length) return slot;
     let restoredHere = 0;
     const beats = slot.beats.map((beat, beatIndex) => {
-      const seed = originalSlot.beats[beatIndex]?.seed;
-      if (beat.seed || !seed) return beat;
+      const originalBeat = originalSlot.beats[beatIndex];
+      const seed = originalBeat?.seed;
+      if (!seed) return beat;
+      const claimChanged = beat.claim !== originalBeat!.claim;
+      const seedChanged = !beat.seed || beat.seed.episodeId !== seed.episodeId || beat.seed.startSec !== seed.startSec || beat.seed.endSec !== seed.endSec;
+      if (!claimChanged && !seedChanged) return beat;
+      if (claimChanged) {
+        /* One line per ignored freeze. `capArgumentBeats` records its own
+           corrections on the act because they change what §4.5 searches for;
+           this one changes nothing a later stage can read back, so the run log
+           is the right place for it and the only place it is needed. */
+        console.warn(
+          `[deepen] Seeded beat's claim was paraphrased and has been restored to the spine's wording ` +
+            `(slot "${slot.title}", beat ${beatIndex + 1}, tape ${seed.episodeId} ${Math.round(seed.startSec)}-${Math.round(seed.endSec)}s).\n` +
+            `  spine:    ${originalBeat!.claim}\n` +
+            `  deepened: ${beat.claim}`
+        );
+      }
       restoredHere += 1;
-      return { ...beat, seed };
+      return { ...beat, claim: originalBeat!.claim, seed };
     });
     if (restoredHere === 0) return slot;
     restoredAnywhere += restoredHere;
@@ -200,8 +244,10 @@ async function deepenOneActWithRetry(
 
       /* The cap is applied AFTER validation, on the way out: it is this
          stage's own structural rule about the act it returns, not a schema
-         property of what the builder said (F-49). The seed restore rides the
-         same seam for the same reason (WS-L, F-63). */
+         property of what the builder said (F-49). The seeded beat's restore —
+         its claim and its seed — rides the same seam for the same reason
+         (WS-L, F-63/F-68): it runs AFTER validation, so a builder that ignored
+         the freeze is corrected rather than retried. */
       return capArgumentBeats(carryBeatSeeds(act, deepened));
     } catch (err) {
       lastError = err;

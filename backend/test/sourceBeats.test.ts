@@ -2307,6 +2307,110 @@ describe("sourceBeats — WS-L: a seeded beat opens its own episode first (F-63)
   });
 });
 
+describe("sourceBeats — F-68: the seeded beat's OWN window is the first stretch of tape asked for", () => {
+  /* WS-L put the seeded EPISODE at the front of the walk and then searched the
+     whole hour of it, so the stretch §4.3 actually quoted — the stretch the
+     claim's words came out of — competed with every other minute of the same
+     episode and lost whenever another minute scored higher. Here that is exactly
+     what happens: the seeded stretch says three of the claim's five words, and a
+     later stretch of the SAME episode says all five. */
+  const entry: TranscriptDigestEntry = {
+    show_id: "practical-ai",
+    show_title: "Practical AI",
+    guid: "pa-950",
+    title: "Episode 950",
+    cues: 7,
+    feed_duration_sec: 3600,
+    enclosure_url: "https://cdn.example/pa-950.mp3"
+  };
+
+  /** Five content words after `tokenizeForSourcing`: gearboxes, fail, bearings,
+   * torque, reversals. */
+  const claim = "Gearboxes fail because bearings take torque reversals.";
+
+  const cues: TranscriptCue[] = [
+    { text: "welcome back to the programme we are in denmark this week", start_sec: 0, end_sec: 30 },
+    /* 100-160s: the stretch §4.3 quoted and wrote the claim from. Three of the
+       five words — 0.6 of the claim, three distinctive terms, over the floor. */
+    { text: "the gearboxes here are the part that gives everybody trouble", start_sec: 100, end_sec: 120 },
+    { text: "and it is the bearings that give up first on almost all of them", start_sec: 120, end_sec: 140 },
+    { text: "you get a lot of torque coming back the other direction as well", start_sec: 140, end_sec: 160 },
+    /* 300-360s: a summary later in the same hour that happens to say all five. */
+    { text: "the gearboxes fail well before the design life says they should", start_sec: 300, end_sec: 320 },
+    { text: "bearings crack under torque that keeps switching direction on them", start_sec: 320, end_sec: 340 },
+    { text: "and those reversals were never in the original load case at all", start_sec: 340, end_sec: 360 }
+  ];
+
+  function actFor(seed?: { episodeId: string; startSec: number; endSec: number }): DeepenedAct[] {
+    return [
+      makeDeepenedAct(
+        { slots: [{ title: "Gearboxes", beats: [{ claim, exploration: false, kind: "account", ...(seed ? { seed } : {}) }] }] },
+        "F68"
+      )
+    ];
+  }
+
+  function run(seed?: { episodeId: string; startSec: number; endSec: number }) {
+    return sourceBeats(actFor(seed), {
+      segmentPool: [],
+      transcriptArchive: [entry],
+      cueProvider: { getCues: () => cues },
+      textIndex: memoryTextIndex([entry], { "pa-950": cues }),
+      topic: "engineering/ai-robotics"
+    });
+  }
+
+  it("cuts the seeded stretch, not the higher-scoring one later in the same episode", () => {
+    /* Ran it — red: drop the `within` branch in sourceBeats.ts (go back to a
+       bare `selectTapeWindow(claim, cues, { idf })`) and this mints 300-360
+       instead, which is the F-68 behaviour. */
+    const seeded = run({ episodeId: "pa-950", startSec: 100, endSec: 160 });
+    expect(allSourcedBeats(seeded.acts)[0]!.sourcing).toBe("tape");
+    const segment = seeded.newSegments[0]!;
+    expect(segment.startSec).toBe(100);
+    expect(segment.endSec).toBe(160);
+  });
+
+  it("is the whole difference: the same claim, the same episode, no seed — the louder stretch wins", () => {
+    const unseeded = run();
+    expect(allSourcedBeats(unseeded.acts)[0]!.sourcing).toBe("tape");
+    expect(unseeded.newSegments[0]!.startSec).toBe(300);
+    expect(unseeded.newSegments[0]!.endSec).toBe(360);
+  });
+
+  it("falls back to the whole-episode search when the seeded window itself does not clear the floor", () => {
+    /* A PREFERENCE, NOT A PERMISSION — the same rule as the seeded episode. The
+       welcome at 0-30s says none of the claim's words, so the seed's own window
+       is refused by the unchanged floor and the search runs as it always did. */
+    const elsewhere = run({ episodeId: "pa-950", startSec: 0, endSec: 30 });
+    expect(allSourcedBeats(elsewhere.acts)[0]!.sourcing).toBe("tape");
+    expect(elsewhere.newSegments[0]!.startSec).toBe(300);
+  });
+
+  it("still refuses a seeded window the tape does not carry at all, rather than lowering the floor for it", () => {
+    /* The seeded stretch here is the ad read, and nothing else in the episode is
+       about the claim either: the confined window loses, the whole-episode
+       window loses, and the beat is narration with the same gate as ever. */
+    const offClaim: TranscriptCue[] = [
+      { text: "welcome back to the programme we are in denmark this week", start_sec: 0, end_sec: 40 },
+      { text: "and now a word from the people who pay for this show every month", start_sec: 40, end_sec: 90 },
+      { text: "right where were we before all of that nonsense started", start_sec: 90, end_sec: 140 }
+    ];
+    const result = sourceBeats(actFor({ episodeId: "pa-950", startSec: 40, endSec: 90 }), {
+      segmentPool: [],
+      transcriptArchive: [entry],
+      cueProvider: { getCues: () => offClaim },
+      textIndex: memoryTextIndex([entry], { "pa-950": offClaim }),
+      topic: "engineering/ai-robotics"
+    });
+    expect(allSourcedBeats(result.acts)[0]!.sourcing).toBe("narration");
+    const tier2 = result.sourcingTrace[0]!.tier2!;
+    expect(tier2.gate).toBe("window-overlap");
+    expect(tier2.seededEpisode).toBe("pa-950");
+    expect(tier2.seedWindowWon).toBe(false);
+  });
+});
+
 /* THE OFFLINE HALF: the same code against the REAL transcript archive, which
    lives in `data-local/` and is on the generation machine only. These cases
    skip themselves, loudly and by name, anywhere else — a checkout without the

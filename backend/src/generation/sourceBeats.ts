@@ -579,7 +579,25 @@ function resolveOneBeat(beat: Beat, state: SourcingState): BeatResolution {
        exist (23 of 23 searching beats died on it). A window that clears the
        floor is tape about the claim; run 1's Chernobyl-for-Hyatt anchor and
        F-24's passing mention do not clear it. */
-    const window = selectTapeWindow(claim, cues, { idf: candidate.text?.idf });
+    /* AND THE SEEDED BEAT'S OWN WINDOW IS ASKED FIRST (F-68). WS-L put the
+       seeded EPISODE at the front of the walk but then searched the whole hour
+       of it, so the stretch §4.3 actually quoted — the one the claim's words
+       came out of — competed with every other minute of the same episode and
+       lost whenever another minute scored higher. It is asked first now, and
+       kept when it clears the floor.
+
+       IT IS A PREFERENCE, NOT A PERMISSION — the same rule as the seeded
+       episode itself. The confined window faces `tapeWindowIsRelevant`
+       unchanged; when it does not clear, the whole-episode search runs exactly
+       as before and the trace reports what that found. */
+    const seedWindow =
+      candidate.fromSeed && beat.seed
+        ? selectTapeWindow(claim, cues, {
+            idf: candidate.text?.idf,
+            within: { startSec: beat.seed.startSec, endSec: beat.seed.endSec }
+          })
+        : null;
+    const window = tapeWindowIsRelevant(seedWindow) ? seedWindow : selectTapeWindow(claim, cues, { idf: candidate.text?.idf });
     if (!tapeWindowIsRelevant(window)) {
       furthest = furtherOf(furthest, { candidate, gate: "window-overlap", window });
       continue;
@@ -752,7 +770,8 @@ function tier2Candidates(
  * and the same audio-source check as any other, and the walk continues past it
  * when it fails one — a seed is a hint, never a permission. Nothing here lowers
  * a threshold, and a seeded episode the topic gate refuses (`isUsable`) is never
- * added at all.
+ * added at all. (The seed's own SECONDS are used one step later, in the tier-2
+ * walk, where its window is the first one the episode is asked for — F-68.)
  *
  * WHEN THE SEEDED EPISODE IS ALSO IN THE TEXT RESULTS it is MOVED rather than
  * re-added, so it keeps the `idf` weights that search computed — the window

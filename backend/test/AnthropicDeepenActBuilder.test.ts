@@ -118,6 +118,38 @@ describe("AnthropicDeepenActBuilder", () => {
     expect(prompt).toMatch(/"kind": "account" \| "argument"/);
   });
 
+  it("marks a seeded beat's claim FROZEN in the prompt, and says why (F-68)", async () => {
+    /* The §4.4 side of F-68. The guarantee is `deepenActs.ts`'s restore — a
+       prompt line cannot be relied on, which is the whole lesson of F-49 — but
+       an act whose model complied is a better act than one silently corrected,
+       so the instruction is here, on the beat and in the numbered rules, with
+       the reason attached: sourcing scores this wording against that tape. */
+    const seeded: Spine = {
+      ...spine,
+      acts: [
+        {
+          ...spine.acts[0]!,
+          slots: [
+            {
+              title: "slot",
+              beats: [
+                { claim: "A claim happened", exploration: false, seed: { episodeId: "pa-900", startSec: 100.4, endSec: 165.6 } }
+              ]
+            }
+          ]
+        }
+      ]
+    };
+    const { client, create } = makeFakeAnthropicClient([textBlock(JSON.stringify(validDeepenedAct))]);
+    const builder = new AnthropicDeepenActBuilder(new BudgetGuard(new InMemoryCostEventSink(), 100), client);
+    await builder.deepenAct(seeded, seeded.acts[0]!, 0, ctx);
+
+    const prompt = String(create.mock.calls[0]![0].messages[0].content);
+    expect(prompt).toContain("[SEEDED — THIS CLAIM IS FROZEN, COPY IT VERBATIM; written from tape pa-900 100-166s]");
+    expect(prompt).toMatch(/copy its `claim` string ACROSS VERBATIM/);
+    expect(prompt).toMatch(/scores THAT WORDING, word for word, against THAT STRETCH OF TAPE/);
+  });
+
   it("accepts a beat kind when the model sends one, and does not retry when it omits it", async () => {
     /* Optional in the schema on purpose: a model that forgets the key must not
        cost the whole act a retry, and an absent kind means `account` — the
