@@ -2725,6 +2725,34 @@ and belongs with #133's live position, not behind a `tabindex` on a `role="img"`
   in `docs/curation/grilling-foray-sourcing.md` and
   `docs/curation/catalogue-broadening.md`. Touched nothing in `data/`.
 
+### U-12/U-13: drawer above Now Playing; closing never stops (F17, F18) — `fix/drawer-and-close-never-stops`
+
+- **What:** the two founder-reported UI defects, as one PR because they are the
+  same screen. **U-12 (F17):** the expanded Now Playing sheet (`#foray-player`,
+  z 60) covered `#drawer-overlay`/`#drawer` (30/31), so the menu button opened a
+  drawer nobody could see or tap. One new `--z-drawer` token (80, above the
+  reason sheet's 70) now carries overlay and panel, and `styles.css`'s drawer
+  block documents the whole 5/15/19/20/55/60/70/80 ladder in one place.
+  **U-13 (F18):** the mini bar's ✕ called `stopAndClose()`, so closing the screen
+  to use the app ended playback and removed the way back to it. It now collapses
+  (the existing `fp-collapse` path, relabelled "Collapse player"); stopping moved
+  to a new, separately labelled **Stop** control in the sheet's second row. The
+  stop itself is unchanged — same `stopAndClose()`, same effects, only a
+  different control reaches it. **Ride-along (N1):** the bottom-edge reservation
+  now COMPOSES (`--fp-bar-h`/`--fp-sheet-h` + `--tab-bar-h` + the safe-area
+  inset) instead of one rule overriding the other, and stays scoped to
+  `.fp-open` so stopping leaves no dead gap.
+- **Touches:** `styles.css`, `player/client.js`,
+  `test/playwright/tests/drawer-and-close.spec.js` (new),
+  `test/playwright/lib/site-server.mjs` (new — the first fixture in that suite
+  that serves the REAL site rather than the sw.js stand-in), `STATE.md`.
+- **Out of scope:** no restyling, no `index.html`, no `data/`, no `.github/`, and
+  no change to the reducer's stop effect.
+- **Known gap:** the `playwright` CI job is advisory-only, so these three tests
+  gate nothing in `protect-main` yet — see `ci.yml`'s own header for why it
+  starts non-required.
+- **Branch:** `fix/drawer-and-close-never-stops`.
+
 ## Completed workstreams
 
 ### mobile bundle — minified code and compact JSON: 2,625 → 1,530 KB (2026-09-04, one PR, no follow-up) — `feature/mobile-bundle-minify`
