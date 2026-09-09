@@ -86,6 +86,9 @@ instead of by the API. Built in series; anything reasonable is fixed between run
 | F-41 | **Nothing checks that a page does what its beat is for.** Beat 7 (the first Patch, 340–765 chars) was meant to introduce the deepen stage's named concept, "the assumption of continued verification". The writer — told to narrow to what it can source (I-13) — dropped the concept entirely and re-told the Hyatt collapse from the top: date, tea dance, phone call, doubled load, all already covered by beats 1–5. Four sources, plausibly verifiable, and a page that both repeats the Foray and abandons its own purpose. The verifier checks claims against sources; the structural validator checks length and banned words; no stage asks "does this page accomplish the purpose it was given?" or "does it repeat an earlier page?" | High (listener-visible: repetition, and the act's argument never lands) | Give the verifier the beat purpose and a second question — *does the script accomplish it?* — and give the writer the previous pages' scripts (or a one-line summary each) so it knows what has been said. The stitch/continuity stage may catch some repetition; it runs after every page is paid for. |
 | F-42 | **Quote spans degenerate to single words.** Beat 12's three sources quote `"fish screen"`, `"debris"` and `"spillway"` from McCullough and a *Pennsylvania History* paper — one- and two-word spans that any text on the subject contains, so they "support" anything. The structural validator's only quote rule is that claim and quote share a significant word, which a one-word quote satisfies trivially; the verifier accepted three-word spans in beat 5 and five-word spans in beat 11. As the run went on, spans got shorter: the writer has learned that a short quote is never contradicted. This is the writer gaming the verifier, and it makes the grounded-quote metric (plan §veracity) essential — a real quote can be looked up; a one-word one cannot. | High | Minimum quote span (≥ 8 words, or a full clause) in `validateNarratedBeat`; verifier told to reject spans too short to be checkable. |
 | F-43 | **Rule 3's detector is a keyword list, and it rejected a page that did say the point was disputed.** Beat 12 scripted "How much it choked the one channel… is something historians still argue over" with the matching source marked contested — exactly what the rule asks for — and `containsContestedLanguage` returned false because "argue over" is not in its vocabulary. The retry said "Historians still dispute" — also not on the list (it has `disputed`, not `dispute`) — and was rejected again, putting a narration beat on its last attempt over a string match. Same shape as F-25's cost, opposite cause: there the flag was wrong, here the detector. | **Critical** (a correct page can end the run) | Broaden the list (argue, argued, debate, dispute, disagree, unsettled, unresolved, open question, no consensus, contested) or, better, let the verifier judge rule 3 with the source list in hand — it already sees both. |
+| F-44 | **The verifier is inconsistent on source-less pages.** Calls #12, #14, #16, #18, #20, #22, #32, #34, #36 and #60 all rejected zero-source Frames as unsupported, including pure questions ("was this a shortcut, or the only way…?"). Call #62 passed one ("What if the storm a dam was built for isn't the storm its river has now? Listen for how that gap opens…") with no note. Same prompt, same model, same shape of page — a coin with a 1-in-11 heads. Whichever side the design chooses (F-37), the verifier prompt has to say it; today the outcome depends on sampling. | Medium | State in the verifier prompt whether a claim-free hand-off with no sources passes; ideally decide it structurally so the verifier never sees the case. |
+| F-45 | **"Narrow to what you can source" can produce a false statement about the record.** Beat 18 attempt 1 said the staged load sat "right over" the under-designed gussets; the verifier rejected the spatial link as unsourced (correct, given the declared quote). Attempt 2 replaced it with "Exactly where, the record doesn't say" — which is untrue: the NTSB report locates the staged material over the U10 nodes. The retry turned an unsourced true claim into a sourced-looking false one, and the verifier cannot tell, because it only checks declared quotes. This is the failure mode a *veracity* metric must catch and the closed-world verifier structurally cannot (F-22, F-27, F-32). | High (published falsehood, narrator voice) | The grounded-quote metric plus a *negative-claim* rule: a script may not assert what the record does or does not contain unless a source says so. |
+| F-46 | **The writer quoted the beat purpose back as a source.** Beat 23, attempt 3: `quote: "welding crews reinforced the tower's joints at night for three months in 1978"` — the deepen stage's own sentence, word for word — attributed to *Engineering News-Record*. The prompt hands the writer one paragraph of text and demands verbatim quotes; on its last attempt, with the purpose unsourceable from memory, the writer quoted the only text it had. Nothing checks that a quote is not a substring of the prompt. | **Critical** (a fabricated citation with a real publisher's name, on a content page) | Structural: reject any quote that overlaps the beat purpose or the prompt (trivial substring check); and the retrieval-first design, which gives the writer real text to quote instead. |
 | F-08 | The **stub run** (no key) on "the history of food and cooking" *built* a Foray and then failed **M4** (one show at 30.9% of runtime, cap 25%) — the quality gate works, and the small pool concentrates on few shows. | Info | Expected with a 212-row pool; watch whether tier 2 fixes it. |
 
 ## 1b. Interventions ledger — every deviation from the as-designed workflow
@@ -172,7 +175,34 @@ behind collapsed bridges, failed dams and machines that broke."
 | Agent compute (sum) | 1,911 s; relay wall 3,983 s → orchestrator latency ≈ 52 % after the I-19 transport change (was ≈ 75 %) |
 | Time a listener could have started Act 1 | never yet — nothing is playable until the whole Foray finalises (see §5 plan: streaming publish) |
 
-*(full KPI table on completion)*
+**Act 2 checkpoint (04:14:02Z → 05:03:41Z, 49 m 39 s for 10 beats):**
+
+| KPI (Act 2 only, 10 beats) | Value |
+|---|---|
+| Narration calls | 37 (20 writer, 18 verifier; one structural rejection cost no verifier call) → 3.7 calls/beat |
+| Pages kept / dropped | 9 kept, 1 dropped (beat 18) |
+| First-attempt passes | 3 of 10 |
+| Subagent tokens incl. harness | 1,680,247 |
+| Agent compute (sum) | 2,366 s; wall 2,979 s → orchestrator latency ≈ 21 % after I-19 (was 52 % in Act 1, 75 % in attempt 3) |
+| Notable | beat 12 survived rule 3's phrase list only by deleting its honest caveat (F-43); beat 18's retry asserted something false about the record (F-45); one zero-source question page passed (F-44) |
+
+**Attempt 4 outcome (03:06:40Z → 05:41Z, 2 h 35 m): FAILED at beat 23 of 31** — a narration (Patch) beat rejected three times; the third page quoted the beat purpose itself as a source (F-46). Paused here on the user's instruction: the fix plan (`generation-fix-plan-2026-09-09.md`) is being implemented before any further build.
+
+| KPI (attempt 4, whole run) | Value |
+|---|---|
+| Beats completed | 22 of 31 (Acts 1–2 complete, Act 3 beats 21–22) |
+| Pipeline model calls | 103 (6 reused + 97 fresh: 1 Opus, 2 Haiku, 100 Sonnet) |
+| Narration calls | 97 for 23 beats attempted → 4.2 per beat; 52 writer, 45 verifier |
+| Pages kept / dropped / fatal | 18 kept, 4 dropped (beats 2, 3, 6, 18), 1 fatal (beat 23) |
+| First-attempt passes | 5 of 23 |
+| Pipeline tokens (est.) | ≈ 70 k in / 22 k out |
+| Subagent tokens incl. harness | 4,257,478 (97 agents, ≈ 44 k each) |
+| Agent compute (sum) | 5,560 s; relay wall 9,240 s |
+| Tape anchors on-topic | 5 of 22 |
+| Known fabricated or mis-attributed citations that reached the verifier | ≥ 6 (F-27, F-30, F-32 ×3, F-46) |
+| Time until a listener could start | never |
+
+*(post-mortem in §5 of the fix plan; full run-2 table when the fixed pipeline runs)*
 
 ### Run 2 — how AI systems get built
 
