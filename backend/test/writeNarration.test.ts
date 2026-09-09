@@ -453,3 +453,18 @@ describe("writeNarration — F-36/F-37: a content page with zero sources is reje
     expect(allWrittenNarration(written)).toHaveLength(1);
   });
 });
+
+describe("containsContestedLanguage — F-43: natural phrasings count, not only house phrases", () => {
+  it.each([
+    "How much it choked the channel is something historians still argue over.",
+    "Historians still dispute how much the screens mattered.",
+    "The point is contested.",
+    "Whether that was the cause is an open question.",
+    "The record cannot settle which came first."
+  ])("accepts: %s", (script) => {
+    expect(containsContestedLanguage(script)).toBe(true);
+  });
+  it("still rejects a script that asserts without hedging", () => {
+    expect(containsContestedLanguage("The screens choked the channel and the dam went over the top.")).toBe(false);
+  });
+});

@@ -160,14 +160,31 @@ export interface NarratedBeatValidationResult {
  * uses to flag a claim it is not standing fully behind. Kept narrow and
  * explicit rather than inferred, since §4.7 rule 3 requires the text say
  * so "explicitly". */
+/* Generation run 1 (2026-09-09) rejected two correct pages on rule 3 because
+   the writer said "historians still argue over" and "historians still
+   dispute" — neither was on this list, though both say exactly what the rule
+   asks for. Stems rather than phrases, so "dispute/disputed/disputes",
+   "argue/argued/argues/argument" and "debate/debated" all count; the rule is
+   that the script tells the listener the point is open, not that it uses a
+   house phrase. */
 const CONTESTED_PHRASES = [
-  "contested",
-  "disputed",
-  "some historians disagree",
+  "contest",
+  "disput",
+  "debat",
+  "disagree",
+  "argue",
+  "argued",
+  "argument",
+  "unsettled",
+  "unresolved",
+  "open question",
   "not everyone agrees",
   "accounts differ",
   "the evidence is mixed",
-  "no consensus"
+  "no consensus",
+  "cannot settle",
+  "can't settle",
+  "still ask"
 ];
 
 export function containsContestedLanguage(script: string): boolean {
