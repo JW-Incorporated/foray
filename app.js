@@ -703,10 +703,15 @@ function playLink(item) {
 
 /* In-app play button. Items with no audio_url keep the link-out to Apple
    Podcasts instead (#21 leaves ~9 unresolvable, plus video-only items) — the
-   card itself stays a link either way, so nothing regresses for them. */
-function playBtn(item) {
+   card itself stays a link either way, so nothing regresses for them.
+
+   `ctx`, when given, is stamped on as `data-ctx` — the same "playlist-<id>"
+   / "subject-<id>" / "generated-<id>" convention bindPickLogging already
+   reads off a picked link's `data-ctx` (#558 item 2). It is optional and
+   omitted by every non-playlist caller, so this changes nothing for them. */
+function playBtn(item, ctx) {
   if (!item || !item.audio_url) return "";
-  return `<button class="play-btn" data-play="${esc(item.id)}" aria-label="Play ${esc(item.title)}">▶</button>`;
+  return `<button class="play-btn" data-play="${esc(item.id)}"${ctx ? ` data-ctx="${esc(ctx)}"` : ""} aria-label="Play ${esc(item.title)}">▶</button>`;
 }
 
 /* Family mode (corner-case 28): hide explicit-rated episodes and the comedy
@@ -1396,6 +1401,15 @@ function playlists() {
   const sources = () => (cached ||= { pool: hydrationPool(), saved: savedMap() });
   for (const p of all) {
     if (!p.title) { p.title = prettyTitle(p.query || ""); touched = true; }
+    /* A hand-edited store, a truncated write, or a cp_quests entry that never
+       carried `created` leaves a record with neither `created` nor
+       `last_played_at` — and every sort that orders playlists by recency
+       (renderDrawer, playlistsForYouHtml) reads one of the two. Backfilling
+       here, the same way the title above is backfilled, makes the record
+       whole at the one place all six playlist-reading call sites pass
+       through, rather than leaning on every sort site to guess a fallback
+       (#558 item 1). */
+    if (!p.created) { p.created = new Date().toISOString(); touched = true; }
     if (hydratePlaylistParts(p, sources)) touched = true;
   }
   /* Deliberately not through savePlaylists(): a read must not be the thing that
@@ -2407,20 +2421,30 @@ const searchCache = new Map();
    SearchEngine.interpretQuery/searchWithRelaxation/classifyResults exactly as
    buildPlaylist does and changes NOTHING about how they score or rank; it only
    chooses not to act on the result the way buildPlaylist does. */
+/* Returns `{ status, relaxed }` — not a bare status string. `relaxed` mirrors
+   buildPlaylist's own (#558 item 3): both functions read and write the SAME
+   `searchCache` entry for a given key, so if either one cached `{ results }`
+   without `relaxed`, whichever function ran second would read that entry back
+   and silently lose the signal regardless of what its own code did. Today's
+   one caller only compares `.status` to "empty", where `relaxed` is always
+   null (searchWithRelaxation only sets it when relaxation found results), so
+   this changes nothing visible yet — it exists so the cache the two functions
+   share never disagrees about what it holds. */
 function topicSearchStatus(query) {
   const ctx = searchCtx();
   const interp = SearchEngine.interpretQuery(query, ctx);
-  if (!interp.groups.length && !interp.filters.length) return "empty";
+  if (!interp.groups.length && !interp.filters.length) return { status: "empty", relaxed: null };
   const pool = poolFiltered();
   const cacheKey = JSON.stringify([query, familyMode(), state._interestsGen || 0]);
   let cached = searchCache.get(cacheKey);
   if (!cached) {
-    const { results } = SearchEngine.searchWithRelaxation(pool, interp, 2, state.itemTags, interestScore);
-    cached = { results };
+    const { results, relaxed } = SearchEngine.searchWithRelaxation(pool, interp, 2, state.itemTags, interestScore);
+    cached = { results, relaxed };
     if (searchCache.size >= SEARCH_CACHE_MAX) searchCache.clear();
     searchCache.set(cacheKey, cached);
   }
-  return SearchEngine.classifyResults(cached.results, { listenedShows: listenedShows() }).status;
+  const status = SearchEngine.classifyResults(cached.results, { listenedShows: listenedShows() }).status;
+  return { status, relaxed: cached.relaxed || null };
 }
 
 function buildPlaylist(query) {
@@ -2433,8 +2457,8 @@ function buildPlaylist(query) {
   const cacheKey = JSON.stringify([query, familyMode(), state._interestsGen || 0]);
   let cached = searchCache.get(cacheKey);
   if (!cached) {
-    const { results } = SearchEngine.searchWithRelaxation(pool, interp, 2, state.itemTags, interestScore);
-    cached = { results };
+    const { results, relaxed } = SearchEngine.searchWithRelaxation(pool, interp, 2, state.itemTags, interestScore);
+    cached = { results, relaxed };
     if (searchCache.size >= SEARCH_CACHE_MAX) searchCache.clear();
     searchCache.set(cacheKey, cached);
   }
@@ -2444,6 +2468,11 @@ function buildPlaylist(query) {
     return { status: "empty", suggestions: SearchEngine.suggestAdjacentTopics(interp, ctx) };
   }
 
+  /* `relaxed` was computed by searchWithRelaxation and thrown away here until
+     #558 item 3: "podcasts about fusion under 20 minutes" could silently come
+     back with hour-long episodes and nothing said. Stored on the playlist,
+     same shape as `sparse`, so renderPlaylistDetail can disclose it exactly
+     once, the honest-answer principle that already governs sparse/empty. */
   const playlist = withMirror({
     id: "q" + Date.now(),
     query: query.trim(),
@@ -2452,6 +2481,7 @@ function buildPlaylist(query) {
     created: new Date().toISOString(),
     last_played_at: null,
     sparse: status === "sparse",
+    relaxed: cached.relaxed || null,
   });
   /* A refused write is reported rather than assumed away (#276 review). lsSet has
      returned a boolean since #40 and this was discarding it, so a store at quota
@@ -2576,6 +2606,15 @@ function bindPlay(scope, { origin = null } = {}) {
       logEvent("play_started", { episode_id: id, topics: item.topics || [] });
       const history = pickedHistory();
       if (!history.includes(id)) lsSet("cp_history", history.concat(id).slice(-200));
+      /* Same "playlist-<id>" convention and the same regex bindPickLogging
+         already applies to a picked link's data-ctx — bindPlay is the in-app
+         play button, the PRIMARY control on every live playlist row, and it
+         was the only path that never stamped `last_played_at` (#558 item 2):
+         a playlist played entirely in-app kept `last_played_at: null`
+         forever, which is the sort key both Home's own-playlist rail and the
+         drawer use. */
+      const m = /^playlist-(.+)$/.exec(btn.dataset.ctx || "");
+      if (m) touchPlaylistPlayed(m[1]);
       trySyncEvents();
     });
   });
@@ -3241,7 +3280,7 @@ function renderPlaylistSearchResults(query, myToken) {
    handed to the existing #pl-form flow rather than a new creation path. */
 function createPlaylistCtaHtml(query) {
   if (!ui2On()) return "";
-  if (topicSearchStatus(query) !== "empty") return "";
+  if (topicSearchStatus(query).status !== "empty") return "";
   return `<div class="sh-create-cta">
     <button type="button" class="fy-btn fy-main" data-create-playlist="${esc(query)}">
       Create a playlist about \u201c${esc(query)}\u201d
@@ -3670,7 +3709,7 @@ function renderForays() {
    instead of a fake button or an external hop — never both, never neither
    silently. */
 function epRow(item, idx, ctx, nextIdx) {
-  const inApp = playBtn(item);
+  const inApp = playBtn(item, ctx);
   const unavailable = inApp ? "" : notPlayableNote();
   const dateStr = fmtDate(item.release_date);
   return `<div class="ep-row">
@@ -3805,6 +3844,7 @@ function renderPlaylistDetail(id) {
         </div>
       </div>
       ${p.sparse ? `<p class="note">Only found a few on this — here's what we've got.</p>` : ""}
+      ${p.relaxed === "duration" ? `<p class="note">Couldn't match the length you asked for — here's what we found without it.</p>` : ""}
       ${partsNote(rows)}
       ${rows.map((r, i) => r.state === "live" ? epRow(r.item, i, ctx, nextIdx) : archivedRow(r.item, i, ctx)).join("")}
       ${(p.isSubject || p.isGenerated) ? "" : `<button class="danger" id="pl-remove">remove this playlist</button>`}
@@ -5768,8 +5808,13 @@ function sizeProgressBars(scope) {
 
 function renderDrawer() {
   ensureInterestsDrawerLink();
+  /* `|| ""` on both sides, same guard playlistsForYouHtml already carries: a
+     playlist() backfills `created` on read, but this must not depend on that —
+     a record that somehow still carries neither field must not throw
+     `localeCompare` out of undefined and blank the drawer on every navigation
+     (#558 item 1). */
   const recent = [...playlists()]
-    .sort((a, b) => (b.last_played_at || b.created).localeCompare(a.last_played_at || a.created))
+    .sort((a, b) => (b.last_played_at || b.created || "").localeCompare(a.last_played_at || a.created || ""))
     .slice(0, 5);
   $("#drawer-playlists").innerHTML = recent.map(p =>
     `<a class="drawer-item" href="#/playlist/${esc(p.id)}">${esc(p.title)}</a>`).join("")

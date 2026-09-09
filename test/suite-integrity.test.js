@@ -333,8 +333,16 @@ const FLOORS = {
      REAL catalogue and then has the pool taken away underneath it, which is the
      only form the reproduction can take. Every test names the mutation that kills
      it — see the suite header for how the coverage divides against
-     data-deletion and app-security. */
-  "test/playlist-durability.test.js": 33,
+     data-deletion and app-security.
+
+     Raised 33 -> 38 for #558's three code defects (requirements-audit items
+     1-3): renderDrawer's missing `|| ""` guard plus playlists()'s missing
+     `created` backfill (two tests — the crash and the backfill are separate
+     failure modes), bindPlay never stamping last_played_at for an in-app
+     playlist play (two tests — the positive case and that a non-playlist
+     play never fabricates one), and searchWithRelaxation's `relaxed` signal
+     being discarded by buildPlaylist instead of disclosed on the page. */
+  "test/playlist-durability.test.js": 38,
   /* #/show/:id, Stage 1 of docs/show-pages-plan.md. Floored because the join it
      guards (show_id first, title-alias fallback for Lingthusiasm) fails
      silently in exactly the way #276's playlist decay did: a dropped fallback
