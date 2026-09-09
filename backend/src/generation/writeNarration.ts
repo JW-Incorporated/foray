@@ -1,4 +1,5 @@
 import { BANNED } from "../copy/rules";
+import { decodeEntities } from "../feeds/html";
 import type { SourcedAct, SourcedBeat, SourcedSlot, TapePointer } from "../types/tapeSourcing";
 import {
   containsContestedLanguage,
@@ -9,7 +10,7 @@ import {
   type NarrationMode
 } from "../types/narration";
 import type { Voice } from "../types/spine";
-import type { NarrationBuildContext, NarrationWriterBuilder } from "./NarrationWriterBuilder";
+import type { NarrationBuildContext, NarrationWriterBuilder, NarrationWriteResult } from "./NarrationWriterBuilder";
 import type { NarrationVerifierBuilder } from "./NarrationVerifierBuilder";
 
 /**
@@ -216,6 +217,28 @@ export const NARRATION_PAGE_ATTEMPTS = 3;
  * `data/segments.json` item id and of a tier-2 minted id. */
 const SLUG_LIKE = /^[a-z0-9]+(?:[-#][a-z0-9]+){2,}$/;
 
+/** Decodes HTML/XML entities (`&amp;`, `&quot;`, `&#39;`, numeric refs, …)
+ * out of every writer-produced text field before it reaches validation,
+ * the verifier, or a spoken line — reuses `feeds/html.ts`'s
+ * `decodeEntities` (already exercised against real feed titles) rather
+ * than a second private implementation. Run 1 (2026-09-09) observed a
+ * writer emit `&amp;` inside `publication` (F-26); a model can put an
+ * entity in `script`, `claimText` or `quote` too, so all four are decoded
+ * here, at the one boundary every `NarrationWriterBuilder` implementation
+ * (real or stub) passes through. */
+function decodeWriterOutputEntities(result: NarrationWriteResult): NarrationWriteResult {
+  return {
+    script: decodeEntities(result.script),
+    sources: result.sources.map((source) => ({
+      ...source,
+      claimText: decodeEntities(source.claimText),
+      quote: decodeEntities(source.quote),
+      publication: decodeEntities(source.publication)
+    })),
+    pronunciationHints: result.pronunciationHints
+  };
+}
+
 async function writePageAndVerify(
   claim: string,
   mode: NarrationMode,
@@ -244,7 +267,13 @@ async function writePageAndVerify(
   for (let attempt = 0; attempt < NARRATION_PAGE_ATTEMPTS; attempt++) {
     try {
       const noteForAttempt = retryNote ? [contextNote, retryNote].filter(Boolean).join(" ") : contextNote;
-      const written = await writer.writePage({ claim, mode, voice, contextNote: noteForAttempt }, ctx);
+      const rawWritten = await writer.writePage({ claim, mode, voice, contextNote: noteForAttempt }, ctx);
+      // Every NarrationWriterBuilder's output passes through here — real or
+      // stub — so this is the one place to decode HTML entities a model
+      // slips into prose (`&amp;`, `&quot;`, `&#39;`, …; e.g. "Simon &amp;
+      // Schuster" instead of "Simon & Schuster") before anything downstream
+      // (validation, the verifier, the spoken script itself) ever sees it.
+      const written = decodeWriterOutputEntities(rawWritten);
 
       const structural = validateNarratedBeat(
         { mode, script: written.script, sources: written.sources, pronunciationHints: written.pronunciationHints, verified: true },

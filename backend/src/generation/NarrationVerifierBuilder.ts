@@ -1,4 +1,5 @@
 import type { NarrationBuildContext, NarrationWriteRequest, NarrationWriteResult } from "./NarrationWriterBuilder";
+export type { NarrationBuildContext } from "./NarrationWriterBuilder";
 
 /**
  * §4.7's verification collaborator — a genuinely separate role from

@@ -90,7 +90,36 @@ export class AnthropicSpineBuilder implements SpineBuilder {
     const textBlock = response.content.find((b: Anthropic.ContentBlock): b is Anthropic.TextBlock => b.type === "text");
     if (!textBlock) throw new Error("Anthropic spine response had no text block");
 
-    const raw = parseWithRetry(RawSpineSchema, textBlock.text, "Anthropic spine output");
+    const reask = async (): Promise<string> => {
+      const reaskLine = "Your previous reply was not valid JSON; reply with the JSON object only.";
+      // The re-ask is its own real API call — it re-sends the whole prompt
+      // plus the bad reply, so it is its own metered spend, gated the same
+      // way as the original call (see parseWithRetry.ts's BUDGET note).
+      const reaskEstimatedInputTokens = roughTokenEstimate(promptText + textBlock.text + reaskLine);
+      await this.budgetGuard.checkAndRecord({
+        userId: ctx.userId,
+        operation: "spine_build",
+        provider: this.providerName,
+        model: MODEL,
+        estimatedUsd: reaskEstimatedInputTokens * USD_PER_INPUT_TOKEN + MAX_OUTPUT_TOKENS * USD_PER_OUTPUT_TOKEN,
+        sessionId: ctx.sessionId
+      });
+
+      const retryResponse = await this.client.messages.create({
+        model: MODEL,
+        max_tokens: MAX_OUTPUT_TOKENS,
+        messages: [
+          { role: "user", content: promptText },
+          { role: "assistant", content: textBlock.text },
+          { role: "user", content: reaskLine }
+        ]
+      });
+      const retryTextBlock = retryResponse.content.find((b: Anthropic.ContentBlock): b is Anthropic.TextBlock => b.type === "text");
+      if (!retryTextBlock) throw new Error("Anthropic spine re-ask response had no text block");
+      return retryTextBlock.text;
+    };
+
+    const raw = await parseWithRetry(RawSpineSchema, textBlock.text, "Anthropic spine output", reask);
     return {
       subject: intent.subject,
       angle: intent.angle,

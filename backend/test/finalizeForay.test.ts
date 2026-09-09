@@ -1,5 +1,4 @@
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { describe, it, expect } from "vitest";
 import { finalizeForay, type FinalizeForayInput } from "../src/generation/finalizeForay";
 import { disclosureNarratedBeat } from "../src/types/narration";
@@ -23,7 +22,7 @@ import type { ForayItem } from "../src/generation/forayItems";
  * get right once rather than everywhere it's reused.
  */
 
-const FIXTURE_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..", "tools", "foray", "fixtures", "boundary");
+const FIXTURE_ROOT = path.resolve(__dirname, "..", "..", "tools", "foray", "fixtures", "boundary");
 
 const disclosure = disclosureNarratedBeat("a finalize-stage test topic");
 

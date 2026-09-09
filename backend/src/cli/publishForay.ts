@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { execFileSync } from "node:child_process";
 import { finalizeForay, type FinalizeForayInput } from "../generation/finalizeForay";
 
@@ -57,7 +56,7 @@ import { finalizeForay, type FinalizeForayInput } from "../generation/finalizeFo
  *   npm run publish-foray -- --input path/to/candidate.json --no-hold
  */
 
-const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
+const REPO_ROOT = path.resolve(__dirname, "..", "..", "..");
 
 interface CliArgs {
   input: string | null;
