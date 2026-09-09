@@ -131,6 +131,59 @@ endpoint + `app.js` player append (Hermes' UI area — coordinate via PR, do not
 - Keep `parseOrRepairJson`; add a single re-ask on parse failure inside the shared parser path (the
   builders pass a `reask` callback).
 
+## WS-F — Robustness: the run survives its own failures (closes F-03, F-04, F-11, F-13, F-17, F-18)
+
+None of these five is about what the pipeline writes. They are about what it costs when something goes
+wrong, and run 1's answer was "everything": attempt 4 ran 2 h 35 m, made 103 model calls, finished 22 of
+31 beats, and discarded all of it when beat 23 failed a third time.
+
+1. **Per-stage checkpoint and resume inside one Foray (F-17, F-18).** `runForayPipeline` takes an optional
+   `checkpoint` store (`load(key)` / `save(key, stage, data)`) and an `options.checkpointKey`. Every stage
+   persists its output the moment it exists — `understand`, `research-shape`, `spine`, `deepen:<n>`,
+   `source`, `narrate:<n>`, `stitch` — to `<out>/<candidate-basename>.checkpoint.json`; a re-run of the same
+   request resumes at the first stage that never finished, and every stored value is re-validated against
+   the stage's own schema on the way back in. Deepening and narration are keyed PER ACT, which is what makes
+   a beat-23 failure cost act 3's narration rather than the Foray. The candidate-exists skip is unchanged
+   and is still the outer resume; the checkpoint is deleted once the candidate is written, and also when the
+   prompt ends in a terminal non-candidate outcome (rejected, needs-clarification) that a re-run would only
+   reproduce. `--no-resume` on the driver forces every stage to be rebuilt.
+2. **Budgets (F-04).** `DAILY_BUDGET_USD` 2.00 → 25.00 and `EPISODE_BUDGET_USD` 10.00, with the per-medium-
+   Foray arithmetic (≈ $3.35 from the builders' own per-call estimates) written into `env.ts`. A
+   `--budget-usd` flag on `generateForays` re-caps both for one run. A budget stop is re-thrown as
+   `BudgetStopError` naming the stage, the spend so far, the cap, and the checkpoint to resume from — found
+   through the `cause` chain, so §4.4's `ActDeepeningError` cannot bury it.
+3. **Model ids in one place (F-03).** `backend/src/config/models.ts` maps tier → id and tier → per-token
+   price, env-overridable (`FORAY_MODEL_OPUS` etc.), defaulting to `claude-opus-5`, `claude-sonnet-5`,
+   `claude-haiku-4-5-20251001`. All eight Anthropic-calling classes read it; a grep test fails if a literal
+   `claude-*` appears anywhere in `src/` outside that file.
+4. **Spine validation before deepening (F-13).** `spineStructure.ts` checks what a per-beat schema cannot
+   see — a claim written into two acts, a paragraph where a claim belongs, two sentences in one beat, an act
+   with no start or end state — plus the tier's act/slot/beat ranges, and `buildSpine` fails the stage on
+   any of them. Run 1's real spine (3 acts, 6 slots, 31 beats) is the fixture that must keep passing.
+5. **Research-map topic filter (F-11).** Two changes in `matchConceptsInText`: a term must match at a word
+   boundary (exact token, or a ≥4-character stem), and — when the caller knows the Foray's resolved
+   topic — a concept that matched only on a stem and sits outside the Foray's taxonomy lineage is dropped.
+   `buildResearchShape` resolves that topic from the intent itself.
+
+   *Correction to F-11 as written.* The finding says the leak came from "shared tokens (`engineering`)".
+   It did not. `ai`'s first term is the two-letter string `ai`, the prompt contained the word "chains", and
+   the old matcher accepted any interior substring — `ch-ai-ns`. The finding's proposed fix, "topic-node
+   filtering", is also wrong if *family* means the root segment: `ai`'s only topic is
+   `engineering/ai-robotics`, which shares the `engineering` root with `engineering/disasters`, so a
+   root-segment rule would have KEPT the leak while deleting `bridges`, `disasters`, `infrastructure` and
+   `decision-making` — the four most on-topic concepts run 1 matched, all of which live under other roots.
+   Family here therefore means *lineage* (a node, its ancestors, its descendants), and the boundary rule
+   does the work the finding attributed to the filter.
+
+**Files.** `config/models.ts`, `generation/checkpoint.ts`, `generation/spineStructure.ts` (new);
+`config/env.ts`, `cost/budgetGuard.ts`, `generation/{runPipeline,buildSpine,catalogueLookup,researchShape,deepenActs,stageTiming}.ts`,
+`cli/generateForays.ts`, every `Anthropic*` builder, tests.
+
+**Done when.** A pipeline run whose narration fails leaves its spine and deepened acts on disk and the
+re-run pays only for narration; a budget stop says which stage and how much; no builder names a model; a
+spine with a duplicated or multi-sentence beat claim never reaches a deepen call; and `Ai` is not in the
+research map for run 1's own prompt.
+
 ## Rules for the agents
 
 - Work on a branch from `generation-run-2026-09-09` (it carries the run-1 fixes); one PR per workstream,

@@ -27,6 +27,11 @@ export interface StageTiming {
   name: string;
   startedAt: string;
   ms: number;
+  /** Set when the stage did not run: its output came from a checkpoint
+   * (F-17/F-18). Optional so every existing reader is unaffected, and present
+   * rather than inferred from `ms: 0`, because a report that shows a 0 ms
+   * spine without saying why reads as a broken measurement. */
+  resumed?: true;
 }
 
 /** Runs `fn`, records how long it actually took (wall clock, `Date.now()`
@@ -60,6 +65,13 @@ export class StageTimingLog {
     const { result, timing } = await measureStage(name, fn);
     this.entries.push(timing);
     return result;
+  }
+
+  /** Records a stage that was NOT run because its output was resumed from a
+   * checkpoint. Kept as its own method rather than a flag on `run` so a stage
+   * can never be marked resumed and timed at the same time. */
+  markResumed(name: string): void {
+    this.entries.push({ name, startedAt: new Date().toISOString(), ms: 0, resumed: true });
   }
 
   all(): StageTiming[] {

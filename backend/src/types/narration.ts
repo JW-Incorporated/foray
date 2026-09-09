@@ -115,10 +115,60 @@ export const PronunciationHintSchema = z
 export type PronunciationHint = z.infer<typeof PronunciationHintSchema>;
 
 /**
+ * WS-A (docs/curation/generation-fix-plan-2026-09-09.md): one document the
+ * writer was actually given to quote from — a transcript cue window, a
+ * fetched/cached web passage, whatever `gatherEvidence.ts` retrieves for
+ * the beat. Optional and not yet populated by anything in this checkout;
+ * added here (WS-B) so a `NarratedBeat`'s `groundedQuoteRate` is
+ * MECHANICALLY checkable (`quote` is a substring of some `evidence[].text`)
+ * the day WS-A starts populating it, without a second schema migration.
+ * Until then every page's `evidence` is absent and the metric that reads
+ * it reports `null` — see `veracityMetrics.ts`'s own comment on why that is
+ * never silently treated as 1.0.
+ */
+export const EvidenceDocSchema = z
+  .object({
+    docId: z.string().trim().min(1),
+    title: z.string().trim().min(1),
+    url: z.string().trim().min(1).optional(),
+    /** Held text the writer may quote from — a transcript cue window or a
+     * fetched passage. Not trimmed to non-empty: an evidence doc that
+     * failed to retrieve any text is still worth recording as "we tried
+     * and got nothing" rather than dropped silently. */
+    text: z.string()
+  })
+  .strict();
+export type EvidenceDoc = z.infer<typeof EvidenceDocSchema>;
+
+/**
+ * WS-B: one recorded attempt at writing a page, kept even when the attempt
+ * was rejected — `writeNarration.ts`'s retry loop already computes
+ * everything this needs (the written sources, whether it was rejected, and
+ * the rejection note it feeds back into the next attempt's prompt); this
+ * type just gives that history a place to live so `firstAttemptPassRate`
+ * and `attributionStability` (a quote's publication should not move
+ * between attempts — F-32) can be computed from real data instead of
+ * inferred from side effects.
+ */
+export const NarrationAttemptRecordSchema = z
+  .object({
+    /** 1-based — the Nth attempt at this page. */
+    attempt: z.number().int().min(1),
+    sources: z.array(SourceSchema),
+    rejected: z.boolean(),
+    /** Required when `rejected`; absent on the attempt that finally passed. */
+    rejectionNote: z.string().trim().min(1).optional()
+  })
+  .strict();
+export type NarrationAttemptRecord = z.infer<typeof NarrationAttemptRecordSchema>;
+
+/**
  * One written-and-verified narration page — the §4.7 output for a single
  * narration beat. Matches this stage's task brief's output shape
  * exactly: `{ mode, script, sources, pronunciationHints, verified,
- * verifierNotes? }`.
+ * verifierNotes? }`, plus two WS-B additions (`evidence`, `attempts`),
+ * both optional so every existing producer/consumer of this schema is
+ * unaffected until something actually populates them.
  */
 export const NarratedBeatSchema = z
   .object({
@@ -135,7 +185,16 @@ export const NarratedBeatSchema = z
      * self-reported by the writer. `writeNarration.ts`'s orchestrator is
      * the only code path allowed to flip this to `true`. */
     verified: z.boolean(),
-    verifierNotes: z.string().trim().min(1).optional()
+    verifierNotes: z.string().trim().min(1).optional(),
+    /** WS-A: the documents this page's writer actually held while
+     * quoting. Absent until WS-A's `gatherEvidence.ts` lands. */
+    evidence: z.array(EvidenceDocSchema).optional(),
+    /** WS-B: every attempt at this page, successful or not, in order —
+     * `writeNarration.ts`'s `writePageAndVerify` populates this today.
+     * Still optional: `disclosureNarratedBeat` and any hand-built
+     * `NarratedBeat` in a test fixture carry none, and a `NarratedBeat`
+     * constructed before this field existed must keep parsing. */
+    attempts: z.array(NarrationAttemptRecordSchema).optional()
   })
   .strict();
 export type NarratedBeat = z.infer<typeof NarratedBeatSchema>;

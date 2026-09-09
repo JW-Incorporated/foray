@@ -55,7 +55,7 @@ function stubPipeline(finalize: typeof FAKE_FINALIZE | undefined = FAKE_FINALIZE
       narrationWriter: new StubNarrationWriterBuilder(),
       narrationVerifier: new StubNarrationVerifierBuilder(),
       continuityBuilder: new StubContinuityBuilder(),
-      ...(finalize ? { finalize } : {}),
+      ...(finalize !== undefined ? { finalize } : {}),
       ...deps
     });
 }
@@ -82,6 +82,12 @@ function baseArgs(out: string, overrides: Partial<CliArgs> = {}): CliArgs {
     limit: null,
     dryRun: false,
     authorId: "founder-1",
+    /* WS-F's own two flags (F-04/F-17/F-18), defaulted to "behave as the
+       pipeline did before checkpoints existed": no imposed cap, and resume
+       allowed. The per-prompt checkpoint store `generateOneCandidate` builds
+       from them writes into the same throwaway `dir` these tests already own. */
+    budgetUsd: null,
+    noResume: false,
     ...overrides
   };
 }

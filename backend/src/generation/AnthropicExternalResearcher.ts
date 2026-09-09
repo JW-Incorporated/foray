@@ -1,9 +1,11 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import { env } from "../config/env";
+import { costFor, modelFor, USD_PER_WEB_SEARCH } from "../config/models";
 import { defaultBudgetGuard, type BudgetGuard } from "../cost/budgetGuard";
 import { parseLastJsonBlock } from "./parseWithRetry";
 import type { ExternalResearcher, ExternalResearchContext, ExternalResearchResult } from "./ExternalResearcher";
+import { recordUsage } from "./usageTracking";
 
 /**
  * Real §4.2 external research via the Anthropic API's server-side web
@@ -17,12 +19,19 @@ import type { ExternalResearcher, ExternalResearchContext, ExternalResearchResul
  * Anthropic* class in this codebase. Use createExternalResearcher().
  */
 
-const MODEL = "claude-haiku-4-5";
-const USD_PER_INPUT_TOKEN = 1.0 / 1_000_000;
-const USD_PER_OUTPUT_TOKEN = 5.0 / 1_000_000;
+/* Model id and per-token rates come from `src/config/models.ts`, the one
+ * place a Claude model id is written down (F-03). Which TIER this stage
+ * needs stays this stage's decision; which model serves that tier does not.
+ * An id and its price are read from the same row, so they cannot drift
+ * apart the way seven hand-copied pairs did. */
+const MODEL = modelFor("haiku");
+const USD_PER_INPUT_TOKEN = costFor("haiku").usdPerInputToken;
+const USD_PER_OUTPUT_TOKEN = costFor("haiku").usdPerOutputToken;
 // Anthropic's server-side web_search tool bills per search in addition to
-// tokens; $0.01/search is the published rate at the time of this build.
-const USD_PER_SEARCH = 0.01;
+// tokens. The rate lives beside the token rates in `src/config/models.ts` for
+// the same reason they do: it is a price, and this stage's estimate is only as
+// honest as the prices it is given (F-03).
+const USD_PER_SEARCH = USD_PER_WEB_SEARCH;
 const MAX_SEARCHES_PER_TOPIC = 3;
 
 const ResearchSchema = z.object({
@@ -78,10 +87,43 @@ export class AnthropicExternalResearcher implements ExternalResearcher {
       ]
     });
 
+    recordUsage(response.usage);
     const textBlock = response.content.find((b: Anthropic.ContentBlock): b is Anthropic.TextBlock => b.type === "text");
     if (!textBlock) throw new Error("Anthropic external-research response had no text block");
 
-    return parseLastJsonBlock(ResearchSchema, textBlock.text, "External research output");
+    const reask = async (): Promise<string> => {
+      const reaskLine = "Your previous reply was not valid JSON; reply with the JSON object only.";
+      // The re-ask is its own real API call — it re-sends the whole prompt
+      // plus the bad reply, so it is its own metered spend, gated the same
+      // way as the original call (see parseWithRetry.ts's BUDGET note). No
+      // web_search tool is offered on the re-ask (see messages.create
+      // below), so unlike the original call's estimate this one carries no
+      // USD_PER_SEARCH cost.
+      const reaskEstimatedInputTokens = roughTokenEstimate(promptText + textBlock.text + reaskLine);
+      await this.budgetGuard.checkAndRecord({
+        userId: ctx.userId,
+        operation: "external_research",
+        provider: this.providerName,
+        model: MODEL,
+        estimatedUsd: reaskEstimatedInputTokens * USD_PER_INPUT_TOKEN + 800 * USD_PER_OUTPUT_TOKEN,
+        sessionId: ctx.sessionId
+      });
+
+      const retryResponse = await this.client.messages.create({
+        model: MODEL,
+        max_tokens: 800,
+        messages: [
+          { role: "user", content: promptText },
+          { role: "assistant", content: textBlock.text },
+          { role: "user", content: reaskLine }
+        ]
+      });
+      const retryTextBlock = retryResponse.content.find((b: Anthropic.ContentBlock): b is Anthropic.TextBlock => b.type === "text");
+      if (!retryTextBlock) throw new Error("Anthropic external-research re-ask response had no text block");
+      return retryTextBlock.text;
+    };
+
+    return parseLastJsonBlock(ResearchSchema, textBlock.text, "External research output", reask);
   }
 }
 

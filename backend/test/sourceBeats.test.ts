@@ -4,6 +4,7 @@ import { validateSourcing, allSourcedBeats } from "../src/types/tapeSourcing";
 import type { DeepenedAct } from "../src/types/spine";
 import type { SegmentRecord } from "../src/generation/segmentPoolLookup";
 import type { TranscriptDigestEntry, TranscriptCue, TranscriptCueProvider } from "../src/generation/transcriptArchiveLookup";
+import { MIN_TAPE_SEGMENT_SEC, MAX_TAPE_SEGMENT_SEC } from "../src/generation/transcriptArchiveLookup";
 import { loadSegmentPool } from "../src/generation/segmentPoolLookup";
 
 function makeDeepenedAct(overrides: Partial<DeepenedAct> = {}, label = "A"): DeepenedAct {
@@ -276,7 +277,10 @@ describe("sourceBeats — no audio bytes fetched or written anywhere in this mod
     const files = [
       path.resolve(__dirname, "../src/generation/sourceBeats.ts"),
       path.resolve(__dirname, "../src/generation/segmentPoolLookup.ts"),
-      path.resolve(__dirname, "../src/generation/transcriptArchiveLookup.ts")
+      path.resolve(__dirname, "../src/generation/transcriptArchiveLookup.ts"),
+      // The topic gate's catalogue reader, added with WS-C: it reads committed
+      // `data/` files and must be held to the same rule as the rest.
+      path.resolve(__dirname, "../src/generation/taxonomyFamily.ts")
     ];
     for (const file of files) {
       const source = fs.readFileSync(file, "utf8");
@@ -520,6 +524,584 @@ describe("sourceBeats — generation run 1 (2026-09-09) regressions: cross-domai
     const result = sourceBeats(spine, { segmentPool: [], transcriptArchive: archive, cueProvider: { getCues: () => cues } });
     const beat = allSourcedBeats(result.acts)[0]!;
     expect(beat.sourcing).toBe("narration");
+  });
+});
+
+/* WS-C (fix plan 2026-09-09): sourcing that knows what it is matching.
+   Run 1 finished attempt 4 with 5 of 22 tape anchors on topic — the wrong ones
+   included a British food-history segment, a barbecue show and four geology
+   episodes, all inside a Foray about engineering disasters (F-06, F-23, F-24,
+   F-29, F-33, F-38). The four groups below are the four things that fixes:
+   beat KIND, transcript TEXT, the anchored WINDOW, and the topic GATE. */
+
+describe("sourceBeats — F-38: an argument is narrated, never illustrated with tape", () => {
+  /** F-38's own example, verbatim from the findings: run 1 anchored this to a
+   * *Geology Bites* episode on banded iron formations. */
+  const argumentClaim =
+    "Every link in a failure chain gets evaluated against a local question — is this piece strong enough — and almost never against the global question of whether the system as a whole still holds.";
+
+  function actWith(kind: "account" | "argument"): DeepenedAct[] {
+    return [
+      makeDeepenedAct({
+        slots: [{ title: "The thesis", beats: [{ claim: argumentClaim, exploration: false, kind }] }]
+      })
+    ];
+  }
+
+  it("skips tape lookup entirely for a beat the deepen stage tagged an argument", () => {
+    /* MUTATION THAT KILLS THIS: delete the `beat.kind === "argument"` branch in
+       resolveOneBeat. The same claim then takes the fixture segment, which is
+       exactly the F-38 failure. Ran it — red. */
+    const pool: SegmentRecord[] = [
+      {
+        ...fixtureSegmentPool()[0]!,
+        id: "geology-bites--banded-iron#100",
+        item_id: "geology-bites--banded-iron",
+        topic: "nature/earth-science",
+        why: "Every question about a failure chain gets evaluated against the global system, link by link",
+        start_anchor: "the local question is whether the link holds",
+        end_anchor: "and the global question almost never gets asked"
+      }
+    ];
+    const result = sourceBeats(actWith("argument"), { segmentPool: pool, transcriptArchive: [] });
+    const beat = allSourcedBeats(result.acts)[0]!;
+    expect(beat.sourcing).toBe("narration");
+    // Nothing to transcribe would ever help, so nothing is queued either.
+    expect(result.transcriptionQueueCandidates).toHaveLength(0);
+    expect(result.tapeRelevance).toHaveLength(0);
+  });
+
+  it("still looks for tape for the same claim when it is tagged an account", () => {
+    /* The kind must be what decides, not the claim's wording — otherwise the
+       first test above would pass with the branch deleted and a coincidence. */
+    const pool: SegmentRecord[] = [
+      {
+        ...fixtureSegmentPool()[0]!,
+        id: "geology-bites--banded-iron#100",
+        item_id: "geology-bites--banded-iron",
+        topic: "nature/earth-science",
+        why: "Every question about a failure chain gets evaluated against the global system, link by link",
+        start_anchor: "the local question is whether the link holds",
+        end_anchor: "and the global question almost never gets asked"
+      }
+    ];
+    const result = sourceBeats(actWith("account"), { segmentPool: pool, transcriptArchive: [] });
+    expect(allSourcedBeats(result.acts)[0]!.sourcing).toBe("tape");
+  });
+
+  it("carries the beat kind through to the sourced beat for §4.7", () => {
+    const result = sourceBeats(actWith("argument"), { segmentPool: [], transcriptArchive: [] });
+    expect(allSourcedBeats(result.acts)[0]!.kind).toBe("argument");
+  });
+});
+
+describe("sourceBeats — F-06/F-29: tier 1 scores the claim against the tape's own words", () => {
+  /** A pool segment cut from an episode the archive also holds a body for —
+   * joined on `item_id` === `<show_id>--<title slug>`, the shape both sides
+   * already use. */
+  function hyattSegment(): SegmentRecord {
+    return {
+      ...fixtureSegmentPool()[0]!,
+      id: "causality-engineered-network--47-hyatt-regency-kansas-city#972",
+      item_id: "causality-engineered-network--47-hyatt-regency-kansas-city",
+      topic: "engineering/disasters",
+      start_sec: 972,
+      end_sec: 1100,
+      why: "A phone call splits one hanger rod into two and doubles the load on the box beam",
+      start_anchor: "so the fabricator picks up the phone",
+      end_anchor: "and the box beam is now carrying both walkways"
+    };
+  }
+
+  function hyattEntry(): TranscriptDigestEntry {
+    return {
+      show_id: "causality-engineered-network",
+      show_title: "Causality — Engineered Network",
+      guid: "c47",
+      title: "47: Hyatt Regency Kansas City",
+      cues: 4,
+      feed_duration_sec: 3600,
+      span_implausible: false
+    };
+  }
+
+  it("matches on words spoken INSIDE the segment that its 18-word why-line never mentions", () => {
+    /* F-06, the recall half: "a beat about a specific point inside an episode
+       can only match if the episode's title happens to share words with the
+       claim" — the same is true of a segment's curator note. The words below
+       (skywalk, atrium, tea dance) are in the tape and in the claim, and in no
+       metadata field.
+
+       MUTATION THAT KILLS THIS: drop `options.windowText` from
+       scoreSegmentsAgainstClaim's haystack choice. Ran it — red. */
+    const claim = "The second-floor skywalk fell into the crowded atrium during a Friday tea dance.";
+    const cues: TranscriptCue[] = [
+      { text: "unrelated cold open about the show itself", start_sec: 10, end_sec: 40 },
+      { text: "the second floor skywalk came down into the atrium", start_sec: 980, end_sec: 1000 },
+      { text: "during a friday tea dance with hundreds of people watching", start_sec: 1000, end_sec: 1020 }
+    ];
+    const result = sourceBeats([makeDeepenedAct({ slots: [{ title: "Collapse", beats: [{ claim, exploration: false }] }] })], {
+      segmentPool: [hyattSegment()],
+      transcriptArchive: [hyattEntry()],
+      cueProvider: { getCues: () => cues }
+    });
+    const beat = allSourcedBeats(result.acts)[0]!;
+    expect(beat.sourcing).toBe("tape");
+    if (beat.sourcing === "tape") expect(beat.tape.tier).toBe(1);
+  });
+
+  it("refuses a segment whose why-line echoes the claim when the tape inside it does not", () => {
+    /* The precision half, and the reason the window REPLACES the metadata
+       rather than being added to it: a curator note is a proxy for the tape,
+       and when the tape itself is available the proxy has no vote. Here the
+       why-line is the claim almost verbatim while the window is about
+       something else entirely. */
+    const claim =
+      "The original unrevised walkway design was already carrying roughly half the load required by the Kansas City building code before any revision reached the fabricator.";
+    const segment: SegmentRecord = {
+      ...hyattSegment(),
+      why: "The original unrevised walkway design carried half the load the Kansas City code required",
+      start_anchor: "the original walkway design and the kansas city code",
+      end_anchor: "half of the required load before any revision"
+    };
+    const cues: TranscriptCue[] = [
+      { text: "so we should talk about how the show got its name", start_sec: 970, end_sec: 1000 },
+      { text: "and what listeners have been sending in this month", start_sec: 1000, end_sec: 1100 }
+    ];
+    const result = sourceBeats([makeDeepenedAct({ slots: [{ title: "Code", beats: [{ claim, exploration: false }] }] })], {
+      segmentPool: [segment],
+      transcriptArchive: [hyattEntry()],
+      cueProvider: { getCues: () => cues }
+    });
+    expect(allSourcedBeats(result.acts)[0]!.sourcing).toBe("narration");
+  });
+});
+
+describe("sourceBeats — F-24: tier 2 checks the tape AROUND the anchor, not the whole episode", () => {
+  function entry(): TranscriptDigestEntry {
+    return {
+      show_id: "causality-engineered-network",
+      show_title: "Causality — Engineered Network",
+      guid: "c47",
+      title: "47: Hyatt Regency Kansas City walkway collapse",
+      cues: 6,
+      feed_duration_sec: 3600,
+      span_implausible: false
+    };
+  }
+
+  const claim =
+    "The Hyatt Regency Kansas City walkway collapse killed one hundred and fourteen people when the box beam connection failed.";
+
+  it("does not mint tape when the anchor's own neighbourhood is about something else", () => {
+    /* F-24(b): `resolveAnchorFromCues` accepts the first contiguous run of four
+       claim words found ANYWHERE in an hour of tape. Here that run ("kansas
+       city walkway collapse") is a passing mention in a listener-mail segment,
+       and the claim's other content words are forty minutes away — the episode
+       contains them, the anchored moment does not.
+
+       MUTATION THAT KILLS THIS: delete the `overlap >= TIER2_WINDOW_OVERLAP_MIN`
+       condition. The beat then takes those few seconds of tape. Ran it — red. */
+    const cues: TranscriptCue[] = [
+      { text: "a listener wrote in to ask about the kansas city walkway collapse", start_sec: 120, end_sec: 128 },
+      { text: "but we are keeping that one for another day", start_sec: 128, end_sec: 134 },
+      { text: "today we are talking about something else entirely", start_sec: 134, end_sec: 140 },
+      { text: "the connection failed at the beam and the box gave way that evening", start_sec: 2400, end_sec: 2412 }
+    ];
+    const result = sourceBeats([makeDeepenedAct({ slots: [{ title: "Collapse", beats: [{ claim, exploration: false }] }] })], {
+      segmentPool: [],
+      transcriptArchive: [entry()],
+      cueProvider: { getCues: () => cues }
+    });
+    expect(allSourcedBeats(result.acts)[0]!.sourcing).toBe("narration");
+    expect(result.transcriptionQueueCandidates[0]!.reason).toMatch(/further claim content words are spoken within/);
+  });
+
+  it("mints tape when the claim's own words are spoken around the anchor", () => {
+    const cues: TranscriptCue[] = [
+      { text: "the kansas city walkway collapse is the case every engineer is taught", start_sec: 600, end_sec: 608 },
+      { text: "the box beam connection failed under a doubled load", start_sec: 608, end_sec: 616 },
+      { text: "one hundred and fourteen people were killed that evening", start_sec: 616, end_sec: 624 }
+    ];
+    const result = sourceBeats([makeDeepenedAct({ slots: [{ title: "Collapse", beats: [{ claim, exploration: false }] }] })], {
+      segmentPool: [],
+      transcriptArchive: [entry()],
+      cueProvider: { getCues: () => cues }
+    });
+    const beat = allSourcedBeats(result.acts)[0]!;
+    expect(beat.sourcing).toBe("tape");
+    if (beat.sourcing === "tape") expect(beat.tape.tier).toBe(2);
+  });
+});
+
+describe("sourceBeats — F-24(c): what tier 2 mints is a segment, not the anchor's own few seconds", () => {
+  const claim =
+    "The Hyatt Regency Kansas City walkway collapse killed one hundred and fourteen people when the box beam connection failed.";
+
+  function entry(): TranscriptDigestEntry {
+    return {
+      show_id: "causality-engineered-network",
+      show_title: "Causality — Engineered Network",
+      guid: "c47",
+      title: "47: Hyatt Regency Kansas City walkway collapse",
+      cues: 9,
+      feed_duration_sec: 3600,
+      span_implausible: false
+    };
+  }
+
+  /** Nine ten-second cues. The claim's longest verbatim run ("the box beam
+   * connection failed") is spoken in exactly one of them, at 640-650. */
+  function cues(): TranscriptCue[] {
+    return [
+      { text: "welcome back to the show and thanks for listening this week", start_sec: 600, end_sec: 610 },
+      { text: "we have a lot of ground to cover in this episode today", start_sec: 610, end_sec: 620 },
+      { text: "so let us begin with the building itself and its atrium", start_sec: 620, end_sec: 630 },
+      { text: "the kansas city walkway collapse is taught in every course", start_sec: 630, end_sec: 640 },
+      { text: "the box beam connection failed under a doubled load that night", start_sec: 640, end_sec: 650 },
+      { text: "one hundred and fourteen people were killed in the atrium", start_sec: 650, end_sec: 660 },
+      { text: "and more than two hundred others were badly injured", start_sec: 660, end_sec: 670 },
+      { text: "the enquiry that followed took the better part of a year", start_sec: 670, end_sec: 680 },
+      { text: "we will come back to what it concluded after the break", start_sec: 680, end_sec: 690 }
+    ];
+  }
+
+  function mint() {
+    const result = sourceBeats([makeDeepenedAct({ slots: [{ title: "Collapse", beats: [{ claim, exploration: false }] }] })], {
+      segmentPool: [],
+      transcriptArchive: [entry()],
+      cueProvider: { getCues: () => cues() }
+    });
+    return result;
+  }
+
+  it("cuts the minted span to WHOLE cues either side of the anchor, never one cue's few seconds", () => {
+    /* F-24(c) verbatim: "the minted segment spans ONLY that anchor window
+       (`startSec` of its first word to `endSec` of its last) — a few seconds of
+       audio, not a segment". The anchor here is inside the 640-650 cue, so the
+       pre-fix code produced [640, 650] and nothing wider.
+
+       MUTATION THAT KILLS THIS: return the plain phrase span from
+       resolveAnchorFromCues (startSec = startTimes[at]). The span becomes
+       [640, 650]: still cue-aligned, since a token carries its cue's times, but
+       one cue wide — so the whole-cue COUNT below is what does the pinning
+       here, not the alignment. Ran it — red. */
+    const segment = mint().newSegments[0]!;
+    const starts = cues().map((c) => c.start_sec);
+    const ends = cues().map((c) => c.end_sec);
+    expect(starts).toContain(segment.startSec);
+    expect(ends).toContain(segment.endSec);
+    const whollyInside = cues().filter((c) => c.start_sec >= segment.startSec && c.end_sec <= segment.endSec);
+    expect(whollyInside.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it("keeps adding cues either side until the span is a segment-length piece of tape", () => {
+    const segment = mint().newSegments[0]!;
+    expect(segment.endSec - segment.startSec).toBeGreaterThanOrEqual(MIN_TAPE_SEGMENT_SEC);
+    expect(segment.endSec - segment.startSec).toBeLessThanOrEqual(MAX_TAPE_SEGMENT_SEC);
+    // Grown either side of the anchor cue (640-650), not only forwards.
+    expect(segment.startSec).toBeLessThan(640);
+    expect(segment.endSec).toBeGreaterThan(650);
+  });
+
+  it("anchors the cut span at its own boundaries rather than quoting the matched phrase twice", () => {
+    /* The pre-fix span set BOTH anchors to the matched phrase, which is now
+       neither at `startSec` nor at `endSec` — `merge-segments.mjs` checks an
+       anchor appears verbatim AND near the time the segment claims for it, so
+       reusing the phrase here would be a segment whose own validator rejects
+       it. */
+    const segment = mint().newSegments[0]!;
+    expect(segment.startAnchor).not.toBe(segment.endAnchor);
+    expect(segment.startAnchor.split(" ").length).toBeGreaterThanOrEqual(4);
+    expect(segment.endAnchor.split(" ").length).toBeGreaterThanOrEqual(4);
+    // Verbatim, from the cues at the two boundaries — not the claim's words.
+    const spoken = cues().map((c) => c.text.toLowerCase());
+    expect(spoken.some((t) => t.includes(segment.startAnchor))).toBe(true);
+    expect(spoken.some((t) => t.includes(segment.endAnchor))).toBe(true);
+    expect(segment.startAnchor).not.toContain("box beam connection failed");
+  });
+
+  it("still judges relevance by the matched phrase's own neighbourhood, not the cut span's edges", () => {
+    /* The window check and the cut must not be allowed to feed each other: a
+       wider cut would otherwise widen the window it is judged by, so a segment
+       could grow its way into looking on topic. `anchoredWindowEvidence` reads
+       `matchedPhrase`/`matchStartSec` for exactly this reason. */
+    const beat = allSourcedBeats(mint().acts)[0]!;
+    expect(beat.sourcing).toBe("tape");
+    const off = sourceBeats([makeDeepenedAct({ slots: [{ title: "Collapse", beats: [{ claim, exploration: false }] }] })], {
+      segmentPool: [],
+      transcriptArchive: [entry()],
+      // Same anchor cue, but the claim's other words are now an hour away; the
+      // cut still reaches segment length and the beat must still be refused.
+      cueProvider: {
+        getCues: () => [
+          { text: "so let us begin with the building itself and its atrium", start_sec: 620, end_sec: 630 },
+          { text: "a quick word about something entirely unrelated first", start_sec: 630, end_sec: 640 },
+          { text: "the box beam connection failed under a doubled load that night", start_sec: 640, end_sec: 650 },
+          { text: "anyway that is enough about the sponsor for this week", start_sec: 650, end_sec: 660 },
+          { text: "the enquiry that followed took the better part of a year", start_sec: 660, end_sec: 690 },
+          { text: "the kansas city walkway collapse is a famous case", start_sec: 3000, end_sec: 3010 },
+          { text: "one hundred and fourteen people died there", start_sec: 3300, end_sec: 3310 }
+        ]
+      }
+    });
+    expect(allSourcedBeats(off.acts)[0]!.sourcing).toBe("narration");
+  });
+});
+
+describe("sourceBeats — F-29/F-23: the topic gate, and the tapeRelevance rows WS-B aggregates", () => {
+  const engineeringClaim =
+    "The walkway hanger rod carried a load the original connection detail was never designed to hold, and the change was made over the phone.";
+
+  /** The food-history segment run 1 actually anchored an engineering beat to,
+   * with its why-line rewritten to overlap the claim heavily — the gate has to
+   * hold even when the word count says yes. */
+  function foodSegment(): SegmentRecord {
+    return {
+      ...fixtureSegmentPool()[0]!,
+      id: "bfh-griddle-bakestone#740",
+      item_id: "bfh-griddle-bakestone",
+      topic: "food/food-history",
+      why: "A hanger over the hearth carried a load the original connection was never designed to hold",
+      start_anchor: "the hanger and the load it carried",
+      end_anchor: "the original connection detail over the fire"
+    };
+  }
+
+  it("refuses a tier-1 segment from another taxonomy family however many words it shares", () => {
+    /* MUTATION THAT KILLS THIS: drop the `familyGateAllows` clause from the
+       tier-1 isUsable predicate. The food segment scores far over the bar and
+       is taken. Ran it — red. */
+    const acts = [makeDeepenedAct({ slots: [{ title: "Hyatt", beats: [{ claim: engineeringClaim, exploration: false }] }] })];
+    const gated = sourceBeats(acts, { segmentPool: [foodSegment()], transcriptArchive: [], topic: "engineering/disasters" });
+    expect(allSourcedBeats(gated.acts)[0]!.sourcing).toBe("narration");
+
+    // Same inputs, no resolved topic: the gate is inert and the old behaviour stands.
+    const ungated = sourceBeats(acts, { segmentPool: [foodSegment()], transcriptArchive: [] });
+    expect(allSourcedBeats(ungated.acts)[0]!.sourcing).toBe("tape");
+  });
+
+  it("refuses a tier-2 episode whose show is classified under another family", () => {
+    /* *Geology Bites* is `nature/earth-science` in data/catalog.json; run 1 gave
+       it an engineering beat (F-38's anchor). The cues below would otherwise
+       anchor cleanly. */
+    const archive: TranscriptDigestEntry[] = [
+      {
+        show_id: "geology-bites",
+        show_title: "Geology Bites",
+        guid: "gb-42",
+        title: "The hanger rod load and the connection detail that failed",
+        cues: 3,
+        feed_duration_sec: 3600,
+        span_implausible: false
+      }
+    ];
+    const cues: TranscriptCue[] = [
+      { text: "the walkway hanger rod carried a load the original connection detail", start_sec: 100, end_sec: 110 },
+      { text: "was never designed to hold and the change was made over the phone", start_sec: 110, end_sec: 120 }
+    ];
+    const acts = [makeDeepenedAct({ slots: [{ title: "Hyatt", beats: [{ claim: engineeringClaim, exploration: false }] }] })];
+    const gated = sourceBeats(acts, { segmentPool: [], transcriptArchive: archive, cueProvider: { getCues: () => cues }, topic: "engineering/disasters" });
+    expect(allSourcedBeats(gated.acts)[0]!.sourcing).toBe("narration");
+
+    const ungated = sourceBeats(acts, { segmentPool: [], transcriptArchive: archive, cueProvider: { getCues: () => cues } });
+    expect(allSourcedBeats(ungated.acts)[0]!.sourcing).toBe("tape");
+  });
+
+  it("emits one tapeRelevance row per tape beat, with both families and the on-topic verdict", () => {
+    /* WS-B's `tapeRelevance` metric is "share of tape anchors whose episode
+       shares a taxonomy family with the Foray's resolved topic, plus the list
+       of anchors for human spot-check". Run 1 had to count that by hand from
+       the narration prompts. */
+    const onTopic: SegmentRecord = {
+      ...fixtureSegmentPool()[0]!,
+      id: "causality-engineered-network--47-hyatt-regency-kansas-city#972",
+      item_id: "causality-engineered-network--47-hyatt-regency-kansas-city",
+      topic: "engineering/disasters",
+      why: "The walkway hanger rod carried a load the original connection detail was never designed to hold"
+    };
+    const result = sourceBeats(
+      [makeDeepenedAct({ slots: [{ title: "Hyatt", beats: [{ claim: engineeringClaim, exploration: false }] }] })],
+      { segmentPool: [onTopic], transcriptArchive: [], topic: "engineering/disasters" }
+    );
+    expect(result.tapeRelevance).toHaveLength(1);
+    expect(result.tapeRelevance[0]).toMatchObject({
+      actIndex: 0,
+      slotIndex: 0,
+      beatIndex: 0,
+      itemId: "causality-engineered-network--47-hyatt-regency-kansas-city",
+      tier: 1,
+      forayTopic: "engineering/disasters",
+      forayFamily: "engineering",
+      onTopic: true
+    });
+    /* `claim`, `itemId`, `onTopic` and `families` are the four fields WS-B's
+       own `TapeAnchorNote` carries, spelled the same way and holding the same
+       values, so `veracityMetrics.ts` can aggregate these rows instead of
+       re-deriving the join from disk — and so the gate and the metric that
+       scores the gate can never report different things about one anchor. */
+    expect(result.tapeRelevance[0]!.claim).toBe(engineeringClaim);
+    expect(result.tapeRelevance[0]!.families).toEqual(["engineering"]);
+    expect(result.tapeRelevance[0]!.taxonomyNodeIds).toContain("engineering/disasters");
+  });
+
+  it("reports onTopic null — never true — when sourcing ran without a resolved topic", () => {
+    /* "I could not tell" must not be counted as a pass by WS-B's gate. `null`
+       rather than `false` because WS-B excludes an unresolvable anchor from the
+       metric's numerator AND denominator; calling it `false` would report a
+       measurement that was never taken. */
+    const result = sourceBeats(
+      [makeDeepenedAct({ slots: [{ title: "Hyatt", beats: [{ claim: engineeringClaim, exploration: false }] }] })],
+      { segmentPool: [foodSegment()], transcriptArchive: [] }
+    );
+    expect(result.tapeRelevance).toHaveLength(1);
+    expect(result.tapeRelevance[0]!.forayTopic).toBeNull();
+    expect(result.tapeRelevance[0]!.forayFamily).toBeNull();
+    expect(result.tapeRelevance[0]!.onTopic).toBeNull();
+    // The candidate's own side is still reported — that half is knowable.
+    expect(result.tapeRelevance[0]!.families).toEqual(["food"]);
+  });
+});
+
+describe("sourceBeats — the topic gate is a LINEAGE, not a shared first path segment", () => {
+  /* WS-F's F-11 correction, applied here: a root-segment rule ("both start
+     with `engineering`") is too coarse, because it puts every one of a root's
+     children in scope of every other. A family is a node's lineage in
+     data/taxonomy.json — itself, its ancestors, its descendants. */
+  const claim = "The walkway hanger rod carried a load the original connection detail was never designed to hold.";
+
+  /** A segment with no resolvable show, so its ONLY taxonomy signal is the
+   * `topic` under test — nothing sneaks in through the catalogue union. */
+  function segmentWithTopic(topic: string): SegmentRecord {
+    return {
+      ...fixtureSegmentPool()[0]!,
+      id: `fixture-${topic.replace(/[^a-z]+/g, "-")}#10`,
+      item_id: `fixture-item-${topic.replace(/[^a-z]+/g, "-")}`,
+      topic,
+      why: "The walkway hanger rod carried a load the original connection detail was never designed to hold",
+      start_anchor: "the hanger rod and the load it carried",
+      end_anchor: "the original connection detail it was never designed to hold"
+    };
+  }
+
+  function sourcedWith(topic: string, segmentTopic: string) {
+    const result = sourceBeats(
+      [makeDeepenedAct({ slots: [{ title: "Hyatt", beats: [{ claim, exploration: false }] }] })],
+      { segmentPool: [segmentWithTopic(segmentTopic)], transcriptArchive: [], topic }
+    );
+    return allSourcedBeats(result.acts)[0]!.sourcing;
+  }
+
+  it("refuses a SIBLING node under the same root", () => {
+    /* MUTATION THAT KILLS THIS: make the gate compare `taxonomyRoot` on both
+       sides instead of walking the lineage. `engineering/precision-mfg` then
+       passes for an `engineering/disasters` Foray on the strength of sharing
+       the word "engineering", which is the coarse rule this replaced. Ran it
+       — red. */
+    expect(sourcedWith("engineering/disasters", "engineering/precision-mfg")).toBe("narration");
+  });
+
+  it("allows the node itself, its ANCESTOR, and its DESCENDANT", () => {
+    // Same node.
+    expect(sourcedWith("engineering/disasters", "engineering/disasters")).toBe("tape");
+    // Parent: a show the catalogue never classified more precisely than the
+    // root is still the same subject, and refusing it would throw away tape
+    // for a curator's choice not to be specific.
+    expect(sourcedWith("engineering/disasters", "engineering")).toBe("tape");
+    // Descendant: the mirror case, a broad Foray reaching narrow tape.
+    expect(sourcedWith("engineering", "engineering/precision-mfg")).toBe("tape");
+  });
+
+  it("refuses another root outright", () => {
+    expect(sourcedWith("engineering/disasters", "food/food-history")).toBe("narration");
+  });
+});
+
+describe("sourceBeats — run 1 replay: the real beats against the real data/segments.json", () => {
+  /* The run-1 Foray, verbatim from the findings: "How engineering disasters
+     actually happen: the chains of small decisions behind collapsed bridges,
+     failed dams and machines that broke", resolved topic `engineering/disasters`.
+     Its attempt-4 anchors were 5 on topic out of 22; among the wrong ones were
+     `bfh-griddle-bakestone` (food/food-history, F-29), *Grill Coach*
+     (food/grilling-bbq) and four geology episodes.
+
+     The pool here is the REAL 212-row `data/segments.json`, and the cue
+     provider returns null so the test is identical on a machine with
+     `data-local/` transcripts and on CI without them. */
+  const FORAY_TOPIC = "engineering/disasters";
+
+  /** Beat 4, verbatim from F-29 — the claim that took the griddle segment. */
+  const beat4Claim =
+    "The original, unrevised design was already carrying roughly half the load required by the Kansas City building code, so a full structural review — had one occurred — would likely have found the walkway inadequate even without the phone-call revision, meaning the design was failing before the failure that killed people.";
+
+  /** Beat 5. The findings record its ANCHOR (*Grill Coach*, a barbecue show)
+   * rather than its wording, so the claim is reconstructed from the run's own
+   * running order — the collapse itself, which is where beats 1-5 had reached.
+   * What is being pinned is the anchor's domain, and that does not depend on
+   * the reconstruction being word-perfect. */
+  const beat5Claim =
+    "When the second- and fourth-floor walkways came down into the crowded atrium during a Friday tea dance, one hundred and fourteen people were killed and more than two hundred were injured.";
+
+  function replay(claim: string) {
+    return sourceBeats([makeDeepenedAct({ slots: [{ title: "Hyatt Regency", beats: [{ claim, exploration: false }] }] })], {
+      segmentPool: loadSegmentPool(),
+      transcriptArchive: [],
+      cueProvider: { getCues: () => null },
+      topic: FORAY_TOPIC
+    });
+  }
+
+  it.each([
+    ["beat 4 (Kansas City code load, verbatim from F-29)", beat4Claim],
+    ["beat 5 (the collapse; anchored to a barbecue show in run 1)", beat5Claim]
+  ])("%s takes engineering tape or none — never another domain's", (_label, claim) => {
+    /* WHAT THIS PINS, STATED HONESTLY. This is an end-to-end outcome test on the
+       real pool, not a pin on any single clause. Measured on both claims with
+       the topic gate removed: they still take engineering tape or none, because
+       I-13's stopword list and I-16's threshold of 3 already hold every
+       food/nature candidate at score 1 for these two claims (beat 4's ranked
+       list is Hyatt #972 at 4, then two more Hyatt segments at 2, then
+       everything else at 1). The gate's own pinning tests are the fixture ones
+       above, where an off-family segment scores well over the bar and is
+       refused anyway. What would kill THIS test is any regression in the whole
+       stack — tokenizer, threshold, gate, ranked walk — which is what a replay
+       of a real, published failure is for. */
+    const result = replay(claim);
+    const byId = new Map(loadSegmentPool().map((s) => [s.id, s]));
+    for (const row of result.tapeRelevance) {
+      const segment = byId.get(row.segmentId);
+      expect(segment, `anchor ${row.segmentId} is not in the real pool`).toBeDefined();
+      expect(segment!.topic, `${row.itemId} is ${segment!.topic}, not engineering`).toMatch(/^engineering(\/|$)/);
+      expect(row.onTopic).toBe(true);
+    }
+    // And whatever it did, the beat still exists.
+    expect(allSourcedBeats(result.acts)).toHaveLength(1);
+  });
+
+  it("no beat of the run-1 Foray can reach a food or nature segment", () => {
+    const result = sourceBeats(
+      [
+        makeDeepenedAct({
+          slots: [
+            {
+              title: "Hyatt Regency",
+              beats: [
+                { claim: beat4Claim, exploration: false },
+                { claim: beat5Claim, exploration: false }
+              ]
+            }
+          ]
+        })
+      ],
+      { segmentPool: loadSegmentPool(), transcriptArchive: [], cueProvider: { getCues: () => null }, topic: FORAY_TOPIC }
+    );
+    const families = result.tapeRelevance.flatMap((r) => r.families);
+    expect(families.every((f) => f === "engineering")).toBe(true);
+    expect(result.tapeRelevance.some((r) => /griddle|grill|bbq|geology/.test(r.itemId))).toBe(false);
+    /* Beat 4's right answer is not "nothing": the Hyatt Regency segment is in
+       the pool and its why-line is the phone call that doubled the load. Run 1
+       reached the griddle only after the ranked walk left it. */
+    expect(result.tapeRelevance.map((r) => r.itemId)).toContain("causality-engineered-network--47-hyatt-regency-kansas-city");
   });
 });
 

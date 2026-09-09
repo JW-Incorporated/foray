@@ -95,9 +95,10 @@ describe("AnthropicSpineBuilder", () => {
     const { client } = makeFakeAnthropicClient([textBlock("not json")]);
     const builder = new AnthropicSpineBuilder(new BudgetGuard(new InMemoryCostEventSink(), 100), client);
 
-    await expect(builder.buildSpine(intent, researchShape, "short", ctx)).rejects.toThrow(
-      /failed schema validation \(no retry available in this build\)/
-    );
+    // The fake client returns the same invalid content on every call, so the
+    // one re-ask (see parseWithRetry.ts) also fails and the final error names
+    // that.
+    await expect(builder.buildSpine(intent, researchShape, "short", ctx)).rejects.toThrow(/failed schema validation after one re-ask/);
   });
 
   it("mutation: response wrapped in ```json fences -> buildSpine still parses", async () => {

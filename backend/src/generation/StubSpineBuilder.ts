@@ -138,10 +138,6 @@ function hashToInt(input: string): number {
   return digest.readUInt32BE(0);
 }
 
-function pick<T>(arr: T[], seed: number): T {
-  return arr[seed % arr.length]!;
-}
-
 function capitalize(s: string): string {
   return s.length === 0 ? s : s[0]!.toUpperCase() + s.slice(1);
 }
@@ -186,10 +182,81 @@ const EXPLORATION_TEMPLATES = [
   (subject: string, label: string) => `Few people asking about ${subject} expect ${label} to matter, but it does.`
 ];
 
+/**
+ * Trailing qualifiers, whose only job is to make every stub beat claim
+ * DISTINCT (generation run 2026-09-09, finding F-13).
+ *
+ * The stub used to pick a template by hashing `(subject, label, index)`, which
+ * makes a claim reproducible but not unique: a prompt the catalogue has no
+ * concepts for gets ONE subtopic label, and eight templates cannot produce
+ * thirty-two different claims from it. Every dry-run spine past nine beats
+ * therefore carried the same claim two or three times over — which the new
+ * §4.3 structural gate correctly refuses, because two acts deepening the same
+ * claim is one of the defects it exists to catch. A fixture generator that
+ * produces a spine the pipeline would reject is not a fixture, so the fix
+ * belongs here rather than in the gate.
+ */
+const CLAIM_QUALIFIERS = [
+  "according to the contemporary record",
+  "in the surviving correspondence",
+  "in every account written since",
+  "long before anyone wrote it down",
+  "in the decade that followed",
+  "well outside the usual telling",
+  "in the trade press of the period",
+  "as the practice spread",
+  "once the first accounts circulated",
+  "in the years either side of the turn",
+  "in the parts of the record that survive",
+  "by the time it reached a wider audience",
+  "in ways the earliest writers missed",
+  "across every region that took it up",
+  "in the sources most often cited",
+  "in the version most people now recognise",
+  "before the terminology settled",
+  "in the material historians reach for first",
+  "wherever the practice took hold",
+  "in the accounts closest to the events",
+  "in the documents that outlasted the participants",
+  "in the record as it stands today",
+  "in the correspondence that was kept",
+  "in the earliest reliable telling",
+  "in the ledgers that were preserved",
+  "in the accounts published at the time",
+  "before the first serious survey",
+  "in the period the specialists argue over",
+  "in the material that reached print",
+  "across the sources that agree",
+  "in the retellings that followed",
+  "wherever the records were kept at all",
+  "in the era the standard histories skip",
+  "in the fragments that were catalogued",
+  "in the notes kept alongside the work",
+  "once the first surveys were compiled",
+  "in the strand most often left out",
+  "in the account that displaced the others",
+  "in the years the trade remembers",
+  "in the version the archives hold"
+];
+
+/**
+ * Deterministic per (subject, label, index) as before, and now UNIQUE per
+ * index: the template cycles on `index`, the qualifier cycles on
+ * `index / templates.length`, so two beats collide only when their indices
+ * differ by `templates.length * CLAIM_QUALIFIERS.length`.
+ *
+ * The qualifier list is sized by the SMALLEST template set, not the largest.
+ * There are three exploration templates against eight content ones, and the
+ * long tier's global beat index runs to 110 — so the list needs at least
+ * ceil(110 / 3) = 37 entries for an exploration beat at index 0 not to collide
+ * with one at index 72. It has 40. (Found by the long-tier case in
+ * `buildSpine.test.ts` failing on exactly that pair.)
+ */
 function claimFor(subject: string, label: string, index: number, exploration: boolean): string {
-  const seed = hashToInt(`${subject}::${label}::${index}`);
   const templates = exploration ? EXPLORATION_TEMPLATES : CLAIM_TEMPLATES;
-  return pick(templates, seed)(subject, label);
+  const base = templates[index % templates.length]!(subject, label);
+  const qualifier = CLAIM_QUALIFIERS[Math.floor(index / templates.length) % CLAIM_QUALIFIERS.length]!;
+  return `${base.replace(/\.\s*$/, "")}, ${qualifier}.`;
 }
 
 function stubVoice(intent: IntentUnderstanding): Voice {

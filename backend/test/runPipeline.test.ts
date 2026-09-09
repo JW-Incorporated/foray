@@ -114,8 +114,12 @@ describe("runForayPipeline", () => {
     const out = await runForayPipeline(request, options, stubDeps());
     const names = out.timings.map((t) => t.name);
 
+    /* `narrate` is keyed per ACT (`narrate:0`, `narrate:1`, ...) since the
+       F-17/F-18 checkpoint landed: narration is driven one act at a time so a
+       failure in act 3 does not discard acts 1 and 2. `request` is the short
+       tier, which is one act, so there is exactly one here. */
     expect(names).toEqual([
-      "understand", "research", "spine", "deepen", "source", "narrate", "stitch", "finalize"
+      "understand", "research-shape", "spine", "deepen", "source", "narrate:0", "stitch", "finalize"
     ]);
     for (const t of out.timings) expect(t.ms).toBeGreaterThanOrEqual(0);
   });
@@ -175,6 +179,37 @@ describe("runForayPipeline", () => {
     expect(out.outcome).toBe("unresolved-topic");
     if (out.outcome !== "unresolved-topic") return;
     expect(Array.isArray(out.candidates)).toBe(true);
+  });
+
+  it("WS-B: attaches meta.veracity to the candidate, computed from the real run", async () => {
+    /* MUTATION THAT KILLS THIS: never build/attach `veracity` on `input`
+       (drop the `buildVeracityMetrics` call and the `meta` field). The
+       candidate this pipeline hands to `generateForays.ts`/`publishForay.ts`
+       would then carry no veracity data at all — `evaluateVeracityGate`
+       treats an absent `meta.veracity` as an unconditional publish refusal,
+       so this is load-bearing, not decorative. Ran the mutant — red. */
+    const out = await runForayPipeline(request, options, stubDeps());
+    expect(out.outcome).toBe("generated");
+    if (out.outcome !== "generated") return;
+
+    const veracity = out.input.meta?.veracity;
+    expect(veracity).toBeDefined();
+    if (!veracity) return;
+
+    // Stub builders make no real Anthropic calls, so real token spend is 0 —
+    // a genuine computed number, not a stand-in for "unmeasured" (null).
+    expect(veracity.pipelineTokens).toBe(0);
+    // purposeFidelity is always null in this checkout — see veracityMetrics.ts.
+    expect(veracity.purposeFidelity).toBeNull();
+    expect(typeof veracity.pagesDropped).toBe("number");
+    expect(Array.isArray(veracity.tapeRelevanceAnchors)).toBe(true);
+    // Stage timings are attached AFTER `finalize` runs (its own internal
+    // breakdown, when present, is folded in with a `finalize.` prefix —
+    // the stubbed `finalize` here returns none, but the outer pipeline
+    // stages, including "finalize" itself, must all be present).
+    expect(veracity.stageTimings.map((t) => t.name)).toEqual(
+      expect.arrayContaining(["understand", "research-shape", "spine", "deepen", "source", "narrate:0", "stitch", "finalize"])
+    );
   });
 
   it("is deterministic: the same request and clock produce the same Foray id", async () => {

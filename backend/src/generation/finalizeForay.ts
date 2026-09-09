@@ -1,8 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import type { ForayItem } from "./forayItems";
 import { StageTimingLog, type StageTiming } from "./stageTiming";
+import type { VeracityMetrics } from "./veracityMetrics";
 
 /**
  * §4.9 — Finalize and publish (docs/curation/generation-architecture.md
@@ -54,7 +54,7 @@ import { StageTimingLog, type StageTiming } from "./stageTiming";
  * narration content it never touched.
  */
 
-const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
+const REPO_ROOT = path.resolve(__dirname, "..", "..", "..");
 
 export interface ForaySlot {
   id: string;
@@ -76,6 +76,17 @@ export interface FinalizeForayInput {
   runtimeSec: number;
   /** ISO date string. Defaults to "now" if omitted. */
   builtAt?: string;
+  /** WS-B (docs/curation/generation-fix-plan-2026-09-09.md): the
+   * candidate's own veracity numbers, computed by `runPipeline.ts` (see
+   * `veracityMetrics.ts`) BEFORE this stage runs. Not read by
+   * `finalizeForay` itself — `check-forays.mjs`/`check-narration.mjs`
+   * neither know nor care about it — and not written into `forayRecord`
+   * (the published `data/forays.json` schema is out of this stage's
+   * scope to extend). It rides along on `FinalizeForayInput` purely so
+   * `generateForays.ts` writes it into the candidate JSON on disk
+   * ("`meta.veracity` on every candidate") and `publishForay.ts` can read
+   * it back to gate the PR. */
+  meta?: { veracity: VeracityMetrics };
 }
 
 export interface FinalizeForayValidation {

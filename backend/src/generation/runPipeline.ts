@@ -1,5 +1,13 @@
-import { GenerationRequestSchema, type GenerationRequest } from "../types/generation";
+import { z } from "zod";
+import { GenerationRequestSchema, IntentUnderstandingSchema, SAFETY_CATEGORIES, type GenerationRequest, type UnderstandPromptResult } from "../types/generation";
 import { StageTimingLog, type StageTiming } from "./stageTiming";
+import { BudgetStopError, EpisodeBudgetExceededError, findBudgetError } from "../cost/budgetGuard";
+import { CheckpointSession, checkpointFingerprint, type CheckpointStore } from "./checkpoint";
+import { DeepenedActSchema, SpineSchema } from "../types/spine";
+import { NewSegmentSchema, SourcedActSchema, TapePointerSchema, TranscriptionQueueCandidateSchema } from "../types/tapeSourcing";
+import { ResearchShapeSchema } from "../types/research";
+import { ForayItemSchema } from "./forayItems";
+import { NarratedBeatSchema } from "../types/narration";
 
 import { understandPrompt } from "./understandPrompt";
 import { buildResearchShape } from "./researchShape";
@@ -15,6 +23,8 @@ import { loadSegmentPool, type SegmentRecord } from "./segmentPoolLookup";
 import { NARRATION_CHARS_PER_SEC } from "../types/narration";
 import { disclosureTemplate } from "../types/narration";
 import { buildPartialCandidate, type PartialCandidate } from "./partialCandidate";
+import { resetUsageTracking, getUsageTotals } from "./usageTracking";
+import { buildVeracityMetrics } from "./veracityMetrics";
 
 import { createPromptUnderstander } from "./createPromptUnderstander";
 import { createExternalResearcher } from "./createExternalResearcher";
@@ -31,7 +41,9 @@ import type { DeepenActBuilder } from "./DeepenActBuilder";
 import type { NarrationWriterBuilder } from "./NarrationWriterBuilder";
 import type { NarrationVerifierBuilder } from "./NarrationVerifierBuilder";
 import type { ContinuityBuilder } from "./ContinuityBuilder";
+import type { WrittenAct } from "./writeNarration";
 import type { TranscriptCueProvider } from "./transcriptArchiveLookup";
+import type { TapeRelevanceInput } from "../types/tapeSourcing";
 import type { Spine } from "../types/spine";
 import type { ForayItem } from "./forayItems";
 
@@ -119,6 +131,17 @@ export interface RunPipelineDeps {
    * caller today: it writes/rewrites the partial file on every act.
    */
   onActReady?: (candidate: PartialCandidate) => void | Promise<void>;
+  /**
+   * Per-stage resume (F-17/F-18). Omit it and the pipeline behaves exactly as
+   * it did before checkpoints existed: nothing is written, nothing is skipped.
+   * Supply it (with `options.checkpointKey`) and every stage's output is
+   * persisted the moment it exists, so a re-run of the same request pays only
+   * for the stages that had not finished.
+   *
+   * See `checkpoint.ts` for what run 1 lost without this: 2 h 35 m, 103 model
+   * calls and 22 of 31 finished beats, discarded because beat 23 failed.
+   */
+  checkpoint?: CheckpointStore;
 }
 
 export interface RunPipelineOptions {
@@ -133,6 +156,14 @@ export interface RunPipelineOptions {
   now?: () => Date;
   /** Repo root, for the taxonomy and validation file reads. */
   root?: string;
+  /**
+   * Names this Foray's checkpoint (F-17/F-18) — the batch driver passes the
+   * candidate file's basename, so the checkpoint sits beside the candidate the
+   * same prompt will eventually produce. Without it, `deps.checkpoint` is
+   * ignored: a checkpoint with no key would be a checkpoint shared by every
+   * prompt in the batch.
+   */
+  checkpointKey?: string;
 }
 
 export type RunPipelineOutcome =
@@ -148,6 +179,14 @@ export type RunPipelineOutcome =
       input: FinalizeForayInput;
       result: FinalizeForayResult;
       spine: Spine;
+      /** WS-C: one row per tape-sourced beat, carrying the topic gate's own
+       * verdict on the anchor it took (see `TapeRelevanceInput`). Surfaced here
+       * because §4.5 is the only stage that knows all of it at once, and
+       * because WS-B's `tapeRelevance` metric otherwise has to re-derive the
+       * join from disk — and can only do so for anchors that resolve against
+       * `data/segment-sources.json`, which a freshly minted tier-2 segment need
+       * not. */
+      tapeRelevance: TapeRelevanceInput[];
       timings: StageTiming[];
       /** WS-D2: prompt received -> Act 1 ready, in milliseconds. `null` only
        * when `deps.onActReady` was never supplied (no act-boundary clock was
@@ -260,6 +299,77 @@ function slotCountThroughAct(spine: Spine, actIndex: number): number {
   return n;
 }
 
+/* ------------------------------------------------------------------------ *
+ * Checkpoint schemas (F-17/F-18).
+ *
+ * Every stage's stored output is re-validated on the way back IN, against the
+ * same schema its own type is built from wherever one exists. Two stages had
+ * no schema — §4.7's `WrittenAct[]` and §4.8's stitched items are interfaces,
+ * not zod types — so they get one here rather than being trusted unparsed: a
+ * checkpoint file is JSON a person can edit and a killed process can truncate,
+ * and an unvalidated resume turns that into a failure four stages later with
+ * nothing pointing back at the file. See `CheckpointSession`.
+ * ------------------------------------------------------------------------ */
+
+const UnderstandCheckpointSchema = z.union([
+  z.object({
+    outcome: z.literal("rejected"),
+    rejection: z.object({ category: z.enum(SAFETY_CATEGORIES), explanation: z.string() })
+  }),
+  z.object({
+    outcome: z.literal("needs_clarification"),
+    clarification: z.object({ question: z.string(), readings: z.array(z.string()) })
+  }),
+  z.object({ outcome: z.literal("understood"), intent: IntentUnderstandingSchema })
+]);
+
+/* Mirrors `TapeRelevanceInput` (types/tapeSourcing.ts, WS-C): the rows WS-B's
+   veracity gate aggregates. Checkpointed with the stage so a resumed run
+   reports the same tape-relevance evidence a fresh one would. */
+const TapeRelevanceInputSchema = z.object({
+  actIndex: z.number().int(),
+  slotIndex: z.number().int(),
+  beatIndex: z.number().int(),
+  claim: z.string(),
+  itemId: z.string(),
+  segmentId: z.string(),
+  tier: z.union([z.literal(1), z.literal(2)]),
+  taxonomyNodeIds: z.array(z.string()),
+  families: z.array(z.string()),
+  forayTopic: z.string().nullable(),
+  forayFamily: z.string().nullable(),
+  onTopic: z.boolean().nullable()
+});
+
+const SourceCheckpointSchema = z.object({
+  acts: z.array(SourcedActSchema),
+  newSegments: z.array(NewSegmentSchema),
+  transcriptionQueueCandidates: z.array(TranscriptionQueueCandidateSchema),
+  tapeRelevance: z.array(TapeRelevanceInputSchema)
+});
+
+const WrittenBeatSchema = z.union([
+  z.object({
+    sourcing: z.literal("tape"),
+    claim: z.string(),
+    exploration: z.boolean(),
+    tape: TapePointerSchema,
+    connectiveNarration: NarratedBeatSchema.optional()
+  }),
+  z.object({
+    sourcing: z.literal("narration"),
+    claim: z.string(),
+    exploration: z.boolean(),
+    narration: NarratedBeatSchema
+  })
+]);
+const WrittenActSchema = z.object({
+  title: z.string(),
+  slots: z.array(z.object({ title: z.string(), beats: z.array(WrittenBeatSchema) }))
+});
+
+const StitchCheckpointSchema = z.object({ items: z.array(ForayItemSchema) });
+
 export async function runForayPipeline(
   request: GenerationRequest,
   options: RunPipelineOptions,
@@ -270,10 +380,65 @@ export async function runForayPipeline(
   const now = options.now ?? (() => new Date());
   const ctx = { userId: options.userId, sessionId: options.sessionId };
   // WS-D2: prompt-received clock. `Date.now()`, not `now()` — `now()` is the
-  // injected-for-determinism ID clock (`forayIdFor`'s `generatedAt`), which
-  // tests pin to a fixed instant; ttlA1Ms measures real wall time, exactly
-  // like `StageTimingLog` does elsewhere in this module.
+  // injected-for-determinism stamp clock (`startedAt`/`generatedAt`, and so
+  // `forayIdFor`'s seed), which tests pin to a fixed instant; ttlA1Ms measures
+  // real wall time, exactly like `StageTimingLog` does elsewhere in this
+  // module.
   const pipelineStartMs = Date.now();
+
+  /* F-17/F-18. `open` returns an inert session when there is no store, no key,
+     or a checkpoint written for a different request — so everything below is
+     one code path whether or not the caller wants resume. */
+  const checkpoint = await CheckpointSession.open(
+    deps.checkpoint,
+    options.checkpointKey,
+    checkpointFingerprint({ prompt: req.prompt, duration: req.duration, topic: options.topic })
+  );
+  const resumeHint = options.checkpointKey
+    ? `Everything finished so far is checkpointed under "${options.checkpointKey}", so a re-run restarts at this stage.`
+    : undefined;
+
+  /**
+   * The one seam every stage goes through, doing three things a bare `await`
+   * cannot:
+   *
+   *   - RESUME. Returns the checkpointed output instead of calling the stage,
+   *     and records it as resumed rather than as a stage that took 0 ms.
+   *   - PERSIST. Writes the stage's output the moment it exists (F-18).
+   *   - NAME THE STAGE ON A BUDGET STOP (F-04). `BudgetGuard` throws from
+   *     inside a builder and knows only a tier and a dollar figure; this is
+   *     the only place that also knows which stage was running and that the
+   *     work so far is on disk.
+   */
+  const timed = async <T>(name: string, fn: () => Promise<T>): Promise<T> => {
+    try {
+      return await timings.run(name, fn);
+    } catch (err) {
+      /* Walks `cause`, because §4.4 wraps an act's failure in its own
+         `ActDeepeningError` and would otherwise bury the dollar figures. */
+      const budget = findBudgetError(err);
+      if (budget) {
+        const scope = budget instanceof EpisodeBudgetExceededError ? "per-foray" : "daily";
+        throw new BudgetStopError(name, budget.spentUsd, budget.capUsd, scope, budget, resumeHint);
+      }
+      throw err;
+    }
+  };
+
+  const stage = async <T>(name: string, parse: (raw: unknown) => T, fn: () => Promise<T>): Promise<T> => {
+    const { value, resumed } = await checkpoint.stage(name, parse, () => timed(name, fn));
+    if (resumed) timings.markResumed(name);
+    return value;
+  };
+
+  /* WS-B (docs/curation/generation-fix-plan-2026-09-09.md): `pipelineTokens`
+     sums every Anthropic reply's `usage` across the whole run — see
+     `usageTracking.ts`'s own doc comment on why this is a single
+     process-wide counter and why that is only correct for ONE run at a
+     time (true today: this function runs to completion before
+     `generateForays.ts`'s batch loop starts the next one). Reset here,
+     read after finalize below. */
+  resetUsageTracking();
 
   const understander = deps.understander ?? createPromptUnderstander();
   const researcher = deps.researcher ?? createExternalResearcher();
@@ -284,10 +449,39 @@ export async function runForayPipeline(
   const continuityBuilder = deps.continuityBuilder ?? createContinuityBuilder();
   const finalize = deps.finalize ?? finalizeForay;
 
+  /* WS-B: `callsPerBeat` counts every §4.7 writer/verifier call, including
+     rejected attempts — wrapping here (rather than instrumenting
+     `AnthropicNarrationWriterBuilder`/`StubNarrationWriterBuilder`
+     themselves) counts real AND stub/test builders alike with one code
+     path, and survives WS-D's later per-slot/per-act parallelisation
+     untouched (a plain counter, no ordering assumed — contrast
+     `usageTracking.ts`'s per-process caveat, which does not apply here
+     since these two counters are local to this one call). */
+  let narrationWriterCalls = 0;
+  let narrationVerifierCalls = 0;
+  const countingNarrationWriter: NarrationWriterBuilder = {
+    providerName: narrationWriter.providerName,
+    writePage: (writeRequest, writeCtx) => {
+      narrationWriterCalls++;
+      return narrationWriter.writePage(writeRequest, writeCtx);
+    }
+  };
+  const countingNarrationVerifier: NarrationVerifierBuilder = {
+    providerName: narrationVerifier.providerName,
+    verifyPage: (verifyRequest, verifyCtx) => {
+      narrationVerifierCalls++;
+      return narrationVerifier.verifyPage(verifyRequest, verifyCtx);
+    }
+  };
+
   /* §4.0-4.1 — safety, then intent. Both non-"understood" outcomes end the run:
      a rejected prompt must not be researched, and a prompt we cannot read one
      way must not be guessed at. */
-  const understood = await timings.run("understand", () => understandPrompt(req.prompt, understander, ctx));
+  const understood = await stage<UnderstandPromptResult>(
+    "understand",
+    (raw) => UnderstandCheckpointSchema.parse(raw) as UnderstandPromptResult,
+    () => understandPrompt(req.prompt, understander, ctx)
+  );
   if (understood.outcome === "rejected") {
     return {
       outcome: "rejected",
@@ -307,112 +501,209 @@ export async function runForayPipeline(
 
   const intent = understood.intent;
 
-  // §4.2 — research to establish shape.
-  const researchShape = await timings.run("research", () =>
-    buildResearchShape(intent, { researcher, ctx })
+  /* §4.2 — research to establish shape. `topic` is left unset so the stage
+     resolves one from the intent itself and keeps off-branch concepts out of
+     the map (F-11); a caller who pinned the taxonomy node by hand has already
+     decided, so that decision wins. */
+  const researchShape = await stage(
+    "research-shape",
+    (raw) => ResearchShapeSchema.parse(raw),
+    () => buildResearchShape(intent, { researcher, ctx, root: options.root, ...(options.topic ? { topic: options.topic } : {}) })
   );
 
   // §4.3 — the spine, frozen from here on (§6.1's invariant, batch-true).
-  const spine = await timings.run("spine", () => buildSpine(intent, researchShape, req.duration, spineBuilder, ctx));
+  const spine = await stage(
+    "spine",
+    (raw) => SpineSchema.parse(raw),
+    () => buildSpine(intent, researchShape, req.duration, spineBuilder, ctx)
+  );
 
-  /* The Foray-level fields §4.9 says nothing upstream owns, resolved HERE —
-     right after the spine, not after stitch as a batch-only pipeline could
-     get away with before WS-D2. Two reasons, both real:
-     (1) PURE RELOCATION, no behaviour change: `resolveTopic`'s only inputs
-         are `intent` and `spine.acts`' titles, both already final at this
-         point, so the answer is identical to computing it later — WS-C
-         (docs/curation/generation-fix-plan-2026-09-09.md, "topic gate")
-         owns changing what topic resolution DOES (e.g. feeding it into
-         sourcing); this only moves WHEN the existing computation runs, and
-         does not touch sourceBeats/segmentPoolLookup at all.
-     (2) WS-D2's partial-candidate emission (below, via `stitchForay`'s
-         `onActReady`) needs a real id/title/topic/slots to hand the
-         requesting listener as Act 1 finishes — building those from a
-         stitched result that does not exist yet is impossible.
-     A nice side effect, not the point: an unresolvable topic now stops the
-     run BEFORE deepen/source/narrate spend anything, rather than after all
-     three run only to be discarded. */
-  const generatedAt = now().toISOString();
+  /* THE FORAY'S TOPIC, RESOLVED HERE AND NOT AFTER NARRATION.
+     It used to be resolved at the end, next to the other §4.9 fields it is
+     grouped with, because nothing before §4.9 needed it. §4.5's topic gate does
+     (fix plan WS-C, finding F-29): the taxonomy node is the only thing that can
+     tell sourcing that a barbecue episode is not tape for an engineering-
+     disasters Foray, and sourcing runs long before finalize. Resolving it here
+     — the first point where both the intent and the frozen spine exist — also
+     means an unresolvable topic stops the run before the two most expensive
+     stages instead of after them.
+
+     The unresolved-topic OUTCOME is unchanged: same shape, same title, same
+     ranked candidates, still returned rather than guessed at, because
+     `check-forays.mjs` only asks whether a node exists and never whether it is
+     the right one. `generatedAt` deliberately did NOT move with it: it is the
+     time the Foray was finished, and stamping it here would date every Foray
+     several minutes before it existed. */
   const title = `${intent.subject}${intent.angle ? `: ${intent.angle}` : ""}`.slice(0, 120);
   const topicText = [intent.subject, intent.angle, spine.acts.map((a) => a.title).join(" ")].join(" ");
-  const topic = options.topic ?? resolveTopic(topicText, { root: options.root }).resolved;
+  const resolvedTopic = resolveTopic(topicText, { root: options.root });
+  const topic = options.topic ?? resolvedTopic.resolved;
   if (!topic) {
     return {
       outcome: "unresolved-topic",
       title,
-      candidates: resolveTopic(topicText, { root: options.root }).candidates,
+      candidates: resolvedTopic.candidates,
       timings: timings.all()
     };
   }
-  const forayId = forayIdFor(title, generatedAt);
+
+  /* WS-D2 (fix plan, "D2 (streaming publish)") needs four Foray-level facts
+     before Act 1 can be handed to a listener, and all four are knowable the
+     moment the spine is frozen and the topic resolves — so they are hoisted
+     here rather than recomputed inside `onActReady` on every act.
+
+     WHICH TIMESTAMP THE PARTIAL CANDIDATE CARRIES, AND WHY. `startedAt` comes
+     from the SAME injected `now()` clock the final `generatedAt` below comes
+     from — the deterministic one tests pin, never `Date.now()` — but it is
+     read HERE, so it is the time the run reached the frozen spine and not the
+     time the Foray finished. A partial candidate has no finish time to stamp:
+     it exists, by construction, only while the run is still going. It
+     therefore carries `builtAt: startedAt`, and that is the honest reading of
+     the field rather than a finish time back-dated or invented.
+
+     `generatedAt` itself is deliberately NOT hoisted — the note just above
+     stands: it is the time the Foray was finished, and stamping it here would
+     date every published Foray several minutes before it existed.
+
+     `forayId` IS hoisted, seeded from `startedAt`, and the finished candidate
+     below reuses it instead of re-deriving one from `generatedAt`. The id is
+     the streaming contract: the listener polling the partial and the candidate
+     that eventually replaces it have to be the same Foray, and two timestamps
+     would mint two ids for one piece of work. Determinism is untouched —
+     both stamps are read from the injected clock, so the same request and the
+     same clock still produce the same id (`runPipeline.test.ts`). */
+  const startedAt = now().toISOString();
+  const forayId = forayIdFor(title, startedAt);
   const slots = slotsFromSpine(spine);
   const allActTitles = spine.acts.map((a) => a.title);
 
-  // §4.4 — deepen every act, in parallel across acts.
-  const deepened = await timings.run("deepen", () => deepenActs(spine, deepenBuilder, ctx));
+  /* §4.4 — deepen every act, in parallel across acts, each act checkpointed on
+     its own (F-17): an act that succeeded is banked even when a sibling act
+     exhausts its retry budget and fails the stage. */
+  const deepened = await timed("deepen", () =>
+    deepenActs(spine, deepenBuilder, ctx, {
+      resume: (index) => checkpoint.resumeSync(`deepen:${index}`, (raw) => DeepenedActSchema.parse(raw)),
+      onActDeepened: (index, act) => checkpoint.save(`deepen:${index}`, act)
+    })
+  );
 
   /* §4.5-4.6 — source each beat against tape, then resolve the pointer. Purely
      deterministic and keyless: no LLM call happens in here at all. The cue
      provider is what decides whether tier-2 can anchor a real span or whether
-     the beat degrades to narration for this run. */
-  const sourced = await timings.run("source", async () =>
-    sourceBeats(deepened, { cueProvider: deps.cueProvider })
+     the beat degrades to narration for this run; `topic` is what decides
+     whether a candidate is even in the right subject. */
+  const sourced = await stage(
+    "source",
+    (raw) => SourceCheckpointSchema.parse(raw),
+    async () => sourceBeats(deepened, { cueProvider: deps.cueProvider, topic, root: options.root })
   );
 
-  // §4.7 — write narration, then verify it independently (distinct instances, enforced there).
-  const written = await timings.run("narrate", () =>
-    writeNarration(sourced.acts, { writer: narrationWriter, verifier: narrationVerifier }, spine.voice, ctx)
-  );
+  /* §4.7 — write narration, then verify it independently (distinct instances,
+     enforced there). Driven ONE ACT AT A TIME rather than in a single call, so
+     each act's pages are checkpointed as they finish: `writeNarration` throws
+     `NarrationWriteError` out of the stage when a narration beat fails its
+     third attempt (F-17/F-31), and run 1 lost two finished acts that way. Act
+     order and the writer/verifier instances are unchanged — `writeNarration`
+     iterates the acts it is given in order, so N calls of one act and one call
+     of N acts produce the same result. */
+  const written: WrittenAct[] = [];
+  for (let i = 0; i < sourced.acts.length; i++) {
+    const act = sourced.acts[i]!;
+    written.push(
+      await stage(
+        `narrate:${i}`,
+        (raw) => WrittenActSchema.parse(raw) as WrittenAct,
+        async () => {
+          const [one] = await writeNarration([act], { writer: countingNarrationWriter, verifier: countingNarrationVerifier }, spine.voice, ctx);
+          return one!;
+        }
+      )
+    );
+  }
 
-  /* WS-D2's clock: set once, the first time `onActReady` fires for act
-     index 0, then carried unchanged on every later act's rewrite — matches
-     `PartialCandidate.ttlA1Ms`'s own doc comment. */
+  /* WS-D2's clock: set once, the first time `onActReady` fires for act index
+     0, then carried unchanged on every later act's rewrite — matching
+     `PartialCandidate.ttlA1Ms`'s own doc comment.
+
+     IT STAYS `null` ON A RESUMED RUN, and that is correct rather than a gap.
+     When F-17/F-18's checkpoint already holds the stitch stage, `stage()`
+     below returns the stored items and never calls `stitchForay` at all, so
+     `onActReady` never fires and no act boundary is ever timed. The resumed
+     process did not take that long, and the process that did is gone; a
+     number measured from THIS run's start would be a fiction. Reported as
+     "not measured" instead. The same is true of any run that supplied no
+     `deps.onActReady` — there was no act-boundary clock to read. */
   let ttlA1Ms: number | null = null;
 
-  // §4.8 — stitch, smoothing each act's introduction against the one before it.
-  const stitched = await timings.run("stitch", () =>
-    stitchForay(
-      deepened,
-      written,
-      {
-        continuity: { builder: continuityBuilder },
-        onActReady: deps.onActReady
-          ? async ({ actIndex, itemsSoFar }) => {
-              if (actIndex === 0) ttlA1Ms = Date.now() - pipelineStartMs;
-              /* The disclosure is prepended here for the SAME reason the
-                 whole-Foray path prepends it below: it is a Foray-level
-                 obligation stitch has no concept of, and `check-forays.mjs`
-                 requires items[0] to be it — a partial candidate is
-                 something `finalizeForay` inside `buildPartialCandidate`
-                 validates with those same gates, so it needs the same
-                 opening item the final candidate gets. */
-              const itemsWithDisclosure = [disclosureItem(intent.subject, slots[0]!.id), ...itemsSoFar];
-              const candidate = await buildPartialCandidate(
-                {
-                  actIndex,
-                  totalActs: allActTitles.length,
-                  allActTitles,
-                  items: itemsWithDisclosure,
-                  slots: slots.slice(0, slotCountThroughAct(spine, actIndex)),
-                  runtimeSec: runtimeSecFor(itemsWithDisclosure),
-                  ttlA1Ms
-                },
-                { id: forayId, title, topic, summary: intent.subject, authorId: options.userId, builtAt: generatedAt, root: options.root },
-                finalize
-              );
-              await deps.onActReady!(candidate);
-            }
-          : undefined
-      },
-      ctx
-    )
+  /* §4.8 — stitch, smoothing each act's introduction against the one before
+     it. Checkpointed like every other stage (F-17/F-18); WS-D2's per-act
+     emission is wired INSIDE the checkpointed function, not around it, so a
+     resume that skips stitch also skips the partial writes — there is nothing
+     to stream when the items were already on disk. */
+  const stitched = await stage(
+    "stitch",
+    (raw) => StitchCheckpointSchema.parse(raw) as { items: ForayItem[] },
+    () =>
+      stitchForay(
+        deepened,
+        written,
+        {
+          continuity: { builder: continuityBuilder },
+          onActReady: deps.onActReady
+            ? async ({ actIndex, itemsSoFar }) => {
+                if (actIndex === 0) ttlA1Ms = Date.now() - pipelineStartMs;
+                /* The disclosure is prepended here for the SAME reason the
+                   whole-Foray path prepends it below: it is a Foray-level
+                   obligation stitch has no concept of, and `check-forays.mjs`
+                   requires items[0] to be it — a partial candidate is
+                   something `finalizeForay` inside `buildPartialCandidate`
+                   validates with those same gates, so it needs the same
+                   opening item the final candidate gets. */
+                const itemsWithDisclosure = [disclosureItem(intent.subject, slots[0]!.id), ...itemsSoFar];
+                const candidate = await buildPartialCandidate(
+                  {
+                    actIndex,
+                    totalActs: allActTitles.length,
+                    allActTitles,
+                    items: itemsWithDisclosure,
+                    slots: slots.slice(0, slotCountThroughAct(spine, actIndex)),
+                    runtimeSec: runtimeSecFor(itemsWithDisclosure),
+                    ttlA1Ms
+                  },
+                  { id: forayId, title, topic, summary: intent.subject, authorId: options.userId, builtAt: startedAt, root: options.root },
+                  finalize
+                );
+                await deps.onActReady!(candidate);
+              }
+            : undefined
+        },
+        ctx
+      )
   );
 
+  const generatedAt = now().toISOString();
   /* The disclosure is prepended here rather than inside stitch: it is a
      Foray-level obligation, not an act's content, and stitch has no concept of
      "the whole Foray" to attach it to. Prepending also keeps it out of the
      runtime sum below by construction — it is a spoken marker, not tape. */
   const items = [disclosureItem(intent.subject, slots[0]!.id), ...stitched.items];
+
+  /* WS-B: computed here, with the resolved `topic` (`tapeRelevance` needs
+     it) and before `finalize` runs, so `meta.veracity` rides along on
+     EVERY candidate this function returns — including one that fails
+     check-forays/check-narration below, which `generateForays.ts` still
+     records in `report.json` even though it never writes a candidate file. */
+  const veracity = buildVeracityMetrics({
+    sourcedActs: sourced.acts,
+    writtenActs: written,
+    topic,
+    writerCalls: narrationWriterCalls,
+    verifierCalls: narrationVerifierCalls,
+    pipelineTokens: getUsageTotals().total,
+    stageTimings: timings.all(),
+    tapeRelevanceRows: sourced.tapeRelevance,
+    root: options.root
+  });
 
   const input: FinalizeForayInput = {
     id: forayId,
@@ -422,11 +713,18 @@ export async function runForayPipeline(
     slots,
     items,
     runtimeSec: runtimeSecFor(items),
-    builtAt: generatedAt
+    builtAt: generatedAt,
+    meta: { veracity }
   };
 
   // §4.9 — validate against the same two checkers CI runs. Writes nothing.
-  const result = await timings.run("finalize", () => finalize(input, options.root));
+  const result = await timed("finalize", () => finalize(input, options.root));
 
-  return { outcome: "generated", input, result, spine, timings: timings.all(), ttlA1Ms };
+  /* `finalize`'s own internal breakdown (build-record/check-forays/check-
+     narration) plus this function's now-complete stage list — appended
+     after the fact by mutating the SAME `veracity` object `input.meta`
+     already holds a reference to, rather than rebuilding `input`. */
+  veracity.stageTimings = [...timings.all(), ...result.timings.map((t) => ({ ...t, name: `finalize.${t.name}` }))];
+
+  return { outcome: "generated", input, result, spine, tapeRelevance: sourced.tapeRelevance, timings: timings.all(), ttlA1Ms };
 }
