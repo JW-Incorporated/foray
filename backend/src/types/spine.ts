@@ -51,10 +51,33 @@ export const EXPLORATION_FLOOR = 0.3;
  * cost-cutting pass will delete and the last thing that should be
  * deleted.") — explicit and structural, not left to be inferred later.
  */
+/**
+ * What KIND of thing a beat asserts — the distinction §4.5 needs and did not
+ * have (finding F-38).
+ *
+ * An `account` is something that happened to someone, somewhere: a person can
+ * be on tape describing it, so looking for tape is worth doing. An `argument`
+ * is a thesis about a class of events ("every link in a failure chain gets
+ * evaluated against a local question and almost never against the global
+ * one") — no episode in any archive is "about" it, so a word-overlap search can
+ * only ever return a coincidence. Run 1 ran the same scorer over both and
+ * anchored exactly that argument to a *Geology Bites* episode on banded iron
+ * formations. Spoken argument is what narration is FOR.
+ *
+ * Set by §4.4 (the deepen stage), which is the first stage that has both the
+ * act's thesis and the beat's final wording in front of it. Optional in the
+ * schema on purpose: §4.3's spine writes beats before anything has judged them,
+ * and an absent `kind` means `account` — the search-everything behaviour that
+ * predates this field.
+ */
+export const BeatKindSchema = z.enum(["account", "argument"]);
+export type BeatKind = z.infer<typeof BeatKindSchema>;
+
 export const BeatSchema = z
   .object({
     claim: z.string().trim().min(1),
-    exploration: z.boolean()
+    exploration: z.boolean(),
+    kind: BeatKindSchema.optional()
   })
   .strict();
 export type Beat = z.infer<typeof BeatSchema>;

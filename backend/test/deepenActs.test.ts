@@ -263,6 +263,49 @@ describe("deepenActs — failure isolation", () => {
   });
 });
 
+describe("StubDeepenActBuilder — the dry-run path tags beats too (WS-C, F-38)", () => {
+  it("emits BOTH kinds so the dry run exercises §4.5's argument branch", async () => {
+    /* The stub is a fixture generator, not a judge — but if it only ever
+       emitted `account`, the branch that skips tape lookup for an argument
+       would never run without an API key, and a regression there would be
+       invisible to every keyless test and to `--dry-run`. */
+    const builder = new StubDeepenActBuilder();
+    const act = makeAct(
+      {
+        slots: [
+          {
+            title: "Mixed slot",
+            beats: [
+              { claim: "The walkway fell into the atrium on a Friday evening.", exploration: false },
+              { claim: "Every link in a failure chain is almost always judged against a local question.", exploration: true }
+            ]
+          }
+        ]
+      },
+      "K"
+    );
+    const spine = makeSpine({ acts: [act] });
+    const deepened = await builder.deepenAct(spine, act, 0, ctx);
+
+    const kinds = deepened.slots[0]!.beats.map((b) => b.kind);
+    expect(kinds).toContain("account");
+    expect(kinds).toContain("argument");
+  });
+
+  it("passes an already-tagged beat's kind through unchanged rather than re-judging it", () => {
+    /* §4.4 refines wording; it must not silently retag a beat a caller already
+       decided about — the tag is what §4.5 keys off. */
+    const builder = new StubDeepenActBuilder();
+    const act = makeAct(
+      { slots: [{ title: "Slot", beats: [{ claim: "The walkway fell into the atrium.", exploration: false, kind: "argument" }] }] },
+      "T"
+    );
+    return builder.deepenAct(makeSpine({ acts: [act] }), act, 0, ctx).then((deepened) => {
+      expect(deepened.slots[0]!.beats[0]!.kind).toBe("argument");
+    });
+  });
+});
+
 describe("createDeepenActBuilder", () => {
   it("returns a StubDeepenActBuilder when ANTHROPIC_API_KEY is absent (repo .env is empty for this build)", () => {
     expect(env.anthropicDryRun).toBe(true);

@@ -62,7 +62,23 @@ export function loadSegmentPool(): SegmentRecord[] {
 export interface SegmentMatch {
   segment: SegmentRecord;
   score: number;
+  /** WHICH TEXT the score was measured against — the segment's own transcript
+   * window when the cue provider had one, else its curator-written
+   * topic/why/anchor metadata. The two carry different amounts of evidence per
+   * shared word, so they do not share a threshold (see `requiredOverlapFor`). */
+  matchedIn: "transcript" | "metadata";
+  /** How many distinct content words the CLAIM contributed — the denominator the
+   * transcript-window bar is a fraction of. */
+  claimTokenCount: number;
 }
+
+/** Supplies the transcript text spoken inside a pool segment's own
+ * `[start_sec, end_sec]` window, or `null` when no transcript body is on this
+ * machine. Injected rather than read here so this module keeps its "reads
+ * `data/segments.json` and nothing else" property: the only thing that can
+ * reach a transcript body is a `TranscriptCueProvider` the caller supplies
+ * (see `sourceBeats.ts`). */
+export type SegmentWindowText = (segment: SegmentRecord) => string | null;
 
 /** Below this token-overlap score a "match" is not trustworthy enough to
  * resolve tier 1 — the beat falls through to tier 2. Deliberately a
@@ -74,23 +90,60 @@ export interface SegmentMatch {
  * unlikely to clear by chance. */
 export const TIER1_MATCH_THRESHOLD = 3;
 
-/** Scores every segment in `pool` against `claimText`'s tokens by
- * overlap count against the segment's combined topic + why + anchor
- * text (all fields a beat's claim could plausibly echo), highest first.
+/**
+ * The bar for a TRANSCRIPT-WINDOW match, as a fraction of the claim's own
+ * content words.
+ *
+ * A why-line is capped at 18 words, so three shared content words with it is a
+ * strong signal. A two-minute transcript window holds two to four HUNDRED
+ * words, and three of a claim's words turning up somewhere in it is close to
+ * free — the same arithmetic that let a four-word run "match" an hour of tape
+ * (F-24). A count bar cannot serve both haystacks, so the window's bar is
+ * coverage of the claim instead: a quarter of what the claim actually says has
+ * to be said in the window. On a 20-content-word claim that is five words, and
+ * an unrelated window rarely carries five of them.
  */
-export function scoreSegmentsAgainstClaim(claimText: string, pool: SegmentRecord[]): SegmentMatch[] {
+export const TIER1_WINDOW_COVERAGE = 0.25;
+
+/** The overlap a match must reach, given where it was measured. */
+export function requiredOverlapFor(matchedIn: "transcript" | "metadata", claimTokenCount: number): number {
+  if (matchedIn === "metadata") return TIER1_MATCH_THRESHOLD;
+  return Math.max(TIER1_MATCH_THRESHOLD, Math.ceil(claimTokenCount * TIER1_WINDOW_COVERAGE));
+}
+
+/**
+ * Scores every segment in `pool` against `claimText`'s content words.
+ *
+ * WHAT CHANGED AFTER RUN 1 (F-06, F-29, F-33): the haystack is the segment's
+ * own TRANSCRIPT WINDOW whenever `options.windowText` can supply one — the
+ * words actually spoken between `start_sec` and `end_sec` — and only falls back
+ * to topic/why/anchor metadata when it cannot. Matching a claim against an
+ * 18-word curator note was never going to separate "this tape is about this
+ * event" from "this tape is about engineering"; run 1 anchored a Kansas City
+ * walkway claim to a British hearth-cooking segment on `have, one, people,
+ * would`, and the patched stopword list only moved the same failure one word
+ * to the left (F-33). The tape's own words are the evidence; everything else is
+ * a proxy for them.
+ */
+export function scoreSegmentsAgainstClaim(
+  claimText: string,
+  pool: SegmentRecord[],
+  options: { windowText?: SegmentWindowText } = {}
+): SegmentMatch[] {
   const claimTokens = new Set(tokenizeForSourcing(claimText));
   if (claimTokens.size === 0) return [];
 
   const scored: SegmentMatch[] = [];
   for (const segment of pool) {
-    const haystack = [segment.topic, segment.why, segment.start_anchor, segment.end_anchor].join(" ");
+    const window = options.windowText ? options.windowText(segment) : null;
+    const matchedIn: "transcript" | "metadata" = window ? "transcript" : "metadata";
+    const haystack = window ?? [segment.topic, segment.why, segment.start_anchor, segment.end_anchor].join(" ");
     const haystackTokens = new Set(tokenizeForSourcing(haystack));
     let score = 0;
     for (const t of claimTokens) {
       if (haystackTokens.has(t)) score += 1;
     }
-    if (score > 0) scored.push({ segment, score });
+    if (score > 0) scored.push({ segment, score, matchedIn, claimTokenCount: claimTokens.size });
   }
   scored.sort((a, b) => b.score - a.score);
   return scored;
@@ -101,7 +154,8 @@ export function scoreSegmentsAgainstClaim(claimText: string, pool: SegmentRecord
 export function findTier1Match(
   claimText: string,
   pool: SegmentRecord[] = loadSegmentPool(),
-  isUsable: (segment: SegmentRecord) => boolean = () => true
+  isUsable: (segment: SegmentRecord) => boolean = () => true,
+  options: { windowText?: SegmentWindowText } = {}
 ): SegmentMatch | null {
   /* WHY THE CALLER GETS A VETO, AND WHY IT IS APPLIED INSIDE THE SEARCH.
      Scoring is per-claim and stateless, so nothing here knows what the rest of
@@ -122,9 +176,15 @@ export function findTier1Match(
      beat keeps real tape. When nothing usable clears the bar the answer is a
      genuine null and §4.5's guardrail takes over: a beat's existence never
      depends on tape. */
-  const scored = scoreSegmentsAgainstClaim(claimText, pool);
+  /* The walk SKIPS a candidate under its own bar rather than stopping at the
+     first one, because the two haystacks no longer share a threshold: a
+     transcript-window candidate scoring 4 can be below its coverage bar while a
+     lower-scoring metadata candidate is comfortably over 3. Skipping keeps the
+     ranked walk honest across a mixed pool; nothing is admitted that its own
+     bar would not admit. */
+  const scored = scoreSegmentsAgainstClaim(claimText, pool, options);
   for (const candidate of scored) {
-    if (candidate.score < TIER1_MATCH_THRESHOLD) return null; // ranked: nothing later can clear it
+    if (candidate.score < requiredOverlapFor(candidate.matchedIn, candidate.claimTokenCount)) continue;
     if (isUsable(candidate.segment)) return candidate;
   }
   return null;

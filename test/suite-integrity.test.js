@@ -1304,6 +1304,8 @@ const BACKEND_FLOORS = {
      malformed-JSON/no-text-block error paths across all 5 real provider classes,
      plus the shared parseWithRetry helper extracted from their copy-pasted
      private implementations. */
+  /* +2 (WS-C): the §4.4 side of F-38 — the prompt asks for a beat `kind`
+     and the parser accepts one, while a reply that omits it still parses. */
   "test/AnthropicDeepenActBuilder.test.ts": 9,
   "test/AnthropicEnricher.test.ts": 10,
   "test/AnthropicExternalResearcher.test.ts": 9,
@@ -1388,7 +1390,7 @@ const BACKEND_FLOORS = {
      isClaimShaped (claim- vs topic-shaped beats), and validateSpine
      (§3's shape budgets with ±15% tolerance, the ~30% exploration
      floor). Kanban card t_96a97be9. */
-  "test/spineTypes.test.ts": 26,
+  "test/spineTypes.test.ts": 28,
   /* §4.3 end to end: buildSpine() against StubSpineBuilder for every
      duration tier (shape budgets, claim-shape, exploration floor,
      single spine-level voice all actually hold), plus InvalidSpineError
@@ -1399,13 +1401,21 @@ const BACKEND_FLOORS = {
      FULL spine. Covers shape/count correctness, the full-spine-context
      regression guard, genuine-parallelism proof, and explicit
      failure-isolation (one retry per act, then fail the whole build). */
-  "test/deepenActs.test.ts": 10,
+  "test/deepenActs.test.ts": 12,
   /* §4.5-4.6 end to end (kanban card t_648fbae7): sourceBeats() resolves
      every beat to a tier-1 segments.json hit, a tier-2 transcript-archive
      extraction, a tier-3 transcription-queue-candidate narration fallback,
      or a Patch/Carry narration assignment — never changing which beats
      exist, and never fetching/persisting any audio bytes. */
-  "test/sourceBeats.test.ts": 8,
+  /* WS-C (docs/curation/generation-fix-plan-2026-09-09.md) raised this from 8:
+     run 1's tape anchors were 5-of-22 on topic, and the added cases pin each of
+     the four things that fixes — argument beats skip tape (F-38), tier 1 scores
+     against the transcript window not a curator note (F-06/F-29), tier 2 needs
+     the claim's words around its anchor and mints a cue-cut segment rather than
+     a word run (F-24/F-33), and a candidate must share the Foray's taxonomy
+     lineage (F-23/F-29) — plus a replay of the real beat-4/beat-5 claims
+     against the real data/segments.json. */
+  "test/sourceBeats.test.ts": 35,
   /* §4.7 end to end (kanban card t_5a8b77c3): writeNarration() writes one
      page per narration beat (mode budgets, per-claim sources array),
      always through a genuinely separate verifier call (never the writer —
@@ -1467,6 +1477,13 @@ const BACKEND_FLOORS = {
   "test/researchTopicFilter.test.ts": 17,
   "test/runPipelineCheckpoint.test.ts": 10,
   "test/spineStructure.test.ts": 14,
+  /* WS-C: §4.5's topic gate (taxonomyFamily.ts). A family is a node's LINEAGE
+     in data/taxonomy.json — itself, its ancestors, its descendants — not a
+     shared first path segment, which would put every sibling trade in scope of
+     every other. Unit-tested against the REAL committed catalogue files,
+     pinning relationships rather than counts, because the finding it closes
+     (F-29) is precisely two real files that were never joined. */
+  "test/taxonomyFamily.test.ts": 17,
 };
 
 /* `it(` as well as `test(`: backend's suites use both spellings. */

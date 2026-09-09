@@ -103,6 +103,38 @@ describe("AnthropicDeepenActBuilder", () => {
     expect(deepened.exit).toBe("The act hands off to...");
   });
 
+  it("asks for the beat `kind` tag in the prompt and in the response shape (WS-C, F-38)", async () => {
+    /* The §4.4 side of F-38: sourcing cannot skip tape for an argument unless
+       something upstream says which beats ARE arguments, and §4.4 is the first
+       stage holding both the act's thesis and the beat's final wording. One
+       prompt line and one schema key — the rule itself is enforced in code, in
+       sourceBeats. */
+    const { client, create } = makeFakeAnthropicClient([textBlock(JSON.stringify(validDeepenedAct))]);
+    const builder = new AnthropicDeepenActBuilder(new BudgetGuard(new InMemoryCostEventSink(), 100), client);
+    await builder.deepenAct(spine, spine.acts[0]!, 0, ctx);
+
+    const prompt = String(create.mock.calls[0]![0].messages[0].content);
+    expect(prompt).toMatch(/Tag every beat `kind`/);
+    expect(prompt).toMatch(/"kind": "account" \| "argument"/);
+  });
+
+  it("accepts a beat kind when the model sends one, and does not retry when it omits it", async () => {
+    /* Optional in the schema on purpose: a model that forgets the key must not
+       cost the whole act a retry, and an absent kind means `account` — the
+       search-for-tape behaviour that predates the field. `validDeepenedAct`
+       above has no `kind` and parses in every other case here, which is the
+       omission half; this is the present half. */
+    const tagged = {
+      ...validDeepenedAct,
+      slots: [{ title: "slot", beats: [{ claim: "A refined claim happened", exploration: false, kind: "argument" }] }]
+    };
+    const { client } = makeFakeAnthropicClient([textBlock(JSON.stringify(tagged))]);
+    const builder = new AnthropicDeepenActBuilder(new BudgetGuard(new InMemoryCostEventSink(), 100), client);
+
+    const deepened = await builder.deepenAct(spine, spine.acts[0]!, 0, ctx);
+    expect(deepened.slots[0]!.beats[0]!.kind).toBe("argument");
+  });
+
   it("mutation: schema-invalid deepened act (missing introduction) -> deepenAct throws", async () => {
     const { title, thesis, startState, endState, slots, exit } = validDeepenedAct;
     const { client } = makeFakeAnthropicClient([textBlock(JSON.stringify({ title, thesis, startState, endState, slots, exit }))]);
