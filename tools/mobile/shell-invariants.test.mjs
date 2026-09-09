@@ -1742,3 +1742,28 @@ test("the permission prompt is not issued through the serialised bridge queue", 
   );
   assert.match(shellSrc, /call\("requestNotifications"\)\.then\(/);
 });
+
+test("the iOS ForayAudioPlugin never touches the AVAudioSession active state (F11/F13 pause loop)", () => {
+  /* Founder device diagnostics (2026-09-08/09): on iOS the play/pause button
+     appeared dead because `setNowPlaying` called `AVAudioSession.setActive(true)`
+     on `render()`'s up-to-4 Hz hot path. Re-asserting activation on the SHARED
+     session WebKit holds for the audible `<audio>` element interrupts that
+     element, which pauses; the player reconciles and resumes; the next ~1 s
+     position write repeats it — an audible-playback-killing loop whose period
+     matched the write cadence exactly. WebKit (element) and ForayTtsPlugin
+     (narration) each own their own activation, and MPRemoteCommandCenter
+     handlers are process-level, so this plugin must never call setActive.
+     MUTATION: put `AVAudioSession.sharedInstance().setActive(true)` back into
+     ForayAudioPlugin.swift -> this fails, naming the loop. */
+  const swift = fs.readFileSync(
+    path.join(PLUGIN_DIR, "ios/Sources/ForayAudioPlugin/ForayAudioPlugin.swift"),
+    "utf8"
+  );
+  // Strip line comments so the header's own description of the removed call
+  // (which legitimately names setActive) is not read as the call itself.
+  const code = swift.replace(/\/\/\/.*$/gm, "").replace(/\/\/.*$/gm, "");
+  assert.ok(
+    !/setActive\s*\(/.test(code),
+    "ForayAudioPlugin.swift calls AVAudioSession.setActive — the F11/F13 pause loop. The plugin must not touch session activation."
+  );
+});
