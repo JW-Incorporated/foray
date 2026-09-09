@@ -21,11 +21,54 @@ import type { z } from "zod";
 export function parseWithRetry<T>(schema: z.ZodType<T>, raw: string, errorPrefix = "LLM output"): T {
   const cleaned = raw.trim().replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/i, "");
   try {
-    return schema.parse(JSON.parse(cleaned));
+    return schema.parse(JSON.parse(parseOrRepairJson(cleaned)));
   } catch (err) {
     throw new Error(`${errorPrefix} failed schema validation (no retry available in this build): ${(err as Error).message}`, {
       cause: err
     });
+  }
+}
+
+/**
+ * Returns `text` if it parses, else the cheapest repair that does: closing
+ * brackets the model forgot at the very end. Generation run 1 (2026-09-09,
+ * call #34): a verifier reply arrived complete except for its final `}` and
+ * the parse failure was charged to the narration page as a rejected attempt
+ * — the writer was then told its page "failed schema validation". A truncated
+ * tail is the one malformation that is both common and unambiguous to mend;
+ * anything else still fails as before.
+ */
+export function parseOrRepairJson(text: string): string {
+  try {
+    JSON.parse(text);
+    return text;
+  } catch {
+    /* fall through to repair */
+  }
+  const stack: string[] = [];
+  let inString = false;
+  let escaped = false;
+  for (const ch of text) {
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (ch === "\\") escaped = true;
+      else if (ch === '"') inString = false;
+      continue;
+    }
+    if (ch === '"') inString = true;
+    else if (ch === "{") stack.push("}");
+    else if (ch === "[") stack.push("]");
+    else if (ch === "}" || ch === "]") stack.pop();
+  }
+  let repaired = text.trimEnd();
+  if (inString) repaired += '"';
+  repaired = repaired.replace(/,\s*$/, "");
+  while (stack.length > 0) repaired += stack.pop();
+  try {
+    JSON.parse(repaired);
+    return repaired;
+  } catch {
+    return text; // let the caller report the original failure
   }
 }
 

@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
+import { parseWithRetry as parseWithRetryShared } from "./parseWithRetry";
 import { env } from "../config/env";
 import { defaultBudgetGuard, type BudgetGuard } from "../cost/budgetGuard";
 import type { NarrationBuildContext, NarrationVerifierBuilder, NarrationVerifyRequest, NarrationVerifyResult } from "./NarrationVerifierBuilder";
@@ -71,16 +72,6 @@ export class AnthropicNarrationVerifierBuilder implements NarrationVerifierBuild
   }
 }
 
-function parseWithRetry<T>(schema: z.ZodType<T>, raw: string): T {
-  const cleaned = raw.trim().replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/i, "");
-  try {
-    return schema.parse(JSON.parse(cleaned));
-  } catch (err) {
-    throw new Error(`LLM output failed schema validation (no retry available in this build): ${(err as Error).message}`, {
-      cause: err
-    });
-  }
-}
 
 function buildVerifyPrompt(request: NarrationVerifyRequest): string {
   const sourcesText = request.sources
@@ -106,4 +97,8 @@ function buildVerifyPrompt(request: NarrationVerifyRequest): string {
     "Respond with ONLY a single JSON object, no markdown fences, no other text, matching exactly:",
     '{"verified": boolean, "verifierNotes": string (required and specific when verified is false, describing exactly what is unsupported)}'
   ].join("\n");
+}
+
+function parseWithRetry<T>(schema: z.ZodType<T>, raw: string): T {
+  return parseWithRetryShared(schema, raw, "LLM output");
 }

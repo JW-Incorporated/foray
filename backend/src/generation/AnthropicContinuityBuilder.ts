@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
+import { parseWithRetry as parseWithRetryShared } from "./parseWithRetry";
 import { env } from "../config/env";
 import { defaultBudgetGuard, type BudgetGuard } from "../cost/budgetGuard";
 import type { ContinuityBuilder, ContinuityBuildContext, ContinuitySmoothRequest, ContinuitySmoothResult } from "./ContinuityBuilder";
@@ -66,16 +67,6 @@ export class AnthropicContinuityBuilder implements ContinuityBuilder {
   }
 }
 
-function parseWithRetry<T>(schema: z.ZodType<T>, raw: string): T {
-  const cleaned = raw.trim().replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/i, "");
-  try {
-    return schema.parse(JSON.parse(cleaned));
-  } catch (err) {
-    throw new Error(`LLM output failed schema validation (no retry available in this build): ${(err as Error).message}`, {
-      cause: err
-    });
-  }
-}
 
 function buildSmoothPrompt(request: ContinuitySmoothRequest): string {
   return [
@@ -93,4 +84,8 @@ function buildSmoothPrompt(request: ContinuitySmoothRequest): string {
     `Respond with ONLY a single JSON object, no markdown fences, no other text, matching exactly:`,
     '{"nextIntroduction": string}'
   ].join("\n");
+}
+
+function parseWithRetry<T>(schema: z.ZodType<T>, raw: string): T {
+  return parseWithRetryShared(schema, raw, "LLM output");
 }

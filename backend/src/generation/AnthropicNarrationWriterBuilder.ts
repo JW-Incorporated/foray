@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
+import { parseWithRetry as parseWithRetryShared } from "./parseWithRetry";
 import { env } from "../config/env";
 import { defaultBudgetGuard, type BudgetGuard } from "../cost/budgetGuard";
 import { MODE_CHAR_BANDS } from "../types/narration";
@@ -79,16 +80,6 @@ export class AnthropicNarrationWriterBuilder implements NarrationWriterBuilder {
   }
 }
 
-function parseWithRetry<T>(schema: z.ZodType<T>, raw: string): T {
-  const cleaned = raw.trim().replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/i, "");
-  try {
-    return schema.parse(JSON.parse(cleaned));
-  } catch (err) {
-    throw new Error(`LLM output failed schema validation (no retry available in this build): ${(err as Error).message}`, {
-      cause: err
-    });
-  }
-}
 
 function buildWritePrompt(request: NarrationWriteRequest): string {
   const [min, max] = MODE_CHAR_BANDS[request.mode];
@@ -121,4 +112,8 @@ function buildWritePrompt(request: NarrationWriteRequest): string {
   ]
     .filter(Boolean)
     .join("\n");
+}
+
+function parseWithRetry<T>(schema: z.ZodType<T>, raw: string): T {
+  return parseWithRetryShared(schema, raw, "LLM output");
 }

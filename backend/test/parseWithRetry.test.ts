@@ -68,3 +68,20 @@ describe("parseLastJsonBlock", () => {
     expect(() => parseLastJsonBlock(schema, raw)).toThrow();
   });
 });
+
+describe("parseWithRetry — F-39: a reply truncated before its closing brackets is repaired, not failed", () => {
+  it("closes a missing final brace (generation run 1, verifier call #34)", async () => {
+    const { z } = await import("zod");
+    const { parseWithRetry, parseOrRepairJson } = await import("../src/generation/parseWithRetry");
+    const schema = z.object({ verified: z.boolean(), verifierNotes: z.string() });
+    const truncated = '{"verified": false, "verifierNotes": "No sources are declared for this page (\'(none declared)\')."';
+    expect(parseWithRetry(schema, truncated)).toEqual({ verified: false, verifierNotes: "No sources are declared for this page ('(none declared)')." });
+    expect(parseOrRepairJson('{"a": [1, 2')).toBe('{"a": [1, 2]}');
+    expect(parseOrRepairJson('{"a": "unterminated')).toBe('{"a": "unterminated"}');
+  });
+  it("leaves genuinely broken JSON to fail with the original error", async () => {
+    const { z } = await import("zod");
+    const { parseWithRetry } = await import("../src/generation/parseWithRetry");
+    expect(() => parseWithRetry(z.object({ a: z.number() }), "not json at all")).toThrow(/failed schema validation/);
+  });
+});
