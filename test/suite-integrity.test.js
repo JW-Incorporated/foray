@@ -1441,11 +1441,21 @@ const BACKEND_FLOORS = {
      run 1’s Chernobyl/griddle/San Bruno mis-anchors still refused with the
      text search switched on — plus two offline cases that skip by name on a
      checkout without `data-local/transcripts/`. */
-  "test/sourceBeats.test.ts": 59,
+  /* F-61/F-62 raised this from 59: tier 2 picks its window by overlap and mints
+     its anchors from the tape's own words, so the suite pins the window search
+     and its relevance floor (including the rare-word count that refuses a
+     window carried by one unusual word), anchors quoted verbatim at the span's
+     boundary cues, growth toward the claim rather than symmetric padding, and
+     the three run-1 mis-anchors refused by the FLOOR rather than by the
+     verbatim rule that used to carry them. The offline cases now find the real
+     bodies however the machine holds them, and skip by name when it holds
+     none. */
+  "test/sourceBeats.test.ts": 72,
   /* WS-H’s new module: the BM25 index over the normalised cue text, its disk
      cache and the invalidation that makes a re-transcribed episode rebuild it,
-     and the Null implementation CI actually runs. */
-  "test/transcriptTextIndex.test.ts": 11,
+     and the Null implementation CI actually runs. Raised to 12 by F-61: the
+     idf a search scored with is carried out to tier 2's window search. */
+  "test/transcriptTextIndex.test.ts": 12,
   /* §4.7 end to end (kanban card t_5a8b77c3): writeNarration() writes one
      page per narration beat (mode budgets, per-claim sources array),
      always through a genuinely separate verifier call (never the writer —

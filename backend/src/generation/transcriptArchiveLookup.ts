@@ -26,17 +26,22 @@ import { tokenizeForSourcing } from "./catalogueLookup";
  *      text (it MAY — see `FileTranscriptCueProvider` below, which
  *      looks for the transcript on the local machine and returns `null`
  *      when it is not there, which is the common case in CI and in this
- *      checkout), locate a REAL, VERBATIM anchor span for the claim
- *      inside that transcript, using the exact whole-word-subsequence
- *      matching rule `tools/segments/merge-segments.mjs` enforces at
- *      merge time (`canonicalizeForAnchorMatch` below is a small,
+ *      checkout), choose the WINDOW of that transcript that carries the
+ *      claim (`selectTapeWindow`, `tapeWindowIsRelevant`) and cut it to
+ *      a segment whose boundaries are anchored by phrases THE TAPE
+ *      speaks (`cutWindowToSegment`) — never by the claim's own words,
+ *      which are written prose and are not spoken anywhere (F-61). The
+ *      minted anchors are canonicalised the way
+ *      `tools/segments/merge-segments.mjs` canonicalises both sides
+ *      before comparing (`canonicalizeForAnchorMatch` below is a small,
  *      independently-implemented mirror of that module's `canonical()` —
  *      not a re-import, since that module is an ESM `.mjs` build script
  *      and this is a CommonJS backend module; the ALGORITHM is what
  *      needs to match, and it does: case/whitespace/punctuation
- *      forgiven, apostrophes elided, everything else exact). This is
- *      genuine anchor *location* against already-available text, not
- *      segment *extraction* — no episode-selection heuristics, no
+ *      forgiven, apostrophes elided, everything else exact), so an
+ *      anchor minted here is verbatim to that validator by construction.
+ *      This is genuine anchor *location* against already-available text,
+ *      not segment *extraction* — no episode-selection heuristics, no
  *      agent call, no lint pass, no write to `data/segments.json`.
  *   3. If no cue text is available, the match is still real (the
  *      episode exists and has a transcript) but cannot be resolved to
@@ -362,34 +367,53 @@ function canonicalWords(text: string): string[] {
   return c ? c.split(" ") : [];
 }
 
-export interface ResolvedAnchorSpan {
-  startAnchor: string;
-  endAnchor: string;
-  startSec: number;
-  endSec: number;
-  /**
-   * The verbatim run of CLAIM words that proved this episode says this — the
-   * whole of what the pre-run-1 span used to be.
-   *
-   * Kept separate from `startAnchor`/`endAnchor` now that the span is cut wider
-   * than the phrase (see `cutSpanToCueBoundaries`), because two different
-   * questions need two different pieces of text: the boundaries locate the
-   * SEGMENT, and this locates the EVIDENCE. `anchoredWindowEvidence` needs the
-   * latter and must not be allowed to count the phrase's own words as
-   * corroboration of itself.
-   */
-  matchedPhrase: string;
-  /** Where the matched phrase itself was spoken. */
-  matchStartSec: number;
-  matchEndSec: number;
-}
+/* ------------------------------------------------------------------ tier 2
+   PICKING THE WINDOW, THEN QUOTING THE TAPE (findings F-61, F-62).
 
-/** Same floor as `merge-segments.mjs`'s `MIN_ANCHOR_WORDS`. */
-export const MIN_ANCHOR_WORDS = 4;
-/** Longest contiguous window of claim tokens tried as an anchor phrase. */
-const MAX_ANCHOR_WORDS = 12;
-/** Words quoted as a boundary anchor. ADR-0007 asks for 8-12; take the floor. */
-const ANCHOR_TEXT_WORDS = 8;
+   WHAT WAS WRONG. The rule this replaces asked the tape for a run of four or
+   more of the CLAIM's own words, spoken verbatim and in order, and used that
+   run for two unrelated jobs at once: deciding that the episode carries the
+   beat, and marking where the segment starts and stops. Claims are written
+   prose and tape is speech, so the run almost never exists — with WS-H's text
+   search in front of it, all 23 searching beats of generation run 2 reached
+   real *Practical AI* transcripts (BM25 13-21) and every one of them died at
+   `tier2:no-anchor` (F-61). When the run DID exist it was usually a generic
+   one ("the original design required") that occurs in any hour of talk, which
+   is F-24.
+
+   WHAT REPLACES IT, AND WHY IT IS TWO THINGS AND NOT ONE.
+
+     RELEVANCE is a question about a WINDOW: does this stretch of tape carry
+     what the claim is about? Answered by sliding a window over the cue
+     sequence and scoring it by how much of the claim's own vocabulary is
+     spoken inside it — `selectTapeWindow` — against a floor that a passing
+     mention cannot clear (`tapeWindowIsRelevant`).
+
+     ANCHORS are a question about the WINDOW'S EDGES: which spoken phrases
+     will let a listener's differently-assembled copy be searched for this
+     boundary? ADR-0007 is explicit that these are content, not time — "the
+     ~8-12 words at each edge", a substring of the transcript. So they are
+     minted from the tape's own words at the boundary cues (`cutWindowToSegment`),
+     never from the claim. A claim-derived anchor could not be found in the
+     listener's copy at all, which is the ADR's whole subject.
+
+   The two gates keep their trace names: `window-overlap` is now the relevance
+   floor (the window is not about the claim) and `no-anchor` means the window
+   IS about the claim but its edges yield no quotable phrase — a rare,
+   structural failure of a word-level transcript rather than a judgement. */
+
+/** Shortest cue run tier 2 will treat as a window. Below half a minute a
+ * "window" is one or two sentences, and one or two sentences can share three
+ * words with almost anything — the same arithmetic that made the old four-word
+ * run meaningless. A run shorter than this is considered only when the
+ * transcript (or the stretch of it before a gap larger than
+ * `TAPE_WINDOW_MAX_SEC`) is itself shorter. */
+export const TAPE_WINDOW_MIN_SEC = 30;
+
+/** And the longest. A window is a candidate SEGMENT, and the real pool's
+ * longest segment is 260 s; a window allowed to grow to an episode would
+ * always win on term coverage while being about everything. */
+export const TAPE_WINDOW_MAX_SEC = 180;
 
 /**
  * A minted tier-2 segment is a SEGMENT, not a soundbite (F-24(c): run 1's
@@ -404,146 +428,446 @@ export const MIN_TAPE_SEGMENT_SEC = 45;
 export const MAX_TAPE_SEGMENT_SEC = 240;
 
 /**
- * Cuts a matched phrase out to a real segment: whole cues, never a word run.
+ * The floor below which a span is not tape at all, and the only reason
+ * `cutWindowToSegment` will ever attach a cue that shares nothing with the
+ * claim (F-62).
  *
- * Two rules, both from F-24(c). CUE BOUNDARIES: the span starts where a cue
- * starts and ends where a cue ends, so it never opens or closes mid-sentence —
- * cues are the transcript's own sentence-ish units and are the only boundary
- * information a normalised transcript carries. MINIMUM DURATION: cues are added
- * either side, alternating so the phrase stays near the middle, until the span
- * reaches `MIN_TAPE_SEGMENT_SEC` or the transcript runs out — a segment can
- * only ever be as long as the tape that exists, so a short transcript yields a
- * short segment rather than no segment.
- *
- * The returned anchors are the first/last `ANCHOR_TEXT_WORDS` words of the
- * boundary cues, canonicalised. `merge-segments.mjs` canonicalises both sides
- * before comparing, so a canonical anchor is still verbatim to its validator,
- * and taking them from the token stream (rather than one cue's raw text) means
- * a word-level transcript — every cue one or two words long — still produces an
- * anchor of the required length instead of failing the boundary check.
+ * Half a minute of speech is around eighty words: a paragraph, and the least a
+ * listener can be dropped into and get anything from. Between this and
+ * `MIN_TAPE_SEGMENT_SEC` the code prefers a short segment over an off-claim
+ * one; below it, a segment that is too short to play beats an accurate one
+ * nobody can hear.
  */
-function cutSpanToCueBoundaries(
-  tokens: string[],
-  startTimes: number[],
-  endTimes: number[],
-  cueOfToken: number[],
-  cueFirstToken: number[],
-  cueLastToken: number[],
-  matchFirst: number,
-  matchLast: number
-): { startAnchor: string; endAnchor: string; startSec: number; endSec: number } | null {
-  const cueCount = cueFirstToken.length;
-  let firstCue = cueOfToken[matchFirst]!;
-  let lastCue = cueOfToken[matchLast]!;
+export const ABSOLUTE_MIN_TAPE_SEGMENT_SEC = 30;
 
-  const startOf = (cue: number) => startTimes[cueFirstToken[cue]!]!;
-  const endOf = (cue: number) => endTimes[cueLastToken[cue]!]!;
-  const duration = () => endOf(lastCue) - startOf(firstCue);
+/** Same floor as `merge-segments.mjs`'s `MIN_ANCHOR_WORDS` — an anchor shorter
+ * than four words cannot locate anything. */
+export const MIN_ANCHOR_WORDS = 4;
+/** Words quoted as a boundary anchor. ADR-0007 asks for 8-12; take the floor. */
+export const MAX_ANCHOR_WORDS = 8;
+/** An anchor of nothing but function words ("and so it was that we were") is
+ * findable in every minute of every episode, which makes it useless as a
+ * locator. Two content words is the least that distinguishes one moment of
+ * speech from another. */
+export const ANCHOR_MIN_CONTENT_WORDS = 2;
+/** How far past the boundary cue's own edge the search for a quotable phrase
+ * may look. Two anchors' worth: far enough to step over "and so I think that",
+ * near enough that the phrase still marks the boundary. */
+export const ANCHOR_SEARCH_SPAN = 16;
 
-  let grew = true;
-  while (grew && duration() < MIN_TAPE_SEGMENT_SEC) {
-    grew = false;
-    if (firstCue > 0 && endOf(lastCue) - startOf(firstCue - 1) <= MAX_TAPE_SEGMENT_SEC) {
-      firstCue--;
-      grew = true;
-    }
-    if (duration() >= MIN_TAPE_SEGMENT_SEC) break;
-    if (lastCue < cueCount - 1 && endOf(lastCue + 1) - startOf(firstCue) <= MAX_TAPE_SEGMENT_SEC) {
-      lastCue++;
-      grew = true;
-    }
+/** Distinct DISTINCTIVE claim content words that must be SPOKEN INSIDE the
+ * window before it is allowed to be tape. Same integer as the two §4.5
+ * scorers' thresholds and for the same reason: below three shared content
+ * words, agreement is what any two people talking about one trade produce
+ * (F-33). */
+export const TIER2_WINDOW_MIN_TERMS = 3;
+
+/**
+ * How rare a claim word has to be, relative to the rarest word that claim has,
+ * to count toward `TIER2_WINDOW_MIN_TERMS`.
+ *
+ * WHY THE COUNT NEEDS THIS AND THE SHARE DOES NOT. The share can be carried by
+ * ONE very rare word: a claim about agents failing on an upstream schema change
+ * matched a passage about de-duplicating test fixtures at 0.371 — over the
+ * floor — on `upstream` alone, a word the corpus almost never uses and the
+ * guest used in a different sense entirely. Requiring three words that are
+ * rare *for this claim* is the independent axis that refuses it: two rules that
+ * fail differently, rather than one number asked to do everything.
+ *
+ * Relative, not an absolute idf, so it means the same thing in a fifteen-episode
+ * show and a nine-hundred-episode one — and so a caller with no index (every CI
+ * run) sees every matched word count, which is exactly the pre-index behaviour.
+ */
+export const TIER2_DISTINCTIVE_WEIGHT = 0.5;
+
+/**
+ * And the same three words as a SHARE of what the claim actually says.
+ *
+ * The count alone cannot separate "this window is about the claim" from "this
+ * episode mentioned the subject once": a twenty-word claim whose first three
+ * words turn up in a listener-mail aside scores exactly the same three as one
+ * whose whole argument is spoken. Tier 1 met this on its own transcript
+ * windows and answered it with coverage (`TIER1_WINDOW_COVERAGE = 0.25`), and
+ * this is the same rule for the same reason — set higher because tier 1's
+ * window is a segment a curator already chose, while this one is chosen by
+ * this search and has to earn it.
+ *
+ * THE VALUE IS MEASURED, NOT GUESSED — every number below is from the offline
+ * replay in this fix's PR, over the 63 *Practical AI* bodies on the generation
+ * machine and the run-2 deepen fixture:
+ *
+ *   0.756  the claim the show does make (AI incident reporting as aviation's
+ *          regression test) against the passage where it makes it;
+ *   0.349  the nearest miss: a claim about quantization and distillation
+ *          against a passage where a guest describes distilling into a small
+ *          model — adjacent, arguably usable, refused;
+ *   0.257  the worst FALSE positive the plain share admitted: a claim about
+ *          label defect rates matching on `training, rate, good, sets, model,
+ *          accuracy`;
+ *   0.089-0.225  every other one of the 23 searching beats.
+ *
+ * 0.35 sits above the false positive by a third and below the real one by a
+ * factor of two. F-24's own passing-mention fixture scores 0.31 unweighted and
+ * is refused. A refused beat is narrated, which is §4.5's own guardrail: no
+ * tape beats wrong tape.
+ */
+export const TIER2_WINDOW_MIN_SHARE = 0.35;
+
+/** Cues with their canonical words and content words, once, so the window
+ * search and the cut agree about which cue is cue `n`. Cues with no words at
+ * all are dropped (a music/silence marker is not a boundary). */
+interface CueIndex {
+  cues: TranscriptCue[];
+  words: string[][];
+  terms: Array<Set<string>>;
+}
+
+function indexCues(cues: TranscriptCue[]): CueIndex {
+  const kept: TranscriptCue[] = [];
+  const words: string[][] = [];
+  const terms: Array<Set<string>> = [];
+  for (const cue of cues) {
+    const w = canonicalWords(cue.text);
+    if (w.length === 0) continue;
+    kept.push(cue);
+    words.push(w);
+    terms.push(new Set(tokenizeForSourcing(cue.text)));
   }
+  return { cues: kept, words, terms };
+}
 
-  const lo = cueFirstToken[firstCue]!;
-  const hi = cueLastToken[lastCue]!;
-  const startAnchor = tokens.slice(lo, Math.min(lo + ANCHOR_TEXT_WORDS, hi + 1)).join(" ");
-  const endAnchor = tokens.slice(Math.max(hi + 1 - ANCHOR_TEXT_WORDS, lo), hi + 1).join(" ");
-  const startSec = startOf(firstCue);
-  const endSec = endOf(lastCue);
+/** One stretch of an episode, and how much of the claim is spoken in it. */
+export interface TapeWindow {
+  /** Indices into the cue sequence AFTER empty cues are dropped. */
+  firstCue: number;
+  lastCue: number;
+  startSec: number;
+  endSec: number;
+  /** The claim's own content words that are spoken inside the window, in the
+   * claim's order — the trace prints these, because "which words matched" is
+   * the only form of this judgement a person can argue with. */
+  matchedTerms: string[];
+  /** Those of them the corpus considers rare for this claim
+   * (`TIER2_DISTINCTIVE_WEIGHT`) — the subset the term count is measured on,
+   * and every matched term when no idf was supplied. */
+  distinctiveTerms: string[];
+  /** How many distinct content words the claim has at all. */
+  claimTermCount: number;
+  /** `matchedTerms.length / claimTermCount`, every word counting the same. */
+  share: number;
+  /**
+   * The share again, with each claim word weighted by how rare it is in the
+   * corpus the candidate came from (`TranscriptTextCandidate.idf`) — the
+   * fraction of the claim's DISTINCTIVENESS the window speaks, not the fraction
+   * of its word count.
+   *
+   * This is the number the relevance floor uses, and the difference between the
+   * two is a false positive this search made before it existed: a claim about
+   * label defect rates matched a *Practical AI* episode on `training, rate,
+   * good, sets, model, accuracy` — six words, 0.38 of the claim, and not one of
+   * them about the claim. Inside one subject every episode shares the trade's
+   * vocabulary (F-33); what separates the episode that is ABOUT a claim is the
+   * rare words, and idf is the corpus saying which those are. With no idf (the
+   * title path, a caller with no index) this equals `share`.
+   */
+  weightedShare: number;
+  /** The idf-weighted overlap itself, which is what windows are ranked by. */
+  score: number;
+}
 
-  /* An anchor shorter than the merge validator's floor, or a span with no
-     duration, is not a segment — say so rather than mint something that would
-     be rejected downstream or point at nothing. */
-  if (startAnchor.split(" ").length < MIN_ANCHOR_WORDS) return null;
-  if (endAnchor.split(" ").length < MIN_ANCHOR_WORDS) return null;
-  if (!(endSec > startSec)) return null;
-  return { startAnchor, endAnchor, startSec, endSec };
+export interface SelectTapeWindowOptions {
+  /** Inverse document frequency per term, from the text index that produced the
+   * candidate (`TranscriptTextCandidate.idf`). Absent — a title-path candidate,
+   * or a caller with no index — every term weighs one. */
+  idf?: ReadonlyMap<string, number>;
 }
 
 /**
- * Finds a REAL, verbatim anchor span for `claimText` inside `cues`,
- * using whole-word subsequence matching identical in spirit to
- * `merge-segments.mjs`'s `findAnchorOccurrences` — a claim's own
- * significant words, searched for as a contiguous run inside the actual
- * transcript text. Returns `null` if no run of at least
- * `MIN_ANCHOR_WORDS` claim words appears verbatim anywhere in the
- * transcript (the honest "cannot resolve" answer — never a fabricated
- * anchor).
+ * The stretch of `cues` that carries `claimText` best, or `null` when the
+ * episode has no usable cues or the claim no content words.
  *
- * The span it returns is the CUT segment (see `cutSpanToCueBoundaries`), not
- * the matched phrase; the phrase itself comes back as `matchedPhrase` with its
- * own times.
+ * WHAT IS BEING RANKED. Every cue run between `TAPE_WINDOW_MIN_SEC` and
+ * `TAPE_WINDOW_MAX_SEC` is scored by the claim's DISTINCT content words spoken
+ * inside it (idf-weighted when the index supplied weights). Distinct, not
+ * total, because a host repeating one word twenty times is one fact about the
+ * tape, not twenty. The best-scoring window wins; ties go to the one with more
+ * matched terms and then to the SHORTER window, because at equal coverage the
+ * tighter stretch is the one actually about the claim — which is also what
+ * keeps a window from growing itself into looking relevant.
+ *
+ * This returns the best window WHATEVER its score. The floor is
+ * `tapeWindowIsRelevant`, kept separate so the trace can report the window a
+ * refused beat actually had (F-49) instead of a bare "nothing".
  */
-export function resolveAnchorFromCues(claimText: string, cues: TranscriptCue[]): ResolvedAnchorSpan | null {
-  const tokens: string[] = [];
-  const startTimes: number[] = [];
-  const endTimes: number[] = [];
-  /* Cue bookkeeping, so a token index can be turned back into the cue it came
-     from — that mapping is what makes a cue-boundary cut possible at all. */
-  const cueOfToken: number[] = [];
-  const cueFirstToken: number[] = [];
-  const cueLastToken: number[] = [];
-  for (const cue of cues) {
-    const words = canonicalWords(cue.text);
-    if (words.length === 0) continue;
-    const cueIndex = cueFirstToken.length;
-    cueFirstToken.push(tokens.length);
-    for (const w of words) {
-      tokens.push(w);
-      startTimes.push(cue.start_sec);
-      endTimes.push(cue.end_sec);
-      cueOfToken.push(cueIndex);
-    }
-    cueLastToken.push(tokens.length - 1);
+export function selectTapeWindow(claimText: string, cues: TranscriptCue[], options: SelectTapeWindowOptions = {}): TapeWindow | null {
+  const index = indexCues(cues);
+  const n = index.cues.length;
+  if (n === 0) return null;
+
+  /* The claim's terms in the claim's own order, deduplicated — the order is
+     what makes `matchedTerms` readable in a trace row. */
+  const claimTerms: string[] = [];
+  const claimTermSet = new Set<string>();
+  for (const t of tokenizeForSourcing(claimText)) {
+    if (claimTermSet.has(t)) continue;
+    claimTermSet.add(t);
+    claimTerms.push(t);
   }
-  if (tokens.length === 0) return null;
+  if (claimTerms.length === 0) return null;
 
-  const claimWords = canonicalWords(claimText).filter((w) => w.length > 2);
-  if (claimWords.length < MIN_ANCHOR_WORDS) return null;
+  /* WEIGHTS, NORMALISED SO ONE FLOOR CAN SERVE EVERY CORPUS. A term's idf
+     depends on how many episodes the search touched, so a raw idf would make
+     `TIER2_WINDOW_MIN_SHARE` mean something different for a fifteen-episode
+     show than for a nine-hundred-episode one. Dividing by the rarest term the
+     query has puts every weight on 0..1: the claim's rarest word counts one,
+     the trade's everyday words count a twentieth of that.
 
-  // Try the longest possible contiguous window of claim words first, then
-  // shrink — a longer verbatim match is a stronger, more specific anchor.
-  const windowMax = Math.min(MAX_ANCHOR_WORDS, claimWords.length);
-  for (let windowLen = windowMax; windowLen >= MIN_ANCHOR_WORDS; windowLen--) {
-    for (let start = 0; start + windowLen <= claimWords.length; start++) {
-      const phrase = claimWords.slice(start, start + windowLen);
-      const at = findFirstOccurrence(tokens, phrase);
-      if (at !== -1) {
-        const cut = cutSpanToCueBoundaries(tokens, startTimes, endTimes, cueOfToken, cueFirstToken, cueLastToken, at, at + windowLen - 1);
-        if (!cut) continue; // this occurrence cannot be cut into a segment; keep looking
-        return {
-          startAnchor: cut.startAnchor,
-          endAnchor: cut.endAnchor,
-          startSec: cut.startSec,
-          endSec: cut.endSec,
-          matchedPhrase: phrase.join(" "),
-          matchStartSec: startTimes[at]!,
-          matchEndSec: endTimes[at + windowLen - 1]!
-        };
+     A term the corpus never says weighs ONE — as rare as it gets. It can never
+     be matched, so it only ever counts against the window, which is right: a
+     claim built on names nobody in this archive utters is a claim this archive
+     is not about. */
+  const rarest = Math.max(...claimTerms.map((t) => options.idf?.get(t) ?? 0), 0);
+  const weightOf = (term: string): number => {
+    const w = options.idf?.get(term);
+    if (typeof w !== "number" || !Number.isFinite(w) || w <= 0) return 1;
+    return rarest > 0 ? Math.min(1, w / rarest) : 1;
+  };
+  let totalWeight = 0;
+  for (const term of claimTerms) totalWeight += weightOf(term);
+  if (totalWeight <= 0) return null;
+
+  let best: TapeWindow | null = null;
+  for (let i = 0; i < n; i++) {
+    const matched = new Set<string>();
+    let score = 0;
+    /* The widest window from `i` that never reached `TAPE_WINDOW_MIN_SEC` —
+       used only when nothing from `i` could: the end of a short transcript, or
+       a stretch closed off by a gap wider than the maximum (an ad break, a
+       missing chunk). Cleared as soon as a full-length window exists. */
+    let short: TapeWindow | null = null;
+    for (let j = i; j < n; j++) {
+      for (const term of index.terms[j]!) {
+        if (!claimTermSet.has(term) || matched.has(term)) continue;
+        matched.add(term);
+        score += weightOf(term);
+      }
+      const startSec = index.cues[i]!.start_sec;
+      const endSec = index.cues[j]!.end_sec;
+      const duration = endSec - startSec;
+      if (j > i && duration > TAPE_WINDOW_MAX_SEC) break;
+      const matchedTerms = claimTerms.filter((t) => matched.has(t));
+      const window: TapeWindow = {
+        firstCue: i,
+        lastCue: j,
+        startSec,
+        endSec,
+        matchedTerms,
+        distinctiveTerms: matchedTerms.filter((t) => weightOf(t) >= TIER2_DISTINCTIVE_WEIGHT),
+        claimTermCount: claimTerms.length,
+        share: matched.size / claimTerms.length,
+        weightedShare: score / totalWeight,
+        score
+      };
+      if (duration >= TAPE_WINDOW_MIN_SEC) {
+        best = betterWindow(best, window);
+        short = null;
+      } else {
+        short = window;
       }
     }
+    if (short) best = betterWindow(best, short);
   }
-  return null;
+  return best;
+}
+
+function betterWindow(current: TapeWindow | null, next: TapeWindow): TapeWindow {
+  if (!current) return next;
+  if (next.score !== current.score) return next.score > current.score ? next : current;
+  if (next.matchedTerms.length !== current.matchedTerms.length) {
+    return next.matchedTerms.length > current.matchedTerms.length ? next : current;
+  }
+  const nextDuration = next.endSec - next.startSec;
+  const currentDuration = current.endSec - current.startSec;
+  if (nextDuration !== currentDuration) return nextDuration < currentDuration ? next : current;
+  return current;
+}
+
+/** Tier 2's relevance verdict on a window: enough of the claim, and enough of
+ * it as a SHARE, to call the tape there about the claim. */
+export function tapeWindowIsRelevant(window: TapeWindow | null): boolean {
+  if (!window) return false;
+  return window.distinctiveTerms.length >= TIER2_WINDOW_MIN_TERMS && window.weightedShare >= TIER2_WINDOW_MIN_SHARE;
+}
+
+/** A cut window: real cue boundaries, and two phrases the tape itself speaks at
+ * them (ADR-0007's content anchors). */
+export interface TapeSpan {
+  startSec: number;
+  endSec: number;
+  startAnchor: string;
+  endAnchor: string;
+  /** The cue run the span ended up covering — wider than the window when
+   * `growByClaimOverlap` had to reach `MIN_TAPE_SEGMENT_SEC`. */
+  firstCue: number;
+  lastCue: number;
 }
 
 /**
- * How far either side of a resolved anchor still counts as "where the tape is
- * talking about this". Half a minute is roughly the sentence before and the
- * sentence after — enough that a claim's supporting words can land near the
- * anchor without stretching to a whole episode, which is the failure this
- * window exists to stop.
+ * Turns a chosen window into a segment: whole cues, at least
+ * `MIN_TAPE_SEGMENT_SEC` where the tape allows it, with an anchor quoted from
+ * the tape at each boundary.
+ *
+ * F-62 IS THE GROWTH RULE. The code this replaces padded a short span
+ * symmetrically — one cue before, one cue after, alternating — until it reached
+ * the minimum. This archive's cues average ~28 s, so "one cue before" is half a
+ * minute of whatever preceded the passage, and the single successful mint of
+ * WS-H's replay opened with ~28 s of an unrelated lead-in. Growth now asks the
+ * two neighbouring cues which of them shares more of the claim's words and
+ * takes that side; when neither shares any, a shorter segment is the better
+ * answer and the growth stops (down to `ABSOLUTE_MIN_TAPE_SEGMENT_SEC`, below
+ * which a span is not playable tape and the least-bad neighbour is taken
+ * anyway). Nothing here pads symmetrically, ever.
  */
-export const ANCHOR_WINDOW_PAD_SEC = 30;
+export function cutWindowToSegment(claimText: string, cues: TranscriptCue[], window: TapeWindow): TapeSpan | null {
+  const index = indexCues(cues);
+  const n = index.cues.length;
+  if (n === 0) return null;
+  if (window.firstCue < 0 || window.lastCue >= n || window.firstCue > window.lastCue) return null;
+
+  const claimTerms = new Set(tokenizeForSourcing(claimText));
+  const { first, last } = growByClaimOverlap(index, claimTerms, window.firstCue, window.lastCue);
+
+  const startSec = index.cues[first]!.start_sec;
+  const endSec = index.cues[last]!.end_sec;
+  if (!(endSec > startSec)) return null;
+
+  const startAnchor = startAnchorFor(index, first, last);
+  const endAnchor = endAnchorFor(index, first, last);
+  if (!startAnchor || !endAnchor) return null;
+
+  return { startSec, endSec, startAnchor, endAnchor, firstCue: first, lastCue: last };
+}
+
+/** F-62's rule, stated once: grow toward the claim, never symmetrically. */
+function growByClaimOverlap(
+  index: CueIndex,
+  claimTerms: Set<string>,
+  firstCue: number,
+  lastCue: number
+): { first: number; last: number } {
+  const n = index.cues.length;
+  let first = firstCue;
+  let last = lastCue;
+  const startOf = (cue: number) => index.cues[cue]!.start_sec;
+  const endOf = (cue: number) => index.cues[cue]!.end_sec;
+  const duration = () => endOf(last) - startOf(first);
+  const sharedWith = (cue: number) => {
+    let shared = 0;
+    for (const term of index.terms[cue]!) if (claimTerms.has(term)) shared += 1;
+    return shared;
+  };
+
+  while (duration() < MIN_TAPE_SEGMENT_SEC) {
+    const prev = first - 1;
+    const next = last + 1;
+    const canPrev = prev >= 0 && endOf(last) - startOf(prev) <= MAX_TAPE_SEGMENT_SEC;
+    const canNext = next < n && endOf(next) - startOf(first) <= MAX_TAPE_SEGMENT_SEC;
+    if (!canPrev && !canNext) break;
+
+    const prevShared = canPrev ? sharedWith(prev) : -1;
+    const nextShared = canNext ? sharedWith(next) : -1;
+
+    if (prevShared > 0 || nextShared > 0) {
+      /* The side that shares more of the claim. Forward on a tie: a passage
+         continues after its topic sentence more often than it is introduced by
+         one, and F-62 is a lead-in. */
+      if (nextShared >= prevShared) last = next;
+      else first = prev;
+      continue;
+    }
+    /* Neither neighbour says anything the claim says. A shorter segment is the
+       honest answer — unless what we have is too short to be tape at all, in
+       which case take the neighbour with more to say and stop as soon as the
+       floor is reached. */
+    if (duration() >= ABSOLUTE_MIN_TAPE_SEGMENT_SEC) break;
+    const prevWords = canPrev ? index.terms[prev]!.size : -1;
+    const nextWords = canNext ? index.terms[next]!.size : -1;
+    if (canNext && (!canPrev || nextWords >= prevWords)) last = next;
+    else first = prev;
+    if (duration() >= ABSOLUTE_MIN_TAPE_SEGMENT_SEC) break;
+  }
+  return { first, last };
+}
+
+/** The first quotable phrase spoken at the span's opening cue. Falls forward
+ * into the following cues only when that cue is too short or too generic to
+ * yield one — the case a word-level transcript (one or two words per cue)
+ * puts every segment in. */
+function startAnchorFor(index: CueIndex, first: number, last: number): string | null {
+  const own = mintStartAnchor(index.words[first]!);
+  if (own) return own;
+  const spill: string[] = [];
+  for (let cue = first; cue <= last && spill.length < MAX_ANCHOR_WORDS * 4; cue++) spill.push(...index.words[cue]!);
+  return mintStartAnchor(spill);
+}
+
+/** And the last quotable phrase at the closing cue. */
+function endAnchorFor(index: CueIndex, first: number, last: number): string | null {
+  const own = mintEndAnchor(index.words[last]!);
+  if (own) return own;
+  const spill: string[] = [];
+  for (let cue = last; cue >= first && spill.length < MAX_ANCHOR_WORDS * 4; cue--) spill.unshift(...index.words[cue]!);
+  return mintEndAnchor(spill);
+}
+
+/**
+ * The most distinctive run of 4-8 consecutive spoken words at the start of the
+ * boundary cue: of the phrases beginning within `ANCHOR_SEARCH_SPAN` words of
+ * the boundary, the one carrying the most content words, earliest on a tie, and
+ * never fewer than `ANCHOR_MIN_CONTENT_WORDS`.
+ *
+ * WHY NOT SIMPLY THE FIRST ONE. Speech starts mid-thought. Taking the first
+ * phrase that clears the content-word bar produced anchors like "and im just
+ * thinking about this scenario where" — findable in half the episodes in the
+ * archive, which is the opposite of what a locator is for. Looking a few words
+ * further in costs the anchor nothing (ADR-0007 resolves an anchor by SEARCHING
+ * the listener's transcript, so it need not begin exactly at the cut) and buys
+ * a phrase somebody could actually find.
+ *
+ * Words, not sentences, because that is what `merge-segments.mjs` compares:
+ * both sides are canonicalised (case, punctuation and apostrophes forgiven) and
+ * the anchor must appear as a whole-word subsequence. A phrase built out of
+ * consecutive canonical words of a cue is therefore verbatim to that validator
+ * by construction — which is the property ADR-0007's locate step depends on and
+ * `sourceBeats.test.ts` asserts against the raw cue text.
+ */
+export function mintStartAnchor(words: string[]): string | null {
+  let best: { phrase: string[]; content: number } | null = null;
+  for (let offset = 0; offset + MIN_ANCHOR_WORDS <= words.length && offset <= ANCHOR_SEARCH_SPAN; offset++) {
+    const phrase = words.slice(offset, offset + Math.min(MAX_ANCHOR_WORDS, words.length - offset));
+    const content = contentWordCount(phrase);
+    if (content < ANCHOR_MIN_CONTENT_WORDS) continue;
+    if (!best || content > best.content) best = { phrase, content };
+  }
+  return best ? best.phrase.join(" ") : null;
+}
+
+/** The LAST such run — the mirror image, so the closing anchor sits at the
+ * moment the segment actually stops rather than eight words before it. */
+export function mintEndAnchor(words: string[]): string | null {
+  let best: { phrase: string[]; content: number } | null = null;
+  for (let end = words.length; end >= MIN_ANCHOR_WORDS && end >= words.length - ANCHOR_SEARCH_SPAN; end--) {
+    const phrase = words.slice(Math.max(0, end - MAX_ANCHOR_WORDS), end);
+    const content = contentWordCount(phrase);
+    if (content < ANCHOR_MIN_CONTENT_WORDS) continue;
+    if (!best || content > best.content) best = { phrase, content };
+  }
+  return best ? best.phrase.join(" ") : null;
+}
+
+function contentWordCount(words: string[]): number {
+  return new Set(tokenizeForSourcing(words.join(" "))).size;
+}
 
 /** The text spoken between two timestamps, cues joined in order. */
 export function cueWindowText(cues: TranscriptCue[], startSec: number, endSec: number): string {
@@ -554,77 +878,4 @@ export function cueWindowText(cues: TranscriptCue[], startSec: number, endSec: n
     parts.push(cue.text);
   }
   return parts.join(" ");
-}
-
-/** Claim content words the window must carry BEYOND the anchor phrase itself. */
-export const TIER2_WINDOW_OVERLAP_MIN = 3;
-
-/**
- * An anchor this many content words long is evidence on its own. A run of six
- * of a claim's meaning-bearing words, spoken verbatim and in order, is not
- * something an unrelated hour of tape produces — that is a person saying the
- * claim. Below it, the anchor has to be corroborated by its surroundings.
- */
-export const TIER2_SELF_SUFFICIENT_ANCHOR_WORDS = 6;
-
-export interface AnchoredWindowEvidence {
-  /** Content words in the anchor phrase itself. */
-  anchorContentWords: number;
-  /** Claim content words spoken within the window that are NOT in the anchor. */
-  beyondAnchorOverlap: number;
-}
-
-/**
- * How much of the claim is actually spoken NEAR the anchor — and, crucially,
- * how much of it beyond the anchor's own words.
- *
- * `resolveAnchorFromCues` answers a different question — "does this phrase
- * occur anywhere in this episode, verbatim" — and F-24 is what that costs when
- * it is asked alone: a four-word run like "the original design required",
- * counted with no stopword filter, occurs in almost any hour of talk, and the
- * minted segment was those few seconds.
- *
- * THE ANCHOR IS NOT ALLOWED TO VOUCH FOR ITSELF. A plain overlap count over the
- * window would be satisfied by the anchor alone — the anchor is inside the
- * window and is made of claim words — so it would pass everything F-24
- * describes. What has to be true for the tape to be about the claim is that the
- * talk AROUND the anchor is also about it, which is what
- * `beyondAnchorOverlap` measures.
- */
-export function anchoredWindowEvidence(claimText: string, cues: TranscriptCue[], span: ResolvedAnchorSpan): AnchoredWindowEvidence {
-  /* The MATCHED PHRASE, not the span's boundary anchors: the span is now cut
-     out to whole cues and a minimum duration, so its boundaries are ordinary
-     transcript text that has nothing to do with the claim. What must not vouch
-     for itself is the phrase. */
-  const anchorTokens = new Set(tokenizeForSourcing(span.matchedPhrase));
-  const claimTokens = new Set(tokenizeForSourcing(claimText));
-  const windowTokens = new Set(
-    tokenizeForSourcing(cueWindowText(cues, span.matchStartSec - ANCHOR_WINDOW_PAD_SEC, span.matchEndSec + ANCHOR_WINDOW_PAD_SEC))
-  );
-  let beyondAnchorOverlap = 0;
-  for (const t of claimTokens) {
-    if (anchorTokens.has(t)) continue;
-    if (windowTokens.has(t)) beyondAnchorOverlap += 1;
-  }
-  return { anchorContentWords: anchorTokens.size, beyondAnchorOverlap };
-}
-
-/** Tier 2's verdict on an anchor: corroborated by its surroundings, or long
- * and specific enough to stand alone. */
-export function anchoredWindowIsOnTopic(evidence: AnchoredWindowEvidence): boolean {
-  return evidence.beyondAnchorOverlap >= TIER2_WINDOW_OVERLAP_MIN || evidence.anchorContentWords >= TIER2_SELF_SUFFICIENT_ANCHOR_WORDS;
-}
-
-function findFirstOccurrence(tokens: string[], phrase: string[]): number {
-  for (let i = 0; i + phrase.length <= tokens.length; i++) {
-    let ok = true;
-    for (let j = 0; j < phrase.length; j++) {
-      if (tokens[i + j] !== phrase[j]) {
-        ok = false;
-        break;
-      }
-    }
-    if (ok) return i;
-  }
-  return -1;
 }

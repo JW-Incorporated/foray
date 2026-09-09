@@ -104,6 +104,30 @@ describe("transcriptTextIndex — ranking episodes by what they say", () => {
     });
   });
 
+  it("carries the idf it scored with, so tier 2's window search can weigh a rare word (F-61)", () => {
+    /* The index is the only thing that knows which of a claim's words are rare
+       in the shows the gate admits, and `selectTapeWindow` needs exactly that
+       to tell a passage ABOUT a claim from one that shares the trade's
+       vocabulary. One map per search, shared by every row. */
+    const archive = [entry("a", "Episode 41"), entry("b", "Episode 42"), entry("c", "Episode 43")];
+    const bodies = new FakeBodySource();
+    bodies.set("a", ["the model in production and the imagenet labels we audited"]);
+    bodies.set("b", ["the model in production every single day"]);
+    bodies.set("c", ["the model in production again and again"]);
+
+    withTempIndexRoot((dir) => {
+      const index = new FileTranscriptTextIndex({ archive, bodies, indexRoot: dir });
+      const hits = index.search("the imagenet model in production");
+      expect(hits.length).toBeGreaterThan(0);
+      const idf = hits[0]!.idf!;
+      expect(idf).toBeDefined();
+      /* `imagenet` is in one episode of three, `model` in all three: the rare
+         word has to weigh more, and every row of one search shares one map. */
+      expect(idf.get("imagenet")!).toBeGreaterThan(idf.get("model")!);
+      for (const hit of hits) expect(hit.idf).toBe(idf);
+    });
+  });
+
   it("never returns — and never even indexes — an episode the caller's gate refuses", () => {
     /* §4.5's taxonomy lineage gate, passed straight down. A show the Foray's
        topic excludes must not be opened at all: that is both the correctness

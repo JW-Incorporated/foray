@@ -1,18 +1,30 @@
 import { describe, it, expect } from "vitest";
 import { existsSync, readFileSync } from "fs";
 import { join } from "path";
-import { sourceBeats, summarizeSourcing, M4_ITEM_SHARE_MAX } from "../src/generation/sourceBeats";
+import { sourceBeats, summarizeSourcing, deriveItemId, M4_ITEM_SHARE_MAX } from "../src/generation/sourceBeats";
 import { capArgumentBeats } from "../src/generation/deepenActs";
 import { mintSegmentSource } from "../src/generation/audioSourceLookup";
 import { validateSourcing, allSourcedBeats } from "../src/types/tapeSourcing";
 import type { DeepenedAct } from "../src/types/spine";
 import type { SegmentRecord } from "../src/generation/segmentPoolLookup";
 import type { TranscriptDigestEntry, TranscriptCue, TranscriptCueProvider } from "../src/generation/transcriptArchiveLookup";
-import { MIN_TAPE_SEGMENT_SEC, MAX_TAPE_SEGMENT_SEC } from "../src/generation/transcriptArchiveLookup";
+import {
+  ABSOLUTE_MIN_TAPE_SEGMENT_SEC,
+  MAX_TAPE_SEGMENT_SEC,
+  MIN_TAPE_SEGMENT_SEC,
+  TIER2_WINDOW_MIN_SHARE,
+  canonicalizeForAnchorMatch,
+  cutWindowToSegment,
+  selectTapeWindow,
+  tapeWindowIsRelevant
+} from "../src/generation/transcriptArchiveLookup";
 import { FileTranscriptCueProvider } from "../src/generation/transcriptArchiveLookup";
 import { FileTranscriptTextIndex } from "../src/generation/transcriptTextIndex";
 import type { TranscriptBodySource, TranscriptTextIndex } from "../src/generation/transcriptTextIndex";
 import { loadSegmentPool } from "../src/generation/segmentPoolLookup";
+import { loadTranscriptArchive } from "../src/generation/transcriptArchiveLookup";
+import { RawVttCueProvider } from "./helpers/rawVttCueProvider";
+import { tokenizeForSourcing } from "../src/generation/catalogueLookup";
 
 function makeDeepenedAct(overrides: Partial<DeepenedAct> = {}, label = "A"): DeepenedAct {
   return {
@@ -707,14 +719,15 @@ describe("sourceBeats — F-24: tier 2 checks the tape AROUND the anchor, not th
     "The Hyatt Regency Kansas City walkway collapse killed one hundred and fourteen people when the box beam connection failed.";
 
   it("does not mint tape when the anchor's own neighbourhood is about something else", () => {
-    /* F-24(b): `resolveAnchorFromCues` accepts the first contiguous run of four
-       claim words found ANYWHERE in an hour of tape. Here that run ("kansas
-       city walkway collapse") is a passing mention in a listener-mail segment,
-       and the claim's other content words are forty minutes away — the episode
-       contains them, the anchored moment does not.
+    /* F-24(b), and after F-61 the same case stated on the window: "kansas city
+       walkway collapse" is a passing mention in a listener-mail aside, and the
+       claim's other content words are forty minutes away — the episode contains
+       them, no 30-180 s stretch of it does. The best window carries 4 of the
+       claim's 13 content words (0.31), below `TIER2_WINDOW_MIN_SHARE`.
 
-       MUTATION THAT KILLS THIS: delete the `overlap >= TIER2_WINDOW_OVERLAP_MIN`
-       condition. The beat then takes those few seconds of tape. Ran it — red. */
+       MUTATION THAT KILLS THIS: drop the share test from
+       `tapeWindowIsRelevant` and keep only the ≥3-term count. The beat then
+       takes those few seconds of tape. Ran it — red. */
     const cues: TranscriptCue[] = [
       { text: "a listener wrote in to ask about the kansas city walkway collapse", start_sec: 120, end_sec: 128 },
       { text: "but we are keeping that one for another day", start_sec: 128, end_sec: 134 },
@@ -727,7 +740,10 @@ describe("sourceBeats — F-24: tier 2 checks the tape AROUND the anchor, not th
       cueProvider: { getCues: () => cues }
     });
     expect(allSourcedBeats(result.acts)[0]!.sourcing).toBe("narration");
-    expect(result.transcriptionQueueCandidates[0]!.reason).toMatch(/further claim content words are spoken within/);
+    expect(result.transcriptionQueueCandidates[0]!.reason).toMatch(/best window of tape speaks 4 of the claim.s 13 content words, 4 of them rare/);
+    const tier2 = result.sourcingTrace[0]!.tier2!;
+    expect(tier2.gate).toBe("window-overlap");
+    expect(tier2.windowTermShare).toBeLessThan(0.35);
   });
 
   it("mints tape when the claim's own words are spoken around the anchor", () => {
@@ -808,13 +824,23 @@ describe("sourceBeats — F-24(c): what tier 2 mints is a segment, not the ancho
     expect(whollyInside.length).toBeGreaterThanOrEqual(3);
   });
 
-  it("keeps adding cues either side until the span is a segment-length piece of tape", () => {
+  it("stops at a segment-length piece of tape and never runs past the claim (F-62)", () => {
+    /* WHAT CHANGED AND WHY (F-62). This case used to assert the span reached
+       `MIN_TAPE_SEGMENT_SEC` unconditionally, which is what symmetric padding
+       guarantees and what made run 2's one mint open with tape about something
+       else. It now asserts the rule that replaced it: the span covers the cues
+       that carry the claim (630-670 here), stops there because neither
+       neighbour says anything the claim says — the show's welcome, and the
+       enquiry that followed — and stays a playable length. */
     const segment = mint().newSegments[0]!;
-    expect(segment.endSec - segment.startSec).toBeGreaterThanOrEqual(MIN_TAPE_SEGMENT_SEC);
+    expect(segment.startSec).toBe(630);
+    expect(segment.endSec).toBe(670);
+    expect(segment.endSec - segment.startSec).toBeGreaterThanOrEqual(ABSOLUTE_MIN_TAPE_SEGMENT_SEC);
     expect(segment.endSec - segment.startSec).toBeLessThanOrEqual(MAX_TAPE_SEGMENT_SEC);
-    // Grown either side of the anchor cue (640-650), not only forwards.
-    expect(segment.startSec).toBeLessThan(640);
-    expect(segment.endSec).toBeGreaterThan(650);
+    /* The two cues it refused, named: 620-630 "the building itself and its
+       atrium" and 670-680 "the enquiry that followed". */
+    expect(segment.startSec).toBeGreaterThan(620);
+    expect(segment.endSec).toBeLessThan(680);
   });
 
   it("anchors the cut span at its own boundaries rather than quoting the matched phrase twice", () => {
@@ -1283,10 +1309,12 @@ describe("sourceBeats — F-49: every narrated beat says which gate refused it",
     expect(tier2.score).toBeGreaterThanOrEqual(tier2.requiredScore);
   });
 
-  it("reports `window-overlap`, with the anchor's own numbers, when the tape around the anchor is about something else", () => {
-    /* F-24 in trace form: the anchor proves the phrase was spoken, the window
-       says the tape there is not about the claim, and the row carries both
-       counts so the `TIER2_WINDOW_OVERLAP_MIN` bar can be argued from data. */
+  it("reports `window-overlap`, with the window's own numbers, when no stretch of the tape is about the claim", () => {
+    /* F-24 in trace form, restated by F-61: the episode says the subject's name
+       once and nothing else the claim says, so the best window of it carries
+       three of eleven content words. The row carries the words themselves and
+       the share, which is what makes `TIER2_WINDOW_MIN_SHARE` arguable from
+       data rather than from taste. */
     const archive: TranscriptDigestEntry[] = [
       {
         show_id: "geology-bites",
@@ -1298,8 +1326,8 @@ describe("sourceBeats — F-49: every narrated beat says which gate refused it",
       }
     ];
     const cues: TranscriptCue[] = [
-      { text: "and then the great oxidation event happened", start_sec: 10, end_sec: 16 },
-      { text: "banded iron formations and the great oxidation", start_sec: 16, end_sec: 22 },
+      { text: "and then we moved on to the next thing", start_sec: 10, end_sec: 16 },
+      { text: "banded iron formations came up on the show once", start_sec: 16, end_sec: 22 },
       { text: "which is a completely different subject entirely", start_sec: 22, end_sec: 28 },
       { text: "anyway back to the rocks we were discussing", start_sec: 28, end_sec: 34 }
     ];
@@ -1309,11 +1337,16 @@ describe("sourceBeats — F-49: every narrated beat says which gate refused it",
       cueProvider: { getCues: () => cues }
     });
     const tier2 = result.sourcingTrace[0]!.tier2!;
-    expect(["window-overlap", "no-anchor"]).toContain(tier2.gate);
-    if (tier2.gate === "window-overlap") {
-      expect(typeof tier2.anchorContentWords).toBe("number");
-      expect(typeof tier2.beyondAnchorOverlap).toBe("number");
-    }
+    expect(tier2.gate).toBe("window-overlap");
+    expect(tier2.windowMatchedTerms).toEqual(["banded", "iron", "formations"]);
+    expect(tier2.windowTermShare).toBeCloseTo(3 / 11, 2);
+    /* With no text index there is no idf, so the weighted share is the plain
+       one — the floor means the same thing either way. */
+    expect(tier2.windowWeightedShare).toBe(tier2.windowTermShare);
+    /* The tighter of two windows with the same coverage: the mention onward,
+       not the whole transcript. */
+    expect(tier2.windowStartSec).toBe(16);
+    expect(tier2.windowEndSec).toBe(34);
   });
 
   it("summarises each slot in one line: how much tape, how much narration, and the top reason", () => {
@@ -1544,17 +1577,23 @@ describe("sourceBeats — WS-H: tier 2 matches transcript text, not titles (F-06
     if (beat.sourcing === "tape") {
       expect(beat.tape.tier).toBe(2);
       expect(beat.tape.itemId).toContain("practical-ai");
-      /* The minted times are CUE boundaries, not the matched phrase's own few
-         seconds (F-24(c)): the span opens where a cue opens and closes where a
-         cue closes, and it grew past the phrase to reach segment length. */
+      /* The minted times are CUE boundaries (F-24(c)) and they are the WINDOW's
+         boundaries: the three cues that carry the claim, 100-132. F-62 is why
+         it stops there — this case used to end at 150, because symmetric
+         padding took "we will come back to that after the break" to reach
+         `MIN_TAPE_SEGMENT_SEC`, and that is 18 s of tape about nothing. */
       expect(beat.tape.startSec).toBe(100);
-      expect(beat.tape.endSec).toBe(150);
-      expect(beat.tape.endSec - beat.tape.startSec).toBeGreaterThanOrEqual(MIN_TAPE_SEGMENT_SEC);
+      expect(beat.tape.endSec).toBe(132);
+      expect(beat.tape.endSec - beat.tape.startSec).toBeGreaterThanOrEqual(ABSOLUTE_MIN_TAPE_SEGMENT_SEC);
       expect(beat.tape.endSec - beat.tape.startSec).toBeLessThanOrEqual(MAX_TAPE_SEGMENT_SEC);
+      /* The anchors are the tape's own words at those two cues, not the
+         claim's (F-61) — asserted verbatim below in the anchor cases. */
+      expect(labelCues.some((c) => c.text.includes(beat.tape.startAnchor))).toBe(true);
+      expect(labelCues.some((c) => c.text.includes(beat.tape.endAnchor))).toBe(true);
     }
     expect(result.newSegments).toHaveLength(1);
     expect(result.newSegments[0]!.startSec).toBe(100);
-    expect(result.newSegments[0]!.endSec).toBe(150);
+    expect(result.newSegments[0]!.endSec).toBe(132);
   });
 
   it("is the whole difference: the same beat, the same archive, no text index — no tape, refused on the title bar", () => {
@@ -1677,7 +1716,12 @@ describe("sourceBeats — WS-H: tier 2 matches transcript text, not titles (F-06
     expect(result.newSegments).toHaveLength(0);
     const tier2 = result.sourcingTrace[0]!.tier2!;
     expect(tier2.foundBy).toBe("text-index");
-    expect(["no-anchor", "window-overlap"]).toContain(tier2.gate);
+    /* AFTER F-61 THIS REFUSAL HAS TO COME FROM THE RELEVANCE FLOOR, not from
+       the verbatim rule that used to carry it — the rule is gone, and if the
+       floor did not hold, this is the beat that would take Chernobyl tape. */
+    expect(tier2.gate).toBe("window-overlap");
+    expect(tier2.windowWeightedShare!).toBeLessThan(TIER2_WINDOW_MIN_SHARE);
+    expect(tapeWindowIsRelevant(selectTapeWindow(hyattClaim, chernobylCues))).toBe(false);
   });
 
   it("refuses the run-1 griddle anchor: a food-history episode is off-lineage however much vocabulary it shares", () => {
@@ -1711,6 +1755,9 @@ describe("sourceBeats — WS-H: tier 2 matches transcript text, not titles (F-06
     expect(allSourcedBeats(result.acts)[0]!.sourcing).toBe("narration");
     expect(result.newSegments).toHaveLength(0);
     expect(result.sourcingTrace[0]!.tier2!.gate).not.toBe("window-overlap");
+    /* Belt and braces, and the half F-61 has to answer for: with the topic gate
+       taken away entirely, the tape itself still fails the relevance floor. */
+    expect(tapeWindowIsRelevant(selectTapeWindow(kansasCity, griddleCues))).toBe(false);
   });
 
   it("refuses the run-2 San Bruno anchor for an AI latency beat: the lineage gate runs before the text search", () => {
@@ -1744,6 +1791,359 @@ describe("sourceBeats — WS-H: tier 2 matches transcript text, not titles (F-06
     expect(allSourcedBeats(result.acts)[0]!.sourcing).toBe("narration");
     expect(result.newSegments).toHaveLength(0);
     expect(["lineage", "text-index:no-candidate"]).toContain(result.sourcingTrace[0]!.tier2!.gate);
+    /* SAID PLAINLY, BECAUSE IT MATTERS: the relevance floor would NOT save this
+       one. The San Bruno tape quotes the claim almost word for word — "every
+       hundred milliseconds of delay cost them something measurable" is as true
+       of a gas pipeline alarm as of a web store — so the window is relevant and
+       the LINEAGE gate is the only thing between this beat and wrong tape.
+       Asserting that here is what stops someone reordering the two gates. */
+    expect(tapeWindowIsRelevant(selectTapeWindow(latencyClaim, sanBrunoCues))).toBe(true);
+  });
+});
+
+/* F-61 and F-62 (docs/curation/generation-run-2026-09-09.md).
+
+   F-61: tier 2 used to decide BOTH questions with one rule — a run of four or
+   more of the claim's own words spoken verbatim. Claims are written prose and
+   tape is speech, so with WS-H's text search in front of it, all 23 searching
+   beats of run 2 reached real transcripts and every one died at `no-anchor`.
+   The window now answers relevance and the tape's own words answer the
+   boundaries.
+
+   F-62: what reaches segment length grows toward the claim, never
+   symmetrically. */
+
+/** A real `FileTranscriptTextIndex` over cues held in memory, so these cases
+ * exercise the index that ranks candidates and supplies idf rather than a stub
+ * that could agree with the code by accident. */
+function memoryTextIndex(entries: TranscriptDigestEntry[], cuesByGuid: Record<string, TranscriptCue[]>): TranscriptTextIndex {
+  const bodies: TranscriptBodySource = {
+    getCues: (e) => cuesByGuid[e.guid] ?? null,
+    bodyStat: (e) => (cuesByGuid[e.guid] ? { mtimeMs: 1, size: 1 } : null)
+  };
+  return new FileTranscriptTextIndex({ archive: entries, bodies, cache: false });
+}
+
+describe("sourceBeats — F-61: the window decides relevance, the tape's own words anchor it", () => {
+  const entry: TranscriptDigestEntry = {
+    show_id: "practical-ai",
+    show_title: "Practical AI",
+    guid: "pa-gearbox",
+    title: "Episode 204",
+    cues: 6,
+    feed_duration_sec: 3600,
+    enclosure_url: "https://cdn.example/pa-204.mp3"
+  };
+
+  /** Written prose, the way a deepen stage writes a claim. */
+  const claim =
+    "Wind turbine gearboxes fail early because their bearings take torque reversals that the original load case never modelled.";
+
+  /** Speech, the way a person says the same thing — sharing the claim's
+   * vocabulary and none of its phrasing. */
+  const cues: TranscriptCue[] = [
+    { text: "welcome back to the programme this week we are at a test facility in denmark", start_sec: 0, end_sec: 20 },
+    { text: "so the gearboxes are where the trouble starts and it is the bearings that give up first", start_sec: 20, end_sec: 40 },
+    { text: "you get reversals of torque that nobody put into the design envelope back then", start_sec: 40, end_sec: 60 },
+    { text: "and so they fail early years before the load case said they would", start_sec: 60, end_sec: 80 },
+    { text: "anyway we will be back after a word from the people who pay for this show", start_sec: 80, end_sec: 100 }
+  ];
+
+  function beatFor(c: string): DeepenedAct[] {
+    return [makeDeepenedAct({ slots: [{ title: "Gearboxes", beats: [{ claim: c, exploration: false, kind: "account" }] }] }, "F61")];
+  }
+
+  /** The rule F-61 removed, implemented here so the case can assert it is gone:
+   * a contiguous run of `n` of the CLAIM's own significant words, spoken
+   * verbatim in the tape. */
+  function hasVerbatimClaimRun(claimText: string, tape: TranscriptCue[], n = 4): boolean {
+    const words = canonicalizeForAnchorMatch(claimText)
+      .split(" ")
+      .filter((w) => w.length > 2);
+    const spoken = ` ${tape.map((c) => canonicalizeForAnchorMatch(c.text)).join(" ")} `;
+    for (let i = 0; i + n <= words.length; i++) {
+      if (spoken.includes(` ${words.slice(i, i + n).join(" ")} `)) return true;
+    }
+    return false;
+  }
+
+  function mint() {
+    return sourceBeats(beatFor(claim), {
+      segmentPool: [],
+      transcriptArchive: [entry],
+      cueProvider: { getCues: () => cues },
+      textIndex: memoryTextIndex([entry], { "pa-gearbox": cues }),
+      topic: "engineering/ai-robotics"
+    });
+  }
+
+  it("mints tape for a claim whose words are nowhere spoken verbatim — which is the whole of F-61", () => {
+    /* The premise, asserted rather than asserted-in-prose: the old rule had
+       nothing to find here. Every one of run 2's 23 searching beats was this
+       case against a real episode.
+
+       MUTATION THAT KILLS THIS: put the verbatim-run requirement back in front
+       of the window search. The beat goes back to narration. */
+    expect(hasVerbatimClaimRun(claim, cues)).toBe(false);
+
+    const beat = allSourcedBeats(mint().acts)[0]!;
+    expect(beat.sourcing).toBe("tape");
+    if (beat.sourcing === "tape") expect(beat.tape.tier).toBe(2);
+  });
+
+  it("chooses the stretch that carries the claim, and leaves the welcome and the ad read out of it", () => {
+    const segment = mint().newSegments[0]!;
+    expect(segment.startSec).toBe(20);
+    expect(segment.endSec).toBe(80);
+  });
+
+  it("quotes both anchors from the tape at the span's own boundaries, verbatim", () => {
+    /* ADR-0007's requirement, and the reason a claim-derived anchor is useless:
+       the listener's copy is searched for these words, so they have to be words
+       somebody actually said. `merge-segments.mjs` canonicalises both sides
+       before comparing, so canonical-verbatim is verbatim to the validator. */
+    const segment = mint().newSegments[0]!;
+    const boundaryCues = cues.filter((c) => c.start_sec === segment.startSec || c.end_sec === segment.endSec);
+    expect(boundaryCues).toHaveLength(2);
+    expect(canonicalizeForAnchorMatch(boundaryCues[0]!.text)).toContain(segment.startAnchor);
+    expect(canonicalizeForAnchorMatch(boundaryCues[1]!.text)).toContain(segment.endAnchor);
+    for (const anchor of [segment.startAnchor, segment.endAnchor]) {
+      const words = anchor.split(" ");
+      expect(words.length).toBeGreaterThanOrEqual(4);
+      expect(words.length).toBeLessThanOrEqual(8);
+      /* Not a run of function words: an anchor of "and so it was that we" is
+         findable in every minute of every episode and locates nothing. */
+      expect(new Set(tokenizeForSourcing(anchor)).size).toBeGreaterThanOrEqual(2);
+    }
+    expect(segment.startAnchor).not.toBe(segment.endAnchor);
+  });
+
+  it("refuses the same episode for a claim it only mentions in passing", () => {
+    /* One cue says "torque" and nothing else in the episode is about the claim:
+       three content words in the best window, and 0.2 of the claim. */
+    const passing =
+      "Torque reversals in a helicopter tail rotor gearbox are counted differently from the ones a wind turbine sees, and the certification basis is a different document entirely.";
+    const result = sourceBeats(beatFor(passing), {
+      segmentPool: [],
+      transcriptArchive: [entry],
+      cueProvider: { getCues: () => cues },
+      textIndex: memoryTextIndex([entry], { "pa-gearbox": cues }),
+      topic: "engineering/ai-robotics"
+    });
+    expect(allSourcedBeats(result.acts)[0]!.sourcing).toBe("narration");
+    const tier2 = result.sourcingTrace[0]!.tier2!;
+    expect(tier2.gate).toBe("window-overlap");
+    expect(tier2.windowWeightedShare!).toBeLessThan(TIER2_WINDOW_MIN_SHARE);
+  });
+
+  it("records on the trace which of the claim's words the tape said, and where", () => {
+    const passing = "Torque reversals in a helicopter tail rotor gearbox are counted under a different certification basis entirely.";
+    const tier2 = sourceBeats(beatFor(passing), {
+      segmentPool: [],
+      transcriptArchive: [entry],
+      cueProvider: { getCues: () => cues },
+      textIndex: memoryTextIndex([entry], { "pa-gearbox": cues }),
+      topic: "engineering/ai-robotics"
+    }).sourcingTrace[0]!.tier2!;
+    expect(tier2.windowMatchedTerms).toContain("torque");
+    expect(tier2.windowStartSec).toBeGreaterThanOrEqual(0);
+    expect(tier2.windowEndSec).toBeGreaterThan(tier2.windowStartSec!);
+  });
+
+  it("skips a filler opening and quotes the phrase with the most content words at the boundary", () => {
+    /* Speech starts mid-thought. An anchor of "so anyway you know i mean" is
+       findable in half the archive and locates nothing, so the mint looks a few
+       words further into the cue for something a person could search for
+       (ADR-0007's locate step SEARCHES the listener's transcript; the anchor
+       does not have to begin exactly at the cut). */
+    const fillerOpening: TranscriptCue[] = [
+      { text: "and it was the same as it was the gearboxes and the bearings and the torque reversals were to blame", start_sec: 20, end_sec: 50 },
+      { text: "you get reversals of torque that nobody put into the design envelope back then", start_sec: 50, end_sec: 80 },
+      { text: "and so they fail early years before the load case said they would", start_sec: 80, end_sec: 110 }
+    ];
+    const segment = sourceBeats(beatFor(claim), {
+      segmentPool: [],
+      transcriptArchive: [entry],
+      cueProvider: { getCues: () => fillerOpening },
+      textIndex: memoryTextIndex([entry], { "pa-gearbox": fillerOpening }),
+      topic: "engineering/ai-robotics"
+    }).newSegments[0]!;
+    expect(canonicalizeForAnchorMatch(fillerOpening[0]!.text)).toContain(segment.startAnchor);
+    /* "as it was the gearboxes and the bearings" is what taking the FIRST
+       phrase that clears the content-word bar produces. Two words further in
+       there is a phrase carrying twice as much. */
+    expect(segment.startAnchor).toBe("gearboxes and the bearings and the torque reversals");
+    expect(new Set(tokenizeForSourcing(segment.startAnchor)).size).toBeGreaterThanOrEqual(4);
+  });
+
+  it("one rare word is not enough: three of the claim's rare words have to be spoken", () => {
+    /* The false positive this rule exists for, measured in the offline replay:
+       a claim about agents failing on an upstream change matched a passage
+       about de-duplicating test fixtures at 0.37 of the claim — over the share
+       floor — because the guest said "upstream" once, in a different sense.
+       Rare words carry the share, so the COUNT is measured on rare words too:
+       two rules that fail differently. */
+    const oneRareWord: TranscriptCue[] = [
+      { text: "the gearboxes were fine and the system was fine and the model was fine that year", start_sec: 0, end_sec: 30 },
+      { text: "so the system and the model and the data all behaved for once", start_sec: 30, end_sec: 60 }
+    ];
+    const commonEverywhere: TranscriptCue[] = [
+      { text: "the system and the model and the data are the three things we always talk about", start_sec: 0, end_sec: 30 },
+      { text: "the model the system the data every episode of this show", start_sec: 30, end_sec: 60 }
+    ];
+    const other: TranscriptDigestEntry = { ...entry, guid: "pa-other", title: "Episode 205" };
+    const cuesByGuid: Record<string, TranscriptCue[]> = { "pa-gearbox": oneRareWord, "pa-other": commonEverywhere };
+    const result = sourceBeats(beatFor("Wind turbine gearboxes fail when the system, the model and the data disagree about the load."), {
+      segmentPool: [],
+      transcriptArchive: [entry, other],
+      cueProvider: { getCues: (e) => cuesByGuid[e.guid] ?? null },
+      textIndex: memoryTextIndex([entry, other], cuesByGuid),
+      topic: "engineering/ai-robotics"
+    });
+    expect(allSourcedBeats(result.acts)[0]!.sourcing).toBe("narration");
+    const tier2 = result.sourcingTrace[0]!.tier2!;
+    expect(tier2.gate).toBe("window-overlap");
+    expect(tier2.windowDistinctiveTerms!.length).toBeLessThan(3);
+  });
+
+  it("weights a rare word above the trade's shared vocabulary when an index supplies idf", () => {
+    /* F-33's problem in F-61's setting: inside one subject every episode shares
+       the trade's words, so a plain count cannot tell the episode that is ABOUT
+       a claim from the one that merely talks shop. The corpus knows which words
+       are rare, and the floor is measured in those. */
+    const shopTalk: TranscriptCue[] = [
+      { text: "so the model and the data and the system all have to be in production together", start_sec: 0, end_sec: 30 },
+      { text: "and the model performance in production is a system question not a model question", start_sec: 30, end_sec: 60 },
+      { text: "the data the model the system all of it in production", start_sec: 60, end_sec: 90 }
+    ];
+    const aboutIt: TranscriptCue[] = [
+      { text: "the imagenet validation labels were audited and thousands of them were simply wrong", start_sec: 0, end_sec: 30 },
+      { text: "so the imagenet ceiling everybody was measuring against was a mislabelling ceiling", start_sec: 30, end_sec: 60 },
+      { text: "and the audit put the label error rate at about six percent of the validation set", start_sec: 60, end_sec: 90 }
+    ];
+    const shopTalkEntry: TranscriptDigestEntry = { ...entry, guid: "pa-shop", title: "Episode 301" };
+    const aboutItEntry: TranscriptDigestEntry = { ...entry, guid: "pa-about", title: "Episode 302" };
+    const archive = [shopTalkEntry, aboutItEntry];
+    const cuesByGuid: Record<string, TranscriptCue[]> = { "pa-shop": shopTalk, "pa-about": aboutIt };
+    const imagenetClaim =
+      "An imagenet audit found the validation labels were wrong often enough to put a ceiling on the accuracy any production model could report.";
+
+    const result = sourceBeats(beatFor(imagenetClaim), {
+      segmentPool: [],
+      transcriptArchive: archive,
+      cueProvider: { getCues: (e) => cuesByGuid[e.guid] ?? null },
+      textIndex: memoryTextIndex(archive, cuesByGuid),
+      topic: "engineering/ai-robotics"
+    });
+
+    const beat = allSourcedBeats(result.acts)[0]!;
+    expect(beat.sourcing).toBe("tape");
+    if (beat.sourcing === "tape") expect(beat.tape.itemId).toContain("302");
+  });
+});
+
+describe("sourceBeats — F-62: a short window grows toward the claim, never symmetrically", () => {
+  const entry: TranscriptDigestEntry = {
+    show_id: "practical-ai",
+    show_title: "Practical AI",
+    guid: "pa-grow",
+    title: "Episode 208",
+    cues: 5,
+    feed_duration_sec: 3600,
+    enclosure_url: "https://cdn.example/pa-208.mp3"
+  };
+  const claim = "The retraining calendar slipped a week and the recommender started serving stale inventory to everybody.";
+
+  function run(cues: TranscriptCue[]) {
+    return sourceBeats(
+      [makeDeepenedAct({ slots: [{ title: "Retraining", beats: [{ claim, exploration: false, kind: "account" }] }] }, "F62")],
+      {
+        segmentPool: [],
+        transcriptArchive: [entry],
+        cueProvider: { getCues: () => cues },
+        textIndex: memoryTextIndex([entry], { "pa-grow": cues }),
+        topic: "engineering/ai-robotics"
+      }
+    );
+  }
+
+  /** The window is 32 s; reaching `MIN_TAPE_SEGMENT_SEC` needs one more cue,
+   * and only one of the two neighbours is about the claim. */
+  const leadInIsOffClaim: TranscriptCue[] = [
+    { text: "before the break we were arguing about which coffee machine the office should buy", start_sec: 0, end_sec: 26 },
+    { text: "so the retraining calendar slipped by about a week that time", start_sec: 26, end_sec: 42 },
+    { text: "and the recommender was serving stale inventory to everybody for days", start_sec: 42, end_sec: 58 },
+    { text: "the stale rows came out of the same inventory feed the calendar drives", start_sec: 58, end_sec: 76 },
+    { text: "right after this we have got a completely different guest and a new subject", start_sec: 76, end_sec: 100 }
+  ];
+
+  it("takes the neighbouring cue that shares the claim's words and leaves the off-claim lead-in alone", () => {
+    /* F-62 exactly: run 2's one successful mint reached `MIN_TAPE_SEGMENT_SEC`
+       by padding symmetrically, and this archive's cues average ~28 s, so the
+       pad was half a minute of unrelated tape at the front. Here the lead-in is
+       the office coffee machine and the next cue explains the claim. */
+    const segment = run(leadInIsOffClaim).newSegments[0]!;
+    expect(segment.startSec).toBe(26);
+    expect(segment.endSec).toBe(76);
+    expect(segment.endSec - segment.startSec).toBeGreaterThanOrEqual(MIN_TAPE_SEGMENT_SEC);
+  });
+
+  it("grows backwards instead when that is the side the claim is on", () => {
+    const tailIsOffClaim: TranscriptCue[] = [
+      { text: "the inventory feed that the retraining calendar drives had gone stale on the friday", start_sec: 0, end_sec: 26 },
+      { text: "so the retraining calendar slipped by about a week that time", start_sec: 26, end_sec: 42 },
+      { text: "and the recommender was serving stale rows to everybody for days", start_sec: 42, end_sec: 58 },
+      { text: "anyway that is enough of that let us talk about the conference next month", start_sec: 58, end_sec: 90 }
+    ];
+    const segment = run(tailIsOffClaim).newSegments[0]!;
+    expect(segment.startSec).toBe(0);
+    expect(segment.endSec).toBe(58);
+  });
+
+  it("prefers a short segment to an off-claim one when neither neighbour says anything", () => {
+    const bothOffClaim: TranscriptCue[] = [
+      { text: "before the break we were arguing about which coffee machine the office should buy", start_sec: 0, end_sec: 26 },
+      { text: "so the retraining calendar slipped by about a week that time", start_sec: 26, end_sec: 42 },
+      { text: "and the recommender was serving stale inventory to everybody for days", start_sec: 42, end_sec: 58 },
+      { text: "right after this we have got a completely different guest and a new subject", start_sec: 58, end_sec: 100 }
+    ];
+    const segment = run(bothOffClaim).newSegments[0]!;
+    expect(segment.startSec).toBe(26);
+    expect(segment.endSec).toBe(58);
+    /* Under `MIN_TAPE_SEGMENT_SEC` and deliberately so: 32 s of the claim beats
+       58 s that opens on the office coffee machine. */
+    expect(segment.endSec - segment.startSec).toBeLessThan(MIN_TAPE_SEGMENT_SEC);
+    expect(segment.endSec - segment.startSec).toBeGreaterThanOrEqual(ABSOLUTE_MIN_TAPE_SEGMENT_SEC);
+  });
+
+  it("takes an off-claim cue only when the span would otherwise be too short to play", () => {
+    /* The one case that overrides the rule above: below
+       `ABSOLUTE_MIN_TAPE_SEGMENT_SEC` a span is not a piece of tape a listener
+       can be dropped into, and a short off-claim tail is the lesser harm. */
+    const tinyWindow: TranscriptCue[] = [
+      { text: "before the break we were arguing about which coffee machine the office should buy", start_sec: 0, end_sec: 26 },
+      { text: "the retraining calendar slipped a week and the recommender served stale inventory", start_sec: 26, end_sec: 44 },
+      { text: "right after this we have got a completely different guest and a new subject", start_sec: 44, end_sec: 60 }
+    ];
+    const segment = run(tinyWindow).newSegments[0]!;
+    expect(segment.startSec).toBe(26);
+    expect(segment.endSec).toBe(60);
+    expect(segment.endSec - segment.startSec).toBeGreaterThanOrEqual(ABSOLUTE_MIN_TAPE_SEGMENT_SEC);
+  });
+
+  it("never pads symmetrically: the two sides are asked, not alternated", () => {
+    /* The mutation this exists to kill is the code that was here — grow one cue
+       back, then one cue forward, until long enough. It would take the coffee
+       machine in the first case above and the conference in the second, and
+       both assertions would fail. Stated once, as a property over both. */
+    expect(run(leadInIsOffClaim).newSegments[0]!.startSec).toBe(26);
+    const cutBackwards = run([
+      { text: "the inventory feed that the retraining calendar drives had gone stale on the friday", start_sec: 0, end_sec: 26 },
+      { text: "so the retraining calendar slipped by about a week that time", start_sec: 26, end_sec: 42 },
+      { text: "and the recommender was serving stale rows to everybody for days", start_sec: 42, end_sec: 58 },
+      { text: "anyway that is enough of that let us talk about the conference next month", start_sec: 58, end_sec: 90 }
+    ]).newSegments[0]!;
+    expect(cutBackwards.endSec).toBe(58);
   });
 });
 
@@ -1751,82 +2151,153 @@ describe("sourceBeats — WS-H: tier 2 matches transcript text, not titles (F-06
    lives in `data-local/` and is on the generation machine only. These cases
    skip themselves, loudly and by name, anywhere else — a checkout without the
    bodies is exactly the checkout `NullTranscriptTextIndex` is the default for,
-   and a green tick there must not be read as evidence about tape. */
-describe("sourceBeats — WS-H offline: the real archive on the generation machine", () => {
-  const NORMALIZED_ROOT = join(__dirname, "..", "..", "data-local", "transcripts", "normalized");
-  const HAS_ARCHIVE = existsSync(NORMALIZED_ROOT);
+   and a green tick there must not be read as evidence about tape.
+
+   WHAT "ANYWHERE ELSE" MEANS, AFTER THIS BROKE (2026-09-09). The guard used to
+   be `existsSync(<data-local>/transcripts/normalized)` — the DIRECTORY. On the
+   generation machine that directory was emptied while its 63 *Practical AI*
+   `.vtt` bodies stayed in `raw/`, so the guard said "the archive is here", the
+   cue provider returned `null` for every episode, the text index rebuilt to
+   nothing, and both cases below failed deterministically with no hint of why.
+   The guard now asks the only question that means anything — can a body
+   actually be read for any episode in the archive — and answers it against the
+   normalised bodies first (what production reads) and the raw ones second (what
+   the normaliser is built from; see `helpers/rawVttCueProvider.ts`). */
+describe("sourceBeats — WS-H/F-61 offline: the real archive on the generation machine", () => {
+  /** A worktree has no `data-local/` of its own; point this at the checkout
+   * that holds the archive to run these cases from one. */
+  const LOCAL_TRANSCRIPTS = process.env.FORAY_LOCAL_TRANSCRIPTS ?? join(__dirname, "..", "..", "data-local", "transcripts");
+  const NORMALIZED_ROOT = join(LOCAL_TRANSCRIPTS, "normalized");
+  const RAW_ROOT = join(LOCAL_TRANSCRIPTS, "raw");
+  const ARCHIVE = loadTranscriptArchive();
   const RUN2_ACTS: DeepenedAct[] = (
     JSON.parse(readFileSync(join(__dirname, "fixtures", "run2-deepen-2026-09-09.json"), "utf8")) as { acts: DeepenedAct[] }
   ).acts;
-  const SKIP_REASON = `no transcript bodies at ${NORMALIZED_ROOT} — tier 2 degrades to the title path here, which is what CI tests above`;
+  const SKIP_REASON =
+    `no transcript body for any archived episode under ${LOCAL_TRANSCRIPTS} ` +
+    `(normalized/ or raw/) — tier 2 degrades to the title path here, which is what CI tests above`;
 
-  function realIndex(): { cueProvider: FileTranscriptCueProvider; textIndex: FileTranscriptTextIndex } {
-    const cueProvider = new FileTranscriptCueProvider(NORMALIZED_ROOT);
-    return { cueProvider, textIndex: new FileTranscriptTextIndex({ bodies: cueProvider }) };
+  /** The real bodies, however this machine happens to hold them, or `null`. */
+  function realArchive(): { cueProvider: TranscriptBodySource; textIndex: FileTranscriptTextIndex; kind: string } | null {
+    const normalized = new FileTranscriptCueProvider(NORMALIZED_ROOT);
+    if (ARCHIVE.some((entry) => normalized.bodyStat(entry) !== null)) {
+      /* The production path, cache and all — this is the one whose disk cache
+         is worth keeping warm. */
+      return { cueProvider: normalized, textIndex: new FileTranscriptTextIndex({ bodies: normalized }), kind: "normalized" };
+    }
+    const raw = new RawVttCueProvider(RAW_ROOT);
+    if (raw.hasAnyBody(ARCHIVE)) {
+      /* `cache: false`: an index built from raw bodies must never be written to
+         the cache the production path reads. */
+      return { cueProvider: raw, textIndex: new FileTranscriptTextIndex({ bodies: raw, cache: false }), kind: "raw" };
+    }
+    return null;
+  }
+
+  /** The archive row a minted item id came from — matched on the id itself,
+   * which is `deriveItemId`'s output, so there is no chance of grading one
+   * episode's anchors against another episode's tape. */
+  function entryFor(itemId: string): TranscriptDigestEntry {
+    const entry = ARCHIVE.find((e) => deriveItemId(e) === itemId);
+    expect(entry).toBeDefined();
+    return entry!;
+  }
+
+  /** Every distinct claim content word the cue spoken at `sec` carries. */
+  function claimTermsSpokenAt(claim: string, cues: TranscriptCue[], sec: number): number {
+    const claimTerms = new Set(tokenizeForSourcing(claim));
+    let shared = 0;
+    for (const cue of cues) {
+      if (sec < cue.start_sec || sec >= cue.end_sec) continue;
+      for (const term of new Set(tokenizeForSourcing(cue.text))) if (claimTerms.has(term)) shared += 1;
+    }
+    return shared;
   }
 
   it("mints real Practical AI tape for a claim the show actually makes, and refuses it without the index", (ctx) => {
-    if (!HAS_ARCHIVE) {
+    const real = realArchive();
+    if (!real) {
       console.log(`[WS-H] skipping real-archive case: ${SKIP_REASON}`);
       ctx.skip();
       return;
     }
-    /* The claim quotes *Practical AI*'s own words on AI incident reporting
-       ("AI incidents, audits, and the limits of benchmarks"), which is what a
-       beat about safety culture in production ML would say. No title in the
-       show shares three content words with it. */
+    /* The claim says, in written prose, what *Practical AI* says in speech in
+       "AI incidents, audits, and the limits of benchmarks". No title in the
+       show shares three content words with it, and — the whole of F-61 — no
+       four of its words in a row are spoken anywhere in the episode either. */
     const claim =
       "Aviation treats a crash as a regression test nobody wants to repeat, and the same primitive shows up in food safety and in medical adverse event reporting: a bad thing happens, and the industry records it so that it does not happen again.";
     const spine = [
       makeDeepenedAct({ slots: [{ title: "Incidents", beats: [{ claim, exploration: false, kind: "account" }] }] }, "Incidents")
     ];
-    const { cueProvider, textIndex } = realIndex();
 
-    const withIndex = sourceBeats(spine, { segmentPool: [], cueProvider, textIndex, topic: "engineering/ai-robotics" });
+    const withIndex = sourceBeats(spine, {
+      segmentPool: [],
+      cueProvider: real.cueProvider,
+      textIndex: real.textIndex,
+      topic: "engineering/ai-robotics"
+    });
     const beat = allSourcedBeats(withIndex.acts)[0]!;
     expect(beat.sourcing).toBe("tape");
     if (beat.sourcing === "tape") {
       expect(beat.tape.tier).toBe(2);
       expect(beat.tape.itemId).toContain("practical-ai");
-      /* Real cue boundaries out of a real transcript, not the anchor's own
-         seconds: a segment-length piece of tape with a real duration. */
-      expect(beat.tape.endSec).toBeGreaterThan(beat.tape.startSec);
-      expect(beat.tape.endSec - beat.tape.startSec).toBeGreaterThanOrEqual(MIN_TAPE_SEGMENT_SEC);
+      expect(beat.tape.endSec - beat.tape.startSec).toBeGreaterThanOrEqual(ABSOLUTE_MIN_TAPE_SEGMENT_SEC);
       expect(beat.tape.endSec - beat.tape.startSec).toBeLessThanOrEqual(MAX_TAPE_SEGMENT_SEC);
-      expect(beat.tape.startAnchor.split(" ").length).toBeGreaterThanOrEqual(4);
+
+      /* The two things F-61 and F-62 are about, asserted against real tape:
+         the anchors are words somebody actually said at those two moments, and
+         the span opens on a cue that is about the claim rather than on
+         whatever happened to precede it. */
+      const cues = real.cueProvider.getCues(entryFor(beat.tape.itemId))!;
+      const spokenAt = (sec: number) =>
+        cues.filter((c) => c.end_sec > sec - 0.01 && c.start_sec < sec + 0.01).map((c) => canonicalizeForAnchorMatch(c.text));
+      expect(spokenAt(beat.tape.startSec).some((t) => t.includes(beat.tape.startAnchor))).toBe(true);
+      expect(spokenAt(beat.tape.endSec).some((t) => t.includes(beat.tape.endAnchor))).toBe(true);
+      expect(claimTermsSpokenAt(claim, cues, beat.tape.startSec + 0.5)).toBeGreaterThan(0);
+
+      console.log(
+        `[F-61] ${real.kind} bodies: ${beat.tape.itemId} ${beat.tape.startSec.toFixed(1)}-${beat.tape.endSec.toFixed(1)} s\n` +
+          `       start anchor: "${beat.tape.startAnchor}"\n` +
+          `       end anchor  : "${beat.tape.endAnchor}"`
+      );
     }
 
     /* And the same beat, on the same machine, with tier 2 back on titles. */
-    const titlesOnly = sourceBeats(spine, { segmentPool: [], cueProvider, topic: "engineering/ai-robotics" });
+    const titlesOnly = sourceBeats(spine, { segmentPool: [], cueProvider: real.cueProvider, topic: "engineering/ai-robotics" });
     expect(allSourcedBeats(titlesOnly.acts)[0]!.sourcing).toBe("narration");
   });
 
-  it("replays run 2's own beats: tier 2 now reaches Practical AI's words, and the anchor rule is what stops it", (ctx) => {
-    if (!HAS_ARCHIVE) {
+  it("replays run 2's own beats: tier 2 reaches the tape, and what refuses a beat is the relevance floor", (ctx) => {
+    const real = realArchive();
+    if (!real) {
       console.log(`[WS-H] skipping run-2 replay: ${SKIP_REASON}`);
       ctx.skip();
       return;
     }
     /* Run 2's deepen output, the real digests, the real bodies, and the topic
        the resolver SHOULD have produced (`engineering/ai-robotics`; it produced
-       `engineering/energy-fusion`, which is F-59's own finding and refuses
-       *Practical AI* at the lineage gate before any of this runs).
-       WHAT CHANGED: every one of these beats used to stop at `title-tokens` —
-       the best *Practical AI* title scores 1 (F-49's resolved cause). They now
-       stop inside the episode's own transcript, which is the gate WS-H set out
-       to reach. WHAT DID NOT: none of them yields tape, because none of these
-       written claims is spoken verbatim in the show. That is the next binding
-       constraint and it is a finding, not a failure of this test. */
-    const { cueProvider, textIndex } = realIndex();
-    const result = sourceBeats(RUN2_ACTS, { cueProvider, textIndex, topic: "engineering/ai-robotics" });
+       `engineering/energy-fusion`, which is F-59's own finding).
 
-    /* The six beats run 2's deepen stage tagged `account`. (With F-49's
-       argument cap applied it is 23, and the offline run in this PR's body
-       reports the same answer for all 23; the six are what this suite pays
-       for — each beat opens eight hour-long transcripts.) */
+       WHAT CHANGED, TWICE. Before WS-H every one of these beats stopped at
+       `title-tokens`, one content word short of opening an episode. After
+       WS-H they reached real transcripts and every one stopped at `no-anchor`
+       — the verbatim-run rule, F-61. Now the deciding gate is the window's
+       relevance floor: the search reads what the tape SAYS and refuses it for
+       saying something else, which is the only refusal a person can argue
+       with. The archive's answer for these particular claims is a fact about
+       the catalogue (it holds no episode that mentions ImageNet, Greg Linden
+       or "hidden technical debt" at all), not about this module. */
+    const result = sourceBeats(RUN2_ACTS, {
+      segmentPool: [],
+      cueProvider: real.cueProvider,
+      textIndex: real.textIndex,
+      topic: "engineering/ai-robotics"
+    });
+
     const searched = result.sourcingTrace.filter((t) => t.outcome === "no-tape");
     expect(searched).toHaveLength(6);
-    const reachedTheTape = searched.filter((t) => t.tier2 && ["no-anchor", "window-overlap"].includes(t.tier2.gate));
+    const reachedTheTape = searched.filter((t) => t.tier2 && ["window-overlap", "no-anchor"].includes(t.tier2.gate));
     expect(reachedTheTape.length).toBeGreaterThan(0);
     for (const trace of reachedTheTape) {
       expect(trace.tier2!.bestShowId).toBe("practical-ai");
@@ -1834,6 +2305,46 @@ describe("sourceBeats — WS-H offline: the real archive on the generation machi
       expect(trace.tier2!.textScore).toBeGreaterThan(0);
       /* The title bar it used to die on is still measured, and still low. */
       expect(trace.tier2!.score).toBeLessThan(trace.tier2!.requiredScore);
+      /* And the row now says WHICH of the claim's words the tape said and how
+         much of the claim that is — the evidence the floor is set from. */
+      expect(Array.isArray(trace.tier2!.windowMatchedTerms)).toBe(true);
+      expect(trace.tier2!.windowWeightedShare).toBeLessThan(TIER2_WINDOW_MIN_SHARE);
     }
+    console.log(
+      `[F-61] run-2 replay (${real.kind} bodies): ${result.tapeRelevance.length} tape / ${searched.length} searched; ` +
+        `gates ${[...new Set(searched.map((t) => t.tier2?.gate))].join(", ")}`
+    );
+  });
+
+  it("every span it mints from the real archive opens on tape that is about the claim (F-62)", (ctx) => {
+    const real = realArchive();
+    if (!real) {
+      console.log(`[F-62] skipping real-archive growth case: ${SKIP_REASON}`);
+      ctx.skip();
+      return;
+    }
+    /* F-62 in the form that can be checked against a whole run rather than one
+       fixture: whatever the growth rule does to reach segment length, the cue
+       the listener lands on has to be about the claim. Symmetric padding could
+       not promise this — it took whatever preceded the passage. */
+    const claims = [
+      "Aviation treats a crash as a regression test nobody wants to repeat, and the same primitive shows up in food safety and in medical adverse event reporting.",
+      "Model evaluation has to happen against the traffic a system actually sees, because a benchmark score is a claim about a dataset and not about the world."
+    ];
+    let minted = 0;
+    for (const claim of claims) {
+      const result = sourceBeats(
+        [makeDeepenedAct({ slots: [{ title: "Tape", beats: [{ claim, exploration: false, kind: "account" }] }] }, "F62real")],
+        { segmentPool: [], cueProvider: real.cueProvider, textIndex: real.textIndex, topic: "engineering/ai-robotics" }
+      );
+      const segment = result.newSegments[0];
+      if (!segment) continue;
+      minted += 1;
+      const cues = real.cueProvider.getCues(entryFor(segment.itemId))!;
+      expect(claimTermsSpokenAt(claim, cues, segment.startSec + 0.5)).toBeGreaterThan(0);
+      expect(segment.endSec - segment.startSec).toBeGreaterThanOrEqual(ABSOLUTE_MIN_TAPE_SEGMENT_SEC);
+    }
+    expect(minted).toBeGreaterThan(0);
   });
 });
+

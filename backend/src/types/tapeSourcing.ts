@@ -226,10 +226,15 @@ export type Tier1Gate = "no-candidates" | "threshold" | "topic-lineage" | "exhau
  *   - `lineage`        — the best-scoring episode's show is in another family.
  *   - `no-body`        — the episode matched, but no transcript body for it is
  *                        on this machine, so no anchor could be located.
- *   - `no-anchor`      — the body is here, but no run of `MIN_ANCHOR_WORDS`
- *                        claim words is spoken in it verbatim.
- *   - `window-overlap` — an anchor was located, but the tape around it is not
- *                        about the claim (F-24).
+ *   - `window-overlap` — the body is here and was searched, but no window of it
+ *                        carries enough of the claim to be about it (F-24, and
+ *                        F-61's relevance floor: distinct claim content words
+ *                        spoken in one stretch of tape, and their share of the
+ *                        claim).
+ *   - `no-anchor`      — a window IS about the claim, but neither of its
+ *                        boundary cues yields a quotable 4-8 word phrase to
+ *                        anchor with. Structural (a word-level transcript, a
+ *                        cue of pure function words), never a judgement.
  *   - `no-audio-source` — everything matched and an anchor was found, but no
  *                        honest `data/segment-sources.json` row can be written
  *                        for the episode, so nothing could ever play it (see
@@ -267,10 +272,33 @@ export interface Tier2TraceRow {
   score: number;
   requiredScore: number;
   gate: Tier2Gate;
-  /** Present only once an anchor was located: the size of the anchor phrase and
-   * how much of the claim is spoken around it (`anchoredWindowEvidence`). */
-  anchorContentWords?: number;
-  beyondAnchorOverlap?: number;
+  /* F-61: what the WINDOW search saw. The old pair of fields here
+     (`anchorContentWords`/`beyondAnchorOverlap`) measured a verbatim run of the
+     claim's own words and its neighbourhood; there is no such run any more, and
+     the question a person asks of a refused beat is which of the claim's words
+     the tape said and how much of the claim that is. */
+
+  /** The claim's content words spoken inside the best window of that episode's
+   * tape, in the claim's own order. */
+  windowMatchedTerms?: string[];
+  /** Those of them the corpus considers rare for this claim — the subset the
+   * `TIER2_WINDOW_MIN_TERMS` count is measured on. */
+  windowDistinctiveTerms?: string[];
+  /** Those words as a plain share of the claim's content words. */
+  windowTermShare?: number;
+  /** And weighted by how rare each word is in the corpus the candidate came
+   * from — the number the relevance floor (`TIER2_WINDOW_MIN_SHARE`) is argued
+   * against, and the one that tells "says the claim's subject" from "shares the
+   * trade's vocabulary" (F-33). */
+  windowWeightedShare?: number;
+  /** Where that window is in the episode, so a human can go and listen. */
+  windowStartSec?: number;
+  windowEndSec?: number;
+  /** The anchors minted from the tape at the chosen window's edges, present
+   * when the search got that far (a beat refused later, at the audio-source
+   * check, still shows what it would have quoted). */
+  startAnchor?: string;
+  endAnchor?: string;
   /* WS-H (F-06/F-49): what the TEXT search saw, so a run can be argued with.
      Without these, a trace row saying `no-anchor` cannot be told from one that
      never searched the text at all — which is the confusion that let run 2's
