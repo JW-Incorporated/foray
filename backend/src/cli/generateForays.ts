@@ -3,6 +3,7 @@ import * as fs from "fs";
 import * as path from "path";
 import { runForayPipeline, type RunPipelineOutcome } from "../generation/runPipeline";
 import { FileTranscriptCueProvider } from "../generation/transcriptArchiveLookup";
+import { FileTranscriptTextIndex, type TranscriptTextIndex } from "../generation/transcriptTextIndex";
 import { checkpointFingerprint } from "../generation/checkpoint";
 import { FileCheckpointStore } from "./checkpointStore";
 import type { GenerationRequest } from "../types/generation";
@@ -181,6 +182,10 @@ export async function generateOneCandidate(
   args: CliArgs,
   deps: {
     cueProvider: FileTranscriptCueProvider;
+    /* WS-H (F-06): tier 2’s transcript-TEXT candidate search. Optional for the
+       same reason `runPipeline` is — a caller that supplies none (every test that
+       predates it) leaves tier 2 on the title path, unchanged. */
+    textIndex?: TranscriptTextIndex;
     runPipeline?: typeof runForayPipeline;
     onPartialWrite?: (candidate: PartialCandidate, partialFile: string) => void;
   }
@@ -266,7 +271,7 @@ export async function generateOneCandidate(
          the right value: one key per Foray, stable across a resume, and already
          the name a human reads when a run stops. */
       { userId: args.authorId, topic: spec.topic, checkpointKey, sessionId: checkpointKey },
-      { cueProvider: deps.cueProvider, checkpoint: args.dryRun ? undefined : checkpointStore, onActReady }
+      { cueProvider: deps.cueProvider, textIndex: deps.textIndex, checkpoint: args.dryRun ? undefined : checkpointStore, onActReady }
     );
   } catch (err) {
     /* One prompt's failure must not end the batch — a rate limit or a budget
@@ -375,9 +380,14 @@ async function main(): Promise<void> {
   let generated = 0;
   let skipped = 0;
   const cueProvider = new FileTranscriptCueProvider();
+  /* WS-H (F-06): the same machine holds the transcript BODIES, so tier 2 also
+     gets the text index built over them — read through the cue provider above,
+     cached under data-local/transcripts/index/. A checkout without data-local/
+     builds nothing, returns no candidates, and leaves tier 2 on the title path. */
+  const textIndex = new FileTranscriptTextIndex({ bodies: cueProvider });
 
   for (const spec of queue) {
-    const result = await generateOneCandidate(spec, args, { cueProvider });
+    const result = await generateOneCandidate(spec, args, { cueProvider, textIndex });
     if (result.skipped) {
       skipped++;
       continue;

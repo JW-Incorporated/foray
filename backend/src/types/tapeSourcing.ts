@@ -234,7 +234,19 @@ export type Tier1Gate = "no-candidates" | "threshold" | "topic-lineage" | "exhau
  *                        honest `data/segment-sources.json` row can be written
  *                        for the episode, so nothing could ever play it (see
  *                        `audioSourceLookup.ts`). */
-export type Tier2Gate = "title-tokens" | "lineage" | "no-body" | "no-anchor" | "window-overlap" | "no-audio-source";
+export type Tier2Gate =
+  /* WS-H (F-06): the text index ran and no lineage-admissible episode in the
+     archive was worth opening for this claim — the search reached the
+     transcripts' own words and they had nothing. Distinct from `title-tokens`,
+     which means no text search ran at all (a checkout with no transcript
+     bodies) and the title bar was the only thing that could decide. */
+  | "text-index:no-candidate"
+  | "title-tokens"
+  | "lineage"
+  | "no-body"
+  | "no-anchor"
+  | "window-overlap"
+  | "no-audio-source";
 
 export interface Tier1TraceRow {
   /** The best-scoring pool segment, whatever gate then refused it. */
@@ -259,6 +271,22 @@ export interface Tier2TraceRow {
    * how much of the claim is spoken around it (`anchoredWindowEvidence`). */
   anchorContentWords?: number;
   beyondAnchorOverlap?: number;
+  /* WS-H (F-06/F-49): what the TEXT search saw, so a run can be argued with.
+     Without these, a trace row saying `no-anchor` cannot be told from one that
+     never searched the text at all — which is the confusion that let run 2's
+     zero-tape result look like an empty archive rather than a title bar. */
+
+  /** How the reported episode was found: the transcript-text index, or the
+   * title-metadata fallback the search keeps behind it. */
+  foundBy?: "text-index" | "title";
+  /** The episode's BM25 score over its own cue text. Absent for a title find. */
+  textScore?: number;
+  /** Its 0-based rank in the text search. */
+  textRank?: number;
+  /** How many distinct claim content words are spoken in it at all. */
+  textMatchedTerms?: number;
+  /** How many episodes tier 2 opened for this beat before giving up. */
+  candidatesConsidered?: number;
 }
 
 /** One narration-degraded beat's account of itself. */
