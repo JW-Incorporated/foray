@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
 import { argumentCapFor, capArgumentBeats, deepenActs, ActDeepeningError, InvalidDeepenedActError } from "../src/generation/deepenActs";
@@ -544,5 +544,223 @@ describe("deepenActs — WS-L: the beat seed survives deepening (F-63)", () => {
       resume: (index) => (index === 0 ? stale : undefined)
     });
     expect(deepened[0]!.slots[0]!.beats[0]!.seed).toEqual(seed);
+  });
+});
+
+describe("deepenActs — F-68: a seeded beat's CLAIM is frozen through deepening", () => {
+  const seed = { episodeId: "practical-ai--episode-900", startSec: 100, endSec: 165 };
+
+  /** The wording §4.3 wrote off the tape at 100-165s — the words somebody on
+   * that recording actually said, which is what §4.5 scores against it. */
+  const seededClaim =
+    "The full-stack data scientist was an aspiration that one person could figure out the modeling, build the prototype, and also deploy it to an actual cloud environment.";
+  /** Run 2 attempt 4b's real deepen output for that beat. Better prose, and
+   * "hiring", "notebook" and "production incident" are words nobody on the tape
+   * says: 0.349 weighted share against a floor of 0.35, and the beat lost its
+   * tape. */
+  const paraphrase =
+    "The full-stack data scientist was a hiring aspiration built around one person, someone who could pick the model, build the prototype notebook, and also stand the thing up on real cloud infrastructure, and that job description mostly did not survive contact with a production incident.";
+  const unseededClaim = "Model registries arrived late to the tooling stack.";
+  const unseededRewrite = "Model registries arrived late to the tooling stack, well after the first production models shipped.";
+
+  /** Every act's first slot: one seeded beat, one unseeded one. */
+  function seededSpine(): Spine {
+    const spine = makeSpine();
+    for (const act of spine.acts) {
+      act.slots[0]!.beats = [
+        { claim: seededClaim, exploration: false, seed },
+        { claim: unseededClaim, exploration: false }
+      ];
+    }
+    return spine;
+  }
+
+  type Counted = DeepenActBuilder & { calls: number };
+
+  /** A builder that does what Sonnet did in run 2 attempt 4b: keeps the seed,
+   * rewrites the claim. `seedOverride` is the other half of the same failure —
+   * a builder that re-points a beat whose wording it no longer owns. */
+  function paraphraser(seedOverride?: { episodeId: string; startSec: number; endSec: number }): Counted {
+    const builder: Counted = {
+      providerName: "paraphraser",
+      calls: 0,
+      async deepenAct(_spine, act) {
+        builder.calls += 1;
+        return {
+          ...act,
+          slots: act.slots.map((slot) => ({
+            title: slot.title,
+            beats: slot.beats.map((beat) => ({
+              claim: beat.seed ? paraphrase : unseededRewrite,
+              exploration: beat.exploration,
+              kind: (beat.seed ? "account" : "argument") as "account" | "argument",
+              ...(beat.seed ? { seed: seedOverride ?? beat.seed } : {})
+            }))
+          })),
+          introduction: "Intro.",
+          exit: "Exit."
+        };
+      }
+    };
+    return builder;
+  }
+
+  /** The restore logs; every case here provokes it, so every case silences it. */
+  function silenceWarnings() {
+    return vi.spyOn(console, "warn").mockImplementation(() => {});
+  }
+
+  it("puts the SPINE's claim back on a seeded beat the builder paraphrased", async () => {
+    /* The whole of F-68. Ran it — red: with `claim: originalBeat!.claim`
+       reverted to `claim: beat.claim` in `carryBeatSeeds`, this fails with the
+       paraphrase, exactly as run 2 attempt 4b's deepen output did. */
+    const warn = silenceWarnings();
+    try {
+      const deepened = await deepenActs(seededSpine(), paraphraser(), ctx);
+      for (const act of deepened) {
+        expect(act.slots[0]!.beats[0]!.claim).toBe(seededClaim);
+        expect(act.slots[0]!.beats[0]!.seed).toEqual(seed);
+      }
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it("leaves an UNSEEDED beat's rewording alone — §4.4 still sharpens everything it owns", async () => {
+    const warn = silenceWarnings();
+    try {
+      const deepened = await deepenActs(seededSpine(), paraphraser(), ctx);
+      for (const act of deepened) {
+        expect(act.slots[0]!.beats[1]!.claim).toBe(unseededRewrite);
+        expect(act.slots[0]!.beats[1]!.seed).toBeUndefined();
+      }
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it("freezes ONLY the claim: the kind, the exploration flag and the act's own prose are the builder's", async () => {
+    const warn = silenceWarnings();
+    try {
+      const deepened = await deepenActs(seededSpine(), paraphraser(), ctx);
+      for (const act of deepened) {
+        expect(act.slots[0]!.beats[0]!.kind).toBe("account");
+        expect(act.slots[0]!.beats[0]!.exploration).toBe(false);
+        expect(act.introduction).toBe("Intro.");
+        expect(act.exit).toBe("Exit.");
+      }
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it("does not cost the act a retry: an ignored freeze is corrected, not re-asked", async () => {
+    /* The restore runs AFTER `validateDeepenedAct`, so a paraphrase is a valid
+       act that gets corrected on the way out — one builder call per act, not
+       two, and no ActDeepeningError. */
+    const warn = silenceWarnings();
+    try {
+      const spine = seededSpine();
+      const builder = paraphraser();
+      await deepenActs(spine, builder, ctx);
+      expect(builder.calls).toBe(spine.acts.length);
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it("logs one line per restored claim, naming the tape the claim was written from", async () => {
+    const warn = silenceWarnings();
+    try {
+      const spine = seededSpine();
+      await deepenActs(spine, paraphraser(), ctx);
+      expect(warn).toHaveBeenCalledTimes(spine.acts.length);
+      const line = String(warn.mock.calls[0]![0]);
+      expect(line).toMatch(/paraphrased/);
+      expect(line).toContain(seed.episodeId);
+      expect(line).toContain(seededClaim);
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it("puts the spine's SEED back too when the builder re-pointed it, so claim and tape stay together", async () => {
+    /* A frozen claim pointed at a stretch of tape §4.3 never read is the same
+       failure wearing the other hat: §4.5 would score §4.3's words against
+       somebody else's episode. */
+    const warn = silenceWarnings();
+    try {
+      const elsewhere = { episodeId: "practical-ai--episode-1", startSec: 0, endSec: 60 };
+      const deepened = await deepenActs(seededSpine(), paraphraser(elsewhere), ctx);
+      for (const act of deepened) {
+        expect(act.slots[0]!.beats[0]!.seed).toEqual(seed);
+        expect(act.slots[0]!.beats[0]!.claim).toBe(seededClaim);
+      }
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it("restores a paraphrased claim on a RESUMED act too, so an old checkpoint is corrected not replayed", async () => {
+    const warn = silenceWarnings();
+    try {
+      const { guard } = guardAndSink();
+      const spine = seededSpine();
+      /* Run 2 attempt 4b's own checkpoint: the seed survived, the claim did not. */
+      const stale: DeepenedAct = {
+        ...spine.acts[0]!,
+        slots: spine.acts[0]!.slots.map((s) => ({
+          title: s.title,
+          beats: s.beats.map((b) => ({
+            claim: b.seed ? paraphrase : b.claim,
+            exploration: b.exploration,
+            kind: "account" as const,
+            ...(b.seed ? { seed: b.seed } : {})
+          }))
+        })),
+        introduction: "Intro from the checkpoint.",
+        exit: "Exit from the checkpoint."
+      };
+      const deepened = await deepenActs(spine, new StubDeepenActBuilder(guard), ctx, {
+        resume: (index) => (index === 0 ? stale : undefined)
+      });
+      expect(deepened[0]!.slots[0]!.beats[0]!.claim).toBe(seededClaim);
+      expect(deepened[0]!.introduction).toBe("Intro from the checkpoint.");
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it("restores nothing when the builder changed the slot's beat count — position stopped meaning anything", async () => {
+    /* Same rule as the seed restore: putting one beat's wording on another
+       beat's claim is worse than losing the freeze. */
+    const splitter: DeepenActBuilder = {
+      providerName: "splitter",
+      async deepenAct(_spine, act) {
+        return {
+          ...act,
+          slots: act.slots.map((s) => ({
+            title: s.title,
+            beats: [
+              { claim: "Somebody rewrote this slot as three beats.", exploration: false, kind: "account" as const },
+              ...s.beats.map((b) => ({ claim: paraphrase, exploration: b.exploration, kind: "account" as const }))
+            ]
+          })),
+          introduction: "Intro.",
+          exit: "Exit."
+        };
+      }
+    };
+    const warn = silenceWarnings();
+    try {
+      const deepened = await deepenActs(seededSpine(), splitter, ctx);
+      for (const act of deepened) {
+        for (const beat of act.slots[0]!.beats) expect(beat.seed).toBeUndefined();
+        expect(act.slots[0]!.beats[1]!.claim).toBe(paraphrase);
+      }
+      expect(warn).not.toHaveBeenCalled();
+    } finally {
+      warn.mockRestore();
+    }
   });
 });

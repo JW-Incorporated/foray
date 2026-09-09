@@ -594,7 +594,32 @@ export interface SelectTapeWindowOptions {
    */
   minSec?: number;
   maxSec?: number;
+  /**
+   * Confine the search to one stretch of the episode: only cue runs that lie
+   * inside `[startSec, endSec]` (within `WINDOW_WITHIN_TOLERANCE_SEC`) are
+   * scored, and `null` comes back when the range holds no usable cue at all.
+   *
+   * ONE CALLER, ONE REASON (F-68): §4.5 asks a seeded beat's OWN window first —
+   * the stretch §4.3 quoted into the spine prompt and wrote the claim from — so
+   * that when the tape there carries the claim, that is the tape the listener
+   * gets, rather than whichever other minute of the same episode happens to
+   * score higher. Nothing about the scoring, the weighting or the relevance
+   * floor changes with it: the confined window faces `tapeWindowIsRelevant`
+   * exactly as an unconfined one does, and §4.5 falls back to the whole-episode
+   * search when it does not clear.
+   */
+  within?: { startSec: number; endSec: number };
 }
+
+/**
+ * How far outside `SelectTapeWindowOptions.within` a cue boundary may sit and
+ * still count as inside it. A seed's seconds are this module's own window
+ * boundaries rounded to one decimal on the way into the spine prompt
+ * (`researchShape.ts`), so exact comparison would drop the very cues the seed
+ * names. One second is far below the archive's ~28 s mean cue, so it can
+ * forgive that rounding without ever admitting a neighbouring cue.
+ */
+export const WINDOW_WITHIN_TOLERANCE_SEC = 1;
 
 /**
  * The stretch of `cues` that carries `claimText` best, or `null` when the
@@ -612,6 +637,9 @@ export interface SelectTapeWindowOptions {
  * This returns the best window WHATEVER its score. The floor is
  * `tapeWindowIsRelevant`, kept separate so the trace can report the window a
  * refused beat actually had (F-49) instead of a bare "nothing".
+ *
+ * `options.within` confines the search to one stretch of the episode without
+ * changing anything else about it (F-68) — see the option's own note.
  */
 export function selectTapeWindow(claimText: string, cues: TranscriptCue[], options: SelectTapeWindowOptions = {}): TapeWindow | null {
   const index = indexCues(cues);
@@ -619,6 +647,11 @@ export function selectTapeWindow(claimText: string, cues: TranscriptCue[], optio
   if (n === 0) return null;
   const minSec = options.minSec ?? TAPE_WINDOW_MIN_SEC;
   const maxSec = options.maxSec ?? TAPE_WINDOW_MAX_SEC;
+  /* The confined search (F-68). Both bounds are inclusive of a cue that starts
+     or ends a hair outside them, per `WINDOW_WITHIN_TOLERANCE_SEC`. */
+  const within = options.within;
+  const withinStart = within ? within.startSec - WINDOW_WITHIN_TOLERANCE_SEC : 0;
+  const withinEnd = within ? within.endSec + WINDOW_WITHIN_TOLERANCE_SEC : 0;
 
   /* The claim's terms in the claim's own order, deduplicated — the order is
      what makes `matchedTerms` readable in a trace row. */
@@ -654,6 +687,7 @@ export function selectTapeWindow(claimText: string, cues: TranscriptCue[], optio
 
   let best: TapeWindow | null = null;
   for (let i = 0; i < n; i++) {
+    if (within && index.cues[i]!.start_sec < withinStart) continue;
     const matched = new Set<string>();
     let score = 0;
     /* The widest window from `i` that never reached the minimum duration —
@@ -670,6 +704,7 @@ export function selectTapeWindow(claimText: string, cues: TranscriptCue[], optio
       const startSec = index.cues[i]!.start_sec;
       const endSec = index.cues[j]!.end_sec;
       const duration = endSec - startSec;
+      if (within && endSec > withinEnd) break;
       if (j > i && duration > maxSec) break;
       const matchedTerms = claimTerms.filter((t) => matched.has(t));
       const window: TapeWindow = {
