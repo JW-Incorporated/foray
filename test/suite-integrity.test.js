@@ -1335,7 +1335,7 @@ const BACKEND_FLOORS = {
   /* Anthropic provider error-path coverage (kanban card t_550d289f): the
      shared parseWithRetry/parseLastJsonBlock helper extracted from the 5
      real Anthropic provider classes' identical private copies. */
-  "test/parseWithRetry.test.ts": 9,
+  "test/parseWithRetry.test.ts": 16,
   "test/parser.test.ts": 29,
   "test/personas.test.ts": 6,
   "test/podcastIndex.test.ts": 3,
@@ -1412,7 +1412,7 @@ const BACKEND_FLOORS = {
      proven with a spy test), the exact check-forays.mjs-compatible
      disclosure template, and decideConnectiveNarration()'s seam-position
      table for tape-adjacent beats needing short connective narration. */
-  "test/writeNarration.test.ts": 19,
+  "test/writeNarration.test.ts": 25,
   /* Stage 3b (kanban t_567b570f, docs/show-pages-plan.md §Stage 3): shared
      catalogue store CRUD (scoping by show_id, upsert-not-duplicate on
      (show_id, guid), published_at ordering, feed-state round-trip). */
