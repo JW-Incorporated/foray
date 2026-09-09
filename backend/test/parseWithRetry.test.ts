@@ -151,3 +151,63 @@ describe("parseWithRetry — WS-E item 4: no private copy drifts back in", () =>
     expect(offenders).toEqual([]);
   });
 });
+
+/** Recursively lists every `.ts` file under `dir` (backend/src, so no
+ * node_modules to worry about excluding). */
+function listTsFilesRecursive(dir: string): string[] {
+  const out: string[] = [];
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) out.push(...listTsFilesRecursive(full));
+    else if (entry.isFile() && entry.name.endsWith(".ts")) out.push(full);
+  }
+  return out;
+}
+
+describe("parseWithRetry — every reask closure meters its own spend (coordinator follow-up on F-39/F-40)", () => {
+  it("every `const reask = async ...` closure in backend/src calls budgetGuard.checkAndRecord before its own messages.create", () => {
+    // A re-ask is its own real, metered API call (see parseWithRetry.ts's
+    // BUDGET doc comment): it re-sends the whole original prompt PLUS the
+    // model's bad reply, so its estimate is larger than the original call's.
+    // Every real Anthropic* builder's `reask` closure must call
+    // `this.budgetGuard.checkAndRecord(...)` itself before its own
+    // `messages.create` — otherwise that second call is unmetered spend.
+    // This scans every `.ts` file under backend/src (not just
+    // backend/src/generation — AnthropicEnricher.ts lives under
+    // backend/src/enrich) for each `reask` closure declaration and checks
+    // that its own body, up to its closing `};`, contains
+    // "checkAndRecord". A closure that DOES NOT talk to the model at all
+    // (no real reask closures currently look like that, but the rule is
+    // still "if you declare a reask closure, meter it") would still need
+    // to satisfy this — the point is structural, not behavioral.
+    const srcDir = path.resolve(__dirname, "../src");
+    const declarationRe = /^\s*const reask\s*=\s*async\b/;
+    const closureEndRe = /^\s*};\s*$/;
+    const offenders: string[] = [];
+    let reaskClosuresFound = 0;
+
+    for (const filePath of listTsFilesRecursive(srcDir)) {
+      const lines = fs.readFileSync(filePath, "utf8").split(/\r?\n/);
+      for (let i = 0; i < lines.length; i++) {
+        if (!declarationRe.test(lines[i]!)) continue;
+        reaskClosuresFound++;
+        const bodyLines: string[] = [];
+        let j = i + 1;
+        for (; j < lines.length; j++) {
+          if (closureEndRe.test(lines[j]!)) break;
+          bodyLines.push(lines[j]!);
+        }
+        const body = bodyLines.join("\n");
+        if (!body.includes("checkAndRecord")) {
+          offenders.push(`${path.relative(srcDir, filePath)}:${i + 1}`);
+        }
+      }
+    }
+
+    // Structural sanity: fail loudly if the scan itself found nothing,
+    // rather than passing trivially because the regex stopped matching a
+    // future rename of `reask` (e.g. to `reAsk` or `retryOnce`).
+    expect(reaskClosuresFound).toBeGreaterThanOrEqual(10);
+    expect(offenders).toEqual([]);
+  });
+});

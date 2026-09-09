@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { AnthropicDeepenActBuilder } from "../src/generation/AnthropicDeepenActBuilder";
-import { BudgetGuard } from "../src/cost/budgetGuard";
+import { BudgetGuard, BudgetExceededError } from "../src/cost/budgetGuard";
 import { InMemoryCostEventSink } from "../src/cost/costEvents";
 import { makeFakeAnthropicClient, textBlock, toolUseBlock } from "./helpers/fakeAnthropicClient";
 import type { Spine } from "../src/types/spine";
@@ -109,5 +109,73 @@ describe("AnthropicDeepenActBuilder", () => {
     const builder = new AnthropicDeepenActBuilder(new BudgetGuard(new InMemoryCostEventSink(), 100), client);
 
     await expect(builder.deepenAct(spine, spine.acts[0]!, 0, ctx)).rejects.toThrow();
+  });
+
+  it("a re-ask records its OWN metered spend: budgetGuard.checkAndRecord is called a second time before the re-ask's messages.create, and the run succeeds off the repaired reply", async () => {
+    const calls: string[] = [];
+    const guard = new BudgetGuard(new InMemoryCostEventSink(), 100);
+    vi.spyOn(guard, "checkAndRecord").mockImplementation(async (input) => {
+      calls.push(`checkAndRecord:${input.operation}`);
+      return { ...input, id: "id", ts: new Date().toISOString() };
+    });
+    const { client, create } = makeFakeAnthropicClient([]);
+    create
+      .mockImplementationOnce(async () => {
+        calls.push("messages.create:1");
+        return { content: [textBlock("not json")] }; // triggers the reask
+      })
+      .mockImplementationOnce(async () => {
+        calls.push("messages.create:2");
+        return { content: [textBlock(JSON.stringify(validDeepenedAct))] }; // the reask's reply
+      });
+
+    const builder = new AnthropicDeepenActBuilder(guard, client);
+    const deepened = await builder.deepenAct(spine, spine.acts[0]!, 0, ctx);
+
+    // The first call is unmetered spend without this: the original call's
+    // checkAndRecord covers only the FIRST messages.create — the re-ask
+    // re-sends the whole prompt plus the bad reply, so it must record its
+    // own, larger estimate before its own messages.create, not ride along
+    // on the first call's estimate for free.
+    expect(calls).toEqual([
+      "checkAndRecord:deepen_act",
+      "messages.create:1",
+      "checkAndRecord:deepen_act",
+      "messages.create:2"
+    ]);
+    expect(guard.checkAndRecord).toHaveBeenCalledTimes(2);
+    expect(deepened.introduction).toBe("The act opens on...");
+  });
+
+  it("a budgetGuard refusal inside the re-ask surfaces to the caller, not swallowed as a JSON-shape error", async () => {
+    const guard = new BudgetGuard(new InMemoryCostEventSink(), 100);
+    const budgetErr = new BudgetExceededError(1, 99, 5, 100);
+    let checkAndRecordCalls = 0;
+    vi.spyOn(guard, "checkAndRecord").mockImplementation(async (input) => {
+      checkAndRecordCalls += 1;
+      // The original call's checkAndRecord (call 1) succeeds; the re-ask's
+      // own checkAndRecord (call 2, triggered because this fake client
+      // always returns invalid JSON) is refused.
+      if (checkAndRecordCalls === 1) return { ...input, id: "id", ts: new Date().toISOString() };
+      throw budgetErr;
+    });
+    const { client } = makeFakeAnthropicClient([textBlock("not json")]);
+    const builder = new AnthropicDeepenActBuilder(guard, client);
+
+    let caught: unknown;
+    try {
+      await builder.deepenAct(spine, spine.acts[0]!, 0, ctx);
+    } catch (err) {
+      caught = err;
+    }
+
+    expect(checkAndRecordCalls).toBe(2);
+    expect(caught).toBeInstanceOf(Error);
+    expect((caught as Error).message).toMatch(/Daily budget exceeded/);
+    // parseWithRetry.ts sets `cause` to the re-ask's own failure (not the
+    // original parse error) specifically so a BudgetExceededError /
+    // EpisodeBudgetExceededError stays visible to a `findBudgetError`-style
+    // walker on `.cause`, rather than being buried only in the message text.
+    expect((caught as Error).cause).toBe(budgetErr);
   });
 });

@@ -1304,7 +1304,7 @@ const BACKEND_FLOORS = {
      malformed-JSON/no-text-block error paths across all 5 real provider classes,
      plus the shared parseWithRetry helper extracted from their copy-pasted
      private implementations. */
-  "test/AnthropicDeepenActBuilder.test.ts": 7,
+  "test/AnthropicDeepenActBuilder.test.ts": 9,
   "test/AnthropicEnricher.test.ts": 10,
   "test/AnthropicExternalResearcher.test.ts": 9,
   "test/AnthropicPromptUnderstander.test.ts": 9,
@@ -1335,7 +1335,7 @@ const BACKEND_FLOORS = {
   /* Anthropic provider error-path coverage (kanban card t_550d289f): the
      shared parseWithRetry/parseLastJsonBlock helper extracted from the 5
      real Anthropic provider classes' identical private copies. */
-  "test/parseWithRetry.test.ts": 16,
+  "test/parseWithRetry.test.ts": 17,
   "test/parser.test.ts": 29,
   "test/personas.test.ts": 6,
   "test/podcastIndex.test.ts": 3,

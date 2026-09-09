@@ -76,13 +76,27 @@ export class AnthropicPromptUnderstander implements PromptUnderstander {
     if (!textBlock) throw new Error("Anthropic clarity response had no text block");
 
     const reask = async (): Promise<string> => {
+      const reaskLine = "Your previous reply was not valid JSON; reply with the JSON object only.";
+      // The re-ask is its own real API call — it re-sends the whole prompt
+      // plus the bad reply, so it is its own metered spend, gated the same
+      // way as the original call (see parseWithRetry.ts's BUDGET note).
+      const reaskEstimatedInputTokens = roughTokenEstimate(promptText + textBlock.text + reaskLine);
+      await this.budgetGuard.checkAndRecord({
+        userId: ctx.userId,
+        operation: "prompt_clarity",
+        provider: this.providerName,
+        model: MODEL,
+        estimatedUsd: reaskEstimatedInputTokens * USD_PER_INPUT_TOKEN + 200 * USD_PER_OUTPUT_TOKEN,
+        sessionId: ctx.sessionId
+      });
+
       const retryResponse = await this.client.messages.create({
         model: MODEL,
         max_tokens: 400,
         messages: [
           { role: "user", content: promptText },
           { role: "assistant", content: textBlock.text },
-          { role: "user", content: "Your previous reply was not valid JSON; reply with the JSON object only." }
+          { role: "user", content: reaskLine }
         ]
       });
       const retryTextBlock = retryResponse.content.find((b: Anthropic.ContentBlock): b is Anthropic.TextBlock => b.type === "text");
@@ -115,13 +129,27 @@ export class AnthropicPromptUnderstander implements PromptUnderstander {
     if (!textBlock) throw new Error("Anthropic intent response had no text block");
 
     const reask = async (): Promise<string> => {
+      const reaskLine = "Your previous reply was not valid JSON; reply with the JSON object only.";
+      // The re-ask is its own real API call — it re-sends the whole prompt
+      // plus the bad reply, so it is its own metered spend, gated the same
+      // way as the original call (see parseWithRetry.ts's BUDGET note).
+      const reaskEstimatedInputTokens = roughTokenEstimate(promptText + textBlock.text + reaskLine);
+      await this.budgetGuard.checkAndRecord({
+        userId: ctx.userId,
+        operation: "prompt_intent",
+        provider: this.providerName,
+        model: MODEL,
+        estimatedUsd: reaskEstimatedInputTokens * USD_PER_INPUT_TOKEN + 400 * USD_PER_OUTPUT_TOKEN,
+        sessionId: ctx.sessionId
+      });
+
       const retryResponse = await this.client.messages.create({
         model: MODEL,
         max_tokens: 600,
         messages: [
           { role: "user", content: promptText },
           { role: "assistant", content: textBlock.text },
-          { role: "user", content: "Your previous reply was not valid JSON; reply with the JSON object only." }
+          { role: "user", content: reaskLine }
         ]
       });
       const retryTextBlock = retryResponse.content.find((b: Anthropic.ContentBlock): b is Anthropic.TextBlock => b.type === "text");

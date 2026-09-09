@@ -26,6 +26,19 @@ import type { z } from "zod";
  * messages this way; a stub builder passes none because it never talks to
  * a model in the first place. Omitting `reask` preserves the original
  * "fail on the first bad parse" behavior exactly.
+ *
+ * BUDGET: a re-ask is its own real, metered API call — it re-sends the
+ * original prompt PLUS the model's bad reply, so its own estimated spend is
+ * larger than the original call's. Every real builder's `reask` closure
+ * calls `this.budgetGuard.checkAndRecord(...)` itself, with the same
+ * operation/provider/model/userId/sessionId as the original call and a
+ * fresh `estimatedUsd`, BEFORE calling `messages.create` — this function
+ * does not and cannot do that metering itself, since it has no budget guard
+ * or cost context, only the closure the caller hands it. A guard refusal
+ * inside `reask` (BudgetExceededError/EpisodeBudgetExceededError) is left
+ * to propagate out of the closure exactly like any other reask failure —
+ * see the `catch (reaskErr)` block below for how it stays visible on
+ * `cause`.
  */
 export async function parseWithRetry<T>(
   schema: z.ZodType<T>,
@@ -43,12 +56,22 @@ export async function parseWithRetry<T>(
     try {
       retryRaw = await reask();
     } catch (reaskErr) {
-      // The re-ask call itself failed (network/API) — report the ORIGINAL
-      // parse failure; a transport error while re-asking should not be
-      // reported to the caller as a JSON-shape problem.
+      // The re-ask call itself failed — this can be a transport/API error,
+      // OR the `reask` closure's own budgetGuard.checkAndRecord() call
+      // refusing the re-ask's spend (BudgetExceededError /
+      // EpisodeBudgetExceededError — the re-ask re-sends the whole prompt
+      // plus the bad reply, so it is its own metered spend, gated the same
+      // way as the original call). The MESSAGE still leads with the
+      // ORIGINAL parse failure (a transport error while re-asking should
+      // not be reported to the caller as a JSON-shape problem), but
+      // `cause` is set to reaskErr itself, not firstErr: a budget refusal
+      // is a materially different failure than "the model's JSON was bad",
+      // and a caller walking `.cause` (a `findBudgetError`-style walker
+      // looking for BudgetExceededError/EpisodeBudgetExceededError) must
+      // be able to see it there rather than have it buried in a string.
       throw new Error(
         `${errorPrefix} failed schema validation (re-ask attempt itself failed: ${(reaskErr as Error).message}): ${(firstErr as Error).message}`,
-        { cause: firstErr }
+        { cause: reaskErr }
       );
     }
     try {
