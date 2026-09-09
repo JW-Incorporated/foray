@@ -95,7 +95,7 @@ export interface TranscriptArchiveMatch {
 /** Same integer-count threshold rationale as `TIER1_MATCH_THRESHOLD` in
  * `segmentPoolLookup.ts` — a title/show-metadata haystack is even
  * shorter than a segment's why-line, so the bar stays low but nonzero. */
-export const TIER2_MATCH_THRESHOLD = 2;
+export const TIER2_MATCH_THRESHOLD = 3;
 
 export function findTranscriptArchiveMatch(claimText: string, archive: TranscriptDigestEntry[] = loadTranscriptArchive()): TranscriptArchiveMatch | null {
   const claimTokens = new Set(tokenizeForSourcing(claimText));

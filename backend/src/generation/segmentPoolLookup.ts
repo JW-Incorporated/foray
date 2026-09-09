@@ -72,7 +72,7 @@ export interface SegmentMatch {
  * non-stopword tokens between a beat's claim and a segment's own
  * topic/why/anchor text is a real, checkable signal a false positive is
  * unlikely to clear by chance. */
-export const TIER1_MATCH_THRESHOLD = 2;
+export const TIER1_MATCH_THRESHOLD = 3;
 
 /** Scores every segment in `pool` against `claimText`'s tokens by
  * overlap count against the segment's combined topic + why + anchor

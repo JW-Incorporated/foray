@@ -522,3 +522,41 @@ describe("sourceBeats — generation run 1 (2026-09-09) regressions: cross-domai
     expect(beat.sourcing).toBe("narration");
   });
 });
+
+describe("sourceBeats — F-33: two shared trade words inside one topic are not a match", () => {
+  it("a hanger-rod fabrication claim is not anchored to the Chernobyl episode when the Hyatt segment is spoken for", () => {
+    const hyatt: SegmentRecord = {
+      ...loadSegmentPool().find((s) => s.id === "causality-engineered-network--47-hyatt-regency-kansas-city#972")!
+    };
+    const chernobyl: SegmentRecord = {
+      ...hyatt,
+      id: "causality-engineered-network--22-chernobyl#100",
+      item_id: "causality-engineered-network--22-chernobyl",
+      start_sec: 100,
+      end_sec: 400,
+      why: "How a reactor design problem and an operator's test plan combined at Chernobyl",
+      start_anchor: "the design of the reactor had a problem",
+      end_anchor: "and the procedure was never checked"
+    };
+    const rodClaim =
+      "The change — splitting one continuous hanger rod running through both walkways into two separate, offset rods — was proposed as a fix for a fabrication problem: the original design required threading a nut sixty times up thirty feet of rod.";
+    const spine: DeepenedAct[] = [
+      makeDeepenedAct({
+        slots: [
+          {
+            title: "Hyatt",
+            beats: [
+              { claim: "A phone call split one hanger rod into two and doubled the load on the box beam.", exploration: false },
+              { claim: rodClaim, exploration: false }
+            ]
+          }
+        ]
+      })
+    ];
+    const result = sourceBeats(spine, { segmentPool: [hyatt, chernobyl], transcriptArchive: [], cueProvider: { getCues: () => null } });
+    const beats = allSourcedBeats(result.acts);
+    expect(beats[0]!.sourcing).toBe("tape");
+    const second = beats[1]!;
+    if (second.sourcing === "tape") expect(second.tape.itemId).not.toMatch(/chernobyl/);
+  });
+});
