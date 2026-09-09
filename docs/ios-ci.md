@@ -86,7 +86,7 @@ column can change without anyone buying a laptop.
    at the end collects both, with the app never foregrounded in between.
 8. Report every verdict to the job summary, and upload logs, screenshots and the
    raw probe records as an artifact.
-9. **Gated on signing secrets:** archive, export, upload to TestFlight — with a
+9. Gated on signing secrets: archive, export, upload to TestFlight — with a
    **unique `CFBundleVersion` per upload**, read back out of the archive before
    the export is spent. Capacitor's generated project ships
    `CURRENT_PROJECT_VERSION = 1` and never moves it, so run 33815045229 took
@@ -99,7 +99,35 @@ column can change without anyone buying a laptop.
    `CFBundleVersion` has to be unique, and bumping the marketing version per
    build would tell TestFlight users a new release shipped every time CI ran.
 
+> **SUPERSEDED, 2026-09-07 (R-05, `docs/release-lockstep-plan.md`).** Step 9
+> above described this workflow's own signing/TestFlight-upload step, which no
+> longer exists. Once R-03's `release.yml` had a real green run on `main`, this
+> file's copy of the same signing and upload logic was retired outright rather
+> than merely re-gated a second time — the duplication (two independently
+> drifting implementations of "archive, sign, upload") was the root cause R-01
+> patched over rather than removed. `ios-build.yml` is CI now: it does steps
+> 1-8 above and stops. A real TestFlight upload is `release.yml`'s job via
+> `.github/actions/ios-archive`, on a tag or a manual dispatch on `main`. See
+> `docs/releases.md` for the operational walkthrough of a real release, and the
+> note at the end of §2 below for what that means for the "unsigned build" and
+> "three-outcome gate" sections that follow — they describe the OLD in-file
+> gate for historical/measurement context; the gate itself lives in
+> `ios-archive` now (`tools/mobile/ios-ci.mjs signingReadiness()` is unchanged
+> and still the tested function, just called from the composite action).
+
 ## 2. Three design decisions worth defending
+
+> **§2 SUPERSEDED FOR THE UPLOAD HALF, 2026-09-07 (R-05).** The two subsections
+> immediately below describe the signing/TestFlight-upload gate that used to
+> live in THIS file. That gate — and the archive/export/upload step it guarded
+> — moved to `.github/actions/ios-archive`, consumed by `release.yml`
+> (R-03/R-05, `docs/release-lockstep-plan.md`). `signingReadiness()` in
+> `tools/mobile/ios-ci.mjs` is the same function, unmoved, still with the same
+> three-outcome rule; only the caller changed. Read this section as history —
+> it explains why the gate looks the way it does — not as a description of
+> what `ios-build.yml` runs today. `docs/releases.md` has the current
+> operational picture, and `docs/android-release.md` §0 is the Android side of
+> the same move.
 
 ### The build is unsigned, and that is the point
 
