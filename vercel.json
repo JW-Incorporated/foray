@@ -5,8 +5,8 @@
   "installCommand": "npm install --prefix api && npm install --omit=dev --prefix backend",
   "framework": null,
   "functions": {
-    "api/shows/**/*.ts": {
-      "includeFiles": "data/catalog*.json"
+    "api/**/*.ts": {
+      "includeFiles": "data/{catalog.json,catalog-breadth.json,shows-index-pointer.json}"
     }
   },
   "headers": [
