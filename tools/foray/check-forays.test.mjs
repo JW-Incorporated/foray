@@ -130,6 +130,9 @@ test("the committed Forays are the four documented ones, and all are #134's kind
     live.forays.forays.map((f) => f.id),
     [
       "grilling-history-1", "grilling-history-2", "capital-types-1", "geology-plates-1",
+      /* The first GENERATED Foray (generation-run-2026-09-09, PR #583): its provenance is the
+         pipeline candidate + report, not a curation doc; see `generated: true` below. */
+      "beyond-the-algorithm-engineering-production-ai-s-e6533b",
     ]
   );
   for (const f of live.forays.forays) assert.equal(f.kind, "deep-dive", f.id);
@@ -399,10 +402,13 @@ test("the pool segments held back from their Foray are not in any running order"
 /* ---------------------------------------------------- the recorded mapping */
 
 test("every label resolves to exactly one segment by (episode, duration)", () => {
+  // Generated Forays carry no `label`/`label_prefixes` (the pipeline names items by slot
+  // and segment_id); the derivation below is about curator-written labels only.
   // This is the derivation the migration did once. Re-running it here is what
   // makes `label` in the data trustworthy rather than decorative: if anyone
   // hand-edits a segment_id, the label no longer picks it out uniquely.
   for (const f of live.forays.forays) {
+    if (f.generated) continue;
     for (const item of segmentItems(f)) {
       const dur = durationOf(live, item.segment_id);
       const episode = f.label_prefixes[item.label.split("-")[0]];
@@ -451,7 +457,10 @@ test("every committed Foray has a running-order doc pinned above", () => {
      its §2 table unpinned, which is the mistake Foray #2 shipped with. */
   assert.deepEqual(
     RUNNING_ORDER_DOCS.map((d) => d.forayId),
-    live.forays.forays.map((f) => f.id)
+    /* A GENERATED Foray (`generated: true`) has no curator-written running-order doc: its
+       order is the pipeline's candidate file and `report.json` (requirements §6). The pin
+       stays exact for every curated Foray. */
+    live.forays.forays.filter((f) => !f.generated).map((f) => f.id)
   );
   for (const { doc } of RUNNING_ORDER_DOCS) {
     assert.ok(fs.existsSync(path.join(REPO_ROOT, doc)), `${doc} is missing`);
@@ -590,6 +599,7 @@ test("each running-order doc's §0 summary numbers are the ones the checker comp
 
 test("labels are unique and every prefix is declared, in every Foray", () => {
   for (const f of live.forays.forays) {
+    if (f.generated) continue; // pipeline items carry no curator labels (requirements §3.10)
     const labels = segmentItems(f).map((i) => i.label);
     assert.equal(new Set(labels).size, labels.length, `${f.id} has duplicate labels`);
     for (const l of labels) assert.ok(f.label_prefixes[l.split("-")[0]], `${f.id}: no prefix entry for ${l}`);
@@ -610,7 +620,10 @@ test("L2/L3 hold for every played segment, per §4's role table", () => {
   const floors = { quote: 30, explanation: 60, exchange: 75, narrative: 120 };
   const maxes = { quote: 90, explanation: 360, exchange: 480, narrative: 480 };
   let checked = 0;
-  for (const f of live.forays.forays) {
+  /* Generated Forays record no per-item `role` (check-forays reports "D4 not evaluated"
+     for them); the D-tier duration rules cover their segments instead. */
+  const curated = live.forays.forays.filter((f) => !f.generated);
+  for (const f of curated) {
     for (const item of segmentItems(f)) {
       const d = durationOf(live, item.segment_id);
       assert.ok(d >= floors[item.role], `${f.id} ${item.label} (${item.role}) is ${d} s, under ${floors[item.role]}`);
@@ -621,7 +634,7 @@ test("L2/L3 hold for every played segment, per §4's role table", () => {
   /* A loop that silently iterates nothing is the failure this guards against.
      Derived rather than the old literal 64 (32 + 10 + 22), which had to be
      edited every time any Foray changed length — the #236 defect in miniature. */
-  const expected = live.forays.forays.reduce((n, f) => n + segmentItems(f).length, 0);
+  const expected = curated.reduce((n, f) => n + segmentItems(f).length, 0);
   assert.ok(expected > 0, "no Foray plays a segment, so this loop proved nothing");
   assert.equal(checked, expected, "every played segment of every Foray must be checked");
 });
@@ -702,8 +715,22 @@ test("every source carries a boolean dai_suspected (ci.yml invariant 5)", () => 
   for (const s of live.sources.sources) assert.equal(typeof s.dai_suspected, "boolean", s.id);
 });
 
-test("no source is DAI-suspected, so every out-point is anchorable", () => {
-  for (const s of live.sources.sources) assert.equal(s.dai_suspected, false, s.id);
+test("every segment on a DAI-suspected source carries both content anchors (#65, F-74)", () => {
+  /* Was "no source is DAI-suspected". Since #571 rule #65 admits a dai_suspected source
+     when the segment carries a start/end anchor pair (ADR-0007 content anchors are what
+     make the out-point findable in a re-stitched copy); a timestamp-only segment on such
+     a source is still refused. The first generated Foray (PR #583) is the first committed
+     data to exercise this: ten Practical AI segments, a DAI-flagged host measured ad-free. */
+  let daiSegments = 0;
+  for (const s of live.sources.sources) {
+    if (s.dai_suspected !== true) continue;
+    for (const seg of live.segments.segments.filter((x) => x.item_id === s.id)) {
+      daiSegments += 1;
+      assert.ok(typeof seg.start_anchor === "string" && seg.start_anchor.trim(), `${seg.id}: no start_anchor on a dai_suspected source`);
+      assert.ok(typeof seg.end_anchor === "string" && seg.end_anchor.trim(), `${seg.id}: no end_anchor on a dai_suspected source`);
+    }
+  }
+  assert.ok(daiSegments > 0, "the rule is exercised by at least one committed segment");
 });
 
 test("each source's feed duration matches its segments' reference_duration_sec", () => {
@@ -1352,9 +1379,50 @@ test("a missing dai_suspected is rejected", () => {
   assert.match(errorsFor(f).join("\n"), /dai_suspected` must be a boolean/);
 });
 
-test("a dai_suspected source cannot carry a played segment (#65 §2)", () => {
+/* #65 §2, AND THE ONE THING THAT NOW SATISFIES IT (F-74).
+ *
+ * The fixture's pool carries timestamps and no anchors, which is precisely the
+ * segment the rule was written about, so the first case below is unchanged. The
+ * second is the rule change: ADR-0007's content anchors are how a boundary is
+ * located in a differently-stitched copy, so a segment that carries both of them
+ * IS anchored and the flag stops deciding for it. The pair is asserted in both
+ * directions on the SAME mutation, so neither branch can be satisfied by the
+ * fixture happening to pass or fail for another reason. */
+test("a dai_suspected source cannot carry a timestamp-only played segment (#65 §2)", () => {
   const f = fx();
   f.sources.sources.find((s) => s.id === "boundary-ep-a").dai_suspected = true;
+  assert.match(errorsFor(f).join("\n"), /cannot be anchored/);
+});
+
+test("a dai_suspected source CAN carry a played segment that quotes both boundary anchors (#65, F-74)", () => {
+  const f = fx();
+  f.sources.sources.find((s) => s.id === "boundary-ep-a").dai_suspected = true;
+  /* Every segment of that episode, not just the first: the rule is asked per
+     played item, so one un-anchored row would keep the error alive and make the
+     assertion below prove nothing. */
+  for (const s of f.segments.segments) {
+    if (s.item_id !== "boundary-ep-a") continue;
+    s.start_anchor = "so the walkway hangers were doubled up";
+    s.end_anchor = "and that is the load path nobody recalculated";
+  }
+  const errors = errorsFor(f);
+  assert.deepEqual(
+    errors.filter((e) => /cannot be anchored/.test(e)),
+    []
+  );
+  /* And the whole fixture still passes, so this is an accepted Foray rather
+     than one whose #65 error was traded for a different error. */
+  assert.deepEqual(errors, []);
+});
+
+test("one anchor is not a boundary: an anchored in-point with no out-point is still refused (#65, F-74)", () => {
+  const f = fx();
+  f.sources.sources.find((s) => s.id === "boundary-ep-a").dai_suspected = true;
+  for (const s of f.segments.segments) {
+    if (s.item_id !== "boundary-ep-a") continue;
+    s.start_anchor = "so the walkway hangers were doubled up";
+    s.end_anchor = "   ";
+  }
   assert.match(errorsFor(f).join("\n"), /cannot be anchored/);
 });
 
@@ -2119,3 +2187,64 @@ function runCli(root) {
     return { status: e.status, stdout: String(e.stdout ?? ""), stderr: String(e.stderr ?? "") };
   }
 }
+
+/* ============================================================================
+   6. A GENERATED FORAY'S OWN TIER-2 TAPE (generation finding F-49)
+   ========================================================================= */
+
+test("a Foray using a segment §4.5 tier 2 minted this run resolves, and its seconds count", () => {
+  /* THE HOLE THIS CLOSES. `sourceBeats` cuts a tier-2 segment out of a
+     transcript during a generation run, so it is in no file on disk yet: the
+     merge path that writes `data/segments.json` runs on a curator's batch, not
+     inside the run. Until F-49 nothing carried those rows anywhere, so the
+     candidate named a `segment_id` this checker could not resolve — "unknown
+     segment_id", the item dropped before every ordering rule, its seconds
+     counted nowhere, and the Foray failed on a runtime that disagreed with its
+     own items. `finalizeForay` now merges the minted segment and its
+     `segment-sources` row into the files handed to this function, and
+     `publishForay` writes them beside `data/forays.json`; the rows below are
+     exactly what those two produce (`mintedSegmentRow` /
+     `MintedSegmentSource`).
+
+     MUTATION THAT KILLS THIS: drop either pushed row. Without the segment the
+     checker reports an unknown segment_id and the runtime is 120 s short;
+     without the source row it reports that the pool references an item id
+     "with no entry in data/segment-sources.json — nothing can resolve its
+     audio". Ran both — red, with those messages. */
+  const f = fx();
+  const MINTED_SEC = 120;
+  f.segments.segments.push({
+    id: "practical-ai--minted-episode#900",
+    item_id: "practical-ai--minted-episode",
+    topic: "fixture/boundary",
+    start_sec: 900,
+    end_sec: 900 + MINTED_SEC,
+    reference_duration_sec: 3600,
+    start_anchor: "so the first thing we did was",
+    end_anchor: "and that is how the pipeline ended up",
+    confidence: "medium",
+    source: "generation-tier-2",
+    needs_review: true,
+  });
+  f.sources.sources.push({
+    id: "practical-ai--minted-episode",
+    show: "Practical AI",
+    title: "A minted episode",
+    feed_url: "https://example.invalid/feed.xml",
+    episode_guid: "guid-1",
+    audio_url: "https://cdn.example/practical-ai-minted.mp3",
+    audio_type: "audio/mpeg",
+    duration_sec: 3600,
+    dai_suspected: false,
+    source: "generation-tier-2",
+  });
+
+  const b = boundary(f);
+  b.items.push({ type: "segment", slot: "three", segment_id: "practical-ai--minted-episode#900", role: "explanation" });
+  b.runtime_sec = +(b.runtime_sec + MINTED_SEC).toFixed(2);
+
+  assert.deepEqual(errorsFor(f), [], "a minted tier-2 segment that travels with its source row is resolvable tape");
+  const r = checkForays(f).report.forays.find((x) => x.id === b.id);
+  assert.equal(r.segments, segmentItems(boundary(fixture)).length + 1, "the minted segment is counted, not dropped");
+  assert.equal(r.runtime_sec, FIXTURE_RUNTIME + MINTED_SEC, "its seconds are on the listener's clock");
+});

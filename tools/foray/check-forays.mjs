@@ -895,8 +895,39 @@ export function checkForays(files) {
       const src = sources.get(p.seg.item_id);
       if (!src) continue; // already reported above
       /* #65 §2: an authored timestamp is a foreign copy, and seek precision on
-       * a DAI-stitched feed is approximate — which cannot anchor an out-point. */
-      if (src.dai_suspected === true) E(`${p.label ?? p.segment_id}: source "${src.id}" is dai_suspected, so its out-point cannot be anchored (#65)`);
+       * a DAI-stitched feed is approximate — which cannot anchor an out-point.
+       *
+       * A CURATION-RULE CHANGE, MADE DELIBERATELY AND NARROWLY (F-74). The rule
+       * above predates content anchors. It was written when a segment WAS a pair
+       * of timestamps, and on a feed whose ad breaks are stitched per-download
+       * a timestamp locates nothing in the listener's copy — hence the flat
+       * refusal. ADR-0007 then designed the drift-tolerant alternative for
+       * exactly this feed: a segment carries the ~8-12 words SPOKEN at each
+       * edge, and the player finds the boundary by searching the listener's own
+       * transcript for those words. A segment that carries both anchors is
+       * therefore anchored in the only sense #65 is about, whatever the flag
+       * says about seek precision — and reading the flag alone put two thirds of
+       * the archive (146 of the 220 shows in `data/transcript-availability.json`,
+       * *Practical AI* among them) permanently out of reach of tier-2 sourcing,
+       * which is F-74.
+       *
+       * SO THE FLAG NOW DECIDES ONLY FOR A TIMESTAMP-ONLY SEGMENT. Both anchors
+       * must be present and non-empty — one anchor is half a boundary, and the
+       * out-point is the half #65 names. Nothing else about the rule moves: a
+       * `dai_suspected` source whose segment has no anchors is refused with the
+       * same message it always was.
+       *
+       * Not gated on `isGeneratedForay`: the anchors are what makes the
+       * difference and a curator-cut segment carries them too (all 212 rows in
+       * today's `data/segments.json` do), so gating on provenance would say a
+       * hand-cut anchored segment is less trustworthy than a minted one. */
+      const anchored = nonEmptyString(p.seg.start_anchor) && nonEmptyString(p.seg.end_anchor);
+      if (src.dai_suspected === true && !anchored) {
+        E(
+          `${p.label ?? p.segment_id}: source "${src.id}" is dai_suspected and the segment carries no ` +
+            `\`start_anchor\`/\`end_anchor\` pair, so its out-point cannot be anchored (#65)`
+        );
+      }
       if (typeof src.duration_sec === "number" && p.seg.end_sec > src.duration_sec + 2) {
         E(`${p.label ?? p.segment_id}: end_sec ${p.seg.end_sec} is past the episode's ${src.duration_sec} s`);
       }
