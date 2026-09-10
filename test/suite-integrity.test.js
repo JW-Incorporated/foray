@@ -705,7 +705,7 @@ const FLOORS = {
      The control is the one to look at first if this ever has to be lowered: "the
      boundary fixture itself passes with zero errors" is what stops every proof
      below it from becoming a demonstration that broken data is broken. */
-  "tools/foray/check-forays.test.mjs": 110,
+  "tools/foray/check-forays.test.mjs": 130,
   /* The narration evidence gate (#247, and the founder's citation rulings of
      2026-08-19). Zero slack, and for a sharper reason than most suites here.
 
