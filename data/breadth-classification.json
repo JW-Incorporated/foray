@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-09-09T16:13:09.213Z",
+  "built_at": "2026-09-10T00:10:27.952Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-09-09-d973eadf",
+    "last_batch_id": "fresh-2026-09-10-a7c7c9f0",
     "last_batch_tier": 1
   },
   "entries": {
@@ -108494,11 +108494,64 @@
     },
     "1652665068": {
       "topics": [
-        "travel"
+        "travel",
+        "comedy",
+        "music",
+        "history",
+        "computing",
+        "engineering/ai-robotics",
+        "adventure/exploration",
+        "history/military-ancient"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.85
+        },
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.65
+        },
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Exploring the National Parks covers travel, exploration, history, military-ancient, comedy, music, .",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: 34w > 30",
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-a7c7c9f0",
+      "classified_at": "2026-09-10T00:10:27.952Z"
     },
     "1652665688": {
       "topics": [
@@ -108652,11 +108705,30 @@
     },
     "1653631116": {
       "topics": [
-        "society"
+        "computing",
+        "engineering/ai-robotics"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Rádio Novelo Apresenta covers computing, ai-robotics.",
+      "display_title": "Rádio Novelo Apresenta",
+      "blurb": "Toda quinta-feira, histórias que você nem sabia que precisava ouvir.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-a7c7c9f0",
+      "classified_at": "2026-09-10T00:10:27.952Z"
     },
     "1653667017": {
       "topics": [
@@ -108936,12 +109008,58 @@
     },
     "1654644528": {
       "topics": [
+        "travel",
         "history",
-        "religion/judaism"
+        "computing",
+        "engineering/ai-robotics",
+        "culture",
+        "adventure/exploration",
+        "science/storytelling"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.65
+        },
+        {
+          "node": "science/storytelling",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Jewish History Nerds covers travel, exploration, history, computing, ai-robotics, culture, storytel.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: 33w > 30"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-a7c7c9f0",
+      "classified_at": "2026-09-10T00:10:27.952Z"
     },
     "1654662855": {
       "topics": [
@@ -109168,11 +109286,35 @@
     },
     "1655748708": {
       "topics": [
-        "society"
+        "science",
+        "business",
+        "news"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Skyline Drive: How to Live Forever covers science, business, news.",
+      "display_title": "Skyline Drive: How to Live Forever",
+      "blurb": "Mangesh Hattikudur (Part-Time Genius, Mental_Floss) dives into the booming business of living forever&mdash;meeting the scientists, biopunks, and entrepreneurs trying to turn immortality into reality,",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-a7c7c9f0",
+      "classified_at": "2026-09-10T00:10:27.952Z"
     },
     "1655774929": {
       "topics": [
@@ -109338,11 +109480,58 @@
     },
     "1656808632": {
       "topics": [
-        "tv-film"
+        "travel",
+        "comedy",
+        "music",
+        "computing",
+        "engineering/ai-robotics",
+        "adventure/exploration",
+        "comedy/interviews"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.85
+        },
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.65
+        },
+        {
+          "node": "comedy/interviews",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Cuhmunity covers travel, exploration, comedy, interviews, music, computing, ai-robotics.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-a7c7c9f0",
+      "classified_at": "2026-09-10T00:10:27.952Z"
     },
     "1656841305": {
       "topics": [
@@ -109472,11 +109661,25 @@
     },
     "1657745574": {
       "topics": [
-        "religion/islam"
+        "business"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "فاهم covers business.",
+      "display_title": "فاهم",
+      "blurb": "الهدف: رؤية العالم من منظور إسلامي وإيقاظ وعي المسلمين في كل أمر يهمهم في دينهم ودنياهم.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-a7c7c9f0",
+      "classified_at": "2026-09-10T00:10:27.952Z"
     },
     "1657770114": {
       "topics": [
@@ -109501,11 +109704,55 @@
     },
     "1657868190": {
       "topics": [
-        "sports/volleyball"
+        "sports",
+        "history",
+        "computing",
+        "health",
+        "engineering/ai-robotics",
+        "culture",
+        "science/storytelling"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "health",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        },
+        {
+          "node": "science/storytelling",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "How to Get Recruited covers history, sports, computing, ai-robotics, culture, storytelling, health.",
+      "display_title": "How to Get Recruited",
+      "blurb": "Wanting to learn how to help your athlete through the college recruiting process? You're in the right place.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-a7c7c9f0",
+      "classified_at": "2026-09-10T00:10:27.952Z"
     },
     "1657873290": {
       "topics": [
@@ -109874,11 +110121,78 @@
     },
     "1660605216": {
       "topics": [
-        "tv-film"
+        "comedy",
+        "sports",
+        "history",
+        "computing",
+        "news",
+        "news/politics",
+        "engineering/ai-robotics",
+        "culture",
+        "history/military-ancient",
+        "comedy/interviews",
+        "science/storytelling"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        },
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.65
+        },
+        {
+          "node": "comedy/interviews",
+          "confidence": 0.6
+        },
+        {
+          "node": "science/storytelling",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "A Right Royal Podcast covers history, military-ancient, comedy, interviews, sports, computing, ai-r.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /deep[\\s-]dive/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-a7c7c9f0",
+      "classified_at": "2026-09-10T00:10:27.952Z"
     },
     "1660615057": {
       "topics": [
@@ -110002,11 +110316,65 @@
     },
     "1661043438": {
       "topics": [
-        "society/government"
+        "history",
+        "computing",
+        "news",
+        "health",
+        "news/politics",
+        "engineering/ai-robotics",
+        "culture",
+        "history/military-ancient",
+        "science/storytelling"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.8
+        },
+        {
+          "node": "health",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        },
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.65
+        },
+        {
+          "node": "science/storytelling",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "American Potential covers history, military-ancient, computing, ai-robotics, culture, storytelling,.",
+      "display_title": "American Potential",
+      "blurb": "American Potential is a national award-winning podcast that shares how individuals are taking action in their communities to break barriers.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-a7c7c9f0",
+      "classified_at": "2026-09-10T00:10:27.952Z"
     },
     "1661053093": {
       "topics": [
@@ -110158,11 +110526,79 @@
     },
     "1662104886": {
       "topics": [
-        "business/non-profit"
+        "music",
+        "sports",
+        "science",
+        "history",
+        "business",
+        "computing",
+        "health",
+        "business/startups",
+        "engineering/ai-robotics",
+        "culture",
+        "history/military-ancient"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports",
+          "confidence": 0.85
+        },
+        {
+          "node": "science",
+          "confidence": 0.8
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "health",
+          "confidence": 0.8
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.7
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        },
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Purpose & Profit Club® – The Nonprofit Fundraising & Marketing Podcast covers science, history, mil.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 10w > 8",
+        "blurb: 32w > 30"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-a7c7c9f0",
+      "classified_at": "2026-09-10T00:10:27.952Z"
     },
     "1662151080": {
       "topics": [
@@ -110452,11 +110888,55 @@
     },
     "1663860720": {
       "topics": [
-        "business"
+        "history",
+        "business",
+        "computing",
+        "news",
+        "news/politics",
+        "engineering/ai-robotics",
+        "history/military-ancient"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        },
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Bloomberg Daybreak: US Edition covers history, military-ancient, business, computing, ai-robotics, .",
+      "display_title": "Bloomberg Daybreak: US Edition",
+      "blurb": "Listen for today's top stories, with context, in just 15 minutes.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-a7c7c9f0",
+      "classified_at": "2026-09-10T00:10:27.952Z"
     },
     "1663863397": {
       "topics": [
@@ -110509,11 +110989,58 @@
     },
     "1663950354": {
       "topics": [
-        "aviation"
+        "business",
+        "computing",
+        "news",
+        "news/politics",
+        "business/startups",
+        "engineering/ai-robotics",
+        "culture"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.75
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.7
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Ready 4 Pushback covers business, startups, computing, ai-robotics, culture, news, politics.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: 33w > 30"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-a7c7c9f0",
+      "classified_at": "2026-09-10T00:10:27.952Z"
     },
     "1663956121": {
       "topics": [
@@ -110840,11 +111367,60 @@
     },
     "1665484566": {
       "topics": [
-        "hobbies"
+        "comedy",
+        "music",
+        "sports",
+        "history",
+        "computing",
+        "engineering/ai-robotics",
+        "culture",
+        "science/storytelling"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.85
+        },
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        },
+        {
+          "node": "science/storytelling",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Super Retro covers history, comedy, music, sports, computing, ai-robotics, culture, storytelling.",
+      "display_title": "Super Retro",
+      "blurb": "A Nostalgic podcast about retro gaming, movies/tv, music and pop culture from the 80’s, 90’s and early 2000’s.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-a7c7c9f0",
+      "classified_at": "2026-09-10T00:10:27.952Z"
     },
     "1665488006": {
       "topics": [
@@ -110877,11 +111453,55 @@
     },
     "1665728532": {
       "topics": [
-        "education/self-improvement"
+        "history",
+        "computing",
+        "health",
+        "engineering/ai-robotics",
+        "culture",
+        "history/military-ancient",
+        "science/storytelling"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "health",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        },
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.65
+        },
+        {
+          "node": "science/storytelling",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Rollercoaster Podcast covers history, military-ancient, computing, ai-robotics, culture, storyt.",
+      "display_title": "The Rollercoaster Podcast",
+      "blurb": "Some things break you open in a way you never fully close back up.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-a7c7c9f0",
+      "classified_at": "2026-09-10T00:10:27.952Z"
     },
     "1665800122": {
       "topics": [
@@ -110892,11 +111512,35 @@
     },
     "1665823746": {
       "topics": [
-        "music"
+        "music",
+        "computing",
+        "engineering/ai-robotics"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Artist Friendly with Joel Madden covers music, computing, ai-robotics.",
+      "display_title": "Artist Friendly with Joel Madden",
+      "blurb": "On Artist Friendly, Good Charlotte’s Joel Madden gets real with today's breakthrough artists.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-a7c7c9f0",
+      "classified_at": "2026-09-10T00:10:27.952Z"
     },
     "1666050632": {
       "topics": [
@@ -110995,11 +111639,63 @@
     },
     "1666536870": {
       "topics": [
-        "gaming"
+        "travel",
+        "sports",
+        "history",
+        "computing",
+        "health",
+        "engineering/ai-robotics",
+        "culture",
+        "history/military-ancient"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "health",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        },
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Get in the Trunk - A Delta Green Anthology Series covers travel, history, military-ancient, sports,.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 10w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-a7c7c9f0",
+      "classified_at": "2026-09-10T00:10:27.952Z"
     },
     "1666568050": {
       "topics": [
@@ -111349,12 +112045,88 @@
     },
     "1668002688": {
       "topics": [
+        "travel",
+        "comedy",
+        "sports",
+        "science",
+        "history",
+        "business",
+        "computing",
+        "health",
+        "business/startups",
         "engineering/ai-robotics",
-        "computing"
+        "culture",
+        "adventure/exploration",
+        "history/military-ancient"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports",
+          "confidence": 0.85
+        },
+        {
+          "node": "science",
+          "confidence": 0.8
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "health",
+          "confidence": 0.8
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.7
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.65
+        },
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "No Priors: Artificial Intelligence | Technology | Startups covers travel, exploration, science, his.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: 34w > 30"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-a7c7c9f0",
+      "classified_at": "2026-09-10T00:10:27.952Z"
     },
     "1668038660": {
       "topics": [
@@ -111693,12 +112465,50 @@
     },
     "1669990482": {
       "topics": [
+        "travel",
+        "business",
+        "computing",
+        "news",
         "engineering/ai-robotics",
-        "computing"
+        "adventure/exploration"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "AI Chat: AI News & Artificial Intelligence covers travel, exploration, business, computing, ai-robo.",
+      "display_title": "AI Chat: AI News & Artificial Intelligence",
+      "blurb": "AI Chat is the podcast where we dive into the world of AI, cutting-edge AI news and its impact on our daily lives.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-a7c7c9f0",
+      "classified_at": "2026-09-10T00:10:27.952Z"
     },
     "1669993077": {
       "topics": [
@@ -111747,11 +112557,35 @@
     },
     "1670193102": {
       "topics": [
-        "music"
+        "computing",
+        "health",
+        "engineering/ai-robotics"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "health",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Way Up With Angela Yee covers computing, ai-robotics, health.",
+      "display_title": "Way Up With Angela Yee",
+      "blurb": "Way Up With Angela Yee On Demand!.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-a7c7c9f0",
+      "classified_at": "2026-09-10T00:10:27.952Z"
     },
     "1670202284": {
       "topics": [
@@ -111807,11 +112641,55 @@
     },
     "1670438094": {
       "topics": [
-        "society/government"
+        "comedy",
+        "computing",
+        "news",
+        "engineering/ai-robotics",
+        "culture",
+        "comedy/interviews",
+        "science/storytelling"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        },
+        {
+          "node": "comedy/interviews",
+          "confidence": 0.6
+        },
+        {
+          "node": "science/storytelling",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Nashville's Morning News with Dan Mandis covers comedy, interviews, computing, ai-robotics, culture.",
+      "display_title": "Nashville's Morning News with Dan Mandis",
+      "blurb": "Listen to Nashville's Morning News with Dan Mandis weekdays from 5a-9a on SuperTalk 99.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-a7c7c9f0",
+      "classified_at": "2026-09-10T00:10:27.952Z"
     },
     "1670449955": {
       "topics": [
@@ -112126,11 +113004,43 @@
     },
     "1671588048": {
       "topics": [
-        "science/physics"
+        "science",
+        "computing",
+        "science/physics",
+        "engineering/ai-robotics"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "science/physics",
+          "confidence": 0.7
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Great Mysteries of Physics covers science, physics, computing, ai-robotics.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /delve/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-a7c7c9f0",
+      "classified_at": "2026-09-10T00:10:27.952Z"
     },
     "1671608708": {
       "topics": [
@@ -112345,11 +113255,59 @@
     },
     "1672612656": {
       "topics": [
-        "personal-journals"
+        "travel",
+        "music",
+        "computing",
+        "news",
+        "engineering/ai-robotics",
+        "culture",
+        "adventure/exploration"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.85
+        },
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "in the meadow covers travel, exploration, music, computing, ai-robotics, culture, news.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: 33w > 30",
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-a7c7c9f0",
+      "classified_at": "2026-09-10T00:10:27.952Z"
     },
     "1672649131": {
       "topics": [
@@ -112543,11 +113501,60 @@
     },
     "1673844450": {
       "topics": [
-        "business/non-profit"
+        "travel",
+        "sports",
+        "science",
+        "business",
+        "computing",
+        "business/startups",
+        "engineering/ai-robotics",
+        "adventure/exploration"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports",
+          "confidence": 0.85
+        },
+        {
+          "node": "science",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.7
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Mission + Markets covers travel, exploration, science, sports, business, startups, computing, ai-ro.",
+      "display_title": "Mission + Markets",
+      "blurb": "Mission + Markets empowers endowments and foundations to pursue their mission-driven goals by exploring trends and best practices related to mission engagement, fiduciary governance, and investment ma",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-a7c7c9f0",
+      "classified_at": "2026-09-10T00:10:27.952Z"
     },
     "1673846089": {
       "topics": [
@@ -112643,11 +113650,65 @@
     },
     "1674223104": {
       "topics": [
-        "education/how-to"
+        "travel",
+        "music",
+        "science",
+        "computing",
+        "news",
+        "engineering/ai-robotics",
+        "culture",
+        "adventure/exploration",
+        "science/storytelling"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.85
+        },
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "science",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.65
+        },
+        {
+          "node": "science/storytelling",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Chalk & Talk covers travel, exploration, science, music, computing, ai-robotics, culture, storytell.",
+      "display_title": "Chalk & Talk",
+      "blurb": "Everyone wants to see children and young adults succeed in math, but it can be difficult to sort myths from facts in education.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-a7c7c9f0",
+      "classified_at": "2026-09-10T00:10:27.952Z"
     },
     "1674239699": {
       "topics": [
@@ -112895,11 +113956,65 @@
     },
     "1675319784": {
       "topics": [
-        "society"
+        "science",
+        "history",
+        "business",
+        "computing",
+        "news",
+        "news/politics",
+        "engineering/ai-robotics",
+        "culture",
+        "science/storytelling"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.8
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        },
+        {
+          "node": "science/storytelling",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Latin American Perspectives covers science, history, business, computing, ai-robotics, culture, sto.",
+      "display_title": "Latin American Perspectives",
+      "blurb": "A podcast for discussion and debate on the political economy of capitalism, imperialism, and socialism in the Americas.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-a7c7c9f0",
+      "classified_at": "2026-09-10T00:10:27.952Z"
     },
     "1675371043": {
       "topics": [
@@ -113296,11 +114411,40 @@
     },
     "1676984700": {
       "topics": [
-        "travel"
+        "travel",
+        "history",
+        "business",
+        "history/military-ancient"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Point Me To First Class covers travel, history, military-ancient, business.",
+      "display_title": "Point Me To First Class",
+      "blurb": "Point Me to First Class is a show for employed professionals, solopreneurs, entrepreneurs, and business owners with higher-than-average personal and/or business expenses who want to learn to leverage ",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-a7c7c9f0",
+      "classified_at": "2026-09-10T00:10:27.952Z"
     },
     "1676999261": {
       "topics": [
@@ -113425,11 +114569,43 @@
     },
     "1677393954": {
       "topics": [
-        "education/how-to"
+        "travel",
+        "computing",
+        "engineering/ai-robotics",
+        "adventure/exploration"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Learning Interior Design with Marcie Dennis covers travel, exploration, computing, ai-robotics.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: 35w > 30"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-a7c7c9f0",
+      "classified_at": "2026-09-10T00:10:27.952Z"
     },
     "1677396097": {
       "topics": [
@@ -113441,11 +114617,85 @@
     },
     "1677415740": {
       "topics": [
-        "society"
+        "travel",
+        "sports",
+        "science",
+        "history",
+        "sports/football",
+        "business",
+        "computing",
+        "news",
+        "health",
+        "business/startups",
+        "engineering/ai-robotics",
+        "culture",
+        "history/military-ancient"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports",
+          "confidence": 0.85
+        },
+        {
+          "node": "science",
+          "confidence": 0.8
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "sports/football",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.8
+        },
+        {
+          "node": "health",
+          "confidence": 0.8
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.7
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        },
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Change Agents with Andy Stumpf covers travel, science, history, military-ancient, sports, football,.",
+      "display_title": "Change Agents with Andy Stumpf",
+      "blurb": "-New Episodes Every Wednesday- Find out what takes to solve some of the world's seemingly impossible problems.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-a7c7c9f0",
+      "classified_at": "2026-09-10T00:10:27.952Z"
     },
     "1677424942": {
       "topics": [
@@ -113630,19 +114880,124 @@
     },
     "1678259172": {
       "topics": [
-        "sports"
+        "music",
+        "sports",
+        "history",
+        "computing",
+        "news",
+        "engineering/ai-robotics",
+        "history/military-ancient"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        },
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "The Runthrough covers history, military-ancient, music, sports, computing, ai-robotics, news.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: 31w > 30"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-a7c7c9f0",
+      "classified_at": "2026-09-10T00:10:27.952Z"
     },
     "1678330734": {
       "topics": [
-        "tv-film"
+        "travel",
+        "comedy",
+        "history",
+        "computing",
+        "engineering/ai-robotics",
+        "culture",
+        "adventure/exploration",
+        "history/military-ancient",
+        "comedy/interviews"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.65
+        },
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.65
+        },
+        {
+          "node": "comedy/interviews",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "When Reality Hits with Brittany Cartwright covers travel, exploration, history, military-ancient, c.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: 31w > 30",
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-a7c7c9f0",
+      "classified_at": "2026-09-10T00:10:27.952Z"
     },
     "1678331984": {
       "topics": [
@@ -113683,11 +115038,55 @@
     },
     "1678808628": {
       "topics": [
-        "business/non-profit"
+        "travel",
+        "history",
+        "computing",
+        "engineering/ai-robotics",
+        "culture",
+        "adventure/exploration",
+        "history/military-ancient"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.65
+        },
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Resolution Podcast covers travel, exploration, history, military-ancient, computing, ai-robotics, c.",
+      "display_title": "Resolution Podcast",
+      "blurb": "Welcome to the official podcast from the Restorative Justice Council.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-a7c7c9f0",
+      "classified_at": "2026-09-10T00:10:27.952Z"
     },
     "1678816652": {
       "topics": [
@@ -113745,11 +115144,40 @@
     },
     "1679077626": {
       "topics": [
-        "education"
+        "history",
+        "computing",
+        "engineering/ai-robotics",
+        "history/military-ancient"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        },
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "BEING HER with Margarita Nazarenko covers history, military-ancient, computing, ai-robotics.",
+      "display_title": "BEING HER with Margarita Nazarenko",
+      "blurb": "Welcome to BEING HER with Margarita Nazarenko, where we talk about womanhood, self development and the journey to BECOMING the best version of HER.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-a7c7c9f0",
+      "classified_at": "2026-09-10T00:10:27.952Z"
     },
     "1679137573": {
       "topics": [
@@ -113866,11 +115294,55 @@
     },
     "1679604930": {
       "topics": [
-        "gaming"
+        "music",
+        "sports",
+        "science",
+        "history",
+        "computing",
+        "engineering/ai-robotics",
+        "history/military-ancient"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports",
+          "confidence": 0.85
+        },
+        {
+          "node": "science",
+          "confidence": 0.8
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        },
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Game Theory covers science, history, military-ancient, music, sports, computing, ai-robotics.",
+      "display_title": "Game Theory",
+      "blurb": "Join Game Theory host Tom as he breaks down the real-world science, math, and lore from ALL your favorite video games!.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-a7c7c9f0",
+      "classified_at": "2026-09-10T00:10:27.952Z"
     },
     "1679647627": {
       "topics": [
@@ -113906,11 +115378,45 @@
     },
     "1679737896": {
       "topics": [
-        "society"
+        "sports",
+        "history",
+        "business",
+        "computing",
+        "engineering/ai-robotics"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "A Very British Cult covers history, sports, business, computing, ai-robotics.",
+      "display_title": "A Very British Cult",
+      "blurb": "The sinister life coaching company that takes over your life.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-a7c7c9f0",
+      "classified_at": "2026-09-10T00:10:27.952Z"
     },
     "1679777323": {
       "topics": [
@@ -114364,11 +115870,68 @@
     },
     "1682047968": {
       "topics": [
-        "history"
+        "travel",
+        "science",
+        "history",
+        "computing",
+        "news",
+        "news/politics",
+        "culture",
+        "adventure/exploration",
+        "science/storytelling"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.85
+        },
+        {
+          "node": "science",
+          "confidence": 0.8
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.65
+        },
+        {
+          "node": "science/storytelling",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Past Present Future covers travel, exploration, science, history, computing, culture, storytelling,.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: 31w > 30"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-a7c7c9f0",
+      "classified_at": "2026-09-10T00:10:27.952Z"
     },
     "1682115558": {
       "topics": [
@@ -114684,11 +116247,75 @@
     },
     "1683905652": {
       "topics": [
-        "comedy"
+        "travel",
+        "comedy",
+        "history",
+        "business",
+        "computing",
+        "health",
+        "food",
+        "engineering/ai-robotics",
+        "culture",
+        "comedy/interviews",
+        "science/storytelling"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "health",
+          "confidence": 0.8
+        },
+        {
+          "node": "food",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        },
+        {
+          "node": "comedy/interviews",
+          "confidence": 0.6
+        },
+        {
+          "node": "science/storytelling",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Dinner’s on Me with Jesse Tyler Ferguson covers travel, history, comedy, interviews, business, comp.",
+      "display_title": "Dinner’s on Me with Jesse Tyler Ferguson",
+      "blurb": "I’m breaking bread with big-name friends—old and new—for a delicious meal and candid convos that can only happen over a glass of wine.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-a7c7c9f0",
+      "classified_at": "2026-09-10T00:10:27.952Z"
     },
     "1683948659": {
       "topics": [
@@ -114832,11 +116459,54 @@
     },
     "1684816356": {
       "topics": [
-        "business/careers"
+        "music",
+        "history",
+        "business",
+        "computing",
+        "engineering/ai-robotics",
+        "culture"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "The Bright Method Podcast: Realistic Time Management and Productivity for Working Women & Working M.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8",
+        "blurb: 32w > 30"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-a7c7c9f0",
+      "classified_at": "2026-09-10T00:10:27.952Z"
     },
     "1684883107": {
       "topics": [
@@ -115081,11 +116751,45 @@
     },
     "1686314916": {
       "topics": [
-        "hobbies"
+        "travel",
+        "history",
+        "computing",
+        "engineering/ai-robotics",
+        "adventure/exploration"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Muskies On Tap covers travel, exploration, history, computing, ai-robotics.",
+      "display_title": "Muskies On Tap",
+      "blurb": "Wisconsin northwoods musky Guide, Gus Mantey, his brother Max Mantey and their childhood buddy, Brian Eckle chronicle each week of Gus’s journey as a Musky guide.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-a7c7c9f0",
+      "classified_at": "2026-09-10T00:10:27.952Z"
     },
     "1686318804": {
       "topics": [
@@ -115156,11 +116860,38 @@
     },
     "1686616830": {
       "topics": [
-        "computing"
+        "music",
+        "computing",
+        "engineering/ai-robotics"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Delta Binaural beats: For stress & anxiety relief or Hemi-Sync meditation | Binaural ASMR covers mu.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 10w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-a7c7c9f0",
+      "classified_at": "2026-09-10T00:10:27.952Z"
     },
     "1686617988": {
       "topics": [
@@ -115269,11 +117000,48 @@
     },
     "1687070922": {
       "topics": [
-        "sports/endurance"
+        "travel",
+        "sports",
+        "sports/soccer",
+        "computing",
+        "engineering/ai-robotics"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports/soccer",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Marathon Handbook Podcast covers travel, sports, soccer, computing, ai-robotics.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: 32w > 30"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-a7c7c9f0",
+      "classified_at": "2026-09-10T00:10:27.952Z"
     },
     "1687175087": {
       "topics": [
@@ -115316,11 +117084,70 @@
     },
     "1687383822": {
       "topics": [
-        "culture/books"
+        "travel",
+        "music",
+        "history",
+        "business",
+        "computing",
+        "engineering/ai-robotics",
+        "culture",
+        "adventure/exploration",
+        "history/military-ancient",
+        "science/storytelling"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.85
+        },
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.65
+        },
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.65
+        },
+        {
+          "node": "science/storytelling",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sherlock Holmes Bedtime Stories covers travel, exploration, history, military-ancient, music, busin.",
+      "display_title": "Sherlock Holmes Bedtime Stories",
+      "blurb": "Fall asleep with your favorite comfort bedtime stories: the complete Sherlock Holmes in timeline order.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-a7c7c9f0",
+      "classified_at": "2026-09-10T00:10:27.952Z"
     },
     "1687498245": {
       "topics": [
@@ -115514,11 +117341,50 @@
     },
     "1688422482": {
       "topics": [
-        "aviation"
+        "travel",
+        "business",
+        "computing",
+        "health",
+        "engineering/ai-robotics",
+        "adventure/exploration"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "health",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "On Centerline covers travel, exploration, business, computing, ai-robotics, health.",
+      "display_title": "On Centerline",
+      "blurb": "A show by aviators, for aviators.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-a7c7c9f0",
+      "classified_at": "2026-09-10T00:10:27.952Z"
     },
     "1688425643": {
       "topics": [
@@ -115591,11 +117457,50 @@
     },
     "1688757384": {
       "topics": [
-        "health/mental"
+        "history",
+        "computing",
+        "health",
+        "engineering/ai-robotics",
+        "culture",
+        "history/military-ancient"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "health",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        },
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Tony Mantor: Why Not Me ? covers history, military-ancient, computing, ai-robotics, culture, health.",
+      "display_title": "Tony Mantor: Why Not Me ?",
+      "blurb": "Autism, Mental Health, Advocacy & Human Stories.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-a7c7c9f0",
+      "classified_at": "2026-09-10T00:10:27.952Z"
     },
     "1688771176": {
       "topics": [
@@ -116027,11 +117932,60 @@
     },
     "1690569042": {
       "topics": [
-        "culture/books"
+        "travel",
+        "science",
+        "history",
+        "business",
+        "computing",
+        "engineering/ai-robotics",
+        "culture",
+        "science/storytelling"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.85
+        },
+        {
+          "node": "science",
+          "confidence": 0.8
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        },
+        {
+          "node": "science/storytelling",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Wilder covers travel, science, history, business, computing, ai-robotics, culture, storytelling.",
+      "display_title": "Wilder",
+      "blurb": "Jack Kerouac but make it a girl with braids.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-a7c7c9f0",
+      "classified_at": "2026-09-10T00:10:27.952Z"
     },
     "1690590101": {
       "topics": [
@@ -116373,11 +118327,75 @@
     },
     "1692120672": {
       "topics": [
-        "society"
+        "travel",
+        "music",
+        "sports",
+        "science",
+        "sports/basketball",
+        "business",
+        "computing",
+        "news",
+        "health",
+        "engineering/ai-robotics",
+        "culture"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.85
+        },
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports",
+          "confidence": 0.85
+        },
+        {
+          "node": "science",
+          "confidence": 0.8
+        },
+        {
+          "node": "sports/basketball",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.8
+        },
+        {
+          "node": "health",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "That Implementation Science Podcast covers travel, science, music, sports, basketball, business, co.",
+      "display_title": "That Implementation Science Podcast",
+      "blurb": "The innovation to implementation gap is 17 years.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-a7c7c9f0",
+      "classified_at": "2026-09-10T00:10:27.952Z"
     },
     "1692160997": {
       "topics": [
@@ -116396,11 +118414,65 @@
     },
     "1692238236": {
       "topics": [
-        "society"
+        "travel",
+        "comedy",
+        "sports",
+        "business",
+        "computing",
+        "health",
+        "engineering/ai-robotics",
+        "adventure/exploration",
+        "comedy/interviews"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "health",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.65
+        },
+        {
+          "node": "comedy/interviews",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "OnlyFantasy covers travel, exploration, comedy, interviews, sports, business, computing, ai-robotic.",
+      "display_title": "OnlyFantasy",
+      "blurb": "Leon Neyfakh is a journalist and podcaster best known as the co-creator and host of Slow Burn , Fiasco , and Backfired .",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-a7c7c9f0",
+      "classified_at": "2026-09-10T00:10:27.952Z"
     },
     "1692283261": {
       "topics": [
@@ -116420,19 +118492,107 @@
     },
     "1692397080": {
       "topics": [
-        "society/government"
+        "history",
+        "business",
+        "computing",
+        "news",
+        "news/politics",
+        "engineering/ai-robotics",
+        "culture",
+        "history/military-ancient"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        },
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sane(ish) with Jo Carducci covers history, military-ancient, business, computing, ai-robotics, cult.",
+      "display_title": "Sane(ish) with Jo Carducci",
+      "blurb": "Introducing \"Sane(ish)\" with JoJoFromJerz, where social media sensation and political firebrand Jo Carducci brings her signature sass, snark, and incisive analysis to a new series.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-a7c7c9f0",
+      "classified_at": "2026-09-10T00:10:27.952Z"
     },
     "1692413484": {
       "topics": [
-        "personal-journals"
+        "travel",
+        "comedy",
+        "science",
+        "culture",
+        "adventure/exploration",
+        "comedy/interviews"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.85
+        },
+        {
+          "node": "science",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.65
+        },
+        {
+          "node": "comedy/interviews",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Cut the Camera with the Sturniolo Triplets covers travel, exploration, science, comedy, interviews,.",
+      "display_title": "Cut the Camera with the Sturniolo Triplets",
+      "blurb": "Having lived in Boston their whole life and now balancing living in two places at once, Nick, Matt, and Chris aren't your everyday siblings.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-a7c7c9f0",
+      "classified_at": "2026-09-10T00:10:27.952Z"
     },
     "1692474364": {
       "topics": [
@@ -116624,11 +118784,75 @@
     },
     "1693322370": {
       "topics": [
-        "tv-film"
+        "comedy",
+        "music",
+        "sports",
+        "history",
+        "computing",
+        "health",
+        "engineering/ai-robotics",
+        "culture",
+        "history/military-ancient",
+        "comedy/interviews",
+        "science/storytelling"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.85
+        },
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "health",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        },
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.65
+        },
+        {
+          "node": "comedy/interviews",
+          "confidence": 0.6
+        },
+        {
+          "node": "science/storytelling",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "I've Never Said This Before With Tommy DiDario covers history, military-ancient, comedy, interviews.",
+      "display_title": "I've Never Said This Before With Tommy DiDario",
+      "blurb": "I 've Never Said This Before With Tommy DiDario goes to places that will surprise and delight you.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-a7c7c9f0",
+      "classified_at": "2026-09-10T00:10:27.952Z"
     },
     "1693323253": {
       "topics": [
@@ -116853,19 +119077,95 @@
     },
     "1694522910": {
       "topics": [
-        "education/courses"
+        "travel",
+        "adventure/exploration"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.85
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "The Spartan Orientation Station covers travel, exploration.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: 33w > 30"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-a7c7c9f0",
+      "classified_at": "2026-09-10T00:10:27.952Z"
     },
     "1694596050": {
       "topics": [
-        "business/non-profit"
+        "sports",
+        "science",
+        "history",
+        "computing",
+        "news",
+        "news/politics",
+        "engineering/ai-robotics",
+        "culture",
+        "history/military-ancient"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.85
+        },
+        {
+          "node": "science",
+          "confidence": 0.8
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        },
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Them Before Us Podcast covers science, history, military-ancient, sports, computing, ai-robotics, c.",
+      "display_title": "Them Before Us Podcast",
+      "blurb": "Join host Jennifer Friesen, Training Director at Them Before Us, along with the TBU team, as they cover politics, current events, and policy updates affecting children's rights.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-a7c7c9f0",
+      "classified_at": "2026-09-10T00:10:27.952Z"
     },
     "1694627544": {
       "topics": [
@@ -117223,11 +119523,45 @@
     },
     "1696314834": {
       "topics": [
-        "sports/endurance"
+        "sports",
+        "history",
+        "computing",
+        "engineering/ai-robotics",
+        "history/military-ancient"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        },
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Minnesota Swim and Vibecast covers history, military-ancient, sports, computing, ai-robotics.",
+      "display_title": "Minnesota Swim and Vibecast",
+      "blurb": "Minnesota Swim and Vibe creator talks about the value of a swimming community and how Minnesota Swim and Vibe is aiming to enhance it in the state of Minnesota.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-a7c7c9f0",
+      "classified_at": "2026-09-10T00:10:27.952Z"
     },
     "1696328318": {
       "topics": [
@@ -117467,11 +119801,55 @@
     },
     "1697476308": {
       "topics": [
-        "gaming"
+        "science",
+        "history",
+        "business",
+        "computing",
+        "engineering/ai-robotics",
+        "culture",
+        "science/storytelling"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.8
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        },
+        {
+          "node": "science/storytelling",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The 20 Questions Podcast Trivia Quiz covers science, history, business, computing, ai-robotics, cul.",
+      "display_title": "The 20 Questions Podcast Trivia Quiz",
+      "blurb": "Welcome to ”20 Questions?” - the ultimate challenge for general knowledge trivia enthusiasts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-a7c7c9f0",
+      "classified_at": "2026-09-10T00:10:27.952Z"
     },
     "1697515481": {
       "topics": [
@@ -117684,11 +120062,50 @@
     },
     "1698513192": {
       "topics": [
-        "tv-film"
+        "sports",
+        "history",
+        "computing",
+        "engineering/ai-robotics",
+        "culture",
+        "science/storytelling"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        },
+        {
+          "node": "science/storytelling",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "How Rude, Tanneritos! covers history, sports, computing, ai-robotics, culture, storytelling.",
+      "display_title": "How Rude, Tanneritos!",
+      "blurb": "How Rude, Tanneritos! A Full House Rewatch Podcast is here!! Stephanie Tanner and Kimmy Gibbler are a pivotal part of American pop culture.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-a7c7c9f0",
+      "classified_at": "2026-09-10T00:10:27.952Z"
     },
     "1698513266": {
       "topics": [
@@ -118511,11 +120928,50 @@
     },
     "1702258458": {
       "topics": [
-        "comedy"
+        "travel",
+        "comedy",
+        "sports",
+        "computing",
+        "news",
+        "engineering/ai-robotics"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Handsome covers travel, comedy, sports, computing, ai-robotics, news.",
+      "display_title": "Handsome",
+      "blurb": "\"Handsome\" is a podcast from comedians Tig Notaro, Fortune Feimster, and Mae Martin.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-a7c7c9f0",
+      "classified_at": "2026-09-10T00:10:27.952Z"
     },
     "1702344883": {
       "topics": [
