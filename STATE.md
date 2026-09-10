@@ -23,13 +23,13 @@ docs/. Completed workstreams move to their plan doc's retro section.
   account is invited under *Users and permissions*); the STATE.md-per-PR
   convention is met retroactively for #495 below. **R-07:** acceptance items
   1–2 recorded DONE against run 34381675121; item 3 (the Play email) waits on
-  R-08, now `HUMAN-ACTIONS.md` #43 with the literal Console path. Deck Status
+  R-08, now `HUMAN-ACTIONS.md` #44 with the literal Console path. Deck Status
   set to "landed except R-08 (human)".
 - **Touches:** `tools/mobile/android-workflow.test.mjs`, `test/suite-integrity.test.js`
   (floor 61 → 62), `.github/workflows/android-release.yml` (comments only —
-  governed path, needs the founder label), `HUMAN-ACTIONS.md` (#43 + the
+  governed path, needs the founder label), `HUMAN-ACTIONS.md` (#44 + the
   coordination note), `STATE.md`, `docs/releases.md`, `docs/release-lockstep-plan.md`.
-- **Not done here:** R-08 itself (a Console click, #43); R-02's leftover manual
+- **Not done here:** R-08 itself (a Console click, #44); R-02's leftover manual
   `version_code` dispatch input on `android-release.yml`, kept as the exception
   path's own knob.
 

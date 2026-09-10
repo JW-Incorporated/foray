@@ -2142,7 +2142,7 @@ does not re-derive it.
 
 ---
 
-### 43. Add the founders as Play testers, so Play actually emails you (R-08)
+### 44. Add the founders as Play testers, so Play actually emails you (R-08)
 
 **Tag:** `[BLOCKING]` for R-07's last acceptance item (a Play email per build)
 · **Time:** ~5 minutes · **Owner:** Wyatt/Joey · **Depends on:** #26

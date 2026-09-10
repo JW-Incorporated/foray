@@ -72,7 +72,7 @@ If a credential is ever missing again, `release.yml` still uploads iOS
 normally and prints a clear message explaining why the Android half was
 skipped — it does not fail the run, and it does not silently do nothing either.
 
-One more, for the email rather than the upload: **#43 — add the founders as
+One more, for the email rather than the upload: **#44 — add the founders as
 testers on the internal track.** Play notifies the testers on a track, not
 the developer account, so until that is done every build reaches Play and
 nobody is told. Still OPEN.

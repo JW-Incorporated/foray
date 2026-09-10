@@ -7,7 +7,7 @@ was built when this was drafted; see Status.*
 **Status:** landed except R-08 (human) — 2026-09-10. R-01..R-07 are verified on
 `main` (per-card **DONE** markers below, each naming its PR and, where one
 exists, the run that proves it). R-07's third acceptance item — the Play email
-— waits on R-08, which is `HUMAN-ACTIONS.md` #43: Play mails the testers on a
+— waits on R-08, which is `HUMAN-ACTIONS.md` #44: Play mails the testers on a
 track, not the developer, and the internal track has no testers yet. Drafted
 as *proposed* on the assumption that the human actions (Play Console setup, a
 Play API service account) would be late, so Track A shipped real improvements
@@ -134,7 +134,7 @@ loosen them silently).
 | Card | Gate | Ask | Acceptance |
 |---|---|---|---|
 | **R-07 · Play upload goes live** — S | G1, G2, G3 | Add the secret; run `release.yml` once on `main` | (1) Summary table green on both rows — **DONE**, run 34381675121 (2026-09-09, build 2026090908: `guard`/`version`/`ios`/`android`/`summary` all success). (2) Play Console internal track shows the build — **DONE**, same run: Android `Successfully committed 07040754008484552948` (first API upload was 2026090603 in run 34045806385; #41/#42 DONE). (3) Both store emails arrive for one build number — **waits on R-08**: TestFlight mails arrive per build, Play mails nobody until the track has testers |
-| **R-08 · Promote to a testing track with testers** — S | G1 | Decide internal vs closed track and add the founders' Google accounts as testers so Play actually *notifies* them (Play emails testers on the track, not the developer, for internal testing). **`HUMAN-ACTIONS.md` #43** has the literal Console path (Release → Testing → Internal testing → Testers) | Wyatt's inbox gets the Play mail — **OPEN (human)**, and it closes R-07's item 3 with it |
+| **R-08 · Promote to a testing track with testers** — S | G1 | Decide internal vs closed track and add the founders' Google accounts as testers so Play actually *notifies* them (Play emails testers on the track, not the developer, for internal testing). **`HUMAN-ACTIONS.md` #44** has the literal Console path (Release → Testing → Internal testing → Testers) | Wyatt's inbox gets the Play mail — **OPEN (human)**, and it closes R-07's item 3 with it |
 
 ## 4. Coordination with the longlive agent
 
