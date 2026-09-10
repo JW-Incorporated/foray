@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { existsSync, readFileSync } from "fs";
 import { join } from "path";
-import { sourceBeats, summarizeSourcing, deriveItemId, M4_ITEM_SHARE_MAX } from "../src/generation/sourceBeats";
+import { sourceBeats, summarizeSourcing, deriveItemId, M4_ITEM_SHARE_MAX, m4SegmentCapFor } from "../src/generation/sourceBeats";
 import { capArgumentBeats, deepenActs } from "../src/generation/deepenActs";
 import { buildResearchShape } from "../src/generation/researchShape";
 import { buildSpine } from "../src/generation/buildSpine";
@@ -362,12 +362,22 @@ describe("sourceBeats — Foray-wide assembly constraints", () => {
        ep-a at 1800 s, then 900 s, then 100 s, i.e. descending, which is exactly
        the M3 violation. An ascending fixture would let the ordering test pass
        with the guard deleted. */
+    /* SIX MORE EPISODES, ONE SEGMENT EACH, AFTER THE TWO THAT MATTER (F-70).
+       They are filler with a job: M4's cap is now measured against the tape
+       this Foray has PLACED (`m4SegmentCapFor`), so no episode may supply a
+       SECOND segment until the Foray holds eight, and with only ep-a and ep-b
+       in the pool every episode would be held to one — which would make the
+       ordering test below pass with the M3 clause deleted, because there would
+       never be two segments from one episode to get the order wrong. These
+       eight fill the Foray to the point where ep-a is asked a second time. */
+    const filler = ["ep-c", "ep-d", "ep-e", "ep-f", "ep-g", "ep-h"].map((item, i) => seg(`${item}#${300 + i}`, item, 300 + i));
     return [
       seg("ep-a#1800", "ep-a", 1800),
       seg("ep-a#900", "ep-a", 900),
       seg("ep-a#100", "ep-a", 100),
       seg("ep-b#1200", "ep-b", 1200),
-      seg("ep-b#200", "ep-b", 200)
+      seg("ep-b#200", "ep-b", 200),
+      ...filler
     ] as SegmentRecord[];
   }
 
@@ -377,7 +387,12 @@ describe("sourceBeats — Foray-wide assembly constraints", () => {
      so no episode can ever reach the M4 cap and no beat can ever collide with a
      used id. Both of those tests then passed with their own clause deleted —
      they were pinning M3. This fixture leaves room for six picks from `ep-a`,
-     so the cap (3 of 12 beats) genuinely binds and dedupe genuinely matters. */
+     so the cap genuinely binds and dedupe genuinely matters.
+
+     SIX SINGLE-SEGMENT EPISODES AT THE END, for the same reason `multiPool`
+     grew them (F-70): the cap is now a share of the PLACED tape, so ep-a is
+     not asked for a second segment until the Foray holds eight — and until it
+     is asked, neither the cap nor the dedupe clause has anything to refuse. */
   function ascendingPool(): SegmentRecord[] {
     const base = multiPool()[0]!;
     const seg = (item: string, start: number) =>
@@ -385,7 +400,9 @@ describe("sourceBeats — Foray-wide assembly constraints", () => {
     return [
       seg("ep-a", 100), seg("ep-a", 400), seg("ep-a", 700),
       seg("ep-a", 1000), seg("ep-a", 1300), seg("ep-a", 1600),
-      seg("ep-b", 200), seg("ep-b", 500)
+      seg("ep-b", 200), seg("ep-b", 500),
+      seg("ep-c", 300), seg("ep-d", 300), seg("ep-e", 300),
+      seg("ep-f", 300), seg("ep-g", 300), seg("ep-h", 300)
     ];
   }
 
@@ -412,11 +429,14 @@ describe("sourceBeats — Foray-wide assembly constraints", () => {
 
        MUTATION THAT KILLS THIS: drop the `usedSegmentIds.has(...)` clause from
        the isUsable predicate in resolveOneBeat. Ran it — red. */
-    /* TWELVE beats, not four. The M4 cap allows floor(12 * 0.25) = 3 segments
-       per episode; at four beats the cap alone held every episode to one, so
-       this test passed with the dedupe clause DELETED — it was pinning M4, not
-       dedupe. Measured: with the clause removed and twelve beats, the same
-       segment id is returned three times. */
+    /* TWELVE beats, not four, and a pool of eight episodes. At four beats the
+       M4 cap alone held every episode to one segment, so this test passed with
+       the dedupe clause DELETED — it was pinning M4, not dedupe. Under F-70's
+       cap the same trap moved rather than closing: an episode is not asked for
+       a second segment until the Foray holds eight, so a two-episode pool would
+       be just as vacuous. Twelve beats over eight episodes gets ep-a asked
+       again, and with the dedupe clause removed it hands back ep-a#100 — the
+       segment it already played — a second time. */
     const result = sourceBeats(identicalClaimActs(12), { segmentPool: ascendingPool(), transcriptArchive: [] });
     const ids = tapePointers(result).map((t) => t.segmentId);
     expect(ids.length).toBeGreaterThan(1);
@@ -431,9 +451,11 @@ describe("sourceBeats — Foray-wide assembly constraints", () => {
        MUTATION THAT KILLS THIS: drop the `segment.start_sec >= lastStart`
        clause. The pool is ordered so the matcher would otherwise be free to
        pick an earlier start after a later one. Ran it — red. */
-    /* Twelve beats for the same reason as the dedupe case: at five, the M4 cap
-       held each episode to one segment and there was no order to get wrong, so
-       this passed with the ordering clause deleted. */
+    /* Twelve beats over eight episodes, for the same reason as the dedupe case:
+       while the M4 cap holds each episode to one segment there is no order to
+       get wrong, and this passes with the ordering clause deleted. Once the
+       Foray holds eight segments ep-a is asked again, and the pool offers it
+       900 s after 1800 s has already played. */
     const result = sourceBeats(identicalClaimActs(12), { segmentPool: multiPool(), transcriptArchive: [] });
     const byItem = new Map<string, number[]>();
     for (const t of tapePointers(result)) {
@@ -446,24 +468,38 @@ describe("sourceBeats — Foray-wide assembly constraints", () => {
     }
   });
 
-  it("holds any one episode under the M4 share cap", () => {
+  it("holds any one episode under the M4 share cap, measured against the tape actually placed", () => {
     /* CHECKER ERROR THIS PREVENTS: 'M4 FAIL: "X" is 33.3 % of segments ...
        over the 25 % cap'. Sourcing can only bound the COUNT — runtime share is
        not known until stitching — and the count is what was failing.
 
-       MUTATION THAT KILLS THIS: drop the `usedCountByItem >= maxPerItem`
-       clause. With every beat making the same claim, one episode takes them
-       all. Ran it — red. */
+       THE DENOMINATOR IS THE PLACED TAPE COUNT, NOT THE BEAT COUNT (F-70). The
+       cap used to be `floor(totalBeats * 0.25)` fixed up front, which in run 2
+       attempt 4b read 6 for a Foray that ended up with 5 tape segments — a cap
+       that cannot bind. It is now a share of what has been placed, so this test
+       measures the same ratio `check-forays.mjs` measures.
+
+       MUTATION THAT KILLS THIS: drop the `m4ShareAllows` clause from
+       `tier1VetoFor`. With every beat making the same claim, ep-a takes six of
+       the twelve. Ran it — red. */
     const acts = identicalClaimActs(12);
     const result = sourceBeats(acts, { segmentPool: ascendingPool(), transcriptArchive: [] });
     const pointers = tapePointers(result);
     const counts = new Map<string, number>();
     for (const t of pointers) counts.set(t.itemId, (counts.get(t.itemId) ?? 0) + 1);
-    const cap = Math.max(1, Math.floor(12 * M4_ITEM_SHARE_MAX));
+    const cap = m4SegmentCapFor(pointers.length);
     for (const [item, n] of counts) {
       expect(n, `episode ${item} supplied ${n} of ${pointers.length} tape beats (cap ${cap})`).toBeLessThanOrEqual(cap);
+      /* And the same statement the checker would make, in the checker's own
+         terms — no episode over a quarter of the segments. */
+      expect(n / pointers.length, `episode ${item} is ${((n / pointers.length) * 100).toFixed(1)} % of the segments`).toBeLessThanOrEqual(
+        M4_ITEM_SHARE_MAX
+      );
     }
-    expect(pointers.length, "the cap must bind before the pool runs out, or this pins nothing").toBeGreaterThan(cap);
+    /* The cap must BIND, or this pins nothing: ep-a offers six segments to
+       twelve identical claims and must not have supplied them all. */
+    expect(pointers.length).toBeGreaterThan(cap);
+    expect(counts.get("ep-a")).toBeLessThan(6);
   });
 
   it("degrades a beat to narration rather than breaking a rule to keep tape", () => {
@@ -2408,6 +2444,192 @@ describe("sourceBeats — F-68: the seeded beat's OWN window is the first stretc
     expect(tier2.gate).toBe("window-overlap");
     expect(tier2.seededEpisode).toBe("pa-950");
     expect(tier2.seedWindowWon).toBe(false);
+  });
+});
+
+/* F-70: TIER 2 KEEPS THE SAME FORAY-WIDE LEDGER TIER 1 DOES.
+ *
+ * Run 2 attempt 4b was the first run to finish a Foray with tape in it, and
+ * `tools/foray/check-forays.mjs` refused it on both assembly rules at once:
+ *
+ *   M3 FAIL: practical-ai--federated-learning-in-production-part-2#953 plays at
+ *   953.015 s of "..." after a later segment from the same episode
+ *   M4 FAIL: "practical-ai--federated-learning-in-production-part-2" is 40.0 %
+ *   of segments and 42.2 % of runtime, over the 25 % cap
+ *
+ * Two seeded beats of one slot named one episode — windows at 1925-2020 s and
+ * 1019-1101 s — and tier 2, which MINTS a segment rather than picking one out of
+ * the pool, consulted none of the ledgers tier 1 has kept since the pipeline's
+ * first end-to-end run. The cases below are that Foray in miniature. */
+describe("sourceBeats — F-70: tier 2 obeys M3 and M4, the same ledger tier 1 keeps", () => {
+  const seeded: TranscriptDigestEntry = {
+    show_id: "practical-ai",
+    show_title: "Practical AI",
+    guid: "pa-950",
+    title: "Episode 950",
+    cues: 7,
+    feed_duration_sec: 3600,
+    enclosure_url: "https://cdn.example/pa-950.mp3"
+  };
+
+  /** A SECOND episode carrying the same claim — so "refused" can be told from
+   * "gave up". Tier 1 falls through to the next candidate rather than dropping
+   * to narration, and tier 2 must do the same. */
+  const other: TranscriptDigestEntry = { ...seeded, guid: "pa-951", title: "Episode 951", enclosure_url: "https://cdn.example/pa-951.mp3" };
+
+  /** Five content words: gearboxes, fail, bearings, torque, reversals. */
+  const claim = "Gearboxes fail because bearings take torque reversals.";
+
+  /* Two stretches of ONE episode, both about the claim — 100-160 s says three
+     of its five words, 300-360 s says all five. Exactly the shape of the two
+     *Practical AI* windows that broke M3. */
+  const cues: TranscriptCue[] = [
+    { text: "welcome back to the programme we are in denmark this week", start_sec: 0, end_sec: 30 },
+    { text: "the gearboxes here are the part that gives everybody trouble", start_sec: 100, end_sec: 120 },
+    { text: "and it is the bearings that give up first on almost all of them", start_sec: 120, end_sec: 140 },
+    { text: "you get a lot of torque coming back the other direction as well", start_sec: 140, end_sec: 160 },
+    { text: "the gearboxes fail well before the design life says they should", start_sec: 300, end_sec: 320 },
+    { text: "bearings crack under torque that keeps switching direction on them", start_sec: 320, end_sec: 340 },
+    { text: "and those reversals were never in the original load case at all", start_sec: 340, end_sec: 360 }
+  ];
+
+  type Seed = { episodeId: string; startSec: number; endSec: number };
+  const gearboxBeat = (seed: Seed) => ({ claim, exploration: false, kind: "account" as const, seed });
+
+  /* SEVEN TIER-1 BEATS TO FILL THE FORAY FIRST, for the M3 case only. M4's cap
+     is a share of the tape PLACED (`m4SegmentCapFor`), so an episode is not
+     allowed a second segment until the Foray holds eight — which means that in
+     a two-beat Foray the M4 gate would refuse the second window before the
+     order rule was ever asked, and the M3 case would pass for the wrong reason.
+     These seven come from seven DIFFERENT episodes through tier 1, which shares
+     the same ledger, so by the time the two gearbox beats are sourced the Foray
+     is full enough for M4 to permit a second *Practical AI* window and M3 to be
+     the only thing that can refuse it. */
+  const fillerClaim = "The Lawson criterion is a statement about tokamak plasma confinement.";
+  const fillerPool = (): SegmentRecord[] =>
+    Array.from({ length: 7 }, (_v, i) => ({
+      ...fixtureSegmentPool()[0]!,
+      id: `filler-${i}#100`,
+      item_id: `filler-${i}`,
+      start_sec: 100,
+      end_sec: 220
+    }));
+
+  function run(beats: Array<{ claim: string; exploration: boolean; kind?: "account"; seed?: Seed }>, archive: TranscriptDigestEntry[]) {
+    const cuesByGuid: Record<string, TranscriptCue[]> = { "pa-950": cues, "pa-951": cues };
+    return sourceBeats([makeDeepenedAct({ slots: [{ title: "Gearboxes", beats }] }, "F70")], {
+      segmentPool: fillerPool(),
+      transcriptArchive: archive,
+      cueProvider: { getCues: (e) => cuesByGuid[e.guid] ?? null },
+      textIndex: memoryTextIndex(archive, cuesByGuid)
+    });
+  }
+
+  const fillerBeats = (n: number) => Array.from({ length: n }, () => ({ claim: fillerClaim, exploration: false }));
+
+  it("refuses a second window that sits EARLIER in an episode already joined later (M3)", () => {
+    /* CHECKER ERROR THIS PREVENTS: the M3 FAIL quoted above, verbatim from run
+       2 attempt 4b. The first gearbox beat is seeded to 300-360 s; the second is
+       seeded to 100-160 s, which is real tape about the claim and which tier 2
+       would have minted and played after it.
+
+       MUTATION THAT KILLS THIS: delete the `m3OrderAllows` check from the
+       tier-2 walk in `sourceBeats.ts`. The second beat then mints
+       `practical-ai--episode-950#100` and plays it after #300 — the finding
+       itself. Ran it — red. */
+    const result = run(
+      [...fillerBeats(7), gearboxBeat({ episodeId: "pa-950", startSec: 300, endSec: 360 }), gearboxBeat({ episodeId: "pa-950", startSec: 100, endSec: 160 })],
+      [seeded]
+    );
+    const beats = allSourcedBeats(result.acts);
+    expect(beats[7]!.sourcing).toBe("tape");
+    expect(result.newSegments).toHaveLength(1);
+    expect(result.newSegments[0]!.startSec).toBe(300);
+
+    expect(beats[8]!.sourcing).toBe("narration");
+    const trace = result.sourcingTrace.find((t) => t.beatIndex === 8)!;
+    expect(trace.tier2!.gate).toBe("m3-order");
+    /* The trace still says WHICH episode and WHICH window was refused — the
+       whole point of naming a gate rather than reporting "no tape". */
+    expect(trace.tier2!.bestEpisodeTitle).toBe("Episode 950");
+    expect(trace.tier2!.windowStartSec).toBe(100);
+    expect(trace.tier2!.seededEpisode).toBe("pa-950");
+  });
+
+  it("falls through to the next candidate episode rather than dropping to narration (M3)", () => {
+    /* Tier 1's rule, applied to tier 2: an assembly veto sends the search on to
+       the next candidate, it does not end it. Same two beats, same seeds — the
+       only difference is that the archive now holds a second episode saying the
+       same thing, and the refused beat takes ITS tape. */
+    const result = run(
+      [...fillerBeats(7), gearboxBeat({ episodeId: "pa-950", startSec: 300, endSec: 360 }), gearboxBeat({ episodeId: "pa-950", startSec: 100, endSec: 160 })],
+      [seeded, other]
+    );
+    const beats = allSourcedBeats(result.acts);
+    expect(beats[8]!.sourcing).toBe("tape");
+    if (beats[8]!.sourcing === "tape") {
+      expect(beats[8]!.tape.itemId).toBe("practical-ai--episode-951");
+    }
+    expect(result.newSegments).toHaveLength(2);
+  });
+
+  it("refuses a second window from an episode already at its M4 share (M4)", () => {
+    /* CHECKER ERROR THIS PREVENTS: the M4 FAIL quoted above — one episode at
+       40 % of a five-segment Foray. Both beats are seeded to the same episode
+       and the windows are in ASCENDING order this time, so M3 has nothing to
+       say: the share cap is the only thing that can refuse the second, and with
+       two segments placed a second from one episode would be 100 % of them.
+
+       MUTATION THAT KILLS THIS: delete the `m4ShareAllows` check from the
+       tier-2 walk. The second beat mints a second *Practical AI* segment and
+       the Foray is 2/2 from one episode. Ran it — red. */
+    const result = run(
+      [gearboxBeat({ episodeId: "pa-950", startSec: 100, endSec: 160 }), gearboxBeat({ episodeId: "pa-950", startSec: 300, endSec: 360 })],
+      [seeded]
+    );
+    const beats = allSourcedBeats(result.acts);
+    expect(beats[0]!.sourcing).toBe("tape");
+    expect(result.newSegments).toHaveLength(1);
+    expect(result.newSegments[0]!.startSec).toBe(100);
+
+    expect(beats[1]!.sourcing).toBe("narration");
+    const trace = result.sourcingTrace.find((t) => t.beatIndex === 1)!;
+    expect(trace.tier2!.gate).toBe("m4-share");
+    /* Refused BEFORE the body is opened, so there is no window to report — the
+       answer is the same for every window of an episode already at its share. */
+    expect(trace.tier2!.windowStartSec).toBeUndefined();
+  });
+
+  it("falls through to another episode when the seeded one is at its M4 share", () => {
+    const result = run(
+      [gearboxBeat({ episodeId: "pa-950", startSec: 100, endSec: 160 }), gearboxBeat({ episodeId: "pa-950", startSec: 300, endSec: 360 })],
+      [seeded, other]
+    );
+    const beats = allSourcedBeats(result.acts);
+    expect(beats[1]!.sourcing).toBe("tape");
+    if (beats[1]!.sourcing === "tape") {
+      expect(beats[1]!.tape.itemId).toBe("practical-ai--episode-951");
+    }
+  });
+
+  it("names the new gates in the slot summary and the narration reason, like any other refusal", () => {
+    /* `summarizeSourcing` is what a person watching a run reads, and a beat
+       refused by an assembly rule must not be reported as "no tape found
+       anywhere" — the tape was found, this Foray could not take it. */
+    const result = run(
+      [gearboxBeat({ episodeId: "pa-950", startSec: 100, endSec: 160 }), gearboxBeat({ episodeId: "pa-950", startSec: 300, endSec: 360 })],
+      [seeded]
+    );
+    expect(summarizeSourcing(result).some((line) => line.includes("top reason: tier2:m4-share"))).toBe(true);
+
+    const narrated = allSourcedBeats(result.acts)[1]!;
+    expect(narrated.sourcing).toBe("narration");
+    if (narrated.sourcing === "narration") {
+      expect(narrated.narration.reason).toContain("quarter of its segments");
+    }
+    /* And the transcription queue does not ask for work that would not help:
+       the archive already had the tape. */
+    expect(result.transcriptionQueueCandidates[0]!.reason).toContain("Nothing to transcribe");
   });
 });
 

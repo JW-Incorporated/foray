@@ -1,4 +1,6 @@
 import type { ForayItem } from "./forayItems";
+import type { MintedSegmentSource } from "./audioSourceLookup";
+import type { NewSegment } from "../types/tapeSourcing";
 import { finalizeForay, type FinalizeForayInput, type FinalizeForayResult, type FinalizeForayValidation, type ForaySlot } from "./finalizeForay";
 
 /**
@@ -105,6 +107,30 @@ export interface PartialCandidateMeta {
   authorId: string;
   /** ISO date string, matching `FinalizeForayInput.builtAt`. */
   builtAt: string;
+  /**
+   * THIS RUN'S MINTED §4.5 TIER-2 TAPE, TRAVELLING WITH THE PARTIAL CANDIDATE
+   * TOO (F-71) — the same `sourced.newSegments` / `sourced.newSegmentSources`
+   * `runPipeline.ts` puts on the whole-Foray `FinalizeForayInput`, and for the
+   * identical reason (see `FinalizeForayInput.segments`): a tier-2 pointer names
+   * a segment that is not in `data/segments.json` yet, so a checker handed only
+   * the on-disk pool cannot resolve it.
+   *
+   * WHAT LEAVING THEM OUT COST. Run 2 attempt 4b was the first run to source any
+   * tier-2 tape, and its partial candidate came back with five `unknown segment_id
+   * "practical-ai--federated-learning-in-production-part-2#1962" — not in
+   * data/segments.json` errors and then "no resolvable segment items", while the
+   * FINAL candidate — built from the same items, with these two fields — resolved
+   * all five. A partial candidate whose validation fails on tape the Foray really
+   * has is not a preview of anything; it says the streaming path is broken when
+   * what is broken is the input it was handed. On the meta: these are run-level,
+   * not per-act, which is why they sit here beside `builtAt` and `root` rather
+   * than in `PartialActInfo`.
+   *
+   * Optional, so a caller that sourced no tier-2 tape (and every test written
+   * before F-71) passes nothing and gets exactly today's behaviour.
+   */
+  segments?: NewSegment[];
+  segmentSources?: MintedSegmentSource[];
   /** Repo root, forwarded to `finalize` exactly as `runPipeline.ts` forwards
    * it to the whole-Foray `finalize` call. */
   root?: string;
@@ -134,7 +160,12 @@ export async function buildPartialCandidate(info: PartialActInfo, meta: PartialC
     slots: info.slots,
     items: info.items,
     runtimeSec: info.runtimeSec,
-    builtAt: meta.builtAt
+    builtAt: meta.builtAt,
+    /* F-71 — see `PartialCandidateMeta.segments`. The partial candidate is
+       validated against the same pool the final one is, so it fails and passes
+       on the same rules instead of on which segments the checker could see. */
+    segments: meta.segments,
+    segmentSources: meta.segmentSources
   };
   const result = await finalize(finalizeInput, meta.root);
 

@@ -29,6 +29,50 @@ import {
 /** check-forays' M4 cap, mirrored. The checker stays the authority; this only
     keeps sourcing from building something it will certainly reject. */
 export const M4_ITEM_SHARE_MAX = 0.25;
+
+/**
+ * HOW MANY SEGMENTS ONE EPISODE MAY SUPPLY, given how many tape segments this
+ * Foray has PLACED so far. The single place either tier asks the question
+ * (F-70).
+ *
+ * WHY THE DENOMINATOR IS THE PLACED TAPE COUNT AND NOT THE BEAT COUNT. M4 is a
+ * share of the FINAL Foray's segments, and sourcing cannot know that number
+ * while it is still deciding beat by beat. Until F-70 this was derived from the
+ * total BEAT count up front — `max(1, floor(totalBeats * 0.25))` — and that is
+ * the wrong denominator by roughly the tape-hit rate: run 2 attempt 4b sourced
+ * 5 tape segments from 24 beats, so the cap read 6 while the number that
+ * mattered was 1. Two segments from *Practical AI* sailed through and the
+ * checker reported "40.0 % of segments and 42.2 % of runtime, over the 25 %
+ * cap". A cap that cannot bind is not a cap.
+ *
+ * WHY ASKING IT AT PLACEMENT TIME IS SAFE. `floor(placed * 0.25)` never
+ * DECREASES as the Foray grows, so a second segment admitted when the count
+ * would be `n` of `p` stays admissible at every larger `p`. Every later
+ * placement is re-asked against its own, larger denominator. So the invariant
+ * "no episode is over its share" holds at the end without sourcing ever
+ * needing to know where the end is — and the concrete rule that falls out is
+ * readable: an episode's SECOND segment needs `floor(p * 0.25) >= 2`, i.e. a
+ * Foray holding at least 8 tape segments; its third needs 12.
+ *
+ * `max(1, …)` is the exemption every episode gets for its FIRST segment. A
+ * Foray with 3 tape segments fails M4's count clause whichever episodes they
+ * came from (1/3 is 33 %), and the answer to that is more tape, not less —
+ * refusing an episode's only segment would take the Foray further from the
+ * cap, not closer. So this bounds over-representation, which is what M4 is
+ * about and what was actually failing; it does not pretend to make a
+ * tape-starved Foray pass.
+ *
+ * RUNTIME IS DELIBERATELY NOT GATED HERE. M4 also caps an episode's share of
+ * tape SECONDS, and with one segment per episode that share is decided by how
+ * long each window happens to be — a single long segment among four short ones
+ * is over 25 % of runtime with no episode repeated. Refusing an episode's only
+ * segment for being long would cost the Foray tape without moving any other
+ * episode's share, so sourcing bounds the count and `check-forays.mjs` remains
+ * the authority on the runtime clause, exactly as before.
+ */
+export function m4SegmentCapFor(placedTapeSegments: number): number {
+  return Math.max(1, Math.floor(placedTapeSegments * M4_ITEM_SHARE_MAX));
+}
 import {
   findTier1Match,
   loadSegmentPool,
@@ -203,24 +247,11 @@ export function sourceBeats(deepenedActs: DeepenedAct[], options: SourceBeatsOpt
      A set scoped to a slot or an act would satisfy neither. */
   const usedSegmentIds = new Set<string>();
   const lastStartByItem = new Map<string, number>();
-  /* M4: no single episode may be more than a quarter of a Foray. The checker
-     measures share of segments AND of runtime; sourcing can only bound the
-     first, because it places beats one at a time and does not know the final
-     runtime until stitching. Bounding the count is what is available here and
-     it is what was actually failing ("33.3 % of segments and 33.0 % of
-     runtime") — the two track each other closely enough that holding the count
-     under the cap holds the runtime under it too in practice, and check-forays
-     remains the authority either way.
-
-     The cap is computed from the total beat count up front rather than adjusted
-     as the Foray grows: a running denominator would let the first episode take
-     three beats before the fourth beat made three too many, which is how a
-     greedy cap ends up over the line at the end. */
-  const totalBeats = deepenedActs.reduce(
-    (n, act) => n + act.slots.reduce((m, slot) => m + slot.beats.length, 0),
-    0
-  );
-  const maxPerItem = Math.max(1, Math.floor(totalBeats * M4_ITEM_SHARE_MAX));
+  /* M4: no single episode may be more than a quarter of a Foray — see
+     `m4SegmentCapFor` for the cap, its denominator, and why the denominator is
+     the count of tape segments PLACED rather than the beat count it used to be
+     (F-70). `placedTapeCount` is that denominator: every tape placement, tier 1
+     or tier 2, increments it. */
   const usedCountByItem = new Map<string, number>();
 
   const forayTopic = options.topic ?? null;
@@ -240,7 +271,7 @@ export function sourceBeats(deepenedActs: DeepenedAct[], options: SourceBeatsOpt
     usedSegmentIds,
     lastStartByItem,
     usedCountByItem,
-    maxPerItem
+    placedTapeCount: 0
   };
   const tapeRelevance: TapeRelevanceInput[] = [];
   /* One row per narration-degraded beat, saying what each tier saw and which
@@ -401,7 +432,9 @@ interface SourcingState {
   usedSegmentIds: Set<string>;
   lastStartByItem: Map<string, number>;
   usedCountByItem: Map<string, number>;
-  maxPerItem: number;
+  /** How many tape segments this Foray has placed — M4's denominator. Mutated
+   * by `placeTape`, which is the only thing allowed to move any of these. */
+  placedTapeCount: number;
 }
 
 /** The trace rows a narration-degraded beat carries out with it — the caller
@@ -438,15 +471,49 @@ function tier1VetoFor(segment: SegmentRecord, state: SourcingState): Exclude<Tie
   /* Already spoken for by an earlier beat of this Foray — F-29's "exhaustion of
      the one relevant episode", which is what sent run 1 to a griddle segment. */
   if (state.usedSegmentIds.has(segment.id)) return "exhausted";
-  if ((state.usedCountByItem.get(segment.item_id) ?? 0) >= state.maxPerItem) return "m4-share";
-  const lastStart = state.lastStartByItem.get(segment.item_id);
-  // Same episode, earlier in the tape than one already placed -> M3 violation.
-  if (lastStart !== undefined && segment.start_sec < lastStart) return "m3-order";
+  if (!m4ShareAllows(segment.item_id, state)) return "m4-share";
+  if (!m3OrderAllows(segment.item_id, segment.start_sec, state)) return "m3-order";
   return null;
 }
 
 function tier1IsUsable(segment: SegmentRecord, state: SourcingState): boolean {
   return tier1VetoFor(segment, state) === null;
+}
+
+/* THE TWO FORAY-WIDE ASSEMBLY RULES, ASKED THE SAME WAY BY BOTH TIERS (F-70).
+   They were inline in `tier1VetoFor` and tier 2 — which MINTS a segment rather
+   than picking one from the pool — never asked them at all. Run 2 attempt 4b is
+   what that costs: two seeded beats in one slot both took tape from *Practical
+   AI: Federated learning in production, part 2*, the later beat's window
+   (1019-1101 s) placed after the earlier beat's (1925-2020 s), and the finished
+   Foray failed check-forays on M3 AND on M4 with one episode at 40 % of its
+   segments. Extracted here so there is one statement of each rule and both
+   tiers call it. */
+
+/** Whether one more segment from `itemId` keeps the episode inside M4's share
+ * of this Foray — see `m4SegmentCapFor` for why the question is asked against
+ * the count this placement would make it, not against a cap fixed up front. */
+function m4ShareAllows(itemId: string, state: SourcingState): boolean {
+  const used = state.usedCountByItem.get(itemId) ?? 0;
+  return used + 1 <= m4SegmentCapFor(state.placedTapeCount + 1);
+}
+
+/** Whether a segment starting at `startSec` may follow what this Foray has
+ * already placed from the same episode: M3 asks that segments from one episode
+ * play in ascending time order, and beats are placed in playing order here. */
+function m3OrderAllows(itemId: string, startSec: number, state: SourcingState): boolean {
+  const lastStart = state.lastStartByItem.get(itemId);
+  return lastStart === undefined || startSec >= lastStart;
+}
+
+/** Writes one tape placement into every Foray-wide ledger. The ONLY place they
+ * move, so the two tiers cannot drift apart on what "placed" means — which is
+ * exactly how tier 2 came to consult none of them. */
+function placeTape(segmentId: string, itemId: string, startSec: number, state: SourcingState): void {
+  state.usedSegmentIds.add(segmentId);
+  state.lastStartByItem.set(itemId, startSec);
+  state.usedCountByItem.set(itemId, (state.usedCountByItem.get(itemId) ?? 0) + 1);
+  state.placedTapeCount += 1;
 }
 
 /** What tier 1 saw, once it has decided it has nothing (F-49). Must be called
@@ -510,9 +577,7 @@ function resolveOneBeat(beat: Beat, state: SourcingState): BeatResolution {
   // created here.
   const tier1 = findTier1Match(claim, state.segmentPool, (segment) => tier1IsUsable(segment, state), { windowText: state.windowText });
   if (tier1) {
-    state.usedSegmentIds.add(tier1.segment.id);
-    state.lastStartByItem.set(tier1.segment.item_id, tier1.segment.start_sec);
-    state.usedCountByItem.set(tier1.segment.item_id, (state.usedCountByItem.get(tier1.segment.item_id) ?? 0) + 1);
+    placeTape(tier1.segment.id, tier1.segment.item_id, tier1.segment.start_sec, state);
     return {
       kind: "tape",
       /* A pool segment is not the seeded episode's minted window even when it
@@ -567,6 +632,26 @@ function resolveOneBeat(beat: Beat, state: SourcingState): BeatResolution {
 
   let furthest: Tier2Progress | null = null;
   for (const candidate of candidates) {
+    const itemId = deriveItemId(candidate.entry);
+    /* THE SAME LEDGER TIER 1 KEEPS (F-70). Tier 2 mints its own segment instead
+       of picking one out of the pool, and until now that let it walk straight
+       past the two Foray-wide assembly rules tier 1 has enforced since the
+       pipeline's first end-to-end run — including for the SEEDED candidate the
+       walk now puts first, which is how run 2 attempt 4b put two windows of one
+       *Practical AI* episode in one slot, backwards.
+
+       Share is asked HERE, before the episode's body is opened, because it
+       depends on nothing the search finds — the answer is the same for every
+       window of this episode, and refusing early spends no work on tape the
+       Foray cannot take. Order is asked further down, on the cut span, because
+       that is the first point at which the minted segment has a real start
+       time. Both refusals fall through to the next candidate exactly as tier
+       1's do: a Foray already full of one episode should take another
+       episode's tape, not narration. */
+    if (!m4ShareAllows(itemId, state)) {
+      furthest = furtherOf(furthest, { candidate, gate: "m4-share" });
+      continue;
+    }
     const cues = state.cueProvider.getCues(candidate.entry);
     if (!cues) {
       furthest = furtherOf(furthest, { candidate, gate: "no-body" });
@@ -611,7 +696,16 @@ function resolveOneBeat(beat: Beat, state: SourcingState): BeatResolution {
       furthest = furtherOf(furthest, { candidate, gate: "no-anchor", window });
       continue;
     }
-    const itemId = deriveItemId(candidate.entry);
+    /* AND THE ORDER RULE, ON THE SPAN'S OWN START (F-70). M3 is about where a
+       segment sits in its episode, so it can only be asked once the window has
+       been cut to cue boundaries and the minted segment has its real start
+       time. Asked BEFORE the audio-source resolution below so a candidate this
+       Foray cannot use never writes a `data/segment-sources.json` row for an
+       episode no segment ends up coming from. */
+    if (!m3OrderAllows(itemId, span.startSec, state)) {
+      furthest = furtherOf(furthest, { candidate, gate: "m3-order", window, span });
+      continue;
+    }
     /* TAPE NOTHING CAN PLAY IS NOT TAPE. A minted segment is a pointer into an
        episode's audio, and `check-forays.mjs` refuses a pool item id with no
        `data/segment-sources.json` row ("nothing can resolve its audio"). So the
@@ -641,6 +735,7 @@ function resolveOneBeat(beat: Beat, state: SourcingState): BeatResolution {
       endAnchor: span.endAnchor,
       confidence: "medium"
     });
+    placeTape(segmentId, itemId, span.startSec, state);
     return {
       kind: "tape",
       fromSeed: candidate.fromSeed === true,
@@ -707,14 +802,20 @@ const TIER2_GATE_PROGRESS: Record<Tier2Gate, number> = {
   "text-index:no-candidate": 0,
   lineage: 1,
   "title-tokens": 2,
-  "no-body": 3,
+  /* F-70's two assembly gates sit where the walk actually asks them: `m4-share`
+     before the body is opened, `m3-order` after the span is cut. Ordering them
+     by where they are asked keeps this table a description of the loop rather
+     than a second opinion about it. */
+  "m4-share": 3,
+  "no-body": 4,
   /* `window-overlap` now comes FIRST of the two tape gates and `no-anchor`
      after it, because F-61 swapped their order: relevance is decided on the
      window, and only a window that passed is asked for anchors. A beat that
      reached `no-anchor` therefore got further than one that did not. */
-  "window-overlap": 4,
-  "no-anchor": 5,
-  "no-audio-source": 6
+  "window-overlap": 5,
+  "no-anchor": 6,
+  "m3-order": 7,
+  "no-audio-source": 8
 };
 
 function furtherOf(current: Tier2Progress | null, next: Tier2Progress): Tier2Progress {
@@ -864,6 +965,15 @@ function tier2TraceFor(
 /** The narration reason a beat carries into §4.7, keyed to how far tier 2 got. */
 function narrationReasonFor(furthest: Tier2Progress | null): string {
   switch (furthest?.gate) {
+    /* F-70: these two say the tape exists and this FORAY cannot take it, which
+       is a different thing from the archive having nothing — and the narration
+       reason travels into §4.7, where a writer reading "no tape found" for a
+       beat whose episode is already in the Foray twice would be reading a
+       falsehood. */
+    case "m4-share":
+      return "Tape for this beat is in an episode this Foray already draws a quarter of its segments from, so taking more would unbalance it.";
+    case "m3-order":
+      return "Tape for this beat was found earlier in an episode this Foray has already joined later, so playing it here would run the episode backwards.";
     case "no-audio-source":
       return "Tape was found for this beat but its episode's audio cannot be resolved, so it cannot be played.";
     case "window-overlap":
@@ -887,6 +997,17 @@ function transcriptionQueueRow(claim: string, furthest: Tier2Progress | null): T
   const { candidate, gate, window } = furthest;
   const found = candidate.text ? "Transcript text matched" : "Transcript-archive metadata matched";
   switch (gate) {
+    /* F-70: NOT a transcription gap. Nothing about transcribing more tape would
+       change either answer — the archive already had what this beat needed and
+       the Foray's own assembly rules refused it — so the row says so plainly
+       rather than implying work that would not help. */
+    case "m4-share":
+    case "m3-order":
+      return {
+        claim,
+        showId: candidate.entry.show_id,
+        reason: `${found} ("${candidate.entry.title}") and the tape is usable, but this Foray's own assembly rules refused it (${gate === "m4-share" ? "the episode already supplies its quarter of the segments" : "the window sits earlier in an episode already joined later"}). Nothing to transcribe.`
+      };
     case "no-audio-source":
       return {
         claim,

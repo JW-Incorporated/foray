@@ -693,4 +693,46 @@ describe("runForayPipeline — each act is stitched as soon as it is narrated (F
     expect(smoothCalls).toBe(0);
     expect(second.input.items).toEqual(first.input.items);
   });
+
+  it("validates every partial candidate against the same minted tier-2 tape the final one gets (F-71)", async () => {
+    /* THE FINDING. Run 2 attempt 4b's partial candidate reported five `unknown
+       segment_id ... — not in data/segments.json` errors and then "no
+       resolvable segment items", while the FINAL candidate resolved all five
+       and failed on M3/M4 instead. Same items, same checker, different input:
+       `buildPartialCandidate`'s finalize call was not handed `sourced.newSegments`
+       / `sourced.newSegmentSources`, and a segment cut from a transcript during
+       the run is in neither `data/segments.json` nor the registry on disk.
+
+       IDENTITY, NOT EQUALITY. Both calls must be handed the very arrays this
+       run's §4.5 produced — asserting `toBe` against `out.input.segments` says
+       the partial path reads the same source as the whole-Foray path rather
+       than something reconstructed beside it, and it says so on a stub run that
+       mints nothing (where every other assertion would be two empty arrays
+       agreeing by accident).
+
+       MUTATION THAT KILLS THIS: drop `segments`/`segmentSources` from the
+       `buildPartialCandidate` meta literal in `runPipeline.ts` — the pre-F-71
+       code. The partial inputs then carry `undefined` while the final one
+       carries the arrays. Ran it — red. */
+    const finalize = recordingFinalize();
+    let partials = 0;
+    const out = await runForayPipeline(multiAct, options, {
+      ...stubDeps(),
+      finalize: finalize.fn,
+      onActReady: () => {
+        partials++;
+      }
+    });
+
+    expect(out.outcome).toBe("generated");
+    if (out.outcome !== "generated") return;
+    expect(partials).toBeGreaterThan(1);
+    /* One finalize per act (the partial candidates) plus the whole-Foray one at
+       the end — every one of them handed the same pool. */
+    expect(finalize.seen).toHaveLength(partials + 1);
+    for (const input of finalize.seen) {
+      expect(input.segments).toBe(out.input.segments);
+      expect(input.segmentSources).toBe(out.input.segmentSources);
+    }
+  });
 });

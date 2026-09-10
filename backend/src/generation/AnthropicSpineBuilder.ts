@@ -192,6 +192,15 @@ function buildSpinePrompt(intent: IntentUnderstanding, researchShape: ResearchSh
   /* ONE RULE, ADDED ONLY WHEN THERE IS TAPE TO OBEY IT WITH. A subject the
      archive is silent on keeps exactly today's prompt — §4.2's guardrail again:
      tape is a signal, never a filter. */
+  /* AND WHICH EPISODES THE SEEDS IN ONE SLOT MAY COME FROM (F-70). A Foray may
+     not draw more than a quarter of its segments from one episode (M4) and may
+     not play one episode's tape backwards (M3), and run 2 attempt 4b broke both
+     at once: two seeded beats in one slot named the SAME *Practical AI*
+     episode, the later beat quoting the earlier stretch of it. The mechanical
+     guarantee is `sourceBeats.ts`'s ledger, which now refuses the second window
+     in either case — this paragraph exists so the spine stops asking for tape
+     that will be refused, and spreads its seeds instead. Guidance, not a gate:
+     a subject whose tape lives in one episode still gets a spine. */
   const seedRule =
     windowLines.length === 0
       ? []
@@ -200,7 +209,12 @@ function buildSpinePrompt(intent: IntentUnderstanding, researchShape: ResearchSh
           `Every act must carry at least ${SPINE_MIN_SEEDED_BEATS_PER_ACT} beats whose claim states something one of the quoted`,
           "windows above actually says. Each of those beats carries \"seed\": {\"episodeId\": ..., \"startSec\": ...,",
           "\"endSec\": ...} copied from the bracketed window it was written from. Beats written from anything else",
-          "omit \"seed\"."
+          "omit \"seed\".",
+          "",
+          "Spread the seeds across EPISODES: within one slot, seeded beats must name DIFFERENT episodeIds",
+          "wherever the windows above allow it — no episode can supply more than a quarter of the finished",
+          "Foray's tape. If a slot really must seed two beats from the SAME episode, put them in the order the",
+          "tape says them: the beat seeded from the earlier startSec comes first."
         ];
 
   return [

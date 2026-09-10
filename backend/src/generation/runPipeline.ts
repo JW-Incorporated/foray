@@ -434,7 +434,9 @@ const SourcingTraceSchema = z.object({
       bestEpisodeTitle: z.string().nullable(),
       score: z.number(),
       requiredScore: z.number(),
-      gate: z.enum(["text-index:no-candidate", "title-tokens", "lineage", "no-body", "no-anchor", "window-overlap", "no-audio-source"]),
+      /* `m4-share`/`m3-order` are F-70's: tier 2 now keeps the same Foray-wide
+         ledger tier 1 does, so its trace can name the same two gates. */
+      gate: z.enum(["text-index:no-candidate", "title-tokens", "lineage", "no-body", "no-anchor", "window-overlap", "no-audio-source", "m4-share", "m3-order"]),
       /* F-61: the window search's own numbers, and the anchors minted from the
          tape. Optional, like the WS-H fields below, so a checkpoint written
          before this change still parses on resume. */
@@ -920,7 +922,22 @@ export async function runForayPipeline(
                 runtimeSec: runtimeSecFor(itemsWithDisclosure, runtimePool),
                 ttlA1Ms
               },
-              { id: forayId, title, topic, summary, authorId: options.userId, builtAt: startedAt, root: options.root },
+              {
+                id: forayId,
+                title,
+                topic,
+                summary,
+                authorId: options.userId,
+                builtAt: startedAt,
+                /* F-71: the same minted tier-2 tape the whole-Foray input
+                   carries below. Without it the partial candidate's own
+                   `finalizeForay` is handed a pool this run's segments are not
+                   in, and reports them as unknown segment ids — a failure of
+                   the input, not of the Foray. */
+                segments: sourced.newSegments,
+                segmentSources: sourced.newSegmentSources,
+                root: options.root
+              },
               finalize
             );
             await deps.onActReady!(candidate);
