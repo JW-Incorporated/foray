@@ -89,6 +89,7 @@ import {
   deriveItemId,
   findTranscriptArchiveMatch,
   loadTranscriptArchive,
+  seedFloorDecided,
   selectTapeWindow,
   tapeWindowIsRelevant,
   titleTokenScore,
@@ -309,7 +310,11 @@ export function sourceBeats(deepenedActs: DeepenedAct[], options: SourceBeatsOpt
                can be asked "did reading the tape first actually produce the
                tape?" without anyone re-deriving the join by hand. */
             seededEpisode: beat.seed?.episodeId ?? null,
-            seedWindowWon: resolution.fromSeed
+            seedWindowWon: resolution.fromSeed,
+            /* F-72: and whether the seed window's share-only floor is what let
+               that tape through — the field a run log counts to say how often
+               the rule decided. */
+            seedFloor: resolution.seedFloor
           });
           return { sourcing: "tape", claim: beat.claim, exploration: beat.exploration, kind: beat.kind, tape: resolution.pointer };
         }
@@ -449,8 +454,10 @@ type BeatResolution =
   /** `nodes` — every taxonomy node this anchor resolved to, the same union the
    * gate judged it on and the one WS-B's metric recomputes from disk.
    * `fromSeed` — the tape came from the episode §4.3 seeded the beat from
-   * (WS-L). */
-  | { kind: "tape"; pointer: TapePointer; nodes: string[]; fromSeed: boolean }
+   * (WS-L). `seedFloor` — the seed window's share-only floor is what admitted
+   * this window (F-72); absent whenever the searching floor would have taken it
+   * anyway, so counting it counts decisions rather than applications. */
+  | { kind: "tape"; pointer: TapePointer; nodes: string[]; fromSeed: boolean; seedFloor?: "share-only" }
   | { kind: "narration"; reason: string; diagnosis: SourcingDiagnosis };
 
 /**
@@ -672,9 +679,17 @@ function resolveOneBeat(beat: Beat, state: SourcingState): BeatResolution {
        kept when it clears the floor.
 
        IT IS A PREFERENCE, NOT A PERMISSION — the same rule as the seeded
-       episode itself. The confined window faces `tapeWindowIsRelevant`
-       unchanged; when it does not clear, the whole-episode search runs exactly
-       as before and the trace reports what that found. */
+       episode itself. When the seed's window does not clear, the whole-episode
+       search runs exactly as before and the trace reports what that found. */
+    /* AND IT IS THE ONE WINDOW JUDGED ON SHARE ALONE (F-72). The seed window
+       was not found by searching — the spine READ it and wrote this claim out
+       of it — so the rare-word count, which exists to refuse a window a SEARCH
+       landed on for the wrong reason, is reported here but not required. The
+       share floor is unchanged and every other window in this loop (the
+       whole-episode fallback below, every unseeded beat, every text-index and
+       title candidate) faces both conditions exactly as before. The reasoning
+       in full, and both floors in one place, are `TapeWindowFloor` in
+       `transcriptArchiveLookup.ts`. */
     const seedWindow =
       candidate.fromSeed && beat.seed
         ? selectTapeWindow(claim, cues, {
@@ -682,8 +697,15 @@ function resolveOneBeat(beat: Beat, state: SourcingState): BeatResolution {
             within: { startSec: beat.seed.startSec, endSec: beat.seed.endSec }
           })
         : null;
-    const window = tapeWindowIsRelevant(seedWindow) ? seedWindow : selectTapeWindow(claim, cues, { idf: candidate.text?.idf });
-    if (!tapeWindowIsRelevant(window)) {
+    const seedWindowClears = tapeWindowIsRelevant(seedWindow, "seed-window");
+    /* Whether the share-only floor is what let it through, as opposed to a seed
+       window that would have cleared the searching floor anyway — the trace
+       carries this so a run log can count how often the rule DECIDED. */
+    const seedFloor: "share-only" | undefined = seedWindowClears && seedFloorDecided(seedWindow) ? "share-only" : undefined;
+    const window = seedWindowClears ? seedWindow : selectTapeWindow(claim, cues, { idf: candidate.text?.idf });
+    /* Every window faces the floor for HOW IT WAS FOUND: the seed's own on
+       share, anything this search turned up on both conditions. */
+    if (!tapeWindowIsRelevant(window, seedWindowClears ? "seed-window" : "archive-search")) {
       furthest = furtherOf(furthest, { candidate, gate: "window-overlap", window });
       continue;
     }
@@ -693,7 +715,7 @@ function resolveOneBeat(beat: Beat, state: SourcingState): BeatResolution {
        the claim rather than padding symmetrically (F-62). */
     const span = cutWindowToSegment(claim, cues, window!);
     if (!span) {
-      furthest = furtherOf(furthest, { candidate, gate: "no-anchor", window });
+      furthest = furtherOf(furthest, { candidate, gate: "no-anchor", window, seedFloor });
       continue;
     }
     /* AND THE ORDER RULE, ON THE SPAN'S OWN START (F-70). M3 is about where a
@@ -703,7 +725,7 @@ function resolveOneBeat(beat: Beat, state: SourcingState): BeatResolution {
        Foray cannot use never writes a `data/segment-sources.json` row for an
        episode no segment ends up coming from. */
     if (!m3OrderAllows(itemId, span.startSec, state)) {
-      furthest = furtherOf(furthest, { candidate, gate: "m3-order", window, span });
+      furthest = furtherOf(furthest, { candidate, gate: "m3-order", window, span, seedFloor });
       continue;
     }
     /* TAPE NOTHING CAN PLAY IS NOT TAPE. A minted segment is a pointer into an
@@ -715,7 +737,7 @@ function resolveOneBeat(beat: Beat, state: SourcingState): BeatResolution {
        (see `SourceBeatsOptions.audioSourceFor`). */
     const audioSource = state.audioSourceFor ? state.audioSourceFor(candidate.entry, itemId) : null;
     if (state.audioSourceFor && !audioSource) {
-      furthest = furtherOf(furthest, { candidate, gate: "no-audio-source", window, span });
+      furthest = furtherOf(furthest, { candidate, gate: "no-audio-source", window, span, seedFloor });
       continue;
     }
     if (audioSource) state.newSegmentSources.set(itemId, audioSource);
@@ -739,6 +761,7 @@ function resolveOneBeat(beat: Beat, state: SourcingState): BeatResolution {
     return {
       kind: "tape",
       fromSeed: candidate.fromSeed === true,
+      seedFloor,
       nodes: nodesForArchiveEntry(candidate.entry, state),
       pointer: {
         segmentId,
@@ -790,6 +813,10 @@ interface Tier2Progress {
   window?: TapeWindow | null;
   /** The cut span, when the search got as far as minting anchors from it. */
   span?: TapeSpan;
+  /** Set when the reported window is a seed window the share-only floor
+   * admitted (F-72) — a beat refused at a LATER gate still says which floor let
+   * its window through, or the trace would credit the searching floor. */
+  seedFloor?: "share-only";
 }
 
 /**
@@ -932,7 +959,7 @@ function tier2TraceFor(
     }
     return withSeed(rejected);
   }
-  const { candidate, gate, window, span } = furthest;
+  const { candidate, gate, window, span, seedFloor } = furthest;
   const row: Tier2TraceRow = {
     ...archiveTraceRow(candidate.entry, candidate.titleScore, gate),
     candidatesConsidered: candidates.length,
@@ -959,6 +986,10 @@ function tier2TraceFor(
     row.startAnchor = span.startAnchor;
     row.endAnchor = span.endAnchor;
   }
+  /* F-72: which floor judged the reported window. Only ever set on a seed
+     window the share-only floor admitted — a `window-overlap` row never carries
+     it, because a refused window was admitted by no floor at all. */
+  if (seedFloor) row.seedFloor = seedFloor;
   return withSeed(row);
 }
 

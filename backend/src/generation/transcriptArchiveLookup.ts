@@ -603,10 +603,16 @@ export interface SelectTapeWindowOptions {
    * the stretch §4.3 quoted into the spine prompt and wrote the claim from — so
    * that when the tape there carries the claim, that is the tape the listener
    * gets, rather than whichever other minute of the same episode happens to
-   * score higher. Nothing about the scoring, the weighting or the relevance
-   * floor changes with it: the confined window faces `tapeWindowIsRelevant`
-   * exactly as an unconfined one does, and §4.5 falls back to the whole-episode
-   * search when it does not clear.
+   * score higher. Nothing about the scoring or the weighting changes with it —
+   * the window is found and scored exactly as an unconfined one is — and §4.5
+   * falls back to the whole-episode search when it does not clear.
+   *
+   * The FLOOR it then faces is the one difference, and it is F-72's: a window
+   * confined to the seed is judged by `tapeWindowIsRelevant(window,
+   * "seed-window")`, on share alone. See `TapeWindowFloor` for why the
+   * rare-word count is a guard on searching and not on a window the spine
+   * quoted. Neither constant moves, and this option is still the only way to
+   * reach that floor.
    */
   within?: { startSec: number; endSec: number };
 }
@@ -743,11 +749,66 @@ function betterWindow(current: TapeWindow | null, next: TapeWindow): TapeWindow 
   return current;
 }
 
+/**
+ * WHICH FLOOR A WINDOW FACES (F-72). The two values are not two strictnesses;
+ * they are two different questions, and only one of them is open.
+ *
+ *   `"archive-search"` — the default, and every window this module finds by
+ *   SEARCHING: the whole-episode fallback, the whole-archive text search, the
+ *   title fallback, every window of every unseeded beat. Nothing about it has
+ *   changed: a window is tape about the claim when it speaks
+ *   `TIER2_WINDOW_MIN_TERMS` of the claim's RARE words AND
+ *   `TIER2_WINDOW_MIN_SHARE` of the claim's distinctiveness. The rare-word
+ *   count is the independent axis that refuses a window a search turned up
+ *   because it happens to share the trade's everyday vocabulary with the claim
+ *   — run 1's Chernobyl-for-Hyatt anchor, the griddle, San Bruno, F-24's
+ *   passing mention. That guard stays exactly where it was.
+ *
+ *   `"seed-window"` — the ONE window that was not found by searching: the
+ *   stretch §4.3 read and wrote this very claim out of (`SelectTapeWindowOptions.within`,
+ *   F-68). THE SEED IS THE RELEVANCE JUDGEMENT. The rare-word test asks "did a
+ *   search land on this window for a good reason?", and for the seed window
+ *   that question is already answered — by the spine, which had the tape in
+ *   front of it. Applying a search's guard to a window the spine quoted asks
+ *   the wrong question of it, and run 2 attempt 5 is the bill: three seeded
+ *   beats refused at weighted shares of 0.53, 0.72 and 0.85 for speaking one or
+ *   two rare words rather than three ("internship" alone carried 0.846 of a
+ *   claim written from that very passage). So the seed window is judged on
+ *   share alone. The share floor does NOT move — a seed whose tape does not
+ *   carry the claim (0.217 in the same run) is still refused, and it is still
+ *   a preference rather than a permission: a seed window below the share floor
+ *   falls back to the whole-episode search, which faces `"archive-search"`
+ *   again like everything else.
+ *
+ * Neither constant changes, and no caller can lower either one — the only lever
+ * is which of the two questions is being asked.
+ */
+export type TapeWindowFloor = "archive-search" | "seed-window";
+
 /** Tier 2's relevance verdict on a window: enough of the claim, and enough of
- * it as a SHARE, to call the tape there about the claim. */
-export function tapeWindowIsRelevant(window: TapeWindow | null): boolean {
+ * it as a SHARE, to call the tape there about the claim. `floor` picks which
+ * of the two questions above is being asked; it defaults to the searching one,
+ * so every caller that does not name a floor is judged exactly as before. */
+export function tapeWindowIsRelevant(window: TapeWindow | null, floor: TapeWindowFloor = "archive-search"): boolean {
   if (!window) return false;
-  return window.distinctiveTerms.length >= TIER2_WINDOW_MIN_TERMS && window.weightedShare >= TIER2_WINDOW_MIN_SHARE;
+  /* The share floor is common to both and is never waived. */
+  if (window.weightedShare < TIER2_WINDOW_MIN_SHARE) return false;
+  if (floor === "seed-window") return true;
+  return window.distinctiveTerms.length >= TIER2_WINDOW_MIN_TERMS;
+}
+
+/**
+ * Whether the seed floor is what DECIDED this window: it clears the share bar
+ * but not the rare-word count, so a searching window with these numbers would
+ * have been refused.
+ *
+ * Reported in the trace (`seedFloor`) rather than inferred by a reader, so a
+ * run log can count how often F-72's rule changed an outcome — as opposed to
+ * how often it merely applied, which is every seeded beat and tells nobody
+ * anything.
+ */
+export function seedFloorDecided(window: TapeWindow | null): boolean {
+  return tapeWindowIsRelevant(window, "seed-window") && !tapeWindowIsRelevant(window, "archive-search");
 }
 
 /** A cut window: real cue boundaries, and two phrases the tape itself speaks at
