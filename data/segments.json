@@ -3624,7 +3624,11 @@
       "end_anchor": "quick requests restful that just you know execute",
       "confidence": "medium",
       "source": "generation-tier-2",
-      "needs_review": true
+      "needs_review": true,
+      "why": "Agent work is not a millisecond REST request, so the kick-off call blows past its timeout.",
+      "transcript_source": "publisher",
+      "dai_suspected": true,
+      "batch_id": "generation-run-2026-09-09-attempt-6"
     },
     {
       "id": "practical-ai--the-future-of-ai-infrastructure-with-coreweave#960",
@@ -3637,7 +3641,11 @@
       "end_anchor": "really dramatically impact your job so thats kind",
       "confidence": "medium",
       "source": "generation-tier-2",
-      "needs_review": true
+      "needs_review": true,
+      "why": "CoreWeave built straggler detection: across thousands of GPUs the only symptom is the job slowing.",
+      "transcript_source": "publisher",
+      "dai_suspected": true,
+      "batch_id": "generation-run-2026-09-09-attempt-6"
     },
     {
       "id": "practical-ai--federated-learning-in-production-part-2#1428",
@@ -3650,7 +3658,11 @@
       "end_anchor": "production system firstly there is a nice acronym",
       "confidence": "medium",
       "source": "generation-tier-2",
-      "needs_review": true
+      "needs_review": true,
+      "why": "Engineers file a friendly framework under prototyping, so the question is what production federated deployment looks like.",
+      "transcript_source": "publisher",
+      "dai_suspected": true,
+      "batch_id": "generation-run-2026-09-09-attempt-6"
     },
     {
       "id": "practical-ai--creating-a-private-ai-assistant-in-thunderbird#2513",
@@ -3663,7 +3675,11 @@
       "end_anchor": "tooling around kind of remote confidential inference and",
       "confidence": "medium",
       "source": "generation-tier-2",
-      "needs_review": true
+      "needs_review": true,
+      "why": "Thunderbird's assistant encrypts data on the device and decrypts it only inside a confidential inference enclave.",
+      "transcript_source": "publisher",
+      "dai_suspected": true,
+      "batch_id": "generation-run-2026-09-09-attempt-6"
     },
     {
       "id": "practical-ai--the-myth-of-model-wars-open-vs-closed-ai-in-2026#785",
@@ -3676,7 +3692,11 @@
       "end_anchor": "inference code would never leave the vendors infrastructure",
       "confidence": "medium",
       "source": "generation-tier-2",
-      "needs_review": true
+      "needs_review": true,
+      "why": "Closed models run on the vendor's side; open weights like DeepSeek's land on Hugging Face.",
+      "transcript_source": "publisher",
+      "dai_suspected": true,
+      "batch_id": "generation-run-2026-09-09-attempt-6"
     },
     {
       "id": "practical-ai--ai-at-the-edge-is-a-different-operating-environment#2022",
@@ -3689,7 +3709,11 @@
       "end_anchor": "capability at the edge for battery powered devices",
       "confidence": "medium",
       "source": "generation-tier-2",
-      "needs_review": true
+      "needs_review": true,
+      "why": "Edge deployment serves many silicon targets, so the platform pushes the most efficient model to each device.",
+      "transcript_source": "publisher",
+      "dai_suspected": true,
+      "batch_id": "generation-run-2026-09-09-attempt-6"
     },
     {
       "id": "practical-ai--rebooting-enterprise-ai-with-mcp-and-kubernetes#623",
@@ -3702,7 +3726,11 @@
       "end_anchor": "democratizer its democratizing data access while preserving control",
       "confidence": "medium",
       "source": "generation-tier-2",
-      "needs_review": true
+      "needs_review": true,
+      "why": "StackLock exposed internal knowledge systems to Claude through a tunnel, untethering the assistant from the desktop.",
+      "transcript_source": "publisher",
+      "dai_suspected": true,
+      "batch_id": "generation-run-2026-09-09-attempt-6"
     },
     {
       "id": "practical-ai--ai-policy-and-the-battle-for-computing-power#826",
@@ -3715,7 +3743,11 @@
       "end_anchor": "computing supply chain and therefore in national security",
       "confidence": "medium",
       "source": "generation-tier-2",
-      "needs_review": true
+      "needs_review": true,
+      "why": "Computing power drives AI progress, and the semiconductor shortage showed it delays cars and dishwashers too.",
+      "transcript_source": "publisher",
+      "dai_suspected": true,
+      "batch_id": "generation-run-2026-09-09-attempt-6"
     },
     {
       "id": "practical-ai--surviving-the-new-economics-of-a-post-agentic-world#558",
@@ -3728,7 +3760,11 @@
       "end_anchor": "evolve but those reactions will continue to happen",
       "confidence": "medium",
       "source": "generation-tier-2",
-      "needs_review": true
+      "needs_review": true,
+      "why": "Companies funnel budget into mitigating AI risk at the expense of keystone operations, and it is no blip.",
+      "transcript_source": "publisher",
+      "dai_suspected": true,
+      "batch_id": "generation-run-2026-09-09-attempt-6"
     },
     {
       "id": "practical-ai--educating-a-data-literate-generation#124",
@@ -3741,7 +3777,11 @@
       "end_anchor": "higher education is also wrestling with those changes",
       "confidence": "medium",
       "source": "generation-tier-2",
-      "needs_review": true
+      "needs_review": true,
+      "why": "Higher education is changing like industry: students want to see skills translate into real work.",
+      "transcript_source": "publisher",
+      "dai_suspected": true,
+      "batch_id": "generation-run-2026-09-09-attempt-6"
     }
   ]
 }
