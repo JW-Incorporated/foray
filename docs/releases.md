@@ -51,20 +51,31 @@ Three human actions have to happen before Android uploads work at all — see
 
 1. **#26 — publish the Play Store listing.** Play won't accept any build,
    automated or manual, until the listing exists.
-2. **#41 — create the Play API service account** (Console → Setup → API
-   access → link a Cloud project → create a service account with the
-   **Release manager** role → download its JSON key → add it as the
-   `PLAY_SERVICE_ACCOUNT_JSON` repo secret). This is what lets `release.yml`
-   talk to Play at all.
+2. **#41 — create the Play API service account.** In **Google Cloud
+   Console**: enable the *Google Play Android Developer API*, create a
+   service account, download its JSON key. In **Play Console**, at the
+   account level: **Users and permissions → Invite new users** → paste the
+   service account's email, give it *Release apps to testing tracks* (plus
+   *View app information* and *Manage testing tracks*) on 4a. Add the JSON
+   as the `PLAY_SERVICE_ACCOUNT_JSON` repo secret. (The old *Setup → API
+   access* page no longer exists — `HUMAN-ACTIONS.md` #41 has the current
+   steps.) This is what lets `release.yml` talk to Play at all.
 3. **#42 — the first Android upload must be done by hand, at `versionCode 1`.**
    Google's API can update an existing release but cannot create an app's
    very first one — that's a Console-only click, once, ever. After that,
    every later `versionCode` the automation produces sits comfortably above
    `1`, so there's no collision.
 
-Until all three are done, `release.yml` still uploads iOS normally and prints
-a clear message explaining why the Android half was skipped — it does not
-fail the run, and it does not silently do nothing either.
+All three were done on 2026-09-06 (#41 and #42 are marked DONE in
+`HUMAN-ACTIONS.md`; the first automated upload was `versionCode 2026090603`).
+If a credential is ever missing again, `release.yml` still uploads iOS
+normally and prints a clear message explaining why the Android half was
+skipped — it does not fail the run, and it does not silently do nothing either.
+
+One more, for the email rather than the upload: **#43 — add the founders as
+testers on the internal track.** Play notifies the testers on a track, not
+the developer account, so until that is done every build reaches Play and
+nobody is told. Still OPEN.
 
 ## If something looks wrong
 

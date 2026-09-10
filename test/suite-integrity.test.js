@@ -981,8 +981,15 @@ const FLOORS = {
        - "the emulator job cannot gate the artefact". A cold emulator boot is the
          only genuinely flaky thing in this repo (mp1-background-audio.md §6.2), and
          the .aab is the critical path to a submission. One `needs:` would put the
-         flake in front of the artefact. */
-  "tools/mobile/android-workflow.test.mjs": 61,
+         flake in front of the artefact.
+
+     61 -> 62 (R-05, docs/release-lockstep-plan.md): "android-release.yml is the
+     PR-time check and the by-hand exception path — never an upload path". The
+     file holds no Play credential and no store-upload action, the upload action
+     appears in EXACTLY ONE `.github` file (the android-bundle composite that
+     `release.yml` calls), and the workflow's own header says so. A second path
+     to a store is the drift that produced the R-01 TestFlight flood. */
+  "tools/mobile/android-workflow.test.mjs": 62,
   /* Wiring the signing config into a project nobody commits. ZERO SLACK.
      `mobile/android/` is regenerated on every build, so the only evidence the
      release signing config ever reaches Gradle is that this script ran and its

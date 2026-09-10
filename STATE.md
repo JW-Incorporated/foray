@@ -7,6 +7,45 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
+### R-05/R-06/R-07: release deck records and test pins (2026-09-10) — `fix/release-deck-finish`
+
+- **What:** closes the last non-human gaps an adversarial audit found in
+  `docs/release-lockstep-plan.md`. **R-05:** `tools/mobile/android-workflow.test.mjs`
+  now pins that `android-release.yml` is the PR-time check / founder exception
+  path and never an upload path — no Play credential, no store-upload action,
+  the upload action in exactly one `.github` file (the `android-bundle`
+  composite `release.yml` calls), and the workflow's own header says so; three
+  named mutations, all run red. The old "downloaded and submitted by a human"
+  framing is gone; `android-release.yml`'s self-description comments say the
+  same (comments only, no structural change). **R-06:** the deck §4
+  longlive/Swift2 coordination note is in `HUMAN-ACTIONS.md`; `docs/releases.md`'s
+  #41 bullet matches #516's rewrite (no *Setup → API access* page; the service
+  account is invited under *Users and permissions*); the STATE.md-per-PR
+  convention is met retroactively for #495 below. **R-07:** acceptance items
+  1–2 recorded DONE against run 34381675121; item 3 (the Play email) waits on
+  R-08, now `HUMAN-ACTIONS.md` #43 with the literal Console path. Deck Status
+  set to "landed except R-08 (human)".
+- **Touches:** `tools/mobile/android-workflow.test.mjs`, `test/suite-integrity.test.js`
+  (floor 61 → 62), `.github/workflows/android-release.yml` (comments only —
+  governed path, needs the founder label), `HUMAN-ACTIONS.md` (#43 + the
+  coordination note), `STATE.md`, `docs/releases.md`, `docs/release-lockstep-plan.md`.
+- **Not done here:** R-08 itself (a Console click, #43); R-02's leftover manual
+  `version_code` dispatch input on `android-release.yml`, kept as the exception
+  path's own knob.
+
+### R-06: release-lockstep records and HUMAN-ACTIONS bookkeeping (2026-09-06, kanban `t_88cdc2f8`) — `t_88cdc2f8/r06-release-bookkeeping` — entry written 2026-09-10
+
+- **What:** PR #495 (`df5a246`, merged 2026-09-06T02:03Z). `HUMAN-ACTIONS.md`
+  #41 (G2: the Play API service account, secret `PLAY_SERVICE_ACCOUNT_JSON`) and
+  #42 (G3: the first upload by hand at `versionCode 1`); #30 reconciled DONE on
+  `gh secret list`; #26 left OPEN and cross-linked to G1–G3. `docs/DECISIONS.md`
+  entry for the version rule and the no-uploads-from-PRs rule. New
+  `docs/releases.md`, one page for a founder. The deck's STATE.md-per-PR
+  convention was skipped at the time; this is the retroactive record.
+- **Touches:** `HUMAN-ACTIONS.md`, `docs/DECISIONS.md`, `docs/releases.md`.
+- **Since then:** #516 (founder) rewrote #41's Console steps because the
+  *Setup → API access* page no longer exists; #41 and #42 both DONE 2026-09-06.
+
 ### V-01 follow-up: Samantha by default, curated trial voices, ten-count audition (2026-09-10) — `fix/voice-picker-samantha`
 
 - **What:** founder decision after the first real listen through V-01's picker

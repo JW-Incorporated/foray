@@ -2,11 +2,17 @@
 
 *Drafted 2026-09-06 from Wyatt's report: "I get all kinds of emails that 4a
 updates in the App Store, but never the Play Store." Hermes card deck. Nothing
-here is built yet.*
+was built when this was drafted; see Status.*
 
-**Status:** proposed. Assumes the human actions (Play Console setup, a Play API
-service account) will be late, so Track A ships real improvements with no human
-in the loop and Track B flips the Play upload live when the gate clears.
+**Status:** landed except R-08 (human) — 2026-09-10. R-01..R-07 are verified on
+`main` (per-card **DONE** markers below, each naming its PR and, where one
+exists, the run that proves it). R-07's third acceptance item — the Play email
+— waits on R-08, which is `HUMAN-ACTIONS.md` #43: Play mails the testers on a
+track, not the developer, and the internal track has no testers yet. Drafted
+as *proposed* on the assumption that the human actions (Play Console setup, a
+Play API service account) would be late, so Track A shipped real improvements
+with no human in the loop and Track B flipped the Play upload live when the
+gate cleared — it cleared 2026-09-06.
 
 ---
 
@@ -90,36 +96,36 @@ loosen them silently).
 
 ### Track A — ships with no human gate
 
-#### R-01 · Stop uploading PR builds to TestFlight — **S**
+#### R-01 · Stop uploading PR builds to TestFlight — **S** — **DONE** (#494, 2026-09-06; the `pull_request` gate was later superseded by R-05's outright removal of the upload step in #533)
 - **Ask:** in `ios-build.yml`, gate "Is signing configured?" and "Archive, export and upload to TestFlight" on `github.event_name != 'pull_request'` **in addition to** signing readiness. PR runs still build unsigned, still run probes, still upload their diagnostics artifact. Say in the step comment why: same-repo PRs receive secrets, so without this every PR shipped an unmerged branch to testers.
 - **Owned:** `.github/workflows/ios-build.yml`, `tools/mobile/ios-workflow.test.mjs` (add the pin: the upload step's `if:` names `pull_request`; MUTATION: remove the clause → red).
 - **Acceptance:** open a throwaway PR touching `app.js`; `ios-build` runs, the upload step shows **skipped**; no TestFlight email arrives. A `workflow_dispatch` on `main` still uploads.
 - **Governance:** `.github/` → `founder-approved`. **This one alone ends the email flood and can land the same day.**
 
-#### R-02 · One version for both platforms — **M** — *design comment first*
+#### R-02 · One version for both platforms — **M** — *design comment first* — **DONE** (#497, 2026-09-06; run 34381675121 printed `MARKETING_VERSION=1.0.0 BUILD_NUMBER=2026090908` and both jobs read it back. Known leftover: `android-release.yml` keeps its manual `version_code` dispatch input as the exception path's own knob — see R-05)
 - **Ask:** `tools/mobile/version.mjs` exporting `readMarketingVersion()` (from a new tracked `mobile/VERSION`, seeded `1.0.0`) and `buildNumber({ now, runOfDay })` → integer `YYYYMMDDnn`. Both workflows read it. iOS: `MARKETING_VERSION` from the file (today hardcoded 1.0), `CURRENT_PROJECT_VERSION` from `buildNumber` (today `run_number.run_attempt`). Android: `FORAY_VERSION_NAME` and `FORAY_VERSION_CODE` env into `mobile/gradle/foray-signing.gradle`, which already reads `FORAY_VERSION_CODE` and validates it as a positive integer. **Never a manual `versionCode` input again.** Also expose `bumpMarketingVersion(part)` for the release script.
 - **Owned:** `tools/mobile/version.mjs` + `.test.mjs` (floored), `mobile/VERSION`, `mobile/gradle/foray-signing.gradle` (versionName wiring only).
 - **Acceptance:** tests pin monotonicity across a day boundary and two runs in one day; the same call from both workflow shells prints the identical pair; the `versionCode` fits Play's `int32` ceiling (it does: 2,099,123,199 < 2,147,483,647 — state that in the test).
 - **Governance:** `tools/mobile/` allowed; `mobile/gradle/` is `mobile/` → allowed (auto-merge, post-#492).
 
-#### R-03 · `release.yml` — one run, both stores, skip-loudly where a credential is missing — **L** — *design comment first; DECISIONS entry*
+#### R-03 · `release.yml` — one run, both stores, skip-loudly where a credential is missing — **L** — *design comment first; DECISIONS entry* — **DONE** (#501, 2026-09-06; the first dispatch failed on a mistyped action SHA, fixed by the founder in #513; 7/7 green `workflow_dispatch` runs on `main` since, latest 34381675121 with both rows `ready`/`uploaded`)
 - **Ask:** new `.github/workflows/release.yml`. Triggers: `push: tags: ['v*']` and `workflow_dispatch` (inputs: `bump: patch|minor|major|none`). **Guard: refuses to run unless `github.ref` is `main` or a tag on `main`.** Job `version` computes the pair via R-02 and writes it to outputs. Jobs `ios` and `android` run **in parallel from the same SHA**, each reusing the existing build steps (factor the shared steps out of `ios-build.yml` / `android-release.yml` into composite actions under `.github/actions/` rather than copying 700 lines). `ios` uploads to TestFlight exactly as today. `android` uploads the signed `.aab` to the **internal testing** track with a pinned `r0adkll/upload-google-play@<sha>` reading `PLAY_SERVICE_ACCOUNT_JSON`; **when that secret is absent it does not fail — it prints a red-bold summary line naming G2/G3 and uploads the `.aab` as an artifact instead**, mirroring the iOS `signing-gate`'s three-outcome rule (all set → upload; none set → skip loudly; partial → fail). Final job `summary` writes one table: version, build number, iOS result, Android result, and **fails the run if the two stores disagree** (one uploaded, one didn't) once both credentials exist. `concurrency: release`, never cancel-in-progress.
 - **Owned:** `.github/workflows/release.yml`, `.github/actions/ios-archive/`, `.github/actions/android-bundle/`, `tools/mobile/release-workflow.test.mjs` (pins: main-only guard, both jobs read R-02, Play step gated on the secret, summary fails on disagreement; each with a named mutation), `tools/ci/run-suites.mjs` picks the suite up automatically.
 - **Dependencies:** R-01, R-02.
 - **Acceptance:** `workflow_dispatch` on `main` with no Play secret → iOS uploads, Android says exactly why it did not and still leaves an `.aab` artifact, summary shows the mismatch **as a warning not a failure while the secret is documented-absent**. With the secret (Track B) → both upload, summary green, and **Wyatt receives one App Store email and one Play email for the same build number**.
 - **Governance:** `.github/` → `founder-approved`. Batch this label with R-01 and R-05.
 
-#### R-04 · Make `android-release` green from `main`, and find out why it wasn't — **S**
+#### R-04 · Make `android-release` green from `main`, and find out why it wasn't — **S** — **DONE** (#496, 2026-09-06: a `udevadm trigger`/`settle` race in the KVM step; re-dispatch 34006028924 green with `FORAY_SIGNING_STATUS=keyed`)
 - **Ask:** the only `workflow_dispatch` of `android-release.yml` on `main` (2026-08-30) failed and nobody read why (the GitHub API was too slow to fetch the log while this plan was written). Read it. Fix the cause. Re-dispatch. The `.aab` it produces is also what G3's one manual upload uses.
 - **Owned:** whatever the log names; likely `.github/workflows/android-release.yml` or `tools/mobile/wire-signing.mjs` (DENIED — founder label if touched).
 - **Acceptance:** a green `workflow_dispatch` on `main` with an `.aab` artifact whose `FORAY_SIGNING_STATUS=keyed`.
 
-#### R-05 · Retire the two old upload paths so there is exactly one — **S**
+#### R-05 · Retire the two old upload paths so there is exactly one — **S** — **DONE** (#533, 2026-09-09, for `ios-build.yml` and the docs; the Android test pin and `android-release.yml`'s self-description landed 2026-09-10 via `fix/release-deck-finish`. `android-release.yml` was kept as the PR-time check + founder exception path rather than deleted; `tools/mobile/android-workflow.test.mjs` pins that it never becomes an upload path)
 - **Ask:** once R-03 is green: `ios-build.yml` loses its upload step entirely (it is CI now, not release); `android-release.yml` becomes the PR-time check of the release pipeline only, or is folded into `release.yml` and deleted. Update both workflow test files; update `docs/ios-ci.md` and `docs/android-release.md` so §5's "download and submit by hand" becomes the exception path, not the process.
 - **Dependencies:** R-03 merged and one green run.
 - **Governance:** `.github/` → label (batch with R-03).
 
-#### R-06 · Records and human-action bookkeeping — **S**
+#### R-06 · Records and human-action bookkeeping — **S** — **DONE** (#495, 2026-09-06; the §4 coordination note, the STATE.md entries and the `docs/releases.md` #41 fix landed 2026-09-10 via `fix/release-deck-finish`)
 - **Ask:** `HUMAN-ACTIONS.md`: add G2 and G3 as new numbered items with every literal (Console menu path, role name `Release manager`, secret name `PLAY_SERVICE_ACCOUNT_JSON`, "first upload must be manual and must use versionCode 1"); reconcile #30 (three secrets exist); leave #26 OPEN but link it from G1. `docs/DECISIONS.md`: the version rule and the "no uploads from PRs" rule. New `docs/releases.md`: "how a release happens", one page, for a founder. Note the coordination item below.
 - **Governance:** `HUMAN-ACTIONS.md`, `docs/` allowed; `docs/DECISIONS.md` → label (batch).
 
@@ -127,8 +133,8 @@ loosen them silently).
 
 | Card | Gate | Ask | Acceptance |
 |---|---|---|---|
-| **R-07 · Play upload goes live** — S | G1, G2, G3 | Add the secret; run `release.yml` once on `main` | Summary table green on both rows; Play Console internal track shows the build; both store emails arrive for one build number |
-| **R-08 · Promote to a testing track with testers** — S | G1 | Decide internal vs closed track and add the founders' Google accounts as testers so Play actually *notifies* them (Play emails testers on the track, not the developer, for internal testing) | Wyatt's inbox gets the Play mail |
+| **R-07 · Play upload goes live** — S | G1, G2, G3 | Add the secret; run `release.yml` once on `main` | (1) Summary table green on both rows — **DONE**, run 34381675121 (2026-09-09, build 2026090908: `guard`/`version`/`ios`/`android`/`summary` all success). (2) Play Console internal track shows the build — **DONE**, same run: Android `Successfully committed 07040754008484552948` (first API upload was 2026090603 in run 34045806385; #41/#42 DONE). (3) Both store emails arrive for one build number — **waits on R-08**: TestFlight mails arrive per build, Play mails nobody until the track has testers |
+| **R-08 · Promote to a testing track with testers** — S | G1 | Decide internal vs closed track and add the founders' Google accounts as testers so Play actually *notifies* them (Play emails testers on the track, not the developer, for internal testing). **`HUMAN-ACTIONS.md` #43** has the literal Console path (Release → Testing → Internal testing → Testers) | Wyatt's inbox gets the Play mail — **OPEN (human)**, and it closes R-07's item 3 with it |
 
 ## 4. Coordination with the longlive agent
 
