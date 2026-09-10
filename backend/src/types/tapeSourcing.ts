@@ -258,7 +258,16 @@ export type Tier1Gate = "no-candidates" | "threshold" | "topic-lineage" | "exhau
  *   - `no-audio-source` — everything matched and an anchor was found, but no
  *                        honest `data/segment-sources.json` row can be written
  *                        for the episode, so nothing could ever play it (see
- *                        `audioSourceLookup.ts`). */
+ *                        `audioSourceLookup.ts`).
+ *   - `m4-share`       — the episode already supplies as much of this Foray as
+ *                        M4's quarter allows (F-70). Same name and same meaning
+ *                        as the tier-1 gate above; tier 2 now keeps the same
+ *                        ledger, so the two tiers refuse for the same reason.
+ *   - `m3-order`       — the window tier 2 would mint sits EARLIER in an episode
+ *                        this Foray has already joined later, which is M3's
+ *                        "plays at N s after a later segment from the same
+ *                        episode" (F-70). Decided on the cut span's own start,
+ *                        so it is the minted segment's real time, not a guess. */
 export type Tier2Gate =
   /* WS-H (F-06): the text index ran and no lineage-admissible episode in the
      archive was worth opening for this claim — the search reached the
@@ -271,7 +280,12 @@ export type Tier2Gate =
   | "no-body"
   | "no-anchor"
   | "window-overlap"
-  | "no-audio-source";
+  | "no-audio-source"
+  /* F-70: the two Foray-wide assembly rules, now asked by BOTH tiers. Named
+     identically to their `Tier1Gate` twins on purpose — one rule, one name,
+     whichever tier found the tape. */
+  | "m4-share"
+  | "m3-order";
 
 export interface Tier1TraceRow {
   /** The best-scoring pool segment, whatever gate then refused it. */

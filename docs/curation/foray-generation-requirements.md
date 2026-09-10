@@ -1231,15 +1231,34 @@ because the rules they serve span the whole running order:
 |---|---|
 | `usedSegmentIds` | a segment may not play twice (`check-forays.mjs`: "appears twice in one Foray") |
 | `lastStartByItem` | segments from one episode must play in ascending time order (**M3**) |
-| `usedCountByItem` + `maxPerItem` | no one episode over 25 % of the Foray (**M4**) |
+| `usedCountByItem` + `placedTapeCount` | no one episode over 25 % of the Foray (**M4**) |
 | `mintedIds` | tier-2 segment id collision resolution |
 
-`maxPerItem = max(1, floor(totalBeats × M4_ITEM_SHARE_MAX))` with
-`M4_ITEM_SHARE_MAX = 0.25`, computed from the **total** beat count up front rather
-than a running denominator — a greedy running cap lets the first episode take
-three beats before the fourth makes three too many. Sourcing can only bound the
-*count* share, not the runtime share (it does not know final runtimes); the
-checker remains the authority on both.
+**Both tiers consult and update them** (F-70). Tier 2 mints a segment rather than
+picking one out of the pool, and until F-70 it consulted none of these: run 2
+attempt 4b put two windows of one *Practical AI* episode in one slot, backwards,
+and the Foray failed **M3** and **M4** at once. The two rules now live in
+`m4ShareAllows` / `m3OrderAllows` and every placement goes through `placeTape`, so
+there is one statement of each rule and one place the ledgers move. A tier-2
+refusal falls through to the next candidate episode exactly as tier 1's does, and
+names the same gate (`m4-share`, `m3-order`) in the trace.
+
+`m4SegmentCapFor(placed) = max(1, floor(placed × M4_ITEM_SHARE_MAX))` with
+`M4_ITEM_SHARE_MAX = 0.25`, asked at placement time against the count this
+placement would make it. The denominator is the tape **placed so far**, not the
+beat count: M4 is a share of the finished Foray's *segments*, and run 2 attempt 4b
+sourced 5 tape segments from 24 beats, so the old `floor(totalBeats × 0.25)` cap
+read 6 where the number that mattered was 1 — a cap that cannot bind. Asking at
+placement time is safe because `floor(placed × 0.25)` never decreases as the Foray
+grows, so an admission stays admissible; the readable form of the rule is that an
+episode's **second** segment needs a Foray of at least 8 tape segments and its
+third needs 12. `max(1, …)` is every episode's exemption for its first segment:
+a 3-segment Foray fails M4's count clause whichever episodes it drew on, and the
+answer to that is more tape, not less. Sourcing bounds the *count* share only, not
+the runtime share (one long segment among four short ones is over 25 % of runtime
+with no episode repeated, and refusing an episode's only segment for being long
+would cost tape without moving anyone else's share); the checker remains the
+authority on both.
 
 #### 3.6.2 Tokenisation
 
@@ -1652,10 +1671,13 @@ bar.
 | `no-anchor` | the body is here, but no run of `MIN_ANCHOR_WORDS` claim words is spoken verbatim |
 | `window-overlap` | an anchor was located, but the tape around it is not about the claim (F-24) |
 | `no-audio-source` | everything matched, but no honest registry row can be written (§3.6.6c) |
+| `m4-share` | the episode already supplies its quarter of this Foray's segments (F-70; same rule and same name as the tier-1 gate) |
+| `m3-order` | the window would sit earlier in an episode this Foray has already joined later (F-70) |
 
 **The reported row is the candidate that got FURTHEST**, not the last one walked or
-the highest-ranked one (`TIER2_GATE_PROGRESS` orders the gates exactly as the table
-above). A beat that reached the window test on one episode and a bare title on
+the highest-ranked one (`TIER2_GATE_PROGRESS` ranks the gates in the order the walk
+asks them: `text-index:no-candidate`, `lineage`, `title-tokens`, `m4-share`,
+`no-body`, `window-overlap`, `no-anchor`, `m3-order`, `no-audio-source`). A beat that reached the window test on one episode and a bare title on
 seven others is a beat whose story is the window test; the furthest gate is the one
 a person would go and argue with. When nothing was worth opening at all,
 `traceTier2Rejected` reports the best **on-topic** episode against the title bar,
@@ -2761,7 +2783,15 @@ cumulative items so far. `runPipeline` then:
 2. prepends the disclosure item (a partial candidate is validated by the same
    `check-forays` gates, so it needs the same opening item);
 3. calls `partialCandidate.ts:buildPartialCandidate`, which runs the **same**
-   `finalize` over the items and slots finished so far;
+   `finalize` over the items and slots finished so far — handed this run's
+   **minted tier-2 segments and source rows** (`sourced.newSegments` /
+   `sourced.newSegmentSources`), exactly as the whole-Foray input is (F-71).
+   Without them the checker cannot resolve a segment that was cut from a
+   transcript during the run and is not in `data/segments.json`: run 2 attempt
+   4b's partial candidate reported five `unknown segment_id … — not in
+   data/segments.json` errors and then "no resolvable segment items" while the
+   final candidate, same items, resolved all five. The partial candidate must
+   fail and pass on the same rules as the final record;
 4. hands the result to `deps.onActReady`, which writes/rewrites
    `<out>/<slug>-<hash>.partial.json`.
 

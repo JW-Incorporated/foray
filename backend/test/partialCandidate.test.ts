@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { buildPartialCandidate, type PartialActInfo, type PartialCandidateMeta } from "../src/generation/partialCandidate";
 import type { FinalizeForayInput, FinalizeForayResult } from "../src/generation/finalizeForay";
 import type { ForayItem } from "../src/generation/forayItems";
+import type { MintedSegmentSource } from "../src/generation/audioSourceLookup";
 
 /**
  * `finalizeForay` itself is exercised by `finalizeForay.test.ts` (and, on a
@@ -95,6 +96,42 @@ describe("buildPartialCandidate", () => {
     expect(seen[0]!.items).toBe(items);
     expect(seen[0]!.slots).toBe(slots);
     expect(seen[0]!.id).toBe(meta.id);
+  });
+
+  it("hands finalize this run's minted tier-2 segments and source rows (F-71)", async () => {
+    /* THE FINDING: run 2 attempt 4b's partial candidate came back with five
+       `unknown segment_id "practical-ai--federated-learning-in-production-part-2#1962"
+       — not in data/segments.json` errors and then "no resolvable segment
+       items", while the FINAL candidate — the same items, the same checker —
+       resolved all five and failed on M3/M4 instead. A tier-2 segment is cut
+       from a transcript during the run and is not in the pool on disk, so a
+       finalize call that is not handed it cannot resolve it. The partial
+       candidate has to fail and pass on the same rules as the final record.
+
+       MUTATION THAT KILLS THIS: drop `segments`/`segmentSources` from the
+       `finalizeInput` literal in `partialCandidate.ts` — i.e. the pre-F-71
+       code. Both assertions below go undefined. Ran it — red. */
+    const seen: FinalizeForayInput[] = [];
+    const segments = [
+      {
+        id: "practical-ai--fl-part-2#1962",
+        itemId: "practical-ai--fl-part-2",
+        startSec: 1962,
+        endSec: 2020,
+        referenceDurationSec: 3600,
+        startAnchor: "the thing about federated learning in production",
+        endAnchor: "and that is why nobody ships it that way",
+        confidence: "medium" as const
+      }
+    ];
+    const segmentSources = [{ id: "practical-ai--fl-part-2", audio_url: "https://cdn.example/fl2.mp3" } as unknown as MintedSegmentSource];
+    await buildPartialCandidate(
+      { actIndex: 0, totalActs: 2, allActTitles: ["A", "B"], items, slots: [{ id: "s1", title: "Slot" }], runtimeSec: 7, ttlA1Ms: null },
+      { ...meta, segments, segmentSources },
+      fakeFinalize(seen)
+    );
+    expect(seen[0]!.segments).toBe(segments);
+    expect(seen[0]!.segmentSources).toBe(segmentSources);
   });
 
   it("surfaces the finalize result's validation on the candidate", async () => {

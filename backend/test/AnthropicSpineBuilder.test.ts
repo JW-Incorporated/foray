@@ -222,10 +222,28 @@ describe("AnthropicSpineBuilder — WS-L: the spine prompt sees the tape (F-63)"
     expect(prompt).toContain('"seed"');
   });
 
+  it("tells the spine to spread seeds across episodes, and to keep two from one episode in tape order (F-70)", async () => {
+    /* Run 2 attempt 4b's spine put two seeded beats of ONE slot on the same
+       *Practical AI* episode, the later beat quoting the earlier stretch, and
+       the finished Foray failed check-forays on M3 and M4 at once. The
+       mechanical guarantee is `sourceBeats.ts`'s ledger — this paragraph stops
+       the spine ASKING for tape the ledger will refuse.
+
+       MUTATION THAT KILLS THIS: delete the two lines appended to `seedRule` in
+       `AnthropicSpineBuilder.ts`. Ran it — red. */
+    const prompt = await promptFor(shapeWithWindows);
+    expect(prompt).toContain("DIFFERENT episodeIds");
+    expect(prompt).toContain("no episode can supply more than a quarter");
+    expect(prompt).toContain("the beat seeded from the earlier startSec comes first");
+  });
+
   it("says none of it when the research map quoted nothing — a subject with no tape keeps today's prompt", async () => {
     const prompt = await promptFor(shapeWithout);
     expect(prompt).not.toContain("what the tape says");
     expect(prompt).not.toContain(`at least ${SPINE_MIN_SEEDED_BEATS_PER_ACT} beats`);
+    /* F-70's episode-spreading rule goes with it: it is part of the seed rule,
+       and there are no seeds to spread. */
+    expect(prompt).not.toContain("DIFFERENT episodeIds");
     /* And the counts are still there: WS-L adds to the map, it does not replace it. */
     expect(prompt).toContain("761 items");
   });
