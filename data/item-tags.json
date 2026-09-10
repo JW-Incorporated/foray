@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "built_at": "2026-09-08T11:57:51.280Z",
+  "built_at": "2026-09-09T11:56:26.776Z",
   "tags": {
     "lex-fridman-podcast--don-lincoln-physics": [
       "physics",
@@ -17503,6 +17503,258 @@
       "tasting",
       "spirits",
       "reviews"
+    ],
+    "stuff-you-should-know--short-stuff-flappers": [
+      "flappers",
+      "1920s",
+      "womens-history",
+      "fashion",
+      "social-history",
+      "prohibition-era",
+      "explainer",
+      "beginner-friendly"
+    ],
+    "engines-of-our-ingenuity--the-engines-of-our-ingenuity-2927": [
+      "dual-inheritance-theory",
+      "evolution",
+      "culture",
+      "genetics",
+      "anthropology",
+      "bite-sized",
+      "explainer"
+    ],
+    "around-the-house-eric-g--catchin-fish-and-droppin-prices-eric": [
+      "home-improvement",
+      "real-estate",
+      "fishing",
+      "oregon",
+      "market-update",
+      "diy",
+      "practical"
+    ],
+    "good-hang-amy-poehler--sandra-bullock": [
+      "amy-poehler",
+      "sandra-bullock",
+      "comedy",
+      "hollywood",
+      "hang",
+      "interview",
+      "practical-magic"
+    ],
+    "gastropod--plant-milk-proliferation-oat-soy-almond": [
+      "plant-milk",
+      "oat-milk",
+      "almond-milk",
+      "food-science",
+      "food-history",
+      "dairy-alternatives",
+      "storytelling",
+      "explainer"
+    ],
+    "this-podcast-will-kill-you--ep-221-electroconvulsive-therapy-part-2": [
+      "electroconvulsive-therapy",
+      "mental-health",
+      "psychiatry",
+      "medicine",
+      "treatment",
+      "science",
+      "explainer"
+    ],
+    "the-allusionist--233-phobia": [
+      "etymology",
+      "words",
+      "phobia",
+      "language",
+      "greek-mythology",
+      "history",
+      "storytelling"
+    ],
+    "spit-and-twitches-animal-cognition--episode-32-season-3-episode-5": [
+      "animal-cognition",
+      "research",
+      "academia",
+      "psychology",
+      "interview",
+      "careers"
+    ],
+    "planet-money--cost-cutting-quiet-guilt-and-the": [
+      "economics",
+      "inflation",
+      "stock-market",
+      "unemployment",
+      "listener-stories",
+      "explainer",
+      "beginner-friendly"
+    ],
+    "freakonomics-radio--amazon-was-supposed-to-kill-the": [
+      "bookstores",
+      "james-daunt",
+      "barnes-and-noble",
+      "retail",
+      "business",
+      "economics",
+      "interview"
+    ],
+    "f1-beyond-the-grid--pedro-de-la-rosa-aston-s": [
+      "formula-1",
+      "motorsport",
+      "racing",
+      "aston-martin",
+      "pedro-de-la-rosa",
+      "interview"
+    ],
+    "the-race-f1-podcast--chaos-but-no-passing-what-to": [
+      "formula-1",
+      "motorsport",
+      "racing",
+      "madrid",
+      "spanish-grand-prix",
+      "preview"
+    ],
+    "the-race-f1-podcast--italian-gp-driver-rankings-leclerc-hits": [
+      "formula-1",
+      "motorsport",
+      "racing",
+      "monza",
+      "italian-grand-prix",
+      "driver-rankings"
+    ],
+    "volts--is-there-way-more-conventional-geothermal": [
+      "geothermal",
+      "energy",
+      "clean-energy",
+      "grid",
+      "hydrothermal",
+      "interview",
+      "technical"
+    ],
+    "business-wars--roomba-hitting-the-wall-fast-cheap": [
+      "irobot",
+      "roomba",
+      "robotics",
+      "rodney-brooks",
+      "startups",
+      "business-history",
+      "storytelling"
+    ],
+    "masters-of-scale--nfl-kickoff-the-science-gets-more": [
+      "nfl",
+      "sports-business",
+      "franchise-valuations",
+      "michele-steele",
+      "business",
+      "interview"
+    ],
+    "tiny-matters--bonus-drinking-grandma-digital-cadavers-and": [
+      "embalming",
+      "history-of-medicine",
+      "anatomy",
+      "chemistry",
+      "cadavers",
+      "storytelling",
+      "explainer"
+    ],
+    "game-design-round-table--hands-on-with-ai-from-tabletop": [
+      "game-design",
+      "ai",
+      "software-development",
+      "tabletop-games",
+      "workflow",
+      "interview"
+    ],
+    "the-archaeology-show--ancient-inscriptions-ep-339": [
+      "archaeology",
+      "inscriptions",
+      "anatolia",
+      "obsidian",
+      "neolithic",
+      "explainer"
+    ],
+    "myths-and-legends--443-tricksters-does-whatever-a-spider": [
+      "mythology",
+      "folklore",
+      "anansi",
+      "tricksters",
+      "west-african-folklore",
+      "storytelling",
+      "narrative"
+    ],
+    "our-fake-history--episode-257-was-there-a-children": [
+      "childrens-crusade",
+      "medieval-history",
+      "myth-busting",
+      "europe",
+      "storytelling"
+    ],
+    "physiology-endurance-running--a-deep-dive-into-new-zealand": [
+      "running",
+      "endurance",
+      "blackcurrants",
+      "supplements",
+      "heat",
+      "sports-science",
+      "research"
+    ],
+    "feel-better-live-more--the-4-food-types-that-repair": [
+      "gut-health",
+      "nutrition",
+      "gastroenterology",
+      "will-bulsiewicz",
+      "immune-system",
+      "interview"
+    ],
+    "happier-gretchen-rubin--ep-603-avoid-the-sunk-cost": [
+      "sunk-cost-fallacy",
+      "psychology",
+      "habits",
+      "self-improvement",
+      "biases",
+      "panel"
+    ],
+    "this-past-weekend-theo-von--681-ex-counterfeiter-arthur-williams-jr": [
+      "counterfeiting",
+      "true-crime",
+      "prison",
+      "interview",
+      "storytelling"
+    ],
+    "kill-tony--784-yakov-smirnoff-ari-matti": [
+      "stand-up",
+      "open-mic",
+      "roast",
+      "live-show",
+      "comedy",
+      "yakov-smirnoff"
+    ],
+    "astonishing-legends--s2-ep34-the-lady-in-the": [
+      "paranormal",
+      "imaginary-friend",
+      "listener-story",
+      "mystery",
+      "narrative"
+    ],
+    "dateline--talking-dateline-the-grudge": [
+      "true-crime",
+      "dateline",
+      "esther-salas",
+      "investigation",
+      "interview"
+    ],
+    "modern-love--how-to-feed-your-feelings-after": [
+      "divorce",
+      "cooking",
+      "personal-essay",
+      "modern-love",
+      "relationships"
+    ],
+    "cider-chat--514-doing-more-with-lees-ryan": [
+      "cider",
+      "fermentation",
+      "lees",
+      "cidercon",
+      "food-science",
+      "craft",
+      "interview"
     ]
   }
 }

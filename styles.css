@@ -9,6 +9,11 @@
   --gold: #e8d34c;
   --radius: 14px;
   --topbar-h: 44px;
+  /* U-12: the drawer is the top-most chrome. Defined here rather than at the
+     drawer's own rules so the whole stacking ladder has one authored number;
+     the ladder itself is documented in the `---------- drawer ----------`
+     block below, which is the only place this token is read. */
+  --z-drawer: 80;
   --shadow: 0 1px 2px rgba(0,0,0,0.4), 0 6px 16px rgba(0,0,0,0.28);
   --serif: Georgia, "Iowan Old Style", "Palatino Linotype", ui-serif, serif;
   --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -244,11 +249,37 @@ body {
 }
 .topbar button:active { background: var(--surface-2); }
 
-/* ---------- drawer ---------- */
+/* ---------- drawer ----------
+
+   THE Z-INDEX LADDER, in one place, because this is the element that has to
+   sit at the top of it. Every fixed/sticky layer in this file, bottom to top:
+
+        5  .fy-transport      sticky transport on a Foray page
+       15  .page-head         sticky page header (pins under the topbar)
+       19  .shell-notice      "this page is a version behind" bar (#233)
+       20  .topbar            the fixed header  (also .fy-strip-bubble)
+       55  .tab-bar           the four-tab bar (U-02)
+       60  #foray-player      mini bar AND the expanded Now Playing sheet
+       70  .fy-sheet          the per-segment reason sheet (modal)
+    -> 80  #drawer-overlay     var(--z-drawer)
+       81  #drawer             var(--z-drawer) + 1, so the panel is over its
+                               own scrim and nothing else has to sit between
+
+   U-12 (founder feedback F17) moved the drawer from 30/31 to the top. The
+   menu button lives in the topbar (20) and is reachable at every moment,
+   including while the Now Playing sheet is expanded — and #foray-player is
+   60, so at 30/31 the drawer opened UNDERNEATH the sheet: the scrim dimmed
+   nothing, the panel was invisible, and the tap that opened it looked like a
+   dead button. Navigation must be able to cover the thing it navigates away
+   from, so the drawer is now above BOTH the player (60) and the reason sheet
+   (70). This is a stacking change only — no size, colour or motion changed.
+
+   Anything new that must cover the drawer needs a number above these, and a
+   line in this list; nothing does today. */
 #drawer-overlay {
   position: fixed; inset: 0;
   background: rgba(0,0,0,0.45);
-  z-index: 30;
+  z-index: var(--z-drawer);
 }
 #drawer {
   position: fixed;
@@ -257,7 +288,7 @@ body {
   background: var(--surface);
   border-right: 1px solid var(--line);
   box-shadow: var(--shadow);
-  z-index: 31;
+  z-index: calc(var(--z-drawer) + 1);
   padding: calc(env(safe-area-inset-top) + 14px) 10px 14px;
   overflow-y: auto;
 }
@@ -1069,9 +1100,31 @@ button.up-next-remove {
 .play-btn:hover { background: var(--accent); border-color: var(--accent); color: #fff; }
 .play-btn[data-playing="1"] { background: var(--accent); border-color: var(--accent); color: #fff; }
 
-/* The player is fixed, so reserve room or it covers the last card. */
-body.fp-open { padding-bottom: 96px; }
-body.fp-open.fp-expanded { padding-bottom: 340px; }
+/* The player is fixed, so reserve room or it covers the last card.
+
+   N1 (founder feedback, ride-along on U-13): the reservation is COMPOSED,
+   never chosen. Two independent things occupy the bottom edge — the tab bar
+   (always, `body.ui-v2`) and the mini player / Now Playing sheet (only while
+   `body.fp-open`) — so each rule reserves the sum of what is actually on
+   screen, plus the home-indicator inset exactly once. The flat `96px` this
+   replaces left out `env(safe-area-inset-bottom)` even though #foray-player
+   pads itself by precisely that, so on a notched phone the last row of a
+   scrollable page sat under the ribbon.
+
+   And nothing reserves the bar's height when the bar is gone: every rule here
+   is scoped to `.fp-open`, which client.js removes in `stopAndClose()`, so
+   stopping takes the reservation with it rather than leaving a dead gap. */
+:root {
+  /* The room the collapsed mini bar needs, and the room the expanded sheet
+     needs, as tokens rather than two magic numbers repeated across the four
+     rules below. Unchanged values: these are the numbers that were inline.
+     Each is the bar/sheet box ONLY -- the safe-area inset is added by the
+     rules, never folded in here, so it is applied exactly once. */
+  --fp-bar-h: 96px;
+  --fp-sheet-h: 340px;
+}
+body.fp-open { padding-bottom: calc(var(--fp-bar-h) + env(safe-area-inset-bottom)); }
+body.fp-open.fp-expanded { padding-bottom: calc(var(--fp-sheet-h) + env(safe-area-inset-bottom)); }
 
 #foray-player {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 60;
@@ -1141,10 +1194,10 @@ body.ui-v2.fp-open #foray-player {
   bottom: calc(var(--tab-bar-h) + env(safe-area-inset-bottom));
 }
 body.ui-v2.fp-open {
-  padding-bottom: calc(var(--tab-bar-h) + env(safe-area-inset-bottom) + 96px);
+  padding-bottom: calc(var(--fp-bar-h) + var(--tab-bar-h) + env(safe-area-inset-bottom));
 }
 body.ui-v2.fp-open.fp-expanded {
-  padding-bottom: calc(var(--tab-bar-h) + env(safe-area-inset-bottom) + 340px);
+  padding-bottom: calc(var(--fp-sheet-h) + var(--tab-bar-h) + env(safe-area-inset-bottom));
 }
 .fp-progress { height: 3px; background: var(--surface-2); }
 .fp-fill { height: 100%; width: 0; background: var(--accent); transition: width .25s linear; }
@@ -1172,6 +1225,18 @@ body.ui-v2.fp-open.fp-expanded {
 }
 .fp-play { background: var(--accent); border-color: var(--accent); color: #fff; box-shadow: var(--shadow); }
 .fp-close { font-size: 0.75rem; color: var(--text-dim); }
+/* U-13 follow-up: the ✕ belongs to the EXPANDED sheet, not to the mini bar it
+   sits in. Once closing means collapse (client.js's `fp-close` comment), a ✕ on
+   an already-collapsed bar has nothing to collapse — a visible control that does
+   nothing is a dead target, and on the mini bar it would also read as the
+   dismiss this card deliberately removed. Stopping is `.fp-stop`, in the sheet.
+
+   `display: none` rather than the `hidden` attribute, on purpose: `[hidden]` is
+   a UA-stylesheet rule and ANY author `display` declaration beats it (the trap
+   test/home-layout.test.js's BUG 3 documents and app.js's `renderTabBar` comment
+   restates). `.fp-play, .fp-close` declares no `display` today, so `hidden` would
+   work — and would silently stop working the day one is added. */
+body:not(.fp-expanded) .fp-close { display: none; }
 
 .fp-sheet { padding: 4px 16px 16px; border-top: 1px solid var(--line); }
 .fp-s-title { font-family: var(--serif); font-size: 1.1rem; font-weight: 700; margin: 8px 0 2px; color: var(--text); }
@@ -1183,6 +1248,32 @@ body.ui-v2.fp-open.fp-expanded {
    the existing .fp-s-why, both already used by the player sheet. */
 .ep-art { width: 100%; max-width: 320px; display: block; border-radius: 10px; margin: 0 0 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
 .ep-actions { display: flex; align-items: center; gap: 12px; }
+/* A1.1: full publisher episode description — additive to .fp-s-why (4a's
+   curated hook), never replacing it, so both stay visible with distinct
+   section labelling. Plain paragraph text, matches the app's existing
+   body-copy scale rather than inventing a second one. */
+.ep-description { margin: 20px 0 0; }
+.ep-description h3, .ep-chapters h3 {
+  margin: 0 0 8px;
+  font-family: var(--serif);
+  font-size: 0.86rem; font-weight: 700;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--text-dim);
+}
+.ep-description-text { font-size: 0.88rem; color: var(--text); line-height: 1.5; white-space: pre-line; margin: 0; }
+/* A1.5: chapter markers — a genuinely separate mechanism from the foray
+   segment-strip (player/segment-strip.js), per Joey's Q5 answer. Plain list,
+   no shared classes with the strip's capsule/gap/bridge visual language. */
+.ep-chapters { margin: 20px 0 0; }
+.ep-chapters-list { list-style: none; margin: 0; padding: 0; }
+.ep-chapters-list li {
+  display: flex; gap: 10px; align-items: baseline;
+  padding: 6px 0; border-bottom: 1px solid var(--line);
+  font-size: 0.85rem; color: var(--text);
+}
+.ep-chapters-list li:last-child { border-bottom: none; }
+.ep-chapter-time { flex: none; font-variant-numeric: tabular-nums; color: var(--text-dim); min-width: 3.5em; }
+.ep-chapter-title { flex: 1 1 auto; }
 /* A1.8 "More from this show" — same section-label language as .fy-slot h3. */
 .ep-more { margin: 24px 0 0; }
 .ep-more h3 {
@@ -1212,7 +1303,7 @@ body.ui-v2.fp-open.fp-expanded {
 .fp-big { min-width: 72px; font-size: 1.1rem; }
 .fp-btn:hover { border-color: var(--accent); }
 .fp-row2 { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 8px; }
-.fp-rate, .fp-collapse {
+.fp-rate, .fp-stop, .fp-collapse {
   border: 1px solid var(--line); background: var(--surface-2); color: var(--text);
   border-radius: 6px; padding: 8px 12px; font-size: 0.75rem; cursor: pointer;
 }
@@ -2381,7 +2472,7 @@ body.ui-v2 .fp-btn {
   box-shadow: none;
 }
 body.ui-v2 .fp-btn:hover { border-color: var(--violet); }
-body.ui-v2 .fp-rate, body.ui-v2 .fp-collapse {
+body.ui-v2 .fp-rate, body.ui-v2 .fp-stop, body.ui-v2 .fp-collapse {
   border-color: var(--line);
   background: var(--surface2);
   color: var(--text);

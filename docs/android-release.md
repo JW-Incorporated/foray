@@ -19,6 +19,23 @@ started on any device or emulator. `android-release.yml` adds all three: a
 upload key from GitHub Secrets, and an emulator job that installs the app,
 starts it, and reads the running WebView back over Chrome DevTools.
 
+> **SUPERSEDED FOR THE UPLOAD HALF, 2026-09-07 (R-05, `docs/release-lockstep-plan.md`).**
+> Once R-03's `release.yml` had a real green run on `main`, uploading to Play's
+> internal testing track became `release.yml`'s job via
+> `.github/actions/android-bundle` — the same `bundleRelease`/signing logic
+> this file uses, factored into a composite action so the two callers cannot
+> drift. **`android-release.yml` is now the PR-time check of the release
+> pipeline** (its `pull_request` trigger already only fired when the pipeline
+> itself changed — `mobile/gradle/**`, `wire-signing.mjs`, `webview-probe.mjs`
+> — so that half of this file is unchanged) plus the `android-smoke` emulator
+> launch test, which stays here because `release.yml` deliberately does not
+> re-run it on every tag. §3's "download the artifact and submit it by hand"
+> walkthrough below is the **exception path** now — for a `workflow_dispatch`
+> of THIS file, or for the rare case `release.yml`'s Play upload is skipped
+> (no `PLAY_SERVICE_ACCOUNT_JSON` yet) and the `.aab` still needs to reach Play
+> some other way — not the normal way an Android release ships. `docs/releases.md`
+> has the current one-page operational picture.
+
 ---
 
 ## 1. The upload key
@@ -146,7 +163,17 @@ do not know with what.
 
 ---
 
-## 3. Producing a bundle to submit
+## 3. Producing a bundle to submit by hand — the exception path
+
+> This section describes a manual `workflow_dispatch` of `android-release.yml`
+> and downloading its artifact. The normal way a release reaches Play is
+> `release.yml` (push a `v*` tag, or dispatch it on `main`) uploading straight
+> to the internal testing track via `.github/actions/android-bundle` — no
+> download, no manual Console upload. Use the steps below only when you
+> genuinely need an `.aab` outside that flow (dispatching this file directly,
+> or `PLAY_SERVICE_ACCOUNT_JSON` is not set yet and you need to get a build to
+> Play some other way — see G3 in `docs/release-lockstep-plan.md` for the
+> one-time first-ever-upload case, which is always manual regardless).
 
 1. Actions → **android-release** → **Run workflow**.
 2. Fill in **version_code** and **version_name**.

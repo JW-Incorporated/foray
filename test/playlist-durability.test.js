@@ -1195,3 +1195,156 @@ test("today's subject queue renders through the same one path as a saved playlis
   assert.ok(html.includes("today's queue"));
   assert.ok(!html.includes("remove this playlist"), "a subject queue is not removable");
 });
+
+/* ==================================================================== */
+/* #558 — the three code defects the requirements audit found            */
+/* ==================================================================== */
+
+test("renderDrawer: a playlist entry with neither last_played_at nor created does not crash (#558 item 1)", () => {
+  /* The exact crash the issue names: renderDrawer's sort read
+     `(b.last_played_at || b.created).localeCompare(...)` with no `|| ""`
+     guard, unlike playlistsForYouHtml's identical sort. playlists() now
+     backfills `created` on every read, so the malformed shape below is
+     reached by overriding `playlists()` directly rather than through
+     storage — modelling a hand-edited store, a truncated write, or a
+     cp_quests entry from before `created` existed, i.e. exactly what
+     playlists()'s own backfill (tested separately below) exists to close,
+     WITHOUT relying on that backfill to protect this call site too.
+
+     MUTATION: drop the `|| ""` on either side of the comparator. Both
+     entries below have neither field, so `undefined.localeCompare` throws
+     and this test fails with an uncaught exception rather than an assertion. */
+  const m = mount();
+  m.ctx.playlists = () => [
+    { id: "q1", title: "One", items: [] },
+    { id: "q2", title: "Two", items: [] },
+  ];
+  assert.doesNotThrow(() => m.ctx.renderDrawer(), "renderDrawer must not throw on a record with neither timestamp");
+  const html = m.ctx.document.querySelector("#drawer-playlists").innerHTML;
+  assert.ok(html.includes("One") && html.includes("Two"), "both entries must still render");
+});
+
+test("playlists(): a record with neither `created` nor `last_played_at` gets `created` backfilled (#558 item 1)", () => {
+  /* The other half of the same defect: playlists() already backfills a
+     missing `title` (and `items`, via hydratePlaylistParts) but never
+     `created`, so a record like this survived indefinitely with neither
+     timestamp — which is what made the renderDrawer crash above reachable
+     from real storage in the first place, not just from a stubbed
+     playlists().
+
+     MUTATION: drop the new `if (!p.created)` backfill. `created` stays
+     undefined and the second assertion fails. */
+  const m = mount();
+  setPool(m, [poolItem(1)]);
+  m.ctx.fullPool();
+  m.store.set("cp_playlists", JSON.stringify([
+    { id: "q1", title: "No Timestamps", items: [m.ctx.playlistPart(poolItem(1))] },
+  ]));
+  const [p] = m.ctx.playlists();
+  assert.ok(p.created, "created must be backfilled, not left undefined");
+  assert.ok(!Number.isNaN(Date.parse(p.created)), "the backfilled value must be a real ISO timestamp");
+  const stored = JSON.parse(m.store.get("cp_playlists"));
+  assert.ok(stored[0].created, "the backfill must be written back to storage, not just held in memory");
+});
+
+test("bindPlay: playing a playlist part with the in-app button sets last_played_at (#558 item 2)", async () => {
+  /* Mirrors bindPickLogging's own click test (clickPick, above): the DOM stub
+     cannot parse innerHTML, so the markup and the handler are asserted
+     separately. First, epRow's play button — reached the way
+     renderPlaylistDetail reaches it, with ctx = "playlist-<id>" — carries the
+     data-ctx bindPlay now reads. Then bindPlay is driven directly with that
+     same ctx and must stamp last_played_at, the same way a click on the old
+     pick-link used to.
+
+     MUTATION 1: drop `playBtn(item, ctx)`'s new `data-ctx` attribute (revert
+     to `playBtn(item)` in epRow) — the markup assertion fails.
+     MUTATION 2: drop bindPlay's `touchPlaylistPlayed` call — last_played_at
+     stays null and the second assertion fails. */
+  const m = mount();
+  const items = setPool(m, [poolItem(1)]);
+  m.ctx.fullPool();
+  m.ctx.savePlaylists([{
+    id: "q1", title: "Physics", items: [m.ctx.playlistPart(items[0])],
+    created: "2026-08-18T00:00:00.000Z", last_played_at: null, sparse: false,
+  }]);
+
+  const row = m.ctx.epRow(items[0], 0, "playlist-q1", -1);
+  assert.ok(row.includes('data-ctx="playlist-q1"'), "the in-app play button must carry the playlist's ctx");
+
+  const handlers = [];
+  const btn = {
+    dataset: { play: items[0].id, ctx: "playlist-q1" },
+    _bound: false,
+    addEventListener: (t, fn) => { if (t === "click") handlers.push(fn); },
+  };
+  m.ctx.window.ForayPlayer = { async play() { return true; } };
+  m.ctx.bindPlay({ querySelectorAll: () => [btn] });
+  assert.strictEqual(handlers.length, 1, "bindPlay did not bind the button");
+  await handlers[0]({ preventDefault() {}, stopPropagation() {} });
+
+  const [p] = m.ctx.playlists();
+  assert.ok(p.last_played_at, "last_played_at must be set after an in-app play of a playlist part");
+  assert.ok(!Number.isNaN(Date.parse(p.last_played_at)));
+});
+
+test("bindPlay: a non-playlist play (no playlist ctx) never touches last_played_at (#558 item 2)", async () => {
+  /* The negative case for the same fix: bindPlay's regex must only fire for
+     a "playlist-<id>" ctx, the same way bindPickLogging's does — an episode
+     page play, a subject-queue play, or a generated-playlist play (ctx
+     "subject-"/"generated-", or no ctx at all) must not invent a playlist to
+     touch.
+
+     MUTATION: widen the regex (e.g. match any ctx, or drop the anchor) — this
+     would start writing last_played_at for episodes with no playlist at all,
+     and the assertion below (no cp_playlists write) fails. */
+  const m = mount();
+  const items = setPool(m, [poolItem(1)]);
+  m.ctx.fullPool();
+
+  const handlers = [];
+  const btn = {
+    dataset: { play: items[0].id },   // no ctx — a plain episode-page play
+    _bound: false,
+    addEventListener: (t, fn) => { if (t === "click") handlers.push(fn); },
+  };
+  m.ctx.window.ForayPlayer = { async play() { return true; } };
+  m.ctx.bindPlay({ querySelectorAll: () => [btn] });
+  await handlers[0]({ preventDefault() {}, stopPropagation() {} });
+
+  assert.ok(!m.store.has("cp_playlists"), "a play with no playlist ctx must never create or touch cp_playlists");
+});
+
+test("buildPlaylist: a duration filter dropped by relaxation is disclosed on the playlist page (#558 item 3)", () => {
+  /* searchWithRelaxation returns `{ results, relaxed }`; buildPlaylist used to
+     destructure only `results` and throw `relaxed` away, so "physics tiny"
+     (duration_max: 10, which nothing in this pool clears) could silently
+     widen to episodes of any length with nothing said. "tiny" is wired as a
+     duration_max:10 modifier directly on state.semantic — the same shape
+     data/semantic-index.json ships, per the existing "physics"-query test
+     above (line ~1090) that sets state.semantic/state.itemTags by hand for a
+     non-booted pool.
+
+     MUTATION 1: revert buildPlaylist to `const { results } = ...` — `relaxed`
+     stays undefined, `playlist.relaxed` is never "duration", and the note
+     assertion fails.
+     MUTATION 2: drop the `p.relaxed === "duration"` note from
+     renderPlaylistDetail — the playlist still carries `relaxed` but nothing
+     is ever shown, and the second assertion fails. */
+  const m = mount();
+  const items = setPool(m, Array.from({ length: 12 }, (_, i) => poolItem(i + 1)));
+  m.ctx.fullPool();
+  m.state.semantic = { concepts: {}, modifiers: { tiny: { type: "duration_max", value: 10 } } };
+  m.state.itemTags = {};
+
+  // Every synthetic item runs 41-52 minutes (poolItem's duration_min = 40+n),
+  // so "tiny" (duration_max: 10) alone would find nothing without relaxation.
+  assert.ok(items.every((it) => it.duration_min > 10), "fixture assumption: nothing in the pool clears duration_max:10");
+
+  const built = m.ctx.buildPlaylist("physics tiny");
+  assert.ok(built.status === "ok" || built.status === "sparse", `expected a real result, got ${built.status}`);
+  assert.strictEqual(built.playlist.relaxed, "duration", "the dropped duration filter must be carried onto the playlist");
+
+  m.ctx.renderPlaylistDetail(built.playlist.id);
+  assert.ok(m.view().includes("Couldn't match the length you asked for"),
+    "the detail page must disclose the relaxed duration filter in one plain sentence");
+});

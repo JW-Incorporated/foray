@@ -352,9 +352,21 @@ function buildUI() {
   playBtn.type = "button";
   playBtn.setAttribute("aria-label", "Play");
 
+  /* U-13 (founder feedback F18): this ✕ used to call `stopAndClose()`, and its
+     label said so. Closing the Now Playing screen to go and use the app therefore
+     ENDED playback and took the mini bar away with it, so there was no way back to
+     what was playing — the founder lost an episode mid-listen to a control whose
+     only visible job was "get this off my screen". It now collapses to the mini
+     bar, the same thing `fp-collapse` below does, and stopping has its own
+     separately labelled control (`fp-stop`, also below). styles.css shows it only
+     while the sheet is expanded — see the rule under `.fp-close` there — because
+     on an already-collapsed bar it would be a control with nothing left to do. Nothing about the stop
+     itself changed — same `stopAndClose()`, same effects — only which control
+     reaches it. Deliberately NOT a long-press: a destructive action hidden behind
+     a timed gesture is undiscoverable and, in a car, unsafe. */
   const closeBtn = el("button", "fp-close", "✕");
   closeBtn.type = "button";
-  closeBtn.setAttribute("aria-label", "Stop and close player");
+  closeBtn.setAttribute("aria-label", "Collapse player");
 
   const progress = el("div", "fp-progress");
   const fill = el("div", "fp-fill");
@@ -408,7 +420,15 @@ function buildUI() {
   forayLink.hidden = true;
   const collapse = el("button", "fp-collapse", "Close");
   collapse.type = "button";
-  row2.append(rateBtn, openLink, forayLink, collapse);
+  /* U-13: the ONLY control that ends playback and takes the bar away. It is here,
+     in the expanded sheet, rather than on the mini bar, because the mini bar has
+     to survive everything else a listener does — it is the way back to what is
+     playing. Labelled "Stop" in both the text and the accessible name so it can
+     never be confused with "Close" beside it, which only collapses. */
+  const stopBtn = el("button", "fp-stop", "Stop");
+  stopBtn.type = "button";
+  stopBtn.setAttribute("aria-label", "Stop");
+  row2.append(rateBtn, openLink, forayLink, stopBtn, collapse);
 
   const note = el("p", "fp-note");
 
@@ -419,7 +439,7 @@ function buildUI() {
   return {
     root, bar, art, title, show, playBtn, closeBtn, fill, sheet,
     sTitle, sShow, sWhy, scrub, tNow, tLeft, bigPlay, backBtn, fwdBtn,
-    rateBtn, openLink, forayLink, collapse, info, note,
+    rateBtn, openLink, forayLink, stopBtn, collapse, info, note,
   };
 }
 
@@ -1179,7 +1199,9 @@ function bind() {
   ui.playBtn.addEventListener("click", toggle);
   ui.bigPlay.addEventListener("click", toggle);
 
-  ui.closeBtn.addEventListener("click", () => stopAndClose());
+  /* U-13: the only listener that reaches `stopAndClose` from the UI. Everything
+     else that used to (the mini bar's ✕) now collapses instead. */
+  ui.stopBtn.addEventListener("click", () => stopAndClose());
 
   const setExpanded = (open) => {
     ui.sheet.hidden = !open;
@@ -1187,6 +1209,9 @@ function bind() {
   };
   ui.info.addEventListener("click", () => setExpanded(ui.sheet.hidden));
   ui.collapse.addEventListener("click", () => setExpanded(false));
+  /* Same path as `fp-collapse` above, on purpose — one behaviour, two controls,
+     not two behaviours. Declared after `setExpanded` because it is a `const`. */
+  ui.closeBtn.addEventListener("click", () => setExpanded(false));
   // Following the route with the sheet still open would leave the Foray page
   // rendered underneath a full-height overlay.
   ui.forayLink.addEventListener("click", () => setExpanded(false));
