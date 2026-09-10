@@ -2049,24 +2049,36 @@ service account, not a person, and nothing in this repo can create that
 account — it is a click-through flow in the Play Console tied to the
 developer account's identity.
 
-**Steps, with the exact menu path.**
+**Steps, with the exact menu path** (rewritten 2026-09-06 — Google removed the
+Play Console's *Setup → API access* page in 2025; Wyatt looked for it and it is
+not there. A Cloud project no longer needs to be *linked* to the developer
+account; the service account is simply invited as a user.
+Source: `developers.google.com/android-publisher/getting_started`.)
 
-1. In the **Play Console**, open the app (`4a`), then go to
-   **Setup → API access**.
-2. If no Google Cloud project is linked yet, follow the prompt to **link (or
-   create) a Google Cloud project** — Play Console does this step for you.
-3. Under that linked project, **create a new service account** (Play Console
-   deep-links you straight into the Google Cloud IAM console for this step).
-4. Back in Play Console's **API access** page, grant the new service account
-   access to this app with the role **`Release manager`** — this is the
-   minimum role that can upload and manage releases without also granting
-   store-listing or financial-data access.
-5. In Google Cloud IAM, generate a **JSON key** for that service account and
-   download it.
-6. Add the whole JSON file as a GitHub repo secret named exactly
-   **`PLAY_SERVICE_ACCOUNT_JSON`** — from the file, not retyped
-   (`gh secret set PLAY_SERVICE_ACCOUNT_JSON < path/to/key.json`), so the key
-   material never enters a shell history or a transcript.
+1. **Google Cloud Console** (`console.cloud.google.com`), any project you own
+   (create one called `4a-play-uploads` if in doubt): **APIs & Services →
+   Library → search "Google Play Android Developer API" → Enable**.
+2. Same project: **IAM & Admin → Service Accounts → Create service account**.
+   Name `play-uploader`. No Cloud roles are needed. Copy its email
+   (`play-uploader@<project>.iam.gserviceaccount.com`).
+3. Open that service account → **Keys → Add key → Create new key → JSON**.
+   The file downloads once; keep it.
+4. **Play Console**, at the *account* level (left nav on the "All apps" page,
+   not inside 4a): **Users and permissions → Invite new users**. Paste the
+   service-account email as the user. Under **App permissions → Add app →
+   4a**, tick: *View app information and download bulk reports*, *Release
+   apps to testing tracks*, *Manage testing tracks and edit tester lists*.
+   Leave production release and financial permissions unticked. Send the
+   invite; a service account needs no acceptance.
+   If you do not see **Users and permissions**, your Play login is not an
+   Owner/Admin of the developer account — the account owner (Joey) has to do
+   this step.
+5. Hand the JSON file to the session over Signal or the password manager (not
+   chat/email), or add it yourself as the GitHub repo secret named exactly
+   `PLAY_SERVICE_ACCOUNT_JSON` (Settings → Secrets and variables → Actions),
+   pasting the whole file as the value.
+6. Tell the session; it runs `release.yml` once and checks the summary's Play row.
+
 
 **Worked if:** the Play Console's API access page shows the service account
 listed with **Release manager** access to `4a`, and
@@ -2076,7 +2088,7 @@ Android job is written to skip loudly rather than fail (see
 `docs/release-lockstep-plan.md` R-03), so nothing breaks in the meantime, but
 nothing uploads either.
 
-**Status:** OPEN
+**Status:** DONE (2026-09-06 — Wyatt created `play-uploader@a-play-uploads.iam.gserviceaccount.com` with testing-track permissions and added `PLAY_SERVICE_ACCOUNT_JSON`; release run 34045806385 uploaded versionCode 2026090603 to the internal track: `Successfully committed` edit 03636605186726154828)
 
 ---
 
@@ -2114,7 +2126,7 @@ account is configured.
 secret exists) can upload `versionCode 2` and higher without Google's API
 rejecting it as "no existing release to update."
 
-**Status:** OPEN
+**Status:** DONE (2026-09-06 — Wyatt uploaded the first release by hand; it was still *in review* when the first API upload above succeeded, so review does not block internal-track API uploads)
 
 ---
 
@@ -2272,6 +2284,13 @@ completion with the screen locked — same reporting bar item #11 already set fo
 `DIAGNOSTIC_FORAY_ID` and `withDiagnosticUnlock()` in `player/foray-resolve.js`, their
 call sites in `player/client.js`, and the tests that name them all go in one commit.
 None of it should be in the App Store build.
+
+**DONE (2026-09-06, D-01):** deleted in one commit, gated so it cannot silently
+return — see `test/release-gates.test.js`'s diagnostic-Foray tripwire (D-01,
+`docs/ios-controls-and-voice-plan.md`). V-01's in-app Audition button replaced
+the instrument for #40/H3's listening tests first, per that deck's sequencing.
+`docs/curation/tts-locked-screen-check.md` is kept as the historical record of
+this measurement; it is marked historical rather than deleted.
 
 ---
 
@@ -2783,9 +2802,11 @@ on-device synthesis is resting on a comparison against the worst voice iOS ships
    already installed — note which and move on.)
 3. Write down the exact names of every voice that now shows as downloaded. That is the
    ground truth this repo does not have.
-4. Install/launch the shell build with this change in it, open the
-   **"On-device narration, screen off"** Foray (the same one #29 used), and listen to
-   the first ~20 seconds.
+4. Open **4a**, tap the menu, and choose **Narration voice**. Find the voice you
+   downloaded in the list (it may take a moment to appear — the picker rescans
+   when you return to the app), select it, and tap its **Audition** button. It
+   speaks a counting line at your current playback speed — that replaces the
+   old step of opening the diagnostic Foray by hand.
 5. **Report:** does it sound meaningfully better than what you heard on 2026-09-05?
    Better/same/worse, in your own words — no scale needed. If it sounds identical,
    say so, because that is the informative answer: it would mean the plugin is not
@@ -2803,6 +2824,113 @@ on-device synthesis is resting on a comparison against the worst voice iOS ships
 **Worked if:** there is a written note saying which voice was downloaded and whether the
 narration sounded better with it. Both halves are needed — "sounds better" without the
 voice name cannot be reproduced, and the voice name without a verdict answers nothing.
+
+**Status:** OPEN.
+
+---
+
+### H3. The 2x re-check for #490's rate curve — Audition as the stopwatch
+
+**Tag:** `[BLOCKING]` for confirming #490's rate-mapping curve · **Time:** ~1 minute ·
+**Owner:** whoever has the phone
+
+**Why it matters.** `mobile/plugins/foray-tts/README.md`'s "Which voice speaks" section
+records that the iOS rate mapping is calibrated from **one** device reading: rate `D` =
+1.0x (definitional), rate `1.5·D` ≈ 3.0x (measured 2026-09-05). "One data point does not
+make a curve" — a second reading, at a different speed, either confirms the shape or
+shows it is wrong. V-01's Audition button, which speaks a fixed 20-count line with a
+marker every ten seconds, doubles as that second reading: a stopwatch and a known-length
+line are all the test needs.
+
+**Steps.**
+
+1. Open **4a**, set the playback speed to **2x** (the speed control, not the voice
+   picker).
+2. Open the drawer's **Narration voice** picker and tap **Audition** on any installed
+   voice.
+3. Time it with a stopwatch, start to the final "twenty" plus its closing beat.
+4. **Report the number of seconds.** At the curve's predicted mapping, 2x should land
+   at roughly **50 seconds** (`STATE.md`'s own prediction, same line, same math).
+   Materially off — say by more than a few seconds — means the *shape* of the curve is
+   wrong, not just this one point; matching within a few seconds confirms it.
+
+**Worked if:** there is a written number of seconds, at 2x, for the Audition line.
+
+**Status:** OPEN.
+
+---
+
+### H1. The drive test — iOS lock-screen and car controls, on a real phone in a real car
+
+**Tag:** `[BLOCKING]` for closing founder-feedback F5/F7, and for whether F6 recurs ·
+**Time:** ~10 minutes, in the car · **Owner:** Wyatt · **Depends on:** a TestFlight
+build carrying L-01 and L-02 (both merged to `main` — PRs #517/#520 and #522; no
+build has gone out with this work yet as of this item's writing, `docs/ios-lock-screen.md`
+§5).
+
+**Why it matters.** `docs/ios-controls-and-voice-plan.md`'s H1 gate, closing the loop
+on the founder feedback log's F5 (*"car controls do not work when the app is
+backgrounded / screen off … this is also a safety issue"*), F6 (*"playback jumped
+backwards ~2 minutes mid-podcast, unprompted"*) and F7 (*"lock screen showed 'paused'
+while audio was playing, and a position ~1 minute behind actual"*). L-01/L-02 give
+iOS a real `MPNowPlayingInfoCenter`/`MPRemoteCommandCenter` back end for the first
+time — `docs/ios-lock-screen.md` argues what it says and why — but nothing about a
+lock screen, Bluetooth or a steering wheel can be verified by a machine. The
+Simulator does not model true suspension, power management, or a car's Bluetooth
+stack at all.
+
+**A build now exists.** `docs/ios-lock-screen.md` §5: `ios-build` run 34047876769,
+dispatched against `main` @ `9500012` (carrying both L-01 and L-02), went green end
+to end including the TestFlight upload — `CFBundleVersion 229.1`. Check TestFlight
+for build 229.1 or higher; if a newer build has landed by the time you read this,
+use that one instead and note the build number in your report.
+
+**Steps.**
+
+1. Confirm you have build **229.1 or newer** installed via TestFlight on the iPhone.
+   If TestFlight has not surfaced it yet, wait for Apple's processing or check
+   **Actions → ios-build → Run workflow** on `main` for a newer green run.
+2. Start a Foray playing, then **lock the phone** (side button) while it plays.
+3. **On the lock screen / Control Center**, try each control below and write down
+   what happened — worked, did nothing, or did the wrong thing:
+   - [ ] Play / pause
+   - [ ] Next (should move to the next **segment**, not the next episode or a 30 s nudge)
+   - [ ] Previous (should restart the current segment, or go back one, per
+     `player/media-session.js`'s window — not jump to episode start)
+   - [ ] Seek back 15 s
+   - [ ] Seek forward 30 s
+   - [ ] Scrub the position bar (should land on the **Foray's** own clock, not the
+     current segment's)
+   - [ ] Stop — **expected: no stop button appears at all.** iOS declines it outright
+     (`docs/ios-lock-screen.md` §2.3); if one shows up and does something, that is a
+     defect, not a missing feature.
+4. **In the car**, with the phone connected over Bluetooth (or CarPlay's audio-only
+   surface, not a CarPlay app — none exists), repeat play/pause, next/previous and
+   the steering-wheel transport buttons if the car has them. Write down the same
+   worked/nothing/wrong-thing verdict per control.
+5. **Position tracking:** while playing, does the lock screen's elapsed time actually
+   move at roughly the right pace, including right after a pause/resume and right
+   after a seam (segment change)? Note anything that looked frozen, jumped, or was
+   noticeably behind the audio.
+6. **The F6 observation — write this down explicitly, whatever it is:**
+   Did playback jump backwards unexpectedly at any point during the test (the ~2-minute
+   backwards jump from F6)? Yes/no, and if yes, roughly how far back and when
+   (right after a lock-screen action, right after a seam, or with no obvious trigger).
+   "It did not recur" is itself the useful answer — silence on this question is not
+   the same as a clean result.
+7. **Report back in this exact form:**
+   `H1 drive test, build <TestFlight build number>: play=<worked/nothing/wrong>,
+   pause=<...>, next=<...>, previous=<...>, seek-15=<...>, seek+30=<...>,
+   scrub=<...>, stop=<appeared/did not appear, and what it did>,
+   position tracked audio=<yes/no, detail>, F6 recurred=<yes/no, detail>.`
+
+**Worked if:** there is a written verdict for every control above, an explicit
+position-tracking answer, and an explicit F6 answer — a report that skips any one
+of the three cannot close F5/F6/F7.
+
+**Once this is done:** update this item's Status line below, and **please update
+your off-repo `4a-feedback.md` log's F5/F6/F7 entries** with the outcome — this repo
+cannot read that file, so the record only exists once you write it there yourself.
 
 **Status:** OPEN.
 
