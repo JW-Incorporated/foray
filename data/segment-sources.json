@@ -1001,6 +1001,126 @@
       "audio_verified_on": null,
       "transcript_url": "https://transcripts.blubrry.com/rewildingearth/89533331-1459.srt",
       "transcript_sha256": "5948c9419636ec61cdc8e1b006875e0691920b04a26f4a4185836c4928bbbac4"
+    },
+    {
+      "id": "practical-ai--building-durable-ai-agents",
+      "show": "Practical AI",
+      "title": "Building Durable AI Agents",
+      "feed_url": "https://feeds.transistor.fm/practical-ai-machine-learning-data-science-llm",
+      "episode_guid": "8b5b6bd9-8bc8-4b5c-93a8-4d660f14b6dd",
+      "audio_url": "https://pscrb.fm/rss/p/dts.podtrac.com/redirect.mp3/media.transistor.fm/facb92e2/33d1bc96.mp3",
+      "audio_type": "audio/mpeg",
+      "duration_sec": 2799,
+      "dai_suspected": true,
+      "source": "generation-tier-2"
+    },
+    {
+      "id": "practical-ai--the-future-of-ai-infrastructure-with-coreweave",
+      "show": "Practical AI",
+      "title": "The Future of AI Infrastructure with CoreWeave",
+      "feed_url": "https://feeds.transistor.fm/practical-ai-machine-learning-data-science-llm",
+      "episode_guid": "c555f52e-7f0a-403b-acf4-e3a30957582d",
+      "audio_url": "https://pscrb.fm/rss/p/dts.podtrac.com/redirect.mp3/media.transistor.fm/01c30767/eed885fc.mp3",
+      "audio_type": "audio/mpeg",
+      "duration_sec": 3004,
+      "dai_suspected": true,
+      "source": "generation-tier-2"
+    },
+    {
+      "id": "practical-ai--federated-learning-in-production-part-2",
+      "show": "Practical AI",
+      "title": "Federated learning in production (part 2)",
+      "feed_url": "https://feeds.transistor.fm/practical-ai-machine-learning-data-science-llm",
+      "episode_guid": "d723ab20-4c1c-497a-8b1f-02d5defcefd7",
+      "audio_url": "https://pscrb.fm/rss/p/dts.podtrac.com/redirect.mp3/media.transistor.fm/1e3c9247/e9f0e8cd.mp3",
+      "audio_type": "audio/mpeg",
+      "duration_sec": 2725,
+      "dai_suspected": true,
+      "source": "generation-tier-2"
+    },
+    {
+      "id": "practical-ai--creating-a-private-ai-assistant-in-thunderbird",
+      "show": "Practical AI",
+      "title": "Creating a private AI assistant in Thunderbird",
+      "feed_url": "https://feeds.transistor.fm/practical-ai-machine-learning-data-science-llm",
+      "episode_guid": "552ed99d-351d-4fbb-b653-d2f5e1c5402a",
+      "audio_url": "https://pscrb.fm/rss/p/dts.podtrac.com/redirect.mp3/media.transistor.fm/c73dd974/7b2ed2ac.mp3",
+      "audio_type": "audio/mpeg",
+      "duration_sec": 3188,
+      "dai_suspected": true,
+      "source": "generation-tier-2"
+    },
+    {
+      "id": "practical-ai--the-myth-of-model-wars-open-vs-closed-ai-in-2026",
+      "show": "Practical AI",
+      "title": "The Myth of Model Wars: Open vs Closed AI in 2026",
+      "feed_url": "https://feeds.transistor.fm/practical-ai-machine-learning-data-science-llm",
+      "episode_guid": "1b717d56-974a-4ffe-8189-8df486ba2198",
+      "audio_url": "https://pscrb.fm/rss/p/dts.podtrac.com/redirect.mp3/media.transistor.fm/6095edc5/d370f038.mp3",
+      "audio_type": "audio/mpeg",
+      "duration_sec": 2542,
+      "dai_suspected": true,
+      "source": "generation-tier-2"
+    },
+    {
+      "id": "practical-ai--ai-at-the-edge-is-a-different-operating-environment",
+      "show": "Practical AI",
+      "title": "AI at the Edge is a different operating environment",
+      "feed_url": "https://feeds.transistor.fm/practical-ai-machine-learning-data-science-llm",
+      "episode_guid": "c0bc0a38-8ba5-40a7-994e-0e60e37985f3",
+      "audio_url": "https://pscrb.fm/rss/p/dts.podtrac.com/redirect.mp3/media.transistor.fm/ea7694a9/378817af.mp3",
+      "audio_type": "audio/mpeg",
+      "duration_sec": 2819,
+      "dai_suspected": true,
+      "source": "generation-tier-2"
+    },
+    {
+      "id": "practical-ai--rebooting-enterprise-ai-with-mcp-and-kubernetes",
+      "show": "Practical AI",
+      "title": "Rebooting Enterprise AI with MCP and Kubernetes",
+      "feed_url": "https://feeds.transistor.fm/practical-ai-machine-learning-data-science-llm",
+      "episode_guid": "16863a1c-38c8-4d5c-ac85-efdbf1da5b40",
+      "audio_url": "https://pscrb.fm/rss/p/dts.podtrac.com/redirect.mp3/media.transistor.fm/d76e02d5/e934139b.mp3",
+      "audio_type": "audio/mpeg",
+      "duration_sec": 2889,
+      "dai_suspected": true,
+      "source": "generation-tier-2"
+    },
+    {
+      "id": "practical-ai--ai-policy-and-the-battle-for-computing-power",
+      "show": "Practical AI",
+      "title": "AI policy and the battle for computing power",
+      "feed_url": "https://feeds.transistor.fm/practical-ai-machine-learning-data-science-llm",
+      "episode_guid": "65c042ae-28bb-4ec7-b442-4bce381ddcb2",
+      "audio_url": "https://pscrb.fm/rss/p/dts.podtrac.com/redirect.mp3/media.transistor.fm/1923dca1/0dd54a72.mp3",
+      "audio_type": "audio/mpeg",
+      "duration_sec": 2934,
+      "dai_suspected": true,
+      "source": "generation-tier-2"
+    },
+    {
+      "id": "practical-ai--surviving-the-new-economics-of-a-post-agentic-world",
+      "show": "Practical AI",
+      "title": "Surviving the New Economics of a Post-Agentic World",
+      "feed_url": "https://feeds.transistor.fm/practical-ai-machine-learning-data-science-llm",
+      "episode_guid": "9bcca966-be29-4f64-951a-2a49fe7b6d3a",
+      "audio_url": "https://pscrb.fm/rss/p/dts.podtrac.com/redirect.mp3/media.transistor.fm/8a2e4fc0/e08735dd.mp3",
+      "audio_type": "audio/mpeg",
+      "duration_sec": 2136,
+      "dai_suspected": true,
+      "source": "generation-tier-2"
+    },
+    {
+      "id": "practical-ai--educating-a-data-literate-generation",
+      "show": "Practical AI",
+      "title": "Educating a data-literate generation",
+      "feed_url": "https://feeds.transistor.fm/practical-ai-machine-learning-data-science-llm",
+      "episode_guid": "a1a0a979-7151-48cb-8234-0d31cfbfb373",
+      "audio_url": "https://pscrb.fm/rss/p/dts.podtrac.com/redirect.mp3/media.transistor.fm/a952cb30/c4daf7a6.mp3",
+      "audio_type": "audio/mpeg",
+      "duration_sec": 2681,
+      "dai_suspected": true,
+      "source": "generation-tier-2"
     }
   ]
 }

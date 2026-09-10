@@ -799,6 +799,379 @@
           "role": "explanation"
         }
       ]
+    },
+    {
+      "id": "beyond-the-algorithm-engineering-production-ai-s-e6533b",
+      "kind": "deep-dive",
+      "title": "Beyond the Algorithm: Engineering Production AI Systems",
+      "topic": "engineering/ai-robotics",
+      "status": "draft",
+      "summary": "AI production success depends on data engineering, infrastructure, and operations more than pure ML",
+      "runtime_sec": 2420.962,
+      "generated": true,
+      "slots": [
+        {
+          "id": "the-failure-modes-nobody-writes-papers-about",
+          "title": "The failure modes nobody writes papers about"
+        },
+        {
+          "id": "where-the-compute-actually-lives",
+          "title": "Where the compute actually lives"
+        },
+        {
+          "id": "getting-the-data-to-the-model-or-the-model-to-the-data",
+          "title": "Getting the data to the model, or the model to the data"
+        },
+        {
+          "id": "weights-are-artifacts-and-artifacts-need-a-supply-chain",
+          "title": "Weights are artifacts, and artifacts need a supply chain"
+        },
+        {
+          "id": "debugging-a-system-that-fails-softly",
+          "title": "Debugging a system that fails softly"
+        },
+        {
+          "id": "who-pays-who-staffs-who-gets-paged",
+          "title": "Who pays, who staffs, who gets paged"
+        }
+      ],
+      "items": [
+        {
+          "type": "narration",
+          "id": "disclosure",
+          "script": "This is a Foray about Real-world ML production: infrastructure, data, and operational challenges. Much of what you'll hear is written by AI. We work hard to get the facts right, but AI gets things wrong — so take it as a starting point, not a source.",
+          "mode": "marker",
+          "slot": "the-failure-modes-nobody-writes-papers-about"
+        },
+        {
+          "type": "narration",
+          "id": "act-1-introduction",
+          "script": "This is a series about production ML — not the research, the running system. Act one opens with the assumption almost every engineer starts with: a deployed model succeeds or fails on its own quality, and everything wrapped around it is plumbing installed after the real work is done. That assumption doesn't survive contact with an incident channel, because a POST call that times out, a GPU that slows down without ever crashing, and a feature pipeline that keeps serving stale defaults into a model with no way to flag them, chain together into an outage nobody trained a model to prevent. The model wasn't broken.",
+          "mode": "frame",
+          "slot": "the-failure-modes-nobody-writes-papers-about"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-1-0-connective",
+          "script": "The agent's kickoff API sits on shared compute—an ECS or Kubernetes cluster—built for millisecond replies. Agent work runs long, and the POST call times out first.",
+          "mode": "frame",
+          "slot": "the-failure-modes-nobody-writes-papers-about"
+        },
+        {
+          "type": "segment",
+          "slot": "the-failure-modes-nobody-writes-papers-about",
+          "segment_id": "practical-ai--building-durable-ai-agents#1552"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-1-1-connective",
+          "script": "Spread a job across thousands of GPUs and the only symptom is: it runs slower. Finding the one slow chip is the hard part—so CoreWeave built straggler detection.",
+          "mode": "frame",
+          "slot": "the-failure-modes-nobody-writes-papers-about"
+        },
+        {
+          "type": "segment",
+          "slot": "the-failure-modes-nobody-writes-papers-about",
+          "segment_id": "practical-ai--the-future-of-ai-infrastructure-with-coreweave#960"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-1-2-beat",
+          "script": "A GPU with a hardware fault rarely crashes outright. It throttles, quietly, and the same job costs the same money for twice the time. A degraded interconnect never throws an error either; it just caps how well a multi-GPU job scales. Meanwhile the dashboards stay green. Step time creeps up, throughput slides, and nothing alarms. Nothing broke. Everything got worse.",
+          "mode": "patch",
+          "slot": "the-failure-modes-nobody-writes-papers-about"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-1-3-beat",
+          "script": "Machine learning has no equivalent yet — no genre built to walk a system’s failure end to end. Aviation does. Mayday takes one disaster per episode and works the investigation in full: survivors, experts, crash investigators, laying out how it happened before it says why. That is not a metaphor. It is the closest working template for an ML incident review.",
+          "mode": "patch",
+          "slot": "the-failure-modes-nobody-writes-papers-about"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-1-4-beat",
+          "script": "Where does this part of the story go next? Keep listening — the thread picks it up on the other side.",
+          "mode": "hinge",
+          "slot": "the-failure-modes-nobody-writes-papers-about"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-1-5-beat",
+          "script": "Open a mature ML system and the model itself, the actual learning code, can be as little as five percent of it. The other ninety-five is glue: data fetching, validation, retry logic, code stitched around a library call just to move numbers in and move numbers out. Keep the system running long enough and the configuration alone can outgrow the code that learns anything. That ratio is the whole argument. This is systems engineering.",
+          "mode": "patch",
+          "slot": "the-failure-modes-nobody-writes-papers-about"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-1-6-connective",
+          "script": "Call Flower a friendly framework, and engineers file it under prototyping, not production. So what does production actually look like?",
+          "mode": "frame",
+          "slot": "where-the-compute-actually-lives"
+        },
+        {
+          "type": "segment",
+          "slot": "where-the-compute-actually-lives",
+          "segment_id": "practical-ai--federated-learning-in-production-part-2#1428"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-1-7-beat",
+          "script": "A neocloud is a cloud provider built specifically for AI compute — GPUs, fast networking, nothing else competing for the roadmap. A hyperscaler like AWS runs everything: databases, web hosting, video encoding, and AI, all on the same platform. That breadth is the pitch — one vendor, any workload — but it also means AI isn't the priority. Neoclouds bet the opposite: narrow the offering, tune every layer to one kind of job, and let generality be someone else's problem.",
+          "mode": "patch",
+          "slot": "where-the-compute-actually-lives"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-1-8-beat",
+          "script": "Training is a batch job: submit it, let it run overnight, and if a step fails, kill it and retry. Serving is not a batch job. It's an online process with a latency budget measured in milliseconds — miss it and a user notices immediately. Same model, two different contracts. And because the paths diverge, systems can develop training-serving skew, where a model behaves one way in the training pipeline and another way in production, quietly, until someone notices the gap.",
+          "mode": "patch",
+          "slot": "where-the-compute-actually-lives"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-1-9-beat",
+          "script": "When GPUs are scarce, who gets the fleet stops being a technical question. It gets decided by executive sponsorship — which initiative has the right champion this quarter — not by utilization numbers. Often nobody has formally written down who gets the cluster, when, or under what limits, and nobody has the standing to enforce it if they did. The scheduler runs afterward, and it can only enforce decisions already made upstream. Left without that layer, it ends up making governance calls it was never built to make.",
+          "mode": "patch",
+          "slot": "where-the-compute-actually-lives"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-1-10-beat",
+          "script": "Checkpoint frequency is a budget line, not a settings toggle. Checkpoint too often, and the constant writes to disk eat into training throughput — you're burning compute to protect compute. Checkpoint too rarely, and one dead node erases a day of rented GPU time. There's no safe default: the interval that works for a training run this month may be wrong for the one after it. Get it wrong either way, and the meter's still running.",
+          "mode": "patch",
+          "slot": "where-the-compute-actually-lives"
+        },
+        {
+          "type": "narration",
+          "id": "act-1-exit",
+          "script": "Every fault this act named lived underneath the model: the timeout, the straggler GPU, the storage volume running at half speed. But the pattern that recurs — a model returning confident numbers while an upstream pipeline quietly serves it stale or null data — points past the model at something else entirely: the pipeline that moves, cleans, versions, and governs data long before a training run ever starts. That pipeline is not a preprocessing step bolted onto the real work. Data is infrastructure too.",
+          "mode": "frame",
+          "slot": "where-the-compute-actually-lives"
+        },
+        {
+          "type": "narration",
+          "id": "act-2-introduction",
+          "script": "Follow that trail past the last dropped frame and the last stale value, and it does not lead back to the model at all. It leads to a federation of clients and coordinating nodes that has to be registered and reasoned about as distinct roles before a single training run begins, and to a chain of hands — data engineers, labeling vendors, privacy reviewers — that has already touched what will become a feature before a single prediction ships. None of this is preparation for the interesting work. It is the interesting work, and everything downstream of it, weights included, is just an artifact of how well it was built.",
+          "mode": "frame",
+          "slot": "getting-the-data-to-the-model-or-the-model-to-the-data"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-2-0-beat",
+          "script": "Every federated run starts with paperwork. Before a SuperNode can join anything, it has to be registered — explicitly permitted to connect to a running SuperLink. No node gets in by showing up. That registration step points at something bigger: the whole architecture splits cleanly into two roles with two different lifespans. One half is long-lived, holding the network connection open, always there. The other half is short-lived, spun up only to run the task-specific code for a single job, then gone. Register first. Everything else depends on it.",
+          "mode": "patch",
+          "slot": "getting-the-data-to-the-model-or-the-model-to-the-data"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-2-1-connective",
+          "script": "So what does it actually mean for a company to build something it can't spy on, even if it wanted to? That's next.",
+          "mode": "frame",
+          "slot": "getting-the-data-to-the-model-or-the-model-to-the-data"
+        },
+        {
+          "type": "segment",
+          "slot": "getting-the-data-to-the-model-or-the-model-to-the-data",
+          "segment_id": "practical-ai--creating-a-private-ai-assistant-in-thunderbird#2513"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-2-2-beat",
+          "script": "Training-serving skew is the quiet killer of production models. Training and serving are different contexts — different timing guarantees, different failure modes, different code paths, usually different owners — so the same feature can drift apart with no alert firing. Why? Because feature logic gets written twice: once in the batch pipeline that builds training data, and again, independently, in the low-latency service that answers live requests, often in a different language entirely. The gap between those two versions has a name: online/offline skew. It doesn't announce itself. It just slowly gets the answers wrong.",
+          "mode": "patch",
+          "slot": "getting-the-data-to-the-model-or-the-model-to-the-data"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-2-3-beat",
+          "script": "Pick an open-source labeling tool and you haven't dodged the hard part — you've just inherited it. Staffing, instruction writing, adjudication, benchmark design, QA sampling, rework loops, throughput management: that's all yours now. The real cost of labeling was never in the vendor's price sheet. It's in running the workflow week after week. One number worth remembering: if a QA team has to correct more than three annotations in ten, that's not bad annotators. That's bad instructions. Fix the instructions.",
+          "mode": "patch",
+          "slot": "getting-the-data-to-the-model-or-the-model-to-the-data"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-2-4-beat",
+          "script": "Delete a row from a database and it's gone. Delete a row that trained a model, and the row lives on — folded into weights and embeddings that were never structured to be deletable in the first place. If that model can reproduce someone's personal information, or if it's stored inside it, the deletion obligation lands on the model itself, not just the database underneath it. And here's the failure mode teams keep hitting: training happens on live customer data with no log of what went where, so when a deletion request finally arrives, nobody can say which model it's actually sitting inside.",
+          "mode": "patch",
+          "slot": "getting-the-data-to-the-model-or-the-model-to-the-data"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-2-5-beat",
+          "script": "Most 'the model is wrong' tickets close as something else. Post-mortems on production failures keep finding the same thing: the model hadn't degraded, nothing crashed, no pipeline broke. What failed was the team's understanding of how the system behaves under real-world time — latency, drift, ground truth that shows up weeks late. The model was fine. The mental model wasn't.",
+          "mode": "patch",
+          "slot": "getting-the-data-to-the-model-or-the-model-to-the-data"
+        },
+        {
+          "type": "segment",
+          "slot": "weights-are-artifacts-and-artifacts-need-a-supply-chain",
+          "segment_id": "practical-ai--the-myth-of-model-wars-open-vs-closed-ai-in-2026#785"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-2-7-connective",
+          "script": "Edge isn't one runtime. It's DSPs, ISPs, a sprawl of silicon, and the job here is chasing that fragmentation to fit the leanest model to each chip.",
+          "mode": "frame",
+          "slot": "weights-are-artifacts-and-artifacts-need-a-supply-chain"
+        },
+        {
+          "type": "segment",
+          "slot": "weights-are-artifacts-and-artifacts-need-a-supply-chain",
+          "segment_id": "practical-ai--ai-at-the-edge-is-a-different-operating-environment#2022"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-2-8-beat",
+          "script": "A weight file alone tells you nothing. Real versioning tracks what actually produced it: the trained weights, the training data snapshot, the hyperparameters, the code commit, the deployment configuration. And every version needs a straight line back to the exact commit that built it. Skip that link, and when yesterday's predictions stop matching today's, nobody can say which piece moved. Track the chain, or debug blind.",
+          "mode": "patch",
+          "slot": "weights-are-artifacts-and-artifacts-need-a-supply-chain"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-2-9-beat",
+          "script": "Where does this part of the story go next? Keep listening — the thread picks it up on the other side.",
+          "mode": "hinge",
+          "slot": "weights-are-artifacts-and-artifacts-need-a-supply-chain"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-2-10-beat",
+          "script": "Quantization sounds like research. It's a production decision. Lower a model's bit-width, and there's less data to move and less to process — that shows up directly as higher throughput and lower cost per token. But push the precision down too far, and the math gets unstable: rounding errors compound, and accuracy degrades in ways that don't show up until the model is live. Every point of accuracy traded away buys speed and a smaller footprint. Someone always pays that difference.",
+          "mode": "patch",
+          "slot": "weights-are-artifacts-and-artifacts-need-a-supply-chain"
+        },
+        {
+          "type": "narration",
+          "id": "act-2-exit",
+          "script": "By the end of this act the model looks less like a program and more like a compiled output — a hash, a snapshot, and a training run that anyone with the same three inputs could reproduce, or fail to. That question of reproducibility is also a question of what happens when the pipeline behind it breaks in production: silently, at three in the morning, at the hour when no one is watching the accuracy dashboard because the accuracy dashboard is not what breaks first.",
+          "mode": "frame",
+          "slot": "weights-are-artifacts-and-artifacts-need-a-supply-chain"
+        },
+        {
+          "type": "narration",
+          "id": "act-3-introduction",
+          "script": "That silence is the starting point here. A model can be reproducible in principle — same data, same code, same hash — and still be running on borrowed time, because reproducibility only tells you the system once worked, not that it still does. By now the system has a shape: a distributed pipeline where the model is one component among many, fed by data infrastructure that does the actual work of curation, privacy, and provenance. This act moves from architecture to incident. Something in that pipeline will eventually degrade — not crash, not throw an error, just quietly produce worse answers — and someone will get paged at three in the morning to find out why, long after the accuracy dashboard has failed to notice. The tools that make that diagnosis possible were not built during the incident. They were built, or not built, months earlier, in decisions about what to log, what to sample, and what to make reversible.",
+          "mode": "frame",
+          "slot": "debugging-a-system-that-fails-softly"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-3-0-connective",
+          "script": "Ask yourself, next time a tool call hangs: is that a bug, or the system behaving exactly as built?",
+          "mode": "frame",
+          "slot": "debugging-a-system-that-fails-softly"
+        },
+        {
+          "type": "segment",
+          "slot": "debugging-a-system-that-fails-softly",
+          "segment_id": "causality-engineered-network--47-hyatt-regency-kansas-city#2047"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-3-1-connective",
+          "script": "Picture every internal document your company owns, suddenly reachable from your phone. What breaks first?",
+          "mode": "frame",
+          "slot": "debugging-a-system-that-fails-softly"
+        },
+        {
+          "type": "segment",
+          "slot": "debugging-a-system-that-fails-softly",
+          "segment_id": "practical-ai--rebooting-enterprise-ai-with-mcp-and-kubernetes#623"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-3-2-beat",
+          "script": "One gauge on an ML system watches infrastructure health alone: API latency, memory usage, pipeline failures, throughput. Every light can read green. A model can pass all of that and still be broken underneath, a gap most dashboards never catch. So teams run a second gauge, independent of the first: they check the model's actual output against business KPIs, continuously, which catches the operational and revenue losses that infrastructure monitoring alone misses. A third gauge, watching the input data itself, sits outside what this record covers. Green lights, broken system.",
+          "mode": "patch",
+          "slot": "debugging-a-system-that-fails-softly"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-3-3-beat",
+          "script": "Centralized structured logging captures every inference event as it happens: the input, the output, cost, latency, errors, token use. That log history is what makes debugging possible afterward — pull the moment back up, compare it against others, build a post-mortem instead of a guess. Some observability platforms capture that input-output pairing automatically, for every production request, without an engineer instrumenting it by hand. Unrecorded, a failure can't be replayed, reproduced, or turned into a test.",
+          "mode": "patch",
+          "slot": "debugging-a-system-that-fails-softly"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-3-4-beat",
+          "script": "Rolling back a model is not like reverting a code deploy. Restoring the old serving binary brings back the old weights, but not the feature-store values already written under the bad model, or the caches already filled, or the downstream systems that adjusted to its output in the meantime. The rollback has to touch model artifacts, configuration, and serving infrastructure together, coordinated, not one flipped switch. These systems can also fail quietly, serving a wrong prediction with total, silent confidence.",
+          "mode": "patch",
+          "slot": "debugging-a-system-that-fails-softly"
+        },
+        {
+          "type": "narration",
+          "id": "act-3-exit",
+          "script": "None of that instrumentation installs itself. Someone decided, before there was an outage to justify it, to spend engineering time on a sampled-inference logger instead of a new feature; someone staffed an on-call rotation for a system that does not throw exceptions when it fails. Those are budget and headcount decisions, made by people who may never see the dashboard they funded. The next act follows the money and the org chart that produced — or refused to produce — the tooling this one just described.",
+          "mode": "frame",
+          "slot": "debugging-a-system-that-fails-softly"
+        },
+        {
+          "type": "narration",
+          "id": "act-4-introduction",
+          "script": "Someone signed off on that logger's budget without ever expecting to read its output. Someone approved an on-call rotation for a system built to fail quietly. This act follows that signature forward, through the money and the org chart behind it: every failure this documentary has traced so far — the timeout that cascaded, the pipeline that silently corrupted a feature, the outage nobody could diagnose at three in the morning — happened inside a system that somebody funded, staffed, and drew a boundary around before any of it ran. This act stops treating that funding and that boundary as backstory. Compute is a line item rationed like any other scarce input, risk mitigation is a budget line competing with everything else for headcount, and the seam between the team that owns the pipeline and the team that owns the model is not an org-chart footnote — it is where the incident starts and where the fix stalls. The claim here is blunt: who pays, who staffs, and who gets paged are load-bearing parts of the architecture, not the context around it.",
+          "mode": "frame",
+          "slot": "who-pays-who-staffs-who-gets-paged"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-4-0-connective",
+          "script": "So what happens when the same force driving every AI leap also once stalled car lots and dishwashers?",
+          "mode": "frame",
+          "slot": "who-pays-who-staffs-who-gets-paged"
+        },
+        {
+          "type": "segment",
+          "slot": "who-pays-who-staffs-who-gets-paged",
+          "segment_id": "practical-ai--ai-policy-and-the-battle-for-computing-power#826"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-4-1-connective",
+          "script": "If mitigating AI risk is eating the budget that used to run the business, is that a blip — or the new normal?",
+          "mode": "frame",
+          "slot": "who-pays-who-staffs-who-gets-paged"
+        },
+        {
+          "type": "segment",
+          "slot": "who-pays-who-staffs-who-gets-paged",
+          "segment_id": "practical-ai--surviving-the-new-economics-of-a-post-agentic-world#558"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-4-2-connective",
+          "script": "So how does a classroom decide it's time to look like the job market it's training students for?",
+          "mode": "frame",
+          "slot": "who-pays-who-staffs-who-gets-paged"
+        },
+        {
+          "type": "segment",
+          "slot": "who-pays-who-staffs-who-gets-paged",
+          "segment_id": "practical-ai--educating-a-data-literate-generation#124"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-4-3-beat",
+          "script": "Production ML rarely fails where you'd expect — the fancy model layer, the training run. It fails in the seam. The data team owns the pipeline. The model team owns what the pipeline feeds. Nobody owns both. So when a schema change slips through unflagged, inference breaks silently at serving time, and the two teams start pointing at each other while the outage keeps running, because the diagnosis belongs to neither of them alone. Boring seam, real damage.",
+          "mode": "patch",
+          "slot": "who-pays-who-staffs-who-gets-paged"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-4-4-beat",
+          "script": "Mature production ML looks aggressively boring: a job scheduler, a feature store, a model registry, a pager rotation — the stack a payments company or an ad-tech shop already runs. None of it would clear peer review. Self-driving cars were a hard problem only until everyone used one; then the elaborate vision-and-decision stack got swapped for plain control software. Voice agents follow the same curve — a bot booking a restaurant table or a hospital appointment is impressive only until every business is digitized, at which point it just calls an API. Impressive becomes infrastructure.",
+          "mode": "patch",
+          "slot": "who-pays-who-staffs-who-gets-paged"
+        },
+        {
+          "type": "narration",
+          "id": "act-4-exit",
+          "script": "The picture that started with a single failing model call and ends with a pager rotation was never really about the model. Every failure traced across this documentary — the straggler, the corrupted feature, the silent degradation — runs back to a decision made by a person with a budget and a team, long before any of it touched a GPU. The org chart does not sit beside the architecture diagram. It is the architecture diagram, redrawn in job titles and cost centers.",
+          "mode": "frame",
+          "slot": "who-pays-who-staffs-who-gets-paged"
+        }
+      ]
     }
   ]
 }
