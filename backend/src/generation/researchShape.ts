@@ -84,11 +84,34 @@ export const RESEARCH_TAPE_WINDOWS_PER_SUBTOPIC = 4;
  * count because an episode with no body on this machine yields nothing, and
  * because one window per episode is the rule above. */
 export const RESEARCH_TAPE_EPISODE_CANDIDATES = 8;
-/** A research window is something a person READS in a prompt, not a segment a
+/**
+ * A research window is something a person READS in a prompt, not a segment a
  * listener hears, so it sits inside §4.5's own 30-180 s band: long enough to
- * carry an idea, short enough that eight subtopics of them stay a prompt. */
-export const RESEARCH_TAPE_WINDOW_MIN_SEC = 60;
-export const RESEARCH_TAPE_WINDOW_MAX_SEC = 120;
+ * carry an idea, short enough that eight subtopics of them stay a prompt.
+ *
+ * F-73 RAISED THE FLOOR FROM 60 s AND THE CEILING FROM 120 s, because a window
+ * quoted here is NOT only read — §4.3 seeds a beat with its episode AND its
+ * seconds, and F-68 then confines tier 2's window search to exactly that
+ * stretch. So this band is, in practice, the band every generated tape segment
+ * is cut from, and 60-120 s put every one of them under
+ * `narration-craft.md` §0's D3 mean floor (90 s) by construction: run 2 attempt
+ * 5's act-1 candidate came out at a 76.1 s mean with a 15.6 s interquartile
+ * range, and D3 and D5 both refused it. A window can no longer be shorter than
+ * the mean the rules require, and the ceiling is §4.5's own
+ * `TAPE_WINDOW_MAX_SEC` rather than a tighter number of this stage's own — the
+ * two now name the same span because they are describing the same tape.
+ *
+ * WHAT DID NOT CHANGE. The floor is still a preference, not a requirement:
+ * `selectTapeWindow` falls back to the widest run it could reach when a
+ * transcript (or the stretch of it before a gap) is shorter than the minimum, so
+ * a short body still yields its window and no subtopic loses its evidence for
+ * this. And `RESEARCH_TAPE_WINDOW_MAX_CHARS` below is deliberately left where it
+ * is: the quote was already being trimmed well inside a 120 s window, the prompt
+ * budget is what that number is about, and widening it is a prompt-size decision
+ * with nothing to do with the D-tier rules.
+ */
+export const RESEARCH_TAPE_WINDOW_MIN_SEC = 90;
+export const RESEARCH_TAPE_WINDOW_MAX_SEC = 180;
 /** And the same window as characters. Cut at a sentence end below this, never
  * mid-word — a truncated quote is still the tape's own words. */
 export const RESEARCH_TAPE_WINDOW_MAX_CHARS = 600;

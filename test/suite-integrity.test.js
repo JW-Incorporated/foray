@@ -666,7 +666,12 @@ const FLOORS = {
      RUN resolves against the pool the candidate carries, and its seconds land
      on the listener's clock. Before it, a generated Foray with any tier-2 tape
      failed here on an unknown segment_id. */
-  "tools/foray/check-forays.test.mjs": 111,
+  /* +2 (generation finding F-74): #65 §2 is now a rule about ANCHORS rather than
+     about the `dai_suspected` flag alone — a played segment from a DAI-stitched
+     feed is accepted when it carries both of ADR-0007's boundary phrases and
+     refused when it carries a timestamp only. Both branches are pinned, and so is
+     the half-anchored case. */
+  "tools/foray/check-forays.test.mjs": 130,
   /* The narration evidence gate (#247, and the founder's citation rulings of
      2026-08-19). Zero slack, and for a sharper reason than most suites here.
 
@@ -1394,7 +1399,12 @@ const BACKEND_FLOORS = {
      cases pin the quoting, the four honest reasons a window list can be empty,
      the lineage gate running before any episode is opened, and one window per
      episode, best first. */
-  "test/researchShape.test.ts": 16,
+  /* Raised to 18 by F-73: the quoted window's duration band is what every
+     generated tape segment ends up being cut from (§4.3 seeds a beat with these
+     seconds and F-68 confines §4.5's search to them), so it is now sized against
+     `narration-craft.md` §0's own mean floor rather than against prompt length
+     alone — asserted on the constants and measured on a real window. */
+  "test/researchShape.test.ts": 18,
   /* The §4.0-§4.9 orchestrator (runPipeline.ts). Floored because it is the ONLY
      suite that exercises the chain as a chain: every stage has its own tests and
      all of them stayed green while nothing joined the stages together, which is
@@ -1470,7 +1480,19 @@ const BACKEND_FLOORS = {
      gate, the trace says whether the seed won, and one offline case runs the
      run-2 intent through research-shape, a stub spine seeded from its windows,
      deepening and sourcing against the real archive. */
-  "test/sourceBeats.test.ts": 79,
+  /* Raised from 79 by F-73: both tiers now keep a D-tier LENGTH ledger as well as
+     M3/M4 — the running mean floor (D3), the short-segment run (D2), the uniform
+     triple (D5's first clause, the one gate here that is a preference and gets
+     relaxed rather than costing a beat its tape) and M4's runtime clause — and
+     the tier-2 cut grows towards a varying target instead of stopping at
+     `MIN_TAPE_SEGMENT_SEC`. The added cases pin each gate's refusal, its
+     fall-through to another episode, its small-count exemption, and the ladder
+     the interquartile floor is sized against. */
+  /* 111 once F-72 merged alongside it: the seed window is judged on share alone
+     and the trace says when that floor DECIDED, and those twelve cases had no
+     floor of their own. Raised here rather than left as slack, for the reason at
+     the top of this file — slack is what lets a gate be deleted with CI green. */
+  "test/sourceBeats.test.ts": 111,
   /* WS-H’s new module: the BM25 index over the normalised cue text, its disk
      cache and the invalidation that makes a re-transcribed episode rebuild it,
      and the Null implementation CI actually runs. Raised to 12 by F-61: the

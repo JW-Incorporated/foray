@@ -1352,9 +1352,50 @@ test("a missing dai_suspected is rejected", () => {
   assert.match(errorsFor(f).join("\n"), /dai_suspected` must be a boolean/);
 });
 
-test("a dai_suspected source cannot carry a played segment (#65 §2)", () => {
+/* #65 §2, AND THE ONE THING THAT NOW SATISFIES IT (F-74).
+ *
+ * The fixture's pool carries timestamps and no anchors, which is precisely the
+ * segment the rule was written about, so the first case below is unchanged. The
+ * second is the rule change: ADR-0007's content anchors are how a boundary is
+ * located in a differently-stitched copy, so a segment that carries both of them
+ * IS anchored and the flag stops deciding for it. The pair is asserted in both
+ * directions on the SAME mutation, so neither branch can be satisfied by the
+ * fixture happening to pass or fail for another reason. */
+test("a dai_suspected source cannot carry a timestamp-only played segment (#65 §2)", () => {
   const f = fx();
   f.sources.sources.find((s) => s.id === "boundary-ep-a").dai_suspected = true;
+  assert.match(errorsFor(f).join("\n"), /cannot be anchored/);
+});
+
+test("a dai_suspected source CAN carry a played segment that quotes both boundary anchors (#65, F-74)", () => {
+  const f = fx();
+  f.sources.sources.find((s) => s.id === "boundary-ep-a").dai_suspected = true;
+  /* Every segment of that episode, not just the first: the rule is asked per
+     played item, so one un-anchored row would keep the error alive and make the
+     assertion below prove nothing. */
+  for (const s of f.segments.segments) {
+    if (s.item_id !== "boundary-ep-a") continue;
+    s.start_anchor = "so the walkway hangers were doubled up";
+    s.end_anchor = "and that is the load path nobody recalculated";
+  }
+  const errors = errorsFor(f);
+  assert.deepEqual(
+    errors.filter((e) => /cannot be anchored/.test(e)),
+    []
+  );
+  /* And the whole fixture still passes, so this is an accepted Foray rather
+     than one whose #65 error was traded for a different error. */
+  assert.deepEqual(errors, []);
+});
+
+test("one anchor is not a boundary: an anchored in-point with no out-point is still refused (#65, F-74)", () => {
+  const f = fx();
+  f.sources.sources.find((s) => s.id === "boundary-ep-a").dai_suspected = true;
+  for (const s of f.segments.segments) {
+    if (s.item_id !== "boundary-ep-a") continue;
+    s.start_anchor = "so the walkway hangers were doubled up";
+    s.end_anchor = "   ";
+  }
   assert.match(errorsFor(f).join("\n"), /cannot be anchored/);
 });
 

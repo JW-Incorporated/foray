@@ -1,7 +1,17 @@
 import { describe, it, expect } from "vitest";
 import { existsSync, readFileSync } from "fs";
 import { join } from "path";
-import { sourceBeats, summarizeSourcing, deriveItemId, M4_ITEM_SHARE_MAX, m4SegmentCapFor } from "../src/generation/sourceBeats";
+import {
+  sourceBeats,
+  summarizeSourcing,
+  deriveItemId,
+  D3_MEAN_FLOOR_SEC,
+  D5_IQR_FLOOR_SEC,
+  D5_TOLERANCE,
+  M4_ITEM_SHARE_MAX,
+  m4SegmentCapFor,
+  tapeTargetFor
+} from "../src/generation/sourceBeats";
 import { capArgumentBeats, deepenActs } from "../src/generation/deepenActs";
 import { buildResearchShape } from "../src/generation/researchShape";
 import { buildSpine } from "../src/generation/buildSpine";
@@ -2179,6 +2189,50 @@ describe("sourceBeats — F-62: a short window grows toward the claim, never sym
     expect(segment.endSec - segment.startSec).toBeGreaterThanOrEqual(ABSOLUTE_MIN_TAPE_SEGMENT_SEC);
   });
 
+  /* F-73: the same rule, asked for more of the passage.
+   *
+   * `cutWindowToSegment` now takes a target length (`D_TARGET_LADDER_SEC`, via
+   * `tapeTargetFor`) and keeps growing towards it AFTER `MIN_TAPE_SEGMENT_SEC` —
+   * but only through cues that share the claim's words, so the growth stops where
+   * the passage does. These two cases are that pair: it reaches past 90 s when the
+   * tape keeps talking about the claim, and it stops dead at the cue that does
+   * not. */
+  const passageRunsOn: TranscriptCue[] = [
+    { text: "before the break we were arguing about which coffee machine the office should buy", start_sec: 0, end_sec: 26 },
+    { text: "so the retraining calendar slipped by about a week that time", start_sec: 26, end_sec: 58 },
+    { text: "and the recommender was serving stale inventory to everybody for days", start_sec: 58, end_sec: 90 },
+    { text: "the stale rows came out of the same inventory feed the calendar drives", start_sec: 90, end_sec: 122 },
+    { text: "right after this we have got a completely different guest and a new subject", start_sec: 122, end_sec: 150 }
+  ];
+
+  it("grows past the D3 mean floor while the tape is still saying the claim's words (F-73)", () => {
+    /* The window search stops at 26-90: 64 s, every content word of the claim
+       already spoken, and at equal coverage the shorter window wins. That is a
+       correct WINDOW and a segment 26 s under the 90 s mean the D-tier rules
+       require, which is the whole of F-73 — run 2 attempt 5's five segments all
+       landed in that band and D3 refused the Foray at 76.1 s.
+
+       MUTATION THAT KILLS THIS: delete the second `while` loop in
+       `growByClaimOverlap` (the `targetSec` phase). The span comes back 26-90.
+       Ran it — red. */
+    const segment = run(passageRunsOn).newSegments[0]!;
+    expect(segment.startSec).toBe(26);
+    expect(segment.endSec).toBe(122);
+    expect(segment.endSec - segment.startSec).toBeGreaterThanOrEqual(D3_MEAN_FLOOR_SEC);
+  });
+
+  it("still stops at the first cue that says nothing the claim says, target or no target (F-73)", () => {
+    /* The target for a Foray's first placement is 105 s and the span above is
+       96 s, so the growth stopped SHORT of what it was asked for rather than
+       taking the two cues that would have got it there — the office coffee
+       machine at the front and the new guest at the back. A phase that padded to
+       its target would have taken one of them. */
+    const segment = run(passageRunsOn).newSegments[0]!;
+    expect(segment.endSec - segment.startSec).toBeLessThan(tapeTargetFor(0));
+    expect(segment.startSec).toBeGreaterThan(0);
+    expect(segment.endSec).toBeLessThan(150);
+  });
+
   it("never pads symmetrically: the two sides are asked, not alternated", () => {
     /* The mutation this exists to kill is the code that was here — grow one cue
        back, then one cue forward, until long enough. It would take the coffee
@@ -2909,6 +2963,315 @@ describe("sourceBeats — F-70: tier 2 obeys M3 and M4, the same ledger tier 1 k
     /* And the transcription queue does not ask for work that would not help:
        the archive already had the tape. */
     expect(result.transcriptionQueueCandidates[0]!.reason).toContain("Nothing to transcribe");
+  });
+});
+
+describe("sourceBeats — F-73: the D-tier length ledger, kept by both tiers", () => {
+  /* WHAT THIS IS ABOUT. Run 2 attempt 5's act-1 candidate had 5 tier-2 segments,
+     every one of them cut from a 60-120 s research window, and
+     `check-forays.mjs` refused it four times over: D2 (it ended on two sub-60 s
+     segments), D3 (76.1 s mean, under the 90 s floor), D5 (15.6 s interquartile
+     range) and M4's RUNTIME clause (one episode at 34.3 %). None of those rules
+     was read anywhere in the pipeline. They are now, at the one point where a
+     candidate's duration is real, by both tiers, as fall-throughs. */
+
+  const claim = "Gearboxes fail because bearings take torque reversals.";
+  type Seed = { episodeId: string; startSec: number; endSec: number };
+  const gearboxBeat = (seed?: Seed) => ({ claim, exploration: false, kind: "account" as const, ...(seed ? { seed } : {}) });
+
+  /** Tier-1 filler of a chosen length, one segment per episode, all answering
+   * one claim — the ledger's starting position, written the cheap way. */
+  const fillerClaim = "The Lawson criterion is a statement about tokamak plasma confinement.";
+  const fillerPool = (n: number, durationSec: number): SegmentRecord[] =>
+    Array.from({ length: n }, (_v, i) => ({
+      ...fixtureSegmentPool()[0]!,
+      id: `filler-${i}#100`,
+      item_id: `filler-${i}`,
+      start_sec: 100,
+      end_sec: 100 + durationSec
+    }));
+  const fillerBeats = (n: number) => Array.from({ length: n }, () => ({ claim: fillerClaim, exploration: false }));
+
+  function run(
+    beats: Array<{ claim: string; exploration: boolean; kind?: "account"; seed?: Seed }>,
+    archive: TranscriptDigestEntry[],
+    cuesByGuid: Record<string, TranscriptCue[]>,
+    filler: SegmentRecord[]
+  ) {
+    return sourceBeats([makeDeepenedAct({ slots: [{ title: "Gearboxes", beats }] }, "F73")], {
+      segmentPool: filler,
+      transcriptArchive: archive,
+      cueProvider: { getCues: (e) => cuesByGuid[e.guid] ?? null },
+      textIndex: memoryTextIndex(archive, cuesByGuid)
+    });
+  }
+
+  const entry = (guid: string, title: string): TranscriptDigestEntry => ({
+    show_id: "practical-ai",
+    show_title: "Practical AI",
+    guid,
+    title,
+    cues: 6,
+    feed_duration_sec: 3600,
+    enclosure_url: `https://cdn.example/${guid}.mp3`
+  });
+
+  /* ------------------------------------------------------------------ D3 */
+
+  /** One 32 s passage about the claim, walled off by cues that say nothing of
+   * it — so the window is 32 s, the growth has nowhere to go, and the segment
+   * this episode can offer is a short one. */
+  const shortPassage: TranscriptCue[] = [
+    { text: "before the break we were arguing about which coffee machine the office should buy", start_sec: 0, end_sec: 30 },
+    { text: "the gearboxes fail when bearings take torque reversals on the shaft", start_sec: 30, end_sec: 62 },
+    { text: "right after this we have got a completely different guest and a new subject", start_sec: 62, end_sec: 140 }
+  ];
+
+  /** A 150 s passage about the same claim in a different episode. */
+  const longPassage: TranscriptCue[] = [
+    { text: "the gearboxes fail earlier than anyone expects on these machines", start_sec: 0, end_sec: 40 },
+    { text: "and the bearings take torque reversals every single rotation of the shaft", start_sec: 40, end_sec: 90 },
+    { text: "which is why the torque reversals matter so much for the bearings", start_sec: 90, end_sec: 150 },
+    { text: "anyway that is enough of that let us talk about the conference next month", start_sec: 150, end_sec: 220 }
+  ];
+
+  const shortEpisode = entry("pa-short", "Episode 800");
+  const longEpisode = entry("pa-long", "Episode 801");
+  const bothBodies = { "pa-short": shortPassage, "pa-long": longPassage };
+
+  it("refuses a span that would pull the running mean under D3's floor, and says so (d3-mean)", () => {
+    /* CHECKER ERROR THIS PREVENTS: "D3 FAIL: mean segment duration 76.1 s is
+       under the 90 s floor", verbatim from run 2 attempt 5.
+
+       Three 95 s segments are placed first, so the mean stands at 95 s. The only
+       tape for the fourth beat is the 32 s passage, and (95*3 + 32)/4 is 79.25 s.
+
+       MUTATION THAT KILLS THIS: delete the `d3MeanAllows` clause from
+       `durationVetoFor`. The beat then takes the 32 s span and the finished
+       Foray's mean is the number the checker refuses. Ran it — red. */
+    const result = run([...fillerBeats(3), gearboxBeat()], [shortEpisode], { "pa-short": shortPassage }, fillerPool(3, 95));
+    const beats = allSourcedBeats(result.acts);
+    expect(beats[3]!.sourcing).toBe("narration");
+    expect(result.newSegments).toHaveLength(0);
+
+    const trace = result.sourcingTrace.find((t) => t.beatIndex === 3)!;
+    expect(trace.tier2!.gate).toBe("d3-mean");
+    /* The row still names the episode and the window it refused, so a person can
+       go and listen rather than take the gate's word for it. */
+    expect(trace.tier2!.bestEpisodeTitle).toBe("Episode 800");
+    expect(trace.tier2!.windowStartSec).toBe(30);
+    expect(trace.tier2!.windowEndSec).toBe(62);
+  });
+
+  it("falls through to another episode's longer tape rather than dropping the beat to narration (d3-mean)", () => {
+    /* Tier 1's rule, applied to F-73's gates: an assembly veto sends the search
+       on to the next candidate. The 32 s passage is refused and the 150 s one is
+       taken, so the beat keeps its tape AND the mean stays over the floor. */
+    const result = run([...fillerBeats(3), gearboxBeat()], [shortEpisode, longEpisode], bothBodies, fillerPool(3, 95));
+    const beats = allSourcedBeats(result.acts);
+    expect(beats[3]!.sourcing).toBe("tape");
+    expect(result.newSegments).toHaveLength(1);
+    const minted = result.newSegments[0]!;
+    expect(minted.itemId).toContain("episode-801");
+    expect(minted.endSec - minted.startSec).toBe(150);
+
+    const mean = [95, 95, 95, 150].reduce((a, b) => a + b, 0) / 4;
+    expect(mean).toBeGreaterThanOrEqual(D3_MEAN_FLOOR_SEC);
+  });
+
+  it("exempts the first two placements, because a refusal there cannot move the mean", () => {
+    /* `D3_MEAN_MIN_PLACED`, and the same argument `m4SegmentCapFor`'s `max(1, …)`
+       makes: with one segment placed the mean is that segment, and refusing the
+       second for being short would leave a tape-starved Foray shorter still
+       without moving the number the rule reads. The same 32 s span the case above
+       refuses is taken here, as the SECOND placement. */
+    const result = run([...fillerBeats(1), gearboxBeat()], [shortEpisode], { "pa-short": shortPassage }, fillerPool(1, 95));
+    expect(allSourcedBeats(result.acts)[1]!.sourcing).toBe("tape");
+    expect(result.newSegments[0]!.endSec - result.newSegments[0]!.startSec).toBe(32);
+  });
+
+  /* ------------------------------------------------------------- M4 runtime */
+
+  /** Two stretches of ONE episode, both about the claim: 100-300 s (which cuts
+   * to 200 s) and 400-460 s. The 100 s hole between them is a real transcript
+   * gap and growth will not cross it (`TAPE_CUE_GAP_MAX_SEC`). */
+  const twoStretches: TranscriptCue[] = [
+    { text: "welcome back to the programme we are in denmark this week", start_sec: 0, end_sec: 30 },
+    { text: "the gearboxes here are the part that gives everybody trouble", start_sec: 100, end_sec: 150 },
+    { text: "and it is the bearings that give up first on almost all of them", start_sec: 150, end_sec: 200 },
+    { text: "you get a lot of torque coming back the other direction as well", start_sec: 200, end_sec: 250 },
+    { text: "and those reversals were never in the original load case at all", start_sec: 250, end_sec: 300 },
+    { text: "the gearboxes fail well before the design life says they should", start_sec: 400, end_sec: 430 },
+    { text: "bearings crack under torque that keeps switching direction on them", start_sec: 430, end_sec: 460 },
+    { text: "anyway that is enough of that let us talk about the conference next month", start_sec: 460, end_sec: 520 }
+  ];
+
+  const twoStretchEpisode = entry("pa-two", "Episode 950");
+  const secondEpisode = entry("pa-other", "Episode 951");
+
+  /** Seven 100 s tier-1 segments first, for M4's COUNT clause: an episode is not
+   * asked for a second segment until the Foray holds eight (`m4SegmentCapFor`),
+   * so without these the count clause would refuse the second window before the
+   * runtime clause was ever asked and this would pass for the wrong reason. */
+  const runtimeBeats = [
+    ...fillerBeats(7),
+    gearboxBeat({ episodeId: "pa-two", startSec: 100, endSec: 300 }),
+    gearboxBeat({ episodeId: "pa-two", startSec: 400, endSec: 460 })
+  ];
+
+  it("refuses an episode's second segment when it would take a quarter of the tape SECONDS (m4-runtime)", () => {
+    /* CHECKER ERROR THIS PREVENTS: "M4 FAIL: … is 20.0 % of segments and 34.3 %
+       of runtime, over the 25 % cap" — the RUNTIME half, which #569 gated the
+       count half of and deliberately left to the checker.
+
+       Seven 100 s segments and a 200 s window put *Episode 950* at 200 of 900 s.
+       Its second window is 60 s more, which is 260 of 960 s — 27.1 %, over the
+       cap — while the COUNT clause allows it (2 of 9, cap 2). So this is the
+       runtime clause and nothing else.
+
+       MUTATION THAT KILLS THIS: delete the `m4RuntimeAllows` clause from
+       `durationVetoFor`. The second window is minted and the Foray fails M4 on
+       runtime. Ran it — red. */
+    const result = run(runtimeBeats, [twoStretchEpisode], { "pa-two": twoStretches }, fillerPool(7, 100));
+    const beats = allSourcedBeats(result.acts);
+    expect(beats[7]!.sourcing).toBe("tape");
+    expect(result.newSegments).toHaveLength(1);
+    expect(result.newSegments[0]!.endSec - result.newSegments[0]!.startSec).toBe(200);
+
+    expect(beats[8]!.sourcing).toBe("narration");
+    const trace = result.sourcingTrace.find((t) => t.beatIndex === 8)!;
+    expect(trace.tier2!.gate).toBe("m4-runtime");
+    expect(trace.tier2!.bestEpisodeTitle).toBe("Episode 950");
+    /* And the reason the beat carries into §4.7 says seconds, not segments —
+       a writer reading "no tape found" here would be reading a falsehood. */
+    expect(result.transcriptionQueueCandidates.at(-1)!.reason).toContain("quarter of the tape seconds");
+  });
+
+  it("falls through to a different episode rather than losing the beat's tape (m4-runtime)", () => {
+    const result = run(runtimeBeats, [twoStretchEpisode, secondEpisode], { "pa-two": twoStretches, "pa-other": twoStretches }, fillerPool(7, 100));
+    const beats = allSourcedBeats(result.acts);
+    expect(beats[8]!.sourcing).toBe("tape");
+    expect(result.newSegments).toHaveLength(2);
+    expect(result.newSegments[1]!.itemId).toContain("episode-951");
+  });
+
+  it("never asks the runtime clause about an episode's FIRST segment", () => {
+    /* The same exemption `m4SegmentCapFor` gives, for the reason #569 wrote down:
+       refusing an episode's only segment for being long costs the Foray tape
+       without moving any other episode's share — and it would make the length
+       ladder self-defeating, since the ladder deliberately asks some placements
+       to be long. Two beats, one episode, and the first window is 200 of 200 s —
+       100 % of the tape seconds, and taken. */
+    const result = run([gearboxBeat({ episodeId: "pa-two", startSec: 100, endSec: 300 })], [twoStretchEpisode], { "pa-two": twoStretches }, []);
+    const only = allSourcedBeats(result.acts)[0]!;
+    expect(only.sourcing).toBe("tape");
+    /* 150 s here and 200 s in the case above, from the same tape and the same
+       seed: this is the Foray's FIRST placement, so its ladder target is 105 s
+       and the window already clears it, while the eighth placement is asked for
+       210 s and grows. The ladder is the only difference. */
+    expect(result.newSegments[0]!.endSec - result.newSegments[0]!.startSec).toBe(150);
+    expect(result.newSegments[0]!.endSec - result.newSegments[0]!.startSec).toBeGreaterThanOrEqual(tapeTargetFor(0));
+  });
+
+  /* ------------------------------------------------------------------ D2/D5 */
+
+  it("never starts a run of two short segments, because it cannot promise the recovery one (d2-short-run)", () => {
+    /* CHECKER ERROR THIS PREVENTS: "D2 FAIL: the Foray ends on two consecutive
+       segments under 60 s (…#345 onward); the rule requires a following segment
+       of at least 150 s, and there is none" — run 2 attempt 5's, verbatim.
+
+       Two 40 s tier-1 segments are offered to two beats. The first is taken; the
+       second is the one D2 would only forgive if a 150 s segment followed, and
+       nothing at placement time can promise one. */
+    const short = (item: string): SegmentRecord => ({
+      ...fixtureSegmentPool()[0]!,
+      id: `${item}#100`,
+      item_id: item,
+      start_sec: 100,
+      end_sec: 140
+    });
+    const twoBeats = () => [makeDeepenedAct({ slots: [{ title: "Lawson", beats: fillerBeats(2) }] }, "F73D2")];
+
+    /* Given somewhere else to go, the second beat goes there — the refusal is a
+       fall-through, like every other rule in this ledger. */
+    const withEscape = sourceBeats(twoBeats(), {
+      segmentPool: [short("short-a"), short("short-b"), { ...short("long-c"), end_sec: 250 }],
+      transcriptArchive: []
+    });
+    const escaped = allSourcedBeats(withEscape.acts)[1]!;
+    expect(escaped.sourcing).toBe("tape");
+    if (escaped.sourcing === "tape") {
+      expect(escaped.tape.itemId).toBe("long-c");
+      expect(escaped.tape.endSec - escaped.tape.startSec).toBe(150);
+    }
+
+    /* And given nowhere else, it narrates rather than starting the run.
+
+       MUTATION THAT KILLS THIS: delete the `d2RunAllows` clause from
+       `durationVetoFor` — the second 40 s segment is taken, and the Foray ends on
+       exactly the two sub-60 s segments the checker quoted. Ran it — red. */
+    const noEscape = sourceBeats(twoBeats(), { segmentPool: [short("short-a"), short("short-b")], transcriptArchive: [] });
+    const beats = allSourcedBeats(noEscape.acts);
+    expect(beats[0]!.sourcing).toBe("tape");
+    expect(beats[1]!.sourcing).toBe("narration");
+  });
+
+  it("prefers a segment that breaks D5's uniform triple, and takes a uniform one rather than lose the tape", () => {
+    /* D5's triple clause is the ONE rule in this ledger that is a preference (see
+       `durationVetoFor`). Both halves are asserted on the same pool, because the
+       claim is about which candidate is chosen and not about whether tape is
+       found at all:
+
+         - given a choice, the third beat takes the 200 s segment over the 120 s
+           one, because 120/120/120 is the triple D5 refuses;
+         - given no choice, it takes the uniform one anyway — a two-segment Foray
+           fails M4 and D5's interquartile clause worse than a metronomic one. */
+    const seg = (item: string, durationSec: number): SegmentRecord => ({
+      ...fixtureSegmentPool()[0]!,
+      id: `${item}#100`,
+      item_id: item,
+      start_sec: 100,
+      end_sec: 100 + durationSec
+    });
+    const withEscape = sourceBeats([makeDeepenedAct({ slots: [{ title: "Lawson", beats: fillerBeats(3) }] }, "F73D5a")], {
+      segmentPool: [seg("ep-a", 120), seg("ep-b", 120), seg("ep-c", 120), seg("ep-d", 200)],
+      transcriptArchive: []
+    });
+    const chosen = allSourcedBeats(withEscape.acts)[2]!;
+    expect(chosen.sourcing).toBe("tape");
+    if (chosen.sourcing === "tape") expect(chosen.tape.endSec - chosen.tape.startSec).toBe(200);
+
+    const noEscape = sourceBeats([makeDeepenedAct({ slots: [{ title: "Lawson", beats: fillerBeats(3) }] }, "F73D5b")], {
+      segmentPool: [seg("ep-a", 120), seg("ep-b", 120), seg("ep-c", 120)],
+      transcriptArchive: []
+    });
+    const forced = allSourcedBeats(noEscape.acts)[2]!;
+    expect(forced.sourcing).toBe("tape");
+    if (forced.sourcing === "tape") expect(forced.tape.endSec - forced.tape.startSec).toBe(120);
+  });
+
+  it("asks consecutive placements for lengths D5's interquartile floor can be met with", () => {
+    /* The ladder is what sourcing does about D5's SECOND clause, which is a
+       property of the whole finished multiset and cannot be gated one placement
+       at a time (see `D5_IQR_FLOOR_SEC`). Four consecutive targets, sorted, must
+       have an interquartile range clear of the floor and a mean clear of D3's —
+       otherwise a Foray that reached every target would still be refused, and the
+       ladder would be decoration. */
+    const four = [0, 1, 2, 3].map((i) => tapeTargetFor(i)).sort((a, b) => a - b);
+    const q = (p: number) => {
+      const h = (four.length - 1) * p;
+      const lo = Math.floor(h);
+      return four[lo]! + (h - lo) * (four[Math.ceil(h)]! - four[lo]!);
+    };
+    expect(q(0.75) - q(0.25)).toBeGreaterThanOrEqual(D5_IQR_FLOOR_SEC);
+    expect(four.reduce((a, b) => a + b, 0) / four.length).toBeGreaterThanOrEqual(D3_MEAN_FLOOR_SEC);
+    /* And no two adjacent targets are inside D5's own tolerance, so a run of
+       placements that all reach their target cannot make a uniform triple. */
+    for (let i = 0; i + 1 < four.length; i++) expect(four[i + 1]! / four[i]!).toBeGreaterThan(1 + D5_TOLERANCE);
+    /* Never past `check-forays.mjs`'s L4 soft maximum, which is also this
+       module's own longest segment — a target that needed a `long_reason` would
+       trade one checker error for another. */
+    for (const target of four) expect(target).toBeLessThanOrEqual(MAX_TAPE_SEGMENT_SEC);
   });
 });
 
