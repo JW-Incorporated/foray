@@ -16,6 +16,16 @@ it is filed under `DONE`.
 
 ## OPEN
 
+### 44. P2 replies test -- PR auto-merge path (RULINGS-2 executor, throwaway)
+
+**Status:** OPEN
+
+**Why it matters.** Throwaway test item to verify ha.py's write:pr close
+path (branch + PR + GraphQL auto-merge) against foray's protect-main
+ruleset, per RULINGS-2 P2 test criteria.
+
+**Steps.** Reply done to close.
+
 ### 43. Rule on `docs/search-plan.md`'s privacy gate (G1) — it blocks four cards of the search rebuild
 
 **Tag:** `[BLOCKING]` · **Time:** ~5 minutes to decide, plus a look at two diffs once S-07 lands them · **Owner:** Wyatt
