@@ -234,8 +234,35 @@ export interface TapeRelevanceInput {
  *                        already played it (F-29's "exhaustion of the one
  *                        relevant episode").
  *   - `m4-share`       — its episode already holds its quarter of the Foray.
- *   - `m3-order`       — it sits earlier in an episode already joined later. */
-export type Tier1Gate = "no-candidates" | "threshold" | "topic-lineage" | "exhausted" | "m4-share" | "m3-order";
+ *   - `m3-order`       — it sits earlier in an episode already joined later.
+ *
+ * And the four D-tier length rules F-73 added, which both tiers now ask at the
+ * point where a candidate's duration is known (`DurationGate` in
+ * `sourceBeats.ts`; `docs/curation/narration-craft.md` §0 via
+ * `tools/foray/check-forays.mjs`):
+ *
+ *   - `d2-short-run`   — it is under 60 s and so is the segment before it, which
+ *                        is the run D2 only permits if a 150 s segment follows —
+ *                        something sourcing cannot promise, so it never starts
+ *                        the run.
+ *   - `d3-mean`        — taking it would drop the Foray's running mean segment
+ *                        duration under D3's 90 s floor.
+ *   - `d5-uniform`     — it and the two segments before it would be within
+ *                        +/-20 % of each other, D5's uniform triple.
+ *   - `m4-runtime`     — its episode already holds M4's quarter of the Foray's
+ *                        tape SECONDS (the clause #569 left to the checker).
+ *                        Never asked about an episode's first segment. */
+export type Tier1Gate =
+  | "no-candidates"
+  | "threshold"
+  | "topic-lineage"
+  | "exhausted"
+  | "m4-share"
+  | "m3-order"
+  | "d2-short-run"
+  | "d3-mean"
+  | "d5-uniform"
+  | "m4-runtime";
 
 /** Which tier-2 gate turned down the best-scoring archive episode.
  *
@@ -285,7 +312,15 @@ export type Tier2Gate =
      identically to their `Tier1Gate` twins on purpose — one rule, one name,
      whichever tier found the tape. */
   | "m4-share"
-  | "m3-order";
+  | "m3-order"
+  /* F-73: the four D-tier LENGTH rules, likewise asked by both tiers and named
+     the same in both — documented once, on `Tier1Gate` above. Tier 2 asks them on
+     the cut span, which is the first point at which a minted segment has a real
+     duration. */
+  | "d2-short-run"
+  | "d3-mean"
+  | "d5-uniform"
+  | "m4-runtime";
 
 export interface Tier1TraceRow {
   /** The best-scoring pool segment, whatever gate then refused it. */

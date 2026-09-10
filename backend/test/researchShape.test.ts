@@ -7,6 +7,8 @@ import {
   RESEARCH_TAPE_WINDOW_MAX_SEC,
   RESEARCH_TAPE_WINDOW_MIN_SEC
 } from "../src/generation/researchShape";
+import { D3_MEAN_FLOOR_SEC } from "../src/generation/sourceBeats";
+import { TAPE_WINDOW_MAX_SEC, TAPE_WINDOW_MIN_SEC } from "../src/generation/transcriptArchiveLookup";
 import { FileTranscriptTextIndex } from "../src/generation/transcriptTextIndex";
 import type { TranscriptBodySource, TranscriptTextIndex } from "../src/generation/transcriptTextIndex";
 import type { TranscriptCue, TranscriptCueProvider, TranscriptDigestEntry } from "../src/generation/transcriptArchiveLookup";
@@ -346,6 +348,40 @@ describe("buildResearchShape — WS-L: the map carries what the tape says (F-63)
     expect(window.endSec - window.startSec).toBeGreaterThanOrEqual(RESEARCH_TAPE_WINDOW_MIN_SEC);
     expect(window.endSec - window.startSec).toBeLessThanOrEqual(RESEARCH_TAPE_WINDOW_MAX_SEC);
     expect(window.score).toBeGreaterThan(0);
+  });
+
+  it("sizes its window band for the duration rules the finished Foray is judged by (F-73)", () => {
+    /* A window quoted here is not only read. §4.3 seeds a beat with this
+       episode AND these seconds, and F-68 then confines §4.5's search to exactly
+       this stretch — so this band is, in practice, the band every generated tape
+       segment is cut from. At 60-120 s it put every one of them under
+       `narration-craft.md` §0's 90 s mean floor by construction, which is what
+       refused run 2 attempt 5's act-1 candidate at a 76.1 s mean.
+
+       MUTATION THAT KILLS THIS: put `RESEARCH_TAPE_WINDOW_MIN_SEC` back to 60.
+       Ran it — red. */
+    expect(RESEARCH_TAPE_WINDOW_MIN_SEC).toBeGreaterThanOrEqual(D3_MEAN_FLOOR_SEC);
+    /* And still inside §4.5's own band, both ends: a research window that could
+       not be a segment would be quoting the spine tape it cannot have. */
+    expect(RESEARCH_TAPE_WINDOW_MIN_SEC).toBeGreaterThanOrEqual(TAPE_WINDOW_MIN_SEC);
+    expect(RESEARCH_TAPE_WINDOW_MAX_SEC).toBeLessThanOrEqual(TAPE_WINDOW_MAX_SEC);
+    expect(RESEARCH_TAPE_WINDOW_MAX_SEC).toBeGreaterThan(RESEARCH_TAPE_WINDOW_MIN_SEC);
+  });
+
+  it("quotes a stretch long enough to be cut into a segment the D-tier rules accept (F-73)", async () => {
+    /* The band above, measured on a real window rather than asserted about the
+       constants: the fixture's tape yields a window over the mean floor. */
+    const { guard } = guardAndSink();
+    const shape = await buildResearchShape(makeIntent(), {
+      researcher: new StubExternalResearcher(guard),
+      ctx: { userId: "founder-1" },
+      catalogue: tapeFixtureCatalogue(),
+      topic: null,
+      textIndex: fakeIndex([mlEpisode], { "pa-900": mlCues }),
+      cueProvider: fakeCues({ "pa-900": mlCues })
+    });
+    const window = shape.subtopics.find((s) => s.label === "Fusion")!.tapeWindows[0]!;
+    expect(window.endSec - window.startSec).toBeGreaterThanOrEqual(D3_MEAN_FLOOR_SEC);
   });
 
   it("says WHY it has no windows rather than leaving an empty list to be read as an empty archive", async () => {

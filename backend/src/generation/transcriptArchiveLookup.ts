@@ -440,6 +440,25 @@ export const MAX_TAPE_SEGMENT_SEC = 240;
  */
 export const ABSOLUTE_MIN_TAPE_SEGMENT_SEC = 30;
 
+/**
+ * The widest hole in a transcript that the optional second growth phase (F-73)
+ * will step across.
+ *
+ * A transcript's cues are contiguous while somebody is speaking, so a gap between
+ * one cue's end and the next one's start is not silence between sentences — it is
+ * a break in the tape: an ad the transcriber skipped, a missing chunk, a long
+ * musical bed. Growing across one buys SECONDS without buying any words, and the
+ * segment then claims a span the transcript cannot account for; the F-68 fixture
+ * has a 140 s hole between two stretches of the same interview and growth was
+ * happily swallowing it.
+ *
+ * Five seconds is longer than the pause between two sentences and far shorter
+ * than any real break, and it is applied to the SECOND phase only — the first
+ * phase is reaching the floor below which a span is not playable tape at all, and
+ * F-62 already decided what it may take to get there.
+ */
+export const TAPE_CUE_GAP_MAX_SEC = 5;
+
 /** Same floor as `merge-segments.mjs`'s `MIN_ANCHOR_WORDS` — an anchor shorter
  * than four words cannot locate anything. */
 export const MIN_ANCHOR_WORDS = 4;
@@ -778,15 +797,44 @@ export interface TapeSpan {
  * answer and the growth stops (down to `ABSOLUTE_MIN_TAPE_SEGMENT_SEC`, below
  * which a span is not playable tape and the least-bad neighbour is taken
  * anyway). Nothing here pads symmetrically, ever.
+ *
+ * F-73 ADDED A SECOND, OPTIONAL LENGTH TO GROW TOWARDS (`options.targetSec`) —
+ * see `growByClaimOverlap`. Omitted, this function behaves exactly as it did:
+ * the target is `MIN_TAPE_SEGMENT_SEC` and the second phase is a no-op.
  */
-export function cutWindowToSegment(claimText: string, cues: TranscriptCue[], window: TapeWindow): TapeSpan | null {
+export interface CutWindowOptions {
+  /**
+   * A length to keep growing towards ONCE `MIN_TAPE_SEGMENT_SEC` is reached —
+   * §4.5's answer to the D-tier duration rules (F-73), which are about the
+   * lengths a finished Foray's segments have, not about relevance.
+   *
+   * It is a TARGET, never a promise: the second phase only ever attaches a cue
+   * that shares the claim's own words, so a passage that simply ends stops the
+   * growth and the span comes out shorter. That is the point — the lengths are
+   * supposed to vary (D5), and a target that padded to a fixed size would
+   * reintroduce the uniformity the rule exists to prevent, with the off-claim
+   * tape F-62 removed thrown in.
+   *
+   * Clamped into `[MIN_TAPE_SEGMENT_SEC, MAX_TAPE_SEGMENT_SEC]`, so no caller
+   * can ask for a span this module considers too short to be a segment or
+   * longer than the pool's longest.
+   */
+  targetSec?: number;
+}
+
+export function cutWindowToSegment(
+  claimText: string,
+  cues: TranscriptCue[],
+  window: TapeWindow,
+  options: CutWindowOptions = {}
+): TapeSpan | null {
   const index = indexCues(cues);
   const n = index.cues.length;
   if (n === 0) return null;
   if (window.firstCue < 0 || window.lastCue >= n || window.firstCue > window.lastCue) return null;
 
   const claimTerms = new Set(tokenizeForSourcing(claimText));
-  const { first, last } = growByClaimOverlap(index, claimTerms, window.firstCue, window.lastCue);
+  const { first, last } = growByClaimOverlap(index, claimTerms, window.firstCue, window.lastCue, options.targetSec);
 
   const startSec = index.cues[first]!.start_sec;
   const endSec = index.cues[last]!.end_sec;
@@ -804,7 +852,8 @@ function growByClaimOverlap(
   index: CueIndex,
   claimTerms: Set<string>,
   firstCue: number,
-  lastCue: number
+  lastCue: number,
+  targetSec?: number
 ): { first: number; last: number } {
   const n = index.cues.length;
   let first = firstCue;
@@ -846,6 +895,51 @@ function growByClaimOverlap(
     if (canNext && (!canPrev || nextWords >= prevWords)) last = next;
     else first = prev;
     if (duration() >= ABSOLUTE_MIN_TAPE_SEGMENT_SEC) break;
+  }
+
+  /* PHASE 2 (F-73): KEEP GOING WHILE THE CLAIM DOES, UP TO `targetSec`.
+   *
+   * WHY A SECOND PHASE AT ALL. `MIN_TAPE_SEGMENT_SEC` is a floor on what counts
+   * as a piece of tape; it is not the length a Foray's segments are supposed to
+   * be. narration-craft.md §0's D-tier rules are about the latter — a 90 s mean
+   * (D3), no run of sub-60 s segments (D2), a spread of lengths (D5) — and a cut
+   * that stopped at 45 s left every one of them to luck. Run 2 attempt 5 is what
+   * that cost: 5 tier-2 segments, all inside one 60-120 s band, refused on D3
+   * and on D5.
+   *
+   * WHY IT IS SAFE, AND WHY IT IS NOT THE SAME AS PADDING. The condition is
+   * strictly stronger than phase 1's: a cue is attached ONLY when it shares one
+   * of the claim's own words. There is no `ABSOLUTE_MIN` escape hatch here and
+   * no least-bad-neighbour fallback, because there is nothing to rescue — the
+   * span is already playable tape, so the honest answer to "neither neighbour is
+   * about the claim" is to stop, exactly as F-62 says. A longer span can
+   * therefore never be less about the claim than the short one it grew from,
+   * which is the property that lets this run without touching any relevance
+   * floor.
+   *
+   * AND WHY THE LENGTHS STILL VARY. Growth stops where the passage does, so the
+   * achieved length is "as much of this passage as there is, up to the target"
+   * rather than the target itself. Two beats given the same target come out
+   * different lengths whenever their passages differ, and `sourceBeats.ts` varies
+   * the target as well (`D_TARGET_LADDER_SEC`) so that they are not even asked
+   * for the same one. */
+  const target = Math.min(Math.max(targetSec ?? MIN_TAPE_SEGMENT_SEC, MIN_TAPE_SEGMENT_SEC), MAX_TAPE_SEGMENT_SEC);
+  while (duration() < target) {
+    const prev = first - 1;
+    const next = last + 1;
+    /* Contiguous, as well as in budget: `TAPE_CUE_GAP_MAX_SEC` is why. */
+    const canPrev = prev >= 0 && endOf(last) - startOf(prev) <= MAX_TAPE_SEGMENT_SEC && startOf(first) - endOf(prev) <= TAPE_CUE_GAP_MAX_SEC;
+    const canNext = next < n && endOf(next) - startOf(first) <= MAX_TAPE_SEGMENT_SEC && startOf(next) - endOf(last) <= TAPE_CUE_GAP_MAX_SEC;
+    const prevShared = canPrev ? sharedWith(prev) : 0;
+    const nextShared = canNext ? sharedWith(next) : 0;
+    /* Neither side is still talking about the claim — or there is no side left,
+       or taking one would run past `MAX_TAPE_SEGMENT_SEC`. Stop short of the
+       target rather than buy the seconds with off-claim tape. */
+    if (prevShared <= 0 && nextShared <= 0) break;
+    /* Forward on a tie, for F-62's own reason: a passage continues after its
+       topic sentence more often than it is introduced by one. */
+    if (nextShared >= prevShared) last = next;
+    else first = prev;
   }
   return { first, last };
 }
