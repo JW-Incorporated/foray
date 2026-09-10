@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-09-10T00:10:27.952Z",
+  "built_at": "2026-09-10T08:12:49.916Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-09-10-a7c7c9f0",
+    "last_batch_id": "fresh-2026-09-10-089050f5",
     "last_batch_tier": 1
   },
   "entries": {
@@ -109450,11 +109450,30 @@
     },
     "1656703836": {
       "topics": [
-        "personal-journals"
+        "personal-journals",
+        "relationships"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "personal-journals",
+          "confidence": 0.85
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Personal reflection podcast about growth, relationships, and life navigation.",
+      "display_title": "Conversaciones con el Reflejo",
+      "blurb": "Introspective conversations about personal growth, relationships, and self-understanding.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-089050f5",
+      "classified_at": "2026-09-10T08:12:49.916Z"
     },
     "1656711321": {
       "topics": [
@@ -119901,8 +119920,22 @@
         "education/how-to"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/how-to",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Teaching strategies and tips for elementary math educators.",
+      "display_title": "Elementary Math Chat",
+      "blurb": "Podcast for math teachers sharing classroom strategies and student engagement ideas.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-089050f5",
+      "classified_at": "2026-09-10T08:12:49.916Z"
     },
     "1697772657": {
       "topics": [
@@ -121247,11 +121280,35 @@
     },
     "1703634960": {
       "topics": [
-        "science"
+        "psychology",
+        "medicine/neuroscience",
+        "medicine/biology"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.8
+        },
+        {
+          "node": "medicine/neuroscience",
+          "confidence": 0.75
+        },
+        {
+          "node": "medicine/biology",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Psychology, neuroscience, and biology examining culture and human behavior.",
+      "display_title": "The Ladder of Wisdom پادکست پلکان خرد",
+      "blurb": "Examining human behavior, psychology, and neuroscience from biological perspectives.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-089050f5",
+      "classified_at": "2026-09-10T08:12:49.916Z"
     },
     "1703635148": {
       "topics": [
@@ -121457,11 +121514,30 @@
     },
     "1704724572": {
       "topics": [
-        "business/non-profit"
+        "business/non-profit",
+        "society"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/non-profit",
+          "confidence": 0.9
+        },
+        {
+          "node": "society",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Interviews about charitable organizations and changemakers.",
+      "display_title": "Six Degrees with Kevin Bacon",
+      "blurb": "Kevin Bacon interviews celebrities about their favorite charitable organizations.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-089050f5",
+      "classified_at": "2026-09-10T08:12:49.916Z"
     },
     "1704756841": {
       "topics": [
@@ -121723,11 +121799,30 @@
     },
     "1705518954": {
       "topics": [
-        "society"
+        "paranormal",
+        "true-crime"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "paranormal",
+          "confidence": 0.85
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Paranormal and true crime stories from historical cases.",
+      "display_title": "The Red Treehouse: Scary Stories to Keep You",
+      "blurb": "Paranormal investigations and true crime stories exploring unexplained phenomena.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-089050f5",
+      "classified_at": "2026-09-10T08:12:49.916Z"
     },
     "1705626495": {
       "topics": [
@@ -121797,12 +121892,30 @@
     },
     "1705897176": {
       "topics": [
-        "business",
-        "economics/markets"
+        "economics/markets",
+        "news/commentary"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.95
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Financial markets, investing strategies, and economic policy analysis.",
+      "display_title": "WSJ's Take On the Week",
+      "blurb": "Wall Street Journal hosts discuss investing, markets, and economic trends.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-089050f5",
+      "classified_at": "2026-09-10T08:12:49.916Z"
     },
     "1705899138": {
       "topics": [
@@ -121921,8 +122034,22 @@
         "health/sexuality"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/sexuality",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Adult erotic audio stories.",
+      "display_title": "The Audio Porn 🔞 | Erotic Stories",
+      "blurb": "Audio erotica featuring serialized adult stories and scenarios.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-089050f5",
+      "classified_at": "2026-09-10T08:12:49.916Z"
     },
     "1706127479": {
       "topics": [
@@ -121958,8 +122085,22 @@
         "culture/books"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sisterly chapter-by-chapter analysis of fantasy book series.",
+      "display_title": "Fantasy Fangirls",
+      "blurb": "Hosts analyze fantasy novels with character insights and worldbuilding.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-089050f5",
+      "classified_at": "2026-09-10T08:12:49.916Z"
     },
     "1706197099": {
       "topics": [
@@ -122059,11 +122200,30 @@
     },
     "1706699976": {
       "topics": [
-        "education/how-to"
+        "kids-family/parenting",
+        "education/self-improvement"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.85
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classical education and virtue-centered parenting for families.",
+      "display_title": "The Children's Tradition",
+      "blurb": "Introducing families to poetic learning and virtue cultivation.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-089050f5",
+      "classified_at": "2026-09-10T08:12:49.916Z"
     },
     "1706731261": {
       "topics": [
@@ -122213,11 +122373,30 @@
     },
     "1707015270": {
       "topics": [
-        "culture/fashion"
+        "culture/fashion",
+        "business/startups"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/fashion",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fashion industry interviews and handbag design entrepreneurship.",
+      "display_title": "Handbag Designer 101: The Stories Behind Handbag Designers",
+      "blurb": "Designer interviews exploring luxury handbag brands and fashion entrepreneurship.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-089050f5",
+      "classified_at": "2026-09-10T08:12:49.916Z"
     },
     "1707024151": {
       "topics": [
@@ -122467,11 +122646,30 @@
     },
     "1707772572": {
       "topics": [
-        "comedy"
+        "comedy",
+        "comedy/casual-hangs"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.9
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedians reading and discussing funny customer reviews.",
+      "display_title": "Your Stupid Opinions",
+      "blurb": "Comedians discuss absurd and passionate customer reviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-089050f5",
+      "classified_at": "2026-09-10T08:12:49.916Z"
     },
     "1707782937": {
       "topics": [
@@ -122587,11 +122785,25 @@
     },
     "1708188846": {
       "topics": [
-        "hobbies"
+        "comedy"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Chinese comedy and lifestyle discussion show.",
+      "display_title": "二的三次方",
+      "blurb": "Chinese comedy show with comedians discussing various topics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-089050f5",
+      "classified_at": "2026-09-10T08:12:49.916Z"
     },
     "1708242412": {
       "topics": [
@@ -122644,8 +122856,22 @@
         "tv-film/history"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/history",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Golden era Hollywood stories and classic cinema history.",
+      "display_title": "From Beneath the Hollywood Sign",
+      "blurb": "Exploring tales of Old Hollywood stars and classic cinema.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-089050f5",
+      "classified_at": "2026-09-10T08:12:49.916Z"
     },
     "1708496660": {
       "topics": [
@@ -123343,11 +123569,30 @@
     },
     "1711240452": {
       "topics": [
-        "society/government"
+        "society/government",
+        "news/politics"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society/government",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "National security policy and international affairs interviews.",
+      "display_title": "NatSec Matters",
+      "blurb": "Former national security officials discuss critical global security challenges.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-089050f5",
+      "classified_at": "2026-09-10T08:12:49.916Z"
     },
     "1711260481": {
       "topics": [
@@ -123426,11 +123671,30 @@
     },
     "1711453860": {
       "topics": [
-        "society"
+        "paranormal",
+        "true-crime"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "paranormal",
+          "confidence": 0.85
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Paranormal case investigations and supernatural stories.",
+      "display_title": "Jack Osbourne's The Most Haunted",
+      "blurb": "Jack Osbourne investigates paranormal phenomena and haunting cases.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-089050f5",
+      "classified_at": "2026-09-10T08:12:49.916Z"
     },
     "1711453890": {
       "topics": [
@@ -123472,11 +123736,30 @@
     },
     "1711700592": {
       "topics": [
-        "culture/performing-arts"
+        "culture/performing-arts",
+        "fiction/drama"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.85
+        },
+        {
+          "node": "fiction/drama",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Audiobook narrations of Sherlock Holmes detective stories.",
+      "display_title": "Sherlock Holmes Short Stories",
+      "blurb": "Audio dramatizations of classic Sherlock Holmes mystery stories.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-089050f5",
+      "classified_at": "2026-09-10T08:12:49.916Z"
     },
     "1711706540": {
       "topics": [
@@ -123532,11 +123815,30 @@
     },
     "1711834296": {
       "topics": [
-        "music"
+        "culture/pop-culture",
+        "news/commentary"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.9
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Celebrity news and pop culture commentary about Taylor Swift.",
+      "display_title": "Taylor Watch",
+      "blurb": "Hosts discuss Taylor Swift news, pop culture, and celebrity gossip.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-089050f5",
+      "classified_at": "2026-09-10T08:12:49.916Z"
     },
     "1711860486": {
       "topics": [
@@ -123907,11 +124209,30 @@
     },
     "1713369564": {
       "topics": [
-        "gaming"
+        "gaming",
+        "hobbies"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.85
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Pinball machine design, collecting, and game analysis.",
+      "display_title": "Wedgehead Pinball Podcast",
+      "blurb": "Pinball enthusiasts discuss game design and location play strategies.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-089050f5",
+      "classified_at": "2026-09-10T08:12:49.916Z"
     },
     "1713378216": {
       "topics": [
@@ -124087,11 +124408,30 @@
     },
     "1714228902": {
       "topics": [
+        "paranormal",
         "true-crime"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "paranormal",
+          "confidence": 0.8
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Conspiracy theories, paranormal phenomena, and true crime.",
+      "display_title": "Thrilling Threads - Conspiracy Theories, Strange Phenomena, True",
+      "blurb": "Exploring unsolved mysteries, conspiracies, and strange phenomena.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-089050f5",
+      "classified_at": "2026-09-10T08:12:49.916Z"
     },
     "1714266208": {
       "topics": [
@@ -124143,8 +124483,22 @@
         "sports/volleyball"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/volleyball",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Volleyball player interviews and athlete stories.",
+      "display_title": "Bump Set Chat! The place to hear from",
+      "blurb": "Volleyball community interviews exploring players' stories and journeys.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-089050f5",
+      "classified_at": "2026-09-10T08:12:49.916Z"
     },
     "1714491190": {
       "topics": [
@@ -124392,11 +124746,30 @@
     },
     "1715473158": {
       "topics": [
-        "news/daily"
+        "news/daily",
+        "news/politics"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.95
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "International politics and foreign policy news analysis.",
+      "display_title": "The Global Story",
+      "blurb": "Daily international news analyzing politics and foreign policy.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-089050f5",
+      "classified_at": "2026-09-10T08:12:49.916Z"
     },
     "1715481815": {
       "topics": [
@@ -124527,11 +124900,30 @@
     },
     "1716279384": {
       "topics": [
-        "health/sexuality"
+        "health/sexuality",
+        "relationships"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/sexuality",
+          "confidence": 0.85
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sexuality and relationships discussion show.",
+      "display_title": "Rat Girls",
+      "blurb": "Exploring sexuality and relationships with candid conversations.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-089050f5",
+      "classified_at": "2026-09-10T08:12:49.916Z"
     },
     "1716279601": {
       "topics": [
@@ -124582,11 +124974,30 @@
     },
     "1716436908": {
       "topics": [
+        "culture/pop-culture",
         "society"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.75
+        },
+        {
+          "node": "society",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Pop culture and society discussion podcast.",
+      "display_title": "Icaro - Fandango Podcast",
+      "blurb": "Cultural and social topics discussion show.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-089050f5",
+      "classified_at": "2026-09-10T08:12:49.916Z"
     },
     "1716447116": {
       "topics": [
@@ -125669,11 +126080,30 @@
     },
     "1721774790": {
       "topics": [
-        "tv-film"
+        "news/commentary",
+        "culture/pop-culture"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Chinese entertainment news and pop culture commentary.",
+      "display_title": "老王来了（搬运）",
+      "blurb": "Entertainment news and pop culture discussion.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-089050f5",
+      "classified_at": "2026-09-10T08:12:49.916Z"
     },
     "1721813926": {
       "topics": [
@@ -125712,11 +126142,30 @@
     },
     "1721855892": {
       "topics": [
-        "engineering/ai-robotics"
+        "engineering/ai-robotics",
+        "education/courses"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.9
+        },
+        {
+          "node": "education/courses",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Artificial intelligence education and technical concepts.",
+      "display_title": "Artificial Intelligence Masterclass",
+      "blurb": "Educational series on artificial intelligence concepts and applications.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-089050f5",
+      "classified_at": "2026-09-10T08:12:49.916Z"
     },
     "1721921086": {
       "topics": [
@@ -125772,11 +126221,30 @@
     },
     "1721984466": {
       "topics": [
-        "personal-journals"
+        "personal-journals",
+        "culture/pop-culture"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "personal-journals",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Discussion and commentary on Reddit posts and trends.",
+      "display_title": "ThreadTalk: The Reddit Review Show",
+      "blurb": "Reviewing and discussing Reddit posts and internet trends.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-089050f5",
+      "classified_at": "2026-09-10T08:12:49.916Z"
     },
     "1722148571": {
       "topics": [
@@ -126188,8 +126656,22 @@
         "space"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Astrophysics and space science education.",
+      "display_title": "The Astrophysics Podcast",
+      "blurb": "Astrophysics concepts and space science education.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-089050f5",
+      "classified_at": "2026-09-10T08:12:49.916Z"
     },
     "1723750882": {
       "topics": [
@@ -126337,11 +126819,30 @@
     },
     "1724072568": {
       "topics": [
-        "hobbies"
+        "hobbies",
+        "culture/design"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/design",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Horological enthusiasts discussing watches and collecting.",
+      "display_title": "That Watch Podcast",
+      "blurb": "Exploring watch design, collecting, and horology.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-089050f5",
+      "classified_at": "2026-09-10T08:12:49.916Z"
     },
     "1724078118": {
       "topics": [
@@ -126457,8 +126958,22 @@
         "sports/basketball"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/basketball",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Basketball analysis and sports statistics.",
+      "display_title": "Numbers on The Board",
+      "blurb": "Basketball statistics, analysis, and game discussion.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-089050f5",
+      "classified_at": "2026-09-10T08:12:49.916Z"
     },
     "1724529434": {
       "topics": [
@@ -126479,8 +126994,22 @@
         "science/chemistry"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/chemistry",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Chemistry concepts and chemical science.",
+      "display_title": "Forever Chemicals",
+      "blurb": "Chemistry science and chemical concepts education.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-089050f5",
+      "classified_at": "2026-09-10T08:12:49.916Z"
     },
     "1724729558": {
       "topics": [
@@ -126499,11 +127028,25 @@
     },
     "1724781096": {
       "topics": [
-        "religion"
+        "religion/spirituality"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Spirituality and personal journey discussion.",
+      "display_title": "Honoring the Journey",
+      "blurb": "Spiritual and personal growth reflection.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-089050f5",
+      "classified_at": "2026-09-10T08:12:49.916Z"
     },
     "1724804420": {
       "topics": [
@@ -126566,11 +127109,30 @@
     },
     "1724974482": {
       "topics": [
-        "music"
+        "music",
+        "culture/pop-culture"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Country music and musician interviews.",
+      "display_title": "God's Country",
+      "blurb": "Country music discussion and artist interviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-089050f5",
+      "classified_at": "2026-09-10T08:12:49.916Z"
     },
     "1724982131": {
       "topics": [
@@ -126885,11 +127447,30 @@
     },
     "1725833532": {
       "topics": [
+        "culture/pop-culture",
         "society"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.8
+        },
+        {
+          "node": "society",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Interviews about culture and contemporary society.",
+      "display_title": "The Louis Theroux Podcast",
+      "blurb": "Society and culture interviews with various personalities.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-089050f5",
+      "classified_at": "2026-09-10T08:12:49.916Z"
     },
     "1725848404": {
       "topics": [
@@ -127253,11 +127834,30 @@
     },
     "1726972458": {
       "topics": [
-        "education/how-to"
+        "education/how-to",
+        "health/mental"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/how-to",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Special education and behavioral strategies for educators.",
+      "display_title": "The Misfit Behaviorists - Practical Strategies for Special",
+      "blurb": "Teaching strategies for special education and ABA professionals.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-089050f5",
+      "classified_at": "2026-09-10T08:12:49.916Z"
     },
     "1726990321": {
       "topics": [
@@ -127611,11 +128211,30 @@
     },
     "1728311904": {
       "topics": [
-        "education/how-to"
+        "education/how-to",
+        "health/mental"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/how-to",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Psychiatric nursing certification exam preparation.",
+      "display_title": "PMHNP Certification Q & A",
+      "blurb": "Psychiatric nursing certification preparation and Q&A.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-089050f5",
+      "classified_at": "2026-09-10T08:12:49.916Z"
     },
     "1728315608": {
       "topics": [
@@ -127772,11 +128391,30 @@
     },
     "1728765294": {
       "topics": [
-        "tv-film"
+        "true-crime",
+        "news/commentary"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "True crime case about missing members of royal family.",
+      "display_title": "Infamous: Dubai's Missing Princesses",
+      "blurb": "True crime investigation of mysterious disappearance case.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-089050f5",
+      "classified_at": "2026-09-10T08:12:49.916Z"
     },
     "1728807034": {
       "topics": [
@@ -128011,11 +128649,30 @@
     },
     "1729505286": {
       "topics": [
+        "craft/diy-home",
         "hobbies"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.9
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Quilting craft, techniques, and textile arts.",
+      "display_title": "Patchwork Revival: A Quilting Podcast",
+      "blurb": "Quilting techniques, patterns, and textile art discussion.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-089050f5",
+      "classified_at": "2026-09-10T08:12:49.916Z"
     },
     "1729552193": {
       "topics": [
@@ -128358,8 +129015,22 @@
         "business/non-profit"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/non-profit",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Nonprofit fundraising strategies and technology.",
+      "display_title": "FundraisingAI",
+      "blurb": "Fundraising strategies for nonprofit organizations.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-089050f5",
+      "classified_at": "2026-09-10T08:12:49.916Z"
     },
     "1731076727": {
       "topics": [
@@ -128475,11 +129146,30 @@
     },
     "1731434430": {
       "topics": [
-        "tv-film"
+        "tv-film/after-shows",
+        "comedy"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/after-shows",
+          "confidence": 0.75
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Entertainment discussion about TV and media.",
+      "display_title": "Keanan And Lakin Give You Déjà Vu",
+      "blurb": "TV and entertainment discussion show.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-089050f5",
+      "classified_at": "2026-09-10T08:12:49.916Z"
     },
     "1731441128": {
       "topics": [
@@ -128558,8 +129248,22 @@
         "hobbies"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Chinese leisure lifestyle discussion.",
+      "display_title": "天真不天真",
+      "blurb": "Chinese lifestyle and entertainment discussion.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-089050f5",
+      "classified_at": "2026-09-10T08:12:49.916Z"
     },
     "1731804320": {
       "topics": [
@@ -128601,11 +129305,30 @@
     },
     "1731934092": {
       "topics": [
-        "education/courses"
+        "education/courses",
+        "economics/markets"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/courses",
+          "confidence": 0.85
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Stock trading education and market analysis courses.",
+      "display_title": "【缠中说禅|股票】缠论108课 精华版",
+      "blurb": "Stock trading education and market analysis instruction.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-089050f5",
+      "classified_at": "2026-09-10T08:12:49.916Z"
     },
     "1731938306": {
       "topics": [
@@ -128646,11 +129369,30 @@
     },
     "1732158444": {
       "topics": [
-        "education/how-to"
+        "education/self-improvement",
+        "health"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.85
+        },
+        {
+          "node": "health",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Personal development and self-improvement guidance.",
+      "display_title": "Busy Glowing Up",
+      "blurb": "Personal growth and self-improvement strategies.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-089050f5",
+      "classified_at": "2026-09-10T08:12:49.916Z"
     },
     "1732308502": {
       "topics": [
@@ -128749,11 +129491,30 @@
     },
     "1732870524": {
       "topics": [
-        "tv-film"
+        "news/commentary",
+        "culture/pop-culture"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Entertainment news and pop culture commentary.",
+      "display_title": "Don't Let It Stu",
+      "blurb": "Entertainment news and celebrity gossip discussion.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-089050f5",
+      "classified_at": "2026-09-10T08:12:49.916Z"
     },
     "1732886330": {
       "topics": [
@@ -128924,11 +129685,25 @@
     },
     "1733519370": {
       "topics": [
-        "society"
+        "culture/pop-culture"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Spanish language entertainment discussion.",
+      "display_title": "pepe&chema podcast",
+      "blurb": "Spanish language entertainment and culture podcast.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-089050f5",
+      "classified_at": "2026-09-10T08:12:49.916Z"
     },
     "1733533401": {
       "topics": [
@@ -129035,19 +129810,57 @@
     },
     "1734053538": {
       "topics": [
+        "society/law",
         "society/government"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society/law",
+          "confidence": 0.95
+        },
+        {
+          "node": "society/government",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Supreme Court case proceedings and legal arguments.",
+      "display_title": "Supreme Court Oral Arguments",
+      "blurb": "Supreme Court oral arguments and legal proceedings.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-089050f5",
+      "classified_at": "2026-09-10T08:12:49.916Z"
     },
     "1734094890": {
       "topics": [
-        "personal-journals"
+        "personal-journals",
+        "relationships"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "personal-journals",
+          "confidence": 0.85
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Personal conversation and communication discussion.",
+      "display_title": "Nothing Left Unsaid",
+      "blurb": "Personal conversations exploring relationships and communication.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-089050f5",
+      "classified_at": "2026-09-10T08:12:49.916Z"
     },
     "1734098219": {
       "topics": [
@@ -129111,11 +129924,30 @@
     },
     "1734318570": {
       "topics": [
-        "society"
+        "psychology",
+        "health/mental"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Psychology, therapy, and mental health education.",
+      "display_title": "Psychotherapy and Applied Psychology",
+      "blurb": "Psychology and psychotherapy concepts and applications.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-089050f5",
+      "classified_at": "2026-09-10T08:12:49.916Z"
     },
     "1734323123": {
       "topics": [
@@ -129179,11 +130011,30 @@
     },
     "1734495150": {
       "topics": [
-        "health/sexuality"
+        "health/sexuality",
+        "relationships"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/sexuality",
+          "confidence": 0.85
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sexuality, relationships, and embodied connection.",
+      "display_title": "Embodied Love Lounge",
+      "blurb": "Exploring sexuality, love, and embodied relationships.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-089050f5",
+      "classified_at": "2026-09-10T08:12:49.916Z"
     },
     "1734510582": {
       "topics": [
@@ -129358,11 +130209,30 @@
     },
     "1735146600": {
       "topics": [
-        "business/non-profit"
+        "business/non-profit",
+        "society"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/non-profit",
+          "confidence": 0.85
+        },
+        {
+          "node": "society",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Community nonprofit work and social good.",
+      "display_title": "What's Good In The Neighborhood",
+      "blurb": "Community nonprofit initiatives and local social good.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-089050f5",
+      "classified_at": "2026-09-10T08:12:49.916Z"
     },
     "1735157109": {
       "topics": [
@@ -129622,11 +130492,30 @@
     },
     "1736221446": {
       "topics": [
+        "health",
         "music"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health",
+          "confidence": 0.85
+        },
+        {
+          "node": "music",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Wellness music for sleep and relaxation.",
+      "display_title": "Sleep & Relaxation Music to Calm the Nervous",
+      "blurb": "Relaxation and wellness music for sleep and calm.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-089050f5",
+      "classified_at": "2026-09-10T08:12:49.916Z"
     },
     "1736267935": {
       "topics": [
@@ -129755,8 +130644,22 @@
         "sports/baseball"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/baseball",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Baseball sports analysis and discussion.",
+      "display_title": "Section 10",
+      "blurb": "Baseball analysis and sports discussion.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-089050f5",
+      "classified_at": "2026-09-10T08:12:49.916Z"
     },
     "1736747889": {
       "topics": [
@@ -129893,8 +130796,22 @@
         "kids-family/parenting"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Parenting advice and family discussion.",
+      "display_title": "Two Parents & A Podcast",
+      "blurb": "Parenting experiences and family life discussion.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-089050f5",
+      "classified_at": "2026-09-10T08:12:49.916Z"
     },
     "1737487546": {
       "topics": [
@@ -130029,11 +130946,30 @@
     },
     "1738072194": {
       "topics": [
-        "business/non-profit"
+        "business/non-profit",
+        "society"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/non-profit",
+          "confidence": 0.8
+        },
+        {
+          "node": "society",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Community equity and social justice nonprofit work.",
+      "display_title": "SLO Equity Podcast",
+      "blurb": "Community equity initiatives and social justice.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-089050f5",
+      "classified_at": "2026-09-10T08:12:49.916Z"
     },
     "1738085364": {
       "topics": [
@@ -130044,11 +130980,30 @@
     },
     "1738121304": {
       "topics": [
+        "comedy/interviews",
         "comedy"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/interviews",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedy duo interviews with entertainment personalities.",
+      "display_title": "The Lonely Island and Seth Meyers Podcast",
+      "blurb": "Funny interviews and comedy discussion show.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-089050f5",
+      "classified_at": "2026-09-10T08:12:49.916Z"
     },
     "1738124704": {
       "topics": [
@@ -130146,8 +131101,22 @@
         "business/marketing"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/marketing",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Marketing strategies and content creation.",
+      "display_title": "Good Content with Shannon McKinstrie",
+      "blurb": "Marketing and content creation strategies discussion.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-089050f5",
+      "classified_at": "2026-09-10T08:12:49.916Z"
     },
     "1738663470": {
       "topics": [
@@ -130404,11 +131373,30 @@
     },
     "1739798946": {
       "topics": [
-        "gaming"
+        "gaming",
+        "hobbies"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.85
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Gaming and video game discussion.",
+      "display_title": "Sword AF",
+      "blurb": "Video games and gaming culture discussion.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-089050f5",
+      "classified_at": "2026-09-10T08:12:49.916Z"
     },
     "1739799133": {
       "topics": [
@@ -130763,11 +131751,30 @@
     },
     "1741589082": {
       "topics": [
-        "culture/fashion"
+        "culture/fashion",
+        "culture/pop-culture"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/fashion",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fashion industry interviews and celebrity style.",
+      "display_title": "Fashion People",
+      "blurb": "Fashion industry interviews and style discussion.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-10-089050f5",
+      "classified_at": "2026-09-10T08:12:49.916Z"
     },
     "1741593134": {
       "topics": [
