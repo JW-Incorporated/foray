@@ -115,6 +115,7 @@ import {
 } from "./strip-scrub-gesture.js";
 import { createDurableStore } from "./durable-store.js";
 import { createTtsBridge } from "./tts-bridge.js";
+import { createInterludePlayer, readInterludePref } from "./interlude.js";
 import { makeIdbTier } from "./idb-tier.js";
 import { createEventLog } from "./event-log.js";
 import {
@@ -133,6 +134,9 @@ const SEEK_FWD = SEEK_FORWARD_SEC;
 let manager = null;
 let backend = null;
 let positions = null;
+/** The interlude jingle's own element (queue-manager.js §13). Built with the
+    manager, primed on every play tap beside `backend.notePlayGesture()`. */
+let interlude = null;
 let ui = null;
 /** The one on-device TTS bridge instance for the whole page (V-01, §"the
     narration voice picker"). Built at module scope, not inside
@@ -1420,10 +1424,16 @@ function ensureBooted() {
      `onTelemetry` is hoisted (a function declaration below), so referencing it here
      is safe and keeps the sink defined once. */
   backend = new HtmlAudioBackend({ telemetry: onTelemetry });
+  /* The interlude jingle (queue-manager.js §13, player/interlude.js). Its own
+     element, so the backend's two-element invariant is untouched; the ONE
+     `cp_interlude` read lives here, beside `cp_rate`'s, for the same reason. */
+  interlude = createInterludePlayer({ telemetry: onTelemetry });
   manager = new PlayerQueueManager({
     backend,
     positionStore: positions,
     strategy: SINGLE_ITEM,
+    interlude,
+    interludeEnabled: readInterludePref(storage),
     /* The stored speed, as STATE. It reaches the element through the `setRate`
        below — the constructor deliberately touches no backend — but the manager
        has to know it from the first instant, because `restoreRate` fires on the
@@ -1583,6 +1593,8 @@ const ForayPlayer = {
     ensureBooted();
     // BEFORE the first await, always. See `notePlayGesture` (#225).
     backend.notePlayGesture();
+    // The jingle's element needs the same tap, for the same reason (§13).
+    if (interlude) interlude.prime();
     // Leaving a Foray for a single episode must not cost the last few seconds
     // of it — this is the only place `foray` is dropped without a flush.
     persistForayProgress({ force: true });
@@ -1883,6 +1895,8 @@ const ForayPlayer = {
        passes `startElapsedSec`, and a running-order row, which passes
        `startIndex`) come through here, so both are covered by one line. */
     backend.notePlayGesture();
+    // The jingle's element needs the same tap, for the same reason (§13).
+    if (interlude) interlude.prime();
     foray = { resolved, index: -1, pendingFrom: null, onChange, error: null };
     setSkipButtonMode(true);
     // Once per Foray, not once per tick: this walks the whole discover pool.

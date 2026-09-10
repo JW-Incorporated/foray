@@ -121,6 +121,10 @@ const FLOORS = {
   "player/foray-playback.test.js": 87,
   "player/foray-progress.test.js": 58,
   "player/foray-queue.test.js": 37,
+  /* The interlude jingle (queue-manager.js §13): the rule, the element wrapper
+     and the committed placeholder asset's measured properties. The seam CLOCK
+     it rides is floored under queue-manager.test.js. */
+  "player/interlude.test.js": 16,
   /* 54 -> 59 with #29's `withDiagnosticUnlock`, then 59 -> 54 with D-01
      (2026-09-06): the one-id shell-unlock exception and its five tests were
      deleted with the diagnostic Foray once V-01 shipped an in-app Audition
