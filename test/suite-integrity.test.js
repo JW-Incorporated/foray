@@ -89,7 +89,10 @@ const FLOORS = {
      explaining why it was dead.
      21 -> 22: the bridge between the page and this record was covered by neither
      suite, and transposing its two arguments left everything green. */
-  "player/diagnostic-log.test.js": 50,
+  /* 50 -> 55 with S-01 (docs/search-plan.md, kanban t_46366383): a new
+     `search` entry kind on PlayerDiagnostics — query length only, never the
+     query text, per this suite's own §7. */
+  "player/diagnostic-log.test.js": 55,
   "player/diagnostic-record.test.js": 23,
   "player/episode-link.test.js": 6,
   /* The durable store (#40). Both of these guard against silent DATA LOSS
@@ -437,6 +440,13 @@ const FLOORS = {
      the accumulation this suite's floor exists to prevent regressing
      unnoticed. */
   "test/show-search.test.js": 15, // U-11 cutover (2026-09-06, kanban t_a3f01c8a): the two v1/flag-off tests ("no Playlists-search section at all"; "no browse-subjects pill row") were retired along with cp_ui_v2 — ui2On() always returns true now, so those guards are unreachable; the surviving "no matching playlist" test was kept, renamed. 17 -> 15
+  /* S-01 (docs/search-plan.md, kanban t_46366383): the WIRING of
+     app.js's renderShowSearchResults into the diagnostics record — one
+     recordSearch call per completed query, qLen only (never the query
+     text, the card's own MUTATION line), local/net hit counts, the
+     local-only/local+net/superseded path field, and that a missing or
+     throwing bridge never breaks the search itself. */
+  "test/search-probe-record.test.js": 9,
   /* U-05 (docs/ui-transition-plan.md, kanban t_53381ee4, resolves issue
      #135): the Playlists results section under Shows/Episodes on the Shows
      page, plus the "Create a playlist about X" CTA. Floored new rather than
@@ -666,6 +676,12 @@ const FLOORS = {
      version today would delete 19,278 agent rows and leave valid JSON and a
      green CI behind it. This suite is the reason that cannot come back. */
   "tools/classify-breadth.test.mjs": 29,
+  /* S-01 (docs/search-plan.md, kanban t_46366383): the measurement machinery
+     for the search probe (median/p95, timing wrapper, "skipped not failed"
+     network contract, the report validator) -- driven by fakes and an
+     injected fetch, no real catalogue/network. See
+     test/search-probe-record.test.js for the wiring/mutation-guard half. */
+  "tools/search-probe.test.mjs": 27,
   /* 82 since #226 (PR #237) added "Foray #1 is labelled superseded". Raised in a
      follow-up rather than in that PR, which is the mistake this floor exists to
      catch: it left one test of slack, and slack is what lets the new gate be
