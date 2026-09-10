@@ -123,6 +123,7 @@ import {
 import {
   readRate, writeRate, nextRate, normalizeRate, rateLabel, rateAriaLabel, RATES,
 } from "./playback-rate.js";
+import { pickDefaultVoice, VOICE_LIST_LANG } from "./default-voice.js";
 
 /* The in-page buttons and the lock screen use ONE pair of numbers, imported
    rather than declared twice — `04_VOICE_AUDIO_SPEC.md`'s "±30/15 s seek". */
@@ -979,6 +980,42 @@ function applyVoice(id) {
   return v;
 }
 
+/** The session's DEFAULT voice — Samantha's best installed identifier per
+    `default-voice.js` (founder decision 2026-09-10) — held here and NEVER
+    written to `cp_voice`, so "never chose" stays distinguishable from "chose
+    Samantha" (that module's header says why). `null` until a `listVoices()`
+    result has been seen, or when no Samantha is installed at all, in which
+    case the manager keeps `null` and the plugin's own #491 heuristic picks. */
+let sessionDefaultVoice = null;
+
+/** Adopt the default from a `listVoices()` result, ONLY while nothing is
+    stored: a stored choice always wins and is never overwritten here.
+    Applied to the manager session-only (`setVoice`, not `applyVoice`, so no
+    storage write). Re-run on every list refresh, so a Samantha Enhanced
+    downloaded mid-session — which changes the best identifier — is picked
+    up the next time the picker asks what is installed. */
+function adoptDefaultVoice(voices) {
+  if (readVoice(storage)) return null;
+  sessionDefaultVoice = pickDefaultVoice(voices);
+  if (manager && manager.voice !== sessionDefaultVoice) manager.setVoice(sessionDefaultVoice);
+  return sessionDefaultVoice;
+}
+
+/** Resolve the default once for narration, so the first spoken item on a
+    phone with no stored choice is Samantha rather than #491's pick. Called
+    from `ensureBooted` after the manager exists; the first narration item
+    can still race ahead of the plugin's answer, and then speaks with the
+    plugin's own fallback, which is the designed degradation. Never rejects. */
+async function resolveDefaultVoice() {
+  if (readVoice(storage)) return null;
+  try {
+    const out = await ttsBridge.listVoices({ lang: VOICE_LIST_LANG });
+    return adoptDefaultVoice((out && out.voices) || []);
+  } catch (_) {
+    return null;
+  }
+}
+
 /** The mini-player's speed picker (#349). Same fix as the Foray page's
     #fy-rate: this button used to cycle to the next stop on every tap, with no
     way to see or jump straight to any of the other five. Opens a small menu
@@ -1399,6 +1436,16 @@ function ensureBooted() {
     voice,
   });
 
+  /* No stored choice: hand the manager the session default the picker may
+     already have resolved (a listener who opened the drawer before pressing
+     play), then (re)resolve it from the device so the first narration item
+     speaks with Samantha's best installed tier rather than #491's pick.
+     Fire-and-forget by design — booting must not wait on a plugin call. */
+  if (!voice) {
+    if (sessionDefaultVoice) manager.setVoice(sessionDefaultVoice);
+    resolveDefaultVoice();
+  }
+
   /* The one sink, for BOTH the manager and the backend (#264). Extracted from the
      manager's option so it can be handed to the element layer as well — see
      `HtmlAudioBackend` above.
@@ -1694,13 +1741,30 @@ const ForayPlayer = {
       uses, through the SAME `createTtsBridge()` instance this file already
       built for the manager. */
   listVoices(opts = {}) {
-    return ttsBridge.listVoices(opts);
+    /* Every list refresh is also the moment the session default is
+       (re)resolved — see `adoptDefaultVoice`. The page passes
+       `VOICE_LIST_LANG` itself; an older caller's `en-US` still answers,
+       just without the other English locales. */
+    return ttsBridge.listVoices(opts).then((out) => {
+      adoptDefaultVoice((out && out.voices) || []);
+      return out;
+    });
   },
 
-  /** The chosen voice identifier, or `null` — readable before anything has
+  /** The voice in force: the stored choice, else the session default
+      (Samantha's best installed tier, once a `listVoices()` result has been
+      seen), else `null` for "the plugin picks". Readable before anything has
       booted, same as `playbackRate()`. */
   currentVoice() {
-    return manager ? manager.voice : readVoice(storage);
+    if (manager) return manager.voice;
+    return readVoice(storage) || sessionDefaultVoice;
+  },
+
+  /** The default rule itself, re-exported so `app.js` paints the same row
+      selected that narration would speak with, from the same `listVoices()`
+      result, without a second copy of the rule in a classic script. */
+  defaultVoice(voices) {
+    return pickDefaultVoice(voices);
   },
 
   /** Apply and persist a voice choice (V-01's `cp_voice`). */

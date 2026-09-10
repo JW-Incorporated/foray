@@ -2821,6 +2821,20 @@ on-device synthesis is resting on a comparison against the worst voice iOS ships
   console attached to the device. Skip it unless step 5 comes back "identical"; the
   human answer to step 5 is the one that matters.
 
+**Note (2026-09-10, founder decision — supersedes step 2's name list, not the task).**
+Wyatt did the listen: *"those voices in the Narration voice picker were all so bad.
+Samantha was the least worst so let's go with that for now."* The picker no longer
+lists every installed voice (on iOS 17+ that list is mostly Apple's novelty and
+Eloquence catalogue — Albert, Zarvox, Eddy… — at the same tier as Samantha compact,
+which is what made it unbearable). It now shows a fixed trial list: **Samantha** (the
+default when nothing is chosen) plus Allison, Susan, Joelle, Tom, Nicky, Aaron (en-US),
+Daniel and Serena (en-GB), Karen (en-AU), Moira (en-IE), Tessa (en-ZA), Rishi (en-IN).
+Ava, Evan, Nathan and Zoe are gone. Greyed rows are the ones to download; Audition
+now counts to ten, not twenty. Step 3 (write down the exact names that show as
+downloaded) matters more, not less: Nicky and Aaron are unverified names and a row
+that never turns selectable after its download means the name is wrong, not the
+download.
+
 **Worked if:** there is a written note saying which voice was downloaded and whether the
 narration sounded better with it. Both halves are needed — "sounds better" without the
 voice name cannot be reproduced, and the voice name without a verdict answers nothing.
@@ -2853,6 +2867,12 @@ line are all the test needs.
    at roughly **50 seconds** (`STATE.md`'s own prediction, same line, same math).
    Materially off — say by more than a few seconds — means the *shape* of the curve is
    wrong, not just this one point; matching within a few seconds confirms it.
+
+**Note (2026-09-10, founder decision).** The Audition line is now a count to **ten**
+with no spoken markers — Wyatt: *"reduce the script to just counting to ten, it was so
+bad listening to them for so long."* Step 3 becomes "start to the final *ten*", and
+the predicted 2x reading halves to roughly **25 seconds** (same curve, half the
+words). Still a stopwatch test; nothing else about H3 changes.
 
 **Worked if:** there is a written number of seconds, at 2x, for the Audition line.
 

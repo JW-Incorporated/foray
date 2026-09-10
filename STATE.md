@@ -7,6 +7,27 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
+### V-01 follow-up: Samantha by default, curated trial voices, ten-count audition (2026-09-10) — `fix/voice-picker-samantha`
+
+- **What:** founder decision after the first real listen through V-01's picker
+  ("all so bad; Samantha was the least worst"). `app.js`'s picker now renders a
+  fixed allowlist (Samantha + a trial set: Allison, Susan, Joelle, Tom, Nicky,
+  Aaron, Daniel, Serena, Karen, Moira, Tessa, Rishi) and hides every other
+  installed voice — iOS 17+ `listVoices()` returns Apple's novelty/Eloquence
+  catalogue unfiltered, which is what he heard. New `player/default-voice.js`
+  holds the one rule for "nothing stored": Samantha's best installed tier,
+  else #491's plugin heuristic; `client.js` applies it to narration
+  (session-only, never written to `cp_voice`) and re-exports it for the page.
+  `listVoices` is asked for `lang: "en"` (both native halves match the exact
+  locale first and alone, so `en-US` never returned the en-GB/AU/IE/ZA/IN
+  rows). Audition line is now "one … ten." with no markers.
+- **Not verified:** Nicky and Aaron as Enhanced en-US names (rows say
+  "unverified name"); which voices ship compact-by-default on iOS 18.
+- **Touches:** `app.js`, `player/client.js`, `player/default-voice.js` (+ test),
+  `test/voice-settings.test.js`, `test/suite-integrity.test.js`,
+  `HUMAN-ACTIONS.md` (#40, H3 dated notes), `docs/ios-controls-and-voice-plan.md`
+  (V-01 dated note), `STATE.md`. Plugin untouched.
+
 ### L-04: iOS lock-screen records + drive-test writeup (2026-09-06, kanban `t_75ff6a06`) — `foray/t_75ff6a06`
 
 - **What:** `docs/ios-controls-and-voice-plan.md` L-04. Finished

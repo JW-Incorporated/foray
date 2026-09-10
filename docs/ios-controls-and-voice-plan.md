@@ -406,6 +406,21 @@ HUMAN-ACTIONS #29 (RESULT) and #40.
 ### Track V — the voice picker
 
 #### V-01 · Settings gains a voice picker, an Audition button, and a persisted choice — **M** — *design comment first*
+> **2026-09-10 note (founder decision, after the first real listen).** The card below
+> shipped as written (PR #519). Wyatt's verdict on the result: *"those voices were all so
+> bad. Samantha was the least worst so let's go with that for now."* The follow-up
+> changes three things the card text still describes the old way: (1) the picker renders
+> a **curated allowlist in a fixed order** — Samantha plus a trial set (Allison, Susan,
+> Joelle, Tom, Nicky, Aaron; Daniel, Serena; Karen; Moira; Tessa; Rishi) — and hides
+> every other installed voice, because `listVoices()` on iOS 17+ returns Apple's novelty
+> and Eloquence voices at Samantha compact's own tier and the plugin does not filter
+> `isNoveltyVoice`; Ava, Evan, Nathan, Zoe are removed. (2) **Samantha's best installed
+> tier is the default** when no `cp_voice` is stored (`player/default-voice.js`, one
+> rule for narration and the picker; #491's best-installed heuristic is now the fallback
+> when no Samantha is installed). (3) Audition is **"one … ten."** — no twenty, no
+> markers; H3's predicted 2x reading halves. `listVoices` is asked for `lang: "en"` so
+> the non-US voices come back at all (both native halves match the exact locale first
+> and alone). Card text left as the historical record.
 - **Ask:** a **Narration voice** section reachable from the drawer (`renderDrawer()`,
   next to *Playback diagnostics*) and, once U-02 lands, from its Settings entry — this
   card must not wait for `cp_ui_v2`. It calls `tts.listVoices({lang})` through

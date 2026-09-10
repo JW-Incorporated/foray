@@ -171,6 +171,12 @@ const FLOORS = {
      stale stored value SNAPS onto the ladder rather than resetting to 1x. Raise it
      when the suite grows. */
   "player/playback-rate.test.js": 22,
+  /* The default narration voice (founder decision 2026-09-10: Samantha).
+     One pure rule read by two surfaces — `client.js` for what narration
+     speaks with, `app.js` for which row is selected — so a deleted test here
+     is a default that can silently drift back to #491's "best installed
+     voice of any name", the exact behaviour the founder overruled. */
+  "player/default-voice.test.js": 10,
   "player/queue-manager.test.js": 114,
   "player/queue-state.test.js": 56,
   "player/seam-gap.test.js": 16,
