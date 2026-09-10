@@ -98,6 +98,7 @@ The app also asks the browser to mark its storage as persistent
 | `cp_pos:<id>` | Your position in seconds inside an individual episode | **No** |
 | `cp_rate` | Your playback speed | **No** |
 | `cp_voice` | Your chosen narration voice — an identifier the device's own voice list reported | **No** |
+| `cp_interlude` | Whether the short jingle between a foray's segments is on or off — a local per-device preference. On unless you turn it off | **No** |
 | `cp_player` | Which external podcast app you prefer to open episodes in | **No** |
 | `cp_family` | Family mode on/off — a local content filter that hides explicit-rated episodes | **No** |
 | `cp_autoadvance` | Up Next auto-advance on/off — a local per-device preference for whether finishing an episode played from your Up Next list starts the next queued item. Off by default | **No** (but see `autoadvance_pref` in §2) |

@@ -206,7 +206,15 @@ async function bootClient(t) {
   set("localStorage", storage);
   set("navigator", { storage: { persisted: async () => false } });
   set("Event", class { constructor(type) { this.type = type; } });
-  set("Audio", function Audio() { return audio; });
+  /* The FIRST `new Audio()` is the player's element — the one every test below
+     drives — exactly as before. Any later construction gets its own inert
+     stand-in: `html-audio-backend.js` builds one element, and since queue-
+     manager.js §13 `player/interlude.js` builds a second, for the jingle,
+     which must neither receive this harness's events nor put its `src` on the
+     backend's element. Handing the same object to both was the harness being
+     one element too generous (CLAUDE.md § "Audit the harness"). */
+  let audioConstructions = 0;
+  set("Audio", function Audio() { return audioConstructions++ === 0 ? audio : new Element(); });
   __resetInstanceForTests();
 
   const client = (await import(`./client.js?diag=${++bootSeq}`)).default;
