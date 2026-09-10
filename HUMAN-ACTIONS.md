@@ -18,7 +18,7 @@ it is filed under `DONE`.
 
 ### 100. P2 replies test -- PR auto-merge path (RULINGS-2 executor, throwaway)
 
-**Status:** OPEN
+**Status:** DONE (2026-09-10) — closed via Discord reply
 
 **Why it matters.** Throwaway test item to verify ha.py's write:pr close
 path (branch + PR + GraphQL auto-merge) against foray's protect-main
