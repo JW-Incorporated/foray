@@ -32,10 +32,13 @@ import {
   MAX_TAPE_SEGMENT_SEC,
   MIN_TAPE_SEGMENT_SEC,
   TIER2_WINDOW_MIN_SHARE,
+  TIER2_WINDOW_MIN_TERMS,
   canonicalizeForAnchorMatch,
   cutWindowToSegment,
+  seedFloorDecided,
   selectTapeWindow,
-  tapeWindowIsRelevant
+  tapeWindowIsRelevant,
+  type TapeWindow
 } from "../src/generation/transcriptArchiveLookup";
 import { FileTranscriptCueProvider } from "../src/generation/transcriptArchiveLookup";
 import { FileTranscriptTextIndex } from "../src/generation/transcriptTextIndex";
@@ -2498,6 +2501,282 @@ describe("sourceBeats — F-68: the seeded beat's OWN window is the first stretc
     expect(tier2.gate).toBe("window-overlap");
     expect(tier2.seededEpisode).toBe("pa-950");
     expect(tier2.seedWindowWon).toBe(false);
+  });
+
+  it("credits F-72's floor with nothing when the seeded window clears the rare-word count too", () => {
+    /* The counterpart to the F-72 cases below, on this fixture, where the seed
+       window says three of the claim's five words and every one of them is
+       rare (one episode, so every term weighs the same): the searching floor
+       would have taken this window unaided, so `seedFloor` is absent and the
+       run log's count stays a count of DECISIONS. */
+    const seeded = run({ episodeId: "pa-950", startSec: 100, endSec: 160 });
+    const row = seeded.tapeRelevance[0]!;
+    expect(row.seedWindowWon).toBe(true);
+    expect(row.seedFloor).toBeUndefined();
+  });
+});
+
+/* F-72: THE SEED IS THE RELEVANCE JUDGEMENT; THE RARE-WORD FLOOR GUARDS SEARCH.
+ *
+ * Run 2 attempt 5 was the first run with the seeded claims frozen (F-68) and the
+ * seed's own window asked first (also F-68) — and the spine's own wording still
+ * failed the tier-2 floor on the spine's own window. Not on share: on the
+ * rare-word count. Three of the seven refused seeds, from that run's trace rows
+ * (`gate: window-overlap`, `seedWindowWon: false`):
+ *
+ *   0.846  ['internship']           the old advice that an internship in your
+ *                                   junior or senior year was enough
+ *   0.717  ['validation','uipath']   third-party validation as the thing an
+ *                                   AI assurance standard actually sells
+ *   0.534  ['lingering','layered']   the infrastructure side against the
+ *                                   developer-side problem on top of it
+ *
+ * Eleven tape beats of 32 where 14 were available. The rare-word count exists to
+ * refuse a window a whole-ARCHIVE search landed on because it shares the trade's
+ * everyday vocabulary with the claim — run 1's Chernobyl, griddle and San Bruno
+ * anchors, which are re-run above and stay refused. For a SEEDED beat that
+ * question is already answered: §4.3 read that exact window and wrote the claim
+ * out of it. So the seed window is judged on share alone, and nothing else is.
+ */
+describe("tapeWindowIsRelevant — F-72: two floors, and one share bar neither waives", () => {
+  /** A window with nothing in it but the two numbers the floors read. The cue
+   * indices and seconds are inert here — this is a test of the verdict, not of
+   * the search that produces one. */
+  function windowWith(weightedShare: number, distinctiveTerms: string[]): TapeWindow {
+    return {
+      firstCue: 0,
+      lastCue: 2,
+      startSec: 100,
+      endSec: 160,
+      matchedTerms: distinctiveTerms,
+      distinctiveTerms,
+      claimTermCount: 12,
+      share: distinctiveTerms.length / 12,
+      weightedShare,
+      score: weightedShare
+    };
+  }
+
+  it("takes a seed window on share alone: 0.846 of the claim carried by one rare word", () => {
+    /* Ran it — red: change `if (floor === "seed-window") return true;` in
+       `tapeWindowIsRelevant` back to falling through to the rare-word count and
+       the first expectation flips to false. */
+    const internship = windowWith(0.846, ["internship"]);
+    expect(tapeWindowIsRelevant(internship, "seed-window")).toBe(true);
+    expect(seedFloorDecided(internship)).toBe(true);
+  });
+
+  it("refuses the very same window when a SEARCH is what found it", () => {
+    /* The regression this rule must not buy back. `distinctiveTerms.length` is
+       one against `TIER2_WINDOW_MIN_TERMS`, and for a searching window that is
+       still the end of it however high the share climbs. */
+    const internship = windowWith(0.846, ["internship"]);
+    expect(TIER2_WINDOW_MIN_TERMS).toBe(3);
+    expect(tapeWindowIsRelevant(internship, "archive-search")).toBe(false);
+  });
+
+  it("defaults to the searching floor, so no caller reaches the seed floor by omitting an argument", () => {
+    const uipath = windowWith(0.717, ["validation", "uipath"]);
+    expect(tapeWindowIsRelevant(uipath)).toBe(false);
+    expect(tapeWindowIsRelevant(uipath, "seed-window")).toBe(true);
+  });
+
+  it("never waives the share floor for a seed: run 2's 0.217 row stays refused", () => {
+    /* "One engineer describes taking about two weeks to get through the shift to
+       agentic coding" — a genuinely loose claim, and refusing it is right. The
+       seed says where to look, not that the tape there carries the claim. */
+    const loose = windowWith(0.217, ["weeks"]);
+    expect(tapeWindowIsRelevant(loose, "seed-window")).toBe(false);
+    expect(tapeWindowIsRelevant(loose, "archive-search")).toBe(false);
+    expect(seedFloorDecided(loose)).toBe(false);
+  });
+
+  it("claims no credit for a seed window the searching floor would have taken anyway", () => {
+    const both = windowWith(0.6, ["gearboxes", "bearings", "torque"]);
+    expect(tapeWindowIsRelevant(both, "seed-window")).toBe(true);
+    expect(tapeWindowIsRelevant(both, "archive-search")).toBe(true);
+    expect(seedFloorDecided(both)).toBe(false);
+  });
+
+  it("is a verdict about a window, so no window is no", () => {
+    expect(tapeWindowIsRelevant(null, "seed-window")).toBe(false);
+    expect(tapeWindowIsRelevant(null)).toBe(false);
+    expect(seedFloorDecided(null)).toBe(false);
+  });
+});
+
+describe("sourceBeats — F-72: the seeded beat's own window is judged on share alone", () => {
+  /* THE 0.717 ROW IN MINIATURE. Six episodes of one show, so `validation` is rare
+     (1 of 6 bodies) while the claim's other four words are what every episode of
+     the trade says (6 of 6). With BM25's own idf that ratio puts `validation` at
+     weight one and each of the others at about a twentieth of it — so the stretch
+     the spine quoted speaks ~0.88 of what the claim is distinctively about while
+     clearing exactly ONE of the three rare words a searching window must. */
+  const seeded: TranscriptDigestEntry = {
+    show_id: "practical-ai",
+    show_title: "Practical AI",
+    guid: "pa-960",
+    title: "Episode 960",
+    cues: 4,
+    feed_duration_sec: 3600,
+    enclosure_url: "https://cdn.example/pa-960.mp3"
+  };
+
+  /** Five content words after `tokenizeForSourcing`: assurance, standards, sell,
+   * validation, vendors. */
+  const claim = "Assurance standards sell validation to vendors.";
+
+  const cues: TranscriptCue[] = [
+    { text: "welcome back to the programme this week we are talking shop with a friend", start_sec: 0, end_sec: 40 },
+    /* 40-70 s: the trade's everyday words and not one rare one — the seed window
+       of the share-floor case below. */
+    { text: "the vendors we hear from all sell against the same standards every quarter", start_sec: 40, end_sec: 70 },
+    /* 100-160 s: the stretch §4.3 quoted and wrote the claim out of. */
+    { text: "the whole assurance conversation turns on one thing in the end", start_sec: 100, end_sec: 130 },
+    { text: "third party validation is the thing everybody is really buying here", start_sec: 130, end_sec: 160 }
+  ];
+
+  /** Five more episodes of the same show that talk about vendors, standards and
+   * selling and never once say `validation`. They are what MAKES those four words
+   * common and that one rare — the fixture's mechanism is the corpus, not a
+   * hand-set weight. */
+  const filler: TranscriptDigestEntry[] = [1, 2, 3, 4, 5].map((n) => ({ ...seeded, guid: `pa-96${n}`, title: `Episode 96${n}` }));
+  const fillerCues: TranscriptCue[] = [
+    { text: "the vendors on this panel all sell to the same buyers every single year", start_sec: 0, end_sec: 40 },
+    { text: "and the standards they point at are the ones their own lawyers wrote", start_sec: 40, end_sec: 80 },
+    { text: "assurance is the word everybody reaches for when the room goes quiet", start_sec: 80, end_sec: 120 }
+  ];
+
+  const archive = [seeded, ...filler];
+  const cuesByGuid: Record<string, TranscriptCue[]> = { "pa-960": cues };
+  for (const f of filler) cuesByGuid[f.guid] = fillerCues;
+
+  type Seed = { episodeId: string; startSec: number; endSec: number };
+
+  function actFor(seed?: Seed): DeepenedAct[] {
+    return [
+      makeDeepenedAct(
+        { slots: [{ title: "Assurance", beats: [{ claim, exploration: false, kind: "account", ...(seed ? { seed } : {}) }] }] },
+        "F72"
+      )
+    ];
+  }
+
+  function run(seed?: Seed) {
+    return sourceBeats(actFor(seed), {
+      segmentPool: [],
+      transcriptArchive: archive,
+      cueProvider: { getCues: (entry) => cuesByGuid[entry.guid] ?? null },
+      textIndex: memoryTextIndex(archive, cuesByGuid),
+      topic: "engineering/ai-robotics"
+    });
+  }
+
+  it("mints the seeded stretch on share alone, and says so in the trace", () => {
+    /* Ran it — red: change `seedWindowClears` in `sourceBeats.ts` back to
+       `tapeWindowIsRelevant(seedWindow)` and this beat is narration, because no
+       window of this episode can ever hold three rare words. */
+    const result = run({ episodeId: "pa-960", startSec: 100, endSec: 160 });
+    expect(allSourcedBeats(result.acts)[0]!.sourcing).toBe("tape");
+    const segment = result.newSegments[0]!;
+    expect(segment.startSec).toBe(100);
+    expect(segment.endSec).toBe(160);
+    /* The anchors are still the tape's own words at the window's edges (F-61):
+       the floor decides relevance, and nothing about how a window is cut. */
+    expect(cues[2]!.text).toContain(segment.startAnchor);
+    expect(cues[3]!.text).toContain(segment.endAnchor);
+    const row = result.tapeRelevance[0]!;
+    expect(row.tier).toBe(2);
+    expect(row.seededEpisode).toBe("pa-960");
+    expect(row.seedWindowWon).toBe(true);
+    expect(row.seedFloor).toBe("share-only");
+  });
+
+  it("still refuses that window when a SEARCH is what found it — share was never the problem", () => {
+    /* The same claim, the same episode, the same passage, no seed. The whole
+       archive is searched, the window it lands on is about as good as a window
+       can be on share, and the rare-word count refuses it — which is exactly
+       what keeps run 1's Chernobyl/griddle/San Bruno anchors out. */
+    const unseeded = run();
+    expect(allSourcedBeats(unseeded.acts)[0]!.sourcing).toBe("narration");
+    expect(unseeded.newSegments).toHaveLength(0);
+    const tier2 = unseeded.sourcingTrace[0]!.tier2!;
+    expect(tier2.gate).toBe("window-overlap");
+    expect(tier2.bestEpisodeTitle).toBe("Episode 960");
+    expect(tier2.windowWeightedShare!).toBeGreaterThanOrEqual(TIER2_WINDOW_MIN_SHARE);
+    expect(tier2.windowDistinctiveTerms).toEqual(["validation"]);
+    /* No seed, so neither seed field is claimed. */
+    expect(tier2.seededEpisode).toBeUndefined();
+    expect(tier2.seedFloor).toBeUndefined();
+  });
+
+  it("does not lower the share floor for a seed: a seeded window of everyday words is refused", () => {
+    /* Run 2's 0.217 case. The seed points at 40-70 s, which says three of the
+       claim's five words and not one of the rare ones, so its weighted share is
+       nowhere near the floor; §4.5 falls back to the whole-episode search, which
+       is refused for lacking rare words like any other search result, and the
+       beat is narration with the same gate as ever. */
+    const result = run({ episodeId: "pa-960", startSec: 40, endSec: 70 });
+    expect(allSourcedBeats(result.acts)[0]!.sourcing).toBe("narration");
+    const tier2 = result.sourcingTrace[0]!.tier2!;
+    expect(tier2.gate).toBe("window-overlap");
+    expect(tier2.seededEpisode).toBe("pa-960");
+    expect(tier2.seedWindowWon).toBe(false);
+    expect(tier2.seedFloor).toBeUndefined();
+  });
+
+  it("does not let a seed reach into another episode: a seeded window elsewhere in the archive is refused", () => {
+    /* The seed names a filler episode, whose tape says the trade's words and
+       nothing rare. A seed is a hint about WHERE to look; the tape there still
+       has to carry the claim. */
+    const result = run({ episodeId: "pa-961", startSec: 0, endSec: 120 });
+    expect(allSourcedBeats(result.acts)[0]!.sourcing).toBe("narration");
+    const tier2 = result.sourcingTrace[0]!.tier2!;
+    expect(tier2.gate).toBe("window-overlap");
+    expect(tier2.seedWindowWon).toBe(false);
+    expect(tier2.seedFloor).toBeUndefined();
+  });
+
+  it("keeps a share-only acceptance inside the M3/M4 ledger (F-70), like any other placement", () => {
+    /* A share-only acceptance is a PLACEMENT, so it must move the ledgers — or
+       F-70's fix would have a hole shaped exactly like F-72's rule. Two beats
+       naming the same window: the first takes it, and the second is refused
+       because the Foray then holds one tape segment and M4's cap is one. */
+    const twoBeats: DeepenedAct[] = [
+      makeDeepenedAct(
+        {
+          slots: [
+            {
+              title: "Assurance",
+              beats: [
+                { claim, exploration: false, kind: "account", seed: { episodeId: "pa-960", startSec: 100, endSec: 160 } },
+                { claim, exploration: false, kind: "account", seed: { episodeId: "pa-960", startSec: 100, endSec: 160 } }
+              ]
+            }
+          ]
+        },
+        "F72M4"
+      )
+    ];
+    const result = sourceBeats(twoBeats, {
+      segmentPool: [],
+      transcriptArchive: archive,
+      cueProvider: { getCues: (entry) => cuesByGuid[entry.guid] ?? null },
+      textIndex: memoryTextIndex(archive, cuesByGuid),
+      topic: "engineering/ai-robotics"
+    });
+    expect(result.newSegments).toHaveLength(1);
+    expect(result.tapeRelevance).toHaveLength(1);
+    expect(m4SegmentCapFor(1)).toBe(1);
+    const beats = allSourcedBeats(result.acts);
+    expect(beats[0]!.sourcing).toBe("tape");
+    /* The two beats are the same claim with the same seed, so the ONLY thing
+       that differs between them is what the first one wrote into the ledger.
+       (The reported gate is the furthest one across the whole walk, which for
+       the second beat is a filler episode's `window-overlap` — `m4-share`
+       refuses pa-960 and the walk carries on past it, exactly as tier 1's
+       does.) */
+    expect(beats[1]!.sourcing).toBe("narration");
   });
 });
 

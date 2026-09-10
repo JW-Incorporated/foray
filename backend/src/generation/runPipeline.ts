@@ -405,7 +405,10 @@ const TapeRelevanceInputSchema = z.object({
      window is the tape the beat took. Optional so a checkpoint written before
      WS-L still resumes. */
   seededEpisode: z.string().nullable().optional(),
-  seedWindowWon: z.boolean().optional()
+  seedWindowWon: z.boolean().optional(),
+  /* F-72: which floor admitted a seeded beat's window. Optional for the same
+     reason as the pair above. */
+  seedFloor: z.literal("share-only").optional()
 });
 
 /* Mirrors `SourcingTrace` (types/tapeSourcing.ts, F-49): why each narrated beat
@@ -458,7 +461,10 @@ const SourcingTraceSchema = z.object({
       /* WS-L: the seed a narrated beat carried, and the standing answer for a
          row in this array — the seed's window did not win. */
       seededEpisode: z.string().optional(),
-      seedWindowWon: z.boolean().optional()
+      seedWindowWon: z.boolean().optional(),
+      /* F-72: set when a seed window the share-only floor admitted was then
+         refused further down the walk. */
+      seedFloor: z.literal("share-only").optional()
     })
     .nullable()
 });

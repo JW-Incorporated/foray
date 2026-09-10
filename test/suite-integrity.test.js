@@ -1488,7 +1488,11 @@ const BACKEND_FLOORS = {
      `MIN_TAPE_SEGMENT_SEC`. The added cases pin each gate's refusal, its
      fall-through to another episode, its small-count exemption, and the ladder
      the interquartile floor is sized against. */
-  "test/sourceBeats.test.ts": 99,
+  /* 111 once F-72 merged alongside it: the seed window is judged on share alone
+     and the trace says when that floor DECIDED, and those twelve cases had no
+     floor of their own. Raised here rather than left as slack, for the reason at
+     the top of this file — slack is what lets a gate be deleted with CI green. */
+  "test/sourceBeats.test.ts": 111,
   /* WS-H’s new module: the BM25 index over the normalised cue text, its disk
      cache and the invalidation that makes a re-transcribed episode rebuild it,
      and the Null implementation CI actually runs. Raised to 12 by F-61: the

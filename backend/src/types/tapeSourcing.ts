@@ -203,6 +203,20 @@ export interface TapeRelevanceInput {
    * rather than to hide.
    */
   seedWindowWon?: boolean;
+  /**
+   * WHICH FLOOR ADMITTED THE SEED WINDOW (F-72). `"share-only"` when the
+   * window the beat took is the seed's own and it cleared
+   * `TIER2_WINDOW_MIN_SHARE` WITHOUT the rare-word count — the case F-72 is
+   * about, where the spine quoted a passage and wrote a claim whose
+   * distinctiveness that passage carries in one or two words rather than
+   * three. Absent when the seed window would have cleared the searching floor
+   * anyway, and absent for every window found by searching.
+   *
+   * So the count of these rows is the count of beats that have tape ONLY
+   * because of F-72 — the number the rule is answerable for, kept separate
+   * from the number of seeded beats, which says nothing about it.
+   */
+  seedFloor?: "share-only";
 }
 
 /**
@@ -396,6 +410,13 @@ export interface Tier2TraceRow {
    * (`tapeRelevance` and `sourcingTrace`) answer the same question in the same
    * words. */
   seedWindowWon?: boolean;
+  /** Which floor admitted the reported window (F-72) — see
+   * `TapeRelevanceInput.seedFloor`. Present here only when a seed window the
+   * share-only floor ADMITTED was then refused by a later gate (`no-anchor`,
+   * `m3-order`, `no-audio-source`), so the row does not read as though the
+   * searching floor had passed it. Never set on a `window-overlap` row: a
+   * refused window was admitted by no floor. */
+  seedFloor?: "share-only";
 }
 
 /** One narration-degraded beat's account of itself. */
