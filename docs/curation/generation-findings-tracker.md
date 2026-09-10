@@ -112,6 +112,7 @@ nothing left to track: **I-04** (attempt 1 aborted on a cp1252 mojibake, fixed t
 | I-22 | Evidence-retrieval subagents are allowed WebSearch/WebFetch, capped at `max_uses`. | — (transport) | accepted | By design of the exercise; the relay records `tools` per request | Same limitation as F-48: the passages are the subagent's copy, not fetched bytes. |
 | I-23 | The relay's in-memory body-hash dedupe deadlocked attempt 2's first call. | — (harness) | fixed | `/reset` added so the map clears with the queue | Cost ~15 min and no model calls. A production transport keys idempotency on the SDK's request id (see F-07/I-09). |
 | I-24 | the normalised transcript archive was emptied mid-session by an unidentified process; regenerated from raw | High | card | WS-J (archive-count guard + data-local write audit) | identify the process; add the guard |
+| I-25 | the session's WebSearch budget (200 calls) ran out during attempt 5 act 2; every retrieval subagent after that returned empty; attempt 6 paused after sourcing with its checkpoint intact | Harness | accepted | run doc I-25 | next session: raise `CLAUDE_CODE_MAX_WEB_SEARCHES_PER_SESSION` (≥ 300) and resume attempt 6 from `run/out-2`; production uses the server-side tool and has no cap |
 
 ## 2. By status
 
