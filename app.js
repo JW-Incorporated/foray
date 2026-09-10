@@ -6432,7 +6432,7 @@ function paintDeletion(result) {
 
    THE THREE ROW KINDS, and why they look different on purpose:
      - INSTALLED, SELECTABLE — a radio-shaped row with an Audition button.
-     - RECOMMENDED BUT MISSING — greyed, no Audition (there is nothing to
+     - ON THE LIST BUT MISSING — greyed, no Audition (there is nothing to
        audition), with the exact Settings path text — no Open Settings
        button (see `buildVoiceRow`'s own comment: `@capacitor/app` has no
        such native method, and a button promising an action the shell
@@ -6442,49 +6442,125 @@ function paintDeletion(result) {
        so the text alone gets a listener there, one screen at a time.
      - WEB SPEECH (`path: "web-speech"`, quality `"unknown"`) — installed
        rows only, no greyed section and no Open Settings button, because
-       `speechSynthesis.getVoices()` exposes no install state at all. */
+       `speechSynthesis.getVoices()` exposes no install state at all.
 
-/** Common Enhanced/Premium English voice names iOS ships as free per-language
-    downloads (HUMAN-ACTIONS.md #40's own list: "Ava and Samantha are the
-    usual English (US) ones"), shown greyed with a download hint when a
-    device's own `listVoices()` does not report them as installed. English
-    only, matching the `lang: "en-US"` this page requests — the card's own
-    text names exactly these five. */
-const RECOMMENDED_VOICE_NAMES = Object.freeze(["Ava", "Samantha", "Evan", "Nathan", "Zoe"]);
+   A CURATED LIST, NOT "EVERYTHING INSTALLED" (founder decision 2026-09-10,
+   after the first real listen: "those voices were all so bad. Samantha was
+   the least worst"). The first cut rendered every voice `listVoices()`
+   returned, and on iOS 17+ that is dominated by Apple's novelty catalogue —
+   Albert, Bad News, Bahh, Bells, Boing, Bubbles, Cellos, Wobble, Zarvox …
+   — and the Eloquence set (Eddy, Flo, Grandma, Grandpa, Reed, Rocko, Sandy,
+   Shelley), all reported at the same `default` tier as Samantha compact.
+   `ForayTtsPlugin.swift`'s `installedVoices()` does not filter
+   `voiceTraits.isNoveltyVoice`, and this page cannot ask it to (the plugin is
+   outside this card's owned files), so the page renders ONLY the names in
+   `VOICE_ALLOWLIST`, in that fixed order, and hides every other installed
+   voice. Same name at several tiers (compact + enhanced + premium): the best
+   one only, labelled with its tier. */
+
+/** The voices the picker shows, in this order. Samantha is the only survivor
+    of the first cut's five (Ava, Evan, Nathan, Zoe are gone by founder
+    decision); the rest are a TRIAL SET for the founder to download and
+    compare — a greyed row is how a voice is tried: download it in Settings,
+    return, the list refreshes on `visibilitychange`.
+
+    NAMES AND HOW EACH WAS VERIFIED (2026-09-10). Apple publishes no list of
+    Spoken Content voice names; nothing here has been read off a device by
+    anyone in this repo (`mobile/plugins/foray-tts/README.md`'s own honesty
+    note). "verified" = the name appears, with that locale and tier, in a
+    `speechVoices()` dump from a real device (gist.github.com/Koze/d1de49c2…,
+    iOS 13) AND/OR in two independent third-party listings of the
+    Settings → Voices screen (help.scriptation.com "better playback voices",
+    thefreereader.app "expressive Apple voices"). A row whose name could not
+    be confirmed says "unverified name" in its own description rather than
+    guessing; if it never shows up as installed after a download, the name is
+    wrong, not the download. Descriptions are accent · gender · tier only:
+    which voices ship compact-by-default on iOS 18 is NOT verified here, so
+    no row claims it. */
+const VOICE_ALLOWLIST = Object.freeze([
+  { name: "Samantha", about: "American \u00b7 female \u00b7 the default; Enhanced tier is a free download" },
+  { name: "Allison", about: "American \u00b7 female \u00b7 Enhanced (download)" },
+  { name: "Susan", about: "American \u00b7 female \u00b7 Enhanced (download)" },
+  { name: "Joelle", about: "American \u00b7 female \u00b7 Enhanced (download)" },
+  { name: "Tom", about: "American \u00b7 male \u00b7 Enhanced (download)" },
+  { name: "Nicky", about: "American \u00b7 female \u00b7 Enhanced (download) \u00b7 unverified name" },
+  { name: "Aaron", about: "American \u00b7 male \u00b7 Enhanced (download) \u00b7 unverified name" },
+  { name: "Daniel", about: "British \u00b7 male \u00b7 Enhanced (download)" },
+  { name: "Serena", about: "British \u00b7 female \u00b7 Enhanced/Premium (download)" },
+  { name: "Karen", about: "Australian \u00b7 female \u00b7 Enhanced/Premium (download)" },
+  { name: "Moira", about: "Irish \u00b7 female \u00b7 Enhanced (download)" },
+  { name: "Tessa", about: "South African \u00b7 female \u00b7 Enhanced (download)" },
+  { name: "Rishi", about: "Indian \u00b7 male \u00b7 Enhanced (download)" },
+]);
+
+/** The `lang` this page asks `listVoices()` for. A bare primary subtag on
+    purpose: both native halves match the exact locale FIRST AND ALONE
+    (`ForayTtsPlugin.swift` `candidates(_:language:)`, `ForayTtsPlugin.java`
+    `candidates`), so `"en-US"` could never return Daniel (en-GB), Karen
+    (en-AU), Moira, Tessa or Rishi while any en-US voice was installed — and
+    Samantha compact always is. `"en"` matches no exact locale, so both
+    halves widen to every `en-*` voice; the web shim's `languageMatches`
+    does the same by construction. Mirrors `player/default-voice.js`'s
+    `VOICE_LIST_LANG` (a classic script cannot import it). */
+const VOICE_LIST_LANG = "en";
+
+/** Quality rank for comparing the SAME NAME at several tiers — mirrors
+    `player/default-voice.js`'s `qualityRank` (same constraint: no import
+    from a classic script). Never used to relabel: the label shown is always
+    the plugin's own `quality` string. */
+function voiceQualityRank(quality) {
+  switch (String(quality || "").toLowerCase()) {
+    case "premium": case "very-high": return 5;
+    case "enhanced": case "high": return 4;
+    case "default": case "normal": return 3;
+    case "low": return 1;
+    case "very-low": return 0;
+    default: return 2;
+  }
+}
+
+/** Is a `listVoices()` entry English at all? `en-*`, or Android's `eng-*`. */
+function voiceIsEnglish(v) {
+  const p = String((v && v.language) || "").toLowerCase().split(/[-_]/)[0];
+  return p === "en" || p === "eng";
+}
+
+/** The allowlist joined against what the device reports: one entry per
+    allowlisted name, in allowlist order, carrying the BEST installed voice of
+    that name (or `null` when none is). Everything else `listVoices()`
+    returned — novelty, Eloquence, Siri, other-name Enhanced downloads — is
+    dropped here and never reaches a row. Pure, so the suite can pin it. */
+function curateVoices(voices) {
+  const list = Array.isArray(voices) ? voices : [];
+  return VOICE_ALLOWLIST.map((entry) => {
+    const wanted = entry.name.toLowerCase();
+    let best = null;
+    for (const v of list) {
+      if (!v || typeof v.identifier !== "string" || !v.identifier) continue;
+      if (String(v.name || "").toLowerCase() !== wanted) continue;
+      if (!voiceIsEnglish(v)) continue;
+      if (!best || voiceQualityRank(v.quality) > voiceQualityRank(best.quality)) best = v;
+    }
+    return { name: entry.name, about: entry.about, installed: best };
+  });
+}
 
 /** The exact path text V-01 specifies, verbatim — a listener reads this
     because the button can only open the app's own Settings page, never
     deep-link to Voices (`UIApplication.openSettingsURLString`'s own limit). */
 const VOICE_SETTINGS_PATH = "Settings \u2192 Accessibility \u2192 Spoken Content \u2192 Voices \u2192 English";
 
-/** The fixed audition line (H3, the stopwatch test for #490's rate curve):
-    "one\u2026 two\u2026" to twenty, with a spoken marker at the halfway point
-    and the end, so a listener can find their place without a transcript.
-    DELIBERATELY NOT LABELLED WITH A CLAIMED SECOND COUNT ("ten seconds",
-    "twenty seconds") the way the diagnostic Foray's line is: that line's
-    timing was authored against narration-craft.md's 17-characters-per-second
-    rate and was correct FOR THAT SCRIPT at 1x. This line's own word count is
-    not tuned to any specific seconds-per-word rate, so a spoken "ten
-    seconds" here would be a claim about elapsed time this text cannot back
-    up, at whatever the listener's chosen playback speed happens to be. H3's
-    own instructions ask for a STOPWATCH reading against the whole line's
-    duration, start to end — the markers below are navigational only,
-    never a claimed timestamp. */
-const AUDITION_LINE = (() => {
-  const words = [
-    "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten",
-    "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen",
-    "eighteen", "nineteen", "twenty",
-  ];
-  const parts = [];
-  words.forEach((w, i) => {
-    parts.push(w);
-    const count = i + 1;
-    if (count === 10) parts.push(". Marker, halfway");
-    if (count === 20) parts.push(". Marker, the end");
-  });
-  return `${parts.join(", ")}.`;
-})();
+/** The fixed audition line: a count to ten, nothing else. It was a count to
+    twenty with two spoken "Marker" phrases (H3's stopwatch line); the founder
+    cut it on 2026-09-10 ("reduce the script to just counting to ten, it was
+    so bad listening to them for so long"). H3's stopwatch reading still
+    works against this line, start to the final "ten"; the predicted seconds
+    halve, and HUMAN-ACTIONS.md H3 carries the dated note. DELIBERATELY NOT
+    LABELLED WITH A CLAIMED SECOND COUNT, for the same reason as before: the
+    word count is not tuned to any seconds-per-word rate, so a spoken "ten
+    seconds" would be a claim this text cannot back up at whatever playback
+    speed the listener has chosen. */
+const AUDITION_LINE = "one, two, three, four, five, six, seven, eight, nine, ten.";
 
 let voiceUi = null;
 let voiceState = { voices: [], path: "none", loading: false, selected: null, auditioning: null, notice: "" };
@@ -6514,7 +6590,7 @@ function buildVoiceSheet() {
   panel.setAttribute("aria-labelledby", "voice-title");
 
   const sub = ddEl("p", "fy-sheet-sub",
-    "Pick which voice reads 4a's narration. Tap Audition to hear the counting line at your current playback speed.");
+    "Pick which voice reads 4a's narration. Tap Audition to hear it count to ten at your current playback speed. Greyed voices are free downloads \u2014 fetch one in Settings and it appears here when you return.");
 
   const list = ddEl("div", "voice-list");
   list.id = "voice-list";
@@ -6589,44 +6665,57 @@ function paintVoiceNotice(text) {
   ui.notice.hidden = !text;
 }
 
+/** Which identifier the sheet paints as chosen: the stored/session choice
+    from `currentVoice()`, else (when nothing is stored) the same default
+    rule narration uses (`player/default-voice.js`, re-exported as
+    `ForayPlayer.defaultVoice`), applied to THIS list. One rule, two readers;
+    a page-side copy of "Samantha's best tier" would be the second opinion
+    `voiceQualityLabel`'s comment already refuses to hold about tiers. */
+function selectedVoiceId(player) {
+  if (!player) return null;
+  const chosen = typeof player.currentVoice === "function" ? player.currentVoice() : null;
+  if (chosen) return chosen;
+  return typeof player.defaultVoice === "function" ? player.defaultVoice(voiceState.voices) : null;
+}
+
 function paintVoiceList() {
   const ui = voiceSheet();
   const player = window.ForayPlayer;
-  const selected = player && typeof player.currentVoice === "function" ? player.currentVoice() : null;
+  const selected = selectedVoiceId(player);
   voiceState.selected = selected;
 
   const rows = [];
-  for (const v of voiceState.voices) {
-    rows.push(buildVoiceRow({
-      installed: true,
-      name: v.name || v.identifier,
-      sub: `${voiceQualityLabel(v)} \u00b7 ${v.language || "unknown language"}`,
-      id: v.identifier,
-      selected: v.identifier === selected,
-    }));
-  }
-
-  /* Web Speech (`path: "web-speech"`) has no install state at all — no
-     greyed section, no Open Settings button, per the design comment. Native
-     paths (`"native"`) show the recommended-but-missing names the installed
-     list does not already cover. */
-  if (voiceState.path === "native") {
-    const installedNames = new Set(voiceState.voices.map((v) => (v.name || "").toLowerCase()));
-    for (const name of RECOMMENDED_VOICE_NAMES) {
-      if (installedNames.has(name.toLowerCase())) continue;
+  for (const entry of curateVoices(voiceState.voices)) {
+    const v = entry.installed;
+    if (v) {
       rows.push(buildVoiceRow({
-        installed: false,
-        name,
-        sub: `Not downloaded \u2014 ${VOICE_SETTINGS_PATH}`,
+        installed: true,
+        name: entry.name,
+        sub: `${entry.about} \u00b7 ${voiceQualityLabel(v)} \u00b7 ${v.language || "unknown language"}`,
+        id: v.identifier,
+        selected: v.identifier === selected,
       }));
+      continue;
     }
+    /* Web Speech (`path: "web-speech"`) has no install state at all: no
+       greyed section, no Open Settings button, per the design comment. Only
+       a native path (`"native"`) can honestly say "not downloaded". */
+    if (voiceState.path !== "native") continue;
+    rows.push(buildVoiceRow({
+      installed: false,
+      name: entry.name,
+      sub: `${entry.about} \u00b7 Not downloaded \u2014 ${VOICE_SETTINGS_PATH}`,
+    }));
   }
 
   ui.list.innerHTML = "";
   if (voiceState.loading) {
     ui.list.append(ddEl("p", "voice-loading", "Looking for voices\u2026"));
   } else if (!rows.length) {
-    ui.list.append(ddEl("p", "voice-loading", "No voices reported by this device."));
+    ui.list.append(ddEl("p", "voice-loading",
+      voiceState.voices.length
+        ? "None of 4a's trial voices are installed here."
+        : "No voices reported by this device."));
   } else {
     rows.forEach((r) => ui.list.append(r));
   }
@@ -6638,7 +6727,7 @@ async function refreshVoiceList() {
   voiceState.loading = true;
   paintVoiceList();
   try {
-    const out = await player.listVoices({ lang: "en-US" });
+    const out = await player.listVoices({ lang: VOICE_LIST_LANG });
     voiceState.voices = (out && out.voices) || [];
     voiceState.path = (out && out.path) || "none";
   } catch (_) {
