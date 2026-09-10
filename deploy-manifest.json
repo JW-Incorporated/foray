@@ -1,7 +1,7 @@
 {
-  "deploy_id": "f5cf77db1620e20d",
+  "deploy_id": "0e6df31534deb7dd",
   "files": {
-    "app.js": "sha256:e374060722544cffbdbf4bbca13b753093064d207cafb25ca2a9298f2c61ca38",
+    "app.js": "sha256:c7c01efdd535046e01e0d67292fb631d89dd0169de117367b1007bfa990c881e",
     "data/catalog-client.json": "sha256:83a6a83d4633326dbc422c57677a78438a41c69f3055439a0010d2057aec8864",
     "data/dai-classification.json": "sha256:321fb915e4289a098cbd30ec7cc8e8503345a1c6cadb6cda2803ff656162a545",
     "data/discover.json": "sha256:8f9fe30d80b2bb0666fbf94ebded55795f2b63386c5cf9343527e56e7e14c60d",
@@ -19,7 +19,8 @@
     "icon-512.png": "sha256:1c7c61679d2e6935e361de64a774930230dfaddd1ecef00dc70288e2d38f2451",
     "index.html": "sha256:9bffe0be2e62bd95565e4607b6be1c3b05f28dfcfde216cef142b54cffaa1ff3",
     "manifest.json": "sha256:e99d17d7b18d314cf6a60286c9f28e77761f5642d44117115c219b2acfb9c118",
-    "player/client.js": "sha256:4afd42304d3e1791df5b8818b350bec72b676ee89fc9ccc1577a529f86bc443c",
+    "player/client.js": "sha256:cfacf97ead363c8a9adfb189d210a6acdabdd217f6b4fba14f01fbe207b58f47",
+    "player/default-voice.js": "sha256:ebdd4cb5067b937ec0ba02e1be6d8fc84c7e73e58078bcafc2ce8911d26ba82f",
     "player/diagnostic-log.js": "sha256:2a751701ab8c03ae2fe021d73985cd081f988c247baf5300fa00a2a3646ef00b",
     "player/durable-store.js": "sha256:64b8a80cc7f0f2b3efb366ce2a595e381f80fd1abe9c9e9e0bc3cdc3f7f6eeeb",
     "player/event-log.js": "sha256:88987f4b3c55ca289bf6e43d3264b05287d130a2a4672a5223054297029c2f9c",
