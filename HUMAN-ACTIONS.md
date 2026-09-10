@@ -2128,6 +2128,63 @@ rejecting it as "no existing release to update."
 
 **Status:** DONE (2026-09-06 — Wyatt uploaded the first release by hand; it was still *in review* when the first API upload above succeeded, so review does not block internal-track API uploads)
 
+**Coordination item (R-06, `docs/release-lockstep-plan.md` §4 — recorded
+2026-09-10).** Swift2 (`longlive`) has no mobile release workflows — its
+`.github/workflows/` is web, social and content jobs — so there was no
+pattern there to copy and nothing of theirs for R-03 to consume. Two things
+of ours are worth handing across the next time a session is in that repo:
+R-02's version rule (one integer, `YYYYMMDDnn`, used as both `CFBundleVersion`
+and `versionCode`) and R-03's "skip loudly on a missing credential, fail on
+store disagreement" summary job. If `longlive` ever lands a reusable composite
+action for a Play upload, `release.yml` should consume it rather than keep its
+own pin. No founder action — this is written down so the next cross-repo pass
+does not re-derive it.
+
+---
+
+### 44. Add the founders as Play testers, so Play actually emails you (R-08)
+
+**Tag:** `[BLOCKING]` for R-07's last acceptance item (a Play email per build)
+· **Time:** ~5 minutes · **Owner:** Wyatt/Joey · **Depends on:** #26
+(listing), #41, #42 — all done, so this is unblocked.
+
+**Why it matters.** `release.yml` has uploaded every build since 2026-09-06 to
+Play's internal testing track (latest: run 34381675121, build 2026090908,
+`Successfully committed`) and Apple mails you for each one — but Google Play
+mails the **testers on the track, not the developer account**, and the track
+has no testers. That is why the original complaint ("all kinds of emails that
+4a updates in the App Store, but never the Play Store") still holds even
+though the uploads succeed. Nothing in this repo can add a tester: it is a
+Console click under the developer account's login.
+
+**Steps, with the exact menu path.**
+
+1. Decide the track. **Internal testing** (up to 100 testers, no review,
+   builds available within minutes) is the recommendation; **closed testing**
+   only if you want a wider list later. `release.yml` uploads to *internal*,
+   so choosing closed means promoting from the Console each time.
+2. **Play Console** → `4a` → **Release → Testing → Internal testing →
+   Testers** tab → **Create email list** (or pick an existing one). Name it
+   `4a founders`. Add:
+   - `<WYATT_GOOGLE_ACCOUNT>` — the Google account whose inbox should get the mail
+   - `<JOEY_GOOGLE_ACCOUNT>`
+
+   Save the list, tick it so it is attached to the track, **Save changes**.
+3. Same tab, **Copy link** under *How testers join your test*. Open it while
+   signed in as each account above and accept — Play sends nothing to a
+   tester who has not opted in.
+4. Optional but useful: install the build from that link once, so the next
+   `release.yml` run's email is for an update you can watch arrive.
+5. Replace the two placeholders above with the real addresses (or say which
+   accounts you used) so the record is complete.
+
+**Worked if:** the next `release.yml` run on `main` (a `v*` tag or *Run
+workflow*) produces **one App Store email and one Play email for the same
+build number** in your inbox. That is R-07's third acceptance item and closes
+`docs/release-lockstep-plan.md` Track B.
+
+**Status:** OPEN
+
 ---
 
 ### 28. Run the new AMD/Vulkan transcription path on your actual RX 6700 XT and report the numbers
