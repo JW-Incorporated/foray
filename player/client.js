@@ -324,6 +324,29 @@ window.forayNoteTapFailure = (phase, errorName) => {
   }
 };
 
+/**
+ * One completed Shows search (S-01, docs/search-plan.md), into the record.
+ *
+ * A BRIDGE AND NOT AN IMPORT, same reason as every other `window.foray*`
+ * above: `app.js` is a classic script. Takes the same shape
+ * `PlayerDiagnostics.search()` does — `qLen`, never `query` — and the
+ * sanitising against a non-numeric value lives in `diagnostic-log.js` so a
+ * caller of a different vintage cannot get raw query text into a record
+ * that gets pasted into issues, exactly the same guarantee
+ * `forayNoteTapFailure` gives `err.name` above.
+ *
+ * Returns a boolean, never the entry, for the same reason as every other
+ * bridge here: nothing on the page should hold a reference into the ring.
+ */
+window.forayRecordSearch = (fields) => {
+  try {
+    diag.search(fields || {});
+    return true;
+  } catch (_) {
+    return false;
+  }
+};
+
 /* ---------- DOM ---------- */
 
 function el(tag, cls, text) {

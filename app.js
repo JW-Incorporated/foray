@@ -3134,11 +3134,23 @@ function vouchForHtml() {
    own "absence is a real state, not an error" rule). */
 let showSearchToken = 0; // guards a slow in-flight fetch from clobbering a newer query's results
 
+/** Monotonic where available (S-01, docs/search-plan.md): `performance.now()`
+    in a browser, `Date.now()` in the node:vm test harness that has no
+    `performance` global. Never used for anything but a duration -- this
+    repo's own #195 rule against wall-clock assertions applies to the record
+    this feeds, not just to tests. */
+function nowMs() {
+  return (typeof performance !== "undefined" && typeof performance.now === "function")
+    ? performance.now() : Date.now();
+}
+
 function renderShowSearchResults(query) {
   const myToken = ++showSearchToken;
   const note = $("#sh-note");
   const results = $("#sh-results");
+  const localStart = nowMs();
   const localShows = SearchEngine.searchShows(query, state.catalog?.shows || []);
+  const localMs = nowMs() - localStart;
 
   const paint = (shows) => {
     if (myToken !== showSearchToken) return; // a newer query already superseded this one
@@ -3155,20 +3167,51 @@ function renderShowSearchResults(query) {
   };
 
   paint(localShows);
+  const paintedMs = nowMs() - localStart;
 
-  fetchApiJson(`api/shows/search?q=${encodeURIComponent(query)}&limit=25`).then((data) => {
-    if (myToken !== showSearchToken) return; // superseded — drop this response
-    const breadthShows = data?.shows || [];
-    if (!breadthShows.length) return; // degrade silently: local-only results already painted
-    const seen = new Set(localShows.map((s) => s.show_id));
-    const additions = [];
-    for (const s of breadthShows) {
-      if (seen.has(s.show_id)) continue;
-      seen.add(s.show_id);
-      state.breadthShowCache[s.show_id] = s; // so showById can resolve it once a result is tapped
-      additions.push(s);
+  /* S-01's diagnostics call site (docs/search-plan.md, `player/diagnostic-log.js`'s
+     `search` entry kind). ONE call per completed search, fired from the network
+     pass's own resolution -- `fetchApiJson` always resolves (it swallows
+     network/parse errors to `null`, see its own header), so this fires exactly
+     once per query regardless of whether the breadth pass actually landed
+     anything, and regardless of whether this query was itself later superseded
+     by a faster retype. QUERY LENGTH, NEVER THE QUERY TEXT -- `diag.search`'s own
+     guard would drop a string in `qLen` to null, but the discipline starts here:
+     nothing downstream of this line ever holds the literal query. Guarded the
+     same way `forayNoteTapFailure` is guarded (`player/client.js`): a record
+     that will not write, or does not exist yet on an older bundle, must not
+     break the search it is trying to measure. */
+  const recordSearch = (fields) => {
+    try {
+      if (typeof window.forayRecordSearch === "function") window.forayRecordSearch(fields);
+    } catch (_) {
+      // A diagnostics write failing is not a reason to break search.
     }
-    if (additions.length) paint(localShows.concat(additions));
+  };
+
+  const netStart = nowMs();
+  fetchApiJson(`api/shows/search?q=${encodeURIComponent(query)}&limit=25`).then((data) => {
+    const netMs = nowMs() - netStart;
+    const superseded = myToken !== showSearchToken;
+    const breadthShows = superseded ? [] : (data?.shows || []);
+    if (!superseded && breadthShows.length) {
+      const seen = new Set(localShows.map((s) => s.show_id));
+      const additions = [];
+      for (const s of breadthShows) {
+        if (seen.has(s.show_id)) continue;
+        seen.add(s.show_id);
+        state.breadthShowCache[s.show_id] = s; // so showById can resolve it once a result is tapped
+        additions.push(s);
+      }
+      if (additions.length) paint(localShows.concat(additions));
+    }
+    recordSearch({
+      qLen: query.length,
+      localMs, localHits: localShows.length,
+      netMs, netHits: data ? breadthShows.length : null,
+      paintedMs,
+      path: superseded ? "superseded" : data ? "local+net" : "local-only",
+    });
   }); // fetchApiJson already swallows network/parse errors and resolves null — no .catch needed
 
   renderEpisodeSearchResults(query, myToken);

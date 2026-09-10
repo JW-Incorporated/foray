@@ -233,6 +233,71 @@ one thing in this deck that is not ours to decide (§3 G1).
 
 ---
 
+### 1.6 S-01's before numbers (2026-09-10, this branch @ `e9ff264`)
+
+**Measured**, `node tools/search-probe.mjs --check`, this repo's committed
+`data/catalog-client.json` (220 curated shows), 20 reps per query, this
+sandbox (not the founder's device — a second on-device run against the same
+tool is still owed before S-02/S-03 numbers are graded against a phone):
+
+| query | len | hits | median ms | p95 ms |
+|---|---|---|---|---|
+| `l` | 1 | 112 | 0.074 | 0.610 |
+| `le` | 2 | 27 | 0.029 | 0.045 |
+| `lex` | 3 | 1 | 0.029 | 0.049 |
+| `lex f` | 5 | 1 | 0.024 | 0.045 |
+| `sci` | 3 | 9 | 0.029 | 0.047 |
+| `science f` | 9 | 1 | 0.025 | 0.039 |
+| `hist` | 4 | 11 | 0.034 | 0.049 |
+| `the daily` | 9 | 0 | 0.015 | 0.052 |
+| `radiolab` | 8 | 1 | 0.014 | 0.016 |
+| `99%` | 3 | 1 | 0.013 | 0.017 |
+| `zzqx` | 4 | 0 | 0.010 | 0.011 |
+| `伊藤洋一のRound Up World Now！` | 24 | 0 | 0.008 | 0.014 |
+
+Decode (`JSON.parse` of `data/catalog-client.json`, 20 reps): median
+**0.169ms**, p95 **0.208ms**.
+
+Breadth round-trip (`API_ORIGIN`'s `/api/shows/search`, three forced-MISS +
+three repeat samples, headers as received):
+
+| sample | ttfb ms | status | Cache-Control | X-Vercel-Cache | Age |
+|---|---|---|---|---|---|
+| MISS 1 | 313 | 200 | `public, max-age=300` | MISS | 0 |
+| MISS 2 | 277 | 200 | `public, max-age=300` | MISS | 0 |
+| MISS 3 | 122 | 200 | `public, max-age=300` | MISS | 0 |
+| repeat 1 | 130 | 200 | `public, max-age=300` | MISS | 0 |
+| repeat 2 | 34 | 200 | `public, max-age=300` | HIT | 0 |
+| repeat 3 | 38 | 200 | `public, max-age=300` | HIT | 0 |
+
+Confirms §1.4's own finding again: the response never carries
+`stale-while-revalidate` even though the source sets it, and a HIT still
+costs real ttfb (34–38ms here) rather than being free — this sandbox's
+numbers are faster end-to-end than §1.4's original desktop run (no TLS
+handshake cold-start observed), so treat the **shape** (MISS→HIT delta small,
+`stale-while-revalidate` missing) as the durable finding and the absolute
+ms as environment-dependent.
+
+**A diagnostics copy carrying a `search` entry with a non-null `painted_ms`**
+(from `player/diagnostic-log.js`'s new entry kind, S-01's other acceptance
+line), produced via `PlayerDiagnostics.search()` and rendered by
+`formatDiagnosticReport`:
+
+```
+#1    04:39:28.030 search     q_len=3 local=0ms/1h net=313ms/0h painted=1ms path=local+net
+```
+
+**CI run id**: `node --test` run over `tools/search-probe.test.mjs` (27
+tests), `player/diagnostic-log.test.js` (55 tests, +5 for the new `search`
+entry kind), and `test/search-probe-record.test.js` (9 tests, new) — all
+green in this branch's worktree at commit `e9ff264` (`git rev-parse HEAD`);
+the PR's own CI run id is the canonical one once opened, recorded here as
+the local equivalent per S-01's own acceptance line.
+
+---
+
+
+
 ## 2. Target
 
 - **The Shows search filters as you type** (F2), locally, at frame rate, with no
