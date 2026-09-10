@@ -188,12 +188,15 @@ import {
   selectTapeWindow,
   tapeWindowIsRelevant,
   titleTokenScore,
+  MAX_TAPE_SEGMENT_SEC,
+  MIN_TAPE_SEGMENT_SEC,
   NullTranscriptCueProvider,
   TIER2_MATCH_THRESHOLD,
   TIER2_WINDOW_MIN_SHARE,
   TIER2_WINDOW_MIN_TERMS,
   type TapeSpan,
   type TapeWindow,
+  type TranscriptCue,
   type TranscriptCueProvider,
   type TranscriptDigestEntry
 } from "./transcriptArchiveLookup";
@@ -356,6 +359,13 @@ export function sourceBeats(deepenedActs: DeepenedAct[], options: SourceBeatsOpt
      whole Foray's. */
   const placedDurations: number[] = [];
   const placedSecByItem = new Map<string, number>();
+  /* Which episode each placement came from and where in it, positionally
+     parallel to `placedDurations` — what the post-placement spread pass (F-73,
+     D5) needs to re-ask M3 and M4 about a Foray it is CHANGING rather than
+     extending. The running gates never need it, because a candidate's own item
+     id is in their hands already. */
+  const placed: PlacedSegment[] = [];
+  const recuts: TapeRecut[] = [];
 
   const forayTopic = options.topic ?? null;
   const state: SourcingState = {
@@ -376,7 +386,9 @@ export function sourceBeats(deepenedActs: DeepenedAct[], options: SourceBeatsOpt
     usedCountByItem,
     placedTapeCount: 0,
     placedDurations,
-    placedSecByItem
+    placedSecByItem,
+    placed,
+    recuts
   };
   const tapeRelevance: TapeRelevanceInput[] = [];
   /* One row per narration-degraded beat, saying what each tier saw and which
@@ -446,6 +458,10 @@ export function sourceBeats(deepenedActs: DeepenedAct[], options: SourceBeatsOpt
 
     return { title: act.title, slots };
   });
+
+  /* EVERY BEAT HAS BEEN PLACED; THE ONE D-TIER RULE THAT COULD NOT BE ASKED
+     UNTIL NOW IS ASKED HERE (F-73, D5's interquartile clause). */
+  liftDurationSpread(state, tapeRelevance);
 
   const validation = validateSourcing(deepenedActs, acts);
   if (!validation.valid) {
@@ -552,6 +568,45 @@ interface SourcingState {
   /** Tape SECONDS per episode — M4's second clause, which counts seconds rather
    * than segments and which #569 deliberately left to the checker (F-73). */
   placedSecByItem: Map<string, number>;
+  /** Where each placement came from, positionally parallel to
+   * `placedDurations` — see the declaration in `sourceBeats`. */
+  placed: PlacedSegment[];
+  /** The tier-2 placements the spread pass may re-cut, in placing order. A tier
+   * 1 hit is not in here: its length is a curator's decision, not this stage's
+   * (`liftDurationSpread`). */
+  recuts: TapeRecut[];
+}
+
+/** One placement's identity, for the rules the spread pass has to re-ask about
+ * the whole finished running order rather than about one more candidate. */
+interface PlacedSegment {
+  itemId: string;
+  startSec: number;
+}
+
+/**
+ * EVERYTHING NEEDED TO CUT ONE TIER-2 PLACEMENT AGAIN (F-73, D5's spread).
+ *
+ * The window a segment was cut from, the claim it was cut for, and the objects
+ * the cut is written into. Recorded at placement time because none of it can be
+ * recovered afterwards: the cues came from a provider call this pass will not
+ * repeat, and the window was chosen by a relevance search this pass must not
+ * re-run — a re-cut changes a segment's LENGTH and never what it is about.
+ */
+interface TapeRecut {
+  claim: string;
+  cues: TranscriptCue[];
+  window: TapeWindow;
+  itemId: string;
+  /** This placement's index in `placedDurations` / `placed`. */
+  placement: number;
+  /** The episode's own length where the feed states one — the ceiling a longer
+   * cut may not pass, and what `referenceDurationSec` is re-derived from. */
+  feedDurationSec: number | null;
+  /** The two records a new cut is written into. Held by reference: they are the
+   * very objects `acts` and `newSegments` carry out of this module. */
+  pointer: TapePointer;
+  segment: NewSegment;
 }
 
 /** The trace rows a narration-degraded beat carries out with it — the caller
@@ -783,7 +838,314 @@ function placeTape(segmentId: string, itemId: string, startSec: number, duration
   state.usedCountByItem.set(itemId, (state.usedCountByItem.get(itemId) ?? 0) + 1);
   state.placedTapeCount += 1;
   state.placedDurations.push(durationSec);
+  state.placed.push({ itemId, startSec });
   state.placedSecByItem.set(itemId, (state.placedSecByItem.get(itemId) ?? 0) + durationSec);
+}
+
+/* ------------------------------------------------------------------------- */
+/* D5's SECOND CLAUSE, ASKED WHERE IT CAN BE ANSWERED (F-73).
+ *
+ * THE PROBLEM #571 LEFT OPEN, STATED EXACTLY. The interquartile range of a
+ * Foray's segment durations is a property of the finished multiset, and it is
+ * not monotone in one placement: with three or four segments down, almost any
+ * candidate lowers it, so a placement-time refusal declines tape early in order
+ * to protect a number that only means anything later — and a Foray with less
+ * tape has a worse IQR, not a better one. So `durationVetoFor` gates the triple
+ * clause and deliberately does not gate this one, and a run can still reach
+ * `check-forays.mjs` and be refused on it ("D5 FAIL: interquartile range 15.6 s
+ * is under the 45 s floor").
+ *
+ * WHAT IS DIFFERENT AFTER THE LAST BEAT. The multiset EXISTS. The question
+ * "would this length break the spread" was unanswerable one placement at a
+ * time; "which segment, cut differently, would most raise the spread" has an
+ * answer, and every rule the change could break can be re-asked against the
+ * whole running order rather than guessed at.
+ *
+ * WHAT THIS PASS IS ALLOWED TO DO, AND WHAT IT IS NOT.
+ *   - It re-CUTS at most `D5_RECUT_MAX_SEGMENTS` tier-2 placements, by asking
+ *     `cutWindowToSegment` for a different length from `RECUT_TARGETS_SEC`. The
+ *     window is untouched, so a re-cut segment is about exactly what it was
+ *     about, and growth still only follows the claim's own words
+ *     (`growByClaimOverlap`) — a longer cut is never bought with off-claim tape
+ *     and a shorter one is a prefix of what the beat already had.
+ *   - It NEVER drops tape, never adds any, never changes which beat is sourced
+ *     from what, and never touches a tier-1 segment: a pool segment's length is
+ *     a curator's decision and not this stage's to revise.
+ *   - It refuses any re-cut that would newly break D2, D3, D5's triple clause,
+ *     M3 or M4 — each re-asked over the WHOLE sequence, in the form "no worse
+ *     than it is now" (`recutKeepsEveryOtherRule`).
+ *   - When it cannot reach the floor it says so in one line and leaves every
+ *     duration as placed. `check-forays.mjs` stays the authority on the rule;
+ *     this is a stage declining to hand it a Foray it can already see refused.
+ */
+
+/** How many placements the spread pass may re-cut. Two, because two is what it
+ * takes to move both quartiles of a small Foray and because every re-cut is a
+ * segment whose length was chosen for a reason at placement time — the ladder
+ * target it grew towards. A pass that re-cut everything would be a second
+ * length policy competing with `D_TARGET_LADDER_SEC`, not a repair. */
+export const D5_RECUT_MAX_SEGMENTS = 2;
+
+/** The lengths a re-cut may ask for: the ladder's own four, plus the shortest
+ * and longest a segment may be. The floor and ceiling are what make SHORTENING
+ * available at all — the ladder never asks for 45 s, and lowering the bottom
+ * quartile is half of what an interquartile range is. */
+export const RECUT_TARGETS_SEC: number[] = [...new Set([MIN_TAPE_SEGMENT_SEC, ...D_TARGET_LADDER_SEC, MAX_TAPE_SEGMENT_SEC])].sort(
+  (a, b) => a - b
+);
+
+/**
+ * Interquartile range, R-7 / linear interpolation — NumPy's, R's and Excel's
+ * default, and `check-forays.mjs`'s own `iqr`, mirrored here for the reason the
+ * constants above it are (that file is an `.mjs` build script Vitest cannot
+ * load on every checkout). `check-forays.test.mjs` pins the definition.
+ */
+export function interquartileRange(values: number[]): number {
+  if (values.length === 0) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  const quantile = (p: number): number => {
+    const h = (sorted.length - 1) * p;
+    const lo = Math.floor(h);
+    const hi = Math.ceil(h);
+    return sorted[lo]! + (h - lo) * (sorted[hi]! - sorted[lo]!);
+  };
+  return quantile(0.75) - quantile(0.25);
+}
+
+/** One re-cut the pass is considering: which placement, cut how, and what the
+ * Foray's spread would be if it were taken. */
+interface SpreadRecut {
+  entry: TapeRecut;
+  span: TapeSpan;
+  durationSec: number;
+  spreadSec: number;
+}
+
+/** The pass itself — see the block comment above. Mutates the placement ledgers
+ * and the very pointer/segment objects the caller is about to return, which is
+ * why it runs after every beat is resolved and before nothing at all. */
+function liftDurationSpread(state: SourcingState, tapeRelevance: TapeRelevanceInput[]): void {
+  /* A SPREAD NEEDS SOMETHING TO SPREAD. With one segment the interquartile
+     range is 0 by definition and no cut of any length can move it; with none,
+     `check-forays.mjs` never reaches D5 at all ("no resolvable segment items",
+     which is F-65 and a different problem). Neither is a case this pass can say
+     anything true about, so it says nothing. */
+  if (state.placedDurations.length < 2) return;
+  if (interquartileRange(state.placedDurations) >= D5_IQR_FLOOR_SEC) return;
+
+  const recut = new Set<number>();
+  for (let pass = 0; pass < D5_RECUT_MAX_SEGMENTS; pass++) {
+    const best = bestSpreadRecut(state, recut);
+    if (!best) break;
+    applyRecut(best, state, tapeRelevance);
+    recut.add(best.entry.placement);
+    if (interquartileRange(state.placedDurations) >= D5_IQR_FLOOR_SEC) return;
+  }
+
+  /* ONE LINE, AND THE RUN CONTINUES. The alternative — refusing to finish a
+     Foray whose lengths are what the tape allows — would cost every beat's work
+     for a rule about variety, and the checker is the authority on whether the
+     finished record passes. What this line buys is that nobody has to re-derive
+     from a checker error whether sourcing tried. */
+  console.warn(
+    `sourceBeats: the ${state.placedDurations.length} placed segment${state.placedDurations.length === 1 ? "" : "s"} have an ` +
+      `interquartile range of ${interquartileRange(state.placedDurations).toFixed(1)} s, under D5's ${D5_IQR_FLOOR_SEC} s floor, ` +
+      `and no re-cut of up to ${D5_RECUT_MAX_SEGMENTS} of them reaches it without breaking D2, D3, D5's triple clause, M3 or M4 ` +
+      `(${state.recuts.length} of them are tier-2 cuts this stage may re-cut at all) — leaving every duration as placed; ` +
+      "check-forays.mjs is the authority on the rule (F-73)"
+  );
+}
+
+/**
+ * The single re-cut that raises the spread most, or `null` when none does.
+ *
+ * Deterministic twice over: the placements are walked in placing order and the
+ * targets in ascending order, and a tie keeps the candidate found first — so a
+ * replay of the same run produces the same cuts, which is the property the
+ * whole sourcing stage is built on.
+ */
+function bestSpreadRecut(state: SourcingState, alreadyRecut: Set<number>): SpreadRecut | null {
+  const current = interquartileRange(state.placedDurations);
+  let best: SpreadRecut | null = null;
+
+  for (const entry of state.recuts) {
+    if (alreadyRecut.has(entry.placement)) continue;
+    const placedDuration = state.placedDurations[entry.placement];
+    if (placedDuration === undefined) continue;
+
+    for (const targetSec of RECUT_TARGETS_SEC) {
+      const span = cutWindowToSegment(entry.claim, entry.cues, entry.window, { targetSec });
+      if (!span) continue;
+      const durationSec = span.endSec - span.startSec;
+      if (durationSec === placedDuration) continue;
+      /* A cut may not run past the episode: `merge-segments.mjs` compares a
+         minted segment's `reference_duration_sec` against the audio row's own
+         `duration_sec`, and `check-forays.mjs` refuses an `end_sec` past it. */
+      if (entry.feedDurationSec !== null && span.endSec > entry.feedDurationSec) continue;
+
+      const durations = [...state.placedDurations];
+      durations[entry.placement] = durationSec;
+      const spreadSec = interquartileRange(durations);
+      if (spreadSec <= current) continue;
+      if (!recutKeepsEveryOtherRule(entry, span, durations, state)) continue;
+      if (!best || spreadSec > best.spreadSec) best = { entry, span, durationSec, spreadSec };
+    }
+  }
+  return best;
+}
+
+/**
+ * Whether a proposed re-cut leaves every OTHER rule no worse than it is.
+ *
+ * "No worse than it is" rather than "satisfied", deliberately: a Foray can
+ * arrive here already failing a clause the checker will refuse it on — the
+ * relaxed pass takes a uniform triple when that is the only tape there is, and
+ * a tape-starved Foray's mean can sit under D3's floor with nothing available
+ * to lift it. Demanding satisfaction would make this pass inert in exactly
+ * those runs; demanding no regression means a re-cut can never be the reason a
+ * rule fails, which is the honest guarantee.
+ */
+function recutKeepsEveryOtherRule(entry: TapeRecut, span: TapeSpan, durations: number[], state: SourcingState): boolean {
+  const placed = state.placedDurations;
+
+  /* D2, in the stricter form sourcing keeps at placement time (`d2RunAllows`):
+     never two consecutive short segments, because the recovery segment the rule
+     would forgive them for cannot be promised. */
+  if (shortRunCount(durations) > shortRunCount(placed)) return false;
+
+  /* D5's OWN triple clause. Buying a spread with a uniform triple trades one
+     D5 failure for another. */
+  if (uniformTripleCount(durations) > uniformTripleCount(placed)) return false;
+
+  /* D3's mean. */
+  const mean = meanOf(durations);
+  if (mean < D3_MEAN_FLOOR_SEC && mean < meanOf(placed)) return false;
+
+  /* M4's runtime clause, per episode — with `m4RuntimeAllows`'s own exemption
+     for an episode that supplies exactly one segment, mirrored here so the two
+     halves of this module enforce the same rule. The argument is #569's,
+     unchanged: with one segment an episode's share of the seconds is whatever
+     fraction of a short Foray it happens to be, nothing this stage does can move
+     it (there is no other segment of that episode to shorten), and treating it
+     as a veto would freeze the pass solid on precisely the tape-starved Forays
+     whose spread most needs lifting. `check-forays.mjs` remains the authority. */
+  const counts = placementCountsByItem(state.placed);
+  const after = runtimeSharesByItem(durations, state.placed);
+  const before = runtimeSharesByItem(placed, state.placed);
+  for (const [itemId, share] of after) {
+    if ((counts.get(itemId) ?? 0) < 2) continue;
+    if (share > M4_ITEM_SHARE_MAX && share > (before.get(itemId) ?? 0)) return false;
+  }
+
+  /* And M3: a re-cut can move a segment's START, and segments from one episode
+     must play in ascending time order. */
+  let lastStart = -Infinity;
+  for (let i = 0; i < state.placed.length; i++) {
+    const at = state.placed[i]!;
+    if (at.itemId !== entry.itemId) continue;
+    const startSec = i === entry.placement ? span.startSec : at.startSec;
+    if (startSec < lastStart) return false;
+    lastStart = startSec;
+  }
+  return true;
+}
+
+/** Adjacent pairs where both segments are short — D2's debt, counted. */
+function shortRunCount(durations: number[]): number {
+  let runs = 0;
+  for (let i = 1; i < durations.length; i++) {
+    if (durations[i]! < D2_SHORT_SEC && durations[i - 1]! < D2_SHORT_SEC) runs += 1;
+  }
+  return runs;
+}
+
+/** Consecutive triples within D5's tolerance of each other, pairwise — the
+ * reading `check-forays.mjs` gates on (`d5Triples`). */
+function uniformTripleCount(durations: number[]): number {
+  let hits = 0;
+  for (let i = 0; i + 2 < durations.length; i++) {
+    const triple = durations.slice(i, i + 3);
+    const min = Math.min(...triple);
+    if (min > 0 && Math.max(...triple) / min <= 1 + D5_TOLERANCE) hits += 1;
+  }
+  return hits;
+}
+
+function meanOf(durations: number[]): number {
+  if (durations.length === 0) return 0;
+  return durations.reduce((a, b) => a + b, 0) / durations.length;
+}
+
+/** How many segments each episode supplied — M4's small-count exemption. */
+function placementCountsByItem(placed: PlacedSegment[]): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const at of placed) counts.set(at.itemId, (counts.get(at.itemId) ?? 0) + 1);
+  return counts;
+}
+
+/** Each episode's share of the Foray's tape SECONDS, for M4's runtime clause. */
+function runtimeSharesByItem(durations: number[], placed: PlacedSegment[]): Map<string, number> {
+  const total = durations.reduce((a, b) => a + b, 0);
+  const shares = new Map<string, number>();
+  if (!(total > 0)) return shares;
+  const seconds = new Map<string, number>();
+  for (let i = 0; i < placed.length; i++) {
+    const itemId = placed[i]!.itemId;
+    seconds.set(itemId, (seconds.get(itemId) ?? 0) + (durations[i] ?? 0));
+  }
+  for (const [itemId, sec] of seconds) shares.set(itemId, sec / total);
+  return shares;
+}
+
+/**
+ * Writes one re-cut everywhere the old cut was written: the minted segment, the
+ * beat's pointer, the placement ledgers, and the `tapeRelevance` row that names
+ * the segment by id.
+ *
+ * THE ID IS RE-MINTED WHEN THE START MOVES, because the id is not opaque:
+ * `merge-segments.mjs` derives it as `<item_id>#<start_sec rounded>` and would
+ * disagree with an id that names a second the segment no longer begins at.
+ */
+function applyRecut(recut: SpreadRecut, state: SourcingState, tapeRelevance: TapeRelevanceInput[]): void {
+  const { entry, span, durationSec } = recut;
+  const previousId = entry.pointer.segmentId;
+  const previousDuration = state.placedDurations[entry.placement]!;
+  const segmentId =
+    Math.round(span.startSec) === Math.round(entry.pointer.startSec)
+      ? previousId
+      : mintSegmentId(entry.itemId, span.startSec, state.mintedIds);
+
+  entry.pointer.segmentId = segmentId;
+  entry.pointer.startSec = span.startSec;
+  entry.pointer.endSec = span.endSec;
+  entry.pointer.startAnchor = span.startAnchor;
+  entry.pointer.endAnchor = span.endAnchor;
+
+  entry.segment.id = segmentId;
+  entry.segment.startSec = span.startSec;
+  entry.segment.endSec = span.endSec;
+  entry.segment.startAnchor = span.startAnchor;
+  entry.segment.endAnchor = span.endAnchor;
+  /* Re-derived exactly as `acceptCandidate` derives it, so a checkout with no
+     feed duration keeps the property that the reference covers the segment. */
+  entry.segment.referenceDurationSec = entry.feedDurationSec ?? span.endSec;
+
+  state.placedDurations[entry.placement] = durationSec;
+  state.placed[entry.placement]!.startSec = span.startSec;
+  state.placedSecByItem.set(entry.itemId, (state.placedSecByItem.get(entry.itemId) ?? 0) - previousDuration + durationSec);
+  if (segmentId !== previousId) {
+    state.usedSegmentIds.delete(previousId);
+    state.usedSegmentIds.add(segmentId);
+    for (const row of tapeRelevance) {
+      if (row.segmentId === previousId) row.segmentId = segmentId;
+    }
+  }
+  /* M3's ledger reads the LAST start placed for an episode, and a re-cut can
+     move it. Recomputed from the running order rather than patched, because the
+     re-cut placement is not necessarily the episode's last one. */
+  let lastStart: number | undefined;
+  for (const at of state.placed) if (at.itemId === entry.itemId) lastStart = at.startSec;
+  if (lastStart !== undefined) state.lastStartByItem.set(entry.itemId, lastStart);
 }
 
 /** What tier 1 saw, once it has decided it has nothing (F-49). Must be called
@@ -927,7 +1289,8 @@ function resolveOneBeat(beat: Beat, state: SourcingState): BeatResolution {
    */
   let spreadDeferred: {
     candidate: Tier2Candidate;
-    window: TapeWindow | null;
+    cues: TranscriptCue[];
+    window: TapeWindow;
     span: TapeSpan;
     itemId: string;
     /** F-72's verdict on the deferred candidate's own window, carried so the
@@ -947,6 +1310,8 @@ function resolveOneBeat(beat: Beat, state: SourcingState): BeatResolution {
    */
   const acceptCandidate = (
     candidate: Tier2Candidate,
+    cues: TranscriptCue[],
+    window: TapeWindow,
     span: TapeSpan,
     itemId: string,
     seedFloor: "share-only" | undefined
@@ -967,7 +1332,7 @@ function resolveOneBeat(beat: Beat, state: SourcingState): BeatResolution {
        chose for the window, not a phrase's own few seconds (F-24(c)) — the
        minted segment's times are the tape's own times, and its anchors are the
        tape's own words (F-61). */
-    state.newSegments.push({
+    const segment: NewSegment = {
       id: segmentId,
       itemId,
       startSec: span.startSec,
@@ -976,6 +1341,29 @@ function resolveOneBeat(beat: Beat, state: SourcingState): BeatResolution {
       startAnchor: span.startAnchor,
       endAnchor: span.endAnchor,
       confidence: "medium"
+    };
+    const pointer: TapePointer = {
+      segmentId,
+      itemId,
+      startSec: span.startSec,
+      endSec: span.endSec,
+      startAnchor: span.startAnchor,
+      endAnchor: span.endAnchor,
+      tier: 2,
+      confidence: "medium"
+    };
+    state.newSegments.push(segment);
+    /* Recorded BEFORE `placeTape`, so `placement` is the index this placement
+       is about to take in `placedDurations` (F-73, D5's spread). */
+    state.recuts.push({
+      claim,
+      cues,
+      window,
+      itemId,
+      placement: state.placedDurations.length,
+      feedDurationSec: candidate.entry.feed_duration_sec ?? null,
+      pointer,
+      segment
     });
     placeTape(segmentId, itemId, span.startSec, span.endSec - span.startSec, state);
     return {
@@ -983,16 +1371,7 @@ function resolveOneBeat(beat: Beat, state: SourcingState): BeatResolution {
       fromSeed: candidate.fromSeed === true,
       seedFloor,
       nodes: nodesForArchiveEntry(candidate.entry, state),
-      pointer: {
-        segmentId,
-        itemId,
-        startSec: span.startSec,
-        endSec: span.endSec,
-        startAnchor: span.startAnchor,
-        endAnchor: span.endAnchor,
-        tier: 2,
-        confidence: "medium"
-      }
+      pointer
     };
   };
 
@@ -1113,11 +1492,11 @@ function resolveOneBeat(beat: Beat, state: SourcingState): BeatResolution {
         !spreadDeferred &&
         durationVetoFor(itemId, span.endSec - span.startSec, state, { relaxSpread: true }) === null
       ) {
-        spreadDeferred = { candidate, window, span, itemId, seedFloor };
+        spreadDeferred = { candidate, cues, window: window!, span, itemId, seedFloor };
       }
       continue;
     }
-    const accepted = acceptCandidate(candidate, span, itemId, seedFloor);
+    const accepted = acceptCandidate(candidate, cues, window!, span, itemId, seedFloor);
     if (accepted) return accepted;
     furthest = furtherOf(furthest, { candidate, gate: "no-audio-source", window, span, seedFloor });
   }
@@ -1129,7 +1508,14 @@ function resolveOneBeat(beat: Beat, state: SourcingState): BeatResolution {
      still records what happened: `furthest` holds the `d5-uniform` row, so a run's
      log says which beats took this branch. */
   if (spreadDeferred) {
-    const accepted = acceptCandidate(spreadDeferred.candidate, spreadDeferred.span, spreadDeferred.itemId, spreadDeferred.seedFloor);
+    const accepted = acceptCandidate(
+      spreadDeferred.candidate,
+      spreadDeferred.cues,
+      spreadDeferred.window,
+      spreadDeferred.span,
+      spreadDeferred.itemId,
+      spreadDeferred.seedFloor
+    );
     if (accepted) return accepted;
     furthest = furtherOf(furthest, {
       candidate: spreadDeferred.candidate,

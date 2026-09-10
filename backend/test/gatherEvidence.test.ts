@@ -12,12 +12,13 @@ import {
   cueWindowText,
   createEvidenceGatherer,
   findDigestForItem,
-  rephraseClaimForRetrieval,
-  REPHRASED_QUERY_MAX_WORDS,
+  retryQueryFor,
+  RETRY_QUERY_MAX_WORDS,
   titlesForItem
 } from "../src/generation/gatherEvidence";
 import { StubExternalResearcher } from "../src/generation/StubExternalResearcher";
 import { findHoldingDoc } from "../src/types/narration";
+import { leadingNounPhrase } from "../src/types/spine";
 import type { CatalogueData } from "../src/generation/catalogueLookup";
 import type { ExternalResearcher, ExternalResearchContext, ExternalResearchResult, PassageRetrievalRequest, RetrievedPassage } from "../src/generation/ExternalResearcher";
 import type { TranscriptCue, TranscriptCueProvider, TranscriptDigestEntry } from "../src/generation/transcriptArchiveLookup";
@@ -297,7 +298,7 @@ describe("F-60 — an empty retrieval is asked once more, rephrased", () => {
     expect(retriever.calls).toHaveLength(2);
     expect(retriever.calls[0]!.claim).toBe(P5_PURPOSE);
     expect(retriever.calls[1]!.claim).not.toBe(P5_PURPOSE);
-    expect(retriever.calls[1]!.claim).toBe(rephraseClaimForRetrieval(P5_PURPOSE));
+    expect(retriever.calls[1]!.claim).toBe(retryQueryFor(P5_PURPOSE));
     expect(pack.docs.map((d) => d.title)).toEqual(["Great Expectations documentation"]);
   });
 
@@ -335,7 +336,7 @@ describe("F-60 — an empty retrieval is asked once more, rephrased", () => {
       expect(retriever.calls).toHaveLength(2);
       expect(second.docs).toEqual(first.docs);
       expect(fs.readdirSync(dir).sort()).toEqual(
-        [`${claimHash(P5_PURPOSE)}.json`, `${claimHash(rephraseClaimForRetrieval(P5_PURPOSE))}.json`].sort()
+        [`${claimHash(P5_PURPOSE)}.json`, `${claimHash(retryQueryFor(P5_PURPOSE))}.json`].sort()
       );
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
@@ -357,7 +358,7 @@ describe("F-60 — an empty retrieval is asked once more, rephrased", () => {
         now: () => new Date(iso)
       });
 
-      expect(rephraseClaimForRetrieval(claim)).toBe("");
+      expect(retryQueryFor(claim)).toBe("");
       await at("2026-09-09T12:00:00.000Z").gather({ claim, requiresEvidence: true }, ctx);
       expect(retriever.calls).toHaveLength(1);
 
@@ -373,23 +374,90 @@ describe("F-60 — an empty retrieval is asked once more, rephrased", () => {
     }
   });
 
-  it("rephrases a purpose to its distinctive nouns, in order, without the framing", () => {
-    const query = rephraseClaimForRetrieval(P5_PURPOSE);
-    const words = query.split(" ");
-    expect(words.length).toBeLessThanOrEqual(REPHRASED_QUERY_MAX_WORDS);
-    expect(words).toContain("pipelines");
-    expect(words).toContain("dataset");
-    // The framing the search engine matched instead of the subject.
-    expect(words).not.toContain("the");
-    expect(words).not.toContain("way");
-    expect(words).not.toContain("rather");
-    // Original order, so the query still reads as a phrase.
-    expect(query).toBe(words.slice().sort((a, b) => P5_PURPOSE.indexOf(a) - P5_PURPOSE.indexOf(b)).join(" "));
+  it("asks the purpose's first clause, as a readable question about the claim's subject (F-69)", () => {
+    /* WHAT THIS REPLACES. The retry used to be the sentence's rarest-looking
+       words, longest first: run 2 attempt 4b's log has "Conway's bites pipeline
+       boundaries wherever postmortem exactly places" and "rotation spanning
+       training diagnose failures materially separate rotations" in it, and one
+       of those came back with fault-diagnosis papers about rotating machinery
+       for a claim about an on-call rotation. A bag of tokens has no subject.
+
+       MUTATION THAT KILLS THIS: drop the `the way …` clause opener from
+       `retryQueryFor`'s boundary test. The cut falls through to the colon and
+       the query is the whole analogy again — "Mature pipelines treat a dataset
+       the way a build system treats source code" — which is the framing the
+       FIRST query already failed on. Ran it — red. */
+    const query = retryQueryFor(P5_PURPOSE);
+    expect(query).toBe("Mature pipelines treat a dataset");
+
+    /* The three properties that make it a query rather than a word list, stated
+       against the function rather than against that one string: it is a PREFIX
+       of the purpose (so it reads as English, in the purpose's own order), it
+       is bounded, and it contains the whole of the claim's subject. */
+    expect(P5_PURPOSE.startsWith(query)).toBe(true);
+    expect(query.split(" ").length).toBeLessThanOrEqual(RETRY_QUERY_MAX_WORDS);
+    expect(query.startsWith(leadingNounPhrase(P5_PURPOSE))).toBe(true);
+
+    /* And the framing the first query already failed on is gone: the analogy
+       ("the way a build system…"), the parenthetical schema check, the
+       consequence. */
+    expect(query).not.toContain("the way");
+    expect(query).not.toContain("rather than");
+    expect(query).not.toContain("schema check");
   });
 
-  it("returns nothing to ask when a claim has too few distinctive words to ask differently", () => {
-    expect(rephraseClaimForRetrieval("It was over.")).toBe("");
-    expect(rephraseClaimForRetrieval("")).toBe("");
+  it("cuts a clause off a purpose built the other way round, too", () => {
+    /* The `wherever` claim from the same run, shortened to the question a
+       librarian would have been asked. The clause opener is a word here rather
+       than punctuation, which is the other half of the rule. */
+    expect(retryQueryFor("Conway's law bites at pipeline boundaries wherever a postmortem places them.")).toBe(
+      "Conway's law bites at pipeline boundaries"
+    );
+    /* And an em dash is a clause boundary exactly like a subordinator. */
+    expect(retryQueryFor("An on-call rotation spanning training and inference — the shape most teams land on — makes failures harder to diagnose.")).toBe(
+      "An on-call rotation spanning training and inference"
+    );
+  });
+
+  it("returns nothing to ask when the shorter question is the claim over again", () => {
+    /* A one-clause purpose IS the query, so there is no second question to ask
+       and no second call to pay for. */
+    expect(retryQueryFor("Charcoal briquettes were a Ford Motor Company waste-disposal scheme.")).toBe("");
+    expect(retryQueryFor("It was over.")).toBe("");
+    expect(retryQueryFor("")).toBe("");
+  });
+});
+
+describe("F-69 — a beat that sourced to tape is not sent to the web", () => {
+  it("hands the transcript window in as the document and issues no retrieval call", async () => {
+    /* WHAT ATTEMPT 4B DID. Every tape beat's hand-off page went through the same
+       retrieval as a Carry page — a web query, often an empty result, and then
+       F-60's second query on top — for a page whose evidence is the stretch of
+       tape it introduces and whose transcript this pipeline is already holding.
+
+       MUTATION THAT KILLS THIS: delete the `pack.docs.some(d => d.kind ===
+       "tape")` early return from `gather`. The retriever is called and
+       `calls` is 1. Ran it — red. */
+    const retriever = new FakeRetriever([{ title: "A magazine", text: "Something about griddles." }]);
+    const pack = await gatherer(retriever).gather({ claim: "the bakestone came first", tape, requiresEvidence: true }, ctx);
+
+    expect(retriever.calls).toHaveLength(0);
+    expect(pack.docs.map((d) => d.kind)).toEqual(["tape"]);
+    /* And the page has a document to quote, so `writeNarration`'s no-evidence
+       guard does not degrade it. */
+    expect(findHoldingDoc("the iron griddle only arrives once cast iron is cheap", pack.docs)).toBe(pack.docs[0]);
+  });
+
+  it("still retrieves for a tape beat whose transcript body is not on this machine", async () => {
+    /* The skip is conditioned on HOLDING the window, not on the beat being
+       tape: with no cue body there is no document, and a page with nothing to
+       quote is the case F-60 exists for. */
+    const retriever = new FakeRetriever([{ title: "A magazine", text: "Something about griddles." }]);
+    const pack = await gatherer(retriever, null).gather({ claim: "the bakestone came first", tape, requiresEvidence: true }, ctx);
+
+    expect(retriever.calls).toHaveLength(1);
+    expect(pack.docs.map((d) => d.kind)).toEqual(["print"]);
+    expect(pack.tape?.showTitle).toBe("Bread From Home");
   });
 });
 

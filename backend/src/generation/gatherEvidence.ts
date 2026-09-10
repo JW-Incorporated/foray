@@ -12,6 +12,7 @@ import {
   type TranscriptDigestEntry
 } from "./transcriptArchiveLookup";
 import type { ExternalResearcher, ExternalResearchContext } from "./ExternalResearcher";
+import { leadingNounPhrase } from "../types/spine";
 import type { EvidenceDoc as HeldEvidenceDoc } from "../types/narration";
 import type { TapePointer } from "../types/tapeSourcing";
 
@@ -152,82 +153,121 @@ export function claimHash(claim: string): string {
   return crypto.createHash("sha1").update(normalized).digest("hex").slice(0, 16);
 }
 
-/** Words that carry no retrieval signal: they appear in every English
- * sentence, so a query built from them matches everything and finds
- * nothing. Includes the contractions a purpose sentence uses ("shouldn't")
- * because the apostrophe form survives the tokenizer. */
-const RETRIEVAL_STOPWORDS = new Set([
-  "about", "after", "again", "against", "already", "also", "another", "anything", "because", "been",
-  "before", "being", "below", "between", "both", "cannot", "could", "couldn't", "does", "doesn't",
-  "doing", "done", "down", "during", "each", "either", "else", "even", "ever", "every", "from",
-  "further", "gets", "goes", "gone", "have", "haven't", "having", "here", "how", "however", "into",
-  "isn't", "itself", "just", "keeps", "kind", "less", "like", "little", "lots", "made", "make",
-  "makes", "many", "might", "more", "most", "much", "must", "never", "nothing", "often", "once",
-  "only", "other", "others", "over", "own", "part", "particular", "perhaps", "rather", "really",
-  "same", "several", "should", "shouldn't", "simply", "since", "some", "someone", "something",
-  "still", "such", "sure", "take", "takes", "than", "that", "their", "them", "then", "there",
-  "these", "they", "thing", "things", "this", "those", "though", "through", "thus", "time", "under",
-  "until", "upon", "used", "uses", "very", "wasn't", "well", "were", "what", "when", "where",
-  "whether", "which", "while", "whole", "will", "with", "within", "without", "won't", "would",
-  "wouldn't", "your", "yours"
+/** The longest the retry query may be, and the shortest it will cut itself
+ * down to.
+ *
+ * The maximum is a query's length, not a sentence's: past a dozen or so words
+ * a search engine is matching a paragraph's framing rather than its subject,
+ * which is the thing the FIRST query already did and failed at. The minimum
+ * exists so the clause rule below can never hand back a fragment ("Mature
+ * pipelines") that names less than the subject it was cut from. */
+export const RETRY_QUERY_MAX_WORDS = 14;
+export const RETRY_QUERY_MIN_WORDS = 4;
+
+/** Words that begin a clause hanging off the one before it. Cutting here is
+ * what turns an editorial sentence into the question a librarian would have
+ * been asked: everything from one of these onward is analogy, consequence or
+ * qualification, and none of it is the subject.
+ *
+ * `and`, `but` and `or` are deliberately NOT in the list — they join a
+ * subject's own complements at least as often as they hang a clause off it
+ * ("training and inference"), and cutting there loses half of what the query
+ * is about. */
+const CLAUSE_BOUNDARY_WORDS = new Set([
+  "after", "although", "as", "because", "before", "if", "instead", "rather", "since", "so", "that",
+  "though", "unless", "until", "when", "whenever", "where", "whereas", "wherever", "whether",
+  "which", "while", "who", "whom", "whose"
 ]);
 
-/** How many words the rephrased query keeps. The fix plan's number: six to
- * eight distinctive nouns is a search query; a whole purpose sentence is
- * an essay, and a search engine handed an essay matches the framing rather
- * than the subject. */
-export const REPHRASED_QUERY_MAX_WORDS = 8;
+/** Punctuation that ends a clause where it ends a word. */
+const CLAUSE_BOUNDARY_PUNCTUATION = /[,;:(—–…]$/;
 
 /**
- * F-60's second query. The first retrieval is the beat purpose verbatim —
- * a full editorial sentence, framing and all ("Mature pipelines treat a
- * dataset the way a build system treats source code: a schema check … fails
- * the run outright"). When that returns nothing, asking the same question
- * the same way again is not a retry, so this strips the sentence to the
- * nouns a librarian would have searched for.
+ * F-60's second query, as a QUERY (F-69).
  *
- * The rule is deliberately mechanical, because a model call to rewrite a
- * query is exactly the kind of spend this finding is about: keep the words
- * of the FIRST sentence (the subject and what it is predicated of; a
- * purpose's later clauses are analogy and consequence), drop the
- * stopwords, and keep the longest remaining ones — length is a free and
- * surprisingly good proxy for rarity in English, and rarity is what makes
- * a search term distinctive. Ties break on first appearance, and the words
- * are emitted in their original order so the query still reads as a
- * phrase.
+ * The first retrieval is the beat's purpose verbatim — a full editorial
+ * sentence, framing and all ("Mature pipelines treat a dataset the way a build
+ * system treats source code: a schema check … fails the run outright"). When
+ * that returns nothing, asking the same question the same way is not a retry,
+ * so a second, shorter question is asked.
  *
- * Returns "" when the purpose has too few distinctive words to say
- * anything different from what was already asked — the caller then makes
- * no second call at all.
+ * WHAT THE SECOND QUESTION USED TO BE, AND WHY IT IS NOT THAT ANY MORE. It was
+ * the sentence's rarest-looking words, longest first, re-sorted into their
+ * original order: "Conway's bites pipeline boundaries wherever postmortem
+ * exactly places", "rotation spanning training diagnose failures materially
+ * separate rotations". That is a bag of tokens, not a query — it has no
+ * subject, no predicate and no phrase a page could match — and run 2 attempt
+ * 4b is what it cost: 12 of 43 first queries empty, 4 rescued by the retry, and
+ * one retry for an on-call-rotation claim that came back with fault-diagnosis
+ * papers about rotating machinery. Rarity is what makes a TERM distinctive; it
+ * is not what makes a QUERY answerable.
+ *
+ * WHAT IT IS NOW: THE PURPOSE'S FIRST CLAUSE, LED BY THE CLAIM'S SUBJECT. The
+ * query is a PREFIX of the purpose sentence, cut at the first clause boundary
+ * that leaves at least the claim's leading noun phrase (`leadingNounPhrase`)
+ * and `RETRY_QUERY_MIN_WORDS` standing, capped at `RETRY_QUERY_MAX_WORDS`. A
+ * prefix is readable by construction — it is the sentence's own words in the
+ * sentence's own order — and because it starts at the first word it always
+ * contains the subject the claim is about.
+ *
+ * AND THE PURPOSE IS THE CLAIM (what F-69 asked to be checked). There is no
+ * separate purpose sentence anywhere in this pipeline: §4.4's deepened beat
+ * carries `claim` and nothing else (`types/spine.ts`'s `BeatSchema`), and this
+ * module's own `EvidencePack.purpose` IS `beat.claim` — `writeNarration.ts`
+ * passes the page's claim as both. So "build the retry from the purpose
+ * sentence" and "fall back to the claim's first clause" are the same
+ * instruction here, and this is it.
+ *
+ * Deterministic, and no model call: rewriting a query with a model is exactly
+ * the kind of spend this finding is about.
+ *
+ * Returns "" when the cut would ask the same question again — a one-clause
+ * purpose is already the query — so the caller makes no second call at all.
  */
-export function rephraseClaimForRetrieval(claim: string, maxWords: number = REPHRASED_QUERY_MAX_WORDS): string {
-  const text = String(claim ?? "").trim();
+export function retryQueryFor(claim: string): string {
+  const text = String(claim ?? "").replace(/\s+/g, " ").trim();
   if (!text) return "";
-  const firstSentence = text.split(/(?<=[.!?…])\s+/)[0] ?? text;
+  const sentence = text.split(/(?<=[.!?…])\s+/)[0] ?? text;
+  const words = sentence.split(" ").filter(Boolean);
+  if (words.length === 0) return "";
 
-  const candidates: Array<{ word: string; index: number }> = [];
-  const seen = new Set<string>();
-  const consider = (source: string): void => {
-    for (const raw of source.split(/[^A-Za-z'-]+/)) {
-      const word = raw.replace(/^[-']+|[-']+$/g, "");
-      const key = word.toLowerCase();
-      if (word.length < 4 || seen.has(key) || RETRIEVAL_STOPWORDS.has(key)) continue;
-      seen.add(key);
-      candidates.push({ word, index: candidates.length });
+  /* The floor: never cut inside the subject the claim is about. */
+  const subjectWords = leadingNounPhrase(sentence).split(" ").filter(Boolean).length;
+  const floor = Math.max(RETRY_QUERY_MIN_WORDS, subjectWords);
+
+  let kept = words.length;
+  for (let k = floor; k < words.length; k++) {
+    const previous = words[k - 1]!;
+    const next = words[k]!;
+    const boundary =
+      CLAUSE_BOUNDARY_PUNCTUATION.test(previous) ||
+      CLAUSE_BOUNDARY_WORDS.has(bareWord(next)) ||
+      /* "the way …", "the same way …": the analogy the P5 purpose was mostly
+         made of, and the one clause opener that is two ordinary words. */
+      (bareWord(next) === "the" && words.slice(k + 1, k + 3).some((w) => bareWord(w) === "way"));
+    if (boundary) {
+      kept = k;
+      break;
     }
-  };
-  consider(firstSentence);
-  // A one-clause purpose can be shorter than the query; top up from the
-  // rest of the text rather than returning three words.
-  if (candidates.length < 6 && firstSentence !== text) consider(text.slice(firstSentence.length));
+  }
+  kept = Math.min(kept, RETRY_QUERY_MAX_WORDS);
 
-  if (candidates.length < 3) return "";
-  const kept = [...candidates]
-    .sort((a, b) => b.word.length - a.word.length || a.index - b.index)
-    .slice(0, maxWords)
-    .sort((a, b) => a.index - b.index)
-    .map((c) => c.word);
-  return kept.join(" ");
+  const query = words.slice(0, kept).join(" ").replace(/^[("'“‘]+/, "").replace(/[,;:.!?(—–…"'”’]+$/, "").trim();
+  if (query.split(" ").filter(Boolean).length < 3) return "";
+  /* Nothing new to ask: the "shorter" query is the whole claim over again. */
+  if (searchKey(query) === searchKey(text)) return "";
+  return query;
+}
+
+/** A word with its punctuation and quoting stripped, for the two lookups
+ * above — `"way,"` and `way` are the same word to a clause boundary. */
+function bareWord(word: string): string {
+  return word.toLowerCase().replace(/[^a-z0-9']/g, "");
+}
+
+/** Two queries are the same question when their words are the same words. */
+function searchKey(text: string): string {
+  return text.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 }
 
 export interface EvidenceGathererOptions {
@@ -283,6 +323,29 @@ export class DefaultEvidenceGatherer implements EvidenceGatherer {
       }
     }
 
+    /* AND A BEAT THAT SOURCED TO TAPE IS NOT SENT TO THE WEB AT ALL (F-69).
+     *
+     * WHAT ATTEMPT 4B DID, AND WHY IT WAS WRONG. Every tape beat's hand-off page
+     * went through `printEvidenceFor` exactly like a Carry page: a retrieval
+     * call, an empty result often enough, and then F-60's second call on top —
+     * for a page whose whole job is to hand the listener into a stretch of tape
+     * this pipeline is HOLDING THE TRANSCRIPT OF. The window above is that
+     * page's evidence. It is the only text the page may quote (a Frame that
+     * quotes a magazine instead of the tape it is introducing is citing the
+     * wrong thing), it is what §4.7's mechanical quote rule resolves against,
+     * and it arrives at zero cost from a file already on disk. A web passage
+     * could only ever be a second subject for a page that is not allowed to
+     * change subject.
+     *
+     * SO THE SKIP IS CONDITIONED ON HOLDING THE WINDOW, NOT ON THE SEED. A
+     * seeded beat that sourced to tape is the case F-69 names, but the argument
+     * is about the evidence and not about where the beat came from: whenever
+     * this pack has the transcript window in it, the window is the evidence.
+     * When it does not — no cue body on this machine, so `tapeEvidenceFor`
+     * returned a context and no document — the beat still needs text from
+     * somewhere, and the retrieval below runs exactly as it did. */
+    if (pack.docs.some((doc) => doc.kind === "tape")) return pack;
+
     for (const doc of await this.printEvidenceFor(beat.claim, ctx, beat.requiresEvidence === true)) pack.docs.push(doc);
     return pack;
   }
@@ -336,9 +399,9 @@ export class DefaultEvidenceGatherer implements EvidenceGatherer {
    * handed the writer a Carry page with no documents — which the
    * mechanical rule then refused three times over, once per selection
    * call, before ending the Foray. The first of those wasted calls is
-   * replaced here by a second RETRIEVAL: same beat, a query rephrased to
-   * its distinctive nouns, cached under its own hash so the first query's
-   * emptiness is never served in its place.
+   * replaced here by a second RETRIEVAL: same beat, the shorter question
+   * `retryQueryFor` cuts out of the purpose (F-69), cached under its own
+   * hash so the first query's emptiness is never served in its place.
    *
    * Only for a page that carries content, and only ever once — a beat that
    * genuinely has no published text behind it must reach
@@ -349,13 +412,16 @@ export class DefaultEvidenceGatherer implements EvidenceGatherer {
     const first = await this.retrieveFor(claim, ctx);
     if (first.length > 0 || !requiresEvidence) return first;
 
-    const rephrased = rephraseClaimForRetrieval(claim);
-    if (!rephrased || claimHash(rephrased) === claimHash(claim)) return first;
+    const retryQuery = retryQueryFor(claim);
+    if (!retryQuery || claimHash(retryQuery) === claimHash(claim)) return first;
 
+    /* The query itself is in the line, verbatim and in full, because it is the
+       thing a run log is read for here: F-69 was found by reading these lines
+       and seeing that what they quoted was not a question (F-60/F-69). */
     console.warn(
-      `gatherEvidence: nothing was retrieved for "${claim.slice(0, 60)}" — asking once more for "${rephrased}" (F-60)`
+      `gatherEvidence: nothing was retrieved for "${claim.slice(0, 60)}" — asking once more for "${retryQuery}" (F-60/F-69)`
     );
-    return this.retrieveFor(rephrased, ctx);
+    return this.retrieveFor(retryQuery, ctx);
   }
 
   /** One retrieval, cached by ITS OWN query's hash. */

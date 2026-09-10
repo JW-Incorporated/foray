@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { existsSync, readFileSync } from "fs";
 import { join } from "path";
 import {
@@ -7,9 +7,13 @@ import {
   deriveItemId,
   D3_MEAN_FLOOR_SEC,
   D5_IQR_FLOOR_SEC,
+  D5_RECUT_MAX_SEGMENTS,
   D5_TOLERANCE,
+  D_TARGET_LADDER_SEC,
+  interquartileRange,
   M4_ITEM_SHARE_MAX,
   m4SegmentCapFor,
+  RECUT_TARGETS_SEC,
   tapeTargetFor
 } from "../src/generation/sourceBeats";
 import { capArgumentBeats, deepenActs } from "../src/generation/deepenActs";
@@ -3272,6 +3276,263 @@ describe("sourceBeats — F-73: the D-tier length ledger, kept by both tiers", (
        module's own longest segment — a target that needed a `long_reason` would
        trade one checker error for another. */
     for (const target of four) expect(target).toBeLessThanOrEqual(MAX_TAPE_SEGMENT_SEC);
+  });
+});
+
+describe("sourceBeats — D5's interquartile clause, asked after every placement (F-73)", () => {
+  /* WHAT THIS CLOSES. #571 gates D5's TRIPLE clause at placement as a preference
+     and leaves the INTERQUARTILE clause ungated, because an IQR is a property of
+     the finished multiset and is not monotone in one placement — a Foray can
+     therefore still reach `check-forays.mjs` and be refused on "interquartile
+     range 15.6 s is under the 45 s floor". After the last beat the multiset
+     exists, so the question can be asked and answered: re-cut the one or two
+     tier-2 segments whose change most raises the spread, refusing any re-cut
+     that would newly break D2, D3, D5's triple clause, M3 or M4. */
+
+  const claim = "Gearboxes fail because bearings take torque reversals.";
+  const fillerClaim = "The Lawson criterion is a statement about tokamak plasma confinement.";
+
+  const filler = (item: string, durationSec: number): SegmentRecord => ({
+    ...fixtureSegmentPool()[0]!,
+    id: `${item}#100`,
+    item_id: item,
+    start_sec: 100,
+    end_sec: 100 + durationSec
+  });
+
+  const entry = (guid: string, title: string): TranscriptDigestEntry => ({
+    show_id: "practical-ai",
+    show_title: "Practical AI",
+    guid,
+    title,
+    cues: 12,
+    feed_duration_sec: 3600,
+    enclosure_url: `https://cdn.example/${guid}.mp3`
+  });
+
+  /** A long passage about the claim: an off-claim lead-in, then nine 30 s cues
+   * that all say some of the claim's words, then an off-claim ending. The
+   * window search takes the densest stretch of it and `cutWindowToSegment` can
+   * grow that stretch anywhere between 60 s and the full 240 s — which is what
+   * gives the pass something to choose between. */
+  const passage: TranscriptCue[] = (() => {
+    const cues: TranscriptCue[] = [{ text: "welcome back to the programme this week we are in denmark", start_sec: 0, end_sec: 30 }];
+    const lines = [
+      "the gearboxes here give everybody trouble",
+      "and the bearings give up first on nearly all of them",
+      "the gearboxes fail well before the design life says",
+      "torque comes back the other way every rotation",
+      "reversals were never in the original load case",
+      "bearings crack under torque that keeps switching",
+      "the gearboxes fail and the bearings take the torque",
+      "reversals again and the bearings crack again",
+      "torque reversals are what the gearboxes cannot take"
+    ];
+    let t = 30;
+    for (const text of lines) {
+      cues.push({ text, start_sec: t, end_sec: t + 30 });
+      t += 30;
+    }
+    cues.push({ text: "anyway that is enough of that let us talk about the conference", start_sec: t, end_sec: t + 60 });
+    return cues;
+  })();
+
+  /** One 32 s passage walled off by cues that say nothing the claim says: the
+   * growth rule has nowhere to go, so this window has exactly ONE cut and the
+   * pass has nothing to choose from. */
+  const walledPassage: TranscriptCue[] = [
+    { text: "before the break we were arguing about which coffee machine to buy", start_sec: 0, end_sec: 30 },
+    { text: "the gearboxes fail when bearings take torque reversals on the shaft", start_sec: 30, end_sec: 62 },
+    { text: "right after this we have a completely different guest and subject", start_sec: 62, end_sec: 140 }
+  ];
+
+  function run(beats: Array<{ claim: string; exploration: boolean; kind?: "account" }>, bodies: Record<string, TranscriptCue[]>, pool: SegmentRecord[]) {
+    const archive = Object.keys(bodies).map((guid, i) => entry(guid, `Episode ${800 + i}`));
+    return sourceBeats([makeDeepenedAct({ slots: [{ title: "Gearboxes", beats }] }, "D5IQR")], {
+      segmentPool: pool,
+      transcriptArchive: archive,
+      cueProvider: { getCues: (e) => bodies[e.guid] ?? null },
+      textIndex: memoryTextIndex(archive, bodies)
+    });
+  }
+
+  const durationsOf = (result: ReturnType<typeof sourceBeats>) =>
+    allSourcedBeats(result.acts)
+      .filter((b) => b.sourcing === "tape")
+      .map((b) => (b.sourcing === "tape" ? b.tape.endSec - b.tape.startSec : 0));
+
+  /** R-7, the same definition `check-forays.mjs` gates on. */
+  const iqr = (values: number[]): number => {
+    const s = [...values].sort((a, b) => a - b);
+    const q = (p: number) => {
+      const h = (s.length - 1) * p;
+      const lo = Math.floor(h);
+      return s[lo]! + (h - lo) * (s[Math.ceil(h)]! - s[lo]!);
+    };
+    return q(0.75) - q(0.25);
+  };
+
+  const tapeBeat = () => ({ claim, exploration: false, kind: "account" as const });
+  const fillerBeat = () => ({ claim: fillerClaim, exploration: false });
+
+  it("re-cuts the segment whose change most raises the spread, until the IQR clears the floor", () => {
+    /* CHECKER ERROR THIS PREVENTS: "D5 FAIL: interquartile range 17.5 s is under
+       the 45 s floor (R-7)".
+
+       Four placements: two pool segments of 140 s and 150 s, then two tier-2
+       cuts that the ladder asks for 135 s and 210 s and that come out 150 s and
+       210 s. Sorted, that is 140/150/150/210 — an IQR of 17.5 s. The pass
+       re-cuts the 150 s tier-2 segment to the longest cut its own window
+       supports, 240 s, and the spread goes to 70 s.
+
+       MUTATION THAT KILLS THIS: delete the `liftDurationSpread(state,
+       tapeRelevance)` call from `sourceBeats`. The durations stay
+       140/150/150/210 and the IQR stays 17.5 s. Ran it — red. */
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      const result = run(
+        [fillerBeat(), fillerBeat(), tapeBeat(), tapeBeat()],
+        { "pa-a": passage, "pa-b": passage },
+        [filler("ep-a", 140), filler("ep-b", 150)]
+      );
+
+      expect(durationsOf(result)).toEqual([140, 150, 240, 210]);
+      expect(iqr(durationsOf(result))).toBeGreaterThanOrEqual(D5_IQR_FLOOR_SEC);
+      /* Nothing was dropped and nothing was added: four beats, four pieces of
+         tape, and the two minted segments are still the two episodes the search
+         chose. */
+      expect(result.newSegments).toHaveLength(2);
+      expect(result.newSegments.map((s) => s.itemId)).toEqual([
+        "practical-ai--episode-800",
+        "practical-ai--episode-801"
+      ]);
+      /* And no line was logged, because the floor was reached. */
+      expect(warn.mock.calls.flat().join(" ")).not.toContain("interquartile range");
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it("writes the new cut everywhere the old one was written — pointer, minted segment, and the id", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      const result = run(
+        [fillerBeat(), fillerBeat(), tapeBeat(), tapeBeat()],
+        { "pa-a": passage, "pa-b": passage },
+        [filler("ep-a", 140), filler("ep-b", 150)]
+      );
+      const beat = allSourcedBeats(result.acts)[2]!;
+      expect(beat.sourcing).toBe("tape");
+      if (beat.sourcing !== "tape") return;
+      const minted = result.newSegments.find((s) => s.itemId === beat.tape.itemId)!;
+
+      /* The pointer §4.7 will narrate from and the segment `merge-segments.mjs`
+         would write are the same cut, down to the anchors — a re-cut that
+         updated one of them would put a beat's narration against tape nothing
+         can play. */
+      expect(minted.startSec).toBe(beat.tape.startSec);
+      expect(minted.endSec).toBe(beat.tape.endSec);
+      expect(minted.startAnchor).toBe(beat.tape.startAnchor);
+      expect(minted.endAnchor).toBe(beat.tape.endAnchor);
+      expect(minted.id).toBe(beat.tape.segmentId);
+      /* And the id still names the second the segment begins at, which is how
+         `merge-segments.mjs` derives it (`<item_id>#<start_sec rounded>`). */
+      expect(minted.id).toBe(`${minted.itemId}#${Math.round(minted.startSec)}`);
+      /* The re-cut moved the START, so this is a re-minted id and not the one
+         the placement walk handed out. */
+      expect(minted.startSec).toBe(60);
+      /* The anchors are the tape's own words at the NEW boundaries. */
+      const spoken = passage.map((c) => c.text).join(" ");
+      expect(spoken).toContain(minted.startAnchor);
+      expect(spoken).toContain(minted.endAnchor);
+      /* And the `tapeRelevance` row WS-B aggregates names the segment that
+         exists, not the one that was replaced. */
+      const row = result.tapeRelevance.find((r) => r.itemId === beat.tape.itemId)!;
+      expect(row.segmentId).toBe(minted.id);
+
+      /* The window was not re-chosen — the re-cut changes a LENGTH, never what a
+         segment is about. Every second of it is still inside the passage the
+         relevance search picked. */
+      expect(minted.startSec).toBeGreaterThanOrEqual(0);
+      expect(minted.endSec).toBeLessThanOrEqual(300);
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it("says so in one line and changes nothing when no re-cut can reach the floor", () => {
+    /* Three 120 s pool segments and one tier-2 beat whose passage is walled off
+       by cues that say nothing the claim says: the growth rule has nowhere to
+       go, so that window has exactly one cut at 32 s and every target returns
+       it. The IQR is 22 s and there is no re-cut to make.
+
+       MUTATION THAT KILLS THIS: delete the `liftDurationSpread(state,
+       tapeRelevance)` call from `sourceBeats`. The run goes to
+       `check-forays.mjs`'s D5 refusal with nothing in the log to say sourcing
+       ever looked at the spread. Ran it — red. */
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      const result = run(
+        [fillerBeat(), fillerBeat(), fillerBeat(), tapeBeat()],
+        { "pa-a": walledPassage },
+        [filler("ep-a", 120), filler("ep-b", 120), filler("ep-c", 120)]
+      );
+
+      expect(durationsOf(result)).toEqual([120, 120, 120, 32]);
+      expect(iqr(durationsOf(result))).toBeLessThan(D5_IQR_FLOOR_SEC);
+      expect(result.newSegments).toHaveLength(1);
+      expect(result.newSegments[0]!.endSec - result.newSegments[0]!.startSec).toBe(32);
+
+      const lines = warn.mock.calls.map((c) => String(c[0]));
+      const line = lines.filter((l) => l.includes("interquartile range"));
+      expect(line).toHaveLength(1);
+      expect(line[0]).toContain(`under D5's ${D5_IQR_FLOOR_SEC} s floor`);
+      expect(line[0]).toContain("check-forays.mjs is the authority");
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it("never re-cuts a pool segment — a tier-1 length is a curator's decision", () => {
+    /* Four uniform pool segments: the IQR is 0, the floor is unreachable, and
+       the one thing this pass must not do to fix it is re-cut somebody else's
+       segment. Nothing is minted and every duration is exactly as placed. */
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      const result = run(
+        [fillerBeat(), fillerBeat(), fillerBeat(), fillerBeat()],
+        {},
+        [filler("ep-a", 120), filler("ep-b", 120), filler("ep-c", 120), filler("ep-d", 120)]
+      );
+      expect(durationsOf(result)).toEqual([120, 120, 120, 120]);
+      expect(result.newSegments).toHaveLength(0);
+      expect(warn.mock.calls.map((c) => String(c[0])).filter((l) => l.includes("interquartile range"))).toHaveLength(1);
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it("re-cuts at most D5_RECUT_MAX_SEGMENTS of them, from a fixed set of target lengths", () => {
+    /* The two constants the pass is bounded by, asserted rather than described:
+       a repair that re-cut every segment would be a second length policy
+       competing with `D_TARGET_LADDER_SEC`, and a target outside
+       [MIN, MAX] is not a segment this module will cut. */
+    expect(D5_RECUT_MAX_SEGMENTS).toBe(2);
+    expect(RECUT_TARGETS_SEC[0]).toBe(MIN_TAPE_SEGMENT_SEC);
+    expect(RECUT_TARGETS_SEC.at(-1)).toBe(MAX_TAPE_SEGMENT_SEC);
+    for (const target of D_TARGET_LADDER_SEC) expect(RECUT_TARGETS_SEC).toContain(target);
+    for (let i = 1; i < RECUT_TARGETS_SEC.length; i++) expect(RECUT_TARGETS_SEC[i]!).toBeGreaterThan(RECUT_TARGETS_SEC[i - 1]!);
+  });
+
+  it("computes the interquartile range the way the checker does (R-7)", () => {
+    /* The gate's own worked numbers: the sorted ladder, whose IQR is what
+       `D_TARGET_LADDER_SEC` was sized against. */
+    expect(interquartileRange([105, 135, 165, 210])).toBeCloseTo(48.75, 6);
+    expect(interquartileRange([120, 120, 120, 120])).toBe(0);
+    /* And a definition that does not throw on the degenerate inputs a
+       tape-starved Foray hands it. */
+    expect(interquartileRange([])).toBe(0);
+    expect(interquartileRange([90])).toBe(0);
   });
 });
 
