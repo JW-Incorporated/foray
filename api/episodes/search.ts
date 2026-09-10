@@ -155,7 +155,22 @@ async function searchWithinShow(
   // in this path. Loading it unconditionally would trigger a network fetch
   // of S-04's release id-map on every show-scoped query once that release
   // exists, for no benefit to this path.
-  const meta = await loadShowMeta(showId);
+  let meta: ShowMeta | null;
+  try {
+    meta = await loadShowMeta(showId);
+  } catch (err) {
+    if (err instanceof ShowMetaFilesUnavailableError) {
+      // Distinct from "unknown show_id" below: the catalog files this
+      // lookup depends on could not be read at all (e.g. missing from the
+      // deployed bundle — see vercel.json's includeFiles / api/test/
+      // vercel-bundle.test.mjs), not merely "this id isn't in them". A
+      // caller can't fix a bad show_id, but this IS an operational
+      // failure worth surfacing honestly rather than as a false-empty
+      // "no results" — see this file's degraded-honesty test.
+      return { results: [], error: err.message };
+    }
+    throw err;
+  }
   if (!meta) return { results: [], error: `unknown show_id: ${showId}` };
 
   const fetchResult = await fetchFeedConditional(meta.feedUrl, { etag: null, lastModified: null }, {
@@ -180,15 +195,31 @@ interface ShowMeta {
   title: string | null;
 }
 
+/** Thrown by loadShowMeta() when NEITHER required catalog file could be read
+ * at all (as opposed to being readable but simply not listing this show_id).
+ * Kept distinct from "unknown show_id" so the handler can report an honest
+ * `degraded: true` + a real error string instead of a false-empty result —
+ * see this file's BUNDLING-adjacent degraded-honesty test. */
+export class ShowMetaFilesUnavailableError extends Error {
+  constructor() {
+    super("show metadata catalog files are unavailable");
+    this.name = "ShowMetaFilesUnavailableError";
+  }
+}
+
+const SHOW_META_FILES = ["data/catalog.json", "data/catalog-breadth.json"];
+
+let showMetaRoot = path.resolve(__dirname, "..", "..");
 let showMetaIndex: Map<string, ShowMeta> | null = null;
+let showMetaFilesUnavailable = false;
 
 async function loadShowMeta(showId: string): Promise<ShowMeta | null> {
   if (!showMetaIndex) {
-    const REPO_ROOT = path.resolve(__dirname, "..", "..");
     const index = new Map<string, ShowMeta>();
-    for (const file of ["data/catalog.json", "data/catalog-breadth.json"]) {
+    let readableFiles = 0;
+    for (const file of SHOW_META_FILES) {
       try {
-        const raw = fs.readFileSync(path.join(REPO_ROOT, file), "utf8");
+        const raw = fs.readFileSync(path.join(showMetaRoot, file), "utf8");
         const parsed = JSON.parse(raw) as {
           shows: Array<{ show_id?: string; apple_collection_id?: number; feed_url: string | null; title?: string | null }>;
         };
@@ -198,13 +229,32 @@ async function loadShowMeta(showId: string): Promise<ShowMeta | null> {
             index.set(id, { feedUrl: show.feed_url, title: show.title ?? null });
           }
         }
+        readableFiles++; // only counted once this file was actually read AND parsed
       } catch {
-        // degrades to "show not found" below
+        // this one file is missing/unreadable/corrupt — the other may still be fine
       }
     }
     showMetaIndex = index;
+    // Both required files failed: that's a bundling/deploy gap (or a corrupt
+    // pair), never a legitimate "zero shows" catalog — distinct from a
+    // successfully-read-but-empty-or-non-matching index below.
+    showMetaFilesUnavailable = readableFiles === 0;
+  }
+  if (!showMetaIndex.has(showId) && showMetaFilesUnavailable) {
+    throw new ShowMetaFilesUnavailableError();
   }
   return showMetaIndex.get(showId) ?? null;
+}
+
+/** Test-only: point loadShowMeta() at a different root directory (to
+ * simulate the catalog files being absent from the deployed bundle without
+ * touching the real data/ directory) and clear its cache. Pass no argument
+ * to restore the real repo root. Mirrors showIdMap.ts's
+ * _resetShowIdMapCacheForTests() convention. */
+export function _setShowMetaRootForTests(root?: string): void {
+  showMetaRoot = root ?? path.resolve(__dirname, "..", "..");
+  showMetaIndex = null;
+  showMetaFilesUnavailable = false;
 }
 
 export default async function handler(req: ApiRequest, res: ApiResponse): Promise<void> {

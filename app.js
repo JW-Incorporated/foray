@@ -632,9 +632,27 @@ function snapshot(id, src) {
     // otherwise silently lose the flag here, one snapshot() call after the
     // caller thought it kept it.
     explicit: src.explicit ?? null,
-    // Kept so a generated playlist (F14) can order a leaf's episodes newest
-    // first from the snapshot alone; null when the source has none.
+    // Publish date (requirement A1.2, kanban t_d5079285): present on 100% of
+    // the curated pool (discover.json's own `release_date`) but this
+    // whitelist projection dropped it the same way it dropped audio_url
+    // above — every epRow/archivedRow/renderEpisode caller has always had
+    // the raw field one layer up and never seen it here. Also kept so a
+    // generated playlist (F14) can order a leaf's episodes newest first
+    // from the snapshot alone; null when the source has none.
     release_date: src.release_date ?? null,
+    // Full publisher description (requirement A1.1/Q8, resolved by Stage 3b:
+    // RSS-sourced text is the real source, docs/show-pages-plan.md). Additive
+    // to `hook` above, which stays 4a's own curated one-line editorial voice
+    // — this is the publisher's own words, never a replacement for it.
+    // Absent (null) for curated-pool items, which only ever had a `hook`.
+    description: src.description ?? null,
+    // Chapter markers (requirement A1.5, Joey's Q5: "these are two different
+    // use cases" from foray segments — rendered as a wholly separate section,
+    // never merged into the segment-strip UI). Stage 3b's ingestion pass
+    // stores this lazily (null until a per-episode chapters-body fetch backs
+    // it, see backend/src/catalog/showEpisodesStore.ts) — absence here is a
+    // real, expected state, not a bug.
+    chapters: src.chapters ?? null,
   };
   state.itemIndex[id] = snap;
   return snap;
@@ -685,10 +703,15 @@ function playLink(item) {
 
 /* In-app play button. Items with no audio_url keep the link-out to Apple
    Podcasts instead (#21 leaves ~9 unresolvable, plus video-only items) — the
-   card itself stays a link either way, so nothing regresses for them. */
-function playBtn(item) {
+   card itself stays a link either way, so nothing regresses for them.
+
+   `ctx`, when given, is stamped on as `data-ctx` — the same "playlist-<id>"
+   / "subject-<id>" / "generated-<id>" convention bindPickLogging already
+   reads off a picked link's `data-ctx` (#558 item 2). It is optional and
+   omitted by every non-playlist caller, so this changes nothing for them. */
+function playBtn(item, ctx) {
   if (!item || !item.audio_url) return "";
-  return `<button class="play-btn" data-play="${esc(item.id)}" aria-label="Play ${esc(item.title)}">▶</button>`;
+  return `<button class="play-btn" data-play="${esc(item.id)}"${ctx ? ` data-ctx="${esc(ctx)}"` : ""} aria-label="Play ${esc(item.title)}">▶</button>`;
 }
 
 /* Family mode (corner-case 28): hide explicit-rated episodes and the comedy
@@ -765,6 +788,26 @@ function explicitBadge(isExplicit) {
 function fmtDur(min) {
   if (!min) return "";
   return min >= 60 ? `${Math.floor(min / 60)}h ${min % 60}m` : `${min} min`;
+}
+
+/* A1.2: episode publish date, plain-English formatting shared by epRow,
+   archivedRow, and renderEpisode. Returns "" (never "Invalid Date") for a
+   missing or unparseable value — absence is a real state, not an error,
+   matching every other formatter on this page.
+
+   Formats in UTC deliberately: both source shapes this ever sees are
+   effectively date-only — discover.json's `release_date` (a bare
+   YYYY-MM-DD) and Stage 3b's `published_at` (typically UTC-midnight
+   ISO). Formatting in the *runtime's local* timezone (the previous
+   version's bug) rolls a UTC-midnight timestamp back to the previous
+   calendar day for anyone west of UTC — most of the Americas — showing
+   a wrong publish date for a large share of the real user base. UTC is
+   the one timezone every visitor and every CI runner agrees on. */
+function fmtDate(dateStr) {
+  if (!dateStr) return "";
+  const d = new Date(dateStr);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric", timeZone: "UTC" });
 }
 
 function branchOf(item) {
@@ -1358,6 +1401,15 @@ function playlists() {
   const sources = () => (cached ||= { pool: hydrationPool(), saved: savedMap() });
   for (const p of all) {
     if (!p.title) { p.title = prettyTitle(p.query || ""); touched = true; }
+    /* A hand-edited store, a truncated write, or a cp_quests entry that never
+       carried `created` leaves a record with neither `created` nor
+       `last_played_at` — and every sort that orders playlists by recency
+       (renderDrawer, playlistsForYouHtml) reads one of the two. Backfilling
+       here, the same way the title above is backfilled, makes the record
+       whole at the one place all six playlist-reading call sites pass
+       through, rather than leaning on every sort site to guess a fallback
+       (#558 item 1). */
+    if (!p.created) { p.created = new Date().toISOString(); touched = true; }
     if (hydratePlaylistParts(p, sources)) touched = true;
   }
   /* Deliberately not through savePlaylists(): a read must not be the thing that
@@ -1593,12 +1645,24 @@ function showById(id) {
    falling back to a title match (with the one known alias) for the show
    catalog.json doesn't carry an id-matched title for. Never assumes the join —
    an empty result is a real, renderable state (a valid show_id with zero
-   episodes), not an error. */
+   episodes), not an error.
+
+   Sorted newest-first by `release_date` (Joey's Q7 answer: "Newest first, no
+   filter for now"). `dateValue` treats a missing OR unparseable date as
+   epoch-0 so it always sorts last and the comparator is never NaN (an
+   unparseable-but-present string previously produced `Invalid Date - Invalid
+   Date` = NaN, which sorts indeterminately, not last as the old comment
+   claimed). */
+function dateValue(dateStr) {
+  const t = dateStr ? new Date(dateStr).getTime() : NaN;
+  return Number.isNaN(t) ? 0 : t;
+}
 function episodesForShow(show) {
   if (!show) return [];
   const pool = (state.discover?.items || []);
   const wanted = new Set([show.title, TITLE_ALIASES[show.title]].filter(Boolean));
-  return pool.filter(it => wanted.has(it.show));
+  return pool.filter(it => wanted.has(it.show))
+    .sort((a, b) => dateValue(b.release_date) - dateValue(a.release_date));
 }
 
 /* A show's artwork, with the discover pool as the fallback source.
@@ -1843,6 +1907,14 @@ function fullCatalogueRowToEpRowItem(show, ep) {
     duration_min: ep.duration_seconds ? Math.round(ep.duration_seconds / 60) : null,
     duration_sec: ep.duration_seconds ?? null,
     topics: [],
+    // A1.2/A1.1/A1.5: Stage 3b's endpoint carries the publisher's own
+    // publish date/description/chapters directly on each episode row —
+    // pass them straight through so renderEpisode/epRow/archivedRow can
+    // render them. `description` is deliberately the full text, kept
+    // separate from `hook` above (4a's curated one-liner stays as-is).
+    release_date: ep.published_at || null,
+    description: ep.description_text || null,
+    chapters: Array.isArray(ep.chapters) ? ep.chapters : null,
   });
 }
 
@@ -2349,20 +2421,30 @@ const searchCache = new Map();
    SearchEngine.interpretQuery/searchWithRelaxation/classifyResults exactly as
    buildPlaylist does and changes NOTHING about how they score or rank; it only
    chooses not to act on the result the way buildPlaylist does. */
+/* Returns `{ status, relaxed }` — not a bare status string. `relaxed` mirrors
+   buildPlaylist's own (#558 item 3): both functions read and write the SAME
+   `searchCache` entry for a given key, so if either one cached `{ results }`
+   without `relaxed`, whichever function ran second would read that entry back
+   and silently lose the signal regardless of what its own code did. Today's
+   one caller only compares `.status` to "empty", where `relaxed` is always
+   null (searchWithRelaxation only sets it when relaxation found results), so
+   this changes nothing visible yet — it exists so the cache the two functions
+   share never disagrees about what it holds. */
 function topicSearchStatus(query) {
   const ctx = searchCtx();
   const interp = SearchEngine.interpretQuery(query, ctx);
-  if (!interp.groups.length && !interp.filters.length) return "empty";
+  if (!interp.groups.length && !interp.filters.length) return { status: "empty", relaxed: null };
   const pool = poolFiltered();
   const cacheKey = JSON.stringify([query, familyMode(), state._interestsGen || 0]);
   let cached = searchCache.get(cacheKey);
   if (!cached) {
-    const { results } = SearchEngine.searchWithRelaxation(pool, interp, 2, state.itemTags, interestScore);
-    cached = { results };
+    const { results, relaxed } = SearchEngine.searchWithRelaxation(pool, interp, 2, state.itemTags, interestScore);
+    cached = { results, relaxed };
     if (searchCache.size >= SEARCH_CACHE_MAX) searchCache.clear();
     searchCache.set(cacheKey, cached);
   }
-  return SearchEngine.classifyResults(cached.results, { listenedShows: listenedShows() }).status;
+  const status = SearchEngine.classifyResults(cached.results, { listenedShows: listenedShows() }).status;
+  return { status, relaxed: cached.relaxed || null };
 }
 
 function buildPlaylist(query) {
@@ -2375,8 +2457,8 @@ function buildPlaylist(query) {
   const cacheKey = JSON.stringify([query, familyMode(), state._interestsGen || 0]);
   let cached = searchCache.get(cacheKey);
   if (!cached) {
-    const { results } = SearchEngine.searchWithRelaxation(pool, interp, 2, state.itemTags, interestScore);
-    cached = { results };
+    const { results, relaxed } = SearchEngine.searchWithRelaxation(pool, interp, 2, state.itemTags, interestScore);
+    cached = { results, relaxed };
     if (searchCache.size >= SEARCH_CACHE_MAX) searchCache.clear();
     searchCache.set(cacheKey, cached);
   }
@@ -2386,6 +2468,11 @@ function buildPlaylist(query) {
     return { status: "empty", suggestions: SearchEngine.suggestAdjacentTopics(interp, ctx) };
   }
 
+  /* `relaxed` was computed by searchWithRelaxation and thrown away here until
+     #558 item 3: "podcasts about fusion under 20 minutes" could silently come
+     back with hour-long episodes and nothing said. Stored on the playlist,
+     same shape as `sparse`, so renderPlaylistDetail can disclose it exactly
+     once, the honest-answer principle that already governs sparse/empty. */
   const playlist = withMirror({
     id: "q" + Date.now(),
     query: query.trim(),
@@ -2394,6 +2481,7 @@ function buildPlaylist(query) {
     created: new Date().toISOString(),
     last_played_at: null,
     sparse: status === "sparse",
+    relaxed: cached.relaxed || null,
   });
   /* A refused write is reported rather than assumed away (#276 review). lsSet has
      returned a boolean since #40 and this was discarding it, so a store at quota
@@ -2518,6 +2606,15 @@ function bindPlay(scope, { origin = null } = {}) {
       logEvent("play_started", { episode_id: id, topics: item.topics || [] });
       const history = pickedHistory();
       if (!history.includes(id)) lsSet("cp_history", history.concat(id).slice(-200));
+      /* Same "playlist-<id>" convention and the same regex bindPickLogging
+         already applies to a picked link's data-ctx — bindPlay is the in-app
+         play button, the PRIMARY control on every live playlist row, and it
+         was the only path that never stamped `last_played_at` (#558 item 2):
+         a playlist played entirely in-app kept `last_played_at: null`
+         forever, which is the sort key both Home's own-playlist rail and the
+         drawer use. */
+      const m = /^playlist-(.+)$/.exec(btn.dataset.ctx || "");
+      if (m) touchPlaylistPlayed(m[1]);
       trySyncEvents();
     });
   });
@@ -3183,7 +3280,7 @@ function renderPlaylistSearchResults(query, myToken) {
    handed to the existing #pl-form flow rather than a new creation path. */
 function createPlaylistCtaHtml(query) {
   if (!ui2On()) return "";
-  if (topicSearchStatus(query) !== "empty") return "";
+  if (topicSearchStatus(query).status !== "empty") return "";
   return `<div class="sh-create-cta">
     <button type="button" class="fy-btn fy-main" data-create-playlist="${esc(query)}">
       Create a playlist about \u201c${esc(query)}\u201d
@@ -3612,13 +3709,14 @@ function renderForays() {
    instead of a fake button or an external hop — never both, never neither
    silently. */
 function epRow(item, idx, ctx, nextIdx) {
-  const inApp = playBtn(item);
+  const inApp = playBtn(item, ctx);
   const unavailable = inApp ? "" : notPlayableNote();
+  const dateStr = fmtDate(item.release_date);
   return `<div class="ep-row">
     <span class="q-num ${idx === nextIdx ? "next" : ""}">${idx + 1}</span>
     <div class="info">
       <div class="t"><a class="ep-title-link" href="#/episode/${esc(encodeURIComponent(item.id))}">${esc(item.title)}</a>${explicitBadge(item.explicit)}</div>
-      <div class="s">${showNameLink(item.show)} · ${fmtDur(item.duration_min)}</div>
+      <div class="s">${showNameLink(item.show)} · ${fmtDur(item.duration_min)}${dateStr ? ` · ${esc(dateStr)}` : ""}</div>
     </div>
     ${inApp}${starBtn(item.id)}${upNextBtn(item.id)}${unavailable}
   </div>`;
@@ -3659,12 +3757,13 @@ function notPlayableNote() {
 function archivedRow(item, idx, ctx) {
   const named = !!item.title;
   const unavailable = named ? notPlayableNote() : "";
+  const dateStr = named ? fmtDate(item.release_date) : "";
   return `<div class="ep-row gone">
     <span class="q-num">${idx + 1}</span>
     <div class="info">
       <div class="t">${named ? `<a class="ep-title-link" href="#/episode/${esc(encodeURIComponent(item.id))}">${esc(item.title)}</a>${explicitBadge(item.explicit)}` : "Part no longer in the catalogue"}</div>
       <div class="s">${named
-        ? `${showNameLink(item.show)}${item.duration_min ? ` · ${fmtDur(item.duration_min)}` : ""} · not in 4a's catalogue right now`
+        ? `${showNameLink(item.show)}${item.duration_min ? ` · ${fmtDur(item.duration_min)}` : ""}${dateStr ? ` · ${esc(dateStr)}` : ""} · not in 4a's catalogue right now`
         : "Saved before 4a kept episode details"}</div>
     </div>
     ${named ? starBtn(item.id) : ""}${named ? upNextBtn(item.id) : ""}${unavailable}
@@ -3745,6 +3844,7 @@ function renderPlaylistDetail(id) {
         </div>
       </div>
       ${p.sparse ? `<p class="note">Only found a few on this — here's what we've got.</p>` : ""}
+      ${p.relaxed === "duration" ? `<p class="note">Couldn't match the length you asked for — here's what we found without it.</p>` : ""}
       ${partsNote(rows)}
       ${rows.map((r, i) => r.state === "live" ? epRow(r.item, i, ctx, nextIdx) : archivedRow(r.item, i, ctx)).join("")}
       ${(p.isSubject || p.isGenerated) ? "" : `<button class="danger" id="pl-remove">remove this playlist</button>`}
@@ -3796,6 +3896,36 @@ function moreFromShow(item) {
   </section>`;
 }
 
+/* A1.5: chapter markers, requirement-doc "these are two different use cases
+   and need two different solutions" (Joey's Q5 answer). Deliberately its own
+   <section>, never touching player/segment-strip.js's markup or classes —
+   a chapter is the PUBLISHER's own structure for one episode; a foray
+   segment is 4a's own cross-episode stitch. Conflating the two would make
+   an episode's own chapter list look like it was 4a's editorial work, which
+   it explicitly is not. Renders nothing (not an empty section) when there
+   are no chapters — matches every other absence-is-a-real-state section on
+   this page (moreFromShow, similarShowsSection, showForaysHtml). */
+function fmtChapterTime(seconds) {
+  const s = Math.max(0, Math.round(Number(seconds) || 0));
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  const mm = String(m).padStart(h ? 2 : 1, "0");
+  const ss = String(sec).padStart(2, "0");
+  return h ? `${h}:${String(m).padStart(2, "0")}:${ss}` : `${mm}:${ss}`;
+}
+
+function episodeChaptersHtml(item) {
+  const chapters = Array.isArray(item.chapters) ? item.chapters : [];
+  if (!chapters.length) return "";
+  return `<section class="ep-chapters">
+    <h3>Chapters</h3>
+    <ol class="ep-chapters-list">
+      ${chapters.map(c => `<li><span class="ep-chapter-time">${esc(fmtChapterTime(c.start_time_seconds))}</span><span class="ep-chapter-title">${esc(c.title || "")}</span></li>`).join("")}
+    </ol>
+  </section>`;
+}
+
 function renderEpisode(id) {
   setBodyClass("view-page");
   const item = resolveEpisode(id);
@@ -3809,18 +3939,21 @@ function renderEpisode(id) {
   if (state.session && state.session.episodes) {
     try { fullPool(); } catch (_) { /* catalogue not really there yet */ }
   }
+  const dateStr = fmtDate(item.release_date);
   $("#view").innerHTML = `
     <div class="page">
       <div class="page-head">
         <a class="back" href="#/">‹</a>
         <div>
           <h2 class="fp-s-title">${esc(item.title)}${explicitBadge(item.explicit)}</h2>
-          <p class="fp-s-show">${item.show ? showNameLink(item.show) : ""}${item.duration_min ? ` · ${fmtDur(item.duration_min)}` : ""}</p>
+          <p class="fp-s-show">${item.show ? showNameLink(item.show) : ""}${item.duration_min ? ` · ${fmtDur(item.duration_min)}` : ""}${dateStr ? ` · ${esc(dateStr)}` : ""}</p>
         </div>
       </div>
       ${item.artwork_url ? `<img class="ep-art" src="${esc(safeUrl(item.artwork_url))}" alt="">` : ""}
       ${item.hook ? `<p class="fp-s-why">${esc(item.hook)}</p>` : ""}
       <div class="ep-actions">${item.audio_url ? playBtn(item) : notPlayableNote()}${starBtn(item.id)}${upNextBtn(item.id)}</div>
+      ${item.description ? `<section class="ep-description"><h3>Episode description</h3><p class="ep-description-text">${esc(item.description)}</p></section>` : ""}
+      ${episodeChaptersHtml(item)}
       ${moreFromShow(item)}
     </div>`;
   bindPickLogging($("#view"));
@@ -5675,8 +5808,13 @@ function sizeProgressBars(scope) {
 
 function renderDrawer() {
   ensureInterestsDrawerLink();
+  /* `|| ""` on both sides, same guard playlistsForYouHtml already carries: a
+     playlist() backfills `created` on read, but this must not depend on that —
+     a record that somehow still carries neither field must not throw
+     `localeCompare` out of undefined and blank the drawer on every navigation
+     (#558 item 1). */
   const recent = [...playlists()]
-    .sort((a, b) => (b.last_played_at || b.created).localeCompare(a.last_played_at || a.created))
+    .sort((a, b) => (b.last_played_at || b.created || "").localeCompare(a.last_played_at || a.created || ""))
     .slice(0, 5);
   $("#drawer-playlists").innerHTML = recent.map(p =>
     `<a class="drawer-item" href="#/playlist/${esc(p.id)}">${esc(p.title)}</a>`).join("")

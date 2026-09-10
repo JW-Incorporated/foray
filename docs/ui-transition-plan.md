@@ -145,6 +145,37 @@ Read first: `CLAUDE.md`; this file; `docs/ux/README.md`; issues #102, #123,
   rather than deleted outright, so they remain recoverable.
 - **Governance:** `docs/DECISIONS.md` → `founder-approved`.
 
+#### U-12 · The drawer is the top-most chrome: above Now Playing, the sheet and the tab bar — **S** — *added 2026-09-09 from founder feedback F17*
+- **Ask:** the expanded Now Playing (`#foray-player`, z 60) covers the left menu
+  (`#drawer-overlay` 30 / `#drawer` 31). Raise the drawer pair above every player
+  surface and the reason sheet (`.fy-sheet` 70) — one `--z-drawer` token, applied to
+  overlay and panel, documented in the same comment block that already explains
+  19/20/30/31/55/60/70 — so opening the menu always works whatever is open. Nothing
+  else restyles.
+- **Acceptance:** a Playwright case opens Now Playing expanded, taps the menu button,
+  and asserts the drawer's first item is hit-testable at its centre (`elementFromPoint`),
+  on both viewports the suite already uses.
+- **Governance:** `styles.css`/`test/` auto-merge. **Fix dispatched by the founder's
+  session 2026-09-09; Hermes need not pick this up unless that PR is closed.**
+
+#### U-13 · Closing Now Playing collapses to the ribbon; only Stop stops — **S** — *added 2026-09-09 from founder feedback F18*
+- **Ask:** the expanded sheet's ✕ is `stopAndClose()` ("Stop and close player"): it
+  stops playback AND removes the mini bar, so the founder closed the screen to use the
+  app and lost the way back to what was playing. Rule: **closing never stops.** The
+  sheet's close control collapses to the mini bar (the existing `fp-collapse` path);
+  the mini bar persists above the tab bar while anything is loaded (that is what
+  z 60 over 55 is for); Stop becomes an explicit, separately labelled control in the
+  expanded sheet's second row, with the reducer's stop effect unchanged. Ride-along:
+  N1 — every scrollable page reserves `--tab-bar-h` + the collapsed bar's height +
+  `env(safe-area-inset-bottom)` only while `body.fp-open`, so nothing hides under the
+  ribbon and no dead gap appears when it is gone.
+- **Acceptance:** Playwright: play, expand, tap close → audio still playing, mini bar
+  visible above the tab bar, tab navigation works; tap Stop → bar gone, element paused.
+  The old ✕ label no longer exists in the DOM.
+- **Governance:** `mobile/www/player/client.js`, `styles.css`, tests auto-merge.
+  **Fix dispatched by the founder's session 2026-09-09; Hermes need not pick this up
+  unless that PR is closed.**
+
 ## 4. Gates
 
 | # | Who | What | Blocks |

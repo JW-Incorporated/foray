@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-31T13:45:18.608Z",
+  "built_at": "2026-09-09T08:19:28.364Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-03-03cc71da",
+    "last_batch_id": "fresh-2026-09-09-0ba8c8be",
     "last_batch_tier": 1,
     "reconciled_shards": {
       "produced_by": "tools/classify/reconcile-shards.mjs",
@@ -84,7 +84,8 @@
       "method": "deterministic genre map (base layer; higher-precedence overlays enriched in place, never replaced)",
       "input": "data/catalog-breadth.json",
       "built_at": "2026-08-17T07:57:38.968Z"
-    }
+    },
+    "transcript_labels": "descriptive cost label, never an eligibility test — see tools/classify/labels.mjs"
   },
   "entries": {
     "73329284": {
@@ -496936,29 +496937,39 @@
     },
     "1835576476": {
       "topics": [
+        "comedy/stand-up",
         "paranormal"
       ],
-      "confidence": "high",
+      "confidence": "medium",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
+          "node": "comedy/stand-up",
+          "confidence": 0.65
+        },
+        {
           "node": "paranormal",
-          "confidence": 0.9
+          "confidence": 0.5
         }
       ],
       "needs_review": false,
-      "rationale": "Japanese podcast featuring urban legends, paranormal stories, and mysterious local incidents.",
+      "rationale": "Japanese comedy podcast featuring supernatural stories and mysterious tales with comedic framing.",
       "display_title": "西田どらやきの怪研部",
-      "blurb": "Japanese urban legend and paranormal stories featuring real-world mysteries and supernatural tales.",
+      "blurb": "Supernatural comedy series featuring spooky tales and mysterious incidents with comedic storytelling.",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
       "tier": 1,
-      "batch_id": "fresh-2026-08-12-a0c52608",
-      "classified_at": "2026-08-12T08:37:13.094Z",
-      "superseded_topics": [
-        "comedy/stand-up"
-      ],
-      "superseded_source": "genre-map"
+      "batch_id": "fresh-2026-09-09-0ba8c8be",
+      "classified_at": "2026-09-09T08:19:28.364Z"
     },
     "1835608513": {
       "topics": [
@@ -498502,30 +498513,44 @@
     },
     "1837305827": {
       "topics": [
-        "comedy"
+        "business/startups",
+        "health/mental"
       ],
-      "confidence": "medium",
+      "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
-          "node": "comedy",
-          "confidence": 0.5
+          "node": "business/startups",
+          "confidence": 0.75
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.6
         }
       ],
-      "needs_review": true,
-      "rationale": "Podcast program content; insufficient description detail.",
+      "needs_review": false,
+      "rationale": "Podcast about balancing entrepreneurship and personal wellness; founders and health-conscious discussions.",
       "display_title": "She's In Progress",
-      "blurb": "Podcast program by Ms. Crystal.",
+      "blurb": "Real conversations on balancing personal growth and professional ambition without sacrificing wellness.",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 2,
+        "episodes_with_timed_transcript": 2,
+        "transcript_tags": 8,
+        "transcript_types": {
+          "text/html": 2,
+          "application/json": 2,
+          "application/x-subrip": 2,
+          "text/vtt": 2
+        }
+      },
       "tier": 1,
-      "batch_id": "fresh-2026-08-13-4215d701",
-      "classified_at": "2026-08-13T00:57:23.864Z",
-      "superseded_topics": [
-        "business/startups",
-        "business/founders"
-      ],
-      "superseded_source": "genre-map"
+      "batch_id": "fresh-2026-09-09-0ba8c8be",
+      "classified_at": "2026-09-09T08:19:28.364Z"
     },
     "1837319709": {
       "topics": [
@@ -498966,30 +498991,34 @@
     },
     "1837767054": {
       "topics": [
-        "relationships",
-        "comedy/casual-hangs"
+        "relationships"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
           "node": "relationships",
-          "confidence": 0.91
-        },
-        {
-          "node": "comedy/casual-hangs",
-          "confidence": 0.82
+          "confidence": 0.8
         }
       ],
       "needs_review": false,
-      "rationale": "NASCAR life friends explore adulthood, dating, and shared chaos with unfiltered humor.",
+      "rationale": "Two close friends sharing unfiltered perspectives on dating, relationships, and life after growing up in NASCAR families.",
       "display_title": "Rare Breeds",
-      "blurb": "Best friends Karsyn and Caitlin share stories of growing up around NASCAR with raw honesty.",
+      "blurb": "Besties share raw, hilarious takes on relationships, dating mishaps, and navigating adulthood together.",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
       "tier": 1,
-      "batch_id": "fresh-2026-08-13-80a98d41",
-      "classified_at": "2026-08-13T08:12:31.355Z"
+      "batch_id": "fresh-2026-09-09-0ba8c8be",
+      "classified_at": "2026-09-09T08:19:28.364Z"
     },
     "1837770450": {
       "topics": [
@@ -499001,22 +499030,33 @@
       "topic_confidences": [
         {
           "node": "aviation",
-          "confidence": 0.94
+          "confidence": 0.85
         },
         {
           "node": "economics/markets",
-          "confidence": 0.76
+          "confidence": 0.65
         }
       ],
       "needs_review": false,
-      "rationale": "Aircraft valuation expert covers aviation marketplace trends and their impact on aircraft pricing.",
+      "rationale": "Aircraft valuation and aviation market analysis from industry leader VREF; transaction data and trends.",
       "display_title": "VREF | The Truth About the Aviation Market",
-      "blurb": "VREF's aviation experts analyze aircraft valuations, market trends, and the business of flying.",
+      "blurb": "Expert analysis of aircraft valuations, market trends, and transaction data from aviation's valuation authority.",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 8,
+        "transcript_types": {
+          "text/plain": 8
+        }
+      },
       "tier": 1,
-      "batch_id": "fresh-2026-08-13-80a98d41",
-      "classified_at": "2026-08-13T08:12:31.355Z"
+      "batch_id": "fresh-2026-09-09-0ba8c8be",
+      "classified_at": "2026-09-09T08:19:28.364Z"
     },
     "1837783062": {
       "topics": [
@@ -499278,29 +499318,36 @@
     },
     "1838054087": {
       "topics": [
-        "comedy"
+        "business/management"
       ],
-      "confidence": "medium",
+      "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
-          "node": "comedy",
-          "confidence": 0.5
+          "node": "business/management",
+          "confidence": 0.8
         }
       ],
-      "needs_review": true,
-      "rationale": "Podcast program content; insufficient description detail.",
+      "needs_review": false,
+      "rationale": "Leadership podcast examining how ambitious leaders can balance strength with compassion and authenticity.",
       "display_title": "Badass Softie",
-      "blurb": "Podcast program by Ms. Crystal.",
+      "blurb": "Leadership conversations exploring how to lead with both ambition and compassion in modern workplaces.",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 6,
+        "episodes_with_timed_transcript": 6,
+        "transcript_tags": 6,
+        "transcript_types": {
+          "application/srt": 6
+        }
+      },
       "tier": 1,
-      "batch_id": "fresh-2026-08-13-4215d701",
-      "classified_at": "2026-08-13T00:57:23.864Z",
-      "superseded_topics": [
-        "business/management"
-      ],
-      "superseded_source": "genre-map"
+      "batch_id": "fresh-2026-09-09-0ba8c8be",
+      "classified_at": "2026-09-09T08:19:28.364Z"
     },
     "1838151487": {
       "topics": [
@@ -500440,25 +500487,45 @@
     },
     "1839337073": {
       "topics": [
-        "sports/volleyball"
+        "sports/volleyball",
+        "psychology/decision-making"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
           "node": "sports/volleyball",
-          "confidence": 0.95
+          "confidence": 0.85
+        },
+        {
+          "node": "psychology/decision-making",
+          "confidence": 0.6
         }
       ],
       "needs_review": false,
-      "rationale": "Volleyball coaching show focused on mental resilience, growth mindset, and athletic psychology for teen players.",
+      "rationale": "Volleyball coaches teach teen athletes mental resilience, growth mindset, and competitive psychology.",
       "display_title": "Unstoppable Athlete",
-      "blurb": "Coaches guide teen volleyball players through mental resilience, confidence-building, and mastering sports psychology.",
+      "blurb": "Coaches guide teen athletes through mental resilience, confidence-building, and competitive psychology.",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 1,
+        "episodes_with_timed_transcript": 1,
+        "transcript_tags": 5,
+        "transcript_types": {
+          "text/vtt": 1,
+          "application/x-subrip": 1,
+          "application/json": 1,
+          "text/plain": 1,
+          "text/html": 1
+        }
+      },
       "tier": 1,
-      "batch_id": "fresh-2026-08-13-c2038d57",
-      "classified_at": "2026-08-13T08:57:36.498Z"
+      "batch_id": "fresh-2026-09-09-0ba8c8be",
+      "classified_at": "2026-09-09T08:19:28.364Z"
     },
     "1839388973": {
       "topics": [
@@ -500491,21 +500558,29 @@
       "topic_confidences": [
         {
           "node": "tv-film/interviews",
-          "confidence": 0.9
+          "confidence": 0.85
         }
       ],
-      "needs_review": true,
-      "rationale": "Cinephile podcast exploring films through in-depth discussions with film writers, directors, and critics.",
-      "display_title": null,
-      "blurb": null,
-      "display_copy_ok": false,
-      "display_copy_notes": [
-        "blurb: banned /\\bexplores?\\b/i"
-      ],
+      "needs_review": false,
+      "rationale": "Cinephiles discuss classic and contemporary films with filmmakers and film critics through deep analysis.",
+      "display_title": "Afterimages",
+      "blurb": "Filmmakers and critics analyze moving images and cinema through intimate, thoughtful conversations.",
+      "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 8,
+        "transcript_types": {
+          "text/vtt": 8
+        }
+      },
       "tier": 1,
-      "batch_id": "fresh-2026-08-13-c2038d57",
-      "classified_at": "2026-08-13T08:57:53.547Z"
+      "batch_id": "fresh-2026-09-09-0ba8c8be",
+      "classified_at": "2026-09-09T08:19:28.364Z"
     },
     "1839425706": {
       "topics": [
@@ -500570,18 +500645,27 @@
       "topic_confidences": [
         {
           "node": "sports/football",
-          "confidence": 0.95
+          "confidence": 0.8
         }
       ],
       "needs_review": false,
-      "rationale": "NFL and college football analysis with expert breakdowns, draft coverage, and team news.",
+      "rationale": "NFL and college football breakdowns by analysts Bryan Broaddus and Voch Lombardi with detailed roster analysis.",
       "display_title": "Crown Global Media",
-      "blurb": "In-depth NFL and college football analysis with draft coverage and team breakdowns.",
+      "blurb": "In-depth NFL and college football analysis with breakdowns of rosters, plays, and strategy.",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
       "tier": 1,
-      "batch_id": "fresh-2026-08-12-a0c52608",
-      "classified_at": "2026-08-12T08:37:13.094Z"
+      "batch_id": "fresh-2026-09-09-0ba8c8be",
+      "classified_at": "2026-09-09T08:19:28.364Z"
     },
     "1839542719": {
       "topics": [
@@ -500808,18 +500892,27 @@
       "topic_confidences": [
         {
           "node": "culture/books",
-          "confidence": 0.95
+          "confidence": 0.75
         }
       ],
       "needs_review": false,
-      "rationale": "Free full-length audiobooks of classic literature from public domain sources with professional narration.",
+      "rationale": "Complete classic audiobooks including novels, philosophy, and literature from public domain masters.",
       "display_title": "Classic Audiobooks Collection",
-      "blurb": "Complete public domain classics read aloud—from Austen to Stevenson—ideal for study, commutes, or relaxation.",
+      "blurb": "Professionally narrated classic literature from renowned authors in immersive, full-length audiobook format.",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
       "tier": 1,
-      "batch_id": "fresh-2026-08-13-c2038d57",
-      "classified_at": "2026-08-13T08:57:36.498Z"
+      "batch_id": "fresh-2026-09-09-0ba8c8be",
+      "classified_at": "2026-09-09T08:19:28.364Z"
     },
     "1839825654": {
       "topics": [
@@ -500858,26 +500951,33 @@
       "topic_confidences": [
         {
           "node": "health/mental",
-          "confidence": 0.93
+          "confidence": 0.85
         },
         {
           "node": "psychology",
-          "confidence": 0.85
+          "confidence": 0.75
         }
       ],
-      "needs_review": true,
-      "rationale": "Women with late-diagnosed ADHD share stories, process emotions, and build community.",
-      "display_title": null,
-      "blurb": null,
-      "display_copy_ok": false,
-      "display_copy_notes": [
-        "display_title: 10w > 8",
-        "blurb: banned /\\bexplores?\\b/i"
-      ],
+      "needs_review": false,
+      "rationale": "Late-diagnosed ADHD in women; processing anger and finding community through shared stories and tools.",
+      "display_title": "Angry On The Inside",
+      "blurb": "Women share authentic stories of late ADHD diagnosis and navigating life with invisible neurodivergence.",
+      "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 7,
+        "episodes_with_timed_transcript": 7,
+        "transcript_tags": 7,
+        "transcript_types": {
+          "application/srt": 7
+        }
+      },
       "tier": 1,
-      "batch_id": "fresh-2026-08-13-80a98d41",
-      "classified_at": "2026-08-13T08:12:31.355Z"
+      "batch_id": "fresh-2026-09-09-0ba8c8be",
+      "classified_at": "2026-09-09T08:19:28.364Z"
     },
     "1839861250": {
       "topics": [
@@ -500966,23 +501066,32 @@
       "topics": [
         "culture/books"
       ],
-      "confidence": "high",
+      "confidence": "medium",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
           "node": "culture/books",
-          "confidence": 0.85
+          "confidence": 0.7
         }
       ],
       "needs_review": false,
-      "rationale": "Book summary podcast discussing Steven Bartlett's business and self-improvement book.",
-      "display_title": "The Diary of a CEO: The 33 Laws",
-      "blurb": "Book summary exploring business and life principles from Steven Bartlett's bestselling work.",
+      "rationale": "Audiobook club discussing Steven Bartlett's business and life principles book with hosts.",
+      "display_title": "The Diary of a CEO: Book Summary",
+      "blurb": "Book club exploring Steven Bartlett's 33 Laws of Business and Life through audiobook discussions.",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 1,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
       "tier": 1,
-      "batch_id": "fresh-2026-08-14-ace26e48",
-      "classified_at": "2026-08-14T00:33:00.751Z"
+      "batch_id": "fresh-2026-09-09-0ba8c8be",
+      "classified_at": "2026-09-09T08:19:28.364Z"
     },
     "1839995280": {
       "topics": [
@@ -501013,29 +501122,34 @@
     },
     "1840006724": {
       "topics": [
-        "sports/tennis",
-        "sports"
+        "sports/tennis"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
           "node": "sports/tennis",
-          "confidence": 0.95
-        },
-        {
-          "node": "sports",
           "confidence": 0.85
         }
       ],
       "needs_review": false,
-      "rationale": "In-depth tennis match analysis, tournament previews, and player commentary by Tennis Channel broadcaster.",
+      "rationale": "Tennis commentary with detailed match breakdowns, draw previews, and analysis by Tennis Channel broadcaster.",
       "display_title": "Monday Match Analysis",
-      "blurb": "Tennis Channel broadcaster Gill Gross provides detailed match analysis, tournament previews, and player insights.",
+      "blurb": "In-depth tennis analysis covering matches, player development, and on-court strategy.",
       "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
       "tier": 1,
-      "batch_id": "fresh-2026-08-17-f05973c4",
-      "classified_at": "2026-08-17T00:52:51.348Z"
+      "batch_id": "fresh-2026-09-09-0ba8c8be",
+      "classified_at": "2026-09-09T08:19:28.364Z"
     },
     "1840026063": {
       "topics": [
@@ -501270,18 +501384,23 @@
     },
     "1840250491": {
       "topics": [
-        "religion/judaism"
+        "religion/judaism",
+        "personal-journals"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
           "node": "religion/judaism",
-          "confidence": 0.9
+          "confidence": 0.8
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.5
         }
       ],
       "needs_review": true,
-      "rationale": "Rabbi and journalist discuss Jewish tradition, values, and contemporary issues through faith lens.",
+      "rationale": "Rabbi and journalist explore Jewish traditions, faith, and contemporary life through weekly conversations.",
       "display_title": null,
       "blurb": null,
       "display_copy_ok": false,
@@ -501289,9 +501408,18 @@
         "blurb: banned /\\bexplores?\\b/i"
       ],
       "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
       "tier": 1,
-      "batch_id": "fresh-2026-08-14-ace26e48",
-      "classified_at": "2026-08-14T00:33:00.751Z"
+      "batch_id": "fresh-2026-09-09-0ba8c8be",
+      "classified_at": "2026-09-09T08:19:28.364Z"
     },
     "1840450079": {
       "topics": [
@@ -501517,18 +501645,27 @@
       "topic_confidences": [
         {
           "node": "kids-family/stories",
-          "confidence": 0.95
+          "confidence": 0.85
         }
       ],
       "needs_review": false,
-      "rationale": "Nickelodeon music and adventure podcast for families with interactive play-alongs and sing-along songs.",
+      "rationale": "Interactive music and adventure stories for kids featuring Nickelodeon characters and DJ singing.",
       "display_title": "Nickelodeon's Ride & Sing",
-      "blurb": "Kids and families sing along with Nickelodeon characters on musical adventures with games and interactive play.",
+      "blurb": "Music and adventure tales for kids with interactive sing-alongs featuring Nickelodeon characters.",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
       "tier": 1,
-      "batch_id": "fresh-2026-08-13-c2038d57",
-      "classified_at": "2026-08-13T08:57:36.498Z"
+      "batch_id": "fresh-2026-09-09-0ba8c8be",
+      "classified_at": "2026-09-09T08:19:28.364Z"
     },
     "1840851784": {
       "topics": [
@@ -501689,23 +501826,32 @@
       "topics": [
         "culture/books"
       ],
-      "confidence": "high",
+      "confidence": "medium",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
           "node": "culture/books",
-          "confidence": 0.85
+          "confidence": 0.65
         }
       ],
       "needs_review": false,
-      "rationale": "Book summary podcast for Ramit Sethi's personal finance bestseller on earning, saving, and guilt-free spending.",
-      "display_title": "I Will Teach You to Be Rich Summary",
-      "blurb": "Summary of Ramit Sethi's personal finance guide covering smart accounts, investments, and money management.",
+      "rationale": "Book summary of Ramit Sethi's personal finance guide; strategies for earning, saving, and wealth.",
+      "display_title": "I Will Teach You to Be Rich",
+      "blurb": "Book summary exploring practical personal finance strategies and wealth-building approaches.",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 1,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
       "tier": 1,
-      "batch_id": "fresh-2026-08-13-c2038d57",
-      "classified_at": "2026-08-13T08:57:36.498Z"
+      "batch_id": "fresh-2026-09-09-0ba8c8be",
+      "classified_at": "2026-09-09T08:19:28.364Z"
     },
     "1840969592": {
       "topics": [
@@ -501809,34 +501955,34 @@
     },
     "1840993910": {
       "topics": [
-        "food",
-        "food/cooking-science",
-        "culture"
+        "food"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
           "node": "food",
-          "confidence": 0.9
-        },
-        {
-          "node": "food/cooking-science",
-          "confidence": 0.7
-        },
-        {
-          "node": "culture",
-          "confidence": 0.6
+          "confidence": 0.85
         }
       ],
       "needs_review": false,
-      "rationale": "Cooking show with celebrity chefs providing recipes, food trends, and kitchen banter.",
+      "rationale": "Celebrity chefs (Symon, Hall, Kelly) discuss cooking trends, recipes, and food culture with unfiltered banter.",
       "display_title": "Chewed UP",
-      "blurb": "Celebrity chefs Clinton Kelly, Carla Hall, and Michael Symon share recipes, cooking tips, and unscripted kitchen conversations.",
+      "blurb": "Celebrity chefs serve up recipes, food trends, and kitchen wisdom with unscripted banter.",
       "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
       "tier": 1,
-      "batch_id": "fresh-2026-08-17-f05973c4",
-      "classified_at": "2026-08-17T00:52:51.348Z"
+      "batch_id": "fresh-2026-09-09-0ba8c8be",
+      "classified_at": "2026-09-09T08:19:28.364Z"
     },
     "1841258623": {
       "topics": [
@@ -501869,30 +502015,34 @@
     },
     "1841261674": {
       "topics": [
-        "music",
-        "philosophy"
+        "music"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
           "node": "music",
-          "confidence": 0.85
-        },
-        {
-          "node": "philosophy",
-          "confidence": 0.7
+          "confidence": 0.8
         }
       ],
       "needs_review": false,
-      "rationale": "Music and contemplation podcast exploring belonging, harmony, and community through song.",
+      "rationale": "Music and conversation focused on harmony, belonging, and reconciliation across differences.",
       "display_title": "A Song For All of Us",
-      "blurb": "Music and conversations exploring belonging, healing divisions, and collective harmony.",
+      "blurb": "Music conversations exploring belonging, harmony, and connection across different worldviews.",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
       "tier": 1,
-      "batch_id": "fresh-2026-08-12-a0c52608",
-      "classified_at": "2026-08-12T08:37:13.094Z"
+      "batch_id": "fresh-2026-09-09-0ba8c8be",
+      "classified_at": "2026-09-09T08:19:28.364Z"
     },
     "1841272232": {
       "topics": [
@@ -502019,32 +502169,39 @@
     },
     "1841489755": {
       "topics": [
-        "sports"
+        "sports/soccer"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
-          "node": "sports",
-          "confidence": 0.95
+          "node": "sports/soccer",
+          "confidence": 0.85
         }
       ],
-      "needs_review": true,
-      "rationale": "International football journalists discuss World Cup, global soccer, and football culture.",
-      "display_title": null,
-      "blurb": null,
-      "display_copy_ok": false,
-      "display_copy_notes": [
-        "blurb: banned /\\bexplores?\\b/i"
-      ],
+      "needs_review": false,
+      "rationale": "Global football analysis spanning international leagues, culture, and journalism from multiple perspectives.",
+      "display_title": "World Cup Football etc",
+      "blurb": "International football journalism covering leagues, culture, and the global game with expert guests.",
+      "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 32,
+        "transcript_types": {
+          "text/html": 8,
+          "application/json": 8,
+          "application/x-subrip": 8,
+          "text/vtt": 8
+        }
+      },
       "tier": 1,
-      "batch_id": "fresh-2026-08-14-ace26e48",
-      "classified_at": "2026-08-14T00:33:00.751Z",
-      "superseded_topics": [
-        "sports/soccer"
-      ],
-      "superseded_source": "genre-map"
+      "batch_id": "fresh-2026-09-09-0ba8c8be",
+      "classified_at": "2026-09-09T08:19:28.364Z"
     },
     "1841493344": {
       "topics": [
@@ -502190,30 +502347,34 @@
     },
     "1841623452": {
       "topics": [
-        "religion/spirituality",
-        "psychology"
+        "religion/spirituality"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
           "node": "religion/spirituality",
-          "confidence": 0.88
-        },
-        {
-          "node": "psychology",
-          "confidence": 0.72
+          "confidence": 0.75
         }
       ],
       "needs_review": false,
-      "rationale": "Persian podcast exploring personal fears and how they shape lives through vulnerable storytelling.",
+      "rationale": "Persian-language podcast about fears and anxieties; guests share personal stories and coping.",
       "display_title": "زیرزمین",
-      "blurb": "Hosts discuss personal fears—motherhood, isolation, loss—connecting through shared human experience.",
+      "blurb": "Intimate conversations about fears and anxieties, helping listeners find community and understanding.",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 7,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
       "tier": 1,
-      "batch_id": "fresh-2026-08-13-80a98d41",
-      "classified_at": "2026-08-13T08:12:31.355Z"
+      "batch_id": "fresh-2026-09-09-0ba8c8be",
+      "classified_at": "2026-09-09T08:19:28.364Z"
     },
     "1841634925": {
       "topics": [
@@ -503020,29 +503181,34 @@
     },
     "1842968648": {
       "topics": [
-        "true-crime",
-        "fiction"
+        "true-crime"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
           "node": "true-crime",
-          "confidence": 0.9
-        },
-        {
-          "node": "fiction",
-          "confidence": 0.7
+          "confidence": 0.85
         }
       ],
       "needs_review": false,
-      "rationale": "True crime limited series investigating a parasocial relationship that went wrong with mystery elements.",
-      "display_title": "Beth's Dead",
-      "blurb": "Monica Padman investigates a mysterious story with podcasters Elizabeth Laime and Andy Rosen from their shuttered podcast empire.",
+      "rationale": "Mystery series exploring parasocial relationships gone wrong and an unsolved mystery investigation.",
+      "display_title": "BETH'S DEAD",
+      "blurb": "Mystery series investigating what happens when parasocial relationships with podcasters go terribly wrong.",
       "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
       "tier": 1,
-      "batch_id": "fresh-2026-08-17-f05973c4",
-      "classified_at": "2026-08-17T00:52:51.348Z"
+      "batch_id": "fresh-2026-09-09-0ba8c8be",
+      "classified_at": "2026-09-09T08:19:28.364Z"
     },
     "1843004660": {
       "topics": [
@@ -503555,57 +503721,65 @@
     },
     "1843429519": {
       "topics": [
-        "news/commentary",
-        "comedy"
+        "news/commentary"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
           "node": "news/commentary",
-          "confidence": 0.85
-        },
-        {
-          "node": "comedy",
-          "confidence": 0.75
+          "confidence": 0.8
         }
       ],
       "needs_review": false,
-      "rationale": "News-focused comedy podcast exploring current events through humor and casual discussion.",
+      "rationale": "News comedy podcast where hosts use humor to make sense of world events and politics.",
       "display_title": "Crashing Out",
-      "blurb": "Philip DeFranco and Alex Pearlman tackle current events through comedy and candid conversation.",
+      "blurb": "News comedy where hosts react to world events and politics with sharp humor and analysis.",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
       "tier": 1,
-      "batch_id": "fresh-2026-08-14-b50074b6",
-      "classified_at": "2026-08-14T08:42:35.448Z"
+      "batch_id": "fresh-2026-09-09-0ba8c8be",
+      "classified_at": "2026-09-09T08:19:28.364Z"
     },
     "1843434160": {
       "topics": [
-        "kids-family/stories",
-        "fiction"
+        "kids-family/stories"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
           "node": "kids-family/stories",
-          "confidence": 0.95
-        },
-        {
-          "node": "fiction",
-          "confidence": 0.75
+          "confidence": 0.85
         }
       ],
       "needs_review": false,
-      "rationale": "Children's mystery audio drama following an 11-year-old detective solving everyday mysteries.",
-      "display_title": "Patrick Picklebottom Mysteries",
-      "blurb": "An 11-year-old detective and friends solve quirky mysteries in their neighborhood.",
+      "rationale": "Audio mystery series for kids featuring young detective solving everyday puzzles and cases.",
+      "display_title": "Patrick Picklebottom Everyday Mysteries",
+      "blurb": "Young detective solves everyday mysteries in an engaging audio series for curious kids.",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
       "tier": 1,
-      "batch_id": "fresh-2026-08-12-a0c52608",
-      "classified_at": "2026-08-12T08:37:13.094Z"
+      "batch_id": "fresh-2026-09-09-0ba8c8be",
+      "classified_at": "2026-09-09T08:19:28.364Z"
     },
     "1843446105": {
       "topics": [
@@ -503711,30 +503885,38 @@
     },
     "1843613644": {
       "topics": [
-        "culture/books",
-        "education/self-improvement"
+        "culture/books"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
           "node": "culture/books",
-          "confidence": 0.95
-        },
-        {
-          "node": "education/self-improvement",
-          "confidence": 0.45
+          "confidence": 0.8
         }
       ],
       "needs_review": false,
-      "rationale": "Book club podcast featuring interviews with authors and in-depth discussions of various audiobook titles, genres, and storytelling.",
+      "rationale": "Audible and iHeart audiobook club hosted by Kal Penn discussing contemporary and classic audiobooks.",
       "display_title": "Earsay: The Audible and iHeart Audiobook Club",
-      "blurb": "A book club podcast hosted by Kal Penn featuring conversations with authors, comedians, and guests about beloved audiobooks across thrillers, comedy, fantasy, and exclusive Audible Originals.",
+      "blurb": "Audiobook club discussions with celebrities exploring contemporary and classic works.",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 24,
+        "transcript_types": {
+          "application/srt": 8,
+          "text/vtt": 8,
+          "text/plain": 8
+        }
+      },
       "tier": 1,
-      "batch_id": "fresh-2026-08-12-8a458c44",
-      "classified_at": "2026-08-12T16:38:55.637Z"
+      "batch_id": "fresh-2026-09-09-0ba8c8be",
+      "classified_at": "2026-09-09T08:19:28.364Z"
     },
     "1843649030": {
       "topics": [
@@ -503886,34 +504068,44 @@
     },
     "1843919034": {
       "topics": [
-        "medicine/biology",
-        "science"
+        "science",
+        "medicine/biology"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
-          "node": "medicine/biology",
-          "confidence": 0.9
+          "node": "science",
+          "confidence": 0.8
         },
         {
-          "node": "science",
-          "confidence": 0.88
+          "node": "medicine/biology",
+          "confidence": 0.7
         }
       ],
       "needs_review": false,
-      "rationale": "Bioprocessing experts discuss manufacturing, cell therapy, analytics, and industry challenges.",
+      "rationale": "Bioprocessing industry experts discuss upstream/downstream processing, analytics, and biomanufacturing.",
       "display_title": "Bioprocessing Unfiltered",
-      "blurb": "Industry experts discuss bioprocessing upstream/downstream, analytics, and biomanufacturing strategy.",
+      "blurb": "Industry experts discuss bioprocessing challenges, AI integration, and manufacturing optimization.",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 32,
+        "transcript_types": {
+          "text/html": 8,
+          "application/json": 8,
+          "application/x-subrip": 8,
+          "text/vtt": 8
+        }
+      },
       "tier": 1,
-      "batch_id": "fresh-2026-08-13-80a98d41",
-      "classified_at": "2026-08-13T08:12:31.355Z",
-      "superseded_topics": [
-        "nature"
-      ],
-      "superseded_source": "genre-map"
+      "batch_id": "fresh-2026-09-09-0ba8c8be",
+      "classified_at": "2026-09-09T08:19:28.364Z"
     },
     "1843955262": {
       "topics": [
@@ -504620,30 +504812,34 @@
     },
     "1844709049": {
       "topics": [
-        "health/fitness",
-        "medicine/neuroscience"
+        "health/fitness"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
           "node": "health/fitness",
-          "confidence": 0.9
-        },
-        {
-          "node": "medicine/neuroscience",
-          "confidence": 0.6
+          "confidence": 0.8
         }
       ],
       "needs_review": false,
-      "rationale": "Medical expertise on chronic back pain recovery, exercise prescription, core stability.",
-      "display_title": "The Back Pain Podcast",
-      "blurb": "Expert strategies to reverse chronic back pain through movement and core balance training.",
+      "rationale": "Physical therapist provides strategies for chronic back pain relief and spine health.",
+      "display_title": "The Back Pain Podcast by Core Balance",
+      "blurb": "Expert strategies for reversing chronic back pain and improving posture and spine health.",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
       "tier": 1,
-      "batch_id": "fresh-2026-08-14-b50074b6",
-      "classified_at": "2026-08-14T08:42:35.448Z"
+      "batch_id": "fresh-2026-09-09-0ba8c8be",
+      "classified_at": "2026-09-09T08:19:28.364Z"
     },
     "1844728243": {
       "topics": [
@@ -506010,18 +506206,27 @@
       "topic_confidences": [
         {
           "node": "religion/buddhism",
-          "confidence": 0.95
+          "confidence": 0.85
         }
       ],
       "needs_review": false,
-      "rationale": "Buddhist monk teachings on dharma, meditation, mindfulness in the Thai Forest tradition.",
+      "rationale": "Buddhist monk teaches Dhamma with focus on mindfulness, insight, and the path to liberation.",
       "display_title": "Dhamma Talks by Ajahn Punnadhammo",
-      "blurb": "Buddhist monk teachings on mindfulness, insight, and the path to liberation.",
+      "blurb": "Buddhist teachings on mindfulness, meditation, and the path to liberation and enlightenment.",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 6,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
       "tier": 1,
-      "batch_id": "fresh-2026-08-14-b50074b6",
-      "classified_at": "2026-08-14T08:42:35.448Z"
+      "batch_id": "fresh-2026-09-09-0ba8c8be",
+      "classified_at": "2026-09-09T08:19:28.364Z"
     },
     "1846612394": {
       "topics": [
@@ -506272,39 +506477,39 @@
     },
     "1847244325": {
       "topics": [
-        "psychology",
-        "science",
-        "philosophy/ideas"
+        "philosophy/ideas",
+        "science/physics"
       ],
-      "confidence": "high",
+      "confidence": "medium",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
-          "node": "psychology",
-          "confidence": 0.75
-        },
-        {
-          "node": "science",
+          "node": "philosophy/ideas",
           "confidence": 0.7
         },
         {
-          "node": "philosophy/ideas",
+          "node": "science/physics",
           "confidence": 0.65
         }
       ],
       "needs_review": true,
-      "rationale": "Consciousness research spans neuroscience, quantum mechanics, philosophy—genuine ambiguity.",
+      "rationale": "Documentary exploring consciousness through physics, meditation, neuroscience, and spiritual traditions.",
       "display_title": "The Consciousness Project",
-      "blurb": "Documentary exploration of consciousness through neuroscience, quantum theory, and meditation.",
+      "blurb": "Documentary series exploring consciousness through physics, neuroscience, meditation, and spiritual traditions.",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
       "tier": 1,
-      "batch_id": "fresh-2026-08-14-b50074b6",
-      "classified_at": "2026-08-14T08:42:35.448Z",
-      "superseded_topics": [
-        "science/physics"
-      ],
-      "superseded_source": "genre-map"
+      "batch_id": "fresh-2026-09-09-0ba8c8be",
+      "classified_at": "2026-09-09T08:19:28.364Z"
     },
     "1847367406": {
       "topics": [
@@ -506394,29 +506599,34 @@
     },
     "1847442024": {
       "topics": [
-        "craft/diy-home"
+        "culture/fashion"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
-          "node": "craft/diy-home",
-          "confidence": 0.85
+          "node": "culture/fashion",
+          "confidence": 0.75
         }
       ],
       "needs_review": false,
-      "rationale": "DIY and home crafts with expert guests.",
+      "rationale": "French podcast with cultural conversations about fashion, music, and personal journeys.",
       "display_title": "COUCH by Lena Situations",
-      "blurb": "Je m’appelle Lena Mahfouf, mais sur internet, on me connaît sous le nom de Lena Situations.",
+      "blurb": "Conversations about culture, fashion, identity, and personal journeys from Lena Situations.",
       "display_copy_ok": true,
-      "model": "claude-haiku-4-5 (tier 1)",
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
       "tier": 1,
-      "batch_id": "fresh-2026-08-13-238f1dee",
-      "classified_at": "2026-08-13T16:25:49.567Z",
-      "superseded_topics": [
-        "culture/fashion"
-      ],
-      "superseded_source": "genre-map"
+      "batch_id": "fresh-2026-09-09-0ba8c8be",
+      "classified_at": "2026-09-09T08:19:28.364Z"
     },
     "1847467068": {
       "topics": [
@@ -506564,30 +506774,44 @@
     },
     "1847520625": {
       "topics": [
-        "kids-family/stories",
-        "nature/animal-cognition"
+        "nature/animal-cognition",
+        "kids-family/stories"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
-          "node": "kids-family/stories",
-          "confidence": 0.9
+          "node": "nature/animal-cognition",
+          "confidence": 0.8
         },
         {
-          "node": "nature/animal-cognition",
-          "confidence": 0.75
+          "node": "kids-family/stories",
+          "confidence": 0.7
         }
       ],
       "needs_review": false,
-      "rationale": "Storytelling for kids about animals with focus on wildlife behavior and conservation.",
+      "rationale": "Family podcast with storytelling about animals; exploring wildlife, behavior, and conservation.",
       "display_title": "Wild and Kind Kids Podcast",
-      "blurb": "Animal stories for kids exploring wildlife behavior and conservation through narrative.",
+      "blurb": "Adventure stories about animals and wildlife for families, combining storytelling and nature education.",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 32,
+        "transcript_types": {
+          "text/html": 8,
+          "application/json": 8,
+          "application/x-subrip": 8,
+          "text/vtt": 8
+        }
+      },
       "tier": 1,
-      "batch_id": "fresh-2026-08-14-b50074b6",
-      "classified_at": "2026-08-14T08:42:35.448Z"
+      "batch_id": "fresh-2026-09-09-0ba8c8be",
+      "classified_at": "2026-09-09T08:19:28.364Z"
     },
     "1847541900": {
       "topics": [
@@ -506822,29 +507046,38 @@
     "1847736017": {
       "topics": [
         "sports",
-        "news"
+        "news/daily"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
           "node": "sports",
-          "confidence": 0.9
+          "confidence": 0.75
         },
         {
-          "node": "news",
-          "confidence": 0.8
+          "node": "news/daily",
+          "confidence": 0.6
         }
       ],
       "needs_review": false,
-      "rationale": "AI-produced daily sports news updates covering Cleveland Cavaliers with game recaps and roster developments.",
+      "rationale": "AI-produced daily sports news updates specifically covering Cleveland Cavaliers roster and games.",
       "display_title": "Cleveland Cavaliers News Today",
-      "blurb": "Fast daily updates on Cavaliers basketball, games, players, and NBA news produced by AI.",
+      "blurb": "Daily sports news updates covering Cavaliers roster moves, games, and NBA context.",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
       "tier": 1,
-      "batch_id": "fresh-2026-08-13-c2038d57",
-      "classified_at": "2026-08-13T08:57:36.498Z"
+      "batch_id": "fresh-2026-09-09-0ba8c8be",
+      "classified_at": "2026-09-09T08:19:28.364Z"
     },
     "1847762617": {
       "topics": [
@@ -507100,37 +507333,40 @@
     "1847976910": {
       "topics": [
         "health/fitness",
-        "health/nutrition",
-        "education/self-improvement"
+        "health/mental"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
           "node": "health/fitness",
-          "confidence": 0.85
+          "confidence": 0.75
         },
         {
-          "node": "health/nutrition",
-          "confidence": 0.7
-        },
-        {
-          "node": "education/self-improvement",
-          "confidence": 0.6
+          "node": "health/mental",
+          "confidence": 0.65
         }
       ],
-      "needs_review": true,
-      "rationale": "Menopause expert discusses perimenopause, HRT, hormones, and midlife health with functional medicine and humor-focused approach.",
-      "display_title": null,
-      "blurb": null,
-      "display_copy_ok": false,
-      "display_copy_notes": [
-        "blurb: banned /\\bexplores?\\b/i"
-      ],
+      "needs_review": false,
+      "rationale": "Menopause expert discusses perimenopause, hormones, HRT, and thriving in midlife with humor.",
+      "display_title": "The Midlife Realignment",
+      "blurb": "Expert guidance on navigating menopause, hormones, and thriving in midlife with practical advice.",
+      "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 8,
+        "transcript_types": {
+          "text/plain": 8
+        }
+      },
       "tier": 1,
-      "batch_id": "fresh-2026-08-12-8a458c44",
-      "classified_at": "2026-08-12T16:38:55.637Z"
+      "batch_id": "fresh-2026-09-09-0ba8c8be",
+      "classified_at": "2026-09-09T08:19:28.364Z"
     },
     "1847995986": {
       "topics": [
@@ -507252,29 +507488,39 @@
     },
     "1848120606": {
       "topics": [
-        "kids-family/parenting"
+        "relationships",
+        "society/law"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
-          "node": "kids-family/parenting",
-          "confidence": 0.95
+          "node": "relationships",
+          "confidence": 0.8
+        },
+        {
+          "node": "society/law",
+          "confidence": 0.6
         }
       ],
       "needs_review": false,
-      "rationale": "Parenting advice and baby sleep expertise.",
+      "rationale": "Divorce lawyer provides advice on relationships, marriage, and divorce from 25 years of experience.",
       "display_title": "Better Call Sexton",
-      "blurb": "America’s Lawyer James J.",
+      "blurb": "Divorce lawyer offers relationship advice and commentary on love, marriage, and separation.",
       "display_copy_ok": true,
-      "model": "claude-haiku-4-5 (tier 1)",
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
       "tier": 1,
-      "batch_id": "fresh-2026-08-13-238f1dee",
-      "classified_at": "2026-08-13T16:25:49.567Z",
-      "superseded_topics": [
-        "relationships"
-      ],
-      "superseded_source": "genre-map"
+      "batch_id": "fresh-2026-09-09-0ba8c8be",
+      "classified_at": "2026-09-09T08:19:28.364Z"
     },
     "1848156557": {
       "topics": [
@@ -507520,30 +507766,34 @@
     },
     "1848382288": {
       "topics": [
-        "true-crime",
-        "fiction/drama"
+        "true-crime"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
           "node": "true-crime",
-          "confidence": 0.88
-        },
-        {
-          "node": "fiction/drama",
-          "confidence": 0.65
+          "confidence": 0.8
         }
       ],
       "needs_review": false,
-      "rationale": "True crime saga about identical twin brothers, one imprisoned for a murder he didn't commit, exploring sacrifice and family bonds.",
+      "rationale": "True crime saga of identical twins, one imprisoned for crime he didn't commit.",
       "display_title": "Blood Will Tell",
-      "blurb": "A true crime saga of Vietnamese-American identical twins—one wrongly imprisoned for murder—exploring brotherhood, sacrifice, and truth.",
+      "blurb": "True crime saga of Vietnamese-American identical twins tested by sacrifice and silence.",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
       "tier": 1,
-      "batch_id": "fresh-2026-08-12-8a458c44",
-      "classified_at": "2026-08-12T16:38:55.637Z"
+      "batch_id": "fresh-2026-09-09-0ba8c8be",
+      "classified_at": "2026-09-09T08:19:28.364Z"
     },
     "1848424550": {
       "topics": [
@@ -508087,35 +508337,34 @@
     },
     "1848934243": {
       "topics": [
-        "true-crime",
-        "society/law"
+        "true-crime"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
           "node": "true-crime",
-          "confidence": 0.9
-        },
-        {
-          "node": "society/law",
-          "confidence": 0.75
+          "confidence": 0.8
         }
       ],
       "needs_review": false,
-      "rationale": "True crime narrative about adoption fraud scheme operated by Tara Lee.",
+      "rationale": "True crime investigating adoption company fraud and criminal manipulation of families.",
       "display_title": "Baby Broker",
-      "blurb": "True crime story of an adoption fraud scheme and families who banded together to expose it.",
+      "blurb": "True crime investigation of adoption fraud and the parents who banded together to stop it.",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 2,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
       "tier": 1,
-      "batch_id": "fresh-2026-08-14-b50074b6",
-      "classified_at": "2026-08-14T08:42:35.448Z",
-      "superseded_topics": [
-        "economics/markets",
-        "business"
-      ],
-      "superseded_source": "genre-map"
+      "batch_id": "fresh-2026-09-09-0ba8c8be",
+      "classified_at": "2026-09-09T08:19:28.364Z"
     },
     "1848974503": {
       "topics": [
@@ -508165,18 +508414,27 @@
       "topic_confidences": [
         {
           "node": "sports/tennis",
-          "confidence": 0.95
+          "confidence": 0.85
         }
       ],
       "needs_review": false,
-      "rationale": "Tennis podcast featuring conversations with top players, coaches, and industry figures on college and professional play.",
+      "rationale": "Tennis conversations with players, coaches, and influencers; professional and college tennis development.",
       "display_title": "The UTR Pro Tennis Tour Podcast",
-      "blurb": "Director of player development interviews top tennis players, coaches, and leaders on college and pro tennis.",
+      "blurb": "Behind-the-scenes tennis conversations with pros and coaches on player development and competition.",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
       "tier": 1,
-      "batch_id": "fresh-2026-08-13-c2038d57",
-      "classified_at": "2026-08-13T08:57:36.498Z"
+      "batch_id": "fresh-2026-09-09-0ba8c8be",
+      "classified_at": "2026-09-09T08:19:28.364Z"
     },
     "1849060648": {
       "topics": [
@@ -508366,59 +508624,74 @@
     "1849196080": {
       "topics": [
         "health/alternative",
-        "education/self-improvement",
-        "science"
+        "psychology"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
           "node": "health/alternative",
-          "confidence": 0.82
+          "confidence": 0.75
         },
         {
-          "node": "education/self-improvement",
-          "confidence": 0.65
-        },
-        {
-          "node": "science",
+          "node": "psychology",
           "confidence": 0.6
         }
       ],
-      "needs_review": true,
-      "rationale": "Wellness podcast blending science with alternative health claims about cellular health, intuition, and consciousness. Some claims lack scientific grounding.",
-      "display_title": null,
-      "blurb": null,
-      "display_copy_ok": false,
-      "display_copy_notes": [
-        "blurb: banned /\\bexplores?\\b/i"
-      ],
+      "needs_review": false,
+      "rationale": "Wellness practitioner blends science, soul, and strategy for cellular health and consciousness.",
+      "display_title": "The Cellular Upgrade",
+      "blurb": "Wellness conversations merging science, spirituality, and practical strategies for health and consciousness.",
+      "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
       "tier": 1,
-      "batch_id": "fresh-2026-08-12-8a458c44",
-      "classified_at": "2026-08-12T16:38:55.637Z"
+      "batch_id": "fresh-2026-09-09-0ba8c8be",
+      "classified_at": "2026-09-09T08:19:28.364Z"
     },
     "1849219121": {
       "topics": [
-        "science/chemistry"
+        "science/chemistry",
+        "news/tech"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
           "node": "science/chemistry",
-          "confidence": 0.9
+          "confidence": 0.8
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.5
         }
       ],
       "needs_review": false,
-      "rationale": "Industrial hygiene and chemistry podcast discussing lab analysis, EHS, occupational safety, and business trends.",
+      "rationale": "Industrial hygiene and laboratory analysis podcast; EHS, chemical safety, and occupational health.",
       "display_title": "The Analyte",
-      "blurb": "Chemistry and industrial hygiene podcast featuring experts discussing lab analysis, safety, and EHS topics.",
+      "blurb": "Industrial hygiene and laboratory analysis insights on safety, EHS, and occupational health.",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
       "tier": 1,
-      "batch_id": "fresh-2026-08-13-c2038d57",
-      "classified_at": "2026-08-13T08:57:36.498Z"
+      "batch_id": "fresh-2026-09-09-0ba8c8be",
+      "classified_at": "2026-09-09T08:19:28.364Z"
     },
     "1849244865": {
       "topics": [
@@ -508546,18 +508819,27 @@
       "topic_confidences": [
         {
           "node": "sports/hockey",
-          "confidence": 0.9
+          "confidence": 0.85
         }
       ],
       "needs_review": false,
-      "rationale": "High-performance hockey player development from youth to elite levels with real-world insight.",
+      "rationale": "Hockey coaching and player development; youth hockey strategy and long-term athletic growth.",
       "display_title": "Built From Steel Podcast",
-      "blurb": "Hockey development insights from youth to elite levels with focus on player growth.",
+      "blurb": "Hockey coaching insights on player development, skills, and long-term athletic growth.",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
       "tier": 1,
-      "batch_id": "fresh-2026-08-14-b50074b6",
-      "classified_at": "2026-08-14T08:42:35.448Z"
+      "batch_id": "fresh-2026-09-09-0ba8c8be",
+      "classified_at": "2026-09-09T08:19:28.364Z"
     },
     "1849299998": {
       "topics": [
@@ -508673,25 +508955,39 @@
     },
     "1849411620": {
       "topics": [
-        "news/commentary"
+        "news/commentary",
+        "society/government"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
           "node": "news/commentary",
-          "confidence": 0.85
+          "confidence": 0.75
+        },
+        {
+          "node": "society/government",
+          "confidence": 0.7
         }
       ],
       "needs_review": false,
-      "rationale": "Political news and commentary.",
+      "rationale": "National security expert analyzes defense, conflict, and geopolitical challenges.",
       "display_title": "The Last Line of Defense",
-      "blurb": "In this era of uncertainty, knowledge is power.",
+      "blurb": "National security analysis covering defense challenges, global conflict, and strategic issues.",
       "display_copy_ok": true,
-      "model": "claude-haiku-4-5 (tier 1)",
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
       "tier": 1,
-      "batch_id": "fresh-2026-08-13-238f1dee",
-      "classified_at": "2026-08-13T16:25:49.567Z"
+      "batch_id": "fresh-2026-09-09-0ba8c8be",
+      "classified_at": "2026-09-09T08:19:28.364Z"
     },
     "1849419652": {
       "topics": [
@@ -509205,18 +509501,27 @@
       "topic_confidences": [
         {
           "node": "religion/islam",
-          "confidence": 0.95
+          "confidence": 0.85
         }
       ],
       "needs_review": false,
-      "rationale": "Quran recitation podcast in Arabic featuring religious content and Islamic teachings.",
-      "display_title": "Bandar Balila",
-      "blurb": "Quran recitations in Arabic featuring Islamic religious teachings and spiritual content.",
+      "rationale": "Islamic Qur'an recitation in Arabic with minimal English description.",
+      "display_title": "بندر بليلة",
+      "blurb": "Qur'anic recitation and Islamic teachings presented in audio format.",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
       "tier": 1,
-      "batch_id": "fresh-2026-08-13-c2038d57",
-      "classified_at": "2026-08-13T08:57:36.498Z"
+      "batch_id": "fresh-2026-09-09-0ba8c8be",
+      "classified_at": "2026-09-09T08:19:28.364Z"
     },
     "1849987981": {
       "topics": [
@@ -509227,18 +509532,27 @@
       "topic_confidences": [
         {
           "node": "religion/islam",
-          "confidence": 0.95
+          "confidence": 0.85
         }
       ],
       "needs_review": false,
-      "rationale": "Islamic Quranic recitation and teaching in Arabic.",
-      "display_title": "Ahmed bin Talib Hamid",
-      "blurb": "Quranic recitation and Islamic teachings from scholar Ahmed bin Talib Hamid.",
+      "rationale": "Islamic Qur'an recitation in Arabic with minimal English description.",
+      "display_title": "أحمد بن طالب حميد",
+      "blurb": "Qur'anic recitation and Islamic teachings in audio format.",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
       "tier": 1,
-      "batch_id": "fresh-2026-08-14-b50074b6",
-      "classified_at": "2026-08-14T08:42:35.448Z"
+      "batch_id": "fresh-2026-09-09-0ba8c8be",
+      "classified_at": "2026-09-09T08:19:28.364Z"
     },
     "1849988853": {
       "topics": [
@@ -509320,30 +509634,39 @@
     },
     "1850002930": {
       "topics": [
-        "nature",
-        "true-crime"
+        "true-crime",
+        "nature"
       ],
-      "confidence": "high",
+      "confidence": "medium",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
-          "node": "nature",
-          "confidence": 0.88
-        },
-        {
           "node": "true-crime",
           "confidence": 0.7
+        },
+        {
+          "node": "nature",
+          "confidence": 0.6
         }
       ],
       "needs_review": false,
-      "rationale": "Investigative series about a major poaching case in New Hampshire that uncovers prison crime and enforcement coordination failures.",
+      "rationale": "Wildlife poaching investigation that reveals crimes inside a state prison.",
       "display_title": "Operation Night Cat",
-      "blurb": "NHPR investigative series following a complex poaching case that reveals additional crimes within a state prison.",
+      "blurb": "Investigative series on wildlife poaching that uncovers crimes both on land and in prison.",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 4,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
       "tier": 1,
-      "batch_id": "fresh-2026-08-12-8a458c44",
-      "classified_at": "2026-08-12T16:38:55.637Z"
+      "batch_id": "fresh-2026-09-09-0ba8c8be",
+      "classified_at": "2026-09-09T08:19:28.364Z"
     },
     "1850297689": {
       "topics": [
@@ -509510,22 +509833,36 @@
       "topic_confidences": [
         {
           "node": "culture/design",
-          "confidence": 0.9
+          "confidence": 0.85
         },
         {
           "node": "culture/art",
-          "confidence": 0.75
+          "confidence": 0.7
         }
       ],
       "needs_review": false,
-      "rationale": "Podcast exploring decorative arts, interior design, and material culture through conversations with designers, architects, and artists.",
+      "rationale": "Interior design and decorative arts conversations with experts; architecture, collecting, and aesthetics.",
       "display_title": "Handle with Care",
-      "blurb": "Adam Charlap Hyman and Laura Kugel discuss decorative arts, design, collecting, and material culture with irreverent experts.",
+      "blurb": "Interior design and decorative arts conversations exploring collecting, aesthetics, and material culture.",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 32,
+        "transcript_types": {
+          "text/html": 8,
+          "application/json": 8,
+          "application/x-subrip": 8,
+          "text/vtt": 8
+        }
+      },
       "tier": 1,
-      "batch_id": "fresh-2026-08-12-8a458c44",
-      "classified_at": "2026-08-12T16:38:55.637Z"
+      "batch_id": "fresh-2026-09-09-0ba8c8be",
+      "classified_at": "2026-09-09T08:19:28.364Z"
     },
     "1850472770": {
       "topics": [
@@ -509795,18 +510132,27 @@
       "topic_confidences": [
         {
           "node": "religion/buddhism",
-          "confidence": 0.95
+          "confidence": 0.85
         }
       ],
       "needs_review": false,
-      "rationale": "Chinese-language podcast featuring contemporary explanation of Buddhist Diamond Sutra.",
-      "display_title": "金刚经白话讲解",
-      "blurb": "Contemporary explanation of the Diamond Sutra in Chinese exploring Buddhist wisdom and enlightenment.",
+      "rationale": "Chinese-language Buddhist teachings on Diamond Sutra; wisdom for liberation and enlightenment.",
+      "display_title": "《金刚经》白话讲解",
+      "blurb": "Buddhist teachings on the Diamond Sutra exploring enlightenment and liberation from attachments.",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
       "tier": 1,
-      "batch_id": "fresh-2026-08-13-c2038d57",
-      "classified_at": "2026-08-13T08:57:36.498Z"
+      "batch_id": "fresh-2026-09-09-0ba8c8be",
+      "classified_at": "2026-09-09T08:19:28.364Z"
     },
     "1850756558": {
       "topics": [
@@ -558264,5 +558610,6 @@
       ],
       "superseded_source": "genre-map"
     }
-  }
+  },
+  "label_schema_version": 1
 }

@@ -8,7 +8,10 @@
  *   - the job stays on macOS and stays OFF the required-check list,
  *   - it stays infrequent (no push, no schedule, a narrow path filter),
  *   - the build stays UNSIGNED and therefore stays runnable with no credentials,
- *   - the TestFlight upload stays gated on secrets that do not exist yet,
+ *   - R-05 (docs/release-lockstep-plan.md): this workflow signs and uploads
+ *     NOTHING — that moved to `release.yml` / `.github/actions/ios-archive`
+ *     once R-03 had a green run on `main` — so this file must never grow a
+ *     signing or TestFlight-upload step back,
  *   - `ci.yml`'s `ios-kit` job — the repo's only compiled Swift — keeps running.
  *
  * WHY IT PARSES RATHER THAN GREPS, AND WHERE IT STOPS. The repo root is
@@ -31,11 +34,12 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { topLevelKeys, block, prose, step, invocationsOf } from "./workflow-yaml.mjs";
+import { topLevelKeys, block, prose, step, invocationsOf, code } from "./workflow-yaml.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const WORKFLOW_REL = ".github/workflows/ios-build.yml";
 const WF = fs.readFileSync(path.join(ROOT, WORKFLOW_REL), "utf8");
+const YML = code(WF);
 const CI = fs.readFileSync(path.join(ROOT, ".github/workflows/ci.yml"), "utf8");
 
 /** Every `xcodebuild` COMMAND in the workflow, as one line each. The generic
@@ -264,7 +268,7 @@ test("xcodebuild is pointed at a DETECTED container, not a hardcoded workspace",
   const needsContainer = xcodebuildInvocations(WF).filter(
     (c) => !/-version|-exportArchive/.test(c)
   );
-  assert.ok(needsContainer.length >= 3, `expected 3 container-taking invocations, found ${needsContainer.length}`);
+  assert.ok(needsContainer.length >= 2, `expected 2 container-taking invocations, found ${needsContainer.length}`);
   for (const c of needsContainer) {
     assert.match(
       c,
@@ -452,52 +456,29 @@ test("the two measurements are actually invoked", () => {
   assert.match(WF, /simctl launch "\$UDID" com\.apple\./, "the app is never backgrounded");
 });
 
-test("R-01: PR runs never reach signing or the TestFlight upload, even with secrets", () => {
-  /* ROOT CAUSE THIS PINS. Same-repo `pull_request` runs receive the same
-     secrets a push to `main` does — GitHub does not withhold them for PRs from
-     branches in the same repository. Before this pin, "Is signing configured?"
-     and "Archive, export and upload to TestFlight" were gated ONLY on the
-     secrets existing, so any signed same-repo PR shipped an unmerged branch
-     straight to TestFlight testers, which is why Wyatt got a flood of App
-     Store emails for builds nobody had reviewed yet.
+test("R-05: the signing gate and the TestFlight upload are gone from this file, for good", () => {
+  /* ROOT CAUSE THIS PINS NOW. Before R-05, `ios-build.yml` carried its own
+     signing-gate step and its own archive/export/upload-to-TestFlight step —
+     a second, independently-drifting copy of exactly what R-03's
+     `.github/actions/ios-archive` composite (consumed by `release.yml`) does
+     as the ONE upload path. That duplication was the R-01 flood's root cause:
+     a same-repo `pull_request` run receives the same secrets a push to `main`
+     does, so any signed same-repo PR shipped an unmerged branch straight to
+     TestFlight testers. Retiring the steps here closes that path completely
+     rather than merely re-gating it a second time.
 
-     MUTATION: remove `github.event_name != 'pull_request'` from either step's
-     `if:` (leaving only the signing-readiness half, or deleting the condition
-     outright) -> fails on the named assertion below. Weakening it to
-     `github.event_name == 'push'` also fails, because a `workflow_dispatch` on
-     `main` (the acceptance criterion) must still upload, and `!= 'pull_request'`
-     is the only phrasing that admits both push and workflow_dispatch while
-     excluding every pull_request event. */
-  const signing = step(WF, "Is signing configured?");
-  assert.ok(signing, "the signing-gate step is gone");
-  assert.match(
-    signing,
-    /if:\s*github\.event_name\s*!=\s*['"]pull_request['"]/,
-    "the signing gate must refuse to even run on a pull_request event"
-  );
-
-  const upload = step(WF, "Archive, export and upload to TestFlight");
-  assert.ok(upload, "the TestFlight upload step is gone");
-  assert.match(
-    upload,
-    /if:\s*github\.event_name\s*!=\s*['"]pull_request['"]/,
-    "the upload step's `if:` must name `pull_request` — without it, a signed same-repo PR uploads to TestFlight"
-  );
-  /* Both halves of the upload gate, not just the new one: dropping
-     `steps.signing.outputs.ready == 'true'` while keeping the event check
-     would upload an UNSIGNED build attempt on every push/dispatch. */
-  assert.match(
-    upload,
-    /steps\.signing\.outputs\.ready\s*==\s*['"]true['"]/,
-    "the upload step must still require the signing gate to report ready"
-  );
-  /* A `workflow_dispatch` on main is the acceptance criterion for "still
-     works" — so the guard must exclude pull_request specifically, not fire on
-     event_name entirely (e.g. a stray `== 'push'` would break dispatch). */
+     MUTATION: reintroduce either step (or any Apple secret) into this file ->
+     fails. */
+  assert.equal(step(WF, "Is signing configured?"), null, "the signing-gate step must not come back to this file");
   assert.equal(
-    /event_name\s*==\s*['"]push['"]/.test(upload) && !/!=\s*['"]pull_request['"]/.test(upload),
+    step(WF, "Archive, export and upload to TestFlight"),
+    null,
+    "the TestFlight upload step must not come back to this file — that is release.yml's job now"
+  );
+  assert.equal(
+    /secrets\.(IOS_DIST_CERT|IOS_PROVISIONING_PROFILE|APPLE_TEAM_ID|APP_STORE_CONNECT)/.test(YML),
     false,
-    "the guard must admit workflow_dispatch too, not just push"
+    "this workflow must read no Apple signing/upload secret — it is CI, not release"
   );
 });
 
@@ -588,46 +569,18 @@ test("the generated project is checked against the SwiftUI scaffold's directory"
   assert.match(WF, /ios\/ForayKit\/Package\.swift/);
 });
 
-/* ─────────────────── signing and TestFlight stay gated ───────────────────── */
-
-test("every upload/archive step is gated on the signing gate's own output", () => {
-  const guarded = WF.split(/\n(?=      - name:)/).filter((s) =>
-    /altool|-exportArchive|archivePath|security import/.test(s)
-  );
-  assert.ok(guarded.length >= 1, "no signing/upload step found");
-  for (const step of guarded) {
-    /* R-01 added a same-repo-PR exclusion alongside the readiness check
-       (`if: github.event_name != 'pull_request' && steps.signing.outputs.ready
-       == 'true'`), so the readiness half is matched as a clause rather than
-       requiring it to be the step's entire condition. The new R-01 test above
-       pins that the pull_request exclusion is present too. */
-    assert.match(
-      step,
-      /if:.*steps\.signing\.outputs\.ready == 'true'/,
-      "a signing/upload step is not gated on steps.signing.outputs.ready"
-    );
-  }
-});
-
-test("the gate is the tested function, not an inline expression over secrets", () => {
-  /* `if: secrets.X != ''` cannot express the three-outcome rule — and the third
-     outcome (SOME secrets set -> fail) is the one that saves a release cycle. */
-  assert.match(WF, /node tools\/mobile\/ios-ci\.mjs signing-gate/);
-});
+/* ─────────────────── R-05: signing/TestFlight are gone, not gated ────────── */
 
 test("no secret is echoed to the log, by either spelling", () => {
-  /* CLAUDE.md decision-authority item 2. Two spellings, and the first version of
-     this test only caught one: `${{ secrets.X }}` inline, and `$X` after the
-     secret has been mapped into `env:` — which is how every line in the upload
-     step refers to them. `echo "$IOS_DIST_CERT_P12_BASE64" | base64 --decode >
-     file` is fine (a redirect, and GitHub masks the value anyway); an `echo` that
-     ENDS at the console is not. */
-  const names = SIGNING_SECRET_NAMES();
+  /* CLAUDE.md decision-authority item 2. This workflow no longer signs or
+     uploads anything (R-05), so it should carry no Apple secret at all — but
+     the check stays general rather than assuming the specific step is gone
+     forever, in case a future session tries to wire one back in here instead
+     of into release.yml. */
   for (const raw of WF.split(/\r?\n/)) {
     const line = raw.trim();
     if (!/^(echo|printf|cat)\b/.test(line)) continue;
-    const mentionsSecret =
-      /\$\{\{\s*secrets\./.test(line) || names.some((n) => line.includes(`$${n}`) || line.includes(`${n}}`));
+    const mentionsSecret = /\$\{\{\s*secrets\./.test(line);
     if (!mentionsSecret) continue;
     assert.ok(
       />\s*\S/.test(line) || /\|\s*base64/.test(line),
@@ -635,30 +588,6 @@ test("no secret is echoed to the log, by either spelling", () => {
     );
   }
   assert.equal(/secrets\.GITHUB_TOKEN/.test(WF), false, "this workflow needs no token");
-});
-
-/** The secret names the gate declares, read from the module rather than retyped —
- *  a hardcoded list here would drift from the one the workflow actually uses. */
-function SIGNING_SECRET_NAMES() {
-  const src = fs.readFileSync(path.join(ROOT, "tools/mobile/ios-ci.mjs"), "utf8");
-  const m = /SIGNING_SECRETS = \[([^\]]+)\]/.exec(src);
-  assert.ok(m, "could not read SIGNING_SECRETS out of tools/mobile/ios-ci.mjs");
-  return [...m[1].matchAll(/"([A-Z0-9_]+)"/g)].map((x) => x[1]);
-}
-
-test("every secret the gate checks is actually passed to the gate step", () => {
-  /* The gate reports a secret as MISSING when it is simply not wired into the
-     step's `env:` — indistinguishable, from the log, from a secret nobody set. So
-     the two lists have to agree, and neither is allowed to drift alone. */
-  const gateStep = step(WF, "Is signing configured?");
-  assert.ok(gateStep);
-  for (const name of SIGNING_SECRET_NAMES()) {
-    assert.match(
-      gateStep,
-      new RegExp(`${name}: \\$\\{\\{ secrets\\.${name} \\}\\}`),
-      `${name} is checked by signingReadiness() but never passed to the gate step`
-    );
-  }
 });
 
 test("no credential value is hardcoded anywhere in the workflow", () => {
@@ -993,125 +922,4 @@ test("the built bundle is checked for the icon, not only the source catalog", ()
   );
 });
 
-/* ───────────── the build number, which blocked every upload after the first ── */
 
-test("the archive is given a UNIQUE CFBundleVersion, from a source with no state", () => {
-  /* THE FAILURE THIS FIXES, in full. Run 33817797333 archived and exported
-     cleanly and then died at altool:
-
-       ERROR: The provided entity includes an attribute with a value that has
-       already been used (-19232)
-       The bundle version must be higher than the previously uploaded version: '1'.
-
-     Capacitor's generated project ships `CURRENT_PROJECT_VERSION = 1` and never
-     moves it, so run 33815045229 took version 1 and every later build re-uploaded
-     version 1. The founder could not receive ANY new build — including one
-     carrying a fix — and nothing in the repo would have said why.
-
-     `run_number` is monotonic per workflow and needs no stored state; the
-     `.run_attempt` suffix is there because a RE-RUN keeps its run_number and only
-     increments the attempt, which would reproduce this exact duplicate.
-
-     MUTATION: drop `CURRENT_PROJECT_VERSION="$BUILD_NUMBER"` from the archive
-     invocation -> fails on the first assertion. Set BUILD_NUMBER to a literal
-     (`BUILD_NUMBER="2"`) -> fails on the run_number one, because a literal cannot
-     be unique across runs. RUN. */
-  const s = step(WF, "Archive, export and upload to TestFlight") ?? "";
-  assert.ok(s, "the upload step is gone");
-  assert.match(
-    s,
-    /CURRENT_PROJECT_VERSION="\$BUILD_NUMBER"/,
-    "the archive does not override CURRENT_PROJECT_VERSION, so every upload is version 1 again"
-  );
-  assert.match(
-    s,
-    /BUILD_NUMBER="\$\{\{ github\.run_number \}\}\.\$\{\{ github\.run_attempt \}\}"/,
-    "the build number is not derived from run_number.run_attempt, so it can repeat"
-  );
-  /* AND IT MUST BE ON THE ARCHIVE, not merely somewhere in the step. The `build`
-     invocations above are never uploaded, so setting it there and not here would
-     leave the bug intact with the string present in the file. */
-  const archive = xcodebuildInvocations(WF).find((c) => /\sarchive(\s|$)/.test(c) && /-archivePath/.test(c));
-  assert.ok(archive, "no xcodebuild archive invocation found");
-  assert.match(archive, /CURRENT_PROJECT_VERSION="\$BUILD_NUMBER"/, archive);
-});
-
-test("the build number is READ BACK out of the archive before the upload is spent", () => {
-  /* A BUILD-SETTING OVERRIDE THAT DOES NOT REACH THE BUNDLE IS SILENT. If the
-     generated Info.plist ever stopped using `$(CURRENT_PROJECT_VERSION)` for
-     CFBundleVersion — it uses it today, verified against run 33819135977's own
-     archived $ART/Info.plist — this override would do nothing, the archive and
-     the export would both succeed, and the only symptom would be the same altool
-     duplicate error minutes later with nothing pointing at this step.
-
-     So the value is read out of the ARCHIVED app with Apple's own parser and
-     compared, exactly as the icon and the two plist keys are.
-
-     MUTATION: delete the `if [ "$BUILT_VERSION" != "$BUILD_NUMBER" ]` guard ->
-     fails. Change the PlistBuddy read to target the SOURCE Info.plist
-     ($INFO_PLIST, which still holds the literal `$(CURRENT_PROJECT_VERSION)`
-     variable rather than the built value) -> fails on the archive-path
-     assertion. RUN. */
-  const s = step(WF, "Archive, export and upload to TestFlight") ?? "";
-  assert.match(
-    s,
-    /ARCHIVED_PLIST="\$\{\{ runner\.temp \}\}\/Foray\.xcarchive\/Products\/Applications\/App\.app\/Info\.plist"/,
-    "the readback does not target the ARCHIVED app's Info.plist"
-  );
-  assert.match(s, /PlistBuddy -c "Print :CFBundleVersion" "\$ARCHIVED_PLIST"/,
-    "the built CFBundleVersion is never read with Apple's own parser");
-  assert.match(s, /if \[ "\$BUILT_VERSION" != "\$BUILD_NUMBER" \]/,
-    "the readback is not compared to what was asked for, so it proves nothing");
-  /* SCOPED TO THAT GUARD'S OWN BLOCK. A bare `assert.match(WF, /exit 1/)` would be
-     vacuous — the workflow has several — which is the hole the redaction test
-     above was fixed for. */
-  const guard = s.slice(s.indexOf('if [ "$BUILT_VERSION" != "$BUILD_NUMBER" ]'));
-  const block = guard.slice(0, guard.indexOf("\n          fi"));
-  assert.match(block, /::error::/, "a build number that did not land must be loud");
-  assert.match(block, /^\s*exit 1\s*$/m, "the guard must exit non-zero, or the upload is spent anyway");
-  /* And it must sit BEFORE the export and the upload: a guard after altool has
-     already lost the ten minutes it exists to save.
-
-     COMMANDS ONLY, and the first draft of this was defeated by exactly the thing
-     `commandsOnly` exists for — the signing step's own comment says
-     "-exportArchive re-signs", hundreds of characters ABOVE the guard, so
-     `s.indexOf("-exportArchive")` pointed at prose and the ordering assertion
-     failed on a correctly-ordered step. */
-  const cmds = commandsOnly(s);
-  const guardAt = cmds.indexOf('if [ "$BUILT_VERSION" != "$BUILD_NUMBER" ]');
-  assert.ok(guardAt > 0, "the guard is gone");
-  assert.ok(guardAt < cmds.indexOf("-exportArchive"), "the guard runs after the export");
-  assert.ok(guardAt < cmds.indexOf("altool"), "the guard runs after the upload it exists to protect");
-});
-
-test("the build number cannot be the `1` that is already uploaded", () => {
-  /* The ordering requirement, asserted rather than assumed. Version `1` was taken
-     by run 33815045229; the workflow was on run 143 when this landed, so the next
-     value emitted is >= 144.1. The `case` guard is what makes that a check rather
-     than a note — and what would catch a future rewrite of BUILD_NUMBER that
-     re-introduced a constant.
-     MUTATION: delete the `case "$BUILD_NUMBER" in 1|1.*)` line -> fails. RUN. */
-  const s = step(WF, "Archive, export and upload to TestFlight") ?? "";
-  assert.match(
-    s,
-    /case "\$BUILD_NUMBER" in 1\|1\.\*\)/,
-    "nothing refuses a build number that is not above the version already uploaded"
-  );
-});
-
-test("the user-visible marketing version is NOT bumped per build", () => {
-  /* Only CFBundleVersion has to be unique per upload. Overriding MARKETING_VERSION
-     as well would tell every TestFlight user a new RELEASE shipped each time CI
-     ran, which is a product statement rather than a build detail.
-     MUTATION: add `MARKETING_VERSION="$BUILD_NUMBER" \` to the archive invocation
-     -> fails. RUN. */
-  assert.equal(
-    /MARKETING_VERSION=/.test(WF),
-    false,
-    "the workflow overrides MARKETING_VERSION; only CFBundleVersion needs to move per upload"
-  );
-  /* The archived value is still recorded, so a future change to it is visible in
-     the run rather than only on a device. */
-  const s = step(WF, "Archive, export and upload to TestFlight") ?? "";
-  assert.match(s, /PlistBuddy -c "Print :CFBundleShortVersionString"/);
-});

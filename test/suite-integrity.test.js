@@ -333,8 +333,16 @@ const FLOORS = {
      REAL catalogue and then has the pool taken away underneath it, which is the
      only form the reproduction can take. Every test names the mutation that kills
      it — see the suite header for how the coverage divides against
-     data-deletion and app-security. */
-  "test/playlist-durability.test.js": 33,
+     data-deletion and app-security.
+
+     Raised 33 -> 38 for #558's three code defects (requirements-audit items
+     1-3): renderDrawer's missing `|| ""` guard plus playlists()'s missing
+     `created` backfill (two tests — the crash and the backfill are separate
+     failure modes), bindPlay never stamping last_played_at for an in-app
+     playlist play (two tests — the positive case and that a non-playlist
+     play never fabricates one), and searchWithRelaxation's `relaxed` signal
+     being discarded by buildPlaylist instead of disclosed on the page. */
+  "test/playlist-durability.test.js": 38,
   /* #/show/:id, Stage 1 of docs/show-pages-plan.md. Floored because the join it
      guards (show_id first, title-alias fallback for Lingthusiasm) fails
      silently in exactly the way #276's playlist decay did: a dropped fallback
@@ -355,6 +363,15 @@ const FLOORS = {
   "test/show-page.test.js": 43,
   "test/show-page-pagination.test.js": 5,
   "test/show-page-search.test.js": 7,
+
+  /* Kanban t_d5079285 (recreated — was mistakenly archived as t_623d16a7) —
+     episode page: publish date (A1.2), full episode description additive to
+     the curated hook (A1.1), chapter markers as a genuinely separate
+     mechanism from foray segments (A1.5, Joey's Q5 answer), and the show
+     page's newest-first sort with no filter controls (Joey's Q7 answer).
+     Every test names its mutation; see the suite header for the full list
+     of what each test pins. */
+  "test/episode-page-publish-date-description-chapters.test.js": 12,
 
   /* Episodes section under Shows search (S-07, kanban t_6baccaa0): six
      mutations named and killed in the file's own header — rendering,
@@ -873,7 +890,7 @@ const FLOORS = {
   "tools/mobile/inject-splash.test.mjs": 19,
   "tools/mobile/inject-background-audio.test.mjs": 41,
   "tools/mobile/ios-ci.test.mjs": 125,
-  "tools/mobile/ios-workflow.test.mjs": 45,
+  "tools/mobile/ios-workflow.test.mjs": 39,
   "tools/mobile/probe/install-probe.test.mjs": 39,
   /* The one-shot that gets a newly curated show's back catalogue into the pipeline
      (#279). The floor matters because the whole script exists to make one silent
