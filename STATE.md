@@ -45,6 +45,21 @@ docs/. Completed workstreams move to their plan doc's retro section.
 - **Touches:** `HUMAN-ACTIONS.md`, `docs/DECISIONS.md`, `docs/releases.md`.
 - **Since then:** #516 (founder) rewrote #41's Console steps because the
   *Setup → API access* page no longer exists; #41 and #42 both DONE 2026-09-06.
+### Interlude jingle between tape segments, placeholder asset (2026-09-10) — `feat/interlude-jingle`
+
+- **What:** founder request — a short sting "as an interlude between
+  podcasts". Player-side, no data change: `player/interlude.js` (rule + one
+  private `<audio>` element), `queue-manager.js` §13 rides the seam-beat
+  clock (jingle replaces the 2.0 s beat; beat is the floor, 4.5 s ceiling;
+  cut by pause/next). Plays on auto-advance INTO a segment only. Asset is a
+  synthesised PLACEHOLDER (`tools/audio/make-interlude-placeholder.py` →
+  `player/assets/interlude-placeholder.wav`), fetched from the live site over
+  https because `media-src https:` blocks a bundled copy on
+  `capacitor://localhost`.
+- **Touches:** `player/interlude.js` (+ test), `player/queue-manager.js`
+  (+ test), `player/client.js`, `player/assets/`, `tools/audio/`,
+  `test/suite-integrity.test.js`, `docs/curation/narration-craft.md`,
+  `deploy-manifest.json`/`sw.js` (regenerated), `STATE.md`. Not `index.html`.
 
 ### V-01 follow-up: Samantha by default, curated trial voices, ten-count audition (2026-09-10) — `fix/voice-picker-samantha`
 

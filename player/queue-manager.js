@@ -142,6 +142,23 @@
    `restoreRate` brings the listener's speed back on the way out, so the only new
    rule is that a tap arriving WHILE narration is audible is stored and applied
    when the narration ends rather than mid-word.
+
+   ── 13. THE INTERLUDE JINGLE (`player/interlude.js`) ───────────────────────
+   Founder request, 2026-09-10: a short sting between podcasts. The RULE lives
+   in interlude.js (`interludeEligible`); the CLOCK lives here, in the seam
+   beat's own machinery, because a jingle is the beat with sound in it.
+
+   When the queue advances on its own INTO a segment, `_armInterlude` starts
+   the jingle on its own element at the same instant `_armSeamGap` stamps the
+   beat — so, like the beat, it ABSORBS the next segment's load rather than
+   following it — and stretches the seam deadline to the jingle's ceiling. The
+   jingle's `ended` then shrinks the deadline back to whatever the beat itself
+   still owes (usually nothing: the jingle is longer than the beat), and
+   `_awaitSeamGap` releases the load exactly as it does today. Every transport
+   action already cuts the beat; the cut now also silences the jingle, so pause
+   and next interrupt it like any item. It is not a queue item, so nothing
+   about `runtime_sec`, the Foray clock, position persistence or the ladder
+   changes — the reducer never learns it exists, same as the beat.
 */
 
 import { reduce, S, E, itemRef, itemBounds, TTS, END_NATURAL, END_OUT_POINT } from "./queue-state.js";
@@ -150,6 +167,7 @@ import { seekPrecision, FOREIGN, APPROXIMATE } from "./seek-policy.js";
 import { buildForayQueue } from "./foray-queue.js";
 import { seamGapSec, describeSeam, SEAM_GAP_SEC, AUTO_ADVANCE } from "./seam-gap.js";
 import { normalizeRate, isRate, DEFAULT_RATE } from "./playback-rate.js";
+import { interludeEligible, describeInterlude, INTERLUDE_CEILING_SEC } from "./interlude.js";
 
 const POSITION_INTERVAL_MS = 15_000;
 
@@ -232,12 +250,21 @@ export class PlayerQueueManager {
    *   nothing: a bridge with no `onFinished` behaves exactly as it always
    *   has, and previous/next from the lock screen remain the only way past
    *   a narration line.
+   * @param {object}   [opts.interlude]  the jingle player (§13;
+   *   `player/interlude.js`'s `createInterludePlayer()`, or a fake with the
+   *   same shape: `start() -> bool`, `stop()`, `onEnded` assignable). `null`
+   *   (the default) means no jingle is wired and every seam keeps its plain
+   *   beat — which is what every pre-existing suite gets.
+   * @param {boolean}  [opts.interludeEnabled]  the listener's setting, default
+   *   ON. `setInterludeEnabled()` changes it live; `client.js` reads
+   *   `cp_interlude` once at boot the way it reads `cp_rate`.
    */
   constructor({
     backend, positionStore = null, strategy = SINGLE_ITEM, telemetry = null, allowMultiple = false,
     seamGapSec: gapSec = SEAM_GAP_SEC, scheduler = REAL_SCHEDULER, onSeamGapChange = null,
     onNarrationTick = null,
     rate = DEFAULT_RATE, tts = null, voice = null,
+    interlude = null, interludeEnabled = true,
   } = {}) {
     if (!backend) throw new Error("PlayerQueueManager requires a backend");
     if (liveInstance && !allowMultiple) {
@@ -357,6 +384,20 @@ export class PlayerQueueManager {
         WHEN it is compared is the load-bearing part; see `_transport`. */
     this._loadSeq = 0;
 
+    /* ---- the interlude jingle (§13) ---- */
+    /** The jingle player, or `null` when none is wired. Capability-checked
+        like `backend.prefetch`: a fake without `start()` is "no jingle". */
+    this._interlude = interlude && typeof interlude.start === "function" ? interlude : null;
+    this._interludeEnabled = interludeEnabled !== false;
+    /** True from a successful `start()` until the jingle ends or is cut. */
+    this._interludeActive = false;
+    /** The BEAT's own deadline while the jingle is sounding, so that when the
+        jingle ends the seam can fall back to whatever the beat still owes
+        instead of to nothing. `null` when the seam had no beat of its own
+        (narration -> segment) or no jingle is running. */
+    this._beatUntil = null;
+    if (this._interlude) this._interlude.onEnded = (reason) => this._onInterludeEnded(reason);
+
     /** Nesting depth of `_handle`'s effect loop. Non-zero means the state value
         has already moved and the effects that make it TRUE of the world have not
         all run yet — `playing` is set before `startPlayback` is performed, so
@@ -405,6 +446,10 @@ export class PlayerQueueManager {
     this._releaseSeamGap();
     if (liveInstance === this) liveInstance = null;
     if (typeof this.backend.release === "function") this.backend.release();
+    // §13: the cut above already silenced a running jingle; this drops its buffer.
+    if (this._interlude && typeof this._interlude.release === "function") {
+      try { this._interlude.release(); } catch (_) { /* a jingle must never break disposal */ }
+    }
     // §7 item 3: a live subscription on a torn-down manager is a listener that
     // outlives the object it would advance — the same class of leak `L-01`'s
     // TRANSPORT_EVENT unsubscribe on `release()` exists to avoid.
@@ -1269,7 +1314,9 @@ export class PlayerQueueManager {
 
   /** True from the moment a seam is armed until the beat is spent or cut —
       which includes the load happening inside it, because that load is silence
-      the listener is already hearing as part of the beat.
+      the listener is already hearing as part of the beat — and, since §13,
+      for as long as the interlude jingle is sounding at that seam, because
+      the jingle stretches the same deadline (`inInterlude` narrows it).
 
       The surface reads this so it can say "a beat is running" instead of
       "Loading…", and so the main button means STOP for those two seconds
@@ -1370,6 +1417,7 @@ export class PlayerQueueManager {
   _awaitSeamGap(seq) {
     const ms = this.seamGapRemainingMs;
     if (ms <= 0) {
+      this._stopInterlude("spent");
       this._setGapDeadline(null);
       return Promise.resolve(this._loadSeq === seq);
     }
@@ -1387,6 +1435,10 @@ export class PlayerQueueManager {
         this._gapStopTimer = null;
         this._gapFinish = null;
         this._gapCut = false;
+        // §13: the deadline ran out with the jingle still claiming to sound —
+        // the ceiling case. Two audible things at once is corner case #19's
+        // shape, so the jingle loses. A no-op whenever it ended on its own.
+        this._stopInterlude("ceiling");
         this._setGapDeadline(null);
         resolve(this._loadSeq === seq);
       };
@@ -1400,6 +1452,9 @@ export class PlayerQueueManager {
       not inherit it. The waiting load is left PARKED rather than released —
       `_releaseSeamGap` finishes the job. Safe when no beat is running. */
   _cutSeamGap(why) {
+    // §13: a jingle is the beat with sound in it, so whatever cuts the beat
+    // silences the jingle — pause, next, a scrub, a failed load, disposal.
+    this._stopInterlude(why);
     this._setGapDeadline(null);
     if (this._gapFinish == null || this._gapCut) return;
     this._gapCut = true;
@@ -1422,6 +1477,89 @@ export class PlayerQueueManager {
   _endSeamGap(why) {
     this._cutSeamGap(why);
     this._releaseSeamGap();
+  }
+
+  /* ---------- the interlude jingle (§13) ---------- */
+
+  /** True while the jingle is sounding. A subset of `inSeamGap`. */
+  get inInterlude() { return this._interludeActive; }
+
+  /** The listener's setting, as the manager holds it. */
+  get interludeEnabled() { return this._interludeEnabled; }
+
+  /** Change the setting live. Turning it OFF mid-jingle does not cut the one
+      already sounding — that is a preference about the rest of the hour, not a
+      transport action (same reasoning as `setRate`). */
+  setInterludeEnabled(on) {
+    const v = on !== false;
+    if (v !== this._interludeEnabled) this._emit(`interlude.enabled=${v}`);
+    this._interludeEnabled = v;
+    return v;
+  }
+
+  /**
+   * Decide whether this transition gets the jingle and, if so, start it and
+   * stretch the seam deadline to its ceiling. Called at the same moment as
+   * `_armSeamGap` and AFTER it, so `_gapUntil` already holds the beat's own
+   * deadline (or null) and can be remembered as the floor.
+   *
+   * A refusal from `start()` — not buffered, no element, an autoplay block
+   * that priming did not lift — leaves the seam exactly as it was: the beat
+   * still marks the edit, the jingle simply is not there this time.
+   */
+  _armInterlude(from, to) {
+    if (!this._interlude || !this._interludeEnabled) return;
+    if (!to) return;
+    const seam = { from, to, cause: AUTO_ADVANCE };
+    if (!interludeEligible(seam)) return this._emit(`interlude.skipped ${describeInterlude(seam)}`);
+    let started = false;
+    try { started = this._interlude.start() === true; } catch (err) {
+      this._emit(`interlude.start.threw ${err?.message ?? err}`);
+    }
+    if (!started) return this._emit(`interlude.notStarted ${describeInterlude(seam)}`);
+    this._interludeActive = true;
+    this._beatUntil = this._gapUntil;
+    const ceiling = this._scheduler.nowMs() + INTERLUDE_CEILING_SEC * 1000;
+    this._setGapDeadline(Math.max(this._gapUntil ?? 0, ceiling));
+    this._emit(`interlude.started ${describeInterlude(seam)}`);
+  }
+
+  /**
+   * The jingle reported its end — `ended`, an `error`, or a rejected `play()`.
+   * Shrink the seam back to the beat's own deadline: finish the wait now if the
+   * beat is already spent, re-time it if the beat still owes something (a
+   * jingle that failed at once must not shorten the 2.0 s beat), or, if the
+   * next segment's load has not even landed yet, just lower the deadline so
+   * `_awaitSeamGap` holds only the remainder when it does.
+   */
+  _onInterludeEnded(reason) {
+    if (!this._interludeActive) return; // a stop we issued, or a stray event
+    this._interludeActive = false;
+    const beatUntil = this._beatUntil;
+    this._beatUntil = null;
+    this._emit(`interlude.${reason}`);
+    if (this._disposed) return;
+    const remaining = beatUntil == null ? 0 : Math.max(0, beatUntil - this._scheduler.nowMs());
+    if (this._gapFinish && !this._gapCut) {
+      // A wait is running on the ceiling timer. Re-time it to the beat.
+      if (this._gapStopTimer) this._gapStopTimer();
+      this._gapStopTimer = null;
+      if (remaining <= 0) return this._gapFinish();
+      this._setGapDeadline(beatUntil);
+      this._gapStopTimer = this._scheduler.schedule(remaining, this._gapFinish);
+      return;
+    }
+    if (this._gapCut) return; // parked; `_releaseSeamGap` owns it
+    this._setGapDeadline(remaining > 0 ? beatUntil : null);
+  }
+
+  /** Silence a running jingle without reporting an end. Idempotent. */
+  _stopInterlude(why) {
+    if (!this._interludeActive) return;
+    this._interludeActive = false;
+    this._beatUntil = null;
+    try { this._interlude.stop(); } catch (_) { /* the player must never break a transport action */ }
+    this._emit(`interlude.cut.${why}`);
   }
 
   /**
@@ -1550,6 +1688,12 @@ export class PlayerQueueManager {
     }
     if (this.state.type === "transitioning") {
       const next = this._nextItem(this._cursor(), true);
+      // A bridge marks its own seam, so no beat — but narration -> segment
+      // DOES get the jingle (§13): the founder's "between podcasts" mark comes
+      // after the narrator has said their line, before the next tape starts.
+      // `_currentItem()` is the bridge here; `_playTransitionBridge` moved
+      // `currentIndex` onto it.
+      if (next) this._armInterlude(this._currentItem(), next.item);
       return this._handle(E.itemEnded(next ? refOf(next.item) : null, false));
     }
     if (this.state.type === "playing") {
@@ -1562,6 +1706,9 @@ export class PlayerQueueManager {
       // `loadItem` synchronously down this same call, and the whole point is
       // for that load to happen inside the beat.
       this._armSeamGap(this._currentItem(), next.item, bridged);
+      // And the jingle in the same instant, for the same reason (§13). After
+      // the beat, so the beat's deadline is already there to be the floor.
+      this._armInterlude(this._currentItem(), next.item);
       return this._handle(E.itemEnded(refOf(next.item), bridged));
     }
     return this._emit(`backend.itemEnded.ignored.state=${this.state.type}`);

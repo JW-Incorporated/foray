@@ -8,6 +8,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { PlayerQueueManager, __resetInstanceForTests } from "./queue-manager.js";
 import { SINGLE_ITEM, PICKED_FIRST, CONTINUE_TAIL } from "./queue-strategy.js";
+import { forayRuntimeSec } from "./foray-queue.js";
+import { INTERLUDE_CEILING_SEC } from "./interlude.js";
 
 const ep = (id, extra = {}) => ({ id, kind: "episode", rate: 1.0, ...extra });
 const tts = (id) => ({ id, kind: "tts" });
@@ -119,6 +121,7 @@ function make(opts = {}) {
     scheduler, seamGapSec: opts.seamGapSec, onSeamGapChange: opts.onSeamGapChange,
     onNarrationTick: opts.onNarrationTick,
     rate: opts.rate, tts: opts.tts, voice: opts.voice,
+    interlude: opts.interlude, interludeEnabled: opts.interludeEnabled,
   });
   return { m, backend, saved, log, scheduler };
 }
@@ -2050,4 +2053,316 @@ test("losing the race costs what it costs today, and never the segment", async (
   assert.ok(backend.calls.includes("load:s1@300"), "and it started at its own in-point");
   assert.equal(backend.outPoint, 400, "with its own out-point armed");
   m.dispose();
+});
+
+/* ---------- §13: the interlude jingle (player/interlude.js) ----------
+
+   Founder request, 2026-09-10: a short sting "as an interlude between
+   podcasts". The RULE is tested in interlude.test.js; these pin the CLOCK —
+   that the jingle rides the seam beat's machinery: starts at the boundary,
+   absorbs the next load, holds playback until it ends, and dies with the beat
+   on any transport action. Same discipline as the seam tests above: no real
+   time, the beat and the jingle are driven by hand.
+
+   Every test names its mutation. `fakeInterlude` answers the way the real
+   player can (start refused, ended, never ended) — the harness must not be
+   more forgiving than the element. */
+
+function fakeInterlude({ refuse = false } = {}) {
+  return {
+    starts: 0, stops: 0, active: false, onEnded: null, refuse, released: false,
+    start() {
+      if (this.refuse || this.active) return false;
+      this.starts++;
+      this.active = true;
+      return true;
+    },
+    stop() { if (this.active) this.stops++; this.active = false; },
+    /** The element reporting its own end. */
+    finish(reason = "ended") {
+      if (!this.active) return;
+      this.active = false;
+      if (typeof this.onEnded === "function") this.onEnded(reason);
+    },
+    release() { this.released = true; },
+  };
+}
+
+const THREE_SEGMENTS = () => foray([
+  fseg(),
+  fseg({ item_id: "ep-other", start_sec: 400, end_sec: 500 }),
+  fseg({ item_id: "ep-static", start_sec: 900, end_sec: 1000 }),
+]);
+
+/** Play a Foray with the jingle wired and stop the first segment at its
+    out-point WITHOUT awaiting the seam, exactly as `seam()` does above. */
+async function jingleSeam(opts = {}) {
+  const interlude = opts.interlude ?? fakeInterlude();
+  const scheduler = manualScheduler();
+  const h = make({ ...opts, interlude, scheduler });
+  await h.m.playForay(opts.foray ?? THREE_SEGMENTS(), { resolveItem });
+  h.backend.currentTime = 210;
+  const settled = h.backend.onItemEnded("outPoint");
+  await tick();
+  return { ...h, interlude, scheduler, settled };
+}
+
+test("segment -> segment: the jingle starts at the boundary, the next load runs under it, and playback waits for it", async () => {
+  /* MUTATION: delete the `_armInterlude` call in `_handleBackendItemEnded`'s
+     `playing` branch — `starts` stays 0 and segment 2 starts after the plain
+     2.0 s beat. */
+  const { m, backend, interlude, scheduler, settled } = await jingleSeam();
+  assert.equal(interlude.starts, 1, "the jingle starts the instant the out-point fires");
+  assert.equal(m.inInterlude, true);
+  assert.equal(m.inSeamGap, true, "a jingle is a beat with sound in it — the surface sees a beat");
+  assert.ok(backend.calls.includes("load:foray-1#1@400"), `the next segment loads UNDER the jingle: ${backend.calls}`);
+  assert.equal(plays(backend), 1, "and is not audible yet");
+
+  await scheduler.advance(2000);
+  assert.equal(plays(backend), 1, "the 2.0 s beat alone does not release it: the jingle is still sounding");
+
+  interlude.finish();
+  await tick();
+  await settled;
+  assert.equal(plays(backend), 2, "segment 2 starts when the jingle ends");
+  assert.equal(m.state.type, "playing");
+  assert.equal(m.inInterlude, false);
+  assert.equal(m.inSeamGap, false);
+  assert.equal(interlude.stops, 0, "it ended on its own — nothing cut it");
+});
+
+test("never before the first item: pressing play starts the tape, not a jingle", async () => {
+  /* MUTATION: arm the interlude inside `play()` — `starts` becomes 1. */
+  const interlude = fakeInterlude();
+  const { m, backend } = make({ interlude });
+  await m.playForay(THREE_SEGMENTS(), { resolveItem });
+  assert.equal(m.state.type, "playing");
+  assert.equal(plays(backend), 1);
+  assert.equal(interlude.starts, 0, "there is nothing to mark off from");
+});
+
+test("narration -> segment gets the jingle after the line; segment -> narration does not", async () => {
+  /* MUTATION 1: delete the `_armInterlude` call in the `transitioning` branch —
+     the second assertion's `starts` stays 0.
+     MUTATION 2: drop `isSegment(to)` from `interludeEligible` — the first
+     assertion's `starts` becomes 1 (a jingle into the narrator). */
+  const interlude = fakeInterlude();
+  const { m, log } = make({ interlude });
+  await m.playForay(BRIDGED(), { resolveItem });
+  await m._handleBackendItemEnded("outPoint");        // segment 1 ends, the bridge starts
+  assert.equal(m.state.type, "transitioning");
+  assert.equal(interlude.starts, 0, "narration is the marker into narration — no jingle before it");
+  assert.ok(log.some((l) => l.startsWith("interlude.skipped") && l.includes("nar-1")), `expected a skip line, got ${log.filter((l) => l.startsWith("interlude"))}`);
+
+  await m._handleBackendItemEnded();                  // the line finishes
+  assert.equal(interlude.starts, 1, "the jingle sounds between the narrator's line and the tape");
+  assert.ok(log.some((l) => l === "interlude.started jingle: nar-1 -> foray-1#2"), `got ${log.filter((l) => l.startsWith("interlude"))}`);
+});
+
+test("never between two narration items: a narration chain gets one jingle, into the tape", async () => {
+  /* A Foray that OPENS with narration plays it as an ordinary item (`play(0)`
+     -> `playing`), so narration -> narration reaches the `playing` branch and
+     narration -> segment the `transitioning` one. Both are covered here.
+     MUTATION: drop `isSegment(to)` from `interludeEligible` — `starts` reads 2. */
+  const interlude = fakeInterlude();
+  const { m } = make({ interlude });
+  await m.playForay(foray([
+    { type: "narration", id: "nar-1", asset: "narration/one.mp3" },
+    { type: "narration", id: "nar-2", asset: "narration/two.mp3" },
+    fseg(),
+  ]), { resolveItem });
+  assert.equal(m.state.type, "playing");
+  await m._handleBackendItemEnded();                  // nar-1 ends -> nar-2 is a bridge
+  assert.equal(m.state.type, "transitioning");
+  assert.equal(interlude.starts, 0, "narration -> narration: no jingle");
+  await m._handleBackendItemEnded();                  // nar-2 ends -> the segment
+  assert.equal(m.state.type, "playing");
+  assert.equal(interlude.starts, 1, "narration -> segment: exactly one");
+});
+
+test("never after the last item: the Foray simply ends", async () => {
+  /* MUTATION: arm the interlude before the `if (!next)` return — `starts`
+     reads 1 with `to` undefined (and the rule's `!to` guard is the second
+     line of defence, tested in interlude.test.js). */
+  const interlude = fakeInterlude();
+  const { m } = make({ interlude });
+  await m.playForay(foray([fseg()]), { resolveItem });
+  await m._handleBackendItemEnded("outPoint");
+  assert.equal(m.state.type, "ended");
+  assert.equal(interlude.starts, 0);
+});
+
+test("the jingle is not a queue item: the queue, the runtime and the index are what the Foray authored", async () => {
+  /* This one CANNOT fail on today's code and is written deliberately (CLAUDE.md
+     § "A green test is not evidence", point 5): it pins the design against a
+     future re-implementation that inserts jingle ITEMS, which would put a 3 s
+     entry into `runtime_sec`, `progressSegments` and every stored-progress row.
+     The authored `JINGLE` kind in foray-queue.js is the generator's mark and
+     is a different thing. */
+  const interlude = fakeInterlude();
+  const { m } = make({ interlude });
+  const report = m.setQueueFromForay(THREE_SEGMENTS(), { resolveItem });
+  assert.equal(report.items.length, 3, "three authored segments, three queue items");
+  assert.equal(forayRuntimeSec(report.items), 110 + 100 + 100, "the runtime is the tape's");
+  await m.play(0);
+  await m._handleBackendItemEnded("outPoint");
+  assert.equal(interlude.starts, 1, "the jingle played at the seam");
+  assert.equal(m.queue.length, 3, "and put nothing into the queue");
+  assert.equal(m.currentIndex, 1, "the index moved by exactly one");
+  assert.equal(forayRuntimeSec(m.queue), 310);
+});
+
+test("pause during the jingle silences it, nothing starts, and no position is written for it", async () => {
+  /* MUTATION: delete the `_stopInterlude(why)` line in `_cutSeamGap` — `stops`
+     stays 0 and the fake keeps sounding into a paused player. */
+  const { m, backend, interlude, scheduler, saved } = await jingleSeam();
+  assert.equal(interlude.active, true);
+  await m.pause();
+  assert.equal(interlude.stops, 1, "pause cuts the jingle like it cuts the beat");
+  assert.equal(interlude.active, false);
+  assert.equal(m.state.type, "interrupted");
+  assert.equal(m.inSeamGap, false);
+  await scheduler.advance(10_000);
+  assert.equal(plays(backend), 1, "nothing became audible after the pause");
+  assert.equal(saved.size, 0, "a jingle has no position and a segment persists none");
+});
+
+test("next during the jingle silences it, and a skip gets no jingle of its own (the listener named a destination)", async () => {
+  /* MUTATION 1: delete `_stopInterlude` from `_cutSeamGap` — `stops` stays 0.
+     MUTATION 2: drop the cause check in `interludeEligible` AND arm in
+     `_skipToNext` — `starts` reads 2. */
+  const { m, backend, interlude, scheduler } = await jingleSeam();
+  await m.skipToNext();
+  assert.equal(interlude.stops, 1, "the skip cut the jingle");
+  assert.equal(interlude.starts, 1, "and started no second one");
+  await scheduler.advance(10_000);
+  await tick();
+  assert.equal(m.state.type, "playing");
+  assert.equal(m.currentIndex, 2, "the skip landed on the third segment");
+  assert.ok(backend.calls.includes("load:foray-1#2@900"), `got ${backend.calls}`);
+});
+
+test("a jingle that cannot start leaves the seam its ordinary 2.0 s beat", async () => {
+  /* The element was not buffered, or the host has none. MUTATION: ignore
+     `start()`'s return in `_armInterlude` — the deadline stretches to the
+     ceiling and the second segment waits 4.5 s instead of 2.0 s. */
+  const interlude = fakeInterlude({ refuse: true });
+  const { m, backend, scheduler, settled, log } = await jingleSeam({ interlude });
+  assert.equal(m.inInterlude, false);
+  assert.equal(m.seamGapRemainingMs, 2000, "the beat, and only the beat");
+  assert.ok(log.some((l) => l.startsWith("interlude.notStarted")), `got ${log.filter((l) => l.startsWith("interlude"))}`);
+  await scheduler.advance(1999);
+  assert.equal(plays(backend), 1);
+  await scheduler.advance(1);
+  await settled;
+  assert.equal(plays(backend), 2);
+});
+
+test("a jingle that ends early still spends the beat", async () => {
+  /* The beat is authored (seam-gap.js §6b); a jingle that fails half a second
+     in must not turn it into a butt-cut. MUTATION: in `_onInterludeEnded`,
+     call `_gapFinish()` unconditionally — segment 2 starts at 0.5 s. */
+  const { backend, interlude, scheduler, settled } = await jingleSeam();
+  await scheduler.advance(500);
+  interlude.finish("error");
+  await tick();
+  assert.equal(plays(backend), 1, "the beat still owes 1.5 s");
+  await scheduler.advance(1499);
+  assert.equal(plays(backend), 1);
+  await scheduler.advance(1);
+  await settled;
+  assert.equal(plays(backend), 2);
+});
+
+test("a jingle that never reports ending is cut at the ceiling and the tape starts", async () => {
+  /* A stalled element must not hold the Foray. MUTATION: make `_armInterlude`
+     leave the deadline alone (drop the `_setGapDeadline(max(...))` line) —
+     segment 2 starts at 2.0 s with the jingle still sounding under it,
+     which is the two-audible-things bug this ceiling exists to prevent. */
+  const { m, backend, interlude, scheduler, settled, log } = await jingleSeam();
+  const ceilingMs = INTERLUDE_CEILING_SEC * 1000;
+  assert.equal(m.seamGapRemainingMs, ceilingMs);
+  await scheduler.advance(2000);
+  assert.equal(plays(backend), 1, "past the beat, the jingle still holds the seam");
+  await scheduler.advance(ceilingMs - 2000 - 1);
+  assert.equal(plays(backend), 1);
+  await scheduler.advance(1);
+  await settled;
+  assert.equal(plays(backend), 2, "the ceiling released the segment");
+  assert.equal(interlude.stops, 1, "and the jingle was cut so two things are never audible at once");
+  assert.ok(log.includes("interlude.cut.ceiling"), `got ${log.filter((l) => l.startsWith("interlude"))}`);
+});
+
+test("interludeEnabled: false plays no jingle; setInterludeEnabled(true) turns it on for the next seam", async () => {
+  /* MUTATION: drop the `_interludeEnabled` check from `_armInterlude` — the
+     first seam reads 1. */
+  const interlude = fakeInterlude();
+  const { m } = make({ interlude, interludeEnabled: false });
+  assert.equal(m.interludeEnabled, false);
+  await m.playForay(THREE_SEGMENTS(), { resolveItem });
+  await m._handleBackendItemEnded("outPoint");
+  assert.equal(interlude.starts, 0, "off means off");
+  assert.equal(m.currentIndex, 1);
+  assert.equal(m.setInterludeEnabled(true), true);
+  await m._handleBackendItemEnded("outPoint");
+  assert.equal(interlude.starts, 1, "on for the next seam");
+  assert.equal(m.currentIndex, 2);
+});
+
+test("with no interlude wired, every seam is exactly what it was", async () => {
+  /* The default — and what every pre-existing suite runs under. A manager
+     built without a player must not touch `_interlude`. MUTATION: call
+     `this._interlude.start()` without the null guard — this throws. */
+  const { m, backend, scheduler, settled } = await seam();
+  assert.equal(m.inInterlude, false);
+  assert.equal(m.seamGapRemainingMs, 2000);
+  await scheduler.advance(2000);
+  await settled;
+  assert.equal(plays(backend), 2);
+});
+
+test("dispose() during a jingle silences it and releases the element", async () => {
+  /* MUTATION: drop the `release()` call in `dispose()` — `released` stays false. */
+  const { m, interlude } = await jingleSeam();
+  assert.equal(interlude.active, true);
+  m.dispose();
+  assert.equal(interlude.active, false);
+  assert.equal(interlude.stops, 1);
+  assert.equal(interlude.released, true);
+});
+
+test("pause while the next segment is still loading cuts the jingle at once, not when the load lands", async () => {
+  /* MUTATION: delete `this._stopInterlude(why)` from `_cutSeamGap`. Every
+     OTHER pause path still silences the jingle without it — the parked wait's
+     release runs `finish`, which cuts a jingle that outlived its deadline — but
+     only once the load has landed. Pressed during a cold fetch, that is a
+     jingle that plays on for seconds after the tap. This test is what proves
+     the line in `_cutSeamGap` is load-bearing (the first mutation round found
+     the pause test above green without it). */
+  let release;
+  const held = new Promise((r) => { release = r; });
+  class SlowLoad extends FakeBackend {
+    async load(item, opts) {
+      await super.load(item, opts);
+      if (item.id === "foray-1#1") await held;
+    }
+  }
+  const interlude = fakeInterlude();
+  const { m, backend } = make({ interlude, scheduler: manualScheduler(), backendClass: SlowLoad });
+  await m.playForay(THREE_SEGMENTS(), { resolveItem });
+  backend.currentTime = 210;
+  const settled = backend.onItemEnded("outPoint");
+  await tick();
+  assert.equal(interlude.active, true, "the jingle is sounding over a load that has not landed");
+  assert.ok(backend.calls.includes("load:foray-1#1@400"), "the load was issued under it");
+
+  await m.pause();
+  assert.equal(interlude.stops, 1, "cut at the tap, while the load is still in flight");
+  assert.equal(interlude.active, false);
+  assert.equal(m.state.type, "interrupted");
+
+  release();
+  await settled;
+  assert.equal(plays(backend), 1, "the load landing into a paused player starts nothing");
+  assert.equal(interlude.starts, 1);
 });
