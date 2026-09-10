@@ -617,6 +617,50 @@ export function isClaimShaped(text: string): boolean {
   return false;
 }
 
+/** How many words of a sentence may be its subject before this stops looking
+ * — a subject longer than six words is a sentence with a relative clause in
+ * it, and the words past that point are no longer naming the thing. */
+export const MAX_LEADING_NOUN_PHRASE_WORDS = 6;
+
+/**
+ * THE SUBJECT A CLAIM IS ABOUT, AS FAR AS A HEURISTIC CAN SEE IT (F-69).
+ *
+ * The sentence's words up to its first finite verb: "An on-call rotation
+ * spanning training and inference" out of "An on-call rotation spanning
+ * training and inference makes a failure materially harder to diagnose".
+ *
+ * WHAT IT IS FOR. `gatherEvidence.ts` builds F-60's retry query as a PREFIX of
+ * the beat's purpose, cut at the first clause boundary; this is the floor under
+ * how short that cut may be. A query that stops inside its own subject
+ * ("Conway's law bites") names less than the claim does, and the retry exists
+ * precisely because a query that names the wrong thing comes back empty.
+ *
+ * WHY IT LIVES HERE. It is the same verb-shape question `isClaimShaped` asks,
+ * answered with the same `looksLikeInflectedVerb` signals and the same closed
+ * verb lists. The alternative is a second copy of those lists in the retrieval
+ * module, which is the drift this codebase keeps a single declaration to avoid.
+ *
+ * DELIBERATELY FALLIBLE, IN THE SAFE DIRECTION. When no verb-shaped word turns
+ * up inside the cap — a claim whose verb carries no morphology at all — the
+ * whole capped prefix is the answer. As a floor, being a word or two long
+ * costs a query nothing; being short costs it its subject.
+ */
+export function leadingNounPhrase(text: string): string {
+  const rawWords = String(text ?? "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  if (rawWords.length === 0) return "";
+  const limit = Math.min(rawWords.length, MAX_LEADING_NOUN_PHRASE_WORDS);
+  /* From the SECOND word, for `isClaimShaped`'s own reason: a sentence's first
+     word is its subject's head or its determiner, never its finite verb. */
+  for (let i = 1; i < limit; i++) {
+    const word = rawWords[i]!.toLowerCase().replace(/[^a-z0-9']/g, "");
+    if (word && looksLikeInflectedVerb(word)) return rawWords.slice(0, i).join(" ");
+  }
+  return rawWords.slice(0, limit).join(" ");
+}
+
 export interface SpineValidationIssue {
   code:
     | "act-count-out-of-budget"
