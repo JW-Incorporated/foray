@@ -1215,8 +1215,9 @@ applied):
   answers moved (§0.1); the cards moved to Phase 1b instead of staying under the
   answers, because Hermes sequences by phase.
 - "Rename `tools/corpus-export/` to `tools/foraycorpus-export/`" — applied,
-  with one caveat the critique did not raise: `tools/corpus/` on the generation
-  branch is a *directory*, so the rename is required, not cosmetic.
+  with one caveat the critique did not raise: `tools/corpus/` already exists on
+  main as a directory (its suites are in the CI scan), so the rename is
+  required, not cosmetic.
 - "State '#538 MERGEABLE'" (the live-state instruction) — superseded by a fresh
   measurement at revision time: #576 re-conflicted two generated files (§1.4).
   The deck reports what `git merge-tree` says now, not what was true at 04:20Z.
