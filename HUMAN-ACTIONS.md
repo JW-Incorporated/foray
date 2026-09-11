@@ -152,7 +152,13 @@ hear, 4a hosts user-generated content and App Store Guideline 1.2 applies: conte
 filtering, a mechanism to report objectionable content, a wa
 
 **Steps:**
-1. TODO — steps needed
+1. Read docs/curation/generation-architecture.md §1.3: phase 2 is the moment any user's prompt (not just Wyatt/Joey's) produces a Foray other users can hear.
+2. The four required App Store Guideline 1.2 pieces, none of which exist yet: (1) content filtering on generated Forays.
+3. (2) a mechanism for a user to report objectionable content.
+4. (3) a way to block abusive users.
+5. (4) published developer contact information in the app/store listing.
+6. Decide who builds each of the four, and file/update a kanban card scoping them before phase 2 is scheduled on the roadmap.
+7. Reply with the ruling (e.g. 'build all four before phase 2 starts', or a different sequencing) so this item can close.
 
 **Worked if:** (not stated in the legacy item -- needs a real Worked-if)
 
