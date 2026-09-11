@@ -14,6 +14,7 @@ import {
   SEGMENT, NARRATION, JINGLE, JINGLE_ASSET_URL, JINGLE_DURATION_SEC,
 } from "./foray-queue.js";
 import { AD_PAD_CEILING_SEC } from "./seek-policy.js";
+import { INTERLUDE_ASSET_URL } from "./interlude.js";
 
 /** 85 characters, which is 5.0 s at narration-craft.md §0's 17 chars/s — a
     Hinge, the commonest and shortest real narration item. Exact so that a test
@@ -469,4 +470,13 @@ test("a jingle needs no start_sec/end_sec — it is not a segment for seam purpo
   const { items } = build([{ type: JINGLE, id: "jingle-1" }]);
   assert.equal(items[0].start_sec, undefined);
   assert.equal(items[0].end_sec, undefined);
+});
+
+test("F-90: an authored jingle item plays the same asset the seam interlude plays — never a TBD URL", () => {
+  /* The first generated Foray with a jingle item (2026-09-11) would have asked
+     the audio backend to load "TBD:jingle-asset". One asset, two routes: point
+     either constant elsewhere and this is red. */
+  assert.equal(JINGLE_ASSET_URL, INTERLUDE_ASSET_URL);
+  assert.match(JINGLE_ASSET_URL, /^https:\/\//, "index.html's CSP allows media-src https: only");
+  assert.doesNotMatch(JINGLE_ASSET_URL, /TBD/);
 });

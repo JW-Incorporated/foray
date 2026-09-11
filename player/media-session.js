@@ -164,6 +164,7 @@
 */
 
 import { TTS } from "./queue-state.js";
+import { JINGLE } from "./foray-queue.js";
 
 /** `navigator.mediaSession.playbackState` values, spelled once. */
 export const NONE = "none";
@@ -309,11 +310,20 @@ export function mediaMetadata({
   showArtworkUrl = null, appArtworkUrl = APP_ARTWORK_URL,
 } = {}) {
   const foray = clean(forayTitle);
-  const narration = item?.kind === TTS;
+  /* F-89 (2026-09-11): the first generated Foray to carry a jingle item reached
+     `data/` and every jingle in it had an empty `artist`, so the lock screen showed
+     no credit for 1.5 s at every act boundary. A jingle is ours exactly as
+     narration is — no publisher made it — so it is credited the same way and never
+     carries a show's artwork. */
+  const jingle = item?.kind === JINGLE;
+  const narration = item?.kind === TTS || jingle;
 
   let title;
   let artist;
-  if (narration) {
+  if (jingle) {
+    title = foray || "4a";
+    artist = "4a";
+  } else if (narration) {
     // 04_VOICE_AUDIO_SPEC.md line 11, verbatim.
     const upNext = clean(nextItem?.title);
     // Deliberately NOT the narration item's own title when there is nothing
