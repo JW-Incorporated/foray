@@ -1,9 +1,13 @@
 # Plan: transition the 4a UI to Joey's design
 
 *Drafted 2026-09-06 from Wyatt's brief and his answers to eleven scoping
-questions. Hermes card deck. Nothing here is built yet.*
+questions. Hermes card deck.*
 
-**Status:** proposed. Slots into the existing UI epic **#102** (cards C1–C12,
+**Status:** shipped. U-01..U-11 landed 2026-09-06 (Hermes), U-12/U-13 on
+2026-09-09 (founder session, PR #550); an adversarial audit on 2026-09-10 found
+four acceptance gaps (U-03, U-06, U-09, U-12), closed by PR #603, and the
+U-11 records by PR DOCSPR. Each card below carries its DONE marker. (Originally proposed 2026-09-06.)
+Slots into the existing UI epic **#102** (cards C1–C12,
 cut from this same mockup in August). Where a C-card already exists this deck
 names it; three of those cards were founder **gates**, and Wyatt's answers
 resolve them (§1). Hermes should close or repoint the C-cards rather than run
@@ -81,60 +85,60 @@ Read first: `CLAUDE.md`; this file; `docs/ux/README.md`; issues #102, #123,
 `test/home-layout.test.js` and `test/home-information-architecture.test.js`
 (they pin today's Home and will need rewriting, not deleting).
 
-#### U-01 · Design tokens, fonts, brand — the foundation (C1 / #127) — **M** — *design comment first*
+#### U-01 · Design tokens, fonts, brand — the foundation (C1 / #127) — **M** — *design comment first* — **DONE 2026-09-06, PR #498**
 - **Ask:** map the mockup's `T` object onto `styles.css` custom properties under a `body.ui-v2` scope: `--bg #151119`, `--surface #1F1A26`, `--surface2 #2A2333`, `--line #332B3E`, `--text #F4F0E8`, `--muted #9C93A8`, `--faint #6E6579`, **`--amber #F2A33C` = the listener's own material, `--violet #A78BFA` = what 4a authored** (#127 explains why that split must survive intact). Type: Fraunces (display, italic wordmark) + DM Sans (body), **self-hosted woff2 under `fonts/`**, `@font-face` in `styles.css`, and `font-src 'self'` added to the CSP in `index.html` — nothing wider. Dark is the design; keep the two existing `prefers-color-scheme: light` blocks working as token overrides so nothing regresses for light-mode users. Wordmark and every "Foray"-as-product-name string in chrome → **4a**; tagline kept. `test/legal-citations.test.js`'s CSP pin gains the directive.
 - **Owned:** `styles.css` (tokens + fonts), `fonts/*.woff2`, `index.html` (CSP), `test/ui-tokens.test.js` (new, floored: every token defined on the scope; no hex literal from the palette appears outside the token block — MUTATION: hardcode one → red), `test/legal-citations.test.js`.
 - **Acceptance:** with `cp_ui_v2` on, the app renders in the two faces with no fallback (measured in headless Chrome via `document.fonts.check`); mobile bundle stays under `tools/mobile/prepare-webdir.mjs`'s 3 MB budget with the fonts included (report the delta; subset to Latin if needed); CSP has no new origin.
 - **Governance:** `index.html` → human merge (the CSP line); everything else auto-merges.
 
-#### U-02 · The `cp_ui_v2` flag and the tab bar shell — **M**
+#### U-02 · The `cp_ui_v2` flag and the tab bar shell — **M** — **DONE 2026-09-06, PR #504 (flag retired by U-11)**
 - **Ask:** a localStorage flag `cp_ui_v2` (default off; a Settings toggle; TestFlight builds default **on**). Under it: the four-tab bar (Home / Search / Create / Library, lucide-equivalent icons drawn as inline SVG classes, not a library), tab state in the hash router, the mini-player docked above the bar exactly as the mockup stacks them. The menu page and drawer stay reachable from a Settings entry rather than as primary nav. **Must compose with #488's real back-stack**: switching tabs is not a "back" step; deep links land on the right tab.
 - **Owned:** `app.js` (router, `renderTabBar`), `styles.css`, `test/tab-bar.test.js`, `test/back-navigation.test.js` (extend).
 - **Acceptance:** all 13 existing routes still resolve with the flag on and off; ‹ behaviour from #488 unchanged; the bar and mini-player never overlap content (the N1 feedback bug, measured at inset 59 px like `test/home-layout.test.js` does).
 
-#### U-03 · Home: four sections, with the floor (C3 / #123 resolved by D1) — **L** — *design comment first; DECISIONS entry*
+#### U-03 · Home: four sections, with the floor (C3 / #123 resolved by D1) — **L** — *design comment first; DECISIONS entry* — **DONE 2026-09-06, PRs #509/#510/#535; real-data acceptance DONE after PR #603 (the Forays-for-you floor is unsatisfiable with one published Foray — the documented fallback is asserted instead, see test/home-v2-real-data.test.js)**
 - **Ask:** replace the four cards (flag on) with, top to bottom: greeting; **Jump back in** (`forayResumeRows()` + episode resume, horizontal scroller); **Forays for you** (`data/forays.json` published Forays as cards carrying a `SegmentStrip` — see U-04); **Playlists for you** (D5: own recent from `cp_playlists`, then 2–3 generated from `state.interests` against the subject queues, badged *Generated for you*); **Episodes for you** (`buildCards()`'s ranked discover-pool picks). **The floor:** "Forays for you" and "Episodes for you" each reserve ≥1 slot for a stretch pick, rendered with a visible *Stretch* label and its bridge line (copy rule: stretch picks must state their bridge). Row reasons ("Because you finish every Odd Lots") are allowed but never on the stretch slot. "Shared with you" and "Build your own" are not built.
 - **Owned:** `app.js` (`renderHome` v2), `styles.css`, `test/home-v2.test.js` (floored; pins section order, the stretch slot's presence and label, the generated-playlist badge — MUTATION each), rewrite `test/home-layout.test.js`/`home-information-architecture.test.js` for the flag-on shape rather than deleting them.
 - **Dependencies:** U-01, U-02, U-04 (strip).
 - **Acceptance:** at inset 0 and 59 px, all four sections render with real data; the stretch slot is present in both "for you" sections on 20 consecutive seeded renders; DECISIONS records #123 as resolved "floor kept, sections adopted".
 
-#### U-04 · `SegmentStrip` (C2 / #128) — **M**
+#### U-04 · `SegmentStrip` (C2 / #128) — **M** — **DONE 2026-09-06, PR #499**
 - **Ask:** the proportional coloured-bar component: one bar per segment, width by duration, colour by source show from the existing `--seg-c0..7` palette, **violet for narration** (already `--seg-narration`). Pure function `segmentStripHtml(items)` over a Foray's items; used by Home's Foray cards (U-03) and the show/episode restyle (U-08). Degrades to nothing for a Foray with no segments.
 - **Owned:** `player/segment-strip.js` + `.test.js` (floored), `styles.css`.
 - **Acceptance:** widths sum to 100% ± rounding for the four committed Forays; colours are stable per show across renders; reduced-motion respected.
 
-#### U-05 · Search restyle + Playlists section (C7 / #135, D7) — **M**
+#### U-05 · Search restyle + Playlists section (C7 / #135, D7) — **M** — **DONE 2026-09-06, PR #508**
 - **Ask:** restyle the Shows page to tokens (field, browse pills, show grid). Results gain a **Playlists** section under Shows and Episodes: the listener's own playlists matching the query (#470's `playlistMatchesQuery` already exists) plus generated candidates from D5's generator, badged. **Ranking is presentation-only**: `node tools/test-search.mjs` must pass unchanged and no `search-engine.js` scoring changes. The "Create a playlist about X" CTA appears when a query has no strong result (the #135 CTA, retargeted from Foray to Playlist per D8).
 - **Owned:** `app.js` (`renderShowSearchResults` v2), `styles.css`, `test/show-search.test.js` (extend), `test/search-playlists.test.js` (new, floored).
 - **Acceptance:** search battery unchanged; a query matching an own playlist shows it; offline behaviour from D9-earlier (shows search) unchanged.
 
-#### U-06 · Create = Playlist creation (D7, D8) — **M**
+#### U-06 · Create = Playlist creation (D7, D8) — **M** — **DONE 2026-09-06, PR #507; the "enable the Foray option → red" floor is real after PR #603**
 - **Ask:** the mockup's Create screen, restyled, with the **Foray | Playlist** toggle rendered but the Foray option **disabled with honest copy** ("Custom Forays aren't available yet"), so the affordance is visible without promising the feature. Playlist mode is today's `buildPlaylist()` flow in the new chrome: subject field, the mockup's building/ready states reused for the local build, result opens the playlist. The mockup's ~20/~40/~75 lengths are Foray-specific and **not** shown for playlists.
 - **Owned:** `app.js` (`renderCreate`), `styles.css`, `test/create-page.test.js` (floored; MUTATION: enable the Foray option → red).
 - **Acceptance:** building a playlist from Create produces the same `cp_playlists` entry as building from the old Playlists page; the disabled Foray option is not focusable as a control.
 
-#### U-07 · Interests page with sliders, and the root-node bug (D6) — **M** — *design comment first*
+#### U-07 · Interests page with sliders, and the root-node bug (D6) — **M** — *design comment first* — **DONE 2026-09-06, PR #500**
 - **Ask:** **Bug first, its own commit:** `loadInterests()`/`saveInterests()` seed and persist **every** taxonomy node (roots and leaves), so a root-level interest survives a save; `nudgeTopics()` propagates to the parent at a damped rate (state the ratio; default 0.5). Then the page at `#/interests`, reachable from Settings and from Preferences (U-09): one row per node the listener has a non-default weight on plus the roots, grouped by root; each row = name, path, current weight, a **slider** the listener drags to overrule (range **0–1**, matching today's clamped model — not the old prototype's −1..1, because `nudgeTopics` clamps at zero and a negative floor would be a different design), a *Reset to learned* control. **No history feed, no evidence log** (D6). Keyboard-operable (`role="slider"`, arrow keys), `touch-action: pan-y` so it does not fight scrolling — the old prototype fixed exactly that bug twice.
 - **Owned:** `app.js` (`renderInterests`, `loadInterests`, `saveInterests`, `nudgeTopics`), `styles.css`, `test/interests-page.test.js` (floored), `test/interests-roots.test.js` (the bug: seed a root weight, save, reload → still there; MUTATION: restore `leafNodes()` → red).
 - **Acceptance:** dragging a slider changes what `buildCards()` ranks on the next Home render (assert by seeding two nodes and flipping which is higher); a root interest set in Preferences is present after `saveInterests()`; all sliders operable by keyboard.
 
-#### U-08 · Show, Episode and player chrome restyled to tokens (C12 partial) — **M**
+#### U-08 · Show, Episode and player chrome restyled to tokens (C12 partial) — **M** — **DONE 2026-09-06, PR #506**
 - **Ask:** presentation-only pass over `renderShow`, `renderEpisode`, `renderForays`, `renderQueue`, `renderPlaylists`/`renderPlaylistDetail` and the mini/full player **CSS**: tokens, type, spacing, the `SegmentStrip` on Foray pages. **No logic changes in `player/`**; its markup is owned by the iOS-audio work, so this card touches `styles.css` classes for the player and nothing in `player/*.js`. If a needed hook is missing, file it against that owner rather than reaching in.
 - **Owned:** `styles.css`, `app.js` (class names only where a token class must replace an old one), `test/show-page*.test.js` (assert nothing behavioural changed).
 - **Acceptance:** every existing page test passes with the flag on; a diff of `player/*.js` is empty.
 
-#### U-09 · Welcome + Preferences as a skippable first run (C4 / #132, D2) — **M**
+#### U-09 · Welcome + Preferences as a skippable first run (C4 / #132, D2) — **M** — **DONE 2026-09-06, PR #503; "three picks change the FIRST Home render" DONE after PR #603**
 - **Ask:** the mockup's Welcome (two value props, the second illustrated with a live `SegmentStrip`) and Preferences (interest chips + "type a subject yourself") as a first-run sheet, **skippable at every step**, gated on the existing `cp_intro_dismissed`. Preferences writes to `state.interests` through the fixed U-07 path (roots included). **Not built:** "Continue with Apple/Google", "Import subscriptions/listening history" (connectors; C5). The N3 feedback item — "re-open the interests prompt later" — is satisfied by the Settings entry to `#/interests`.
 - **Owned:** `app.js`, `styles.css`, `test/first-time-onboarding.test.js` (extend).
 - **Dependencies:** U-01, U-04, U-07.
 - **Acceptance:** a fresh profile sees Welcome once; skipping at step 1 or 2 lands on Home with default weights; picking three chips changes the first Home render's ranking.
 
-#### U-10 · Library tab = Joey's #374 — **S** (plus the rebase)
+#### U-10 · Library tab = Joey's #374 — **S** (plus the rebase) — **DONE 2026-09-06, #374 + PR #505 (no rebase conflict arose: #374 merged before the tab bar)**
 - **Ask:** rebase and land **#374** (Joey's Library screen: saved, history, playlists, Up Next), then point U-02's Library tab at `#/library`. The rebase conflicts in `app.js` and `index.html` are nav-integration decisions; resolve them **toward the tab bar** and say so in the PR. Restyle to tokens only if the rebase is trivial; otherwise a follow-up.
 - **Governance:** `index.html` → human merge; the PR is Joey's — note the rebase in its body and let him see it.
 - **Acceptance:** Library tab opens his screen; his own tests pass.
 
-#### U-11 · Cutover and records — **S** — **DONE, founder-overridden schedule (2026-09-06, kanban `t_a3f01c8a`)**
+#### U-11 · Cutover and records — **S** — **cutover DONE, founder-overridden schedule (2026-09-06, PR #512, kanban `t_a3f01c8a`); records DONE after PR DOCSPR (2026-09-10: DECISIONS #125/#126/D3, README table, C-issues closed or repointed)**
 - **Ask:** after every card above is green on TestFlight for a week: default `cp_ui_v2` on for everyone, delete the four-card Home and the menu-as-primary-nav code paths, delete the flag. DECISIONS entries: #123 resolved (floor kept), #125 resolved (anonymous-first stands), #126 deferred, D3 (tab bar reverses #467), D4 (self-hosted fonts). Close or repoint C1, C2, C3, C4, C7 issues; leave C6/C10/C11 open with a pointer here. `docs/ux/README.md` gains a "what shipped vs the mockup" table.
 - **FOUNDER OVERRIDE (2026-09-06):** Joey directed cutting over immediately
   rather than waiting out the week of TestFlight soak time above — see
@@ -145,7 +149,7 @@ Read first: `CLAUDE.md`; this file; `docs/ux/README.md`; issues #102, #123,
   rather than deleted outright, so they remain recoverable.
 - **Governance:** `docs/DECISIONS.md` → `founder-approved`.
 
-#### U-12 · The drawer is the top-most chrome: above Now Playing, the sheet and the tab bar — **S** — *added 2026-09-09 from founder feedback F17*
+#### U-12 · The drawer is the top-most chrome: above Now Playing, the sheet and the tab bar — **S** — *added 2026-09-09 from founder feedback F17* — **DONE 2026-09-09, PR #550; "both viewports" DONE after PR #603 (390×844 mobile-chromium project)**
 - **Ask:** the expanded Now Playing (`#foray-player`, z 60) covers the left menu
   (`#drawer-overlay` 30 / `#drawer` 31). Raise the drawer pair above every player
   surface and the reason sheet (`.fy-sheet` 70) — one `--z-drawer` token, applied to
@@ -158,7 +162,7 @@ Read first: `CLAUDE.md`; this file; `docs/ux/README.md`; issues #102, #123,
 - **Governance:** `styles.css`/`test/` auto-merge. **Fix dispatched by the founder's
   session 2026-09-09; Hermes need not pick this up unless that PR is closed.**
 
-#### U-13 · Closing Now Playing collapses to the ribbon; only Stop stops — **S** — *added 2026-09-09 from founder feedback F18*
+#### U-13 · Closing Now Playing collapses to the ribbon; only Stop stops — **S** — *added 2026-09-09 from founder feedback F18* — **DONE 2026-09-09, PR #550 (the file is `player/client.js`, not `mobile/www/player/client.js`)**
 - **Ask:** the expanded sheet's ✕ is `stopAndClose()` ("Stop and close player"): it
   stops playback AND removes the mini bar, so the founder closed the screen to use the
   app and lost the way back to what was playing. Rule: **closing never stops.** The
@@ -180,10 +184,10 @@ Read first: `CLAUDE.md`; this file; `docs/ux/README.md`; issues #102, #123,
 
 | # | Who | What | Blocks |
 |---|---|---|---|
-| G1 | Joey | Read this deck; the Home floor mix (D1) and the tab bar (D3) are product calls Wyatt made — Joey should see them before U-03 ships | U-03 |
+| G1 | Joey | Read this deck; the Home floor mix (D1) and the tab bar (D3) are product calls Wyatt made — Joey should see them before U-03 ships. *Overtaken 2026-09-06: Joey directed the U-11 cutover with U-03 already on main (DECISIONS 2026-09-06); no separate sign-off was recorded.* | U-03 |
 | G2 | Wyatt | Merge click for U-01's `index.html` CSP line and U-10's `index.html` | U-01, U-10 |
 | G3 | Joey | #374 rebase lands under his name | U-10 |
-| G4 | Wyatt | DECISIONS label at U-11 | U-11 |
+| G4 | Wyatt | DECISIONS label at U-11 — and again on the 2026-09-10 records PR DOCSPR | U-11 |
 
 ## 5. Sequencing
 
