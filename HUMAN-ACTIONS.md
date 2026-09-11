@@ -2,7 +2,7 @@
 
 <!-- ha-format: 2 -->
 
-> **32 open.** Closed items are in `HUMAN-ACTIONS-DONE.md` — you never need it.
+> **31 open.** Closed items are in `HUMAN-ACTIONS-DONE.md` — you never need it.
 > To close one: reply `done` (or `skip <why>`) to its card in the project's human-action channel.
 > Anything else you reply is forwarded to a thread on the card.
 
@@ -25,28 +25,6 @@ has no tester
 **Worked if:** the next `release.yml` run on `main` (a `v*` tag or *Run
 workflow*) produces **one App Store email and one Play email for the same
 build number** in your inbox. That is R-07's third acceptance item an
-
-## #43 🔴 [BLOCKING] Rule on `docs/search-plan.md`'s privacy gate (G1) — it blocks four cards of the search rebuild
-<!-- ha filed=2026-09-11 kind=keyword -->
-
-**Why:** `docs/search-plan.md` (Hermes deck, written 2026-09-09) cuts
-the Shows-search rebuild into cards S-01 through S-08 and cards them on the
-`foray` Kanban board. §3 names five human gates (G1–G5); this item is **G1**,
-the one gate that actually stops code from shipping. Quoting the plan exactly:
-*"Unti
-
-**Steps:**
-1. Read `docs/search-plan.md` §3 (human gates table) and §S-07 for the full
-2. Reply in the `#4a` Discord channel or comment directly on kanban card
-3. If you pick C (recommended): no further action from you until S-03 lands
-4. If you pick A or B outright: say so, and S-07's diffs will be finished and
-
-**Worked if:** kanban card `t_c21e53c3` (foray board) has your decision
-recorded in a comment, and cards S-02's network half, S-05, S-06, S-08 are no
-longer waiting on this item.
-
-
----
 
 ## #40 🟡 [DECIDE] Download one Enhanced iPhone voice, then re-listen to the narration test
 <!-- ha filed=2026-09-11 kind=default -->
