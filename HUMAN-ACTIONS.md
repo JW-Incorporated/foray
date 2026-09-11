@@ -233,7 +233,10 @@ nights; the Cloud agent that turns a digest into a PR had hit a weekly usage
 limi
 
 **Steps:**
-1. TODO — steps needed
+1. Verified 2026-09-11: PR #297 (nightly-watch.yml absence guard + nightly-refresh.yml overwrite guard) is already merged to main (merged 2026-08-25) and already carries the founder-approved label.
+2. Confirm the watchdog is live: check the Actions tab for the nightly-watch workflow running daily at 21:40 UTC and going red if a digest sits unmerged past 12h.
+3. If confirmed live and green/red as expected, this item is done -- reply done to close it (no further action needed on the PR itself).
+4. If the workflow is missing or was reverted since merge, say so here so the watchdog can be re-applied.
 
 **Worked if:** (not stated in the legacy item -- needs a real Worked-if)
 
