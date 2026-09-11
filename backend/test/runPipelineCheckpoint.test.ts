@@ -164,13 +164,17 @@ describe("per-stage checkpoint and resume inside one Foray (F-17/F-18)", () => {
     failing.deps.narrationWriter.selectAndWrite = async (request, buildCtx) => {
       if (firstSlotTitle === null) firstSlotTitle = request.slotTitle;
       if (request.slotTitle !== firstSlotTitle) {
-        /* Slow enough that the healthy slot certainly finished and banked
-           first — which is the property under test. Since G-34 this
-           sabotage sits on the FIRST request of the doomed slot's round
-           rather than its second, so the healthy slot's whole round has to
-           fit inside this window; 10 ms did under a solo run and not under
-           the full suite. */
-        await new Promise((r) => setTimeout(r, 100));
+        /* Wait until the healthy slot has actually banked before going
+           away — that ordering is the property under test, so it is waited
+           for rather than assumed from a fixed sleep. (A 10 ms sleep held
+           while this sabotage sat on the doomed slot's SECOND request; since
+           G-34 it sits on its first, and under full-suite load the healthy
+           slot's whole round did not always fit in 10 ms.) The deadline only
+           turns a hung run into a failure. */
+        const deadline = Date.now() + 5000;
+        while (!store.stageKeys(KEY).some((s) => /^narrate:0:\d+$/.test(s)) && Date.now() < deadline) {
+          await new Promise((r) => setTimeout(r, 5));
+        }
         throw new Error("provider went away mid-slot");
       }
       return realWrite(request, buildCtx);
@@ -203,7 +207,12 @@ describe("per-stage checkpoint and resume inside one Foray (F-17/F-18)", () => {
     const slotsInAct = store.stageKeys(KEY).filter((s) => /^narrate:0:\d+$/.test(s)).length;
     expect(slotsInAct).toBeGreaterThan(bankedBeforeRetry.length);
     expect(retry.calls.write).toBe(slotsInAct - bankedBeforeRetry.length);
-  });
+    /* Two full stub pipeline runs, the first of which now waits for a slot
+       to bank before it fails. Its siblings here run as long under a loaded
+       machine but spend that time synchronously, so the default 10 s timer
+       never gets to fire on them; this one yields while it waits, so it
+       needs the budget its work actually takes. */
+  }, 60_000);
 
   it("a second run with the same prompt makes no model calls at all", async () => {
     const store = new FakeCheckpointStore(FP);
