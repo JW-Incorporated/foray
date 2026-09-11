@@ -184,7 +184,7 @@ const FLOORS = {
      is a default that can silently drift back to #491's "best installed
      voice of any name", the exact behaviour the founder overruled. */
   "player/default-voice.test.js": 10,
-  "player/queue-manager.test.js": 114,
+  "player/queue-manager.test.js": 115, // +1: L-03 position-increases acceptance (2026-09-10)
   "player/queue-state.test.js": 56,
   "player/seam-gap.test.js": 16,
   /* The SegmentStrip (#128) — the element that makes a Foray legible as
@@ -254,7 +254,7 @@ const FLOORS = {
      that Family Mode's pre-existing poolFiltered() filter still fires
      unchanged — the badge is additive, not a replacement for that filter. */
   "test/explicit-badge.test.js": 9,
-  "test/first-time-onboarding.test.js": 26,
+  "test/first-time-onboarding.test.js": 28, // U-09 audit fix (2026-09-10): +2 — the picks re-deal and repaint the FIRST Home, and the pre-pick deal's memory is undone
   /* Duplicate-ID guard for HUMAN-ACTIONS.md's own numbering rule (full-repo
      review finding L3, 2026-08-31). Two tests: the file has numbered items,
      and no numeric ID repeats. */
@@ -492,6 +492,7 @@ const FLOORS = {
      feed slowly stopped surprising anyone. Every test names its mutation;
      see the suite header. */
   "test/home-v2.test.js": 9, // F14 (2026-09-08): generated playlists are interest leaves, not card slots
+  "test/home-v2-real-data.test.js": 5, // U-03 audit fix (2026-09-10): Home v2 over the committed data/*.json at insets 0/59; the Forays-for-you floor's documented fallback with one published Foray
   /* Starred shows (follow-lite), requirement A2.4 / Joey's Q2 answer.
      Kanban card "Build: starred shows (follow-lite) + dedicated Starred
      Shows page". Floored because this is exactly the #276/show-pages
@@ -803,7 +804,7 @@ const FLOORS = {
      `shell-invariants` gained one: the same slice against TODAY'S real documents,
      independently of the fixture suite. */
   "tools/mobile/prepare-webdir.test.mjs": 72,
-  "tools/mobile/shell-invariants.test.mjs": 52, // +1: iOS plugin never calls setActive (F11/F13 pause loop, 2026-09-09)
+  "tools/mobile/shell-invariants.test.mjs": 53, // +1: iOS plugin never calls setActive (F11/F13, 2026-09-09); +1: Swift writes the L-02 log needle (2026-09-10)
   /* 2026-09-04: the bundle's JS/CSS is minified (comments + whitespace, identifiers
      kept) and its JSON re-serialised on the way in — docs/mobile-shell.md §3.4.
      `minify.test.mjs` pins the transform (nothing renamed, nothing rewritten, only
@@ -917,7 +918,7 @@ const FLOORS = {
      inject-app-icon: byte-level --check, refuse a half fix. Floored exact. */
   "tools/mobile/inject-splash.test.mjs": 19,
   "tools/mobile/inject-background-audio.test.mjs": 41,
-  "tools/mobile/ios-ci.test.mjs": 125,
+  "tools/mobile/ios-ci.test.mjs": 132, // +7: L-02 takeover verdict + reached needle (2026-09-10)
   "tools/mobile/ios-workflow.test.mjs": 39,
   "tools/mobile/probe/install-probe.test.mjs": 39,
   /* The one-shot that gets a newly curated show's back catalogue into the pipeline

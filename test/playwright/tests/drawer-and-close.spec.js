@@ -35,6 +35,14 @@
  * The fixture origin is `lib/site-server.mjs` (NOT `lib/server.mjs`, which is
  * the sw.js manifest fixture) — see its header for the two narrow deviations
  * from the bytes on disk and why they are needed.
+ *
+ * VIEWPORTS: every test here runs twice — once on the `chromium` project
+ * (Desktop Chrome, 1280x720) and once on `mobile-chromium` (iPhone-class
+ * 390x844, touch + mobile emulation), per U-12's "on both viewports"
+ * acceptance; see playwright.config.mjs. Nothing below branches on the
+ * viewport: the stacking order and the collapse-not-stop rule are the same
+ * contract at both widths, and a hit test that only holds at one of them is
+ * exactly the F17 shape (reported on a phone, invisible on a desktop).
  */
 import { test, expect } from "@playwright/test";
 import { startSiteServer, AUDIO_PATH } from "../lib/site-server.mjs";

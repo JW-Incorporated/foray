@@ -610,3 +610,106 @@ test("neither step renders an account-connector or import-history control", () =
     SRC.indexOf("\nfunction ", SRC.indexOf("function showFirstTimeExplainerOnce(") + 10)
   ), /Continue with (Apple|Google)|Import (subscriptions|listening history)/i);
 });
+
+/* ==================================================================== */
+/* 5. THE PICKS CHANGE THE FIRST HOME RENDER (the card's third acceptance) */
+/* ==================================================================== */
+
+/* Home's "Episodes for you" is state.cardSlots, dealt by buildCards() BEFORE
+   the sheet opens over Home, from the pre-pick default weights, and never
+   rebuilt for the rest of the session. The two "changes the ranking" tests
+   in section 2 only proved interestScore() moved — the audit (2026-09-10)
+   found the rendered Home did not. These drive the real flow: Home renders
+   (the sheet opens over it), chips are picked, Start listening — and assert
+   on what Home now shows. Eight tied subjects, four items each, and
+   Math.random pinned to 0.5 so buildCards()'s jitter is zero: the deal is
+   then a pure function of the weights, and the only thing that can reorder
+   it is the picks. */
+const REDEAL_ROOTS = ["history", "comedy", "engineering", "business", "health", "science", "music", "sports"];
+
+function seedHomeForRedeal(m) {
+  m.state.session = { session_id: "s", builder: "t", episodes: {}, cards: [] };
+  m.state.itemIndex = {}; m.state.semantic = { concepts: {} }; m.state.itemTags = {};
+  m.state.discover = { items: REDEAL_ROOTS.flatMap((root) => [1, 2, 3, 4].map((i) => ({
+    id: `${root}-ep-${i}`, title: `${root} episode ${i}`, show: `${root} show`, duration_min: 30,
+    topics: [root], release_date: `2026-09-0${i}`, audio_url: `https://cdn.test/${root}-${i}.mp3`,
+  }))) };
+  REDEAL_ROOTS.forEach((root) => { m.state.interests[root] = 0.3; });
+  // `Math` here is the vm context's own global; only this mount sees the pin.
+  m.evalIn("state.ready = true; Math = Object.assign(Object.create(Math), { random: () => 0.5 });");
+}
+const homeHtml = (m) => m.byId.get("view").innerHTML;
+const dealtRoots = (html) => [...html.matchAll(/class="mini-card" data-branch="([^"]+)"/g)].map((mm) => mm[1]);
+const leadEpisode = (html, root) =>
+  (new RegExp(`data-branch="${root}"[\\s\\S]*?Starts with "([^"]+)\\."`).exec(html) || [])[1];
+
+/** Renders the first Home of the session (which deals cardSlots and opens the
+    sheet over it) and returns the four dealt subjects, stretch slot first. */
+function firstRunHome(m) {
+  m.ctx.renderHome();
+  assert.match(sheetTitle(m), /picks podcast episodes for you/, "the first-run sheet must be open over Home");
+  const before = dealtRoots(homeHtml(m));
+  assert.strictEqual(before.length, 4, "fixture: the pre-pick Home dealt four subject cards");
+  return before;
+}
+function pickAndStart(m, roots) {
+  goBtn(m)._fire("click");
+  roots.forEach((id) => m.body.querySelectorAll(`[data-chip="${id}"]`)[0]._fire("click"));
+  prefsGoBtn(m)._fire("click");
+  assert.strictEqual(m.body.querySelectorAll("#first-time-sheet").length, 0, "the sheet must be gone");
+}
+
+test("picking three chips changes the FIRST Home render: the picked subjects become the top-tier slots", () => {
+  /* MUTATION 1: delete the `redealAfterOnboardingPicks()` call in the Start
+     listening handler -> cardSlots is still the pre-pick deal, Episodes for
+     you after the picks is identical to before, and the three picked
+     subjects are absent. MUTATION 2: delete the `renderCurrentPage()` call
+     that follows it -> the deal was rebuilt in state but the page under the
+     sheet never repainted; the rendered HTML is still the old deal. */
+  const m = mount();
+  bootWithTaxonomy(m);
+  seedHomeForRedeal(m);
+  const before = firstRunHome(m);
+  const picks = REDEAL_ROOTS.filter((r) => !before.includes(r)).slice(0, 3);
+  assert.strictEqual(picks.length, 3, "fixture: three undealt subjects to pick");
+
+  pickAndStart(m, picks);
+
+  const after = dealtRoots(homeHtml(m));
+  assert.notDeepStrictEqual(after, before, "the picks must change the Home the listener lands on");
+  assert.deepStrictEqual([...after.slice(1)].sort(), [...picks].sort(),
+    `slots 2-4 must be the three picked subjects (slot 1 is the stretch pick, outside them by design); got ${after.join(", ")}`);
+});
+
+test("subjects the pre-pick deal happened to show are not penalised as 'recently shown' or 'seen' when the picks bring them forward", () => {
+  /* The pre-pick deal was painted under the modal, not browsed, and
+     buildCards() recorded it anyway (cp_recent_branches: -0.35 next time;
+     cp_seen: those episodes drop behind unseen ones in their chain). The lift
+     a pick gives is at most +0.20, so without undoing that memory a listener
+     who picked the very subjects the default deal showed would watch them
+     VANISH from the Home their picks were meant to shape.
+     MUTATION 1: delete the `cp_recent_branches` line in
+     redealAfterOnboardingPicks -> the three picked-and-dealt subjects score
+     0.415 - 0.35 and lose slots 2-4 to undealt 0.3 subjects.
+     MUTATION 2: delete the `cp_seen` line -> each picked subject's card leads
+     with its OLDEST episode (the one the pre-pick deal's 3-deep queue did not
+     reach, so the only one still "unseen") instead of its newest. */
+  const m = mount();
+  bootWithTaxonomy(m);
+  seedHomeForRedeal(m);
+  const before = firstRunHome(m);
+  const picks = before.slice(1); // the three top-tier subjects the default deal showed
+
+  pickAndStart(m, picks);
+
+  const html = homeHtml(m);
+  const after = dealtRoots(html);
+  assert.deepStrictEqual([...after.slice(1)].sort(), [...picks].sort(),
+    `the picked subjects the default deal showed must stay the top-tier slots; got ${after.join(", ")}`);
+  for (const root of picks) {
+    assert.strictEqual(leadEpisode(html, root), `${root} episode 4`,
+      `${root}'s card must lead with its newest episode — the pre-pick deal must not count as 'seen'`);
+  }
+  assert.deepStrictEqual(m.ctx.lsGet("cp_recent_branches", []), after,
+    "after the re-deal, recent-branch memory holds exactly the re-dealt subjects, not the pre-pick deal's too");
+});
