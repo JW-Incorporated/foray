@@ -7,6 +7,31 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
+### FD-06: directory CORS header, DECISIONS + privacy disclosure, deck records (2026-09-11) — `feat/fd-06-records-cors`
+
+- **What:** closes the Foray directory deck (`docs/foray-directory-plan.md`).
+  `vercel.json` now sends `Access-Control-Allow-Origin: *` on `/data/` (both
+  rules, #606's Cache-Control split kept) — the one line that makes #610's
+  phone path live, since the Capacitor shell fetches the directory
+  cross-origin from `capacitor://localhost`. New `test/vercel-headers.test.js`
+  (4, floored) pins it. `docs/DECISIONS.md` 2026-09-11: the app reads the
+  directory from the live origin; the package carries an offline seed
+  (reverses the bundling half of `04_VOICE_AUDIO_SPEC.md`, keeps its offline
+  intent). Privacy policy §2: one sentence adding the boot-time directory GET
+  to the existing own-origin disclosure — checked against HUMAN-ACTIONS #38's
+  sentence and S-07's conditional, neither contradicted, neither rewritten.
+  Roadmap: G-22 SUPERSEDED, G-00 DONE (#538). Deck: DONE markers on FD-01…05
+  (#606, #610), FD-06 (this PR), FD-07 (PR #609).
+- **Touches:** `vercel.json`, `test/vercel-headers.test.js` (new),
+  `test/suite-integrity.test.js` (floor), `docs/DECISIONS.md` (founder-approved
+  path — not self-labelled), `docs/legal/privacy-policy.md`,
+  `docs/curation/foray-to-spec-roadmap.md`, `docs/foray-directory-plan.md`,
+  `STATE.md`.
+- **Not done here:** the `?v=<version>` immutable fetch in the shell (cheap
+  follow-up now that CORS is on both rules); verifying the header on a real
+  phone (no device — #610's field-record `data` row is the check: `adopted`
+  instead of `offline`).
+
 ### R-05/R-06/R-07: release deck records and test pins (2026-09-10) — `fix/release-deck-finish`
 
 - **What:** closes the last non-human gaps an adversarial audit found in
