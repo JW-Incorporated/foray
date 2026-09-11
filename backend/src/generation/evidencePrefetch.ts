@@ -1,7 +1,7 @@
 import { beatKindOf, claimHash, type EvidenceBeat, type EvidenceGatherer, type EvidencePack } from "./gatherEvidence";
-import { decideConnectiveNarration, pageCarriesContent } from "./writeNarration";
+import { decideConnectiveNarration, evidenceBeatFor, slotNeighbours, type SlotNeighbours } from "./writeNarration";
 import type { ExternalResearchContext } from "./ExternalResearcher";
-import type { SourcedAct, SourcedSlot } from "../types/tapeSourcing";
+import type { SourcedAct, SourcedSlot, TapePointer } from "../types/tapeSourcing";
 
 /**
  * G-35 / latency model M6: gather every narration page's evidence in ONE
@@ -99,18 +99,15 @@ export interface EvidencePrefetchMetrics {
  * `pageCarriesContent` says so. Kept as a pure function so the parity with
  * `writeSlot` is a thing a test can hold still.
  */
-export function evidenceBeatsFor(slot: SourcedSlot): EvidenceBeat[] {
+export function evidenceBeatsFor(slot: SourcedSlot, neighbours: SlotNeighbours = {}): EvidenceBeat[] {
   const beats: EvidenceBeat[] = [];
   for (let i = 0; i < slot.beats.length; i++) {
     const beat = slot.beats[i]!;
     const mode = beat.sourcing === "narration" ? beat.narration.mode : decideConnectiveNarration(slot, i);
     if (!mode) continue;
-    beats.push({
-      claim: beat.claim,
-      kind: beatKindOf(beat as unknown as { kind?: unknown }),
-      requiresEvidence: pageCarriesContent(mode),
-      ...(beat.sourcing === "tape" ? { tape: beat.tape } : {})
-    });
+    /* F-82: the SAME builder `writeSlot` uses, neighbours included — the
+       adjacent windows are part of the pack, so they are part of the key. */
+    beats.push(evidenceBeatFor(slot, i, mode, neighbours));
   }
   return beats;
 }
@@ -118,11 +115,13 @@ export function evidenceBeatsFor(slot: SourcedSlot): EvidenceBeat[] {
 /** The in-memory key: the claim hash the disk cache uses, plus every field
  * of an `EvidenceBeat` that changes what `gather` returns for it — the beat
  * kind (an argument beat gets no tape), whether the page carries content
- * (which decides the second query), and the tape pointer (which decides the
- * cue window). Two beats with the same key get the same pack. */
+ * (which decides the second query), the tape pointer (which decides the
+ * cue window), and (F-82) the adjacent segments whose windows join the
+ * pack. Two beats with the same key get the same pack. */
 export function evidenceMemoKey(beat: EvidenceBeat): string {
-  const tape = beat.tape ? `${beat.tape.itemId}@${beat.tape.startSec}-${beat.tape.endSec}` : "";
-  return `${claimHash(beat.claim)}|${beatKindOf(beat)}|${beat.requiresEvidence === true ? "content" : "connective"}|${tape}`;
+  const pointerKey = (p: TapePointer | undefined): string => (p ? `${p.itemId}@${p.startSec}-${p.endSec}` : "");
+  const adjacent = beat.adjacentTape ? `prev:${pointerKey(beat.adjacentTape.previous)}|next:${pointerKey(beat.adjacentTape.next)}` : "";
+  return `${claimHash(beat.claim)}|${beatKindOf(beat)}|${beat.requiresEvidence === true ? "content" : "connective"}|${pointerKey(beat.tape)}|${adjacent}`;
 }
 
 export interface PrefetchOptions {
@@ -165,7 +164,7 @@ export class PrefetchingEvidenceGatherer implements EvidenceGatherer {
     let skipped = 0;
     acts.forEach((act, actIndex) => {
       act.slots.forEach((slot, slotIndex) => {
-        const beats = evidenceBeatsFor(slot);
+        const beats = evidenceBeatsFor(slot, slotNeighbours(act, slotIndex));
         if (options.skipSlot?.(actIndex, slotIndex)) {
           skipped += beats.length;
           return;

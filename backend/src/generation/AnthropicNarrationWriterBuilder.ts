@@ -4,7 +4,8 @@ import { parseWithRetry } from "./parseWithRetry";
 import { env } from "../config/env";
 import { costFor, modelFor } from "../config/models";
 import { defaultBudgetGuard, type BudgetGuard } from "../cost/budgetGuard";
-import { MIN_QUOTE_WORDS, MODE_CHAR_BANDS, modeMayCiteTape } from "../types/narration";
+import { MIN_QUOTE_WORDS, MODE_CHAR_BANDS, modeMayCiteTape, type NarrationMode } from "../types/narration";
+import type { EvidenceDoc } from "./gatherEvidence";
 import type {
   ClaimSelectionRequest,
   ClaimSelectionResult,
@@ -219,12 +220,26 @@ function evidenceBlock(page: NarrationPageBrief): string {
     lines.push("Documents: none were retrieved for this page.");
   } else {
     for (const doc of page.evidence.docs) {
-      const tapeNote = doc.kind === "tape" && modeMayCiteTape(page.mode) ? " | TAPE: the segment this page introduces — may be cited as a whole (quote optional)" : "";
-      lines.push(`--- docId: ${doc.docId} | ${doc.title}${doc.url ? ` | ${doc.url}` : ""}${tapeNote}\n${doc.text}`);
+      lines.push(`--- docId: ${doc.docId} | ${doc.title}${doc.url ? ` | ${doc.url}` : ""}${tapeDocNote(doc, page.mode)}\n${doc.text}`);
     }
   }
   if (page.retryNote) lines.push(`REJECTIONS SO FAR: ${page.retryNote}`);
   return lines.join("\n");
+}
+
+/** The note on a transcript window's document line: where the segment
+ * plays relative to this page (F-82), and — on a page whose mode may cite
+ * tape — that the window may be cited as a whole. A content page is told
+ * the window is the tape beside it and nothing more: it stands on print. */
+function tapeDocNote(doc: EvidenceDoc, mode: NarrationMode): string {
+  if (doc.kind !== "tape") return "";
+  const where =
+    doc.tapePosition === "previous"
+      ? "TAPE that plays just BEFORE this page"
+      : doc.tapePosition === "next"
+        ? "TAPE that plays just AFTER this page (the segment this page introduces)"
+        : "TAPE: the segment this page introduces";
+  return modeMayCiteTape(mode) ? ` | ${where} — may be cited as a whole (quote optional)` : ` | ${where} — context; this page stands on print`;
 }
 
 /* The rule lines, shared by the split prompts and the merged one (G-34)
@@ -237,6 +252,12 @@ const SELECTION_RULES = [
   "A Frame, Hinge or Marker that hands the listener into tape may cite the tape itself: name the document marked TAPE as the claim's docId,",
   "say in claimText what the segment is about or who is speaking, and either copy a short phrase of its own words as the quote or leave the quote empty (\"\").",
   "The whole window is that source, so the word minimum does not apply to it. Say what the tape is about — never the answer it gives (the spoiler rule).",
+  /* F-82: a connective page between two segments holds both windows, and
+     a restatement of the tape is cited to the tape — never to print, and
+     never to nothing. */
+  "When a Frame, Hinge or Marker restates, summarises or attributes what the tape said — what a host argued, what a guest described — it MUST cite that tape:",
+  "name the window of the segment whose words they are (marked BEFORE or AFTER this page) as the docId. Never back a restatement of the tape with an outside publication,",
+  "and never restate the tape with no source at all: a restatement with no tape citation is exactly what gets the page rejected.",
   "If a document does not support a claim worth making, select no claim for that page rather than a weak one.",
   "If the documents contradict or complicate the purpose, select the claims that show that: the page's job is then to report the tension, not to assert the purpose.",
   '"contested" means reputable sources actively disagree about the fact itself — not that you are unsure.'
@@ -347,15 +368,18 @@ function prosePageBlock(page: ProsePageBrief): string {
   if (page.evidence.tape) {
     lines.push(`It sits against tape: "${page.evidence.tape.episodeTitle}" from ${page.evidence.tape.showTitle}.`);
   }
-  const fromTape = (c: SelectedClaim): boolean => page.evidence.docs.find((d) => d.docId === c.docId)?.kind === "tape";
+  const tapeNote = (c: SelectedClaim): string => {
+    const doc = page.evidence.docs.find((d) => d.docId === c.docId);
+    if (doc?.kind !== "tape") return "";
+    /* F-82: a page between two segments says which one it is speaking of. */
+    if (doc.tapePosition === "previous") return " (about the tape that just played — restate or attribute what it said; it is the source)";
+    return " (about the tape this page introduces — say what it is about, never the answer it gives)";
+  };
   lines.push(
     page.claims.length === 0
       ? "Claims: none. This page may assert nothing — ask a question or hand off to the listener."
       : `Claims:\n${page.claims
-          .map(
-            (c, i) =>
-              `  [${i}] ${c.claimText}${c.contested ? " (CONTESTED — the script must say so)" : ""}${fromTape(c) ? " (about the tape this page introduces — say what it is about, never the answer it gives)" : ""}`
-          )
+          .map((c, i) => `  [${i}] ${c.claimText}${c.contested ? " (CONTESTED — the script must say so)" : ""}${tapeNote(c)}`)
           .join("\n")}`
   );
   if (page.retryNote) lines.push(`REJECTIONS SO FAR: ${page.retryNote}`);

@@ -93,6 +93,26 @@ export type BeatKind = "account" | "argument";
 export interface EvidenceDoc extends HeldEvidenceDoc {
   kind: "tape" | "print";
   retrievedAt?: string;
+  /** F-82: where this transcript window sits relative to the page in
+   * play order — the segment that plays just BEFORE the page, or just
+   * AFTER it (for a Frame, "next" is the segment it introduces). Set only
+   * on a tape document gathered for a beat that declared `adjacentTape`;
+   * a window gathered for an older caller carries no position. The
+   * writer and verifier prompts read it so a page between two segments
+   * knows which window is which. */
+  tapePosition?: TapePosition;
+}
+
+export type TapePosition = "previous" | "next";
+
+/** F-82: the tape segments that play immediately before and after a page.
+ * A Hinge between two segments holds both; a Frame holds the one it
+ * introduces (`next`) and, when tape plays right before it, that one too
+ * (`previous`). Built by `writeNarration.ts`'s `adjacentTapeFor` — the one
+ * definition the narration stage and the prefetch stage share. */
+export interface AdjacentTape {
+  previous?: TapePointer;
+  next?: TapePointer;
 }
 
 /** Who is on the tape this beat is anchored to — the thing run 1's
@@ -127,6 +147,16 @@ export interface EvidenceBeat {
    * written from no documents, and paying for a second search on its
    * behalf buys nothing. Absent means false. */
   requiresEvidence?: boolean;
+  /** F-82: the segments that play just before and just after this page.
+   * Their transcript windows join the pack as tape documents (keyed
+   * `tapeDocIdFor(segmentId)`, positioned `previous`/`next`) so a
+   * connective page that restates, summarises or attributes what the tape
+   * beside it said has that tape to cite. Run 6 (2026-09-11) kept four
+   * pages unverified whose claims were the episode's own content: two web
+   * queries found nothing, because the only text that says it is the
+   * transcript this pipeline was already holding for the beat next door.
+   * Absent means no neighbouring tape is held for the page. */
+  adjacentTape?: AdjacentTape;
 }
 
 export interface EvidenceGatherer {
@@ -354,6 +384,36 @@ export class DefaultEvidenceGatherer implements EvidenceGatherer {
         if (tapeEvidence.doc) pack.docs.push(tapeEvidence.doc);
       }
     }
+    /* THE OWN WINDOW DECIDES THE WEB SKIP BELOW, NOT THE NEIGHBOURS'. A
+       Frame's own segment is its evidence (F-69); a Hinge between two
+       segments still asks its one question of the web, because the
+       neighbouring windows are held for what the page may say ABOUT the
+       tape, not as a substitute for print on whatever else it says. */
+    const ownWindowHeld = pack.docs.some((doc) => doc.kind === "tape");
+
+    /* F-82: the segments that play just before and after this page. The
+       page's own segment, when it is one of them, is the same document
+       given its position; any other is gathered exactly as the own window
+       is — cue window under the same docId convention, title read off the
+       catalogue — so a tape source naming it resolves in the validator and
+       the verifier is handed its words. */
+    if (beat.adjacentTape) {
+      const positions: Array<[TapePosition, TapePointer | undefined]> = [
+        ["previous", beat.adjacentTape.previous],
+        ["next", beat.adjacentTape.next]
+      ];
+      for (const [position, pointer] of positions) {
+        if (!pointer) continue;
+        const docId = tapeDocIdFor(pointer.segmentId);
+        const held = pack.docs.find((doc) => doc.docId === docId);
+        if (held) {
+          held.tapePosition = position;
+          continue;
+        }
+        const window = this.tapeEvidenceFor(pointer);
+        if (window?.doc) pack.docs.push({ ...window.doc, tapePosition: position });
+      }
+    }
 
     /* AND A BEAT THAT SOURCED TO TAPE IS NOT SENT TO THE WEB AT ALL (F-69).
      *
@@ -376,7 +436,7 @@ export class DefaultEvidenceGatherer implements EvidenceGatherer {
      * When it does not — no cue body on this machine, so `tapeEvidenceFor`
      * returned a context and no document — the beat still needs text from
      * somewhere, and the retrieval below runs exactly as it did. */
-    if (pack.docs.some((doc) => doc.kind === "tape")) return pack;
+    if (ownWindowHeld) return pack;
 
     for (const doc of await this.printEvidenceFor(beat.claim, ctx, beat.requiresEvidence === true)) pack.docs.push(doc);
     return pack;

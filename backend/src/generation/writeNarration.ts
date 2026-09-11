@@ -14,6 +14,7 @@ import {
   quoteWords,
   segmentIdOfTapeDoc,
   tapeDocIdFor,
+  tapeWindowHolding,
   validateNarratedBeat,
   type EvidenceDoc,
   type NarratedBeat,
@@ -24,7 +25,16 @@ import {
 } from "../types/narration";
 import type { Voice } from "../types/spine";
 import type { TranscriptCueProvider } from "./transcriptArchiveLookup";
-import { beatKindOf, createEvidenceGatherer, emptyEvidencePack, type EvidenceGatherer, type EvidencePack } from "./gatherEvidence";
+import {
+  beatKindOf,
+  createEvidenceGatherer,
+  emptyEvidencePack,
+  type AdjacentTape,
+  type EvidenceBeat,
+  type EvidenceDoc as GatheredDoc,
+  type EvidenceGatherer,
+  type EvidencePack
+} from "./gatherEvidence";
 import type {
   NarrationBuildContext,
   NarrationPageBrief,
@@ -411,6 +421,93 @@ export function decideConnectiveNarration(slot: SourcedSlot, beatIndex: number):
 
 export const NARRATION_PAGE_ATTEMPTS = 3;
 
+/**
+ * F-82: the beats on either side of a slot, in play order — the last beat
+ * of the slot before it and the first of the slot after it. A page at a
+ * slot's edge sits beside them exactly as it sits beside its own slot's
+ * beats; slots are an editorial grouping, not a break in the tape.
+ */
+export interface SlotNeighbours {
+  before?: SourcedBeat;
+  after?: SourcedBeat;
+}
+
+export function slotNeighbours(act: SourcedAct, slotIndex: number): SlotNeighbours {
+  const previous = act.slots[slotIndex - 1];
+  const following = act.slots[slotIndex + 1];
+  return {
+    ...(previous && previous.beats.length > 0 ? { before: previous.beats[previous.beats.length - 1] } : {}),
+    ...(following && following.beats.length > 0 ? { after: following.beats[0] } : {})
+  };
+}
+
+/**
+ * F-82: THE TAPE ON EITHER SIDE OF A PAGE, in play order.
+ *
+ * Run 6 (2026-09-11) kept four pages unverified whose claims were the
+ * episode's own content — "One host argued that …", "An engineer described
+ * buying a small robot …" — because the writer was handed the window of
+ * the segment a page INTRODUCES (F-81) and nothing else, so a page that
+ * restates the segment that just PLAYED had no citable tape, two web
+ * queries found nothing (the claim is the tape's, not the web's), and the
+ * page went out as a source-less hand-off the gate refused.
+ *
+ * So a page in a mode that may cite tape (`TAPE_SOURCE_MODES`) holds the
+ * windows of BOTH adjacent segments:
+ *
+ *   - a connective page on a tape beat plays just BEFORE that beat: its
+ *     `next` is the segment it introduces, its `previous` is the beat
+ *     before it when that beat is tape;
+ *   - a narration beat's page plays AT its beat: `previous` and `next` are
+ *     the beats either side when they are tape.
+ *
+ * A content page (Patch/Carry) is given its neighbours too — not to cite
+ * as tape (F-81's mode rule stands) but so that `writeSlot` can see, when
+ * no print was found for it, that the tape beside it is what the claim is
+ * about and write it as a Hinge from that tape instead of degrading it to
+ * a placeholder. Returns undefined when no tape plays beside the page.
+ *
+ * ONE definition, shared with `evidencePrefetch.ts` through
+ * `evidenceBeatFor`, so the prefetch stage gathers the same documents the
+ * narration stage asks for and the memo key still hits.
+ */
+export function adjacentTapeFor(slot: SourcedSlot, beatIndex: number, neighbours: SlotNeighbours = {}): AdjacentTape | undefined {
+  const beat = slot.beats[beatIndex];
+  if (!beat) return undefined;
+  const at = (index: number): SourcedBeat | undefined => {
+    if (index < 0) return neighbours.before;
+    if (index >= slot.beats.length) return neighbours.after;
+    return slot.beats[index];
+  };
+  const tapeOf = (b: SourcedBeat | undefined): TapePointer | undefined => (b && b.sourcing === "tape" ? b.tape : undefined);
+
+  const previous = tapeOf(at(beatIndex - 1));
+  const next = beat.sourcing === "tape" ? beat.tape : tapeOf(at(beatIndex + 1));
+  if (!previous && !next) return undefined;
+  return { ...(previous ? { previous } : {}), ...(next ? { next } : {}) };
+}
+
+/**
+ * The `EvidenceBeat` a page's pack is gathered for — the ONE builder both
+ * `writeSlot` and the prefetch stage's `evidenceBeatsFor` call, so the two
+ * cannot ask for different documents (G-35's hit rate depends on the memo
+ * key, and the key is made from these fields).
+ */
+export function evidenceBeatFor(slot: SourcedSlot, beatIndex: number, mode: NarrationMode, neighbours: SlotNeighbours = {}): EvidenceBeat {
+  const beat = slot.beats[beatIndex]!;
+  const adjacent = adjacentTapeFor(slot, beatIndex, neighbours);
+  return {
+    claim: beat.claim,
+    kind: beatKindOf(beat as unknown as { kind?: unknown }),
+    /* F-60: only a page that CARRIES content is worth a second, rephrased
+       retrieval query when the first comes back empty. A connective page
+       can be written from no documents at all. */
+    requiresEvidence: pageCarriesContent(mode),
+    ...(beat.sourcing === "tape" ? { tape: beat.tape } : {}),
+    ...(adjacent ? { adjacentTape: adjacent } : {})
+  };
+}
+
 /** Lower-case hyphenated tokens with no spaces — the shape of every
  * `data/segments.json` item id and of a tier-2 minted id. A publication
  * is now derived from a held document's title, so this can only fire if a
@@ -461,7 +558,7 @@ export async function writeNarration(acts: SourcedAct[], options: WriteNarration
             act.slots.map(async (slot, slotIndex) => {
               const resumed = options.resume?.(actIndex, slotIndex);
               if (resumed) return resumed;
-              const written = await writeSlot(slot, writer, verifier, evidence, voice, ctx, options.stats);
+              const written = await writeSlot(slot, writer, verifier, evidence, voice, ctx, options.stats, slotNeighbours(act, slotIndex));
               await options.onSlotWritten?.(actIndex, slotIndex, written);
               return written;
             })
@@ -538,7 +635,8 @@ async function writeSlot(
   evidence: EvidenceGatherer,
   voice: Voice,
   ctx: NarrationBuildContext,
-  stats?: NarrationWriteStats
+  stats?: NarrationWriteStats,
+  neighbours: SlotNeighbours = {}
 ): Promise<WrittenSlot> {
   const pages: PendingPage[] = [];
   for (let i = 0; i < slot.beats.length; i++) {
@@ -549,6 +647,7 @@ async function writeSlot(
     }
     const connectiveMode = decideConnectiveNarration(slot, i);
     if (!connectiveMode) continue;
+    const previous = adjacentTapeFor(slot, i, neighbours)?.previous;
     pages.push(
       newPage(
         `p${i}`,
@@ -558,27 +657,20 @@ async function writeSlot(
         /* F-81: the page may describe the tape it introduces — what the
            segment is about, who is speaking — citing the tape itself as
            its source (the transcript window in its evidence pack). What it
-           still may not do is give the tape's answer away. */
-        `This page hands the listener into or out of real tape — ${tapeDescription(beat)}. It may say what that tape is about and who is speaking, citing the tape itself as its source (document ${tapeDocIdFor(beat.tape.segmentId)}); it does not give away the answer the tape gives (narration-craft.md's spoiler rule).`
+           still may not do is give the tape's answer away. F-82: when tape
+           plays just before it, that window is held too, and anything the
+           page says about what THAT tape said is cited to it. */
+        `This page hands the listener into or out of real tape — ${tapeDescription(beat)}. It may say what that tape is about and who is speaking, citing the tape itself as its source (document ${tapeDocIdFor(beat.tape.segmentId)}); it does not give away the answer the tape gives (narration-craft.md's spoiler rule).` +
+          (previous
+            ? ` The tape that plays just before this page (document ${tapeDocIdFor(previous.segmentId)}) is held too: anything this page says about what that tape said must cite that window, never an outside publication (F-82).`
+            : "")
       )
     );
   }
 
   await Promise.all(
     pages.map(async (page) => {
-      const beat = slot.beats[page.beatIndex]!;
-      page.evidence = await evidence.gather(
-        {
-          claim: page.claim,
-          kind: beatKindOf(beat as unknown as { kind?: unknown }),
-          /* F-60: only a page that CARRIES content is worth a second,
-             rephrased retrieval query when the first comes back empty. A
-             connective page can be written from no documents at all. */
-          requiresEvidence: pageCarriesContent(page.mode),
-          ...(beat.sourcing === "tape" ? { tape: beat.tape } : {})
-        },
-        ctx
-      );
+      page.evidence = await evidence.gather(evidenceBeatFor(slot, page.beatIndex, page.mode, neighbours), ctx);
     })
   );
 
@@ -588,9 +680,32 @@ async function writeSlot(
      code, before the prose call — which is exactly what run 2 paid three
      selection calls to discover. Marking the page here takes it out of
      `pending`, so a slot whose every page is in this state makes ZERO
-     writer calls. */
+     writer calls.
+
+     F-82, THE CASE F-60 WAS DEGRADING FOR THE WRONG REASON. Run 6's four
+     unverified pages were content beats whose claims were what the tape
+     beside them says — the deepen stage wrote the claim from the episode,
+     sourcing placed the episode's segment next door, and the web had
+     nothing to say because the transcript this pipeline holds is the only
+     text that says it. Those pages are not evidence-less; their evidence
+     is the tape. When no print was found but a neighbouring window is
+     held, the page is written as a HINGE from that tape — the mode the
+     hand-off already took (`HANDOFF_MODE`), now with a script that
+     restates or attributes what the tape said and cites it — and only a
+     page with neither print nor tape is still degraded unwritten. */
   for (const page of pages) {
-    if (!pageCarriesContent(page.mode) || page.evidence.docs.length > 0) continue;
+    if (!pageCarriesContent(page.mode)) continue;
+    if (page.evidence.docs.some((doc) => doc.kind !== "tape")) continue;
+    const windows = page.evidence.docs.filter((doc) => doc.kind === "tape");
+    if (windows.length > 0) {
+      console.log(
+        `writeNarration: no print for the ${page.mode} page "${page.claim.slice(0, 80)}" (slot "${slot.title}"), but the tape beside it is held — ` +
+          `writing it as a ${HANDOFF_MODE} that cites that tape (F-82)`
+      );
+      page.mode = HANDOFF_MODE;
+      page.contextNote = hingeFromTapeNote(windows);
+      continue;
+    }
     console.warn(
       `writeNarration: no evidence for the ${page.mode} page "${page.claim.slice(0, 80)}" (slot "${slot.title}") after two retrieval queries — ` +
         "degrading it to an unverified hand-off without calling the writer; the veracity gate refuses to publish over it (F-60)"
@@ -999,6 +1114,24 @@ function tapeDescription(beat: Extract<SourcedBeat, { sourcing: "tape" }>): stri
   return `segment ${beat.tape.segmentId}`;
 }
 
+/** F-82: the brief for a content beat re-written as a Hinge from the tape
+ * beside it. Names each held window by where it plays, so the writer
+ * cites the segment whose words it is restating and not the other one. */
+function hingeFromTapeNote(windows: GatheredDoc[]): string {
+  const where = (doc: GatheredDoc): string =>
+    doc.tapePosition === "previous"
+      ? `the segment that plays just before this page (document ${doc.docId})`
+      : doc.tapePosition === "next"
+        ? `the segment that plays just after this page (document ${doc.docId})`
+        : `the segment beside this page (document ${doc.docId})`;
+  return (
+    `This page's purpose is what the tape beside it says — ${windows.map(where).join(", and ")} — and nothing in print was found for it, ` +
+    `so it is written as a ${HANDOFF_MODE}: briefly restate, summarise or attribute what that tape said, citing the tape itself (that document) as the source, ` +
+    "with claimText saying what the segment says and the quote either a phrase of its own words or empty. " +
+    "A restatement of the tape with no tape source, or backed by an outside publication, is what gets this page rejected (F-82)."
+  );
+}
+
 function briefFor(page: PendingPage): NarrationPageBrief {
   return {
     pageId: page.pageId,
@@ -1122,8 +1255,14 @@ export function gateSelectedClaims(claims: SelectedClaim[], page: PendingPage): 
          judge the claim exactly as they always did. */
       const echoed = String(claim.quote ?? "").trim();
       if (echoed && !phraseIsInWindow(echoed, named.text)) {
+        /* F-82: a page between two segments holds both windows. A phrase
+           the tape did say, cited to the wrong segment's window, is told
+           which window says it — the fix is the docId, not the echo. */
+        const elsewhere = tapeWindowHolding(echoed, docs, named.docId);
         issues.push(
-          `${where}: the quote is not spoken in the transcript window of the tape this page introduces ("${named.title}"). A tape source may echo only the tape's own words — copy a phrase out of that window, or leave the quote empty and describe what the segment says (F-81).`
+          elsewhere
+            ? `${where}: the quote is not spoken in the transcript window named ("${named.docId}") — it is spoken in the other window this page holds, "${elsewhere.docId}" (the segment ${positionOf(page, elsewhere.docId)}). Cite the segment whose words they are (F-82).`
+            : `${where}: the quote is not spoken in the transcript window of the tape beside this page ("${named.title}"). A tape source may echo only the tape's own words — copy a phrase out of that window, or leave the quote empty and describe what the segment says (F-81).`
         );
         continue;
       }
@@ -1159,6 +1298,14 @@ export function gateSelectedClaims(claims: SelectedClaim[], page: PendingPage): 
     );
   }
   return { valid, issues };
+}
+
+/** F-82: how a held window sits against the page, for a rejection note —
+ * "that plays just before this page" / "just after" — or "beside" when
+ * the pack was built by a caller that recorded no position. */
+function positionOf(page: Pick<PendingPage, "evidence">, docId: string): string {
+  const position = page.evidence.docs.find((d) => d.docId === docId)?.tapePosition;
+  return position === "previous" ? "that plays just before this page" : position === "next" ? "that plays just after this page" : "beside this page";
 }
 
 /**

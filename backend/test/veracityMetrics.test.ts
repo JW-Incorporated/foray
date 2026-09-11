@@ -395,6 +395,7 @@ describe("evaluateVeracityGate", () => {
     unverifiedPages: 0,
     unverifiedPageDetails: [],
     purposeRevisedPages: 0,
+    tapeCitedPages: 0,
     pipelineTokens: 1000,
     stageTimings: []
   });
@@ -536,6 +537,7 @@ describe("the publish gate refuses an unverified page (F-51)", () => {
     unverifiedPages: 0,
     unverifiedPageDetails: [],
     purposeRevisedPages: 0,
+    tapeCitedPages: 0,
     pipelineTokens: 1000,
     stageTimings: []
   });

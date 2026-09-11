@@ -155,8 +155,10 @@ export function buildVerifyPrompt(request: NarrationVerifyRequest): string {
     "1. claimsSupported — does every statement the script makes about the world follow from the quote attached to it?",
     "   A quote that is about the right subject but does not say what the claim says is NOT support.",
     "   A source marked [TAPE] has no quote to check against: its holding document is the transcript window of the",
-    "   segment the page introduces, printed under it. Every statement the script makes about that tape — what it is",
-    "   about, who is speaking, what they say — must be borne out by what is said in that window.",
+    "   segment it names — the one that plays just before this page or just after it — printed under it. Every statement",
+    "   the script makes about that tape — what it is about, who is speaking, what they say — must be borne out by what",
+    "   is said in THAT window. A page between two segments may hold both windows; judge each tape source against the",
+    "   window it names, not the other one, and a restatement of the tape with no tape source is unsupported.",
     "2. purposeAccomplished — does the script address the SUBJECT its purpose names, using the evidence it was given?",
     "   Contradicting or qualifying the purpose from the documents ACCOMPLISHES it — a purpose is editorial direction and can",
     "   be wrong. Only a page that ignores the subject, or re-tells what earlier pages covered, fails this.",
@@ -200,9 +202,17 @@ function sourceLine(s: Source, i: number, page: VerifyPageBrief): string {
     return `  Source ${i + 1}: claim="${s.claimText}" quote="${s.quote}" publication="${s.publication}"${contested}`;
   }
   const window = page.evidence.docs.find((d) => d.docId === tapeDocIdFor(s.segmentId));
+  /* F-82: which side of the page the named segment plays on, so a page
+     holding two windows is judged against the one the source names. */
+  const where =
+    window?.tapePosition === "previous"
+      ? "the segment that plays just BEFORE this page"
+      : window?.tapePosition === "next"
+        ? "the segment that plays just AFTER this page (the one it introduces)"
+        : "the segment this page introduces";
   return [
-    `  Source ${i + 1} [TAPE — the segment this page introduces, ${s.segmentId}]: claim="${s.claimText}"${s.quote ? ` echoes="${s.quote}"` : ""} publication="${s.publication}"${contested}`,
-    "    Holding document for this source: the segment's transcript window below. Judge the claim against everything said in it.",
+    `  Source ${i + 1} [TAPE — ${where}, ${s.segmentId}]: claim="${s.claimText}"${s.quote ? ` echoes="${s.quote}"` : ""} publication="${s.publication}"${contested}`,
+    "    Holding document for this source: the segment's transcript window below. Judge the claim against everything said in it, and not against any other window this page holds.",
     `    Transcript window:\n${window ? window.text : "    (the window is not held — treat the claim as unsupported)"}`
   ].join("\n");
 }
