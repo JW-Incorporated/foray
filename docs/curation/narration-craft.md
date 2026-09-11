@@ -530,6 +530,30 @@ only ask a question or hand off to the listener; a Patch, Carry or Correction st
 cites print; and the spoiler rule (§3c) is unchanged — the tape is the Frame's
 source for *what the tape is about*, never a licence to state its answer.
 
+**A connective page cites the adjacent tape it restates** (F-82, 2026-09-11).
+F-81 handed a page the window of the segment it *introduces* and nothing else. A
+Hinge sits *between* two segments, and the thing it most often does is close what
+just played — "one host argued that…", "an engineer described…" — which is a
+restatement of the *previous* segment, with no citable tape under F-81 and nothing
+on the web that says it, because the transcript this pipeline already holds is the
+only text that does. Generation run 6 kept four such pages unverified and the gate
+refused the Foray. So a page now holds the windows of **both** adjacent segments in
+play order (the one that plays just before it and the one just after, slot edges
+included), each a tape document it may cite; a Frame with tape right before it
+holds that window too. The rule for the writer: **when a connective page restates,
+summarises or attributes what the tape said, it cites that tape — the segment whose
+words they are — never an outside publication, and never nothing.** A restatement
+with no tape citation is what gets the page rejected. Mechanically, a tape source is
+judged against the window it *names*: a phrase the previous segment said, cited to
+the next one, is refused and the rejection names the window that does say it. And a
+content beat (Patch/Carry) whose claim turns out to be the tape's own content — no
+print found, a neighbouring window held — is written as a Hinge from that tape
+rather than degraded to a source-less hand-off (F-60's placeholder was the run-6
+symptom). Nothing else loosens: a Patch or Carry that *did* find print stays a
+content page and cites print; the spoiler rule still governs what a page says about
+the segment it introduces; and `meta.veracity.tapeCitedPages` reports how many
+pages stand on the tape beside them.
+
 ### 3e. Cross the distance once, and name only the axis that matters
 
 Our seams cross place, time, discipline, register and room at once. The instinct is

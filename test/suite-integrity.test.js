@@ -1764,6 +1764,17 @@ const BACKEND_FLOORS = {
      end, and — pinned as unchanged — a source-less page that states a fact
      is still refused. One named mutation per test. */
   "test/frameTapeSource.test.ts": 24,
+  /* F-82 (generation run 6): a connective page cites the adjacent tape it
+     restates. A page holds the windows of BOTH segments beside it in play
+     order (across slot edges), the prefetch stage keys on them so the hit
+     rate stays 1, a content beat with no print but a neighbouring window
+     is written as a Hinge from that tape instead of degraded, a phrase from
+     the previous segment cited to the next one is refused and the note
+     names the window that says it, the four run-6 pages are accepted end
+     to end, `tapeCitedPages` counts, and — pinned as unchanged — a page
+     with no source that states a fact is still refused. One named
+     mutation per test. */
+  "test/hingeTapeSource.test.ts": 19,
 };
 
 /* `it(` as well as `test(`: backend's suites use both spellings. */

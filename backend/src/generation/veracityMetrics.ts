@@ -537,6 +537,22 @@ export function computePurposeRevisedPages(writtenActs: WrittenAct[]): number {
 }
 
 /* ------------------------------------------------------------------ */
+/* tapeCitedPages (F-81/F-82)                                           */
+/* ------------------------------------------------------------------ */
+
+/**
+ * How many pages cite tape — a Frame describing the segment it introduces
+ * (F-81), a Hinge restating the segment that just played (F-82). Reported,
+ * never gated: the number exists so a run's report says how much of the
+ * connective narration stands on the tape beside it rather than on print
+ * or on nothing, and so a run that dropped every such page (run 5's eight
+ * Frames, run 6's four Hinges) shows the zero that was the finding.
+ */
+export function computeTapeCitedPages(writtenActs: WrittenAct[]): number {
+  return flattenWrittenPages(writtenActs).filter(({ page }) => page.sources.some((source) => isTapeSource(source))).length;
+}
+
+/* ------------------------------------------------------------------ */
 /* Assembly                                                             */
 /* ------------------------------------------------------------------ */
 
@@ -568,6 +584,9 @@ export interface VeracityMetrics {
   /** F-50: pages that corrected their purpose from the evidence. Reported,
    * never gated — see `computePurposeRevisedPages`. */
   purposeRevisedPages: number;
+  /** F-81/F-82: pages whose sources include the tape beside them.
+   * Reported, never gated — see `computeTapeCitedPages`. */
+  tapeCitedPages: number;
   pipelineTokens: number;
   /** Pipeline-stage wall times (`stageTiming.ts`'s `StageTiming[]`),
    * `finalizeForay`'s own internal breakdown appended with a `finalize.`
@@ -625,6 +644,7 @@ export function buildVeracityMetrics(input: BuildVeracityMetricsInput): Veracity
     unverifiedPages: unverified.count,
     unverifiedPageDetails: unverified.pages,
     purposeRevisedPages: computePurposeRevisedPages(input.writtenActs),
+    tapeCitedPages: computeTapeCitedPages(input.writtenActs),
     pipelineTokens: input.pipelineTokens,
     stageTimings: input.stageTimings,
     ...(input.retrieval ? { retrieval: input.retrieval } : {})

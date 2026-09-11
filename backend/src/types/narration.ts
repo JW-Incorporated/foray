@@ -740,7 +740,7 @@ export function validateTapeSource(
   if (!window) {
     issues.push({
       code: "tape-window-not-held",
-      message: `source cites tape segment "${source.segmentId}" but its transcript window is not among the documents this page was given — a page may cite only the tape it introduces, and only when the pipeline holds its words (F-81)`
+      message: `source cites tape segment "${source.segmentId}" but its transcript window is not among the documents this page was given — a page may cite only the tape beside it (the segment it introduces, or the one that plays just before or after it), and only when the pipeline holds its words (F-81/F-82)`
     });
     return issues;
   }
@@ -751,12 +751,39 @@ export function validateTapeSource(
     });
   }
   if (source.quote !== undefined && !phraseIsInWindow(source.quote, window.text)) {
+    /* F-82: a page between two segments holds BOTH windows. A phrase the
+       tape did say, cited to the wrong segment, is named as such — the
+       fix is to cite the window it is in, not to drop the echo. */
+    const elsewhere = tapeWindowHolding(source.quote, heldDocs, window.docId);
     issues.push({
       code: "quote-not-held",
-      message: `quote "${source.quote.slice(0, 60)}" is not spoken in the transcript window of segment "${source.segmentId}" — a tape source may only echo the tape's own words (F-81)`
+      message: elsewhere
+        ? `quote "${source.quote.slice(0, 60)}" is not spoken in the transcript window of segment "${source.segmentId}" — it is spoken in segment "${elsewhere.segmentId}", which this page also holds; cite the segment whose words they are (F-82)`
+        : `quote "${source.quote.slice(0, 60)}" is not spoken in the transcript window of segment "${source.segmentId}" — a tape source may only echo the tape's own words (F-81)`
     });
   }
   return issues;
+}
+
+/**
+ * F-82: the OTHER held transcript window a phrase is spoken in, when a
+ * page holds more than one (a Hinge between two segments, a Frame with
+ * tape before it). `null` when no other window says it. Shared by the
+ * structural validator and the selection gate so both name the same
+ * segment when a writer cites the wrong one.
+ */
+export function tapeWindowHolding(
+  phrase: string,
+  heldDocs: EvidenceDoc[],
+  exceptDocId?: string
+): { docId: string; segmentId: string; title: string } | null {
+  for (const doc of heldDocs) {
+    if (doc.docId === exceptDocId) continue;
+    const segmentId = segmentIdOfTapeDoc(doc.docId);
+    if (!segmentId) continue;
+    if (phraseIsInWindow(phrase, doc.text)) return { docId: doc.docId, segmentId, title: doc.title };
+  }
+  return null;
 }
 
 /**

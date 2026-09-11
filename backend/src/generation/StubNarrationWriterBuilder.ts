@@ -102,7 +102,7 @@ function writtenPageFor(page: ProsePageBrief, register: string): WrittenPage {
   const target = Math.round((min + max) / 2);
   return {
     pageId: page.pageId,
-    script: padToBand(scriptSeedSentence(page, register), min, max, target, page.mode, page.claims.length === 0 ? CLAIM_FREE_FILLERS : FILLERS),
+    script: padToBand(scriptSeedSentence(page, register, target), min, max, target, page.mode, page.claims.length === 0 ? CLAIM_FREE_FILLERS : FILLERS),
     /* Every claim the selection produced. A page that could select
        none (nothing was retrieved for it) writes a script that
        asserts nothing — see `questionOnlyScript` — because
@@ -150,7 +150,7 @@ export function firstLegalSpan(text: string, purposeText: string): string | null
   return null;
 }
 
-function scriptSeedSentence(page: ProsePageBrief, register: string): string {
+function scriptSeedSentence(page: ProsePageBrief, register: string, target: number): string {
   if (page.claims.length === 0) return questionOnlyScript(page);
   const modeVerb: Record<string, string> = {
     Hinge: "closes what just played and opens",
@@ -161,7 +161,21 @@ function scriptSeedSentence(page: ProsePageBrief, register: string): string {
     Carry: "carries"
   };
   const verb = modeVerb[page.mode] ?? "addresses";
-  return `In the voice of a ${register.toLowerCase()}, this line ${verb} the idea that ${lowerFirst(page.purpose)}`;
+  const full = `In the voice of a ${register.toLowerCase()}, this line ${verb} the idea that ${lowerFirst(page.purpose)}`;
+  if (full.length <= target) return full;
+  /* A band too short for the long form — a Hinge is 50–135 characters,
+     and F-82 is the first time the dry-run path WRITES one (a content beat
+     with no print but the tape beside it) — gets the short form, with the
+     purpose cut on a word boundary and never mid-word. `padToBand` used to
+     slice the long form at the band's midpoint, which left "…the idea
+     that t": a script with no content word of its purpose in it, which the
+     stub verifier then refused three times. The seed keeps the purpose's
+     leading words so it stays about its subject. */
+  const short = `This line ${verb} the idea that `;
+  const room = Math.max(0, target - short.length);
+  const purpose = lowerFirst(page.purpose);
+  const cut = purpose.length <= room ? purpose : purpose.slice(0, room).replace(/\s+\S*$/, "");
+  return `${short}${cut}`.replace(/[\s,;:—–-]+$/, "");
 }
 
 /** No evidence arrived, so the page may assert nothing at all: a question
