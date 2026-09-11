@@ -215,7 +215,13 @@ Console: it needs the developer account's identity and login, and it is a
 click-t
 
 **Steps:**
-1. TODO — steps needed
+1. Open Play Console -> your app (4a) -> Grow -> Store presence -> Main store listing.
+2. App name: type 4a. Short description: paste docs/store/play/short-description.txt (73 chars). Full description: paste docs/store/play/full-description.txt (2202 chars, plain text).
+3. App icon: upload docs/store/play/app-icon-512.png (512x512, 32-bit with alpha) -- NOT the repo-root icon-512.png, which Play rejects.
+4. Feature graphic: upload docs/store/play/feature-graphic.png (1024x500).
+5. Phone screenshots: upload all four docs/store/play/screenshot-*.jpg files (720x1280 each), in numeric order 1-4.
+6. Save, then check Play Console shows no red warnings on Main store listing or App content, and submit the listing for review.
+7. Confirm: 4a resolves in a Play search or on its own store URL once the review completes.
 
 **Worked if:** the Play Console shows the listing as complete with no red
 warnings on Main store listing or App content, and `4a` resolves in a Play search
