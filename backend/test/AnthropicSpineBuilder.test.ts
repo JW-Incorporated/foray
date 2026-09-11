@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
-import { AnthropicSpineBuilder } from "../src/generation/AnthropicSpineBuilder";
+import { AnthropicSpineBuilder, buildSpinePrompt } from "../src/generation/AnthropicSpineBuilder";
+import { SPINE_SEED_REPEAT_MIN, SPINE_SEED_THIRD_MIN } from "../src/generation/spineSeeding";
 import { BudgetGuard } from "../src/cost/budgetGuard";
 import { InMemoryCostEventSink } from "../src/cost/costEvents";
 import { makeFakeAnthropicClient, textBlock, toolUseBlock } from "./helpers/fakeAnthropicClient";
@@ -256,6 +257,62 @@ describe("AnthropicSpineBuilder — WS-L: the spine prompt sees the tape (F-63)"
       episodeId: "practical-ai--episode-900",
       startSec: 100,
       endSec: 165
+    });
+  });
+
+  /* G-25 (tape-yield brief §5 R4, R3): the floor is a floor; the ask is every
+     account beat a window can carry, and the M4 cap is stated in numbers. */
+  describe("G-25: the ask is every account beat, argument beats stay narrated, and the M4 cap is stated in numbers", () => {
+    it("asks for a seed on every account beat a window can carry, and says what an account beat is", () => {
+      /* MUTATION THAT KILLS THIS: delete the "That floor is a minimum" paragraph
+         from `seedRule` in `AnthropicSpineBuilder.ts`. Ran it — red. */
+      const prompt = buildSpinePrompt(intent, shapeWithWindows, "medium");
+      expect(prompt).toContain("SEED EVERY ACCOUNT BEAT A WINDOW CAN CARRY");
+      expect(prompt).toContain("a person could be heard describing");
+      /* The floor is still asked for — it is what `spineStructure.ts` gates on. */
+      expect(prompt).toContain(`at least ${SPINE_MIN_SEEDED_BEATS_PER_ACT} beats`);
+    });
+
+    it("leaves argument beats narrated, in the words `BeatKind` draws the line with", () => {
+      /* MUTATION THAT KILLS THIS: drop the "Only an argument beat" sentence.
+         Ran it — red. */
+      const prompt = buildSpinePrompt(intent, shapeWithWindows, "medium");
+      expect(prompt).toContain("Only an argument beat");
+      expect(prompt).toContain("what something MEANS or what someone SHOULD do");
+      expect(prompt).toContain("stays unseeded and is narrated");
+    });
+
+    it("keeps claim faithfulness in the ask: never seed a claim its window does not say", () => {
+      /* The brief's own risk for R4 (1/1/1 "ISPs"): a seed is the spine writing
+         what the tape says, and a claim the window does not carry is refused
+         downstream with the seed wasted. MUTATION THAT KILLS THIS: drop the
+         "Never seed a claim" sentence. Ran it — red. */
+      const prompt = buildSpinePrompt(intent, shapeWithWindows, "medium");
+      expect(prompt).toContain("Never seed a claim its window does not say");
+    });
+
+    it("states the M4 cap as the sourcing ledger will apply it: one seed per episode until eight, a third at twelve", () => {
+      /* The run-2 spine seeded two episodes twice among fourteen seeds and lost
+         an on-claim window (weighted share 0.746) at `m4-share`. "A quarter"
+         was in the prompt; what it means at seeding time was not.
+         MUTATIONS THAT KILL THIS: (a) delete the "Concretely:" sentence — red;
+         (b) write the number 8 into the prompt by hand and change
+         `M4_ITEM_SHARE_MAX` — `SPINE_SEED_REPEAT_MIN` moves and the literal
+         does not. Ran (a) — red. */
+      const prompt = buildSpinePrompt(intent, shapeWithWindows, "medium");
+      expect(prompt).toContain(`seed each episodeId ONCE until the whole spine carries at least ${SPINE_SEED_REPEAT_MIN}`);
+      expect(prompt).toContain(`only once the spine carries ${SPINE_SEED_THIRD_MIN}`);
+      expect(prompt).toContain("take another episode's window instead");
+      /* F-70's two lines survive inside it. */
+      expect(prompt).toContain("DIFFERENT episodeIds");
+      expect(prompt).toContain("the beat seeded from the earlier startSec comes first");
+    });
+
+    it("says none of it when the research map quoted nothing", () => {
+      const prompt = buildSpinePrompt(intent, shapeWithout, "medium");
+      expect(prompt).not.toContain("SEED EVERY ACCOUNT BEAT");
+      expect(prompt).not.toContain("Only an argument beat");
+      expect(prompt).not.toContain("seed each episodeId ONCE");
     });
   });
 });

@@ -14,6 +14,7 @@ import { buildResearchShape } from "./researchShape";
 import { buildSpine } from "./buildSpine";
 import { deepenActs } from "./deepenActs";
 import { sourceBeats, summarizeSourcing } from "./sourceBeats";
+import { summarizeSeeding } from "./spineSeeding";
 import { createDigestAudioSourceResolver, type AudioSourceResolver } from "./audioSourceLookup";
 import { writeNarration } from "./writeNarration";
 import { ForayStitcher } from "./stitchForay";
@@ -827,7 +828,11 @@ export async function runForayPipeline(
      the operator's first evidence was an all-narration candidate 30 minutes
      later. These are printed, not returned, because they are for the person
      watching the run — the machine-readable form is `sourced.sourcingTrace`. */
-  const sourcingLines = summarizeSourcing(sourced);
+  /* AND ONE LINE FOR THE WHOLE FORAY (G-25): how many beats the spine seeded
+     from the research map against how many got tape, and how many of those
+     through their seed. The seed is the only path that yields (tape-yield
+     brief §5), so the person watching needs the two counts side by side. */
+  const sourcingLines = [...summarizeSourcing(sourced), summarizeSeeding(deepened, sourced)];
   for (const line of sourcingLines) console.log(`  ${line}`);
 
   /* NO TAPE, NO FORAY — SAID NOW, NOT AFTER NARRATION (F-65). A Foray with no

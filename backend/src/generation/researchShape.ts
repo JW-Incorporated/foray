@@ -76,14 +76,25 @@ import type { ExternalResearcher, ExternalResearchContext } from "./ExternalRese
  * sentences are attached verbatim for §4.3 to write beats from.
  */
 
-/** Windows attached per subtopic — the fix plan's "top 3-5", at most one per
- * episode so the spine sees four different conversations rather than four
- * minutes of one. */
-export const RESEARCH_TAPE_WINDOWS_PER_SUBTOPIC = 4;
-/** Episodes the text index is asked for per subtopic. More than the window
- * count because an episode with no body on this machine yields nothing, and
- * because one window per episode is the rule above. */
-export const RESEARCH_TAPE_EPISODE_CANDIDATES = 8;
+/** Windows attached per subtopic, at most one per episode so the spine sees
+ * six different conversations rather than six minutes of one.
+ *
+ * RAISED FROM 4 BY G-25 (tape-yield brief §5 R4). The seed is the only path
+ * that yields: on the run-2 checkpoint the unseeded search admitted 0 of 14
+ * beats at every floor value, and the seeded path admitted 10 of 14 — so the
+ * number of tape beats a Foray can carry is bounded above by the number of
+ * windows the spine had to seed from. Four per subtopic gave the run-2 map 32
+ * windows over 23 episodes for a 32-beat spine, and §4.3 is now asked to seed
+ * EVERY account beat a window can carry (`AnthropicSpineBuilder.ts`), one
+ * episode at a time until M4 admits a repeat (`spineSeeding.ts`). Six keeps
+ * the supply ahead of the ask. The cost is prompt size — two more 600-char
+ * quotes per subtopic, ~10 k characters on an eight-subtopic map — which the
+ * card accepts and the PR records. */
+export const RESEARCH_TAPE_WINDOWS_PER_SUBTOPIC = 6;
+/** Episodes the text index is asked for per subtopic. Twice the window count,
+ * as it was at 4/8, because an episode with no body on this machine yields
+ * nothing and because one window per episode is the rule above. */
+export const RESEARCH_TAPE_EPISODE_CANDIDATES = 12;
 /**
  * A research window is something a person READS in a prompt, not a segment a
  * listener hears, so it sits inside §4.5's own 30-180 s band: long enough to
