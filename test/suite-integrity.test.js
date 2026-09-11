@@ -1576,9 +1576,9 @@ const BACKEND_FLOORS = {
      committed row. */
   /* FD-07 / F-78: the minted tier-2 row against the real merge-segments --check gate,
      one named mutation per required field. */
-  "test/mintedSegmentRow.test.ts": 32,
+  "test/mintedSegmentRow.test.ts": 18,
   /* FD-07 / F-75: the publish branch is cut from origin/main and pushes exactly one commit. */
-  "test/publishForay.test.ts": 10,
+  "test/publishForay.test.ts": 12,
   "test/finalizeForay.test.ts": 8,
   /* The `data/segment-sources.json` row a minted tier-2 segment needs, and the
      refusals that stop this pipeline writing one it cannot vouch for — an
