@@ -296,10 +296,16 @@ function tapeWindowsFor(seed: CandidateSeed, tape: TapeAvailability, deps: TapeW
   }
 
   const windows: ResearchTapeWindow[] = [];
+  let overran = 0;
   for (const candidate of candidates) {
     /* Already quoted under an earlier subtopic — the spine may seed one beat
        from it and no more, so a second listing is a seed §4.5 would refuse. */
     if (usedEpisodes.has(deriveItemId(candidate.entry))) continue;
+    /* A TIMELINE THE DIGEST ALREADY DISTRUSTS IS NOT OFFERED (F-87, #315).
+       `loadTranscriptArchive` drops `span_implausible` rows; an injected
+       archive (a test, a future provider) may not have, and a window quoted
+       from one would seed a claim §4.5 then cannot cut. */
+    if (candidate.entry.span_implausible === true) continue;
     const cues = deps.cueProvider.getCues(candidate.entry);
     if (!cues) continue;
     const window = selectTapeWindow(queryText, cues, {
@@ -310,6 +316,19 @@ function tapeWindowsFor(seed: CandidateSeed, tape: TapeAvailability, deps: TapeW
     /* A window that shares not one word with the subtopic is not evidence about
        it; the episode ranked for words spoken somewhere else in the hour. */
     if (!window || window.matchedTerms.length === 0) continue;
+    /* AND NEITHER IS A WINDOW PAST THE EPISODE'S DECLARED AUDIO (F-87, #315).
+       §4.5 refuses a cut that ends past `feed_duration_sec` (`past-duration`,
+       `sourceBeats.ts`) rather than clamp it, because a transcript that
+       overruns its audio is a timeline that cannot be trusted; a window from
+       that stretch quoted here would have the spine write a claim from tape
+       the sourcing stage is then bound to refuse — run 7 attempt 3's
+       `bp-texas-city` seed, cut to 2375.72 s on a 2071 s episode. The same
+       comparison, on the window itself: nothing §4.5 cuts from it ends
+       earlier than the window does. */
+    if (typeof candidate.entry.feed_duration_sec === "number" && window.endSec > candidate.entry.feed_duration_sec) {
+      overran++;
+      continue;
+    }
     const text = trimToSentence(cueWindowText(cues, window.startSec, window.endSec));
     if (text.length === 0) continue;
     windows.push({
@@ -328,7 +347,9 @@ function tapeWindowsFor(seed: CandidateSeed, tape: TapeAvailability, deps: TapeW
       windows: [],
       unavailable: candidates.every((c) => usedEpisodes.has(deriveItemId(c.entry)))
         ? "every episode the archive ranked for this subtopic is already quoted under an earlier subtopic"
-        : "the archive ranked episodes for this subtopic but no transcript body for them is on this machine"
+        : overran > 0
+          ? `the archive ranked episodes for this subtopic but every window found runs past its episode's declared duration (${overran} episode(s), #315), so none can be cut`
+          : "the archive ranked episodes for this subtopic but no transcript body for them is on this machine"
     };
   }
 

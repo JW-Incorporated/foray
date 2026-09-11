@@ -556,7 +556,8 @@ const TIER2_GATE_SCHEMA = z
     "d5-triple",
     LEGACY_D5_GATE,
     "m4-runtime",
-    "pool-cut"
+    "pool-cut",
+    "past-duration"
   ])
   .transform(readLegacyD5Gate);
 const SourcingTraceSchema = z.object({
@@ -610,6 +611,10 @@ const SourcingTraceSchema = z.object({
       windowWeightedShare: z.number().optional(),
       windowStartSec: z.number().optional(),
       windowEndSec: z.number().optional(),
+      /* F-87: the cut's end and the feed's declared duration, both numbers a
+         `past-duration` row is read as. */
+      spanEndSec: z.number().optional(),
+      feedDurationSec: z.number().optional(),
       startAnchor: z.string().optional(),
       endAnchor: z.string().optional(),
       /* WS-H: what tier 2's text search saw (`types/tapeSourcing.ts`). Optional
@@ -1242,7 +1247,18 @@ export async function runForayPipeline(
      acts never start), waits for every in-flight act to settle (their slots
      land in the checkpoint as they finish, which is the point of F-51's key),
      and THEN rethrows the original error. The wait is bounded by one act's
-     narration. */
+     narration.
+
+     THE COST OF THAT ORDER, NAMED (F-87). Act 0's partial is validated only
+     when the ordered loop below reaches act 0's stitch — and by then EVERY
+     act's narration has started, and with the default concurrency (4) has
+     been paid for. Run 7 attempt 3 narrated 81 calls before act 1's partial
+     was refused for a segment sourcing should never have minted. The design
+     stays (the narration is still the right narration; only the tape was
+     wrong, and sourcing now refuses it) but the report says where the abort
+     landed: `generateForays.ts` carries `RefusedPartialError.actIndex` and
+     `totalActs` into `report.json` as `refusedAtAct`, so a reader can count
+     what the ordering cost against what it saved. */
   const actConcurrency = options.narrationActConcurrency ?? narrationActConcurrency();
   const gate = createActGate(actConcurrency);
   const narrations: Array<Promise<WrittenAct>> = sourced.acts.map((act, i) => {

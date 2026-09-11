@@ -1030,8 +1030,9 @@ function bestSpreadRecut(state: SourcingState, alreadyRecut: Set<number>): Sprea
       if (durationSec === placedDuration) continue;
       /* A cut may not run past the episode: `merge-segments.mjs` compares a
          minted segment's `reference_duration_sec` against the audio row's own
-         `duration_sec`, and `check-forays.mjs` refuses an `end_sec` past it. */
-      if (entry.feedDurationSec !== null && span.endSec > entry.feedDurationSec) continue;
+         `duration_sec`, and `check-forays.mjs` refuses an `end_sec` past it.
+         The same rule the placement itself faces (`pastDurationGate`, F-87). */
+      if (pastDurationGate(span, entry.feedDurationSec) !== null) continue;
       /* And a re-cut may not MOVE onto a start another segment already holds
          (F-84): the id is the start, and `applyRecut` re-mints it when the start
          moves, so a start the pool or this run already has a row at would be a
@@ -1569,7 +1570,7 @@ class Tier2Walk {
          coming from. And when the ladder rung's own cut is the one thing D5's
          triple clause refuses, the SAME window is cut to a different length
          before the candidate is given up on (F-80) — see the chooser. */
-      const choice = chooseCutForPlacement(claim, cues, window!, itemId, state);
+      const choice = chooseCutForPlacement(claim, cues, window!, itemId, candidate.entry.feed_duration_sec ?? null, state);
       if (!choice) {
         this.record({ candidate, gate: "no-anchor", window, seedFloor }, seedPass);
         continue;
@@ -1805,25 +1806,61 @@ interface PlacementCut {
   ladderRung: boolean;
 }
 
-type PlacementGate = "m3-order" | DurationGate;
+type PlacementGate = "past-duration" | "m3-order" | DurationGate;
 
 /** The chooser's answer: the cut to place (and whether D5's triple clause is
  * what chose its length), or the cut that got furthest and the gate that
  * refused it. `null` when the window yields no anchored span at all. */
 type PlacementChoice = { accepted: PlacementCut; lengthGate?: "d5-triple" } | { refused: PlacementCut; gate: PlacementGate };
 
-/** M3 on the span's own start, then the four length rules on its own length —
- * the order the walk has asked them in since F-73. */
-function placementGateFor(cut: PlacementCut, itemId: string, state: SourcingState): PlacementGate | null {
+/**
+ * F-87 (#315): a cut may not END past the episode's feed-declared duration.
+ *
+ * `check-forays.mjs` refuses a segment whose `end_sec` is past its source row's
+ * `duration_sec` (with 2 s of grace), and `merge-segments.mjs` compares the
+ * minted `reference_duration_sec` against the same number — so a cut past it
+ * is tape the checker will certainly refuse, five stages later. Run 7 attempt
+ * 3 minted `causality-engineered-network--1-bp-texas-city#2292` ending at
+ * 2375.72 s on an episode whose feed declares 2071 s, narrated all 81 calls
+ * (acts in parallel, G-32) and was refused at act 1's partial.
+ *
+ * NOT CLAMPED, ON PURPOSE. A shorter cut of the same window would pass the
+ * checker — and be exactly the silently wrong segment #315 describes: a
+ * transcript that overruns the audio it claims to describe is a timeline that
+ * cannot be trusted anywhere, and ADR-0008 measured feed duration and last cue
+ * agreeing within a minute on every honest row. The window is refused whole,
+ * the beat falls through to the next candidate or to narration, and the
+ * trace carries both numbers. Strict rather than the checker's +2 s: a cut
+ * that ends 1 s past the declared audio is still a cut past the declared audio.
+ * Unknown duration (`null`) is inert — the audio-source row refuses such an
+ * episode on its own (`mintSegmentSource` needs `duration_sec > 0`).
+ */
+function pastDurationGate(span: TapeSpan, feedDurationSec: number | null): "past-duration" | null {
+  return feedDurationSec !== null && span.endSec > feedDurationSec ? "past-duration" : null;
+}
+
+/** The duration ceiling first (F-87), then M3 on the span's own start, then
+ * the four length rules on its own length — the order the walk has asked them
+ * in since F-73. */
+function placementGateFor(cut: PlacementCut, itemId: string, feedDurationSec: number | null, state: SourcingState): PlacementGate | null {
+  const pastDuration = pastDurationGate(cut.span, feedDurationSec);
+  if (pastDuration) return pastDuration;
   if (!m3OrderAllows(itemId, cut.span.startSec, state)) return "m3-order";
   return durationVetoFor(itemId, cut.durationSec, state);
 }
 
-function chooseCutForPlacement(claim: string, cues: TranscriptCue[], window: TapeWindow, itemId: string, state: SourcingState): PlacementChoice | null {
+function chooseCutForPlacement(
+  claim: string,
+  cues: TranscriptCue[],
+  window: TapeWindow,
+  itemId: string,
+  feedDurationSec: number | null,
+  state: SourcingState
+): PlacementChoice | null {
   const rungSec = tapeTargetFor(state.placedTapeCount);
   const rung = cutAtTarget(claim, cues, window, rungSec, true);
   if (!rung) return null;
-  const rungGate = placementGateFor(rung, itemId, state);
+  const rungGate = placementGateFor(rung, itemId, feedDurationSec, state);
   if (rungGate === null) return { accepted: rung };
   if (rungGate !== "d5-triple") return { refused: rung, gate: rungGate };
 
@@ -1848,7 +1885,7 @@ function chooseCutForPlacement(claim: string, cues: TranscriptCue[], window: Tap
      gate a person would go and argue with. */
   let furthest: { cut: PlacementCut; gate: PlacementGate } = { cut: rung, gate: rungGate };
   for (const cut of alternatives) {
-    const gate = placementGateFor(cut, itemId, state);
+    const gate = placementGateFor(cut, itemId, feedDurationSec, state);
     if (gate === null) return { accepted: cut, lengthGate: "d5-triple" };
     if (TIER2_GATE_PROGRESS[gate] > TIER2_GATE_PROGRESS[furthest.gate]) furthest = { cut, gate };
   }
@@ -1954,21 +1991,25 @@ const TIER2_GATE_PROGRESS: Record<Tier2Gate, number> = {
      reached `no-anchor` therefore got further than one that did not. */
   "window-overlap": 5,
   "no-anchor": 6,
-  "m3-order": 7,
+  /* F-87: the first question asked of the cut span, before M3 — a cut that
+     ends past the episode's declared audio is not a placement question at
+     all, so it sits between "no anchors" and the ledger. */
+  "past-duration": 7,
+  "m3-order": 8,
   /* F-73's four length gates sit where the walk asks them too: after the span is
      cut (so its duration is real) and before the audio-source row is written. A
      beat that reached one of these got further than one refused on M3, because
      M3 is answered first, on the same span. */
-  "d2-short-run": 8,
-  "d3-mean": 9,
-  "d5-triple": 10,
-  "m4-runtime": 11,
+  "d2-short-run": 9,
+  "d3-mean": 10,
+  "d5-triple": 11,
+  "m4-runtime": 12,
   /* F-84: asked after the cut has cleared M3 and the length rules on ITS
      length — the pool's cut at the same start then faces the same ledger and
      is what refused the candidate. Further than any of them, before the
      audio-source row, which a reused pool cut never needs. */
-  "pool-cut": 12,
-  "no-audio-source": 13
+  "pool-cut": 13,
+  "no-audio-source": 14
 };
 
 /**
@@ -2140,7 +2181,11 @@ function tier2TraceFor(
   if (span) {
     row.startAnchor = span.startAnchor;
     row.endAnchor = span.endAnchor;
+    /* F-87: where the cut would have ended — read against `feedDurationSec`
+       below on a `past-duration` row (run 7: 2375.72 s past 2071 s). */
+    row.spanEndSec = span.endSec;
   }
+  if (typeof candidate.entry.feed_duration_sec === "number") row.feedDurationSec = candidate.entry.feed_duration_sec;
   /* F-72: which floor judged the reported window. Only ever set on a seed
      window the share-only floor admitted — a `window-overlap` row never carries
      it, because a refused window was admitted by no floor at all. */
@@ -2174,6 +2219,11 @@ function narrationReasonFor(furthest: Tier2Progress | null): string {
       return "Tape for this beat is in an episode that already supplies a quarter of this Foray's tape seconds, so taking more would unbalance it.";
     case "no-audio-source":
       return "Tape was found for this beat but its episode's audio cannot be resolved, so it cannot be played.";
+    /* F-87: the tape exists and is about the claim; its transcript's timeline
+       runs past the audio the feed declares, so no cut from it can be trusted
+       to start where it says it starts (#315). */
+    case "past-duration":
+      return "Tape for this beat was found, but its transcript runs past the length the episode's feed declares, so a cut from it cannot be trusted to play where it says it does.";
     case "window-overlap":
       return "The tape was searched for this claim and no stretch of it is about the claim.";
     case "no-anchor":
@@ -2228,6 +2278,18 @@ function transcriptionQueueRow(claim: string, furthest: Tier2Progress | null): T
         claim,
         showId: candidate.entry.show_id,
         reason: `Transcript-archive tape was located in "${candidate.entry.title}", but no data/segment-sources.json row can be written for it (no resolvable https audio URL, feed duration, or DAI verdict), so nothing could play it.`
+      };
+    /* F-87: a genuine transcription gap, unlike the assembly refusals above — a
+       body this machine transcribed from the delivered audio would carry the
+       audio's own timeline, which is the one thing the publisher's cannot
+       promise here (#315). */
+    case "past-duration":
+      return {
+        claim,
+        showId: candidate.entry.show_id,
+        reason:
+          `${found} ("${candidate.entry.title}") but the cut would end at ${furthest.span?.endSec ?? "?"} s, past the ${candidate.entry.feed_duration_sec ?? "?"} s the feed declares — ` +
+          `the publisher transcript's timeline overruns the audio (#315), so no cut from it is trusted. A local transcription of the delivered audio would settle it.`
       };
     case "window-overlap":
       return {

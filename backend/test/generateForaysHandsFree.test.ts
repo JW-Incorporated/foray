@@ -313,6 +313,12 @@ describe("(b) a refused partial candidate", () => {
     expect(result.entry?.detail).toMatch(/act 1 of \d+ failed check-forays/);
     expect(result.entry?.detail).toMatch(/fixture: this partial is refused/);
     expect(result.entry?.refusedPartials).toEqual([0]);
+    /* F-87 (G-32 note): the report names where the abort landed and how many
+       acts the Foray has, so the narration paid for past the refusal is
+       countable. MUTATION THAT KILLS THIS: leave `refusedAtAct` off the abort
+       row. */
+    expect(result.entry?.refusedAtAct).toEqual({ act: 0, totalActs: expect.any(Number) });
+    expect(result.entry?.refusedAtAct?.totalActs).toBeGreaterThanOrEqual(1);
     /* The refused partial and the checkpoint are kept for diagnosis. */
     expect(fs.existsSync(path.join(dir, partialCandidateFilename(spec.prompt)))).toBe(true);
     expect(fs.readdirSync(dir).some((f) => f.endsWith(".checkpoint.json"))).toBe(true);

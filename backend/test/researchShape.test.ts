@@ -495,6 +495,50 @@ describe("buildResearchShape — WS-L: the map carries what the tape says (F-63)
     /* Still one window per episode, so those are six different conversations. */
     expect(new Set(fusion.tapeWindows.map((w) => w.episodeId)).size).toBe(6);
   });
+
+  it("does not offer a window that runs past its episode's declared duration, nor one from a span_implausible digest (F-87, #315)", async () => {
+    /* Run 7 attempt 3: the spine seeded a claim from a Causality window whose
+       cut ended at 2375.72 s on a 2071 s episode, and §4.5 — which now refuses
+       such a cut (`past-duration`) — could only narrate the claim it had been
+       told the tape carried. Research-shape must not quote tape §4.5 cannot
+       cut. MUTATION THAT KILLS THIS: drop either `continue` in
+       `tapeWindowsFor` (the duration comparison, or the `span_implausible`
+       skip). Ran both — red on the episode the window came from. */
+    const { guard } = guardAndSink();
+    /* Research windows are at least 90 s (`RESEARCH_TAPE_WINDOW_MIN_SEC`); a
+       feed that declares 60 s puts every window of `mlCues` past the declared
+       audio, however early it starts. */
+    const overrunning: TranscriptDigestEntry = { ...mlEpisode, guid: "pa-910", title: "Episode 910", feed_duration_sec: 60 };
+    const implausible: TranscriptDigestEntry = { ...mlEpisode, guid: "pa-911", title: "Episode 911", span_implausible: true };
+    const honest: TranscriptDigestEntry = { ...mlEpisode, guid: "pa-912", title: "Episode 912" };
+    const cuesByGuid = { "pa-910": mlCues, "pa-911": mlCues, "pa-912": mlCues };
+    const shape = await buildResearchShape(makeIntent(), {
+      researcher: new StubExternalResearcher(guard),
+      ctx: { userId: "founder-1" },
+      catalogue: tapeFixtureCatalogue(),
+      topic: null,
+      textIndex: fakeIndex([overrunning, implausible, honest], cuesByGuid),
+      cueProvider: fakeCues(cuesByGuid)
+    });
+    const fusion = shape.subtopics.find((s) => s.label === "Fusion")!;
+    expect(fusion.tapeWindows.map((w) => w.episodeId)).toEqual(["practical-ai--episode-912"]);
+    for (const w of fusion.tapeWindows) expect(w.endSec).toBeLessThanOrEqual(3600);
+
+    /* And when the overrunning episode is the only one, the map says why the
+       list is empty rather than reading as an archive with no bodies. */
+    const only = await buildResearchShape(makeIntent(), {
+      researcher: new StubExternalResearcher(guard),
+      ctx: { userId: "founder-1" },
+      catalogue: tapeFixtureCatalogue(),
+      topic: null,
+      textIndex: fakeIndex([overrunning], { "pa-910": mlCues }),
+      cueProvider: fakeCues({ "pa-910": mlCues })
+    });
+    const onlyFusion = only.subtopics.find((s) => s.label === "Fusion")!;
+    expect(onlyFusion.tapeWindows).toEqual([]);
+    expect(onlyFusion.windowsUnavailable).toMatch(/runs past its episode's declared duration/);
+    expect(onlyFusion.windowsUnavailable).toContain("#315");
+  });
 });
 
 describe("cueWindowText — G-24 R1: the text spoken BETWEEN two timestamps, strict at both edges", () => {
