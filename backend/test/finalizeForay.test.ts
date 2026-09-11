@@ -215,13 +215,16 @@ describe("finalizeForay — the tier-2 tape a candidate brings with it (F-49)", 
 
   it("never shadows a committed row: an id already on disk wins", () => {
     /* A minted id that already exists in the pool belongs to the merged, curated
-       row — this stage is not the place a generation run overwrites curation. */
+       row — this stage is not the place a generation run overwrites curation.
+       Since F-84 the minted row has to BE that row (same start, same end within
+       the tolerance) to get this far: a different cut under the same id is
+       refused instead of skipped (`mintDedupe.test.ts`). */
     const existing = JSON.parse(fs.readFileSync(path.join(FIXTURE_ROOT, "data", "segments.json"), "utf8")) as {
-      segments: Array<{ id: string; item_id: string }>;
+      segments: Array<{ id: string; item_id: string; start_sec: number; end_sec: number }>;
     };
     const clash = existing.segments[0]!;
     const files = buildCandidateFiles({ id: "merge-test-3" }, FIXTURE_ROOT, {
-      segments: [{ ...minted, id: clash.id }],
+      segments: [{ ...minted, id: clash.id, itemId: clash.item_id, startSec: clash.start_sec, endSec: clash.end_sec }],
       sources: [],
       topic: "fixture/boundary"
     });

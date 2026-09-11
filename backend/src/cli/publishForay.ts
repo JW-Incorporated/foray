@@ -2,7 +2,14 @@
 import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
-import { finalizeForay, generationBatchId, mintedSegmentRow, type FinalizeForayInput } from "../generation/finalizeForay";
+import {
+  finalizeForay,
+  generationBatchId,
+  mintedPoolCollisions,
+  mintedSegmentRow,
+  type FinalizeForayInput,
+  type PoolRowLike
+} from "../generation/finalizeForay";
 import { evaluateVeracityGate, type VeracityGateResult } from "../generation/veracityMetrics";
 
 /**
@@ -320,11 +327,19 @@ async function main(): Promise<void> {
      is the same "unknown segment_id" failure, moved from the checker to the
      player. Written in the same commit, so the three files are never out of
      step with each other. Ids already on disk are left alone: the committed row
-     is the authority for a segment a curator's batch has already merged. */
+     is the authority for a segment a curator's batch has already merged — and a
+     minted row that would sit BESIDE a committed row at the same start, or
+     shadow one with a different cut, is refused here rather than written under
+     an id the pool gate rejects (F-84, `mintedPoolCollisions`). Asked again at
+     the write, not only at finalize, because this is the seam that writes. */
   const writtenDataFiles: string[] = ["data/forays.json"];
   if (mintedRows.length > 0) {
     const poolPath = path.join(REPO_ROOT, "data", "segments.json");
-    const pool = JSON.parse(fs.readFileSync(poolPath, "utf8")) as { segments: Array<{ id?: string }> };
+    const pool = JSON.parse(fs.readFileSync(poolPath, "utf8")) as { segments: PoolRowLike[] };
+    const collisions = mintedPoolCollisions(mintedSegments, pool.segments);
+    if (collisions.length > 0) {
+      throw new Error(`publishForay: refusing to write data/segments.json — ${collisions.join("; ")}`);
+    }
     const known = new Set(pool.segments.map((s) => s.id));
     const added = mintedRows.filter((m) => !known.has(m.id)).map((m) => m.row);
     if (added.length > 0) {

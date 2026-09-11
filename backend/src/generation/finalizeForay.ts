@@ -6,6 +6,7 @@ import type { NewSegment } from "../types/tapeSourcing";
 import { StageTimingLog, type StageTiming } from "./stageTiming";
 import type { VeracityMetrics } from "./veracityMetrics";
 import { mintedWhyErrors } from "./mintedSegmentCopy";
+import { SEGMENT_START_TOLERANCE_SEC, segmentAtStart, startsCoincide } from "./segmentPoolLookup";
 
 /**
  * §4.9 — Finalize and publish (docs/curation/generation-architecture.md
@@ -241,6 +242,81 @@ export function readExistingForayIds(root: string = REPO_ROOT): Set<string> {
   return new Set((live.forays ?? []).map((f) => (f as { id?: unknown }).id).filter((id): id is string => typeof id === "string"));
 }
 
+/** The three fields of a `data/segments.json` row the collision rule reads. */
+export interface PoolRowLike {
+  id?: unknown;
+  item_id?: unknown;
+  start_sec?: unknown;
+  end_sec?: unknown;
+}
+
+/**
+ * THE PUBLISH-SIDE HALF OF F-84: a minted row may not land BESIDE a committed
+ * row at the same start, and may not shadow one with a different cut.
+ *
+ * Run 6 (PR #624) minted `practical-ai--ai-policy-and-the-battle-for-computing-
+ * power#826-2` (826.36–957.07 s) while the pool held `#826` (826.36–921.04 s)
+ * from the previous generated Foray. The publish's "skip ids already on disk"
+ * rule saw two different ids and wrote both; `merge-segments.mjs --check`
+ * refused the suffixed one, and a person repointed the Foray at `#826` and
+ * shrank its runtime by hand. Sourcing now reuses the pool's cut at a shared
+ * start (`sourceBeats.ts`), so a row reaching here that collides is a run on
+ * an older pool, a checkpoint resumed against a pool that gained the row, or
+ * a bug — all of them a publish nobody should be able to finish, and all of
+ * them named here before a branch is cut rather than by CI after the PR.
+ *
+ * Three refusals, in the words of the gate they pre-empt:
+ *   1. an id that is not `<item_id>#<start_sec rounded>` — the gate's own id
+ *      rule, which is what a suffixed sibling fails;
+ *   2. a row at a start a committed row of the same episode already holds
+ *      (`startsCoincide`) under a different id — a sibling by another name;
+ *   3. a row whose id IS on disk but whose cut differs — the publish would skip
+ *      it and the Foray's `runtime_sec`, computed from the minted cut, would
+ *      disagree with the committed one that actually plays.
+ * A row identical to its on-disk twin (same id, same start, same end within the
+ * tolerance) is not a collision: that is an idempotent re-publish, and the
+ * committed row wins exactly as before.
+ *
+ * Pure over what it is handed; `buildCandidateFiles` (finalize) and
+ * `publishForay` (the write) both ask it, so the two seams cannot disagree.
+ */
+export function mintedPoolCollisions(minted: ReadonlyArray<NewSegment>, pool: ReadonlyArray<PoolRowLike>): string[] {
+  const errors: string[] = [];
+  const rows = pool.filter(
+    (r): r is { id: string; item_id: string; start_sec: number; end_sec: number } =>
+      typeof r.id === "string" && typeof r.item_id === "string" && typeof r.start_sec === "number" && typeof r.end_sec === "number"
+  );
+  const byId = new Map(rows.map((r) => [r.id, r]));
+  const describe = (r: { id: string; start_sec: number; end_sec: number }) => `${r.id} (${r.start_sec}–${r.end_sec} s)`;
+  for (const s of minted) {
+    const expectedId = `${s.itemId}#${Math.round(s.startSec)}`;
+    if (s.id !== expectedId) {
+      errors.push(
+        `minted segment ${describe({ id: s.id, start_sec: s.startSec, end_sec: s.endSec })} has an id that is not its item_id + start_sec ` +
+          `(expected ${expectedId}) — a suffixed sibling of a committed row is never written; reuse the pool's cut at that start (F-84)`
+      );
+      continue;
+    }
+    const twin = byId.get(s.id);
+    if (twin) {
+      if (startsCoincide(twin.start_sec, s.startSec) && Math.abs(twin.end_sec - s.endSec) <= SEGMENT_START_TOLERANCE_SEC) continue;
+      errors.push(
+        `minted segment ${describe({ id: s.id, start_sec: s.startSec, end_sec: s.endSec })} would shadow committed ${describe(twin)} ` +
+          "with a different cut — the committed row is what plays, so the Foray must reference its cut and be timed on it (F-84)"
+      );
+      continue;
+    }
+    const beside = segmentAtStart(rows, s.itemId, s.startSec);
+    if (beside) {
+      errors.push(
+        `minted segment ${describe({ id: s.id, start_sec: s.startSec, end_sec: s.endSec })} starts where committed ${describe(beside)} ` +
+          "starts — the pool holds one row per start; reuse that row's cut instead of minting beside it (F-84)"
+      );
+    }
+  }
+  return errors;
+}
+
 /** Loads the four files `check-forays.mjs` validates against, with this
  * candidate Foray substituted/appended for `forays` and this run's minted
  * tier-2 segments/sources merged into the pool and the registry — never written
@@ -264,7 +340,11 @@ export function buildCandidateFiles(
   const pool = readJson("data/segments.json") as { segments?: unknown[] };
   const registry = readJson("data/segment-sources.json") as { sources?: unknown[] };
   /* A minted id that somehow already exists on disk is the committed row's, not
-     this run's: the pool is the authority for a segment that has been merged. */
+     this run's: the pool is the authority for a segment that has been merged.
+     And a minted row that would sit BESIDE a committed row at the same start is
+     refused outright (F-84) — see `mintedPoolCollisions`. */
+  const collisions = mintedPoolCollisions(minted.segments ?? [], (pool.segments ?? []) as PoolRowLike[]);
+  if (collisions.length > 0) throw new Error(`finalizeForay: ${collisions.join("; ")}`);
   const poolIds = new Set((pool.segments ?? []).map((s) => (s as { id?: unknown }).id));
   const registryIds = new Set((registry.sources ?? []).map((s) => (s as { id?: unknown }).id));
   const rowContext: MintedRowContext = {
