@@ -1,6 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import { tokenizeForSourcing } from "./catalogueLookup";
+import { canonicalizeForAnchorMatch } from "../types/anchorText";
 import type { TranscriptSource } from "../types/tapeSourcing";
 
 /**
@@ -389,15 +390,14 @@ function readCues(file: string): TranscriptCue[] | null {
  * collapsed to a single space. Kept in sync deliberately — a divergence
  * here would let this module accept an anchor the real merge validator
  * would reject. See the module doc comment for why this is a mirror,
- * not a re-import (ESM `.mjs` build script vs. CJS backend module). */
-export function canonicalizeForAnchorMatch(text: string): string {
-  return String(text ?? "")
-    .normalize("NFKC")
-    .toLowerCase()
-    .replace(/['\u2018\u2019\u02bc\u02b9\u2032`\u00b4]/gu, "")
-    .replace(/[^\p{L}\p{N}]+/gu, " ")
-    .trim();
-}
+ * not a re-import (ESM `.mjs` build script vs. CJS backend module).
+ *
+ * The implementation lives in `types/anchorText.ts` (F-81) so that
+ * `types/narration.ts` \u2014 which may not depend on a generation stage \u2014
+ * checks a Frame's tape quote with the SAME canonicalisation \u00a74.5 mints
+ * anchors with; re-exported here so nothing that imports it from this
+ * module has to change. */
+export { canonicalizeForAnchorMatch };
 
 function canonicalWords(text: string): string[] {
   const c = canonicalizeForAnchorMatch(text);

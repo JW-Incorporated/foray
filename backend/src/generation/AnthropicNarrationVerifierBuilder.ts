@@ -4,6 +4,7 @@ import { parseWithRetry } from "./parseWithRetry";
 import { env } from "../config/env";
 import { costFor, modelFor } from "../config/models";
 import { defaultBudgetGuard, type BudgetGuard } from "../cost/budgetGuard";
+import { isTapeSource, tapeDocIdFor, type Source } from "../types/narration";
 import type {
   NarrationBuildContext,
   NarrationVerifierBuilder,
@@ -144,13 +145,18 @@ export class AnthropicNarrationVerifierBuilder implements NarrationVerifierBuild
   }
 }
 
-function buildVerifyPrompt(request: NarrationVerifyRequest): string {
+/** Exported for the prompt tests only — never instantiate the class in a
+ * test (see the module comment). */
+export function buildVerifyPrompt(request: NarrationVerifyRequest): string {
   return [
     'You are the FACT-VERIFICATION pass for the narration pages of one slot of an audio documentary ("Foray").',
     "You did NOT write these pages. For each page below, answer three questions independently.",
     "",
     "1. claimsSupported — does every statement the script makes about the world follow from the quote attached to it?",
     "   A quote that is about the right subject but does not say what the claim says is NOT support.",
+    "   A source marked [TAPE] has no quote to check against: its holding document is the transcript window of the",
+    "   segment the page introduces, printed under it. Every statement the script makes about that tape — what it is",
+    "   about, who is speaking, what they say — must be borne out by what is said in that window.",
     "2. purposeAccomplished — does the script address the SUBJECT its purpose names, using the evidence it was given?",
     "   Contradicting or qualifying the purpose from the documents ACCOMPLISHES it — a purpose is editorial direction and can",
     "   be wrong. Only a page that ignores the subject, or re-tells what earlier pages covered, fails this.",
@@ -170,9 +176,7 @@ function buildVerifyPrompt(request: NarrationVerifyRequest): string {
 }
 
 function verifyPageBlock(page: VerifyPageBrief): string {
-  const sources = page.sources
-    .map((s, i) => `  Source ${i + 1}: claim="${s.claimText}" quote="${s.quote}" publication="${s.publication}"${s.contested ? " [marked contested]" : ""}`)
-    .join("\n");
+  const sources = page.sources.map((s, i) => sourceLine(s, i, page)).join("\n");
   const docs = page.evidence.docs
     .map((d) => `  --- ${d.title}${d.url ? ` | ${d.url}` : ""}\n${d.text}`)
     .join("\n");
@@ -184,4 +188,21 @@ function verifyPageBlock(page: VerifyPageBrief): string {
   ];
   if (docs) lines.push(`Documents the page was written from:\n${docs}`);
   return lines.join("\n");
+}
+
+/** One declared source as the verifier reads it. A TAPE source (F-81) is
+ * handed the segment's transcript window as its holding document, in
+ * full, right under the claim — the verifier judges the page's statements
+ * about the tape against everything said in it, not against a quote. */
+function sourceLine(s: Source, i: number, page: VerifyPageBrief): string {
+  const contested = s.contested ? " [marked contested]" : "";
+  if (!isTapeSource(s)) {
+    return `  Source ${i + 1}: claim="${s.claimText}" quote="${s.quote}" publication="${s.publication}"${contested}`;
+  }
+  const window = page.evidence.docs.find((d) => d.docId === tapeDocIdFor(s.segmentId));
+  return [
+    `  Source ${i + 1} [TAPE — the segment this page introduces, ${s.segmentId}]: claim="${s.claimText}"${s.quote ? ` echoes="${s.quote}"` : ""} publication="${s.publication}"${contested}`,
+    "    Holding document for this source: the segment's transcript window below. Judge the claim against everything said in it.",
+    `    Transcript window:\n${window ? window.text : "    (the window is not held — treat the claim as unsupported)"}`
+  ].join("\n");
 }

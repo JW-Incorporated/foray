@@ -1,6 +1,7 @@
 import { BANNED } from "../copy/rules";
 import { decodeEntities } from "../feeds/html";
 import type { SourcedAct, SourcedBeat, SourcedSlot, TapePointer } from "../types/tapeSourcing";
+import { phraseIsInWindow } from "../types/anchorText";
 import {
   containsContestedLanguage,
   disclosureNarratedBeat,
@@ -8,8 +9,11 @@ import {
   isCompleteSentence,
   MIN_QUOTE_WORDS,
   MODE_CHAR_BANDS,
+  modeMayCiteTape,
   quoteEchoesPurpose,
   quoteWords,
+  segmentIdOfTapeDoc,
+  tapeDocIdFor,
   validateNarratedBeat,
   type EvidenceDoc,
   type NarratedBeat,
@@ -551,7 +555,11 @@ async function writeSlot(
         i,
         beat.claim,
         connectiveMode,
-        `This page hands the listener into or out of real tape — ${tapeDescription(beat)}. It does not restate what the tape itself says (narration-craft.md's spoiler rule).`
+        /* F-81: the page may describe the tape it introduces — what the
+           segment is about, who is speaking — citing the tape itself as
+           its source (the transcript window in its evidence pack). What it
+           still may not do is give the tape's answer away. */
+        `This page hands the listener into or out of real tape — ${tapeDescription(beat)}. It may say what that tape is about and who is speaking, citing the tape itself as its source (document ${tapeDocIdFor(beat.tape.segmentId)}); it does not give away the answer the tape gives (narration-craft.md's spoiler rule).`
       )
     );
   }
@@ -840,7 +848,7 @@ async function runSlotRound(
 
   const toVerify: Array<{ page: PendingPage; claims: SelectedClaim[]; brief: VerifyPageBrief; beat: NarratedBeat }> = [];
   for (const { page, claims, written } of drafts) {
-    const sources = sourcesFor(written.usedClaims, claims, page.evidence);
+    const sources = sourcesFor(written.usedClaims, claims, page.evidence, page.mode);
     const beat: NarratedBeat = {
       mode: page.mode,
       // The script is the other half of the entity boundary — see
@@ -1099,6 +1107,29 @@ export function gateSelectedClaims(claims: SelectedClaim[], page: PendingPage): 
       issues.push(`${where} cites docId "${claim.docId}", which is not one of the documents provided`);
       continue;
     }
+    if (isTapeClaim(claim, page)) {
+      /* F-81: THE TAPE IS THE SOURCE. On a page that may cite tape, a
+         claim on the transcript window of the segment it introduces
+         becomes a tape source (`sourcesFor`), and its holding document is
+         the whole window — which the verifier reads — so the rules that
+         make a PRINT quote checkable on its own (a verbatim span, eight
+         words, not the purpose read back) do not apply. What is checked:
+         a quote, if the writer chose to echo one, is spoken in the window
+         under the anchor canonicalisation. An empty quote is a page
+         describing the segment without echoing it. A Patch or Carry never
+         reaches this branch — its beat has no tape, so its pack holds no
+         window, and were one handed to it anyway the print rules below
+         judge the claim exactly as they always did. */
+      const echoed = String(claim.quote ?? "").trim();
+      if (echoed && !phraseIsInWindow(echoed, named.text)) {
+        issues.push(
+          `${where}: the quote is not spoken in the transcript window of the tape this page introduces ("${named.title}"). A tape source may echo only the tape's own words — copy a phrase out of that window, or leave the quote empty and describe what the segment says (F-81).`
+        );
+        continue;
+      }
+      valid.push(claim);
+      continue;
+    }
     if (!findHoldingDoc(claim.quote, [named])) {
       const elsewhere = findHoldingDoc(claim.quote, docs);
       issues.push(
@@ -1131,6 +1162,18 @@ export function gateSelectedClaims(claims: SelectedClaim[], page: PendingPage): 
 }
 
 /**
+ * F-81: whether a selected claim is the page citing the tape it
+ * introduces — the page's mode may cite tape AND the document named is
+ * the transcript window in its pack. The ONE definition the selection
+ * gate and `sourcesFor` share, so a claim cannot pass one as tape and
+ * leave the other as print.
+ */
+export function isTapeClaim(claim: SelectedClaim, page: Pick<PendingPage, "mode" | "evidence">): boolean {
+  if (!modeMayCiteTape(page.mode)) return false;
+  return page.evidence.docs.find((d) => d.docId === claim.docId)?.kind === "tape";
+}
+
+/**
  * Builds the page's `sources` from the claims the script actually used.
  * ATTRIBUTION IS READ OFF THE DOCUMENT, never written by the page's
  * author: `publication` is the held document's title and `url` its url.
@@ -1138,7 +1181,7 @@ export function gateSelectedClaims(claims: SelectedClaim[], page: PendingPage): 
  * same span moving between Wikipedia and Britannica across two attempts)
  * unrepresentable rather than merely forbidden.
  */
-export function sourcesFor(usedClaims: number[] | undefined, claims: SelectedClaim[], pack: EvidencePack): Source[] {
+export function sourcesFor(usedClaims: number[] | undefined, claims: SelectedClaim[], pack: EvidencePack, mode: NarrationMode): Source[] {
   const out: Source[] = [];
   const seen = new Set<number>();
   for (const index of usedClaims ?? []) {
@@ -1147,6 +1190,22 @@ export function sourcesFor(usedClaims: number[] | undefined, claims: SelectedCla
     const claim = claims[index]!;
     const doc = pack.docs.find((d) => d.docId === claim.docId);
     if (!doc) continue;
+    const segmentId = isTapeClaim(claim, { mode, evidence: pack }) ? segmentIdOfTapeDoc(doc.docId) : null;
+    if (segmentId) {
+      /* F-81: a claim on the tape window is a TAPE source — the segment
+         named, the quote carried only when the page echoed one, and the
+         publication still read off the document (the show and episode). */
+      const echoed = String(claim.quote ?? "").trim();
+      out.push({
+        kind: "tape",
+        segmentId,
+        claimText: claim.claimText,
+        ...(echoed ? { quote: echoed } : {}),
+        publication: doc.title,
+        contested: claim.contested === true
+      });
+      continue;
+    }
     out.push({
       claimText: claim.claimText,
       quote: claim.quote,

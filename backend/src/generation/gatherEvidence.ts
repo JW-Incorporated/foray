@@ -13,7 +13,7 @@ import {
 } from "./transcriptArchiveLookup";
 import type { ExternalResearcher, ExternalResearchContext } from "./ExternalResearcher";
 import { leadingNounPhrase } from "../types/spine";
-import type { EvidenceDoc as HeldEvidenceDoc } from "../types/narration";
+import { tapeDocIdFor, type EvidenceDoc as HeldEvidenceDoc } from "../types/narration";
 import type { TapePointer } from "../types/tapeSourcing";
 
 /**
@@ -414,7 +414,9 @@ export class DefaultEvidenceGatherer implements EvidenceGatherer {
     return {
       context,
       doc: {
-        docId: `tape:${tape.segmentId}`,
+        // The id a tape source (F-81) is resolved against — one
+        // convention, declared with the source type.
+        docId: tapeDocIdFor(tape.segmentId),
         kind: "tape",
         // A source citing this doc gets THIS as its publication — a real
         // work with a real name, which is exactly what F-30's slug was not.

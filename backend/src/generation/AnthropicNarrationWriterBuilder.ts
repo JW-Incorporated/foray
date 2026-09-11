@@ -4,7 +4,7 @@ import { parseWithRetry } from "./parseWithRetry";
 import { env } from "../config/env";
 import { costFor, modelFor } from "../config/models";
 import { defaultBudgetGuard, type BudgetGuard } from "../cost/budgetGuard";
-import { MIN_QUOTE_WORDS, MODE_CHAR_BANDS } from "../types/narration";
+import { MIN_QUOTE_WORDS, MODE_CHAR_BANDS, modeMayCiteTape } from "../types/narration";
 import type {
   ClaimSelectionRequest,
   ClaimSelectionResult,
@@ -15,7 +15,8 @@ import type {
   ProseWriteRequest,
   ProseWriteResult,
   SelectAndWriteRequest,
-  SelectAndWriteResult
+  SelectAndWriteResult,
+  SelectedClaim
 } from "./NarrationWriterBuilder";
 import { recordUsage } from "./usageTracking";
 
@@ -218,7 +219,8 @@ function evidenceBlock(page: NarrationPageBrief): string {
     lines.push("Documents: none were retrieved for this page.");
   } else {
     for (const doc of page.evidence.docs) {
-      lines.push(`--- docId: ${doc.docId} | ${doc.title}${doc.url ? ` | ${doc.url}` : ""}\n${doc.text}`);
+      const tapeNote = doc.kind === "tape" && modeMayCiteTape(page.mode) ? " | TAPE: the segment this page introduces — may be cited as a whole (quote optional)" : "";
+      lines.push(`--- docId: ${doc.docId} | ${doc.title}${doc.url ? ` | ${doc.url}` : ""}${tapeNote}\n${doc.text}`);
     }
   }
   if (page.retryNote) lines.push(`REJECTIONS SO FAR: ${page.retryNote}`);
@@ -230,6 +232,11 @@ function evidenceBlock(page: NarrationPageBrief): string {
 const SELECTION_RULES = [
   `A quote must be copied character for character out of the document you name, and must be at least ${MIN_QUOTE_WORDS} words or one whole sentence.`,
   "Never quote the purpose or this prompt: they are direction, not documents.",
+  /* F-81: the tape is the Frame's source. Stated here, in the shared
+     rules, so the merged select+prose call asks it too. */
+  "A Frame, Hinge or Marker that hands the listener into tape may cite the tape itself: name the document marked TAPE as the claim's docId,",
+  "say in claimText what the segment is about or who is speaking, and either copy a short phrase of its own words as the quote or leave the quote empty (\"\").",
+  "The whole window is that source, so the word minimum does not apply to it. Say what the tape is about — never the answer it gives (the spoiler rule).",
   "If a document does not support a claim worth making, select no claim for that page rather than a weak one.",
   "If the documents contradict or complicate the purpose, select the claims that show that: the page's job is then to report the tension, not to assert the purpose.",
   '"contested" means reputable sources actively disagree about the fact itself — not that you are unsure.'
@@ -259,7 +266,9 @@ function voiceLine(request: { voice: ProseWriteRequest["voice"] }): string {
   );
 }
 
-function buildSelectionPrompt(request: ClaimSelectionRequest): string {
+/** Exported for the prompt tests only — never instantiate the class in a
+ * test (see the module comment). */
+export function buildSelectionPrompt(request: ClaimSelectionRequest): string {
   return [
     `You are selecting the factual claims for the narration pages of one slot ("${request.slotTitle}") of an audio documentary.`,
     "For each page, choose the claims it should make and, for each claim, COPY the span of one document below that backs it.",
@@ -338,10 +347,16 @@ function prosePageBlock(page: ProsePageBrief): string {
   if (page.evidence.tape) {
     lines.push(`It sits against tape: "${page.evidence.tape.episodeTitle}" from ${page.evidence.tape.showTitle}.`);
   }
+  const fromTape = (c: SelectedClaim): boolean => page.evidence.docs.find((d) => d.docId === c.docId)?.kind === "tape";
   lines.push(
     page.claims.length === 0
       ? "Claims: none. This page may assert nothing — ask a question or hand off to the listener."
-      : `Claims:\n${page.claims.map((c, i) => `  [${i}] ${c.claimText}${c.contested ? " (CONTESTED — the script must say so)" : ""}`).join("\n")}`
+      : `Claims:\n${page.claims
+          .map(
+            (c, i) =>
+              `  [${i}] ${c.claimText}${c.contested ? " (CONTESTED — the script must say so)" : ""}${fromTape(c) ? " (about the tape this page introduces — say what it is about, never the answer it gives)" : ""}`
+          )
+          .join("\n")}`
   );
   if (page.retryNote) lines.push(`REJECTIONS SO FAR: ${page.retryNote}`);
   return lines.join("\n");

@@ -5,7 +5,8 @@ import type { EvidencePrefetchMetrics } from "./evidencePrefetch";
 import type { SourcedAct, SourcedSlot, TapeRelevanceInput } from "../types/tapeSourcing";
 import type { WrittenAct } from "./writeNarration";
 import { decideConnectiveNarration } from "./writeNarration";
-import { purposeWasRevised, type NarratedBeat, type NarrationAttemptRecord } from "../types/narration";
+import { isTapeSource, purposeWasRevised, tapeDocIdFor, type NarratedBeat, type NarrationAttemptRecord } from "../types/narration";
+import { phraseIsInWindow } from "../types/anchorText";
 import { loadCatalogueData, type CatalogueShow } from "./catalogueLookup";
 import { loadSegmentPool, type SegmentRecord } from "./segmentPoolLookup";
 
@@ -96,6 +97,21 @@ export function computeGroundedQuoteRate(writtenActs: WrittenAct[]): GroundedQuo
     const haystacks = evidence.map((e: { text: string }) => normalizeQuote(e.text));
     const bad: string[] = [];
     for (const source of page.sources) {
+      if (isTapeSource(source)) {
+        /* F-81: a tape source rests on the whole transcript window, not on
+           a quote. One with no quote has nothing to check and counts
+           nowhere. One with a quote is checked exactly as the narration
+           gate checked it — a whole-word span of the segment's own window
+           under the anchor canonicalisation — so a phrase narration
+           accepted cannot be refused at publish for a punctuation
+           difference the gate forgave. */
+        if (source.quote === undefined) continue;
+        checkableQuotes++;
+        const window = evidence.find((e) => e.docId === tapeDocIdFor(source.segmentId));
+        if (window && phraseIsInWindow(source.quote, window.text)) groundedQuotes++;
+        else bad.push(source.quote);
+        continue;
+      }
       checkableQuotes++;
       const needle = normalizeQuote(source.quote);
       const grounded = needle.length > 0 && haystacks.some((h) => h.includes(needle));

@@ -1756,6 +1756,14 @@ const BACKEND_FLOORS = {
      retrieval calls; the concurrency cap is proven with latches. */
   "test/evidencePrefetch.test.ts": 7,
   "test/narrationRules.test.ts": 21,
+  /* F-81 (generation run 5): a Frame's source is the tape it introduces.
+     The `{kind: "tape", segmentId, quote?}` source shape, the mechanical
+     gate on it (window held, echo spoken in the window under the anchor
+     canonicalisation, connective modes only), the verifier handed the
+     window as the holding document, the run-5 Frame text accepted end to
+     end, and — pinned as unchanged — a source-less page that states a fact
+     is still refused. One named mutation per test. */
+  "test/frameTapeSource.test.ts": 24,
 };
 
 /* `it(` as well as `test(`: backend's suites use both spellings. */
