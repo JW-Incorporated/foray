@@ -1678,7 +1678,21 @@ const BACKEND_FLOORS = {
      one named mutation per required field. */
   "test/mintedSegmentRow.test.ts": 18,
   /* FD-07 / F-75: the publish branch is cut from origin/main and pushes exactly one commit. */
-  "test/publishForay.test.ts": 12,
+  /* +7 (G-21c): the written files are gated by the app's real-data suites —
+     a red suite refuses (assertion printed, bytes restored, branch abandoned),
+     --force proceeds and the PR body lists the failing assertions, a green
+     run touches nothing, detached-HEAD restore, a file that did not exist is
+     removed again, and the refusal lands on report.json as publish_refused.
+     One named mutation per test. */
+  "test/publishForay.test.ts": 19,
+  /* G-21c: REAL_DATA_SUITES names the four roadmap suites and every other
+     suite the repo grep finds reading data/forays.json, data/segments.json or
+     data/segment-sources.json (the list cannot rot); the TAP parser (one
+     `not ok` → one failure with name/error/location, describe parents
+     skipped, load failures attributed by name); the runner's cwd/flags and
+     its three broken-run shapes; the summary and failure lines. One named
+     mutation per test. */
+  "test/publishSuites.test.ts": 15,
   /* G-25: spine seeding ledger (M4-derived caps) and seed order. */
   "test/spineSeeding.test.ts": 5,
   /* G-30: self-resuming runs, abort on a refused partial, notification hook, id suffixing. */

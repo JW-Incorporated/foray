@@ -1205,6 +1205,18 @@
       "duration_sec": 3128,
       "dai_suspected": true,
       "source": "generation-tier-2"
+    },
+    {
+      "id": "causality-engineered-network--1-bp-texas-city",
+      "show": "Causality",
+      "title": "1: BP Texas City",
+      "feed_url": "https://engineered.network/causality/feed/index.xml",
+      "episode_guid": "http://engineered.network/causality/episode-1-bp-texas",
+      "audio_url": "https://op3.dev/e/media.engineered.network/causality/Causality-E001-BP-Texas-City.mp3",
+      "audio_type": "audio/mpeg",
+      "duration_sec": 2071,
+      "dai_suspected": false,
+      "source": "generation-tier-2"
     }
   ]
 }

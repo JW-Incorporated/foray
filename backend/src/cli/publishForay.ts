@@ -11,6 +11,14 @@ import {
   type PoolRowLike
 } from "../generation/finalizeForay";
 import { evaluateVeracityGate, type VeracityGateResult } from "../generation/veracityMetrics";
+import {
+  formatSuiteFailure,
+  runRealDataSuites,
+  suiteSummaryLine,
+  type SuiteFailure,
+  type SuiteRunResult,
+  type SuiteSpawn
+} from "./publishSuites";
 
 /**
  * `npm run publish-foray` — §4.9's finalize-and-publish CLI
@@ -97,6 +105,25 @@ import { evaluateVeracityGate, type VeracityGateResult } from "../generation/ver
  * comment). `--force` overrides the gate and notes the override, with the
  * specific failures, in the PR body — it does NOT skip check-forays.mjs/
  * check-narration.mjs, which have no override.
+ *
+ * G-21c REAL-DATA SUITES GATE (docs/curation/foray-to-spec-roadmap.md G-21c):
+ * after the three files are written and BEFORE commit/push/PR, this runs the
+ * app's own suites that read the real `data/` (`REAL_DATA_SUITES` in
+ * `publishSuites.ts` — `player/media-session.test.js`, `tools/foray/
+ * check-forays.test.mjs`, `tools/mobile/prepare-webdir.test.mjs`,
+ * `test/foray-directory.test.js` and every other suite that reads the files)
+ * with `node --test` from the repo root, and refuses when any is red, printing
+ * each failing assertion (suite, test name, assertion text) and writing them
+ * onto the candidate's `report.json` row as `publish_refused` when `--report`
+ * is given. The third generated Foray's data PR (#632) went red in exactly
+ * those suites after check-forays.mjs had passed it: the checker validates the
+ * document, the suites validate what the app DOES with it. On refusal the
+ * working tree is put back byte-for-byte and the publish branch abandoned, so
+ * the checkout is left as the veracity refusal leaves it — nothing written,
+ * on the branch it started on (see `gateWrittenTree`). `--force` overrides
+ * this gate too, and the PR body lists the failing assertions. `--dry-run`
+ * writes the files, runs the suites, restores the files, and reports — no
+ * branch, no PR — so a candidate can be gated locally without publishing.
  *
  * Usage:
  *   npm run publish-foray -- --input path/to/candidate.json
@@ -202,8 +229,184 @@ export function commitPublish(run: Runner, writtenDataFiles: readonly string[], 
   }
 }
 
+/** Where the checkout was before the publish branch was cut — what
+ * `abandonPublishBranch` switches back to. A detached HEAD is remembered by
+ * sha, since `git switch <sha>` needs `--detach`. */
+export type PreviousRef = { kind: "branch"; name: string } | { kind: "detached"; sha: string };
+
+export function currentRef(run: Runner): PreviousRef {
+  const name = run("git", ["rev-parse", "--abbrev-ref", "HEAD"]).trim();
+  if (name && name !== "HEAD") return { kind: "branch", name };
+  return { kind: "detached", sha: run("git", ["rev-parse", "HEAD"]).trim() };
+}
+
+/** The three data files' bytes before a write (`null` = the file did not
+ * exist), so a refused publish can put them back EXACTLY. Bytes rather than
+ * `git checkout -- data/` because the restore must not depend on what the
+ * index holds: step 0 proved the working tree's copies are `origin/main`'s,
+ * and this puts back precisely those copies whatever branch or index state
+ * the checkout is in. */
+export type DataSnapshot = Map<string, Buffer | null>;
+
+export function snapshotDataFiles(repoRoot: string, files: readonly string[] = PUBLISH_DATA_FILES): DataSnapshot {
+  const snap: DataSnapshot = new Map();
+  for (const rel of files) {
+    const abs = path.join(repoRoot, rel);
+    snap.set(rel, fs.existsSync(abs) ? fs.readFileSync(abs) : null);
+  }
+  return snap;
+}
+
+export function restoreDataFiles(repoRoot: string, snapshot: DataSnapshot): void {
+  for (const [rel, bytes] of snapshot) {
+    const abs = path.join(repoRoot, rel);
+    if (bytes === null) fs.rmSync(abs, { force: true });
+    // eslint-disable-next-line security/detect-non-literal-fs-filename -- same fixed files.
+    else fs.writeFileSync(abs, bytes);
+  }
+}
+
+/** Undo `cutPublishBranch` after a refusal: back to where the checkout was,
+ * then delete the never-pushed publish branch. Call AFTER `restoreDataFiles`
+ * so the tree is clean and the switch cannot carry a half-written file over. */
+export function abandonPublishBranch(run: Runner, branch: string, previous: PreviousRef): void {
+  if (previous.kind === "branch") run("git", ["switch", previous.name]);
+  else run("git", ["switch", "--detach", previous.sha]);
+  run("git", ["branch", "-D", branch]);
+}
+
+/** Everything the write needs, built before anything is touched. */
+export interface PublishWritePlan {
+  forayRecord: unknown;
+  mintedSegments: NonNullable<FinalizeForayInput["segments"]>;
+  mintedRows: Array<{ id: string; row: PoolRowLike }>;
+  mintedSources: Array<{ id?: string }>;
+}
+
+/**
+ * Step 3 — write the three data files into the working tree. Returns the
+ * repo-relative files it actually changed (a Foray that mints nothing writes
+ * only `data/forays.json`). Throws — writing nothing further — on an F-84
+ * collision; the caller restores the tree.
+ */
+export function writePublishDataFiles(repoRoot: string, plan: PublishWritePlan, log: (line: string) => void = console.log): string[] {
+  const forayPath = path.join(repoRoot, "data", "forays.json");
+  const live = JSON.parse(fs.readFileSync(forayPath, "utf8")) as { forays: unknown[] };
+  live.forays.push(plan.forayRecord);
+  fs.writeFileSync(forayPath, `${JSON.stringify(live, null, 2)}\n`);
+  log(`Wrote data/forays.json (+1 Foray).`);
+
+  /* THE TIER-2 TAPE THE FORAY REFERS TO (F-49 plumbing). `finalizeForay`
+     validated the candidate against a pool with these merged in; publishing the
+     Foray without them would ship a `segment_id` no reader can resolve — which
+     is the same "unknown segment_id" failure, moved from the checker to the
+     player. Written in the same commit, so the three files are never out of
+     step with each other. Ids already on disk are left alone: the committed row
+     is the authority for a segment a curator's batch has already merged — and a
+     minted row that would sit BESIDE a committed row at the same start, or
+     shadow one with a different cut, is refused here rather than written under
+     an id the pool gate rejects (F-84, `mintedPoolCollisions`). Asked again at
+     the write, not only at finalize, because this is the seam that writes. */
+  const writtenDataFiles: string[] = ["data/forays.json"];
+  if (plan.mintedRows.length > 0) {
+    const poolPath = path.join(repoRoot, "data", "segments.json");
+    const pool = JSON.parse(fs.readFileSync(poolPath, "utf8")) as { segments: PoolRowLike[] };
+    const collisions = mintedPoolCollisions(plan.mintedSegments, pool.segments);
+    if (collisions.length > 0) {
+      throw new Error(`publishForay: refusing to write data/segments.json — ${collisions.join("; ")}`);
+    }
+    const known = new Set(pool.segments.map((s) => s.id));
+    const added = plan.mintedRows.filter((m) => !known.has(m.id)).map((m) => m.row);
+    if (added.length > 0) {
+      pool.segments.push(...added);
+      fs.writeFileSync(poolPath, `${JSON.stringify(pool, null, 2)}\n`);
+      writtenDataFiles.push("data/segments.json");
+      log(`Wrote data/segments.json (+${added.length} tier-2 segment(s), flagged needs_review).`);
+    }
+  }
+  if (plan.mintedSources.length > 0) {
+    const registryPath = path.join(repoRoot, "data", "segment-sources.json");
+    const registry = JSON.parse(fs.readFileSync(registryPath, "utf8")) as { sources: Array<{ id?: string }> };
+    const known = new Set(registry.sources.map((s) => s.id));
+    const added = plan.mintedSources.filter((s) => !known.has(s.id));
+    if (added.length > 0) {
+      registry.sources.push(...added);
+      fs.writeFileSync(registryPath, `${JSON.stringify(registry, null, 2)}\n`);
+      writtenDataFiles.push("data/segment-sources.json");
+      log(`Wrote data/segment-sources.json (+${added.length} episode source row(s)).`);
+    }
+  }
+  return writtenDataFiles;
+}
+
+/** Console sinks, injected so the gate's tests are quiet. */
+export interface Out {
+  log: (line: string) => void;
+  warn: (line: string) => void;
+  error: (line: string) => void;
+}
+const CONSOLE: Out = { log: console.log, warn: console.warn, error: console.error };
+
+/** Prints the suites' verdict the way the veracity gate prints its own —
+ * every failure, then the refusal or the `--force` override — and says
+ * whether the publish may proceed. */
+export function printSuiteVerdict(suites: SuiteRunResult, force: boolean, out: Out = CONSOLE): boolean {
+  out.log(suiteSummaryLine(suites));
+  if (suites.ok) return true;
+  out.error("The app's real-data suites FAILED against the written data files (G-21c):");
+  for (const f of suites.failures) out.error(`  ${formatSuiteFailure(f)}`);
+  if (!force) {
+    out.error("Refusing to publish. Use --force to override (the override and the failing assertions will be noted in the PR body).");
+    return false;
+  }
+  out.warn("--force: publishing despite the real-data suite failures above.");
+  return true;
+}
+
+/**
+ * G-21c: with the three files written on the freshly cut publish branch,
+ * run the app's own suites against them. Green (or `--force`) → proceed to
+ * commit. Red without `--force` → restore the three files byte-for-byte,
+ * switch back to where the checkout was and delete the branch, so the
+ * refusal leaves the checkout exactly as the veracity refusal does: nothing
+ * written, nothing to clean up. A throw from the run is treated the same way
+ * before it propagates.
+ */
+export function gateWrittenTree(opts: {
+  repoRoot: string;
+  force: boolean;
+  branch: string;
+  previousRef: PreviousRef;
+  snapshot: DataSnapshot;
+  run: Runner;
+  spawn?: SuiteSpawn;
+  files?: readonly string[];
+  out?: Out;
+}): { proceed: boolean; suites: SuiteRunResult } {
+  const out = opts.out ?? CONSOLE;
+  let suites: SuiteRunResult;
+  try {
+    suites = runRealDataSuites({ repoRoot: opts.repoRoot, files: opts.files, spawn: opts.spawn });
+  } catch (err) {
+    restoreDataFiles(opts.repoRoot, opts.snapshot);
+    abandonPublishBranch(opts.run, opts.branch, opts.previousRef);
+    throw err;
+  }
+  const proceed = printSuiteVerdict(suites, opts.force, out);
+  if (!proceed) {
+    restoreDataFiles(opts.repoRoot, opts.snapshot);
+    abandonPublishBranch(opts.run, opts.branch, opts.previousRef);
+    out.error(`Restored ${[...opts.snapshot.keys()].join(", ")} and abandoned branch ${opts.branch}; nothing was committed.`);
+  }
+  return { proceed, suites };
+}
+
 /** The PR body: what was checked, what happens after merge, and any override. */
-export function publishPrBody(input: Pick<FinalizeForayInput, "id">, gate: VeracityGateResult): string {
+export function publishPrBody(
+  input: Pick<FinalizeForayInput, "id">,
+  gate: VeracityGateResult,
+  suites: Pick<SuiteRunResult, "ok" | "failures" | "counts" | "files"> | null = null
+): string {
   return (
     `Automated §4.9 finalize/publish. Foray "${input.id}" passed check-forays.mjs and ` +
     `check-narration.mjs. Phase 1 (docs/curation/generation-architecture.md §1.3): this PR ` +
@@ -211,9 +414,17 @@ export function publishPrBody(input: Pick<FinalizeForayInput, "id">, gate: Verac
     "\n\nBranch cut from `origin/main`; touches only `data/forays.json`, `data/segments.json` and `data/segment-sources.json`. " +
     "Once merged, Vercel deploys `main` and phones pick this Foray up on next launch after the deploy — " +
     "no store build (the Foray directory, FD-03)." +
+    (suites && suites.ok
+      ? `\n\nG-21c: the app's real-data suites (${suites.files.length} suites, ${suites.counts?.tests ?? "?"} tests) ran green against these files before this PR was opened.`
+      : "") +
     (!gate.ok
       ? `\n\n**WS-B veracity gate overridden with --force.** Failures at publish time:\n${gate.failures
           .map((f) => `- ${f}`)
+          .join("\n")}`
+      : "") +
+    (suites && !suites.ok
+      ? `\n\n**G-21c real-data suites overridden with --force.** Failing assertions at publish time:\n${suites.failures
+          .map((f) => `- ${formatSuiteFailure(f)}`)
           .join("\n")}`
       : "")
   );
@@ -228,6 +439,18 @@ export interface PublishRecord {
   base_sha: string;
   deploy_id: string | null;
   published_at: string;
+  /** G-21c: how the app's real-data suites went against the written files.
+   * `ok: false` only ever appears with `--force`. */
+  suites?: { ok: boolean; summary: string; failures: SuiteFailure[] };
+}
+
+/** What a refused publish leaves on the candidate's `report.json` row (G-21c
+ * "done when": the failing assertion text is in `report.json`). */
+export interface PublishRefusal {
+  gate: "real-data-suites";
+  summary: string;
+  failures: SuiteFailure[];
+  refused_at: string;
 }
 
 /**
@@ -243,6 +466,26 @@ export function recordPublishInReport(reportPath: string, candidateFile: string,
   const row = (doc.entries ?? []).find((e) => typeof e.file === "string" && path.basename(e.file) === want);
   if (!row) return false;
   row.publish = record;
+  // eslint-disable-next-line security/detect-non-literal-fs-filename -- same operator-supplied path.
+  fs.writeFileSync(reportPath, `${JSON.stringify(doc, null, 2)}\n`);
+  return true;
+}
+
+/**
+ * G-21c: writes `publish_refused` — the gate, its summary line and every
+ * failing assertion — onto the candidate's row, matched the same way
+ * `recordPublishInReport` matches. Returns false, touching nothing, when the
+ * report has no row for the candidate.
+ */
+export function recordRefusalInReport(reportPath: string, candidateFile: string, refusal: PublishRefusal): boolean {
+  // eslint-disable-next-line security/detect-non-literal-fs-filename -- operator-supplied --report path.
+  const doc = JSON.parse(fs.readFileSync(reportPath, "utf8")) as {
+    entries?: Array<{ file?: string; publish_refused?: PublishRefusal }>;
+  };
+  const want = path.basename(candidateFile);
+  const row = (doc.entries ?? []).find((e) => typeof e.file === "string" && path.basename(e.file) === want);
+  if (!row) return false;
+  row.publish_refused = refusal;
   // eslint-disable-next-line security/detect-non-literal-fs-filename -- same operator-supplied path.
   fs.writeFileSync(reportPath, `${JSON.stringify(doc, null, 2)}\n`);
   return true;
@@ -303,63 +546,71 @@ async function main(): Promise<void> {
   const rowContext = { batchId: generationBatchId(input.id), sources: mintedSources };
   const mintedRows = mintedSegments.map((s) => ({ id: s.id, row: mintedSegmentRow(s, input.topic, rowContext) }));
 
+  const plan: PublishWritePlan = { forayRecord: result.forayRecord, mintedSegments, mintedRows, mintedSources };
+
   if (args.dryRun) {
-    console.log("--dry-run: not writing data/forays.json, not opening a PR.");
+    /* G-21c: --dry-run still WRITES the three files — into the working tree,
+       the way the real publish does — because the app's suites only mean
+       something against the files as they would be committed; then puts the
+       bytes back whether the suites passed, failed or threw. No branch, no
+       commit, no PR. Step 0 proved the tree's copies are origin/main's, so
+       "back" is exact. */
+    console.log("--dry-run: writing the three data files to run the app's real-data suites against them, then restoring them; no branch, no PR.");
+    const snapshot = snapshotDataFiles(REPO_ROOT);
+    let suites: SuiteRunResult;
+    try {
+      writePublishDataFiles(REPO_ROOT, plan);
+      suites = runRealDataSuites({ repoRoot: REPO_ROOT });
+    } finally {
+      restoreDataFiles(REPO_ROOT, snapshot);
+      console.log(`--dry-run: restored ${PUBLISH_DATA_FILES.join(", ")} byte-for-byte.`);
+    }
+    const proceed = printSuiteVerdict(suites, args.force);
     console.log(JSON.stringify(result.forayRecord, null, 2));
     if (mintedRows.length > 0) console.log(JSON.stringify({ minted_segments: mintedRows.map((m) => m.row) }, null, 2));
+    console.log(`--dry-run verdict: ${proceed ? "would publish" : "would REFUSE"} — ${suiteSummaryLine(suites)}`);
+    if (!proceed) process.exitCode = 1;
     return;
   }
 
   // Step 3a — the branch, from origin/main, BEFORE anything is written.
+  const previousRef = currentRef(run);
   const branch = `generate/${input.id}`;
   const baseSha = run("git", ["rev-parse", PUBLISH_BASE]);
   cutPublishBranch(run, branch);
 
-  const forayPath = path.join(REPO_ROOT, "data", "forays.json");
-  const live = JSON.parse(fs.readFileSync(forayPath, "utf8")) as { forays: unknown[] };
-  live.forays.push(result.forayRecord);
-  fs.writeFileSync(forayPath, `${JSON.stringify(live, null, 2)}\n`);
-  console.log(`Wrote data/forays.json (+1 Foray: ${input.id}).`);
-
-  /* THE TIER-2 TAPE THE FORAY REFERS TO (F-49 plumbing). `finalizeForay`
-     validated the candidate against a pool with these merged in; publishing the
-     Foray without them would ship a `segment_id` no reader can resolve — which
-     is the same "unknown segment_id" failure, moved from the checker to the
-     player. Written in the same commit, so the three files are never out of
-     step with each other. Ids already on disk are left alone: the committed row
-     is the authority for a segment a curator's batch has already merged — and a
-     minted row that would sit BESIDE a committed row at the same start, or
-     shadow one with a different cut, is refused here rather than written under
-     an id the pool gate rejects (F-84, `mintedPoolCollisions`). Asked again at
-     the write, not only at finalize, because this is the seam that writes. */
-  const writtenDataFiles: string[] = ["data/forays.json"];
-  if (mintedRows.length > 0) {
-    const poolPath = path.join(REPO_ROOT, "data", "segments.json");
-    const pool = JSON.parse(fs.readFileSync(poolPath, "utf8")) as { segments: PoolRowLike[] };
-    const collisions = mintedPoolCollisions(mintedSegments, pool.segments);
-    if (collisions.length > 0) {
-      throw new Error(`publishForay: refusing to write data/segments.json — ${collisions.join("; ")}`);
-    }
-    const known = new Set(pool.segments.map((s) => s.id));
-    const added = mintedRows.filter((m) => !known.has(m.id)).map((m) => m.row);
-    if (added.length > 0) {
-      pool.segments.push(...added);
-      fs.writeFileSync(poolPath, `${JSON.stringify(pool, null, 2)}\n`);
-      writtenDataFiles.push("data/segments.json");
-      console.log(`Wrote data/segments.json (+${added.length} tier-2 segment(s), flagged needs_review).`);
-    }
+  /* Step 3 — the write, then G-21c's gate on what was written. A throw from the
+     write (F-84's collision refusal lives there) is cleaned up the same way a
+     refusal is: files back, branch abandoned, then the error propagates. Before
+     G-21c nothing cleaned up after that throw — the checkout was left on a
+     half-written publish branch for a person to untangle. */
+  const snapshot = snapshotDataFiles(REPO_ROOT);
+  let writtenDataFiles: string[];
+  try {
+    writtenDataFiles = writePublishDataFiles(REPO_ROOT, plan);
+  } catch (err) {
+    restoreDataFiles(REPO_ROOT, snapshot);
+    abandonPublishBranch(run, branch, previousRef);
+    throw err;
   }
-  if (mintedSources.length > 0) {
-    const registryPath = path.join(REPO_ROOT, "data", "segment-sources.json");
-    const registry = JSON.parse(fs.readFileSync(registryPath, "utf8")) as { sources: Array<{ id?: string }> };
-    const known = new Set(registry.sources.map((s) => s.id));
-    const added = mintedSources.filter((s) => !known.has(s.id));
-    if (added.length > 0) {
-      registry.sources.push(...added);
-      fs.writeFileSync(registryPath, `${JSON.stringify(registry, null, 2)}\n`);
-      writtenDataFiles.push("data/segment-sources.json");
-      console.log(`Wrote data/segment-sources.json (+${added.length} episode source row(s)).`);
+  const { proceed, suites } = gateWrittenTree({ repoRoot: REPO_ROOT, force: args.force, branch, previousRef, snapshot, run });
+  if (!proceed) {
+    if (args.report) {
+      const refusal: PublishRefusal = {
+        gate: "real-data-suites",
+        summary: suiteSummaryLine(suites),
+        failures: suites.failures,
+        refused_at: new Date().toISOString()
+      };
+      const recorded = recordRefusalInReport(path.resolve(args.report), args.input, refusal);
+      console.error(
+        recorded
+          ? `Recorded the refusal (${suites.failures.length} failing assertion(s)) on ${args.report}.`
+          : `No row for ${path.basename(args.input)} in ${args.report} — refusal not recorded.`
+      );
     }
+    process.exitCode = 1;
+    return;
   }
 
   // Step 3b — commit, prove it is only the publish, push, PR (foray-nightly.md step 7).
@@ -374,7 +625,7 @@ async function main(): Promise<void> {
     "--title",
     `Generated Foray: ${input.title}`,
     "--body",
-    publishPrBody(input, gate)
+    publishPrBody(input, gate, suites)
   ]);
   console.log(`Opened PR: ${prUrl}`);
 
@@ -390,7 +641,8 @@ async function main(): Promise<void> {
       base: PUBLISH_BASE,
       base_sha: baseSha,
       deploy_id: args.deployId,
-      published_at: new Date().toISOString()
+      published_at: new Date().toISOString(),
+      suites: { ok: suites.ok, summary: suiteSummaryLine(suites), failures: suites.failures }
     };
     const recorded = recordPublishInReport(path.resolve(args.report), args.input, record);
     console.log(
