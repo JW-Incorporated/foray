@@ -492,23 +492,37 @@ describe("runForayPipeline — each act is stitched as soon as it is narrated (F
   const multiAct: GenerationRequest = { ...request, duration: "medium" };
 
   /** A stub narration writer that logs the moment each slot's prose is
-   * REQUESTED — before any sleep, so the log reads as call order rather than
-   * completion order — and can be made slow enough for a wall clock to
-   * separate one act from the next. */
-  function orderedWriter(sleepMs: number) {
+   * REQUESTED and HOLDS every slot of every act after the first until
+   * `release()` is called. Since G-32 all acts' narration is requested at
+   * once, so "act 2 was not yet requested" no longer separates act 1's
+   * readiness from the run's; "act 2 could not have finished" does, and a
+   * latch is what makes that a fact rather than a race. `isLater` needs the
+   * captured spine, so it is consulted per call, not at construction. */
+  function latchedWriter(isLater: (slotTitle: string) => boolean) {
     const writer = new StubNarrationWriterBuilder();
     const realWritePages = writer.writePages.bind(writer);
     const events: string[] = [];
-    /** Absolute `Date.now()` of every narration request, so an elapsed time
-     * can be computed against the same origin `ttlA1Ms` is measured from. */
-    const narrationAt: number[] = [];
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
     writer.writePages = async (...args: Parameters<NarrationWriterBuilder["writePages"]>) => {
       events.push(`narrate:${args[0].slotTitle}`);
-      narrationAt.push(Date.now());
-      if (sleepMs > 0) await new Promise((resolve) => setTimeout(resolve, sleepMs));
+      if (isLater(args[0].slotTitle)) await held;
       return realWritePages(...args);
     };
-    return { writer, events, narrationAt };
+    return { writer, events, release };
+  }
+
+  /** Polls `events` for `ready:0`, failing with a sentence rather than a
+   * hang when a mutation makes act 1's readiness wait on the held acts. */
+  async function waitForAct1Ready(events: string[]): Promise<number> {
+    const until = Date.now() + 20_000;
+    while (!events.includes("ready:0")) {
+      if (Date.now() > until) throw new Error("act 1 never became ready while the later acts' narration was held");
+      await new Promise((resolve) => setTimeout(resolve, 5));
+    }
+    return Date.now();
   }
 
   /** Captures the frozen spine, which is the only thing that can say which act
@@ -529,15 +543,17 @@ describe("runForayPipeline — each act is stitched as soon as it is narrated (F
   const readyActIndex = (candidate: PartialCandidate): number =>
     candidate.acts.filter((a) => a.status === "ready").length - 1;
 
-  it("fires onActReady for act 1 BEFORE act 2's narration is requested", async () => {
+  it("fires onActReady for act 1 while every later act's narration is still held", async () => {
     /* MUTATION THAT KILLS THIS: move the `stitch:<i>` block out of the
-       narration loop in runPipeline.ts and run it over `written` afterwards —
-       i.e. exactly the pre-F-66 code. Every `ready:` event then lands after
-       every `narrate:` event. Ran it — red. */
-    const { writer, events } = orderedWriter(0);
+       ordered loop in runPipeline.ts and run it over `written` afterwards —
+       i.e. exactly the pre-F-66 code. `ready:0` then waits on the held acts,
+       which are released only after `ready:0`, and `waitForAct1Ready` fails.
+       Ran it — red. */
     const { builder: spineBuilder, captured } = capturingSpineBuilder();
+    const isLater = (slotTitle: string) => captured.spine!.acts.slice(1).some((a) => a.slots.some((s) => s.title === slotTitle));
+    const { writer, events, release } = latchedWriter(isLater);
 
-    const out = await runForayPipeline(multiAct, options, {
+    const run = runForayPipeline(multiAct, options, {
       ...stubDeps(),
       spineBuilder,
       narrationWriter: writer,
@@ -545,52 +561,62 @@ describe("runForayPipeline — each act is stitched as soon as it is narrated (F
         events.push(`ready:${readyActIndex(candidate)}`);
       }
     });
+    await waitForAct1Ready(events);
 
+    /* The whole finding, in one line: act 1 is listenable while act 2 is
+       still being written. (G-32: act 2's narration was REQUESTED long
+       before this — that is the point of G-32 — but it cannot have finished.) */
+    expect(events.filter((e) => e.startsWith("ready:"))).toEqual(["ready:0"]);
+    release();
+
+    const out = await run;
     expect(out.outcome).toBe("generated");
     const spine = captured.spine;
     expect(spine).not.toBeNull();
     if (!spine) return;
     expect(spine.acts.length).toBeGreaterThan(1);
 
-    /* The slot title is the join between the event log and the act structure.
+    /* The slot title is the join between the latch and the act structure.
        If the spine ever reuses one across acts this test would read a false
        pass, so it says that out loud rather than assuming it. */
     const allSlotTitles = spine.acts.flatMap((a) => a.slots.map((s) => s.title));
     expect(new Set(allSlotTitles).size).toBe(allSlotTitles.length);
 
-    const readyAct0 = events.indexOf("ready:0");
-    expect(readyAct0).toBeGreaterThanOrEqual(0);
-
     const laterActSlots = new Set(spine.acts.slice(1).flatMap((a) => a.slots.map((s) => s.title)));
-    const firstLaterNarration = events.findIndex((e) => e.startsWith("narrate:") && laterActSlots.has(e.slice("narrate:".length)));
-    expect(firstLaterNarration).toBeGreaterThanOrEqual(0);
-
-    // The whole finding, in one line: act 1 is listenable before act 2 is written.
-    expect(readyAct0).toBeLessThan(firstLaterNarration);
+    expect(events.some((e) => e.startsWith("narrate:") && laterActSlots.has(e.slice("narrate:".length)))).toBe(true);
 
     // And every act still emits, once, in order — streaming did not lose one.
     expect(events.filter((e) => e.startsWith("ready:"))).toEqual(spine.acts.map((_a, i) => `ready:${i}`));
-  });
+  }, 60_000);
 
   it("reports a ttlA1Ms that is act 1's time, not the run's", async () => {
     /* Run 2 attempt 3's ttlA1Ms was the whole run because the clock was read
        inside a stage that could not start until the last act was written.
 
        MUTATION THAT KILLS THIS: the same one as the test above — stitch after
-       the loop instead of inside it. `ttlA1Ms` then exceeds the time of the
-       last narration request. Ran it — red. */
-    const sleepMs = 40;
-    const { writer, narrationAt } = orderedWriter(sleepMs);
+       the loop instead of inside it. `ready:0` never fires while the later
+       acts are held, and the wait fails. Ran it — red. */
+    const holdMs = 40;
+    const { builder: spineBuilder, captured } = capturingSpineBuilder();
+    const isLater = (slotTitle: string) => captured.spine!.acts.slice(1).some((a) => a.slots.some((s) => s.title === slotTitle));
+    const { writer, events, release } = latchedWriter(isLater);
 
     const startedMs = Date.now();
-    const out = await runForayPipeline(multiAct, options, {
+    const run = runForayPipeline(multiAct, options, {
       ...stubDeps(),
+      spineBuilder,
       narrationWriter: writer,
-      onActReady: () => {
-        /* Present so the clock is read at all — `ttlA1Ms` is `null` by design
-           when no caller is streaming. */
+      onActReady: (candidate) => {
+        events.push(`ready:${readyActIndex(candidate)}`);
       }
     });
+    const readyAtMs = await waitForAct1Ready(events);
+    /* The later acts stay held a while longer AFTER act 1 is ready, so the
+       run's clock and act 1's clock are never within granularity of each
+       other. */
+    await new Promise((resolve) => setTimeout(resolve, holdMs));
+    release();
+    const out = await run;
     const totalMs = Date.now() - startedMs;
 
     expect(out.outcome).toBe("generated");
@@ -598,18 +624,16 @@ describe("runForayPipeline — each act is stitched as soon as it is narrated (F
     expect(out.ttlA1Ms).not.toBeNull();
     const ttlA1Ms = out.ttlA1Ms ?? Number.POSITIVE_INFINITY;
 
-    expect(narrationAt.length).toBeGreaterThan(2);
-    expect(ttlA1Ms).toBeLessThan(totalMs);
+    expect(events.filter((e) => e.startsWith("narrate:")).length).toBeGreaterThan(2);
 
-    /* The sharper claim, and the one the finding is about: act 1 was ready
-       before the LAST act's narration was even asked for. `startedMs` is read
-       immediately outside the call, so it is at or before the pipeline's own
-       `pipelineStartMs` — which makes this comparison conservative rather than
-       flattering. The writer sleeps 40 ms per slot, so the two are never
-       within clock granularity of each other. */
-    const lastNarrationMs = narrationAt[narrationAt.length - 1]! - startedMs;
-    expect(ttlA1Ms).toBeLessThan(lastNarrationMs);
-  });
+    /* The claim the finding is about: `ttlA1Ms` is act 1's clock. It was read
+       at or before the instant `ready:0` was observed (`startedMs` is read
+       outside the call, so it is at or before the pipeline's own
+       `pipelineStartMs` — conservative rather than flattering), and the run
+       went on for at least `holdMs` after that. */
+    expect(ttlA1Ms).toBeLessThanOrEqual(readyAtMs - startedMs);
+    expect(totalMs - ttlA1Ms).toBeGreaterThanOrEqual(holdMs);
+  }, 60_000);
 
   it("assembles exactly the items one whole-Foray stitchForay call would have, in the same order", async () => {
     /* Act-at-a-time assembly must not move a seam, a jingle or an item. This

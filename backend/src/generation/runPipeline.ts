@@ -16,7 +16,7 @@ import { deepenActs } from "./deepenActs";
 import { sourceBeats, summarizeSourcing } from "./sourceBeats";
 import { summarizeSeeding } from "./spineSeeding";
 import { createDigestAudioSourceResolver, type AudioSourceResolver } from "./audioSourceLookup";
-import { writeNarration } from "./writeNarration";
+import { createActGate, narrationActConcurrency, writeNarration } from "./writeNarration";
 import { PrefetchingEvidenceGatherer } from "./evidencePrefetch";
 import { createEvidenceGatherer, type EvidenceGatherer } from "./gatherEvidence";
 import { ForayStitcher } from "./stitchForay";
@@ -248,6 +248,25 @@ export interface RunPipelineOptions {
    * prompt in the batch.
    */
   checkpointKey?: string;
+  /**
+   * G-32: how many acts narrate at once. Defaults to the
+   * `NARRATION_ACT_CONCURRENCY` env (4 — see `narrationActConcurrency` in
+   * `writeNarration.ts`). `1` is the pre-G-32 behaviour, acts in series.
+   * Stitch and continuity are NOT governed by this: they run one act at a
+   * time in act order whatever the number is.
+   */
+  narrationActConcurrency?: number;
+}
+
+/** G-32: one act's narration, as the report shows it — the `narrate:<i>`
+ * stage timing with the act named, so a reader can see acts overlapping
+ * (`startedAt` + `ms`) rather than infer it from a shorter total. */
+export interface NarrationActTiming {
+  act: number;
+  startedAt: string;
+  ms: number;
+  /** The act came off the checkpoint; nothing was narrated this run. */
+  resumed?: true;
 }
 
 export type RunPipelineOutcome =
@@ -282,6 +301,10 @@ export type RunPipelineOutcome =
        * `generateForays.ts` surfaces this per §4.9/D2's "measure it and
        * print ttlA1Ms in the report." */
       ttlA1Ms: number | null;
+      /** G-32: the act-concurrency cap this run narrated under, and one
+       * timing per act. `generateForays.ts` carries both into `report.json`
+       * (`narrationConcurrency`, `narrationActs`). */
+      narration: { concurrency: number; acts: NarrationActTiming[] };
     };
 
 /** The Foray-level `slots` record: §4.9 wants `{id, title}` per act slot. */
@@ -988,11 +1011,11 @@ export async function runForayPipeline(
   const runtimePool = mintedPool.length ? [...loadSegmentPool(), ...mintedPool] : loadSegmentPool();
 
   /* §4.7 — write narration, then verify it independently (distinct instances,
-     enforced there). Driven ONE ACT AT A TIME rather than in a single call, so
-     each act's pages are checkpointed as they finish. Act order and the
-     writer/verifier instances are unchanged — `writeNarration` iterates the
-     acts it is given in order, so N calls of one act and one call of N acts
-     produce the same result.
+     enforced there). Driven ONE CALL PER ACT rather than one call for all, so
+     each act's pages are checkpointed under their own act's keys. Since G-32
+     those N calls are STARTED together (see the gate below) and only WAITED
+     ON in act order; the writer/verifier instances are shared across them,
+     as they were across the slots of one act before.
 
      TWO CHECKPOINT KEYS, NOT ONE (F-51). `narrate:<i>` is still the outer
      record: once an act is finished, one key holds it and nothing inside it is
@@ -1105,52 +1128,111 @@ export async function runForayPipeline(
     ctx
   );
 
+  /* G-32: EVERY act's narration starts now, at once, through a gate of
+     `narrationActConcurrency` acts in flight (default 4, env
+     `NARRATION_ACT_CONCURRENCY`). The `narrate:<i>` stage is unchanged — same
+     key, same per-slot `narrate:<i>:<slot>` keys, same `writeNarration` call
+     handed one act — it is only no longer waited on before the next act's
+     starts. The gate wraps the stage rather than the reverse so a resumed act
+     (its `narrate:<i>` already banked) passes through in microseconds and the
+     `narrate:<i>` timing measures narration, not queue time.
+
+     WHY THE LOOP BELOW STILL RUNS IN ACT ORDER. §4.8 has two act-ordered
+     dependencies narration does not: the continuity call at each boundary
+     reads act N-1's exit into act N's introduction (`smoothActIntroduction`),
+     and `itemsSoFar` — the partial candidate, and so `ttlA1Ms` — is acts 0..N
+     concatenated. `ForayStitcher` makes that contract explicit ("acts must be
+     handed in ascending order, one each"), so the loop awaits act i's
+     narration, stitches it, and only then looks at act i+1 — which by then is
+     usually already written. Act 0's stitch still fires `onActReady` for act 0
+     the moment act 0 is narrated, so `ttlA1Ms` is what it was.
+
+     WHAT HAPPENS ON A FAILURE. The promises are all started, so the loop
+     cannot simply throw: acts still narrating would keep making model calls
+     after this function had returned, into the next Foray's `usageTracking`
+     bracket and with nobody to bank their slots. So a failure — a narration
+     error, a `RefusedPartialError` from a stitch — aborts the gate (queued
+     acts never start), waits for every in-flight act to settle (their slots
+     land in the checkpoint as they finish, which is the point of F-51's key),
+     and THEN rethrows the original error. The wait is bounded by one act's
+     narration. */
+  const actConcurrency = options.narrationActConcurrency ?? narrationActConcurrency();
+  const gate = createActGate(actConcurrency);
+  const narrations: Array<Promise<WrittenAct>> = sourced.acts.map((act, i) => {
+    const p = gate.run(() =>
+      stage(
+        `narrate:${i}`,
+        (raw) => WrittenActSchema.parse(raw) as WrittenAct,
+        async () => {
+          const [one] = await writeNarration(
+            [act],
+            {
+              writer: countingNarrationWriter,
+              verifier: countingNarrationVerifier,
+              /* G-35: the prefetched packs — ONE gatherer shared by every
+                 concurrent act, so each act's gathers are memo lookups
+                 against the fan-out that ran before this gate opened.
+                 Requirements §8.1 still holds — the gatherer inside was
+                 built with the same cue provider §4.5 sources against, so a
+                 tape beat's evidence pack holds the cue window and not just
+                 the episode title. */
+              evidence,
+              /* `writeNarration` is handed ONE act, so its own act index is
+                 always 0; `i` is what names the slot's key. */
+              resume: (_actIndex, slotIndex) =>
+                checkpoint.resumeSync(`narrate:${i}:${slotIndex}`, (raw) => WrittenSlotSchema.parse(raw) as WrittenSlot),
+              onSlotWritten: (_actIndex, slotIndex, slot) => checkpoint.save(`narrate:${i}:${slotIndex}`, slot)
+            },
+            spine.voice,
+            ctx
+          );
+          return one!;
+        }
+      )
+    );
+    /* A rejection here is reported by the ordered loop below when it reaches
+       this act (or by `allSettled` on the failure path), never as an
+       unhandled rejection in the meantime. `p` itself stays rejected. */
+    p.catch(() => undefined);
+    return p;
+  });
+
   const written: WrittenAct[] = [];
-  for (let i = 0; i < sourced.acts.length; i++) {
-    const act = sourced.acts[i]!;
-    const writtenAct = await stage(
-      `narrate:${i}`,
-      (raw) => WrittenActSchema.parse(raw) as WrittenAct,
-      async () => {
-        const [one] = await writeNarration(
-          [act],
-          {
-            writer: countingNarrationWriter,
-            verifier: countingNarrationVerifier,
-            /* G-35: the prefetched packs. Requirements §8.1 still holds —
-               the gatherer inside was built with the same cue provider §4.5
-               sources against, so a tape beat's evidence pack holds the cue
-               window and not just the episode title. */
-            evidence,
-            /* `writeNarration` is handed ONE act, so its own act index is
-               always 0; `i` is what names the slot's key. */
-            resume: (_actIndex, slotIndex) =>
-              checkpoint.resumeSync(`narrate:${i}:${slotIndex}`, (raw) => WrittenSlotSchema.parse(raw) as WrittenSlot),
-            onSlotWritten: (_actIndex, slotIndex, slot) => checkpoint.save(`narrate:${i}:${slotIndex}`, slot)
-          },
-          spine.voice,
-          ctx
-        );
-        return one!;
-      }
-    );
-    written.push(writtenAct);
+  try {
+    for (let i = 0; i < sourced.acts.length; i++) {
+      const writtenAct = await narrations[i]!;
+      written.push(writtenAct);
 
-    if (legacyStitched) continue;
+      if (legacyStitched) continue;
 
-    /* THIS act, stitched now — not after the last act (F-66). Timed and
-       checkpointed under its own `stitch:<i>` key, so a resume does not re-pay
-       for an act that was already assembled and so the stage timing names the
-       act rather than pretending §4.8 was one 58-minute step. */
-    const { value: actItems, resumed } = await stageDetail(
-      `stitch:${i}`,
-      (raw) => StitchActCheckpointSchema.parse(raw) as ForayItem[],
-      () => stitcher.stitchNextAct(writtenAct)
-    );
-    /* A resumed act never went through the stitcher, so it has to be told:
-       act i+1's `itemsSoFar` is every act before it, banked or built. */
-    if (resumed) stitcher.acceptStitchedAct(actItems);
+      /* THIS act, stitched now — not after the last act (F-66). Timed and
+         checkpointed under its own `stitch:<i>` key, so a resume does not re-pay
+         for an act that was already assembled and so the stage timing names the
+         act rather than pretending §4.8 was one 58-minute step. */
+      const { value: actItems, resumed } = await stageDetail(
+        `stitch:${i}`,
+        (raw) => StitchActCheckpointSchema.parse(raw) as ForayItem[],
+        () => stitcher.stitchNextAct(writtenAct)
+      );
+      /* A resumed act never went through the stitcher, so it has to be told:
+         act i+1's `itemsSoFar` is every act before it, banked or built. */
+      if (resumed) stitcher.acceptStitchedAct(actItems);
+    }
+  } catch (err) {
+    gate.abort(err instanceof Error ? err : new Error(String(err)));
+    await Promise.allSettled(narrations);
+    throw err;
   }
+
+  /* G-32's evidence, for the report: one row per act off the same stage log
+     the run already keeps, so a reader sees `startedAt` overlap rather than
+     taking a shorter total on trust. */
+  const narrationActs: NarrationActTiming[] = timings
+    .all()
+    .map((t) => ({ t, m: /^narrate:(\d+)$/.exec(t.name) }))
+    .filter((x): x is { t: StageTiming; m: RegExpExecArray } => x.m !== null)
+    .map(({ t, m }) => ({ act: Number(m[1]), startedAt: t.startedAt, ms: t.ms, ...(t.resumed ? { resumed: true as const } : {}) }))
+    .sort((a, b) => a.act - b.act);
 
   /* §4.8's product, however it was assembled this run: every act's items in
      act order, each one either stitched inside the loop above or read back
@@ -1212,5 +1294,14 @@ export async function runForayPipeline(
      already holds a reference to, rather than rebuilding `input`. */
   veracity.stageTimings = [...timings.all(), ...result.timings.map((t) => ({ ...t, name: `finalize.${t.name}` }))];
 
-  return { outcome: "generated", input, result, spine, tapeRelevance: sourced.tapeRelevance, timings: timings.all(), ttlA1Ms };
+  return {
+    outcome: "generated",
+    input,
+    result,
+    spine,
+    tapeRelevance: sourced.tapeRelevance,
+    timings: timings.all(),
+    ttlA1Ms,
+    narration: { concurrency: actConcurrency, acts: narrationActs }
+  };
 }
