@@ -254,7 +254,7 @@ const FLOORS = {
      that Family Mode's pre-existing poolFiltered() filter still fires
      unchanged — the badge is additive, not a replacement for that filter. */
   "test/explicit-badge.test.js": 9,
-  "test/first-time-onboarding.test.js": 26,
+  "test/first-time-onboarding.test.js": 28, // U-09 audit fix (2026-09-10): +2 — the picks re-deal and repaint the FIRST Home, and the pre-pick deal's memory is undone
   /* Duplicate-ID guard for HUMAN-ACTIONS.md's own numbering rule (full-repo
      review finding L3, 2026-08-31). Two tests: the file has numbered items,
      and no numeric ID repeats. */
@@ -492,6 +492,7 @@ const FLOORS = {
      feed slowly stopped surprising anyone. Every test names its mutation;
      see the suite header. */
   "test/home-v2.test.js": 9, // F14 (2026-09-08): generated playlists are interest leaves, not card slots
+  "test/home-v2-real-data.test.js": 5, // U-03 audit fix (2026-09-10): Home v2 over the committed data/*.json at insets 0/59; the Forays-for-you floor's documented fallback with one published Foray
   /* Starred shows (follow-lite), requirement A2.4 / Joey's Q2 answer.
      Kanban card "Build: starred shows (follow-lite) + dedicated Starred
      Shows page". Floored because this is exactly the #276/show-pages
