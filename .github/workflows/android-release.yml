@@ -50,7 +50,12 @@
 # SO THE TRIGGER IS NARROW ON PURPOSE. `pull_request` fires only when the RELEASE
 # PIPELINE ITSELF changes — this file, the Gradle include, and the two scripts —
 # and NOT on every `mobile/**` change, which `android-build.yml` already covers.
-# `workflow_dispatch` is the founder's "make me something to upload" button. There
+# `workflow_dispatch` is the founder's "make me an .aab to submit by hand" button
+# — the EXCEPTION PATH since R-05 (`docs/release-lockstep-plan.md`), not the
+# process. THIS FILE NEVER UPLOADS TO A STORE: the one path to Play is
+# `release.yml` via `.github/actions/android-bundle`, and what this file produces
+# is an artifact, a PR-time check of the pipeline, and the emulator launch
+# verdict (`tools/mobile/android-workflow.test.mjs` pins that it stays so). There
 # is no `push` and no `schedule`: a merge re-running what already ran on the PR
 # buys nothing, and a weekly emulator boot on days nothing changed buys less.
 #

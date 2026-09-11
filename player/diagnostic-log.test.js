@@ -1116,3 +1116,77 @@ test("a different failure starts a new entry, so a coalesced count always means 
     ["control", "TypeError", 1],
   ], "a run is broken by a different failure OR by anything else reaching the ring");
 });
+
+/* ==================================================================== */
+/* 7. search (S-01, docs/search-plan.md)                                 */
+/* ==================================================================== */
+
+test("a search entry records query LENGTH, never the query text", () => {
+  /* THE WHOLE POINT OF THE ENTRY, per docs/search-plan.md S-01 and this
+     file's own "WHAT IS NEVER RECORDED" rule. MUTATION: store `query`
+     verbatim on the entry instead of (or as well as) `q_len`. Scanning the
+     stored blob for the literal query text catches either. */
+  const { diag, store } = mk();
+  diag.search({ qLen: 4, localMs: 0.05, localHits: 3, netMs: 210, netHits: 5, paintedMs: 12, path: "local+net" });
+  const entry = parse(store).entries.find((e) => e.type === "search");
+  assert.equal(entry.q_len, 4);
+  const blob = JSON.stringify(entry);
+  assert.ok(!/lex|radiolab|science/i.test(blob), "no recognisable query text may appear in the stored entry");
+});
+
+test("a search entry's numeric fields are guarded — a non-numeric caller value is dropped to null, never stored raw", () => {
+  /* MUTATION: store the raw argument instead of running it through the
+     Number.isFinite guard. A caller that passes the query string into
+     qLen by mistake (an easy transposition at the app.js call site) would
+     then store the string itself, defeating the guarantee above. */
+  const { diag, store } = mk();
+  diag.search({ qLen: "lex", localMs: NaN, localHits: undefined, netMs: null, netHits: Infinity, paintedMs: 5, path: 123 });
+  const entry = parse(store).entries.find((e) => e.type === "search");
+  assert.equal(entry.q_len, null);
+  assert.equal(entry.local_ms, null);
+  assert.equal(entry.local_hits, null);
+  assert.equal(entry.net_ms, null);
+  assert.equal(entry.net_hits, null, "Infinity is not finite and must not be stored");
+  assert.equal(entry.painted_ms, 5, "a genuinely finite number must still pass through");
+  assert.equal(entry.path, null, "a non-string path must not be stored");
+});
+
+test("a search entry with no paint timing yet stores painted_ms: null rather than omitting the field or erroring", () => {
+  /* \"Absence is a real state\", this file's own rule applied to a caller
+     that has not wired paint timing yet (e.g. the network-only half of a
+     probe run). MUTATION: throw or omit the key when paintedMs is absent. */
+  const { diag, store } = mk();
+  diag.search({ qLen: 3, localMs: 0.1, localHits: 1 });
+  const entry = parse(store).entries.find((e) => e.type === "search");
+  assert.equal(entry.painted_ms, null);
+  assert.ok("painted_ms" in entry, "the key must be present even when null");
+});
+
+test("formatDiagnosticReport renders a search entry's fields on one legible line", () => {
+  /* This is the surface a founder actually copies out — the doc's own
+     acceptance line requires a diagnostics copy carrying \"at least one
+     search entry with a non-null painted_ms\", so that number has to be
+     visible on this text, not only reachable via JSON.parse.
+     MUTATION: drop painted_ms (or any other field) from lineFor's \"search\"
+     case. The corresponding substring assertion fails. */
+  const { diag, log } = mk();
+  diag.search({ qLen: 4, localMs: 0.05, localHits: 3, netMs: 210, netHits: 5, paintedMs: 12, path: "local+net" });
+  const text = formatDiagnosticReport(log.read());
+  assert.match(text, /q_len=4/);
+  assert.match(text, /local=0ms\/3h/);
+  assert.match(text, /net=210ms\/5h/);
+  assert.match(text, /painted=12ms/);
+  assert.match(text, /path=local\+net/);
+});
+
+test("formatDiagnosticReport renders a null search field as an em dash, not \"null\" or a blank", () => {
+  /* MUTATION: interpolate `e.path` directly instead of through the `n()`
+     helper. A null path would print the literal string \"null\", which is
+     legible but wrong -- and this repo's own convention elsewhere (ms(),
+     lineFor's other cases) is the em dash for \"not recorded\". */
+  const { diag, log } = mk();
+  diag.search({ qLen: 2 });
+  const text = formatDiagnosticReport(log.read());
+  assert.match(text, /path=—/);
+  assert.doesNotMatch(text, /path=null/);
+});

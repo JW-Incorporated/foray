@@ -130,6 +130,9 @@ test("the committed Forays are the four documented ones, and all are #134's kind
     live.forays.forays.map((f) => f.id),
     [
       "grilling-history-1", "grilling-history-2", "capital-types-1", "geology-plates-1",
+      /* The first GENERATED Foray (generation-run-2026-09-09, PR #583): its provenance is the
+         pipeline candidate + report, not a curation doc; see `generated: true` below. */
+      "beyond-the-algorithm-engineering-production-ai-s-e6533b",
     ]
   );
   for (const f of live.forays.forays) assert.equal(f.kind, "deep-dive", f.id);
@@ -399,10 +402,13 @@ test("the pool segments held back from their Foray are not in any running order"
 /* ---------------------------------------------------- the recorded mapping */
 
 test("every label resolves to exactly one segment by (episode, duration)", () => {
+  // Generated Forays carry no `label`/`label_prefixes` (the pipeline names items by slot
+  // and segment_id); the derivation below is about curator-written labels only.
   // This is the derivation the migration did once. Re-running it here is what
   // makes `label` in the data trustworthy rather than decorative: if anyone
   // hand-edits a segment_id, the label no longer picks it out uniquely.
   for (const f of live.forays.forays) {
+    if (f.generated) continue;
     for (const item of segmentItems(f)) {
       const dur = durationOf(live, item.segment_id);
       const episode = f.label_prefixes[item.label.split("-")[0]];
@@ -451,7 +457,10 @@ test("every committed Foray has a running-order doc pinned above", () => {
      its §2 table unpinned, which is the mistake Foray #2 shipped with. */
   assert.deepEqual(
     RUNNING_ORDER_DOCS.map((d) => d.forayId),
-    live.forays.forays.map((f) => f.id)
+    /* A GENERATED Foray (`generated: true`) has no curator-written running-order doc: its
+       order is the pipeline's candidate file and `report.json` (requirements §6). The pin
+       stays exact for every curated Foray. */
+    live.forays.forays.filter((f) => !f.generated).map((f) => f.id)
   );
   for (const { doc } of RUNNING_ORDER_DOCS) {
     assert.ok(fs.existsSync(path.join(REPO_ROOT, doc)), `${doc} is missing`);
@@ -590,6 +599,7 @@ test("each running-order doc's §0 summary numbers are the ones the checker comp
 
 test("labels are unique and every prefix is declared, in every Foray", () => {
   for (const f of live.forays.forays) {
+    if (f.generated) continue; // pipeline items carry no curator labels (requirements §3.10)
     const labels = segmentItems(f).map((i) => i.label);
     assert.equal(new Set(labels).size, labels.length, `${f.id} has duplicate labels`);
     for (const l of labels) assert.ok(f.label_prefixes[l.split("-")[0]], `${f.id}: no prefix entry for ${l}`);
@@ -610,7 +620,10 @@ test("L2/L3 hold for every played segment, per §4's role table", () => {
   const floors = { quote: 30, explanation: 60, exchange: 75, narrative: 120 };
   const maxes = { quote: 90, explanation: 360, exchange: 480, narrative: 480 };
   let checked = 0;
-  for (const f of live.forays.forays) {
+  /* Generated Forays record no per-item `role` (check-forays reports "D4 not evaluated"
+     for them); the D-tier duration rules cover their segments instead. */
+  const curated = live.forays.forays.filter((f) => !f.generated);
+  for (const f of curated) {
     for (const item of segmentItems(f)) {
       const d = durationOf(live, item.segment_id);
       assert.ok(d >= floors[item.role], `${f.id} ${item.label} (${item.role}) is ${d} s, under ${floors[item.role]}`);
@@ -621,7 +634,7 @@ test("L2/L3 hold for every played segment, per §4's role table", () => {
   /* A loop that silently iterates nothing is the failure this guards against.
      Derived rather than the old literal 64 (32 + 10 + 22), which had to be
      edited every time any Foray changed length — the #236 defect in miniature. */
-  const expected = live.forays.forays.reduce((n, f) => n + segmentItems(f).length, 0);
+  const expected = curated.reduce((n, f) => n + segmentItems(f).length, 0);
   assert.ok(expected > 0, "no Foray plays a segment, so this loop proved nothing");
   assert.equal(checked, expected, "every played segment of every Foray must be checked");
 });
@@ -702,8 +715,22 @@ test("every source carries a boolean dai_suspected (ci.yml invariant 5)", () => 
   for (const s of live.sources.sources) assert.equal(typeof s.dai_suspected, "boolean", s.id);
 });
 
-test("no source is DAI-suspected, so every out-point is anchorable", () => {
-  for (const s of live.sources.sources) assert.equal(s.dai_suspected, false, s.id);
+test("every segment on a DAI-suspected source carries both content anchors (#65, F-74)", () => {
+  /* Was "no source is DAI-suspected". Since #571 rule #65 admits a dai_suspected source
+     when the segment carries a start/end anchor pair (ADR-0007 content anchors are what
+     make the out-point findable in a re-stitched copy); a timestamp-only segment on such
+     a source is still refused. The first generated Foray (PR #583) is the first committed
+     data to exercise this: ten Practical AI segments, a DAI-flagged host measured ad-free. */
+  let daiSegments = 0;
+  for (const s of live.sources.sources) {
+    if (s.dai_suspected !== true) continue;
+    for (const seg of live.segments.segments.filter((x) => x.item_id === s.id)) {
+      daiSegments += 1;
+      assert.ok(typeof seg.start_anchor === "string" && seg.start_anchor.trim(), `${seg.id}: no start_anchor on a dai_suspected source`);
+      assert.ok(typeof seg.end_anchor === "string" && seg.end_anchor.trim(), `${seg.id}: no end_anchor on a dai_suspected source`);
+    }
+  }
+  assert.ok(daiSegments > 0, "the rule is exercised by at least one committed segment");
 });
 
 test("each source's feed duration matches its segments' reference_duration_sec", () => {

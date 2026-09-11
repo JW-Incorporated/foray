@@ -14,7 +14,13 @@
  *   - the two checks that only a build can make — that `cap sync` still wires
  *     `foray-audio` in, and that its library manifest still merges — stay in it,
  *   - the release lint gate stays impossible to skip silently,
- *   - no emulator is ever added.
+ *   - no emulator is ever added,
+ *   - since R-05 (docs/release-lockstep-plan.md) `android-release.yml` is the
+ *     PR-time check of the release pipeline and the founder's by-hand EXCEPTION
+ *     path, never an upload path: it holds no Play credential and no store-upload
+ *     action, and `release.yml` (via `.github/actions/android-bundle`) is the one
+ *     path to Play. MUTATION: add `uses: r0adkll/upload-google-play@<sha>` or a
+ *     read of `secrets.PLAY_SERVICE_ACCOUNT_JSON` to `android-release.yml` -> red.
  *
  * THE READING HELPERS ARE SHARED with `ios-workflow.test.mjs`, in
  * `workflow-yaml.mjs`. See that module's header for why they parse rather than
@@ -674,13 +680,26 @@ test("ci.yml still declares exactly its five jobs, and #245 added none", () => {
   );
 });
 
-/* ═════════════════════ android-release.yml — the Play path ═════════════════
+/* ═══════ android-release.yml — the PR-time check and the exception path ═════
  *
  * A SECOND WORKFLOW, ASSERTED IN THE SAME FILE, because the two are one
  * decision: `android-build.yml` stays credential-free and emulator-free, and
- * everything a release needs lives next door. Splitting these assertions into a
- * second suite would let one half be deleted while the other stayed green and
- * looked like it covered the topic.
+ * the signing key and the emulator live next door. Splitting these assertions
+ * into a second suite would let one half be deleted while the other stayed
+ * green and looked like it covered the topic.
+ *
+ * WHAT THIS FILE IS SINCE R-05 (docs/release-lockstep-plan.md, 2026-09-07).
+ * It was written as "the Play path": build a signed `.aab`, store it as an
+ * artifact, and a founder downloads it and submits it by hand. That stopped
+ * being the process the day `release.yml` (R-03) had a green run on `main` —
+ * Play uploads are `release.yml`'s alone, through `.github/actions/android-bundle`
+ * reading `PLAY_SERVICE_ACCOUNT_JSON`. What is left here is (a) the PR-time
+ * check of the release pipeline, firing only when the pipeline itself changes,
+ * (b) the emulator launch verdict `release.yml` deliberately does not re-run on
+ * every tag, and (c) the founder's `workflow_dispatch` "make me an .aab to
+ * submit by hand" button, which is the EXCEPTION path. The R-05 test below pins
+ * that this file never grows an upload of its own: two paths to a store is the
+ * exact drift that produced the R-01 TestFlight flood on iOS.
  *
  * EVERY TEST BELOW NAMES ITS ONE-LINE MUTATION AND EVERY ONE WAS RUN. The
  * mutation round on this section found two live vacuities, both recorded in the
@@ -904,7 +923,81 @@ test("the bundle artifact is uploaded, from exactly the report directory", () =>
   assert.ok(upload, "the .aab is built and never uploaded — nobody can download it");
   assert.match(upload, /path: \$\{\{ runner\.temp \}\}\/android-release\s*$/m);
   assert.match(upload, /^ {8}if: always\(\)$/m, "a failed run's Gradle log is the most useful thing in it");
-  assert.match(upload, /retention-days: 30/, "the artefact is downloaded and submitted by a human on his own schedule");
+  assert.match(
+    upload,
+    /retention-days: 30/,
+    "the artefact is the exception path's output (R-05): a founder downloads it only when release.yml's Play upload is not the route, on his own schedule"
+  );
+});
+
+test("R-05: android-release.yml is the PR-time check and the by-hand exception path — never an upload path", () => {
+  /* WHAT R-05 SETTLED (docs/release-lockstep-plan.md). Once `release.yml` had
+     a green run on `main`, uploading to Play became ITS job alone, through
+     `.github/actions/android-bundle` reading `PLAY_SERVICE_ACCOUNT_JSON`. This
+     file kept its other two jobs — the PR-time check of the release pipeline
+     (its `pull_request` trigger fires only when the pipeline itself changes,
+     pinned above) and the founder's `workflow_dispatch` "make me an .aab to
+     submit by hand" button, the EXCEPTION path — and it must never grow a store
+     upload of its own. Two paths to a store is exactly the drift that produced
+     the R-01 flood on iOS, where `ios-build.yml` carried a second copy of the
+     TestFlight upload and shipped every same-repo PR to testers.
+
+     THE NEGATIVE HALF IS NOT ENOUGH ON ITS OWN. "This file does not upload"
+     is satisfied by a repo in which nothing uploads, so the positive half —
+     the one upload path EXISTS, and exactly one — is asserted against the
+     files that hold it (same reasoning as `assertOrder` in the file header:
+     a claim about a relationship must first establish both parties exist).
+
+     MUTATION: add `uses: r0adkll/upload-google-play@<sha>` (or any read of
+     `secrets.PLAY_SERVICE_ACCOUNT_JSON`) to android-release.yml -> fails.
+     MUTATION: delete the `play_service_account_json:` line from release.yml
+     -> fails, on the "exactly one path" half.
+     MUTATION: delete the sentence in android-release.yml's header naming
+     `release.yml` as the one upload path -> fails, on the self-description. */
+  assert.equal(
+    /upload-google-play/.test(RYML),
+    false,
+    "android-release.yml must not upload to Play — release.yml is the one upload path (R-05)"
+  );
+  assert.equal(
+    /PLAY_SERVICE_ACCOUNT_JSON|secrets\.PLAY_/.test(RYML),
+    false,
+    "android-release.yml must read no Play credential — it produces an artifact, it does not submit one"
+  );
+  /* The one path, where it lives. `code()` on both so a commented-out upload
+     cannot satisfy this. */
+  const bundleAction = code(fs.readFileSync(path.join(ROOT, ".github/actions/android-bundle/action.yml"), "utf8"));
+  const releaseWf = code(fs.readFileSync(path.join(ROOT, ".github/workflows/release.yml"), "utf8"));
+  assert.match(
+    bundleAction,
+    /uses: r0adkll\/upload-google-play@[0-9a-f]{40}/,
+    "the Play upload must exist, SHA-pinned, in the android-bundle composite — otherwise nothing uploads and this test is checking the empty set"
+  );
+  assert.match(
+    releaseWf,
+    /play_service_account_json: \$\{\{ secrets\.PLAY_SERVICE_ACCOUNT_JSON \}\}/,
+    "release.yml must be the workflow that hands the Play credential to the composite"
+  );
+  /* Exactly one: every workflow and composite in the repo, and the upload
+     action appears in precisely the composite. A second `.github` file that
+     grows one is a second path, whichever file it is. */
+  const ghDir = path.join(ROOT, ".github");
+  const candidates = [
+    ...fs.readdirSync(path.join(ghDir, "workflows")).filter((f) => /\.ya?ml$/.test(f)).map((f) => `.github/workflows/${f}`),
+    ...fs.readdirSync(path.join(ghDir, "actions")).map((d) => `.github/actions/${d}/action.yml`).filter((p) => fs.existsSync(path.join(ROOT, p))),
+  ];
+  const uploaders = candidates.filter((p) => /upload-google-play/.test(code(fs.readFileSync(path.join(ROOT, p), "utf8"))));
+  assert.deepEqual(
+    uploaders,
+    [".github/actions/android-bundle/action.yml"],
+    `Play upload paths found: ${uploaders.join(", ") || "none"} — there must be exactly one`
+  );
+  /* And the file says so about itself, so a reader of the workflow alone is
+     not told it is a way to upload. */
+  const p = prose(REL);
+  assert.match(p, /release\.yml/, "android-release.yml's own header must name release.yml as the upload path");
+  assert.match(p, /exception path/i, "android-release.yml's own header must call its by-hand button the exception path");
+  assert.match(p, /never uploads to a store/i, "android-release.yml's own header must say it never uploads to a store");
 });
 
 /* ─────────────────────────── the key, and the blast radius ─────────────────── */

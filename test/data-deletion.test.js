@@ -448,11 +448,17 @@ test("the shipped source names exactly the 22 cp_ key families the audit found",
      22 -> 23 on 2026-09-06 (V-01, kanban card t_3c0c7e62): `cp_voice`, the
      narration voice picker's persisted choice. Same mechanism as every prior
      addition — this count failed first, then the "documented in the privacy
-     policy" test below failed, until privacy-policy.md §1 got the row. */
+     policy" test below failed, until privacy-policy.md §1 got the row.
+
+     23 -> 24 on 2026-09-10: `cp_interlude`, the on/off switch for the jingle
+     the player sounds between a Foray's tape segments (player/interlude.js,
+     queue-manager.js §13). A local per-device preference, absent means on.
+     Same mechanism again: this count failed first, then the policy check,
+     until privacy-policy.md §1 got the row. */
   const families = [...keyFamiliesInSource().keys()].sort();
   assert.strictEqual(
-    families.length, 23,
-    `expected 23 cp_ key families, found ${families.length}:\n${families.join("\n")}`
+    families.length, 24,
+    `expected 24 cp_ key families, found ${families.length}:\n${families.join("\n")}`
   );
   assert.ok(families.includes("cp_foray:"), "the patterned Foray resume key must be found as a family");
   assert.ok(families.includes("cp_pos:"), "the patterned episode-position key must be found as a family");

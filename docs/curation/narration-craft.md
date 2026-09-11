@@ -137,6 +137,48 @@ smoothing a seam that did not need smoothing.
 
 ---
 
+### The interlude jingle (PLACEHOLDER — pending the founders' real one)
+
+Founder request (2026-09-10): a Foray must carry "the little jingle that we
+want to use as an interlude between podcasts". The player now sounds one
+automatically, and **the asset it sounds is a synthesised stand-in, not the
+brand mark** — a four-note rising motif made by
+`tools/audio/make-interlude-placeholder.py` (stdlib Python, deterministic) at
+`player/assets/interlude-placeholder.wav` (3.0 s, stereo 44.1 kHz 16-bit,
+−6 dBFS peak). §4.8 of `generation-architecture.md` still owns what the real
+one should be: original, roughly 1–2 s, the same every time, designed to
+survive being heard a hundred times.
+
+**When it plays** (`player/interlude.js`, `interludeEligible`): when the queue
+advances *on its own* into a tape segment — segment → segment and
+narration → segment. Never before the first item, never after the last, never
+into narration (so never between two narration items, and never
+segment → narration, where the narration is the marker), never on a skip, tap,
+scrub or resume, and never straight after an authored `jingle` item. It is a
+**player-side** mark: no field in `data/forays.json`, no change to
+`check-forays.mjs`, and it is **not part of `runtime_sec`** — like the 2.0 s
+seam beat it replaces at an unbridged seam (`player/seam-gap.js`), it is wall
+clock the player spends at the seam, not authored content. The beat and the
+jingle are alternatives, never both (§4.8); the beat remains the floor if the
+jingle stops short, and a jingle that never reports ending is cut at
+`INTERLUDE_CEILING_SEC` so the tape always starts. Always 1.0x. Pause and next
+cut it like any item. Off switch: `localStorage` `cp_interlude = "off"`
+(`PlayerQueueManager.setInterludeEnabled` live).
+
+**To swap in the real one:** replace the file at
+`player/assets/interlude-placeholder.wav` (any format every `<audio>` element
+decodes; keep the peak around −6 dBFS — a seam is already a loudness event,
+`segment-length-rules.md` §2f), set `INTERLUDE_DURATION_SEC` in
+`player/interlude.js` to its measured length (`player/interlude.test.js` reads
+the WAV header and fails on drift — for a non-WAV asset, replace that check
+with the new container's), rename or delete the generator, and drop the word
+"placeholder" from the path and this section. The asset is fetched from the
+live site over https on every host (`INTERLUDE_ASSET_URL`) because
+`index.html`'s `media-src https:` does not admit the iOS shell's
+`capacitor://localhost` origin; once `media-src` also carries `'self'` (an
+`index.html` change — founder merge), point the URL at the bundled copy and
+add the file to `tools/mobile/prepare-webdir.mjs`.
+
 ## 2. The six modes
 
 Named because a script author has to know which one they are writing, and because the
