@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { execFileSync } from "node:child_process";
-import { finalizeForay, type FinalizeForayInput } from "../generation/finalizeForay";
+import { finalizeForay, mintedSegmentRow, type FinalizeForayInput } from "../generation/finalizeForay";
+import { evaluateVeracityGate } from "../generation/veracityMetrics";
 
 /**
  * `npm run publish-foray` — §4.9's finalize-and-publish CLI
@@ -51,18 +51,31 @@ import { finalizeForay, type FinalizeForayInput } from "../generation/finalizeFo
  *      NOT-built-here automated-publish behaviour) is the point where
  *      this hold would come off — not this stage.
  *
+ * WS-B VERACITY GATE (docs/curation/generation-fix-plan-2026-09-09.md):
+ * between validation and writing anything, this also checks the
+ * candidate's `meta.veracity` (computed by `runPipeline.ts`, see
+ * `veracityMetrics.ts`) against three floors — `groundedQuoteRate < 1`,
+ * `purposeFidelity < 0.8`, or `tapeRelevance < 0.9` all refuse to publish,
+ * printing which pages/anchors failed. `null` on any of those three counts
+ * as failing (unmeasured is not passing — see `evaluateVeracityGate`'s own
+ * comment). `--force` overrides the gate and notes the override, with the
+ * specific failures, in the PR body — it does NOT skip check-forays.mjs/
+ * check-narration.mjs, which have no override.
+ *
  * Usage:
  *   npm run publish-foray -- --input path/to/candidate.json
  *   npm run publish-foray -- --input path/to/candidate.json --dry-run
  *   npm run publish-foray -- --input path/to/candidate.json --no-hold
+ *   npm run publish-foray -- --input path/to/candidate.json --force
  */
 
-const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
+const REPO_ROOT = path.resolve(__dirname, "..", "..", "..");
 
 interface CliArgs {
   input: string | null;
   dryRun: boolean;
   hold: boolean;
+  force: boolean;
 }
 
 function parseArgs(argv: string[]): CliArgs {
@@ -73,7 +86,8 @@ function parseArgs(argv: string[]): CliArgs {
   return {
     input: get("--input") ?? null,
     dryRun: argv.includes("--dry-run"),
-    hold: !argv.includes("--no-hold")
+    hold: !argv.includes("--no-hold"),
+    force: argv.includes("--force")
   };
 }
 
@@ -84,7 +98,7 @@ function run(cmd: string, args: string[], opts: { cwd?: string } = {}): string {
 async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
   if (!args.input) {
-    console.error("Usage: npm run publish-foray -- --input path/to/candidate.json [--dry-run] [--no-hold]");
+    console.error("Usage: npm run publish-foray -- --input path/to/candidate.json [--dry-run] [--no-hold] [--force]");
     process.exitCode = 1;
     return;
   }
@@ -108,6 +122,19 @@ async function main(): Promise<void> {
   for (const w of result.validation.checkNarrationWarnings) console.warn(`  check-narration WARN: ${w}`);
   console.log(`Foray "${input.id}" passed validation.`);
 
+  // WS-B veracity gate — see this file's own doc comment.
+  const gate = evaluateVeracityGate(input.meta?.veracity);
+  if (!gate.ok) {
+    console.error(`Foray "${input.id}" FAILED the veracity gate:`);
+    for (const f of gate.failures) console.error(`  ${f}`);
+    if (!args.force) {
+      console.error('Refusing to publish. Use --force to override (the override will be noted in the PR body).');
+      process.exitCode = 1;
+      return;
+    }
+    console.warn("--force: publishing despite the veracity gate failures above.");
+  }
+
   if (args.dryRun) {
     console.log("--dry-run: not writing data/forays.json, not opening a PR.");
     console.log(JSON.stringify(result.forayRecord, null, 2));
@@ -120,17 +147,57 @@ async function main(): Promise<void> {
   fs.writeFileSync(forayPath, `${JSON.stringify(live, null, 2)}\n`);
   console.log(`Wrote data/forays.json (+1 Foray: ${input.id}).`);
 
+  /* THE TIER-2 TAPE THE FORAY REFERS TO (F-49 plumbing). `finalizeForay`
+     validated the candidate against a pool with these merged in; publishing the
+     Foray without them would ship a `segment_id` no reader can resolve — which
+     is the same "unknown segment_id" failure, moved from the checker to the
+     player. Written in the same commit, so the three files are never out of
+     step with each other. Ids already on disk are left alone: the committed row
+     is the authority for a segment a curator's batch has already merged. */
+  const writtenDataFiles = ["data/forays.json"];
+  const mintedSegments = input.segments ?? [];
+  const mintedSources = input.segmentSources ?? [];
+  if (mintedSegments.length > 0) {
+    const poolPath = path.join(REPO_ROOT, "data", "segments.json");
+    const pool = JSON.parse(fs.readFileSync(poolPath, "utf8")) as { segments: Array<{ id?: string }> };
+    const known = new Set(pool.segments.map((s) => s.id));
+    const added = mintedSegments.filter((s) => !known.has(s.id)).map((s) => mintedSegmentRow(s, input.topic));
+    if (added.length > 0) {
+      pool.segments.push(...added);
+      fs.writeFileSync(poolPath, `${JSON.stringify(pool, null, 2)}\n`);
+      writtenDataFiles.push("data/segments.json");
+      console.log(`Wrote data/segments.json (+${added.length} tier-2 segment(s), flagged needs_review).`);
+    }
+  }
+  if (mintedSources.length > 0) {
+    const registryPath = path.join(REPO_ROOT, "data", "segment-sources.json");
+    const registry = JSON.parse(fs.readFileSync(registryPath, "utf8")) as { sources: Array<{ id?: string }> };
+    const known = new Set(registry.sources.map((s) => s.id));
+    const added = mintedSources.filter((s) => !known.has(s.id));
+    if (added.length > 0) {
+      registry.sources.push(...added);
+      fs.writeFileSync(registryPath, `${JSON.stringify(registry, null, 2)}\n`);
+      writtenDataFiles.push("data/segment-sources.json");
+      console.log(`Wrote data/segment-sources.json (+${added.length} episode source row(s)).`);
+    }
+  }
+
   // Branch, commit, push, PR — matching foray-nightly.md step 7 exactly.
   const branch = `generate/${input.id}`;
   run("git", ["switch", "-c", branch]);
-  run("git", ["add", "data/forays.json"]);
+  run("git", ["add", ...writtenDataFiles]);
   run("git", ["commit", "-m", `Generated Foray: ${input.title} (${input.id})`]);
   run("git", ["push", "-u", "origin", "HEAD"]);
 
   const prBody =
     `Automated §4.9 finalize/publish. Foray "${input.id}" passed check-forays.mjs and ` +
     `check-narration.mjs. Phase 1 (docs/curation/generation-architecture.md §1.3): this PR ` +
-    "is for a founder to review before it reaches the catalogue — it does not auto-merge.";
+    "is for a founder to review before it reaches the catalogue — it does not auto-merge." +
+    (!gate.ok
+      ? `\n\n**WS-B veracity gate overridden with --force.** Failures at publish time:\n${gate.failures
+          .map((f) => `- ${f}`)
+          .join("\n")}`
+      : "");
   const prUrl = run("gh", ["pr", "create", "--base", "main", "--title", `Generated Foray: ${input.title}`, "--body", prBody]);
   console.log(`Opened PR: ${prUrl}`);
 

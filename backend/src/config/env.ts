@@ -57,6 +57,55 @@ function readNumber(name: string, fallback: number): number {
  */
 const MAX_DAILY_BUDGET_USD = 1000;
 
+/**
+ * WHAT ONE MEDIUM FORAY COSTS, and therefore what these two defaults have to
+ * be (generation run 2026-09-09, finding F-04 / intervention I-01).
+ *
+ * `DAILY_BUDGET_USD` defaulted to $2.00 — a number chosen for the ENRICHMENT
+ * pipeline (tier-1 Haiku classification of feed episodes) before the §4
+ * generation pipeline existed. Run 1 could only be started at all by setting
+ * `DAILY_BUDGET_USD=1000 EPISODE_BUDGET_USD=1000` in the environment; on the
+ * shipped default the guard would have halted the run inside Act 1, and the
+ * run log recorded that as an intervention rather than a fix.
+ *
+ * The arithmetic, from the builders' OWN per-call estimates — every
+ * `Anthropic*Builder` meters `estimatedInputTokens * in + MAX_OUTPUT_TOKENS *
+ * out` before it calls, so these are the numbers the guard actually compares
+ * against, not a separate model of them. Rates from `config/models.ts`
+ * (opus $5/$25, sonnet $2/$10, haiku $1/$5 per MTok). A medium Foray is §3's
+ * "proven shape": 3-4 acts, 5-7 slots, 28-36 beats.
+ *
+ *   §4.1 understand      2 haiku  (~500 in, 200/400 out max)      ≈ $0.004
+ *   §4.2 research        ≤3 haiku web-search calls
+ *                        (3 searches @ $0.01 + 800 out max each)  ≈ $0.104
+ *   §4.3 spine           1 opus   (~3,000 in, 8,000 out max)      ≈ $0.215
+ *   §4.4 deepen          4 sonnet (~4,000 in, 4,000 out max)      ≈ $0.192
+ *   §4.7 narrate         36 beats x 2 writer  (2,000 out max)
+ *                              + 2 verifier (1,000 out max)       ≈ $2.808
+ *   §4.8 continuity      3 sonnet (~1,500 in, 500 out max)        ≈ $0.024
+ *                                                          total  ≈ $3.35
+ *
+ * Two things that estimate deliberately does NOT do. It does not assume the
+ * ≤1.5-calls-per-beat target the fix plan is aiming at — it assumes FOUR
+ * narration calls per beat, close to run 1's measured 4.2, because a budget
+ * sized for the target stops every run until the target is met. And it bills
+ * `max_tokens` rather than tokens actually produced, exactly as the guard
+ * does, so real spend lands well under it.
+ *
+ * `EPISODE_BUDGET_USD` stays at $10.00: the top of §9.2's founder-approved
+ * ~$5-10/Foray phase-1 range, and ~3x the estimate above, which is the
+ * headroom a retry-heavy Foray needs before a human should be told to look.
+ *
+ * `DAILY_BUDGET_USD` becomes $25.00 — two-and-a-half Forays at the per-Foray
+ * ceiling, leaving room for the enrichment pipeline's own tier-1/tier-2 spend
+ * on the same day. It MUST be at least the per-Foray ceiling: generation calls
+ * are not tier-prefixed, so `BudgetGuard` scores them tier 1, whose cutoff is
+ * the full daily budget; a daily cap below the episode cap would make the
+ * episode cap unreachable and stop every run at the daily one instead.
+ */
+const DEFAULT_DAILY_BUDGET_USD = 25.0;
+const DEFAULT_EPISODE_BUDGET_USD = 10.0;
+
 const dailyBudgetSchema = z
   .number({ invalid_type_error: "DAILY_BUDGET_USD" })
   .finite({ message: "DAILY_BUDGET_USD" })
@@ -112,8 +161,8 @@ export const env: Env = {
   anthropicApiKey: readString("ANTHROPIC_API_KEY"),
   podcastIndexApiKey: readString("PODCASTINDEX_API_KEY"),
   podcastIndexApiSecret: readString("PODCASTINDEX_API_SECRET"),
-  dailyBudgetUsd: readBoundedNumber("DAILY_BUDGET_USD", 2.0, dailyBudgetSchema),
-  episodeBudgetUsd: readNumber("EPISODE_BUDGET_USD", 10.0),
+  dailyBudgetUsd: readBoundedNumber("DAILY_BUDGET_USD", DEFAULT_DAILY_BUDGET_USD, dailyBudgetSchema),
+  episodeBudgetUsd: readNumber("EPISODE_BUDGET_USD", DEFAULT_EPISODE_BUDGET_USD),
   databaseUrl: readString("DATABASE_URL"),
   userAgent: "Foray/0.1 (personal podcast client; contact wjduvall@gmail.com)",
   get anthropicDryRun(): boolean {

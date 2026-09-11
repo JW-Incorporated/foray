@@ -51,13 +51,92 @@ export const EXPLORATION_FLOOR = 0.3;
  * cost-cutting pass will delete and the last thing that should be
  * deleted.") — explicit and structural, not left to be inferred later.
  */
+/**
+ * What KIND of thing a beat asserts — the distinction §4.5 needs and did not
+ * have (finding F-38).
+ *
+ * An `account` is something that happened to someone, somewhere: a person can
+ * be on tape describing it, so looking for tape is worth doing. An `argument`
+ * is a thesis about a class of events ("every link in a failure chain gets
+ * evaluated against a local question and almost never against the global
+ * one") — no episode in any archive is "about" it, so a word-overlap search can
+ * only ever return a coincidence. Run 1 ran the same scorer over both and
+ * anchored exactly that argument to a *Geology Bites* episode on banded iron
+ * formations. Spoken argument is what narration is FOR.
+ *
+ * Set by §4.4 (the deepen stage), which is the first stage that has both the
+ * act's thesis and the beat's final wording in front of it. Optional in the
+ * schema on purpose: §4.3's spine writes beats before anything has judged them,
+ * and an absent `kind` means `account` — the search-everything behaviour that
+ * predates this field.
+ *
+ * HOW NARROW "ARGUMENT" IS, AFTER RUN 2 (F-49). Told only that an argument is a
+ * "thesis or generalisation", the deepen stage tagged 29 of 35 beats of an
+ * AI-engineering Foray `argument` — on an angle-driven spine almost every beat
+ * can be read as a thesis — and §4.5 skipped tape lookup for all 29. So the
+ * line is drawn at what a RECORDING can carry: `account` is the default and
+ * covers an event, a practice, a measurement or a mechanism someone could be
+ * heard describing; `argument` is only a claim about what something MEANS or
+ * what someone SHOULD do, which no recording of an event, a person or a
+ * practice could carry. `deepenActs.ts` also caps arguments at one third of a
+ * slot's beats, so a prompt that drifts again costs a warning rather than a
+ * Foray's worth of tape.
+ */
+export const BeatKindSchema = z.enum(["account", "argument"]);
+export type BeatKind = z.infer<typeof BeatKindSchema>;
+
+/**
+ * THE STRETCH OF TAPE A BEAT WAS WRITTEN FROM (fix plan WS-L; finding F-63).
+ *
+ * §4.2 now hands §4.3 the transcript windows themselves — show, episode, times
+ * and the sentences spoken in them (`types/research.ts`'s
+ * `ResearchTapeWindowSchema`) — and a seeded beat is one whose claim was
+ * written FROM one of those windows rather than from the model's own knowledge
+ * of the subject. The seed is the return trip: it names the window, so §4.5 can
+ * open that episode before anything the text index ranks and ask F-61's window
+ * search whether the tape there is still about the claim as finally worded.
+ *
+ * IT IS A POINTER, NOT A PROMISE. Nothing downstream trusts it: the seeded
+ * episode goes through the same relevance floor, the same lineage gate and the
+ * same anchor minting as any other candidate, and a seeded beat whose claim
+ * drifted away from its window is narrated exactly like an unseeded one. What
+ * the seed buys is the ORDER of the search, and the trace says whether it won.
+ *
+ * Optional, and absent is the normal case: a beat the spine wrote from
+ * knowledge, every beat of a subject with no tape, and every spine written
+ * before this field existed.
+ */
+export const BeatSeedSchema = z
+  .object({
+    /** `deriveItemId`'s id for the episode, copied from the research window. */
+    episodeId: z.string().trim().min(1),
+    startSec: z.number().nonnegative(),
+    endSec: z.number().positive()
+  })
+  .strict();
+export type BeatSeed = z.infer<typeof BeatSeedSchema>;
+
 export const BeatSchema = z
   .object({
     claim: z.string().trim().min(1),
-    exploration: z.boolean()
+    exploration: z.boolean(),
+    kind: BeatKindSchema.optional(),
+    seed: BeatSeedSchema.optional()
   })
   .strict();
 export type Beat = z.infer<typeof BeatSchema>;
+
+/**
+ * How many `account` beats per act must be seeded from a research window
+ * (WS-L). A FLOOR, and a low one: two beats an act is the least that makes a
+ * Foray's tape a consequence of what the archive holds rather than a coincidence
+ * — run 2 shipped 35 beats seeded from none.
+ *
+ * Enforced in `spineStructure.ts`, and ONLY when the research map actually
+ * listed windows: a subject the archive has nothing for still gets today's
+ * spine, which is §4.2's guardrail carried one stage forward.
+ */
+export const SPINE_MIN_SEEDED_BEATS_PER_ACT = 2;
 
 /** The persistence-layer subdivision an act decomposes into (§2's
  * reconciliation rule: "one act may contain several slots"). This is a
@@ -123,7 +202,20 @@ export type Spine = z.infer<typeof SpineSchema>;
  */
 export const DeepenedActSchema = ActSchema.extend({
   introduction: z.string().trim().min(1),
-  exit: z.string().trim().min(1)
+  exit: z.string().trim().min(1),
+  /**
+   * Structural complaints the deepen STAGE has about what the builder handed
+   * back, carried on the act itself rather than written to a console (F-49).
+   *
+   * Run 2 tagged 29 of 35 beats `argument` and nobody saw it until the run
+   * had finished with zero tape: the only trace was the absence of tape, four
+   * stages later. A warning that travels with the act is checkpointed with it,
+   * survives a resume, and can be asserted in a test; a `console.warn` is
+   * none of those things. Optional and absent when the act needed no
+   * correction, so an untouched act is byte-identical to what it was before
+   * this field existed.
+   */
+  warnings: z.array(z.string().trim().min(1)).optional()
 }).strict();
 export type DeepenedAct = z.infer<typeof DeepenedActSchema>;
 
@@ -523,6 +615,50 @@ export function isClaimShaped(text: string): boolean {
   }
 
   return false;
+}
+
+/** How many words of a sentence may be its subject before this stops looking
+ * — a subject longer than six words is a sentence with a relative clause in
+ * it, and the words past that point are no longer naming the thing. */
+export const MAX_LEADING_NOUN_PHRASE_WORDS = 6;
+
+/**
+ * THE SUBJECT A CLAIM IS ABOUT, AS FAR AS A HEURISTIC CAN SEE IT (F-69).
+ *
+ * The sentence's words up to its first finite verb: "An on-call rotation
+ * spanning training and inference" out of "An on-call rotation spanning
+ * training and inference makes a failure materially harder to diagnose".
+ *
+ * WHAT IT IS FOR. `gatherEvidence.ts` builds F-60's retry query as a PREFIX of
+ * the beat's purpose, cut at the first clause boundary; this is the floor under
+ * how short that cut may be. A query that stops inside its own subject
+ * ("Conway's law bites") names less than the claim does, and the retry exists
+ * precisely because a query that names the wrong thing comes back empty.
+ *
+ * WHY IT LIVES HERE. It is the same verb-shape question `isClaimShaped` asks,
+ * answered with the same `looksLikeInflectedVerb` signals and the same closed
+ * verb lists. The alternative is a second copy of those lists in the retrieval
+ * module, which is the drift this codebase keeps a single declaration to avoid.
+ *
+ * DELIBERATELY FALLIBLE, IN THE SAFE DIRECTION. When no verb-shaped word turns
+ * up inside the cap — a claim whose verb carries no morphology at all — the
+ * whole capped prefix is the answer. As a floor, being a word or two long
+ * costs a query nothing; being short costs it its subject.
+ */
+export function leadingNounPhrase(text: string): string {
+  const rawWords = String(text ?? "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  if (rawWords.length === 0) return "";
+  const limit = Math.min(rawWords.length, MAX_LEADING_NOUN_PHRASE_WORDS);
+  /* From the SECOND word, for `isClaimShaped`'s own reason: a sentence's first
+     word is its subject's head or its determiner, never its finite verb. */
+  for (let i = 1; i < limit; i++) {
+    const word = rawWords[i]!.toLowerCase().replace(/[^a-z0-9']/g, "");
+    if (word && looksLikeInflectedVerb(word)) return rawWords.slice(0, i).join(" ");
+  }
+  return rawWords.slice(0, limit).join(" ");
 }
 
 export interface SpineValidationIssue {

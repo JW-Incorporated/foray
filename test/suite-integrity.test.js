@@ -717,6 +717,15 @@ const FLOORS = {
      The control is the one to look at first if this ever has to be lowered: "the
      boundary fixture itself passes with zero errors" is what stops every proof
      below it from becoming a demonstration that broken data is broken. */
+  /* +1 (generation finding F-49): a Foray whose tape §4.5 tier 2 minted THIS
+     RUN resolves against the pool the candidate carries, and its seconds land
+     on the listener's clock. Before it, a generated Foray with any tier-2 tape
+     failed here on an unknown segment_id. */
+  /* +2 (generation finding F-74): #65 §2 is now a rule about ANCHORS rather than
+     about the `dai_suspected` flag alone — a played segment from a DAI-stitched
+     feed is accepted when it carries both of ADR-0007's boundary phrases and
+     refused when it carries a timestamp only. Both branches are pinned, and so is
+     the half-anchored case. */
   "tools/foray/check-forays.test.mjs": 130,
   /* The narration evidence gate (#247, and the founder's citation rulings of
      2026-08-19). Zero slack, and for a sharper reason than most suites here.
@@ -1366,11 +1375,16 @@ const BACKEND_FLOORS = {
      malformed-JSON/no-text-block error paths across all 5 real provider classes,
      plus the shared parseWithRetry helper extracted from their copy-pasted
      private implementations. */
-  "test/AnthropicDeepenActBuilder.test.ts": 7,
+  /* +2 (WS-C): the §4.4 side of F-38 — the prompt asks for a beat `kind`
+     and the parser accepts one, while a reply that omits it still parses. */
+  "test/AnthropicDeepenActBuilder.test.ts": 9,
   "test/AnthropicEnricher.test.ts": 10,
   "test/AnthropicExternalResearcher.test.ts": 9,
   "test/AnthropicPromptUnderstander.test.ts": 9,
-  "test/AnthropicSpineBuilder.test.ts": 8,
+  /* Raised from 8 by WS-L (F-63): what actually reaches the model — the quoted
+     transcript windows and the one seed rule when the research map has them,
+     neither when it does not, and the seed the reply carries back. */
+  "test/AnthropicSpineBuilder.test.ts": 11,
   "test/archetypes.test.ts": 7,
   "test/budgetGuard.test.ts": 6,
   "test/candidateExtractor.test.ts": 8,
@@ -1385,7 +1399,7 @@ const BACKEND_FLOORS = {
   /* DAILY_BUDGET_USD env parsing (L5): rejects negative / NaN / empty /
      over-cap values at startup instead of silently substituting the
      default, and leaves a genuinely unset variable on its fallback. */
-  "test/env.test.ts": 10,
+  "test/env.test.ts": 11,
   "test/events.test.ts": 15,
   "test/html.test.ts": 8,
   "test/interestLearning.test.ts": 30,
@@ -1397,7 +1411,7 @@ const BACKEND_FLOORS = {
   /* Anthropic provider error-path coverage (kanban card t_550d289f): the
      shared parseWithRetry/parseLastJsonBlock helper extracted from the 5
      real Anthropic provider classes' identical private copies. */
-  "test/parseWithRetry.test.ts": 9,
+  "test/parseWithRetry.test.ts": 17,
   "test/parser.test.ts": 29,
   "test/personas.test.ts": 6,
   "test/podcastIndex.test.ts": 3,
@@ -1407,7 +1421,11 @@ const BACKEND_FLOORS = {
      ("prompts are discarded") enforced structurally — this suite scans the
      generation-stage source for persistence primitives and proves a full
      understand-prompt run touches no file on disk. */
-  "test/promptNoPersistence.test.ts": 3,
+  /* WS-H raised this from 4: `transcriptTextIndex.ts` is the second module
+     allowed to write under `data-local/`, and the added case holds its cache
+     to §9.4 the way the evidence cache’s is — podcast words keyed by show id,
+     never the claim a search ran for. */
+  "test/promptNoPersistence.test.ts": 5,
   "test/property/dedup.property.test.ts": 5,
   "test/property/duration.property.test.ts": 5,
   "test/property/html.property.test.ts": 4,
@@ -1438,43 +1456,132 @@ const BACKEND_FLOORS = {
     accuracy, and the cheap-first ordering (external research fires ONLY
     for a genuine catalogue gap) against an injected no-tape fixture so the
     assertion doesn't drift as the real catalogue grows. */
-  "test/researchShape.test.ts": 11,
+  /* Raised from 11 by WS-L (F-63): §4.2 now also returns what the tape SAYS
+     about each candidate — the top transcript windows, quoted — and the added
+     cases pin the quoting, the four honest reasons a window list can be empty,
+     the lineage gate running before any episode is opened, and one window per
+     episode, best first. */
+  /* Raised to 18 by F-73: the quoted window's duration band is what every
+     generated tape segment ends up being cut from (§4.3 seeds a beat with these
+     seconds and F-68 confines §4.5's search to them), so it is now sized against
+     `narration-craft.md` §0's own mean floor rather than against prompt length
+     alone — asserted on the constants and measured on a real window. */
+  "test/researchShape.test.ts": 18,
   /* The §4.0-§4.9 orchestrator (runPipeline.ts). Floored because it is the ONLY
      suite that exercises the chain as a chain: every stage has its own tests and
      all of them stayed green while nothing joined the stages together, which is
      how the pipeline reached "all nine stages built" with no way to run them.
      Four of its cases pin whole-Foray properties the first real run failed on —
      the §4.7 disclosure, and the runtime the checker recomputes. */
-  "test/runPipeline.test.ts": 11,
+  /* +1 (F-49): the orchestrator hands finalize the tier-2 segments and source
+     rows sourcing minted, without which the candidate names tape nothing can
+     resolve. */
+  "test/runPipeline.test.ts": 12,
   /* §4.3's spine types: SpineSchema (strict, no per-act voice field),
      isClaimShaped (claim- vs topic-shaped beats), and validateSpine
      (§3's shape budgets with ±15% tolerance, the ~30% exploration
      floor). Kanban card t_96a97be9. */
-  "test/spineTypes.test.ts": 26,
+  "test/spineTypes.test.ts": 28,
   /* §4.3 end to end: buildSpine() against StubSpineBuilder for every
      duration tier (shape budgets, claim-shape, exploration floor,
      single spine-level voice all actually hold), plus InvalidSpineError
      on a deliberately broken builder. Kanban card t_96a97be9. */
-  "test/buildSpine.test.ts": 6,
+  /* Raised from 6 by WS-L (F-63): the stub writes beats FROM the research map's
+     quoted tape windows, out of the window's own words, and leaves the spine
+     seedless when the map quoted nothing. */
+  "test/buildSpine.test.ts": 9,
   /* §4.4 end to end (kanban card t_c963701a): deepenActs() fans out
      builder.deepenAct() once per act IN PARALLEL, always passing the
      FULL spine. Covers shape/count correctness, the full-spine-context
      regression guard, genuine-parallelism proof, and explicit
      failure-isolation (one retry per act, then fail the whole build). */
-  "test/deepenActs.test.ts": 10,
+  /* Raised from 12 by F-49's argument cap: at most a third of a slot's beats
+     may be tagged `argument` (run 2 tagged 29 of 35 and lost every one of them
+     to §4.5's skip-tape branch). The added cases pin the rounding, the
+     re-tagging order, the warning field, idempotence, the resumed-act path, the
+     stub's own obedience, and a replay over run 2's real deepen output. */
+  /* Raised from 21 by WS-L (F-63): a beat's tape seed has to survive the stage —
+     kept by the stub, restored in code when a builder drops it, never re-pointed
+     when the builder changed a slot's beat count, and restored on a resumed act
+     checkpointed before seeds existed. */
+  "test/deepenActs.test.ts": 25,
   /* §4.5-4.6 end to end (kanban card t_648fbae7): sourceBeats() resolves
      every beat to a tier-1 segments.json hit, a tier-2 transcript-archive
      extraction, a tier-3 transcription-queue-candidate narration fallback,
      or a Patch/Carry narration assignment — never changing which beats
      exist, and never fetching/persisting any audio bytes. */
-  "test/sourceBeats.test.ts": 8,
+  /* WS-C (docs/curation/generation-fix-plan-2026-09-09.md) raised this from 8:
+     run 1's tape anchors were 5-of-22 on topic, and the added cases pin each of
+     the four things that fixes — argument beats skip tape (F-38), tier 1 scores
+     against the transcript window not a curator note (F-06/F-29), tier 2 needs
+     the claim's words around its anchor and mints a cue-cut segment rather than
+     a word run (F-24/F-33), and a candidate must share the Foray's taxonomy
+     lineage (F-23/F-29) — plus a replay of the real beat-4/beat-5 claims
+     against the real data/segments.json. */
+  /* Raised from 35 by F-49: sourcing now says WHY each narrated beat got no
+     tape (best candidate, score, bar, gate — per tier), refuses to mint tape
+     whose audio cannot be honestly registered, and is replayed over run 2's own
+     35 beats so the diagnosis is a test rather than a paragraph. */
+  /* WS-H (F-06/F-49) raised this from 49: tier 2 now finds its candidate
+     episodes by searching the archive’s transcript TEXT, so the suite pins
+     both halves — tape minted from an episode whose title says nothing, and
+     run 1’s Chernobyl/griddle/San Bruno mis-anchors still refused with the
+     text search switched on — plus two offline cases that skip by name on a
+     checkout without `data-local/transcripts/`. */
+  /* F-61/F-62 raised this from 59: tier 2 picks its window by overlap and mints
+     its anchors from the tape's own words, so the suite pins the window search
+     and its relevance floor (including the rare-word count that refuses a
+     window carried by one unusual word), anchors quoted verbatim at the span's
+     boundary cues, growth toward the claim rather than symmetric padding, and
+     the three run-1 mis-anchors refused by the FLOOR rather than by the
+     verbatim rule that used to carry them. The offline cases now find the real
+     bodies however the machine holds them, and skip by name when it holds
+     none. */
+  /* Raised from 72 by WS-L (F-63): a seeded beat opens its own episode first,
+     the seed never lowers a floor or slips an off-branch show past the lineage
+     gate, the trace says whether the seed won, and one offline case runs the
+     run-2 intent through research-shape, a stub spine seeded from its windows,
+     deepening and sourcing against the real archive. */
+  /* Raised from 79 by F-73: both tiers now keep a D-tier LENGTH ledger as well as
+     M3/M4 — the running mean floor (D3), the short-segment run (D2), the uniform
+     triple (D5's first clause, the one gate here that is a preference and gets
+     relaxed rather than costing a beat its tape) and M4's runtime clause — and
+     the tier-2 cut grows towards a varying target instead of stopping at
+     `MIN_TAPE_SEGMENT_SEC`. The added cases pin each gate's refusal, its
+     fall-through to another episode, its small-count exemption, and the ladder
+     the interquartile floor is sized against. */
+  /* 111 once F-72 merged alongside it: the seed window is judged on share alone
+     and the trace says when that floor DECIDED, and those twelve cases had no
+     floor of their own. Raised here rather than left as slack, for the reason at
+     the top of this file — slack is what lets a gate be deleted with CI green. */
+  "test/sourceBeats.test.ts": 111,
+  /* WS-H’s new module: the BM25 index over the normalised cue text, its disk
+     cache and the invalidation that makes a re-transcribed episode rebuild it,
+     and the Null implementation CI actually runs. Raised to 12 by F-61: the
+     idf a search scored with is carried out to tier 2's window search. */
+  "test/transcriptTextIndex.test.ts": 12,
   /* §4.7 end to end (kanban card t_5a8b77c3): writeNarration() writes one
      page per narration beat (mode budgets, per-claim sources array),
      always through a genuinely separate verifier call (never the writer —
      proven with a spy test), the exact check-forays.mjs-compatible
      disclosure template, and decideConnectiveNarration()'s seam-position
      table for tape-adjacent beats needing short connective narration. */
-  "test/writeNarration.test.ts": 19,
+  /* WS-A raised this from 25: the suite now replays run 1's own failures
+     through the two-step, per-slot writer — the fabricated citation, the
+     griddle slug, the two-word span, the purpose quoted back, the
+     zero-source Frame — and pins the dry-run path to quoting real held text. */
+  /* F-50/F-51 (generation run 2) raised this from 40: run 2's own act 1 p2 —
+     a purpose the retrieved document contradicts — is now a fixture, and the
+     suite pins both halves of the fix (a page that reports the tension passes
+     and is flagged on both sides; a third rejection keeps the page unverified
+     instead of throwing), plus the per-slot resume hooks and the cue provider
+     the default evidence gatherer was silently dropping. */
+  /* F-60 raised this from 55: run 2's act 1 p5 — a Carry page whose retrieval
+     came back empty — now makes ZERO writer calls and comes out as an
+     unverified hand-off the gate refuses, and the two former throw sites (no
+     evidence, and no page ever produced) are pinned as degrade paths so the
+     surviving `NarrationWriteError` guards the beat count and nothing else. */
+  "test/writeNarration.test.ts": 61,
   /* Stage 3b (kanban t_567b570f, docs/show-pages-plan.md §Stage 3): shared
      catalogue store CRUD (scoping by show_id, upsert-not-duplicate on
      (show_id, guid), published_at ordering, feed-state round-trip). */
@@ -1509,8 +1616,82 @@ const BACKEND_FLOORS = {
      is §6.3's minimal batch-pipeline scope (real per-stage wall-clock
      timing, nothing speculative — see that module's own doc comment for
      why no live-generation-lead monitoring is built here). */
-  "test/finalizeForay.test.ts": 5,
+  /* +3 (F-49): the candidate's own minted tier-2 segments and source rows are
+     merged into the pool and registry the checker is handed, never shadowing a
+     committed row. */
+  "test/finalizeForay.test.ts": 8,
+  /* The `data/segment-sources.json` row a minted tier-2 segment needs, and the
+     refusals that stop this pipeline writing one it cannot vouch for — an
+     unknown DAI verdict above all, which ADR-0007 gates seek precision on. */
+  "test/audioSourceLookup.test.ts": 9,
   "test/stageTiming.test.ts": 5,
+  /* WS-D2 streaming publish (generation fix plan 2026-09-09): the partial
+     candidate written after each act, the driver's per-act rewrite, and the
+     private status read path. */
+  /* Requirements §8.10 raised this from 4: the driver passes the checkpoint
+     key as `sessionId`, which is the only thing that arms EPISODE_BUDGET_USD. */
+  "test/generateForays.test.ts": 5,
+  "test/generationStatus.test.ts": 4,
+  "test/partialCandidate.test.ts": 6,
+  /* WS-F robustness (docs/curation/generation-fix-plan-2026-09-09.md), closing
+     F-03, F-04, F-11, F-13, F-17 and F-18 from generation run 1:
+       checkpoint / runPipelineCheckpoint — per-stage resume inside ONE Foray,
+         the store's own rules and then the whole pipeline driven through it
+         (a narration failure costs the narration, not the spine);
+       spineStructure — the §4.3->§4.4 gate, with run 1's real 3-act / 6-slot /
+         31-beat spine as the fixture it must keep passing;
+       researchTopicFilter — the `Ai` leak, asserted against the REAL semantic
+         index and taxonomy because the leak is a property of that data;
+       models — one file holds every model id, plus the grep that fails when a
+         new literal appears anywhere in src/;
+       generateForaysArgs — the --budget-usd flag and what it actually moves. */
+  "test/checkpoint.test.ts": 14,
+  "test/generateForaysArgs.test.ts": 10,
+  "test/models.test.ts": 7,
+  "test/researchTopicFilter.test.ts": 17,
+  /* F-59 (docs/curation/generation-run-2026-09-09.md): the topic resolver's
+     fusion magnet. Run 2's production-ML prompt resolved to
+     `engineering/energy-fusion` on two words — `engineering`, free to every
+     child of that root, and `systems`, from the label — and §4.5's lineage gate
+     then refused every AI show in the archive. Asserted against the REAL
+     taxonomy and semantic index, with run 2's own topic text, plus run 1's as
+     the resolution the fix must not move. */
+  "test/resolveTopic.test.ts": 14,
+  /* F-51 raised this from 10: `narrate:<act>:<slot>` keys, so a run that dies
+     partway through an act re-pays only for the slots that never landed, and
+     the per-Foray budget cap the batch path left inert by never passing a
+     sessionId. */
+  "test/runPipelineCheckpoint.test.ts": 13,
+  /* Raised from 14 by WS-L (F-63): the per-act seeded-beat floor — enforced only
+     when the research map quoted windows, never satisfiable by an invented
+     episode id, and thrown rather than reported. */
+  "test/spineStructure.test.ts": 19,
+  /* WS-C: §4.5's topic gate (taxonomyFamily.ts). A family is a node's LINEAGE
+     in data/taxonomy.json — itself, its ancestors, its descendants — not a
+     shared first path segment, which would put every sibling trade in scope of
+     every other. Unit-tested against the REAL committed catalogue files,
+     pinning relationships rather than counts, because the finding it closes
+     (F-29) is precisely two real files that were never joined. */
+  "test/taxonomyFamily.test.ts": 17,
+  /* WS-B veracity metrics (generation fix plan 2026-09-09): the grounded-quote /
+     attribution-stability / tape-relevance metrics and the publish gate, plus
+     the process-wide token-usage collector every Anthropic builder feeds. */
+  "test/usageTracking.test.ts": 4,
+  /* F-50/F-51 raised this from 31: `unverifiedPages` (the count the publish
+     gate now refuses on, replacing writeNarration's throw) and
+     `purposeRevisedPages` (reported, never gated). */
+  "test/veracityMetrics.test.ts": 40,
+  /* WS-A evidence-first narration (generation fix plan 2026-09-09): the
+     per-beat evidence pack (tape cue window + up to three retrieved print
+     passages, cached by claim hash) and the mechanical narration rules run 1's
+     writer kept breaking — every fixture in the second suite is a span,
+     publication or sentence a page actually shipped in that run. */
+  /* F-60 raised this from 19: an empty retrieval for a page that CARRIES
+     content is asked once more with the purpose stripped to its distinctive
+     nouns, cached under that second query's own key, and a cached emptiness
+     stops being a cache hit after 24 hours. */
+  "test/gatherEvidence.test.ts": 27,
+  "test/narrationRules.test.ts": 21,
 };
 
 /* `it(` as well as `test(`: backend's suites use both spellings. */

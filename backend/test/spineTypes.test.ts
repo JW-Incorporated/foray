@@ -162,6 +162,43 @@ describe("SpineSchema", () => {
     expect(() => SpineSchema.parse(polluted)).toThrow();
   });
 
+  it("accepts a beat tagged kind account/argument, and rejects any other kind (F-38)", () => {
+    /* WS-C's §4.4 tag: `account` means a person could be recorded describing
+       this, `argument` means no recording is ever about it and §4.5 must not go
+       looking. Anything else would silently become "not argument" — i.e. tape
+       gets searched — so the enum is closed. */
+    const spine = makeSpine();
+    for (const kind of ["account", "argument"]) {
+      const tagged = {
+        ...spine,
+        acts: [
+          {
+            ...spine.acts[0]!,
+            slots: [{ title: "Slot 1", beats: [{ claim: "A claim with a verb happened here.", exploration: false, kind }] }]
+          }
+        ]
+      };
+      expect(() => SpineSchema.parse(tagged)).not.toThrow();
+    }
+    const bogus = {
+      ...spine,
+      acts: [
+        {
+          ...spine.acts[0]!,
+          slots: [{ title: "Slot 1", beats: [{ claim: "A claim with a verb happened here.", exploration: false, kind: "anecdote" }] }]
+        }
+      ]
+    };
+    expect(() => SpineSchema.parse(bogus)).toThrow();
+  });
+
+  it("still accepts a beat with NO kind — §4.3 writes beats before anything judges them", () => {
+    /* Optional on purpose: an absent kind means `account`, the
+       search-for-tape behaviour that predates the field, so a spine written by
+       §4.3 (or a model that forgot the key) never costs a retry. */
+    expect(() => SpineSchema.parse(makeSpine())).not.toThrow();
+  });
+
   it("rejects a beat missing the exploration flag", () => {
     const spine = makeSpine();
     const polluted = {

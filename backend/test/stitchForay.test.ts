@@ -117,4 +117,64 @@ describe("stitchForay — end-to-end orchestration", () => {
     expect(err).toBeInstanceOf(Error);
     expect(err.message).toContain("Act One");
   });
+
+  describe("onActReady (WS-D2)", () => {
+    it("fires once per act, in order, before the next act's stitching begins", async () => {
+      /* MUTATION THAT KILLS THIS: call `onActReady` once, after the whole
+         loop, with the final items. `actIndex` would still read [0, 1] but
+         `actItems` for index 0 would already include act 2's items — the
+         `actItems` assertions below catch that. Ran it — red. */
+      const deepenedActs = [makeDeepened("Act One", 1), makeDeepened("Act Two", 2)];
+      const writtenActs = [makeWritten("Act One"), makeWritten("Act Two")];
+      const calls: Array<{ actIndex: number; actTitle: string; totalActs: number; actItemCount: number; itemsSoFarCount: number }> = [];
+
+      await stitchForay(
+        deepenedActs,
+        writtenActs,
+        {
+          continuity: { builder: new StubContinuityBuilder() },
+          onActReady: ({ actIndex, actTitle, totalActs, actItems, itemsSoFar }) => {
+            calls.push({ actIndex, actTitle, totalActs, actItemCount: actItems.length, itemsSoFarCount: itemsSoFar.length });
+          }
+        },
+        ctx
+      );
+
+      expect(calls.map((c) => c.actIndex)).toEqual([0, 1]);
+      expect(calls[0]!.actTitle).toBe("Act One");
+      expect(calls[1]!.actTitle).toBe("Act Two");
+      expect(calls[0]!.totalActs).toBe(2);
+      // Act 1 alone contributes fewer items than act 1 + act 2 together.
+      expect(calls[0]!.itemsSoFarCount).toBe(calls[0]!.actItemCount);
+      expect(calls[1]!.itemsSoFarCount).toBeGreaterThan(calls[0]!.itemsSoFarCount);
+      expect(calls[1]!.itemsSoFarCount).toBe(calls[0]!.itemsSoFarCount + calls[1]!.actItemCount);
+    });
+
+    it("hands onActReady the SAME forays.json-shaped items the final result carries", async () => {
+      const deepenedActs = [makeDeepened("Act One", 1)];
+      const writtenActs = [makeWritten("Act One")];
+      let seen: unknown[] = [];
+
+      const result = await stitchForay(
+        deepenedActs,
+        writtenActs,
+        {
+          continuity: { builder: new StubContinuityBuilder() },
+          onActReady: ({ itemsSoFar }) => {
+            seen = itemsSoFar;
+          }
+        },
+        ctx
+      );
+
+      expect(seen).toEqual(result.items);
+    });
+
+    it("changes nothing when omitted — every existing call site keeps working", async () => {
+      const deepenedActs = [makeDeepened("Act One", 1), makeDeepened("Act Two", 2)];
+      const writtenActs = [makeWritten("Act One"), makeWritten("Act Two")];
+      const result = await stitchForay(deepenedActs, writtenActs, { continuity: { builder: new StubContinuityBuilder() } }, ctx);
+      expect(result.items.length).toBeGreaterThan(0);
+    });
+  });
 });

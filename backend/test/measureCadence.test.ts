@@ -1,5 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { computeCadence } from "../../tools/foray/measure-cadence.mjs";
+import { execFileSync } from "node:child_process";
+import { pathToFileURL } from "node:url";
+import { resolve as resolvePath } from "node:path";
 
 /**
  * §4.8 rule 3's own math, unit-tested against a small hand-built
@@ -10,7 +12,42 @@ import { computeCadence } from "../../tools/foray/measure-cadence.mjs";
  * a property of the committed data, asserted directly in
  * `stitchAct.test.ts` against the hardcoded `TEXTURE_CADENCE_SEC`
  * constant instead).
+ *
+ * NOT a static/direct import of measure-cadence.mjs: see
+ * `test/writeNarration.test.ts`'s "round-trips through check-forays.mjs's
+ * own DISCLOSURE_RX" test for the fuller account — Vitest's own vite-node
+ * loader mishandles a space in the checkout path (this repo lives under
+ * "Vibe Coding") whenever it re-resolves an import of a `.mjs` module. A
+ * *static* top-level `import { computeCadence } from "...mjs"` hits the
+ * identical defect even earlier, at module-collection time, before any
+ * test body runs, and fails with "Invalid or unexpected token". A plain
+ * Node subprocess started outside vite-node does not have that problem,
+ * so computeCadence() is called there instead, with its arguments and
+ * result round-tripped as JSON.
  */
+interface CadenceResult {
+  cutGaps: number[];
+  totalRuntimeSec: number;
+  median: number;
+  mean: number;
+}
+
+function computeCadence(forays: unknown, segments: unknown, forayId: string): CadenceResult {
+  const moduleUrl = pathToFileURL(resolvePath(__dirname, "../../tools/foray/measure-cadence.mjs")).href;
+  const script =
+    `import(${JSON.stringify(moduleUrl)}).then((mod) => {` +
+    `try {` +
+    `const result = mod.computeCadence(${JSON.stringify(forays)}, ${JSON.stringify(segments)}, ${JSON.stringify(forayId)});` +
+    `process.stdout.write(JSON.stringify({ ok: true, result }));` +
+    `} catch (err) {` +
+    `process.stdout.write(JSON.stringify({ ok: false, message: String((err && err.message) || err) }));` +
+    `}` +
+    `});`;
+  const stdout = execFileSync(process.execPath, ["--input-type=module", "-e", script], { encoding: "utf8" });
+  const parsed = JSON.parse(stdout) as { ok: true; result: CadenceResult } | { ok: false; message: string };
+  if (!parsed.ok) throw new Error(parsed.message);
+  return parsed.result;
+}
 describe("measure-cadence.mjs computeCadence()", () => {
   it("computes cut-gaps, median and mean correctly against a small fixture", () => {
     // Three segments, two from item A (0-40s, 40-70s: 70s total on A),

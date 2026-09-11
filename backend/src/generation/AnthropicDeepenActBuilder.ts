@@ -1,10 +1,12 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import { env } from "../config/env";
+import { costFor, modelFor } from "../config/models";
 import { defaultBudgetGuard, type BudgetGuard } from "../cost/budgetGuard";
 import { parseWithRetry } from "./parseWithRetry";
 import type { Act, DeepenedAct, Spine } from "../types/spine";
 import type { DeepenActBuilder, DeepenActContext } from "./DeepenActBuilder";
+import { recordUsage } from "./usageTracking";
 
 /**
  * Real §4.4 act-deepening via the Anthropic API, mirroring
@@ -16,12 +18,38 @@ import type { DeepenActBuilder, DeepenActContext } from "./DeepenActBuilder";
  * Anthropic* class in this codebase. Use createDeepenActBuilder().
  */
 
-const MODEL = "claude-sonnet-4-5";
-const USD_PER_INPUT_TOKEN = 3.0 / 1_000_000;
-const USD_PER_OUTPUT_TOKEN = 15.0 / 1_000_000;
+/* Model id and per-token rates come from `src/config/models.ts`, the one
+ * place a Claude model id is written down (F-03). Which TIER this stage
+ * needs stays this stage's decision; which model serves that tier does not.
+ * An id and its price are read from the same row, so they cannot drift
+ * apart the way seven hand-copied pairs did. */
+const MODEL = modelFor("sonnet");
+const USD_PER_INPUT_TOKEN = costFor("sonnet").usdPerInputToken;
+const USD_PER_OUTPUT_TOKEN = costFor("sonnet").usdPerOutputToken;
 const MAX_OUTPUT_TOKENS = 4000;
 
-const BeatSchema = z.object({ claim: z.string(), exploration: z.boolean() });
+/* `kind` is optional here and defaulted downstream rather than required: a
+   model that omits it must not cost the whole act a retry, and an absent kind
+   means "account", which is the search-for-tape behaviour that predates the
+   field (see BeatKindSchema in types/spine.ts). */
+/* `seed` (WS-L, F-63) is parsed rather than dropped: a beat the spine wrote from
+   a quoted transcript window names that window, and §4.5 opens the named episode
+   first. It is optional here for the same reason `kind` is — a model that omits
+   it must not cost the act a retry — and `deepenActs.ts` puts back any seed the
+   reply lost, so the pass-through is guaranteed in code rather than asked for in
+   a prompt.
+
+   F-68 EXTENDS THAT TO THE CLAIM. A seeded beat's `claim` is frozen: the prompt
+   says to copy it verbatim, and `deepenActs.ts` restores it when the model
+   paraphrased anyway. A paraphrase parses fine here on purpose — it must not
+   cost the act a retry — it simply does not survive the stage. */
+const BeatSeedSchema = z.object({ episodeId: z.string(), startSec: z.number(), endSec: z.number() });
+const BeatSchema = z.object({
+  claim: z.string(),
+  exploration: z.boolean(),
+  kind: z.enum(["account", "argument"]).optional(),
+  seed: BeatSeedSchema.optional()
+});
 const SlotSchema = z.object({ title: z.string(), beats: z.array(BeatSchema) });
 const RawDeepenedActSchema = z.object({
   title: z.string(),
@@ -71,10 +99,40 @@ export class AnthropicDeepenActBuilder implements DeepenActBuilder {
       messages: [{ role: "user", content: promptText }]
     });
 
+    recordUsage(response.usage);
     const textBlock = response.content.find((b: Anthropic.ContentBlock): b is Anthropic.TextBlock => b.type === "text");
     if (!textBlock) throw new Error("Anthropic deepen-act response had no text block");
 
-    return parseWithRetry(RawDeepenedActSchema, textBlock.text, "Anthropic deepen-act output");
+    const reask = async (): Promise<string> => {
+      const reaskLine = "Your previous reply was not valid JSON; reply with the JSON object only.";
+      // The re-ask is its own real API call — it re-sends the whole prompt
+      // plus the bad reply, so it is its own metered spend, gated the same
+      // way as the original call (see parseWithRetry.ts's BUDGET note).
+      const reaskEstimatedInputTokens = roughTokenEstimate(promptText + textBlock.text + reaskLine);
+      await this.budgetGuard.checkAndRecord({
+        userId: ctx.userId,
+        operation: "deepen_act",
+        provider: this.providerName,
+        model: MODEL,
+        estimatedUsd: reaskEstimatedInputTokens * USD_PER_INPUT_TOKEN + MAX_OUTPUT_TOKENS * USD_PER_OUTPUT_TOKEN,
+        sessionId: ctx.sessionId
+      });
+
+      const retryResponse = await this.client.messages.create({
+        model: MODEL,
+        max_tokens: MAX_OUTPUT_TOKENS,
+        messages: [
+          { role: "user", content: promptText },
+          { role: "assistant", content: textBlock.text },
+          { role: "user", content: reaskLine }
+        ]
+      });
+      const retryTextBlock = retryResponse.content.find((b: Anthropic.ContentBlock): b is Anthropic.TextBlock => b.type === "text");
+      if (!retryTextBlock) throw new Error("Anthropic deepen-act re-ask response had no text block");
+      return retryTextBlock.text;
+    };
+
+    return parseWithRetry(RawDeepenedActSchema, textBlock.text, "Anthropic deepen-act output", reask);
   }
 }
 
@@ -89,7 +147,24 @@ function buildDeepenActPrompt(spine: Spine, targetAct: Act, targetActIndex: numb
     .join("\n");
 
   const targetSlotLines = targetAct.slots
-    .map((slot, i) => `  Slot ${i + 1}: "${slot.title}"\n${slot.beats.map((b) => `    - ${b.claim}${b.exploration ? " [exploration]" : ""}`).join("\n")}`)
+    .map(
+      (slot, i) =>
+        `  Slot ${i + 1}: "${slot.title}"\n${slot.beats
+          .map(
+            (b) =>
+              `    - ${b.claim}${b.exploration ? " [exploration]" : ""}` +
+              /* WS-L: a seeded beat was written from a stretch of real tape.
+                 Marked FROZEN rather than merely shown (F-68): §4.5 scores this
+                 claim's own words against that stretch, so a paraphrase here is
+                 what loses the tape. `deepenActs.ts` restores both the claim and
+                 the seed either way. */
+              (b.seed
+                ? ` [SEEDED — THIS CLAIM IS FROZEN, COPY IT VERBATIM; written from tape ${b.seed.episodeId} ` +
+                  `${Math.round(b.seed.startSec)}-${Math.round(b.seed.endSec)}s]`
+                : "")
+          )
+          .join("\n")}`
+    )
     .join("\n");
 
   return [
@@ -112,15 +187,30 @@ function buildDeepenActPrompt(spine: Spine, targetAct: Act, targetActIndex: numb
     "1. Refine this act's slots and sharpen its beats — make the claims more specific/concrete where they",
     "   are still high-level. Do NOT add or remove slots. You may refine beat wording but every beat must",
     "   remain a CLAIM, never a topic (e.g. \"Charcoal briquettes were a Ford Motor Company waste-disposal",
-    "   scheme\" is a beat; \"Briquettes\" is not).",
-    "2. Write this act's own INTRODUCTION — what a listener hears entering this act. Use the full spine so",
+    "   scheme\" is a beat; \"Briquettes\" is not). The one exception is rule 2.",
+    "2. A BEAT MARKED [SEEDED] HAS A FROZEN CLAIM: copy its `claim` string ACROSS VERBATIM, character for",
+    "   character. Do not sharpen it, shorten it, re-order it, add an example to it or improve its prose.",
+    "   Its wording was written from the stretch of real tape named on the beat, and the sourcing stage",
+    "   scores THAT WORDING, word for word, against THAT STRETCH OF TAPE before it will use it: every word",
+    "   you add that nobody on the recording says lowers the score, and a beat that drops below the floor",
+    "   loses its tape and becomes narration instead. A rewrite that reads better is still a beat with no",
+    "   tape. Everything else about a seeded beat is yours to write as normal — `exploration` and `kind`",
+    "   below, and the act's own title, thesis, states, introduction and exit — only the claim is frozen.",
+    "3. Tag every beat `kind`. \"account\" is the DEFAULT and covers most beats: an event, a practice, a",
+    "   measurement, or a mechanism someone could be heard describing — a person explaining how a thing",
+    "   is done is an account, not an argument. Use \"argument\" ONLY for a claim about what something",
+    "   MEANS or what someone SHOULD do, which no recording of an event, a person or a practice could",
+    "   carry. Arguments are narrated, never illustrated with tape, so a beat wrongly tagged \"argument\"",
+    "   silently loses its tape; at most a third of any one slot's beats may be arguments.",
+    "4. Write this act's own INTRODUCTION — what a listener hears entering this act. Use the full spine so",
     `   act ${targetActIndex + 1} does not re-explain what an earlier act already established.`,
-    "3. Write this act's EXIT — the connective tissue into the next act (its own half of the handoff; a",
+    "5. Write this act's EXIT — the connective tissue into the next act (its own half of the handoff; a",
     "   later continuity pass reconciles the full cross-act seam, this is just this act's side of it).",
     "",
     "Respond with ONLY a single JSON object, no markdown fences, no other text, matching exactly:",
     '{"title": string, "thesis": string, "startState": string, "endState": string, ' +
-      '"slots": [{"title": string, "beats": [{"claim": string, "exploration": boolean}]}], ' +
+      '"slots": [{"title": string, "beats": [{"claim": string, "exploration": boolean, "kind": "account" | "argument", ' +
+      '"seed"?: {"episodeId": string, "startSec": number, "endSec": number}}]}], ' +
       '"introduction": string, "exit": string}'
   ].join("\n");
 }
