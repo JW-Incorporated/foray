@@ -454,11 +454,18 @@ test("the shipped source names exactly the 22 cp_ key families the audit found",
      the player sounds between a Foray's tape segments (player/interlude.js,
      queue-manager.js §13). A local per-device preference, absent means on.
      Same mechanism again: this count failed first, then the policy check,
+     until privacy-policy.md §1 got the row.
+
+     24 -> 25 on 2026-09-11: `cp_show_drafts`, the founder's "Show draft
+     Forays" test-track switch (app.js § showDraftsOn; Wyatt: "I can't see
+     these forays in the app"). A local per-device preference, default off,
+     read only in app.js — player/ takes it as an option, never from the
+     store. Same mechanism: this count failed first, then the policy check,
      until privacy-policy.md §1 got the row. */
   const families = [...keyFamiliesInSource().keys()].sort();
   assert.strictEqual(
-    families.length, 24,
-    `expected 24 cp_ key families, found ${families.length}:\n${families.join("\n")}`
+    families.length, 25,
+    `expected 25 cp_ key families, found ${families.length}:\n${families.join("\n")}`
   );
   assert.ok(families.includes("cp_foray:"), "the patterned Foray resume key must be found as a family");
   assert.ok(families.includes("cp_pos:"), "the patterned episode-position key must be found as a family");

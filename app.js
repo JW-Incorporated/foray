@@ -2010,11 +2010,13 @@ function foraysUsingShow(show) {
   if (!show || !window.ForayPlayer || typeof window.ForayPlayer.foraysUsingShow !== "function") return [];
   if (!state.forays) return [];
   const names = [show.title, TITLE_ALIASES[show.title]].filter(Boolean);
-  return window.ForayPlayer.foraysUsingShow(state.forays, names, {
+  /* Same two-call shape as forayCards(): the published rows exactly as before,
+     then the drafts the test-track switch admitted. */
+  return withTestTrackDrafts(opts => window.ForayPlayer.foraysUsingShow(state.forays, names, {
     segmentsDoc: state.segments,
     sourcesDoc: state.segmentSources,
-    unlocked: unlockedForays(),
-  });
+    ...opts,
+  }));
 }
 
 /* Deliberately its own <footer>, never mixed into the episode list above it —
@@ -2910,7 +2912,7 @@ function showFirstTimeExplainerOnce() {
     try {
       const r = player.resolve(state.forays, {
         id: first.id, segmentsDoc: state.segments, sourcesDoc: state.segmentSources,
-        unlocked: unlockedForays(),
+        ...forayViewOpts(),
       });
       if (!r) return "";
       return player.segmentStripHtml(r.playable, { size: "sm" }) || "";
@@ -3634,14 +3636,14 @@ function jumpBackInV2Html() {
     contract as that function's own try/catch. `stretch` renders the
     visible label plus the required bridge line naming the Foray's own
     subject; a non-stretch card gets neither. */
-function forayCardV2Html(foray, { stretch = false } = {}) {
+function forayCardV2Html(foray, { stretch = false, draft = false } = {}) {
   const player = window.ForayPlayer;
   let stripHtml = "";
   if (player && state.forays && typeof player.resolve === "function" && typeof player.segmentStripHtml === "function") {
     try {
       const r = player.resolve(state.forays, {
         id: foray.id, segmentsDoc: state.segments, sourcesDoc: state.segmentSources,
-        unlocked: unlockedForays(),
+        ...forayViewOpts(),
       });
       if (r) stripHtml = player.segmentStripHtml(r.playable, { size: "sm" }) || "";
     } catch (_) {
@@ -3651,6 +3653,7 @@ function forayCardV2Html(foray, { stretch = false } = {}) {
   const subject = subjectLabel((foray.topic || "").split("/")[0]);
   return `<a class="hv2-foray-card${stretch ? " hv2-stretch" : ""}" href="#/foray/${esc(foray.id)}">
     ${stretch ? `<span class="hv2-stretch-tag">Stretch</span>` : ""}
+    ${draft ? `<span class="hv2-draft-tag">draft</span>` : ""}
     <span class="hv2-foray-title">${esc(foray.title)}</span>
     ${stripHtml}
     ${stretch ? `<p class="hv2-bridge">${stretchBridgeLine(subject)}</p>` : ""}
@@ -3661,19 +3664,35 @@ function forayCardV2Html(foray, { stretch = false } = {}) {
     Forays, floored per pickWithStretchFloor over each Foray's own topic
     root. Renders nothing when there are no listable Forays at all —
     absence is a real state here, same convention forayListHtml() and
-    every other optional Home block already follow. */
+    every other optional Home block already follow.
+
+    THE TEST TRACK (showDraftsOn): the four picks are chosen from exactly the
+    list they were chosen from before — the switch never enters the floor or
+    the interest ranking — and the drafts it admitted are APPENDED after them,
+    every one, badged "draft", in draftTrackOrder. Appended rather than pooled
+    because the founder turned this on to find a specific generated Foray, and
+    a four-card pick over six candidates would hide two of them. */
 function foraysForYouHtml() {
-  const cards = forayCards();
-  if (!cards.length) return "";
-  const { picks, stretchIndex } = pickWithStretchFloor(cards, {
+  if (!state.forays || !window.ForayPlayer) return "";
+  const { listed, drafts } = splitTestTrackDrafts(opts => window.ForayPlayer.listForays(state.forays, opts));
+  if (!listed.length && !drafts.length) return "";
+  const { picks, stretchIndex } = pickWithStretchFloor(listed, {
     branchFn: f => (f.topic || "other").split("/")[0],
     scoreFn: f => interestScore({ topics: [(f.topic || "other").split("/")[0]] }),
     take: 4,
   });
   return `<section class="hv2-section hv2-forays">
     <h2 class="hv2-title">Forays for you</h2>
-    <div class="hv2-hscroll">${picks.map((f, i) => forayCardV2Html(f, { stretch: i === stretchIndex })).join("")}</div>
+    <div class="hv2-hscroll">${picks.map((f, i) => forayCardV2Html(f, { stretch: i === stretchIndex })).join("")}${drafts.map(f => forayCardV2Html(f, { draft: true })).join("")}</div>
   </section>`;
+}
+
+/** The one-line notice Home carries while the test track is on, so a device
+    left with the switch flipped says so on the first screen rather than
+    quietly listing work nobody published. */
+function testTrackNoticeHtml() {
+  if (!showDraftsOn()) return "";
+  return `<p class="hv2-test-track note">Showing draft Forays — test track</p>`;
 }
 
 /** One playlist card for "Playlists for you" — own recent playlists render
@@ -3742,6 +3761,7 @@ function renderHomeV2() {
   $("#view").innerHTML = `
     <div class="home hv2-home">
       ${homeGreeting()}
+      ${testTrackNoticeHtml()}
       ${jumpBackInV2Html()}
       ${foraysForYouHtml()}
       ${playlistsForYouHtml()}
@@ -4466,6 +4486,65 @@ function unlockedForays() {
   return id ? [id] : [];
 }
 
+/* ── The test track: "Show draft Forays" ──────────────────────────────────
+
+   Wyatt, 2026-09-11: "I can't see these forays in the app, please fix that."
+   "These" are the GENERATED Forays — `data/forays.json` rows carrying
+   `generated: true` — which land as `status: "draft"` because publishing is a
+   founder action (HUMAN-ACTIONS.md #2) and the generator is not a founder.
+   The visitor rule above is untouched, and so is every Foray's status: this
+   is a per-device switch in the drawer, OFF by default, that lets the person
+   who owns the device ask for every draft at once, the way `?foray=` asks for
+   one. When it is off, nothing below is reachable and every surface renders
+   exactly what it rendered before the switch existed (test/draft-forays-
+   switch.test.js pins that byte for byte).
+
+   `cp_show_drafts` goes through lsGet/lsSet like every other `cp_` key (§
+   storage above; durable tier + localStorage mirror), is listed in
+   docs/legal/privacy-policy.md §1 and counted by test/data-deletion.test.js,
+   and is wiped by "Delete my data" with the rest. It is deliberately NOT read
+   inside `player/` — that tree is pure, so the switch travels to the resolver
+   as the `showDrafts` OPTION every visibility call below passes. */
+function showDraftsOn() { return lsGet("cp_show_drafts", false); }
+
+/** The visibility options every Foray surface hands the bridge: the `?foray=`
+    unlock AND the switch, together, so no call site can pass one and forget
+    the other. */
+function forayViewOpts() {
+  return { unlocked: unlockedForays(), showDrafts: showDraftsOn() };
+}
+
+/** Order for the drafts the SWITCH admitted (never for the published list,
+    whose order is the file's): generated ones newest first — the generator
+    appends to `data/forays.json` as each lands and stamps no date, so the
+    file's own order is the arrival order and its reverse is "newest first" —
+    then any hand-authored draft in file order. */
+function draftTrackOrder(drafts) {
+  const generated = drafts.filter(f => f.generated === true).reverse();
+  const authored = drafts.filter(f => f.generated !== true);
+  return generated.concat(authored);
+}
+
+/** `listFn(opts)` -> `{ listed, drafts }`: the list a surface shows today,
+    and — only when the switch is on — the drafts it admitted, in
+    draftTrackOrder (an empty array otherwise). Two calls rather than one so
+    `listed` is the SAME call, with the SAME options, that ran before the
+    switch existed: with it off the second call never happens. */
+function splitTestTrackDrafts(listFn) {
+  const unlocked = unlockedForays();
+  const listed = listFn({ unlocked });
+  if (!showDraftsOn()) return { listed, drafts: [] };
+  const seen = new Set(listed.map(f => f.id));
+  const drafts = draftTrackOrder(listFn({ unlocked, showDrafts: true }).filter(f => !seen.has(f.id)));
+  return { listed, drafts };
+}
+
+/** The two halves as one list: today's, then the test-track drafts. */
+function withTestTrackDrafts(listFn) {
+  const { listed, drafts } = splitTestTrackDrafts(listFn);
+  return drafts.length ? listed.concat(drafts) : listed;
+}
+
 /* The player is an ES module and this is a classic script, so the bridge may
    not exist yet at first render. Wait for it once, rather than polling — and
    give up rather than hanging if the module failed to load at all, so a broken
@@ -4771,11 +4850,14 @@ async function renderForay(id) {
     return;
   }
 
+  /* `forayViewOpts()` carries the `?foray=` unlock AND the test-track switch:
+     a draft the switch listed must open and play through this same call, or
+     the list would advertise a page that answers "isn't available". */
   const r = player.resolve(state.forays, {
     id,
     segmentsDoc: state.segments,
     sourcesDoc: state.segmentSources,
-    unlocked: unlockedForays(),
+    ...forayViewOpts(),
   });
   // Same answer for "no such Foray" and "not published": a client that
   // distinguishes them announces the existence of unpublished work.
@@ -4787,6 +4869,12 @@ async function renderForay(id) {
   state.forayPainted = null;   // fresh DOM: the paint guard must not skip it
 
   const draft = r.foray.status !== "published";
+  /* Which door the draft came through decides what the page says about it:
+     "by name" is the `?foray=` unlock, today's sentence exactly; otherwise
+     the test-track switch let it in, and the sentence says so. */
+  const draftNote = !draft ? ""
+    : unlockedForays().includes(r.id) ? "Draft — not published. You opened it by name; nobody else sees it."
+    : "Draft — not published. Shown because \"Show draft Forays\" is on in Settings; nobody else sees it.";
   const lost = r.unplayable.length;
   /* Read the resume point BEFORE anything is wired up: it decides the clock the
      page opens on, which rows are already ticked off, and what the main button
@@ -4833,7 +4921,7 @@ async function renderForay(id) {
           <p class="sub">${esc(forayHeadSub(r))}</p>
         </div>
       </div>
-      ${draft ? `<p class="fy-draft">Draft — not published. You opened it by name; nobody else sees it.</p>` : ""}
+      ${draft ? `<p class="fy-draft">${draftNote}</p>` : ""}
       ${r.foray.summary ? `<p class="fy-summary">${esc(r.foray.summary)}</p>` : ""}
       <div class="fy-transport">
         ${resume ? `<div class="fy-resume" id="fy-resume">
@@ -5844,7 +5932,9 @@ function paintForay(s) {
     this file do today. Recorded in docs/curation/foray2-capital.md §11c. */
 function forayCards() {
   if (!state.forays || !window.ForayPlayer) return [];
-  return window.ForayPlayer.listForays(state.forays, { unlocked: unlockedForays() });
+  /* Published + `?foray=`-unlocked first, in file order, exactly as before;
+     the test-track drafts (switch on) follow — see withTestTrackDrafts. */
+  return withTestTrackDrafts(opts => window.ForayPlayer.listForays(state.forays, opts));
 }
 
 /* Renamed from forayHomeHtml on 2026-09-03: this list is no longer on Home.
@@ -5920,6 +6010,8 @@ function renderDrawer() {
   $("#family-toggle").textContent = `Family mode: ${familyMode() ? "on" : "off"}`;
   $("#player-toggle").textContent = `Open in: ${playerPref() === "apple" ? "Apple Podcasts" : "Pocket Casts (show page)"}`;
   $("#autoadvance-toggle").textContent = `Up Next auto-advance: ${autoAdvanceOn() ? "on" : "off"}`;
+  const draftsBtn = $("#drafts-toggle");
+  if (draftsBtn) draftsBtn.textContent = `Show draft Forays: ${showDraftsOn() ? "on" : "off"}`;
   const ui2Btn = $("#ui2-toggle");
   if (ui2Btn) ui2Btn.textContent = `New look (preview): ${ui2On() ? "on" : "off"}`;
 }
@@ -6012,6 +6104,29 @@ function renderTabBar() {
   bar.querySelectorAll(".tab-btn").forEach((a) => {
     if (a.dataset.tabKey === active) a.setAttribute("aria-current", "page");
     else a.removeAttribute("aria-current");
+  });
+}
+
+/** The test-track switch (see § showDraftsOn). A drawer toggle in the shape
+    of `#family-toggle`/`#autoadvance-toggle`, appended in JS rather than
+    written into index.html for the reason every control below gives: that
+    file is outside the auto-merge allowlist. Appended BEFORE the diagnostics/
+    voice/delete controls at init, so it lands with the other settings
+    toggles and "Delete my data" stays last. Flipping it re-renders the page
+    behind the drawer WITHOUT closing it (renderCurrentPage, not route —
+    test/drawer-settings-toggle.test.js's rule). No event is logged: this is
+    the founder's own test switch, not listener behaviour worth a row. */
+function bindDraftsControl() {
+  const drawer = $("#drawer");
+  if (!drawer || $("#drafts-toggle")) return;
+  const btn = ddEl("button", "drawer-item as-btn", "");
+  btn.type = "button";
+  btn.id = "drafts-toggle";
+  drawer.appendChild(btn);
+  btn.addEventListener("click", () => {
+    lsSet("cp_show_drafts", !showDraftsOn());
+    renderDrawer();
+    renderCurrentPage();
   });
 }
 
@@ -7622,6 +7737,9 @@ async function init() {
      the two truly destructive/diagnostic items stay at the bottom where a
      scrolled thumb lands, and a cosmetic preview toggle is not one of them. */
   bindUi2Control();
+  /* "Show draft Forays" — the founder's test track, with the other settings
+     toggles and above the diagnostic/destructive controls. */
+  bindDraftsControl();
   /* The field record's surface (#264), appended for the same reason as the
      control below it and deliberately ABOVE it: "Delete my data" must stay the
      drawer's last item, because it is the one control in there that cannot be

@@ -12,7 +12,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   PUBLISHED, indexSegments, indexSources, allForays, forayVisibility,
-  listableForays, findForay, hydrateForayItems, resolveForay, groupBySlot,
+  listableForays, findForay, foraysReferencingShow, hydrateForayItems, resolveForay, groupBySlot,
   segmentStarts, segmentAtElapsed, forayElapsed, fmtClock, fmtSpan, progressSegments,
   validateForayDocuments, VALIDATION_CODES,
 } from "./foray-resolve.js";
@@ -140,6 +140,60 @@ test("findForay returns null for a hidden draft and for an unknown id alike", ()
   assert.equal(findForay(doc, "nope", { unlocked: ["nope"] }), null, "unknown id");
   assert.equal(findForay(doc, "", { unlocked: [""] }), null, "empty id");
   assert.equal(findForay(doc, "a", { unlocked: ["a"] }).id, "a");
+});
+
+/* ---------- the test track: `showDrafts` (2026-09-11) ----------
+   Wyatt: "I can't see these forays in the app, please fix that." The switch
+   lives in app.js (`cp_show_drafts`); here it is an OPTION, and these pin that
+   it admits drafts — and ONLY drafts — without touching the visitor rule.
+   MUTATION for the first: drop the `showDrafts === true && status === DRAFT`
+   line from forayVisibility -> red. For the third: change `status === DRAFT`
+   to `!published` -> red on "review". */
+
+test("showDrafts admits a draft the visitor did not name, and says why", () => {
+  const v = forayVisibility({ id: "f1", status: "draft" }, { showDrafts: true });
+  assert.equal(v.visible, true);
+  assert.equal(v.published, false, "the test track must not make it published");
+  assert.equal(v.reason, "draft, test track");
+});
+
+test("showDrafts off, absent, or anything but `true` leaves the visitor rule exactly as it was", () => {
+  for (const showDrafts of [false, undefined, null, 0, "true", "on", 1]) {
+    assert.equal(forayVisibility({ id: "f1", status: "draft" }, { showDrafts }).visible, false, `showDrafts ${String(showDrafts)}`);
+  }
+  assert.equal(forayVisibility({ id: "f1", status: PUBLISHED }, { showDrafts: false }).visible, true);
+});
+
+test("showDrafts admits `draft` only — a third status is a data error, not a draft", () => {
+  for (const status of [undefined, null, "", "review", "archived", "DRAFT", 1]) {
+    assert.equal(forayVisibility({ id: "f1", status }, { showDrafts: true }).visible, false, `status ${String(status)}`);
+  }
+});
+
+test("listableForays and findForay carry showDrafts, and the `?foray=` unlock still works beside it", () => {
+  const doc = { forays: [
+    { id: "a", status: PUBLISHED }, { id: "b", status: "draft" }, { id: "c", status: "draft" }, { id: "d", status: "review" },
+  ] };
+  assert.deepEqual(listableForays(doc, { showDrafts: true }).map((f) => f.id), ["a", "b", "c"], "document order, drafts in");
+  assert.deepEqual(listableForays(doc, { unlocked: ["c"], showDrafts: true }).map((f) => f.id), ["a", "b", "c"]);
+  assert.deepEqual(listableForays(doc, { unlocked: ["c"], showDrafts: false }).map((f) => f.id), ["a", "c"], "switch off: today's answer");
+  assert.equal(findForay(doc, "b", { showDrafts: true }).id, "b", "a listed draft must also open");
+  assert.equal(findForay(doc, "b", { showDrafts: false }), null);
+  assert.equal(findForay(doc, "d", { showDrafts: true }), null, "a third status stays hidden");
+  assert.equal(findForay(doc, "c", { unlocked: ["c"], showDrafts: false }).id, "c", "the unlock path is unchanged");
+});
+
+test("foraysReferencingShow carries showDrafts too — the show page's rows follow the same switch", () => {
+  const segments = indexSegments({ segments: [{ id: "s1", item_id: "e1" }] });
+  const sources = indexSources({ sources: [{ id: "e1", show: "Show A" }] });
+  const doc = { forays: [
+    { id: "p", status: PUBLISHED, items: [{ type: "segment", segment_id: "s1" }] },
+    { id: "d", status: "draft", items: [{ type: "segment", segment_id: "s1" }] },
+  ] };
+  const ids = (opts) => foraysReferencingShow(doc, "Show A", { segments, sources, ...opts }).map((f) => f.id);
+  assert.deepEqual(ids({}), ["p"]);
+  assert.deepEqual(ids({ showDrafts: true }), ["p", "d"]);
+  assert.deepEqual(ids({ unlocked: ["d"] }), ["p", "d"], "the unlock path is unchanged");
 });
 
 /* ---------- the join ---------- */

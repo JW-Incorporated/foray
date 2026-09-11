@@ -7,6 +7,29 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
+### "Show draft Forays" — the founder's test-track switch (2026-09-11) — `feat/show-draft-forays`
+
+- **What:** Wyatt: "I can't see these forays in the app, please fix that." The
+  generated Forays land as `status: "draft"` and the visitor rule hides drafts
+  from anyone without `?foray=<id>`. Neither changed. New drawer toggle "Show
+  draft Forays" (durable key `cp_show_drafts`, default off): when on, #/forays
+  (the Library tab's list), Home's "Forays for you" (drafts appended after the
+  ordinary picks, badged) plus a one-line notice, and a show page's "Used in
+  the following forays" rows include every draft — generated ones newest first
+  — and a draft opens and plays through the published Foray's own path. When
+  off, every surface is byte-identical to before (pinned). `player/` takes the
+  switch as the `showDrafts` OPTION on `forayVisibility`/`listableForays`/
+  `findForay`/`foraysReferencingShow` and the client bridge; it never reads
+  the key.
+- **Touches:** `app.js`, `styles.css`, `player/foray-resolve.js`,
+  `player/client.js`, `player/foray-resolve.test.js` (+5),
+  `test/draft-forays-switch.test.js` (new, 10, floored),
+  `test/suite-integrity.test.js`, `test/data-deletion.test.js` (24 -> 25),
+  `docs/legal/privacy-policy.md` (`cp_show_drafts` row), `STATE.md`.
+- **Not done here:** publishing any Foray (founder action, HUMAN-ACTIONS #2);
+  a Forays section on #/library itself (the Library TAB already lands on
+  #/forays for Foray-shaped routes).
+
 ### FD-06: directory CORS header, DECISIONS + privacy disclosure, deck records (2026-09-11) — `feat/fd-06-records-cors`
 
 - **What:** closes the Foray directory deck (`docs/foray-directory-plan.md`).

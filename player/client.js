@@ -1681,8 +1681,8 @@ const ForayPlayer = {
   /** The three-document join, re-exported so app.js resolves the running order
       with exactly the code that builds the queue. app.js is a classic script and
       cannot import an ES module, which is the whole reason this bridge exists. */
-  resolve(foraysDoc, { id, segmentsDoc, sourcesDoc, unlocked = [] } = {}) {
-    const doc = findForay(foraysDoc, id, { unlocked });
+  resolve(foraysDoc, { id, segmentsDoc, sourcesDoc, unlocked = [], showDrafts = false } = {}) {
+    const doc = findForay(foraysDoc, id, { unlocked, showDrafts });
     if (!doc) return null;
     return resolveForay(doc, {
       segments: indexSegments(segmentsDoc),
@@ -1690,19 +1690,22 @@ const ForayPlayer = {
     });
   },
 
-  /** Which Forays may be listed for this visitor (drafts only when named). */
-  listForays(foraysDoc, { unlocked = [] } = {}) {
-    return listableForays(foraysDoc, { unlocked });
+  /** Which Forays may be listed for this visitor (drafts only when named, or
+      when app.js says the founder's test-track switch is on — `showDrafts`
+      is an OPTION here because player/ is pure and never reads a `cp_` key). */
+  listForays(foraysDoc, { unlocked = [], showDrafts = false } = {}) {
+    return listableForays(foraysDoc, { unlocked, showDrafts });
   },
 
   /** The reverse of `resolve`: which Forays draw on a given show (show page,
       requirements B3/Q6). See foray-resolve.js's foraysReferencingShow for
       why this must live here rather than in app.js. */
-  foraysUsingShow(foraysDoc, showNames, { segmentsDoc, sourcesDoc, unlocked = [] } = {}) {
+  foraysUsingShow(foraysDoc, showNames, { segmentsDoc, sourcesDoc, unlocked = [], showDrafts = false } = {}) {
     return foraysReferencingShow(foraysDoc, showNames, {
       segments: indexSegments(segmentsDoc),
       sources: indexSources(sourcesDoc),
       unlocked,
+      showDrafts,
     });
   },
 

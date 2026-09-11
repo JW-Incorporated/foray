@@ -2579,6 +2579,24 @@ body.ui-v2 .hv2-generated-badge {
   background: color-mix(in srgb, var(--amber) 18%, transparent);
 }
 
+/* The test track ("Show draft Forays", app.js § showDraftsOn): a draft card
+   Home lists only while the founder's switch is on carries the same small
+   tag shape as Stretch, in the draft colour the Forays page and show pages
+   already use (`.fy-home-kicker`/`.show-forays-draft` under ui-v2 are violet),
+   and Home carries a one-line notice above the fold while the switch is on. */
+body.ui-v2 .hv2-draft-tag {
+  align-self: flex-start;
+  padding: 1px 7px;
+  border-radius: 3px;
+  font-size: 0.64rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
+  color: var(--violet);
+  background: color-mix(in srgb, var(--violet) 18%, transparent);
+}
+body.ui-v2 .hv2-test-track {
+  margin: 0 0 8px;
+  font-size: 0.78rem; font-weight: 600; color: var(--violet);
+}
+
 /* Episodes for you reuses miniCard()'s own `.mini-card` markup and rules
    unchanged (miniCardV2() wraps it rather than forking it) — only the
    section container and the appended `.hv2-bridge` line are new here. */

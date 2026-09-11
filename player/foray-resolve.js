@@ -37,6 +37,8 @@ import {
 
 /** The one status that may be shown to a visitor who did not ask by id. */
 export const PUBLISHED = "published";
+/** The other status — the only one the founder's test-track switch admits. */
+export const DRAFT = "draft";
 
 const isNum = (n) => typeof n === "number" && Number.isFinite(n);
 const nonEmpty = (s) => typeof s === "string" && s.trim().length > 0;
@@ -83,17 +85,28 @@ export function allForays(doc) {
  * keyless, linkable way in beats an access-control system this repo has no
  * server for.
  *
+ * `showDrafts` (2026-09-11, Wyatt: "I can't see these forays in the app") is
+ * the second way in, and it is the SAME rule seen from the founder's side: a
+ * device whose owner turned the test track on has asked for every draft at
+ * once, the way `?foray=` asks for one. It is an OPTION, not a store read —
+ * this module stays pure, and whether the switch is on is `app.js`'s to know
+ * (a durable `cp_` key, default off). It admits `status: "draft"` only: the
+ * enum has exactly two values (tools/foray/check-forays.mjs pins it), and a
+ * third one is a data error, not a draft.
+ *
  * @param {object} foray
  * @param {object} [opts]
  * @param {string[]} [opts.unlocked]  ids the visitor named explicitly (`?foray=`)
+ * @param {boolean}  [opts.showDrafts]  the founder's test-track switch is on
  * @returns {{ visible: boolean, published: boolean, reason: string }}
  */
-export function forayVisibility(foray, { unlocked = [] } = {}) {
+export function forayVisibility(foray, { unlocked = [], showDrafts = false } = {}) {
   const status = typeof foray?.status === "string" ? foray.status : "";
   const published = status === PUBLISHED;
   if (published) return { visible: true, published, reason: "published" };
   const asked = Array.isArray(unlocked) && nonEmpty(foray?.id) && unlocked.includes(foray.id);
   if (asked) return { visible: true, published, reason: `${status || "unpublished"}, opened by id` };
+  if (showDrafts === true && status === DRAFT) return { visible: true, published, reason: "draft, test track" };
   return { visible: false, published, reason: `${status || "unpublished"} — not published` };
 }
 
@@ -242,15 +255,16 @@ function spanOf(seg) {
    `segments`/`sources` beyond an id lookup.
 
    Same draft-visibility rule as `listableForays`/`findForay`: an unpublished
-   Foray is included only when the visitor named it explicitly. */
-export function foraysReferencingShow(foraysDoc, showNames, { segments, sources, unlocked = [] } = {}) {
+   Foray is included only when the visitor named it explicitly, or when the
+   founder's `showDrafts` test track is on. */
+export function foraysReferencingShow(foraysDoc, showNames, { segments, sources, unlocked = [], showDrafts = false } = {}) {
   const wanted = new Set(Array.isArray(showNames) ? showNames.filter(nonEmpty) : [showNames].filter(nonEmpty));
   if (!wanted.size) return [];
   const segIndex = asMap(segments);
   const srcIndex = asMap(sources);
 
   return allForays(foraysDoc).filter((f) => {
-    if (!forayVisibility(f, { unlocked }).visible) return false;
+    if (!forayVisibility(f, { unlocked, showDrafts }).visible) return false;
     const items = Array.isArray(f.items) ? f.items : [];
     return items.some((it) => {
       if (!it || it.type !== SEGMENT) return false;

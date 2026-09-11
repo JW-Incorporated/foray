@@ -129,7 +129,7 @@ const FLOORS = {
      (2026-09-06): the one-id shell-unlock exception and its five tests were
      deleted with the diagnostic Foray once V-01 shipped an in-app Audition
      button to replace it. */
-  "player/foray-resolve.test.js": 57, // FD-03 (2026-09-10): validateForayDocuments, the directory's one validation entry point; 54 -> 57
+  "player/foray-resolve.test.js": 62, // 2026-09-11: the `showDrafts` option (the founder's test track), admits `draft` only, unlock path unchanged; 57 -> 62
   /* The Foray directory (FD-03, 2026-09-10): the mechanism that lets a phone see
      a new Foray without a store build. Floored with zero slack because each of
      its three rules — never block first paint, never adopt an unvalidated set,
@@ -284,6 +284,17 @@ const FLOORS = {
      leaves the queue and the playhead alone; a vanished Foray reads `dropped`;
      the seam prefetch never warms an unvalidated set's audio). Zero slack. */
   "test/foray-directory.test.js": 14,
+  /* "Show draft Forays" (2026-09-11, Wyatt: "I can't see these forays in the
+     app"): the founder's test-track switch AT THE PAGE — the real app.js over
+     the real resolver and the real data. What only this suite can see is that
+     the switch OFF is byte-identical to an app with no switch (three renders,
+     four builds, one answer), that ON lists the generated drafts on #/forays,
+     Home and a show page and opens + plays them through the published Foray's
+     own path, that `?foray=` is untouched either way, and that the drawer
+     toggle re-renders without closing the drawer. Eight mutations named in the
+     header, each run and seen red. Zero slack: the OFF half is the visitor
+     rule's promise, and every one of these is one edit from its opposite. */
+  "test/draft-forays-switch.test.js": 10,
   /* The standing gate on topic ids in `data/*.json`. Floored because the metric
      it protects is gameable in exactly one direction: a misspelled `food/bakin`
      reads as "has a child" to the root-dumping report and silently erases a
