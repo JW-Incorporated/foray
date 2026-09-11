@@ -226,6 +226,21 @@ export function mintedSegmentRow(segment: NewSegment, topic: string, ctx: Minted
   };
 }
 
+/** Every Foray id already committed in `data/forays.json` under `root`.
+ *
+ * G-30 (manual step 25): the pipeline reads this BEFORE it mints an id, so a
+ * collision is suffixed up front (`uniqueForayId`, `runPipeline.ts`) rather
+ * than discovered by the throw below after the whole run has been paid for.
+ * The throw stays as the last line of defence — a duplicate that reaches it
+ * now means the pipeline's own pre-check was bypassed, not that a person has
+ * to choose a new id. Read-only, like everything else in this module. */
+export function readExistingForayIds(root: string = REPO_ROOT): Set<string> {
+  const file = path.join(root, "data/forays.json");
+  if (!fs.existsSync(file)) return new Set();
+  const live = JSON.parse(fs.readFileSync(file, "utf8")) as { forays?: unknown[] };
+  return new Set((live.forays ?? []).map((f) => (f as { id?: unknown }).id).filter((id): id is string => typeof id === "string"));
+}
+
 /** Loads the four files `check-forays.mjs` validates against, with this
  * candidate Foray substituted/appended for `forays` and this run's minted
  * tier-2 segments/sources merged into the pool and the registry — never written
@@ -241,8 +256,8 @@ export function buildCandidateFiles(
 ): { forays: unknown; segments: unknown; sources: unknown; taxonomy: unknown } {
   const readJson = (rel: string): unknown => JSON.parse(fs.readFileSync(path.join(root, rel), "utf8"));
   const live = readJson("data/forays.json") as { forays: unknown[] };
-  const existingIds = new Set((live.forays as Array<{ id?: unknown }>).map((f) => f.id));
-  if (existingIds.has(candidateRecord.id)) {
+  const existingIds = readExistingForayIds(root);
+  if (typeof candidateRecord.id === "string" && existingIds.has(candidateRecord.id)) {
     throw new Error(`finalizeForay: a Foray with id "${String(candidateRecord.id)}" already exists in data/forays.json — choose a new id or supersede it explicitly (see grilling-history-1's own superseded_by/superseded_note pattern)`);
   }
 

@@ -88,6 +88,11 @@ function baseArgs(out: string, overrides: Partial<CliArgs> = {}): CliArgs {
        from them writes into the same throwaway `dir` these tests already own. */
     budgetUsd: null,
     noResume: false,
+    /* G-30 defaults: single attempt is NOT the default any more, but these
+       tests never throw, so three resumes and an abort-on-refusal are inert. */
+    maxResumes: 3,
+    continueOnRefusedPartial: false,
+    notify: null,
     ...overrides
   };
 }
