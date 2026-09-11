@@ -3,6 +3,7 @@
 <!-- ha-format: 2. Machine record: nothing here needs you. One line per item, newest first.
      Full bodies are in git history. Numbers here are never reused. -->
 
+- #43 · 2026-09-11 · done · Rule on `docs/search-plan.md`'s privacy gate (G1) — it blocks four cards of the search rebuild — "Wyatt ruled **B** (2026-09-11, in session): the privacy policy loses its conditional — typed search text may be sent to our origin and to Apple's directory; Wyatt updates the store listing himself. S-07 executes the Option-B diff; S-02's network half, S-05, S-06, S-08 are unblocked." · by founder
 - #105 · 2026-09-11 · done · ha.py Defect-1 PR-path atomicity test -- safe to close/delete — "ha.py Defect-1 PR-path atomicity verification -- test item closed immediately" · by discord
 - #25 · 2026-09-11 · done · Buy the company domain before writing either store listing — DONE — "Closed 2026-08-25: jwlabs.dev already purchased, answer was do not buy anything. Migration imported it as open because its status lived in a" · by migration-fix
 - #104 · 2026-09-11 · done · Authorize this laptop's SSH key on the Hermes VM — "legacy-dup (laptop #29)" · by migration

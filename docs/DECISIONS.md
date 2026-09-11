@@ -2377,3 +2377,7 @@ D13; kanban card S-04a (`t_835d1a3c`, itself a workspace-bug redo of
   and our Supabase project" is untouched: on the web the Vercel origin *is*
   the app's own, and `test/legal-citations.test.js` pins the directive to
   exactly `'self'`, `SB_URL`, `API_ORIGIN`.
+
+## 2026-09-11 (search privacy gate G1: Option B — typed search text may leave the device)
+
+**Ruling (Wyatt, 2026-09-11, HUMAN-ACTIONS #43):** Option **B**. The privacy policy's conditional ("nothing you type leaves your device unless…") is dropped: as-you-type Shows search may send the typed text to our own origin (`api/shows/search`) and, on a miss, to Apple's iTunes Search API. Wyatt updates the store listings' privacy copy himself. Consequence: `docs/search-plan.md` S-07 lands its Option-B diff (`docs/legal/privacy-policy.md` §2 rewritten, release-gate test pinned to the new contract), and S-02's network half, S-05, S-06 and S-08 are no longer gated. Options A (gate network passes on a local miss) and C (wait for S-03's client index) were declined as not worth the speed cost — "this isn't a huge deal".
