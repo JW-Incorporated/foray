@@ -44,7 +44,13 @@ describe("generateForays --budget-usd (F-04)", () => {
       dryRun: true,
       authorId: "founder-1",
       budgetUsd: 12,
-      noResume: false
+      noResume: false,
+      /* G-30's three flags at their defaults — `generateForaysHandsFree.test.ts`
+         pins each one's parsing; this pins that none of them leaks a value
+         when absent. */
+      maxResumes: 3,
+      continueOnRefusedPartial: false,
+      notify: null
     });
   });
 });

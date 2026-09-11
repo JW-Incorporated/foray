@@ -14,7 +14,7 @@ describe("usageTracking", () => {
   });
 
   it("starts at zero", () => {
-    expect(getUsageTotals()).toEqual({ inputTokens: 0, outputTokens: 0, total: 0 });
+    expect(getUsageTotals()).toEqual({ inputTokens: 0, outputTokens: 0, total: 0, calls: 0 });
   });
 
   it("sums input and output tokens across multiple recorded replies", () => {
@@ -23,7 +23,7 @@ describe("usageTracking", () => {
        then erase the first. Ran it — red. */
     recordUsage({ input_tokens: 100, output_tokens: 40 });
     recordUsage({ input_tokens: 25, output_tokens: 10 });
-    expect(getUsageTotals()).toEqual({ inputTokens: 125, outputTokens: 50, total: 175 });
+    expect(getUsageTotals()).toEqual({ inputTokens: 125, outputTokens: 50, total: 175, calls: 2 });
   });
 
   it("tolerates a missing or partial usage object rather than throwing", () => {
@@ -31,7 +31,8 @@ describe("usageTracking", () => {
     recordUsage(null);
     recordUsage({});
     recordUsage({ input_tokens: 7 });
-    expect(getUsageTotals()).toEqual({ inputTokens: 7, outputTokens: 0, total: 7 });
+    /* G-30: every reply is one CALL, usage block or not — four here. */
+    expect(getUsageTotals()).toEqual({ inputTokens: 7, outputTokens: 0, total: 7, calls: 4 });
   });
 
   it("resets to zero for a new run", () => {

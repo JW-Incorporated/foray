@@ -76,9 +76,20 @@ import type { ExternalResearcher, ExternalResearchContext } from "./ExternalRese
  * sentences are attached verbatim for §4.3 to write beats from.
  */
 
-/** Windows attached per subtopic — the fix plan's "top 3-5", at most one per
- * episode so the spine sees four different conversations rather than four
- * minutes of one.
+/** Windows attached per subtopic, at most one per episode so the spine sees
+ * six different conversations rather than six minutes of one.
+ *
+ * RAISED FROM 4 BY G-25 (tape-yield brief §5 R4). The seed is the only path
+ * that yields: on the run-2 checkpoint the unseeded search admitted 0 of 14
+ * beats at every floor value, and the seeded path admitted 10 of 14 — so the
+ * number of tape beats a Foray can carry is bounded above by the number of
+ * windows the spine had to seed from. Four per subtopic gave the run-2 map 32
+ * windows over 23 episodes for a 32-beat spine, and §4.3 is now asked to seed
+ * EVERY account beat a window can carry (`AnthropicSpineBuilder.ts`), one
+ * episode at a time until M4 admits a repeat (`spineSeeding.ts`). Six keeps
+ * the supply ahead of the ask. The cost is prompt size — two more 600-char
+ * quotes per subtopic, ~10 k characters on an eight-subtopic map — which the
+ * card accepts and the PR records.
  *
  * AND AT MOST ONE PER EPISODE ACROSS THE WHOLE MAP (G-24 R3). The one-per-
  * episode rule used to be per subtopic, so an episode that ranked well for two
@@ -92,19 +103,27 @@ import type { ExternalResearcher, ExternalResearchContext } from "./ExternalRese
  * episode once, under the subtopic that ranked it first, and the next subtopic
  * takes its next-best episode instead — which is more different conversations
  * for the spine, not fewer windows: each subtopic still asks the index for
- * `RESEARCH_TAPE_EPISODE_CANDIDATES` episodes and keeps the best four it may.
+ * `RESEARCH_TAPE_EPISODE_CANDIDATES` episodes and keeps the best six it may.
  *
  * WHY HERE AND NOT IN THE LEDGER. The brief's alternative was to let §4.5 admit
  * a seeded window as an episode's second segment once four are placed. That
  * makes an episode 2 of 5 (40 %) at the moment of placement and bets the rest
  * of the Foray will dilute it; `check-forays.mjs` is the authority on M4 and
  * would refuse the Foray that stops there. Removing the duplicate at the source
- * costs no rule anything and needs no bet. */
-export const RESEARCH_TAPE_WINDOWS_PER_SUBTOPIC = 4;
-/** Episodes the text index is asked for per subtopic. More than the window
- * count because an episode with no body on this machine yields nothing, and
- * because one window per episode is the rule above. */
-export const RESEARCH_TAPE_EPISODE_CANDIDATES = 8;
+ * costs no rule anything and needs no bet.
+ *
+ * G-25 AND G-24 TOGETHER: six windows per subtopic, each episode quoted once
+ * across the map, and a spine-time M4 ledger (`spineSeeding.ts`) that admits
+ * an episode's second seed only once the spine carries eight. The dedupe is
+ * the stricter of the two where they overlap — it removes the second listing
+ * outright rather than admitting it after eight — and it is what makes the
+ * ledger's repeat mean "the same window again" rather than a second stretch
+ * of the same hour. */
+export const RESEARCH_TAPE_WINDOWS_PER_SUBTOPIC = 6;
+/** Episodes the text index is asked for per subtopic. Twice the window count,
+ * as it was at 4/8, because an episode with no body on this machine yields
+ * nothing and because one window per episode is the rule above. */
+export const RESEARCH_TAPE_EPISODE_CANDIDATES = 12;
 /**
  * A research window is something a person READS in a prompt, not a segment a
  * listener hears, so it sits inside §4.5's own 30-180 s band: long enough to

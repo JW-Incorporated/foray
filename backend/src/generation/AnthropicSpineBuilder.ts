@@ -8,6 +8,7 @@ import type { IntentUnderstanding } from "../types/generation";
 import type { ResearchShape } from "../types/research";
 import { DURATION_SHAPE_BUDGETS, SPINE_MIN_SEEDED_BEATS_PER_ACT, type DurationTier, type Spine } from "../types/spine";
 import type { SpineBuildContext, SpineBuilder } from "./SpineBuilder";
+import { SPINE_SEED_REPEAT_MIN, SPINE_SEED_THIRD_MIN } from "./spineSeeding";
 import { recordUsage } from "./usageTracking";
 
 /**
@@ -170,7 +171,10 @@ function tapeWindowLines(researchShape: ResearchShape): string[] {
   return lines;
 }
 
-function buildSpinePrompt(intent: IntentUnderstanding, researchShape: ResearchShape, duration: DurationTier): string {
+/** Exported for tests and for measuring the prompt's size against a real
+ * research map (G-25 records it): the words that reach the model are the
+ * whole of WS-L and G-25, so they are asserted on directly. */
+export function buildSpinePrompt(intent: IntentUnderstanding, researchShape: ResearchShape, duration: DurationTier): string {
   const budget = DURATION_SHAPE_BUDGETS[duration];
   const subtopicLines = researchShape.subtopics
     .map(
@@ -201,6 +205,20 @@ function buildSpinePrompt(intent: IntentUnderstanding, researchShape: ResearchSh
      in either case — this paragraph exists so the spine stops asking for tape
      that will be refused, and spreads its seeds instead. Guidance, not a gate:
      a subject whose tape lives in one episode still gets a spine. */
+  /* AND THE FLOOR IS A FLOOR, NOT THE ASK (G-25; tape-yield brief §5 R4). On
+     the run-2 checkpoint the unseeded search admitted 0 of 14 beats at every
+     floor value and the seeded path admitted 10 of 14: the seed is the only
+     path that yields, so a Foray's tape count is bounded by how many beats the
+     spine chose to seed. WS-L asked for two per act and the spine wrote
+     fourteen seeds for thirty-two beats. It is now asked to seed every ACCOUNT
+     beat a quoted window can carry, and told what an account beat is in the
+     same words `types/spine.ts`'s `BeatKind` uses, so that the beats it leaves
+     unseeded are the ones no recording could carry — arguments, which
+     narration is for — and not simply the ones past the floor.
+     AND THE M4 CAP IS STATED IN NUMBERS (R3; `spineSeeding.ts`). "A quarter"
+     was already here; what it means at seeding time — one seed per episode
+     until the spine carries eight — was not, and the run-2 spine seeded two
+     episodes twice with fourteen seeds and lost an on-claim window to it. */
   const seedRule =
     windowLines.length === 0
       ? []
@@ -211,11 +229,22 @@ function buildSpinePrompt(intent: IntentUnderstanding, researchShape: ResearchSh
           "\"endSec\": ...} copied from the bracketed window it was written from. Beats written from anything else",
           "omit \"seed\".",
           "",
+          "That floor is a minimum, not a target: SEED EVERY ACCOUNT BEAT A WINDOW CAN CARRY. An account beat",
+          "states an event, a practice, a measurement or a mechanism a person could be heard describing —",
+          "whenever one of the quoted windows says it, write the claim from that window's own words and seed",
+          "it. Only an argument beat — a claim about what something MEANS or what someone SHOULD do, which no",
+          "recording of an event carries — stays unseeded and is narrated; so does a beat no quoted window",
+          "actually says. Never seed a claim its window does not say: every seed is checked against the tape's",
+          "own words downstream, and a claim the window does not carry is narrated anyway, with the seed wasted.",
+          "",
           "Spread the seeds across EPISODES: across the WHOLE spine, seeded beats must name DIFFERENT episodeIds",
           "wherever the windows above allow it — no episode can supply more than a quarter of the finished",
-          "Foray's tape, which means one segment per episode until the Foray holds eight, and a second beat",
-          "seeded from an episode already seeded will be refused and narrated. Each window above is listed",
-          "once, so each episodeId can seed one beat. If the spine really must seed two beats from the SAME",
+          `Foray's tape. Concretely: seed each episodeId ONCE until the whole spine carries at least ${SPINE_SEED_REPEAT_MIN}`,
+          "seeded beats; a second seed from an episode already seeded is admitted only after that, and a third",
+          `only once the spine carries ${SPINE_SEED_THIRD_MIN}. A repeat seeded before then is refused downstream and its beat`,
+          "narrated — take another episode's window instead. Each window above is listed once (no episode is quoted",
+          "under two subtopics), so a repeat seed names the SAME window again with a sentence of it not yet",
+          "used. If the spine really must seed two beats from the SAME",
           "episode, put them in the order the tape says them: the beat seeded from the earlier startSec comes first."
         ];
 
