@@ -17,7 +17,14 @@ import { sourceBeats, summarizeSourcing } from "./sourceBeats";
 import { createDigestAudioSourceResolver, type AudioSourceResolver } from "./audioSourceLookup";
 import { writeNarration } from "./writeNarration";
 import { ForayStitcher } from "./stitchForay";
-import { finalizeForay, mintedSegmentRow, type FinalizeForayInput, type FinalizeForayResult, type ForaySlot } from "./finalizeForay";
+import {
+  finalizeForay,
+  generationBatchId,
+  mintedSegmentRow,
+  type FinalizeForayInput,
+  type FinalizeForayResult,
+  type ForaySlot
+} from "./finalizeForay";
 import { resolveTopic, forayIdFor, type TopicCandidate } from "./resolveTopic";
 import { slugifySlotTitle } from "./forayItems";
 import { loadSegmentPool, type SegmentRecord } from "./segmentPoolLookup";
@@ -843,9 +850,11 @@ export async function runForayPipeline(
   /* The pool the runtime clock is measured against has to include what tier 2
      just minted, or a tier-2 tape item contributes 0 s to `runtime_sec` and
      `check-forays.mjs` fails the Foray for a runtime that disagrees with its
-     own items. The cast is the shape difference only: a minted row carries no
-     curator `why`, and nothing that reads this pool asks for one. */
-  const mintedPool = sourced.newSegments.map((s) => mintedSegmentRow(s, topic) as unknown as SegmentRecord);
+     own items. The cast is the shape difference only (`Record<string, unknown>`
+     vs. the typed pool row); every field the pool gate requires is on the row
+     (F-78), read from the same minted source rows the publish will write. */
+  const rowContext = { batchId: generationBatchId(forayId), sources: sourced.newSegmentSources };
+  const mintedPool = sourced.newSegments.map((s) => mintedSegmentRow(s, topic, rowContext) as unknown as SegmentRecord);
   const runtimePool = mintedPool.length ? [...loadSegmentPool(), ...mintedPool] : loadSegmentPool();
 
   /* §4.7 — write narration, then verify it independently (distinct instances,

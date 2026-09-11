@@ -16,6 +16,7 @@ import type {
 } from "../types/tapeSourcing";
 import { validateSourcing } from "../types/tapeSourcing";
 import type { AudioSourceResolver, MintedSegmentSource } from "./audioSourceLookup";
+import { whyFromClaim } from "./mintedSegmentCopy";
 import {
   familiesOfNodes,
   familyGateAllows,
@@ -1332,6 +1333,15 @@ function resolveOneBeat(beat: Beat, state: SourcingState): BeatResolution {
        chose for the window, not a phrase's own few seconds (F-24(c)) — the
        minted segment's times are the tape's own times, and its anchors are the
        tape's own words (F-61). */
+    /* THE POOL GATE'S TWO PROVENANCE FIELDS, TAKEN HERE BECAUSE ONLY HERE ARE
+       THEY KNOWN (F-78). `why` is the beat's claim, clamped to the pool's
+       18-word note (`whyFromClaim`) — the one sentence this pipeline has about
+       why this tape was cut. `transcriptSource` is what the cue provider says
+       it read: the archive's publisher body unless the provider reports a
+       locally transcribed one (`TranscriptCueProvider.transcriptSource`). The
+       DAI verdict is deliberately NOT copied onto the segment — it lives on the
+       `MintedSegmentSource` row minted just above, and `mintedSegmentRow` reads
+       it from there. */
     const segment: NewSegment = {
       id: segmentId,
       itemId,
@@ -1340,7 +1350,9 @@ function resolveOneBeat(beat: Beat, state: SourcingState): BeatResolution {
       referenceDurationSec,
       startAnchor: span.startAnchor,
       endAnchor: span.endAnchor,
-      confidence: "medium"
+      confidence: "medium",
+      why: whyFromClaim(claim),
+      transcriptSource: state.cueProvider.transcriptSource?.(candidate.entry) ?? "publisher"
     };
     const pointer: TapePointer = {
       segmentId,

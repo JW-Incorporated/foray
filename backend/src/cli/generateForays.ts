@@ -9,6 +9,7 @@ import { FileCheckpointStore } from "./checkpointStore";
 import type { GenerationRequest } from "../types/generation";
 import type { PartialCandidate } from "../generation/partialCandidate";
 import type { VeracityMetrics } from "../generation/veracityMetrics";
+import type { PublishRecord } from "./publishForay";
 import { env } from "../config/env";
 import { modelSummary } from "../config/models";
 import { BudgetStopError, defaultBudgetGuard } from "../cost/budgetGuard";
@@ -169,6 +170,10 @@ export type ReportEntry = {
   file?: string;
   ttlA1Ms?: number | null;
   veracity?: VeracityMetrics;
+  /** Written by `publishForay.ts --report` once the candidate has a PR — the
+   * PR, the `origin/main` sha it was cut from, and the deploy id it shipped in
+   * (`null` until known; the id is minted by the deploy after the merge). */
+  publish?: PublishRecord;
 };
 
 /**
