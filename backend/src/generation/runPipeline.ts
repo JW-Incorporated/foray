@@ -50,10 +50,10 @@ import type { PromptUnderstander } from "./PromptUnderstander";
 import type { ExternalResearcher } from "./ExternalResearcher";
 import type { SpineBuilder } from "./SpineBuilder";
 import type { DeepenActBuilder } from "./DeepenActBuilder";
-import type { NarrationWriterBuilder } from "./NarrationWriterBuilder";
+import type { NarrationBuildContext, NarrationWriterBuilder, SelectAndWriteRequest } from "./NarrationWriterBuilder";
 import type { NarrationVerifierBuilder } from "./NarrationVerifierBuilder";
 import type { ContinuityBuilder } from "./ContinuityBuilder";
-import type { WrittenAct, WrittenSlot } from "./writeNarration";
+import type { NarrationWriteStats, WrittenAct, WrittenSlot } from "./writeNarration";
 import type { TranscriptCueProvider } from "./transcriptArchiveLookup";
 import type { TranscriptTextIndex } from "./transcriptTextIndex";
 import type { TapeRelevanceInput } from "../types/tapeSourcing";
@@ -800,8 +800,25 @@ export async function runForayPipeline(
     writePages: (writeRequest, writeCtx) => {
       narrationWriterCalls++;
       return narrationWriter.writePages(writeRequest, writeCtx);
-    }
+    },
+    /* G-34: the merged select+prose call is ONE request and counts as
+       one. Forwarded only when the wrapped builder offers it — its
+       absence is what tells `writeNarration` to take the two-call path,
+       so a wrapper that always declared it would silently break every
+       builder without it. */
+    ...(narrationWriter.selectAndWrite
+      ? {
+          selectAndWrite: (mergedRequest: SelectAndWriteRequest, mergedCtx: NarrationBuildContext) => {
+            narrationWriterCalls++;
+            return narrationWriter.selectAndWrite!(mergedRequest, mergedCtx);
+          }
+        }
+      : {})
   };
+  /* G-34: `retryRounds` is counted by the stage itself (a round is a
+     slot going back to the writer), not by the proxies above, which see
+     requests and cannot tell a round from a call. */
+  const narrationStats: NarrationWriteStats = { retryRounds: 0 };
   const countingNarrationVerifier: NarrationVerifierBuilder = {
     providerName: narrationVerifier.providerName,
     verifySlot: (verifyRequest, verifyCtx) => {
@@ -1189,6 +1206,10 @@ export async function runForayPipeline(
             {
               writer: countingNarrationWriter,
               verifier: countingNarrationVerifier,
+              /* G-34: one accumulator shared by every concurrent act — a
+                 plain counter the stage increments; `meta.veracity` reads
+                 it once every act has settled. */
+              stats: narrationStats,
               /* G-35: the prefetched packs — ONE gatherer shared by every
                  concurrent act, so each act's gathers are memo lookups
                  against the fan-out that ran before this gate opened.
@@ -1281,6 +1302,7 @@ export async function runForayPipeline(
     topic,
     writerCalls: narrationWriterCalls,
     verifierCalls: narrationVerifierCalls,
+    retryRounds: narrationStats.retryRounds,
     pipelineTokens: getUsageTotals().total,
     stageTimings: timings.all(),
     retrieval: evidence.metrics(),

@@ -23,7 +23,7 @@ import type { SourcedAct } from "../src/types/tapeSourcing";
 import type { Spine, Voice } from "../src/types/spine";
 import type { SpineBuilder } from "../src/generation/SpineBuilder";
 import type { ContinuityBuilder } from "../src/generation/ContinuityBuilder";
-import type { NarrationBuildContext, NarrationWriterBuilder } from "../src/generation/NarrationWriterBuilder";
+import type { NarrationBuildContext } from "../src/generation/NarrationWriterBuilder";
 import type { EvidenceDoc, EvidenceGatherer, EvidencePack } from "../src/generation/gatherEvidence";
 import type { PartialCandidate } from "../src/generation/partialCandidate";
 
@@ -109,16 +109,19 @@ async function waitFor(pred: () => boolean, what: string, ms = 20_000): Promise<
 const settle = (ms = 25) => new Promise((r) => setTimeout(r, ms));
 
 /**
- * A stub writer whose `writePages` can be HELD per slot. `started` is the
+ * A stub writer whose writing call can be HELD per slot. `started` is the
  * order slots were requested in; `completed` the order they finished;
- * `inFlight`/`peak` count slots currently inside `writePages`. `hold`
+ * `inFlight`/`peak` count slots currently inside the call. `hold`
  * returns the latch to await for a slot, or nothing to let it through.
+ * The call is `selectAndWrite` — since G-34 a clean slot's one writer
+ * request is the merged select+prose call, and `writePages` is reached
+ * only on a retry.
  */
 function holdingWriter(hold: (slotTitle: string) => Promise<void> | undefined = () => undefined) {
   const writer = new StubNarrationWriterBuilder();
-  const real = writer.writePages.bind(writer);
+  const real = writer.selectAndWrite.bind(writer);
   const state = { started: [] as string[], completed: [] as string[], timeline: [] as string[], inFlight: 0, peak: 0 };
-  writer.writePages = async (...args: Parameters<NarrationWriterBuilder["writePages"]>) => {
+  writer.selectAndWrite = async (...args: Parameters<StubNarrationWriterBuilder["selectAndWrite"]>) => {
     const title = args[0].slotTitle;
     state.started.push(title);
     state.timeline.push(`start:${title}`);
@@ -258,8 +261,8 @@ describe("writeNarration — acts are narrated in parallel (G-32)", () => {
     const fail = deferred();
     const act1 = deferred();
     const { writer, state } = holdingWriter((title) => (title === "A1S0" ? act1.promise : undefined));
-    const real = writer.writePages;
-    writer.writePages = async (...args) => {
+    const real = writer.selectAndWrite;
+    writer.selectAndWrite = async (...args) => {
       if (args[0].slotTitle === "A0S0") {
         state.started.push("A0S0");
         await fail.promise;
@@ -558,8 +561,8 @@ describe("runForayPipeline — all acts narrate at once; stitch and continuity s
     const store = new FakeCheckpointStore(checkpointFingerprint({ prompt: request.prompt, duration: request.duration, topic: options.topic }));
 
     const { writer, state } = holdingWriter();
-    const real = writer.writePages;
-    writer.writePages = async (...args) => {
+    const real = writer.selectAndWrite;
+    writer.selectAndWrite = async (...args) => {
       if (spine.actOf(args[0].slotTitle) === 2) {
         state.started.push(args[0].slotTitle);
         await settle(10);

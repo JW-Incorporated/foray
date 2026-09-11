@@ -1615,7 +1615,7 @@ const BACKEND_FLOORS = {
      unverified hand-off the gate refuses, and the two former throw sites (no
      evidence, and no page ever produced) are pinned as degrade paths so the
      surviving `NarrationWriteError` guards the beat count and nothing else. */
-  "test/writeNarration.test.ts": 61,
+  "test/writeNarration.test.ts": 69,
   /* Stage 3b (kanban t_567b570f, docs/show-pages-plan.md §Stage 3): shared
      catalogue store CRUD (scoping by show_id, upsert-not-duplicate on
      (show_id, guid), published_at ordering, feed-state round-trip). */
@@ -1737,7 +1737,7 @@ const BACKEND_FLOORS = {
   /* F-50/F-51 raised this from 31: `unverifiedPages` (the count the publish
      gate now refuses on, replacing writeNarration's throw) and
      `purposeRevisedPages` (reported, never gated). */
-  "test/veracityMetrics.test.ts": 40,
+  "test/veracityMetrics.test.ts": 43,
   /* WS-A evidence-first narration (generation fix plan 2026-09-09): the
      per-beat evidence pack (tape cue window + up to three retrieved print
      passages, cached by claim hash) and the mechanical narration rules run 1's
