@@ -36,4 +36,24 @@ export interface SpineBuilder {
 export interface SpineBuildContext {
   userId: string;
   sessionId?: string;
+  /**
+   * F-86: present when this call is a RE-ASK — the previous reply failed the
+   * structural gate (`spineStructure.ts`, F-13) and `buildSpine.ts` is asking
+   * once more with the violations named. A builder that honours it re-sends its
+   * own prompt, the previous reply, and one "fix only these" turn, so the model
+   * keeps everything the gate did not refuse; a builder that ignores it simply
+   * produces a fresh spine, which the gate judges the same way. Absent on every
+   * first call.
+   */
+  revision?: SpineRevisionRequest;
+}
+
+/** F-86: what a re-ask carries — see `SpineBuildContext.revision`. */
+export interface SpineRevisionRequest {
+  /** The reply the gate refused, already schema-parsed. */
+  previous: Spine;
+  /** The gate's messages, verbatim — each names the act, the slot and the beat. */
+  violations: string[];
+  /** 1-based: the first re-ask is 1. */
+  attempt: number;
 }

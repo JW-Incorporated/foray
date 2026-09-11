@@ -3,6 +3,7 @@ import * as fs from "fs";
 import * as path from "path";
 import { spawn } from "child_process";
 import { runForayPipeline, RefusedPartialError, type NarrationActTiming, type RunPipelineOutcome } from "../generation/runPipeline";
+import type { SpineReask } from "../generation/buildSpine";
 import { FileTranscriptCueProvider } from "../generation/transcriptArchiveLookup";
 import { FileTranscriptTextIndex, type TranscriptTextIndex } from "../generation/transcriptTextIndex";
 import { checkpointFingerprint } from "../generation/checkpoint";
@@ -396,6 +397,10 @@ export type ReportEntry = {
    * act, so overlap is visible in the report. Only on a `generated` outcome. */
   narrationConcurrency?: number;
   narrationActs?: NarrationActTiming[];
+  /** F-86: every structural re-ask §4.3 took (attempt number and the gate's
+   * violations it was asked to fix). Absent when the first spine passed —
+   * the common case — and on a resume from a banked spine. */
+  spineReasks?: SpineReask[];
   veracity?: VeracityMetrics;
   /** Written by `publishForay.ts --report` once the candidate has a PR — the
    * PR, the `origin/main` sha it was cut from, and the deploy id it shipped in
@@ -630,9 +635,15 @@ export async function generateOneCandidate(
   const ms = outcome.timings.reduce((sum, t) => sum + t.ms, 0);
   const line = summarize(outcome);
   const ttlA1Ms = outcome.outcome === "generated" ? outcome.ttlA1Ms : null;
+  /* F-86: the spine re-asks, on the run line and in the report. A re-ask is an
+     extra Opus call that the first reply's defect paid for, so the line names
+     the defect — that is what a person reads to decide whether the prompt
+     needs changing. */
+  const spineReasks = "spineReasks" in outcome ? outcome.spineReasks : [];
   console.log(
     `  ${outcome.outcome === "generated" ? "built " : "stop  "} ${spec.prompt.slice(0, 60)} — ${line}` +
       (ttlA1Ms != null ? ` (ttlA1=${ttlA1Ms}ms)` : "") +
+      (spineReasks.length ? ` [spine re-asked ${spineReasks.length}x: ${spineReasks.flatMap((r) => r.violations).join("; ")}]` : "") +
       (refusedPartials.length ? ` [partial refused at act ${refusedPartials.map((i) => i + 1).join(", ")}; continued]` : "")
   );
 
@@ -652,6 +663,7 @@ export async function generateOneCandidate(
     ...(outcome.outcome === "generated"
       ? { narrationConcurrency: outcome.narration.concurrency, narrationActs: outcome.narration.acts }
       : {}),
+    ...(spineReasks.length ? { spineReasks } : {}),
     veracity,
     ...(resumes.length ? { resumes } : {}),
     ...(refusedPartials.length ? { refusedPartials } : {})

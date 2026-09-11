@@ -91,6 +91,7 @@ function generatedOutcome(id = "fake-foray-1"): RunPipelineOutcome {
     input: { id, title: "t", topic: "food/grilling-bbq", summary: "s", slots: [], items: [], runtimeSec: 0 },
     result: { validation: OK_VALIDATION, forayRecord: { id }, timings: [] },
     spine: {} as never,
+    spineReasks: [],
     tapeRelevance: [],
     timings: [],
     ttlA1Ms: null,

@@ -85,7 +85,22 @@ export class AnthropicSpineBuilder implements SpineBuilder {
     ctx: SpineBuildContext
   ): Promise<Spine> {
     const promptText = buildSpinePrompt(intent, researchShape, duration);
-    const estimatedInputTokens = roughTokenEstimate(promptText);
+    /* F-86: a structural re-ask is the SAME prompt, the reply the gate refused
+       as the assistant's own turn, and one user turn naming what to fix — so
+       the model keeps every act, slot and beat the gate did not name and
+       changes only the ones it did. A fresh single-turn prompt would cost the
+       same Opus call and hand back a different spine with its own defects. */
+    const messages: Anthropic.MessageParam[] = ctx.revision
+      ? [
+          { role: "user", content: promptText },
+          { role: "assistant", content: spineReplyText(ctx.revision.previous) },
+          { role: "user", content: buildSpineFixInstruction(ctx.revision.violations) }
+        ]
+      : [{ role: "user", content: promptText }];
+    const conversationText = messages.map((m) => (typeof m.content === "string" ? m.content : "")).join("\n");
+    const estimatedInputTokens = roughTokenEstimate(conversationText);
+    /* Metered the way any spine call is — a re-ask is a whole Opus call, and
+       the guard sees it as one (`buildSpine.ts` adds no second budget). */
     await this.budgetGuard.checkAndRecord({
       userId: ctx.userId,
       operation: "spine_build",
@@ -98,7 +113,7 @@ export class AnthropicSpineBuilder implements SpineBuilder {
     const response = await this.client.messages.create({
       model: MODEL,
       max_tokens: MAX_OUTPUT_TOKENS,
-      messages: [{ role: "user", content: promptText }]
+      messages
     });
 
     recordUsage(response.usage);
@@ -110,7 +125,7 @@ export class AnthropicSpineBuilder implements SpineBuilder {
       // The re-ask is its own real API call — it re-sends the whole prompt
       // plus the bad reply, so it is its own metered spend, gated the same
       // way as the original call (see parseWithRetry.ts's BUDGET note).
-      const reaskEstimatedInputTokens = roughTokenEstimate(promptText + textBlock.text + reaskLine);
+      const reaskEstimatedInputTokens = roughTokenEstimate(conversationText + textBlock.text + reaskLine);
       await this.budgetGuard.checkAndRecord({
         userId: ctx.userId,
         operation: "spine_build",
@@ -123,11 +138,7 @@ export class AnthropicSpineBuilder implements SpineBuilder {
       const retryResponse = await this.client.messages.create({
         model: MODEL,
         max_tokens: MAX_OUTPUT_TOKENS,
-        messages: [
-          { role: "user", content: promptText },
-          { role: "assistant", content: textBlock.text },
-          { role: "user", content: reaskLine }
-        ]
+        messages: [...messages, { role: "assistant", content: textBlock.text }, { role: "user", content: reaskLine }]
       });
       const retryTextBlock = retryResponse.content.find((b: Anthropic.ContentBlock): b is Anthropic.TextBlock => b.type === "text");
       if (!retryTextBlock) throw new Error("Anthropic spine re-ask response had no text block");
@@ -144,6 +155,35 @@ export class AnthropicSpineBuilder implements SpineBuilder {
       acts: raw.acts
     };
   }
+}
+
+/**
+ * F-86: the reply the gate refused, in the exact shape the prompt asked for —
+ * `{voice, acts}` and nothing else — so the assistant turn in a re-ask is
+ * what the model would have said, not a wrapper around it. Exported for the
+ * test that pins the re-ask conversation.
+ */
+export function spineReplyText(previous: Spine): string {
+  return JSON.stringify({ voice: previous.voice, acts: previous.acts });
+}
+
+/**
+ * F-86: the one user turn a structural re-ask adds. Short by design — the
+ * whole prompt is still in the conversation, so this names ONLY what the gate
+ * refused and says to keep the rest. Each violation is the gate's own message
+ * (act, slot, the first 120 characters of the claim), which is what makes the
+ * fix findable in a 30-beat reply. Exported for tests.
+ */
+export function buildSpineFixInstruction(violations: string[]): string {
+  return [
+    "Your previous spine failed the structural check before deepening. FIX ONLY THE FOLLOWING and keep",
+    "everything else — every act, slot, beat, seed and the voice — exactly as it was:",
+    ...violations.map((v) => `- ${v}`),
+    "",
+    "Every beat claim is ONE sentence (one full stop, at most 60 words); no claim appears twice; every act",
+    "has a startState and an endState. Respond with ONLY the complete corrected JSON object, the same shape",
+    "as before, no markdown fences, no other text."
+  ].join("\n");
 }
 
 

@@ -16,7 +16,28 @@ import {
 import { tokenizeForSourcing } from "./catalogueLookup";
 import { SpineSeedLedger } from "./spineSeeding";
 import { countSentences, normalizeClaim, MAX_BEAT_CLAIM_WORDS } from "./spineStructure";
-import type { SpineBuildContext, SpineBuilder } from "./SpineBuilder";
+import type { SpineBuildContext, SpineBuilder, SpineRevisionRequest } from "./SpineBuilder";
+
+/**
+ * F-86: what the stub can be told to get WRONG, so the re-ask path has a
+ * fixture. A fixture generator that could only produce passing spines could
+ * not exercise the one loop that exists for a failing one.
+ */
+export interface StubSpineBuilderOptions {
+  /**
+   * The first N replies carry one beat whose claim is TWO sentences — the
+   * shape run 7 attempt 2's real spine failed the structural gate with — and
+   * every reply after that is clean. `1` reproduces run 7 exactly: the first
+   * reply is refused, the re-ask passes. `2` is the re-ask failing too.
+   */
+  twoSentenceClaimReplies?: number;
+}
+
+/** The two-sentence claim the stub writes when told to (F-86). Claim-shaped
+ * on both sides of the full stop, so gate 1 (`validateSpine`) accepts it and
+ * the refusal is gate 2's — exactly where run 7's was. */
+export const STUB_TWO_SENTENCE_CLAIM =
+  "The epoxy that held the ceiling panels was not chosen recklessly. It passed every test it was given.";
 
 /**
  * Deterministic fake spine builder, used whenever ANTHROPIC_API_KEY is
@@ -36,8 +57,15 @@ import type { SpineBuildContext, SpineBuilder } from "./SpineBuilder";
  */
 export class StubSpineBuilder implements SpineBuilder {
   readonly providerName = "stub";
+  /** F-86: every re-ask this builder was handed, in order — a test's only
+   * window onto what the pipeline told the builder to fix. */
+  readonly revisions: SpineRevisionRequest[] = [];
+  private replies = 0;
 
-  constructor(private readonly budgetGuard: BudgetGuard = defaultBudgetGuard) {}
+  constructor(
+    private readonly budgetGuard: BudgetGuard = defaultBudgetGuard,
+    private readonly options: StubSpineBuilderOptions = {}
+  ) {}
 
   async buildSpine(
     intent: IntentUnderstanding,
@@ -45,6 +73,9 @@ export class StubSpineBuilder implements SpineBuilder {
     duration: DurationTier,
     ctx: SpineBuildContext
   ): Promise<Spine> {
+    if (ctx.revision) this.revisions.push(ctx.revision);
+    /* Every call meters itself, a re-ask included — the same rule the real
+       builder is held to. */
     await this.budgetGuard.checkAndRecord({
       userId: ctx.userId,
       operation: "spine_build",
@@ -160,7 +191,7 @@ export class StubSpineBuilder implements SpineBuilder {
       });
     }
 
-    return {
+    const spine: Spine = {
       subject: intent.subject,
       angle: intent.angle,
       duration,
@@ -168,6 +199,19 @@ export class StubSpineBuilder implements SpineBuilder {
       voice: stubVoice(intent),
       acts
     };
+
+    /* F-86: the reply the stub was told to get wrong. The beat is act 2's
+       first (run 7's was in act 2), or act 1's when the tier has one act; its
+       claim is replaced and nothing else moves, which is also what the real
+       builder's re-ask is asked to do. Counted per REPLY, revision or not, so
+       `twoSentenceClaimReplies: 2` is a re-ask that fails again. */
+    this.replies += 1;
+    if (this.replies <= (this.options.twoSentenceClaimReplies ?? 0)) {
+      const act = spine.acts[Math.min(1, spine.acts.length - 1)]!;
+      const beat = act.slots[0]!.beats[0]!;
+      beat.claim = STUB_TWO_SENTENCE_CLAIM;
+    }
+    return spine;
   }
 }
 
