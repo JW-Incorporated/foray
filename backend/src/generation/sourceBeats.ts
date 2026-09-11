@@ -174,6 +174,7 @@ import {
   loadSegmentPool,
   requiredOverlapFor,
   scoreSegmentsAgainstClaim,
+  tier1BarClears,
   TIER1_MATCH_THRESHOLD,
   type SegmentRecord,
   type SegmentWindowText
@@ -1152,8 +1153,8 @@ function applyRecut(recut: SpreadRecut, state: SourcingState, tapeRelevance: Tap
 /** What tier 1 saw, once it has decided it has nothing (F-49). Must be called
  * BEFORE any ledger is updated for this beat, or the vetoes it reports would be
  * the beat's own footprint. */
-function traceTier1(claim: string, state: SourcingState): Tier1TraceRow {
-  const best = scoreSegmentsAgainstClaim(claim, state.segmentPool, { windowText: state.windowText })[0];
+function traceTier1(claim: string, state: SourcingState, idf: ReadonlyMap<string, number> | undefined): Tier1TraceRow {
+  const best = scoreSegmentsAgainstClaim(claim, state.segmentPool, { windowText: state.windowText, idf })[0];
   if (!best) {
     return { bestSegmentId: null, bestItemId: null, score: 0, requiredScore: TIER1_MATCH_THRESHOLD, matchedIn: null, gate: "no-candidates" };
   }
@@ -1161,9 +1162,10 @@ function traceTier1(claim: string, state: SourcingState): Tier1TraceRow {
   /* `relaxSpread: true` — reached only after the relaxed pass ALSO found nothing
      (see `resolveOneBeat`), so `d5-uniform` cannot be what stopped this segment
      and reporting it would name a rule that was not enforced (F-73). */
-  const gate: Tier1Gate =
-    best.score < requiredScore ? "threshold" : (tier1VetoFor(best.segment, state, { relaxSpread: true }) ?? "exhausted");
-  return {
+  /* `threshold` covers both the count bar and, for a transcript window, the
+     weighted floor (G-24 R2); the two window fields below say which. */
+  const gate: Tier1Gate = !tier1BarClears(best) ? "threshold" : (tier1VetoFor(best.segment, state, { relaxSpread: true }) ?? "exhausted");
+  const row: Tier1TraceRow = {
     bestSegmentId: best.segment.id,
     bestItemId: best.segment.item_id,
     score: best.score,
@@ -1171,6 +1173,11 @@ function traceTier1(claim: string, state: SourcingState): Tier1TraceRow {
     matchedIn: best.matchedIn,
     gate
   };
+  if (best.matchedIn === "transcript") {
+    row.windowWeightedShare = Number(best.weightedShare.toFixed(3));
+    row.windowDistinctiveTerms = best.distinctiveTerms;
+  }
+  return row;
 }
 
 /** What tier 2 saw when no episode cleared its threshold: the best on-topic
@@ -1209,6 +1216,45 @@ function resolveOneBeat(beat: Beat, state: SourcingState): BeatResolution {
     };
   }
 
+  /* TIER 2'S CANDIDATES ARE GATHERED BEFORE TIER 1 RUNS (G-24 R2), because one
+     of them is asked first. Gathering is a text-index query and a title scan —
+     no body is opened here. */
+  const archiveIsUsable = (entry: TranscriptDigestEntry) =>
+    familyGateAllows(state.forayTopic, nodesForArchiveEntry(entry, state), state.root);
+  const candidates = tier2Candidates(claim, state, archiveIsUsable, beat.seed);
+  const walk = new Tier2Walk(beat, candidates, state);
+
+  /* THE SEED WINDOW IS ASKED BEFORE TIER 1 (G-24 R2; tape-yield brief §4 cause
+     4). §4.5's search order puts the pool first because a curated segment is the
+     cheapest hit — and for an UNSEEDED beat it still is. A seeded beat is
+     different: the spine READ a stretch of tape and wrote the claim out of it,
+     so the best-informed guess in this pipeline about where the beat's tape is
+     has already been made, and tier 1's coverage bar — a quarter of the claim's
+     words, unweighted, in a segment somebody cut for another reason — is a
+     weaker judgement than the seed's. On attempt 6 it was the wrong one: beat
+     2/0/0's seed window (durable-agents 1769-1911, "what if the tool calls time
+     out? what if I don't use a re-ranker?") was verbatim on-claim and never
+     consulted, because a *Causality* segment about the 1981 Hyatt Regency
+     walkway collapse cleared tier 1 on `engineering, good, enough, step` —
+     four of fifteen — and played under an agent-engineering claim. Run 1's
+     Chernobyl-for-Hyatt class of failure, back in the accepted set.
+
+     ONLY THE SEED'S OWN WINDOW MOVES AHEAD OF TIER 1. The whole-episode fallback
+     (F-68's "preference, not permission") and every other candidate still run
+     after it, exactly where they always did, so an unseeded beat's search order
+     is untouched and a seeded beat whose window does not carry the claim gets
+     the pool's chance next, then the archive's. The floor is F-72's, unchanged. */
+  let seedTrial: Tier2Progress | null = null;
+  const seeded = beat.seed ? candidates.find((c) => c.fromSeed) : undefined;
+  if (seeded) {
+    const accepted = walk.run([seeded], "seed-window");
+    if (accepted) return accepted;
+    /* One candidate walked, so the walk's furthest row IS the seed's own verdict:
+       the gate that refused the seed window and the window's own numbers. Kept
+       for the trace, whatever the rest of the walk reports (G-24 R3). */
+    seedTrial = walk.furthest;
+  }
+
   // Tier 1: existing data/segments.json pool. Cheapest possible hit,
   // tried first, per §4.5's own search order — no new segment is ever
   // created here.
@@ -1218,10 +1264,18 @@ function resolveOneBeat(beat: Beat, state: SourcingState): BeatResolution {
      candidate that clears every hard rule. See `durationVetoFor` for why D5's
      triple clause is the only thing allowed to be relaxed, and why relaxing it is
      better for the finished Foray than losing the tape. */
+  /* AND THE POOL IS JUDGED WITH THE CORPUS'S OWN WORD WEIGHTS (G-24 R2). The
+     text index's search for this claim — already run to gather tier 2's
+     candidates — computed an idf for every claim word; tier 1's transcript-window
+     bar now uses it, so a segment that shares only the trade's everyday words
+     with the claim is refused the way tier 2 would refuse the same stretch
+     (`tier1BarClears`). With no index there is no idf and every word weighs one. */
+  const idf = candidates.find((c) => c.text?.idf)?.text?.idf;
   const tier1 =
-    findTier1Match(claim, state.segmentPool, (segment) => tier1IsUsable(segment, state), { windowText: state.windowText }) ??
+    findTier1Match(claim, state.segmentPool, (segment) => tier1IsUsable(segment, state), { windowText: state.windowText, idf }) ??
     findTier1Match(claim, state.segmentPool, (segment) => tier1IsUsable(segment, state, { relaxSpread: true }), {
-      windowText: state.windowText
+      windowText: state.windowText,
+      idf
     });
   if (tier1) {
     placeTape(tier1.segment.id, tier1.segment.item_id, tier1.segment.start_sec, tier1.segment.end_sec - tier1.segment.start_sec, state);
@@ -1247,7 +1301,7 @@ function resolveOneBeat(beat: Beat, state: SourcingState): BeatResolution {
 
   /* Tier 1 has nothing. Record what it saw NOW, while the Foray-wide ledgers
      still hold only what earlier beats committed to (F-49). */
-  const tier1Trace = traceTier1(claim, state);
+  const tier1Trace = traceTier1(claim, state, idf);
 
   /* TIER 2: THE TRANSCRIPT ARCHIVE, ASKED WHAT IT SAYS (WS-H; F-06, F-49).
      A hit here PRODUCES a new segment via a real, verbatim anchor located in
@@ -1272,23 +1326,87 @@ function resolveOneBeat(beat: Beat, state: SourcingState): BeatResolution {
      Candidates are walked in order and the FIRST one that passes every gate
      wins, so a beat still takes at most one tier-2 segment. What the trace
      reports when none passes is the candidate that got FURTHEST, because that
-     is the gate a person would go and argue with. */
-  const archiveIsUsable = (entry: TranscriptDigestEntry) =>
-    familyGateAllows(state.forayTopic, nodesForArchiveEntry(entry, state), state.root);
-  const candidates = tier2Candidates(claim, state, archiveIsUsable, beat.seed);
+     is the gate a person would go and argue with — and, for a seeded beat, the
+     seed's own gate beside it (G-24 R3). The walk itself is `Tier2Walk`. */
+  const accepted = walk.run(candidates, "search");
+  if (accepted) return accepted;
 
-  let furthest: Tier2Progress | null = null;
+  const tier2Trace = tier2TraceFor(claim, state, archiveIsUsable, candidates, walk.furthest, beat.seed, seedTrial);
+
+  /* Tier 3: nothing in the archive could be cut for this beat. Log ONE
+     transcription-queue candidate saying how far the search got — this
+     pipeline's OWN log, distinct from and never written into
+     `data/transcription-queue.json`, which has its own producer
+     (`tools/transcribe/build-transcription-queue.mjs`) — and let the beat
+     become narration. */
+  state.transcriptionQueueCandidates.push(transcriptionQueueRow(claim, walk.furthest));
+
+  return {
+    kind: "narration",
+    reason: narrationReasonFor(walk.furthest),
+    diagnosis: { outcome: "no-tape", tier1: tier1Trace, tier2: tier2Trace }
+  };
+}
+
+/** Which of the two passes a candidate is being walked in — see `Tier2Walk.run`. */
+type Tier2WalkMode = "seed-window" | "search";
+
+/**
+ * THE TIER-2 WALK, IN ONE PLACE, RUN TWICE PER SEEDED BEAT (G-24 R2).
+ *
+ * Everything between "here is a candidate episode" and a resolved tape pointer
+ * lives here: the assembly and length ledgers, the window search and its floor,
+ * the cut, the audio-source row, the minted segment, and the `furthest` /
+ * `spreadDeferred` bookkeeping the trace and the second chance read. It is a
+ * class rather than a loop inside `resolveOneBeat` because `resolveOneBeat` now
+ * runs it TWICE for a seeded beat — the seed's own window before tier 1, the
+ * rest of the archive after — and the two passes share one ledger, one
+ * `furthest`, one deferred candidate. A second copy of the acceptance path
+ * would be a second place for the ledger writes to drift out of step, which is
+ * the mistake F-70 was.
+ *
+ * THE TWO MODES DIFFER IN WHAT IS ASKED OF THE EPISODE, NOT IN ANY THRESHOLD.
+ *
+ *   `"seed-window"` — one candidate, the seeded episode, and ONLY the stretch
+ *   §4.3 quoted (`within`, F-68) is searched; the floor is F-72's share-only
+ *   floor, unchanged. The body is opened FIRST and M4's share cap is asked after
+ *   the relevance verdict, so the trace can carry the seed window's own numbers
+ *   whatever refuses it — attempt 6's beat 1/0/0 was refused at `m4-share`
+ *   before its body was opened, at what turned out to be a weighted share of
+ *   0.746, and the row could only say "window-overlap 0.27" about a different
+ *   episode (G-24 R3). The cost is one confined window search over an episode
+ *   the Foray already holds tape from.
+ *
+ *   `"search"` — the whole candidate list, exactly the walk F-70/F-73 built: M4
+ *   before the body is opened, the whole-episode window search on the searching
+ *   floor, the cut, M3, the length ledger, the audio row. The seeded candidate
+ *   is walked again here ONLY if its seed window was refused for not being about
+ *   the claim (`window-overlap`) — that is F-68's fallback to the rest of the
+ *   hour, and it runs where it always did, after tier 1. A seed refused by any
+ *   other gate was refused by the ledger, the cut or the audio row, none of
+ *   which the rest of the episode can change, and the pre-G-24 walk moved on
+ *   from it too (`continue`); it is skipped, and its row is already in
+ *   `furthest`.
+ */
+class Tier2Walk {
+  /** The candidate that got furthest, across both passes — what the trace
+   * reports when nothing passes. Seeded by the seed pass, so the seed's own row
+   * competes on progress with everything the search pass finds. */
+  furthest: Tier2Progress | null = null;
   /**
    * THE ONE CANDIDATE D5's TRIPLE CLAUSE ALONE STOOD IN THE WAY OF (F-73).
    *
    * `durationVetoFor` treats that clause as a preference rather than a rule — see
    * its own note — so a candidate that clears every hard rule and only makes a
    * uniform triple is remembered here instead of being thrown away, and it is
-   * taken after the walk if no better-shaped candidate turned up. The first such
-   * candidate is kept, not the best, because the walk is already in preference
-   * order: the earlier candidate is the one this beat would have had.
+   * taken after the search pass if no better-shaped candidate turned up. The
+   * first such candidate is kept, not the best, because the walk is already in
+   * preference order: the earlier candidate is the one this beat would have had.
+   * A seed window deferred here waits for tier 1 and the search pass like
+   * anything else — before G-24 tier 1 pre-empted the seed outright, so this is
+   * no worse for it.
    */
-  let spreadDeferred: {
+  private spreadDeferred: {
     candidate: Tier2Candidate;
     cues: TranscriptCue[];
     window: TapeWindow;
@@ -1298,25 +1416,212 @@ function resolveOneBeat(beat: Beat, state: SourcingState): BeatResolution {
      * second chance reports the floor that actually admitted it. */
     seedFloor: "share-only" | undefined;
   } | null = null;
+  /** The seed pass's verdict, once it has run — what tells the search pass
+   * whether the seeded episode has anything left to be asked. */
+  private seedGate: Tier2Gate | null = null;
+
+  constructor(
+    private readonly beat: Beat,
+    private readonly candidates: Tier2Candidate[],
+    private readonly state: SourcingState
+  ) {}
+
+  /** Walks `list` in `mode`; returns the accepted resolution or `null`. The
+   * search pass ends with the deferred second chance. */
+  run(list: Tier2Candidate[], mode: Tier2WalkMode): BeatResolution | null {
+    const { beat, state } = this;
+    const claim = beat.claim;
+    const seedPass = mode === "seed-window";
+
+    for (const candidate of list) {
+      const itemId = deriveItemId(candidate.entry);
+
+      if (!seedPass && candidate.fromSeed && this.seedGate !== null && this.seedGate !== "window-overlap") continue;
+
+      /* THE SAME LEDGER TIER 1 KEEPS (F-70). Tier 2 mints its own segment instead
+         of picking one out of the pool, and until now that let it walk straight
+         past the two Foray-wide assembly rules tier 1 has enforced since the
+         pipeline's first end-to-end run — including for the SEEDED candidate the
+         walk now puts first, which is how run 2 attempt 4b put two windows of one
+         *Practical AI* episode in one slot, backwards.
+
+         Share is asked HERE, before the episode's body is opened, because it
+         depends on nothing the search finds — the answer is the same for every
+         window of this episode, and refusing early spends no work on tape the
+         Foray cannot take. Order is asked further down, on the cut span, because
+         that is the first point at which the minted segment has a real start
+         time. Both refusals fall through to the next candidate exactly as tier
+         1's do: a Foray already full of one episode should take another
+         episode's tape, not narration.
+
+         THE SEED PASS IS THE ONE EXCEPTION (G-24 R3): there the body is opened
+         first and share is asked after the relevance verdict, below, so the row
+         that says `m4-share` can also say what the seed window scored. */
+      if (!seedPass && !m4ShareAllows(itemId, state)) {
+        this.record({ candidate, gate: "m4-share" }, seedPass);
+        continue;
+      }
+      const cues = state.cueProvider.getCues(candidate.entry);
+      if (!cues) {
+        this.record({ candidate, gate: "no-body" }, seedPass);
+        continue;
+      }
+      /* WHICH WINDOW CARRIES THE BEAT (F-61, and F-24 before it). The relevance
+         judgement is made on a STRETCH of tape scored by how much of the claim's
+         vocabulary is spoken inside it — not on a verbatim run of the claim's own
+         words, which is prose asked to be speech and which run 2 proved does not
+         exist (23 of 23 searching beats died on it). A window that clears the
+         floor is tape about the claim; run 1's Chernobyl-for-Hyatt anchor and
+         F-24's passing mention do not clear it. */
+      /* AND THE SEEDED BEAT'S OWN WINDOW IS ASKED FIRST (F-68). WS-L put the
+         seeded EPISODE at the front of the walk but then searched the whole hour
+         of it, so the stretch §4.3 actually quoted — the one the claim's words
+         came out of — competed with every other minute of the same episode and
+         lost whenever another minute scored higher. It is asked first now — in
+         the seed pass, before tier 1 (G-24 R2) — and kept when it clears the
+         floor.
+
+         IT IS A PREFERENCE, NOT A PERMISSION — the same rule as the seeded
+         episode itself. When the seed's window does not clear, the whole-episode
+         search runs in the search pass exactly as before and the trace reports
+         what that found. */
+      /* AND IT IS THE ONE WINDOW JUDGED ON SHARE ALONE (F-72). The seed window
+         was not found by searching — the spine READ it and wrote this claim out
+         of it — so the rare-word count, which exists to refuse a window a SEARCH
+         landed on for the wrong reason, is reported here but not required. The
+         share floor is unchanged and every other window in this loop (the
+         whole-episode fallback, every unseeded beat, every text-index and
+         title candidate) faces both conditions exactly as before. The reasoning
+         in full, and both floors in one place, are `TapeWindowFloor` in
+         `transcriptArchiveLookup.ts`. */
+      const window = seedPass
+        ? selectTapeWindow(claim, cues, {
+            idf: candidate.text?.idf,
+            within: { startSec: beat.seed!.startSec, endSec: beat.seed!.endSec }
+          })
+        : selectTapeWindow(claim, cues, { idf: candidate.text?.idf });
+      /* Every window faces the floor for HOW IT WAS FOUND: the seed's own on
+         share, anything this search turned up on both conditions. */
+      const floor = seedPass ? "seed-window" : "archive-search";
+      if (!tapeWindowIsRelevant(window, floor)) {
+        this.record({ candidate, gate: "window-overlap", window }, seedPass);
+        continue;
+      }
+      /* Whether the share-only floor is what let it through, as opposed to a seed
+         window that would have cleared the searching floor anyway — the trace
+         carries this so a run log can count how often the rule DECIDED. */
+      const seedFloor: "share-only" | undefined = seedPass && seedFloorDecided(window) ? "share-only" : undefined;
+      /* M4's share, for the seed pass — asked here, after relevance, for the
+         trace's sake (see the class note). The rule and the answer are the same. */
+      if (seedPass && !m4ShareAllows(itemId, state)) {
+        this.record({ candidate, gate: "m4-share", window, seedFloor }, seedPass);
+        continue;
+      }
+      /* AND WHICH WORDS MARK ITS EDGES (ADR-0007). The anchors are quoted from
+         the tape at the window's own boundary cues, so they can be found again in
+         a listener's differently-stitched copy; growth to segment length follows
+         the claim rather than padding symmetrically (F-62). */
+      /* AND HOW LONG A SEGMENT IT IS CUT TO (F-73). The window is chosen for
+         relevance and nothing else, which is right; the D-tier rules are about
+         LENGTH, and a cut that stopped at `MIN_TAPE_SEGMENT_SEC` left them to
+         whatever the window happened to be. The target comes from
+         `D_TARGET_LADDER_SEC`, indexed by what this Foray has already placed, so
+         consecutive segments are asked for deliberately different lengths — and the
+         cut still only grows while the tape is saying the claim's own words, so no
+         target is ever bought with off-claim seconds. */
+      const span = cutWindowToSegment(claim, cues, window!, { targetSec: tapeTargetFor(state.placedTapeCount) });
+      if (!span) {
+        this.record({ candidate, gate: "no-anchor", window, seedFloor }, seedPass);
+        continue;
+      }
+      /* AND THE ORDER RULE, ON THE SPAN'S OWN START (F-70). M3 is about where a
+         segment sits in its episode, so it can only be asked once the window has
+         been cut to cue boundaries and the minted segment has its real start
+         time. Asked BEFORE the audio-source resolution below so a candidate this
+         Foray cannot use never writes a `data/segment-sources.json` row for an
+         episode no segment ends up coming from. */
+      if (!m3OrderAllows(itemId, span.startSec, state)) {
+        this.record({ candidate, gate: "m3-order", window, span, seedFloor }, seedPass);
+        continue;
+      }
+      /* AND THE D-TIER LEDGER, ON THE CUT SPAN'S OWN LENGTH (F-73). Asked here for
+         M3's reason exactly: the length is not real until the window has been cut to
+         cue boundaries and grown. Asked BEFORE the audio-source resolution below for
+         M3's other reason: a candidate this Foray cannot use must not leave a
+         `data/segment-sources.json` row behind for an episode no segment comes
+         from. */
+      const durationVeto = durationVetoFor(itemId, span.endSec - span.startSec, state);
+      if (durationVeto) {
+        this.record({ candidate, gate: durationVeto, window, span, seedFloor }, seedPass);
+        /* D5's triple clause is a preference, so the candidate it ALONE refused is
+           kept for the second chance below. Re-asked with the clause dropped, which
+           is what proves "alone": `m4-runtime` is asked after it and would otherwise
+           never have been asked at all. `seedFloor` travels with it, or the second
+           chance would credit the searching floor for a window F-72's admitted. */
+        if (
+          durationVeto === "d5-uniform" &&
+          !this.spreadDeferred &&
+          durationVetoFor(itemId, span.endSec - span.startSec, state, { relaxSpread: true }) === null
+        ) {
+          this.spreadDeferred = { candidate, cues, window: window!, span, itemId, seedFloor };
+        }
+        continue;
+      }
+      const accepted = this.acceptCandidate(candidate, cues, window!, span, itemId, seedFloor);
+      if (accepted) return accepted;
+      this.record({ candidate, gate: "no-audio-source", window, span, seedFloor }, seedPass);
+    }
+
+    if (seedPass) return null;
+
+    /* THE SECOND CHANCE, ONE CLAUSE LIGHTER (F-73). Nothing in the archive could be
+       cut for this beat WITHOUT making a uniform triple — so the choice is between a
+       Foray that sounds a little metronomic here and a Foray with one less piece of
+       tape, and `durationVetoFor` explains at length why the tape wins. The trace
+       still records what happened: `furthest` holds the `d5-uniform` row, so a run's
+       log says which beats took this branch. */
+    if (this.spreadDeferred) {
+      const d = this.spreadDeferred;
+      const accepted = this.acceptCandidate(d.candidate, d.cues, d.window, d.span, d.itemId, d.seedFloor);
+      if (accepted) return accepted;
+      this.furthest = furtherOf(this.furthest, {
+        candidate: d.candidate,
+        gate: "no-audio-source",
+        window: d.window,
+        span: d.span,
+        seedFloor: d.seedFloor
+      });
+    }
+    return null;
+  }
+
+  /** Folds one refusal into `furthest`; in the seed pass it is also the seed's
+   * verdict the search pass consults. */
+  private record(progress: Tier2Progress, seedPass: boolean): void {
+    this.furthest = furtherOf(this.furthest, progress);
+    if (seedPass) this.seedGate = progress.gate;
+  }
 
   /**
    * Everything between "this candidate is allowed" and the resolved tape pointer:
-   * the audio-source row, the minted segment, the ledgers. Extracted because it
-   * has TWO callers now — the walk, and the deferred second chance above — and a
-   * second copy of it is a second place for the ledger writes to drift out of
-   * step, which is the mistake F-70 was.
+   * the audio-source row, the minted segment, the ledgers. One implementation,
+   * with THREE callers — the seed pass, the search pass and the deferred second
+   * chance — because a second copy of it is a second place for the ledger writes
+   * to drift out of step, which is the mistake F-70 was.
    *
    * Returns `null` for exactly one reason, the audio-source refusal, so the
    * caller can record that gate; every other refusal happens before it is called.
    */
-  const acceptCandidate = (
+  private acceptCandidate(
     candidate: Tier2Candidate,
     cues: TranscriptCue[],
     window: TapeWindow,
     span: TapeSpan,
     itemId: string,
     seedFloor: "share-only" | undefined
-  ): BeatResolution | null => {
+  ): BeatResolution | null {
+    const { state } = this;
+    const claim = this.beat.claim;
     /* TAPE NOTHING CAN PLAY IS NOT TAPE. A minted segment is a pointer into an
        episode's audio, and `check-forays.mjs` refuses a pool item id with no
        `data/segment-sources.json` row ("nothing can resolve its audio"). So the
@@ -1385,174 +1690,7 @@ function resolveOneBeat(beat: Beat, state: SourcingState): BeatResolution {
       nodes: nodesForArchiveEntry(candidate.entry, state),
       pointer
     };
-  };
-
-  for (const candidate of candidates) {
-    const itemId = deriveItemId(candidate.entry);
-    /* THE SAME LEDGER TIER 1 KEEPS (F-70). Tier 2 mints its own segment instead
-       of picking one out of the pool, and until now that let it walk straight
-       past the two Foray-wide assembly rules tier 1 has enforced since the
-       pipeline's first end-to-end run — including for the SEEDED candidate the
-       walk now puts first, which is how run 2 attempt 4b put two windows of one
-       *Practical AI* episode in one slot, backwards.
-
-       Share is asked HERE, before the episode's body is opened, because it
-       depends on nothing the search finds — the answer is the same for every
-       window of this episode, and refusing early spends no work on tape the
-       Foray cannot take. Order is asked further down, on the cut span, because
-       that is the first point at which the minted segment has a real start
-       time. Both refusals fall through to the next candidate exactly as tier
-       1's do: a Foray already full of one episode should take another
-       episode's tape, not narration. */
-    if (!m4ShareAllows(itemId, state)) {
-      furthest = furtherOf(furthest, { candidate, gate: "m4-share" });
-      continue;
-    }
-    const cues = state.cueProvider.getCues(candidate.entry);
-    if (!cues) {
-      furthest = furtherOf(furthest, { candidate, gate: "no-body" });
-      continue;
-    }
-    /* WHICH WINDOW CARRIES THE BEAT (F-61, and F-24 before it). The relevance
-       judgement is made on a STRETCH of tape scored by how much of the claim's
-       vocabulary is spoken inside it — not on a verbatim run of the claim's own
-       words, which is prose asked to be speech and which run 2 proved does not
-       exist (23 of 23 searching beats died on it). A window that clears the
-       floor is tape about the claim; run 1's Chernobyl-for-Hyatt anchor and
-       F-24's passing mention do not clear it. */
-    /* AND THE SEEDED BEAT'S OWN WINDOW IS ASKED FIRST (F-68). WS-L put the
-       seeded EPISODE at the front of the walk but then searched the whole hour
-       of it, so the stretch §4.3 actually quoted — the one the claim's words
-       came out of — competed with every other minute of the same episode and
-       lost whenever another minute scored higher. It is asked first now, and
-       kept when it clears the floor.
-
-       IT IS A PREFERENCE, NOT A PERMISSION — the same rule as the seeded
-       episode itself. When the seed's window does not clear, the whole-episode
-       search runs exactly as before and the trace reports what that found. */
-    /* AND IT IS THE ONE WINDOW JUDGED ON SHARE ALONE (F-72). The seed window
-       was not found by searching — the spine READ it and wrote this claim out
-       of it — so the rare-word count, which exists to refuse a window a SEARCH
-       landed on for the wrong reason, is reported here but not required. The
-       share floor is unchanged and every other window in this loop (the
-       whole-episode fallback below, every unseeded beat, every text-index and
-       title candidate) faces both conditions exactly as before. The reasoning
-       in full, and both floors in one place, are `TapeWindowFloor` in
-       `transcriptArchiveLookup.ts`. */
-    const seedWindow =
-      candidate.fromSeed && beat.seed
-        ? selectTapeWindow(claim, cues, {
-            idf: candidate.text?.idf,
-            within: { startSec: beat.seed.startSec, endSec: beat.seed.endSec }
-          })
-        : null;
-    const seedWindowClears = tapeWindowIsRelevant(seedWindow, "seed-window");
-    /* Whether the share-only floor is what let it through, as opposed to a seed
-       window that would have cleared the searching floor anyway — the trace
-       carries this so a run log can count how often the rule DECIDED. */
-    const seedFloor: "share-only" | undefined = seedWindowClears && seedFloorDecided(seedWindow) ? "share-only" : undefined;
-    const window = seedWindowClears ? seedWindow : selectTapeWindow(claim, cues, { idf: candidate.text?.idf });
-    /* Every window faces the floor for HOW IT WAS FOUND: the seed's own on
-       share, anything this search turned up on both conditions. */
-    if (!tapeWindowIsRelevant(window, seedWindowClears ? "seed-window" : "archive-search")) {
-      furthest = furtherOf(furthest, { candidate, gate: "window-overlap", window });
-      continue;
-    }
-    /* AND WHICH WORDS MARK ITS EDGES (ADR-0007). The anchors are quoted from
-       the tape at the window's own boundary cues, so they can be found again in
-       a listener's differently-stitched copy; growth to segment length follows
-       the claim rather than padding symmetrically (F-62). */
-    /* AND HOW LONG A SEGMENT IT IS CUT TO (F-73). The window is chosen for
-       relevance and nothing else, which is right; the D-tier rules are about
-       LENGTH, and a cut that stopped at `MIN_TAPE_SEGMENT_SEC` left them to
-       whatever the window happened to be. The target comes from
-       `D_TARGET_LADDER_SEC`, indexed by what this Foray has already placed, so
-       consecutive segments are asked for deliberately different lengths — and the
-       cut still only grows while the tape is saying the claim's own words, so no
-       target is ever bought with off-claim seconds. */
-    const span = cutWindowToSegment(claim, cues, window!, { targetSec: tapeTargetFor(state.placedTapeCount) });
-    if (!span) {
-      furthest = furtherOf(furthest, { candidate, gate: "no-anchor", window, seedFloor });
-      continue;
-    }
-    /* AND THE ORDER RULE, ON THE SPAN'S OWN START (F-70). M3 is about where a
-       segment sits in its episode, so it can only be asked once the window has
-       been cut to cue boundaries and the minted segment has its real start
-       time. Asked BEFORE the audio-source resolution below so a candidate this
-       Foray cannot use never writes a `data/segment-sources.json` row for an
-       episode no segment ends up coming from. */
-    if (!m3OrderAllows(itemId, span.startSec, state)) {
-      furthest = furtherOf(furthest, { candidate, gate: "m3-order", window, span, seedFloor });
-      continue;
-    }
-    /* AND THE D-TIER LEDGER, ON THE CUT SPAN'S OWN LENGTH (F-73). Asked here for
-       M3's reason exactly: the length is not real until the window has been cut to
-       cue boundaries and grown. Asked BEFORE the audio-source resolution below for
-       M3's other reason: a candidate this Foray cannot use must not leave a
-       `data/segment-sources.json` row behind for an episode no segment comes
-       from. */
-    const durationVeto = durationVetoFor(itemId, span.endSec - span.startSec, state);
-    if (durationVeto) {
-      furthest = furtherOf(furthest, { candidate, gate: durationVeto, window, span, seedFloor });
-      /* D5's triple clause is a preference, so the candidate it ALONE refused is
-         kept for the second chance below. Re-asked with the clause dropped, which
-         is what proves "alone": `m4-runtime` is asked after it and would otherwise
-         never have been asked at all. `seedFloor` travels with it, or the second
-         chance would credit the searching floor for a window F-72's admitted. */
-      if (
-        durationVeto === "d5-uniform" &&
-        !spreadDeferred &&
-        durationVetoFor(itemId, span.endSec - span.startSec, state, { relaxSpread: true }) === null
-      ) {
-        spreadDeferred = { candidate, cues, window: window!, span, itemId, seedFloor };
-      }
-      continue;
-    }
-    const accepted = acceptCandidate(candidate, cues, window!, span, itemId, seedFloor);
-    if (accepted) return accepted;
-    furthest = furtherOf(furthest, { candidate, gate: "no-audio-source", window, span, seedFloor });
   }
-
-  /* THE SECOND CHANCE, ONE CLAUSE LIGHTER (F-73). Nothing in the archive could be
-     cut for this beat WITHOUT making a uniform triple — so the choice is between a
-     Foray that sounds a little metronomic here and a Foray with one less piece of
-     tape, and `durationVetoFor` explains at length why the tape wins. The trace
-     still records what happened: `furthest` holds the `d5-uniform` row, so a run's
-     log says which beats took this branch. */
-  if (spreadDeferred) {
-    const accepted = acceptCandidate(
-      spreadDeferred.candidate,
-      spreadDeferred.cues,
-      spreadDeferred.window,
-      spreadDeferred.span,
-      spreadDeferred.itemId,
-      spreadDeferred.seedFloor
-    );
-    if (accepted) return accepted;
-    furthest = furtherOf(furthest, {
-      candidate: spreadDeferred.candidate,
-      gate: "no-audio-source",
-      window: spreadDeferred.window,
-      span: spreadDeferred.span,
-      seedFloor: spreadDeferred.seedFloor
-    });
-  }
-
-  const tier2Trace = tier2TraceFor(claim, state, archiveIsUsable, candidates, furthest, beat.seed);
-
-  /* Tier 3: nothing in the archive could be cut for this beat. Log ONE
-     transcription-queue candidate saying how far the search got — this
-     pipeline's OWN log, distinct from and never written into
-     `data/transcription-queue.json`, which has its own producer
-     (`tools/transcribe/build-transcription-queue.mjs`) — and let the beat
-     become narration. */
-  state.transcriptionQueueCandidates.push(transcriptionQueueRow(claim, furthest));
-
-  return {
-    kind: "narration",
-    reason: narrationReasonFor(furthest),
-    diagnosis: { outcome: "no-tape", tier1: tier1Trace, tier2: tier2Trace }
-  };
 }
 
 /** One episode tier 2 is willing to open for a claim, and how it was found. */
@@ -1571,7 +1709,9 @@ interface Tier2Progress {
   candidate: Tier2Candidate;
   gate: Tier2Gate;
   /** The best window this candidate's tape had for the claim — present from the
-   * window search onwards, `null` only when the episode had no usable cues. */
+   * window search onwards, `null` only when the episode had no usable cues. On
+   * an `m4-share` row it is present only for the seed pass, where the body is
+   * opened before the cap is asked (G-24 R3). */
   window?: TapeWindow | null;
   /** The cut span, when the search got as far as minting anchors from it. */
   span?: TapeSpan;
@@ -1594,7 +1734,9 @@ const TIER2_GATE_PROGRESS: Record<Tier2Gate, number> = {
   /* F-70's two assembly gates sit where the walk actually asks them: `m4-share`
      before the body is opened, `m3-order` after the span is cut. Ordering them
      by where they are asked keeps this table a description of the loop rather
-     than a second opinion about it. */
+     than a second opinion about it. (The seed pass asks `m4-share` after the
+     relevance verdict instead — `progressOf` below is where that is accounted
+     for.) */
   "m4-share": 3,
   "no-body": 4,
   /* `window-overlap` now comes FIRST of the two tape gates and `no-anchor`
@@ -1615,9 +1757,23 @@ const TIER2_GATE_PROGRESS: Record<Tier2Gate, number> = {
   "no-audio-source": 12
 };
 
+/**
+ * A row's progress is its gate's, with one exception: an `m4-share` row that
+ * carries a window is the seed pass's, where the cap was asked AFTER the window
+ * cleared relevance (G-24 R3) — so it got further than any `window-overlap`
+ * row and is ranked between that gate and `no-anchor`, which is exactly where
+ * the seed pass asks it. This is what makes attempt 6's beat 1/0/0 report
+ * "m4-share at 0.746 on the seeded episode" rather than "window-overlap at
+ * 0.27 on another one": the founder reads the reason that actually decided.
+ */
+function progressOf(row: Tier2Progress): number {
+  if (row.gate === "m4-share" && row.window) return TIER2_GATE_PROGRESS["window-overlap"] + 0.5;
+  return TIER2_GATE_PROGRESS[row.gate];
+}
+
 function furtherOf(current: Tier2Progress | null, next: Tier2Progress): Tier2Progress {
   if (!current) return next;
-  return TIER2_GATE_PROGRESS[next.gate] > TIER2_GATE_PROGRESS[current.gate] ? next : current;
+  return progressOf(next) > progressOf(current) ? next : current;
 }
 
 /**
@@ -1709,14 +1865,29 @@ function tier2TraceFor(
   isUsable: (entry: TranscriptDigestEntry) => boolean,
   candidates: Tier2Candidate[],
   furthest: Tier2Progress | null,
-  seed: BeatSeed | undefined
+  seed: BeatSeed | undefined,
+  seedTrial: Tier2Progress | null
 ): Tier2TraceRow {
   /* WS-L: a seeded beat that ended up narrated is the case worth reading — the
      spine wrote a claim from this episode and the tape there would not carry it.
      Stamped on every branch below, including the ones that never opened an
      episode at all. */
-  const withSeed = (row: Tier2TraceRow): Tier2TraceRow =>
-    seed ? { ...row, seededEpisode: seed.episodeId, seedWindowWon: false } : row;
+  /* AND THE SEED'S OWN GATE, ALONGSIDE WHATEVER THE ROW REPORTS (G-24 R3). The
+     row's `gate` is the FURTHEST candidate's, and for a seeded beat that can be
+     another episode entirely — attempt 6's beat 1/0/0 read "window-overlap
+     0.27" on federated-learning part 1 while its seed window on part 2 had
+     scored 0.746 and been refused by M4's share cap. `seedGate` is what refused
+     the seed window itself, and `seedWindowWeightedShare` what it scored, so
+     the reason a person reads is the reason that decided. */
+  const withSeed = (row: Tier2TraceRow): Tier2TraceRow => {
+    if (!seed) return row;
+    const stamped: Tier2TraceRow = { ...row, seededEpisode: seed.episodeId, seedWindowWon: false };
+    if (seedTrial) {
+      stamped.seedGate = seedTrial.gate;
+      if (seedTrial.window) stamped.seedWindowWeightedShare = Number(seedTrial.window.weightedShare.toFixed(3));
+    }
+    return stamped;
+  };
   if (!furthest) {
     /* Nothing was even worth opening. When the text index ran, that IS the
        deciding gate; when the topic gate is what emptied the field, `lineage`

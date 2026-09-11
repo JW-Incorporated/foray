@@ -684,6 +684,38 @@ export interface SelectTapeWindowOptions {
 export const WINDOW_WITHIN_TOLERANCE_SEC = 1;
 
 /**
+ * HOW MUCH EACH OF A CLAIM'S WORDS COUNTS, given the corpus's idf for it.
+ *
+ * WEIGHTS, NORMALISED SO ONE FLOOR CAN SERVE EVERY CORPUS. A term's idf depends
+ * on how many episodes the search touched, so a raw idf would make
+ * `TIER2_WINDOW_MIN_SHARE` mean something different for a fifteen-episode show
+ * than for a nine-hundred-episode one. Dividing by the rarest term the query
+ * has puts every weight on 0..1: the claim's rarest word counts one, the
+ * trade's everyday words count a twentieth of that.
+ *
+ * A term the corpus never says weighs ONE — as rare as it gets. It can never be
+ * matched, so it only ever counts against the window, which is right: a claim
+ * built on names nobody in this archive utters is a claim this archive is not
+ * about. With no idf at all (a title-path candidate, a caller with no index)
+ * every term weighs one and the weighted share is the plain share.
+ *
+ * ONE DEFINITION, TWO CALLERS (G-24 R2): `selectTapeWindow` below, which is
+ * where it was written, and tier 1's transcript-window bar
+ * (`segmentPoolLookup.ts`), which adopted the same weighted share and rare-word
+ * floor after an unweighted count admitted a Hyatt Regency walkway segment
+ * under an agent-engineering claim on `engineering, good, enough, step`. Two
+ * copies of this arithmetic would be two floors that drift.
+ */
+export function claimTermWeigher(claimTerms: readonly string[], idf: ReadonlyMap<string, number> | undefined): (term: string) => number {
+  const rarest = Math.max(...claimTerms.map((t) => idf?.get(t) ?? 0), 0);
+  return (term: string): number => {
+    const w = idf?.get(term);
+    if (typeof w !== "number" || !Number.isFinite(w) || w <= 0) return 1;
+    return rarest > 0 ? Math.min(1, w / rarest) : 1;
+  };
+}
+
+/**
  * The stretch of `cues` that carries `claimText` best, or `null` when the
  * episode has no usable cues or the claim no content words.
  *
@@ -726,23 +758,7 @@ export function selectTapeWindow(claimText: string, cues: TranscriptCue[], optio
   }
   if (claimTerms.length === 0) return null;
 
-  /* WEIGHTS, NORMALISED SO ONE FLOOR CAN SERVE EVERY CORPUS. A term's idf
-     depends on how many episodes the search touched, so a raw idf would make
-     `TIER2_WINDOW_MIN_SHARE` mean something different for a fifteen-episode
-     show than for a nine-hundred-episode one. Dividing by the rarest term the
-     query has puts every weight on 0..1: the claim's rarest word counts one,
-     the trade's everyday words count a twentieth of that.
-
-     A term the corpus never says weighs ONE — as rare as it gets. It can never
-     be matched, so it only ever counts against the window, which is right: a
-     claim built on names nobody in this archive utters is a claim this archive
-     is not about. */
-  const rarest = Math.max(...claimTerms.map((t) => options.idf?.get(t) ?? 0), 0);
-  const weightOf = (term: string): number => {
-    const w = options.idf?.get(term);
-    if (typeof w !== "number" || !Number.isFinite(w) || w <= 0) return 1;
-    return rarest > 0 ? Math.min(1, w / rarest) : 1;
-  };
+  const weightOf = claimTermWeigher(claimTerms, options.idf);
   let totalWeight = 0;
   for (const term of claimTerms) totalWeight += weightOf(term);
   if (totalWeight <= 0) return null;
@@ -1137,12 +1153,32 @@ export function deriveItemId(entry: TranscriptDigestEntry): string {
   return `${entry.show_id}--${slug || "episode"}`;
 }
 
-/** The text spoken between two timestamps, cues joined in order. */
+/**
+ * The text spoken between two timestamps, cues joined in order.
+ *
+ * STRICT AT BOTH EDGES (G-24 R1; tape-yield brief §4 cause 2). Cues are
+ * contiguous, so the cue that ENDS at `startSec` is the sentence spoken just
+ * before the window and the cue that STARTS at `endSec` is the one spoken just
+ * after it; neither is inside it. Until G-24 both were kept (`end_sec >=
+ * startSec`, `start_sec <= endSec`), and the consequence ran three stages
+ * downstream: §4.2 quoted the leading cue into the spine prompt under the
+ * window's own seconds, the spine wrote the claim from that first sentence and
+ * copied the seconds faithfully, and §4.5's seed window (`within`, F-68) then
+ * excluded the very cue the claim came from — on attempt 6, 7 of 8 quotes
+ * opened with the previous cue's text, 6 of 14 seeded claims were written from
+ * it, and 2 beats were lost outright (seed windows at 0.000 and 0.016) while 4
+ * more survived only because the whole-episode fallback re-found the cue.
+ *
+ * A cue that OVERLAPS the interval by any positive amount is still included —
+ * a pool segment's bounds are anchor times that can sit mid-cue, and tier 1
+ * reads those cues through this function too. Only the touching-but-outside
+ * cues are excluded, which is what "spoken between" means.
+ */
 export function cueWindowText(cues: TranscriptCue[], startSec: number, endSec: number): string {
   const parts: string[] = [];
   for (const cue of cues) {
-    if (cue.end_sec < startSec) continue;
-    if (cue.start_sec > endSec) continue;
+    if (cue.end_sec <= startSec) continue;
+    if (cue.start_sec >= endSec) continue;
     parts.push(cue.text);
   }
   return parts.join(" ");
