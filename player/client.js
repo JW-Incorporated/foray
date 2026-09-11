@@ -94,18 +94,19 @@ import { SINGLE_ITEM } from "./queue-strategy.js";
 import { seekPrecision, formatTimestamp, EXACT, OWN } from "./seek-policy.js";
 import { itemRuntimeSec } from "./foray-queue.js";
 import {
-  resolveForay, indexSegments, indexSources, findForay, listableForays,
+  resolveForay, indexSegments, indexSources, findForay, listableForays, allForays,
   forayElapsed, segmentAtElapsed, fmtClock, fmtSpan, progressSegments,
   foraysReferencingShow,
 } from "./foray-resolve.js";
 import {
   ForayProgressStore, resumePoint, remainingLabel, percentDone,
-  DRIFT_EXACT, DRIFT_UNVERIFIED, DRIFT_UNANCHORED,
+  DRIFT_EXACT, DRIFT_UNVERIFIED, DRIFT_UNANCHORED, DRIFT_DROPPED,
 } from "./foray-progress.js";
 import {
   DiagnosticLog, PlayerDiagnostics, formatDiagnosticReport,
 } from "./diagnostic-log.js";
 import { forayCredits, collectionIdsByShow, creditsSummary, artworkUrlsByShow } from "./foray-sources.js";
+import { createForayDirectory, DIRECTORY_DB_NAME } from "./foray-directory.js";
 import { mountStrip, stripModel, stripSummary, segmentStripHtml, applyStripGrow } from "./segment-strip.js";
 import {
   HOLD_MS, MOVE_TOLERANCE_PX, ZOOM_SCALE,
@@ -345,6 +346,50 @@ window.forayNoteTapFailure = (phase, errorName) => {
 window.forayRecordSearch = (fields) => {
   try {
     diag.search(fields || {});
+    return true;
+  } catch (_) {
+    return false;
+  }
+};
+
+/* ---------- the Foray directory (FD-03) ----------
+
+   Built here and handed to app.js on `window`, for the reason everything above
+   is: app.js is a classic script and cannot import `player/foray-directory.js`,
+   and the validator the directory runs (`validateForayDocuments`) is the same
+   join `resolve()` below uses, so the set app.js paints is a set this player can
+   play.
+
+   Its cache is its OWN IndexedDB database (`DIRECTORY_DB_NAME`), not a `cp_` key
+   in `storage` above — the three documents are ~300 KB of public JSON, which is
+   neither user data nor something the durable store's every hydration should
+   deserialise and filter back out. `makeIdbTier` answers null where there is no
+   IndexedDB, and the directory then runs cache-less: seed at boot, network after.
+
+   Nothing is fetched at module scope. `app.js`'s `init()` calls `start()` and
+   `boot()` before its first paint (the cache and the bundled pointer only, both
+   bounded) and `refresh()` after it — the split that keeps the network off the
+   critical path is app.js's, and `test/foray-directory.test.js` pins it there.
+
+   Every choice and outcome lands in the field record through `diag.dataSource`
+   (FD-01), after hydration for the reason `diag.boot()` waits for it. */
+const directory = createForayDirectory({
+  fetch: (url, opts) => fetch(url, opts),
+  cache: makeIdbTier({ dbName: DIRECTORY_DB_NAME }),
+  onEvent: (fields) => {
+    storageReady.then(() => diag.dataSource(fields)).catch(() => {});
+  },
+});
+window.forayDirectory = directory;
+/**
+ * The page's own `data` entry (FD-01): the boot-time source of each document as
+ * app.js saw it, and the web's `stale-shell` pin. Same shape and the same
+ * sanitising as every other bridge above: fields, never prose, and a boolean back
+ * so nothing on the page holds a reference into the ring.
+ */
+window.forayNoteDataSource = (fields) => {
+  try {
+    storageReady.then(() => diag.dataSource(fields || {})).catch(() => {});
     return true;
   } catch (_) {
     return false;
@@ -1964,13 +2009,15 @@ const ForayPlayer = {
    * @returns {{ elapsedSec, index, remainingSec, percent, finished, drift,
    *             label, clock, title } | null}
    */
-  forayResume(forayId, { totalSec = null, itemCount = null, resolved = null } = {}) {
+  forayResume(forayId, { totalSec = null, itemCount = null, resolved = null, present = true } = {}) {
     const record = forayProgress.get(forayId);
     const segments = resolved ? progressSegments(resolved) : null;
     const total = isFiniteNum(totalSec) ? totalSec : (resolved ? resolved.totalSec : null);
     const count = Number.isInteger(itemCount) ? itemCount : (resolved ? resolved.playable.length : null);
     const maxIndex = Number.isInteger(count) && count > 0 ? count - 1 : null;
-    const point = resumePoint(record, { totalSec: total, maxIndex, segments });
+    /* `present: false` is FD-05's "the Foray itself is gone from the directory":
+       the point degrades to `dropped` with no row painted, never a throw. */
+    const point = resumePoint(record, { totalSec: total, maxIndex, segments, present });
     if (!point || point.finished) return null;
     return {
       ...point,
@@ -1994,10 +2041,19 @@ const ForayPlayer = {
 
   /** Every Foray with a resume point, most recent first — the home screen's
       "Jump back in" rail. The CALLER still has to apply the draft rule: a stored
-      position is not permission to list an unpublished Foray. */
-  forayResumeList() {
+      position is not permission to list an unpublished Foray.
+
+      `foraysDoc` is FD-05's half: with the live `data/forays.json` in hand, a row
+      whose Foray is no longer in the directory reads `drift: "dropped"` rather
+      than being offered as a place to jump back to. Without it every row reads
+      `unverified`, exactly as before. */
+  forayResumeList({ foraysDoc = null } = {}) {
+    /* `allForays`, not `listableForays`: presence is about the DIRECTORY, and the
+       draft rule is the caller's (app.js filters by what it may list). */
+    const live = foraysDoc ? new Set(allForays(foraysDoc).map((f) => f.id)) : null;
     return forayProgress.list().map((r) => {
-      const point = resumePoint(r);
+      const present = live ? live.has(r.foray_id) : true;
+      const point = resumePoint(r, { present });
       return {
         id: r.foray_id,
         title: r.title || "",
@@ -2008,6 +2064,7 @@ const ForayPlayer = {
         percent: percentDone(r.elapsed_sec, r.total_sec),
         finished: Boolean(point?.finished),
         label: point && !point.finished ? remainingLabel(point.remainingSec) : "",
+        drift: present ? (point?.drift ?? DRIFT_UNVERIFIED) : DRIFT_DROPPED,
       };
     });
   },

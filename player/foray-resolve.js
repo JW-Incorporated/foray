@@ -364,6 +364,87 @@ export function resolveForay(foray, opts = {}) {
   };
 }
 
+/* ---------- validating a whole set of the three documents (FD-03) ----------
+
+   The Foray directory (`player/foray-directory.js`) fetches the three files from
+   the live origin and must never swap in a set the player cannot use. This is the
+   ONE validation entry point, and it is the join above rather than a schema: the
+   question is not "is this well-formed JSON" but "does every Foray this set names
+   resolve against the segments and sources it came with".
+
+   What is fatal, and why:
+     - a document without its array (`forays`, `segments`, `sources`): nothing to
+       resolve against; `indexSegments` would answer with an empty map and every
+       Foray would quietly lose every segment.
+     - a Foray without an id, or two with the same id: resume rows and routes key
+       on the id.
+     - a segment reference that does not join (`hydrateForayItems`'s `dropped`):
+       THE TORN-DEPLOY SIGNATURE. The three files ship together and CI's
+       `tools/foray/check-forays.mjs` refuses a dangling reference on `main`, so a
+       reference that dangles here means the files came from two deploys.
+     - a Foray with no playable item at all.
+
+   What is NOT fatal: an item `buildForayQueue` skips for its own reasons (no
+   audio URL, bad bounds) is one item's data-quality problem, owned by the data
+   check in CI; it is reported in `warnings` and the set still stands. Refusing a
+   whole directory update for one unplayable item would hold every phone on the
+   old set until an editor noticed.
+
+   `code` is from a closed vocabulary because it is recorded in the field record
+   (`diagnostic-log.js`), which admits no prose. `reason` is the prose, for a
+   console or a PR. */
+
+const VALIDATION_CODES = Object.freeze([
+  "no-forays-array", "no-segments-array", "no-sources-array", "no-forays",
+  "foray-without-id", "duplicate-foray-id", "item-malformed",
+  "segment-missing", "source-missing", "nothing-playable",
+]);
+export { VALIDATION_CODES };
+
+/**
+ * @param {{ forays: object, segments: object, sources: object }} docs
+ * @returns {{ ok: boolean, code: string|null, reason: string|null, forayId: string|null,
+ *             forays: number, playable: number, warnings: string[] }}
+ */
+export function validateForayDocuments({ forays, segments, sources } = {}) {
+  const bad = (code, reason, forayId = null) => ({
+    ok: false, code, reason, forayId, forays: 0, playable: 0, warnings: [],
+  });
+  if (!Array.isArray(forays?.forays)) return bad("no-forays-array", "forays.json has no forays array");
+  if (!Array.isArray(segments?.segments)) return bad("no-segments-array", "segments.json has no segments array");
+  if (!Array.isArray(sources?.sources)) return bad("no-sources-array", "segment-sources.json has no sources array");
+  const list = allForays(forays);
+  if (!list.length) return bad("no-forays", "forays.json lists no Foray");
+
+  const segIndex = indexSegments(segments);
+  const srcIndex = indexSources(sources);
+  const ids = new Set();
+  const warnings = [];
+  let playable = 0;
+
+  for (let i = 0; i < list.length; i++) {
+    const f = list[i];
+    if (!nonEmpty(f.id)) return bad("foray-without-id", `the Foray at position ${i} has no id`);
+    if (ids.has(f.id)) return bad("duplicate-foray-id", `Foray id ${f.id} appears twice`, f.id);
+    ids.add(f.id);
+
+    const { dropped } = hydrateForayItems(f, { segments: segIndex, sources: srcIndex });
+    if (dropped.length) {
+      const d = dropped[0];
+      const code = d.segment_id == null && /not an object/.test(d.reason) ? "item-malformed"
+        : /not in data\/segments\.json/.test(d.reason) ? "segment-missing"
+        : "source-missing";
+      const more = dropped.length > 1 ? ` (+${dropped.length - 1} more)` : "";
+      return bad(code, `Foray ${f.id}: ${d.reason}${more}`, f.id);
+    }
+    const r = resolveForay(f, { segments: segIndex, sources: srcIndex });
+    if (!r.playable.length) return bad("nothing-playable", `Foray ${f.id} has no playable item`, f.id);
+    for (const u of r.unplayable) warnings.push(`${f.id}: ${u.reason}`);
+    playable += r.playable.length;
+  }
+  return { ok: true, code: null, reason: null, forayId: null, forays: list.length, playable, warnings };
+}
+
 /**
  * Entries grouped into the Foray's authored slots, in authored slot order.
  *

@@ -14,6 +14,7 @@ import {
   PUBLISHED, indexSegments, indexSources, allForays, forayVisibility,
   listableForays, findForay, hydrateForayItems, resolveForay, groupBySlot,
   segmentStarts, segmentAtElapsed, forayElapsed, fmtClock, fmtSpan, progressSegments,
+  validateForayDocuments, VALIDATION_CODES,
 } from "./foray-resolve.js";
 /* The resume half of #40. Imported here rather than tested in
    foray-progress.test.js because `progressSegments` is the adapter between the
@@ -542,3 +543,68 @@ test("fmtSpan reads in seconds when short and minutes when not", () => {
   assert.equal(fmtSpan(0), "0 sec");
 });
 
+
+/* ---------- validating a whole set (FD-03) ---------- */
+
+const docsOf = (forays, segments, sources) => ({
+  forays: { forays }, segments: { segments }, sources: { sources },
+});
+const F1 = () => ({ id: "f1", kind: "deep-dive", title: "A", status: "published", items: [item("s1"), item("s2")] });
+
+test("validateForayDocuments: the join is the rule — a dangling reference is fatal and names the Foray", () => {
+  /* The Foray directory refuses a set on this answer, so what is fatal here is
+     what a phone will never swap in. A reference that does not join is the
+     torn-deploy signature (CI refuses one on main), and it must be fatal.
+     MUTATION: drop the `if (dropped.length)` return. The torn set validates and
+     the second block is red. */
+  const ok = validateForayDocuments(docsOf([F1()], [seg("s1"), seg("s2")], [src("ep-a")]));
+  assert.equal(ok.ok, true);
+  assert.equal(ok.forays, 1);
+  assert.equal(ok.playable, 2);
+  assert.deepEqual(ok.warnings, []);
+
+  const torn = validateForayDocuments(docsOf([F1()], [seg("s1")], [src("ep-a")]));
+  assert.equal(torn.ok, false);
+  assert.equal(torn.code, "segment-missing");
+  assert.equal(torn.forayId, "f1");
+  assert.match(torn.reason, /s2 is not in data\/segments\.json/);
+
+  const noSource = validateForayDocuments(docsOf([F1()], [seg("s1"), seg("s2")], []));
+  assert.equal(noSource.code, "source-missing");
+});
+
+test("validateForayDocuments: an item the builder skips is a warning; a Foray with nothing playable is fatal", () => {
+  /* One episode without an audio URL is one item's data-quality problem, owned
+     by the data check in CI — refusing a whole directory update for it would
+     hold every phone on the old set. Nothing playable at all is a different
+     thing. MUTATION: make `r.unplayable.length` fatal. The first block is red. */
+  const thin = validateForayDocuments(docsOf(
+    [F1()], [seg("s1"), seg("s2", { item_id: "ep-b" })], [src("ep-a"), src("ep-b", { audio_url: null })],
+  ));
+  assert.equal(thin.ok, true);
+  assert.equal(thin.playable, 1);
+  assert.equal(thin.warnings.length, 1);
+  assert.match(thin.warnings[0], /^f1: /);
+
+  const none = validateForayDocuments(docsOf([F1()], [seg("s1"), seg("s2")], [src("ep-a", { audio_url: null })]));
+  assert.equal(none.ok, false);
+  assert.equal(none.code, "nothing-playable");
+  assert.equal(none.forayId, "f1");
+});
+
+test("validateForayDocuments: shapes and ids, and every code is a token the field record admits", () => {
+  /* The code is recorded in `cp_diag` (diagnostic-log.js), which admits no prose,
+     so the vocabulary is closed and its members have a shape. MUTATION: return a
+     sentence as `code`. The last loop is red. */
+  assert.equal(validateForayDocuments().code, "no-forays-array");
+  assert.equal(validateForayDocuments({ forays: { forays: [] } }).code, "no-segments-array");
+  assert.equal(validateForayDocuments({ forays: { forays: [] }, segments: { segments: [] } }).code, "no-sources-array");
+  assert.equal(validateForayDocuments(docsOf([], [], [])).code, "no-forays");
+  assert.equal(validateForayDocuments(docsOf([{ ...F1(), id: "" }], [seg("s1"), seg("s2")], [src("ep-a")])).code, "foray-without-id");
+  assert.equal(validateForayDocuments(docsOf([F1(), F1()], [seg("s1"), seg("s2")], [src("ep-a")])).code, "duplicate-foray-id");
+  assert.equal(validateForayDocuments(docsOf([{ ...F1(), items: [null] }], [seg("s1")], [src("ep-a")])).code, "item-malformed");
+  for (const c of VALIDATION_CODES) assert.match(c, /^[a-z][a-z0-9-]{0,47}$/, `${c} is not a record-safe token`);
+  for (const c of ["segment-missing", "source-missing", "nothing-playable", "item-malformed", "duplicate-foray-id", "foray-without-id", "no-forays"]) {
+    assert.ok(VALIDATION_CODES.includes(c), `${c} is returned but not in the vocabulary`);
+  }
+});
