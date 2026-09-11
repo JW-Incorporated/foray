@@ -177,6 +177,8 @@ import {
   loadSegmentPool,
   requiredOverlapFor,
   scoreSegmentsAgainstClaim,
+  segmentAtStart,
+  startsCoincide,
   tier1BarClears,
   TIER1_MATCH_THRESHOLD,
   type SegmentRecord,
@@ -440,7 +442,10 @@ export function sourceBeats(deepenedActs: DeepenedAct[], options: SourceBeatsOpt
             /* F-80: and whether D5's triple clause is what chose this segment's
                LENGTH — the ladder rung's own cut would have made a uniform
                triple, and a different cut of the same window escaped it. */
-            lengthGate: resolution.lengthGate
+            lengthGate: resolution.lengthGate,
+            /* F-84: and whether the tape is the pool's own cut at the start
+               tier 2's window reached — reused, never minted beside. */
+            poolCut: resolution.poolCut
           });
           return { sourcing: "tape", claim: beat.claim, exploration: beat.exploration, kind: beat.kind, tape: resolution.pointer };
         }
@@ -636,8 +641,19 @@ type BeatResolution =
    * anyway, so counting it counts decisions rather than applications.
    * `lengthGate` — D5's triple clause chose this cut's LENGTH (F-80): the
    * ladder rung's own cut would have been a uniform triple; absent whenever the
-   * rung's cut escaped the band by itself, for the same counting reason. */
-  | { kind: "tape"; pointer: TapePointer; nodes: string[]; fromSeed: boolean; seedFloor?: "share-only"; lengthGate?: "d5-triple" }
+   * rung's cut escaped the band by itself, for the same counting reason.
+   * `poolCut` — tier 2's window began where a committed pool segment begins and
+   * the pool's cut was placed under its own id instead of a minted sibling
+   * (F-84). */
+  | {
+      kind: "tape";
+      pointer: TapePointer;
+      nodes: string[];
+      fromSeed: boolean;
+      seedFloor?: "share-only";
+      lengthGate?: "d5-triple";
+      poolCut?: "reused";
+    }
   | { kind: "narration"; reason: string; diagnosis: SourcingDiagnosis };
 
 /**
@@ -673,6 +689,45 @@ function tier1VetoFor(segment: SegmentRecord, state: SourcingState): Exclude<Tie
 
 function tier1IsUsable(segment: SegmentRecord, state: SourcingState): boolean {
   return tier1VetoFor(segment, state) === null;
+}
+
+/**
+ * The segment that ALREADY begins where a cut of `itemId` at `startSec` would
+ * (F-84): a committed `data/segments.json` row, or one this run minted for an
+ * earlier beat. `null` when the start is free. The run's own mints are in here
+ * so two beats cutting the same start of one episode resolve to one id — the
+ * second is then refused as already played, which is what `usedSegmentIds` has
+ * always said about a segment, rather than minted as `…-2`.
+ */
+function committedCutAt(itemId: string, startSec: number, state: SourcingState): SegmentRecord | null {
+  const pool = segmentAtStart(state.segmentPool, itemId, startSec);
+  if (pool) return pool;
+  const mine = state.newSegments.find((s) => s.itemId === itemId && startsCoincide(s.startSec, startSec));
+  if (!mine) return null;
+  return {
+    id: mine.id,
+    item_id: mine.itemId,
+    topic: state.forayTopic ?? "",
+    start_sec: mine.startSec,
+    end_sec: mine.endSec,
+    reference_duration_sec: mine.referenceDurationSec,
+    start_anchor: mine.startAnchor,
+    end_anchor: mine.endAnchor,
+    why: mine.why,
+    confidence: mine.confidence,
+    transcript_source: mine.transcriptSource
+  };
+}
+
+/** The ledger a reused pool cut faces (F-84) — every rule `tier1VetoFor` asks
+ * except the topic lineage, which the archive episode this window came from
+ * has already passed (`archiveIsUsable`): the tape is the same tape whichever
+ * row names it. */
+function reuseVetoFor(segment: SegmentRecord, state: SourcingState): Exclude<Tier1Gate, "no-candidates" | "threshold" | "topic-lineage"> | null {
+  if (state.usedSegmentIds.has(segment.id)) return "exhausted";
+  if (!m4ShareAllows(segment.item_id, state)) return "m4-share";
+  if (!m3OrderAllows(segment.item_id, segment.start_sec, state)) return "m3-order";
+  return durationVetoFor(segment.item_id, segment.end_sec - segment.start_sec, state);
 }
 
 /* THE TWO FORAY-WIDE ASSEMBLY RULES, ASKED THE SAME WAY BY BOTH TIERS (F-70).
@@ -977,6 +1032,11 @@ function bestSpreadRecut(state: SourcingState, alreadyRecut: Set<number>): Sprea
          minted segment's `reference_duration_sec` against the audio row's own
          `duration_sec`, and `check-forays.mjs` refuses an `end_sec` past it. */
       if (entry.feedDurationSec !== null && span.endSec > entry.feedDurationSec) continue;
+      /* And a re-cut may not MOVE onto a start another segment already holds
+         (F-84): the id is the start, and `applyRecut` re-mints it when the start
+         moves, so a start the pool or this run already has a row at would be a
+         sibling id. The placement's own start is not a collision with itself. */
+      if (recutStartIsTaken(entry, span, state)) continue;
 
       const durations = [...state.placedDurations];
       durations[entry.placement] = durationSec;
@@ -987,6 +1047,17 @@ function bestSpreadRecut(state: SourcingState, alreadyRecut: Set<number>): Sprea
     }
   }
   return best;
+}
+
+/** Whether a re-cut's start would take an id the pool or this run already
+ * holds (F-84) — asked only when the start moves to a different rounded
+ * second, since `applyRecut` keeps the id otherwise; the placement's own row is
+ * not a collision with itself. */
+function recutStartIsTaken(entry: TapeRecut, span: TapeSpan, state: SourcingState): boolean {
+  if (Math.round(span.startSec) === Math.round(entry.pointer.startSec)) return false;
+  if (state.mintedIds.has(`${entry.itemId}#${Math.round(span.startSec)}`)) return true;
+  const held = committedCutAt(entry.itemId, span.startSec, state);
+  return held !== null && held.id !== entry.pointer.segmentId;
 }
 
 /**
@@ -1507,11 +1578,76 @@ class Tier2Walk {
         this.record({ candidate, gate: choice.gate, window, span: choice.refused.span, seedFloor }, seedPass);
         continue;
       }
+      /* A START THE POOL ALREADY HOLDS IS THE POOL'S (F-84). The pool's id is
+         `<item_id>#<start_sec rounded>`, so a cut that begins where a committed
+         segment begins has that segment's id, and the pool has room for one row
+         under it. Run 6 minted `…#826-2` beside the previous Foray's `…#826`
+         (same 826.36 s start; the seed pass runs before tier 1, and tier 1's
+         claim-overlap bar had not admitted the pool row anyway) and the pool
+         gate refused the publish. The pool's cut is placed instead — under the
+         pool's id, at the pool's length, with nothing minted — and it faces the
+         same ledger a tier-1 hit faces: if THAT cut is refused (already played,
+         M3, a length rule), the candidate is refused with `pool-cut` and the
+         walk moves on; a sibling id is never the answer. See
+         `reuseCommittedCut` for why the row is reused rather than extended. */
+      const committed = committedCutAt(itemId, choice.accepted.span.startSec, state);
+      if (committed) {
+        if (reuseVetoFor(committed, state) !== null) {
+          this.record({ candidate, gate: "pool-cut", window, span: choice.accepted.span, seedFloor }, seedPass);
+          continue;
+        }
+        return this.reuseCommittedCut(candidate, committed, seedFloor);
+      }
       const accepted = this.acceptCandidate(candidate, cues, window!, choice.accepted.span, itemId, seedFloor, choice.lengthGate);
       if (accepted) return accepted;
       this.record({ candidate, gate: "no-audio-source", window, span: choice.accepted.span, seedFloor }, seedPass);
     }
     return null;
+  }
+
+  /**
+   * Places the POOL'S cut at a start tier 2's window reached (F-84).
+   *
+   * REUSED, NOT EXTENDED — and why. The task this closes allowed either: reuse
+   * the committed row's cut, or, when the new window is materially longer and
+   * on-claim, extend the committed row to it. The row is reused because a pool
+   * row is not this run's to change: the previous Foray's `runtime_sec` was
+   * computed from that row's `end_sec`, `check-forays.mjs` recomputes every
+   * Foray's runtime from the pool it is handed, and lengthening a row that
+   * another Foray references would fail THAT Foray's runtime check in the same
+   * commit — the exact "one Foray's publish breaks another's" a curated pool
+   * exists to prevent. A cut the pool holds is a cut a person can review once;
+   * a cut that moves under every run that touches its start is not. The price
+   * is one placement at the pool's length rather than the ladder's target, and
+   * the ledger has already been asked whether that length fits.
+   *
+   * Nothing is minted: no `NewSegment`, no `MintedSegmentSource` (the pool row's
+   * episode is in `data/segment-sources.json` already, or the row could not
+   * have been merged), no `TapeRecut` (a curator's length is not this stage's to
+   * revise — `liftDurationSpread`). The pointer is tier 1 — what plays is a
+   * `data/segments.json` row — and the relevance row's `poolCut` says the
+   * archive search is what found it.
+   */
+  private reuseCommittedCut(candidate: Tier2Candidate, committed: SegmentRecord, seedFloor: "share-only" | undefined): BeatResolution {
+    const { state } = this;
+    placeTape(committed.id, committed.item_id, committed.start_sec, committed.end_sec - committed.start_sec, state);
+    return {
+      kind: "tape",
+      fromSeed: candidate.fromSeed === true,
+      seedFloor,
+      poolCut: "reused",
+      nodes: nodesForSegment(committed, state),
+      pointer: {
+        segmentId: committed.id,
+        itemId: committed.item_id,
+        startSec: committed.start_sec,
+        endSec: committed.end_sec,
+        startAnchor: committed.start_anchor,
+        endAnchor: committed.end_anchor,
+        tier: 1,
+        confidence: committed.confidence
+      }
+    };
   }
 
   /** Folds one refusal into `furthest`; in the seed pass it is also the seed's
@@ -1827,7 +1963,12 @@ const TIER2_GATE_PROGRESS: Record<Tier2Gate, number> = {
   "d3-mean": 9,
   "d5-triple": 10,
   "m4-runtime": 11,
-  "no-audio-source": 12
+  /* F-84: asked after the cut has cleared M3 and the length rules on ITS
+     length — the pool's cut at the same start then faces the same ledger and
+     is what refused the candidate. Further than any of them, before the
+     audio-source row, which a reused pool cut never needs. */
+  "pool-cut": 12,
+  "no-audio-source": 13
 };
 
 /**
@@ -2184,14 +2325,23 @@ function makeSegmentWindowText(archive: TranscriptDigestEntry[], cueProvider: Tr
    Re-exported here, unchanged, so every existing importer is untouched. */
 export { deriveItemId };
 
-/** Same id shape as `data/segments.json`'s existing rows
- * (`<item_id>#<start_sec rounded>`), with a numeric suffix to resolve a
- * collision — mirrors `mintItemIds`'s collision-resolution rule. */
+/** The pool's own id rule (`merge-segments.mjs`'s `segmentId`):
+ * `<item_id>#<start_sec rounded>`, and NOTHING ELSE. Until F-84 a collision
+ * was resolved with a numeric suffix, mirroring `mintItemIds`; the pool gate
+ * refuses a suffixed id ("id does not match its item_id + start_sec"), so the
+ * suffix only ever deferred the failure to CI (run 6, PR #624). A collision is
+ * now decided BEFORE this is called — `committedCutAt` reuses the pool's cut
+ * at a shared start, and the spread pass will not re-cut onto one — so reaching
+ * it here is a bug in a caller, and it says so rather than minting an id the
+ * pool cannot hold. */
 function mintSegmentId(itemId: string, startSec: number, existing: Set<string>): string {
-  const base = `${itemId}#${Math.round(startSec)}`;
-  let id = base;
-  let n = 2;
-  while (existing.has(id)) id = `${base}-${n++}`;
+  const id = `${itemId}#${Math.round(startSec)}`;
+  if (existing.has(id)) {
+    throw new Error(
+      `sourceBeats: segment id "${id}" is already in the pool or minted by this run — a cut at a start the pool holds ` +
+        "must reuse that row (F-84), never mint a sibling"
+    );
+  }
   existing.add(id);
   return id;
 }

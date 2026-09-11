@@ -60,6 +60,43 @@ export function loadSegmentPool(): SegmentRecord[] {
   return cachedSegments;
 }
 
+/**
+ * WHEN TWO CUTS OF ONE EPISODE ARE "THE SAME START" (F-84).
+ *
+ * The pool's id rule is `<item_id>#<start_sec rounded>` (`merge-segments.mjs`,
+ * `segmentId`), so two cuts of one episode that begin within a second of each
+ * other are one id, and the pool has room for exactly one row under it. Run 6
+ * (2026-09-11, PR #624) cut a tier-2 segment at 826.36 s of an episode whose
+ * committed pool already held `#826` at 826.36 s from the previous generated
+ * Foray; the mint took a suffixed id (`#826-2`) and the pool gate refused it
+ * ("id does not match its item_id + start_sec"). Half a second is the
+ * tolerance because a cue boundary is a cue boundary: two cuts that both start
+ * on it differ only by the float noise of two transcript reads.
+ *
+ * The rule is asked twice, in the same words: at SOURCING (`sourceBeats.ts`,
+ * before a tier-2 segment is minted — the pool's cut is reused) and at
+ * PUBLISH (`finalizeForay.ts`, `mintedPoolCollisions` — a minted row at a
+ * committed start is refused, never suffixed).
+ */
+export const SEGMENT_START_TOLERANCE_SEC = 0.5;
+
+/** Whether two starts of one episode are the same start under the pool's id
+ * rule: within `SEGMENT_START_TOLERANCE_SEC`, OR rounding to the same second —
+ * the second condition because that is the id itself, and a sibling id is
+ * never allowed whatever the fractional gap. */
+export function startsCoincide(aSec: number, bSec: number): boolean {
+  return Math.abs(aSec - bSec) <= SEGMENT_START_TOLERANCE_SEC || Math.round(aSec) === Math.round(bSec);
+}
+
+/** The committed pool segment that already begins where a cut of `itemId`
+ * would begin, or `null`. Pure over the pool it is handed. */
+export function segmentAtStart<T extends { item_id: string; start_sec: number }>(pool: readonly T[], itemId: string, startSec: number): T | null {
+  for (const segment of pool) {
+    if (segment.item_id === itemId && startsCoincide(segment.start_sec, startSec)) return segment;
+  }
+  return null;
+}
+
 export interface SegmentMatch {
   segment: SegmentRecord;
   score: number;

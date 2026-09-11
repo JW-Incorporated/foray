@@ -261,6 +261,15 @@ export interface TapeRelevanceInput {
    * passages are producing lengths the rule keeps having to correct.
    */
   lengthGate?: "d5-triple";
+  /**
+   * Tier 2's window was cut to a start the committed pool already holds a
+   * segment at, and the POOL'S cut was placed under the pool's own id instead
+   * of a minted sibling (F-84). The row reports `tier: 1` — what plays is a
+   * `data/segments.json` row and nothing was minted — and this field says the
+   * archive search, not the claim-overlap bar, is what found it. Counting these
+   * rows counts the beats the previous Forays' tape served again.
+   */
+  poolCut?: "reused";
 }
 
 /**
@@ -385,7 +394,12 @@ export type Tier2Gate =
   | "d2-short-run"
   | "d3-mean"
   | "d5-triple"
-  | "m4-runtime";
+  | "m4-runtime"
+  /* F-84: the window's cut begins where a COMMITTED pool segment (or one this
+     run already minted) begins, so the pool's cut is what would play there —
+     and the Foray's ledger refused that cut (already played, M3, a length
+     rule). A sibling id at the same start is never minted instead. */
+  | "pool-cut";
 
 export interface Tier1TraceRow {
   /** The best-scoring pool segment, whatever gate then refused it. */

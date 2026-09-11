@@ -520,7 +520,9 @@ const TapeRelevanceInputSchema = z.object({
      reason as the pair above. */
   seedFloor: z.literal("share-only").optional(),
   /* F-80: D5's triple clause chose this segment's length. Optional likewise. */
-  lengthGate: z.literal("d5-triple").optional()
+  lengthGate: z.literal("d5-triple").optional(),
+  /* F-84: the pool's cut at the same start was reused. Optional likewise. */
+  poolCut: z.literal("reused").optional()
 });
 
 /* F-80 renamed the D5 gate from `d5-uniform` (a preference, #571) to
@@ -553,7 +555,8 @@ const TIER2_GATE_SCHEMA = z
     "d3-mean",
     "d5-triple",
     LEGACY_D5_GATE,
-    "m4-runtime"
+    "m4-runtime",
+    "pool-cut"
   ])
   .transform(readLegacyD5Gate);
 const SourcingTraceSchema = z.object({
@@ -1075,10 +1078,20 @@ export async function runForayPipeline(
      `check-forays.mjs` fails the Foray for a runtime that disagrees with its
      own items. The cast is the shape difference only (`Record<string, unknown>`
      vs. the typed pool row); every field the pool gate requires is on the row
-     (F-78), read from the same minted source rows the publish will write. */
+     (F-78), read from the same minted source rows the publish will write.
+
+     THE COMMITTED ROW WINS A TIE ON ID (F-84). `runtimeSecFor` keys the pool by
+     id and the last row under an id is the one it measures, so the minted rows
+     go FIRST and the on-disk pool after them: a Foray whose item names an id
+     `data/segments.json` already holds is timed on the cut that will actually
+     play — the committed one, which the publish never overwrites and which
+     `mintedPoolCollisions` refuses to shadow with a different cut. Sourcing
+     reuses the pool's cut at a shared start, so the two agree on the ids they
+     share; this is the order that keeps them agreeing if a checkpoint resumes
+     against a pool that has since gained the row. */
   const rowContext = { batchId: generationBatchId(forayId), sources: sourced.newSegmentSources };
   const mintedPool = sourced.newSegments.map((s) => mintedSegmentRow(s, topic, rowContext) as unknown as SegmentRecord);
-  const runtimePool = mintedPool.length ? [...loadSegmentPool(), ...mintedPool] : loadSegmentPool();
+  const runtimePool = mintedPool.length ? [...mintedPool, ...loadSegmentPool()] : loadSegmentPool();
 
   /* §4.7 — write narration, then verify it independently (distinct instances,
      enforced there). Driven ONE CALL PER ACT rather than one call for all, so

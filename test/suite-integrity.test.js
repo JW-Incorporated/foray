@@ -1779,6 +1779,15 @@ const BACKEND_FLOORS = {
      with no source that states a fact is still refused. One named
      mutation per test. */
   "test/hingeTapeSource.test.ts": 19,
+  /* F-84: a tier-2 cut at a start the pool holds reuses the pool's row and
+     nothing is minted; the runtime follows the reused cut; the committed row
+     wins an id tie in the runtime clock; an unrelated start still mints; a
+     refused pool cut refuses the candidate rather than minting beside it;
+     publish refuses the suffixed sibling, the same-start well-formed id and
+     the same-id different cut, accepts the idempotent twin, and finalize
+     throws before the checkers; and the half-second start rule is pinned in
+     numbers. One named mutation per test. */
+  "test/mintDedupe.test.ts": 11,
 };
 
 /* `it(` as well as `test(`: backend's suites use both spellings. */
