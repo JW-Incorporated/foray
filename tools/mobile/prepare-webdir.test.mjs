@@ -48,7 +48,7 @@ import {
   BUNDLED_ITEMS_PER_SHOW, PROJECTED_DATA, COPIED_WHOLE, discoverSlice,
   assertDiscoverSliceComplete, serializeSlice, sliceBytes, assertSlicesOnDisk, projectData,
   referencedSegmentIds, segmentSlice, segmentSourceSlice, assertForaySliceComplete,
-  WHY_COPIED_WHOLE, isBundledData,
+  WHY_COPIED_WHOLE, isBundledData, SEED_POINTER, seedPointerPlan,
 } from "./prepare-webdir.mjs";
 import { isMinified, minifySource } from "./minify.mjs";
 import { createRequire } from "node:module";
@@ -1817,8 +1817,17 @@ test("REAL REPO: nothing in the app browses the segment pool — the slice's pre
     /* The one and only read: handed whole to player/client.js's resolve(), which
        indexes BY ID and looks up only the ids the Foray names. */
     const isResolveArgument = /(segmentsDoc|sourcesDoc):\s*state\.(segments|segmentSources)/.test(line);
+    /* The Foray directory (FD-03, 2026-09-10) — two more shapes, neither of which
+       enumerates anything. The SWAP writes the three documents whole (they are one
+       artifact; `applyForaySet`). The SEED hand-off passes them whole to
+       player/foray-directory.js, whose only reader of them is
+       `validateForayDocuments` in foray-resolve.js — the join, which is what the
+       `player/` half of this test allows below. A third shape here is the signal
+       this test exists to raise. */
+    const isDirectorySwap = /^\s*state\.(segments|segmentSources)\s*=\s*set\.(segments|sources)\b/.test(line);
+    const isDirectorySeed = /seed\s*=\s*\{\s*forays:\s*state\.forays,\s*segments:\s*state\.segments,\s*sources:\s*state\.segmentSources\s*\}/.test(line);
     assert.ok(
-      isFetchAssignment || isResolveArgument,
+      isFetchAssignment || isResolveArgument || isDirectorySwap || isDirectorySeed,
       `app.js:${n} reads the segment pool somewhere new — ${line.trim()}\n` +
         `The mobile bundle ships ONLY the segments the bundled Forays reference ` +
         `(tools/mobile/prepare-webdir.mjs, #327), so any surface that enumerates the pool ` +
@@ -2257,4 +2266,64 @@ test("REAL REPO: the site's index.html carries no shell-only tag", () => {
         `the website would 404 on it.`
     );
   }
+});
+
+/* ────────────────── FD-04: the bundle is the offline seed, not the catalogue ────────────────── */
+
+test("FD-04: the seed is a SUBSET of the directory's files, row for row, under the caps the header names", () => {
+  /* The app now reads the Foray directory (the live site's three files) and holds
+     the bundle only as the set to play before it has reached the network. That is
+     only safe if the seed is exactly a subset of what the directory serves for the
+     same commit — a seed row the directory does not carry would be a Foray that
+     plays from the package and vanishes on first refresh.
+     MUTATION: in `segmentSlice`, keep `{ ...s, start_sec: s.start_sec + 1 }` instead
+     of `s`. A seed row is no longer in the source document; red. */
+  const fake = makeFakeRepo();
+  prepare({ root: fake, out: "www" });
+  const read = (base, rel) => JSON.parse(fs.readFileSync(path.join(base, rel), "utf8"));
+  const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  for (const [rel, key] of [["data/segments.json", "segments"], ["data/segment-sources.json", "sources"]]) {
+    const source = read(fake, rel)[key];
+    const seed = read(path.join(fake, "www"), rel)[key];
+    assert.ok(seed.length > 0 && seed.length < source.length, `${rel}: the seed is a strict, non-empty subset`);
+    for (const row of seed) {
+      assert.ok(source.some((s) => same(s, row)), `${rel}: seed row ${row.id} is not in the directory's file`);
+    }
+    const cap = PROJECTED_DATA.find((p) => p.rel === rel).maxBytes;
+    assert.ok(fs.statSync(path.join(fake, "www", rel)).size <= cap, `${rel} is over the cap`);
+  }
+  /* The Foray list itself is the directory's, whole. */
+  assert.deepEqual(read(path.join(fake, "www"), "data/forays.json"), read(fake, "data/forays.json"));
+  /* THE CAP, named: the per-file budgets are what bound the seed while the
+     directory carries everything (#327's concern, answered). */
+  assert.equal(PROJECTED_DATA.find((p) => p.rel === "data/segments.json").maxBytes, 100 * 1024);
+  assert.equal(PROJECTED_DATA.find((p) => p.rel === "data/segment-sources.json").maxBytes, 40 * 1024);
+});
+
+test("FD-04: the seed's pointer rides along when it exists, and its absence is not an error", () => {
+  /* `data/forays-directory.json` is written by tools/ci/generate-manifest.mjs
+     (FD-02). Bundled, it tells a fresh install which deploy its seed came from;
+     absent (a checkout from before FD-02), the bundle is still a correct bundle.
+     MUTATION 1: make `seedPointerPlan` return `[SEED_POINTER]` unconditionally.
+     `buildPlan` on the bare repo fails "not on disk"; red.
+     MUTATION 2: drop `...seedPointerPlan(root)` from `buildPlan`. The pointer is
+     on disk and never bundled; the third assertion is red. */
+  const bare = makeFakeRepo();
+  assert.deepEqual(seedPointerPlan(bare), []);
+  assert.ok(!buildPlan(bare).includes(SEED_POINTER));
+
+  const withPointer = makeFakeRepo();
+  const pointer = {
+    version: "9fc92a61a8896278", built_at: "2026-09-10T00:00:00.000Z",
+    files: { forays: "data/forays.json", segments: "data/segments.json", sources: "data/segment-sources.json" },
+    bytes: { forays: 1, segments: 2, sources: 3 },
+    sha256: { forays: "sha256:" + "a".repeat(64), segments: "sha256:" + "b".repeat(64), sources: "sha256:" + "c".repeat(64) },
+  };
+  fs.writeFileSync(path.join(withPointer, SEED_POINTER), JSON.stringify(pointer, null, 2) + "\n");
+  assert.deepEqual(seedPointerPlan(withPointer), [SEED_POINTER]);
+  assert.ok(buildPlan(withPointer).includes(SEED_POINTER));
+  prepare({ root: withPointer, out: "www" });
+  const bundled = fs.readFileSync(path.join(withPointer, "www", SEED_POINTER), "utf8");
+  assert.deepEqual(JSON.parse(bundled), pointer, "the pointer parses to the same document");
+  assert.ok(!bundled.includes("\n  "), "and is compact, like every other bundled data file");
 });

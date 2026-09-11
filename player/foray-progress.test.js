@@ -549,3 +549,25 @@ test("the writer carries the segment id and offset through to the row", () => {
   assert.equal(back.segment_id, "s3");
   assert.equal(back.into_sec, 40);
 });
+
+/* ---------- FD-05: the Foray itself is gone from the directory ---------- */
+
+test("A FORAY THAT IS GONE FROM THE DIRECTORY reads dropped, paints no row, and never throws", () => {
+  /* The directory (player/foray-directory.js) can swap `data/forays.json` under a
+     stored row; a Foray that is no longer in it has NO live order to reconcile
+     against. `present: false` is how the caller says so, and it outranks
+     everything else the row carries.
+     MUTATION: drop the `present === false` return in reconcileSegment. The row
+     reads `unverified` — "nobody checked", the opposite finding — and the first
+     assertion is red. */
+  const p = resumePoint(anchored(), { present: false });
+  assert.equal(p.drift, DRIFT_DROPPED);
+  assert.equal(p.index, -1, "no row can be painted as current");
+  assert.equal(p.elapsedSec, 2 * LEN + 40, "the stored clock stands, clamped to the stored runtime");
+  assert.equal(reconcileSegment(anchored(), null, { present: false }).drift, DRIFT_DROPPED);
+  /* Presence outranks anchoring: a row from before segment ids is dropped too. */
+  assert.equal(resumePoint(record(), { present: false }).drift, DRIFT_DROPPED);
+  /* And `present` defaults to true, so every existing caller keeps its answer. */
+  assert.equal(resumePoint(anchored()).drift, DRIFT_UNVERIFIED);
+  assert.equal(resumePoint(anchored(), { segments: SIX }).drift, DRIFT_EXACT);
+});

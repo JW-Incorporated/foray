@@ -92,7 +92,7 @@ const FLOORS = {
   /* 50 -> 55 with S-01 (docs/search-plan.md, kanban t_46366383): a new
      `search` entry kind on PlayerDiagnostics — query length only, never the
      query text, per this suite's own §7. */
-  "player/diagnostic-log.test.js": 55,
+  "player/diagnostic-log.test.js": 57, // FD-01 (2026-09-10): the `data` entry's vocabulary and its line; 55 -> 57
   "player/diagnostic-record.test.js": 23,
   "player/episode-link.test.js": 6,
   /* The durable store (#40). Both of these guard against silent DATA LOSS
@@ -119,7 +119,7 @@ const FLOORS = {
      existed to support. See HUMAN-ACTIONS #29 and docs/curation/
      tts-locked-screen-check.md (kept as the historical record). */
   "player/foray-playback.test.js": 87,
-  "player/foray-progress.test.js": 58,
+  "player/foray-progress.test.js": 59, // FD-05 (2026-09-10): a Foray gone from the directory reads `dropped`; 58 -> 59
   "player/foray-queue.test.js": 37,
   /* The interlude jingle (queue-manager.js §13): the rule, the element wrapper
      and the committed placeholder asset's measured properties. The seam CLOCK
@@ -129,7 +129,14 @@ const FLOORS = {
      (2026-09-06): the one-id shell-unlock exception and its five tests were
      deleted with the diagnostic Foray once V-01 shipped an in-app Audition
      button to replace it. */
-  "player/foray-resolve.test.js": 54,
+  "player/foray-resolve.test.js": 57, // FD-03 (2026-09-10): validateForayDocuments, the directory's one validation entry point; 54 -> 57
+  /* The Foray directory (FD-03, 2026-09-10): the mechanism that lets a phone see
+     a new Foray without a store build. Floored with zero slack because each of
+     its three rules — never block first paint, never adopt an unvalidated set,
+     never drop a cached set on a network error — is one deleted test away from
+     a phone that either hangs on a dead cell or plays a torn deploy. The page-
+     level half is test/foray-directory.test.js, floored separately below. */
+  "player/foray-directory.test.js": 28,
   "player/foray-sources.test.js": 24,
     /* 108 -> 109 with #264: a telemetry sink that throws must not reject a load. That
      became reachable when `player/client.js` gave this backend its first real sink —
@@ -269,6 +276,14 @@ const FLOORS = {
   /** The field record's surface (#264) — see the note beside the two `player/`
       halves above. */
   "test/diagnostics-surface.test.js": 19,
+  /* The Foray directory AT THE PAGE (FD-03/04/05/01, 2026-09-10): the real app.js
+     mounted over the real directory module, resolver, resume store and field
+     record. What only this suite can see is the ORDER in init() — cache read
+     before the bundle fetches, boot choice before route(), pointer fetch after
+     route() and never awaited — and the FD-05 playback cases (a swap mid-session
+     leaves the queue and the playhead alone; a vanished Foray reads `dropped`;
+     the seam prefetch never warms an unvalidated set's audio). Zero slack. */
+  "test/foray-directory.test.js": 14,
   /* The standing gate on topic ids in `data/*.json`. Floored because the metric
      it protects is gameable in exactly one direction: a misspelled `food/bakin`
      reads as "has a child" to the root-dumping report and silently erases a
@@ -791,7 +806,7 @@ const FLOORS = {
 
      `shell-invariants` gained one: the same slice against TODAY'S real documents,
      independently of the fixture suite. */
-  "tools/mobile/prepare-webdir.test.mjs": 72,
+  "tools/mobile/prepare-webdir.test.mjs": 74, // FD-04 (2026-09-10): the seed is a subset of the directory's files; the seed pointer is optional; 72 -> 74
   "tools/mobile/shell-invariants.test.mjs": 52, // +1: iOS plugin never calls setActive (F11/F13 pause loop, 2026-09-09)
   /* 2026-09-04: the bundle's JS/CSS is minified (comments + whitespace, identifiers
      kept) and its JSON re-serialised on the way in — docs/mobile-shell.md §3.4.

@@ -233,13 +233,17 @@ function isStale(record, { now, maxAgeH }) {
  * @param {Array<{id: ?string, startSec: number, durationSec: number}>} [opts.segments]
  *   the LIVE running order, in play order. Build it with
  *   `progressSegments(resolved)` from `player/foray-resolve.js`.
+ * @param {boolean} [opts.present]  false when the live directory has NO Foray
+ *   with this id any more (FD-05). The strongest form of `dropped`: there is no
+ *   running order to reconcile against, so the answer is the clamped clock and no
+ *   row painted — never a throw, never a seek somewhere wrong.
  * @returns {{ elapsedSec: number, index: number, remainingSec: number,
  *             percent: number, finished: boolean, drift: string } | null}
  */
-export function resumePoint(record, { totalSec = null, maxIndex = null, segments = null } = {}) {
+export function resumePoint(record, { totalSec = null, maxIndex = null, segments = null, present = true } = {}) {
   if (!isProgressRecord(record)) return null;
   const total = isNum(totalSec) && totalSec > 0 ? totalSec : record.total_sec;
-  const at = reconcileSegment(record, segments);
+  const at = reconcileSegment(record, segments, { present });
   // A stored position past the end of the Foray as it exists NOW is not a
   // resume point; it is a stale row against a shorter document.
   const elapsed = Math.min(isNum(at.elapsedSec) ? at.elapsedSec : record.elapsed_sec, total);
@@ -281,9 +285,15 @@ export function resumePoint(record, { totalSec = null, maxIndex = null, segments
  *
  * @param {object} record
  * @param {Array<{id: ?string, startSec: number, durationSec: number}>|null} segments
+ * @param {object} [opts]
+ * @param {boolean} [opts.present]  false = the Foray itself is gone from the live
+ *   directory (FD-05). Checked FIRST, before the live order: a caller that knows
+ *   the Foray vanished has no order to hand over, and an empty list here would
+ *   otherwise read as "nobody checked" (`unverified`) — the opposite finding.
  * @returns {{ drift: string, elapsedSec?: number, index?: number }}
  */
-export function reconcileSegment(record, segments) {
+export function reconcileSegment(record, segments, { present = true } = {}) {
+  if (present === false) return { drift: DRIFT_DROPPED };
   /* NOT filtered. `index` below is returned as a LIVE index and is used to paint
      the running order, so it has to count positions in the caller's own array —
      filtering first would shift every index after a malformed entry and hand back
