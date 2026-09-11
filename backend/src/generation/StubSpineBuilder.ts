@@ -14,6 +14,7 @@ import {
   type Voice
 } from "../types/spine";
 import { tokenizeForSourcing } from "./catalogueLookup";
+import { SpineSeedLedger } from "./spineSeeding";
 import { countSentences, normalizeClaim, MAX_BEAT_CLAIM_WORDS } from "./spineStructure";
 import type { SpineBuildContext, SpineBuilder } from "./SpineBuilder";
 
@@ -66,6 +67,20 @@ export class StubSpineBuilder implements SpineBuilder {
        what keeps every pre-WS-L dry run and fixture byte-identical. */
     const windows = researchShape.subtopics.flatMap((s) => s.tapeWindows);
     const usedClaims = new Set<string>();
+    /* G-25: the stub seeds EVERY beat an admissible window exists for, not
+       only the floor's two per act, because the seed is the only path that
+       yields tape (tape-yield brief §5 R4) and a fixture that seeded the
+       minimum would measure the minimum. The stub has no judgement of kind —
+       the real prompt leaves argument beats unseeded; this stub leaves unseeded
+       the beats no admissible window remains for, and `StubDeepenActBuilder`
+       decides their kind as before.
+       ADMISSIBLE means what §4.5's ledger will admit (R3; `spineSeeding.ts`):
+       one seed per episode until the spine carries eight, and one episode's
+       tape seeded forward. The cursor walks the windows in map order and skips
+       what the ledger refuses; `usesByWindow` picks a different sentence each
+       time the same window is seeded from. */
+    const ledger = new SpineSeedLedger();
+    const usesByWindow = new Map<number, number>();
     let seedCursor = 0;
 
     const slotsPerAct = distributeEvenly(slotCount, actCount);
@@ -88,7 +103,11 @@ export class StubSpineBuilder implements SpineBuilder {
       /* The floor `spineStructure.ts` enforces, met exactly — a fixture
          generator that could not satisfy the gate it is used to test would be
          no fixture at all (the same argument F-13's `CLAIM_QUALIFIERS` were
-         added under). */
+         added under). The ledger is a preference and the floor is a gate, so
+         when the map's windows come from fewer episodes than the ledger wants
+         (one, in the smallest fixtures), an act still below its floor takes
+         the next window in tape order — what the real prompt says too:
+         "a subject whose tape lives in one episode still gets a spine". */
       let seededThisAct = 0;
 
       for (let s = 0; s < nSlotsThisAct; s++) {
@@ -98,20 +117,30 @@ export class StubSpineBuilder implements SpineBuilder {
         for (let b = 0; b < nBeatsThisSlot; b++) {
           const label = subtopicLabels[beatCursor % subtopicLabels.length]!;
           const exploration = explorationIndices.has(beatCursor);
-          const window = windows.length > 0 && seededThisAct < SPINE_MIN_SEEDED_BEATS_PER_ACT ? windows[seedCursor % windows.length]! : null;
-          if (window) {
-            /* WHICH sentence of the window, so two acts seeded from the same
-               window do not write the same claim: the window cycles on the
-               seed cursor, the sentence on how many times round it has been. */
-            const claim = claimFromWindow(window, Math.floor(seedCursor / windows.length), usedClaims);
+          const pick =
+            windows.length === 0
+              ? null
+              : nextWindow(windows, seedCursor, (w) => ledger.allows(w.episodeId, w.startSec)) ??
+                (seededThisAct < SPINE_MIN_SEEDED_BEATS_PER_ACT
+                  ? nextWindow(windows, seedCursor, (w) => ledger.orderAllows(w.episodeId, w.startSec)) ?? nextWindow(windows, seedCursor, () => true)
+                  : null);
+          if (pick) {
+            const { window, index } = pick;
+            /* WHICH sentence of the window, so two beats seeded from the same
+               window do not write the same claim: the sentence advances each
+               time this window is seeded from. */
+            const uses = usesByWindow.get(index) ?? 0;
+            const claim = claimFromWindow(window, uses, usedClaims);
             beats.push({
               claim,
               exploration,
               seed: { episodeId: window.episodeId, startSec: window.startSec, endSec: window.endSec }
             });
             usedClaims.add(normalizeClaim(claim));
+            usesByWindow.set(index, uses + 1);
+            ledger.record(window.episodeId, window.startSec);
             seededThisAct += 1;
-            seedCursor += 1;
+            seedCursor = index + 1;
           } else {
             const claim = claimFor(intent.subject, label, beatCursor, exploration);
             beats.push({ claim, exploration });
@@ -347,16 +376,49 @@ function claimFromWindow(window: ResearchTapeWindow, index: number, used: Set<st
      `window-overlap` with a weighted share of 1.0. That is the floor working;
      what the stub owes it is the sentence of the window that actually carries
      something. Deterministic: content-word count, then the text itself. */
-  const candidates = [...sentenceClaims(window.text), ...runClaims(window.text)].sort(
+  const candidates = [...sentenceClaims(window.text), ...runClaims(window.text, MAX_SEEDED_CLAIM_WORDS)].sort(
     (a, b) => contentWordCount(b) - contentWordCount(a) || (a < b ? -1 : a > b ? 1 : 0)
   );
   const usable = candidates.filter((c) => !used.has(normalizeClaim(c)));
   if (usable.length > 0) return usable[index % usable.length]!;
-  /* Every sentence of this window is already a beat somewhere. Fall back to a
-     claim that still carries the window's own opening words, qualified by the
-     timestamp so it is unique to this window and this position. */
+  /* Every sentence of this window is already a beat somewhere — which G-25
+     makes the common case, since the stub now seeds every beat it can and a
+     600-character window holds three or four sentences. Shorter runs of the
+     SAME window's words, at a finer stride, before anything else: the property
+     `buildSpine.test.ts` holds this stub to is that a seeded claim's words are
+     the window's words, and that has to survive the window being reused. */
+  const shorter = runClaims(window.text, SHORT_RUN_CLAIM_WORDS, SHORT_RUN_STRIDE_WORDS).filter((c) => !used.has(normalizeClaim(c)));
+  if (shorter.length > 0) return shorter[index % shorter.length]!;
+  /* Nothing of the window is left to say. The last resort still carries the
+     window's opening words, qualified by the timestamp so it is unique to this
+     window and this position — the one claim this stub writes that is not made
+     of the tape's words alone, and a fixture rich enough to seed from never
+     reaches it. */
   const words = window.text.split(/\s+/).filter(Boolean).slice(0, 20).join(" ").replace(/[.!?]+/g, "");
   return `At ${Math.round(window.startSec)} seconds, the tape says: ${words} (${index + 1}).`;
+}
+
+/** The run length and stride the reuse fallback in `claimFromWindow` cuts a
+ * window into once its sentences are spent: twelve words is a claim, not a
+ * paragraph, and a four-word stride gives a 100-word window twenty-odd
+ * distinct runs to choose from. */
+const SHORT_RUN_CLAIM_WORDS = 12;
+const SHORT_RUN_STRIDE_WORDS = 4;
+
+/** The next window at or after `from` (wrapping) that `admit` accepts, with
+ * its index so the caller can resume the walk after it — or null when no
+ * window in the list is admissible. */
+function nextWindow(
+  windows: ResearchTapeWindow[],
+  from: number,
+  admit: (window: ResearchTapeWindow) => boolean
+): { window: ResearchTapeWindow; index: number } | null {
+  for (let i = 0; i < windows.length; i++) {
+    const index = (from + i) % windows.length;
+    const window = windows[index]!;
+    if (admit(window)) return { window, index };
+  }
+  return null;
 }
 
 /** Sentences of the window that are already claim-shaped — the good case, and
@@ -375,17 +437,27 @@ function sentenceClaims(text: string): string[] {
   return claims;
 }
 
-/** And the fallback for tape with no sentence punctuation: fixed runs of its
- * words, with sentence marks stripped so the result is the one sentence
- * `checkSpineStructure` requires. */
-function runClaims(text: string): string[] {
+/**
+ * Runs of the window's OWN words — `length` of them, every `stride` words —
+ * with sentence marks stripped so each is the one sentence
+ * `checkSpineStructure` requires, and kept only when the run is claim-shaped on
+ * its own. The fallback for tape with no sentence punctuation (word-level
+ * transcripts exist), and G-25's reuse fallback at a shorter length.
+ *
+ * NO FRAMING WORDS. This used to write "The tape says: …", which is claim-shaped
+ * by construction but puts three words in the claim the tape never said; a
+ * seeded claim is held to being the window's words (`buildSpine.test.ts`), so
+ * a run that is not claim-shaped by itself is skipped rather than framed.
+ */
+function runClaims(text: string, length: number, stride: number = length): string[] {
   const words = text.replace(/[.!?]+/g, "").split(/\s+/).filter(Boolean);
   const claims: string[] = [];
-  for (let i = 0; i + MIN_SEEDED_CLAIM_WORDS <= words.length; i += MAX_SEEDED_CLAIM_WORDS) {
-    const run = words.slice(i, i + MAX_SEEDED_CLAIM_WORDS).join(" ");
-    const claim = `The tape says: ${run}.`;
+  for (let i = 0; i + MIN_SEEDED_CLAIM_WORDS <= words.length; i += stride) {
+    const run = words.slice(i, i + length).join(" ");
+    const claim = `${capitalize(run)}.`;
     if (claim.split(/\s+/).length > MAX_BEAT_CLAIM_WORDS) continue;
     if (contentWordCount(run) < MIN_SEEDED_CLAIM_CONTENT_WORDS) continue;
+    if (countSentences(claim) !== 1 || !isClaimShaped(claim)) continue;
     claims.push(claim);
   }
   return claims;

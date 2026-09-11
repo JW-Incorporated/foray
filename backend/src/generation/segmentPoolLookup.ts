@@ -1,6 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import { tokenizeForSourcing } from "./catalogueLookup";
+import { claimTermWeigher, TIER2_DISTINCTIVE_WEIGHT, TIER2_WINDOW_MIN_SHARE, TIER2_WINDOW_MIN_TERMS } from "./transcriptArchiveLookup";
 
 /**
  * §4.5 tier-1 lookup: a deterministic (non-LLM) matcher against the
@@ -70,6 +71,16 @@ export interface SegmentMatch {
   /** How many distinct content words the CLAIM contributed — the denominator the
    * transcript-window bar is a fraction of. */
   claimTokenCount: number;
+  /** The claim's content words the haystack says, in the claim's order. */
+  matchedTerms: string[];
+  /** The share of the claim's DISTINCTIVENESS the haystack speaks — each word
+   * weighted by its corpus rarity (`claimTermWeigher`), the same number tier 2's
+   * window is judged on (G-24 R2). Equals `score / claimTokenCount` when no idf
+   * was supplied. */
+  weightedShare: number;
+  /** Those matched words the corpus considers rare for this claim
+   * (`TIER2_DISTINCTIVE_WEIGHT`) — every matched word when no idf was supplied. */
+  distinctiveTerms: string[];
 }
 
 /** Supplies the transcript text spoken inside a pool segment's own
@@ -112,6 +123,38 @@ export function requiredOverlapFor(matchedIn: "transcript" | "metadata", claimTo
 }
 
 /**
+ * WHETHER A MATCH CLEARS TIER 1'S BAR — the count bar above, and, for a
+ * transcript window, THE SAME WEIGHTED FLOOR TIER 2'S WINDOW FACES (G-24 R2;
+ * tape-yield brief §4 cause 4).
+ *
+ * The coverage bar counts words with every word weighing the same, and inside
+ * one subject every episode shares the trade's vocabulary (F-33): on generation
+ * run 2 attempt 6 a *Causality* segment about the 1981 Hyatt Regency walkway
+ * collapse cleared a 15-word agent-engineering claim's bar of 4 on
+ * `engineering, good, enough, step` — four words the corpus says everywhere —
+ * and played under it, the product's worst failure and run 1's
+ * Chernobyl-for-Hyatt class of false positive back in the accepted set. Tier 2
+ * retired that arithmetic with F-61: a window is about a claim when it speaks
+ * `TIER2_WINDOW_MIN_SHARE` of the claim's DISTINCTIVENESS (idf-weighted) and
+ * `TIER2_WINDOW_MIN_TERMS` of its RARE words. A pool segment's transcript
+ * window is a window, and it now faces the same two conditions, with the same
+ * constants — nothing here is a third floor. The count bar stays as well: it
+ * is never looser than the weighted one and it is what every pre-index caller
+ * measured against.
+ *
+ * WITHOUT AN IDF (CI, a caller with no text index) every word weighs one, so
+ * the weighted share is the plain coverage and every matched word is "rare":
+ * the bar is then coverage ≥ 0.35 and three shared words, which is the count
+ * bar raised from a quarter to a third. A metadata match — an 18-word curator
+ * note — faces only the count bar, as before: a note is not a window.
+ */
+export function tier1BarClears(match: SegmentMatch): boolean {
+  if (match.score < requiredOverlapFor(match.matchedIn, match.claimTokenCount)) return false;
+  if (match.matchedIn === "metadata") return true;
+  return match.weightedShare >= TIER2_WINDOW_MIN_SHARE && match.distinctiveTerms.length >= TIER2_WINDOW_MIN_TERMS;
+}
+
+/**
  * Scores every segment in `pool` against `claimText`'s content words.
  *
  * WHAT CHANGED AFTER RUN 1 (F-06, F-29, F-33): the haystack is the segment's
@@ -128,10 +171,23 @@ export function requiredOverlapFor(matchedIn: "transcript" | "metadata", claimTo
 export function scoreSegmentsAgainstClaim(
   claimText: string,
   pool: SegmentRecord[],
-  options: { windowText?: SegmentWindowText } = {}
+  options: { windowText?: SegmentWindowText; idf?: ReadonlyMap<string, number> } = {}
 ): SegmentMatch[] {
-  const claimTokens = new Set(tokenizeForSourcing(claimText));
+  /* In the claim's own order, deduplicated — so `matchedTerms` reads the way
+     tier 2's does in a trace row. */
+  const claimTerms: string[] = [];
+  const claimTokens = new Set<string>();
+  for (const t of tokenizeForSourcing(claimText)) {
+    if (claimTokens.has(t)) continue;
+    claimTokens.add(t);
+    claimTerms.push(t);
+  }
   if (claimTokens.size === 0) return [];
+  /* G-24 R2: the corpus's rarity for each claim word, normalised exactly as
+     tier 2 normalises it (`claimTermWeigher`). */
+  const weightOf = claimTermWeigher(claimTerms, options.idf);
+  let totalWeight = 0;
+  for (const t of claimTerms) totalWeight += weightOf(t);
 
   const scored: SegmentMatch[] = [];
   for (const segment of pool) {
@@ -139,11 +195,20 @@ export function scoreSegmentsAgainstClaim(
     const matchedIn: "transcript" | "metadata" = window ? "transcript" : "metadata";
     const haystack = window ?? [segment.topic, segment.why, segment.start_anchor, segment.end_anchor].join(" ");
     const haystackTokens = new Set(tokenizeForSourcing(haystack));
-    let score = 0;
-    for (const t of claimTokens) {
-      if (haystackTokens.has(t)) score += 1;
-    }
-    if (score > 0) scored.push({ segment, score, matchedIn, claimTokenCount: claimTokens.size });
+    const matchedTerms = claimTerms.filter((t) => haystackTokens.has(t));
+    const score = matchedTerms.length;
+    if (score === 0) continue;
+    let matchedWeight = 0;
+    for (const t of matchedTerms) matchedWeight += weightOf(t);
+    scored.push({
+      segment,
+      score,
+      matchedIn,
+      claimTokenCount: claimTokens.size,
+      matchedTerms,
+      weightedShare: totalWeight > 0 ? matchedWeight / totalWeight : 0,
+      distinctiveTerms: matchedTerms.filter((t) => weightOf(t) >= TIER2_DISTINCTIVE_WEIGHT)
+    });
   }
   scored.sort((a, b) => b.score - a.score);
   return scored;
@@ -155,7 +220,7 @@ export function findTier1Match(
   claimText: string,
   pool: SegmentRecord[] = loadSegmentPool(),
   isUsable: (segment: SegmentRecord) => boolean = () => true,
-  options: { windowText?: SegmentWindowText } = {}
+  options: { windowText?: SegmentWindowText; idf?: ReadonlyMap<string, number> } = {}
 ): SegmentMatch | null {
   /* WHY THE CALLER GETS A VETO, AND WHY IT IS APPLIED INSIDE THE SEARCH.
      Scoring is per-claim and stateless, so nothing here knows what the rest of
@@ -184,7 +249,7 @@ export function findTier1Match(
      bar would not admit. */
   const scored = scoreSegmentsAgainstClaim(claimText, pool, options);
   for (const candidate of scored) {
-    if (candidate.score < requiredOverlapFor(candidate.matchedIn, candidate.claimTokenCount)) continue;
+    if (!tier1BarClears(candidate)) continue;
     if (isUsable(candidate.segment)) return candidate;
   }
   return null;
