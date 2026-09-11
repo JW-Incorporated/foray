@@ -2321,3 +2321,59 @@ D13; kanban card S-04a (`t_835d1a3c`, itself a workspace-bug redo of
   as part of this change — any surprises in App Store Connect's existing
   ones; treat the first real tag/dispatch run as a debugging session per this
   repo's standing rule about inferences presented as measurements.
+
+## 2026-09-11 (the app reads the Foray directory from the live origin; the package carries an offline seed — FD-06)
+
+- **The decision.** The app reads the Foray directory — the live site's three
+  Foray data files (`data/forays.json`, `data/segments.json`,
+  `data/segment-sources.json`), versioned by the deploy id they shipped with,
+  via the pointer `data/forays-directory.json` — from the live origin
+  (`https://foray-web-seven.vercel.app`) at boot and on return to foreground;
+  the package carries an offline seed. Publishing a Foray is: merge to `main`
+  → Vercel deploys → the pointer changes → every phone picks it up on next
+  launch. No store build. Deck: `docs/foray-directory-plan.md` (2026-09-10,
+  from Wyatt's brief: "Shouldn't that be accessed the same way shows and
+  playlists are accessed?").
+- **What this reverses, and what it keeps.**
+  `docs/brief/04_VOICE_AUDIO_SPEC.md` says "everything local before play;
+  the player should essentially never stream." That sentence carried two
+  ideas. The *bundling* half — the package is the catalogue, so new data means
+  a new package — is dropped: it was written before generated Forays existed,
+  and it is why the 2026-09-10 Foray needed release build 2026091009. The
+  *offline* half is kept as written: a Foray you have opened keeps working
+  offline (the last validated set is cached durably, keyed by version), and a
+  fresh install plays the bundled seed before it has ever reached the network.
+  First paint never waits on the network; a set that fails validation is never
+  adopted; a cached set is never dropped on a network error.
+- **What ships it.** #606 (FD-02: `generate-manifest.mjs` writes and `--check`s
+  the pointer; `vercel.json` serves the bare paths always-revalidate and
+  `?v=<version>` copies immutable), #610 (FD-03/04/05/01: `player/foray-directory.js`,
+  the `init()` wiring, the seed header in `prepare-webdir.mjs`, resume across a
+  swap, the `data` row in the field record), and the FD-06 PR, which adds the
+  one line that makes the phone path live — `Access-Control-Allow-Origin: *`
+  on `/data/` in `vercel.json`. The shell's origin is `capacitor://localhost`,
+  so without it every directory fetch is a cross-origin failure the shell
+  reports as `offline` while the seed keeps playing; #610 named this and left
+  it to this PR to stay inside its lane. `test/vercel-headers.test.js` pins the
+  header (mutation: drop it → red).
+- **The privacy sentence.** `docs/legal/privacy-policy.md` §2 already disclosed
+  the one off-device call the client makes to our own origin (the Shows search
+  miss-lookup). The directory fetch is added to that same disclosure in one
+  sentence: a plain GET of static, public JSON, no query, no account id, no
+  device identifier, nothing typed. Checked against HUMAN-ACTIONS #38's
+  sentence ("Nothing you type into the playlist box is transmitted") and the
+  search deck's S-07 conditional ("if a show or episode is already in that
+  local catalogue nothing you typed leaves your device"): neither is about a
+  request that carries nothing typed, so neither is contradicted and neither
+  is rewritten — this is exactly the case both were written to allow. The
+  founders own the sentence; Wyatt reads it on the FD-06 PR.
+- **Cost, and what is deliberately not done.** Roadmap card G-22 ("store build
+  on merge") is superseded and D9 (content-only version policy) is moot for
+  Forays. `sw.js`'s `stale-shell` pin still applies on the web: a page pinned
+  to a retained generation neither reads the cache nor refreshes, by design.
+  The shell fetches the three files at their bare paths with `no-cache`; the
+  `?v=<version>` immutable copy is a cheap follow-up now that CORS is on both
+  rules. Policy §5's "`connect-src` names only two origins — the app's own,
+  and our Supabase project" is untouched: on the web the Vercel origin *is*
+  the app's own, and `test/legal-citations.test.js` pins the directive to
+  exactly `'self'`, `SB_URL`, `API_ORIGIN`.

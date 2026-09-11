@@ -329,6 +329,9 @@ measurable first step.
 ## 3. Phase 0 — Prerequisites (parallel, this week)
 
 ### G-00 · Land the generation branch on main — **H · M**
+- **DONE 2026-09-11** — #538 merged (`9a49675`); `main` now carries the
+  generation branch, and every "branch from `generation-run-2026-09-09`"
+  note below reads as "branch from `main`".
 - **Owner:** overlord (founder-approved lane: `backend/src/`, `.github/`).
 - **Ask.** Regenerate `deploy-manifest.json` and `sw.js` on the branch against
   current main (`tools/ci/generate-manifest.mjs --write` **from an LF checkout
@@ -842,6 +845,13 @@ which is why G-30 sits in this phase, ahead of G-20.
 - **Dependencies.** G-30. **Human gate.** none.
 
 ### G-22 · Store build on merge — **M · S — overlord (`.github/`) — needs D9**
+- **SUPERSEDED 2026-09-10 by `docs/foray-directory-plan.md`.** A store build
+  per Foray was the wrong fix: the phone app now reads the Foray directory —
+  the live site's three data files, versioned by deploy id, via
+  `data/forays-directory.json` — from the live origin at boot and on
+  foreground (FD-02 #606, FD-03/04/05/01 #610, FD-06 CORS + records), so a
+  merge to `main` *is* the release for content. Nothing below is scheduled;
+  D9 (content-only version policy) is moot for Forays.
 - **Owner:** overlord (`.github/workflows/release.yml`,
   `tools/mobile/release-ci.mjs` are both denied paths).
 - **Ask.** A merge that changes `data/forays.json`, `data/segments.json` or

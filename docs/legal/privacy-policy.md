@@ -189,7 +189,15 @@ in that local catalogue nothing you typed leaves your device. If it is not —
 you are searching for something outside 4a's local catalogue — 4a sends your
 typed query off-device to look it up against a shard/index so it can still
 find it. That query, and nothing else about you, is what is transmitted for
-that lookup.
+that lookup. Separately from anything you type, when 4a launches and each time
+you bring it back to the foreground it fetches the current foray directory —
+the small pointer `data/forays-directory.json` and, only when that pointer
+names a newer version than the one on your device, `data/forays.json`,
+`data/segments.json` and `data/segment-sources.json` — from our own origin
+(`app.js:API_ORIGIN`, the same origin the search lookup above uses) as a plain
+GET of static, public JSON: it carries no query, no account id, no device
+identifier and nothing you typed, only what every HTTP request carries (your
+IP address and user-agent, as §4.2 describes).
 
 ## 3. The anonymous account
 

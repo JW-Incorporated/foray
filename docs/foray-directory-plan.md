@@ -1,6 +1,8 @@
 # Deck: the Foray directory — new Forays reach the app without a release
 
-**Status:** plan to cut into kanban cards, written 2026-09-10 by the founder's Claude
+**Status:** landed 2026-09-11 — FD-02 (#606), FD-03/04/05/01 (#610), FD-06 (CORS +
+records, the PR named on the card), FD-07 (PR #609); each card carries its DONE line.
+Written 2026-09-10 by the founder's Claude
 session from Wyatt's brief below. Cards are **FD-**. Hermes is on
 `docs/bundled-voice-plan.md` and `docs/search-plan.md`; this deck is executed by the
 overlord's agents unless the founders reassign it. Companion to
@@ -80,6 +82,7 @@ step 4a). A second store would be a second thing to keep in step.
 ## 3. Cards
 
 ### FD-01 · Instrument how the shell loads its data today — **S** — agent
+**DONE** — PR #610 (the `data` row in the field record; boot and refresh sources named).
 **Ask.** A `diagnostics` entry at boot recording, per data file, whether it came from
 the bundle, the cache, or the network, with the deploy id it carries; the web's
 `stale-shell` path records the same. This is the before-number every later card cites.
@@ -89,6 +92,8 @@ the bundle, the cache, or the network, with the deploy id it carries; the web's
 **Human gate.** none.
 
 ### FD-02 · The pointer and the versioned files — **S** — agent (tools/ci lane → founder label)
+**DONE** — #606, merged 2026-09-11 (`data/forays-directory.json` written and `--check`ed;
+bare paths always-revalidate, `?v=` copies immutable).
 **Ask.** `tools/ci/generate-manifest.mjs` (which already stamps `deploy_id` into
 `deploy-manifest.json` and `sw.js`) also writes `data/forays-directory.json`:
 `{ version: <deploy_id>, built_at, files: { forays, segments, sources }, bytes,
@@ -102,6 +107,8 @@ pointer is in the deploy manifest; a mutation that stales the pointer turns the 
 red. **Human gate.** `tools/ci/` is a governed path — the overlord labels.
 
 ### FD-03 · The shell reads the directory, bundle as fallback — **M** — agent (design comment first)
+**DONE** — PR #610 (`player/foray-directory.js`, `validateForayDocuments`, `init()` wiring; the
+CORS header the cross-origin fetch needs is FD-06's).
 **Ask.** In the Capacitor shell (and harmlessly in the PWA, where the sw already does
 this): at boot, paint from the cached directory if any, else from the bundle; in the
 background fetch the pointer from the live origin with a short timeout; if
@@ -123,6 +130,7 @@ in the test header (skip validation → red; block paint on fetch → red).
 **Human gate.** none for code; **the privacy policy** — see FD-06.
 
 ### FD-04 · The bundle becomes the offline seed, not the catalogue — **S** — agent
+**DONE** — PR #610 (`prepare-webdir.mjs` header + `SEED_POINTER`; seed-is-a-subset test).
 **Ask.** `prepare-webdir.mjs` keeps copying the three files (a fresh install must
 play offline), and its comment header says why they are now a seed; `#327`'s
 unbounded-pool concern is answered by the same mechanism — the bundle can carry a
@@ -132,6 +140,7 @@ capped slice while the directory carries everything.
 files and names the cap; the shell boots with an empty seed too.
 
 ### FD-05 · Playback state survives a directory change — **S** — agent
+**DONE** — PR #610 (swap mid-session, vanished Foray → `dropped`, prefetch only from the held set).
 **Ask.** Resume points (`player/foray-progress.js`) key on Foray id and item id, both
 stable across versions; verify a version swap mid-session does not move the playhead,
 does not drop the queue for a Foray that still exists, and marks a Foray that
@@ -141,6 +150,9 @@ not cache audio for a set that was never validated.
 **Done when.** Tests for the three cases above, each with a mutation.
 
 ### FD-06 · Records, and the privacy sentence — **S** — agent + **founder gate**
+**DONE** — PR #611 (`feat/fd-06-records-cors`): `Access-Control-Allow-Origin: *` on
+`/data/` in `vercel.json` (what makes the phone path live) + `test/vercel-headers.test.js`;
+DECISIONS 2026-09-11; policy §2 sentence; G-22 superseded; this deck's markers.
 **Ask.** `docs/DECISIONS.md`: "the app reads the Foray directory from the live origin;
 the package carries an offline seed" (reverses the bundling half of
 `04_VOICE_AUDIO_SPEC.md`, keeps its offline intent). `docs/legal/privacy-policy.md`
@@ -153,6 +165,7 @@ founders own that sentence. `STATE.md` entry; roadmap G-22 marked superseded.
 sentence (Wyatt reads it).
 
 ### FD-07 · The publish path ends at `main` — **S** — overlord (backend lane)
+**DONE** — PR #609 (branch from `origin/main`, pool-valid segment rows; F-75, F-78).
 **Ask.** `backend/src/cli/publishForay.ts` cuts its branch from `origin/main`, not
 the checkout HEAD (F-75); `mintedSegmentRow` writes the four fields the pool gate
 requires (F-78: `why` ≤ 18 words from the beat claim, `transcript_source`,
