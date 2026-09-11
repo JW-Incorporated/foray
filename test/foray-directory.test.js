@@ -40,6 +40,10 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { webcrypto } = require("node:crypto");
 
+/* The seed the shell boots from is the committed data on disk, so the row's `n=` is read from
+   there rather than pinned — a published Foray must not break this test (F-84 / PR #624). */
+const SEED_FORAY_COUNT = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "data", "forays.json"), "utf8")).forays.length;
+
 const ROOT = path.join(__dirname, "..");
 const APP_SRC = fs.readFileSync(path.join(ROOT, "app.js"), "utf8");
 const ORIGIN = "https://foray-web-seven.vercel.app";
@@ -405,11 +409,7 @@ const tick = () => new Promise((r) => setTimeout(r, 0));
 /* Wait for the boot refresh (fired after route()) to reach an outcome. */
 async function bootRefreshDone(h) {
   for (let i = 0; i < 200; i++) {
-    if (h.directory./* The seed the shell boots from is the committed data on disk, so the row's `n=` is read from
-   there rather than pinned — a published Foray must not break this test (F-84 / PR #624). */
-const SEED_FORAY_COUNT = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "data", "forays.json"), "utf8")).forays.length;
-
-describe().last) return;
+    if (h.directory.describe().last) return;
     await tick();
   }
 }
