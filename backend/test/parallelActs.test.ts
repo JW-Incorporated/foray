@@ -88,8 +88,11 @@ function deferred(): { promise: Promise<void>; resolve: () => void } {
 }
 
 /* The stub pipeline spends 3–5 s in understand/spine/deepen/source before a
-   single narration call, and several tests below run it twice. */
-vi.setConfig({ testTimeout: 60_000 });
+   single narration call (the FIRST run in a worker also warms the catalogue
+   caches, which under a full parallel `vitest run` on the founder's PC has
+   taken over a minute), and several tests below run it twice. A ceiling, not
+   a wait: a passing test ends the moment its last assertion does. */
+vi.setConfig({ testTimeout: 180_000 });
 
 /** Polls until `pred` holds, or fails with `what` after `ms` — so a reverted
  * loop fails the test with a sentence instead of hanging it. The default is
