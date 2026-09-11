@@ -1666,6 +1666,11 @@ const BACKEND_FLOORS = {
   "test/generateForays.test.ts": 5,
   "test/generationStatus.test.ts": 4,
   "test/partialCandidate.test.ts": 6,
+  /* F-79: a partial candidate is judged on the PROJECTED whole for the
+     share-of-whole rules (M4, D3, D5-IQR, D2-end, D4-share) and on itself
+     for every monotone rule — run 5 was aborted on an M4 share computed over
+     a one-act slice. */
+  "test/partialProjection.test.ts": 7,
   /* WS-F robustness (docs/curation/generation-fix-plan-2026-09-09.md), closing
      F-03, F-04, F-11, F-13, F-17 and F-18 from generation run 1:
        checkpoint / runPipelineCheckpoint — per-stage resume inside ONE Foray,

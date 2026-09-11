@@ -1081,7 +1081,11 @@ export async function runForayPipeline(
                    the input, not of the Foray. */
                 segments: sourced.newSegments,
                 segmentSources: sourced.newSegmentSources,
-                root: options.root
+                root: options.root,
+                /* F-79: the sourcing plan, so the partial's share-of-whole
+                   rules (M4 above all) are judged on the projected whole
+                   rather than on this act's slice — see partialProjection.ts. */
+                projection: { sourcedActs: sourced.acts, slots }
               },
               finalize
             );
