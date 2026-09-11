@@ -1,6 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import { tokenizeForSourcing } from "./catalogueLookup";
+import type { TranscriptSource } from "../types/tapeSourcing";
 
 /**
  * §4.5 tier-2 lookup: the transcript archive — "episodes we hold
@@ -195,6 +196,16 @@ export interface TranscriptCue {
  * without a transcript body ever having to be committed to git. */
 export interface TranscriptCueProvider {
   getCues(entry: TranscriptDigestEntry): TranscriptCue[] | null;
+  /**
+   * Which transcript the cues came from — the pool's `transcript_source`
+   * (F-78). Optional because most providers (every test's inline
+   * `{ getCues }`) hand back the archive's own body, which is by construction
+   * the publisher's: `tools/segments/fetch-transcripts.mjs` only ever fetches
+   * a digest row's `transcript_url`. A provider that reads a body this machine
+   * transcribed itself answers `"asr-local"`; `null` means "no body", the same
+   * answer as `getCues` returning `null`.
+   */
+  transcriptSource?(entry: TranscriptDigestEntry): TranscriptSource | null;
 }
 
 /**
@@ -256,6 +267,32 @@ export class FileTranscriptCueProvider implements TranscriptCueProvider {
     }
     this.cuesByKey.set(key, result);
     return result;
+  }
+
+  /**
+   * The provenance the body file itself records (F-78's `transcript_source`).
+   * `fetch-transcripts.mjs` writes `source_url: <the digest row's transcript_url>`
+   * into every normalized body it produces, and its regenerate path records
+   * `regenerated_from: "raw/<show>/<guid>.<ext>"` — the raw file that same
+   * fetch saved. Either mark means the publisher's transcript. A body carrying
+   * neither is one this machine produced itself (`tools/transcribe/`), which is
+   * exactly what the pool calls `asr-local`. Never guesses from the digest row:
+   * the row says a publisher transcript EXISTS, the body says which one was
+   * actually read.
+   */
+  transcriptSource(entry: TranscriptDigestEntry): TranscriptSource | null {
+    try {
+      const file = this.locate(String(entry.show_id), String(entry.guid));
+      if (!file) return null;
+      // eslint-disable-next-line security/detect-non-literal-fs-filename -- path came from this provider's own directory walk.
+      const j = JSON.parse(fs.readFileSync(file, "utf8")) as { source_url?: unknown; regenerated_from?: unknown };
+      const fetchedFromPublisher =
+        (typeof j.source_url === "string" && j.source_url.trim().length > 0) ||
+        (typeof j.regenerated_from === "string" && /^raw[\\/]/.test(j.regenerated_from));
+      return fetchedFromPublisher ? "publisher" : "asr-local";
+    } catch {
+      return null;
+    }
   }
 
   /**

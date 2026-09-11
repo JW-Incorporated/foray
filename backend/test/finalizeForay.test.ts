@@ -150,7 +150,9 @@ describe("finalizeForay — the tier-2 tape a candidate brings with it (F-49)", 
     referenceDurationSec: 3600,
     startAnchor: "so the first thing we did was",
     endAnchor: "and that is how the pipeline ended up",
-    confidence: "medium"
+    confidence: "medium",
+    why: "The first thing the team did was wire the pipeline end to end.",
+    transcriptSource: "publisher"
   };
   const mintedSource: MintedSegmentSource = {
     id: "practical-ai--minted-episode",
@@ -189,7 +191,13 @@ describe("finalizeForay — the tier-2 tape a candidate brings with it (F-49)", 
       reference_duration_sec: 3600,
       confidence: "medium",
       source: "generation-tier-2",
-      needs_review: true
+      needs_review: true,
+      /* F-78: the four pool-gate fields, from the mint, the source row's DAI
+         verdict and the candidate id — never typed in by hand again. */
+      why: "The first thing the team did was wire the pipeline end to end.",
+      transcript_source: "publisher",
+      dai_suspected: false,
+      batch_id: "generation-merge-test-1"
     });
     expect(registry.find((s) => s.id === mintedSource.id)).toEqual(mintedSource);
     // The committed pool is still all there — this is a merge, not a replacement.
