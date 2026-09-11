@@ -7,6 +7,7 @@ Issue #182 / #134. `data/segments.json` is a **pool**; `data/forays.json` is a
 |---|---|---|
 | `check-forays.mjs` | Structural integrity + the tier-A ordering rules (D1–D5, M3, M4) and, because `role` is recorded here, the per-role bounds L2/L3/L4 | no |
 | `check-forays.test.mjs` | Runs the checker over the committed data — **this is the CI gate** — and breaks each rule on purpose to prove it fires | no |
+| `fixture-coverage.test.mjs` | G-21c fixture-before-emit: every shape in the checker's `ACCEPTED_SHAPES` is carried by a committed Foray in `data/`, and the checker's source holds no vocabulary literal the enumeration omits; `KNOWN_UNCOVERED` lists today's gaps and can only shrink | no |
 | `verify-source-audio.mjs` | Re-verifies every `audio_url` with a 2-byte ranged GET | **yes — manual only** |
 
 Dependency-free ESM, like the rest of `tools/`. No install step.

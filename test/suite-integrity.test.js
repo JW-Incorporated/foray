@@ -762,6 +762,16 @@ const FLOORS = {
      refused when it carries a timestamp only. Both branches are pinned, and so is
      the half-anchored case. */
   "tools/foray/check-forays.test.mjs": 130,
+  /* G-21c fixture-before-emit (F-89). Seven DECLARATIONS, not seven tests: two
+     of them sit inside a loop over `ACCEPTED_SHAPES` and expand to one test per
+     accepted value (~30 today), so the floor is the count of `test(` lines this
+     file's regex sees. Zero slack. The two loop-body declarations are the gate
+     itself — every shape the checker accepts must be carried by a committed
+     Foray, or be listed in `KNOWN_UNCOVERED` and asserted still uncovered — and
+     the source-scan test is what stops a new accepted literal reaching the
+     checker without joining the enumeration. Delete any of them and a shape can
+     again reach `data/` before a consumer has seen it in CI. */
+  "tools/foray/fixture-coverage.test.mjs": 7,
   /* The narration evidence gate (#247, and the founder's citation rulings of
      2026-08-19). Zero slack, and for a sharper reason than most suites here.
 
