@@ -120,7 +120,7 @@ const FLOORS = {
      tts-locked-screen-check.md (kept as the historical record). */
   "player/foray-playback.test.js": 87,
   "player/foray-progress.test.js": 59, // FD-05 (2026-09-10): a Foray gone from the directory reads `dropped`; 58 -> 59
-  "player/foray-queue.test.js": 37,
+  "player/foray-queue.test.js": 38, // F-90 (2026-09-11): the jingle item asset is the interlude asset; 37 -> 38
   /* The interlude jingle (queue-manager.js §13): the rule, the element wrapper
      and the committed placeholder asset's measured properties. The seam CLOCK
      it rides is floored under queue-manager.test.js. */
@@ -174,7 +174,7 @@ const FLOORS = {
      actual, and the pre-push review proved what that bought: all four pins could
      be deleted and the floor stayed green — the exact failure this file exists to
      make loud. Raise it when the suite grows. */
-  "player/media-session.test.js": 131,
+  "player/media-session.test.js": 132, // F-89 (2026-09-11): a jingle item is credited to 4a; 131 -> 132
   /* Playback speed (#242). Floored with ZERO SLACK, like media-session and
      data-deletion above and for the same reason: what this suite guards is a set of
      PRODUCT decisions, each one edit from its opposite and none of them visible in

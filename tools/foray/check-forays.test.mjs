@@ -258,9 +258,14 @@ test("every committed Foray's report is consistent with the items it lists", () 
     assert.equal(r.segments, segs.length, `${where}report counts ${r.segments} of ${segs.length} segment items`);
     const tape = segs.reduce((t, i) => t + durationOf(live, i.segment_id), 0);
     assert.ok(Math.abs(r.tape_runtime_sec - tape) < 0.01, `${where}tape ${r.tape_runtime_sec} vs items ${tape}`);
+    /* F-89 (2026-09-11): the first Foray with jingle items showed this line had
+       been asserting tape plus narration while the checker (correctly) also counts
+       `jingle_sec` — the jingle sounds for real seconds. The report field is
+       asserted to exist so a checker that silently stops reporting it is red here. */
+    assert.equal(typeof r.jingle_sec, "number", `${where}report has no jingle_sec`);
     assert.ok(
-      Math.abs(r.runtime_sec - (r.tape_runtime_sec + r.narration_sec)) < 0.01,
-      `${where}the listener's clock is not tape plus narration`
+      Math.abs(r.runtime_sec - (r.tape_runtime_sec + r.narration_sec + r.jingle_sec)) < 0.01,
+      `${where}the listener's clock is not tape plus narration plus jingles`
     );
     assert.ok(Math.abs(r.mean_sec - tape / segs.length) < 0.06, `${where}mean ${r.mean_sec}`);
     assert.ok(r.d1_max_starts_in_window <= r.d1_budget, `${where}D1 ${r.d1_max_starts_in_window}/${r.d1_budget}`);

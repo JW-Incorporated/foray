@@ -81,8 +81,18 @@ export const JINGLE = "jingle";
     every time — it is a brand mark, and its value is entirely in being
     recognized" (§4.8), so there is exactly one asset to point at, not one per
     Foray. Swap this for the real hosted URL the day the asset lands; no
-    schema change follows from it. */
-export const JINGLE_ASSET_URL = "TBD:jingle-asset";
+    schema change follows from it.
+
+    F-90 (2026-09-11): the first generated Foray to carry an authored jingle
+    item reached `data/` while this still read `TBD:jingle-asset`, which the
+    audio backend would have tried to load and failed at the act boundary.
+    It now names the same placeholder `player/interlude.js` already plays at
+    seams — one asset, both routes — and `foray-queue.test.js` pins the two
+    constants equal. `interlude.js` derives its URL from `SITE_ROOT`; this
+    module cannot import it (interlude.js imports `JINGLE` from here), so the
+    literal is repeated and the test is what keeps them one. The real jingle
+    replaces BOTH the day it is cut. */
+export const JINGLE_ASSET_URL = "https://jw-incorporated.github.io/foray/player/assets/interlude-placeholder.wav";
 
 /** "roughly 1-2 seconds" (§4.8). Fixed rather than measured because the
     asset is fixed — unlike narration, there is no script to estimate a
