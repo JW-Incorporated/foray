@@ -833,6 +833,37 @@ which is why G-30 sits in this phase, ahead of G-20.
   G-20 with recorded `meta.veracity`** — no Foray has ever passed either gate,
   so the thresholds have zero calibration data until then. **Human gate.** D4.
 
+#### G-21c · The publish gate runs the app's own suites, and every new item kind ships a fixture first — **H · S — overlord**
+- **Owner:** overlord (`backend/src/cli/publishForay.ts`, `tools/foray/`, `data/` fixture).
+- **Why (measured 2026-09-11).** Four publish-gate defects on the three
+  generated Forays so far — F-78 (pool-invalid minted rows), F-84 (segment id
+  collision), F-89 (the first jingle item broke the lock-screen credit, the
+  checker test's clock arithmetic and the bundle-slice alarm) and F-90 (the
+  jingle item's asset URL was still `TBD`) — were every one found by CI on
+  the data PR and none by the pipeline's validate step. `check-forays.mjs`
+  passed each time; the consumers of the data did not. The pipeline's idea of
+  "valid" is narrower than the app's, and each gap cost a fix PR, a rebase and
+  a CI round (~40 min) between "built OK" and "on a phone".
+- **Ask.** (1) Before `publishForay` opens the PR it writes the three data
+  files into a scratch copy of the checkout and runs the suites that read
+  real `data/` — `player/media-session.test.js`, `tools/foray/check-forays.test.mjs`,
+  `tools/mobile/prepare-webdir.test.mjs`, `test/foray-directory.test.js` —
+  and refuses (with the failing assertion in the report) when any is red.
+  The list lives in one exported constant with a test that greps the repo
+  for other suites reading `data/forays.json` and fails when one is missing
+  from the list. (2) A fixture rule: any change that lets the generator emit
+  a new item `type`, a new `Source.kind`, a new `duration_source` or a new
+  segment field lands **with a committed fixture Foray in `data/`** carrying
+  that shape (behind `status: draft`, `generated: true`), so every consumer
+  sees it in CI before a real run produces it. `check-forays.mjs` enumerates
+  the shapes it accepts; a test asserts each is present in at least one
+  committed Foray.
+- **Done when.** A candidate that would fail `media-session.test.js` on real
+  data is refused locally with the assertion text in `report.json`; the
+  fixture-coverage test is red when a shape the checker accepts has no
+  committed carrier (proved by mutation: remove the jingle fixture → red).
+- **Dependencies.** none. **Human gate.** none.
+
 #### G-21b · The digest — **H · S — Hermes**
 - **Owner:** Hermes (`docs/`, `tools/` lanes).
 - **Ask.** Founders get a digest, not a gate: one issue comment per candidate
