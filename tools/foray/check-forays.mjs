@@ -60,8 +60,21 @@ import {
   narrationDuration,
   NARRATION_CHARS_PER_SEC,
   DURATION_MEASURED,
+  DURATION_ESTIMATED,
+  DURATION_FALLBACK,
   JINGLE_DURATION_SEC,
+  SEGMENT,
+  NARRATION,
+  JINGLE,
 } from "../../player/foray-queue.js";
+
+/* The pool's own provenance enum, imported from the file that WRITES the pool
+ * (`tools/segments/merge-segments.mjs`) for the reason above: the checker
+ * admits whatever rows the pool schema admits, so the vocabulary of a segment
+ * row is that file's to own. Importing keeps `merge-segments.mjs` ignorant of
+ * Forays — the direction its header insists on — while giving this file one
+ * source of truth for the values `ACCEPTED_SHAPES` enumerates. */
+import { TRANSCRIPT_SOURCES } from "../segments/merge-segments.mjs";
 
 /* The six narration modes, imported from check-narration.mjs rather than
  * re-declared. That file already carries the enum (and the char bands each
@@ -94,6 +107,70 @@ export function d1Budget(runtimeSec) {
 export const ROLE_FLOOR_SEC = { quote: 30, explanation: 60, exchange: 75, narrative: 120 };
 export const ROLE_MAX_SEC = { quote: 90, explanation: 360, exchange: 480, narrative: 480 };
 export const L4_SOFT_MAX_SEC = 240;
+/** The L6 role enum, in §9's order. The two tables above are keyed by it; the
+    role check below reads it rather than a second inline list. */
+export const ROLES = Object.freeze(["quote", "explanation", "exchange", "narrative"]);
+
+/* ---- the vocabularies this checker accepts (G-21c) ----------------------
+ *
+ * Every enumerated value a Foray, item or pool row may carry through this
+ * gate, in ONE place, so `fixture-coverage.test.mjs` can ask "does at least
+ * one committed Foray in `data/` carry each of these?" — G-21c's
+ * fixture-before-emit rule. The rule exists because on 2026-09-11 the first
+ * generated Foray with a `type: "jingle"` item passed this checker and then
+ * broke three consumers in CI (F-89): the checker's idea of "valid" was wider
+ * than anything the consumers had ever been shown. A shape listed here with no
+ * committed carrier is a shape the app has never rendered in CI.
+ *
+ * Each list is the constant the checks themselves read, never a copy of it,
+ * so this cannot say "accepted" about a value the code rejects. */
+
+/** `foray.kind` (#134). One value today; the check reads this list. */
+export const FORAY_KINDS = Object.freeze(["deep-dive"]);
+/** `foray.status`. */
+export const FORAY_STATUSES = Object.freeze(["draft", "published"]);
+/** The three fields a narration item can be voiced by — `script` (spoken
+    on-device), `audio_url` / `asset` (a rendered file). The checks read them
+    by name (mirroring `player/foray-queue.js` verbatim), so this list is
+    documentation for `ACCEPTED_SHAPES` rather than a lookup table. */
+export const NARRATION_VOICE_FIELDS = Object.freeze(["script", "audio_url", "asset"]);
+/** Where a narration item's length comes from, per `narrationDuration`. */
+export const DURATION_SOURCES = Object.freeze([DURATION_MEASURED, DURATION_ESTIMATED, DURATION_FALLBACK]);
+/** `segment.source` — who minted the pool row. NOT checked by this file (any
+    string is admitted); the two values are the ones the writers emit today:
+    `merge-segments.mjs`'s default (`agent-v1`) and
+    `backend/src/generation/finalizeForay.ts`'s tier-2 mint. Listed so a
+    consumer sees both provenances in CI, which is the point of G-21c. */
+export const SEGMENT_PROVENANCE = Object.freeze(["agent-v1", "generation-tier-2"]);
+/** `segment-sources[].source` — only the tier-2 mint stamps a source row;
+    a curated row carries no `source` field at all. */
+export const SOURCE_PROVENANCE = Object.freeze(["generation-tier-2"]);
+
+/**
+ * The shapes this checker accepts — G-21c's enumeration. Keys name the field
+ * (`<record>.<field>`), values are every enumerated value that field may take.
+ * A boolean list means both branches are shapes a consumer must handle.
+ *
+ * `fixture-coverage.test.mjs` asserts each value is carried by a committed
+ * Foray (or a pool row a committed Foray plays), and separately scans this
+ * file for a literal compared against one of these fields that is missing
+ * here — so a new accepted value cannot land without a fixture.
+ */
+export const ACCEPTED_SHAPES = Object.freeze({
+  "foray.kind": FORAY_KINDS,
+  "foray.status": FORAY_STATUSES,
+  "foray.generated": Object.freeze([true]),
+  "item.type": Object.freeze([SEGMENT, NARRATION, JINGLE]),
+  "narration.mode": Object.freeze([...NARRATION_MODES]),
+  "narration.duration_source": DURATION_SOURCES,
+  "narration.voice": NARRATION_VOICE_FIELDS,
+  "segment.role": ROLES,
+  "segment.transcript_source": Object.freeze([...TRANSCRIPT_SOURCES]),
+  "segment.source": SEGMENT_PROVENANCE,
+  "segment.dai_suspected": Object.freeze([true, false]),
+  "source.dai_suspected": Object.freeze([true, false]),
+  "source.source": SOURCE_PROVENANCE,
+});
 
 /* Narration ceilings, from docs/curation/narration-craft.md §0.
  *
@@ -336,8 +413,8 @@ export function checkForays(files) {
     const E = (m) => err(`foray "${fid}": ${m}`);
     const W = (m) => warn(`foray "${fid}": ${m}`);
 
-    if (foray.kind !== "deep-dive") E(`\`kind\` must be "deep-dive" (#134); got ${JSON.stringify(foray.kind)}`);
-    if (foray.status !== "draft" && foray.status !== "published") E('`status` must be "draft" or "published"');
+    if (!FORAY_KINDS.includes(foray.kind)) E(`\`kind\` must be ${FORAY_KINDS.map((k) => JSON.stringify(k)).join(" or ")} (#134); got ${JSON.stringify(foray.kind)}`);
+    if (!FORAY_STATUSES.includes(foray.status)) E(`\`status\` must be ${FORAY_STATUSES.map((s) => JSON.stringify(s)).join(" or ")}`);
     /* `title` is deliberately not checked here — the copy loop below already
      * rejects a missing one, and checking it twice reported it twice. */
     if (typeof foray.topic !== "string" || !foray.topic) E("`topic` must be a non-empty string");
@@ -363,7 +440,7 @@ export function checkForays(files) {
      * `foray.items`. */
     if (isGeneratedForay(foray)) {
       const first = foray.items[0];
-      if (!isPlainObject(first) || first.type !== "narration" || typeof first.script !== "string" || !DISCLOSURE_RX.test(first.script.trim())) {
+      if (!isPlainObject(first) || first.type !== NARRATION || typeof first.script !== "string" || !DISCLOSURE_RX.test(first.script.trim())) {
         E("items[0] is not the required disclosure — generation-architecture.md §4.7's exact template must be the first narration item's `script` in every generated Foray");
       }
     }
@@ -410,7 +487,7 @@ export function checkForays(files) {
        * `narrationDuration` in `player/foray-queue.js` resolves a length from
        * `duration_sec` (measured) or the `script` (estimated at
        * narration-craft's 17 chars/s); "neither" is what is rejected here. */
-      if (item.type === "narration") {
+      if (item.type === NARRATION) {
         /* `name` already carries `at` when there is no id, so prefixing it again
          * printed `items[1]: items[1] has neither…`. */
         const named = typeof item.id === "string" && item.id;
@@ -578,10 +655,10 @@ export function checkForays(files) {
           }
         }
         narrations.push({ at, id: item.id ?? null, sec: dur.sec, source: dur.source });
-        timeline.push({ kind: "narration", duration: dur.sec });
+        timeline.push({ kind: NARRATION, duration: dur.sec });
         continue;
       }
-      if (item.type === "jingle") {
+      if (item.type === JINGLE) {
         /* §7 item 4: the jingle is a fixed, always-valid asset (see
          * `player/foray-queue.js`'s `JINGLE_ASSET_URL`/`JINGLE_DURATION_SEC`)
          * — there is no script, mode or per-item audio to validate, so this
@@ -596,12 +673,12 @@ export function checkForays(files) {
           if (seenNarrationIds.has(item.id)) E(`${at}: id "${item.id}" appears twice in one Foray`);
           seenNarrationIds.add(item.id);
         }
-        timeline.push({ kind: "jingle", duration: JINGLE_DURATION_SEC });
+        timeline.push({ kind: JINGLE, duration: JINGLE_DURATION_SEC });
         jingleCount += 1;
         jingleRuntime += JINGLE_DURATION_SEC;
         continue;
       }
-      if (item.type !== "segment") { E(`${at}: unknown item type ${JSON.stringify(item.type)}`); itemsOk = false; continue; }
+      if (item.type !== SEGMENT) { E(`${at}: unknown item type ${JSON.stringify(item.type)}`); itemsOk = false; continue; }
 
       const seg = segments.get(item.segment_id);
       if (!seg) { E(`${at}: unknown segment_id "${item.segment_id}" — not in data/segments.json`); itemsOk = false; continue; }
@@ -633,7 +710,7 @@ export function checkForays(files) {
        * Prefer the segment's own copy the day it gains one — this is a
        * temporary home, not a second source of truth. */
       const role = seg.role ?? item.role ?? null;
-      if (role !== null && !["quote", "explanation", "exchange", "narrative"].includes(role)) {
+      if (role !== null && !ROLES.includes(role)) {
         E(`${at}: role "${role}" is not in the L6 enum`);
       }
       if (seg.role && item.role && seg.role !== item.role) {
@@ -641,7 +718,7 @@ export function checkForays(files) {
       }
 
       played.push({ ...item, seg, role, duration: seg.end_sec - seg.start_sec });
-      timeline.push({ kind: "segment", duration: seg.end_sec - seg.start_sec });
+      timeline.push({ kind: SEGMENT, duration: seg.end_sec - seg.start_sec });
     }
     /* An unresolvable item used to skip every ordering rule for the whole
      * Foray and leave `report.forays` empty, so one bad segment_id hid D1, D5,
@@ -723,7 +800,7 @@ export function checkForays(files) {
     const starts = [];
     let clock = 0;
     for (const entry of timeline) {
-      if (entry.kind === "segment") starts.push(clock);
+      if (entry.kind === SEGMENT) starts.push(clock);
       clock += entry.duration;
     }
 
