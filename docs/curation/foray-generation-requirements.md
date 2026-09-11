@@ -3771,6 +3771,7 @@ never logged; `envPresenceSummary()` reports booleans only.
 | `ANTHROPIC_API_KEY` | unset | **The one switch between stub and live.** Unset → every `create*()` returns a Stub, `$0`, no network. Set → the Anthropic builders. |
 | `DAILY_BUDGET_USD` | `25.00` | Daily per-user cap. Schema-validated: finite, ≥ 0, ≤ 1000; a present-but-malformed value **fails startup**. |
 | `EPISODE_BUDGET_USD` | `10.00` | Per-Foray cap — enforced only when a caller passes a `sessionId`, which the batch driver **now does** (the checkpoint key; §4.1). Leniently parsed. |
+| `NARRATION_ACT_CONCURRENCY` | `4` | G-32: how many acts §4.7 narrates at once (every slot of every in-flight act is itself in flight). `1` restores acts in series; the throttle for a key that returns 429s. Stitch and continuity (§4.8) run one act at a time in act order regardless. Read at call time by `writeNarration.ts`, not by `env.ts`; a present-but-malformed value **throws**, naming the variable only. `report.json` records the value as `narrationConcurrency` beside one `narrate:<i>` timing per act (`narrationActs`). |
 | `FORAY_MODEL_OPUS` | `claude-opus-5` | Override the id a tier resolves to. |
 | `FORAY_MODEL_SONNET` | `claude-sonnet-5` | Same. |
 | `FORAY_MODEL_HAIKU` | `claude-haiku-4-5-20251001` | Same. Pinned to a **dated snapshot** deliberately: it is the only tier whose alias still resolves to a 4.x model, and pinning makes "this is deliberately last-generation, not stale" reviewable — exactly what F-03 found missing. |
