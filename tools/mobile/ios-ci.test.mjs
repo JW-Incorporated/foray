@@ -36,11 +36,14 @@ import {
   ARTIFACT_VALUE_ALLOWLIST,
   SIGNING_SECRETS,
   SIMULATOR_CAVEAT,
+  FORAY_AUDIO_REACHED_NEEDLE,
   bridgeVerdict,
+  forayAudioReached,
   collectProbes,
   decodeLocalStorageRows,
   medianMs,
   mediaSessionVerdict,
+  mediaSessionTakeoverVerdict,
   nowPlayingCoverage,
   outPointVerdict,
   parseConsoleProbes,
@@ -1955,4 +1958,121 @@ test("every Now Playing needle is recognised, one at a time", () => {
     const v = nowPlayingCoverage(logLine("20:24:10.000", `line carrying ${needle} only`));
     assert.equal(v.verdict, "published", `${needle} was not recognised`);
   }
+});
+
+/* ─────────── L-02: navigator.mediaSession is ours + setNowPlaying reached ──────── */
+
+/** A bridge record in the shape probe-bridge.js writes after L-02's additions. */
+function takeoverRecord({ marker = true, atLoad = false, reached = true, attempted = true } = {}) {
+  return {
+    capacitorType: "object",
+    mediaSessionTakeover: {
+      forayPolyfill: marker,
+      forayPolyfillAtLoad: atLoad,
+      windowForayMediaSession: true,
+      peekState: "none",
+    },
+    setNowPlayingRoundTrip: reached
+      ? { attempted: true, resolved: true, ok: true, platform: "ios", reason: "", elapsedMs: 41 }
+      : attempted
+        ? { attempted: true, resolved: false, ok: null, platform: null, reason: null, elapsedMs: 3001, error: "timeout after 3000 ms" }
+        : { attempted: false, resolved: null, ok: null, platform: null, reason: null, elapsedMs: null, error: "no Capacitor.nativePromise on this page" },
+  };
+}
+
+test("no takeover probe data is INCONCLUSIVE, not 'not taken over'", () => {
+  assert.equal(mediaSessionTakeoverVerdict(null, null).verdict, "inconclusive");
+  // A real, OLDER bridge record — M-01's sub-record present, L-02's absent.
+  const older = { capacitorType: "object", mediaSession: { typeofMediaSession: "object" } };
+  const v = mediaSessionTakeoverVerdict(older, null);
+  assert.equal(v.verdict, "inconclusive");
+  assert.equal(v.forayPolyfill, null);
+  assert.equal(v.roundTrip, null);
+  assert.match(v.headline, /UNMEASURED/);
+});
+
+test("marker true AND the Swift half answering platform ios reads as taken-over", () => {
+  const v = mediaSessionTakeoverVerdict(takeoverRecord(), null);
+  assert.equal(v.verdict, "taken-over");
+  assert.equal(v.forayPolyfill, true);
+  assert.equal(v.roundTrip.platform, "ios");
+  assert.match(v.headline, /is OURS/);
+  assert.match(v.headline, /reached ForayAudioPlugin\.swift/);
+  assert.match(v.detail, /forayPolyfill at the 3 s recheck: `true`/);
+  assert.match(v.detail, /document-parse time: `false`/, "the deferred-module timing is shown, not hidden");
+  assert.match(v.detail, /RESOLVED in 41 ms with ok=true, platform=`ios`/);
+  // No log was given, so the needle half says no-coverage — never a no.
+  assert.equal(v.log.verdict, "no-coverage");
+  assert.match(v.detail, /no coverage, not a no/);
+});
+
+test("MUTATION: a marker with no answer from the Swift half must NOT read as taken-over", () => {
+  // The card's acceptance has two halves. Drop the `platform === "ios"` check
+  // (or the `resolved` check) in `mediaSessionTakeoverVerdict` and a timed-out
+  // round trip would still be reported as the plugin having been reached.
+  const v = mediaSessionTakeoverVerdict(takeoverRecord({ reached: false }), null);
+  assert.equal(v.verdict, "marker-only");
+  assert.equal(v.roundTrip.resolved, false);
+  assert.match(v.detail, /did NOT resolve \(timeout after 3000 ms\)/);
+
+  // Resolved, but by something that is not the Swift half: Android's plugin,
+  // or a future bridge that soft-answers an unimplemented method.
+  const rec = takeoverRecord();
+  rec.setNowPlayingRoundTrip.platform = "android";
+  assert.equal(mediaSessionTakeoverVerdict(rec, null).verdict, "marker-only");
+  rec.setNowPlayingRoundTrip.platform = null;
+  assert.equal(mediaSessionTakeoverVerdict(rec, null).verdict, "marker-only");
+});
+
+test("the Swift half answering while navigator.mediaSession is still WebKit's is plugin-only", () => {
+  const v = mediaSessionTakeoverVerdict(takeoverRecord({ marker: false }), null);
+  assert.equal(v.verdict, "plugin-only");
+  assert.equal(v.forayPolyfill, false);
+  assert.match(v.headline, /NOT ours/);
+});
+
+test("neither half is not-taken-over, and an unattempted call says why", () => {
+  const v = mediaSessionTakeoverVerdict(takeoverRecord({ marker: false, reached: false, attempted: false }), null);
+  assert.equal(v.verdict, "not-taken-over");
+  assert.match(v.detail, /not attempted \(no Capacitor\.nativePromise on this page\)/);
+});
+
+test("the setNowPlaying-reached needle: no log is no-coverage, an unrelated log is silent, the line is found", () => {
+  assert.equal(forayAudioReached(null).verdict, "no-coverage");
+  assert.equal(forayAudioReached("   ").verdict, "no-coverage");
+  assert.equal(forayAudioReached(logLine("20:24:10.000", "some unrelated App line")).verdict, "silent");
+  const text = [
+    logLine("20:24:10.000", "some unrelated App line"),
+    logLine("20:24:11.000", `[ai.jwlabs.foura:ForayAudio] ${FORAY_AUDIO_REACHED_NEEDLE} state=none`),
+  ].join("\n");
+  const v = forayAudioReached(text);
+  assert.equal(v.verdict, "found");
+  assert.equal(v.matchCount, 1);
+  assert.match(v.sampleLines[0], /ForayAudio\.setNowPlaying reached state=none/);
+  // ...and the same log feeds the takeover verdict as corroboration.
+  const tk = mediaSessionTakeoverVerdict(takeoverRecord(), text);
+  assert.equal(tk.log.verdict, "found");
+  assert.match(tk.detail, /found 1 line\(s\)/);
+});
+
+test("the report carries section 3d with the takeover verdict, and reads the BRIDGE log for the needle", () => {
+  // The probe's own call happens in the bridge phase, watched by
+  // simulator-log.txt — not the seam log. A report that only read the seam log
+  // would say `silent` about a line that was captured in the other file.
+  const bridgeLog = logLine("20:24:11.000", `${FORAY_AUDIO_REACHED_NEEDLE} state=none`);
+  const md = renderReport({
+    bridge: takeoverRecord(),
+    outPoint: null,
+    seam: null,
+    signingState: "absent",
+    seamLogText: logLine("20:30:00.000", "nothing relevant in the seam pass"),
+    bridgeLogText: bridgeLog,
+  });
+  assert.match(md, /### 3d\. L-02 — `navigator\.mediaSession` is ours, and one `setNowPlaying` reached `ForayAudio` — `taken-over`/);
+  assert.match(md, /found 1 line\(s\)/);
+  // Section order: 3d sits between 3c (M-01) and 4 (TestFlight).
+  assert.ok(md.indexOf("### 3c.") < md.indexOf("### 3d.") && md.indexOf("### 3d.") < md.indexOf("### 4."));
+  // An older bridge record still renders the section, as inconclusive.
+  const old = renderReport({ bridge: { capacitorType: "object" }, outPoint: null, seam: null, signingState: "absent" });
+  assert.match(old, /### 3d\. L-02 .* — `inconclusive`/);
 });

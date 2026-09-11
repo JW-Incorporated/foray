@@ -845,6 +845,71 @@ test("the narration position ticker fires while speaking and stops once it is no
   assert.equal(ticks.length, afterFinish, "the ticker must stop once the item is no longer speaking");
 });
 
+test("L-03 acceptance: a narration item reports `playing` AND a position that increases across two ticks", async () => {
+  /* The card's first acceptance item, verbatim: "with a fake TTS bridge in
+     Node, a narration item reports `playing` and a position that increases
+     across two `render()` calls". `client.js` cannot load in Node (it owns the
+     DOM), so this test stands at the exact seam `render()` reads through:
+     `onNarrationTick` is the hook `client.js` wires to `render()`
+     (`onNarrationTick: () => render()`), and inside `render()` the position
+     comes from `forayPlayhead()` -> `manager.narrationElapsedSec`. Reading
+     `narrationElapsedSec` from inside the tick callback IS reading what each
+     `render()` call would paint, on the same schedule.
+
+     The test that already exists above only COUNTS ticks; nothing on main
+     asserted the position VALUE grows. A frozen clock — `narrationElapsedSec`
+     returning the same number forever — passed every test in this file while
+     the lock screen and the in-page clock sat still for the whole utterance.
+
+     MUTATION THAT KILLS THIS: freeze the elapsed clock. Concretely, any of:
+       - `narrationElapsedSec` returning `0` (or any constant) instead of
+         `(nowMs() - _narrationStartedAtMs) / 1000`;
+       - `_tickNarration` re-stamping `_narrationStartedAtMs = nowMs()` on
+         every tick (the clock restarts each paint and never leaves ~0);
+       - `_beginSynthNarration` not stamping `_narrationStartedAtMs` at all
+         (the getter then returns null, and `null > null` is false).
+     Each one goes red below on `positions[1] > positions[0]`. */
+  const tts = fakeTts();
+  const scheduler = manualScheduler();
+  const positions = [];
+  const { m } = make({
+    tts,
+    scheduler,
+    // What render() would read on this tick — see the comment above.
+    onNarrationTick: () => positions.push(m.narrationElapsedSec),
+  });
+  await m.playForay(foray([
+    { type: "narration", id: "nar-1", script: "a line long enough for the clock to move" },
+    fseg(),
+  ]), { resolveItem });
+
+  assert.equal(m.state.type, "playing", "the narration item must report playing");
+  assert.equal(m.isNarrationPlayhead, true, "forayPlayhead() must be told to read the narration clock, not backend.currentTime");
+
+  // Two render()-equivalent ticks, 250 ms apart on the manager's own clock.
+  await scheduler.advance(250);
+  await scheduler.advance(250);
+  assert.equal(positions.length, 2, `expected exactly two ticks, got ${positions.length}`);
+  assert.equal(typeof positions[0], "number");
+  assert.equal(typeof positions[1], "number");
+  assert.ok(positions[0] > 0, `the first tick must already be past zero, got ${positions[0]}`);
+  assert.ok(
+    positions[1] > positions[0],
+    `the position must INCREASE across two ticks — got ${positions[0]} then ${positions[1]} (a frozen clock)`
+  );
+  // The manual scheduler moved exactly 500 ms, so the second reading is 0.5 s —
+  // pinning the unit as SECONDS, which is what forayElapsed() consumes.
+  assert.equal(positions[1], 0.5, "narrationElapsedSec is in seconds on the manager's clock");
+
+  // Once the utterance finishes, the clock stops being the answer at all —
+  // `forayPlayhead()` must fall back to the backend for the segment that follows.
+  tts.finish();
+  await tick();
+  await tick();
+  assert.equal(m.isNarrationPlayhead, false, "after finished, the next (rendered) item is not a narration playhead");
+  assert.equal(m.narrationElapsedSec, null, "no utterance is speaking, so there is no narration clock to read");
+});
+
 test("a bridge with no onFinished behaves exactly as before — no ticker, no auto-advance", async () => {
   // The card's own contract: absence changes nothing.
   const tts = { async speak() { return { ok: true }; } }; // no onFinished at all

@@ -2,12 +2,14 @@ import XCTest
 @testable import ForayAudioPlugin
 
 /// Mirrors `NowPlayingParsingTest.java` / `NowPlayingHubTest.java` on Android,
-/// for the payload-parsing and command-availability halves of the iOS plugin.
+/// for the payload-parsing, command-availability and transport-event halves
+/// of the iOS plugin.
 ///
-/// **NOTHING RUNS THIS YET on the shipping CI path** until L-01's `.github/`
-/// line lands (`ci.yml`'s `ios-kit` job, gated on `founder-approved`, H4).
-/// Treat these as executable documentation the same way
-/// `ForayTtsPluginTests.swift`'s header does, until that label lands.
+/// RUN ON CI since PR #530 (H4 satisfied): `ci.yml`'s `ios-kit` job runs
+/// `xcodebuild test -scheme ForayAudio` against an iOS Simulator on every
+/// push (the package links the Capacitor binary framework, which ships only
+/// iOS slices, so a host-platform `swift test` cannot build it). On a Windows
+/// or Linux checkout these do not run locally; CI is the executor.
 final class ForayAudioPluginTests: XCTestCase {
     func testPluginTypeExists() {
         XCTAssertNotNil(ForayAudioPlugin.self)
@@ -147,5 +149,54 @@ final class ForayAudioPluginTests: XCTestCase {
     func testPlayingWithFlagsIsTransportable() {
         let payload = NowPlayingPayload.from(["state": "playing", "canPlay": true])
         XCTAssertTrue(transportable(payload) && payload.canPlay)
+    }
+
+    // MARK: - changePlaybackPosition -> transport seekto on the Foray's clock
+    // (L-01's fourth Tests bullet: "a `changePlaybackPosition` event becomes a
+    // `transport {action:"seekto", seekTime}` on the FORAY's clock")
+
+    /// The OS hands `MPChangePlaybackPositionCommandEvent.positionTime` in
+    /// SECONDS on the timeline the plugin last reported -- and that timeline
+    /// is the FORAY's clock, because `durationMs`/`positionMs` in every report
+    /// span the whole Foray (`player/media-session.js` §3, `NowPlayingPayload`'s
+    /// own doc comment). So a scrub to 754.25 s must come back as
+    /// `{action: "seekto", positionMs: 754250}`: the SAME clock, in the
+    /// milliseconds `foray-media-session.js` documents for `TRANSPORT_EVENT`.
+    ///
+    /// MUTATION: emit seconds instead of milliseconds (drop the `* 1000`), or
+    /// re-base onto a segment clock by subtracting anything -> red.
+    func testChangePlaybackPosition_becomesSeekToOnTheForayClockInMilliseconds() {
+        let event = ForayAudioPlugin.seekToTransportEvent(positionTime: 754.25)
+        XCTAssertEqual(event["action"] as? String, "seekto")
+        XCTAssertEqual(event["positionMs"] as? Int, 754_250)
+        XCTAssertNil(event["offsetMs"], "an absolute seek carries no offset")
+    }
+
+    func testChangePlaybackPosition_roundsToTheNearestMillisecond() {
+        XCTAssertEqual(ForayAudioPlugin.seekToTransportEvent(positionTime: 0.0004)["positionMs"] as? Int, 0)
+        XCTAssertEqual(ForayAudioPlugin.seekToTransportEvent(positionTime: 0.0006)["positionMs"] as? Int, 1)
+        XCTAssertEqual(ForayAudioPlugin.seekToTransportEvent(positionTime: 3_599.9996)["positionMs"] as? Int, 3_600_000)
+    }
+
+    /// A negative `positionTime` is not a place on any Foray; it clamps to 0
+    /// the same way `NowPlayingPayload` clamps a negative `positionMs`.
+    /// TO SEE IT FAIL: drop the `max(0, …)` in `seekToTransportEvent`.
+    func testChangePlaybackPosition_negativeClampsToZero() {
+        XCTAssertEqual(ForayAudioPlugin.seekToTransportEvent(positionTime: -3)["positionMs"] as? Int, 0)
+    }
+
+    /// The skip commands are the OTHER shape on the same wire: an OFFSET, never
+    /// a position, so the page's own `foraySeek` runs the arithmetic
+    /// (`docs/ios-lock-screen.md` §3.1).
+    func testSkipCommandsCarryAnOffsetAndNoPosition() {
+        let back = ForayAudioPlugin.transportEvent(action: "seekbackward", offsetMs: 15_000)
+        XCTAssertEqual(back["action"] as? String, "seekbackward")
+        XCTAssertEqual(back["offsetMs"] as? Int, 15_000)
+        XCTAssertNil(back["positionMs"])
+
+        let plain = ForayAudioPlugin.transportEvent(action: "play")
+        XCTAssertEqual(plain["action"] as? String, "play")
+        XCTAssertNil(plain["positionMs"])
+        XCTAssertNil(plain["offsetMs"])
     }
 }

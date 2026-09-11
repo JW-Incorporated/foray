@@ -2,6 +2,7 @@ import Foundation
 import AVFAudio
 import MediaPlayer
 import Capacitor
+import os
 
 /// The iOS half of `foray-audio`'s Now Playing / remote-command story (L-01).
 ///
@@ -83,6 +84,21 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     private let commandCenter = MPRemoteCommandCenter.shared()
     private var commandsRegistered = false
 
+    /// L-02's log-side needle (`FORAY_AUDIO_REACHED_NEEDLE` in
+    /// `tools/mobile/ios-ci.mjs`, pinned to this string by
+    /// `shell-invariants.test.mjs`). Written on the FIRST `setNowPlaying` this
+    /// process handles and on every STATE change after -- never per position
+    /// write, which arrives at up to 4 Hz. `os.Logger` lands in the unified
+    /// log, which `ios-build.yml`'s `log stream --predicate 'process == "App"
+    /// …'` captures; `print`/`CAPLog` are stdout and would not. The state word
+    /// is `.public` on purpose: it is the whole point of the line, and the
+    /// default `<private>` redaction would leave a needle that says nothing.
+    private static let logger = Logger(
+        subsystem: Bundle.main.bundleIdentifier ?? "ai.jwlabs.foura",
+        category: "ForayAudio"
+    )
+    private var lastLoggedState: NowPlayingPayload.State?
+
     override public func load() {
         registerCommandHandlers()
     }
@@ -98,6 +114,10 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     /// the same rule `NowPlaying.java` states for Android.
     @objc func setNowPlaying(_ call: CAPPluginCall) {
         let payload = NowPlayingPayload.from(call.options as? [String: Any] ?? [:])
+        if lastLoggedState != payload.state {
+            lastLoggedState = payload.state
+            Self.logger.notice("ForayAudio.setNowPlaying reached state=\(payload.state.rawValue, privacy: .public)")
+        }
         applyNowPlayingInfo(payload)
         applyCommandAvailability(payload)
 
@@ -259,15 +279,13 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
                 return .commandFailed
             }
             // A `changePlaybackPosition` event becomes `transport
-            // {action:"seekto", positionMs}` on the FORAY's clock -- the same
-            // clock `positionMs` was reported on, per L-01's acceptance. The
-            // wire shape is `{action, positionMs?, offsetMs?}` in
-            // MILLISECONDS (`foray-media-session.js`'s own doc comment on
-            // `TRANSPORT_EVENT`), which the web half itself converts to
-            // seconds before handing it to `media-session.js`'s spec-shaped
-            // handlers.
-            let positionMs = Int64((event.positionTime * 1000).rounded())
-            self?.emitTransport(action: "seekto", positionMs: positionMs)
+            // {action:"seekto", positionMs}` on the FORAY's clock -- the
+            // conversion lives in `seekToTransportEvent` so
+            // `ForayAudioPluginTests` can pin it without a live command center.
+            self?.notifyListeners(
+                Self.TRANSPORT_EVENT,
+                data: Self.seekToTransportEvent(positionTime: event.positionTime)
+            )
             return .success
         }
 
@@ -301,6 +319,18 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     private func emitTransport(action: String, positionMs: Int64? = nil, offsetMs: Int64? = nil) {
+        notifyListeners(
+            Self.TRANSPORT_EVENT,
+            data: Self.transportEvent(action: action, positionMs: positionMs, offsetMs: offsetMs)
+        )
+    }
+
+    /// The wire shape of a `transport` event: `{action, positionMs?, offsetMs?}`
+    /// in MILLISECONDS (`foray-media-session.js`'s own doc comment on
+    /// `TRANSPORT_EVENT`), which the web half converts to seconds before
+    /// handing it to `media-session.js`'s spec-shaped handlers. Pure and
+    /// `internal` (not `private`) so `ForayAudioPluginTests` can pin it.
+    static func transportEvent(action: String, positionMs: Int64? = nil, offsetMs: Int64? = nil) -> JSObject {
         var event = JSObject()
         event["action"] = action
         if let positionMs = positionMs {
@@ -309,7 +339,21 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         if let offsetMs = offsetMs {
             event["offsetMs"] = Int(offsetMs)
         }
-        notifyListeners(Self.TRANSPORT_EVENT, data: event)
+        return event
+    }
+
+    /// `MPChangePlaybackPositionCommandEvent.positionTime` (SECONDS, on the
+    /// timeline this plugin last REPORTED) -> `transport {action: "seekto",
+    /// positionMs}`. That timeline IS the Foray's clock: every report's
+    /// `durationMs`/`positionMs` span the whole Foray (`media-session.js` §3,
+    /// `NowPlayingPayload`'s own doc comment), so the OS's scrub target is
+    /// already a Foray-clock second and needs only the unit change -- no
+    /// segment offset is added or subtracted here, and none may ever be. A
+    /// negative position is not a place on any Foray and clamps to 0, the same
+    /// way `NowPlayingPayload` clamps a negative `positionMs` it is sent.
+    static func seekToTransportEvent(positionTime: TimeInterval) -> JSObject {
+        let positionMs = Int64(max(0, positionTime * 1000).rounded())
+        return transportEvent(action: "seekto", positionMs: positionMs)
     }
 
     /// `04_VOICE_AUDIO_SPEC.md`'s ±30/15 s, mirroring the constants

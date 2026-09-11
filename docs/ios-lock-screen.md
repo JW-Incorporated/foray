@@ -44,6 +44,32 @@ to arbitrate rather than a hypothetical one.
 - **`setPositionState`'s availability is reported, not its accuracy** — a device
   question, also H1's.
 
+### 0.1 L-02's measured half — instrumented 2026-09-10, **run id pending**
+
+L-02's acceptance has a measured half that no run had captured: *"in the `ios-shell`
+simulator run, the page reports `navigator.mediaSession` is ours (a marker property the
+test can read) and one `setNowPlaying` call reached the plugin (log line)."* §5 below
+said so outright for run 34047876769. As of 2026-09-10 the instrument exists; the
+reading does not yet.
+
+**What now measures it, riding the existing probe step (no `.github/` change):**
+
+| Half | Where it is read | What proves it |
+|---|---|---|
+| `navigator.mediaSession` is ours | `probe-bridge.js` → `mediaSessionTakeover.forayPolyfill`, read at the probe's 3 s recheck (after the deferred module tag that installs `foray-media-session.js` has run; the document-parse-time reading is kept separately as `forayPolyfillAtLoad` and is expected to be `false`) | `forayPolyfill: true` is written by `buildSession()` in `foray-media-session.js` and by nothing else in the bundle |
+| one `setNowPlaying` reached the plugin | `probe-bridge.js` → `setNowPlayingRoundTrip`: the probe page's **own** `Capacitor.nativePromise("ForayAudio", "setNowPlaying", {state: "none"})` and its answer, carried over localStorage like every other probe fact (the `console.log` channel is unproven — `ios-build.yml`'s own note) | `platform: "ios"` in the answer is written by `ForayAudioPlugin.swift` and by nothing on the JS side |
+| …corroborated from the native side | `ForayAudioPlugin.swift` writes `ForayAudio.setNowPlaying reached state=<state>` through `os.Logger` on first contact and on every state change (never per position write); `ios-ci.mjs`'s `forayAudioReached()` greps `simulator-log.txt` **and** `simulator-log-seam.txt` for it, with `parseSimulatorLifecycle`'s honesty rule (absent log = no coverage, not a no); `shell-invariants.test.mjs` pins the Swift string to the needle | a `found` there is the log line the card asked for; `silent` on a present log is a measurement; `no-coverage` is not |
+
+The verdict is `mediaSessionTakeoverVerdict()` in `tools/mobile/ios-ci.mjs`, rendered as
+section **3d** of the run's job summary and emitted as the `takeover` step output:
+`taken-over` (both halves), `marker-only`, `plugin-only`, `not-taken-over`, or
+`inconclusive` for a bridge record that predates the marker read.
+
+**The run id will be cited here once the next `ios-build` run on `main` carries this
+probe and its section 3d has been read** — a run before this PR merges cannot have
+captured it, and this file does not cite a run it has not read. Until then the row in
+§1 for this claim reads *instrumented, not yet measured*.
+
 ## 1. How every claim in §1+ was obtained
 
 The same table `docs/android-lock-screen.md` §0 keeps, for the same reason: a
@@ -54,7 +80,10 @@ keeps paying for.
 |---|---|
 | WKWebView exposes and actively publishes to `navigator.mediaSession` from `<audio>` | **Measured** — §0, run 34043193990 (M-01). |
 | `ForayAudioPlugin.swift` maps the web payload onto `MPNowPlayingInfoCenter`/`MPRemoteCommandCenter` exactly as described below | **Read from source** — `mobile/plugins/foray-audio/ios/Sources/ForayAudioPlugin/ForayAudioPlugin.swift`, merged to `main` in PR #517 (L-01) and #522 (L-02). |
-| `ios-shell` builds green with the plugin folded in, and both plugins' XCTests are compiled | **Executed** — L-01's own CI run (PR #517) and the follow-up compile-error fix (PR #520). `ios-kit` still only runs `swift test` against `ios/ForayKit`, not this plugin's XCTests — H4 (the `founder-approved` label, `t_2510470c`) is the open item that wires that in; the plugin's own `ForayAudioPluginTests.swift` (149 lines) is compiled locally but not yet CI-run. |
+| `ios-shell` builds green with the plugin folded in, and both plugins' XCTests **run** on CI | **Executed** — L-01's own CI run (PR #517) broke `ios-shell`; the follow-up compile-error fix (PR #520) restored it, and the post-merge run 34047876769 (§5) is the green that counts. The XCTests run since PR #530 (merged 2026-09-06, `founder-approved` — H4 satisfied): `ci.yml`'s `ios-kit` job runs `xcodebuild test -scheme ForayAudio` and `-scheme ForayTts` against an iOS Simulator; latest `main` run 34397569191 (2026-09-09) is green on both steps. *(Refreshed 2026-09-10; this row previously said "not yet CI-run", which stopped being true on 09-06.)* |
+| `cap sync` discovers the iOS package via `capacitor.ios.src` | **Executed** — read from run [34047876769](https://github.com/JW-Incorporated/foray/actions/runs/34047876769)'s `ios-shell` job log (2026-09-06T17:16:47Z): `[info] Found 6 Capacitor plugins for ios:` followed by `foray-audio@0.1.0`, `foray-tts@0.1.0`, `@capacitor/app@8.1.1`, `@capacitor/preferences@8.0.1`, `@capacitor/splash-screen@8.0.2`, `@capacitor/status-bar@8.0.3`, then `✔ update ios in 11.68ms`. The dependency listing just above it shows `├── foray-audio@0.1.0 -> ./plugins/foray-audio`. L-01's acceptance asked for this line in the PR; PR #517's body did not carry it, so it is recorded here instead (2026-09-10). |
+| A `changePlaybackPosition` event becomes `transport {action: "seekto", positionMs}` on the **Foray's** clock | **Read from source + XCTest** — the conversion is `ForayAudioPlugin.seekToTransportEvent(positionTime:)`, pinned by `testChangePlaybackPosition_becomesSeekToOnTheForayClockInMilliseconds` (754.25 s → 754 250 ms, same clock, no segment offset), the rounding and negative-clamp cases beside it (added 2026-09-10; L-01's fourth Tests bullet had no XCTest before). Runs in `ios-kit`. |
+| `navigator.mediaSession` is ours in the simulator run, and one `setNowPlaying` reached the plugin | **Instrumented, not yet measured** — §0.1. The probe and verdict landed 2026-09-10; the first run to carry them will be cited in §0.1. |
 | `player/*.js` is unmodified by L-01/L-02 | **Executed** — both PRs assert `git diff origin/main -- 'player/*.js'` is empty; re-confirmed here by inspection of the merged tree. |
 | `mediaSessionApplies()` accepts `"ios"`, and `install()` takes over a live `navigator.mediaSession` (replacing when configurable, wrapping when not) | **Read from source** — `mobile/plugins/foray-audio/web/foray-media-session.js`, merged in PR #522 (L-02); backed by 75 tests in `tools/mobile/foray-media-session.test.mjs` (67 → 75). |
 | Whether a real Foray's title/artist/album renders correctly on a **device** lock screen, whether position tracks true, whether F6 (the backwards jump) recurs | **NEITHER MEASURED NOR INFERRED — the H1 drive test, below, is what answers it.** Nothing in CI or the Simulator can substitute for a locked, moving car. |
@@ -96,15 +125,24 @@ configurable, or wrapping the existing object's own methods in place when not �
 `player/client.js`'s one-time read at init lands on the polyfill's object, not
 WebKit's, and the page's writes reach the plugin the same way they do on Android.
 
-### 2.2 Audio-session policy: the plugin never claims the category
+### 2.2 Audio-session policy: the plugin never touches the session at all
 
-**The plugin calls only `AVAudioSession.setActive(true)`, never `setCategory`.**
-WebKit (for the `<audio>` path) and `ForayTtsPlugin` (for narration) already set
-`.playback`/`.spokenAudio` before this plugin ever runs; re-asserting a category would
-risk interrupting an already-correctly-configured, possibly-rendering session.
-`setActive(true)` on an already-active session with default options is a documented
-Apple no-op, and the plugin never calls `setActive(false)` — it never tears the
-session down, only nudges it active so remote commands are guaranteed delivered.
+**The plugin sets no category and never changes the session's active state — not
+`setActive(true)`, not `setActive(false)`.** WebKit (for the `<audio>` path) and
+`ForayTtsPlugin` (for narration) each own their own activation and already set
+`.playback`/`.spokenAudio` before this plugin ever runs. `MPRemoteCommandCenter`
+handlers are process-level and are delivered whichever producer activated the session,
+so this plugin needs no activation of its own.
+
+*Superseded, 2026-09-09 (PR #537).* This section originally said the plugin called
+`setActive(true)` from `setNowPlaying` "to ensure commands are delivered", believing
+it a documented no-op on an already-active session. It is not harmless on the 4 Hz hot
+path: re-asserting activation on the shared session WebKit holds interrupts WebKit's
+element, which pauses; the player reconciles and resumes; the next position write does
+it again — the F11/F13 pause loop the founder's device diagnostics caught (loop period
+== the position-write cadence). #537 removed the call and `shell-invariants.test.mjs`
+pins that `setNowPlaying` contains no `setActive` so it cannot come back. *(This
+paragraph refreshed 2026-09-10; the text above it had described the pre-#537 plugin.)*
 
 ### 2.3 `stop`: declined outright on iOS, not just on a finished Foray
 

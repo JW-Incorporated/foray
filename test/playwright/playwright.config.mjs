@@ -29,5 +29,27 @@ export default defineConfig({
       name: "chromium",
       use: { ...devices["Desktop Chrome"] },
     },
+    /* U-12 (docs/ui-transition-plan.md): the drawer-stacking acceptance is
+       "on both viewports the suite already uses" — and until 2026-09-10 the
+       suite used exactly one, Desktop Chrome, while F17 (the drawer hidden
+       under Now Playing) was reported on a phone. This second project runs
+       the app-chrome spec ONLY at an iPhone-class 390x844 viewport with
+       touch + mobile emulation, on the same Chromium the CI job installs
+       (`npx playwright install chromium`; an iPhone `devices[]` preset would
+       select WebKit, which that job does not install). `testMatch` keeps the
+       sw.js manifest specs out of it: they never touch layout, and doubling
+       them would only double their wall-clock. Still advisory-only in CI —
+       see ci.yml's `playwright` job comment. */
+    {
+      name: "mobile-chromium",
+      testMatch: /drawer-and-close\.spec\.js$/,
+      use: {
+        ...devices["Desktop Chrome"],
+        viewport: { width: 390, height: 844 },
+        deviceScaleFactor: 3,
+        isMobile: true,
+        hasTouch: true,
+      },
+    },
   ],
 });

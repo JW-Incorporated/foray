@@ -38,6 +38,17 @@
  * `isCode()`/pin logic does not need to gate on anyway (it is fetched with
  * `cache: "reload"` directly, never through the generation cache's pin path).
  *
+ * THE FORAY DIRECTORY POINTER (FD-02)
+ * `--write` also writes `data/forays-directory.json` — `{ version: <deploy_id>,
+ * built_at, files, bytes, sha256 }` for the three Foray data files — and lists
+ * it in the manifest so sw.js verifies and caches it like any other shipped
+ * file. It CONTAINS the deploy id, so it is the second file (after the
+ * manifest itself) that cannot feed `deploy_id`: `deployIdFrom()` excludes it.
+ * `--check` fails if the pointer is missing, names a different version than
+ * the tree computes to, or carries a byte count or sha256 that does not match
+ * the file on disk. Shape, header choice and rationale live in
+ * `tools/ci/forays-directory.mjs`.
+ *
  * USAGE
  *   node tools/ci/generate-manifest.mjs --write   # regenerate deploy-manifest.json
  *   node tools/ci/generate-manifest.mjs --check   # verify it is up to date (CI)
@@ -64,6 +75,7 @@ import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { crlfOffenders, crlfFatalMessage } from "./crlf-guard.mjs";
+import { POINTER_PATH, deployIdFrom, writePointer, pointerProblems } from "./forays-directory.mjs";
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const MANIFEST_PATH = path.join(ROOT, "deploy-manifest.json");
@@ -133,24 +145,34 @@ function sha256File(relPath) {
    sends the reader to run the very command that breaks it. Full rationale and
    the measurement behind it live in tools/ci/crlf-guard.mjs. */
 function assertLfCheckout() {
-  const bad = crlfOffenders(ROOT, listedFiles());
+  /* The pointer is guarded too: it is listed in the manifest, so a CRLF copy
+     of it would be hashed into a manifest entry sw.js can never verify. */
+  const bad = crlfOffenders(ROOT, [...listedFiles(), POINTER_PATH]);
   if (!bad.length) return;
   console.error(crlfFatalMessage(bad));
   process.exit(1);
 }
 
+/* The manifest WITHOUT the pointer's entry: `deploy_id` over `listedFiles()`,
+   which is the input set the pointer is derived from and must not join. The
+   pointer's own entry is added by `withPointerEntry` once the pointer on disk
+   is known to be the one this id describes. */
 function computeManifest() {
   const files = {};
   for (const rel of listedFiles()) {
     /* Cache keys and sw.js fetches use forward slashes regardless of OS. */
     files[rel.split(path.sep).join("/")] = "sha256:" + sha256File(rel);
   }
-  const lines = Object.keys(files)
-    .sort()
-    .map((p) => `${p}:${files[p]}`)
-    .join("\n") + "\n";
-  const deployId = createHash("sha256").update(lines).digest("hex").slice(0, 16);
-  return { deploy_id: deployId, files };
+  return { deploy_id: deployIdFrom(files), files };
+}
+
+/* Adds the pointer's hash as a manifest entry, keeping the listing sorted so a
+   committed manifest and a freshly computed one compare key-for-key. */
+function withPointerEntry(manifest) {
+  const files = { ...manifest.files, [POINTER_PATH]: "sha256:" + sha256File(POINTER_PATH) };
+  const sorted = {};
+  for (const k of Object.keys(files).sort()) sorted[k] = files[k];
+  return { deploy_id: manifest.deploy_id, files: sorted };
 }
 
 function main() {
@@ -166,12 +188,17 @@ function main() {
 
   assertLfCheckout();
 
-  const computed = computeManifest();
+  const base = computeManifest();
 
   if (mode === "write") {
+    /* Pointer first — its bytes are a manifest entry, so it has to be on disk
+       in its final form before the manifest that names it is written. */
+    const pointer = writePointer(ROOT, base.deploy_id);
+    const computed = withPointerEntry(base);
     writeFileSync(MANIFEST_PATH, JSON.stringify(computed, null, 2) + "\n");
     stampBuildId(computed.deploy_id);
     console.log(`deploy-manifest.json written — deploy_id ${computed.deploy_id}, ${Object.keys(computed.files).length} files`);
+    console.log(`${POINTER_PATH} ${pointer.changed ? "written" : "unchanged"} — version ${pointer.pointer.version}`);
     return;
   }
 
@@ -180,6 +207,16 @@ function main() {
     console.error("FATAL: deploy-manifest.json does not exist — run with --write first");
     process.exit(1);
   }
+  /* The pointer before the manifest diff: a stale pointer also changes the
+     pointer's manifest entry, and "deploy-manifest.json is stale" would send
+     the reader looking at the wrong file. */
+  const problems = pointerProblems(ROOT, base.deploy_id);
+  if (problems.length) {
+    console.error(`FATAL: ${POINTER_PATH} is stale or malformed. Run \`node tools/ci/generate-manifest.mjs --write\` and commit the result.`);
+    for (const p of problems) console.error(`  ${p}`);
+    process.exit(1);
+  }
+  const computed = withPointerEntry(base);
   const committed = JSON.parse(readFileSync(MANIFEST_PATH, "utf8"));
   const committedFiles = Object.keys(committed.files || {}).sort();
   const computedFiles = Object.keys(computed.files).sort();
