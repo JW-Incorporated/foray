@@ -3588,6 +3588,9 @@ npm run generate-forays -- --prompts <file>.json
                           [--budget-usd N]
                           [--no-resume]
                           [--dry-run]
+                          [--max-resumes N]
+                          [--continue-on-refused-partial]
+                          [--notify <command>]
 ```
 
 | Flag | Default | Meaning |
@@ -3600,6 +3603,80 @@ npm run generate-forays -- --prompts <file>.json
 | `--budget-usd` | none | Re-caps **both** the daily and the per-Foray ceiling for this process (§4.1). Ignored unless positive and finite. |
 | `--no-resume` | off | Delete any checkpoint for each prompt before running, forcing every stage to be rebuilt. |
 | `--dry-run` | off | Run the pipeline and write **nothing** — no candidate, no partial, no checkpoint, no report. |
+| `--max-resumes` | **`3`** | G-30: how many times one prompt resumes itself from its checkpoint after a *transient* failure before the driver records `resumes-exhausted`. `0` restores the single attempt. |
+| `--continue-on-refused-partial` | off | G-30: carry on past an act whose partial candidate failed `check-forays`. Off, the run **aborts** with reason `refused-partial` (D4's interim policy). |
+| `--notify` | `GENERATION_NOTIFY_CMD`, else none | G-30: a shell command run with a one-line summary at each prompt's end, at the batch's end, and on a crash. The flag wins over the environment variable. |
+
+#### 7.1.1 Hands-free runs (G-30)
+
+The latency brief's §4 counted every step a person did by hand during a run;
+the roadmap's rule is that each one is a defect. The driver now does five of
+them itself, and records what it did in `report.json` so nothing it decided
+alone is invisible afterwards. All of it works on the test-drive relay
+(`ANTHROPIC_BASE_URL` → local relay) as well as keyed: the relay's failure
+shape — `Request timed out.` after the answering session dies (I-27) — is the
+first thing the resume loop was written against.
+
+**Self-resuming (manual step 9).** A pipeline failure is classified before
+anything else happens. *Transient* — a transport timeout, `Connection error.`,
+`ECONNRESET`/`ECONNREFUSED`/`socket hang up`, an HTTP 408/429/5xx (checked as a
+number on the error, never as digits in prose), an `overloaded` or rate-limit
+reply, wrapped at any depth in `cause` — is resumed from the same checkpoint
+in-process after a backoff of 30 s, 60 s, 120 s … (capped at 10 min), up to
+`--max-resumes` times. The `retry` line names the attempt, the wait and the
+reason. A resumed attempt pays only for the stages that had not finished, as
+any re-run did before; the difference is that nobody has to type it.
+Everything else — a bug, a bad fixture — is still one `ERROR` line and no
+retry: repeating a deterministic failure three times is three times the cost.
+
+**Budget window (manual step 26).** A *daily* `BudgetStopError` counts as
+resumable: the driver sleeps until the next local midnight plus a minute (the
+window `BudgetGuard` sums against) and resumes. A *per-Foray* stop is not — the
+same Foray would trip it again — and ends the prompt with reason `budget-stop`.
+Raising a cap stays a decision, not a retry.
+
+**Refused partial (manual step 10).** WS-D2 already validates every act's
+partial candidate with `check-forays`. By default a refused act now ends the
+run from inside the `stitch:<i>` stage with a `RefusedPartialError` naming the
+act and the checker's errors — after the partial is written (it is the
+evidence) and before that act's stitch is checkpointed (so a re-run rebuilds
+it). The entry reads `ABORTED (refused-partial) — …`. With
+`--continue-on-refused-partial` the run carries on to the whole-Foray finalize
+and the entry's `refusedPartials` lists the act indices that were refused on
+the way, whether or not the finished Foray then passed. Abort-vs-continue as a
+*policy* is D4's; this is the interim default.
+
+**Notification (manual step 24).** `--notify <command>` (or
+`GENERATION_NOTIFY_CMD`) is run through the shell with one line —
+
+```text
+foray-generation built id=beyond-the-algorithm-e6533b minutes=40.3 calls=51 — OK beyond-the-algorithm-e6533b (51 items, 2421s)
+```
+
+— on stdin and as `FORAY_NOTIFY_SUMMARY` (plus `_OUTCOME`, `_ID`, `_MINUTES`,
+`_CALLS`, `_DETAIL`). It fires once per prompt (`built`, `invalid`,
+`aborted:<reason>`, `error`, or a pipeline stop such as `no-tape`), once at
+the batch's end (`batch-done`), and on a crash (`crashed`). A hook that fails
+or hangs (60 s) is recorded, never thrown: its `exitCode`/`error` land in the
+entry's `notification` and the report's top-level `notification`. It is a
+shell hook and not a service on purpose — `gh issue comment N -F -`, a curl,
+or `cat >> run.log` are all one line for the operator to choose.
+
+**Duplicate id (manual step 25).** `runForayPipeline` reads the ids already
+in `data/forays.json` *before* minting this run's id and suffixes a collision
+`-2`, `-3`, … (`uniqueForayId`). The suffix is applied once, ahead of the first
+partial candidate's own `finalizeForay` call, so neither that nor the final
+validation can throw on the duplicate after the run has been paid for.
+`finalizeForay`'s own throw stays as the last line of defence.
+
+**What `report.json` records (G-30 e).** Top level: `max_resumes`,
+`continue_on_refused_partial`, `resumes` (total automatic resumes), `aborts`,
+`notify` (the command) and `notification` (the batch-end hook's result). Per
+entry: `resumes[]` (`attempt`, `kind`, `reason`, `waitedMs`, `at`),
+`abort {reason, detail}` when `outcome` is `aborted`, `refusedPartials[]`,
+`calls` (model calls across every attempt) and `notification`. The `POLICY:`
+line at the top of the log states the same three settings before the first
+prompt runs.
 
 The driver prints its mode before doing anything expensive — a run that silently
 used stubs and produced 200 placeholder Forays would look exactly like a
@@ -3616,7 +3693,8 @@ was found by reading source, which is not where a run's behaviour should have to
 be looked up.
 
 Per prompt it prints one line: `skip`, `resume` (naming the stages already done),
-`built`, `stop`, or `ERROR`. **One prompt's failure never ends the batch** — a
+`built`, `stop`, `retry` (an automatic resume, §7.1.1), `ABORT` (a named
+reason), or `ERROR`. **One prompt's failure never ends the batch** — a
 rate limit or a budget stop on prompt 7 still leaves 1–6 on disk and 8 attempted.
 
 ### 7.2 Publishing

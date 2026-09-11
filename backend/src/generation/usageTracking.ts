@@ -30,6 +30,8 @@ export interface TokenUsageTotals {
   inputTokens: number;
   outputTokens: number;
   total: number;
+  /** Model calls recorded this run (G-30: the notification's "calls"). */
+  calls: number;
 }
 
 /** The subset of the Anthropic SDK's `Message.usage` shape this module
@@ -43,12 +45,19 @@ export interface RecordableUsage {
 
 let totalInputTokens = 0;
 let totalOutputTokens = 0;
+let totalCalls = 0;
 
 /** Called once, right after every real `client.messages.create(...)` in
  * every `Anthropic*Builder`. Tolerant of `undefined`/partial usage so a
  * future SDK response shape change degrades to under-counting rather than
- * throwing mid-pipeline. */
+ * throwing mid-pipeline.
+ *
+ * G-30: also counts the CALL itself (one per reply, whatever its token
+ * fields say), so the driver's completion notification can say "N model
+ * calls" — the number an operator reads off a relay queue today. A reply
+ * with no usage block is still a call. */
 export function recordUsage(usage: RecordableUsage | null | undefined): void {
+  totalCalls += 1;
   if (!usage) return;
   if (typeof usage.input_tokens === "number") totalInputTokens += usage.input_tokens;
   if (typeof usage.output_tokens === "number") totalOutputTokens += usage.output_tokens;
@@ -59,12 +68,14 @@ export function recordUsage(usage: RecordableUsage | null | undefined): void {
 export function resetUsageTracking(): void {
   totalInputTokens = 0;
   totalOutputTokens = 0;
+  totalCalls = 0;
 }
 
 export function getUsageTotals(): TokenUsageTotals {
   return {
     inputTokens: totalInputTokens,
     outputTokens: totalOutputTokens,
-    total: totalInputTokens + totalOutputTokens
+    total: totalInputTokens + totalOutputTokens,
+    calls: totalCalls
   };
 }
