@@ -29,8 +29,8 @@
    `foray-queue.js` already defines a `JINGLE` item KIND for a jingle the
    GENERATOR places (generation-architecture.md §4.8) — an authored decision
    carried in `data/forays.json`, counted in `runtime_sec`, validated by
-   `tools/foray/check-forays.mjs`. No committed Foray carries one and its asset
-   URL is still `TBD:jingle-asset`. This module is the other thing: a
+   `tools/foray/check-forays.mjs`. Since F-90 (2026-09-11) generated Forays carry them and
+   they play this same placeholder asset. This module is the other thing: a
    PLAYER-SIDE mark that needs no data change, so every Foray already on disk —
    including the one the founder listens to today — gets it without a
    regeneration. The two coexist by one clause in the rule above.

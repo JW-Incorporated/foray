@@ -247,6 +247,21 @@ test("a narration item is credited to Foray, never to a publisher", () => {
   assert.equal(m.artist, "4a");
 });
 
+test("a jingle item is credited to 4a under its Foray's title, never to a publisher (F-89)", () => {
+  /* The first generated Foray to ship a jingle (2026-09-11) failed the real-data
+     test below with "#42 has no publisher credit": a jingle resolved to an empty
+     `artist`. Drop the jingle branch in `mediaMetadata` and this is red again. */
+  const m = mediaMetadata({
+    item: { kind: "jingle", id: "jingle-cut-act-4-1", show: "Origin Stories" },
+    nextItem: { kind: "episode", title: "T", show: "Origin Stories" },
+    forayTitle: "F", index: 1, total: 4, showArtworkUrl: APPLE,
+  });
+  assert.equal(m.artist, "4a");
+  assert.equal(m.title, "F");
+  assert.equal(m.artwork[0].src, APP_ARTWORK_URL, "a jingle never wears a publisher's artwork");
+  assert.equal(mediaMetadata({ item: { kind: "jingle", id: "j" } }).title, "4a");
+});
+
 test("a narration item never carries a publisher's artwork", () => {
   const m = mediaMetadata({ item: { kind: "tts", title: "b" }, showArtworkUrl: APPLE });
   assert.equal(m.artwork[0].src, APP_ARTWORK_URL);

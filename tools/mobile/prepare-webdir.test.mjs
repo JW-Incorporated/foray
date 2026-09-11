@@ -1738,13 +1738,22 @@ test("REAL REPO: the sliced bundle, its budgets and the headroom that is left", 
           through. A ratio and not a byte count, so it is scale-free: it holds when
           the pool is 212 segments and when it is 20,000, and it fails the moment
           either file goes back to being copied. */
+    /* RE-STATED 2026-09-11 (F-89, third generated Foray): the ratio `bundled <
+       onDisk * 0.5` was a proxy for "sliced, not copied", and it is a proxy that
+       fails honestly the moment the Forays on main reference more than half of a
+       SMALL pool — 82 source rows, three generated Forays drawing from the same few
+       shows — which is growth of the referenced set, not a return to copying. The
+       quantity the alarm was guarding is set identity: the bundle carries exactly
+       the rows today's Forays reference, and strictly fewer bytes than the file on
+       disk while any row is unreferenced. Both are asserted below, for both files;
+       neither can be satisfied by copying. */
     for (const rel of ["data/segments.json", "data/segment-sources.json"]) {
       const bundled = by(rel);
       const onDisk = fs.statSync(path.join(ROOT, rel)).size;
       assert.ok(
-        bundled < onDisk * 0.5,
+        bundled < onDisk,
         `the bundled ${rel} is ${(bundled / 1024).toFixed(1)} KB of a ${(onDisk / 1024).toFixed(1)} KB ` +
-          `source — more than half the pool is in the bundle, so it is being copied, not sliced`
+          `source — nothing was left out, so it is being copied, not sliced`
       );
     }
     /* And the count is EXACT, which no ratio can be: the slice is the referenced set,
@@ -1757,6 +1766,18 @@ test("REAL REPO: the sliced bundle, its budgets and the headroom that is left", 
       new Set(bundledSegments.segments.map((s) => s.id)),
       referenced,
       "the bundled pool is not exactly the set today's Forays reference"
+    );
+    const bundledSources = JSON.parse(fs.readFileSync(path.join(absOut, "data", "segment-sources.json"), "utf8"));
+    const referencedItems = new Set(bundledSegments.segments.map((s) => s.item_id));
+    assert.deepEqual(
+      new Set(bundledSources.sources.map((s) => s.id)),
+      referencedItems,
+      "the bundled registry is not exactly the episodes the bundled segments name"
+    );
+    const poolOnDisk = JSON.parse(fs.readFileSync(path.join(ROOT, "data", "segment-sources.json"), "utf8")).sources.length;
+    assert.ok(
+      bundledSources.sources.length < poolOnDisk,
+      `every one of the ${poolOnDisk} registry rows is referenced — the slice cannot be told from a copy today`
     );
 
     /* And the re-read guard really ran against the bytes on disk. */
