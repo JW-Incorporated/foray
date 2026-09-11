@@ -405,7 +405,11 @@ const tick = () => new Promise((r) => setTimeout(r, 0));
 /* Wait for the boot refresh (fired after route()) to reach an outcome. */
 async function bootRefreshDone(h) {
   for (let i = 0; i < 200; i++) {
-    if (h.directory.describe().last) return;
+    if (h.directory./* The seed the shell boots from is the committed data on disk, so the row's `n=` is read from
+   there rather than pinned — a published Foray must not break this test (F-84 / PR #624). */
+const SEED_FORAY_COUNT = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "data", "forays.json"), "utf8")).forays.length;
+
+describe().last) return;
     await tick();
   }
 }
@@ -572,7 +576,7 @@ test("FD-01: a boot row names the source of each data file, and the deploy id it
   assert.match(line, /forays=bundle@unknown/);
   assert.match(line, /segments=bundle@unknown/);
   assert.match(line, /sources=bundle@unknown/);
-  assert.match(line, new RegExp(`n=${BASE().forays.length}\b`)); // the seed's own Foray count, not a literal
+  assert.match(line, new RegExp(`n=${SEED_FORAY_COUNT}\b`)); // the seed's own Foray count, not a literal
 
   const local = { version: "seed-9fc92a61", built_at: "2026-09-10T00:00:00Z", files: { forays: "a", segments: "b", sources: "c" } };
   const h2 = await mount({ remoteMode: "reject", localPointer: local });
@@ -596,7 +600,7 @@ test("FD-01: the refresh row names the trigger and the outcome, and the adopted 
   assert.match(line, /adopted/);
   assert.match(line, /v=deploy-b2/);
   assert.match(line, /forays=network@deploy-b2/);
-  assert.match(line, new RegExp(`n=${BASE().forays.length + 1}\b`)); // seed + the one Foray the fixture adds
+  assert.match(line, new RegExp(`n=${SEED_FORAY_COUNT + 1}\b`)); // seed + the one Foray the fixture adds
   /* A foreground return records its own attempt, under its own trigger. */
   h.document.fire("visibilitychange");
   await h.settle(40);
