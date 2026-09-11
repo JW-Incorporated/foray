@@ -350,7 +350,11 @@ Capacitor injects its native bridge (`native-bridge.js`, the app config, and eve
 **Why:** The app bundles `data/*.json` — the session, the discover pool, the taxonomy, the Foray running orders. That is what makes it work offline in a cell dead zone, which is the founding constraint. But **the bundle is a snapshot taken when the app was built, and nothing in the app refreshes it.** The we
 
 **Steps:**
-1. TODO — steps needed
+1. Read GitHub issue #40 (MP6: data freshness) -- design already written: bundle a snapshot, fetch fresh data/*.json on launch, cached-fresh -> bundled -> error precedence.
+2. Decide: does the first public store release ship with #40's fetch-refresh built (data updates without a store release), or ship frozen (bundle only, fast-follow later).
+3. If frozen for v1: confirm that's acceptable given the app's offline-first promise, and note the fast-follow timeline.
+4. If #40 is required before release: it needs the CSP connect-src widened to the Pages data origin (docs/mobile-shell.md §3) plus a kanban card.
+5. Reply with the ruling so this item and GitHub issue #40 can both be closed/marked DONE.
 
 **Worked if:** #40 says whether it gates the first public release, and the status below says DONE.
 
