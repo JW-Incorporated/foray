@@ -1,0 +1,308 @@
+{
+  "_source": "generation run 2 (2026-09-09), attempt 6 — the 32-beat deepen stage of checkpoint how-ai-systems-really-get-built-and-put-bf672763.checkpoint.json (written 18:43Z), reconstructed from the checkpoint's spine (claims, seeds, exploration) and its source-stage trace/tapeRelevance rows (the deepened claims and the argument/account kinds). The 14 seeded claims are byte-identical between spine and deepen; the 18 unseeded claims are the deepen stage's rewrites, taken from the rows. Act introductions/exits were not preserved. This is the fixture docs/curation/tape-yield-brief-2026-09-10.md analyses and G-24's done-when is measured on: 11 tape beats (10 seeded tier-2 + the Hyatt Regency tier-1 wrong tape) as it ran.",
+  "prompt": "How AI systems really get built and put to work: the practical engineering behind deploying machine learning, from data to production",
+  "subject": "Real-world ML production: infrastructure, data, and operational challenges",
+  "angle": "Production ML is primarily systems engineering, not algorithm research—the hard parts are data pipelines, model serving, monitoring, and debugging failures at scale",
+  "acts": [
+    {
+      "title": "The Ninety Percent That Isn't the Model",
+      "thesis": "The dominant failure modes of production ML are infrastructure failures — timeouts, stragglers, degraded hardware — and none of them are addressed by a better algorithm.",
+      "startState": "The listener assumes a deployed ML system succeeds or fails on the quality of its model, and that engineering is the plumbing that comes after the science.",
+      "endState": "The listener understands that the model is one component in a distributed system, and that the system's characteristic failures are slow, silent, and infrastructural.",
+      "slots": [
+        {
+          "title": "The failure modes nobody writes papers about",
+          "beats": [
+            {
+              "claim": "The first failure mode of a production agent is not a wrong answer — it is that agent work is not a millisecond RESTful request, so the POST call that kicks it off, running on ECS or a Kubernetes cluster behind a FastAPI app, blows past the request timeout.",
+              "exploration": false,
+              "kind": "account",
+              "seed": {
+                "episodeId": "practical-ai--building-durable-ai-agents",
+                "startSec": 1552,
+                "endSec": 1662
+              }
+            },
+            {
+              "claim": "CoreWeave built GPU straggler detection because when a job spans hundreds, thousands, or tens of thousands of GPUs, the visible symptom is only that the job got slower — the hard part is identifying which single GPU slowed down.",
+              "exploration": false,
+              "kind": "account",
+              "seed": {
+                "episodeId": "practical-ai--the-future-of-ai-infrastructure-with-coreweave",
+                "startSec": 991,
+                "endSec": 1090
+              }
+            },
+            {
+              "claim": "Degradation, not crashing, is the signature production fault: storage volumes running at a fraction of rated throughput and GPUs throttled by silent hardware faults leave every dashboard green while job throughput quietly halves.",
+              "exploration": false,
+              "kind": "account"
+            },
+            {
+              "claim": "The closest existing discipline to an ML incident review is commercial aviation crash investigation — the Mayday air-disaster series works as a template because every episode takes one disaster and walks the investigation rather than naming a single cause.",
+              "exploration": true,
+              "kind": "account",
+              "seed": {
+                "episodeId": "practical-ai--ai-hot-takes-and-debates-autonomy",
+                "startSec": 820,
+                "endSec": 911
+              }
+            },
+            {
+              "claim": "Most ML outages are not model outages: the model keeps returning confident-looking predictions while an upstream feature pipeline quietly serves it stale, null, or default-fallback values.",
+              "exploration": false,
+              "kind": "account"
+            },
+            {
+              "claim": "In a typical applied system the learning algorithm itself is a few dozen lines wrapped around a library call, sitting inside thousands of lines of data-fetching, validation, and retry glue — and that ratio is the entire argument for treating ML as systems engineering.",
+              "exploration": true,
+              "kind": "argument"
+            }
+          ]
+        },
+        {
+          "title": "Where the compute actually lives",
+          "beats": [
+            {
+              "claim": "Engineers hear 'friendly framework' and mentally file it under prototyping and learning rather than production, which is why the useful question about a federated system is what a production deployment of it actually looks like.",
+              "exploration": false,
+              "kind": "account",
+              "seed": {
+                "episodeId": "practical-ai--federated-learning-in-production-part-2",
+                "startSec": 1428,
+                "endSec": 1553
+              }
+            },
+            {
+              "claim": "Neoclouds compete by specializing toward AI workloads and their specific compute, whereas going into a hyperscaler like AWS means you can do just about anything and get no focus — good in one sense, costly in another.",
+              "exploration": false,
+              "kind": "account",
+              "seed": {
+                "episodeId": "practical-ai--the-mythos-of-mythos-and-allbirds-takes-flight-to-the-neoclo",
+                "startSec": 740,
+                "endSec": 837
+              }
+            },
+            {
+              "claim": "Training and serving are different engineering problems with different contracts: training is a batch job that can be killed and retried overnight, serving is a latency budget measured in milliseconds that can't be missed.",
+              "exploration": false,
+              "kind": "account"
+            },
+            {
+              "claim": "GPU scarcity turned cluster scheduling into an org-political function: who gets the fleet this quarter gets settled by a committee, and the scheduler that runs afterward only ratifies what was already decided.",
+              "exploration": true,
+              "kind": "account"
+            },
+            {
+              "claim": "Checkpoint frequency is an economic decision, not a technical one: checkpoint too often and the constant write traffic burns training throughput, checkpoint too rarely and a single dead node erases a day of rented compute.",
+              "exploration": true,
+              "kind": "account"
+            }
+          ]
+        }
+      ],
+      "introduction": "(not preserved in the reconstructed fixture — sourcing does not read it)",
+      "exit": "(not preserved in the reconstructed fixture — sourcing does not read it)"
+    },
+    {
+      "title": "Data Is the Product",
+      "thesis": "Nearly every problem that presents as a modeling problem is actually a data-movement, data-governance, or data-provenance problem, and the architecture exists to solve those.",
+      "startState": "The listener thinks data is an input — collected once, cleaned once, then fed to a model that does the interesting work.",
+      "endState": "The listener sees data pipelines, privacy boundaries, and artifact provenance as the load-bearing architecture, with the model as a downstream artifact of them.",
+      "slots": [
+        {
+          "title": "Getting the data to the model, or the model to the data",
+          "beats": [
+            {
+              "claim": "Before anyone can run a federated experiment or a training run, someone has to set up and register the super nodes and clients, and the cleanest way to reason about that setup is as two distinct groups of roles.",
+              "exploration": false,
+              "kind": "account",
+              "seed": {
+                "episodeId": "practical-ai--federated-learning-in-production-part-2",
+                "startSec": 1925,
+                "endSec": 2062
+              }
+            },
+            {
+              "claim": "In Thunderbird's private assistant the data leaving a local application is encrypted on the device and in transit, and is decrypted only inside a confidential enclave in the inference infrastructure — so even the company running that infrastructure cannot tell you what a prompt was.",
+              "exploration": false,
+              "kind": "account",
+              "seed": {
+                "episodeId": "practical-ai--creating-a-private-ai-assistant-in-thunderbird",
+                "startSec": 2513,
+                "endSec": 2606
+              }
+            },
+            {
+              "claim": "Training-serving skew is the most common silent production bug in ML: the batch job that computes a feature for training and the online service that computes the same feature at inference time are two different codebases, owned by two different teams, and they drift apart without raising a single alert.",
+              "exploration": false,
+              "kind": "account"
+            },
+            {
+              "claim": "Labeling is a procurement problem before it is a machine-learning problem: it runs on vendor contracts, QA sampling rates, and rework loops, and its throughput — not GPU availability — is what actually sets an applied team's delivery date.",
+              "exploration": true,
+              "kind": "account"
+            },
+            {
+              "claim": "The right to be forgotten is an infrastructure requirement, not a policy memo: honoring one deletion request means tracing every downstream artifact that a single row touched — every feature table, every cached embedding, every checkpoint — up to and including the model weights trained on it.",
+              "exploration": true,
+              "kind": "argument"
+            },
+            {
+              "claim": "Most tickets filed as 'the model is wrong' close as something else entirely: a broken join upstream, a mislabeled class in the training set, or a timestamp parsed in the wrong timezone six months earlier.",
+              "exploration": false,
+              "kind": "account"
+            }
+          ]
+        },
+        {
+          "title": "Weights are artifacts, and artifacts need a supply chain",
+          "beats": [
+            {
+              "claim": "When a vendor keeps the model closed, the code runs on their side with their parameters and you only get the output; when a lab like DeepSeek opens the weights, they usually land on Hugging Face, which is a repository of models.",
+              "exploration": false,
+              "kind": "account",
+              "seed": {
+                "episodeId": "practical-ai--the-myth-of-model-wars-open-vs-closed-ai-in-2026",
+                "startSec": 817,
+                "endSec": 918
+              }
+            },
+            {
+              "claim": "Edge deployment means serving ISPs and a lot of specialized processing rather than one runtime, so the platform's job is to accentuate every different silicon it can serve and push the most efficient model out to the device.",
+              "exploration": false,
+              "kind": "account",
+              "seed": {
+                "episodeId": "practical-ai--ai-at-the-edge-is-a-different-operating-environment",
+                "startSec": 2129,
+                "endSec": 2309
+              }
+            },
+            {
+              "claim": "A model artifact needs the same provenance discipline as a shipped binary: a version number, a content hash, a pinned snapshot of the training data, and the exact commit that produced it — without all four, nobody can answer why yesterday's predictions and today's disagree.",
+              "exploration": false,
+              "kind": "account"
+            },
+            {
+              "claim": "Open weights shift the operational calculus more than the ethical one: taking them off Hugging Face means inheriting the serving bill, the patch cadence for newly discovered vulnerabilities, and the security surface that a closed vendor used to absorb on your behalf.",
+              "exploration": true,
+              "kind": "argument"
+            },
+            {
+              "claim": "Quantization is a production decision wearing a research costume: the accuracy points it costs are traded directly for a lower cost per request, a smaller memory footprint, and a faster cold start.",
+              "exploration": true,
+              "kind": "account"
+            }
+          ]
+        }
+      ],
+      "introduction": "(not preserved in the reconstructed fixture — sourcing does not read it)",
+      "exit": "(not preserved in the reconstructed fixture — sourcing does not read it)"
+    },
+    {
+      "title": "Operating It at Three in the Morning",
+      "thesis": "Debugging production ML is distinct from debugging software because the system degrades without erroring, and the fix requires instrumentation that had to be built before the incident.",
+      "startState": "The listener imagines ML operations as watching accuracy metrics and retraining occasionally.",
+      "endState": "The listener understands that observability, recorded inputs, and reversibility are design decisions made months before the outage they will one day explain.",
+      "slots": [
+        {
+          "title": "Debugging a system that fails softly",
+          "beats": [
+            {
+              "claim": "The questions that dominate agent engineering are operational ones — what happens if the tool calls time out, whether you can skip the re-ranker, whether a cheaper model is good enough at this step.",
+              "exploration": false,
+              "kind": "account",
+              "seed": {
+                "episodeId": "practical-ai--building-durable-ai-agents",
+                "startSec": 1769,
+                "endSec": 1911
+              }
+            },
+            {
+              "claim": "StackLock exposed its internal knowledge management systems to Claude through a tunnel Anthropic introduced, which untethered the assistant from the desktop — the same query about something in your email now works from a phone.",
+              "exploration": false,
+              "kind": "account",
+              "seed": {
+                "episodeId": "practical-ai--rebooting-enterprise-ai-with-mcp-and-kubernetes",
+                "startSec": 623,
+                "endSec": 793
+              }
+            },
+            {
+              "claim": "An ML system needs three independent monitoring layers — infrastructure health (GPU utilization, request latency, error rate), input distribution (feature drift, schema changes, missing-value spikes), and business outcome (conversion, revenue, engagement) — because any one layer can hold steady green while the other two are already failing.",
+              "exploration": false,
+              "kind": "account"
+            },
+            {
+              "claim": "The single most valuable observability artifact in a production ML system is a sampled log pairing real inputs with the outputs they produced at inference time, because a failure that was never recorded cannot be reproduced, replayed, or turned into a regression test.",
+              "exploration": true,
+              "kind": "account"
+            },
+            {
+              "claim": "Rollback is strictly harder for a model than for a code deploy: reverting the serving binary restores the old weights, but it does not revert the feature-store values already written, the embeddings already cached, or the downstream systems that have since retrained on the bad model's output.",
+              "exploration": true,
+              "kind": "argument"
+            }
+          ]
+        }
+      ],
+      "introduction": "(not preserved in the reconstructed fixture — sourcing does not read it)",
+      "exit": "(not preserved in the reconstructed fixture — sourcing does not read it)"
+    },
+    {
+      "title": "The Org Chart Is Part of the Architecture",
+      "thesis": "The economics of compute and the shape of the team determine production ML outcomes as directly as any technical choice.",
+      "startState": "The listener treats budget, staffing, and vendor selection as context surrounding the real engineering.",
+      "endState": "The listener reads capital allocation, hiring pipelines, and ownership boundaries as first-class components of the system's reliability.",
+      "slots": [
+        {
+          "title": "Who pays, who staffs, who gets paged",
+          "beats": [
+            {
+              "claim": "Computing power is what drives AI progress — that is the scaling law — and it is fundamental well beyond AI, as the semiconductor shortage a few years ago showed when it delayed cars and dishwashers.",
+              "exploration": false,
+              "kind": "account",
+              "seed": {
+                "episodeId": "practical-ai--ai-policy-and-the-battle-for-computing-power",
+                "startSec": 846,
+                "endSec": 957
+              }
+            },
+            {
+              "claim": "Companies are funneling internal budget into mitigating AI risk at the expense of operations that were historically keystone functions, and that reallocation is not expected to stop — it is not a blip.",
+              "exploration": false,
+              "kind": "account",
+              "seed": {
+                "episodeId": "practical-ai--surviving-the-new-economics-of-a-post-agentic-world",
+                "startSec": 767,
+                "endSec": 861
+              }
+            },
+            {
+              "claim": "Higher education is changing the same way industry is changing, and students now arrive with an appetite to see how the skills translate into real-world work rather than staying in labs and courses.",
+              "exploration": true,
+              "kind": "account",
+              "seed": {
+                "episodeId": "practical-ai--educating-a-data-literate-generation",
+                "startSec": 200,
+                "endSec": 338
+              }
+            },
+            {
+              "claim": "The team that owns the data pipeline is almost never the team that owns the model that pipeline feeds, and that seam is where a schema change nobody flagged turns into a serving-time outage neither team is positioned to diagnose alone.",
+              "exploration": true,
+              "kind": "account"
+            },
+            {
+              "claim": "Mature production ML looks aggressively boring from the outside — a job scheduler, a feature store, a model registry, and a pager rotation, the same four pieces of infrastructure a payments company or an ad-tech shop would run — and none of it would ever get accepted as a conference paper.",
+              "exploration": false,
+              "kind": "account"
+            }
+          ]
+        }
+      ],
+      "introduction": "(not preserved in the reconstructed fixture — sourcing does not read it)",
+      "exit": "(not preserved in the reconstructed fixture — sourcing does not read it)"
+    }
+  ]
+}

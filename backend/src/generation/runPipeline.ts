@@ -482,6 +482,24 @@ const TapeRelevanceInputSchema = z.object({
    got no tape. Checkpointed with the stage for the same reason `tapeRelevance`
    is — a resumed run must be able to say what the search saw, or the evidence
    the thresholds are tuned against disappears on the first resume. */
+/* Every gate `Tier2Gate` can name, F-73's four length gates included — the
+   trace emits them, and a checkpoint that could not parse its own trace would
+   fail to resume on exactly the runs the D-tier ledger decided (G-24). */
+const TIER2_GATE_SCHEMA = z.enum([
+  "text-index:no-candidate",
+  "title-tokens",
+  "lineage",
+  "no-body",
+  "no-anchor",
+  "window-overlap",
+  "no-audio-source",
+  "m4-share",
+  "m3-order",
+  "d2-short-run",
+  "d3-mean",
+  "d5-uniform",
+  "m4-runtime"
+]);
 const SourcingTraceSchema = z.object({
   actIndex: z.number().int(),
   slotIndex: z.number().int(),
@@ -495,7 +513,21 @@ const SourcingTraceSchema = z.object({
       score: z.number(),
       requiredScore: z.number(),
       matchedIn: z.enum(["transcript", "metadata"]).nullable(),
-      gate: z.enum(["no-candidates", "threshold", "topic-lineage", "exhausted", "m4-share", "m3-order"])
+      gate: z.enum([
+        "no-candidates",
+        "threshold",
+        "topic-lineage",
+        "exhausted",
+        "m4-share",
+        "m3-order",
+        "d2-short-run",
+        "d3-mean",
+        "d5-uniform",
+        "m4-runtime"
+      ]),
+      /* G-24 R2: tier 1's weighted floor, when a transcript window was scored. */
+      windowWeightedShare: z.number().optional(),
+      windowDistinctiveTerms: z.array(z.string()).optional()
     })
     .nullable(),
   tier2: z
@@ -506,7 +538,7 @@ const SourcingTraceSchema = z.object({
       requiredScore: z.number(),
       /* `m4-share`/`m3-order` are F-70's: tier 2 now keeps the same Foray-wide
          ledger tier 1 does, so its trace can name the same two gates. */
-      gate: z.enum(["text-index:no-candidate", "title-tokens", "lineage", "no-body", "no-anchor", "window-overlap", "no-audio-source", "m4-share", "m3-order"]),
+      gate: TIER2_GATE_SCHEMA,
       /* F-61: the window search's own numbers, and the anchors minted from the
          tape. Optional, like the WS-H fields below, so a checkpoint written
          before this change still parses on resume. */
@@ -531,7 +563,11 @@ const SourcingTraceSchema = z.object({
       seedWindowWon: z.boolean().optional(),
       /* F-72: set when a seed window the share-only floor admitted was then
          refused further down the walk. */
-      seedFloor: z.literal("share-only").optional()
+      seedFloor: z.literal("share-only").optional(),
+      /* G-24 R3: the seed window's OWN gate and share, alongside the furthest
+         candidate's. Optional so a checkpoint written before G-24 still parses. */
+      seedGate: TIER2_GATE_SCHEMA.optional(),
+      seedWindowWeightedShare: z.number().optional()
     })
     .nullable()
 });

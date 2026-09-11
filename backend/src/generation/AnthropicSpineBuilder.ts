@@ -237,12 +237,14 @@ export function buildSpinePrompt(intent: IntentUnderstanding, researchShape: Res
           "actually says. Never seed a claim its window does not say: every seed is checked against the tape's",
           "own words downstream, and a claim the window does not carry is narrated anyway, with the seed wasted.",
           "",
-          "Spread the seeds across EPISODES: within one slot, seeded beats must name DIFFERENT episodeIds",
+          "Spread the seeds across EPISODES: across the WHOLE spine, seeded beats must name DIFFERENT episodeIds",
           "wherever the windows above allow it — no episode can supply more than a quarter of the finished",
           `Foray's tape. Concretely: seed each episodeId ONCE until the whole spine carries at least ${SPINE_SEED_REPEAT_MIN}`,
           "seeded beats; a second seed from an episode already seeded is admitted only after that, and a third",
           `only once the spine carries ${SPINE_SEED_THIRD_MIN}. A repeat seeded before then is refused downstream and its beat`,
-          "narrated — take another episode's window instead. If a slot really must seed two beats from the SAME",
+          "narrated — take another episode's window instead. Each window above is listed once (no episode is quoted",
+          "under two subtopics), so a repeat seed names the SAME window again with a sentence of it not yet",
+          "used. If the spine really must seed two beats from the SAME",
           "episode, put them in the order the tape says them: the beat seeded from the earlier startSec comes first."
         ];
 

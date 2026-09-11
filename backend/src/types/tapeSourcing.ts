@@ -374,6 +374,13 @@ export interface Tier1TraceRow {
   /** Which haystack the score was measured against (F-06/F-29). */
   matchedIn: "transcript" | "metadata" | null;
   gate: Tier1Gate;
+  /* G-24 R2: for a transcript-window candidate, the same two numbers tier 2's
+     window faces — the idf-weighted share of the claim the segment speaks and
+     the claim's rare words it speaks (`segmentPoolLookup.ts`, `tier1BarClears`).
+     A `threshold` row can now mean "the count bar" or "the weighted floor", and
+     these say which. Absent for a metadata candidate, which faces neither. */
+  windowWeightedShare?: number;
+  windowDistinctiveTerms?: string[];
 }
 
 export interface Tier2TraceRow {
@@ -445,6 +452,21 @@ export interface Tier2TraceRow {
    * searching floor had passed it. Never set on a `window-overlap` row: a
    * refused window was admitted by no floor. */
   seedFloor?: "share-only";
+  /**
+   * THE SEED'S OWN GATE, ALONGSIDE THE FURTHEST (G-24 R3; tape-yield brief §4
+   * cause 3, §6). `gate` above names the candidate that got FURTHEST down the
+   * walk, and for a seeded beat that is very often not the seed: on attempt 6
+   * beat 1/0/0's seed window scored 0.746 and was refused by M4's share cap,
+   * and the row said `window-overlap` at 0.27 on a different episode — "the
+   * reasons for collapsing seem weak" was the founder reading the wrong reason.
+   * This is the gate that refused the seed window itself, whatever `gate` says.
+   * Present on every seeded beat that ended up narrated.
+   */
+  seedGate?: Tier2Gate;
+  /** And the seed window's own weighted share, when the body was opened and the
+   * window scored — so a reader can see a 0.746 refused by `m4-share` for what
+   * it is. Absent when the seeded episode had no body on this machine. */
+  seedWindowWeightedShare?: number;
 }
 
 /** One narration-degraded beat's account of itself. */
