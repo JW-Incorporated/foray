@@ -184,7 +184,7 @@ const FLOORS = {
      is a default that can silently drift back to #491's "best installed
      voice of any name", the exact behaviour the founder overruled. */
   "player/default-voice.test.js": 10,
-  "player/queue-manager.test.js": 114,
+  "player/queue-manager.test.js": 115, // +1: L-03 position-increases acceptance (2026-09-10)
   "player/queue-state.test.js": 56,
   "player/seam-gap.test.js": 16,
   /* The SegmentStrip (#128) — the element that makes a Foray legible as
@@ -792,7 +792,7 @@ const FLOORS = {
      `shell-invariants` gained one: the same slice against TODAY'S real documents,
      independently of the fixture suite. */
   "tools/mobile/prepare-webdir.test.mjs": 72,
-  "tools/mobile/shell-invariants.test.mjs": 52, // +1: iOS plugin never calls setActive (F11/F13 pause loop, 2026-09-09)
+  "tools/mobile/shell-invariants.test.mjs": 53, // +1: iOS plugin never calls setActive (F11/F13, 2026-09-09); +1: Swift writes the L-02 log needle (2026-09-10)
   /* 2026-09-04: the bundle's JS/CSS is minified (comments + whitespace, identifiers
      kept) and its JSON re-serialised on the way in — docs/mobile-shell.md §3.4.
      `minify.test.mjs` pins the transform (nothing renamed, nothing rewritten, only
@@ -906,7 +906,7 @@ const FLOORS = {
      inject-app-icon: byte-level --check, refuse a half fix. Floored exact. */
   "tools/mobile/inject-splash.test.mjs": 19,
   "tools/mobile/inject-background-audio.test.mjs": 41,
-  "tools/mobile/ios-ci.test.mjs": 125,
+  "tools/mobile/ios-ci.test.mjs": 132, // +7: L-02 takeover verdict + reached needle (2026-09-10)
   "tools/mobile/ios-workflow.test.mjs": 39,
   "tools/mobile/probe/install-probe.test.mjs": 39,
   /* The one-shot that gets a newly curated show's back catalogue into the pipeline
