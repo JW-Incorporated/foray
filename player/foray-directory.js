@@ -472,12 +472,20 @@ export function createForayDirectory({
   async function fetchBytes(url, ms) {
     const ctrl = typeof AbortController === "function" ? new AbortController() : null;
     let timer = null;
+    /* The timer is NOT unref'd, and that is a finding rather than an oversight
+       (PR #610's first CI run). An unref'd timer cannot keep Node's event loop
+       alive, so when the only other pending work is the request that never
+       answers — exactly the case this timeout exists for — the loop drains, the
+       await is abandoned, and node:test cancels the test and every test after
+       it ("Promise resolution is still pending but the event loop has already
+       resolved"). Windows masked it with another live handle; Linux did not. A
+       browser has no `unref` anyway, and the timer is cleared in `finally` the
+       moment the race settles, so it can never outlive its own bound. */
     const timeout = new Promise((resolve) => {
       timer = setTimeout(() => {
         try { ctrl?.abort(); } catch (_) { /* aborting is best-effort */ }
         resolve({ ok: false, code: "timeout" });
       }, ms);
-      if (timer && typeof timer.unref === "function") timer.unref();
     });
     const request = (async () => {
       try {
@@ -526,11 +534,13 @@ export function createForayDirectory({
 
 /* ---------- helpers ---------- */
 
+/** Race `promise` against `ms`, answering `fallback` on the clock. The timer is
+    deliberately NOT unref'd — see `fetchBytes` for the CI failure that taught
+    it — and is cleared as soon as either side settles. */
 function bounded(promise, ms, fallback) {
   let timer = null;
   const timeout = new Promise((resolve) => {
     timer = setTimeout(() => resolve(fallback), ms);
-    if (timer && typeof timer.unref === "function") timer.unref();
   });
   return Promise.race([promise.catch(() => fallback), timeout]).finally(() => {
     if (timer) clearTimeout(timer);
