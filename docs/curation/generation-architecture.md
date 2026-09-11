@@ -471,6 +471,17 @@ correct it. Minimum bar:
   Self-review of one's own generated prose does not find this class of error.
 - Where a claim is genuinely contested, the narration says so. "Contested" is more interesting
   than a confident wrong answer, and it is also honest.
+- **A thesis page may be verified by synthesis (F-88).** A Hinge or Frame that generalises
+  across the cases the Foray's other pages establish — "most retellings compress months of
+  decisions into a single moment" — is not a sentence print holds, and retrieval will never find
+  it. After retrieval has failed such a page (never instead of it, and never for a Patch or
+  Carry, which carry content and cite print or tape), it is written from the Foray's own
+  tape-cited or print-verified pages as its documents, and the verifier is asked whether it is a
+  fair generalisation of those pages and only them, answering with the pages it rests on or
+  refusing. The page records `verification: { kind: "synthesis", restsOn, attempt }`; the
+  veracity block counts these pages separately (`synthesisVerifiedPages`) and the publish PR
+  names what each rests on. A page naming a case no verified page covers stays unverified. A
+  synthesis never rests on another synthesis. (`backend/src/generation/synthesisVerify.ts`.)
 
 **The style guide the writers inherit** must be pre-loaded, not rediscovered per Foray:
 

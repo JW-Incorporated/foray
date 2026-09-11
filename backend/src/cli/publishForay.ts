@@ -10,7 +10,7 @@ import {
   type FinalizeForayInput,
   type PoolRowLike
 } from "../generation/finalizeForay";
-import { evaluateVeracityGate, type VeracityGateResult } from "../generation/veracityMetrics";
+import { evaluateVeracityGate, type VeracityGateResult, type VeracityMetrics } from "../generation/veracityMetrics";
 import {
   formatSuiteFailure,
   runRealDataSuites,
@@ -229,6 +229,17 @@ export function commitPublish(run: Runner, writtenDataFiles: readonly string[], 
   }
 }
 
+/** F-88: the lines the PR body and the publish log print for the pages
+ * verified by synthesis of the Foray's own verified pages — none when
+ * there are none, so a Foray without one reads exactly as before. */
+export function synthesisVerifiedLines(veracity: Pick<VeracityMetrics, "synthesisVerifiedPages" | "synthesisVerifiedPageDetails"> | undefined): string[] {
+  if (!veracity || veracity.synthesisVerifiedPages === 0) return [];
+  return [
+    `${veracity.synthesisVerifiedPages} page(s) verified by synthesis of the Foray's own verified pages (F-88):`,
+    ...veracity.synthesisVerifiedPageDetails.map((p) => `[${p.mode}] ${p.claim.slice(0, 80)} — verified by synthesis of pages ${p.restsOn.join(", ")}`)
+  ];
+}
+
 /** Where the checkout was before the publish branch was cut — what
  * `abandonPublishBranch` switches back to. A detached HEAD is remembered by
  * sha, since `git switch <sha>` needs `--detach`. */
@@ -401,12 +412,15 @@ export function gateWrittenTree(opts: {
   return { proceed, suites };
 }
 
-/** The PR body: what was checked, what happens after merge, and any override. */
+/** The PR body: what was checked, what happens after merge, any override,
+ * and (F-88) which pages stand on the Foray's own pages rather than print. */
 export function publishPrBody(
   input: Pick<FinalizeForayInput, "id">,
   gate: VeracityGateResult,
-  suites: Pick<SuiteRunResult, "ok" | "failures" | "counts" | "files"> | null = null
+  suites: Pick<SuiteRunResult, "ok" | "failures" | "counts" | "files"> | null = null,
+  veracity?: Pick<VeracityMetrics, "synthesisVerifiedPages" | "synthesisVerifiedPageDetails">
 ): string {
+  const synthesis = synthesisVerifiedLines(veracity);
   return (
     `Automated §4.9 finalize/publish. Foray "${input.id}" passed check-forays.mjs and ` +
     `check-narration.mjs. Phase 1 (docs/curation/generation-architecture.md §1.3): this PR ` +
@@ -426,7 +440,8 @@ export function publishPrBody(
       ? `\n\n**G-21c real-data suites overridden with --force.** Failing assertions at publish time:\n${suites.failures
           .map((f) => `- ${formatSuiteFailure(f)}`)
           .join("\n")}`
-      : "")
+      : "") +
+    (synthesis.length > 0 ? `\n\n**${synthesis[0]}**\n${synthesis.slice(1).map((l) => `- ${l}`).join("\n")}` : "")
   );
 }
 
@@ -526,6 +541,7 @@ async function main(): Promise<void> {
 
   // WS-B veracity gate — see this file's own doc comment.
   const gate = evaluateVeracityGate(input.meta?.veracity);
+  for (const line of synthesisVerifiedLines(input.meta?.veracity)) console.log(`  ${line}`);
   if (!gate.ok) {
     console.error(`Foray "${input.id}" FAILED the veracity gate:`);
     for (const f of gate.failures) console.error(`  ${f}`);
@@ -625,7 +641,7 @@ async function main(): Promise<void> {
     "--title",
     `Generated Foray: ${input.title}`,
     "--body",
-    publishPrBody(input, gate, suites)
+    publishPrBody(input, gate, suites, input.meta?.veracity)
   ]);
   console.log(`Opened PR: ${prUrl}`);
 

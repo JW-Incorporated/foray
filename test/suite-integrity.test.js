@@ -1684,7 +1684,9 @@ const BACKEND_FLOORS = {
      run touches nothing, detached-HEAD restore, a file that did not exist is
      removed again, and the refusal lands on report.json as publish_refused.
      One named mutation per test. */
-  "test/publishForay.test.ts": 19,
+  /* F-88 +1: the PR body names every page verified by synthesis and the
+     pages it rests on. */
+  "test/publishForay.test.ts": 20,
   /* G-21c: REAL_DATA_SUITES names the four roadmap suites and every other
      suite the repo grep finds reading data/forays.json, data/segments.json or
      data/segment-sources.json (the list cannot rot); the TAP parser (one
@@ -1828,6 +1830,15 @@ const BACKEND_FLOORS = {
      throws before the checkers; and the half-second start rule is pinned in
      numbers. One named mutation per test. */
   "test/mintDedupe.test.ts": 11,
+  /* F-88 (run 7 attempt 4): nine thesis Hinges kept unverified because
+     print retrieval finds nothing for a generalisation. Synthesis
+     verification — the Hinge is written from the Foray's own verified pages
+     and verified as a fair generalisation of them, recorded as
+     `verification: { kind: "synthesis", restsOn, attempt }`; a Hinge naming
+     a case no verified page covers stays unverified (the mutation test); a
+     Patch never goes through it; the gate counts `synthesisVerifiedPages`
+     separately and treats them as verified. One named mutation per test. */
+  "test/synthesisVerify.test.ts": 17,
 };
 
 /* `it(` as well as `test(`: backend's suites use both spellings. */

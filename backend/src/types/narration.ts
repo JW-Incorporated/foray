@@ -248,6 +248,41 @@ export type PronunciationHint = z.infer<typeof PronunciationHintSchema>;
 export const UnverifiedReasonSchema = z.enum(["no-evidence", "no-page"]);
 export type UnverifiedReason = z.infer<typeof UnverifiedReasonSchema>;
 
+/**
+ * F-88: HOW a page came to be verified when it was not by retrieval.
+ *
+ * Run 7 attempt 4 (2026-09-11) kept ten pages unverified; nine were the
+ * Foray's THESIS — "Most retellings of engineering disasters compress
+ * months or years of decisions into a single moment", "Treating a disaster
+ * as one bad decision by one bad actor is comforting" — generalisations
+ * across the cases the Foray's other, verified pages establish. Print
+ * retrieval will never find a sentence like that, and F-82 (a Hinge cites
+ * the tape beside it) does not reach it because it restates no one
+ * segment. So a Hinge or Frame whose retrieval returned nothing may be
+ * verified as a SYNTHESIS: written from the Foray's own verified pages as
+ * its documents, then judged by the verifier as a fair generalisation of
+ * those pages and only them, introducing no fact of its own
+ * (`synthesisVerify.ts`). `restsOn` names the pages it rests on, so the
+ * report and the publish PR can say "verified by synthesis of pages X, Y,
+ * Z" and `veracityMetrics.ts` can count these pages separately
+ * (`synthesisVerifiedPages`) while the gate treats them as verified.
+ *
+ * Absent on every page verified the ordinary way. A Patch or Carry never
+ * carries it — content pages cite print or tape, never a generalisation.
+ */
+export const SynthesisVerificationSchema = z
+  .object({
+    kind: z.literal("synthesis"),
+    /** Foray-wide page ids (`synthesisVerify.ts`'s `forayPageId`) of the
+     * verified pages this generalisation rests on. Never empty: a
+     * synthesis that rests on nothing is not a synthesis. */
+    restsOn: z.array(z.string().trim().min(1)).min(1),
+    /** The 1-based synthesis attempt that passed. */
+    attempt: z.number().int().min(1)
+  })
+  .strict();
+export type SynthesisVerification = z.infer<typeof SynthesisVerificationSchema>;
+
 export const NarratedBeatSchema = z
   .object({
     mode: NarrationModeSchema,
@@ -321,10 +356,20 @@ export const NarratedBeatSchema = z
      * a publication that moves between two entries is F-32 recurring.
      * Still optional: `disclosureNarratedBeat` and any hand-built
      * `NarratedBeat` in a test fixture carry none. */
-    attempts: z.array(NarrationAttemptRecordSchema).optional()
+    attempts: z.array(NarrationAttemptRecordSchema).optional(),
+    /** F-88: present only on a page verified as a synthesis of the
+     * Foray's own verified pages — see `SynthesisVerificationSchema`. */
+    verification: SynthesisVerificationSchema.optional()
   })
   .strict();
 export type NarratedBeat = z.infer<typeof NarratedBeatSchema>;
+
+/** F-88: true for a page that is verified BY SYNTHESIS — and only then.
+ * A page that carries a `verification` record but is not `verified` is
+ * malformed, and reads as false here rather than as a synthesis. */
+export function isSynthesisVerified(beat: Pick<NarratedBeat, "verified" | "verification">): boolean {
+  return beat.verified === true && beat.verification?.kind === "synthesis";
+}
 
 /** True when EITHER agent said this page corrected its purpose from the
  * evidence (F-50). The one place the two flags are combined, so a

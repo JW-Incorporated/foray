@@ -118,6 +118,24 @@ describe("the PR body says what happens after merge", () => {
     expect(body).toMatch(/overridden with --force/);
     expect(body).toMatch(/- unverifiedPages 2 > 0/);
   });
+
+  it("F-88: names every page verified by synthesis and the pages it rests on, and says nothing when there are none", () => {
+    /* MUTATION THAT KILLS THIS: print the count without `restsOn`, or
+       print the heading on a Foray with no synthesis page. */
+    const body = publishPrBody(
+      { id: "foray-x" },
+      { ok: true, failures: [] },
+      null,
+      {
+        synthesisVerifiedPages: 1,
+        synthesisVerifiedPageDetails: [{ claim: "Most retellings compress months of decisions into a single moment", mode: "Hinge", restsOn: ["a0/s0/p0", "a0/s1/p0"] }]
+      }
+    );
+    expect(body).toMatch(/1 page\(s\) verified by synthesis of the Foray's own verified pages/);
+    expect(body).toMatch(/\[Hinge\] Most retellings compress months of decisions into a single moment — verified by synthesis of pages a0\/s0\/p0, a0\/s1\/p0/);
+    expect(publishPrBody({ id: "foray-x" }, { ok: true, failures: [] }, null, { synthesisVerifiedPages: 0, synthesisVerifiedPageDetails: [] })).not.toMatch(/synthesis/);
+    expect(publishPrBody({ id: "foray-x" }, { ok: true, failures: [] })).not.toMatch(/synthesis/);
+  });
 });
 
 describe("recordPublishInReport — report.json carries the deploy id when known, null otherwise", () => {

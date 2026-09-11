@@ -5,7 +5,7 @@ import type { EvidencePrefetchMetrics } from "./evidencePrefetch";
 import type { SourcedAct, SourcedSlot, TapeRelevanceInput } from "../types/tapeSourcing";
 import type { WrittenAct } from "./writeNarration";
 import { decideConnectiveNarration } from "./writeNarration";
-import { isTapeSource, purposeWasRevised, tapeDocIdFor, type NarratedBeat, type NarrationAttemptRecord } from "../types/narration";
+import { isSynthesisVerified, isTapeSource, purposeWasRevised, tapeDocIdFor, type NarratedBeat, type NarrationAttemptRecord } from "../types/narration";
 import { phraseIsInWindow } from "../types/anchorText";
 import { loadCatalogueData, type CatalogueShow } from "./catalogueLookup";
 import { loadSegmentPool, type SegmentRecord } from "./segmentPoolLookup";
@@ -553,6 +553,45 @@ export function computeTapeCitedPages(writtenActs: WrittenAct[]): number {
 }
 
 /* ------------------------------------------------------------------ */
+/* synthesisVerifiedPages (F-88)                                        */
+/* ------------------------------------------------------------------ */
+
+/** One page verified by synthesis, named with the pages it rests on —
+ * what the report and the publish PR print. */
+export interface SynthesisPageNote {
+  claim: string;
+  mode: string;
+  restsOn: string[];
+}
+
+export interface SynthesisVerifiedPagesResult {
+  count: number;
+  pages: SynthesisPageNote[];
+}
+
+/**
+ * How many pages are verified as a SYNTHESIS of the Foray's own verified
+ * pages rather than against retrieved print or the tape beside them
+ * (`synthesisVerify.ts`). Counted SEPARATELY from the ordinary verified
+ * pages, and reported, never gated: such a page is `verified: true`, so
+ * `computeUnverifiedPages` does not count it and the gate does not refuse
+ * on it — this number exists so a run's report says how much of the
+ * Foray's thesis stands on its own cases rather than on print, and so a
+ * run whose every Hinge is a synthesis is visible as such. Only a page
+ * that is BOTH verified and carries the record counts
+ * (`isSynthesisVerified`): a record on an unverified page is malformed
+ * and is counted where it belongs, under `unverifiedPages`.
+ */
+export function computeSynthesisVerifiedPages(writtenActs: WrittenAct[]): SynthesisVerifiedPagesResult {
+  const pages: SynthesisPageNote[] = [];
+  for (const { claim, page } of flattenWrittenPages(writtenActs)) {
+    if (!isSynthesisVerified(page)) continue;
+    pages.push({ claim, mode: page.mode, restsOn: [...page.verification!.restsOn] });
+  }
+  return { count: pages.length, pages };
+}
+
+/* ------------------------------------------------------------------ */
 /* Assembly                                                             */
 /* ------------------------------------------------------------------ */
 
@@ -581,6 +620,13 @@ export interface VeracityMetrics {
   unverifiedPages: number;
   /** The same pages, named, so the gate can print which ones. */
   unverifiedPageDetails: FailingPage[];
+  /** F-88: pages verified as a synthesis of the Foray's own verified pages
+   * (`synthesisVerify.ts`). Counted separately, treated as verified —
+   * never in `unverifiedPages`, never gated. */
+  synthesisVerifiedPages: number;
+  /** The same pages, each with the page ids it rests on, so the report and
+   * the publish PR can say "verified by synthesis of pages X, Y, Z". */
+  synthesisVerifiedPageDetails: SynthesisPageNote[];
   /** F-50: pages that corrected their purpose from the evidence. Reported,
    * never gated — see `computePurposeRevisedPages`. */
   purposeRevisedPages: number;
@@ -623,6 +669,7 @@ export interface BuildVeracityMetricsInput {
 export function buildVeracityMetrics(input: BuildVeracityMetricsInput): VeracityMetrics {
   const grounded = computeGroundedQuoteRate(input.writtenActs);
   const unverified = computeUnverifiedPages(input.writtenActs);
+  const synthesis = computeSynthesisVerifiedPages(input.writtenActs);
   const tape = input.tapeRelevanceRows
     ? tapeRelevanceFromRows(input.tapeRelevanceRows)
     : computeTapeRelevance(input.sourcedActs, input.topic, input.root);
@@ -643,6 +690,8 @@ export function buildVeracityMetrics(input: BuildVeracityMetricsInput): Veracity
     pagesDropped: computePagesDropped(input.sourcedActs, input.writtenActs),
     unverifiedPages: unverified.count,
     unverifiedPageDetails: unverified.pages,
+    synthesisVerifiedPages: synthesis.count,
+    synthesisVerifiedPageDetails: synthesis.pages,
     purposeRevisedPages: computePurposeRevisedPages(input.writtenActs),
     tapeCitedPages: computeTapeCitedPages(input.writtenActs),
     pipelineTokens: input.pipelineTokens,
@@ -683,6 +732,11 @@ export interface VeracityGateResult {
  * candidate — because the pipeline now finishes a Foray that contains one
  * rather than throwing the Foray away, and this is the only thing standing
  * between that page and a listener.
+ *
+ * F-88: a page verified BY SYNTHESIS (`synthesisVerifiedPages`) is a
+ * verified page here. It is counted separately so the report can say so,
+ * not so the gate can treat it differently — the synthesis pass already
+ * refused every such page whose ground was not itself verified.
  *
  * `tapeRelevance` gets one exception: a candidate with NO tape anchors at
  * all (`tapeRelevanceAnchors.length === 0`) has nothing for this metric to

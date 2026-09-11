@@ -600,8 +600,10 @@ export function evidenceGathererFor(options: WriteNarrationOptions): EvidenceGat
 }
 
 /** A page in flight: what it is for, what it may quote, what has been
- * said about it so far, and its result once it has one. */
-interface PendingPage {
+ * said about it so far, and its result once it has one. Exported for
+ * F-88's synthesis pass (`synthesisVerify.ts`), which drafts a page
+ * through exactly this shape and `draftRound` below. */
+export interface PendingPage {
   pageId: string;
   beatIndex: number;
   claim: string;
@@ -903,6 +905,89 @@ async function runSlotRound(
   voice: Voice,
   ctx: NarrationBuildContext
 ): Promise<void> {
+  const toVerify = await draftRound(slotTitle, pending, writer, voice, ctx);
+  if (toVerify.length === 0) return;
+
+  const verdicts = await verifier.verifySlot({ slotTitle, voice, pages: toVerify.map((v) => v.brief) }, ctx);
+  for (const { page, claims, beat } of toVerify) {
+    const verdict = verdicts.pages.find((v) => v.pageId === page.pageId);
+    if (!verdict) {
+      reject(page, [`the verifier returned no verdict for "${page.pageId}"`], beat.sources);
+      carryClaims(page, claims);
+      continue;
+    }
+    const failures: string[] = [];
+    if (!verdict.claimsSupported) failures.push("a claim in the script is not supported by the quote attached to it");
+    if (!verdict.purposeAccomplished) failures.push("the page does not accomplish the purpose the beat was given");
+    if (!verdict.contestedHandled) failures.push("a genuinely contested point is not handled as §4.7 rule 3 requires");
+    if (failures.length > 0) {
+      /* A VERIFIER REJECTION RE-RUNS PROSE + VERIFY, NOT SELECT (G-34
+         lever b, "safe" in the latency model): every quote on this page
+         was proven a span of a held document before the verifier saw
+         it, and that proof does not expire. The writer is told what the
+         verifier objected to and writes again from the same claims —
+         asserting fewer of them if that is the fix. Uniform across the
+         three questions on purpose: even "not supported by its quote"
+         is a property of the SCRIPT against the quote, and the writer
+         can drop the claim it cannot support without a fresh selection.
+         Only when a page holds no grounded claim at all does it
+         re-select — there is nothing to write from. */
+      page.kept = { beat, verdict };
+      reject(page, [`${failures.join("; ")}${verdict.notes ? ` — ${verdict.notes}` : ""}`], beat.sources);
+      carryClaims(page, claims);
+      continue;
+    }
+
+    /* `purposeAccomplished` is recorded on the page even though a `false`
+       answer above already sent it back for another attempt: the field is
+       what WS-B's `purposeFidelity` averages, and it is the statement "the
+       verifier was asked F-41's question about THIS page and answered
+       yes" — which run 1 could not make about any page, because nothing
+       asked. It reads 1.0 across a healthy run by construction (a page
+       that never gets a yes is retried, then dropped or fatal), so the
+       metric earns its keep as a regression alarm rather than as a
+       score: if it ever drops below 1, the question stopped being asked
+       or stopped being enforced. */
+    page.attempts.push({ attempt: page.attempts.length + 1, sources: beat.sources, rejected: false });
+    page.result = {
+      ...beat,
+      purposeAccomplished: verdict.purposeAccomplished,
+      ...(verdict.purposeRevised === true ? { purposeRevisedByVerifier: true } : {}),
+      ...(verdict.notes ? { verifierNotes: verdict.notes } : {}),
+      evidence: heldDocsOf(page.evidence),
+      attempts: page.attempts
+    };
+  }
+}
+
+/** A page that cleared every mechanical rule this round and is ready for
+ * a verifier: the brief the verifier reads, the beat it becomes if the
+ * verifier says yes, and the grounded claims it carries into the next
+ * round if not. */
+export interface DraftedPage {
+  page: PendingPage;
+  claims: SelectedClaim[];
+  brief: VerifyPageBrief;
+  beat: NarratedBeat;
+}
+
+/**
+ * The WRITING half of a round — selection (merged or split), the quote
+ * gate, prose, and the structural gate — for the pages given, leaving
+ * every page that did not clear a mechanical rule with a rejection
+ * recorded and returning the ones that did, ready for whichever verifier
+ * question the caller asks. `runSlotRound` above asks the three ordinary
+ * questions; F-88's `synthesisVerify.ts` asks the synthesis question of
+ * the same drafts. ONE drafting path, so a synthesis page pays the same
+ * mechanical rules an ordinary page does.
+ */
+export async function draftRound(
+  slotTitle: string,
+  pending: PendingPage[],
+  writer: NarrationWriterBuilder,
+  voice: Voice,
+  ctx: NarrationBuildContext
+): Promise<DraftedPage[]> {
   const needsSelection = pending.filter((p) => p.claims === undefined);
   const needsProse = pending.filter((p) => p.claims !== undefined);
   const drafts: Draft[] = [];
@@ -961,7 +1046,7 @@ async function runSlotRound(
     }
   }
 
-  const toVerify: Array<{ page: PendingPage; claims: SelectedClaim[]; brief: VerifyPageBrief; beat: NarratedBeat }> = [];
+  const toVerify: DraftedPage[] = [];
   for (const { page, claims, written } of drafts) {
     const sources = sourcesFor(written.usedClaims, claims, page.evidence, page.mode);
     const beat: NarratedBeat = {
@@ -1008,58 +1093,7 @@ async function runSlotRound(
     page.kept = { beat };
     toVerify.push({ page, claims, brief: { ...briefFor(page), script: beat.script, sources }, beat });
   }
-  if (toVerify.length === 0) return;
-
-  const verdicts = await verifier.verifySlot({ slotTitle, voice, pages: toVerify.map((v) => v.brief) }, ctx);
-  for (const { page, claims, beat } of toVerify) {
-    const verdict = verdicts.pages.find((v) => v.pageId === page.pageId);
-    if (!verdict) {
-      reject(page, [`the verifier returned no verdict for "${page.pageId}"`], beat.sources);
-      carryClaims(page, claims);
-      continue;
-    }
-    const failures: string[] = [];
-    if (!verdict.claimsSupported) failures.push("a claim in the script is not supported by the quote attached to it");
-    if (!verdict.purposeAccomplished) failures.push("the page does not accomplish the purpose the beat was given");
-    if (!verdict.contestedHandled) failures.push("a genuinely contested point is not handled as §4.7 rule 3 requires");
-    if (failures.length > 0) {
-      /* A VERIFIER REJECTION RE-RUNS PROSE + VERIFY, NOT SELECT (G-34
-         lever b, "safe" in the latency model): every quote on this page
-         was proven a span of a held document before the verifier saw
-         it, and that proof does not expire. The writer is told what the
-         verifier objected to and writes again from the same claims —
-         asserting fewer of them if that is the fix. Uniform across the
-         three questions on purpose: even "not supported by its quote"
-         is a property of the SCRIPT against the quote, and the writer
-         can drop the claim it cannot support without a fresh selection.
-         Only when a page holds no grounded claim at all does it
-         re-select — there is nothing to write from. */
-      page.kept = { beat, verdict };
-      reject(page, [`${failures.join("; ")}${verdict.notes ? ` — ${verdict.notes}` : ""}`], beat.sources);
-      carryClaims(page, claims);
-      continue;
-    }
-
-    /* `purposeAccomplished` is recorded on the page even though a `false`
-       answer above already sent it back for another attempt: the field is
-       what WS-B's `purposeFidelity` averages, and it is the statement "the
-       verifier was asked F-41's question about THIS page and answered
-       yes" — which run 1 could not make about any page, because nothing
-       asked. It reads 1.0 across a healthy run by construction (a page
-       that never gets a yes is retried, then dropped or fatal), so the
-       metric earns its keep as a regression alarm rather than as a
-       score: if it ever drops below 1, the question stopped being asked
-       or stopped being enforced. */
-    page.attempts.push({ attempt: page.attempts.length + 1, sources: beat.sources, rejected: false });
-    page.result = {
-      ...beat,
-      purposeAccomplished: verdict.purposeAccomplished,
-      ...(verdict.purposeRevised === true ? { purposeRevisedByVerifier: true } : {}),
-      ...(verdict.notes ? { verifierNotes: verdict.notes } : {}),
-      evidence: heldDocsOf(page.evidence),
-      attempts: page.attempts
-    };
-  }
+  return toVerify;
 }
 
 /**
@@ -1097,7 +1131,7 @@ function unverifiedResultFor(page: PendingPage, slotTitle: string): NarratedBeat
   };
 }
 
-function newPage(pageId: string, beatIndex: number, claim: string, mode: NarrationMode, contextNote?: string): PendingPage {
+export function newPage(pageId: string, beatIndex: number, claim: string, mode: NarrationMode, contextNote?: string): PendingPage {
   return {
     pageId,
     beatIndex,
@@ -1156,7 +1190,7 @@ export function retryNoteFrom(rejections: string[]): string {
 /** Records one attempt's failure. Exactly one outcome — this or a result
  * — is recorded per page per attempt, which is what makes
  * `page.attempts.length + 1` the attempt number rather than a guess. */
-function reject(page: PendingPage, issues: string[], sources: Source[]): void {
+export function reject(page: PendingPage, issues: string[], sources: Source[]): void {
   const rejection = issues.join("; ");
   page.rejections.push(rejection);
   page.attempts.push({ attempt: page.attempts.length + 1, sources, rejected: true, rejectionNote: rejection });
@@ -1166,7 +1200,7 @@ function reject(page: PendingPage, issues: string[], sources: Source[]): void {
  * are carried, so the round re-runs prose only; a page with none goes
  * back to selection, because a prose call from no claims can only
  * produce a hand-off and a merged call costs the same request. */
-function carryClaims(page: PendingPage, claims: SelectedClaim[]): void {
+export function carryClaims(page: PendingPage, claims: SelectedClaim[]): void {
   if (claims.length > 0) page.claims = claims;
   else delete page.claims;
 }
