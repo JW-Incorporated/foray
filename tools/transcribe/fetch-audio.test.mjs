@@ -640,8 +640,31 @@ test("NOTHING under the download dir is git-tracked", { skip: !isRepo && "not a 
   const dirName = basename(DOWNLOAD_DIR);
   const tracked = git(["ls-files", "--", dirName]);
   assert.equal(tracked, "", `these files must never be committed:\n${tracked}`);
-  const anyAudio = git(["ls-files", "--", "*.mp3", "*.m4a", "*.wav", "*.flac", "*.opus"]);
-  assert.equal(anyAudio, "", `audio committed to the repo:\n${anyAudio}`);
+  /* `player/assets/` is the ONE place audio may live: the app's own shipped
+     sound marks (the interlude jingle, queue-manager.js §13), which are ours,
+     small, and served to the player — not somebody else's episode. The
+     exemption is bounded by the size cap in the next test, so the insurance
+     this assertion exists for (an episode file landing in history) still
+     holds: a 170 MB mp3 under player/assets fails there instead. */
+  const anyAudio = git(["ls-files", "--", "*.mp3", "*.m4a", "*.wav", "*.flac", "*.opus"])
+    .split("\n")
+    .filter((p) => p && !p.startsWith("player/assets/"))
+    .join("\n");
+  assert.equal(anyAudio, "", `audio committed to the repo outside player/assets/:\n${anyAudio}`);
+});
+
+test("player/assets holds only small, owned sound marks — never an episode", { skip: !isRepo && "not a git checkout" }, async () => {
+  /* The cap that bounds the exemption above. 1 MB is twice the placeholder
+     jingle (529 KB, 3.0 s of stereo 16-bit PCM) and two orders of magnitude
+     under the shortest episode. MUTATION: raise the cap to 200 MB — the
+     exemption then admits exactly the file the previous test exists to keep
+     out, and this test stops meaning anything. */
+  const CAP_BYTES = 1024 * 1024;
+  const tracked = git(["ls-files", "--", "player/assets"]).split("\n").filter(Boolean);
+  for (const rel of tracked) {
+    const size = (await stat(join(ROOT, rel))).size;
+    assert.ok(size <= CAP_BYTES, `${rel} is ${size} bytes — over the ${CAP_BYTES}-byte cap for a shipped sound mark`);
+  }
 });
 
 test("a real file inside the download dir stays invisible to git", { skip: !isRepo && "not a git checkout" }, async () => {

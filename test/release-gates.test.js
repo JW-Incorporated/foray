@@ -242,27 +242,58 @@ test("release gate: fails when off-device search is flagged on AND the old priva
   );
 });
 
-test("HUMAN-ACTIONS.md carries an open item for G5 quoting the sentence and this test", () => {
-  /* The card's own ask: "Add a HUMAN-ACTIONS.md item quoting the sentence to
-     change and linking the test." This does not require the item still be
-     OPEN forever — once Wyatt resolves G5 the item moves to DONE per the
-     file's own convention — but it must exist, quote the sentence, and name
-     this file, so a founder reading HUMAN-ACTIONS.md can find the lever
-     without reading this test file first.
+test("G5 (#38) is recorded closed in the ledger, tied to the real sentence this test protects", () => {
+  /* The card's original ask: "Add a HUMAN-ACTIONS.md item quoting the
+     sentence to change and linking the test." Under format v2
+     (2026-09-11), closing an item MOVES it out of HUMAN-ACTIONS.md entirely
+     into the sibling machine ledger, HUMAN-ACTIONS-DONE.md — "Closed items
+     are in HUMAN-ACTIONS-DONE.md — you never need it" (the live file's own
+     header). So the founder-discoverability half of the old assertion no
+     longer applies once G5 is resolved: there is nothing left for a founder
+     to act on, and the live file the founder actually reads carries no
+     trace of #38 by design.
 
-     MUTATION THAT KILLS THIS: delete the G5 item from HUMAN-ACTIONS.md
-     entirely. Ran it — red. */
-  const doc = read("HUMAN-ACTIONS.md");
+     What must still hold, because it is the part of the original intent
+     that outlives the close: the ledger's one-line record of #38 is
+     genuinely the G5 item (not a same-numbered coincidence), says it was
+     closed `done`, and still quotes enough of the real retired sentence to
+     prove the closure is tied to the actual legal text this suite guards —
+     not just a number and a label. The ledger line is machine-generated and
+     length-capped (by `ha.py`, not this repo), so this checks a generous
+     prefix of the sentence rather than the full 78 characters — long enough
+     that nothing except this exact sentence could match, short enough to
+     survive the ledger's own truncation.
+
+     MUTATIONS THAT KILL THIS: delete the #38 line from HUMAN-ACTIONS-DONE.md
+     entirely; change its status from `done` to anything else; replace the
+     quoted fragment with unrelated text. All three ran red. */
+  const ledger = read("HUMAN-ACTIONS-DONE.md");
+  const sentencePrefix = PRIVACY_SENTENCE.slice(0, -15); // drop the trailing
+  // "transmitted." verb+period — comfortably shorter than what the ledger's
+  // own truncation kept when this was generated.
+
+  const line = ledger
+    .split("\n")
+    .find((l) => /^-\s+#38\s+·/.test(l));
+
   assert.ok(
-    doc.includes("test/release-gates.test.js"),
-    "HUMAN-ACTIONS.md has no item referencing test/release-gates.test.js " +
-      "(G5) — the tripwire test exists but nothing in the human-actions " +
-      "file points a founder at it"
+    line,
+    "HUMAN-ACTIONS-DONE.md has no `- #38 · ...` ledger line — G5's closed " +
+      "record is gone; see HUMAN-ACTIONS-DONE.md and this suite's header."
+  );
+  assert.match(
+    line,
+    /·\s+done\s+·/,
+    `HUMAN-ACTIONS-DONE.md's #38 line is not recorded "done": "${line}"`
   );
   assert.ok(
-    normalizeWrap(doc).includes(PRIVACY_SENTENCE),
-    "HUMAN-ACTIONS.md's G5 item does not quote the exact sentence to change " +
-      `("${PRIVACY_SENTENCE}")`
+    /G5/.test(line),
+    `HUMAN-ACTIONS-DONE.md's #38 line does not mention "G5": "${line}"`
+  );
+  assert.ok(
+    normalizeWrap(line).includes(sentencePrefix),
+    "HUMAN-ACTIONS-DONE.md's #38 line does not quote the retired privacy " +
+      `sentence ("${sentencePrefix}..."): "${line}"`
   );
 });
 

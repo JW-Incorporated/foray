@@ -89,7 +89,10 @@ const FLOORS = {
      explaining why it was dead.
      21 -> 22: the bridge between the page and this record was covered by neither
      suite, and transposing its two arguments left everything green. */
-  "player/diagnostic-log.test.js": 50,
+  /* 50 -> 55 with S-01 (docs/search-plan.md, kanban t_46366383): a new
+     `search` entry kind on PlayerDiagnostics — query length only, never the
+     query text, per this suite's own §7. */
+  "player/diagnostic-log.test.js": 55,
   "player/diagnostic-record.test.js": 23,
   "player/episode-link.test.js": 6,
   /* The durable store (#40). Both of these guard against silent DATA LOSS
@@ -118,6 +121,10 @@ const FLOORS = {
   "player/foray-playback.test.js": 87,
   "player/foray-progress.test.js": 58,
   "player/foray-queue.test.js": 37,
+  /* The interlude jingle (queue-manager.js §13): the rule, the element wrapper
+     and the committed placeholder asset's measured properties. The seam CLOCK
+     it rides is floored under queue-manager.test.js. */
+  "player/interlude.test.js": 16,
   /* 54 -> 59 with #29's `withDiagnosticUnlock`, then 59 -> 54 with D-01
      (2026-09-06): the one-id shell-unlock exception and its five tests were
      deleted with the diagnostic Foray once V-01 shipped an in-app Audition
@@ -171,6 +178,12 @@ const FLOORS = {
      stale stored value SNAPS onto the ladder rather than resetting to 1x. Raise it
      when the suite grows. */
   "player/playback-rate.test.js": 22,
+  /* The default narration voice (founder decision 2026-09-10: Samantha).
+     One pure rule read by two surfaces — `client.js` for what narration
+     speaks with, `app.js` for which row is selected — so a deleted test here
+     is a default that can silently drift back to #491's "best installed
+     voice of any name", the exact behaviour the founder overruled. */
+  "player/default-voice.test.js": 10,
   "player/queue-manager.test.js": 114,
   "player/queue-state.test.js": 56,
   "player/seam-gap.test.js": 16,
@@ -431,6 +444,13 @@ const FLOORS = {
      the accumulation this suite's floor exists to prevent regressing
      unnoticed. */
   "test/show-search.test.js": 15, // U-11 cutover (2026-09-06, kanban t_a3f01c8a): the two v1/flag-off tests ("no Playlists-search section at all"; "no browse-subjects pill row") were retired along with cp_ui_v2 — ui2On() always returns true now, so those guards are unreachable; the surviving "no matching playlist" test was kept, renamed. 17 -> 15
+  /* S-01 (docs/search-plan.md, kanban t_46366383): the WIRING of
+     app.js's renderShowSearchResults into the diagnostics record — one
+     recordSearch call per completed query, qLen only (never the query
+     text, the card's own MUTATION line), local/net hit counts, the
+     local-only/local+net/superseded path field, and that a missing or
+     throwing bridge never breaks the search itself. */
+  "test/search-probe-record.test.js": 9,
   /* U-05 (docs/ui-transition-plan.md, kanban t_53381ee4, resolves issue
      #135): the Playlists results section under Shows/Episodes on the Shows
      page, plus the "Create a playlist about X" CTA. Floored new rather than
@@ -660,6 +680,12 @@ const FLOORS = {
      version today would delete 19,278 agent rows and leave valid JSON and a
      green CI behind it. This suite is the reason that cannot come back. */
   "tools/classify-breadth.test.mjs": 29,
+  /* S-01 (docs/search-plan.md, kanban t_46366383): the measurement machinery
+     for the search probe (median/p95, timing wrapper, "skipped not failed"
+     network contract, the report validator) -- driven by fakes and an
+     injected fetch, no real catalogue/network. See
+     test/search-probe-record.test.js for the wiring/mutation-guard half. */
+  "tools/search-probe.test.mjs": 27,
   /* 82 since #226 (PR #237) added "Foray #1 is labelled superseded". Raised in a
      follow-up rather than in that PR, which is the mistake this floor exists to
      catch: it left one test of slack, and slack is what lets the new gate be
@@ -968,8 +994,15 @@ const FLOORS = {
        - "the emulator job cannot gate the artefact". A cold emulator boot is the
          only genuinely flaky thing in this repo (mp1-background-audio.md §6.2), and
          the .aab is the critical path to a submission. One `needs:` would put the
-         flake in front of the artefact. */
-  "tools/mobile/android-workflow.test.mjs": 61,
+         flake in front of the artefact.
+
+     61 -> 62 (R-05, docs/release-lockstep-plan.md): "android-release.yml is the
+     PR-time check and the by-hand exception path — never an upload path". The
+     file holds no Play credential and no store-upload action, the upload action
+     appears in EXACTLY ONE `.github` file (the android-bundle composite that
+     `release.yml` calls), and the workflow's own header says so. A second path
+     to a store is the drift that produced the R-01 TestFlight flood. */
+  "tools/mobile/android-workflow.test.mjs": 62,
   /* Wiring the signing config into a project nobody commits. ZERO SLACK.
      `mobile/android/` is regenerated on every build, so the only evidence the
      release signing config ever reaches Gradle is that this script ran and its

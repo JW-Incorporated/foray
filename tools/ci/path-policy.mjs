@@ -262,6 +262,7 @@ export const ALLOWED_PREFIXES = [
   "search-engine.js",
   "STATE.md",
   "HUMAN-ACTIONS.md",
+  "HUMAN-ACTIONS-DONE.md",
   "deploy-manifest.json",
   "sw.js",
 ];

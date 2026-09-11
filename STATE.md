@@ -7,6 +7,81 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
+### R-05/R-06/R-07: release deck records and test pins (2026-09-10) — `fix/release-deck-finish`
+
+- **What:** closes the last non-human gaps an adversarial audit found in
+  `docs/release-lockstep-plan.md`. **R-05:** `tools/mobile/android-workflow.test.mjs`
+  now pins that `android-release.yml` is the PR-time check / founder exception
+  path and never an upload path — no Play credential, no store-upload action,
+  the upload action in exactly one `.github` file (the `android-bundle`
+  composite `release.yml` calls), and the workflow's own header says so; three
+  named mutations, all run red. The old "downloaded and submitted by a human"
+  framing is gone; `android-release.yml`'s self-description comments say the
+  same (comments only, no structural change). **R-06:** the deck §4
+  longlive/Swift2 coordination note is in `HUMAN-ACTIONS.md`; `docs/releases.md`'s
+  #41 bullet matches #516's rewrite (no *Setup → API access* page; the service
+  account is invited under *Users and permissions*); the STATE.md-per-PR
+  convention is met retroactively for #495 below. **R-07:** acceptance items
+  1–2 recorded DONE against run 34381675121; item 3 (the Play email) waits on
+  R-08, now `HUMAN-ACTIONS.md` #44 with the literal Console path. Deck Status
+  set to "landed except R-08 (human)".
+- **Touches:** `tools/mobile/android-workflow.test.mjs`, `test/suite-integrity.test.js`
+  (floor 61 → 62), `.github/workflows/android-release.yml` (comments only —
+  governed path, needs the founder label), `HUMAN-ACTIONS.md` (#44 + the
+  coordination note), `STATE.md`, `docs/releases.md`, `docs/release-lockstep-plan.md`.
+- **Not done here:** R-08 itself (a Console click, #44); R-02's leftover manual
+  `version_code` dispatch input on `android-release.yml`, kept as the exception
+  path's own knob.
+
+### R-06: release-lockstep records and HUMAN-ACTIONS bookkeeping (2026-09-06, kanban `t_88cdc2f8`) — `t_88cdc2f8/r06-release-bookkeeping` — entry written 2026-09-10
+
+- **What:** PR #495 (`df5a246`, merged 2026-09-06T02:03Z). `HUMAN-ACTIONS.md`
+  #41 (G2: the Play API service account, secret `PLAY_SERVICE_ACCOUNT_JSON`) and
+  #42 (G3: the first upload by hand at `versionCode 1`); #30 reconciled DONE on
+  `gh secret list`; #26 left OPEN and cross-linked to G1–G3. `docs/DECISIONS.md`
+  entry for the version rule and the no-uploads-from-PRs rule. New
+  `docs/releases.md`, one page for a founder. The deck's STATE.md-per-PR
+  convention was skipped at the time; this is the retroactive record.
+- **Touches:** `HUMAN-ACTIONS.md`, `docs/DECISIONS.md`, `docs/releases.md`.
+- **Since then:** #516 (founder) rewrote #41's Console steps because the
+  *Setup → API access* page no longer exists; #41 and #42 both DONE 2026-09-06.
+### Interlude jingle between tape segments, placeholder asset (2026-09-10) — `feat/interlude-jingle`
+
+- **What:** founder request — a short sting "as an interlude between
+  podcasts". Player-side, no data change: `player/interlude.js` (rule + one
+  private `<audio>` element), `queue-manager.js` §13 rides the seam-beat
+  clock (jingle replaces the 2.0 s beat; beat is the floor, 4.5 s ceiling;
+  cut by pause/next). Plays on auto-advance INTO a segment only. Asset is a
+  synthesised PLACEHOLDER (`tools/audio/make-interlude-placeholder.py` →
+  `player/assets/interlude-placeholder.wav`), fetched from the live site over
+  https because `media-src https:` blocks a bundled copy on
+  `capacitor://localhost`.
+- **Touches:** `player/interlude.js` (+ test), `player/queue-manager.js`
+  (+ test), `player/client.js`, `player/assets/`, `tools/audio/`,
+  `test/suite-integrity.test.js`, `docs/curation/narration-craft.md`,
+  `deploy-manifest.json`/`sw.js` (regenerated), `STATE.md`. Not `index.html`.
+
+### V-01 follow-up: Samantha by default, curated trial voices, ten-count audition (2026-09-10) — `fix/voice-picker-samantha`
+
+- **What:** founder decision after the first real listen through V-01's picker
+  ("all so bad; Samantha was the least worst"). `app.js`'s picker now renders a
+  fixed allowlist (Samantha + a trial set: Allison, Susan, Joelle, Tom, Nicky,
+  Aaron, Daniel, Serena, Karen, Moira, Tessa, Rishi) and hides every other
+  installed voice — iOS 17+ `listVoices()` returns Apple's novelty/Eloquence
+  catalogue unfiltered, which is what he heard. New `player/default-voice.js`
+  holds the one rule for "nothing stored": Samantha's best installed tier,
+  else #491's plugin heuristic; `client.js` applies it to narration
+  (session-only, never written to `cp_voice`) and re-exports it for the page.
+  `listVoices` is asked for `lang: "en"` (both native halves match the exact
+  locale first and alone, so `en-US` never returned the en-GB/AU/IE/ZA/IN
+  rows). Audition line is now "one … ten." with no markers.
+- **Not verified:** Nicky and Aaron as Enhanced en-US names (rows say
+  "unverified name"); which voices ship compact-by-default on iOS 18.
+- **Touches:** `app.js`, `player/client.js`, `player/default-voice.js` (+ test),
+  `test/voice-settings.test.js`, `test/suite-integrity.test.js`,
+  `HUMAN-ACTIONS.md` (#40, H3 dated notes), `docs/ios-controls-and-voice-plan.md`
+  (V-01 dated note), `STATE.md`. Plugin untouched.
+
 ### L-04: iOS lock-screen records + drive-test writeup (2026-09-06, kanban `t_75ff6a06`) — `foray/t_75ff6a06`
 
 - **What:** `docs/ios-controls-and-voice-plan.md` L-04. Finished
