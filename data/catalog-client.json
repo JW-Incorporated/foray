@@ -122,7 +122,8 @@
       "editorial_note": "Product-engineering war stories, CAD to tooling to production, on everything from medical devices to a coffee tamper.",
       "taxonomy_node_ids": [
         "engineering/precision-mfg",
-        "craft/diy-home"
+        "craft/diy-home",
+        "business/careers"
       ],
       "episode_count": null
     },
