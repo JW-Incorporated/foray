@@ -1542,6 +1542,368 @@
           "slot": "pilots-that-never-ship-and-models-that-are-never-watched"
         }
       ]
+    },
+    {
+      "id": "the-chain-reaction-how-engineering-disasters-rea-25f1b7",
+      "kind": "deep-dive",
+      "title": "The Chain Reaction: How Engineering Disasters Really Happen",
+      "topic": "engineering/disasters",
+      "status": "draft",
+      "summary": "Catastrophic failures aren't single mistakes but chains of small, reasonable decisions that compound unnoticed until collapse",
+      "runtime_sec": 1723.518,
+      "generated": true,
+      "slots": [
+        {
+          "id": "the-postcard-version-of-disaster",
+          "title": "The Postcard Version of Disaster"
+        },
+        {
+          "id": "the-chain-instead-of-the-crack",
+          "title": "The Chain Instead of the Crack"
+        },
+        {
+          "id": "substitutions-on-paper",
+          "title": "Substitutions on Paper"
+        },
+        {
+          "id": "redundancy-removed-for-budget",
+          "title": "Redundancy Removed for Budget"
+        },
+        {
+          "id": "the-near-miss-nobody-escalated",
+          "title": "The Near-Miss Nobody Escalated"
+        },
+        {
+          "id": "when-the-system-fights-the-responder",
+          "title": "When the System Fights the Responder"
+        },
+        {
+          "id": "what-the-chain-teaches",
+          "title": "What the Chain Teaches"
+        }
+      ],
+      "items": [
+        {
+          "type": "narration",
+          "id": "disclosure",
+          "script": "This is a Foray about The decision chains behind engineering failures. Much of what you'll hear is written by AI. We work hard to get the facts right, but AI gets things wrong — so take it as a starting point, not a source.",
+          "mode": "marker",
+          "slot": "the-postcard-version-of-disaster"
+        },
+        {
+          "type": "narration",
+          "id": "act-1-introduction",
+          "script": "This Foray opens with the story you think you already know. A bridge twists itself apart in the wind and drops into a river. A nuclear reactor's core exceeds its design limits and the roof blows off the building. A hotel walkway packed with dancers gives way and drops four stories onto the lobby floor below. Over the next four acts I'm going to argue that none of these are, in the way we usually mean it, accidents — and that the popular version of each one, the version with a single culprit and a single fatal mistake, is close to useless as an explanation. What replaces it is less dramatic and more useful: a chain of separately reasonable decisions, made by different people who each solved the problem directly in front of them, none of whom could see the whole chain they were building.",
+          "mode": "frame",
+          "slot": "the-postcard-version-of-disaster"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-1-0-beat",
+          "script": "Where does this part of the story go next? Keep listening — the thread picks it up on the other side.",
+          "mode": "hinge",
+          "slot": "the-postcard-version-of-disaster"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-1-1-beat",
+          "script": "Where does this part of the story go next? Keep listening — the thread picks it up on the other side.",
+          "mode": "hinge",
+          "slot": "the-postcard-version-of-disaster"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-1-2-beat",
+          "script": "Where does this part of the story go next? Keep listening — the thread picks it up on the other side.",
+          "mode": "hinge",
+          "slot": "the-postcard-version-of-disaster"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-1-3-beat",
+          "script": "Next: a technician rechecks the drawings, asks about the rods — and gets an answer from memory.",
+          "mode": "hinge",
+          "slot": "the-chain-instead-of-the-crack"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-1-4-connective",
+          "script": "At Kansas City, an outside drafter re-checks the fabricator's math on the rods, finds it doesn't add up, and asks a simple question no one runs down.",
+          "mode": "frame",
+          "slot": "the-chain-instead-of-the-crack"
+        },
+        {
+          "type": "segment",
+          "slot": "the-chain-instead-of-the-crack",
+          "segment_id": "causality-engineered-network--47-hyatt-regency-kansas-city#1500"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-1-5-connective",
+          "script": "At Fukushima Daiichi, engineers shaved 25 meters off a coastal bluff, because the plant's license only demanded it survive a tsunami just over three meters high.",
+          "mode": "frame",
+          "slot": "the-chain-instead-of-the-crack"
+        },
+        {
+          "type": "segment",
+          "slot": "the-chain-instead-of-the-crack",
+          "segment_id": "causality-engineered-network--3-fukushima#1550"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-1-6-beat",
+          "script": "That tape traced the plant's 3.1-meter tsunami line to a 1960 quake in Chile — the number the license was built on.",
+          "mode": "hinge",
+          "slot": "the-chain-instead-of-the-crack"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-1-7-beat",
+          "script": "Where does this part of the story go next? Keep listening — the thread picks it up on the other side.",
+          "mode": "hinge",
+          "slot": "the-chain-instead-of-the-crack"
+        },
+        {
+          "type": "narration",
+          "id": "act-1-exit",
+          "script": "By the end of this act you have the shape of the chain — the drafting technician's memo, the license that fixed a tsunami's height at 3.1 meters — but not yet where the chain begins. It doesn't begin on the construction site, and it doesn't begin with a corner cut in a hurry. The next act goes back further, to the drawing board and the specification sheet, to find the compromises that were made on paper, by qualified engineers, months or years before anyone poured concrete or loaded a walkway — decisions that looked, at the time, like nothing more than good engineering.",
+          "mode": "frame",
+          "slot": "the-chain-instead-of-the-crack"
+        },
+        {
+          "type": "narration",
+          "id": "act-2-introduction",
+          "script": "That earlier chain pointed backward past the site and the hurried shortcut, toward a place this act now has to go: the drawing board, the desk, the specification sheet, long before anyone broke ground. By now the listener has stopped looking for the single reckless act. This act goes looking for the first link in the chain — and finds it earlier than expected: not on the construction site or the control-room floor, but on paper, weeks or years before anything is built or switched on. It follows the engineers, fabricators, and utility officials who made the calls that later got blamed on negligence — a substituted adhesive, a valve spec that saved money, a water source changed to save a city's budget — and lays out the paperwork behind each one: memos, drawings, sign-offs, all defensible in isolation, all made by qualified people solving the problem actually in front of them.",
+          "mode": "frame",
+          "slot": "substitutions-on-paper"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-2-0-beat",
+          "script": "Where does this part of the story go next? Keep listening — the thread picks it up on the other side.",
+          "mode": "hinge",
+          "slot": "substitutions-on-paper"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-2-1-beat",
+          "script": "The epoxy bonding the ceiling anchors was strong enough to pass a quick test, not to carry a permanent load. Instead of holding, it crept: deforming slowly under the ceiling's weight until several anchors pulled free and part of the ceiling came down. Testing on the same epoxy found anchors creeping under sustained loads as low as 1,000 pounds, a fraction of what the ceiling actually placed on them. The bond had never been built to last that long.",
+          "mode": "patch",
+          "slot": "substitutions-on-paper"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-2-2-connective",
+          "script": "A test can pass and still fail years later: epoxy creeps under steady load, long after the inspector leaves. This tape traces the paper trail after one failure.",
+          "mode": "frame",
+          "slot": "substitutions-on-paper"
+        },
+        {
+          "type": "segment",
+          "slot": "substitutions-on-paper",
+          "segment_id": "causality-engineered-network--36-big-dig#1283"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-2-3-beat",
+          "script": "That finding is this whole story in miniature: nobody proved the substitute epoxy could hold, only that it seemed to.",
+          "mode": "hinge",
+          "slot": "substitutions-on-paper"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-2-4-beat",
+          "script": "Where does this part of the story go next? Keep listening — the thread picks it up on the other side.",
+          "mode": "hinge",
+          "slot": "redundancy-removed-for-budget"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-2-5-beat",
+          "script": "Investigators tracing why San Bruno's fire burned as long as it did kept coming back to the pipe's own design: where its isolation valves sat, how hard they were to reach and operate, and the fact the line's route now ran beneath a neighborhood built up around it since the pipe went into the ground. For how much that design cost in minutes, the tape gives one number. It took the fire chief and his crews sixty to ninety minutes to get the ruptured line shut off, minutes the fire spent burning through houses sitting over a route no one had drawn with them in mind.",
+          "mode": "patch",
+          "slot": "redundancy-removed-for-budget"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-2-6-beat",
+          "script": "Ask when Flint's water crisis began and the answer depends on who is telling it: the day the taste and smell of tap water changed for some residents, or the day months later officials told the city to start boiling its water. The paper trail settles that question its own way. It marks the switch of Flint's water source to the Flint River as complete on April 25, 2014, and that date, not the moment anyone first noticed something was wrong, is what the record now treats as the crisis's start.",
+          "mode": "patch",
+          "slot": "redundancy-removed-for-budget"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-2-7-connective",
+          "script": "Here's what the inquiry decided operators actually needed to be taught.",
+          "mode": "frame",
+          "slot": "redundancy-removed-for-budget"
+        },
+        {
+          "type": "segment",
+          "slot": "redundancy-removed-for-budget",
+          "segment_id": "causality-engineered-network--32-walkerton#1114"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-2-8-beat",
+          "script": "Not adding a corrosion inhibitor to Flint's new water source was, after the fact, reported as a way to save about a hundred forty dollars a day — a rounding error weighed against a city's plumbing. In Walkerton, the two brothers running the well system had, by their own account, no more than a passing familiarity with E. coli or what it could do to the people drinking their water. Neither decision broke a rule. Both turned out to be fatal.",
+          "mode": "patch",
+          "slot": "redundancy-removed-for-budget"
+        },
+        {
+          "type": "narration",
+          "id": "act-2-exit",
+          "script": "Every one of these paper decisions left a trace — a load-test result nobody re-checked against years of sustained use, a valve spacing nobody re-evaluated after houses went up nearby, a water chemistry change nobody flagged to the people downstream who'd have to drink it. The next act follows those traces forward, past the design table and into the years before the failure, to ask a harder question than who signed off on the flaw: who noticed it start to move, and why the notice never reached the people who could have stopped it.",
+          "mode": "frame",
+          "slot": "redundancy-removed-for-budget"
+        },
+        {
+          "type": "narration",
+          "id": "act-3-introduction",
+          "script": "By now you've stopped looking for the reckless engineer — the last act showed you the fatal flaw arriving on paper, signed off by careful people solving a real problem in front of them. But every one of those paper decisions left something behind: a figure nobody rechecked, a part nobody re-evaluated, a change nobody passed along to the people who'd live with it — and this act picks up exactly there, trading the question of who signed off on the flaw for a harder one: who noticed it start to move? Did anyone see it coming anyway? Not in hindsight, not in the inquiry report written after the bodies were counted, but before — in a control room two states away, in a memo somebody filed, in a stuck valve that had already stuck open once. This act goes looking for the warning that already existed by the time each disaster happened, and for the exact point where it stopped moving.",
+          "mode": "frame",
+          "slot": "the-near-miss-nobody-escalated"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-3-0-beat",
+          "script": "A precedent doesn't stop a disaster by existing. It has to be recognized as the same failure, passed to people who can act, and acted on before the next occurrence. The sociologist who studies these failures describes a long incubation period before a final disaster, with early warning signs that are misinterpreted, ignored, or missed completely. What follows is a case where the warning existed. It just never arrived.",
+          "mode": "patch",
+          "slot": "the-near-miss-nobody-escalated"
+        },
+        {
+          "type": "segment",
+          "slot": "the-near-miss-nobody-escalated",
+          "segment_id": "causality-engineered-network--17-three-mile-island#298"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-3-2-connective",
+          "script": "Next: Chernobyl's early hours, and a group of Pripyat residents who gathered on a nearby bridge to watch the fire from a distance.",
+          "mode": "frame",
+          "slot": "the-near-miss-nobody-escalated"
+        },
+        {
+          "type": "segment",
+          "slot": "the-near-miss-nobody-escalated",
+          "segment_id": "causality-engineered-network--22-chernobyl#1347"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-3-3-beat",
+          "script": "The failure chain that would bring down Three Mile Island Unit 2 was not new. The exact same sequence — the same valve behaving the same way — had already played out on another Babcock & Wilcox reactor eighteen months before, and Babcock's own engineers understood what they were looking at. What broke down after that wasn't recognition — it was reach. The company never got that warning to its customers in language the men in TMI's control room could act on. This is a case where the record wasn't missing. It just never crossed the room.",
+          "mode": "patch",
+          "slot": "the-near-miss-nobody-escalated"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-3-4-beat",
+          "script": "Every citation trail makes a promise: follow it far enough and it lands on the thing itself. Follow the phrase Texas City disaster far enough on paper, though, and it does not land on the 2005 refinery fire at all. It lands on 1947 -- a U.S. Coast Guard board of inquiry into the loss of the French freighter Grandcamp, and the American ships Highflyer and Wilson B. Keene. Same name, decades apart, a different catastrophe entirely. Before we get to what failed in the interface at Texas City, or later in Ukraine, sit with that: the trail meant to lead you back to the record can misdirect you first.",
+          "mode": "patch",
+          "slot": "when-the-system-fights-the-responder"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-3-5-connective",
+          "script": "An engineer who's spent years in oil and gas opens Causality with the disaster that changed how he reads a screen.",
+          "mode": "frame",
+          "slot": "when-the-system-fights-the-responder"
+        },
+        {
+          "type": "segment",
+          "slot": "when-the-system-fights-the-responder",
+          "segment_id": "causality-engineered-network--1-bp-texas-city#51"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-3-6-connective",
+          "script": "Later in this episode, a smaller vulnerability surfaces: the profile page where a job title becomes a target list.",
+          "mode": "frame",
+          "slot": "when-the-system-fights-the-responder"
+        },
+        {
+          "type": "segment",
+          "slot": "when-the-system-fights-the-responder",
+          "segment_id": "causality-engineered-network--31-black-energy#1019"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-3-7-beat",
+          "script": "Same failure as that hidden screen: the tape's host says LinkedIn turns a job post into a ready-made phishing list.",
+          "mode": "hinge",
+          "slot": "when-the-system-fights-the-responder"
+        },
+        {
+          "type": "narration",
+          "id": "act-3-exit",
+          "script": "Every warning in this act existed on the record before the disaster it should have prevented — which means the chain's weak link wasn't ignorance, it was transmission. That's a harder thing to fix than negligence, because the next warning won't announce itself as the one that matters: it'll look like paperwork, like a stuck valve at a sister plant, like a screen that's technically displaying the truth. What you do with that is what's left to ask — not whether today's systems have more redundancy and oversight than Three Mile Island or Texas City did, but whether that redundancy actually routes a warning to the person who needs it, or just gives the chain one more joint to fail at.",
+          "mode": "frame",
+          "slot": "when-the-system-fights-the-responder"
+        },
+        {
+          "type": "narration",
+          "id": "act-4-introduction",
+          "script": "By now the shape should be familiar: a compromise made on paper, a warning that traveled too slowly or not at all, and a chain that closed itself one ordinary decision at a time. The question that closed the last act — whether today's redundancy actually delivers a warning to the person who needs it, or just gives the chain one more joint to fail at — doesn't get easier to answer once you leave that era behind. It would be comforting to file all of that under an older engineering culture — fewer inspectors, laxer codes, a world before redundancy was standard practice — and tell yourself that modern safeguards have closed the gap. They haven't. This act follows the same chain structure into systems built after every lesson in this Foray was supposedly already learned, and asks what's actually left to do about it, now that 'greed' and 'negligence' have stopped being satisfying answers.",
+          "mode": "frame",
+          "slot": "what-the-chain-teaches"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-4-0-connective",
+          "script": "But the fog didn't begin the day it fell. To find where the warning signs started, we go back to the start of industry itself.",
+          "mode": "frame",
+          "slot": "what-the-chain-teaches"
+        },
+        {
+          "type": "segment",
+          "slot": "what-the-chain-teaches",
+          "segment_id": "causality-engineered-network--18-the-fog#387"
+        },
+        {
+          "type": "jingle",
+          "id": "jingle-cut-act-4-1"
+        },
+        {
+          "type": "segment",
+          "slot": "what-the-chain-teaches",
+          "segment_id": "causality-engineered-network--50-737-max-ethiopian-air#2738"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-4-2-beat",
+          "script": "Good company, crashed plane: no contradiction. Each link is certified; only the chain fails. Disputed here: wiring, or bird strike.",
+          "mode": "hinge",
+          "slot": "what-the-chain-teaches"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-4-3-beat",
+          "script": "Where does this part of the story go next? Keep listening — the thread picks it up on the other side.",
+          "mode": "hinge",
+          "slot": "what-the-chain-teaches"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-4-4-beat",
+          "script": "Where does this part of the story go next? Keep listening — the thread picks it up on the other side.",
+          "mode": "hinge",
+          "slot": "what-the-chain-teaches"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-4-5-beat",
+          "script": "Where does this part of the story go next? Keep listening — the thread picks it up on the other side.",
+          "mode": "hinge",
+          "slot": "what-the-chain-teaches"
+        },
+        {
+          "type": "narration",
+          "id": "act-4-exit",
+          "script": "That's the method this Foray leaves you with, not a rule to legislate but a habit to run against the next failure — engineered or otherwise: find the chain, find the decision that was locally rational, and ask what it assumed someone else had already checked. The next headline will call it a single catastrophic failure. It rarely is.",
+          "mode": "frame",
+          "slot": "what-the-chain-teaches"
+        }
+      ]
     }
   ]
 }
