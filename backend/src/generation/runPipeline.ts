@@ -505,8 +505,18 @@ const TapeRelevanceInputSchema = z.object({
   seedWindowWon: z.boolean().optional(),
   /* F-72: which floor admitted a seeded beat's window. Optional for the same
      reason as the pair above. */
-  seedFloor: z.literal("share-only").optional()
+  seedFloor: z.literal("share-only").optional(),
+  /* F-80: D5's triple clause chose this segment's length. Optional likewise. */
+  lengthGate: z.literal("d5-triple").optional()
 });
+
+/* F-80 renamed the D5 gate from `d5-uniform` (a preference, #571) to
+   `d5-triple` (a rule). A checkpoint written by #571–#620 can carry the old
+   spelling in its trace, and a resume must not fail on the runs the ledger
+   decided — so the legacy spelling is accepted and read as the new one. */
+const LEGACY_D5_GATE = "d5-uniform";
+const readLegacyD5Gate = <G extends string>(gate: G | typeof LEGACY_D5_GATE): G | "d5-triple" =>
+  gate === LEGACY_D5_GATE ? "d5-triple" : gate;
 
 /* Mirrors `SourcingTrace` (types/tapeSourcing.ts, F-49): why each narrated beat
    got no tape. Checkpointed with the stage for the same reason `tapeRelevance`
@@ -515,21 +525,24 @@ const TapeRelevanceInputSchema = z.object({
 /* Every gate `Tier2Gate` can name, F-73's four length gates included — the
    trace emits them, and a checkpoint that could not parse its own trace would
    fail to resume on exactly the runs the D-tier ledger decided (G-24). */
-const TIER2_GATE_SCHEMA = z.enum([
-  "text-index:no-candidate",
-  "title-tokens",
-  "lineage",
-  "no-body",
-  "no-anchor",
-  "window-overlap",
-  "no-audio-source",
-  "m4-share",
-  "m3-order",
-  "d2-short-run",
-  "d3-mean",
-  "d5-uniform",
-  "m4-runtime"
-]);
+const TIER2_GATE_SCHEMA = z
+  .enum([
+    "text-index:no-candidate",
+    "title-tokens",
+    "lineage",
+    "no-body",
+    "no-anchor",
+    "window-overlap",
+    "no-audio-source",
+    "m4-share",
+    "m3-order",
+    "d2-short-run",
+    "d3-mean",
+    "d5-triple",
+    LEGACY_D5_GATE,
+    "m4-runtime"
+  ])
+  .transform(readLegacyD5Gate);
 const SourcingTraceSchema = z.object({
   actIndex: z.number().int(),
   slotIndex: z.number().int(),
@@ -543,18 +556,21 @@ const SourcingTraceSchema = z.object({
       score: z.number(),
       requiredScore: z.number(),
       matchedIn: z.enum(["transcript", "metadata"]).nullable(),
-      gate: z.enum([
-        "no-candidates",
-        "threshold",
-        "topic-lineage",
-        "exhausted",
-        "m4-share",
-        "m3-order",
-        "d2-short-run",
-        "d3-mean",
-        "d5-uniform",
-        "m4-runtime"
-      ]),
+      gate: z
+        .enum([
+          "no-candidates",
+          "threshold",
+          "topic-lineage",
+          "exhausted",
+          "m4-share",
+          "m3-order",
+          "d2-short-run",
+          "d3-mean",
+          "d5-triple",
+          LEGACY_D5_GATE,
+          "m4-runtime"
+        ])
+        .transform(readLegacyD5Gate),
       /* G-24 R2: tier 1's weighted floor, when a transcript window was scored. */
       windowWeightedShare: z.number().optional(),
       windowDistinctiveTerms: z.array(z.string()).optional()

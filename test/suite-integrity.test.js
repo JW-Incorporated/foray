@@ -1578,7 +1578,17 @@ const BACKEND_FLOORS = {
      and the trace says when that floor DECIDED, and those twelve cases had no
      floor of their own. Raised here rather than left as slack, for the reason at
      the top of this file — slack is what lets a gate be deleted with CI green. */
-  "test/sourceBeats.test.ts": 111,
+  /* 130 with F-80: D5's triple clause is a rule at placement, not a preference —
+     the tier-2 walk cuts the same window to a length outside the band before it
+     gives a candidate up, names `d5-triple` when no cut escapes, and the
+     tape-relevance row records when the clause chose a length. The fixtures
+     that filled a Foray with one length now alternate, because three of one
+     length is exactly what the rule refuses. */
+  "test/sourceBeats.test.ts": 130,
+  /* F-80: the checker's D5 arithmetic mirrored in `d5Triple.ts`, pinned to
+     `check-forays.mjs`'s own `d5Triples` row by row (run in a Node subprocess,
+     the only way that file loads on a checkout with a space in its path). */
+  "test/d5Triple.test.ts": 5,
   /* WS-H’s new module: the BM25 index over the normalised cue text, its disk
      cache and the invalidation that makes a re-transcribed episode rebuild it,
      and the Null implementation CI actually runs. Raised to 12 by F-61: the
