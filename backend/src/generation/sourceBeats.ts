@@ -21,8 +21,8 @@ import {
   familiesOfNodes,
   familyGateAllows,
   isOnTopic,
-  taxonomyNodesForItemId,
-  taxonomyNodesForShowId,
+  nodesForArchiveEntry,
+  nodesForPoolSegment,
   taxonomyRoot,
   unionNodes
 } from "./taxonomyFamily";
@@ -670,7 +670,7 @@ function tier1VetoFor(segment: SegmentRecord, state: SourcingState): Exclude<Tie
      how a Kansas City walkway beat took a British hearth-cooking segment.
      Checked inside the ranked walk, like the assembly rules below, so the
      search falls through to the next ON-TOPIC candidate instead of giving up. */
-  if (!familyGateAllows(state.forayTopic, nodesForSegment(segment, state), state.root)) return "topic-lineage";
+  if (!familyGateAllows(state.forayTopic, nodesForPoolSegment(segment, state.root), state.root)) return "topic-lineage";
   /* Already spoken for by an earlier beat of this Foray — F-29's "exhaustion of
      the one relevant episode", which is what sent run 1 to a griddle segment. */
   if (state.usedSegmentIds.has(segment.id)) return "exhausted";
@@ -1278,7 +1278,7 @@ function resolveOneBeat(beat: Beat, state: SourcingState): BeatResolution {
      of them is asked first. Gathering is a text-index query and a title scan —
      no body is opened here. */
   const archiveIsUsable = (entry: TranscriptDigestEntry) =>
-    familyGateAllows(state.forayTopic, nodesForArchiveEntry(entry, state), state.root);
+    familyGateAllows(state.forayTopic, nodesForArchiveEntry(entry, state.root), state.root);
   const candidates = tier2Candidates(claim, state, archiveIsUsable, beat.seed);
   const walk = new Tier2Walk(beat, candidates, state);
 
@@ -1338,7 +1338,7 @@ function resolveOneBeat(beat: Beat, state: SourcingState): BeatResolution {
          comes from the same episode: the seed names a stretch of transcript, and
          what won here is a segment a curator already cut. */
       fromSeed: false,
-      nodes: nodesForSegment(tier1.segment, state),
+      nodes: nodesForPoolSegment(tier1.segment, state.root),
       pointer: {
         segmentId: tier1.segment.id,
         itemId: tier1.segment.item_id,
@@ -1637,7 +1637,7 @@ class Tier2Walk {
       fromSeed: candidate.fromSeed === true,
       seedFloor,
       poolCut: "reused",
-      nodes: nodesForSegment(committed, state),
+      nodes: nodesForPoolSegment(committed, state.root),
       pointer: {
         segmentId: committed.id,
         itemId: committed.item_id,
@@ -1746,7 +1746,7 @@ class Tier2Walk {
       fromSeed: candidate.fromSeed === true,
       seedFloor,
       lengthGate,
-      nodes: nodesForArchiveEntry(candidate.entry, state),
+      nodes: nodesForArchiveEntry(candidate.entry, state.root),
       pointer
     };
   }
@@ -2312,33 +2312,11 @@ function transcriptionQueueRow(claim: string, furthest: Tier2Progress | null): T
   }
 }
 
-/**
- * Every taxonomy node a POOL SEGMENT can be said to belong to: its own `topic`
- * plus its show's `taxonomy_node_ids`.
- *
- * The union — rather than the segment's `topic` alone — is deliberate, and it
- * is the same union WS-B's `computeTapeRelevance` builds from disk. Two reasons
- * it has to be a union. A segment's own node is the more specific signal but 67
- * of the 212 pooled segments have no resolvable show, and 16 of the 145 that do
- * disagree with it: the three Hyatt Regency segments carry
- * `architecture/infrastructure`, `engineering/disasters` and `engineering`
- * between them, all cut from one episode of one show the catalogue classifies
- * as `engineering/disasters`. Gating on the segment's own node alone would
- * refuse the first of those three for an engineering Foray — the right episode,
- * refused on a curator's per-segment nuance. And computing it differently from
- * WS-B would let the gate and the metric that scores the gate disagree about
- * the same anchor, which is exactly the kind of silent divergence run 1 was
- * made of.
- */
-function nodesForSegment(segment: SegmentRecord, state: SourcingState): string[] {
-  return unionNodes(segment.topic ?? null, taxonomyNodesForItemId(segment.item_id, state.root));
-}
-
-/** The same, for a tier-2 archive episode: its show's nodes by `show_id`, plus
- * the item-id join so a minted segment resolves the way a pooled one does. */
-function nodesForArchiveEntry(entry: TranscriptDigestEntry, state: SourcingState): string[] {
-  return unionNodes(taxonomyNodesForShowId(entry.show_id, state.root), taxonomyNodesForItemId(deriveItemId(entry), state.root));
-}
+/* The gate's two node unions — `nodesForPoolSegment` (a segment's own `topic`
+   plus its show's nodes) and `nodesForArchiveEntry` (an episode's show nodes
+   plus the item-id join) — live in `taxonomyFamily.ts` since F-91: §4.2, §4.5
+   and the supply measure all ask them, and one answer serves all three (see
+   their headers there for why each is a union). */
 
 /**
  * Joins a pool segment to the transcript body of the episode it was cut from,

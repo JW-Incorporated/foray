@@ -9,7 +9,7 @@ import {
   type CatalogueData
 } from "./catalogueLookup";
 import { resolveTopic } from "./resolveTopic";
-import { familyGateAllows, taxonomyNodesForItemId, taxonomyNodesForShowId, unionNodes } from "./taxonomyFamily";
+import { familyGateAllows, nodesForArchiveEntry } from "./taxonomyFamily";
 import {
   cueWindowText,
   deriveItemId,
@@ -288,7 +288,7 @@ function tapeWindowsFor(seed: CandidateSeed, tape: TapeAvailability, deps: TapeW
      label). Hyphenated concept terms split on the tokenizer's own rule. */
   const queryText = [seed.label, ...seed.terms].join(" ");
   const isUsable = (entry: TranscriptDigestEntry): boolean =>
-    familyGateAllows(deps.topic, archiveEntryNodes(entry, deps.root), deps.root);
+    familyGateAllows(deps.topic, nodesForArchiveEntry(entry, deps.root), deps.root);
 
   const candidates = deps.textIndex.search(queryText, { limit: RESEARCH_TAPE_EPISODE_CANDIDATES, isUsable });
   if (candidates.length === 0) {
@@ -359,13 +359,6 @@ function tapeWindowsFor(seed: CandidateSeed, tape: TapeAvailability, deps: TapeW
   const kept = windows.slice(0, RESEARCH_TAPE_WINDOWS_PER_SUBTOPIC);
   for (const w of kept) usedEpisodes.add(w.episodeId);
   return { windows: kept, unavailable: null };
-}
-
-/** The taxonomy nodes an archive episode resolves to — its show's nodes plus
- * the item-id join, the same union §4.5's tier-2 gate judges (`sourceBeats.ts`'s
- * `nodesForArchiveEntry`). */
-function archiveEntryNodes(entry: TranscriptDigestEntry, root: string | undefined): string[] {
-  return unionNodes(taxonomyNodesForShowId(entry.show_id, root), taxonomyNodesForItemId(deriveItemId(entry), root));
 }
 
 /**

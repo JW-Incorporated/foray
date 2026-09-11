@@ -31,6 +31,16 @@ import {
   type ForaySlot
 } from "./finalizeForay";
 import { resolveTopic, forayIdFor, type TopicCandidate } from "./resolveTopic";
+import {
+  chooseTopic,
+  consideredTopicIds,
+  measureTopicSupply,
+  noSupplyReason,
+  topicDecisionLine,
+  pinnedTopicDecision,
+  type SupplyBasis,
+  type TopicDecision
+} from "./topicSupply";
 import { slugifySlotTitle } from "./forayItems";
 import { loadSegmentPool, type SegmentRecord } from "./segmentPoolLookup";
 import { NARRATION_CHARS_PER_SEC } from "../types/narration";
@@ -55,7 +65,7 @@ import type { NarrationBuildContext, NarrationWriterBuilder, SelectAndWriteReque
 import type { NarrationVerifierBuilder, SynthesisVerifyRequest } from "./NarrationVerifierBuilder";
 import type { ContinuityBuilder } from "./ContinuityBuilder";
 import type { NarrationWriteStats, WrittenAct, WrittenSlot } from "./writeNarration";
-import type { TranscriptCueProvider } from "./transcriptArchiveLookup";
+import { loadTranscriptArchive, type TranscriptCueProvider, type TranscriptDigestEntry } from "./transcriptArchiveLookup";
 import type { TranscriptTextIndex } from "./transcriptTextIndex";
 import type { TapeRelevanceInput } from "../types/tapeSourcing";
 import type { Spine } from "../types/spine";
@@ -106,6 +116,17 @@ export interface RunPipelineDeps {
   continuityBuilder?: ContinuityBuilder;
   /** §4.5 tier-2: supplies real cue text so a beat can be anchored to tape. */
   cueProvider?: TranscriptCueProvider;
+  /**
+   * F-91: the digest archive the topic decision measures supply against and
+   * §4.5 then sources from — ONE array for both, so the count and the gate see
+   * the same tape. Defaults to `loadTranscriptArchive()`, which is the same
+   * process-cached read `sourceBeats` would make on its own; injectable so a
+   * test can stage an archive with no supply for a subject.
+   */
+  transcriptArchive?: TranscriptDigestEntry[];
+  /** F-91: tier 1's curated pool, for the same reason as `transcriptArchive`.
+   * Defaults to `loadSegmentPool()`. */
+  segmentPool?: SegmentRecord[];
   /** G-35: the gatherer the evidence prefetch wraps and `writeNarration` is
    * then handed. Defaults to exactly the gatherer `writeNarration` would
    * have built for itself (`createEvidenceGatherer` with `cueProvider`);
@@ -285,10 +306,34 @@ export type RunPipelineOutcome =
   | { outcome: "needs-clarification"; question: string; readings: string[]; timings: StageTiming[] }
   /** The pipeline ran but no taxonomy node could be resolved — nothing is published. */
   | { outcome: "unresolved-topic"; title: string; candidates: TopicCandidate[]; spineReasks: SpineReask[]; timings: StageTiming[] }
+  /** F-91: a topic resolved, but no candidate topic's family admits enough of
+   * the archive to source a beat from (`chooseTopic` said `no-supply`). The
+   * run stops BEFORE the spine — before any Opus or Sonnet call — because
+   * run 8 showed what the alternative buys: seven model calls and a NO TAPE
+   * stop five minutes later. `stoppedBefore` says which stage the stop
+   * preceded: `"spine"` on the common path, `"deepen"` when only the spine's
+   * act titles let a topic resolve at all (the pre-spine text resolved
+   * nothing, so the spine was built and the decision came after it). */
+  | {
+      outcome: "no-supply";
+      title: string;
+      reason: string;
+      topicDecision: PipelineTopicDecision;
+      stoppedBefore: "spine" | "deepen";
+      spineReasks: SpineReask[];
+      timings: StageTiming[];
+    }
   /** §4.5 sourced every beat to narration (F-65). A Foray with no tape cannot
    * pass §4.9, so the run stops before paying for narration. `sourcing` is
    * `summarizeSourcing`'s one line per slot, top reason included. */
-  | { outcome: "no-tape"; title: string; sourcing: string[]; spineReasks: SpineReask[]; timings: StageTiming[] }
+  | {
+      outcome: "no-tape";
+      title: string;
+      sourcing: string[];
+      topicDecision: PipelineTopicDecision;
+      spineReasks: SpineReask[];
+      timings: StageTiming[];
+    }
   /** A Foray was built. `validation.ok` says whether it may be published. */
   | {
       outcome: "generated";
@@ -308,6 +353,9 @@ export type RunPipelineOutcome =
        * `data/segment-sources.json`, which a freshly minted tier-2 segment need
        * not. */
       tapeRelevance: TapeRelevanceInput[];
+      /** F-91: how the Foray's topic was chosen — the resolver's pick, the
+       * supply each candidate had, and whether supply moved the choice. */
+      topicDecision: PipelineTopicDecision;
       timings: StageTiming[];
       /** WS-D2: prompt received -> Act 1 ready, in milliseconds. `null` only
        * when `deps.onActReady` was never supplied (no act-boundary clock was
@@ -320,6 +368,17 @@ export type RunPipelineOutcome =
        * (`narrationConcurrency`, `narrationActs`). */
       narration: { concurrency: number; acts: NarrationActTiming[] };
     };
+
+/**
+ * F-91: the topic decision as the run records it. `chooseTopic`'s own record
+ * when the resolver chose, or a `pinned` record when the caller supplied
+ * `options.topic` — a human's ruling is not second-guessed by supply, but its
+ * supply is still measured and reported, so a pinned topic the archive cannot
+ * carry is at least SAID before the run spends anything. `basis` says what
+ * the supply numbers counted: transcript bodies on this machine, or every
+ * archive entry (no body source wired — CI, tests).
+ */
+export type PipelineTopicDecision = TopicDecision & { basis: SupplyBasis };
 
 /** The Foray-level `slots` record: §4.9 wants `{id, title}` per act slot. */
 /** `check-forays.mjs`'s `MAX_WHY_LINE_WORDS`, applied to `title` and `summary`
@@ -888,10 +947,86 @@ export async function runForayPipeline(
 
   const intent = understood.intent;
 
-  /* §4.2 — research to establish shape. `topic` is left unset so the stage
-     resolves one from the intent itself and keeps off-branch concepts out of
-     the map (F-11); a caller who pinned the taxonomy node by hand has already
-     decided, so that decision wins. */
+  /* THE FORAY'S COPY, from the intent alone — hoisted ahead of the topic
+     decision below because a stop there has to name the Foray it refused. */
+  const { title, summary, clamped: clampedCopy } = forayCopy(intent);
+  for (const what of clampedCopy) {
+    console.warn(`runPipeline: ${what} exceeded the ${MAX_COPY_WORDS}-word copy rule and was clamped — the understander ignored its length instruction (F-64)`);
+  }
+
+  /* THE FORAY'S TOPIC, DECIDED HERE — BEFORE THE RESEARCH MAP AND THE SPINE
+     (F-91). It used to be resolved after the spine, from a text that included
+     the act titles, while §4.2 resolved a SECOND topic of its own from the
+     prompt, subject and angle to filter the research map. Run 8 showed why one
+     decision has to be made once, first, and with the archive in view: the
+     resolver put "how engineering careers really work" on `business/careers`
+     (one token: "careers"), the lineage gate then refused every episode of the
+     one show that carries the subject, and the run spent an Opus call and four
+     Sonnet calls before §4.5 could say NO TAPE. `chooseTopic` measures how much
+     of the archive each candidate's family admits — the SAME predicate §4.5's
+     tier 2 applies — and lets supply break a tie the word-scorer could not,
+     within a score floor. No candidate with supply means the archive cannot
+     carry the subject at all, and the run stops here, having paid for one
+     Haiku call.
+
+     WHAT COUNTS AS SUPPLY. An entry the family admits AND, when the cue
+     provider can say so (`bodyStat`), one with a transcript body on this
+     machine: a digest row nothing can open is not tape. `basis` records which
+     of the two was counted so the log and the report are honest about it.
+
+     WHY THE SAME TEXT §4.2 USED. The pre-spine text is the prompt, subject and
+     angle (F-67: the prompt leads). The act titles are the spine's framing,
+     not the subject, and a topic that needs them to resolve at all is decided
+     AFTER the spine below, on the old text — the one behaviour the old order
+     had that this one must keep. `options.topic` (a human's ruling) is never
+     overridden; its supply is measured and said, and that is all. */
+  const archive = deps.transcriptArchive ?? loadTranscriptArchive();
+  const segmentPool = deps.segmentPool ?? loadSegmentPool();
+  const bodySource = deps.cueProvider as (TranscriptCueProvider & { bodyStat?: (entry: TranscriptDigestEntry) => unknown }) | undefined;
+  const isSearchable =
+    bodySource && typeof bodySource.bodyStat === "function"
+      ? (entry: TranscriptDigestEntry) => bodySource.bodyStat!(entry) !== null
+      : undefined;
+  const basis: SupplyBasis = isSearchable ? "bodies" : "archive";
+  const measure = (ids: string[]) =>
+    measureTopicSupply(ids, { archive, segmentPool, root: options.root, ...(isSearchable ? { isSearchable } : {}) });
+  const decideTopic = (text: string): { candidates: TopicCandidate[]; decision: PipelineTopicDecision } => {
+    const resolved = resolveTopic(text, { root: options.root });
+    const supply = measure(consideredTopicIds(resolved, { root: options.root }));
+    return { candidates: resolved.candidates, decision: { ...chooseTopic(resolved, supply, { root: options.root }), basis } };
+  };
+  const preSpineText = [req.prompt, intent.subject, intent.angle].join(" ");
+  let topicDecision: PipelineTopicDecision;
+  let preSpineCandidates: TopicCandidate[] = [];
+  if (options.topic) {
+    topicDecision = { ...pinnedTopicDecision(options.topic, measure([options.topic])), basis };
+    console.log(`  ${topicDecisionLine(topicDecision, basis)}`);
+  } else {
+    const decided = decideTopic(preSpineText);
+    preSpineCandidates = decided.candidates;
+    topicDecision = decided.decision;
+    if (topicDecision.reason !== "unresolved") console.log(`  ${topicDecisionLine(topicDecision, basis)}`);
+    if (topicDecision.reason === "no-supply") {
+      return {
+        outcome: "no-supply",
+        title,
+        reason: noSupplyReason(topicDecision, basis),
+        topicDecision,
+        stoppedBefore: "spine",
+        spineReasks: [],
+        timings: timings.all()
+      };
+    }
+  }
+  /* Null only when the pre-spine text resolved nothing — the post-spine
+     fallback below then gets the act titles' help, as it always did. */
+  let topic: string | null = topicDecision.topic;
+
+  /* §4.2 — research to establish shape. The map is filtered by the SAME topic
+     §4.5 will gate on (F-11, F-91): before F-91 this stage resolved its own,
+     and a supply-aware pick here would have left the map filtered by the
+     unsupplied one. `null` (unresolved so far) disables the filter, exactly as
+     the stage's own miss did. */
   const researchShape = await stage(
     "research-shape",
     (raw) => ResearchShapeSchema.parse(raw),
@@ -902,14 +1037,14 @@ export async function runForayPipeline(
         root: options.root,
         /* F-67: the listener's own words join the topic text. */
         prompt: req.prompt,
+        topic,
         /* WS-L (F-63): the same text index and cue provider §4.5 sources with,
            handed to §4.2 so the map carries what the tape SAYS about each
            candidate and the spine can write its beats from that rather than
            from an item count. Both default to their Null implementations, so a
            driver that wires neither gets the pre-WS-L map. */
         ...(deps.textIndex ? { textIndex: deps.textIndex } : {}),
-        ...(deps.cueProvider ? { cueProvider: deps.cueProvider } : {}),
-        ...(options.topic ? { topic: options.topic } : {})
+        ...(deps.cueProvider ? { cueProvider: deps.cueProvider } : {})
       })
   );
 
@@ -936,15 +1071,14 @@ export async function runForayPipeline(
     }
   );
 
-  /* THE FORAY'S TOPIC, RESOLVED HERE AND NOT AFTER NARRATION.
-     It used to be resolved at the end, next to the other §4.9 fields it is
-     grouped with, because nothing before §4.9 needed it. §4.5's topic gate does
-     (fix plan WS-C, finding F-29): the taxonomy node is the only thing that can
-     tell sourcing that a barbecue episode is not tape for an engineering-
-     disasters Foray, and sourcing runs long before finalize. Resolving it here
-     — the first point where both the intent and the frozen spine exist — also
-     means an unresolvable topic stops the run before the two most expensive
-     stages instead of after them.
+  /* THE POST-SPINE FALLBACK (F-91). Until F-91 the topic was resolved HERE —
+     the first point where both the intent and the frozen spine existed — from
+     a text that added the act titles (F-67: the prompt leads; the titles are
+     the spine's framing). The decision now happens before §4.2, above, and
+     this block runs only when that text resolved nothing: the act titles get
+     their old chance to help, the supply rule applies the same way, and a
+     `no-supply` verdict still stops the run before deepen and sourcing — later
+     than the pre-spine stop, but four Sonnet calls earlier than NO TAPE.
 
      The unresolved-topic OUTCOME is unchanged: same shape, same title, same
      ranked candidates, still returned rather than guessed at, because
@@ -952,24 +1086,32 @@ export async function runForayPipeline(
      the right one. `generatedAt` deliberately did NOT move with it: it is the
      time the Foray was finished, and stamping it here would date every Foray
      several minutes before it existed. */
-  const { title, summary, clamped: clampedCopy } = forayCopy(intent);
-  for (const what of clampedCopy) {
-    console.warn(`runPipeline: ${what} exceeded the ${MAX_COPY_WORDS}-word copy rule and was clamped — the understander ignored its length instruction (F-64)`);
-  }
-  /* F-67: the user's prompt leads the topic text. The understander's
-     paraphrase can drop the one token the taxonomy knows ("ML" for "machine
-     learning"), and the act titles are the spine's framing, not the subject. */
-  const topicText = [req.prompt, intent.subject, intent.angle, spine.acts.map((a) => a.title).join(" ")].join(" ");
-  const resolvedTopic = resolveTopic(topicText, { root: options.root });
-  const topic = options.topic ?? resolvedTopic.resolved;
   if (!topic) {
-    return {
-      outcome: "unresolved-topic",
-      title,
-      candidates: resolvedTopic.candidates,
-      spineReasks,
-      timings: timings.all()
-    };
+    const topicText = [preSpineText, spine.acts.map((a) => a.title).join(" ")].join(" ");
+    const decided = decideTopic(topicText);
+    topicDecision = decided.decision;
+    if (!topicDecision.topic) {
+      return {
+        outcome: "unresolved-topic",
+        title,
+        candidates: decided.candidates.length > 0 ? decided.candidates : preSpineCandidates,
+        spineReasks,
+        timings: timings.all()
+      };
+    }
+    console.log(`  ${topicDecisionLine(topicDecision, basis)} [resolved with the spine's act titles]`);
+    if (topicDecision.reason === "no-supply") {
+      return {
+        outcome: "no-supply",
+        title,
+        reason: noSupplyReason(topicDecision, basis),
+        topicDecision,
+        stoppedBefore: "deepen",
+        spineReasks,
+        timings: timings.all()
+      };
+    }
+    topic = topicDecision.topic;
   }
 
   /* WS-D2 (fix plan, "D2 (streaming publish)") needs four Foray-level facts
@@ -1029,6 +1171,9 @@ export async function runForayPipeline(
       sourceBeats(deepened, {
         cueProvider: deps.cueProvider,
         textIndex: deps.textIndex,
+        /* F-91: the tape the topic decision was measured on — both tiers. */
+        segmentPool,
+        transcriptArchive: archive,
         topic,
         root: options.root,
         /* Tier 2 may only mint tape whose audio can be honestly registered
@@ -1063,7 +1208,7 @@ export async function runForayPipeline(
     0
   );
   if (tapeBeats === 0) {
-    return { outcome: "no-tape", title, sourcing: sourcingLines, spineReasks, timings: timings.all() };
+    return { outcome: "no-tape", title, sourcing: sourcingLines, topicDecision, spineReasks, timings: timings.all() };
   }
 
   /* G-35 — EVERY PAGE'S EVIDENCE, IN ONE FAN-OUT, BEFORE ANY ACT IS WRITTEN.
@@ -1456,6 +1601,7 @@ export async function runForayPipeline(
     spine,
     spineReasks,
     tapeRelevance: sourced.tapeRelevance,
+    topicDecision,
     timings: timings.all(),
     ttlA1Ms,
     narration: { concurrency: actConcurrency, acts: narrationActs }

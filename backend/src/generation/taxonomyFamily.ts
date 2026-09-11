@@ -1,6 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import { loadTaxonomyNodes, type TaxonomyNode } from "./resolveTopic";
+import { deriveItemId, type TranscriptDigestEntry } from "./transcriptArchiveLookup";
 
 /**
  * The §4.5 TOPIC GATE's one job: say whether two things belong to the same
@@ -236,6 +237,52 @@ export function taxonomyNodesForItemId(itemId: string, root: string = REPO_ROOT)
   const showTitle = loadShowByItemId(root).get(id);
   if (!showTitle) return [];
   return loadShowNodes(root).byTitle.get(showTitle) ?? [];
+}
+
+/**
+ * The taxonomy nodes a tier-2 ARCHIVE EPISODE resolves to: its show's nodes by
+ * `show_id`, plus the item-id join so a minted segment resolves the way a
+ * pooled one does.
+ *
+ * STATED ONCE, HERE, because three stages ask the same question of the same
+ * entry and must get the same answer: §4.2's research map (`researchShape.ts`)
+ * decides which episodes may be quoted into the spine prompt, §4.5's tier 2
+ * (`sourceBeats.ts`) decides which may be opened for a beat, and F-91's supply
+ * measure (`topicSupply.ts`) decides whether the archive can carry the topic
+ * at all. Until F-91 the first two carried private copies of this union; a
+ * third copy is where they would have started to drift.
+ */
+export function nodesForArchiveEntry(entry: TranscriptDigestEntry, root: string = REPO_ROOT): string[] {
+  return unionNodes(taxonomyNodesForShowId(entry.show_id, root), taxonomyNodesForItemId(deriveItemId(entry), root));
+}
+
+/** The two fields of a `data/segments.json` row the pool-side gate reads. */
+export interface PoolSegmentLike {
+  item_id: string;
+  topic?: string | null;
+}
+
+/**
+ * Every taxonomy node a POOL SEGMENT can be said to belong to: its own `topic`
+ * plus its show's `taxonomy_node_ids`.
+ *
+ * The union — rather than the segment's `topic` alone — is deliberate, and it
+ * is the same union WS-B's `computeTapeRelevance` builds from disk. Two reasons
+ * it has to be a union. A segment's own node is the more specific signal but 67
+ * of the 212 pooled segments have no resolvable show, and 16 of the 145 that do
+ * disagree with it: the three Hyatt Regency segments carry
+ * `architecture/infrastructure`, `engineering/disasters` and `engineering`
+ * between them, all cut from one episode of one show the catalogue classifies
+ * as `engineering/disasters`. Gating on the segment's own node alone would
+ * refuse the first of those three for an engineering Foray — the right episode,
+ * refused on a curator's per-segment nuance. And computing it differently from
+ * WS-B would let the gate and the metric that scores the gate disagree about
+ * the same anchor, which is exactly the kind of silent divergence run 1 was
+ * made of. Shared with F-91's supply measure for the same reason as
+ * `nodesForArchiveEntry` above.
+ */
+export function nodesForPoolSegment(segment: PoolSegmentLike, root: string = REPO_ROOT): string[] {
+  return unionNodes(segment.topic ?? null, taxonomyNodesForItemId(segment.item_id, root));
 }
 
 /** De-duplicating union, order-preserving — the shape every candidate node list has. */

@@ -3,6 +3,8 @@ import {
   familiesOfNodes,
   familyGateAllows,
   isOnTopic,
+  nodesForArchiveEntry,
+  nodesForPoolSegment,
   resetTaxonomyFamilyCache,
   taxonomyLineage,
   taxonomyNodesForItemId,
@@ -11,6 +13,7 @@ import {
   unionNodes
 } from "../src/generation/taxonomyFamily";
 import { resetTaxonomyCache } from "../src/generation/resolveTopic";
+import { deriveItemId } from "../src/generation/transcriptArchiveLookup";
 
 /* §4.5's TOPIC GATE, unit-tested against the REAL committed catalogue files.
    Real rather than fixtures on purpose: the whole finding this module closes
@@ -151,5 +154,35 @@ describe("familyGateAllows / isOnTopic — inert without a topic, closed without
     expect(familyGateAllows("engineering/not-a-real-node", ["engineering/disasters"])).toBe(true);
     expect(familyGateAllows("engineering/not-a-real-node", ["food/food-history"])).toBe(false);
     expect(familyGateAllows("engineering/disasters", ["engineering/not-a-real-node"])).toBe(true);
+  });
+});
+
+describe("nodesForArchiveEntry / nodesForPoolSegment — the two unions the gates and F-91's supply measure share", () => {
+  it("unions the show's nodes with the item-id join for an episode, and a segment's own topic with its show's for a pool row", () => {
+    /* F-91 moved both unions here from private copies in sourceBeats.ts and
+       researchShape.ts so the supply measure could not drift from the gates.
+       Pinned on the REAL catalogue: the Hyatt Regency episode of *Causality*
+       is classified `engineering/disasters` by its show while its pool
+       segments carry `architecture/infrastructure` — the union has to carry
+       both, or an engineering Foray refuses the right episode on a curator's
+       per-segment nuance (sourceBeats.ts's own example). MUTATION THAT KILLS
+       THIS: return the segment's `topic` alone. */
+    const entry = {
+      show_id: "causality-engineered-network",
+      show_title: "Causality",
+      guid: "hyatt",
+      title: "47: Hyatt Regency, Kansas City",
+      cues: 10
+    };
+    const byEntry = nodesForArchiveEntry(entry);
+    expect(byEntry).toEqual(unionNodes(taxonomyNodesForShowId("causality-engineered-network"), taxonomyNodesForItemId(deriveItemId(entry))));
+    expect(byEntry).toContain("engineering/disasters");
+
+    const bySegment = nodesForPoolSegment({ item_id: "causality-engineered-network--47-hyatt-regency-kansas-city", topic: "architecture/infrastructure" });
+    expect(bySegment[0]).toBe("architecture/infrastructure");
+    expect(bySegment).toContain("engineering/disasters");
+    /* A row with no resolvable show still carries its own node, and nothing else. */
+    expect(nodesForPoolSegment({ item_id: "no-such-item", topic: "food/grilling-bbq" })).toEqual(["food/grilling-bbq"]);
+    expect(nodesForArchiveEntry({ ...entry, show_id: "no-such-show", title: "nothing" })).toEqual([]);
   });
 });
