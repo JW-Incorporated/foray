@@ -267,7 +267,11 @@ limi
 **Why:** (not stated in the legacy item -- needs a real Why)
 
 **Steps:**
-1. TODO — steps needed
+1. Read docs/curation/alcohol-forms-coverage.md §1: rule whether SYSK-register general-interest shows count as usable tape for this Foray.
+2. If OUT: the report becomes 1 strong / 4 thin / 58 empty. If IN as thin: it stays 1 strong / 15 thin / 47 empty. State which.
+3. Read docs/curation/narration-craft.md §2d (Carry-by-default vs Carry-by-design) and §2e (merge rule for chained empty beats) -- these collide for this narration-heavy Foray.
+4. Rule: when a Carry-by-design beat (never droppable) sits in a chain that would exceed the 180s hard max, does it force an early split or absorb neighbors first.
+5. Write the ruling into docs/DECISIONS.md with a date, in its own PR carrying founder-approved (docs/DECISIONS.md is on DENIED_PREFIXES).
 
 **Worked if:** one of A, B or C is written into `docs/DECISIONS.md` with a date.
 That file is on `DENIED_PREFIXES`, so the entry needs a separate PR carrying the
