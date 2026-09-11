@@ -1,6 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import type { StageTiming } from "./stageTiming";
+import type { EvidencePrefetchMetrics } from "./evidencePrefetch";
 import type { SourcedAct, SourcedSlot, TapeRelevanceInput } from "../types/tapeSourcing";
 import type { WrittenAct } from "./writeNarration";
 import { decideConnectiveNarration } from "./writeNarration";
@@ -556,6 +557,10 @@ export interface VeracityMetrics {
    * `finalizeForay`'s own internal breakdown appended with a `finalize.`
    * name prefix so both are visible in one flat, orderable list. */
   stageTimings: StageTiming[];
+  /** G-35: what the evidence prefetch did and how much of narration's
+   * retrieval it absorbed (`evidencePrefetch.ts`). Absent from a candidate
+   * built by a caller that ran no prefetch. */
+  retrieval?: EvidencePrefetchMetrics;
 }
 
 export interface BuildVeracityMetricsInput {
@@ -575,6 +580,8 @@ export interface BuildVeracityMetricsInput {
   retryRounds?: number;
   pipelineTokens: number;
   stageTimings: StageTiming[];
+  /** G-35: carried through verbatim when the caller ran a prefetch. */
+  retrieval?: EvidencePrefetchMetrics;
   root?: string;
 }
 
@@ -603,7 +610,8 @@ export function buildVeracityMetrics(input: BuildVeracityMetricsInput): Veracity
     unverifiedPageDetails: unverified.pages,
     purposeRevisedPages: computePurposeRevisedPages(input.writtenActs),
     pipelineTokens: input.pipelineTokens,
-    stageTimings: input.stageTimings
+    stageTimings: input.stageTimings,
+    ...(input.retrieval ? { retrieval: input.retrieval } : {})
   };
 }
 

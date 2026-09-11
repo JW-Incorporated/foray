@@ -17,6 +17,8 @@ import { sourceBeats, summarizeSourcing } from "./sourceBeats";
 import { summarizeSeeding } from "./spineSeeding";
 import { createDigestAudioSourceResolver, type AudioSourceResolver } from "./audioSourceLookup";
 import { writeNarration } from "./writeNarration";
+import { PrefetchingEvidenceGatherer } from "./evidencePrefetch";
+import { createEvidenceGatherer, type EvidenceGatherer } from "./gatherEvidence";
 import { ForayStitcher } from "./stitchForay";
 import {
   finalizeForay,
@@ -103,6 +105,11 @@ export interface RunPipelineDeps {
   continuityBuilder?: ContinuityBuilder;
   /** §4.5 tier-2: supplies real cue text so a beat can be anchored to tape. */
   cueProvider?: TranscriptCueProvider;
+  /** G-35: the gatherer the evidence prefetch wraps and `writeNarration` is
+   * then handed. Defaults to exactly the gatherer `writeNarration` would
+   * have built for itself (`createEvidenceGatherer` with `cueProvider`);
+   * injectable so a test can count what reaches it. */
+  evidence?: EvidenceGatherer;
   /** §4.5 tier-2: the candidate search over transcript TEXT (WS-H, F-06).
    * Omitted, tier 2 keeps to the title-metadata path — see
    * `SourceBeatsOptions.textIndex`. */
@@ -969,6 +976,24 @@ export async function runForayPipeline(
     return { outcome: "no-tape", title, sourcing: sourcingLines, timings: timings.all() };
   }
 
+  /* G-35 — EVERY PAGE'S EVIDENCE, IN ONE FAN-OUT, BEFORE ANY ACT IS WRITTEN.
+     Retrieval used to sit inside each act's `writeSlot`, serial with the acts
+     around it; now the whole Foray's packs are gathered here, bounded by
+     `EVIDENCE_PREFETCH_CONCURRENCY`, and `writeNarration` below is handed the
+     same object so its gathers are memo lookups. Timed as its own stage but
+     NOT checkpointed: its product is a warm cache, and a resumed run simply
+     skips the slots it will not narrate again (`skipSlot`). See
+     `evidencePrefetch.ts` for why the seeded claims are not started during
+     deepen. */
+  const evidence = new PrefetchingEvidenceGatherer(
+    deps.evidence ?? createEvidenceGatherer(deps.cueProvider ? { cueProvider: deps.cueProvider } : {})
+  );
+  await timed("evidence", () =>
+    evidence.prefetch(sourced.acts, ctx, {
+      skipSlot: (actIndex, slotIndex) => checkpoint.has(`narrate:${actIndex}`) || checkpoint.has(`narrate:${actIndex}:${slotIndex}`)
+    })
+  );
+
   /* The pool the runtime clock is measured against has to include what tier 2
      just minted, or a tier-2 tape item contributes 0 s to `runtime_sec` and
      `check-forays.mjs` fails the Foray for a runtime that disagrees with its
@@ -1110,10 +1135,11 @@ export async function runForayPipeline(
             writer: countingNarrationWriter,
             verifier: countingNarrationVerifier,
             stats: narrationStats,
-            /* Requirements §8.1: the same cue provider §4.5 sources
-               against, so a tape beat's evidence pack holds the cue
+            /* G-35: the prefetched packs. Requirements §8.1 still holds —
+               the gatherer inside was built with the same cue provider §4.5
+               sources against, so a tape beat's evidence pack holds the cue
                window and not just the episode title. */
-            ...(deps.cueProvider ? { cueProvider: deps.cueProvider } : {}),
+            evidence,
             /* `writeNarration` is handed ONE act, so its own act index is
                always 0; `i` is what names the slot's key. */
             resume: (_actIndex, slotIndex) =>
@@ -1162,6 +1188,9 @@ export async function runForayPipeline(
      EVERY candidate this function returns — including one that fails
      check-forays/check-narration below, which `generateForays.ts` still
      records in `report.json` even though it never writes a candidate file. */
+  /* G-35: printed now, when the hit rate is finally known, and carried into
+     `report.json` through `meta.veracity.retrieval`. */
+  console.log(`  ${evidence.summaryLine()}`);
   const veracity = buildVeracityMetrics({
     sourcedActs: sourced.acts,
     writtenActs: written,
@@ -1171,6 +1200,7 @@ export async function runForayPipeline(
     retryRounds: narrationStats.retryRounds,
     pipelineTokens: getUsageTotals().total,
     stageTimings: timings.all(),
+    retrieval: evidence.metrics(),
     tapeRelevanceRows: sourced.tapeRelevance,
     root: options.root
   });

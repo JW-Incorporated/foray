@@ -206,6 +206,17 @@ export class CheckpointSession {
     }
   }
 
+  /**
+   * Whether a key is banked at all, WITHOUT resuming it — no parse, and the
+   * stage is not marked resumed. For a caller that only wants to know
+   * whether work downstream will be needed (G-35's evidence prefetch skips
+   * the slots a resumed run will never narrate again); the resume itself,
+   * with its re-validation, still goes through `stage`/`resumeSync`.
+   */
+  has(name: CheckpointStageKey): boolean {
+    return Object.prototype.hasOwnProperty.call(this.stages, name);
+  }
+
   /** Persists one unit of work under its own key. Pairs with `resumeSync`. */
   async save(name: CheckpointStageKey, value: unknown): Promise<void> {
     await this.record(name, value);

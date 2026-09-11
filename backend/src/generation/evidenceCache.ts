@@ -48,11 +48,38 @@ export interface EvidenceCacheEntry {
  */
 export const EMPTY_EVIDENCE_TTL_MS = 24 * 60 * 60 * 1000;
 
+/**
+ * The TTL actually applied, read from `EVIDENCE_EMPTY_TTL_MS` on every call
+ * (G-35 / F-77) so an operator can shorten it for a run without a code change
+ * and a test can pin it without touching `config/env.ts`'s startup singleton.
+ * Anything that is not a finite, non-negative number of milliseconds falls
+ * back to the 24-hour default above — a typo must never turn emptiness into a
+ * permanent fact (`Infinity`) or a permanent miss (`NaN`).
+ *
+ * WHAT IS AND IS NOT WRITTEN AS EMPTY (F-77) is decided in
+ * `gatherEvidence.ts`, not here: this file only says how long an empty entry
+ * that WAS written stays a hit. A single query that came back empty, and any
+ * query that failed, are never written at all — only a beat whose whole
+ * retrieval protocol ran to a verdict and found nothing is.
+ */
+export function emptyEvidenceTtlMs(): number {
+  const raw = process.env.EVIDENCE_EMPTY_TTL_MS;
+  if (raw === undefined || raw.trim().length === 0) return EMPTY_EVIDENCE_TTL_MS;
+  const n = Number(raw);
+  return Number.isFinite(n) && n >= 0 ? n : EMPTY_EVIDENCE_TTL_MS;
+}
+
 /** Reads a cached retrieval, or `null` for any miss — a corrupt or
  * unreadable cache file is a miss, never an error: the worst case is
  * paying for one retrieval again. An entry holding NO documents is a miss
- * once it is older than `EMPTY_EVIDENCE_TTL_MS` (F-60). */
-export function readEvidenceCache(dir: string, hash: string, now: () => Date = () => new Date()): EvidenceDoc[] | null {
+ * once it is older than `ttlMs` — `emptyEvidenceTtlMs()` unless the caller
+ * pins one (F-60/F-77). */
+export function readEvidenceCache(
+  dir: string,
+  hash: string,
+  now: () => Date = () => new Date(),
+  ttlMs: number = emptyEvidenceTtlMs()
+): EvidenceDoc[] | null {
   try {
     const file = cacheFile(dir, hash);
     // eslint-disable-next-line security/detect-non-literal-fs-filename -- dir is caller-owned and hash is hex this pipeline computed.
@@ -61,7 +88,7 @@ export function readEvidenceCache(dir: string, hash: string, now: () => Date = (
     const parsed = JSON.parse(fs.readFileSync(file, "utf8")) as Partial<EvidenceCacheEntry>;
     if (!Array.isArray(parsed.docs)) return null;
     const docs = parsed.docs as EvidenceDoc[];
-    if (docs.length === 0 && emptyEntryIsStale(parsed.cachedAt, now)) return null;
+    if (docs.length === 0 && emptyEntryIsStale(parsed.cachedAt, now, ttlMs)) return null;
     return docs;
   } catch {
     return null;
@@ -71,10 +98,10 @@ export function readEvidenceCache(dir: string, hash: string, now: () => Date = (
 /** An empty entry is a hit only while it is fresh. No timestamp at all, a
  * timestamp that does not parse, and one older than the TTL all mean the
  * same thing: ask again rather than serve nothing. */
-function emptyEntryIsStale(cachedAt: string | undefined, now: () => Date): boolean {
+function emptyEntryIsStale(cachedAt: string | undefined, now: () => Date, ttlMs: number): boolean {
   const at = Date.parse(String(cachedAt ?? ""));
   if (!Number.isFinite(at)) return true;
-  return now().getTime() - at >= EMPTY_EVIDENCE_TTL_MS;
+  return now().getTime() - at >= ttlMs;
 }
 
 /** Writes one retrieval's documents. Never throws: a cache that cannot be
