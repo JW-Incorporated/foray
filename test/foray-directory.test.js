@@ -40,6 +40,10 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { webcrypto } = require("node:crypto");
 
+/* The seed the shell boots from is the committed data on disk, so the row's `n=` is read from
+   there rather than pinned — a published Foray must not break this test (F-84 / PR #624). */
+const SEED_FORAY_COUNT = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "data", "forays.json"), "utf8")).forays.length;
+
 const ROOT = path.join(__dirname, "..");
 const APP_SRC = fs.readFileSync(path.join(ROOT, "app.js"), "utf8");
 const ORIGIN = "https://foray-web-seven.vercel.app";
@@ -572,7 +576,7 @@ test("FD-01: a boot row names the source of each data file, and the deploy id it
   assert.match(line, /forays=bundle@unknown/);
   assert.match(line, /segments=bundle@unknown/);
   assert.match(line, /sources=bundle@unknown/);
-  assert.match(line, /n=5/);
+  assert.match(line, new RegExp(`n=${SEED_FORAY_COUNT}(?!\\d)`)); // the seed's own Foray count, not a literal
 
   const local = { version: "seed-9fc92a61", built_at: "2026-09-10T00:00:00Z", files: { forays: "a", segments: "b", sources: "c" } };
   const h2 = await mount({ remoteMode: "reject", localPointer: local });
@@ -596,7 +600,7 @@ test("FD-01: the refresh row names the trigger and the outcome, and the adopted 
   assert.match(line, /adopted/);
   assert.match(line, /v=deploy-b2/);
   assert.match(line, /forays=network@deploy-b2/);
-  assert.match(line, /n=6/);
+  assert.match(line, new RegExp(`n=${SEED_FORAY_COUNT + 1}(?!\\d)`)); // seed + the one Foray the fixture adds
   /* A foreground return records its own attempt, under its own trigger. */
   h.document.fire("visibilitychange");
   await h.settle(40);

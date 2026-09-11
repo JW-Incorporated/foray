@@ -1121,6 +1121,90 @@
       "duration_sec": 2681,
       "dai_suspected": true,
       "source": "generation-tier-2"
+    },
+    {
+      "id": "practical-ai--reimagining-actuarial-science-with-ai",
+      "show": "Practical AI",
+      "title": "Reimagining actuarial science with AI",
+      "feed_url": "https://feeds.transistor.fm/practical-ai-machine-learning-data-science-llm",
+      "episode_guid": "fccfe798-4145-481d-af81-c8c4cc73fd7b",
+      "audio_url": "https://pscrb.fm/rss/p/dts.podtrac.com/redirect.mp3/media.transistor.fm/4771f92e/5b998ce7.mp3",
+      "audio_type": "audio/mpeg",
+      "duration_sec": 2459,
+      "dai_suspected": true,
+      "source": "generation-tier-2"
+    },
+    {
+      "id": "practical-ai--breaking-down-the-2026-stanford-ai-index-report",
+      "show": "Practical AI",
+      "title": "Breaking down the 2026 Stanford AI Index Report",
+      "feed_url": "https://feeds.transistor.fm/practical-ai-machine-learning-data-science-llm",
+      "episode_guid": "fe415ec1-2ec5-4f37-9a63-5cb23414339c",
+      "audio_url": "https://pscrb.fm/rss/p/dts.podtrac.com/redirect.mp3/media.transistor.fm/302b36f8/d474795e.mp3",
+      "audio_type": "audio/mpeg",
+      "duration_sec": 2833,
+      "dai_suspected": true,
+      "source": "generation-tier-2"
+    },
+    {
+      "id": "practical-ai--federated-learning-in-production-part-1",
+      "show": "Practical AI",
+      "title": "Federated learning in production (part 1)",
+      "feed_url": "https://feeds.transistor.fm/practical-ai-machine-learning-data-science-llm",
+      "episode_guid": "cc6e6d9b-5a7d-46fa-b784-6b5f3c12c9e7",
+      "audio_url": "https://pscrb.fm/rss/p/dts.podtrac.com/redirect.mp3/media.transistor.fm/e283a9d0/77122826.mp3",
+      "audio_type": "audio/mpeg",
+      "duration_sec": 2678,
+      "dai_suspected": true,
+      "source": "generation-tier-2"
+    },
+    {
+      "id": "practical-ai--model-context-protocol-deep-dive",
+      "show": "Practical AI",
+      "title": "Model Context Protocol Deep Dive",
+      "feed_url": "https://feeds.transistor.fm/practical-ai-machine-learning-data-science-llm",
+      "episode_guid": "0deadba3-7280-47cf-8346-dd75bb5f7983",
+      "audio_url": "https://pscrb.fm/rss/p/dts.podtrac.com/redirect.mp3/media.transistor.fm/d7a0d796/0e8b4946.mp3",
+      "audio_type": "audio/mpeg",
+      "duration_sec": 2543,
+      "dai_suspected": true,
+      "source": "generation-tier-2"
+    },
+    {
+      "id": "practical-ai--software-and-hardware-acceleration-with-groq",
+      "show": "Practical AI",
+      "title": "Software and hardware acceleration with Groq",
+      "feed_url": "https://feeds.transistor.fm/practical-ai-machine-learning-data-science-llm",
+      "episode_guid": "5edd910e-8474-40c8-8b83-ee289c67ae3b",
+      "audio_url": "https://pscrb.fm/rss/p/dts.podtrac.com/redirect.mp3/media.transistor.fm/5e63c891/c3ddeda7.mp3",
+      "audio_type": "audio/mpeg",
+      "duration_sec": 2604,
+      "dai_suspected": true,
+      "source": "generation-tier-2"
+    },
+    {
+      "id": "practical-ai--how-is-ai-shaping-democracy",
+      "show": "Practical AI",
+      "title": "How is AI shaping democracy?",
+      "feed_url": "https://feeds.transistor.fm/practical-ai-machine-learning-data-science-llm",
+      "episode_guid": "e26c0ac8-688a-4957-bbab-3ce2f48ef9e4",
+      "audio_url": "https://pscrb.fm/rss/p/dts.podtrac.com/redirect.mp3/media.transistor.fm/0d2fa64e/d7cf6a15.mp3",
+      "audio_type": "audio/mpeg",
+      "duration_sec": 2903,
+      "dai_suspected": true,
+      "source": "generation-tier-2"
+    },
+    {
+      "id": "practical-ai--autonomous-vehicle-research-at-waymo",
+      "show": "Practical AI",
+      "title": "Autonomous Vehicle Research at Waymo",
+      "feed_url": "https://feeds.transistor.fm/practical-ai-machine-learning-data-science-llm",
+      "episode_guid": "5604b042-20c2-4aa8-b9c5-95664ad78ddd",
+      "audio_url": "https://pscrb.fm/rss/p/dts.podtrac.com/redirect.mp3/media.transistor.fm/7b9cfe10/fe5031af.mp3",
+      "audio_type": "audio/mpeg",
+      "duration_sec": 3128,
+      "dai_suspected": true,
+      "source": "generation-tier-2"
     }
   ]
 }
