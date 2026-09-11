@@ -5,6 +5,7 @@
     "data/catalog-client.json": "sha256:83a6a83d4633326dbc422c57677a78438a41c69f3055439a0010d2057aec8864",
     "data/dai-classification.json": "sha256:321fb915e4289a098cbd30ec7cc8e8503345a1c6cadb6cda2803ff656162a545",
     "data/discover.json": "sha256:8f9fe30d80b2bb0666fbf94ebded55795f2b63386c5cf9343527e56e7e14c60d",
+    "data/forays-directory.json": "sha256:fe518889e130d0a969b5aba1c23bc7125a7b0aa7e40cf702c85399736e342617",
     "data/forays.json": "sha256:dee3a5ca0a3f42ea2c11ebdf0c02c2e02f34f0bfc157740dc5c0989d38e74ead",
     "data/item-tags.json": "sha256:e9cae336633eef728de0307420739e3a87bc496b96f2931c4083e351d62d84a6",
     "data/ladders.json": "sha256:7af481f27ac45de519f6ed6d75fccb3fee1208e6f642dd2dad4fad635c55de5b",

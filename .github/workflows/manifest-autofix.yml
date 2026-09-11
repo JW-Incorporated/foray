@@ -37,7 +37,8 @@
 #
 # NOT A GOVERNED-PATH BYPASS. This job never touches `tools/ci/` or any other
 # DENIED_PREFIXES path (see `tools/ci/path-policy.mjs`) — it only ever writes
-# `deploy-manifest.json` and stamps `sw.js`'s BUILD_ID, exactly the two files
+# `deploy-manifest.json`, stamps `sw.js`'s BUILD_ID and (since FD-02) writes
+# `data/forays-directory.json`, exactly the three files
 # `generate-manifest.mjs --write` itself is defined to touch, and only when
 # `--check` already proved they were the sole drift.
 
@@ -80,14 +81,20 @@ jobs:
         id: commit
         run: |
           set -euo pipefail
-          if git diff --quiet -- deploy-manifest.json sw.js; then
+          # data/forays-directory.json is the third file --write owns (FD-02,
+          # tools/ci/forays-directory.mjs): the Foray directory pointer, which
+          # names the deploy id and the three Foray data files' hashes, and is
+          # itself listed in the manifest. Left out of this `add`, a data PR
+          # would get a manifest commit whose pointer entry names bytes that
+          # were never pushed, and --check would stay red on the fixed head.
+          if git diff --quiet -- deploy-manifest.json sw.js data/forays-directory.json; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
             echo "deploy-manifest.json already current — nothing to do"
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add deploy-manifest.json sw.js
+          git add deploy-manifest.json sw.js data/forays-directory.json
           git commit -m "chore: auto-regenerate deploy-manifest.json"
           git push origin "HEAD:${{ github.event.pull_request.head.ref }}"
           echo "changed=true" >> "$GITHUB_OUTPUT"
