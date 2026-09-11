@@ -121,7 +121,9 @@ describe("buildPartialCandidate", () => {
         referenceDurationSec: 3600,
         startAnchor: "the thing about federated learning in production",
         endAnchor: "and that is why nobody ships it that way",
-        confidence: "medium" as const
+        confidence: "medium" as const,
+        why: "Federated learning rarely ships to production the way the papers describe.",
+        transcriptSource: "publisher" as const
       }
     ];
     const segmentSources = [{ id: "practical-ai--fl-part-2", audio_url: "https://cdn.example/fl2.mp3" } as unknown as MintedSegmentSource];

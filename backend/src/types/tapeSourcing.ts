@@ -124,13 +124,36 @@ export const TranscriptionQueueCandidateSchema = z
   .strict();
 export type TranscriptionQueueCandidate = z.infer<typeof TranscriptionQueueCandidateSchema>;
 
+/** Which transcript a minted segment's anchors were authored against —
+ * `data/segments.json`'s own `transcript_source` vocabulary, as
+ * `tools/segments/merge-segments.mjs` (`TRANSCRIPT_SOURCES`) gates it. It is
+ * provenance, not a choice: an anchor is verbatim with respect to exactly one
+ * transcript. `publisher` is the archive body `tools/segments/fetch-transcripts.mjs`
+ * fetched from the publisher's own transcript URL; `asr-local` is a body this
+ * machine transcribed itself (`tools/transcribe/`). */
+export const TranscriptSourceSchema = z.enum(["publisher", "asr-local"]);
+export type TranscriptSource = z.infer<typeof TranscriptSourceSchema>;
+
 /** A segment minted by the tier-2 path. NOT written to
  * `data/segments.json` by this module — that write path belongs to
  * `tools/segments/merge-segments.mjs` and its validator, which this
  * in-process generation stage does not call. Returned so a caller can
  * hand it to that existing merge path later; §4.6's structural
  * guarantee (numbers + quoted anchor text only) holds for it exactly as
- * it does for a tier-1 pointer. */
+ * it does for a tier-1 pointer.
+ *
+ * `why` and `transcriptSource` are here because the pool gate
+ * (`merge-segments.mjs --check`) requires them on every row and only the
+ * mint site knows them (F-78): the beat's claim is in hand exactly once, at
+ * `sourceBeats.ts`'s `acceptCandidate`, and so is the cue provider that read
+ * the body the anchors were cut from. The remaining two gate fields the row
+ * needs — `dai_suspected` and `batch_id` — are NOT on the segment on purpose:
+ * the DAI verdict belongs to the episode's `MintedSegmentSource` row (one
+ * verdict, one place — `finalizeForay.ts`'s `mintedSegmentRow` reads it from
+ * there and refuses to default it) and the batch id is the publish's, not the
+ * mint's. A checkpoint written before these fields existed does not resume
+ * (zod names the missing field); such a run's tape could not have been
+ * published anyway. */
 export const NewSegmentSchema = z
   .object({
     id: z.string().trim().min(1),
@@ -140,7 +163,12 @@ export const NewSegmentSchema = z
     referenceDurationSec: z.number().positive(),
     startAnchor: z.string().trim().min(1),
     endAnchor: z.string().trim().min(1),
-    confidence: z.enum(["high", "medium", "low"])
+    confidence: z.enum(["high", "medium", "low"]),
+    /** The pool's curator note, derived from the beat's claim by
+     * `mintedSegmentCopy.ts`'s `whyFromClaim` (≤ 18 words, ASCII punctuation,
+     * clamped at a word boundary). */
+    why: z.string().trim().min(1),
+    transcriptSource: TranscriptSourceSchema
   })
   .strict();
 export type NewSegment = z.infer<typeof NewSegmentSchema>;

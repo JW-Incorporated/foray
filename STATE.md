@@ -31,6 +31,28 @@ docs/. Completed workstreams move to their plan doc's retro section.
   follow-up now that CORS is on both rules); verifying the header on a real
   phone (no device — #610's field-record `data` row is the check: `adopted`
   instead of `offline`).
+### FD-03/04/05/01: the shell reads the Foray directory; the bundle becomes the offline seed (2026-09-10) — `feat/foray-directory-shell`
+
+- **What:** a phone sees a new Foray without a store build. New
+  `player/foray-directory.js` (pointer → three versioned files from the live
+  origin, verified by bytes/sha256, validated by `validateForayDocuments` in
+  `player/foray-resolve.js`, cached in its own IndexedDB database); `app.js`
+  `init()` paints from cache-else-seed before `route()` and refreshes after it,
+  never awaited, plus on `visibilitychange`; `player/client.js` publishes
+  `window.forayDirectory` and `window.forayNoteDataSource`. FD-01's `data` row in
+  the field record names each file's source and deploy id. FD-04: `prepare-webdir.mjs`
+  header says the three files are the SEED; the optional `SEED_POINTER` is bundled
+  when on disk. FD-05: `resumePoint(record, { present: false })` → `dropped`;
+  `forayResumeList({ foraysDoc })`. Design: the PR body's first section.
+- **Touches:** `app.js`, `player/foray-directory.js` (+ test), `player/foray-resolve.js`,
+  `player/foray-progress.js`, `player/diagnostic-log.js`, `player/client.js`,
+  `tools/mobile/prepare-webdir.mjs` (+ test), `test/foray-directory.test.js`,
+  `test/suite-integrity.test.js`, `docs/mobile-shell.md` §3.5, this file.
+- **Not done here:** FD-02 (the pointer generator, `tools/ci/` — another agent),
+  FD-06 (DECISIONS + the privacy sentence), FD-07 (the publish path). **Open for
+  FD-02:** `vercel.json` needs `Access-Control-Allow-Origin` on `/data/*` or the
+  shell's cross-origin fetch is refused by CORS (reported as `offline`; the seed
+  keeps playing). Not verified on a device.
 
 ### R-05/R-06/R-07: release deck records and test pins (2026-09-10) — `fix/release-deck-finish`
 

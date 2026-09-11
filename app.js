@@ -5874,8 +5874,11 @@ function forayListHtml() {
 function forayResumeRows() {
   if (typeof window.ForayPlayer?.forayResumeList !== "function") return [];
   const visible = new Set(forayCards().map(f => f.id));
-  return window.ForayPlayer.forayResumeList()
-    .filter(p => visible.has(p.id) && !p.finished && p.label)
+  /* `foraysDoc` is FD-05: a row whose Foray is no longer in the directory reads
+     `drift: "dropped"` and is not offered — the visibility set below already
+     excludes it (it is not listed), and the drift is what a test can name. */
+  return window.ForayPlayer.forayResumeList({ foraysDoc: state.forays })
+    .filter(p => visible.has(p.id) && p.drift !== "dropped" && !p.finished && p.label)
     .slice(0, 3);
 }
 
@@ -7360,6 +7363,135 @@ async function fetchApiJson(path) {
   } catch (_) { return null; }
 }
 
+/* ---------- the Foray directory (FD-03; FD-01 for the diagnostics row) ----------
+
+   WHY A PHONE NEEDED A STORE BUILD FOR A NEW FORAY, and why it no longer does.
+   The native shell loads `data/forays.json`, `data/segments.json` and
+   `data/segment-sources.json` from its own package (tools/mobile/prepare-webdir.mjs
+   copies them in), so a merge to `main` reached the web the same minute and the
+   phone never. The directory is the live site's same three files, versioned by
+   the deploy id they shipped with, reachable through a small pointer
+   (`data/forays-directory.json`, written by tools/ci/generate-manifest.mjs).
+
+   The whole mechanism lives in `player/foray-directory.js`, bridged over
+   `window.forayDirectory` because this file cannot import it. What THIS file
+   decides is the ORDER, and the order is the design:
+
+     1. `directory.start()` before the bundle fetches — the cache read overlaps
+        them.
+     2. `bootForayDirectory()` after they land and BEFORE `route()` — the cached
+        set, if it validates, is what the first paint shows; otherwise the seed
+        just fetched. No network here.
+     3. `refreshForayDirectory("boot")` AFTER `route()`, never awaited — the
+        pointer fetch cannot hold the first paint; and again on every return to
+        the foreground, throttled inside the module.
+
+   A newer set is swapped into `state` and the Foray surfaces re-render — the
+   list, a Foray page, a show page's "in these Forays" footer, Home's rail. Nothing
+   touches the player: a queue already playing keeps its items and its playhead
+   (FD-05, pinned in test/foray-directory.test.js), and a Foray that vanished
+   from the new set reads `dropped` on its resume row rather than crashing.
+
+   THE WEB IS PINNED, THE SHELL IS NOT. A page the worker pinned to a retained
+   generation (`pinnedDeployId`, #233) is running last-known code against that
+   generation's data on purpose, and swapping a fresher set under it would be
+   exactly the mismatched pair the pin exists to prevent — so a pinned page
+   neither boots from the cache nor refreshes. Everywhere else, including the
+   ordinary web, the directory runs; on the web it is belt-and-braces to the
+   worker's network-first `data/`, and the sets normally agree. */
+
+const FORAY_DIRECTORY_POINTER = "data/forays-directory.json";
+
+function forayDirectoryBridge() {
+  const d = window.forayDirectory;
+  return d && typeof d.boot === "function" && typeof d.refresh === "function" ? d : null;
+}
+
+/** The three documents, swapped as one. They are ONE artifact (the join in
+    player/foray-resolve.js reads all three), so no reader can see a Foray list
+    from one version and a segment pool from another. */
+function applyForaySet(set) {
+  state.forays = set.forays ?? null;
+  state.segments = set.segments ?? null;
+  state.segmentSources = set.sources ?? null;
+}
+
+/** Where the seed came from, for the diagnostics row: in the shell it is the
+    package; on the web it is the origin (the worker is network-first), unless
+    the worker pinned this page to a retained generation. */
+function seedDataSource() {
+  if (pinnedDeployId) return "sw-cache";
+  return isNativeShell() ? "bundle" : "network";
+}
+
+function noteDataSource(fields) {
+  if (typeof window.forayNoteDataSource !== "function") return false;
+  try { return Boolean(window.forayNoteDataSource(fields)); } catch (_) { return false; }
+}
+
+/**
+ * Choose what the first paint shows: the cached directory if it validates, else
+ * the seed already in `state`. Never the network. Always writes FD-01's row.
+ */
+async function bootForayDirectory(directory) {
+  /* Handed WHOLE to the directory, which validates it through the same join the
+     player uses (player/foray-resolve.js) and never enumerates the pool — the
+     premise test in tools/mobile/prepare-webdir.test.mjs allows exactly this
+     shape and the swap in applyForaySet, and nothing else. */
+  const seed = { forays: state.forays, segments: state.segments, sources: state.segmentSources };
+  let held = null;
+  if (directory && !pinnedDeployId) {
+    try { held = await directory.boot({ seed }); } catch (_) { held = null; }
+  }
+  if (held && held.source === "cache") applyForaySet(held);
+  const chosen = held && held.source === "cache" ? held : seed;
+  const source = held && held.source === "cache" ? "cache" : seedDataSource();
+  const version = held && held.version ? held.version : (pinnedDeployId || "unknown");
+  const tag = `${source}@${version}`;
+  noteDataSource({
+    phase: "boot", status: held ? held.why : (pinnedDeployId ? "pinned" : "no-directory"),
+    source, version,
+    files: {
+      forays: chosen.forays ? tag : "absent",
+      segments: chosen.segments ? tag : "absent",
+      sources: chosen.sources ? tag : "absent",
+    },
+    forays: Array.isArray(state.forays?.forays) ? state.forays.forays.length : 0,
+  });
+}
+
+/** Which pages read the three documents. Anything else keeps its DOM. */
+function isForaySurface(hash) {
+  const h = hash || "#/";
+  return h === "#/" || h === "#/forays" || /^#\/(foray|show)\//.test(h);
+}
+
+let _directoryRefreshing = null;
+
+/**
+ * Ask the directory for a newer set and, if one arrives whole, swap it in and
+ * repaint the Foray surfaces. Never throws, never awaited by `init()`.
+ */
+function refreshForayDirectory(trigger) {
+  const directory = forayDirectoryBridge();
+  if (!directory || pinnedDeployId || !state.ready) return Promise.resolve(null);
+  if (_directoryRefreshing) return _directoryRefreshing;
+  _directoryRefreshing = (async () => {
+    let out = null;
+    try {
+      out = await directory.refresh({ origin: API_ORIGIN, reason: trigger });
+    } catch (_) {
+      out = null;
+    }
+    if (out && out.status === "adopted" && out.set) {
+      applyForaySet(out.set);
+      if (isForaySurface(location.hash)) renderCurrentPage();
+    }
+    return out;
+  })().finally(() => { _directoryRefreshing = null; });
+  return _directoryRefreshing;
+}
+
 async function init() {
   /* Storage hydration runs CONCURRENTLY with the first fetch, not before it: it
      is one IndexedDB read, so it costs nothing on the critical path, and it must
@@ -7371,6 +7503,14 @@ async function init() {
   if (!state.session) {
     $("#view").innerHTML = `<div class="page"><p class="note">Couldn't load 4a — check your connection and reload.</p></div>`;
     return;
+  }
+  /* The Foray directory's cache read starts HERE, alongside the bundle fetches
+     below, so that by the time they land the one IndexedDB read is done and
+     bootForayDirectory() costs the critical path nothing. Bounded inside the
+     module: a hung IndexedDB costs the cache, never the paint. */
+  const directory = forayDirectoryBridge();
+  if (directory && !pinnedDeployId) {
+    try { directory.start({ localPointerUrl: pinnedUrl(FORAY_DIRECTORY_POINTER) }); } catch (_) { /* seed only */ }
   }
   /* Every one of these may come back null (fetchJson swallows a 404 and a
      parse error alike) and every consumer treats null as "absent", so a
@@ -7397,6 +7537,11 @@ async function init() {
     fetchJson("data/catalog-client.json"),
   ]);
 
+  /* FD-03: the three Foray documents just fetched are the SEED. If the directory
+     holds a cached set that validates, that set replaces them before the first
+     paint; the network is not consulted until after `route()` below. */
+  await bootForayDirectory(directory);
+
   loadInterests();
   buildCards();
   state.ready = true;
@@ -7404,6 +7549,18 @@ async function init() {
   route();
   logEvent("session_shown", { session_id: state.session.session_id });
   trySyncEvents();
+
+  /* FD-03, the other half: NOW ask the live origin whether there is a newer set.
+     Fire-and-forget, deliberately after `route()` — the first paint is on
+     screen, and a pointer fetch on a dead cell must cost nothing but a
+     diagnostics row. `test/foray-directory.test.js` pins the order: awaiting
+     this above `route()` turns its "paint is not blocked" test red. Repeated on
+     return to the foreground, throttled inside the module. */
+  refreshForayDirectory("boot");
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) return;
+    refreshForayDirectory("foreground");
+  });
 
   /* Warm the concept-vocabulary DF caches now, while the app is idle between
      "data finished loading" and "user typed a query and hit Go", instead of
@@ -7642,6 +7799,15 @@ if ("serviceWorker" in navigator && shouldRegisterServiceWorker(window)) {
          already-set pin — see sw.js's `handleData` fail-safe for the matching
          reasoning. */
       if (msg.reason === "stale-shell" && msg.deployId) pinnedDeployId = msg.deployId;
+      /* FD-01: the web's pinned-generation path records the same fact the shell's
+         boot row does — where the documents came from, and which deploy id. */
+      if (msg.reason === "stale-shell") {
+        const tag = `sw-cache@${pinnedDeployId || "unknown"}`;
+        noteDataSource({
+          phase: "stale-shell", source: "sw-cache", version: pinnedDeployId || "unknown",
+          files: { forays: tag, segments: tag, sources: tag },
+        });
+      }
       showShellNotice(msg.reason);
     });
   }

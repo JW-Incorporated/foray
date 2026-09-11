@@ -32,6 +32,7 @@ import assert from "node:assert/strict";
 import {
   DiagnosticLog, PlayerDiagnostics, formatDiagnosticReport, stageOf, errorNameOf, tapPhaseOf,
   DIAG_KEY, DIAG_CAP, STAGE_CAP, DIAG_VERSION, MEDIA_STAGES,
+  dataTokenOf, dataVersionOf, dataFileTagOf, dataIdOf, DATA_PHASES, DATA_SOURCES,
 } from "./diagnostic-log.js";
 
 /* ==================================================================== */
@@ -1189,4 +1190,72 @@ test("formatDiagnosticReport renders a null search field as an em dash, not \"nu
   const text = formatDiagnosticReport(log.read());
   assert.match(text, /path=—/);
   assert.doesNotMatch(text, /path=null/);
+});
+
+/* ==================================================================== */
+/* the data entry (FD-01)                                                */
+/* ==================================================================== */
+
+test("a data entry admits sources, statuses, versions and ids by vocabulary or shape, and nothing else", () => {
+  /* The row that names where `forays.json` came from. Every field is a member of
+     a fixed set or a token by shape — the same rule as `STAGE_ROOTS` and
+     `errorNameOf` — so a validation REASON (prose naming a file) cannot ride in
+     under any field.
+     MUTATION: return `asText(v)` from `dataTokenOf`. The sentence passed as
+     `code` below lands in the ring; the `code` assertion is red. */
+  const { diag, log } = mk();
+  const e = diag.dataSource({
+    phase: "boot", trigger: "boot", status: "cache", source: "cache", version: "9fc92a61a8896278",
+    code: "Foray x: segment y is not in data/segments.json", forayId: "capital-types-1",
+    forays: 5, playable: "5",
+    files: { forays: "cache@9fc92a61a8896278", segments: "https://evil.test/x", sources: "absent" },
+  });
+  assert.equal(e.type, "data");
+  assert.equal(e.phase, "boot");
+  assert.equal(e.source, "cache");
+  assert.equal(e.version, "9fc92a61a8896278");
+  assert.equal(e.code, null, "a sentence is not a code");
+  assert.equal(e.forayId, "capital-types-1");
+  assert.equal(e.forays, 5);
+  assert.equal(e.playable, null, "a string count is dropped, not coerced");
+  assert.deepEqual(e.files, { forays: "cache@9fc92a61a8896278", sources: "absent" }, "a URL is not a file tag");
+  assert.equal(log.read().entries.at(-1).type, "data", "and it is in the ring");
+
+  const junk = diag.dataSource({ phase: "reboot", source: "disk", status: "Adopted!", version: "v 1" });
+  assert.equal(junk.phase, null);
+  assert.equal(junk.source, null);
+  assert.equal(junk.status, null);
+  assert.equal(junk.version, null);
+
+  assert.equal(dataVersionOf("unknown"), "unknown");
+  assert.equal(dataVersionOf("deploy/1"), null);
+  assert.equal(dataTokenOf("segment-missing"), "segment-missing");
+  assert.equal(dataTokenOf("segment missing"), null);
+  assert.equal(dataIdOf("grilling-history-1"), "grilling-history-1");
+  assert.equal(dataIdOf("has space"), null);
+  assert.equal(dataFileTagOf("bundle@unknown"), "bundle@unknown");
+  assert.equal(dataFileTagOf("disk@abc"), null, "the source half is from the vocabulary");
+  assert.equal(dataFileTagOf("bundle@a b"), null, "the version half is by shape");
+  assert.ok(DATA_PHASES.has("stale-shell") && DATA_SOURCES.has("sw-cache"), "the web's pinned path has words");
+});
+
+test("formatDiagnosticReport renders a data entry as one line naming the source of each file", () => {
+  /* FD-01's done-when: a Playback-diagnostics copy from a phone NAMES the source
+     of `forays.json`. MUTATION: delete the `data` case from `lineFor`. The default
+     branch prints a JSON blob and the substring assertions are red. */
+  const { diag, log } = mk();
+  diag.dataSource({
+    phase: "boot", source: "bundle", version: "unknown", forays: 5,
+    files: { forays: "bundle@unknown", segments: "bundle@unknown", sources: "bundle@unknown" },
+  });
+  diag.dataSource({
+    phase: "refresh", trigger: "foreground", status: "invalid", version: "deploy-b2",
+    code: "segment-missing", forayId: "fd-broken",
+  });
+  diag.dataSource({ phase: "refresh", trigger: "boot", status: "adopted", version: "deploy-b2", forays: 6, playable: 40, ms: 812 });
+  const text = formatDiagnosticReport(log.read());
+  assert.match(text, /data\s+boot source=bundle v=unknown forays=bundle@unknown segments=bundle@unknown sources=bundle@unknown n=5/);
+  assert.match(text, /data\s+refresh\(foreground\) invalid v=deploy-b2 why=segment-missing foray=fd-broken/);
+  assert.match(text, /data\s+refresh\(boot\) adopted v=deploy-b2 n=6 playable=40 took 812ms/);
+  assert.doesNotMatch(text, /\{"/, "no JSON blob for a known type");
 });

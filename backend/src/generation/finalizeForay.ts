@@ -5,6 +5,7 @@ import type { ForayItem } from "./forayItems";
 import type { NewSegment } from "../types/tapeSourcing";
 import { StageTimingLog, type StageTiming } from "./stageTiming";
 import type { VeracityMetrics } from "./veracityMetrics";
+import { mintedWhyErrors } from "./mintedSegmentCopy";
 
 /**
  * §4.9 — Finalize and publish (docs/curation/generation-architecture.md
@@ -151,18 +152,61 @@ function buildForayRecord(input: FinalizeForayInput): Record<string, unknown> {
   };
 }
 
+/** What `mintedSegmentRow` needs beyond the segment itself — see its doc
+ * comment for where each comes from. */
+export interface MintedRowContext {
+  /** The pool's `batch_id`: `generation-<foray id>`. The publish is the batch. */
+  batchId: string;
+  /** The registry rows minted alongside the segments (`audioSourceLookup.ts`);
+   * the DAI verdict is read from the row whose `id` is the segment's `item_id`. */
+  sources: ReadonlyArray<Pick<MintedSegmentSource, "id" | "dai_suspected">>;
+}
+
+/** The batch id every row minted for one Foray carries. One place, so the
+ * publish CLI, the runtime pool and the finalize merge agree by construction. */
+export function generationBatchId(forayId: string): string {
+  return `generation-${forayId}`;
+}
+
 /**
- * One minted tier-2 segment in `data/segments.json`'s own field names.
+ * One minted tier-2 segment in `data/segments.json`'s own field names — every
+ * field `tools/segments/merge-segments.mjs --check` (the pool's CI gate)
+ * requires, or a thrown Error naming the one it cannot fill (F-78: the first
+ * generated Foray's ten rows lacked four of them and a person typed them in).
  *
- * `topic` is the FORAY's resolved node, which is not a guess: §4.5's topic gate
- * only admitted this episode because it shares that node's lineage. `why` is
- * left off rather than invented — the pool's `why` is a curator's 18-word note
- * about why a human cut this piece of tape, `check-forays.mjs` does not read it,
- * and writing a machine-made sentence into that field would put copy nobody
- * wrote into a curated file. `needs_review` says the same thing in the field
- * that exists for it.
+ * WHERE EACH FIELD COMES FROM, so nobody reads a value as a guess:
+ *   - `topic` is the FORAY's resolved node, which is not a guess: §4.5's topic
+ *     gate only admitted this episode because it shares that node's lineage.
+ *   - `why` is the beat's claim, clamped to the pool's 18-word note at mint
+ *     time (`sourceBeats.ts` → `mintedSegmentCopy.ts`). It is checked here
+ *     against the SAME copy rules the gate applies, and a row that would fail
+ *     the gate is refused here, before anything is written.
+ *   - `transcript_source` is what the cue provider read the anchors from
+ *     (`publisher` for the archive body, `asr-local` for one this machine
+ *     transcribed) — carried on the segment from the mint.
+ *   - `dai_suspected` is the episode's audio-source verdict, read from the
+ *     `MintedSegmentSource` row minted for this `item_id` and NEVER defaulted:
+ *     a missing verdict is a thrown Error, because `false` is exactly the value
+ *     the gate exists to reject ("a missing verdict would waive the anchor
+ *     rule") and ADR-0007 gates seek precision on it.
+ *   - `batch_id` is the publish's (`generationBatchId`).
+ *   - `needs_review: true` — a machine cut this, nobody has listened yet.
  */
-export function mintedSegmentRow(segment: NewSegment, topic: string): Record<string, unknown> {
+export function mintedSegmentRow(segment: NewSegment, topic: string, ctx: MintedRowContext): Record<string, unknown> {
+  const source = ctx.sources.find((s) => s.id === segment.itemId);
+  if (!source || typeof source.dai_suspected !== "boolean") {
+    throw new Error(
+      `mintedSegmentRow: segment "${segment.id}" has no minted source row for item "${segment.itemId}" carrying a boolean ` +
+        "dai_suspected — the pool gate requires the verdict and this pipeline never defaults it (audioSourceLookup.ts)"
+    );
+  }
+  const whyErrors = mintedWhyErrors(segment.id, segment.why);
+  if (whyErrors.length > 0) {
+    throw new Error(`mintedSegmentRow: the pool gate would refuse this row's why — ${whyErrors.join("; ")}`);
+  }
+  if (!ctx.batchId || ctx.batchId.trim().length === 0) {
+    throw new Error(`mintedSegmentRow: segment "${segment.id}" needs a non-empty batch_id`);
+  }
   return {
     id: segment.id,
     item_id: segment.itemId,
@@ -172,8 +216,12 @@ export function mintedSegmentRow(segment: NewSegment, topic: string): Record<str
     reference_duration_sec: segment.referenceDurationSec,
     start_anchor: segment.startAnchor,
     end_anchor: segment.endAnchor,
+    why: segment.why,
     confidence: segment.confidence,
+    transcript_source: segment.transcriptSource,
+    dai_suspected: source.dai_suspected,
     source: "generation-tier-2",
+    batch_id: ctx.batchId,
     needs_review: true
   };
 }
@@ -204,6 +252,10 @@ export function buildCandidateFiles(
      this run's: the pool is the authority for a segment that has been merged. */
   const poolIds = new Set((pool.segments ?? []).map((s) => (s as { id?: unknown }).id));
   const registryIds = new Set((registry.sources ?? []).map((s) => (s as { id?: unknown }).id));
+  const rowContext: MintedRowContext = {
+    batchId: generationBatchId(String(candidateRecord.id)),
+    sources: minted.sources ?? []
+  };
 
   return {
     forays: { ...live, forays: [...live.forays, candidateRecord] },
@@ -211,7 +263,7 @@ export function buildCandidateFiles(
       ...pool,
       segments: [
         ...(pool.segments ?? []),
-        ...(minted.segments ?? []).filter((s) => !poolIds.has(s.id)).map((s) => mintedSegmentRow(s, minted.topic))
+        ...(minted.segments ?? []).filter((s) => !poolIds.has(s.id)).map((s) => mintedSegmentRow(s, minted.topic, rowContext))
       ]
     },
     sources: {

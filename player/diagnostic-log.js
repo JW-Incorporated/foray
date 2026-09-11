@@ -444,6 +444,55 @@ const RE = {
 
 const num = (s) => { const n = Number(s); return Number.isFinite(n) ? n : null; };
 
+/* ---------- the `data` entry's vocabulary (FD-01) ----------
+
+   The same discipline as `STAGE_ROOTS` and `errorNameOf`: nothing reaches the
+   record unless it is a member of a fixed set or matches a shape that cannot
+   carry prose. Exported so `diagnostic-log.test.js` can pin the rule directly. */
+
+/** When the entry was written. `stale-shell` is the web's worker refusing a fresh
+    document to a page running last-known code — the same fact from the other
+    side, recorded the same way. */
+export const DATA_PHASES = new Set(["boot", "refresh", "stale-shell"]);
+/** Where a document came from. `sw-cache` is the web's pinned generation. */
+export const DATA_SOURCES = new Set(["bundle", "cache", "network", "sw-cache"]);
+/** The three documents, in the pointer's own vocabulary. */
+export const DATA_FILE_KEYS = ["forays", "segments", "sources"];
+
+/** A status, a trigger, a validation code: a lower-case dashed token, never a
+    sentence. `sha256-forays`, `segment-missing`, `foreground` all pass; a reason
+    with a space or a slash in it does not. */
+export function dataTokenOf(v) {
+  const s = asText(v).trim();
+  return /^[a-z][a-z0-9-]{0,47}$/.test(s) ? s : null;
+}
+
+/** A deploy id, or `unknown`. `generate-manifest.mjs` writes short hex; the shape
+    admits a tagged id too, and nothing with a space, a slash or a query. */
+export function dataVersionOf(v) {
+  const s = asText(v).trim();
+  if (s === "unknown") return s;
+  return /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/.test(s) ? s : null;
+}
+
+/** An authored Foray id — the same class of identifier `cp_foray:` rows carry. */
+export function dataIdOf(v) {
+  const s = asText(v).trim();
+  return /^[A-Za-z0-9][A-Za-z0-9._:-]{0,79}$/.test(s) ? s : null;
+}
+
+/** `source@version`, or `absent`. Rebuilt from its two halves rather than trusted,
+    so a caller cannot smuggle text through the tag. */
+export function dataFileTagOf(v) {
+  const s = asText(v).trim();
+  if (s === "absent") return s;
+  const at = s.indexOf("@");
+  if (at < 0) return null;
+  const source = s.slice(0, at);
+  const version = dataVersionOf(s.slice(at + 1));
+  return DATA_SOURCES.has(source) && version ? `${source}@${version}` : null;
+}
+
 /**
  * Turns the player's telemetry stream and a handful of page events into entries.
  *
@@ -874,6 +923,50 @@ export class PlayerDiagnostics {
   }
 
   /**
+   * Where the three Foray documents came from (FD-01), and what the directory
+   * did about it (FD-03).
+   *
+   * THE BEFORE-NUMBER every later directory card cites: a Playback-diagnostics
+   * copy from a phone has to NAME the source of `forays.json` — bundle, cache or
+   * network — and the deploy id it carries. One entry per boot and one per
+   * refresh attempt; never per render.
+   *
+   * Everything here is admitted by SHAPE or by a closed vocabulary, per the header's
+   * "no raw text" rule: `phase`/`source` from fixed sets, `status`/`code`/`trigger`
+   * as lower-case tokens, `version` as a deploy id, `forayId` as an authored id
+   * (class 2 in the header — no new identity), and the per-file tags as
+   * `source@version`. A validation REASON — prose naming a file — is deliberately
+   * not accepted; the caller sends its `code` instead.
+   */
+  dataSource({
+    phase = null, trigger = null, status = null, source = null, version = null,
+    code = null, forayId = null, forays = null, playable = null, ms = null, files = null,
+  } = {}) {
+    const n = (v) => (Number.isFinite(v) ? v : null);
+    const tagged = {};
+    if (files && typeof files === "object") {
+      for (const k of DATA_FILE_KEYS) {
+        const t = dataFileTagOf(files[k]);
+        if (t) tagged[k] = t;
+      }
+    }
+    return this.log.record("data", {
+      phase: DATA_PHASES.has(phase) ? phase : null,
+      trigger: dataTokenOf(trigger),
+      status: dataTokenOf(status),
+      source: DATA_SOURCES.has(source) ? source : null,
+      version: dataVersionOf(version),
+      code: dataTokenOf(code),
+      forayId: dataIdOf(forayId),
+      forays: n(forays),
+      playable: n(playable),
+      ms: n(ms),
+      files: Object.keys(tagged).length ? tagged : null,
+      hidden: this._isHidden(),
+    });
+  }
+
+  /**
    * Forget everything in flight, for a record that has just been emptied.
    *
    * `DiagnosticLog.clear()` removes the ring; this is its other half, and without it
@@ -1015,6 +1108,23 @@ function lineFor(e) {
     }
     case "boot":
       return `${head} hidden=${e.hidden ? "y" : "n"}`;
+    /* FD-01: `data boot forays=cache@9fc92a61 segments=cache@9fc92a61 …` names the
+       source of each document on the one surface a founder pastes out. A refresh
+       reads `data refresh(foreground) adopted v=… n=6`, or `… invalid why=segment-missing
+       foray=…` — the why is a code from a closed vocabulary, never a sentence. */
+    case "data": {
+      const parts = [`${e.phase ?? "?"}${e.trigger ? `(${e.trigger})` : ""}`];
+      if (e.status) parts.push(e.status);
+      if (e.source) parts.push(`source=${e.source}`);
+      if (e.version) parts.push(`v=${e.version}`);
+      if (e.files) for (const k of DATA_FILE_KEYS) if (e.files[k]) parts.push(`${k}=${e.files[k]}`);
+      if (e.code) parts.push(`why=${e.code}`);
+      if (e.forayId) parts.push(`foray=${e.forayId}`);
+      if (e.forays != null) parts.push(`n=${e.forays}`);
+      if (e.playable != null) parts.push(`playable=${e.playable}`);
+      if (e.ms != null) parts.push(`took ${ms(e.ms)}`);
+      return `${head} ${parts.join(" ")}  hidden=${e.hidden ? "y" : "n"}`;
+    }
     case "search": {
       /* One line, all seven fields — the doc's own acceptance line names
          painted_ms as the field a probe run must find non-null at least

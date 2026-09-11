@@ -686,6 +686,58 @@ engine-specific, and the shell's iOS build path installs the same pinned esbuild
 against the new sizes; the 3 MB hard cap is unchanged. All three are pinned in
 `shell-invariants.test.mjs`.
 
+### 3.5 The three Foray documents are the offline SEED, not the catalogue (2026-09-10, FD-03/FD-04)
+
+Until 2026-09-10 the bundle *was* the Foray catalogue: the shell loaded
+`data/forays.json`, `data/segments.json` and `data/segment-sources.json` from its
+own package and nothing else, so a new Foray reached a phone only inside a new
+package — which is why the 2026-09-10 Foray needed release build 2026091009. The
+web never had that problem (the worker serves `data/` network-first, pinned to a
+deploy id).
+
+Now the app reads the **Foray directory**: the live site's same three files,
+versioned by the deploy id they shipped with, reached through a small pointer
+(`data/forays-directory.json` — `{ version, built_at, files, bytes, sha256 }`,
+written beside `deploy-manifest.json` by `tools/ci/generate-manifest.mjs`, FD-02).
+The mechanism is `player/foray-directory.js`, driven from `app.js`'s `init()`:
+
+- **Boot:** paint from the last set cached in IndexedDB (its own database,
+  `foray-directory`, one row) if it validates, else from the bundled seed. No
+  network on the critical path; the cache read overlaps the bundle fetches and is
+  bounded.
+- **After first paint, and on return to the foreground (throttled):** fetch the
+  pointer from `https://foray-web-seven.vercel.app` (already in the CSP's
+  `connect-src`). If the version differs and is not older by `built_at`, fetch the
+  three files, check bytes and sha256 against the pointer (a torn set is refused),
+  run them through `validateForayDocuments` in `player/foray-resolve.js` (the join
+  the player already uses), and only then swap them into `state`, repaint the
+  Foray surfaces, and cache the set. A set that fails validation is never adopted;
+  a network failure never drops the cached set. A page the worker pinned to a
+  retained generation (`stale-shell`, #233) does neither — the pin wins.
+- **The field record** (`Playback diagnostics`) carries a `data` row per boot and
+  per refresh naming the source of each file — `forays=bundle@9fc92a61 …`,
+  `refresh(foreground) adopted v=…`, `… invalid why=segment-missing foray=…` (FD-01).
+
+So this script keeps copying and slicing the three files exactly as §3.3 says, for
+one reason: **a fresh install must play offline.** They are the set the app holds
+before it has ever reached the network. That also closes #327's unbounded-pool
+worry for good — the bundle carries a *capped* slice (the per-file budgets above
+are the cap) while the directory carries everything, and `test/foray-directory.test.js`
+proves the shell boots with an *empty* seed too. When `data/forays-directory.json`
+is on disk the bundle carries it (`SEED_POINTER`), so a fresh install knows which
+deploy its seed came from and skips fetching a directory it already holds; the app
+reads it for `version`/`built_at` only, since its byte sizes describe the site's
+whole files rather than the slices. Playback state survives a swap: resume rows
+key on Foray id + segment id (both stable across versions), a swap never touches
+the queue or the playhead, and a Foray that vanished reads `dropped` on its resume
+row rather than crashing (FD-05).
+
+**Not verified on a device** as of this writing: the cross-origin fetch from
+`capacitor://localhost` to the Vercel origin needs `Access-Control-Allow-Origin` on
+`/data/*` (the `api/` functions set it in code; static files take it from
+`vercel.json`'s `headers`, which FD-02 owns). Without it the refresh reports
+`offline` in the field record and the seed keeps playing — safe, and visible.
+
 ## 4. Two footguns that are pinned rather than remembered
 
 **Never set the Cordova preference `KeepRunning` to `false`.** MP1 traced it

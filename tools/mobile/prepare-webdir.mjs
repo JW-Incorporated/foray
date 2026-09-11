@@ -149,6 +149,27 @@
  * `artworkUrlsByShow` and `collectionIdsByShow` over both documents and demands
  * identical maps.
  *
+ * THE THREE FORAY DOCUMENTS ARE THE OFFLINE SEED, NOT THE CATALOGUE (FD-03/FD-04,
+ * 2026-09-10; the deck is docs' "the Foray directory"). Until then the bundle WAS
+ * the catalogue: a new Foray reached a phone only inside a new package, which is
+ * why the 2026-09-10 Foray needed release build 2026091009. Now the app reads the
+ * Foray DIRECTORY — the live site's same three files, versioned by deploy id,
+ * reached through `data/forays-directory.json` — at boot and on return to the
+ * foreground (`player/foray-directory.js`, driven from `app.js`'s `init()`), keeps
+ * the last validated set in IndexedDB, and paints from that cache first.
+ *
+ * So these three files are still copied and sliced exactly as below, and for one
+ * reason only: A FRESH INSTALL MUST PLAY OFFLINE. Their job is to be the set the
+ * app holds before it has ever reached the network — the seed — not to be
+ * complete. That answers #327's unbounded-pool worry for good: the bundle can
+ * carry a CAPPED slice (the per-file budgets in `PROJECTED_DATA` are that cap —
+ * 100 KB of segments, 40 KB of sources — and `assertForaySliceComplete` keeps the
+ * slice honest against the Forays it ships) while the directory carries
+ * everything, and the app boots correctly with an EMPTY seed too
+ * (`test/foray-directory.test.js`). The seed is by construction a SUBSET of the
+ * directory's files: the same Forays, and the rows they reference, from the same
+ * commit — `prepare-webdir.test.mjs` asserts that row for row.
+ *
  * USAGE
  *   node tools/mobile/prepare-webdir.mjs               # writes mobile/www
  *   node tools/mobile/prepare-webdir.mjs --out <dir>   # writes somewhere else
@@ -434,7 +455,7 @@ export function buildPlan(root = REPO_ROOT) {
     );
   }
 
-  const plan = [...SHELL_FILES, ...playerFiles(root), ...data];
+  const plan = [...SHELL_FILES, ...playerFiles(root), ...data, ...seedPointerPlan(root)];
 
   const missing = plan.filter((rel) => !fs.existsSync(path.join(root, rel)));
   if (missing.length) {
@@ -454,6 +475,28 @@ export function buildPlan(root = REPO_ROOT) {
   }
 
   return plan;
+}
+
+/* --------------------------------------------- the seed's own pointer (FD-04) */
+
+/** The directory pointer, `{ version, built_at, files, bytes, sha256 }`, written
+ *  beside `deploy-manifest.json` by `tools/ci/generate-manifest.mjs` (FD-02). When
+ *  it is on disk the bundle carries it, so a fresh install knows WHICH deploy its
+ *  seed came from and can skip fetching a directory it already holds. The app
+ *  reads it for `version`/`built_at` ONLY: its byte sizes and sha256s describe the
+ *  site's whole files, and two of the seed's three are slices (§ the Foray segment
+ *  slice), so they would not match — `player/foray-directory.js`'s header says so.
+ *
+ *  OPTIONAL, AND NAMED AS THE ONE OPTIONAL FILE, rather than derived from a
+ *  `fetchJson` call: `app.js` does not read it through `fetchJson` (the module
+ *  fetches it), so the derivation cannot see it — and it must not be a hard
+ *  "not on disk" error, because a checkout from before FD-02 landed has no such
+ *  file and its bundle is still a correct bundle, with an unversioned seed.
+ *  `prepare-webdir.test.mjs` pins both branches. */
+export const SEED_POINTER = "data/forays-directory.json";
+
+export function seedPointerPlan(root = REPO_ROOT) {
+  return fs.existsSync(path.join(root, SEED_POINTER)) ? [SEED_POINTER] : [];
 }
 
 /** `SHELL_ONLY_FILES`, with every source proven to be on disk.
