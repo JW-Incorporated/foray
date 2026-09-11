@@ -1650,6 +1650,8 @@ const BACKEND_FLOORS = {
   "test/publishForay.test.ts": 12,
   /* G-25: spine seeding ledger (M4-derived caps) and seed order. */
   "test/spineSeeding.test.ts": 5,
+  /* G-30: self-resuming runs, abort on a refused partial, notification hook, id suffixing. */
+  "test/generateForaysHandsFree.test.ts": 20,
   "test/finalizeForay.test.ts": 8,
   /* The `data/segment-sources.json` row a minted tier-2 segment needs, and the
      refusals that stop this pipeline writing one it cannot vouch for — an

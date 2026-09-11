@@ -22,6 +22,7 @@ import {
   finalizeForay,
   generationBatchId,
   mintedSegmentRow,
+  readExistingForayIds,
   type FinalizeForayInput,
   type FinalizeForayResult,
   type ForaySlot
@@ -160,11 +161,69 @@ export interface RunPipelineDeps {
    * calls and 22 of 31 finished beats, discarded because beat 23 failed.
    */
   checkpoint?: CheckpointStore;
+  /**
+   * G-30 (manual step 25): the ids already committed in `data/forays.json`,
+   * consulted BEFORE this run's id is minted so a collision is suffixed here
+   * (`uniqueForayId`) instead of thrown by `finalizeForay` after the whole
+   * Foray has been paid for. Defaults to reading the file under
+   * `options.root`; injectable so a test can stage a collision without a
+   * fixture checkout.
+   */
+  existingForayIds?: (root?: string) => ReadonlySet<string>;
+}
+
+/**
+ * G-30 (manual step 10): thrown from inside the `stitch:<i>` stage when the
+ * partial candidate WS-D2 just built for act `actIndex` failed its own
+ * `check-forays` pass and `options.refusedPartial` is `"abort"`. Named so the
+ * batch driver can end the run with a reason a report can carry, rather than
+ * a person watching the partial file and stopping the process by hand
+ * (run 2 attempts 5–6). The refused act's stitch is NOT checkpointed — the
+ * throw happens before `checkpoint.stage` records it — so the acts before it
+ * stay banked and the refused one is rebuilt on the next run.
+ */
+export class RefusedPartialError extends Error {
+  constructor(
+    public readonly actIndex: number,
+    public readonly totalActs: number,
+    public readonly checkForaysErrors: string[],
+    public readonly checkNarrationErrors: string[]
+  ) {
+    const errors = [...checkForaysErrors, ...checkNarrationErrors];
+    super(
+      `Refused partial candidate: act ${actIndex + 1} of ${totalActs} failed check-forays — ` +
+        `${errors.slice(0, 3).join("; ")}${errors.length > 3 ? ` (+${errors.length - 3} more)` : ""}`
+    );
+    this.name = "RefusedPartialError";
+  }
+}
+
+/** Suffixes `id` with `-2`, `-3`, … until it collides with nothing in
+ * `taken`. Exported for `generateForays`'s tests; the pipeline applies it to
+ * every minted id (see `RunPipelineDeps.existingForayIds`). */
+export function uniqueForayId(id: string, taken: ReadonlySet<string>): string {
+  if (!taken.has(id)) return id;
+  for (let n = 2; ; n++) {
+    const candidate = `${id}-${n}`;
+    if (!taken.has(candidate)) return candidate;
+  }
 }
 
 export interface RunPipelineOptions {
   userId: string;
   sessionId?: string;
+  /**
+   * G-30 (manual step 10; abort-vs-continue is D4): what to do when an act's
+   * partial candidate fails its `check-forays` pass. `"abort"` throws
+   * `RefusedPartialError` from the `stitch:<i>` stage the moment the partial
+   * is refused — after `deps.onActReady` has seen it, so the refused partial
+   * is on disk for diagnosis. `"continue"` (the default here, so every
+   * existing caller is unchanged) carries on to the whole-Foray finalize,
+   * which applies the same gates to the finished assembly. The batch driver
+   * defaults to `"abort"` and exposes `--continue-on-refused-partial`.
+   * Nothing happens without `deps.onActReady`: no partial is built then.
+   */
+  refusedPartial?: "abort" | "continue";
   /**
    * Overrides topic resolution. Supply it when a human has already ruled on the
    * taxonomy node; leave it out and `resolveTopic` derives one or the run stops.
@@ -789,7 +848,12 @@ export async function runForayPipeline(
      both stamps are read from the injected clock, so the same request and the
      same clock still produce the same id (`runPipeline.test.ts`). */
   const startedAt = now().toISOString();
-  const forayId = forayIdFor(title, startedAt);
+  /* G-30 (manual step 25): an id that already sits in `data/forays.json` is
+     suffixed `-2`, `-3`, … HERE — before the first partial candidate hands it
+     to `finalizeForay`, which would otherwise throw on the duplicate at act 1
+     (and again at the end, after the whole run was paid for). The read is the
+     same file finalize reads; a checkout without it takes the id as minted. */
+  const forayId = uniqueForayId(forayIdFor(title, startedAt), (deps.existingForayIds ?? readExistingForayIds)(options.root));
   const slots = slotsFromSpine(spine);
   const allActTitles = spine.acts.map((a) => a.title);
 
@@ -961,6 +1025,19 @@ export async function runForayPipeline(
               finalize
             );
             await deps.onActReady!(candidate);
+            /* G-30 (manual step 10): the partial-refusal exit. AFTER the
+               callback, so the refused partial is on disk for whoever reads
+               the report; BEFORE `checkpoint.stage` records this act's
+               stitch, so a re-run rebuilds the refused act rather than
+               resuming past it. */
+            if (!candidate.validation.ok && options.refusedPartial === "abort") {
+              throw new RefusedPartialError(
+                actIndex,
+                allActTitles.length,
+                candidate.validation.checkForaysErrors,
+                candidate.validation.checkNarrationErrors
+              );
+            }
           }
         : undefined
     },
