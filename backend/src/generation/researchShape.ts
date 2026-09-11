@@ -78,7 +78,28 @@ import type { ExternalResearcher, ExternalResearchContext } from "./ExternalRese
 
 /** Windows attached per subtopic — the fix plan's "top 3-5", at most one per
  * episode so the spine sees four different conversations rather than four
- * minutes of one. */
+ * minutes of one.
+ *
+ * AND AT MOST ONE PER EPISODE ACROSS THE WHOLE MAP (G-24 R3). The one-per-
+ * episode rule used to be per subtopic, so an episode that ranked well for two
+ * related subtopics was quoted twice under two labels: attempt 6's map listed
+ * 32 windows over 23 episodes with 8 episodes duplicated, the spine seeded two
+ * of those episodes twice, and §4.5's M4 ledger — one segment per episode until
+ * the Foray holds eight (`m4SegmentCapFor`) — refused the second seed of each
+ * before its body was opened, one of them at a weighted share of 0.746. The
+ * ledger is right and does not move ("never looser"); what was wrong was
+ * offering the spine a seed the Foray could not take. So the map now lists each
+ * episode once, under the subtopic that ranked it first, and the next subtopic
+ * takes its next-best episode instead — which is more different conversations
+ * for the spine, not fewer windows: each subtopic still asks the index for
+ * `RESEARCH_TAPE_EPISODE_CANDIDATES` episodes and keeps the best four it may.
+ *
+ * WHY HERE AND NOT IN THE LEDGER. The brief's alternative was to let §4.5 admit
+ * a seeded window as an episode's second segment once four are placed. That
+ * makes an episode 2 of 5 (40 %) at the moment of placement and bets the rest
+ * of the Foray will dilute it; `check-forays.mjs` is the authority on M4 and
+ * would refuse the Foray that stops there. Removing the duplicate at the source
+ * costs no rule anything and needs no bet. */
 export const RESEARCH_TAPE_WINDOWS_PER_SUBTOPIC = 4;
 /** Episodes the text index is asked for per subtopic. More than the window
  * count because an episode with no body on this machine yields nothing, and
@@ -229,8 +250,12 @@ interface TapeWindowResult {
  * window says something of the subtopic at all (one matched term), and the
  * ranking then puts the best first. The floor still decides in §4.5, unchanged,
  * against the claim as finally worded.
+ *
+ * `usedEpisodes` is the map-wide ledger of episodes an earlier subtopic already
+ * quoted (G-24 R3, see `RESEARCH_TAPE_WINDOWS_PER_SUBTOPIC`): those are skipped
+ * here and the ones this subtopic keeps are added to it.
  */
-function tapeWindowsFor(seed: CandidateSeed, tape: TapeAvailability, deps: TapeWindowDeps): TapeWindowResult {
+function tapeWindowsFor(seed: CandidateSeed, tape: TapeAvailability, deps: TapeWindowDeps, usedEpisodes: Set<string>): TapeWindowResult {
   if (!deps.textIndex.enabled) {
     return { windows: [], unavailable: "no transcript text index on this machine, so nothing could be quoted" };
   }
@@ -253,6 +278,9 @@ function tapeWindowsFor(seed: CandidateSeed, tape: TapeAvailability, deps: TapeW
 
   const windows: ResearchTapeWindow[] = [];
   for (const candidate of candidates) {
+    /* Already quoted under an earlier subtopic — the spine may seed one beat
+       from it and no more, so a second listing is a seed §4.5 would refuse. */
+    if (usedEpisodes.has(deriveItemId(candidate.entry))) continue;
     const cues = deps.cueProvider.getCues(candidate.entry);
     if (!cues) continue;
     const window = selectTapeWindow(queryText, cues, {
@@ -277,13 +305,20 @@ function tapeWindowsFor(seed: CandidateSeed, tape: TapeAvailability, deps: TapeW
   }
 
   if (windows.length === 0) {
-    return { windows: [], unavailable: "the archive ranked episodes for this subtopic but no transcript body for them is on this machine" };
+    return {
+      windows: [],
+      unavailable: candidates.every((c) => usedEpisodes.has(deriveItemId(c.entry)))
+        ? "every episode the archive ranked for this subtopic is already quoted under an earlier subtopic"
+        : "the archive ranked episodes for this subtopic but no transcript body for them is on this machine"
+    };
   }
 
   /* Best window first; ties by episode id so a replay of the same archive
      produces the same prompt, byte for byte. */
   windows.sort((a, b) => b.score - a.score || (a.episodeId < b.episodeId ? -1 : a.episodeId > b.episodeId ? 1 : 0));
-  return { windows: windows.slice(0, RESEARCH_TAPE_WINDOWS_PER_SUBTOPIC), unavailable: null };
+  const kept = windows.slice(0, RESEARCH_TAPE_WINDOWS_PER_SUBTOPIC);
+  for (const w of kept) usedEpisodes.add(w.episodeId);
+  return { windows: kept, unavailable: null };
 }
 
 /** The taxonomy nodes an archive episode resolves to — its show's nodes plus
@@ -434,9 +469,14 @@ export async function buildResearchShape(
     root: options.root
   };
 
+  /* One window per episode across the whole map (G-24 R3): subtopics are
+     walked in order, so the first subtopic an episode ranks for is the one that
+     quotes it. Deterministic — the order is the candidate order, which is the
+     concept order, which is stable for a given catalogue. */
+  const usedEpisodes = new Set<string>();
   const subtopics: SubtopicCandidate[] = withTape.map(({ seed, tape }) => {
     const external = externalResults.get(seed.label);
-    const windows = tapeWindowsFor(seed, tape, windowDeps);
+    const windows = tapeWindowsFor(seed, tape, windowDeps, usedEpisodes);
     return {
       label: seed.label,
       source: seed.source,

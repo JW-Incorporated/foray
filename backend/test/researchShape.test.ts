@@ -8,7 +8,9 @@ import {
   RESEARCH_TAPE_WINDOW_MIN_SEC
 } from "../src/generation/researchShape";
 import { D3_MEAN_FLOOR_SEC } from "../src/generation/sourceBeats";
-import { TAPE_WINDOW_MAX_SEC, TAPE_WINDOW_MIN_SEC } from "../src/generation/transcriptArchiveLookup";
+import { TAPE_WINDOW_MAX_SEC, TAPE_WINDOW_MIN_SEC, cueWindowText, selectTapeWindow } from "../src/generation/transcriptArchiveLookup";
+import { tokenizeForSourcing } from "../src/generation/catalogueLookup";
+import type { ResearchTapeWindow } from "../src/types/research";
 import { FileTranscriptTextIndex } from "../src/generation/transcriptTextIndex";
 import type { TranscriptBodySource, TranscriptTextIndex } from "../src/generation/transcriptTextIndex";
 import type { TranscriptCue, TranscriptCueProvider, TranscriptDigestEntry } from "../src/generation/transcriptArchiveLookup";
@@ -462,5 +464,170 @@ describe("buildResearchShape — WS-L: the map carries what the tape says (F-63)
     for (let i = 1; i < fusion.tapeWindows.length; i++) {
       expect(fusion.tapeWindows[i - 1]!.score).toBeGreaterThanOrEqual(fusion.tapeWindows[i]!.score);
     }
+  });
+});
+
+describe("cueWindowText — G-24 R1: the text spoken BETWEEN two timestamps, strict at both edges", () => {
+  /* Cues are contiguous, so the cue that ends at the window's start is the
+     sentence spoken just before it and the cue that starts at its end is the
+     one spoken just after. Neither is inside the window; both used to be
+     quoted (tape-yield brief §4 cause 2). */
+  const cues: TranscriptCue[] = [
+    { text: "before", start_sec: 60, end_sec: 100 },
+    { text: "inside one", start_sec: 100, end_sec: 130 },
+    { text: "inside two", start_sec: 130, end_sec: 160 },
+    { text: "after", start_sec: 160, end_sec: 200 }
+  ];
+
+  it("leaves out the cue that ends exactly at the window's start and the one that starts exactly at its end", () => {
+    /* MUTATION THAT KILLS THIS: put `cueWindowText` back to `end_sec < startSec`
+       / `start_sec > endSec`. Ran it — red on both edges. */
+    expect(cueWindowText(cues, 100, 160)).toBe("inside one inside two");
+  });
+
+  it("keeps a cue that overlaps the window by any positive amount", () => {
+    /* Tier 1 reads a pool segment's cues through this function too, and a
+       segment's bounds are anchor times that can sit mid-cue. */
+    expect(cueWindowText(cues, 99.5, 160.5)).toBe("before inside one inside two after");
+  });
+});
+
+describe("buildResearchShape — G-24 R1: the map quotes exactly the window's own cues, so a claim written from the quote sits inside the seed", () => {
+  /* THE BUG, IN ONE FIXTURE. The window the search picks for "fusion tokamak"
+     is 40-140 s (the two cues that say those words; 0-140 says the same two and
+     loses on length). Before G-24 the quote opened with the 0-40 s lead-in —
+     the cue that ENDS at the window's start — under the window's own seconds,
+     the spine wrote its claim from that first sentence, and §4.5's seed window
+     (F-68, confined to 40-140 s) then held none of the claim's words. On
+     attempt 6 that was 7 of 8 quotes, 6 of 14 seeded claims, 2 beats lost. */
+  const episode: TranscriptDigestEntry = {
+    show_id: "practical-ai",
+    show_title: "Practical AI",
+    guid: "pa-910",
+    title: "Episode 910",
+    cues: 5,
+    feed_duration_sec: 3600
+  };
+  const cues: TranscriptCue[] = [
+    { text: "The grid operators in Denmark rationed electricity through the winter.", start_sec: 0, end_sec: 40 },
+    { text: "Fusion is the reaction the sun runs on and nobody has bottled it yet.", start_sec: 40, end_sec: 100 },
+    { text: "A tokamak is the doughnut shaped machine most laboratories bet on.", start_sec: 100, end_sec: 140 },
+    { text: "The magnets cost more than the building that holds them.", start_sec: 140, end_sec: 200 },
+    { text: "That is all we have time for today thanks for listening.", start_sec: 200, end_sec: 260 }
+  ];
+
+  function fakeIndex(): TranscriptTextIndex {
+    const bodies: TranscriptBodySource = {
+      getCues: (entry) => (entry.guid === episode.guid ? cues : null),
+      bodyStat: (entry) => (entry.guid === episode.guid ? { mtimeMs: 1, size: 1 } : null)
+    };
+    return new FileTranscriptTextIndex({ archive: [episode], bodies, cache: false });
+  }
+
+  async function windowFor(): Promise<ResearchTapeWindow> {
+    const { guard } = guardAndSink();
+    const shape = await buildResearchShape(makeIntent(), {
+      researcher: new StubExternalResearcher(guard),
+      ctx: { userId: "founder-1" },
+      catalogue: tapeFixtureCatalogue(),
+      topic: null,
+      textIndex: fakeIndex(),
+      cueProvider: { getCues: (entry) => (entry.guid === episode.guid ? cues : null) }
+    });
+    const fusion = shape.subtopics.find((s) => s.label === "Fusion")!;
+    expect(fusion.tapeWindows).toHaveLength(1);
+    return fusion.tapeWindows[0]!;
+  }
+
+  it("quotes the window's cues and nothing spoken before or after them", async () => {
+    /* MUTATION THAT KILLS THIS: `cueWindowText` back to its inclusive edges.
+       Ran it — red: the quote opens with the Denmark sentence and closes with
+       the magnets. */
+    const window = await windowFor();
+    expect(window.startSec).toBe(40);
+    expect(window.endSec).toBe(140);
+    expect(window.text.startsWith("Fusion is the reaction")).toBe(true);
+    expect(window.text).not.toContain("Denmark");
+    expect(window.text).not.toContain("magnets");
+  });
+
+  it("a claim written from the quote's first sentence scores at least the quote's own share inside the seed window", async () => {
+    /* The card's test (G-24 done-when): what the spine reads and what §4.5
+       searches are the same stretch of tape, so a claim taken verbatim from the
+       quote carries into its seed window in full. Before G-24 this claim would
+       have been the Denmark sentence, and its seed window's share 0. */
+    const window = await windowFor();
+    const claim = window.text.match(/[^.!?]+[.!?]/)![0]!.trim();
+    const claimTerms = new Set(tokenizeForSourcing(claim));
+    const quoteTerms = new Set(tokenizeForSourcing(window.text));
+    const quoteShare = [...claimTerms].filter((t) => quoteTerms.has(t)).length / claimTerms.size;
+    const seedWindow = selectTapeWindow(claim, cues, { within: { startSec: window.startSec, endSec: window.endSec } });
+    expect(seedWindow).not.toBeNull();
+    expect(seedWindow!.share).toBeGreaterThanOrEqual(quoteShare);
+    expect(seedWindow!.share).toBe(1);
+  });
+});
+
+describe("buildResearchShape — G-24 R3: one window per episode across the WHOLE map, not per subtopic", () => {
+  /* Attempt 6's map listed 32 windows over 23 episodes with 8 episodes quoted
+     twice under two subtopics; the spine seeded two of them twice, and §4.5's
+     M4 ledger — one segment per episode until the Foray holds eight — refused
+     the second seed of each before opening it (one at a weighted share of
+     0.746). The ledger is right; the map must not offer a seed the Foray
+     cannot take. Here two subtopics both rank the same episode first: the
+     first quotes it, the second takes its next-best episode instead. */
+  const both: TranscriptDigestEntry = { show_id: "practical-ai", show_title: "Practical AI", guid: "pa-920", title: "Episode 920", cues: 3, feed_duration_sec: 3600 };
+  const plasmaOnly: TranscriptDigestEntry = { ...both, guid: "pa-921", title: "Episode 921" };
+  const bothCues: TranscriptCue[] = [
+    { text: "fusion in a tokamak is a plasma confinement problem first and a physics problem second", start_sec: 0, end_sec: 50 },
+    { text: "the tokamak holds the plasma with magnets and the confinement is never perfect", start_sec: 50, end_sec: 100 },
+    { text: "and fusion only pays when the confinement lasts long enough", start_sec: 100, end_sec: 150 }
+  ];
+  const plasmaCues: TranscriptCue[] = [
+    { text: "plasma confinement is the part of the problem nobody outside the field hears about", start_sec: 0, end_sec: 50 },
+    { text: "and the confinement time is the number every plasma group reports first", start_sec: 50, end_sec: 100 },
+    { text: "so the plasma is where the money goes", start_sec: 100, end_sec: 150 }
+  ];
+  const cuesByGuid: Record<string, TranscriptCue[]> = { "pa-920": bothCues, "pa-921": plasmaCues };
+
+  /** Two strong concepts that the intent matches, over the same 25 items. */
+  function twoConceptCatalogue(): CatalogueData {
+    const base = tapeFixtureCatalogue();
+    return {
+      ...base,
+      itemTags: Object.fromEntries(base.items.map((it) => [it.id, ["fusion", "tokamak", "plasma", "confinement"]])),
+      concepts: {
+        ...base.concepts,
+        plasma: { terms: ["plasma", "confinement"], topics: ["engineering/energy-fusion"], related: [] }
+      }
+    };
+  }
+
+  it("quotes an episode under the first subtopic that ranks it and gives the next subtopic its next-best episode", async () => {
+    /* MUTATION THAT KILLS THIS: drop the `usedEpisodes` set from
+       `tapeWindowsFor`. Ran it — red: Episode 920 is quoted under both. */
+    const { guard } = guardAndSink();
+    const bodies: TranscriptBodySource = {
+      getCues: (entry) => cuesByGuid[entry.guid] ?? null,
+      bodyStat: (entry) => (cuesByGuid[entry.guid] ? { mtimeMs: 1, size: 1 } : null)
+    };
+    const shape = await buildResearchShape(makeIntent(), {
+      researcher: new StubExternalResearcher(guard),
+      ctx: { userId: "founder-1" },
+      catalogue: twoConceptCatalogue(),
+      topic: null,
+      textIndex: new FileTranscriptTextIndex({ archive: [both, plasmaOnly], bodies, cache: false }),
+      cueProvider: { getCues: (entry) => cuesByGuid[entry.guid] ?? null }
+    });
+    const withWindows = shape.subtopics.filter((s) => s.tapeWindows.length > 0);
+    expect(withWindows.length).toBe(2);
+    const quoted = withWindows.flatMap((s) => s.tapeWindows.map((w) => w.episodeId));
+    expect(new Set(quoted).size).toBe(quoted.length);
+    expect(quoted.sort()).toEqual(["practical-ai--episode-920", "practical-ai--episode-921"]);
+    /* And the map says WHY a subtopic's list is empty when every episode it
+       ranked is already quoted, rather than reading as an empty archive. */
+    const plasma = shape.subtopics.find((s) => s.label === "Plasma")!;
+    const fusion = shape.subtopics.find((s) => s.label === "Fusion")!;
+    expect(plasma.windowsUnavailable ?? fusion.windowsUnavailable).toBeNull();
   });
 });

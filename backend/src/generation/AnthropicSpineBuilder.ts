@@ -211,10 +211,12 @@ function buildSpinePrompt(intent: IntentUnderstanding, researchShape: ResearchSh
           "\"endSec\": ...} copied from the bracketed window it was written from. Beats written from anything else",
           "omit \"seed\".",
           "",
-          "Spread the seeds across EPISODES: within one slot, seeded beats must name DIFFERENT episodeIds",
+          "Spread the seeds across EPISODES: across the WHOLE spine, seeded beats must name DIFFERENT episodeIds",
           "wherever the windows above allow it — no episode can supply more than a quarter of the finished",
-          "Foray's tape. If a slot really must seed two beats from the SAME episode, put them in the order the",
-          "tape says them: the beat seeded from the earlier startSec comes first."
+          "Foray's tape, which means one segment per episode until the Foray holds eight, and a second beat",
+          "seeded from an episode already seeded will be refused and narrated. Each window above is listed",
+          "once, so each episodeId can seed one beat. If the spine really must seed two beats from the SAME",
+          "episode, put them in the order the tape says them: the beat seeded from the earlier startSec comes first."
         ];
 
   return [
