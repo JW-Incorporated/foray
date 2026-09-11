@@ -6,7 +6,7 @@ questions. Hermes card deck.*
 **Status:** shipped. U-01..U-11 landed 2026-09-06 (Hermes), U-12/U-13 on
 2026-09-09 (founder session, PR #550); an adversarial audit on 2026-09-10 found
 four acceptance gaps (U-03, U-06, U-09, U-12), closed by PR #603, and the
-U-11 records by PR DOCSPR. Each card below carries its DONE marker. (Originally proposed 2026-09-06.)
+U-11 records by PR #604. Each card below carries its DONE marker. (Originally proposed 2026-09-06.)
 Slots into the existing UI epic **#102** (cards C1–C12,
 cut from this same mockup in August). Where a C-card already exists this deck
 names it; three of those cards were founder **gates**, and Wyatt's answers
@@ -138,7 +138,7 @@ Read first: `CLAUDE.md`; this file; `docs/ux/README.md`; issues #102, #123,
 - **Governance:** `index.html` → human merge; the PR is Joey's — note the rebase in its body and let him see it.
 - **Acceptance:** Library tab opens his screen; his own tests pass.
 
-#### U-11 · Cutover and records — **S** — **cutover DONE, founder-overridden schedule (2026-09-06, PR #512, kanban `t_a3f01c8a`); records DONE after PR DOCSPR (2026-09-10: DECISIONS #125/#126/D3, README table, C-issues closed or repointed)**
+#### U-11 · Cutover and records — **S** — **cutover DONE, founder-overridden schedule (2026-09-06, PR #512, kanban `t_a3f01c8a`); records DONE after PR #604 (2026-09-10: DECISIONS #125/#126/D3, README table, C-issues closed or repointed)**
 - **Ask:** after every card above is green on TestFlight for a week: default `cp_ui_v2` on for everyone, delete the four-card Home and the menu-as-primary-nav code paths, delete the flag. DECISIONS entries: #123 resolved (floor kept), #125 resolved (anonymous-first stands), #126 deferred, D3 (tab bar reverses #467), D4 (self-hosted fonts). Close or repoint C1, C2, C3, C4, C7 issues; leave C6/C10/C11 open with a pointer here. `docs/ux/README.md` gains a "what shipped vs the mockup" table.
 - **FOUNDER OVERRIDE (2026-09-06):** Joey directed cutting over immediately
   rather than waiting out the week of TestFlight soak time above — see
@@ -187,7 +187,7 @@ Read first: `CLAUDE.md`; this file; `docs/ux/README.md`; issues #102, #123,
 | G1 | Joey | Read this deck; the Home floor mix (D1) and the tab bar (D3) are product calls Wyatt made — Joey should see them before U-03 ships. *Overtaken 2026-09-06: Joey directed the U-11 cutover with U-03 already on main (DECISIONS 2026-09-06); no separate sign-off was recorded.* | U-03 |
 | G2 | Wyatt | Merge click for U-01's `index.html` CSP line and U-10's `index.html` | U-01, U-10 |
 | G3 | Joey | #374 rebase lands under his name | U-10 |
-| G4 | Wyatt | DECISIONS label at U-11 — and again on the 2026-09-10 records PR DOCSPR | U-11 |
+| G4 | Wyatt | DECISIONS label at U-11 — and again on the 2026-09-10 records PR #604 | U-11 |
 
 ## 5. Sequencing
 
