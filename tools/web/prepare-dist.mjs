@@ -23,6 +23,7 @@ import { readFileSync, writeFileSync, mkdirSync, rmSync, cpSync, existsSync, sta
 import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { dirname, join, relative, sep } from "node:path";
+import { POINTER_PATH, deployIdFrom } from "../ci/forays-directory.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const args = process.argv.slice(2);
@@ -110,6 +111,14 @@ for (const f of RUNTIME_DATA) {
   const r = copy(join("data", f));
   (r.missing ? missing : copied).push(r);
 }
+/* The Foray directory pointer (FD-02, `tools/ci/forays-directory.mjs`). Not
+   fetched by app.js — the native shell reads it from the live origin — but it
+   is listed in deploy-manifest.json, so a dist without it fails the manifest
+   cross-check below (and sw.js's install, in production). */
+{
+  const r = copy(POINTER_PATH);
+  (r.missing ? missing : copied).push(r);
+}
 
 const totalBytes = copied.reduce((n, r) => n + r.bytes, 0);
 const mb = totalBytes / 1024 / 1024;
@@ -172,8 +181,21 @@ if (missing.length) {
     }
     distFiles[rel] = "sha256:" + createHash("sha256").update(readFileSync(f)).digest("hex");
   }
-  const lines = Object.keys(distFiles).sort().map((p) => `${p}:${distFiles[p]}`).join("\n") + "\n";
-  const distDeployId = createHash("sha256").update(lines).digest("hex").slice(0, 16);
+  /* Same derivation as generate-manifest.mjs, including its one exclusion: the
+     Foray directory pointer names the deploy id, so it is listed but never an
+     input to it. Deriving through the shared helper is what keeps this id equal
+     to the committed one when dist is a byte-identical copy. */
+  const distDeployId = deployIdFrom(distFiles);
+  if (distDeployId !== sourceManifest.deploy_id) {
+    /* The copied pointer (and sw.js's BUILD_ID) carry the COMMITTED id. dist
+       is a byte-exact copy of files `--check` already proved the committed
+       manifest describes, so this cannot differ on a healthy tree; if it does,
+       shipping a pointer that names a generation dist is not would send every
+       phone re-fetching a set it can never match. */
+    console.error(`FATAL: dist computes to deploy_id ${distDeployId} but the committed manifest says ${sourceManifest.deploy_id}. ` +
+      `${POINTER_PATH} and sw.js name the committed id; run \`node tools/ci/generate-manifest.mjs --check\` on the source tree.`);
+    process.exit(1);
+  }
   writeFileSync(distManifestPath, JSON.stringify({ deploy_id: distDeployId, files: distFiles }, null, 2) + "\n");
   console.log(`deploy manifest: ${distDeployId} (${Object.keys(distFiles).length} files, verified against dist)`);
 }

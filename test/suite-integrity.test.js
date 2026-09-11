@@ -660,6 +660,17 @@ const FLOORS = {
      `data-and-site` for the entire repo. All 10 named mutations were run and
      killed. */
   "tools/ci/crlf-guard.test.mjs": 10,
+  /* The Foray directory pointer (FD-02): `data/forays-directory.json`, written
+     and checked by generate-manifest.mjs. 16 pure-function tests on scratch
+     trees plus 8 that run the REAL CLI as a subprocess against a synthetic LF
+     tree — the only way `--check` can be driven to red on the Windows autocrlf
+     checkout, where the real tree is refused by the CRLF guard first. The
+     load-bearing ones: a stale pointer and a missing pointer both turn --check
+     red by name, and --write is idempotent (a second run is byte-identical), so
+     manifest-autofix does not push a built_at-only commit to every PR. Seven
+     load-bearing mutations (named in the suite header) were run and killed;
+     the other 17 are named in their tests. */
+  "tools/ci/forays-directory.test.mjs": 24,
   "tools/ci/pr-triage.test.mjs": 85,
   "tools/ci/run-suites.test.mjs": 36,
   // The classify fleet. `no-exclusion` is the founder's "label, never filter"
