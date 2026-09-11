@@ -184,7 +184,12 @@ XT on at least one model size, and the Vulkan device line confirms the GPU
 `origin/reclassify` on
 
 **Steps:**
-1. TODO — steps needed
+1. Run: git fetch origin 'refs/heads/reclassify-*:refs/remotes/origin/reclassify-*' to pull the six shard branches.
+2. Dry-run the merge tool: node tools/classify/reconcile-shards.mjs --dry-run — it reports the numbers without writing anything.
+3. Review the printed stats, especially cross_shard_conflicts (about 30 shows resolved by newest classified_at).
+4. If the numbers look right, run it for real: node tools/classify/reconcile-shards.mjs (writes data/breadth-classification.json, still needs a PR to land).
+5. Commit and open a PR with the result (data/ auto-merges on green CI per this repo's merge_authority: agent).
+6. Confirm the fix: re-run node tools/classify/reconcile-shards.mjs --dry-run afterward and check every shard reports shard_key hashed, not hashed+legacy.
 
 **Worked if:** a fresh dry-run of `node tools/classify/reconcile-shards.mjs
 --dry-run` some time after this ships reports `shard_key hashed` (not
