@@ -3801,23 +3801,6 @@
       "needs_review": true
     },
     {
-      "id": "practical-ai--ai-policy-and-the-battle-for-computing-power#826-2",
-      "item_id": "practical-ai--ai-policy-and-the-battle-for-computing-power",
-      "topic": "engineering/ai-robotics",
-      "start_sec": 826.36,
-      "end_sec": 957.065,
-      "reference_duration_sec": 2934,
-      "start_anchor": "lets start with the importance of computing power",
-      "end_anchor": "reason to care about taiwan in addition to",
-      "why": "Public analyses have estimated that losing Taiwan's chip output would cost trillions of dollars in global GDP, reflecting",
-      "confidence": "medium",
-      "transcript_source": "publisher",
-      "dai_suspected": true,
-      "source": "generation-tier-2",
-      "batch_id": "generation-how-ai-actually-gets-built-3b83e1",
-      "needs_review": true
-    },
-    {
       "id": "practical-ai--breaking-down-the-2026-stanford-ai-index-report#572",
       "item_id": "practical-ai--breaking-down-the-2026-stanford-ai-index-report",
       "topic": "engineering/ai-robotics",

@@ -126,15 +126,14 @@ test("the committed Forays are the four documented ones, and all are #134's kind
      `forays[0]` load-bearing is gone with the proofs that used it (#236). It is
      still asserted in order because a reordering of this file is a deliberate
      edit too, and a `deepEqual` is the cheapest way to say so. */
+  /* Curated Forays are pinned by id; a GENERATED Foray (`generated: true`) is admitted
+     by the publish PR that lands it (requirements §6.5), so the pin lists only the curated
+     ids and requires every other Foray to carry the generated bit. */
   assert.deepEqual(
-    live.forays.forays.map((f) => f.id),
-    [
-      "grilling-history-1", "grilling-history-2", "capital-types-1", "geology-plates-1",
-      /* The first GENERATED Foray (generation-run-2026-09-09, PR #583): its provenance is the
-         pipeline candidate + report, not a curation doc; see `generated: true` below. */
-      "beyond-the-algorithm-engineering-production-ai-s-e6533b",
-    ]
+    live.forays.forays.filter((f) => !f.generated).map((f) => f.id),
+    ["grilling-history-1", "grilling-history-2", "capital-types-1", "geology-plates-1"]
   );
+  for (const f of live.forays.forays.filter((f) => f.generated)) assert.equal(f.generated, true, f.id);
   for (const f of live.forays.forays) assert.equal(f.kind, "deep-dive", f.id);
 });
 

@@ -1180,7 +1180,7 @@
       "topic": "engineering/ai-robotics",
       "status": "draft",
       "summary": "The unglamorous engineering pipeline that turns raw data into a working AI system in production",
-      "runtime_sec": 2623.698,
+      "runtime_sec": 2587.673,
       "generated": true,
       "slots": [
         {
@@ -1277,7 +1277,7 @@
         {
           "type": "segment",
           "slot": "why-excel-still-runs-the-world",
-          "segment_id": "practical-ai--ai-policy-and-the-battle-for-computing-power#826-2"
+          "segment_id": "practical-ai--ai-policy-and-the-battle-for-computing-power#826"
         },
         {
           "type": "narration",
