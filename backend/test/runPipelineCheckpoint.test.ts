@@ -17,7 +17,6 @@ import type { SpineBuilder } from "../src/generation/SpineBuilder";
 import type { PromptUnderstander } from "../src/generation/PromptUnderstander";
 import type { DeepenActBuilder } from "../src/generation/DeepenActBuilder";
 import type { ContinuityBuilder } from "../src/generation/ContinuityBuilder";
-import type { NarrationWriterBuilder } from "../src/generation/NarrationWriterBuilder";
 
 /**
  * F-17/F-18, driven through the real pipeline.
@@ -90,12 +89,13 @@ function countingDeps() {
   };
 
   const narrationWriter = new StubNarrationWriterBuilder();
-  /* WS-A: the prose call is the one that writes a page, and it takes a whole
-     slot at a time — so this counts slot-writes, not page-writes. The
-     assertions below only ask whether narration was PAID FOR again after a
-     resume, which that answers exactly. */
-  const realWrite = narrationWriter.writePages.bind(narrationWriter);
-  narrationWriter.writePages = async (...args: Parameters<NarrationWriterBuilder["writePages"]>) => {
+  /* WS-A: the call that writes a page takes a whole slot at a time — so
+     this counts slot-writes, not page-writes. Since G-34 that call is the
+     merged select+prose request on a clean slot. The assertions below only
+     ask whether narration was PAID FOR again after a resume, which that
+     answers exactly. */
+  const realWrite = narrationWriter.selectAndWrite.bind(narrationWriter);
+  narrationWriter.selectAndWrite = async (...args: Parameters<StubNarrationWriterBuilder["selectAndWrite"]>) => {
     calls.write++;
     return realWrite(...args);
   };
@@ -159,12 +159,22 @@ describe("per-stage checkpoint and resume inside one Foray (F-17/F-18)", () => {
        short tier is one act of two slots (`DURATION_SHAPE_BUDGETS`), so
        this is exactly run 2's shape: part of an act done, the act itself
        unfinished. */
-    const realWrite = failing.deps.narrationWriter.writePages.bind(failing.deps.narrationWriter);
+    const realWrite = failing.deps.narrationWriter.selectAndWrite.bind(failing.deps.narrationWriter);
     let firstSlotTitle: string | null = null;
-    failing.deps.narrationWriter.writePages = async (request, buildCtx) => {
+    failing.deps.narrationWriter.selectAndWrite = async (request, buildCtx) => {
       if (firstSlotTitle === null) firstSlotTitle = request.slotTitle;
       if (request.slotTitle !== firstSlotTitle) {
-        await new Promise((r) => setTimeout(r, 10));
+        /* Wait until the healthy slot has actually banked before going
+           away — that ordering is the property under test, so it is waited
+           for rather than assumed from a fixed sleep. (A 10 ms sleep held
+           while this sabotage sat on the doomed slot's SECOND request; since
+           G-34 it sits on its first, and under full-suite load the healthy
+           slot's whole round did not always fit in 10 ms.) The deadline only
+           turns a hung run into a failure. */
+        const deadline = Date.now() + 5000;
+        while (!store.stageKeys(KEY).some((s) => /^narrate:0:\d+$/.test(s)) && Date.now() < deadline) {
+          await new Promise((r) => setTimeout(r, 5));
+        }
         throw new Error("provider went away mid-slot");
       }
       return realWrite(request, buildCtx);
@@ -197,7 +207,12 @@ describe("per-stage checkpoint and resume inside one Foray (F-17/F-18)", () => {
     const slotsInAct = store.stageKeys(KEY).filter((s) => /^narrate:0:\d+$/.test(s)).length;
     expect(slotsInAct).toBeGreaterThan(bankedBeforeRetry.length);
     expect(retry.calls.write).toBe(slotsInAct - bankedBeforeRetry.length);
-  });
+    /* Two full stub pipeline runs, the first of which now waits for a slot
+       to bank before it fails. Its siblings here run as long under a loaded
+       machine but spend that time synchronously, so the default 10 s timer
+       never gets to fire on them; this one yields while it waits, so it
+       needs the budget its work actually takes. */
+  }, 60_000);
 
   it("a second run with the same prompt makes no model calls at all", async () => {
     const store = new FakeCheckpointStore(FP);
@@ -252,7 +267,7 @@ describe("per-stage checkpoint and resume inside one Foray (F-17/F-18)", () => {
        the spine and three deepened acts with it. */
     const store = new FakeCheckpointStore(FP);
     const failing = countingDeps();
-    failing.deps.narrationWriter.writePages = async () => {
+    failing.deps.narrationWriter.selectAndWrite = async () => {
       throw new Error("page rejected three times");
     };
 
