@@ -10,7 +10,10 @@ import type {
   ProsePageBrief,
   ProseWriteRequest,
   ProseWriteResult,
-  SelectedClaim
+  SelectAndWriteRequest,
+  SelectAndWriteResult,
+  SelectedClaim,
+  WrittenPage
 } from "./NarrationWriterBuilder";
 
 /**
@@ -65,30 +68,56 @@ export class StubNarrationWriterBuilder implements NarrationWriterBuilder {
     });
 
     return {
+      pages: request.pages.map((page) => writtenPageFor(page, request.voice.register))
+    };
+  }
+
+  /**
+   * G-34: the dry-run path takes the merged call too, so `--dry-run`
+   * exercises the same one-call shape production does — the stub selects
+   * exactly what `selectClaims` would and writes exactly what
+   * `writePages` would from it, in one reply.
+   */
+  async selectAndWrite(request: SelectAndWriteRequest, ctx: NarrationBuildContext): Promise<SelectAndWriteResult> {
+    await this.budgetGuard.checkAndRecord({
+      userId: ctx.userId,
+      operation: "narration_select_and_write",
+      provider: this.providerName,
+      estimatedUsd: 0,
+      dryRun: true,
+      sessionId: ctx.sessionId
+    });
+
+    return {
       pages: request.pages.map((page) => {
-        const [min, max] = MODE_CHAR_BANDS[page.mode];
-        const target = Math.round((min + max) / 2);
-        return {
-          pageId: page.pageId,
-          script: padToBand(scriptSeedSentence(page, request.voice.register), min, max, target, page.mode, page.claims.length === 0 ? CLAIM_FREE_FILLERS : FILLERS),
-          /* Every claim the selection produced. A page that could select
-             none (nothing was retrieved for it) writes a script that
-             asserts nothing — see `questionOnlyScript` — because
-             `validateNarratedBeat` allows zero sources only there
-             (F-36/F-37/F-44). */
-          usedClaims: page.claims.map((_, i) => i),
-          /* F-50's permission exists for the live writer; a stub that
-             claimed it would be asserting an editorial judgement it has no
-             way to make ("did the documents contradict the purpose?"), and
-             a dry-run candidate would carry a flag nothing decided. Always
-             false, and the field is present rather than omitted so the
-             dry-run path exercises the same shape production does. */
-          purposeRevised: false,
-          pronunciationHints: hintsFor(page)
-        };
+        const claims = claimsFor(page);
+        return { ...writtenPageFor({ ...page, claims }, request.voice.register), claims };
       })
     };
   }
+}
+
+function writtenPageFor(page: ProsePageBrief, register: string): WrittenPage {
+  const [min, max] = MODE_CHAR_BANDS[page.mode];
+  const target = Math.round((min + max) / 2);
+  return {
+    pageId: page.pageId,
+    script: padToBand(scriptSeedSentence(page, register), min, max, target, page.mode, page.claims.length === 0 ? CLAIM_FREE_FILLERS : FILLERS),
+    /* Every claim the selection produced. A page that could select
+       none (nothing was retrieved for it) writes a script that
+       asserts nothing — see `questionOnlyScript` — because
+       `validateNarratedBeat` allows zero sources only there
+       (F-36/F-37/F-44). */
+    usedClaims: page.claims.map((_, i) => i),
+    /* F-50's permission exists for the live writer; a stub that
+       claimed it would be asserting an editorial judgement it has no
+       way to make ("did the documents contradict the purpose?"), and
+       a dry-run candidate would carry a flag nothing decided. Always
+       false, and the field is present rather than omitted so the
+       dry-run path exercises the same shape production does. */
+    purposeRevised: false,
+    pronunciationHints: hintsFor(page)
+  };
 }
 
 /**

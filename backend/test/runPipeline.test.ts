@@ -500,16 +500,18 @@ describe("runForayPipeline — each act is stitched as soon as it is narrated (F
    * captured spine, so it is consulted per call, not at construction. */
   function latchedWriter(isLater: (slotTitle: string) => boolean) {
     const writer = new StubNarrationWriterBuilder();
-    const realWritePages = writer.writePages.bind(writer);
+    /* G-34: a clean slot's prose is requested through the merged
+       select+prose call, so that is the request to log. */
+    const realSelectAndWrite = writer.selectAndWrite.bind(writer);
     const events: string[] = [];
     let release!: () => void;
     const held = new Promise<void>((resolve) => {
       release = resolve;
     });
-    writer.writePages = async (...args: Parameters<NarrationWriterBuilder["writePages"]>) => {
+    writer.selectAndWrite = async (...args: Parameters<StubNarrationWriterBuilder["selectAndWrite"]>) => {
       events.push(`narrate:${args[0].slotTitle}`);
       if (isLater(args[0].slotTitle)) await held;
-      return realWritePages(...args);
+      return realSelectAndWrite(...args);
     };
     return { writer, events, release };
   }

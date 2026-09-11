@@ -35,6 +35,8 @@ import type {
   NarrationWriterBuilder,
   ProseWriteRequest,
   ProseWriteResult,
+  SelectAndWriteRequest,
+  SelectAndWriteResult,
   SelectedClaim
 } from "../src/generation/NarrationWriterBuilder";
 import type {
@@ -135,6 +137,15 @@ function tapeAct(claim: string, itemId = "item-1"): SourcedAct[] {
  * A writer driven by a canned list of per-attempt answers. Each entry is
  * what the slot's ONE page selects and writes on that attempt, so a test
  * can replay a run-1 failure and then its correction.
+ *
+ * SPLIT PATH ONLY — it offers no `selectAndWrite`, so the orchestrator
+ * takes the two-call path through it. That is deliberate: it is what
+ * keeps the fallback path tested now that the real and stub builders
+ * both offer the merged call (`mergedWriter` below is the merged fake).
+ *
+ * `retryNotes` records the note on EVERY writer call, selection or
+ * prose, because since G-34 a retry may re-run prose alone and the note
+ * then reaches only `writePages`; `lastRetryNote` reads the newest.
  */
 function scriptedWriter(
   attempts: Array<{ claims: SelectedClaim[]; script?: string; usedClaims?: number[]; purposeRevised?: boolean }>
@@ -151,6 +162,7 @@ function scriptedWriter(
       return { pages: request.pages.map((p) => ({ pageId: p.pageId, claims: turn.claims })) };
     },
     async writePages(request: ProseWriteRequest): Promise<ProseWriteResult> {
+      w.retryNotes.push(request.pages[0]?.retryNote);
       const turn = attempts[Math.min(w.writeCalls, attempts.length - 1)]!;
       w.writeCalls++;
       return {
@@ -165,6 +177,111 @@ function scriptedWriter(
     }
   };
   return w;
+}
+
+function lastRetryNote(w: { retryNotes: Array<string | undefined> }): string {
+  return w.retryNotes[w.retryNotes.length - 1] ?? "";
+}
+
+/**
+ * G-34's merged fake: one reply per page carrying claims AND script. Each
+ * canned turn is consumed by ONE writer request of either kind, so a
+ * test can script "merged reply, then the prose-only re-run". Records
+ * every request it saw, with the page ids in it, because what G-34 is
+ * about is which pages a retry pays for.
+ */
+function mergedWriter(
+  turns: Array<{
+    claims: SelectedClaim[] | ((pageId: string) => SelectedClaim[]);
+    script?: string;
+    usedClaims?: number[];
+  }>
+): NarrationWriterBuilder & {
+  mergedCalls: number;
+  writeCalls: number;
+  selectCalls: number;
+  requests: Array<{ kind: "merged" | "prose" | "select"; pageIds: string[]; claims?: SelectedClaim[][]; retryNotes: Array<string | undefined> }>;
+} {
+  let turnIndex = 0;
+  const nextTurn = () => turns[Math.min(turnIndex++, turns.length - 1)]!;
+  const claimsOf = (turn: (typeof turns)[number], pageId: string) => (typeof turn.claims === "function" ? turn.claims(pageId) : turn.claims);
+  const w = {
+    providerName: "merged-fake",
+    mergedCalls: 0,
+    writeCalls: 0,
+    selectCalls: 0,
+    requests: [] as Array<{ kind: "merged" | "prose" | "select"; pageIds: string[]; claims?: SelectedClaim[][]; retryNotes: Array<string | undefined> }>,
+    async selectClaims(request: ClaimSelectionRequest): Promise<ClaimSelectionResult> {
+      w.selectCalls++;
+      w.requests.push({ kind: "select", pageIds: request.pages.map((p) => p.pageId), retryNotes: request.pages.map((p) => p.retryNote) });
+      const turn = nextTurn();
+      return { pages: request.pages.map((p) => ({ pageId: p.pageId, claims: claimsOf(turn, p.pageId) })) };
+    },
+    async writePages(request: ProseWriteRequest): Promise<ProseWriteResult> {
+      w.writeCalls++;
+      w.requests.push({
+        kind: "prose",
+        pageIds: request.pages.map((p) => p.pageId),
+        claims: request.pages.map((p) => p.claims),
+        retryNotes: request.pages.map((p) => p.retryNote)
+      });
+      const turn = nextTurn();
+      return {
+        pages: request.pages.map((p) => ({
+          pageId: p.pageId,
+          script: turn.script ?? DEFAULT_SCRIPT,
+          usedClaims: turn.usedClaims ?? p.claims.map((_, i) => i),
+          pronunciationHints: []
+        }))
+      };
+    },
+    async selectAndWrite(request: SelectAndWriteRequest): Promise<SelectAndWriteResult> {
+      w.mergedCalls++;
+      w.requests.push({ kind: "merged", pageIds: request.pages.map((p) => p.pageId), retryNotes: request.pages.map((p) => p.retryNote) });
+      const turn = nextTurn();
+      return {
+        pages: request.pages.map((p) => {
+          const claims = claimsOf(turn, p.pageId);
+          return {
+            pageId: p.pageId,
+            claims,
+            script: turn.script ?? DEFAULT_SCRIPT,
+            usedClaims: turn.usedClaims ?? claims.map((_, i) => i),
+            pronunciationHints: []
+          };
+        })
+      };
+    }
+  };
+  return w;
+}
+
+/** A verifier that rejects the named page ids on its first call only,
+ * then accepts everything — the shape of "one page needs a second go". */
+function rejectOnceVerifier(rejectPageIds: string[]): NarrationVerifierBuilder & { calls: number; requests: string[][] } {
+  const v = {
+    providerName: "reject-once",
+    calls: 0,
+    requests: [] as string[][],
+    async verifySlot(request: NarrationVerifyRequest): Promise<NarrationVerifyResult> {
+      v.calls++;
+      v.requests.push(request.pages.map((p) => p.pageId));
+      const first = v.calls === 1;
+      return {
+        pages: request.pages.map((p) => {
+          const doomed = first && rejectPageIds.includes(p.pageId);
+          return {
+            pageId: p.pageId,
+            claimsSupported: !doomed,
+            purposeAccomplished: true,
+            contestedHandled: true,
+            ...(doomed ? { notes: "first-round objection" } : {})
+          };
+        })
+      };
+    }
+  };
+  return v;
 }
 
 /** A Patch-band script (340-765 chars). Written out rather than padded so
@@ -430,6 +547,181 @@ describe("writeNarration — two calls per SLOT, not per page (the 4.2-calls-per
   });
 });
 
+describe("G-34 — the retry tax: select+prose in one call, and a retry pays for the rejected page only", () => {
+  function patchSlot(claims: string[]): SourcedAct[] {
+    return [
+      {
+        title: "Act",
+        slots: [
+          {
+            title: "Slot",
+            beats: claims.map((claim) => ({ sourcing: "narration" as const, claim, exploration: false, narration: { mode: "Patch" as const, reason: "t" } }))
+          }
+        ]
+      }
+    ];
+  }
+  const twoPages = () => patchSlot(["Claim zero about the connection.", "Claim one about the connection."]);
+  const fourPages = () => patchSlot([0, 1, 2, 3].map((i) => `Claim number ${i} about the connection.`));
+  /* A quote that is in no held document — the F-14/F-27 shape. */
+  const UNHELD_CLAIM: SelectedClaim = {
+    claimText: "the rods were doubled up on the night",
+    quote: "the hanger rods were quietly doubled up on the night of the dance and nobody wrote it down",
+    docId: NBS_DOC.docId,
+    contested: false
+  };
+
+  it("a clean four-page slot costs ONE merged writer request and one verify request — two, where it was three", async () => {
+    /* MUTATION THAT KILLS THIS: ignoring `selectAndWrite` and always
+       taking the select + prose pair (mergedCalls 0, writeCalls 1). */
+    const writer = mergedWriter([{ claims: [GOOD_CLAIM] }]);
+    const verifier = passingVerifier();
+    const stats = { retryRounds: 0 };
+    const written = await writeNarration(fourPages(), { writer, verifier, evidence: fixtureGatherer(), stats }, voice, ctx);
+
+    expect(allWrittenNarration(written)).toHaveLength(4);
+    expect(allWrittenNarration(written).every((p) => p.verified)).toBe(true);
+    expect(writer.mergedCalls).toBe(1);
+    expect(writer.selectCalls).toBe(0);
+    expect(writer.writeCalls).toBe(0);
+    expect(verifier.calls).toBe(1);
+    expect(stats.retryRounds).toBe(0);
+  });
+
+  it("lever (a): a slot with ONE verifier-rejected page re-runs prose + verify for that page, not the slot", async () => {
+    /* MUTATION THAT KILLS THIS: forgetting `page.claims` on a verifier
+       rejection (the retry would be a second MERGED call), or re-running
+       the round over every page (the prose request would carry p0 too). */
+    const writer = mergedWriter([{ claims: [GOOD_CLAIM] }]);
+    const verifier = rejectOnceVerifier(["p1"]);
+    const stats = { retryRounds: 0 };
+    const written = await writeNarration(twoPages(), { writer, verifier, evidence: fixtureGatherer(), stats }, voice, ctx);
+    const pages = allWrittenNarration(written);
+
+    expect(pages.every((p) => p.verified)).toBe(true);
+    expect(writer.mergedCalls).toBe(1);
+    expect(writer.selectCalls).toBe(0);
+    expect(writer.writeCalls).toBe(1);
+    const prose = writer.requests.find((r) => r.kind === "prose")!;
+    expect(prose.pageIds).toEqual(["p1"]);
+    /* The grounded claims travelled with the page — nothing was re-selected. */
+    expect(prose.claims).toEqual([[GOOD_CLAIM]]);
+    expect(prose.retryNotes[0]).toMatch(/first-round objection/);
+    expect(verifier.calls).toBe(2);
+    expect(verifier.requests[1]).toEqual(["p1"]);
+    /* The page that passed kept its script: one attempt, and no second
+       request ever named it. */
+    expect(pages[0]!.attempts).toHaveLength(1);
+    expect(pages[1]!.attempts).toHaveLength(2);
+    expect(stats.retryRounds).toBe(1);
+  });
+
+  it("lever (b): a merged reply that fails the quote gate on one page re-runs that page's prose from the claims that passed", async () => {
+    /* MUTATION THAT KILLS THIS: rejecting the whole page back to
+       selection on any gate issue (mergedCalls 2, writeCalls 0), or
+       carrying the unheld claim into the prose call. */
+    const writer = mergedWriter([{ claims: (pageId) => (pageId === "p1" ? [GOOD_CLAIM, UNHELD_CLAIM] : [GOOD_CLAIM]) }, { claims: [GOOD_CLAIM] }]);
+    const verifier = passingVerifier();
+    const written = await writeNarration(twoPages(), { writer, verifier, evidence: fixtureGatherer() }, voice, ctx);
+    const pages = allWrittenNarration(written);
+
+    expect(writer.mergedCalls).toBe(1);
+    expect(writer.selectCalls).toBe(0);
+    expect(writer.writeCalls).toBe(1);
+    const prose = writer.requests.find((r) => r.kind === "prose")!;
+    expect(prose.pageIds).toEqual(["p1"]);
+    expect(prose.claims![0]).toEqual([GOOD_CLAIM]);
+    expect(prose.retryNotes[0]).toMatch(/not a verbatim span of any document provided/);
+    expect(verifier.calls).toBe(2);
+    /* The rejected round is on the record, the kept page is verified, and
+       the unheld quote never became a source. */
+    expect(pages[1]!.attempts).toHaveLength(2);
+    expect(pages[1]!.attempts![0]!.rejected).toBe(true);
+    expect(pages[1]!.verified).toBe(true);
+    expect(pages[1]!.sources.map((s) => s.quote)).toEqual([GOOD_CLAIM.quote]);
+    expect(pages[0]!.attempts).toHaveLength(1);
+  });
+
+  it("a content page whose EVERY quote fails the gate re-selects — alone, not with the slot", async () => {
+    /* There is nothing to write prose from, so this is the one post-merge
+       rejection that goes back to selection; the page next to it, which
+       passed, is not in that request. */
+    const writer = mergedWriter([{ claims: (pageId) => (pageId === "p1" ? [UNHELD_CLAIM] : [GOOD_CLAIM]) }, { claims: [GOOD_CLAIM] }]);
+    const written = await writeNarration(twoPages(), { writer, verifier: passingVerifier(), evidence: fixtureGatherer() }, voice, ctx);
+
+    expect(writer.mergedCalls).toBe(2);
+    expect(writer.writeCalls).toBe(0);
+    expect(writer.requests[1]!.pageIds).toEqual(["p1"]);
+    expect(allWrittenNarration(written).every((p) => p.verified)).toBe(true);
+  });
+
+  it("the three-attempt cap holds on the merged path, and the page that never verifies is still flagged", async () => {
+    /* MUTATION THAT KILLS THIS: counting rounds instead of per-page
+       attempts (a fourth attempt), or marking the salvage `verified`. */
+    const writer = mergedWriter([{ claims: [GOOD_CLAIM] }]);
+    const verifier = rejectingVerifier();
+    const stats = { retryRounds: 0 };
+    const written = await writeNarration(narrationAct("A claim about the connection."), { writer, verifier, evidence: fixtureGatherer(), stats }, voice, ctx);
+    const page = allWrittenNarration(written)[0]!;
+
+    expect(verifier.calls).toBe(3);
+    expect(writer.mergedCalls).toBe(1);
+    expect(writer.writeCalls).toBe(2);
+    expect(writer.selectCalls).toBe(0);
+    expect(page.verified).toBe(false);
+    expect(page.attempts).toHaveLength(3);
+    expect(page.verifierNotes).toMatch(/simulated rejection/);
+    expect(computeUnverifiedPages(written).count).toBe(1);
+    expect(stats.retryRounds).toBe(2);
+  });
+
+  it("the split path takes lever (a) too: a verifier rejection re-runs prose, never selection", async () => {
+    const writer = scriptedWriter([{ claims: [GOOD_CLAIM] }]);
+    const verifier = rejectOnceVerifier(["p0"]);
+    const written = await writeNarration(narrationAct("A claim about the connection."), { writer, verifier, evidence: fixtureGatherer() }, voice, ctx);
+
+    expect(writer.selectCalls).toBe(1);
+    expect(writer.writeCalls).toBe(2);
+    expect(verifier.calls).toBe(2);
+    expect(allWrittenNarration(written)[0]!.verified).toBe(true);
+  });
+
+  it("lever (c) is NOT built: a purposeRevised page the verifier says missed its purpose is still a rejection", async () => {
+    /* The founder call the card defers. If it were ever taken, this page
+       would pass on attempt one; today it is retried and kept unverified. */
+    const writer = scriptedWriter([{ claims: [GOOD_CLAIM], purposeRevised: true }]);
+    const verifier = rejectingVerifier("purposeAccomplished");
+    const written = await writeNarration(narrationAct("A claim about the connection."), { writer, verifier, evidence: fixtureGatherer() }, voice, ctx);
+    const page = allWrittenNarration(written)[0]!;
+
+    expect(verifier.calls).toBe(3);
+    expect(page.verified).toBe(false);
+    expect(page.purposeRevised).toBe(true);
+    expect(page.purposeAccomplished).toBe(false);
+  });
+
+  it("the stub writer offers the merged call, so a dry run pays the one request production does", async () => {
+    const writer = new StubNarrationWriterBuilder();
+    let merged = 0;
+    let prose = 0;
+    const realMerged = writer.selectAndWrite.bind(writer);
+    writer.selectAndWrite = async (request, buildCtx) => {
+      merged++;
+      return realMerged(request, buildCtx);
+    };
+    const realProse = writer.writePages.bind(writer);
+    writer.writePages = async (request, buildCtx) => {
+      prose++;
+      return realProse(request, buildCtx);
+    };
+    const written = await writeNarration(fourPages(), { writer, verifier: new StubNarrationVerifierBuilder(), evidence: fixtureGatherer() }, voice, ctx);
+
+    expect(allWrittenNarration(written).every((p) => p.verified && p.attempts?.length === 1)).toBe(true);
+    expect(merged).toBe(1);
+    expect(prose).toBe(0);
+  });
+});
+
 describe("writeNarration — the verifier is a genuinely separate call from the writer", () => {
   it("throws if the same builder instance is passed as both writer and verifier", async () => {
     const shared = new StubNarrationWriterBuilder();
@@ -474,7 +766,7 @@ describe("writeNarration — the verifier is a genuinely separate call from the 
         ctx
       );
       expect(verifier.calls).toBe(3);
-      expect(writer.retryNotes[1]).toMatch(/simulated rejection/);
+      expect(lastRetryNote(writer)).toMatch(/simulated rejection/);
       expect(allWrittenNarration(written)[0]!.verified).toBe(false);
     }
   );
@@ -735,7 +1027,12 @@ describe("writeNarration — generation run 1 (2026-09-09) regressions", () => {
       "photographs, and neither one puts the pile in a place anybody can point to now.";
     const writer = scriptedWriter([{ claims: [GOOD_CLAIM], script }, { claims: [GOOD_CLAIM] }]);
     await writeNarration(narrationAct("Locate the staged load."), { writer, verifier: passingVerifier(), evidence: fixtureGatherer() }, voice, ctx);
-    expect(writer.retryNotes[1]).toMatch(/asserts what the record does or does not contain/);
+    expect(lastRetryNote(writer)).toMatch(/asserts what the record does or does not contain/);
+    /* G-34 lever (a): the rejection was structural, after the quote gate,
+       so the second attempt re-ran prose from the same grounded claim and
+       never re-selected. */
+    expect(writer.selectCalls).toBe(1);
+    expect(writer.writeCalls).toBe(2);
   });
 
   it("F-36/F-37/F-44: a zero-source page that asserts something is rejected in code, and never reaches the verifier", async () => {
@@ -755,7 +1052,11 @@ describe("writeNarration — generation run 1 (2026-09-09) regressions", () => {
     );
     expect(writer.writeCalls).toBe(2);
     expect(verifier.calls).toBe(1);
-    expect(writer.retryNotes[1]).toMatch(/may only ask a question or hand off to the listener/);
+    expect(lastRetryNote(writer)).toMatch(/may only ask a question or hand off to the listener/);
+    /* The page held NO grounded claim, so G-34 does not carry anything
+       into the retry: it re-selects, and the second selection is what
+       gives the page the claim it was missing. */
+    expect(writer.selectCalls).toBe(2);
     expect(allWrittenNarration(written)).toHaveLength(1);
   });
 
@@ -1319,8 +1620,10 @@ describe("F-51 — per-slot checkpoint inside an act", () => {
     const banked: Array<{ act: number; slot: number; title: string }> = [];
     const writer = new StubNarrationWriterBuilder();
     let writeCalls = 0;
-    const realWrite = writer.writePages.bind(writer);
-    writer.writePages = async (request, buildCtx) => {
+    /* The stub takes G-34's merged call on a clean slot, so that is the
+       request a written slot costs. */
+    const realWrite = writer.selectAndWrite.bind(writer);
+    writer.selectAndWrite = async (request, buildCtx) => {
       writeCalls++;
       return realWrite(request, buildCtx);
     };
@@ -1357,9 +1660,9 @@ describe("F-51 — per-slot checkpoint inside an act", () => {
   it("banks a finished slot even when a sibling slot throws", async () => {
     const banked: string[] = [];
     const writer = new StubNarrationWriterBuilder();
-    const realWrite = writer.writePages.bind(writer);
+    const realWrite = writer.selectAndWrite.bind(writer);
     let firstSlotTitle: string | null = null;
-    writer.writePages = async (request, buildCtx) => {
+    writer.selectAndWrite = async (request, buildCtx) => {
       if (firstSlotTitle === null) firstSlotTitle = request.slotTitle;
       if (request.slotTitle !== firstSlotTitle) {
         /* Slow enough that the healthy slot certainly finished and banked

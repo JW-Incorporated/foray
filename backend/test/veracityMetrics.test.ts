@@ -388,6 +388,9 @@ describe("evaluateVeracityGate", () => {
     tapeRelevanceAnchors: [{ itemId: "i1", claim: "c1", onTopic: true, families: ["food"] }],
     firstAttemptPassRate: 0.8,
     callsPerBeat: 1.4,
+    narrationCallsPerBeat: 1.1,
+    narrationCalls: { writer: 4, verifier: 3 },
+    retryRounds: 1,
     pagesDropped: 0,
     unverifiedPages: 0,
     unverifiedPageDetails: [],
@@ -526,6 +529,9 @@ describe("the publish gate refuses an unverified page (F-51)", () => {
     tapeRelevanceAnchors: [{ itemId: "i1", claim: "c1", onTopic: true, families: ["food"] }],
     firstAttemptPassRate: 0.8,
     callsPerBeat: 1.4,
+    narrationCallsPerBeat: 1.1,
+    narrationCalls: { writer: 4, verifier: 3 },
+    retryRounds: 1,
     pagesDropped: 0,
     unverifiedPages: 0,
     unverifiedPageDetails: [],
@@ -581,5 +587,72 @@ describe("buildVeracityMetrics surfaces the run-2 fields", () => {
     expect(veracity.unverifiedPageDetails).toHaveLength(1);
     expect(veracity.purposeRevisedPages).toBe(1);
     expect(evaluateVeracityGate(veracity).ok).toBe(false);
+  });
+});
+
+describe("G-34 — the retry tax is measurable from meta.veracity", () => {
+  /* Two slots: one tape beat with NO connective page (it follows same-item
+     tape, so `decideConnectiveNarration` returns null) and three beats
+     that get pages. Four beats, three attempted pages — the two
+     denominators differ, which is the point of having both rates. */
+  const tape = tapePointer({ segmentId: "bbqc-moss-school#1881", itemId: "bbqc-moss-school" });
+  const sourced: SourcedAct[] = [
+    {
+      title: "Act 1",
+      slots: [
+        {
+          title: "Slot 1",
+          beats: [
+            { sourcing: "tape", claim: "opens", exploration: false, tape },
+            { sourcing: "tape", claim: "continues the same tape", exploration: false, tape },
+            { sourcing: "narration", claim: "n1", exploration: false, narration: { mode: "Patch", reason: "t" } },
+            { sourcing: "narration", claim: "n2", exploration: false, narration: { mode: "Carry", reason: "t" } }
+          ]
+        }
+      ]
+    }
+  ];
+
+  it("narrationCallsPerBeat divides by EVERY beat, callsPerBeat by attempted pages, and both come from the same counts", () => {
+    /* MUTATION THAT KILLS THIS: computing narrationCallsPerBeat over
+       attempted pages (it would read 1.0, not 0.75), or dropping the
+       raw counts from the report. */
+    const veracity = buildVeracityMetrics({
+      sourcedActs: sourced,
+      writtenActs: [],
+      topic: "food/grilling-bbq",
+      writerCalls: 2,
+      verifierCalls: 1,
+      retryRounds: 1,
+      pipelineTokens: 0,
+      stageTimings: []
+    });
+    expect(veracity.narrationCallsPerBeat).toBe(3 / 4);
+    expect(veracity.callsPerBeat).toBe(3 / 3);
+    expect(veracity.narrationCalls).toEqual({ writer: 2, verifier: 1 });
+    expect(veracity.retryRounds).toBe(1);
+  });
+
+  it("reports retryRounds as null, never as zero, when the caller did not count them", () => {
+    /* An older caller that never threaded `NarrationWriteStats` through
+       has not measured anything; a zero would claim a clean run. */
+    const veracity = buildVeracityMetrics({
+      sourcedActs: sourced,
+      writtenActs: [],
+      topic: "food/grilling-bbq",
+      writerCalls: 2,
+      verifierCalls: 1,
+      pipelineTokens: 0,
+      stageTimings: []
+    });
+    expect(veracity.retryRounds).toBe(null);
+    /* And a counted zero is a zero. */
+    expect(buildVeracityMetrics({ sourcedActs: sourced, writtenActs: [], topic: "t", writerCalls: 1, verifierCalls: 1, retryRounds: 0, pipelineTokens: 0, stageTimings: [] }).retryRounds).toBe(0);
+  });
+
+  it("narrationCallsPerBeat is null with no beats at all, like callsPerBeat", () => {
+    const veracity = buildVeracityMetrics({ sourcedActs: [], writtenActs: [], topic: "t", writerCalls: 0, verifierCalls: 0, pipelineTokens: 0, stageTimings: [] });
+    expect(veracity.narrationCallsPerBeat).toBe(null);
+    expect(veracity.callsPerBeat).toBe(null);
   });
 });

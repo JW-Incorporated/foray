@@ -451,6 +451,32 @@ export function computeCallsPerBeat(sourcedActs: SourcedAct[], writerCalls: numb
   return beats > 0 ? (writerCalls + verifierCalls) / beats : null;
 }
 
+/** Every beat in the sourced acts, tape and narration alike — the
+ * denominator the fix plan's "≤ 1.5 calls per BEAT" target and the
+ * roadmap's §1.2 row ("1.0 per beat / 1.06 per page") are stated over.
+ * `countAttemptedPages` above is the per-PAGE denominator; a tape beat
+ * with no connective page is a beat but not a page. */
+export function countBeats(sourcedActs: SourcedAct[]): number {
+  let n = 0;
+  for (const act of sourcedActs) for (const slot of act.slots) n += slot.beats.length;
+  return n;
+}
+
+/**
+ * G-34: the same request count over every beat rather than every
+ * attempted page. Both numbers are kept because they answer different
+ * questions — `callsPerBeat` (per page, despite its name, kept for
+ * comparability with run 1's 4.2) says what a page costs; this says what
+ * the fix plan's target measures. The saving G-34 is after shows in both:
+ * a slot that passes first time now costs one writer call and one verify
+ * call instead of two and one, and a rejected page costs a prose call and
+ * a verify call instead of a fresh select/prose/verify for the whole slot.
+ */
+export function computeNarrationCallsPerBeat(sourcedActs: SourcedAct[], writerCalls: number, verifierCalls: number): number | null {
+  const beats = countBeats(sourcedActs);
+  return beats > 0 ? (writerCalls + verifierCalls) / beats : null;
+}
+
 /* ------------------------------------------------------------------ */
 /* unverifiedPages (F-51)                                               */
 /* ------------------------------------------------------------------ */
@@ -523,7 +549,17 @@ export interface VeracityMetrics {
   tapeRelevance: number | null;
   tapeRelevanceAnchors: TapeAnchorNote[];
   firstAttemptPassRate: number | null;
+  /** Writer + verifier requests per ATTEMPTED PAGE (the name predates the
+   * distinction; kept for comparability with run 1's 4.2). */
   callsPerBeat: number | null;
+  /** G-34: the same requests per BEAT — the fix plan's ≤ 1.5 target. */
+  narrationCallsPerBeat: number | null;
+  /** G-34: the raw request counts the two rates above are made from. */
+  narrationCalls: { writer: number; verifier: number };
+  /** G-34: how many times a slot went back to the writer after its first
+   * round, summed over the run — the number the retry tax is paid in.
+   * `null` when the caller did not count it. */
+  retryRounds: number | null;
   pagesDropped: number;
   /** F-51: pages kept with `verified: false`. Any is a publish stop. */
   unverifiedPages: number;
@@ -555,6 +591,9 @@ export interface BuildVeracityMetricsInput {
   topic: string;
   writerCalls: number;
   verifierCalls: number;
+  /** G-34: `writeNarration`'s own count of retry rounds. Optional for
+   * older callers; reported as `null` rather than guessed at zero. */
+  retryRounds?: number;
   pipelineTokens: number;
   stageTimings: StageTiming[];
   /** G-35: carried through verbatim when the caller ran a prefetch. */
@@ -579,6 +618,9 @@ export function buildVeracityMetrics(input: BuildVeracityMetricsInput): Veracity
     tapeRelevanceAnchors: tape.anchors,
     firstAttemptPassRate: computeFirstAttemptPassRate(input.writtenActs),
     callsPerBeat: computeCallsPerBeat(input.sourcedActs, input.writerCalls, input.verifierCalls),
+    narrationCallsPerBeat: computeNarrationCallsPerBeat(input.sourcedActs, input.writerCalls, input.verifierCalls),
+    narrationCalls: { writer: input.writerCalls, verifier: input.verifierCalls },
+    retryRounds: typeof input.retryRounds === "number" ? input.retryRounds : null,
     pagesDropped: computePagesDropped(input.sourcedActs, input.writtenActs),
     unverifiedPages: unverified.count,
     unverifiedPageDetails: unverified.pages,

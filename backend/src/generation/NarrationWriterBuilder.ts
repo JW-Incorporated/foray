@@ -29,6 +29,24 @@ import type { EvidencePack } from "./gatherEvidence";
  * enforced at sourcing time, over the whole Foray, before any of this
  * runs.
  *
+ * ONE CALL WHERE THE DESIGN ALLOWS (G-34). `selectAndWrite` is the two
+ * calls above folded into one reply: per page, the claims WITH their
+ * quotes AND the script written from them. The mechanical quote gate is
+ * unchanged and still runs in code — after the combined reply instead of
+ * between two replies — so a quote that is not a span of the named
+ * document still never becomes a source. What changes is only the cost
+ * of the common case: a slot whose quotes all resolve pays one writer
+ * call instead of two. A page whose quotes do NOT all resolve has spent
+ * its script (the card accepts that: "a rejected quote now wastes a
+ * script"), keeps the claims that did pass, and re-runs prose alone —
+ * ONE page, not the slot — through `writePages`, which is why that
+ * method stays.
+ *
+ * Optional, because the orchestrator falls back to `selectClaims` +
+ * `writePages` when a builder does not offer it. That is what keeps every
+ * scripted test writer and every older provider working, and keeps the
+ * two-call path itself exercised.
+ *
  * NEVER the same class/instance as a `NarrationVerifierBuilder` — §5's
  * topology table and this stage's own task brief both require the
  * verification pass to be "a DIFFERENT agent than the writer".
@@ -39,6 +57,8 @@ export interface NarrationWriterBuilder {
 
   selectClaims(request: ClaimSelectionRequest, ctx: NarrationBuildContext): Promise<ClaimSelectionResult>;
   writePages(request: ProseWriteRequest, ctx: NarrationBuildContext): Promise<ProseWriteResult>;
+  /** G-34: selection and prose in one reply. See the class comment. */
+  selectAndWrite?(request: SelectAndWriteRequest, ctx: NarrationBuildContext): Promise<SelectAndWriteResult>;
 }
 
 /** One page's brief, shared by both calls and by the verifier. */
@@ -113,6 +133,22 @@ export interface WrittenPage {
 
 export interface ProseWriteResult {
   pages: WrittenPage[];
+}
+
+/** The same brief as a selection call: the pages, their purposes and
+ * the documents each may quote. The reply carries the scripts too. */
+export type SelectAndWriteRequest = ClaimSelectionRequest;
+
+/** One page of a combined reply: what it selected AND what it wrote.
+ * `usedClaims` indexes `claims` exactly as `WrittenPage.usedClaims`
+ * indexes a `ProsePageBrief`'s — and every claim is still put through
+ * the mechanical gate before any index is honoured. */
+export interface SelectedAndWrittenPage extends WrittenPage {
+  claims: SelectedClaim[];
+}
+
+export interface SelectAndWriteResult {
+  pages: SelectedAndWrittenPage[];
 }
 
 export interface NarrationBuildContext {
