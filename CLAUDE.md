@@ -404,26 +404,16 @@ hooks/tags and opens a PR. Registry: `docs/agents/runners.md`. Topology:
 ## HUMAN-ACTIONS.md — the standing record for anything Joey must do
 
 **Every action requiring the owner goes in `HUMAN-ACTIONS.md`, always, the
-moment you identify it.** Anything needing his identity, login, payment method,
-approval, a click in a UI you can't reach, or anything the guard denies as
-human-only. One file, that exact name, at the project root. Never a variant.
+moment you identify it, and pushed before it's mentioned in chat.** Anything
+needing his identity, login, payment method, approval, a click in a UI you
+can't reach, or anything the guard denies as human-only. One file, that
+exact name, at the project root. Never a variant.
 
-Entries carry: a `[BLOCKING]`/`[UPGRADE]` tag and rough time cost, why it
-matters, light numbered steps, **every exact value written out literally** (URLs,
-secret names, file paths, menu labels — paraphrasing is what actually costs him
-time), and a concrete "Worked if:" signal.
-
-Every entry carries a `**Status:** OPEN` line. Joey changes that one word to
-`DONE`, `SKIP` (chose not to — add a few words why), or `BLOCKED` (tried,
-something stopped him). He never cuts, pastes, or moves a block. Any session
-that opens `HUMAN-ACTIONS.md` reconciles it: move every non-`OPEN` item into
-`DONE`, stamp the date, keep its number. Item numbers are stable IDs — never
-reused, never renumbered — so "#4" refers to the same thing forever, including
-after it is filed.
-
-Move finished items to a `DONE` section with the date; never delete them,
-because the history is how you stop re-asking. `SKIP` is final: do not re-raise
-a skipped item, and do not re-argue the recommendation behind it.
+Full entry conventions (shape, caps, numbering, `KIND` vocabulary, closing)
+live in the canonical `human-actions` skill (format v2) — invoke it whenever
+you create or open the file. In short: presence in the file means open,
+there is no `Status:` field, and closing happens only by a Discord reply or
+`ha close` when Joey says so in chat — never your own judgment.
 
 ## Ownership and names
 
