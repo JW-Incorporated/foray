@@ -436,7 +436,11 @@ Capacitor injects its native bridge (`native-bridge.js`, the app config, and eve
 **Why:** Each routine commits to **`origin/reclassify-<N>`** and
 
 **Steps:**
-1. TODO — steps needed
+1. Read docs/agents/runners.md's classify-shard section: the six foray-classify-shard0-5 routines push to origin/reclassify-<N> and never open a PR.
+2. Decide option A: fix docs/agents/runner-prompts/classify-batch.md §8 so each routine opens a PR after committing (the prompt already says to; routines don't follow it).
+3. Or decide option B: keep no-PR branches and schedule tools/classify/reconcile-shards.mjs to run weekly and land data on main (mirror S-04b's pointer-PR pattern).
+4. Update docs/agents/runners.md and the chosen automation once ruled, so the fleet's behavior matches what is documented.
+5. Worked-if is already set: data/breadth-classification.json on main gains classify-agent-tier1 rows within 48 hours with nobody running a command locally.
 
 **Worked if:** `data/breadth-classification.json` on `main` gains
 `classify-agent-tier1` rows within 48 hours without anyone running a command
