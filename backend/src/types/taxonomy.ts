@@ -5,6 +5,11 @@ export const TaxonomyNodeSchema = z.object({
   id: z.string(),
   parent: z.string().nullable(),
   label: z.string(),
+  // Distinctive vocabulary for the topic resolver, added with F-59 (docs/curation/
+  // generation-run-2026-09-09.md). OPTIONAL and rare: a node needs one only when its
+  // label is too generic to distinguish it — `engineering/energy-fusion` ("Fusion &
+  // energy systems") was winning AI/ML prompts on the word "systems" alone.
+  terms: z.array(z.string()).optional(),
   // null = no Apple Podcasts category maps (the industry taxonomy has no
   // Engineering, no aviation/food/etc. subtypes — that gap is why the custom
   // tree exists; see docs/research/curation-practices.md)

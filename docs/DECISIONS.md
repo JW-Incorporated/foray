@@ -2,6 +2,56 @@
 
 Per-topic ADRs live in `docs/adr/`. This file is the chronological record.
 
+## 2026-09-10 (U-11 records closed: #125 resolved, #126 deferred, D3 recorded; deck audit fixes)
+
+- **Issue #125 (C6) resolved: anonymous-first stands.** Wyatt's D2
+  (docs/ui-transition-plan.md, 2026-09-06): no login wall; ADR-0005's
+  anonymous-first identity model is unchanged by the redesign. The mockup's
+  login screen is not built. Welcome + Preferences shipped as a *skippable*
+  first-run sheet instead (U-09, PR #503), gated on the existing
+  `cp_intro_dismissed`; account linking and the "Continue with Apple/Google"
+  connectors are out of scope (C5). The C6 gate is closed on that basis and
+  the issue left open only as a pointer to this entry and the deck.
+- **Issue #126 (C10) deferred: social sharing stays out.** D10: the share
+  sheet and everything social ("Shared with you", "Wyatt sent you a Foray")
+  are not built and not stubbed. The legal-review trigger the memo flagged
+  remains the gate for re-opening it; nothing shipped in the U-deck touches
+  it. The issue stays open with a pointer here.
+- **D3 recorded: the four-tab bar reverses #467's menu-page Home,
+  deliberately.** #467 (2026-09-03) made Home a four-card menu page with the
+  drawer as primary nav. U-02 (PR #504) replaced that with the mockup's
+  Home / Search / Create / Library tab bar as primary nav, tab state in the
+  hash router, and the mini-player docked above the bar; the drawer and the
+  menu page stay reachable from a Settings entry. Composes with #488's real
+  back-stack: switching tabs is not a back step. Since the U-11 cutover
+  (2026-09-06, above) this is the only Home; the menu-page Home is preserved
+  under `archive/legacy-ui-2026-09/`.
+- **Deck audit closures (2026-09-10, adversarially verified; PR #603).**
+  An audit of U-01..U-13 against their measured acceptance found four gaps,
+  all fixed in one auto-merge-lane PR: (U-06) `test/create-page.test.js`'s
+  harness matched `disabled` inside `aria-disabled="true"`, so the card's own
+  named mutation (re-enable the Foray option) stayed green — now an attribute
+  parse, mutation proven red; (U-09) picking chips in Preferences did not
+  change the first Home render because `state.cardSlots` is dealt once per
+  session by `buildCards()` before the sheet opens — "Start listening" now
+  re-deals and repaints when picks were written, undoing the pre-pick deal's
+  `cp_seen`/`cp_recent_branches` memory so the picked subjects are not
+  penalised as "already shown"; (U-03) a new `test/home-v2-real-data.test.js`
+  renders Home v2 over the committed `data/*.json` at insets 0 and 59 px —
+  the Episodes-for-you Stretch floor holds on 20 real renders, while the
+  Forays-for-you floor **cannot** be met with today's one published Foray, so
+  the suite asserts `pickWithStretchFloor()`'s documented fallback (no fake
+  Stretch label) and pins the fixture fact as a tripwire, rather than faking
+  data; (U-12) `test/playwright/playwright.config.mjs` gains a 390×844
+  `mobile-chromium` project so `drawer-and-close.spec.js` runs on both
+  viewports (still advisory in CI).
+- **Records:** `docs/ux/README.md`'s "what shipped vs the mockup" table now
+  covers U-01..U-10; the deck carries DONE markers per card; C-issues
+  #123/#127/#128/#132/#135 closed with a pointer, #125/#126 (and C11) left
+  open with a pointer, per U-11's instruction. Gate G1 (Joey reads D1/D3
+  before U-03 ships) is recorded as overtaken: Joey directed the U-11 cutover
+  with U-03 already on main.
+
 ## 2026-09-06 (U-11: cutover NOW, founder override — TestFlight-week wait skipped)
 
 - **Founder override, explicit.** Joey directed (Discord, 2026-09-06,

@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import { env } from "../config/env";
+import { costFor, modelFor } from "../config/models";
 import { defaultBudgetGuard, type BudgetGuard } from "../cost/budgetGuard";
 import { parseWithRetry } from "../generation/parseWithRetry";
 import type {
@@ -14,7 +15,7 @@ import type {
 
 /**
  * Real Tier-1 enrichment via the Anthropic API (02_ARCHITECTURE.md cheap-first
- * cascade). Model choice: claude-haiku-4-5 — the cheapest current model
+ * cascade). Model choice: the `haiku` tier — the cheapest current model
  * ($1.00/$5.00 per MTok), appropriate for metadata-only classification and
  * short why-line generation per the cost-discipline constraint
  * (01_PROMPT.md #8). Tier-2 (transcript-based) enrichment would warrant a
@@ -27,10 +28,15 @@ import type {
  * tests rather than relying on env-based selection.
  */
 
-const MODEL = "claude-haiku-4-5";
-// Pricing as of the model catalog consulted for this build (USD per token).
-const USD_PER_INPUT_TOKEN = 1.0 / 1_000_000;
-const USD_PER_OUTPUT_TOKEN = 5.0 / 1_000_000;
+/* Model id and per-token rates come from `src/config/models.ts`, the one
+ * place a Claude model id is written down (F-03). This file is not part of
+ * the §4 generation pipeline F-03 was raised against, but it was the seventh
+ * hardcoded copy of the same id — leaving it behind would have made "one
+ * place" false on the day it was written. Same tier, same rates, so routing
+ * it through the map changes nothing about what this class does. */
+const MODEL = modelFor("haiku");
+const USD_PER_INPUT_TOKEN = costFor("haiku").usdPerInputToken;
+const USD_PER_OUTPUT_TOKEN = costFor("haiku").usdPerOutputToken;
 
 const ClassificationSchema = z.object({
   topics: z.array(z.string()).min(1).max(4),
@@ -106,10 +112,40 @@ export class AnthropicEnricher implements Enricher {
     const textBlock = response.content.find((b: Anthropic.ContentBlock): b is Anthropic.TextBlock => b.type === "text");
     if (!textBlock) throw new Error("Anthropic classification response had no text block");
 
+    const reask = async (): Promise<string> => {
+      const reaskLine = "Your previous reply was not valid JSON; reply with the JSON object only.";
+      // The re-ask is its own real API call — it re-sends the whole prompt
+      // plus the bad reply, so it is its own metered spend, gated the same
+      // way as the original call (see parseWithRetry.ts's BUDGET note).
+      const reaskEstimatedInputTokens = roughTokenEstimate(prompt + textBlock.text + reaskLine);
+      await this.budgetGuard.checkAndRecord({
+        userId: ctx.userId,
+        operation: "tier1_classify",
+        provider: this.providerName,
+        model: MODEL,
+        estimatedUsd: reaskEstimatedInputTokens * USD_PER_INPUT_TOKEN + 300 * USD_PER_OUTPUT_TOKEN,
+        episodeId: input.episodeId,
+        sessionId: ctx.sessionId
+      });
+
+      const retryResponse = await this.client.messages.create({
+        model: MODEL,
+        max_tokens: 512,
+        messages: [
+          { role: "user", content: prompt },
+          { role: "assistant", content: textBlock.text },
+          { role: "user", content: reaskLine }
+        ]
+      });
+      const retryTextBlock = retryResponse.content.find((b: Anthropic.ContentBlock): b is Anthropic.TextBlock => b.type === "text");
+      if (!retryTextBlock) throw new Error("Anthropic classification re-ask response had no text block");
+      return retryTextBlock.text;
+    };
+
     // corner case 32: schema-validated JSON, retry once on failure, then throw
     // (caller is responsible for dead-lettering — this module only guarantees
     // "never return malformed data").
-    const parsed = parseWithRetry(ClassificationSchema, textBlock.text, "Anthropic classification output");
+    const parsed = await parseWithRetry(ClassificationSchema, textBlock.text, "Anthropic classification output", reask);
     return parsed;
   }
 
@@ -135,7 +171,37 @@ export class AnthropicEnricher implements Enricher {
     const textBlock = response.content.find((b: Anthropic.ContentBlock): b is Anthropic.TextBlock => b.type === "text");
     if (!textBlock) throw new Error("Anthropic why-line response had no text block");
 
-    return parseWithRetry(WhyLineSchema, textBlock.text, "Anthropic why-line output");
+    const reask = async (): Promise<string> => {
+      const reaskLine = "Your previous reply was not valid JSON; reply with the JSON object only.";
+      // The re-ask is its own real API call — it re-sends the whole prompt
+      // plus the bad reply, so it is its own metered spend, gated the same
+      // way as the original call (see parseWithRetry.ts's BUDGET note).
+      const reaskEstimatedInputTokens = roughTokenEstimate(prompt + textBlock.text + reaskLine);
+      await this.budgetGuard.checkAndRecord({
+        userId: ctx.userId,
+        operation: "why_line",
+        provider: this.providerName,
+        model: MODEL,
+        estimatedUsd: reaskEstimatedInputTokens * USD_PER_INPUT_TOKEN + 60 * USD_PER_OUTPUT_TOKEN,
+        episodeId: input.episodeId,
+        sessionId: ctx.sessionId
+      });
+
+      const retryResponse = await this.client.messages.create({
+        model: MODEL,
+        max_tokens: 128,
+        messages: [
+          { role: "user", content: prompt },
+          { role: "assistant", content: textBlock.text },
+          { role: "user", content: reaskLine }
+        ]
+      });
+      const retryTextBlock = retryResponse.content.find((b: Anthropic.ContentBlock): b is Anthropic.TextBlock => b.type === "text");
+      if (!retryTextBlock) throw new Error("Anthropic why-line re-ask response had no text block");
+      return retryTextBlock.text;
+    };
+
+    return await parseWithRetry(WhyLineSchema, textBlock.text, "Anthropic why-line output", reask);
   }
 }
 

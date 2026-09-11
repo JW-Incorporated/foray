@@ -1,12 +1,14 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import { env } from "../config/env";
+import { costFor, modelFor } from "../config/models";
 import { defaultBudgetGuard, type BudgetGuard } from "../cost/budgetGuard";
 import { parseWithRetry } from "./parseWithRetry";
 import type { IntentUnderstanding } from "../types/generation";
 import type { ResearchShape } from "../types/research";
-import { DURATION_SHAPE_BUDGETS, type DurationTier, type Spine } from "../types/spine";
+import { DURATION_SHAPE_BUDGETS, SPINE_MIN_SEEDED_BEATS_PER_ACT, type DurationTier, type Spine } from "../types/spine";
 import type { SpineBuildContext, SpineBuilder } from "./SpineBuilder";
+import { recordUsage } from "./usageTracking";
 
 /**
  * Real §4.3 spine construction via the Anthropic API, mirroring
@@ -22,12 +24,23 @@ import type { SpineBuildContext, SpineBuilder } from "./SpineBuilder";
  * except explicit, human-invoked production code paths.
  */
 
-const MODEL = "claude-opus-4-1";
-const USD_PER_INPUT_TOKEN = 15.0 / 1_000_000;
-const USD_PER_OUTPUT_TOKEN = 75.0 / 1_000_000;
+/* Model id and per-token rates come from `src/config/models.ts`, the one
+ * place a Claude model id is written down (F-03). Which TIER this stage
+ * needs stays this stage's decision; which model serves that tier does not.
+ * An id and its price are read from the same row, so they cannot drift
+ * apart the way seven hand-copied pairs did. */
+const MODEL = modelFor("opus");
+const USD_PER_INPUT_TOKEN = costFor("opus").usdPerInputToken;
+const USD_PER_OUTPUT_TOKEN = costFor("opus").usdPerOutputToken;
 const MAX_OUTPUT_TOKENS = 8000;
 
-const BeatSchema = z.object({ claim: z.string(), exploration: z.boolean() });
+/* `seed` is optional and passed through: WS-L asks for at least
+   `SPINE_MIN_SEEDED_BEATS_PER_ACT` beats per act written from a quoted
+   transcript window, and the seed is how the beat says which one. A missing or
+   malformed seed must not cost the whole spine a re-ask — `spineStructure.ts`
+   is what enforces the floor, with a message that says what to fix. */
+const BeatSeedSchema = z.object({ episodeId: z.string(), startSec: z.number(), endSec: z.number() });
+const BeatSchema = z.object({ claim: z.string(), exploration: z.boolean(), seed: BeatSeedSchema.optional() });
 const SlotSchema = z.object({ title: z.string(), beats: z.array(BeatSchema) });
 const ActSchema = z.object({
   title: z.string(),
@@ -87,10 +100,40 @@ export class AnthropicSpineBuilder implements SpineBuilder {
       messages: [{ role: "user", content: promptText }]
     });
 
+    recordUsage(response.usage);
     const textBlock = response.content.find((b: Anthropic.ContentBlock): b is Anthropic.TextBlock => b.type === "text");
     if (!textBlock) throw new Error("Anthropic spine response had no text block");
 
-    const raw = parseWithRetry(RawSpineSchema, textBlock.text, "Anthropic spine output");
+    const reask = async (): Promise<string> => {
+      const reaskLine = "Your previous reply was not valid JSON; reply with the JSON object only.";
+      // The re-ask is its own real API call — it re-sends the whole prompt
+      // plus the bad reply, so it is its own metered spend, gated the same
+      // way as the original call (see parseWithRetry.ts's BUDGET note).
+      const reaskEstimatedInputTokens = roughTokenEstimate(promptText + textBlock.text + reaskLine);
+      await this.budgetGuard.checkAndRecord({
+        userId: ctx.userId,
+        operation: "spine_build",
+        provider: this.providerName,
+        model: MODEL,
+        estimatedUsd: reaskEstimatedInputTokens * USD_PER_INPUT_TOKEN + MAX_OUTPUT_TOKENS * USD_PER_OUTPUT_TOKEN,
+        sessionId: ctx.sessionId
+      });
+
+      const retryResponse = await this.client.messages.create({
+        model: MODEL,
+        max_tokens: MAX_OUTPUT_TOKENS,
+        messages: [
+          { role: "user", content: promptText },
+          { role: "assistant", content: textBlock.text },
+          { role: "user", content: reaskLine }
+        ]
+      });
+      const retryTextBlock = retryResponse.content.find((b: Anthropic.ContentBlock): b is Anthropic.TextBlock => b.type === "text");
+      if (!retryTextBlock) throw new Error("Anthropic spine re-ask response had no text block");
+      return retryTextBlock.text;
+    };
+
+    const raw = await parseWithRetry(RawSpineSchema, textBlock.text, "Anthropic spine output", reask);
     return {
       subject: intent.subject,
       angle: intent.angle,
@@ -102,6 +145,30 @@ export class AnthropicSpineBuilder implements SpineBuilder {
   }
 }
 
+
+/**
+ * WHAT THE TAPE SAYS, UNDER THE SUBTOPIC IT SAYS IT ABOUT (WS-L; finding F-63).
+ *
+ * This is the change F-63 asks for, in the one place it can be made: run 2's
+ * spine prompt said "Ai (semantic-concept, tape: strong, 761 items)" and not one
+ * word of what those 761 items contain, so Opus wrote 35 beats from its own
+ * knowledge of production machine learning and the archive was asked, four
+ * stages later, to illustrate claims about ImageNet and feature stores that
+ * nobody in it has ever uttered. The windows below are the archive's own
+ * sentences, with the episode and the seconds they were spoken at.
+ */
+function tapeWindowLines(researchShape: ResearchShape): string[] {
+  const lines: string[] = [];
+  for (const subtopic of researchShape.subtopics) {
+    if (subtopic.tapeWindows.length === 0) continue;
+    lines.push(`  ${subtopic.label} — what the tape says:`);
+    for (const w of subtopic.tapeWindows) {
+      lines.push(`    [${w.episodeId} ${Math.round(w.startSec)}-${Math.round(w.endSec)}s] ${w.showTitle} — ${w.episodeTitle}`);
+      lines.push(`      "${w.text}"`);
+    }
+  }
+  return lines;
+}
 
 function buildSpinePrompt(intent: IntentUnderstanding, researchShape: ResearchShape, duration: DurationTier): string {
   const budget = DURATION_SHAPE_BUDGETS[duration];
@@ -121,6 +188,35 @@ function buildSpinePrompt(intent: IntentUnderstanding, researchShape: ResearchSh
     )
     .join("\n");
 
+  const windowLines = tapeWindowLines(researchShape);
+  /* ONE RULE, ADDED ONLY WHEN THERE IS TAPE TO OBEY IT WITH. A subject the
+     archive is silent on keeps exactly today's prompt — §4.2's guardrail again:
+     tape is a signal, never a filter. */
+  /* AND WHICH EPISODES THE SEEDS IN ONE SLOT MAY COME FROM (F-70). A Foray may
+     not draw more than a quarter of its segments from one episode (M4) and may
+     not play one episode's tape backwards (M3), and run 2 attempt 4b broke both
+     at once: two seeded beats in one slot named the SAME *Practical AI*
+     episode, the later beat quoting the earlier stretch of it. The mechanical
+     guarantee is `sourceBeats.ts`'s ledger, which now refuses the second window
+     in either case — this paragraph exists so the spine stops asking for tape
+     that will be refused, and spreads its seeds instead. Guidance, not a gate:
+     a subject whose tape lives in one episode still gets a spine. */
+  const seedRule =
+    windowLines.length === 0
+      ? []
+      : [
+          "",
+          `Every act must carry at least ${SPINE_MIN_SEEDED_BEATS_PER_ACT} beats whose claim states something one of the quoted`,
+          "windows above actually says. Each of those beats carries \"seed\": {\"episodeId\": ..., \"startSec\": ...,",
+          "\"endSec\": ...} copied from the bracketed window it was written from. Beats written from anything else",
+          "omit \"seed\".",
+          "",
+          "Spread the seeds across EPISODES: within one slot, seeded beats must name DIFFERENT episodeIds",
+          "wherever the windows above allow it — no episode can supply more than a quarter of the finished",
+          "Foray's tape. If a slot really must seed two beats from the SAME episode, put them in the order the",
+          "tape says them: the beat seeded from the earlier startSec comes first."
+        ];
+
   return [
     `Build the SPINE for an audio documentary ("Foray") on: "${intent.subject}".`,
     `Angle: ${intent.angle}`,
@@ -129,6 +225,8 @@ function buildSpinePrompt(intent: IntentUnderstanding, researchShape: ResearchSh
     "",
     "Research map (candidate subtopics found so far):",
     subtopicLines,
+    ...windowLines,
+    ...seedRule,
     "",
     `Duration tier: ${duration}. Target exactly, within a small tolerance: ${budget.acts[0]}-${budget.acts[1]} acts, ` +
       `${budget.slots[0]}-${budget.slots[1]} slots total, ${budget.items[0]}-${budget.items[1]} beats total.`,
@@ -149,6 +247,7 @@ function buildSpinePrompt(intent: IntentUnderstanding, researchShape: ResearchSh
     "Respond with ONLY a single JSON object, no markdown fences, no other text, matching exactly:",
     '{"voice": {"style": string, "register": string, "sentenceRhythm": string, "narratorPresence": string}, ' +
       '"acts": [{"title": string, "thesis": string, "startState": string, "endState": string, ' +
-      '"slots": [{"title": string, "beats": [{"claim": string, "exploration": boolean}]}]}]}'
+      '"slots": [{"title": string, "beats": [{"claim": string, "exploration": boolean, ' +
+      '"seed"?: {"episodeId": string, "startSec": number, "endSec": number}}]}]}]}'
   ].join("\n");
 }

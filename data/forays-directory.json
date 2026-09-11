@@ -1,0 +1,19 @@
+{
+  "version": "27d7806095224ec1",
+  "built_at": "2026-09-11T06:30:10.862Z",
+  "files": {
+    "forays": "data/forays.json",
+    "segments": "data/segments.json",
+    "sources": "data/segment-sources.json"
+  },
+  "bytes": {
+    "forays": 53820,
+    "segments": 173534,
+    "sources": 58427
+  },
+  "sha256": {
+    "forays": "dee3a5ca0a3f42ea2c11ebdf0c02c2e02f34f0bfc157740dc5c0989d38e74ead",
+    "segments": "2093d3db262d42c3ccd907971bfd1796c98bc2b040419e12748984634f10fb65",
+    "sources": "551a2558b75b7eadfa250de28da5843f170634404db96cbff6fc5e038119313c"
+  }
+}

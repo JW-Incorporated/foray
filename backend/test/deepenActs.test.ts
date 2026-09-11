@@ -1,5 +1,7 @@
-import { describe, it, expect } from "vitest";
-import { deepenActs, ActDeepeningError, InvalidDeepenedActError } from "../src/generation/deepenActs";
+import { describe, it, expect, vi } from "vitest";
+import * as fs from "fs";
+import * as path from "path";
+import { argumentCapFor, capArgumentBeats, deepenActs, ActDeepeningError, InvalidDeepenedActError } from "../src/generation/deepenActs";
 import { StubDeepenActBuilder } from "../src/generation/StubDeepenActBuilder";
 import { createDeepenActBuilder } from "../src/generation/createDeepenActBuilder";
 import type { DeepenActBuilder, DeepenActContext } from "../src/generation/DeepenActBuilder";
@@ -263,11 +265,502 @@ describe("deepenActs — failure isolation", () => {
   });
 });
 
+describe("StubDeepenActBuilder — the dry-run path tags beats too (WS-C, F-38)", () => {
+  it("emits BOTH kinds so the dry run exercises §4.5's argument branch", async () => {
+    /* The stub is a fixture generator, not a judge — but if it only ever
+       emitted `account`, the branch that skips tape lookup for an argument
+       would never run without an API key, and a regression there would be
+       invisible to every keyless test and to `--dry-run`. */
+    const builder = new StubDeepenActBuilder();
+    const act = makeAct(
+      {
+        slots: [
+          {
+            title: "Mixed slot",
+            beats: [
+              { claim: "The walkway fell into the atrium on a Friday evening.", exploration: false },
+              { claim: "Every link in a failure chain is almost always judged against a local question.", exploration: true }
+            ]
+          }
+        ]
+      },
+      "K"
+    );
+    const spine = makeSpine({ acts: [act] });
+    const deepened = await builder.deepenAct(spine, act, 0, ctx);
+
+    const kinds = deepened.slots[0]!.beats.map((b) => b.kind);
+    expect(kinds).toContain("account");
+    expect(kinds).toContain("argument");
+  });
+
+  it("passes an already-tagged beat's kind through unchanged rather than re-judging it", () => {
+    /* §4.4 refines wording; it must not silently retag a beat a caller already
+       decided about — the tag is what §4.5 keys off. */
+    const builder = new StubDeepenActBuilder();
+    const act = makeAct(
+      { slots: [{ title: "Slot", beats: [{ claim: "The walkway fell into the atrium.", exploration: false, kind: "argument" }] }] },
+      "T"
+    );
+    return builder.deepenAct(makeSpine({ acts: [act] }), act, 0, ctx).then((deepened) => {
+      expect(deepened.slots[0]!.beats[0]!.kind).toBe("argument");
+    });
+  });
+});
+
 describe("createDeepenActBuilder", () => {
   it("returns a StubDeepenActBuilder when ANTHROPIC_API_KEY is absent (repo .env is empty for this build)", () => {
     expect(env.anthropicDryRun).toBe(true);
     const builder = createDeepenActBuilder();
     expect(builder).toBeInstanceOf(StubDeepenActBuilder);
     expect(builder.providerName).toBe("stub");
+  });
+});
+
+describe("deepenActs — the argument cap (F-49)", () => {
+  /**
+   * Run 2's deepen stage tagged 29 of 35 beats `argument`, §4.5 skipped tape
+   * lookup for every one of them, and the Foray shipped as pure narration on
+   * the subject this archive holds the most tape about. The fixture below is
+   * that run's own deepen output, lifted verbatim from its checkpoint file.
+   */
+  const RUN2: DeepenedAct[] = (
+    JSON.parse(fs.readFileSync(path.join(__dirname, "fixtures", "run2-deepen-2026-09-09.json"), "utf8")) as { acts: DeepenedAct[] }
+  ).acts;
+
+  const kindsOf = (acts: DeepenedAct[]): Array<string | undefined> => acts.flatMap((a) => a.slots.flatMap((s) => s.beats.map((b) => b.kind)));
+
+  function slotOf(beats: Array<{ claim: string; exploration: boolean; kind?: "account" | "argument" }>): DeepenedAct {
+    return {
+      title: "Act with one slot",
+      thesis: "It establishes something.",
+      startState: "before",
+      endState: "after",
+      slots: [{ title: "The only slot", beats }],
+      introduction: "intro",
+      exit: "exit"
+    };
+  }
+
+  const argumentBeat = (n: number) => ({ claim: `Every ${n}th failure means the same thing about engineering.`, exploration: false, kind: "argument" as const });
+
+  it("caps a slot's arguments at one third of its beats, rounded up", () => {
+    expect(argumentCapFor(1)).toBe(1);
+    expect(argumentCapFor(2)).toBe(1);
+    expect(argumentCapFor(3)).toBe(1);
+    expect(argumentCapFor(4)).toBe(2);
+    expect(argumentCapFor(5)).toBe(2);
+    expect(argumentCapFor(6)).toBe(2);
+    expect(argumentCapFor(35)).toBe(12);
+  });
+
+  it("re-tags the beats over the cap `account`, keeping the first ones in slot order", () => {
+    const act = slotOf([argumentBeat(1), argumentBeat(2), argumentBeat(3), argumentBeat(4), argumentBeat(5), argumentBeat(6)]);
+    const capped = capArgumentBeats(act);
+    expect(capped.slots[0]!.beats.map((b) => b.kind)).toEqual(["argument", "argument", "account", "account", "account", "account"]);
+    // Nothing but the tag moves: same beats, same order, same claims.
+    expect(capped.slots[0]!.beats.map((b) => b.claim)).toEqual(act.slots[0]!.beats.map((b) => b.claim));
+  });
+
+  it("records what it did as a WARNING ON THE ACT — a field, not a console line", () => {
+    /* Run 2's only symptom was the absence of tape four stages later. A warning
+       that travels with the act is checkpointed, survives a resume, and can be
+       asserted; a console.warn is none of those. MUTATION THAT KILLS THIS:
+       drop the warning and keep the re-tagging — the fix goes silent again. */
+    const capped = capArgumentBeats(slotOf([argumentBeat(1), argumentBeat(2), argumentBeat(3)]));
+    expect(capped.warnings).toHaveLength(1);
+    expect(capped.warnings![0]).toContain('Slot "The only slot"');
+    expect(capped.warnings![0]).toMatch(/3 of 3 beats came back tagged "argument"; at most 1 may be/);
+    expect(capped.warnings![0]).toMatch(/last 2 were re-tagged "account"/);
+  });
+
+  it("returns an act inside the cap untouched, with no warnings and no copy", () => {
+    const act = slotOf([argumentBeat(1), { claim: "The walkway fell into the atrium.", exploration: false, kind: "account" }]);
+    const capped = capArgumentBeats(act);
+    expect(capped).toBe(act);
+    expect(capped.warnings).toBeUndefined();
+  });
+
+  it("is idempotent — a second pass changes nothing and adds no second warning", () => {
+    const once = capArgumentBeats(slotOf([argumentBeat(1), argumentBeat(2), argumentBeat(3)]));
+    const twice = capArgumentBeats(once);
+    expect(twice).toBe(once);
+    expect(twice.warnings).toHaveLength(1);
+  });
+
+  it("re-tags run 2's own deepen output from 29 arguments to 12", () => {
+    /* The measurement F-49 was written from, replayed against the rule. 35
+       beats over 6 slots of 6/6/6/5/6/6 — every slot's cap is 2, so at most 12
+       beats can skip tape lookup where 29 did. */
+    expect(kindsOf(RUN2).filter((k) => k === "argument")).toHaveLength(29);
+    const capped = RUN2.map((a) => capArgumentBeats(a));
+    const kinds = kindsOf(capped);
+    expect(kinds).toHaveLength(35);
+    expect(kinds.filter((k) => k === "argument")).toHaveLength(12);
+    expect(kinds.filter((k) => k === "argument").length).toBeLessThan(29);
+  });
+
+  it("holds the cap in every single slot of the run-2 fixture, and warns on each one it corrected", () => {
+    const capped = RUN2.map((a) => capArgumentBeats(a));
+    for (const act of capped) {
+      for (const slot of act.slots) {
+        const args = slot.beats.filter((b) => b.kind === "argument").length;
+        expect(args).toBeLessThanOrEqual(argumentCapFor(slot.beats.length));
+      }
+    }
+    // Every one of the six slots was over the cap in run 2.
+    expect(capped.flatMap((a) => a.warnings ?? [])).toHaveLength(6);
+  });
+
+  it("applies the cap to a RESUMED act too, so an old checkpoint is corrected rather than replayed", async () => {
+    /* F-17's resume exists so a run does not re-pay for finished acts. It must
+       not also faithfully reproduce the defect that made the run worth
+       redoing. MUTATION THAT KILLS THIS: `if (resumed) return resumed`. */
+    const spine = makeSpine({ acts: [makeAct({}, "R")] });
+    const stored = slotOf([argumentBeat(1), argumentBeat(2), argumentBeat(3)]);
+    const builder = new StubDeepenActBuilder();
+    const out = await deepenActs(spine, builder, ctx, { resume: () => stored });
+    expect(out[0]!.slots[0]!.beats.map((b) => b.kind)).toEqual(["argument", "account", "account"]);
+    expect(out[0]!.warnings).toHaveLength(1);
+  });
+
+  it("the stub builder obeys the same cap, so the keyless path cannot regress silently", () => {
+    /* Every dry run and every keyless test goes through the stub. If it could
+       hand back a slot of six arguments, a regression in the cap would be
+       invisible without an API key — which is exactly how run 2 happened. */
+    const builder = new StubDeepenActBuilder();
+    const act = makeAct(
+      {
+        slots: [
+          {
+            title: "All generalisations",
+            beats: [1, 2, 3, 4, 5, 6].map((n) => ({ claim: `Every ${n}th deployment always fails in generally the same way.`, exploration: false }))
+          }
+        ]
+      },
+      "S"
+    );
+    return builder.deepenAct(makeSpine({ acts: [act] }), act, 0, ctx).then((deepened) => {
+      const kinds = deepened.slots[0]!.beats.map((b) => b.kind);
+      expect(kinds.filter((k) => k === "argument")).toHaveLength(2);
+      expect(kinds.filter((k) => k === "account")).toHaveLength(4);
+    });
+  });
+});
+
+/* WS-L (F-63): §4.4 sharpens wording; it does not get to forget which stretch
+   of tape the beat was written from. Everything below is about the field
+   surviving the stage, because a lost seed costs exactly what F-63 costs — the
+   tape stops being what the beat came from. */
+describe("deepenActs — WS-L: the beat seed survives deepening (F-63)", () => {
+  const seed = { episodeId: "practical-ai--episode-900", startSec: 100, endSec: 165 };
+
+  /** A spine whose first beat of every act was written from a tape window. */
+  function seededSpine(): Spine {
+    const spine = makeSpine();
+    for (const act of spine.acts) {
+      act.slots[0]!.beats[0] = { ...act.slots[0]!.beats[0]!, seed };
+    }
+    return spine;
+  }
+
+  it("keeps the seed through the stub builder, on the beat it belongs to and no other", async () => {
+    const { guard } = guardAndSink();
+    const deepened = await deepenActs(seededSpine(), new StubDeepenActBuilder(guard), ctx);
+    for (const act of deepened) {
+      expect(act.slots[0]!.beats[0]!.seed).toEqual(seed);
+      expect(act.slots[0]!.beats[1]!.seed).toBeUndefined();
+    }
+  });
+
+  it("puts back a seed a builder dropped, rather than trusting a prompt to ask for it", async () => {
+    /* The realistic failure: a model asked to re-emit a JSON object silently
+       omits a field it was not asked to change. Prompted or not, the stage
+       restores it. */
+    const forgetful: DeepenActBuilder = {
+      providerName: "forgetful",
+      async deepenAct(_spine, act) {
+        return {
+          ...act,
+          slots: act.slots.map((s) => ({
+            title: s.title,
+            beats: s.beats.map((b) => ({ claim: b.claim, exploration: b.exploration, kind: "account" as const }))
+          })),
+          introduction: "Intro.",
+          exit: "Exit."
+        };
+      }
+    };
+    const deepened = await deepenActs(seededSpine(), forgetful, ctx);
+    for (const act of deepened) {
+      expect(act.slots[0]!.beats[0]!.seed).toEqual(seed);
+    }
+  });
+
+  it("does not re-point a beat when the builder changed the slot's beat count", async () => {
+    /* The restore is positional, so it only runs where position still means the
+       same thing. Attaching one beat's tape to another beat's claim is worse
+       than losing the seed: the sourcing search would open an episode chosen
+       for a claim nobody wrote. */
+    const splitter: DeepenActBuilder = {
+      providerName: "splitter",
+      async deepenAct(_spine, act) {
+        return {
+          ...act,
+          slots: act.slots.map((s) => ({
+            title: s.title,
+            beats: [
+              { claim: "Somebody rewrote this beat as two.", exploration: false, kind: "account" as const },
+              ...s.beats.map((b) => ({ claim: b.claim, exploration: b.exploration, kind: "account" as const }))
+            ]
+          })),
+          introduction: "Intro.",
+          exit: "Exit."
+        };
+      }
+    };
+    const deepened = await deepenActs(seededSpine(), splitter, ctx);
+    for (const act of deepened) {
+      for (const slot of act.slots) {
+        for (const beat of slot.beats) expect(beat.seed).toBeUndefined();
+      }
+    }
+  });
+
+  it("restores the seed on a RESUMED act too, so a checkpoint written before seeds existed still sources them", async () => {
+    const { guard } = guardAndSink();
+    const spine = seededSpine();
+    /* An act checkpointed by an older pipeline: same beats, no seed field. */
+    const stale: DeepenedAct = {
+      ...spine.acts[0]!,
+      slots: spine.acts[0]!.slots.map((s) => ({
+        title: s.title,
+        beats: s.beats.map((b) => ({ claim: b.claim, exploration: b.exploration, kind: "account" as const }))
+      })),
+      introduction: "Intro from the checkpoint.",
+      exit: "Exit from the checkpoint."
+    };
+    const deepened = await deepenActs(spine, new StubDeepenActBuilder(guard), ctx, {
+      resume: (index) => (index === 0 ? stale : undefined)
+    });
+    expect(deepened[0]!.slots[0]!.beats[0]!.seed).toEqual(seed);
+  });
+});
+
+describe("deepenActs — F-68: a seeded beat's CLAIM is frozen through deepening", () => {
+  const seed = { episodeId: "practical-ai--episode-900", startSec: 100, endSec: 165 };
+
+  /** The wording §4.3 wrote off the tape at 100-165s — the words somebody on
+   * that recording actually said, which is what §4.5 scores against it. */
+  const seededClaim =
+    "The full-stack data scientist was an aspiration that one person could figure out the modeling, build the prototype, and also deploy it to an actual cloud environment.";
+  /** Run 2 attempt 4b's real deepen output for that beat. Better prose, and
+   * "hiring", "notebook" and "production incident" are words nobody on the tape
+   * says: 0.349 weighted share against a floor of 0.35, and the beat lost its
+   * tape. */
+  const paraphrase =
+    "The full-stack data scientist was a hiring aspiration built around one person, someone who could pick the model, build the prototype notebook, and also stand the thing up on real cloud infrastructure, and that job description mostly did not survive contact with a production incident.";
+  const unseededClaim = "Model registries arrived late to the tooling stack.";
+  const unseededRewrite = "Model registries arrived late to the tooling stack, well after the first production models shipped.";
+
+  /** Every act's first slot: one seeded beat, one unseeded one. */
+  function seededSpine(): Spine {
+    const spine = makeSpine();
+    for (const act of spine.acts) {
+      act.slots[0]!.beats = [
+        { claim: seededClaim, exploration: false, seed },
+        { claim: unseededClaim, exploration: false }
+      ];
+    }
+    return spine;
+  }
+
+  type Counted = DeepenActBuilder & { calls: number };
+
+  /** A builder that does what Sonnet did in run 2 attempt 4b: keeps the seed,
+   * rewrites the claim. `seedOverride` is the other half of the same failure —
+   * a builder that re-points a beat whose wording it no longer owns. */
+  function paraphraser(seedOverride?: { episodeId: string; startSec: number; endSec: number }): Counted {
+    const builder: Counted = {
+      providerName: "paraphraser",
+      calls: 0,
+      async deepenAct(_spine, act) {
+        builder.calls += 1;
+        return {
+          ...act,
+          slots: act.slots.map((slot) => ({
+            title: slot.title,
+            beats: slot.beats.map((beat) => ({
+              claim: beat.seed ? paraphrase : unseededRewrite,
+              exploration: beat.exploration,
+              kind: (beat.seed ? "account" : "argument") as "account" | "argument",
+              ...(beat.seed ? { seed: seedOverride ?? beat.seed } : {})
+            }))
+          })),
+          introduction: "Intro.",
+          exit: "Exit."
+        };
+      }
+    };
+    return builder;
+  }
+
+  /** The restore logs; every case here provokes it, so every case silences it. */
+  function silenceWarnings() {
+    return vi.spyOn(console, "warn").mockImplementation(() => {});
+  }
+
+  it("puts the SPINE's claim back on a seeded beat the builder paraphrased", async () => {
+    /* The whole of F-68. Ran it — red: with `claim: originalBeat!.claim`
+       reverted to `claim: beat.claim` in `carryBeatSeeds`, this fails with the
+       paraphrase, exactly as run 2 attempt 4b's deepen output did. */
+    const warn = silenceWarnings();
+    try {
+      const deepened = await deepenActs(seededSpine(), paraphraser(), ctx);
+      for (const act of deepened) {
+        expect(act.slots[0]!.beats[0]!.claim).toBe(seededClaim);
+        expect(act.slots[0]!.beats[0]!.seed).toEqual(seed);
+      }
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it("leaves an UNSEEDED beat's rewording alone — §4.4 still sharpens everything it owns", async () => {
+    const warn = silenceWarnings();
+    try {
+      const deepened = await deepenActs(seededSpine(), paraphraser(), ctx);
+      for (const act of deepened) {
+        expect(act.slots[0]!.beats[1]!.claim).toBe(unseededRewrite);
+        expect(act.slots[0]!.beats[1]!.seed).toBeUndefined();
+      }
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it("freezes ONLY the claim: the kind, the exploration flag and the act's own prose are the builder's", async () => {
+    const warn = silenceWarnings();
+    try {
+      const deepened = await deepenActs(seededSpine(), paraphraser(), ctx);
+      for (const act of deepened) {
+        expect(act.slots[0]!.beats[0]!.kind).toBe("account");
+        expect(act.slots[0]!.beats[0]!.exploration).toBe(false);
+        expect(act.introduction).toBe("Intro.");
+        expect(act.exit).toBe("Exit.");
+      }
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it("does not cost the act a retry: an ignored freeze is corrected, not re-asked", async () => {
+    /* The restore runs AFTER `validateDeepenedAct`, so a paraphrase is a valid
+       act that gets corrected on the way out — one builder call per act, not
+       two, and no ActDeepeningError. */
+    const warn = silenceWarnings();
+    try {
+      const spine = seededSpine();
+      const builder = paraphraser();
+      await deepenActs(spine, builder, ctx);
+      expect(builder.calls).toBe(spine.acts.length);
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it("logs one line per restored claim, naming the tape the claim was written from", async () => {
+    const warn = silenceWarnings();
+    try {
+      const spine = seededSpine();
+      await deepenActs(spine, paraphraser(), ctx);
+      expect(warn).toHaveBeenCalledTimes(spine.acts.length);
+      const line = String(warn.mock.calls[0]![0]);
+      expect(line).toMatch(/paraphrased/);
+      expect(line).toContain(seed.episodeId);
+      expect(line).toContain(seededClaim);
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it("puts the spine's SEED back too when the builder re-pointed it, so claim and tape stay together", async () => {
+    /* A frozen claim pointed at a stretch of tape §4.3 never read is the same
+       failure wearing the other hat: §4.5 would score §4.3's words against
+       somebody else's episode. */
+    const warn = silenceWarnings();
+    try {
+      const elsewhere = { episodeId: "practical-ai--episode-1", startSec: 0, endSec: 60 };
+      const deepened = await deepenActs(seededSpine(), paraphraser(elsewhere), ctx);
+      for (const act of deepened) {
+        expect(act.slots[0]!.beats[0]!.seed).toEqual(seed);
+        expect(act.slots[0]!.beats[0]!.claim).toBe(seededClaim);
+      }
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it("restores a paraphrased claim on a RESUMED act too, so an old checkpoint is corrected not replayed", async () => {
+    const warn = silenceWarnings();
+    try {
+      const { guard } = guardAndSink();
+      const spine = seededSpine();
+      /* Run 2 attempt 4b's own checkpoint: the seed survived, the claim did not. */
+      const stale: DeepenedAct = {
+        ...spine.acts[0]!,
+        slots: spine.acts[0]!.slots.map((s) => ({
+          title: s.title,
+          beats: s.beats.map((b) => ({
+            claim: b.seed ? paraphrase : b.claim,
+            exploration: b.exploration,
+            kind: "account" as const,
+            ...(b.seed ? { seed: b.seed } : {})
+          }))
+        })),
+        introduction: "Intro from the checkpoint.",
+        exit: "Exit from the checkpoint."
+      };
+      const deepened = await deepenActs(spine, new StubDeepenActBuilder(guard), ctx, {
+        resume: (index) => (index === 0 ? stale : undefined)
+      });
+      expect(deepened[0]!.slots[0]!.beats[0]!.claim).toBe(seededClaim);
+      expect(deepened[0]!.introduction).toBe("Intro from the checkpoint.");
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it("restores nothing when the builder changed the slot's beat count — position stopped meaning anything", async () => {
+    /* Same rule as the seed restore: putting one beat's wording on another
+       beat's claim is worse than losing the freeze. */
+    const splitter: DeepenActBuilder = {
+      providerName: "splitter",
+      async deepenAct(_spine, act) {
+        return {
+          ...act,
+          slots: act.slots.map((s) => ({
+            title: s.title,
+            beats: [
+              { claim: "Somebody rewrote this slot as three beats.", exploration: false, kind: "account" as const },
+              ...s.beats.map((b) => ({ claim: paraphrase, exploration: b.exploration, kind: "account" as const }))
+            ]
+          })),
+          introduction: "Intro.",
+          exit: "Exit."
+        };
+      }
+    };
+    const warn = silenceWarnings();
+    try {
+      const deepened = await deepenActs(seededSpine(), splitter, ctx);
+      for (const act of deepened) {
+        for (const beat of act.slots[0]!.beats) expect(beat.seed).toBeUndefined();
+        expect(act.slots[0]!.beats[1]!.claim).toBe(paraphrase);
+      }
+      expect(warn).not.toHaveBeenCalled();
+    } finally {
+      warn.mockRestore();
+    }
   });
 });

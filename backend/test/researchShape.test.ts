@@ -1,5 +1,17 @@
 import { describe, it, expect } from "vitest";
-import { buildResearchShape, tapeSignalFor } from "../src/generation/researchShape";
+import {
+  buildResearchShape,
+  tapeSignalFor,
+  RESEARCH_TAPE_WINDOWS_PER_SUBTOPIC,
+  RESEARCH_TAPE_WINDOW_MAX_CHARS,
+  RESEARCH_TAPE_WINDOW_MAX_SEC,
+  RESEARCH_TAPE_WINDOW_MIN_SEC
+} from "../src/generation/researchShape";
+import { D3_MEAN_FLOOR_SEC } from "../src/generation/sourceBeats";
+import { TAPE_WINDOW_MAX_SEC, TAPE_WINDOW_MIN_SEC } from "../src/generation/transcriptArchiveLookup";
+import { FileTranscriptTextIndex } from "../src/generation/transcriptTextIndex";
+import type { TranscriptBodySource, TranscriptTextIndex } from "../src/generation/transcriptTextIndex";
+import type { TranscriptCue, TranscriptCueProvider, TranscriptDigestEntry } from "../src/generation/transcriptArchiveLookup";
 import { loadCatalogueData, type CatalogueData } from "../src/generation/catalogueLookup";
 import { StubExternalResearcher } from "../src/generation/StubExternalResearcher";
 import type { ExternalResearcher, ExternalResearchContext, ExternalResearchResult } from "../src/generation/ExternalResearcher";
@@ -41,6 +53,29 @@ function noTapeFixtureCatalogue(): CatalogueData {
         related: []
       }
     },
+    shows: [{ show_id: "show-a", title: "Show A", taxonomy_node_ids: ["engineering/energy-fusion"] }]
+  };
+}
+
+/**
+ * The mirror image of `noTapeFixtureCatalogue`, for WS-L: one concept with
+ * enough catalogue items behind it to band as `strong`
+ * (`tapeSignalFor` — 20 or more), which is the condition the tape-window search
+ * runs under. Fixed rather than read from the live catalogue so the cases below
+ * cannot start or stop searching as `data/discover.json` grows.
+ */
+function tapeFixtureCatalogue(): CatalogueData {
+  const items = Array.from({ length: 25 }, (_, i) => ({
+    id: `show-a--fusion-${i}`,
+    show: "Show A",
+    title: `Inside a tokamak, part ${i}`,
+    topics: ["engineering/energy-fusion"],
+    hook: "A deep look at fusion reactors."
+  }));
+  return {
+    items,
+    itemTags: Object.fromEntries(items.map((it) => [it.id, ["fusion", "tokamak"]])),
+    concepts: { fusion: { terms: ["fusion", "tokamak"], topics: ["engineering/energy-fusion"], related: [] } },
     shows: [{ show_id: "show-a", title: "Show A", taxonomy_node_ids: ["engineering/energy-fusion"] }]
   };
 }
@@ -237,5 +272,195 @@ describe("buildResearchShape — budget guard wiring", () => {
     await buildResearchShape(makeIntent(), { researcher, ctx: { userId: "founder-1" } });
     const events = await sink.all();
     expect(events.filter((e) => e.operation === "external_research")).toHaveLength(0);
+  });
+});
+
+/* WS-L (F-63): the research map stops being a list of counts and starts being a
+   list of what the archive SAYS.
+
+   The index and the cue provider are fakes here — in-memory cues behind the same
+   two seams production uses (`TranscriptBodySource`, `TranscriptCueProvider`) —
+   so the REAL BM25 index and the REAL window search do the work in every case
+   below, rather than a stub that could agree with the code by accident. The
+   offline half of this workstream, against the 63 *Practical AI* bodies on the
+   generation machine, lives in `sourceBeats.test.ts` beside the F-61 cases. */
+describe("buildResearchShape — WS-L: the map carries what the tape says (F-63)", () => {
+  const mlEpisode: TranscriptDigestEntry = {
+    show_id: "practical-ai",
+    show_title: "Practical AI",
+    guid: "pa-900",
+    title: "Episode 900",
+    cues: 6,
+    feed_duration_sec: 3600
+  };
+
+  const mlCues: TranscriptCue[] = [
+    { text: "welcome back everyone today we are talking about what happens after the model ships", start_sec: 0, end_sec: 30 },
+    { text: "the fusion of two plasma streams is not what most machine learning teams worry about", start_sec: 30, end_sec: 62 },
+    { text: "a tokamak is a beautiful machine and fusion research is genuinely hard engineering work", start_sec: 62, end_sec: 95 },
+    { text: "we spent a year on fusion reactors and the tokamak confinement problem before this", start_sec: 95, end_sec: 130 },
+    { text: "and then we went back to shipping models which is a different kind of hard", start_sec: 130, end_sec: 165 },
+    { text: "that is all we have time for today thanks for listening", start_sec: 165, end_sec: 200 }
+  ];
+
+  /** The same two seams production uses, over cues held in memory. */
+  function fakeIndex(archive: TranscriptDigestEntry[], cuesByGuid: Record<string, TranscriptCue[]>): TranscriptTextIndex {
+    const bodies: TranscriptBodySource = {
+      getCues: (entry) => cuesByGuid[entry.guid] ?? null,
+      bodyStat: (entry) => (cuesByGuid[entry.guid] ? { mtimeMs: 1, size: 1 } : null)
+    };
+    /* `cache: false` — nothing in a test may touch the disk cache the
+       generation machine's production path reads. */
+    return new FileTranscriptTextIndex({ archive, bodies, cache: false });
+  }
+
+  function fakeCues(cuesByGuid: Record<string, TranscriptCue[]>): TranscriptCueProvider {
+    return { getCues: (entry) => cuesByGuid[entry.guid] ?? null };
+  }
+
+  it("attaches the tape's own sentences to a subtopic the catalogue has real tape for", async () => {
+    const { guard } = guardAndSink();
+    const shape = await buildResearchShape(makeIntent(), {
+      researcher: new StubExternalResearcher(guard),
+      ctx: { userId: "founder-1" },
+      catalogue: tapeFixtureCatalogue(),
+      /* No topic, so the lineage gate is inert and this fixture's own show does
+         not need a row in `data/catalog.json` to be searchable. */
+      topic: null,
+      textIndex: fakeIndex([mlEpisode], { "pa-900": mlCues }),
+      cueProvider: fakeCues({ "pa-900": mlCues })
+    });
+
+    const fusion = shape.subtopics.find((s) => s.label === "Fusion")!;
+    expect(fusion.tape.signal).toBe("strong");
+    expect(fusion.windowsUnavailable).toBeNull();
+    expect(fusion.tapeWindows.length).toBeGreaterThanOrEqual(1);
+
+    const window = fusion.tapeWindows[0]!;
+    expect(window.episodeId).toBe("practical-ai--episode-900");
+    expect(window.showTitle).toBe("Practical AI");
+    expect(window.episodeTitle).toBe("Episode 900");
+    /* The window is the stretch that SAYS the subtopic's terms, not the
+       episode's opening — and its text is the tape's own words, verbatim. */
+    expect(window.text).toContain("tokamak");
+    expect(window.text.length).toBeLessThanOrEqual(RESEARCH_TAPE_WINDOW_MAX_CHARS);
+    expect(mlCues.some((c) => window.text.includes(c.text))).toBe(true);
+    expect(window.endSec - window.startSec).toBeGreaterThanOrEqual(RESEARCH_TAPE_WINDOW_MIN_SEC);
+    expect(window.endSec - window.startSec).toBeLessThanOrEqual(RESEARCH_TAPE_WINDOW_MAX_SEC);
+    expect(window.score).toBeGreaterThan(0);
+  });
+
+  it("sizes its window band for the duration rules the finished Foray is judged by (F-73)", () => {
+    /* A window quoted here is not only read. §4.3 seeds a beat with this
+       episode AND these seconds, and F-68 then confines §4.5's search to exactly
+       this stretch — so this band is, in practice, the band every generated tape
+       segment is cut from. At 60-120 s it put every one of them under
+       `narration-craft.md` §0's 90 s mean floor by construction, which is what
+       refused run 2 attempt 5's act-1 candidate at a 76.1 s mean.
+
+       MUTATION THAT KILLS THIS: put `RESEARCH_TAPE_WINDOW_MIN_SEC` back to 60.
+       Ran it — red. */
+    expect(RESEARCH_TAPE_WINDOW_MIN_SEC).toBeGreaterThanOrEqual(D3_MEAN_FLOOR_SEC);
+    /* And still inside §4.5's own band, both ends: a research window that could
+       not be a segment would be quoting the spine tape it cannot have. */
+    expect(RESEARCH_TAPE_WINDOW_MIN_SEC).toBeGreaterThanOrEqual(TAPE_WINDOW_MIN_SEC);
+    expect(RESEARCH_TAPE_WINDOW_MAX_SEC).toBeLessThanOrEqual(TAPE_WINDOW_MAX_SEC);
+    expect(RESEARCH_TAPE_WINDOW_MAX_SEC).toBeGreaterThan(RESEARCH_TAPE_WINDOW_MIN_SEC);
+  });
+
+  it("quotes a stretch long enough to be cut into a segment the D-tier rules accept (F-73)", async () => {
+    /* The band above, measured on a real window rather than asserted about the
+       constants: the fixture's tape yields a window over the mean floor. */
+    const { guard } = guardAndSink();
+    const shape = await buildResearchShape(makeIntent(), {
+      researcher: new StubExternalResearcher(guard),
+      ctx: { userId: "founder-1" },
+      catalogue: tapeFixtureCatalogue(),
+      topic: null,
+      textIndex: fakeIndex([mlEpisode], { "pa-900": mlCues }),
+      cueProvider: fakeCues({ "pa-900": mlCues })
+    });
+    const window = shape.subtopics.find((s) => s.label === "Fusion")!.tapeWindows[0]!;
+    expect(window.endSec - window.startSec).toBeGreaterThanOrEqual(D3_MEAN_FLOOR_SEC);
+  });
+
+  it("says WHY it has no windows rather than leaving an empty list to be read as an empty archive", async () => {
+    const { guard } = guardAndSink();
+    /* The default: no index at all. This is CI, a fresh checkout, and every
+       caller written before WS-L — and it has to be distinguishable from "the
+       archive was searched and says nothing". */
+    const shape = await buildResearchShape(makeIntent(), {
+      researcher: new StubExternalResearcher(guard),
+      ctx: { userId: "founder-1" },
+      catalogue: tapeFixtureCatalogue(),
+      topic: null
+    });
+    for (const subtopic of shape.subtopics) {
+      expect(subtopic.tapeWindows).toEqual([]);
+      expect(subtopic.windowsUnavailable).toMatch(/no transcript text index/);
+    }
+  });
+
+  it("does not search the tape for a subtopic the catalogue has no tape for", async () => {
+    const { guard } = guardAndSink();
+    const shape = await buildResearchShape(noTapeIntent(), {
+      researcher: new StubExternalResearcher(guard),
+      ctx: { userId: "founder-1" },
+      catalogue: noTapeFixtureCatalogue(),
+      topic: null,
+      textIndex: fakeIndex([mlEpisode], { "pa-900": mlCues }),
+      cueProvider: fakeCues({ "pa-900": mlCues })
+    });
+    const gap = shape.subtopics.find((s) => s.tape.signal === "none")!;
+    expect(gap.tapeWindows).toEqual([]);
+    expect(gap.windowsUnavailable).toMatch(/too thin to be worth quoting/);
+  });
+
+  it("refuses an off-lineage show before it opens it — F-11's own rule, one stage later", async () => {
+    const { guard } = guardAndSink();
+    /* `practical-ai` is a real show in `data/catalog.json`, under the AI branch;
+       a grilling Foray must not be handed its transcripts to write beats from,
+       for exactly the reason a bridge-collapse Foray must not be told it has
+       761 items of strong AI tape. */
+    const shape = await buildResearchShape(makeIntent(), {
+      researcher: new StubExternalResearcher(guard),
+      ctx: { userId: "founder-1" },
+      catalogue: tapeFixtureCatalogue(),
+      topic: "food/grilling-bbq",
+      textIndex: fakeIndex([mlEpisode], { "pa-900": mlCues }),
+      cueProvider: fakeCues({ "pa-900": mlCues })
+    });
+    for (const subtopic of shape.subtopics) {
+      expect(subtopic.tapeWindows).toEqual([]);
+      expect(subtopic.windowsUnavailable).toMatch(/taxonomy lineage/);
+    }
+  });
+
+  it("attaches at most one window per episode, best first, so the spine sees different conversations", async () => {
+    const { guard } = guardAndSink();
+    const second: TranscriptDigestEntry = { ...mlEpisode, guid: "pa-901", title: "Episode 901" };
+    const thinnerCues: TranscriptCue[] = [
+      { text: "somebody asked us about fusion once and we did not have much to say", start_sec: 0, end_sec: 40 },
+      { text: "so we talked about deployment instead for the rest of the hour", start_sec: 40, end_sec: 95 },
+      { text: "which is what this show is mostly about anyway", start_sec: 95, end_sec: 140 }
+    ];
+    const shape = await buildResearchShape(makeIntent(), {
+      researcher: new StubExternalResearcher(guard),
+      ctx: { userId: "founder-1" },
+      catalogue: tapeFixtureCatalogue(),
+      topic: null,
+      textIndex: fakeIndex([mlEpisode, second], { "pa-900": mlCues, "pa-901": thinnerCues }),
+      cueProvider: fakeCues({ "pa-900": mlCues, "pa-901": thinnerCues })
+    });
+    const fusion = shape.subtopics.find((s) => s.label === "Fusion")!;
+    const episodeIds = fusion.tapeWindows.map((w) => w.episodeId);
+    expect(new Set(episodeIds).size).toBe(episodeIds.length);
+    expect(fusion.tapeWindows.length).toBeLessThanOrEqual(RESEARCH_TAPE_WINDOWS_PER_SUBTOPIC);
+    /* Ranked: the episode that spends a minute on the subtopic outranks the one
+       that mentions it and moves on. */
+    expect(fusion.tapeWindows[0]!.episodeId).toBe("practical-ai--episode-900");
+    for (let i = 1; i < fusion.tapeWindows.length; i++) {
+      expect(fusion.tapeWindows[i - 1]!.score).toBeGreaterThanOrEqual(fusion.tapeWindows[i]!.score);
+    }
   });
 });

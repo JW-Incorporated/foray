@@ -1147,7 +1147,9 @@ function playlistMatchesQuery(playlist, query) {
 
 /* U-05 (D5, D7): the same interest-based generator U-03's "Playlists for
    you" reuses -- today's subject queues, `state.cardSlots`, built once per
-   session by buildCards() -- filtered to the branches whose label matches
+   session by buildCards() (re-dealt once more if the first-run Preferences
+   picks change its inputs — redealAfterOnboardingPicks) -- filtered to the
+   branches whose label matches
    the typed query and projected through the existing subjectQueueById() so
    a generated match renders and opens exactly like a Home "Playlists for
    you" generated card (same #/playlist/subject-<branch> route, same
@@ -2785,6 +2787,42 @@ function applyOnboardingPicks(pickedRootIds, typedSubject) {
   return true;
 }
 
+/** U-09's third acceptance line ("picking three chips changes the FIRST Home
+    render's ranking"), which shipped unmet in PR #503 (audit, 2026-09-10):
+    Home's "Episodes for you" is `state.cardSlots`, dealt once per session by
+    `buildCards()` in init() — BEFORE this sheet opens over Home, from the
+    pre-pick default weights — and renderHomeV2() only rebuilds an EMPTY
+    cardSlots. applyOnboardingPicks() changed the inputs of that deal without
+    anything re-running it, so the picks showed up on the next session's Home
+    and not the one the listener landed on. This re-runs the deal.
+
+    Before re-dealing it UNDOES the pre-pick deal's memory. buildCards()
+    records what it dealt as though the listener saw it: `cp_recent_branches`
+    (a -0.35 ranking penalty on the next deal) and `cp_seen` (demotes those
+    episodes behind unseen ones within their subject's chain). That deal was
+    painted under a modal sheet the listener has been answering, not browsed
+    — and counting it as seen would penalise exactly the subjects the picks
+    just lifted (+0.20/sqrt(n), at most +0.20, against a -0.35 penalty), so a
+    listener who picked the very subjects the default deal happened to show
+    would watch them VANISH from the Home their picks were meant to shape.
+    Only the pre-pick deal's own entries are removed: the last `dealt.length`
+    branches buildCards() appended, and the dealt episode ids.
+
+    No-op when nothing has been dealt yet — a boot that has not reached
+    init()'s buildCards(), or an empty pool — because renderHomeV2() already
+    rebuilds an empty cardSlots lazily and there is no memory to undo. The
+    caller repaints (renderCurrentPage()); this only rebuilds state, the same
+    split the family-mode toggle in init() already uses. */
+function redealAfterOnboardingPicks() {
+  const dealt = state.cardSlots || [];
+  if (!dealt.length) return;
+  const dealtIds = new Set(dealt.flatMap(sl => (sl.items || []).map(it => it.id)));
+  lsSet("cp_seen", lsGet("cp_seen", []).filter(id => !dealtIds.has(id)));
+  const recent = lsGet("cp_recent_branches", []);
+  lsSet("cp_recent_branches", recent.slice(0, Math.max(0, recent.length - dealt.length)));
+  buildCards();
+}
+
 /* The 17 top-level nodes with measured pool depth (>= 50 items AND several
    distinct shows — interest-survey-plan.md §3.2), so every chip is backed by
    enough content to fill a queue on day one. Ids only; labels are read live
@@ -2820,7 +2858,10 @@ const PREFS_CHIP_IDS = [
       with no interest write (Generalist: today's taxonomy defaults stand).
       "Start listening" applies the picks via applyOnboardingPicks() — the
       FIXED U-07 write path (taxonomyNodes() includes roots, so a root-level
-      chip actually persists) — then dismisses.
+      chip actually persists) — then dismisses, and when something was
+      written re-deals Home's card slots and repaints, so the FIRST Home the
+      listener lands on already ranks by the picks (the card's third
+      acceptance line; see redealAfterOnboardingPicks()).
 
     Both steps' exits set the SAME cp_intro_dismissed flag showIntroPopupOnce()
     already uses, so this flow and the older popup can never both show on the
@@ -2979,8 +3020,19 @@ function showFirstTimeExplainerOnce() {
 
     skip.addEventListener("click", dismiss);
     go.addEventListener("click", () => {
-      applyOnboardingPicks([...picked], typedInput.value);
+      const applied = applyOnboardingPicks([...picked], typedInput.value);
       dismiss();
+      /* Only when something was actually written: an empty/unmatched form is
+         a Skip in all but name, and the Home already under the sheet is the
+         right Home for it. Otherwise re-deal and repaint, so the FIRST Home
+         the listener lands on ranks by their picks (U-09's acceptance line;
+         see redealAfterOnboardingPicks). renderCurrentPage(), not route():
+         nothing about the location changed, and route() is the back-stack's
+         entry point (#488). */
+      if (applied) {
+        redealAfterOnboardingPicks();
+        renderCurrentPage();
+      }
     });
   }
 

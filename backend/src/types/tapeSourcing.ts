@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { type Beat, type DeepenedAct } from "./spine";
+import type { MintedSegmentSource } from "../generation/audioSourceLookup";
+import { BeatKindSchema, type Beat, type DeepenedAct } from "./spine";
 
 /**
  * §4.5-4.6 output types (docs/curation/generation-architecture.md §4.5,
@@ -70,9 +71,25 @@ export type NarrationAssignment = z.infer<typeof NarrationAssignmentSchema>;
  * `sourcing` so a beat can never carry both a tape pointer and a
  * narration assignment, or neither. */
 export const SourcedBeatSchema = z.discriminatedUnion("sourcing", [
-  z.object({ sourcing: z.literal("tape"), claim: z.string().trim().min(1), exploration: z.boolean(), tape: TapePointerSchema }).strict(),
   z
-    .object({ sourcing: z.literal("narration"), claim: z.string().trim().min(1), exploration: z.boolean(), narration: NarrationAssignmentSchema })
+    .object({
+      sourcing: z.literal("tape"),
+      claim: z.string().trim().min(1),
+      exploration: z.boolean(),
+      /** Carried through from §4.4 so §4.7 knows what it is writing around;
+       * absent means `account` (see BeatKindSchema in types/spine.ts). */
+      kind: BeatKindSchema.optional(),
+      tape: TapePointerSchema
+    })
+    .strict(),
+  z
+    .object({
+      sourcing: z.literal("narration"),
+      claim: z.string().trim().min(1),
+      exploration: z.boolean(),
+      kind: BeatKindSchema.optional(),
+      narration: NarrationAssignmentSchema
+    })
     .strict()
 ]);
 export type SourcedBeat = z.infer<typeof SourcedBeatSchema>;
@@ -128,12 +145,311 @@ export const NewSegmentSchema = z
   .strict();
 export type NewSegment = z.infer<typeof NewSegmentSchema>;
 
+/**
+ * One row of evidence for the `tapeRelevance` metric the veracity gate is built
+ * on (fix plan WS-B): "share of tape anchors whose episode shares a taxonomy
+ * family with the Foray's resolved topic, plus the list of anchors for human
+ * spot-check".
+ *
+ * §4.5 is the only stage that knows all four of these things at once, so it
+ * emits them rather than leaving a later stage to re-derive a join it cannot
+ * see. Run 1 could not measure this at all — the number (5 of 22 anchors on
+ * topic) had to be counted by hand from the narration prompts.
+ */
+export interface TapeRelevanceInput {
+  /** Where the beat sits, so a failing anchor can be found by a human. */
+  actIndex: number;
+  slotIndex: number;
+  beatIndex: number;
+  /** Named to match WS-B's `TapeAnchorNote`, which carries the same two fields
+   * for the same reason: a human spot-checking the list needs to see which
+   * claim took which item. */
+  claim: string;
+  itemId: string;
+  /** The anchor itself. */
+  segmentId: string;
+  tier: 1 | 2;
+  /** Every taxonomy node this anchor resolved to — the segment's own `topic`
+   * unioned with its show's `taxonomy_node_ids` (tier 1), or the show's nodes
+   * (tier 2). The set the topic gate actually judged. */
+  taxonomyNodeIds: string[];
+  /** Those nodes' roots, and the field name/values WS-B's `TapeAnchorNote`
+   * already uses, so its aggregation can read these rows unchanged. */
+  families: string[];
+  /** The Foray's resolved node and its root; null when sourcing ran without one. */
+  forayTopic: string | null;
+  forayFamily: string | null;
+  /** Whether the anchor shares the Foray's taxonomy LINEAGE — `null` when
+   * nothing could be established, which WS-B excludes from the metric's
+   * numerator AND denominator. "Unknown" is never "fine". */
+  onTopic: boolean | null;
+  /**
+   * The episode §4.3 wrote this beat's claim from, when it wrote it from tape at
+   * all (WS-L, F-63) — `null` for an unseeded beat, which is every beat of every
+   * Foray built before the research map quoted windows.
+   *
+   * Optional so nothing that constructs one of these rows had to change.
+   */
+  seededEpisode?: string | null;
+  /**
+   * Whether the tape this beat took came from that episode: the seed's window
+   * WON, rather than being beaten by something the text index ranked or refused
+   * by the relevance floor.
+   *
+   * This is the number WS-L is measured by. "Seeded from tape" is a claim about
+   * the spine; "the seed won" is a claim about the finished Foray, and the two
+   * come apart exactly when the spine wrote a beat the tape does not support —
+   * which is the failure mode this whole workstream exists to make visible
+   * rather than to hide.
+   */
+  seedWindowWon?: boolean;
+  /**
+   * WHICH FLOOR ADMITTED THE SEED WINDOW (F-72). `"share-only"` when the
+   * window the beat took is the seed's own and it cleared
+   * `TIER2_WINDOW_MIN_SHARE` WITHOUT the rare-word count — the case F-72 is
+   * about, where the spine quoted a passage and wrote a claim whose
+   * distinctiveness that passage carries in one or two words rather than
+   * three. Absent when the seed window would have cleared the searching floor
+   * anyway, and absent for every window found by searching.
+   *
+   * So the count of these rows is the count of beats that have tape ONLY
+   * because of F-72 — the number the rule is answerable for, kept separate
+   * from the number of seeded beats, which says nothing about it.
+   */
+  seedFloor?: "share-only";
+}
+
+/**
+ * WHY A BEAT GOT NO TAPE (finding F-49).
+ *
+ * Run 2 finished with zero tape beats out of 35 and the only evidence of what
+ * had happened was one sentence repeated six times — "No tape found anywhere in
+ * the §4.5 search order" — while the research map for the same prompt reported
+ * *Ai: 761 items* as strong tape and the machine held 337 *Practical AI*
+ * transcripts. That sentence cannot distinguish "the pool has nothing about
+ * AI", "the best episode was two title tokens short", "the taxonomy gate
+ * refused it" and "the transcript body was not on this machine" — four
+ * different faults with four different fixes. Every threshold in §4.5 was
+ * therefore tuned by argument rather than against data.
+ *
+ * These rows are that data: for every beat that ended up narrated, the best
+ * candidate each tier actually saw, the score it actually got, and the gate
+ * that actually rejected it.
+ */
+
+/** Which tier-1 gate turned down the best-scoring pool segment.
+ *
+ *   - `no-candidates`  — no segment in the pool shares a single content word.
+ *   - `threshold`      — the best candidate scored below its own bar
+ *                        (`requiredOverlapFor`: a count for a metadata
+ *                        haystack, claim coverage for a transcript window).
+ *   - `topic-lineage`  — it cleared the bar but is in another taxonomy family.
+ *   - `exhausted`      — it cleared everything, but another beat of this Foray
+ *                        already played it (F-29's "exhaustion of the one
+ *                        relevant episode").
+ *   - `m4-share`       — its episode already holds its quarter of the Foray.
+ *   - `m3-order`       — it sits earlier in an episode already joined later.
+ *
+ * And the four D-tier length rules F-73 added, which both tiers now ask at the
+ * point where a candidate's duration is known (`DurationGate` in
+ * `sourceBeats.ts`; `docs/curation/narration-craft.md` §0 via
+ * `tools/foray/check-forays.mjs`):
+ *
+ *   - `d2-short-run`   — it is under 60 s and so is the segment before it, which
+ *                        is the run D2 only permits if a 150 s segment follows —
+ *                        something sourcing cannot promise, so it never starts
+ *                        the run.
+ *   - `d3-mean`        — taking it would drop the Foray's running mean segment
+ *                        duration under D3's 90 s floor.
+ *   - `d5-uniform`     — it and the two segments before it would be within
+ *                        +/-20 % of each other, D5's uniform triple.
+ *   - `m4-runtime`     — its episode already holds M4's quarter of the Foray's
+ *                        tape SECONDS (the clause #569 left to the checker).
+ *                        Never asked about an episode's first segment. */
+export type Tier1Gate =
+  | "no-candidates"
+  | "threshold"
+  | "topic-lineage"
+  | "exhausted"
+  | "m4-share"
+  | "m3-order"
+  | "d2-short-run"
+  | "d3-mean"
+  | "d5-uniform"
+  | "m4-runtime";
+
+/** Which tier-2 gate turned down the best-scoring archive episode.
+ *
+ *   - `title-tokens`   — no episode reached `TIER2_MATCH_THRESHOLD` on its own
+ *                        title (the show title can add one point, never carry
+ *                        the match). This is the F-06 recall wall: tier 2 reads
+ *                        titles, not transcript text.
+ *   - `lineage`        — the best-scoring episode's show is in another family.
+ *   - `no-body`        — the episode matched, but no transcript body for it is
+ *                        on this machine, so no anchor could be located.
+ *   - `window-overlap` — the body is here and was searched, but no window of it
+ *                        carries enough of the claim to be about it (F-24, and
+ *                        F-61's relevance floor: distinct claim content words
+ *                        spoken in one stretch of tape, and their share of the
+ *                        claim).
+ *   - `no-anchor`      — a window IS about the claim, but neither of its
+ *                        boundary cues yields a quotable 4-8 word phrase to
+ *                        anchor with. Structural (a word-level transcript, a
+ *                        cue of pure function words), never a judgement.
+ *   - `no-audio-source` — everything matched and an anchor was found, but no
+ *                        honest `data/segment-sources.json` row can be written
+ *                        for the episode, so nothing could ever play it (see
+ *                        `audioSourceLookup.ts`).
+ *   - `m4-share`       — the episode already supplies as much of this Foray as
+ *                        M4's quarter allows (F-70). Same name and same meaning
+ *                        as the tier-1 gate above; tier 2 now keeps the same
+ *                        ledger, so the two tiers refuse for the same reason.
+ *   - `m3-order`       — the window tier 2 would mint sits EARLIER in an episode
+ *                        this Foray has already joined later, which is M3's
+ *                        "plays at N s after a later segment from the same
+ *                        episode" (F-70). Decided on the cut span's own start,
+ *                        so it is the minted segment's real time, not a guess. */
+export type Tier2Gate =
+  /* WS-H (F-06): the text index ran and no lineage-admissible episode in the
+     archive was worth opening for this claim — the search reached the
+     transcripts' own words and they had nothing. Distinct from `title-tokens`,
+     which means no text search ran at all (a checkout with no transcript
+     bodies) and the title bar was the only thing that could decide. */
+  | "text-index:no-candidate"
+  | "title-tokens"
+  | "lineage"
+  | "no-body"
+  | "no-anchor"
+  | "window-overlap"
+  | "no-audio-source"
+  /* F-70: the two Foray-wide assembly rules, now asked by BOTH tiers. Named
+     identically to their `Tier1Gate` twins on purpose — one rule, one name,
+     whichever tier found the tape. */
+  | "m4-share"
+  | "m3-order"
+  /* F-73: the four D-tier LENGTH rules, likewise asked by both tiers and named
+     the same in both — documented once, on `Tier1Gate` above. Tier 2 asks them on
+     the cut span, which is the first point at which a minted segment has a real
+     duration. */
+  | "d2-short-run"
+  | "d3-mean"
+  | "d5-uniform"
+  | "m4-runtime";
+
+export interface Tier1TraceRow {
+  /** The best-scoring pool segment, whatever gate then refused it. */
+  bestSegmentId: string | null;
+  bestItemId: string | null;
+  score: number;
+  /** The bar THAT candidate had to clear — see `requiredOverlapFor`. */
+  requiredScore: number;
+  /** Which haystack the score was measured against (F-06/F-29). */
+  matchedIn: "transcript" | "metadata" | null;
+  gate: Tier1Gate;
+}
+
+export interface Tier2TraceRow {
+  /** The best-scoring archive episode, whatever gate then refused it. */
+  bestShowId: string | null;
+  bestEpisodeTitle: string | null;
+  score: number;
+  requiredScore: number;
+  gate: Tier2Gate;
+  /* F-61: what the WINDOW search saw. The old pair of fields here
+     (`anchorContentWords`/`beyondAnchorOverlap`) measured a verbatim run of the
+     claim's own words and its neighbourhood; there is no such run any more, and
+     the question a person asks of a refused beat is which of the claim's words
+     the tape said and how much of the claim that is. */
+
+  /** The claim's content words spoken inside the best window of that episode's
+   * tape, in the claim's own order. */
+  windowMatchedTerms?: string[];
+  /** Those of them the corpus considers rare for this claim — the subset the
+   * `TIER2_WINDOW_MIN_TERMS` count is measured on. */
+  windowDistinctiveTerms?: string[];
+  /** Those words as a plain share of the claim's content words. */
+  windowTermShare?: number;
+  /** And weighted by how rare each word is in the corpus the candidate came
+   * from — the number the relevance floor (`TIER2_WINDOW_MIN_SHARE`) is argued
+   * against, and the one that tells "says the claim's subject" from "shares the
+   * trade's vocabulary" (F-33). */
+  windowWeightedShare?: number;
+  /** Where that window is in the episode, so a human can go and listen. */
+  windowStartSec?: number;
+  windowEndSec?: number;
+  /** The anchors minted from the tape at the chosen window's edges, present
+   * when the search got that far (a beat refused later, at the audio-source
+   * check, still shows what it would have quoted). */
+  startAnchor?: string;
+  endAnchor?: string;
+  /* WS-H (F-06/F-49): what the TEXT search saw, so a run can be argued with.
+     Without these, a trace row saying `no-anchor` cannot be told from one that
+     never searched the text at all — which is the confusion that let run 2's
+     zero-tape result look like an empty archive rather than a title bar. */
+
+  /** How the reported episode was found: the transcript-text index, or the
+   * title-metadata fallback the search keeps behind it. */
+  foundBy?: "text-index" | "title";
+  /** The episode's BM25 score over its own cue text. Absent for a title find. */
+  textScore?: number;
+  /** Its 0-based rank in the text search. */
+  textRank?: number;
+  /** How many distinct claim content words are spoken in it at all. */
+  textMatchedTerms?: number;
+  /** How many episodes tier 2 opened for this beat before giving up. */
+  candidatesConsidered?: number;
+  /* WS-L (F-63): the seed, and what became of it. Present only for a beat §4.3
+     wrote from a quoted transcript window. */
+
+  /** The episode the spine seeded this beat from. Tier 2 opens it FIRST, before
+   * anything the text index ranked. */
+  seededEpisode?: string;
+  /** Whether the seeded episode's window is the one that won. Always false in a
+   * row of this array — a trace row exists only for a beat that ended up
+   * narrated — and the field is here so the two sides of the sourcing evidence
+   * (`tapeRelevance` and `sourcingTrace`) answer the same question in the same
+   * words. */
+  seedWindowWon?: boolean;
+  /** Which floor admitted the reported window (F-72) — see
+   * `TapeRelevanceInput.seedFloor`. Present here only when a seed window the
+   * share-only floor ADMITTED was then refused by a later gate (`no-anchor`,
+   * `m3-order`, `no-audio-source`), so the row does not read as though the
+   * searching floor had passed it. Never set on a `window-overlap` row: a
+   * refused window was admitted by no floor. */
+  seedFloor?: "share-only";
+}
+
+/** One narration-degraded beat's account of itself. */
+export interface SourcingTrace {
+  actIndex: number;
+  slotIndex: number;
+  beatIndex: number;
+  claim: string;
+  /** `skipped:argument` — §4.4 tagged the beat an argument, so no search ran at
+   * all and both tiers are null. `no-tape` — the search ran and both tiers came
+   * back empty-handed; the rows say where each stopped. */
+  outcome: "skipped:argument" | "no-tape";
+  tier1: Tier1TraceRow | null;
+  tier2: Tier2TraceRow | null;
+}
+
 export interface SourceBeatsResult {
   acts: SourcedAct[];
   /** Every NEW segment tier 2 produced this run — see `NewSegmentSchema`'s
    * doc comment on why these are not written to disk here. */
   newSegments: NewSegment[];
   transcriptionQueueCandidates: TranscriptionQueueCandidate[];
+  /** One row per TAPE-sourced beat, in Foray order — see `TapeRelevanceInput`. */
+  tapeRelevance: TapeRelevanceInput[];
+  /** One row per NARRATION-degraded beat, in Foray order — see `SourcingTrace`.
+   * The two arrays partition the Foray's beats between them. */
+  sourcingTrace: SourcingTrace[];
+  /** The `data/segment-sources.json` row for every episode `newSegments` was
+   * minted from, deduplicated by item id — without which the checker cannot
+   * resolve the audio and the Foray fails §4.9 (see `audioSourceLookup.ts`).
+   * Empty when the caller supplied no resolver, which is every test that
+   * predates one. */
+  newSegmentSources: MintedSegmentSource[];
 }
 
 export interface SourcingValidationIssue {

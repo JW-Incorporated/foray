@@ -17,6 +17,13 @@
       ]
     },
     {
+      "source": "/data/(forays|segments|segment-sources)\\.json",
+      "has": [{ "type": "query", "key": "v" }],
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
+    },
+    {
       "source": "/(app.js|search-engine.js|styles.css|sw.js)",
       "headers": [
         { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }

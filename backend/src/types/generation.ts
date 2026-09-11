@@ -49,7 +49,16 @@ export const IntentUnderstandingSchema = z.object({
   subject: z.string().trim().min(1),
   angle: z.string().trim().min(1),
   priorKnowledge: z.string().trim().min(1),
-  disappointment: z.string().trim().min(1)
+  disappointment: z.string().trim().min(1),
+  /* F-64: the public copy, asked for by name. `subject` is the understander's
+     working restatement of the request and has no length rule — run 2 attempt 3
+     came back with a 26-word one, and `check-forays.mjs` refused the finished
+     Foray for a `summary` over 18 words, 76 minutes after the sentence was
+     written. `title` and `summary` are the listener-facing lines and are
+     bounded (`runPipeline.ts`'s `forayCopy` clamps them regardless). Optional
+     so a checkpoint or stub written before they existed still parses. */
+  title: z.string().trim().min(1).optional(),
+  summary: z.string().trim().min(1).optional()
 });
 export type IntentUnderstanding = z.infer<typeof IntentUnderstandingSchema>;
 

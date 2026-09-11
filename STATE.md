@@ -83,6 +83,33 @@ docs/. Completed workstreams move to their plan doc's retro section.
   (+ test), `player/client.js`, `player/assets/`, `tools/audio/`,
   `test/suite-integrity.test.js`, `docs/curation/narration-craft.md`,
   `deploy-manifest.json`/`sw.js` (regenerated), `STATE.md`. Not `index.html`.
+### L-01/L-02/L-03: close the verified gaps in the iOS controls deck (2026-09-10) — `fix/ios-deck-small-gaps`
+
+- **What:** the three S-sized gaps a verifier found against
+  `docs/ios-controls-and-voice-plan.md` cards L-01, L-02, L-03 (L-05/L-06/M-03
+  are M-sized and stay with Hermes). L-03: `queue-manager.test.js` now asserts a
+  narration item reports `playing` AND `narrationElapsedSec` — what `render()`
+  reads through `forayPlayhead()` — increases across two ticks (frozen-clock
+  mutation goes red). L-02: `probe-bridge.js` reads the
+  `navigator.mediaSession.forayPolyfill` marker at its 3 s recheck and makes one
+  `setNowPlaying({state:"none"})` round trip itself, recording the Swift half's
+  `platform: "ios"` answer; `ios-ci.mjs` gains `mediaSessionTakeoverVerdict()`
+  (job-summary section 3d, `takeover` output) and greps both simulator logs for
+  the new `ForayAudio.setNowPlaying reached` `os.Logger` line, which
+  `shell-invariants` pins to the Swift source. L-01: the missing
+  `changePlaybackPosition -> seekto` XCTest (conversion extracted to
+  `seekToTransportEvent`), the `cap sync` discovery log line recorded from run
+  34047876769, and `docs/ios-lock-screen.md` §1/§2.2 refreshed to post-#530/#537
+  truth.
+- **Not yet measured:** §0.1 of `docs/ios-lock-screen.md` awaits the first
+  `ios-build` run on `main` carrying the probe; no run id is cited until one is
+  read. The XCTests run only in `ci.yml`'s `ios-kit` job (no local Swift
+  toolchain on Windows). On-device narration auto-advance and the lock-screen
+  display remain H1's (HUMAN-ACTIONS.md, OPEN).
+- **Touches:** `player/queue-manager.test.js`, `tools/mobile/probe/probe-bridge.js`,
+  `tools/mobile/ios-ci.mjs` (+test), `tools/mobile/shell-invariants.test.mjs`,
+  `mobile/plugins/foray-audio/ios/**` (Swift + XCTest), `docs/ios-lock-screen.md`,
+  `test/suite-integrity.test.js` floors. No `.github/` change.
 
 ### V-01 follow-up: Samantha by default, curated trial voices, ten-count audition (2026-09-10) — `fix/voice-picker-samantha`
 

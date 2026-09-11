@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { runForayPipeline, slotsFromSpine, runtimeSecFor } from "../src/generation/runPipeline";
+import { runForayPipeline, slotsFromSpine, runtimeSecFor, forayCopy, clampWords, MAX_COPY_WORDS } from "../src/generation/runPipeline";
 import { StubPromptUnderstander } from "../src/generation/StubPromptUnderstander";
 import { StubExternalResearcher } from "../src/generation/StubExternalResearcher";
 import { StubSpineBuilder } from "../src/generation/StubSpineBuilder";
@@ -8,8 +8,16 @@ import { StubNarrationWriterBuilder } from "../src/generation/StubNarrationWrite
 import { StubNarrationVerifierBuilder } from "../src/generation/StubNarrationVerifierBuilder";
 import { StubContinuityBuilder } from "../src/generation/StubContinuityBuilder";
 import { finalizeForay, type FinalizeForayInput, type FinalizeForayResult } from "../src/generation/finalizeForay";
+import { stitchForay } from "../src/generation/stitchForay";
+import { checkpointFingerprint } from "../src/generation/checkpoint";
+import { FakeCheckpointStore } from "./helpers/fakeCheckpointStore";
 import type { GenerationRequest } from "../src/types/generation";
-import type { Spine } from "../src/types/spine";
+import type { DeepenedAct, Spine } from "../src/types/spine";
+import type { WrittenAct } from "../src/generation/writeNarration";
+import type { NarrationWriterBuilder } from "../src/generation/NarrationWriterBuilder";
+import type { SpineBuilder } from "../src/generation/SpineBuilder";
+import type { ContinuityBuilder } from "../src/generation/ContinuityBuilder";
+import type { PartialCandidate } from "../src/generation/partialCandidate";
 
 /**
  * THE GAP THIS SUITE COVERS. Every stage §4.0-§4.9 was built and tested on its
@@ -114,8 +122,15 @@ describe("runForayPipeline", () => {
     const out = await runForayPipeline(request, options, stubDeps());
     const names = out.timings.map((t) => t.name);
 
+    /* `narrate` is keyed per ACT (`narrate:0`, `narrate:1`, ...) since the
+       F-17/F-18 checkpoint landed: narration is driven one act at a time so a
+       failure in act 3 does not discard acts 1 and 2. `stitch` is keyed the
+       same way since F-66, and sits BETWEEN the narrate stages rather than
+       after all of them — act N is stitched the moment it is narrated, which
+       is what makes `ttlA1Ms` a time to first listen. `request` is the short
+       tier, which is one act, so there is exactly one of each here. */
     expect(names).toEqual([
-      "understand", "research", "spine", "deepen", "source", "narrate", "stitch", "finalize"
+      "understand", "research-shape", "spine", "deepen", "source", "narrate:0", "stitch:0", "finalize"
     ]);
     for (const t of out.timings) expect(t.ms).toBeGreaterThanOrEqual(0);
   });
@@ -166,8 +181,10 @@ describe("runForayPipeline", () => {
         disappointment: "none"
       })
     };
+    /* F-67: the listener's prompt now joins the topic text, so the prompt has
+       to be as unmatchable as the intent — otherwise "grilling" resolves. */
     const out = await runForayPipeline(
-      request,
+      { ...request, prompt: "qqzzx wubbleflunk zzzqqx" },
       { userId: "founder-1", now: options.now },
       { ...stubDeps(), understander: understander as never }
     );
@@ -175,6 +192,49 @@ describe("runForayPipeline", () => {
     expect(out.outcome).toBe("unresolved-topic");
     if (out.outcome !== "unresolved-topic") return;
     expect(Array.isArray(out.candidates)).toBe(true);
+  });
+
+  it("WS-B: attaches meta.veracity to the candidate, computed from the real run", async () => {
+    /* MUTATION THAT KILLS THIS: never build/attach `veracity` on `input`
+       (drop the `buildVeracityMetrics` call and the `meta` field). The
+       candidate this pipeline hands to `generateForays.ts`/`publishForay.ts`
+       would then carry no veracity data at all — `evaluateVeracityGate`
+       treats an absent `meta.veracity` as an unconditional publish refusal,
+       so this is load-bearing, not decorative. Ran the mutant — red. */
+    const out = await runForayPipeline(request, options, stubDeps());
+    expect(out.outcome).toBe("generated");
+    if (out.outcome !== "generated") return;
+
+    const veracity = out.input.meta?.veracity;
+    expect(veracity).toBeDefined();
+    if (!veracity) return;
+
+    // Stub builders make no real Anthropic calls, so real token spend is 0 —
+    // a genuine computed number, not a stand-in for "unmeasured" (null).
+    expect(veracity.pipelineTokens).toBe(0);
+    /* WS-A: the verifier answers F-41's question per page and
+       `purposeAccomplished` carries it, so this is a real number now. It
+       reads 1.0 on a healthy run by construction — a page that never gets a
+       yes is retried, then dropped or fatal — which is what makes it a
+       regression alarm rather than a score (see veracityMetrics.ts). */
+    expect(veracity.purposeFidelity).toBe(1);
+    /* WS-A x WS-B, joined: every page carries the documents it quoted from,
+       so the grounded-quote rate is computed rather than null — and it is 1,
+       BY CONSTRUCTION, because writeNarration.ts refuses in code any quote
+       that is not a verbatim span of a held document. This is the assertion
+       that fails if the two workstreams ever stop agreeing on the shape of
+       `NarratedBeat.evidence`. */
+    expect(veracity.groundedQuoteRate).toBe(1);
+    expect(veracity.firstAttemptPassRate).toBe(1);
+    expect(typeof veracity.pagesDropped).toBe("number");
+    expect(Array.isArray(veracity.tapeRelevanceAnchors)).toBe(true);
+    // Stage timings are attached AFTER `finalize` runs (its own internal
+    // breakdown, when present, is folded in with a `finalize.` prefix —
+    // the stubbed `finalize` here returns none, but the outer pipeline
+    // stages, including "finalize" itself, must all be present).
+    expect(veracity.stageTimings.map((t) => t.name)).toEqual(
+      expect.arrayContaining(["understand", "research-shape", "spine", "deepen", "source", "narrate:0", "stitch:0", "finalize"])
+    );
   });
 
   it("is deterministic: the same request and clock produce the same Foray id", async () => {
@@ -272,6 +332,31 @@ describe("runtimeSecFor", () => {
   });
 });
 
+describe("runForayPipeline — the tier-2 tape the candidate has to carry (F-49)", () => {
+  it("hands finalize the segments and source rows §4.5 minted this run", async () => {
+    /* A tier-2 pointer names a segment that is in no file on disk yet. Unless
+       the candidate carries the minted rows, `check-forays.mjs` cannot resolve
+       the id, drops the item before every ordering rule and counts its seconds
+       nowhere — so the Foray fails §4.9 the first time sourcing finds any
+       tier-2 tape. The stub pipeline mints none, so what is pinned here is the
+       PLUMBING: both arrays reach `FinalizeForayInput`.
+
+       MUTATION THAT KILLS THIS: drop `segments`/`segmentSources` from the
+       `FinalizeForayInput` literal. Ran it — red (undefined, not an array). */
+    const out = await runForayPipeline(request, options, stubDeps());
+    expect(out.outcome).toBe("generated");
+    if (out.outcome !== "generated") return;
+    expect(Array.isArray(out.input.segments)).toBe(true);
+    expect(Array.isArray(out.input.segmentSources)).toBe(true);
+    /* Every minted segment's episode is registered exactly once — the join
+       `check-forays.mjs` makes between a pool row and the audio registry. */
+    const itemIds = new Set((out.input.segments ?? []).map((s) => s.itemId));
+    for (const id of itemIds) {
+      expect((out.input.segmentSources ?? []).filter((s) => s.id === id)).toHaveLength(1);
+    }
+  });
+});
+
 describe("runForayPipeline against the REAL §4.9 validator", () => {
   it("produces a candidate the real check-forays/check-narration act on, on their own terms", async () => {
     /* THE ONE TEST THAT DOES NOT FAKE FINALIZE. Everything above proves the
@@ -311,5 +396,343 @@ describe("runForayPipeline against the REAL §4.9 validator", () => {
     expect(out.result.validation).toBeDefined();
     expect(Array.isArray(out.result.validation.checkForaysErrors)).toBe(true);
     expect(out.input.items[0]).toMatchObject({ type: "narration", id: "disclosure" });
+  });
+});
+
+describe("runForayPipeline — the record's own copy cannot fail the copy rule (F-64)", () => {
+  const twentySix =
+    "The end-to-end engineering pipeline of building and operating machine learning systems in production: " +
+    "data preparation, model development, deployment infrastructure, monitoring, and the iterative cycle of refinement";
+
+  it("clamps a summary the understander wrote past 18 words, at a word boundary, and says so", () => {
+    /* Run 2 attempt 3: `summary` was this exact 26-word restatement and
+       `check-forays.mjs` refused the Foray at finalize, 76 minutes after the
+       line was written. MUTATION THAT KILLS THIS: return `intent.subject`
+       unclamped from `forayCopy`. Ran it — red on the word count. */
+    const copy = forayCopy({ subject: twentySix, angle: "how it is really done" });
+    expect(copy.summary.split(/\s+/).length).toBeLessThanOrEqual(MAX_COPY_WORDS);
+    expect(copy.summary.endsWith(",")).toBe(false);
+    expect(copy.summary.endsWith(":")).toBe(false);
+    expect(twentySix.startsWith(copy.summary)).toBe(true);
+    expect(copy.clamped.some((c) => c.startsWith("summary (26 words)"))).toBe(true);
+  });
+
+  it("keeps the pre-F-64 title shape when the understander gives no title, so minted ids do not move", () => {
+    const copy = forayCopy({ subject: "grilling", angle: "the surprising origin story" });
+    expect(copy.title).toBe("grilling: the surprising origin story");
+    expect(copy.summary).toBe("grilling");
+    expect(copy.clamped).toEqual([]);
+  });
+
+  it("prefers the understander's own bounded title and summary when it gave them", () => {
+    const copy = forayCopy({
+      subject: twentySix,
+      angle: "x",
+      title: "How Machine Learning Really Ships",
+      summary: "Why most of an ML system is plumbing, and what the plumbing has to get right."
+    });
+    expect(copy.title).toBe("How Machine Learning Really Ships");
+    expect(copy.summary).toBe("Why most of an ML system is plumbing, and what the plumbing has to get right.");
+    expect(copy.clamped).toEqual([]);
+  });
+
+  it("clampWords never invents a word and leaves a short line untouched", () => {
+    expect(clampWords("one two three", 5)).toBe("one two three");
+    expect(clampWords("one two three four five six", 3)).toBe("one two three");
+    expect(clampWords("a b c — d", 3)).toBe("a b c");
+  });
+});
+
+describe("runForayPipeline — no tape, no Foray, said before narration (F-65)", () => {
+  it("stops after §4.5 with a `no-tape` outcome when every beat sourced to narration", async () => {
+    /* A grilling spine sourced under a fusion-energy topic: the lineage gate
+       (WS-C) refuses every pool segment, so §4.5 hands back zero tape. Before
+       F-65 the run went on to narrate, stitch and finalize, and the real
+       checker then refused the Foray for "no resolvable segment items" — the
+       stop only moved earlier; the verdict is the checker's. MUTATION THAT
+       KILLS THIS: delete the `tapeBeats === 0` return in runPipeline.ts —
+       the outcome comes back "generated". Ran it — red. */
+    const out = await runForayPipeline(request, { ...options, topic: "engineering/energy-fusion" }, stubDeps());
+    expect(out.outcome).toBe("no-tape");
+    if (out.outcome !== "no-tape") return;
+    expect(out.title.length).toBeGreaterThan(0);
+    expect(out.sourcing.length).toBeGreaterThan(0);
+    expect(out.sourcing.every((line) => /0 tape/.test(line))).toBe(true);
+    /* It stopped where it said: no narration stage was timed. */
+    expect(out.timings.some((t) => t.name.startsWith("narrate"))).toBe(false);
+    expect(out.timings.some((t) => t.name === "source")).toBe(true);
+  });
+
+  it("still generates when at least one beat has tape", async () => {
+    const out = await runForayPipeline(request, options, stubDeps());
+    expect(out.outcome).toBe("generated");
+  });
+});
+
+/**
+ * F-66 (docs/curation/generation-run-2026-09-09.md): the streaming partial
+ * candidate and `ttlA1Ms` were wired one stage too late.
+ *
+ * THE MEASUREMENT THAT NAMED IT. Run 2 attempt 3 checkpointed act 1's
+ * narration at 18 minutes and did not write a partial candidate until the
+ * single `stitch` stage ran at 76 minutes — so `ttlA1Ms`, WS-D2's "time to
+ * first listen", came back 4,579,741 ms: the whole run. Nothing about act 1's
+ * items needed act 4 to exist; §4.8 was simply the stage after all of §4.7.
+ * Now act N is stitched inside the narration loop, the instant act N is
+ * narrated.
+ *
+ * These run the MEDIUM tier deliberately: the short tier is one act, and a
+ * one-act Foray cannot tell "stitched as it is narrated" from "stitched at the
+ * end" — the two are the same run.
+ */
+describe("runForayPipeline — each act is stitched as soon as it is narrated (F-66)", () => {
+  const multiAct: GenerationRequest = { ...request, duration: "medium" };
+
+  /** A stub narration writer that logs the moment each slot's prose is
+   * REQUESTED — before any sleep, so the log reads as call order rather than
+   * completion order — and can be made slow enough for a wall clock to
+   * separate one act from the next. */
+  function orderedWriter(sleepMs: number) {
+    const writer = new StubNarrationWriterBuilder();
+    const realWritePages = writer.writePages.bind(writer);
+    const events: string[] = [];
+    /** Absolute `Date.now()` of every narration request, so an elapsed time
+     * can be computed against the same origin `ttlA1Ms` is measured from. */
+    const narrationAt: number[] = [];
+    writer.writePages = async (...args: Parameters<NarrationWriterBuilder["writePages"]>) => {
+      events.push(`narrate:${args[0].slotTitle}`);
+      narrationAt.push(Date.now());
+      if (sleepMs > 0) await new Promise((resolve) => setTimeout(resolve, sleepMs));
+      return realWritePages(...args);
+    };
+    return { writer, events, narrationAt };
+  }
+
+  /** Captures the frozen spine, which is the only thing that can say which act
+   * a slot title belongs to. */
+  function capturingSpineBuilder() {
+    const builder = new StubSpineBuilder();
+    const realBuildSpine = builder.buildSpine.bind(builder);
+    const captured: { spine: Spine | null } = { spine: null };
+    builder.buildSpine = async (...args: Parameters<SpineBuilder["buildSpine"]>) => {
+      captured.spine = await realBuildSpine(...args);
+      return captured.spine;
+    };
+    return { builder, captured };
+  }
+
+  /** `PartialCandidate` carries act statuses, not an index; the act just
+   * finished is the last one marked "ready". */
+  const readyActIndex = (candidate: PartialCandidate): number =>
+    candidate.acts.filter((a) => a.status === "ready").length - 1;
+
+  it("fires onActReady for act 1 BEFORE act 2's narration is requested", async () => {
+    /* MUTATION THAT KILLS THIS: move the `stitch:<i>` block out of the
+       narration loop in runPipeline.ts and run it over `written` afterwards —
+       i.e. exactly the pre-F-66 code. Every `ready:` event then lands after
+       every `narrate:` event. Ran it — red. */
+    const { writer, events } = orderedWriter(0);
+    const { builder: spineBuilder, captured } = capturingSpineBuilder();
+
+    const out = await runForayPipeline(multiAct, options, {
+      ...stubDeps(),
+      spineBuilder,
+      narrationWriter: writer,
+      onActReady: (candidate) => {
+        events.push(`ready:${readyActIndex(candidate)}`);
+      }
+    });
+
+    expect(out.outcome).toBe("generated");
+    const spine = captured.spine;
+    expect(spine).not.toBeNull();
+    if (!spine) return;
+    expect(spine.acts.length).toBeGreaterThan(1);
+
+    /* The slot title is the join between the event log and the act structure.
+       If the spine ever reuses one across acts this test would read a false
+       pass, so it says that out loud rather than assuming it. */
+    const allSlotTitles = spine.acts.flatMap((a) => a.slots.map((s) => s.title));
+    expect(new Set(allSlotTitles).size).toBe(allSlotTitles.length);
+
+    const readyAct0 = events.indexOf("ready:0");
+    expect(readyAct0).toBeGreaterThanOrEqual(0);
+
+    const laterActSlots = new Set(spine.acts.slice(1).flatMap((a) => a.slots.map((s) => s.title)));
+    const firstLaterNarration = events.findIndex((e) => e.startsWith("narrate:") && laterActSlots.has(e.slice("narrate:".length)));
+    expect(firstLaterNarration).toBeGreaterThanOrEqual(0);
+
+    // The whole finding, in one line: act 1 is listenable before act 2 is written.
+    expect(readyAct0).toBeLessThan(firstLaterNarration);
+
+    // And every act still emits, once, in order — streaming did not lose one.
+    expect(events.filter((e) => e.startsWith("ready:"))).toEqual(spine.acts.map((_a, i) => `ready:${i}`));
+  });
+
+  it("reports a ttlA1Ms that is act 1's time, not the run's", async () => {
+    /* Run 2 attempt 3's ttlA1Ms was the whole run because the clock was read
+       inside a stage that could not start until the last act was written.
+
+       MUTATION THAT KILLS THIS: the same one as the test above — stitch after
+       the loop instead of inside it. `ttlA1Ms` then exceeds the time of the
+       last narration request. Ran it — red. */
+    const sleepMs = 40;
+    const { writer, narrationAt } = orderedWriter(sleepMs);
+
+    const startedMs = Date.now();
+    const out = await runForayPipeline(multiAct, options, {
+      ...stubDeps(),
+      narrationWriter: writer,
+      onActReady: () => {
+        /* Present so the clock is read at all — `ttlA1Ms` is `null` by design
+           when no caller is streaming. */
+      }
+    });
+    const totalMs = Date.now() - startedMs;
+
+    expect(out.outcome).toBe("generated");
+    if (out.outcome !== "generated") return;
+    expect(out.ttlA1Ms).not.toBeNull();
+    const ttlA1Ms = out.ttlA1Ms ?? Number.POSITIVE_INFINITY;
+
+    expect(narrationAt.length).toBeGreaterThan(2);
+    expect(ttlA1Ms).toBeLessThan(totalMs);
+
+    /* The sharper claim, and the one the finding is about: act 1 was ready
+       before the LAST act's narration was even asked for. `startedMs` is read
+       immediately outside the call, so it is at or before the pipeline's own
+       `pipelineStartMs` — which makes this comparison conservative rather than
+       flattering. The writer sleeps 40 ms per slot, so the two are never
+       within clock granularity of each other. */
+    const lastNarrationMs = narrationAt[narrationAt.length - 1]! - startedMs;
+    expect(ttlA1Ms).toBeLessThan(lastNarrationMs);
+  });
+
+  it("assembles exactly the items one whole-Foray stitchForay call would have, in the same order", async () => {
+    /* Act-at-a-time assembly must not move a seam, a jingle or an item. This
+       replays §4.8 the OLD way — one `stitchForay` call over the whole Foray —
+       against the very inputs this run used, read back out of the checkpoint
+       (`deepen:<i>` holds §4.4's acts, `narrate:<i>` §4.7's), and demands the
+       same list.
+
+       WHAT IT CAN AND CANNOT CATCH, said plainly: both sides now share
+       `ForayStitcher`, so a change to what an act's items ARE moves both
+       lists together and this test stays green (`stitchForay.test.ts` and
+       `stitchAct.test.ts` are the gates for that). What it does catch is
+       everything the new per-act LOOP added: an act paired with the wrong
+       narration, an act stitched twice or not at all, items concatenated out
+       of act order, a checkpoint round-trip that drops one.
+
+       MUTATION THAT KILLS THIS: hand `stitcher.stitchNextAct` the FIRST
+       written act on every pass (`written[0] ?? writtenAct`) instead of the
+       act just narrated — the act/index mis-pairing this loop makes newly
+       possible. Ran it — red. */
+    const key = "f-66-items-unchanged";
+    const store = new FakeCheckpointStore(checkpointFingerprint({ prompt: multiAct.prompt, duration: multiAct.duration, topic: options.topic }));
+
+    const out = await runForayPipeline(multiAct, { ...options, checkpointKey: key }, { ...stubDeps(), checkpoint: store });
+    expect(out.outcome).toBe("generated");
+    if (out.outcome !== "generated") return;
+
+    const stages = store.files.get(key)?.stages ?? {};
+    const perAct = (prefix: string): unknown[] =>
+      Object.keys(stages)
+        .map((k) => new RegExp(`^${prefix}:(\\d+)$`).exec(k))
+        .filter((m): m is RegExpExecArray => m !== null)
+        .sort((a, b) => Number(a[1]) - Number(b[1]))
+        .map((m) => stages[m[0]]);
+
+    const deepened = perAct("deepen") as DeepenedAct[];
+    const written = perAct("narrate") as WrittenAct[];
+    expect(written.length).toBeGreaterThan(1);
+    expect(deepened).toHaveLength(written.length);
+
+    const reference = await stitchForay(
+      deepened,
+      written,
+      { continuity: { builder: new StubContinuityBuilder() } },
+      { userId: options.userId }
+    );
+
+    /* The disclosure is the one item §4.8 never produces — §4.9 prepends it
+       (see `disclosureItem`), on both paths, exactly once. */
+    expect(out.input.items[0]).toMatchObject({ type: "narration", id: "disclosure" });
+    expect(out.input.items.slice(1)).toEqual(reference.items);
+  });
+
+  it("a resumed run re-pays for no act's stitching and builds the same Foray (F-17/F-18)", async () => {
+    /* Per-act stitch keys must not weaken resume. The continuity agent is the
+       only paid call in §4.8, so counting it is counting the bill.
+
+       MUTATION THAT KILLS THIS: call `stitcher.stitchNextAct` directly instead
+       of through `stageDetail`, so no `stitch:<i>` key is ever written. The
+       second run smooths every boundary again. Ran it — red. */
+    const key = "f-66-resume";
+    const store = new FakeCheckpointStore(checkpointFingerprint({ prompt: multiAct.prompt, duration: multiAct.duration, topic: options.topic }));
+
+    const first = await runForayPipeline(multiAct, { ...options, checkpointKey: key }, { ...stubDeps(), checkpoint: store });
+    expect(first.outcome).toBe("generated");
+    if (first.outcome !== "generated") return;
+
+    const actCount = store.stageKeys(key).filter((k) => /^narrate:\d+$/.test(k)).length;
+    expect(actCount).toBeGreaterThan(1);
+    expect(store.stageKeys(key).filter((k) => /^stitch:\d+$/.test(k))).toHaveLength(actCount);
+
+    let smoothCalls = 0;
+    const continuityBuilder = new StubContinuityBuilder();
+    const realSmoothSeam = continuityBuilder.smoothSeam.bind(continuityBuilder);
+    continuityBuilder.smoothSeam = async (...args: Parameters<ContinuityBuilder["smoothSeam"]>) => {
+      smoothCalls++;
+      return realSmoothSeam(...args);
+    };
+
+    const second = await runForayPipeline(multiAct, { ...options, checkpointKey: key }, { ...stubDeps(), continuityBuilder, checkpoint: store });
+    expect(second.outcome).toBe("generated");
+    if (second.outcome !== "generated") return;
+
+    expect(smoothCalls).toBe(0);
+    expect(second.input.items).toEqual(first.input.items);
+  });
+
+  it("validates every partial candidate against the same minted tier-2 tape the final one gets (F-71)", async () => {
+    /* THE FINDING. Run 2 attempt 4b's partial candidate reported five `unknown
+       segment_id ... — not in data/segments.json` errors and then "no
+       resolvable segment items", while the FINAL candidate resolved all five
+       and failed on M3/M4 instead. Same items, same checker, different input:
+       `buildPartialCandidate`'s finalize call was not handed `sourced.newSegments`
+       / `sourced.newSegmentSources`, and a segment cut from a transcript during
+       the run is in neither `data/segments.json` nor the registry on disk.
+
+       IDENTITY, NOT EQUALITY. Both calls must be handed the very arrays this
+       run's §4.5 produced — asserting `toBe` against `out.input.segments` says
+       the partial path reads the same source as the whole-Foray path rather
+       than something reconstructed beside it, and it says so on a stub run that
+       mints nothing (where every other assertion would be two empty arrays
+       agreeing by accident).
+
+       MUTATION THAT KILLS THIS: drop `segments`/`segmentSources` from the
+       `buildPartialCandidate` meta literal in `runPipeline.ts` — the pre-F-71
+       code. The partial inputs then carry `undefined` while the final one
+       carries the arrays. Ran it — red. */
+    const finalize = recordingFinalize();
+    let partials = 0;
+    const out = await runForayPipeline(multiAct, options, {
+      ...stubDeps(),
+      finalize: finalize.fn,
+      onActReady: () => {
+        partials++;
+      }
+    });
+
+    expect(out.outcome).toBe("generated");
+    if (out.outcome !== "generated") return;
+    expect(partials).toBeGreaterThan(1);
+    /* One finalize per act (the partial candidates) plus the whole-Foray one at
+       the end — every one of them handed the same pool. */
+    expect(finalize.seen).toHaveLength(partials + 1);
+    for (const input of finalize.seen) {
+      expect(input.segments).toBe(out.input.segments);
+      expect(input.segmentSources).toBe(out.input.segmentSources);
+    }
   });
 });
