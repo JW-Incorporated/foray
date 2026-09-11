@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-22T08:27:24.991Z",
+  "built_at": "2026-09-11T00:32:28.340Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-22-c4c822e0",
+    "last_batch_id": "fresh-2026-09-11-29541003",
     "last_batch_tier": 1
   },
   "entries": {
@@ -5224,47 +5224,72 @@
     },
     "258864037": {
       "topics": [
-        "sports"
-      ],
-      "confidence": "high",
-      "source": "classify-agent-tier1",
-      "topic_confidences": [
-        {
-          "node": "sports",
-          "confidence": 0.95
-        }
-      ],
-      "needs_review": false,
-      "rationale": "Weekly New York Mets baseball analysis and news.",
-      "display_title": "The Mets Pod",
-      "blurb": "Connor Rogers and Joe DeMayo bring you The Mets Pod, a podcast dedicated to all things New York Mets! SNY’s signature podcast is a weekly show that delivers everything a.",
-      "display_copy_ok": true,
-      "model": "claude-code-cron (tier 1)",
-      "tier": 1,
-      "batch_id": "fresh-2026-07-25-4f098686",
-      "classified_at": "2026-07-25T05:30:43.441Z"
-    },
-    "258965905": {
-      "topics": [
+        "sports/baseball",
+        "sports",
+        "news",
         "history"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
+          "node": "sports/baseball",
+          "confidence": 1
+        },
+        {
+          "node": "sports",
+          "confidence": 0.6
+        },
+        {
+          "node": "news",
+          "confidence": 0.3
+        },
+        {
           "node": "history",
-          "confidence": 0.75
+          "confidence": 0.3
         }
       ],
       "needs_review": false,
-      "rationale": "Classic police procedural radio drama from mid-20th century.",
-      "display_title": "Dragnet",
-      "blurb": "Dragnet was created and produced by Jack Webb, who starred as the terse Sgt. Friday. Webb had starred in a few mostly short-lived radio programs, but Dragnet would make him.",
+      "rationale": "Focuses on Baseball based on show description and episode titles.",
+      "display_title": "The Mets Pod",
+      "blurb": "Connor Rogers and Joe DeMayo bring you The Mets Pod, a podcast dedicated to all things New York Mets! SNY’s signature podcast is a weekly.",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-4f098686",
-      "classified_at": "2026-07-25T05:30:43.441Z"
+      "batch_id": "fresh-2026-09-11-29541003",
+      "classified_at": "2026-09-11T00:32:28.340Z"
+    },
+    "258965905": {
+      "topics": [
+        "kids-family",
+        "true-crime",
+        "fiction"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family",
+          "confidence": 0.55
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.3
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Focuses on Kids & Family based on show description and episode titles.",
+      "display_title": "Dragnet",
+      "blurb": "Dragnet was created and produced by Jack Webb, who starred as the terse Sgt. Friday. Webb had starred in a few mostly short-lived radio programs.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-11-29541003",
+      "classified_at": "2026-09-11T00:32:28.340Z"
     },
     "259617791": {
       "topics": [
@@ -5291,22 +5316,32 @@
     "260335249": {
       "topics": [
         "science",
-        "nature"
+        "nature",
+        "science/physics",
+        "science/chemistry"
       ],
-      "confidence": "high",
+      "confidence": "medium",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
           "node": "science",
-          "confidence": 0.9
+          "confidence": 0.7000000000000001
         },
         {
           "node": "nature",
-          "confidence": 0.65
+          "confidence": 0.55
+        },
+        {
+          "node": "science/physics",
+          "confidence": 0.3
+        },
+        {
+          "node": "science/chemistry",
+          "confidence": 0.3
         }
       ],
       "needs_review": true,
-      "rationale": "Short-form science and nature explanations for curious minds.",
+      "rationale": "Focuses on Science based on show description and episode titles.",
       "display_title": null,
       "blurb": null,
       "display_copy_ok": false,
@@ -5315,8 +5350,8 @@
       ],
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-4f098686",
-      "classified_at": "2026-07-25T05:30:43.441Z"
+      "batch_id": "fresh-2026-09-11-29541003",
+      "classified_at": "2026-09-11T00:32:28.340Z"
     },
     "260832564": {
       "topics": [
@@ -5450,25 +5485,40 @@
     },
     "262921699": {
       "topics": [
-        "philosophy/ideas"
+        "kids-family",
+        "nature/weather",
+        "history",
+        "food"
       ],
       "confidence": "medium",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
-          "node": "philosophy/ideas",
-          "confidence": 0.6
+          "node": "kids-family",
+          "confidence": 0.7000000000000001
+        },
+        {
+          "node": "nature/weather",
+          "confidence": 0.3
+        },
+        {
+          "node": "history",
+          "confidence": 0.3
+        },
+        {
+          "node": "food",
+          "confidence": 0.3
         }
       ],
-      "needs_review": true,
-      "rationale": "Two friends discuss faith, family, and life topics casually.",
+      "needs_review": false,
+      "rationale": "Focuses on Kids & Family based on show description and episode titles.",
       "display_title": "The Big Boo Cast",
-      "blurb": "Authors / speakers Melanie Shankle and Sophie Hudson - also known as Big Mama and BooMama on their blogs - talk about all the important stuff: faith, family, friends, football,.",
+      "blurb": "Authors / speakers Melanie Shankle and Sophie Hudson - also known as Big Mama and BooMama on their blogs - talk about all the important.",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-4f098686",
-      "classified_at": "2026-07-25T05:30:43.441Z"
+      "batch_id": "fresh-2026-09-11-29541003",
+      "classified_at": "2026-09-11T00:32:28.340Z"
     },
     "263170419": {
       "topics": [
@@ -5520,25 +5570,40 @@
     },
     "263659039": {
       "topics": [
-        "sports"
+        "sports/rugby",
+        "sports",
+        "news",
+        "history"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
+          "node": "sports/rugby",
+          "confidence": 1
+        },
+        {
           "node": "sports",
-          "confidence": 0.95
+          "confidence": 0.6
+        },
+        {
+          "node": "news",
+          "confidence": 0.3
+        },
+        {
+          "node": "history",
+          "confidence": 0.3
         }
       ],
       "needs_review": false,
-      "rationale": "Welsh rugby news, views, and interviews from BBC.",
+      "rationale": "Focuses on Rugby based on show description and episode titles.",
       "display_title": "Scrum V",
       "blurb": "The latest news, views and interviews from the world of Welsh rugby.",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-4f098686",
-      "classified_at": "2026-07-25T05:30:43.441Z"
+      "batch_id": "fresh-2026-09-11-29541003",
+      "classified_at": "2026-09-11T00:32:28.340Z"
     },
     "264426669": {
       "topics": [
@@ -5550,25 +5615,25 @@
     },
     "264537349": {
       "topics": [
-        "science/storytelling"
+        "kids-family"
       ],
       "confidence": "medium",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
-          "node": "science/storytelling",
-          "confidence": 0.55
+          "node": "kids-family",
+          "confidence": 0.7000000000000001
         }
       ],
-      "needs_review": true,
-      "rationale": "Educational content for young children with Sesame Street characters.",
+      "needs_review": false,
+      "rationale": "Focuses on Kids & Family based on show description and episode titles.",
       "display_title": "Sesame Street Podcast",
-      "blurb": "Download and subscribe to the Sesame Street video podcast featuring the furry and loveable Muppets of Sesame Street. Sing songs with Elmo, Abby, Cookie Monster and Grover. Learn about friendship,.",
+      "blurb": "Download and subscribe to the Sesame Street video podcast featuring the furry and loveable Muppets of Sesame Street. Sing songs with Elmo, Abby, Cookie Monster.",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-4f098686",
-      "classified_at": "2026-07-25T05:30:43.441Z"
+      "batch_id": "fresh-2026-09-11-29541003",
+      "classified_at": "2026-09-11T00:32:28.340Z"
     },
     "264739047": {
       "topics": [
@@ -5651,25 +5716,40 @@
     },
     "266391367": {
       "topics": [
-        "computing"
+        "computing",
+        "engineering",
+        "business",
+        "kids-family/stories"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
           "node": "computing",
-          "confidence": 0.85
+          "confidence": 1
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.7000000000000001
+        },
+        {
+          "node": "business",
+          "confidence": 0.44999999999999996
+        },
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.44999999999999996
         }
       ],
       "needs_review": false,
-      "rationale": "Technology trends and cultural impact of computing innovations.",
+      "rationale": "Focuses on Computing based on show description and episode titles.",
       "display_title": "Uncanny Valley | WIRED",
-      "blurb": "Welcome to Uncanny Valley—an insider look at the people, power, and influence of Silicon Valley—where each week, WIRED’s writers and editors bring you original reporting and analysis about some of.",
+      "blurb": "Welcome to Uncanny Valley—an insider look at the people, power, and influence of Silicon Valley—where each week, WIRED’s writers and editors bring you original reporting.",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-4f098686",
-      "classified_at": "2026-07-25T05:30:43.441Z"
+      "batch_id": "fresh-2026-09-11-29541003",
+      "classified_at": "2026-09-11T00:32:28.340Z"
     },
     "266791433": {
       "topics": [
@@ -5825,25 +5905,40 @@
     },
     "268800565": {
       "topics": [
-        "sports"
+        "sports/basketball",
+        "sports",
+        "news",
+        "history"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
+          "node": "sports/basketball",
+          "confidence": 0.85
+        },
+        {
           "node": "sports",
-          "confidence": 0.95
+          "confidence": 0.51
+        },
+        {
+          "node": "news",
+          "confidence": 0.44999999999999996
+        },
+        {
+          "node": "history",
+          "confidence": 0.3
         }
       ],
       "needs_review": false,
-      "rationale": "College basketball news, analysis, and commentary.",
+      "rationale": "Focuses on Basketball based on show description and episode titles.",
       "display_title": "Eye On College Basketball",
-      "blurb": "CBS Sports’ official college basketball podcast is the most entertaining and informative of its kind. Gary Parrish and Matt Norlander bring the sport into your ears at least three times.",
+      "blurb": "CBS Sports’ official college basketball podcast is the most entertaining and informative of its kind. Gary Parrish and Matt Norlander bring the sport into your.",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-4f098686",
-      "classified_at": "2026-07-25T05:30:43.441Z"
+      "batch_id": "fresh-2026-09-11-29541003",
+      "classified_at": "2026-09-11T00:32:28.340Z"
     },
     "268942353": {
       "topics": [
@@ -6052,25 +6147,45 @@
     },
     "275699983": {
       "topics": [
-        "science/storytelling"
+        "culture/performing-arts",
+        "culture",
+        "history",
+        "education",
+        "kids-family/stories"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
-          "node": "science/storytelling",
-          "confidence": 0.75
+          "node": "culture/performing-arts",
+          "confidence": 1
+        },
+        {
+          "node": "culture",
+          "confidence": 0.6
+        },
+        {
+          "node": "history",
+          "confidence": 0.44999999999999996
+        },
+        {
+          "node": "education",
+          "confidence": 0.44999999999999996
+        },
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.3
         }
       ],
       "needs_review": false,
-      "rationale": "True personal stories told live from diverse narrators.",
+      "rationale": "Focuses on Performing Arts based on show description and episode titles.",
       "display_title": "The Moth",
-      "blurb": "On Tuesdays and Fridays The Moth’s podcast feed presents episodes of the Peabody-Award Winning Moth Radio Hour and original episodes of The Moth Podcast. Since its launch in 1997, The.",
+      "blurb": "On Tuesdays and Fridays The Moth’s podcast feed presents episodes of the Peabody-Award Winning Moth Radio Hour and original episodes of The Moth Podcast. Since.",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-4f098686",
-      "classified_at": "2026-07-25T05:30:43.441Z"
+      "batch_id": "fresh-2026-09-11-29541003",
+      "classified_at": "2026-09-11T00:32:28.340Z"
     },
     "275924761": {
       "topics": [
@@ -6230,74 +6345,99 @@
     },
     "278974813": {
       "topics": [
-        "science/storytelling"
-      ],
-      "confidence": "medium",
-      "source": "classify-agent-tier1",
-      "topic_confidences": [
-        {
-          "node": "science/storytelling",
-          "confidence": 0.7
-        }
-      ],
-      "needs_review": false,
-      "rationale": "Roundtable discussion of weekly pop culture and entertainment.",
-      "display_title": "Pop Culture Happy Hour",
-      "blurb": "Trying to keep up with the latest in pop culture? We’ve got you covered. The Pop Culture Happy Hour podcast helps you find the best new binge-worthy tv shows, movies,.",
-      "display_copy_ok": true,
-      "model": "claude-code-cron (tier 1)",
-      "tier": 1,
-      "batch_id": "fresh-2026-07-25-4f098686",
-      "classified_at": "2026-07-25T05:30:43.441Z"
-    },
-    "278981407": {
-      "topics": [
-        "science",
-        "history"
+        "tv-film/reviews",
+        "tv-film",
+        "news",
+        "music"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
-          "node": "science",
-          "confidence": 0.85
+          "node": "tv-film/reviews",
+          "confidence": 1
         },
         {
-          "node": "history",
-          "confidence": 0.65
+          "node": "tv-film",
+          "confidence": 0.6
+        },
+        {
+          "node": "news",
+          "confidence": 0.3
+        },
+        {
+          "node": "music",
+          "confidence": 0.3
         }
       ],
       "needs_review": false,
-      "rationale": "Explanations of how things work and interesting historical topics.",
-      "display_title": "Stuff You Should Know",
-      "blurb": "If you've ever wanted to know about champagne, satanism, the Stonewall Uprising, chaos theory, LSD, El Nino, true crime and Rosa Parks, then look no further. Josh and Chuck have.",
+      "rationale": "Focuses on Film & TV Reviews based on show description and episode titles.",
+      "display_title": "Pop Culture Happy Hour",
+      "blurb": "Trying to keep up with the latest in pop culture? We’ve got you covered. The Pop Culture Happy Hour podcast helps you find the best.",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-4f098686",
-      "classified_at": "2026-07-25T05:30:43.441Z"
+      "batch_id": "fresh-2026-09-11-29541003",
+      "classified_at": "2026-09-11T00:32:28.340Z"
+    },
+    "278981407": {
+      "topics": [
+        "society",
+        "culture"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.55
+        },
+        {
+          "node": "culture",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Focuses on Society based on show description and episode titles.",
+      "display_title": "Stuff You Should Know",
+      "blurb": "If you've ever wanted to know about champagne, satanism, the Stonewall Uprising, chaos theory, LSD, El Nino, true crime and Rosa Parks, then look no.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-11-29541003",
+      "classified_at": "2026-09-11T00:32:28.340Z"
     },
     "279241099": {
       "topics": [
-        "sports"
+        "sports",
+        "sports/football",
+        "news"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
           "node": "sports",
-          "confidence": 0.9
+          "confidence": 1
+        },
+        {
+          "node": "sports/football",
+          "confidence": 0.6
+        },
+        {
+          "node": "news",
+          "confidence": 0.3
         }
       ],
       "needs_review": false,
-      "rationale": "Daily sports news, analysis, and interviews.",
+      "rationale": "Focuses on Sports based on show description and episode titles.",
       "display_title": "The Dan Patrick Show",
-      "blurb": "Listen to Dan's daily radio show. With exclusive insider access, Patrick brings A-list guests from the world of sports and entertainment to the show. Sharing his perspective on pop culture.",
+      "blurb": "Listen to Dan's daily radio show. With exclusive insider access, Patrick brings A-list guests from the world of sports and entertainment to the show. Sharing.",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-4f098686",
-      "classified_at": "2026-07-25T05:30:43.441Z"
+      "batch_id": "fresh-2026-09-11-29541003",
+      "classified_at": "2026-09-11T00:32:28.340Z"
     },
     "279428154": {
       "topics": [
@@ -6376,25 +6516,35 @@
     },
     "281128135": {
       "topics": [
-        "sports"
+        "sports/soccer",
+        "sports",
+        "sports/football"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
+          "node": "sports/soccer",
+          "confidence": 0.85
+        },
+        {
           "node": "sports",
-          "confidence": 0.95
+          "confidence": 0.51
+        },
+        {
+          "node": "sports/football",
+          "confidence": 0.3
         }
       ],
       "needs_review": false,
-      "rationale": "Arsenal Football Club news and fan commentary.",
+      "rationale": "Focuses on Soccer based on show description and episode titles.",
       "display_title": "Arseblog Arsecast, The Arsenal Podcast",
-      "blurb": "The original Arsenal podcast - coming to you twice a week (usually Mondays and Fridays) with news, interviews, analysis, special guests, jokes and occasionally some really terrible songs. Get extra.",
+      "blurb": "The original Arsenal podcast - coming to you twice a week (usually Mondays and Fridays) with news, interviews, analysis, special guests, jokes and occasionally some.",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-4f098686",
-      "classified_at": "2026-07-25T05:30:43.441Z"
+      "batch_id": "fresh-2026-09-11-29541003",
+      "classified_at": "2026-09-11T00:32:28.340Z"
     },
     "281329178": {
       "topics": [
@@ -6428,25 +6578,40 @@
     },
     "282795787": {
       "topics": [
-        "computing"
+        "computing",
+        "engineering",
+        "culture",
+        "society"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
           "node": "computing",
-          "confidence": 0.9
+          "confidence": 1
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.55
+        },
+        {
+          "node": "culture",
+          "confidence": 0.44999999999999996
+        },
+        {
+          "node": "society",
+          "confidence": 0.44999999999999996
         }
       ],
       "needs_review": false,
-      "rationale": "Explanations of how technology works and its impact.",
+      "rationale": "Focuses on Computing based on show description and episode titles.",
       "display_title": "TechStuff",
-      "blurb": "Behind every innovation is a new kind of power. TechStuff unpacks how technology reshapes influence, creativity, and control, from Silicon Valley&rsquo;s rising moguls to the cultural forces they crea.",
+      "blurb": "Behind every innovation is a new kind of power. TechStuff unpacks how technology reshapes influence, creativity, and control, from Silicon Valley&rsquo;s rising moguls to the.",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-4f098686",
-      "classified_at": "2026-07-25T05:30:43.441Z"
+      "batch_id": "fresh-2026-09-11-29541003",
+      "classified_at": "2026-09-11T00:32:28.340Z"
     },
     "282825594": {
       "topics": [
@@ -6517,47 +6682,92 @@
     },
     "283627069": {
       "topics": [
-        "science/storytelling"
+        "culture/performing-arts",
+        "culture",
+        "engineering/ai-robotics",
+        "fiction",
+        "fiction/sci-fi"
       ],
-      "confidence": "high",
+      "confidence": "medium",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
-          "node": "science/storytelling",
-          "confidence": 0.75
+          "node": "culture/performing-arts",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture",
+          "confidence": 0.42
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.3
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.3
+        },
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.3
         }
       ],
       "needs_review": false,
-      "rationale": "Classic science fiction stories from old-time radio archives.",
+      "rationale": "Focuses on Performing Arts based on show description and episode titles.",
       "display_title": "Relic Radio Sci-Fi (old time radio)",
-      "blurb": ".",
+      "blurb": "A podcast show.",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-4f098686",
-      "classified_at": "2026-07-25T05:30:43.441Z"
+      "batch_id": "fresh-2026-09-11-29541003",
+      "classified_at": "2026-09-11T00:32:28.340Z"
     },
     "283657561": {
       "topics": [
-        "science/storytelling"
+        "culture/performing-arts",
+        "music",
+        "kids-family/stories",
+        "culture",
+        "kids-family",
+        "fiction"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
-          "node": "science/storytelling",
-          "confidence": 0.8
+          "node": "culture/performing-arts",
+          "confidence": 0.85
+        },
+        {
+          "node": "music",
+          "confidence": 0.6
+        },
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.6
+        },
+        {
+          "node": "culture",
+          "confidence": 0.51
+        },
+        {
+          "node": "kids-family",
+          "confidence": 0.36
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.3
         }
       ],
       "needs_review": false,
-      "rationale": "True stories with surprising twists and turns.",
+      "rationale": "Focuses on Performing Arts based on show description and episode titles.",
       "display_title": "Snap Judgment",
-      "blurb": "Snap Judgment mixes real stories with beats to produce cinematic, dramatic audio. Snap’s raw, musical brand of storytelling dares listeners to see the world through the eyes of another. It's.",
+      "blurb": "Snap Judgment mixes real stories with beats to produce cinematic, dramatic audio. Snap’s raw, musical brand of storytelling dares listeners to see the world through.",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-4f098686",
-      "classified_at": "2026-07-25T05:30:43.441Z"
+      "batch_id": "fresh-2026-09-11-29541003",
+      "classified_at": "2026-09-11T00:32:28.340Z"
     },
     "283834552": {
       "topics": [
@@ -6585,25 +6795,30 @@
     },
     "284148583": {
       "topics": [
-        "philosophy/ideas"
+        "philosophy",
+        "food"
       ],
       "confidence": "medium",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
-          "node": "philosophy/ideas",
-          "confidence": 0.65
+          "node": "philosophy",
+          "confidence": 0.7
+        },
+        {
+          "node": "food",
+          "confidence": 0.3
         }
       ],
       "needs_review": false,
-      "rationale": "Preparedness, self-sufficiency, and alternative living strategies.",
+      "rationale": "Focuses on Philosophy based on show description and episode titles.",
       "display_title": "The Survival Podcast",
-      "blurb": "Helping you live a better life, if times get tough or even if they don&#039;t.",
+      "blurb": "Helping you live a better life, if times get tough or even if they don&#039;t",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-4f098686",
-      "classified_at": "2026-07-25T05:30:43.441Z"
+      "batch_id": "fresh-2026-09-11-29541003",
+      "classified_at": "2026-09-11T00:32:28.340Z"
     },
     "284198852": {
       "topics": [
@@ -6750,25 +6965,30 @@
     },
     "290139091": {
       "topics": [
-        "science/storytelling"
+        "news",
+        "tv-film"
       ],
       "confidence": "medium",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
-          "node": "science/storytelling",
-          "confidence": 0.5
+          "node": "news",
+          "confidence": 0.7000000000000001
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.55
         }
       ],
       "needs_review": true,
-      "rationale": "Entertainment news and pop culture coverage.",
+      "rationale": "Focuses on News & Current Affairs based on show description and episode titles.",
       "display_title": "La Ventana",
-      "blurb": "Abre La Ventana de Carles Francino: una mirada a la actualidad, a la sociedad y a la cultura cargada de empatía y humanidad. Con el repaso político más agudo y.",
+      "blurb": "Abre La Ventana de Carles Francino: una mirada a la actualidad, a la sociedad y a la cultura cargada de empatía y humanidad. Con el.",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-4f098686",
-      "classified_at": "2026-07-25T05:30:43.441Z"
+      "batch_id": "fresh-2026-09-11-29541003",
+      "classified_at": "2026-09-11T00:32:28.340Z"
     },
     "290152576": {
       "topics": [
@@ -6841,25 +7061,40 @@
     },
     "292651411": {
       "topics": [
-        "business"
+        "news",
+        "business",
+        "travel",
+        "economics"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
+          "node": "news",
+          "confidence": 1
+        },
+        {
           "node": "business",
-          "confidence": 0.9
+          "confidence": 1
+        },
+        {
+          "node": "travel",
+          "confidence": 0.3
+        },
+        {
+          "node": "economics",
+          "confidence": 0.3
         }
       ],
       "needs_review": false,
-      "rationale": "Global business and financial news briefings.",
+      "rationale": "Focuses on News & Current Affairs based on show description and episode titles.",
       "display_title": "World Business Report",
       "blurb": "The latest business and finance news from around the world, on the BBC.",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-4f098686",
-      "classified_at": "2026-07-25T05:30:43.441Z"
+      "batch_id": "fresh-2026-09-11-29541003",
+      "classified_at": "2026-09-11T00:32:28.340Z"
     },
     "292681379": {
       "topics": [
@@ -6989,25 +7224,25 @@
     },
     "296499169": {
       "topics": [
-        "music/theory-production"
+        "music"
       ],
-      "confidence": "high",
+      "confidence": "medium",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
-          "node": "music/theory-production",
-          "confidence": 0.85
+          "node": "music",
+          "confidence": 0.7000000000000001
         }
       ],
       "needs_review": false,
-      "rationale": "Electronic and progressive music sessions and interviews.",
+      "rationale": "Focuses on Music based on show description and episode titles.",
       "display_title": "Euphonic Sessions with Kyau & Albert",
-      "blurb": "Once a month Kyau & Albert present their favourite tracks in their Radio Show \"Euphonic Sessions\"..for more info and playlists check www.kyauandalbert.com.",
+      "blurb": "Once a month Kyau & Albert present their favourite tracks in their Radio Show \"Euphonic Sessions\"..for more info and playlists check www.kyauandalbert.com",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-4f098686",
-      "classified_at": "2026-07-25T05:30:43.441Z"
+      "batch_id": "fresh-2026-09-11-29541003",
+      "classified_at": "2026-09-11T00:32:28.340Z"
     },
     "296714733": {
       "topics": [
@@ -7019,25 +7254,45 @@
     },
     "296762605": {
       "topics": [
-        "nature/earth-science"
+        "science",
+        "nature/earth-science",
+        "automotive",
+        "nature",
+        "nature/weather"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
+          "node": "science",
+          "confidence": 1
+        },
+        {
           "node": "nature/earth-science",
-          "confidence": 0.95
+          "confidence": 0.7
+        },
+        {
+          "node": "automotive",
+          "confidence": 0.44999999999999996
+        },
+        {
+          "node": "nature",
+          "confidence": 0.42
+        },
+        {
+          "node": "nature/weather",
+          "confidence": 0.3
         }
       ],
       "needs_review": false,
-      "rationale": "Solutions-focused climate change discussions and solutions.",
+      "rationale": "Focuses on Science based on show description and episode titles.",
       "display_title": "Climate One",
-      "blurb": "We’re living through a climate emergency; addressing this crisis begins by talking about it. Co-Hosts Greg Dalton, Ariana Brocious and Kousha Navidar bring you empowering conversations that connect al.",
+      "blurb": "We’re living through a climate emergency; addressing this crisis begins by talking about it. Co-Hosts Greg Dalton, Ariana Brocious and Kousha Navidar bring you empowering.",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-4f098686",
-      "classified_at": "2026-07-25T05:30:43.441Z"
+      "batch_id": "fresh-2026-09-11-29541003",
+      "classified_at": "2026-09-11T00:32:28.340Z"
     },
     "297409792": {
       "topics": [
@@ -7190,25 +7445,45 @@
     },
     "304863991": {
       "topics": [
-        "computing"
+        "news/tech",
+        "computing",
+        "news",
+        "engineering/ai-robotics",
+        "education"
       ],
-      "confidence": "high",
+      "confidence": "medium",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
+          "node": "news/tech",
+          "confidence": 0.7
+        },
+        {
           "node": "computing",
-          "confidence": 0.95
+          "confidence": 0.7
+        },
+        {
+          "node": "news",
+          "confidence": 0.42
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.3
+        },
+        {
+          "node": "education",
+          "confidence": 0.3
         }
       ],
       "needs_review": false,
-      "rationale": "Daily cybersecurity news, threats, and defensive strategies.",
+      "rationale": "Focuses on Tech News based on show description and episode titles.",
       "display_title": "SANS Internet Stormcenter Daily Cyber Security Podcast (Stormcast)",
-      "blurb": "A brief daily summary of what is important in information security. The podcast is published every weekday and designed to get you ready for the day with a brief, usually.",
+      "blurb": "A brief daily summary of what is important in information security. The podcast is published every weekday and designed to get you ready for the.",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-4f098686",
-      "classified_at": "2026-07-25T05:30:43.441Z"
+      "batch_id": "fresh-2026-09-11-29541003",
+      "classified_at": "2026-09-11T00:32:28.340Z"
     },
     "305561100": {
       "topics": [
@@ -7419,25 +7694,40 @@
     },
     "310656913": {
       "topics": [
-        "history"
+        "paranormal",
+        "personal-journals",
+        "history",
+        "kids-family/stories"
       ],
-      "confidence": "medium",
+      "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
+          "node": "paranormal",
+          "confidence": 0.8999999999999999
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.4
+        },
+        {
           "node": "history",
-          "confidence": 0.6
+          "confidence": 0.3
+        },
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.3
         }
       ],
-      "needs_review": true,
-      "rationale": "Paranormal stories and mysterious encounters from listeners.",
+      "needs_review": false,
+      "rationale": "Focuses on Paranormal based on show description and episode titles.",
       "display_title": "Jim Harold's Campfire",
-      "blurb": "TRUE Ghost stories, hauntings, shadow people, demons, UFOs, cryptids and more! Everyday people share their personal stories of paranormal phenomena. This feed reflects the last 90 days of content, Jim.",
+      "blurb": "TRUE Ghost stories, hauntings, shadow people, demons, UFOs, cryptids and more! Everyday people share their personal stories of paranormal phenomena. This feed reflects the last.",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-4f098686",
-      "classified_at": "2026-07-25T05:30:43.441Z"
+      "batch_id": "fresh-2026-09-11-29541003",
+      "classified_at": "2026-09-11T00:32:28.340Z"
     },
     "312014249": {
       "topics": [
@@ -7616,25 +7906,40 @@
     },
     "323506039": {
       "topics": [
+        "science",
+        "nature",
+        "fiction/sci-fi",
         "space"
       ],
-      "confidence": "high",
+      "confidence": "medium",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
+          "node": "science",
+          "confidence": 0.7000000000000001
+        },
+        {
+          "node": "nature",
+          "confidence": 0.55
+        },
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.3
+        },
+        {
           "node": "space",
-          "confidence": 0.95
+          "confidence": 0.3
         }
       ],
       "needs_review": false,
-      "rationale": "Astronomy and space science explained accessibly.",
+      "rationale": "Focuses on Science based on show description and episode titles.",
       "display_title": "Cheap Astronomy Podcasts",
-      "blurb": "Cheap Astronomy offers you 10 minute weekly podcasts on a wide range of astronomy, astrophysics, cosmology, space science and space exploration topics. At Cheap Astronomy you're only as cheap as.",
+      "blurb": "Cheap Astronomy offers you 10 minute weekly podcasts on a wide range of astronomy, astrophysics, cosmology, space science and space exploration topics. At Cheap Astronomy.",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-4f098686",
-      "classified_at": "2026-07-25T05:30:43.441Z"
+      "batch_id": "fresh-2026-09-11-29541003",
+      "classified_at": "2026-09-11T00:32:28.340Z"
     },
     "323983193": {
       "topics": [
@@ -7726,25 +8031,30 @@
     },
     "326301337": {
       "topics": [
+        "news",
         "business"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
+          "node": "news",
+          "confidence": 1
+        },
+        {
           "node": "business",
-          "confidence": 0.9
+          "confidence": 1
         }
       ],
       "needs_review": false,
-      "rationale": "Financial markets, business, and economic analysis.",
+      "rationale": "Focuses on News & Current Affairs based on show description and episode titles.",
       "display_title": "Bloomberg Intelligence",
-      "blurb": "Listen for investment news and in-depth company research. Hosts Paul Sweeney and Scarlet Fu harness the power of Bloomberg Intelligence to analyze investments on Wall Street. Watch Bloomberg Intellige.",
+      "blurb": "Listen for investment news and in-depth company research. Hosts Paul Sweeney and Scarlet Fu harness the power of Bloomberg Intelligence to analyze investments on Wall.",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-4f098686",
-      "classified_at": "2026-07-25T05:30:43.441Z"
+      "batch_id": "fresh-2026-09-11-29541003",
+      "classified_at": "2026-09-11T00:32:28.340Z"
     },
     "326305731": {
       "topics": [
@@ -7784,18 +8094,33 @@
     },
     "327466681": {
       "topics": [
-        "sports"
+        "sports/soccer",
+        "sports",
+        "news",
+        "fiction/drama"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
+          "node": "sports/soccer",
+          "confidence": 1
+        },
+        {
           "node": "sports",
-          "confidence": 0.95
+          "confidence": 0.6
+        },
+        {
+          "node": "news",
+          "confidence": 0.3
+        },
+        {
+          "node": "fiction/drama",
+          "confidence": 0.3
         }
       ],
       "needs_review": true,
-      "rationale": "Soccer analysis covering USMNT, Champions League, and EPL.",
+      "rationale": "Focuses on Soccer based on show description and episode titles.",
       "display_title": null,
       "blurb": null,
       "display_copy_ok": false,
@@ -7804,23 +8129,33 @@
       ],
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-4f098686",
-      "classified_at": "2026-07-25T05:30:43.441Z"
+      "batch_id": "fresh-2026-09-11-29541003",
+      "classified_at": "2026-09-11T00:32:28.340Z"
     },
     "327725953": {
       "topics": [
-        "craft"
+        "computing",
+        "gaming",
+        "hobbies"
       ],
       "confidence": "medium",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
-          "node": "craft",
-          "confidence": 0.7
+          "node": "computing",
+          "confidence": 0.6
+        },
+        {
+          "node": "gaming",
+          "confidence": 0.55
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.55
         }
       ],
       "needs_review": true,
-      "rationale": "Tabletop role-playing game actual-play podcast.",
+      "rationale": "Focuses on Computing based on show description and episode titles.",
       "display_title": null,
       "blurb": null,
       "display_copy_ok": false,
@@ -7829,8 +8164,8 @@
       ],
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-4f098686",
-      "classified_at": "2026-07-25T05:30:43.441Z"
+      "batch_id": "fresh-2026-09-11-29541003",
+      "classified_at": "2026-09-11T00:32:28.340Z"
     },
     "327751771": {
       "topics": [
@@ -7911,25 +8246,40 @@
     },
     "330291397": {
       "topics": [
-        "craft/diy-home"
+        "hobbies",
+        "health/mental",
+        "food",
+        "craft"
       ],
-      "confidence": "high",
+      "confidence": "low",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
-          "node": "craft/diy-home",
-          "confidence": 0.85
+          "node": "hobbies",
+          "confidence": 0.4
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.3
+        },
+        {
+          "node": "food",
+          "confidence": 0.3
+        },
+        {
+          "node": "craft",
+          "confidence": 0.3
         }
       ],
-      "needs_review": false,
-      "rationale": "DIY projects, gardening, and sustainable living.",
+      "needs_review": true,
+      "rationale": "Focuses on Hobbies & Leisure based on show description and episode titles.",
       "display_title": "GardenFork Radio - Eclectic DIY",
-      "blurb": "Gardenfork Radio is Maker, DIY, Urban Homesteading, Cooking, Gardening, Home Improvement, Beekeeping and other fun stuff. There's always a ton of stuff swirling in my head, and it doesn't all.",
+      "blurb": "Gardenfork Radio is Maker, DIY, Urban Homesteading, Cooking, Gardening, Home Improvement, Beekeeping and other fun stuff. There's always a ton of stuff swirling in my.",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-4f098686",
-      "classified_at": "2026-07-25T05:30:43.441Z"
+      "batch_id": "fresh-2026-09-11-29541003",
+      "classified_at": "2026-09-11T00:32:28.340Z"
     },
     "330992379": {
       "topics": [
@@ -8002,18 +8352,38 @@
     },
     "335549005": {
       "topics": [
-        "science/storytelling"
+        "culture/performing-arts",
+        "fiction",
+        "culture",
+        "true-crime",
+        "news"
       ],
-      "confidence": "high",
+      "confidence": "medium",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
-          "node": "science/storytelling",
-          "confidence": 0.75
+          "node": "culture/performing-arts",
+          "confidence": 0.7
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.44999999999999996
+        },
+        {
+          "node": "culture",
+          "confidence": 0.42
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.3
+        },
+        {
+          "node": "news",
+          "confidence": 0.3
         }
       ],
       "needs_review": true,
-      "rationale": "Classic mystery dramas from old-time radio archives.",
+      "rationale": "Focuses on Performing Arts based on show description and episode titles.",
       "display_title": null,
       "blurb": null,
       "display_copy_ok": false,
@@ -8022,8 +8392,8 @@
       ],
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-4f098686",
-      "classified_at": "2026-07-25T05:30:43.441Z"
+      "batch_id": "fresh-2026-09-11-29541003",
+      "classified_at": "2026-09-11T00:32:28.340Z"
     },
     "335695389": {
       "topics": [
@@ -8216,25 +8586,40 @@
     },
     "342735925": {
       "topics": [
-        "science/storytelling"
+        "music",
+        "culture/art",
+        "personal-journals",
+        "true-crime"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
-          "node": "science/storytelling",
-          "confidence": 0.8
+          "node": "music",
+          "confidence": 1
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.44999999999999996
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.4
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.3
         }
       ],
       "needs_review": false,
-      "rationale": "Interview series about people and their favorite music.",
+      "rationale": "Focuses on Music based on show description and episode titles.",
       "display_title": "Desert Island Discs",
       "blurb": "Eight tracks, a book and a luxury: what would you take to a desert island? Guests share the soundtrack of their lives.",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-4f098686",
-      "classified_at": "2026-07-25T05:30:43.441Z"
+      "batch_id": "fresh-2026-09-11-29541003",
+      "classified_at": "2026-09-11T00:32:28.340Z"
     },
     "342927791": {
       "topics": [
@@ -8365,25 +8750,30 @@
     },
     "349669609": {
       "topics": [
-        "philosophy/ideas"
+        "kids-family",
+        "relationships"
       ],
       "confidence": "medium",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
-          "node": "philosophy/ideas",
-          "confidence": 0.6
+          "node": "kids-family",
+          "confidence": 0.55
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.3
         }
       ],
       "needs_review": true,
-      "rationale": "Marriage, relationships, and personal growth discussions.",
+      "rationale": "Focuses on Kids & Family based on show description and episode titles.",
       "display_title": "ONE Extraordinary Marriage Show",
-      "blurb": "Is your marriage everything that you want it to be? Are you ready to make a change? Join Tony and Alisa DiLorenzo to create a strong marriage so you can.",
+      "blurb": "Is your marriage everything that you want it to be? Are you ready to make a change? Join Tony and Alisa DiLorenzo to create a.",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-4f098686",
-      "classified_at": "2026-07-25T05:30:43.441Z"
+      "batch_id": "fresh-2026-09-11-29541003",
+      "classified_at": "2026-09-11T00:32:28.340Z"
     },
     "350035346": {
       "topics": [
@@ -8533,25 +8923,40 @@
     },
     "354850879": {
       "topics": [
+        "religion/hinduism",
+        "religion",
+        "engineering/ai-robotics",
         "history"
       ],
-      "confidence": "high",
+      "confidence": "medium",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
+          "node": "religion/hinduism",
+          "confidence": 0.7
+        },
+        {
+          "node": "religion",
+          "confidence": 0.42
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.3
+        },
+        {
           "node": "history",
-          "confidence": 0.85
+          "confidence": 0.3
         }
       ],
       "needs_review": false,
-      "rationale": "Deep read through Hindu epic Mahabharata with commentary.",
+      "rationale": "Focuses on Hinduism based on show description and episode titles.",
       "display_title": "Mahabharata Podcast",
       "blurb": "An English language re-telling of the ancient epic Mahabharat.",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-4f098686",
-      "classified_at": "2026-07-25T05:30:43.441Z"
+      "batch_id": "fresh-2026-09-11-29541003",
+      "classified_at": "2026-09-11T00:32:28.340Z"
     },
     "355187485": {
       "topics": [
@@ -8656,25 +9061,35 @@
     },
     "361221823": {
       "topics": [
-        "music/theory-production"
+        "music",
+        "computing",
+        "culture/art"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
-          "node": "music/theory-production",
-          "confidence": 0.9
+          "node": "music",
+          "confidence": 1
+        },
+        {
+          "node": "computing",
+          "confidence": 0.3
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.3
         }
       ],
       "needs_review": false,
-      "rationale": "Electronic dance music sessions and production discussions.",
+      "rationale": "Focuses on Music based on show description and episode titles.",
       "display_title": "Resonation Radio by Ferry Corsten",
-      "blurb": "Known for always pushing the envelope in the dance music scene, Resonation will be broadcast from a full studio set up and provides Ferry Corsten with the perfect platform to.",
+      "blurb": "Known for always pushing the envelope in the dance music scene, Resonation will be broadcast from a full studio set up and provides Ferry Corsten.",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-4f098686",
-      "classified_at": "2026-07-25T05:30:43.441Z"
+      "batch_id": "fresh-2026-09-11-29541003",
+      "classified_at": "2026-09-11T00:32:28.340Z"
     },
     "361294213": {
       "topics": [
@@ -8724,25 +9139,45 @@
     },
     "365374471": {
       "topics": [
-        "nature/earth-science"
+        "society/government",
+        "news/politics",
+        "society",
+        "news",
+        "kids-family/stories"
       ],
       "confidence": "medium",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
-          "node": "nature/earth-science",
-          "confidence": 0.7
+          "node": "society/government",
+          "confidence": 0.55
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.55
+        },
+        {
+          "node": "society",
+          "confidence": 0.33
+        },
+        {
+          "node": "news",
+          "confidence": 0.33
+        },
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.3
         }
       ],
-      "needs_review": false,
-      "rationale": "Trip planning and information for Yosemite National Park.",
+      "needs_review": true,
+      "rationale": "Focuses on Government based on show description and episode titles.",
       "display_title": "Yosemite Trip Planning",
-      "blurb": "Podcast with occasional episodes to help plan your trip to Yosemite.",
+      "blurb": "Podcast with occasional episodes to help plan your trip to Yosemite",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-4f098686",
-      "classified_at": "2026-07-25T05:30:43.441Z"
+      "batch_id": "fresh-2026-09-11-29541003",
+      "classified_at": "2026-09-11T00:32:28.340Z"
     },
     "365474033": {
       "topics": [
@@ -8818,25 +9253,30 @@
     },
     "367330921": {
       "topics": [
-        "comedy/casual-hangs"
+        "comedy",
+        "tv-film"
       ],
-      "confidence": "high",
+      "confidence": "medium",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
-          "node": "comedy/casual-hangs",
-          "confidence": 0.9
+          "node": "comedy",
+          "confidence": 0.55
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.3
         }
       ],
-      "needs_review": false,
-      "rationale": "Three brothers answer listener advice with comedy and humor.",
+      "needs_review": true,
+      "rationale": "Focuses on Comedy based on show description and episode titles.",
       "display_title": "My Brother, My Brother And Me",
-      "blurb": "Free advice from three of the world's most qualified, most related experts: Justin, Travis and Griffin McElroy. For one-half to three-quarters of an hour every Monday, we tell people how.",
+      "blurb": "Free advice from three of the world's most qualified, most related experts: Justin, Travis and Griffin McElroy. For one-half to three-quarters of an hour every.",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-4f098686",
-      "classified_at": "2026-07-25T05:30:43.441Z"
+      "batch_id": "fresh-2026-09-11-29541003",
+      "classified_at": "2026-09-11T00:32:28.340Z"
     },
     "367825854": {
       "topics": [
@@ -9050,25 +9490,45 @@
     },
     "377008759": {
       "topics": [
+        "society/law",
+        "business/non-profit",
+        "computing",
+        "society",
         "business"
       ],
-      "confidence": "high",
+      "confidence": "medium",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
+          "node": "society/law",
+          "confidence": 0.6
+        },
+        {
+          "node": "business/non-profit",
+          "confidence": 0.55
+        },
+        {
+          "node": "computing",
+          "confidence": 0.44999999999999996
+        },
+        {
+          "node": "society",
+          "confidence": 0.36
+        },
+        {
           "node": "business",
-          "confidence": 0.8
+          "confidence": 0.33
         }
       ],
-      "needs_review": false,
-      "rationale": "Legal profession news, careers, and bar association discussions.",
+      "needs_review": true,
+      "rationale": "Focuses on Law based on show description and episode titles.",
       "display_title": "ABA Journal Podcasts - Legal Talk Network",
-      "blurb": "Listen to the ABA Journal Podcasts for analysis and discussion of the latest legal issues and trends. Podcasts include ABA Legal Rebels and ABA Asked and Answered, brought to you.",
+      "blurb": "Listen to the ABA Journal Podcasts for analysis and discussion of the latest legal issues and trends. Podcasts include ABA Legal Rebels and ABA Asked.",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-4f098686",
-      "classified_at": "2026-07-25T05:30:43.441Z"
+      "batch_id": "fresh-2026-09-11-29541003",
+      "classified_at": "2026-09-11T00:32:28.340Z"
     },
     "378175965": {
       "topics": [
@@ -9151,25 +9611,40 @@
     },
     "382085461": {
       "topics": [
-        "nature/earth-science"
+        "science",
+        "architecture",
+        "nature",
+        "economics"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
-          "node": "nature/earth-science",
-          "confidence": 0.95
+          "node": "science",
+          "confidence": 0.8500000000000001
+        },
+        {
+          "node": "architecture",
+          "confidence": 0.6
+        },
+        {
+          "node": "nature",
+          "confidence": 0.55
+        },
+        {
+          "node": "economics",
+          "confidence": 0.44999999999999996
         }
       ],
       "needs_review": false,
-      "rationale": "Climate science, impacts, and mitigation strategies.",
+      "rationale": "Focuses on Science based on show description and episode titles.",
       "display_title": "Climate Change (Audio)",
       "blurb": "Climate change is here; it's happening. Find out what that means, why scientists are so sure and what we need to do now.",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-4f098686",
-      "classified_at": "2026-07-25T05:30:43.441Z"
+      "batch_id": "fresh-2026-09-11-29541003",
+      "classified_at": "2026-09-11T00:32:28.340Z"
     },
     "382262093": {
       "topics": [
@@ -9281,25 +9756,43 @@
     },
     "385427377": {
       "topics": [
-        "science"
+        "science",
+        "nature",
+        "science/physics",
+        "history"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
           "node": "science",
-          "confidence": 0.95
+          "confidence": 0.8500000000000001
+        },
+        {
+          "node": "nature",
+          "confidence": 0.55
+        },
+        {
+          "node": "science/physics",
+          "confidence": 0.44999999999999996
+        },
+        {
+          "node": "history",
+          "confidence": 0.44999999999999996
         }
       ],
-      "needs_review": false,
-      "rationale": "Explores how and why things work across multiple sciences.",
-      "display_title": "The Science of Everything Podcast",
-      "blurb": "I discuss a variety of topics in both the natural and social sciences, exploring the many insights that the scientific method yields about the world around us.",
-      "display_copy_ok": true,
+      "needs_review": true,
+      "rationale": "Focuses on Science based on show description and episode titles.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /fascinat/i"
+      ],
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-4f098686",
-      "classified_at": "2026-07-25T05:30:43.441Z"
+      "batch_id": "fresh-2026-09-11-29541003",
+      "classified_at": "2026-09-11T00:32:28.340Z"
     },
     "386170702": {
       "topics": [
@@ -9383,25 +9876,30 @@
     },
     "387755113": {
       "topics": [
-        "philosophy/ideas"
+        "religion",
+        "religion/christianity"
       ],
-      "confidence": "medium",
+      "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
-          "node": "philosophy/ideas",
-          "confidence": 0.7
+          "node": "religion",
+          "confidence": 0.8500000000000001
+        },
+        {
+          "node": "religion/christianity",
+          "confidence": 0.3
         }
       ],
       "needs_review": false,
-      "rationale": "Christian religious teachings and spiritual development.",
+      "rationale": "Focuses on Religion & Spirituality based on show description and episode titles.",
       "display_title": "Second Presbyterian Church Sermons Podcast",
-      "blurb": "Sermons from Second Presbyterian Church in Indianapolis, IN.",
+      "blurb": "Sermons from Second Presbyterian Church in Indianapolis, IN",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-4f098686",
-      "classified_at": "2026-07-25T05:30:43.441Z"
+      "batch_id": "fresh-2026-09-11-29541003",
+      "classified_at": "2026-09-11T00:32:28.340Z"
     },
     "389061788": {
       "topics": [
@@ -9585,25 +10083,35 @@
     },
     "396903391": {
       "topics": [
-        "philosophy/ideas"
+        "philosophy",
+        "history",
+        "fiction"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
-          "node": "philosophy/ideas",
-          "confidence": 0.95
+          "node": "philosophy",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.6
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.3
         }
       ],
       "needs_review": false,
-      "rationale": "Comprehensive history of philosophical thought and thinkers.",
+      "rationale": "Focuses on Philosophy based on show description and episode titles.",
       "display_title": "History of Philosophy Without Any Gaps",
-      "blurb": "Peter Adamson, Professor of Philosophy at the LMU in Munich and at King's College London, takes listeners through the history of philosophy, \"without any gaps\". www.historyofphilosophy.net.",
+      "blurb": "Peter Adamson, Professor of Philosophy at the LMU in Munich and at King's College London, takes listeners through the history of philosophy, \"without any gaps\"..",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-4f098686",
-      "classified_at": "2026-07-25T05:30:43.441Z"
+      "batch_id": "fresh-2026-09-11-29541003",
+      "classified_at": "2026-09-11T00:32:28.340Z"
     },
     "398500515": {
       "topics": [
@@ -9615,25 +10123,35 @@
     },
     "398635015": {
       "topics": [
-        "craft"
+        "gaming",
+        "hobbies",
+        "sports"
       ],
       "confidence": "medium",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
-          "node": "craft",
-          "confidence": 0.7
+          "node": "gaming",
+          "confidence": 0.55
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.55
+        },
+        {
+          "node": "sports",
+          "confidence": 0.3
         }
       ],
-      "needs_review": false,
-      "rationale": "Poker strategy, tournament analysis, and player interviews.",
+      "needs_review": true,
+      "rationale": "Focuses on Gaming based on show description and episode titles.",
       "display_title": "The Tournament Poker Edge Podcast",
-      "blurb": "The Tournament Poker Edge Podcast is the only poker podcast that is dedicated to MTT strategy. Each episode, your host Clayton Fletcher invites a rotating cast of TPE pros, and.",
+      "blurb": "The Tournament Poker Edge Podcast is the only poker podcast that is dedicated to MTT strategy. Each episode, your host Clayton Fletcher invites a rotating.",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-4f098686",
-      "classified_at": "2026-07-25T05:30:43.441Z"
+      "batch_id": "fresh-2026-09-11-29541003",
+      "classified_at": "2026-09-11T00:32:28.340Z"
     },
     "399718603": {
       "topics": [
@@ -9686,25 +10204,35 @@
     },
     "401030539": {
       "topics": [
-        "sports"
+        "sports",
+        "sports/football",
+        "history/military-ancient"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
           "node": "sports",
-          "confidence": 0.95
+          "confidence": 0.8500000000000001
+        },
+        {
+          "node": "sports/football",
+          "confidence": 0.3
+        },
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.3
         }
       ],
       "needs_review": false,
-      "rationale": "Daily Boston sports talk and commentary.",
+      "rationale": "Focuses on Sports based on show description and episode titles.",
       "display_title": "Felger & Massarotti",
-      "blurb": "Full show podcasts in one-hour segments, of Felger & Massarotti, updated weekdays. Listen to Felger & Mazz live every weekday from 2pm-6pm ET on Boston's Home for Sports, 98.5 The.",
+      "blurb": "Full show podcasts in one-hour segments, of Felger & Massarotti, updated weekdays. Listen to Felger & Mazz live every weekday from 2pm-6pm ET on Boston's.",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-4f098686",
-      "classified_at": "2026-07-25T05:30:43.441Z"
+      "batch_id": "fresh-2026-09-11-29541003",
+      "classified_at": "2026-09-11T00:32:28.340Z"
     },
     "401279623": {
       "topics": [
@@ -9839,25 +10367,40 @@
     },
     "408691897": {
       "topics": [
-        "science/storytelling"
+        "comedy",
+        "fiction/comedy",
+        "fiction",
+        "tv-film"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
-          "node": "science/storytelling",
-          "confidence": 0.8
+          "node": "comedy",
+          "confidence": 0.85
+        },
+        {
+          "node": "fiction/comedy",
+          "confidence": 0.7
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.42
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.3
         }
       ],
       "needs_review": false,
-      "rationale": "Comedy scripted drama and fiction stories performed live.",
+      "rationale": "Focuses on Comedy based on show description and episode titles.",
       "display_title": "The Thrilling Adventure Hour",
-      "blurb": "The world's favorite new time podcast in the style of old-time radio. The Thrilling Adventure Hour anthologizes the thrilling adventures of space cowboy Sparks Nevada (Marc Evan Jackson), married medi.",
+      "blurb": "The world's favorite new time podcast in the style of old-time radio. The Thrilling Adventure Hour anthologizes the thrilling adventures of space cowboy Sparks Nevada.",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-4f098686",
-      "classified_at": "2026-07-25T05:30:43.441Z"
+      "batch_id": "fresh-2026-09-11-29541003",
+      "classified_at": "2026-09-11T00:32:28.340Z"
     },
     "409050115": {
       "topics": [
@@ -9888,25 +10431,40 @@
     },
     "409287913": {
       "topics": [
-        "comedy/casual-hangs"
+        "comedy",
+        "sports/wrestling",
+        "music",
+        "tv-film"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
-          "node": "comedy/casual-hangs",
-          "confidence": 0.85
+          "node": "comedy",
+          "confidence": 1
+        },
+        {
+          "node": "sports/wrestling",
+          "confidence": 0.3
+        },
+        {
+          "node": "music",
+          "confidence": 0.3
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.3
         }
       ],
       "needs_review": false,
-      "rationale": "Comedians discuss and mock bad movies in funny conversation.",
+      "rationale": "Focuses on Comedy based on show description and episode titles.",
       "display_title": "How Did This Get Made?",
-      "blurb": "The award-winning comedy podcast that celebrates bad movies. Comedians and actors Paul Scheer (The League), June Diane Raphael (Grace and Frankie), and Jason Mantzoukas (Big Mouth) break down the very.",
+      "blurb": "The award-winning comedy podcast that celebrates bad movies. Comedians and actors Paul Scheer (The League), June Diane Raphael (Grace and Frankie), and Jason Mantzoukas (Big.",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-4f098686",
-      "classified_at": "2026-07-25T05:30:43.441Z"
+      "batch_id": "fresh-2026-09-11-29541003",
+      "classified_at": "2026-09-11T00:32:28.340Z"
     },
     "409349218": {
       "topics": [
@@ -10022,47 +10580,82 @@
     },
     "415512829": {
       "topics": [
-        "comedy/casual-hangs"
+        "comedy",
+        "news",
+        "music",
+        "sports/football"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
-          "node": "comedy/casual-hangs",
-          "confidence": 0.85
+          "node": "comedy",
+          "confidence": 1
+        },
+        {
+          "node": "news",
+          "confidence": 0.44999999999999996
+        },
+        {
+          "node": "music",
+          "confidence": 0.44999999999999996
+        },
+        {
+          "node": "sports/football",
+          "confidence": 0.3
         }
       ],
       "needs_review": false,
-      "rationale": "Daily comedy show with news, gossip, and humor from St. Louis.",
-      "display_title": "The Rizzuto Show",
-      "blurb": "Comedy, weird news, and sports in casual daily conversation.",
+      "rationale": "Focuses on Comedy based on show description and episode titles.",
+      "display_title": "The Rizzuto Show | Daily Comedy Podcast",
+      "blurb": "From comedy and weird news to celebrity gossip and sports, The Rizzuto Show brings the chaos and questionable logic of St. Louis’ favorite morning show.",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-4f098686",
-      "classified_at": "2026-07-25T05:31:00.127Z"
+      "batch_id": "fresh-2026-09-11-29541003",
+      "classified_at": "2026-09-11T00:32:28.340Z"
     },
     "415779787": {
       "topics": [
-        "philosophy/ideas"
+        "news/commentary",
+        "news",
+        "news/politics",
+        "history",
+        "kids-family/stories"
       ],
       "confidence": "medium",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
-          "node": "philosophy/ideas",
+          "node": "news/commentary",
           "confidence": 0.7
+        },
+        {
+          "node": "news",
+          "confidence": 0.42
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.3
+        },
+        {
+          "node": "history",
+          "confidence": 0.3
+        },
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.3
         }
       ],
       "needs_review": false,
-      "rationale": "Conservative political commentary and news analysis.",
+      "rationale": "Focuses on News Commentary based on show description and episode titles.",
       "display_title": "The Erick Erickson Show",
-      "blurb": "The Erick Erickson Show cuts through the chaos with bold clarity and biblical conviction. Broadcasting live each weekday, Erick tackles the stories that matter - from Washington to Wall Street.",
+      "blurb": "The Erick Erickson Show cuts through the chaos with bold clarity and biblical conviction. Broadcasting live each weekday, Erick tackles the stories that matter -.",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-4f098686",
-      "classified_at": "2026-07-25T05:30:43.441Z"
+      "batch_id": "fresh-2026-09-11-29541003",
+      "classified_at": "2026-09-11T00:32:28.340Z"
     },
     "415983183": {
       "topics": [
@@ -10144,25 +10737,40 @@
     },
     "420929545": {
       "topics": [
-        "business"
+        "business",
+        "news",
+        "economics",
+        "economics/markets"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
           "node": "business",
-          "confidence": 0.9
+          "confidence": 1
+        },
+        {
+          "node": "news",
+          "confidence": 0.7
+        },
+        {
+          "node": "economics",
+          "confidence": 0.3
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.3
         }
       ],
       "needs_review": false,
-      "rationale": "Economics, financial markets, and business journalism.",
+      "rationale": "Focuses on Business based on show description and episode titles.",
       "display_title": "Money Talks from The Economist",
-      "blurb": "Join The Economist ’s Mike Bird, Alice Fulwood and Ethan Wu for award-winning reporting and discussion on the stories that move markets. They speak to top bosses, investors and analysts.",
+      "blurb": "Join The Economist ’s Mike Bird, Alice Fulwood and Ethan Wu for award-winning reporting and discussion on the stories that move markets. They speak to.",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-4f098686",
-      "classified_at": "2026-07-25T05:30:43.441Z"
+      "batch_id": "fresh-2026-09-11-29541003",
+      "classified_at": "2026-09-11T00:32:28.340Z"
     },
     "421863760": {
       "topics": [
@@ -10257,25 +10865,40 @@
     },
     "425195053": {
       "topics": [
-        "science/storytelling"
+        "medicine",
+        "psychology",
+        "society",
+        "economics"
       ],
-      "confidence": "high",
+      "confidence": "medium",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
-          "node": "science/storytelling",
-          "confidence": 0.75
+          "node": "medicine",
+          "confidence": 0.6
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.55
+        },
+        {
+          "node": "society",
+          "confidence": 0.55
+        },
+        {
+          "node": "economics",
+          "confidence": 0.55
         }
       ],
-      "needs_review": false,
-      "rationale": "Interviews with authors about new anthropology books.",
+      "needs_review": true,
+      "rationale": "Focuses on Medicine based on show description and episode titles.",
       "display_title": "New Books in Anthropology",
-      "blurb": "This podcast is a channel on the New Books Network. The New Books Network is an academic audio library dedicated to public education. In each episode you will hear scholars.",
+      "blurb": "This podcast is a channel on the New Books Network. The New Books Network is an academic audio library dedicated to public education. In each.",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-4f098686",
-      "classified_at": "2026-07-25T05:30:43.441Z"
+      "batch_id": "fresh-2026-09-11-29541003",
+      "classified_at": "2026-09-11T00:32:28.340Z"
     },
     "425223410": {
       "topics": [
@@ -10377,25 +11000,35 @@
     },
     "426497635": {
       "topics": [
-        "sports"
+        "sports",
+        "sports/football",
+        "news"
       ],
-      "confidence": "high",
+      "confidence": "medium",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
           "node": "sports",
-          "confidence": 0.95
+          "confidence": 0.7000000000000001
+        },
+        {
+          "node": "sports/football",
+          "confidence": 0.6
+        },
+        {
+          "node": "news",
+          "confidence": 0.44999999999999996
         }
       ],
       "needs_review": false,
-      "rationale": "Professional football news and analysis.",
+      "rationale": "Focuses on Sports based on show description and episode titles.",
       "display_title": "PFT Live with Mike Florio",
       "blurb": "Mike Florio & Chris Simms discuss the biggest NFL stories with honesty, candor, and authenticity.",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-4f098686",
-      "classified_at": "2026-07-25T05:30:43.441Z"
+      "batch_id": "fresh-2026-09-11-29541003",
+      "classified_at": "2026-09-11T00:32:28.340Z"
     },
     "427374434": {
       "topics": [
@@ -10415,25 +11048,35 @@
     },
     "427441597": {
       "topics": [
-        "science/storytelling"
+        "culture/performing-arts",
+        "culture",
+        "tv-film"
       ],
-      "confidence": "high",
+      "confidence": "medium",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
-          "node": "science/storytelling",
-          "confidence": 0.75
+          "node": "culture/performing-arts",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture",
+          "confidence": 0.42
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.3
         }
       ],
       "needs_review": false,
-      "rationale": "Classic Western drama series from old-time radio archives.",
-      "display_title": "Gunsmoke",
-      "blurb": "Long-running Western drama set in Dodge City during American settlement.",
+      "rationale": "Focuses on Performing Arts based on show description and episode titles.",
+      "display_title": "Gunsmoke | OTRWesterns.com",
+      "blurb": "Gunsmoke was a long-running old-time radio and television Western drama program set in Dodge City, Kansas during the settlement of the American West. The radio.",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-4f098686",
-      "classified_at": "2026-07-25T05:31:00.127Z"
+      "batch_id": "fresh-2026-09-11-29541003",
+      "classified_at": "2026-09-11T00:32:28.340Z"
     },
     "427475874": {
       "topics": [
@@ -10975,25 +11618,45 @@
     },
     "452025505": {
       "topics": [
-        "craft"
+        "health/fitness",
+        "sports/endurance",
+        "health",
+        "sports",
+        "fiction"
       ],
-      "confidence": "medium",
+      "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
-          "node": "craft",
+          "node": "health/fitness",
+          "confidence": 1
+        },
+        {
+          "node": "sports/endurance",
           "confidence": 0.7
+        },
+        {
+          "node": "health",
+          "confidence": 0.6
+        },
+        {
+          "node": "sports",
+          "confidence": 0.42
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.3
         }
       ],
       "needs_review": false,
-      "rationale": "Running culture, training tips, and lifestyle for female runners.",
+      "rationale": "Focuses on Fitness based on show description and episode titles.",
       "display_title": "Another Mother Runner",
-      "blurb": "A family of two podcasts to get (+ keep) you running without losing your family, friends, job, or sanity! More than 1,000 (!) back episodes to enjoy. Every Friday on.",
+      "blurb": "A family of two podcasts to get (+ keep) you running without losing your family, friends, job, or sanity! More than 1,000 (!) back episodes.",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-4f098686",
-      "classified_at": "2026-07-25T05:30:43.441Z"
+      "batch_id": "fresh-2026-09-11-29541003",
+      "classified_at": "2026-09-11T00:32:28.340Z"
     },
     "452161951": {
       "topics": [
@@ -11040,25 +11703,35 @@
     },
     "453044527": {
       "topics": [
-        "craft/diy-home"
+        "kids-family/stories",
+        "education/how-to",
+        "education"
       ],
-      "confidence": "high",
+      "confidence": "low",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
-          "node": "craft/diy-home",
-          "confidence": 0.75
+          "node": "kids-family/stories",
+          "confidence": 0.44999999999999996
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.4
+        },
+        {
+          "node": "education",
+          "confidence": 0.3
         }
       ],
-      "needs_review": false,
-      "rationale": "Audio engineering, sound design, and music production education.",
+      "needs_review": true,
+      "rationale": "Focuses on Stories for Kids based on show description and episode titles.",
       "display_title": "Sound School Podcast",
       "blurb": "The Backstory to Great Audio Storytelling, hosted by Rob Rosenthal, for Transom and PRX.",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-4f098686",
-      "classified_at": "2026-07-25T05:30:43.441Z"
+      "batch_id": "fresh-2026-09-11-29541003",
+      "classified_at": "2026-09-11T00:32:28.340Z"
     },
     "453647774": {
       "topics": [
@@ -11220,25 +11893,40 @@
     },
     "459476611": {
       "topics": [
-        "craft"
+        "gaming",
+        "hobbies",
+        "sports",
+        "news"
       ],
       "confidence": "medium",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
-          "node": "craft",
-          "confidence": 0.6
+          "node": "gaming",
+          "confidence": 0.55
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.55
+        },
+        {
+          "node": "sports",
+          "confidence": 0.3
+        },
+        {
+          "node": "news",
+          "confidence": 0.3
         }
       ],
       "needs_review": true,
-      "rationale": "Gambling strategy, odds, and advantage play discussion.",
+      "rationale": "Focuses on Gaming based on show description and episode titles.",
       "display_title": "Gambling With an Edge",
-      "blurb": "Learn to Gamble With an Edge from authors, and professional gamblers Bob Dancer and Richard Munchkin. We aim to make you a better gambler tomorrow than you were yesterday.",
+      "blurb": "Learn to Gamble With an Edge from authors, and professional gamblers Bob Dancer and Richard Munchkin. We aim to make you a better gambler tomorrow.",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-4f098686",
-      "classified_at": "2026-07-25T05:30:43.441Z"
+      "batch_id": "fresh-2026-09-11-29541003",
+      "classified_at": "2026-09-11T00:32:28.340Z"
     },
     "460107093": {
       "topics": [
@@ -11250,25 +11938,25 @@
     },
     "462443971": {
       "topics": [
-        "craft"
+        "hobbies"
       ],
-      "confidence": "high",
+      "confidence": "low",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
-          "node": "craft",
-          "confidence": 0.85
+          "node": "hobbies",
+          "confidence": 0.4
         }
       ],
-      "needs_review": false,
-      "rationale": "Knitting, crafts, and literature combined in casual conversation.",
+      "needs_review": true,
+      "rationale": "Focuses on Hobbies & Leisure based on show description and episode titles.",
       "display_title": "2 Knit Lit Chicks",
-      "blurb": "Barb (the mom) and Tracie (the daughter) are obsessed knitters and avid readers. We love to talk about our current knitting projects and favorite books to read or listen to.",
+      "blurb": "Barb (the mom) and Tracie (the daughter) are obsessed knitters and avid readers. We love to talk about our current knitting projects and favorite books.",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-4f098686",
-      "classified_at": "2026-07-25T05:30:43.441Z"
+      "batch_id": "fresh-2026-09-11-29541003",
+      "classified_at": "2026-09-11T00:32:28.340Z"
     },
     "462495496": {
       "topics": [
@@ -11584,25 +12272,45 @@
     },
     "474762601": {
       "topics": [
-        "craft"
+        "culture/design",
+        "culture",
+        "architecture",
+        "news",
+        "tv-film/reviews"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
-          "node": "craft",
-          "confidence": 0.8
+          "node": "culture/design",
+          "confidence": 1
+        },
+        {
+          "node": "culture",
+          "confidence": 0.6
+        },
+        {
+          "node": "architecture",
+          "confidence": 0.44999999999999996
+        },
+        {
+          "node": "news",
+          "confidence": 0.3
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.3
         }
       ],
       "needs_review": false,
-      "rationale": "Design, culture, and global creative trends.",
+      "rationale": "Focuses on Design based on show description and episode titles.",
       "display_title": "Monocle on Design",
-      "blurb": "Everything you need to know about the world of design, from furniture to fashion and craft to architecture. Expect fresh stories, new finds and designers and all the latest news.",
+      "blurb": "Everything you need to know about the world of design, from furniture to fashion and craft to architecture. Expect fresh stories, new finds and designers.",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-4f098686",
-      "classified_at": "2026-07-25T05:30:43.441Z"
+      "batch_id": "fresh-2026-09-11-29541003",
+      "classified_at": "2026-09-11T00:32:28.340Z"
     },
     "474763182": {
       "topics": [
@@ -11659,18 +12367,33 @@
     },
     "478840375": {
       "topics": [
-        "computing"
+        "computing",
+        "engineering",
+        "engineering/ai-robotics",
+        "news"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
           "node": "computing",
-          "confidence": 0.95
+          "confidence": 0.8500000000000001
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.55
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.44999999999999996
+        },
+        {
+          "node": "news",
+          "confidence": 0.3
         }
       ],
       "needs_review": true,
-      "rationale": "Weekly technology news, trends, and expert discussion.",
+      "rationale": "Focuses on Computing based on show description and episode titles.",
       "display_title": null,
       "blurb": null,
       "display_copy_ok": false,
@@ -11679,8 +12402,8 @@
       ],
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-4f098686",
-      "classified_at": "2026-07-25T05:30:43.441Z"
+      "batch_id": "fresh-2026-09-11-29541003",
+      "classified_at": "2026-09-11T00:32:28.340Z"
     },
     "479042177": {
       "topics": [
@@ -11773,25 +12496,30 @@
     },
     "481165891": {
       "topics": [
-        "science/storytelling"
+        "society",
+        "culture"
       ],
-      "confidence": "high",
+      "confidence": "low",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
-          "node": "science/storytelling",
-          "confidence": 0.75
+          "node": "society",
+          "confidence": 0.4
+        },
+        {
+          "node": "culture",
+          "confidence": 0.4
         }
       ],
-      "needs_review": false,
-      "rationale": "Horror stories and scary content discussion.",
+      "needs_review": true,
+      "rationale": "Focuses on Society based on show description and episode titles.",
       "display_title": "Horror a la Media Noche",
       "blurb": "Horror a la Media Noche, con Flavio Arenas, desde Aguascalientes, México.",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-4f098686",
-      "classified_at": "2026-07-25T05:30:43.441Z"
+      "batch_id": "fresh-2026-09-11-29541003",
+      "classified_at": "2026-09-11T00:32:28.340Z"
     },
     "482034476": {
       "topics": [
@@ -11944,28 +12672,40 @@
     },
     "495954973": {
       "topics": [
-        "business"
+        "business/careers",
+        "business",
+        "culture/performing-arts",
+        "business/management"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
+          "node": "business/careers",
+          "confidence": 0.85
+        },
+        {
           "node": "business",
-          "confidence": 0.8
+          "confidence": 0.51
+        },
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.44999999999999996
+        },
+        {
+          "node": "business/management",
+          "confidence": 0.3
         }
       ],
-      "needs_review": true,
-      "rationale": "Career success stories and professional development.",
-      "display_title": null,
-      "blurb": null,
-      "display_copy_ok": false,
-      "display_copy_notes": [
-        "blurb: banned /\\bexplores?\\b/i"
-      ],
+      "needs_review": false,
+      "rationale": "Focuses on Careers based on show description and episode titles.",
+      "display_title": "Success Profiles Radio",
+      "blurb": "If you have ever wondered if there is more to life than you are currently living, then Success Profiles Radio is the program for you..",
+      "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-4f098686",
-      "classified_at": "2026-07-25T05:30:43.441Z"
+      "batch_id": "fresh-2026-09-11-29541003",
+      "classified_at": "2026-09-11T00:32:28.340Z"
     },
     "496189056": {
       "topics": [
@@ -12050,25 +12790,50 @@
     },
     "498897343": {
       "topics": [
-        "philosophy/ideas"
+        "news/politics",
+        "society/government",
+        "news",
+        "society",
+        "true-crime",
+        "engineering/disasters"
       ],
-      "confidence": "high",
+      "confidence": "medium",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
-          "node": "philosophy/ideas",
-          "confidence": 0.75
+          "node": "news/politics",
+          "confidence": 0.7000000000000001
+        },
+        {
+          "node": "society/government",
+          "confidence": 0.55
+        },
+        {
+          "node": "news",
+          "confidence": 0.42000000000000004
+        },
+        {
+          "node": "society",
+          "confidence": 0.33
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.3
+        },
+        {
+          "node": "engineering/disasters",
+          "confidence": 0.3
         }
       ],
-      "needs_review": false,
-      "rationale": "Legal analysis of national security and government issues.",
+      "needs_review": true,
+      "rationale": "Focuses on Politics based on show description and episode titles.",
       "display_title": "The Lawfare Podcast",
-      "blurb": "The Lawfare Podcast features discussions with experts, policymakers, and opinion leaders at the nexus of national security, law, and policy. On issues from foreign policy, homeland security, intellige.",
+      "blurb": "The Lawfare Podcast features discussions with experts, policymakers, and opinion leaders at the nexus of national security, law, and policy. On issues from foreign policy.",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-4f098686",
-      "classified_at": "2026-07-25T05:30:43.441Z"
+      "batch_id": "fresh-2026-09-11-29541003",
+      "classified_at": "2026-09-11T00:32:28.340Z"
     },
     "498978442": {
       "topics": [
