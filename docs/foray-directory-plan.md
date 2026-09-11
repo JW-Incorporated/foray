@@ -150,7 +150,7 @@ not cache audio for a set that was never validated.
 **Done when.** Tests for the three cases above, each with a mutation.
 
 ### FD-06 · Records, and the privacy sentence — **S** — agent + **founder gate**
-**DONE** — the FD-06 PR (`feat/fd-06-records-cors`): `Access-Control-Allow-Origin: *` on
+**DONE** — PR #611 (`feat/fd-06-records-cors`): `Access-Control-Allow-Origin: *` on
 `/data/` in `vercel.json` (what makes the phone path live) + `test/vercel-headers.test.js`;
 DECISIONS 2026-09-11; policy §2 sentence; G-22 superseded; this deck's markers.
 **Ask.** `docs/DECISIONS.md`: "the app reads the Foray directory from the live origin;
