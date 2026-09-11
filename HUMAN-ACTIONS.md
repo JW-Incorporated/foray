@@ -2,19 +2,9 @@
 
 <!-- ha-format: 2 -->
 
-> **33 open.** Closed items are in `HUMAN-ACTIONS-DONE.md` — you never need it.
+> **32 open.** Closed items are in `HUMAN-ACTIONS-DONE.md` — you never need it.
 > To close one: reply `done` (or `skip <why>`) to its card in the project's human-action channel.
 > Anything else you reply is forwarded to a thread on the card.
-
-## #105 🟢 [UPGRADE] ha.py Defect-1 PR-path atomicity test -- safe to close/delete
-<!-- ha filed=2026-09-11 -->
-
-**Why:** Verifying ha.py close produces one PR with one commit touching both files on a write:pr repo (Hermes ops task).
-
-**Steps:**
-1. n/a -- throwaway test item, close immediately
-
-**Worked if:** this item closes cleanly and the resulting PR contains one commit touching both HUMAN-ACTIONS.md and HUMAN-ACTIONS-DONE.md
 
 ## #44 🟡 [DECIDE] Add the founders as Play testers, so Play actually emails you (R-08)
 <!-- ha filed=2026-09-11 kind=default -->

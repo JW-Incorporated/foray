@@ -3,6 +3,7 @@
 <!-- ha-format: 2. Machine record: nothing here needs you. One line per item, newest first.
      Full bodies are in git history. Numbers here are never reused. -->
 
+- #105 · 2026-09-11 · done · ha.py Defect-1 PR-path atomicity test -- safe to close/delete — "ha.py Defect-1 PR-path atomicity verification -- test item closed immediately" · by discord
 - #25 · 2026-09-11 · done · Buy the company domain before writing either store listing — DONE — "Closed 2026-08-25: jwlabs.dev already purchased, answer was do not buy anything. Migration imported it as open because its status lived in a" · by migration-fix
 - #104 · 2026-09-11 · done · Authorize this laptop's SSH key on the Hermes VM — "legacy-dup (laptop #29)" · by migration
 - #103 · 2026-09-11 · done · Reboot the Proxmox host (`pve-garage`, 192.168.0.69) to activate GPU passthrough — "legacy-dup (laptop #31)" · by migration
