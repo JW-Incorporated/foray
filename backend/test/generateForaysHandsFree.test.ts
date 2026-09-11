@@ -93,7 +93,8 @@ function generatedOutcome(id = "fake-foray-1"): RunPipelineOutcome {
     spine: {} as never,
     tapeRelevance: [],
     timings: [],
-    ttlA1Ms: null
+    ttlA1Ms: null,
+    narration: { concurrency: 4, acts: [{ act: 0, startedAt: "2026-09-11T00:00:00.000Z", ms: 1 }] }
   };
 }
 

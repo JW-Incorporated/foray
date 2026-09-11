@@ -1693,6 +1693,15 @@ const BACKEND_FLOORS = {
      the per-Foray budget cap the batch path left inert by never passing a
      sessionId. */
   "test/runPipelineCheckpoint.test.ts": 13,
+  /* G-32: acts narrated in parallel, stitch and continuity in act order. Seven
+     cases latch the writer to PROVE overlap (acts start while act 1 is held,
+     the cap holds, a failure still banks in-flight acts and never starts
+     queued ones); seven drive the real pipeline — act 1 ready while later acts
+     are held, boundary order under reversed completion order, the checkpoint
+     key set identical to the serial pipeline's, a crash resumed by narrating
+     only the missing acts, the cap at 1 and at 4, and the report's per-act
+     timings. */
+  "test/parallelActs.test.ts": 14,
   /* Raised from 14 by WS-L (F-63): the per-act seeded-beat floor — enforced only
      when the research map quoted windows, never satisfiable by an invented
      episode id, and thrown rather than reported. */
