@@ -2,9 +2,13 @@
 
 ## `foray-mockup.jsx` — the front-end design, going forward (REFERENCE ONLY)
 
-**Status: adopted as the design direction. Explicitly NOT to be implemented
-yet.** Joey's call, 2026-08-13. Nobody should port this into `app.js`, start an
-iOS build from it, or add React to this repo on the strength of it. It is here
+**Status: adopted as the design direction, and — since 2026-09-06 — ported.**
+Joey's 2026-08-13 ruling that nobody ports this *file* still stands: no React,
+no build step, no iOS build from it. What changed is that Wyatt's brief
+(`docs/ui-transition-plan.md`, cards U-01..U-13) rebuilt the *design* in the
+shipped vanilla stack — tokens, self-hosted fonts, the tab bar, the four-section
+Home, SegmentStrip, Search/Create/Interests/Welcome — and U-11 cut it over for
+everyone on 2026-09-06. See the table below for what shipped versus the mockup. It is here
 to be *read* — it exists so that backend work is built toward a known front end
 instead of guessing at one, and so the eventual implementation isn't designed
 twice.
@@ -42,22 +46,34 @@ they are more demanding than what the backend emits today.
   of sources, and an outro. Same structural gap the M3 prototype already
   flagged below: the real session doc has no TTS items at all.
 
-### What has been built FROM it so far (keep this list current)
+### What shipped vs the mockup (keep this list current)
 
 The ruling above still stands — nobody ports this file. What follows is the
 design *intent* rebuilt in the shipped vanilla stack, so that the next session
-can tell "not built yet" from "built, differently".
+can tell "not built yet" from "built, differently". Rows tagged U-xx are the
+`docs/ui-transition-plan.md` cards (all merged 2026-09-06 unless noted).
 
 | Mockup concept | Shipped as | Where |
 |---|---|---|
+| `T` design tokens, Fraunces + DM Sans via Google Fonts `@import` (U-01) | nine `--*` custom properties under `body.ui-v2` (dark only — no v2 light palette, DECISIONS 2026-09-06); the two faces self-hosted as Latin-subset variable woff2 with `font-src 'self'` and no new CSP origin; amber = the listener's own material, violet = what 4a authored | `styles.css`, `fonts/`, `index.html` (PR #498) |
+| `TabBar` — Home · Search · Create · Library (U-02) | the four-tab bar as primary nav, tab state in the hash router, mini-player docked above it; drawer/menu page moved to a Settings entry; composes with #488's back-stack (a tab switch is not a back step). Reverses #467, recorded as D3 | `app.js` (`renderTabBar`), `test/tab-bar.test.js` (PR #504) |
+| `HomeScreen` — greeting, Jump back in, Forays for you, Playlists for you, Episodes for you, Shared with you, Build your own (U-03) | the first five, in that order; "Shared with you" and "Build your own" deliberately not built. Product principle #1's exploration floor kept: Forays-for-you and Episodes-for-you each reserve a visibly-labelled *Stretch* slot with its bridge line (`pickWithStretchFloor`). Playlists for you = own recent playlists first, then generated ones badged "Generated for you" (F14: from interest leaves, #535) | `app.js` (`renderHomeV2`), `test/home-v2.test.js`, `test/home-v2-real-data.test.js` (PRs #509, #510, #535) |
+| `SegmentStrip` — proportional bars, colour by source show, violet narration (U-04) | pure `segmentStripHtml(items)`: width by runtime (shares sum to 1), stable per-show colour from `--seg-c0..7`, `--seg-narration` violet, reduced motion respected; used by Home's Foray cards and Welcome | `player/segment-strip.js` (PR #499) |
+| `SearchScreen` — field, browse pills, results (U-05) | restyled to tokens; results gain a **Playlists** section (own playlists matching, then generated candidates badged) and the "Create a playlist about X" CTA when nothing strong matches. Ranking untouched (no `search-engine.js` change) | `app.js` (`renderShowSearchResults`), `test/search-playlists.test.js` (PR #508) |
+| `CreateScreen` — Foray \| Playlist toggle, subject field, ~20/~40/~75 lengths, build steps (U-06) | **Playlist creation only** (D8): the toggle renders with the Foray option carrying a real `disabled` attribute and the copy "Custom Forays aren't available yet"; Playlist mode is `buildPlaylist()` in the new chrome and writes the same `cp_playlists` entry as the Playlists page. The Foray-specific lengths and `BUILD_STEPS` are not shown | `app.js` (`renderCreate`), `test/create-page.test.js` (PR #507) |
+| Interests page with sliders (from the M3 prototype, not the mockup) (U-07) | `#/interests`: one `role="slider"` row per node, range 0–1, grouped by root, "Reset to learned", keyboard-operable, `touch-action: pan-y`; no history feed (D6). Root-node bug fixed first: `loadInterests()` seeds every taxonomy node and `nudgeTopics()` propagates to the parent at `PARENT_NUDGE_RATIO = 0.5` | `app.js` (`renderInterests`), `test/interests-page.test.js`, `test/interests-roots.test.js` (PR #500) |
+| `ShowScreen`, `FullPlayer`, `MiniPlayer` chrome (U-08) | presentation-only token restyle of Show, Episode, Forays, Queue, Playlists pages and the mini/full player **CSS**; no `player/*.js` change. `ShowScreen` itself is still the credit-block subset below | `styles.css` (PR #506) |
+| `WelcomeScreen` + `PreferencesScreen` (U-09) | a skippable first-run sheet gated on `cp_intro_dismissed`: two value props (the second with a live SegmentStrip), interest chips + "type a subject yourself"; picks write through the fixed U-07 path and re-deal the first Home. "Continue with Apple/Google" and import connectors not built (C5, #125) | `app.js` (`showFirstTimeExplainerOnce`), `test/first-time-onboarding.test.js` (PR #503) |
+| `LoginScreen` | NOT built, by decision: anonymous-first stands (ADR-0005, D2, DECISIONS 2026-09-10) | — |
+| `ShareSheet`, "Shared with you" | NOT built, deferred (D10, #126) | — |
 | `resume` / "Jump back in" / `ForayCard` progress | resume across sessions: one row per Foray in `localStorage`, the Foray's own clock | `player/foray-progress.js`, `?foray=…` page + home rail |
 | `MiniPlayer` identity + tap-to-open | the bar already survived navigation; it now leads with the FORAY title, says `Now: <show> · part N of M`, and carries a "Back to the foray" route | `player/client.js` |
 | `Thumbs` + `FeedbackSheet` (9 `FB_CHIPS`) | per-segment thumbs on the running order; up is one tap, down opens the reason sheet and only commits on submit | `app.js` (`cp_foray_feedback`, `thumbs` events) |
 | `Scrubber` over the whole Foray (`seek()`, jsx ~1329) | the segment strip IS the scrubber: a click is a position in the hour, cold or playing. It already looked like one and behaved like 32 jump targets | `app.js` (`stripElapsedAt`), `ForayPlayer.foraySeek` |
 | `SegmentStrip`'s partial fill on the current bar (`cur.into / seg.dur`, jsx ~229) | the live bar fills left to right; bars behind are full, ahead are empty | `app.js` (`paintSegFill`), `.fy-seg-fill` |
 | `ShowScreen` | NOT built. Its honest subset is: a "Where this came from" credit block per Foray — shows, episodes, clip counts, and a link out | `player/foray-sources.js` |
-| `LibraryScreen` | Built as one AGGREGATE view (no new per-item UI): Saved and History render as full rows (`epRow`/`archivedRow`) since Library is their only page; Playlists and Up Next render as short linked summaries (title/count, capped at 5) into their own existing pages (`#/playlists`, `#/queue`), since those already own their controls | `app.js` (`#/library`, `renderLibrary()`) |
-| `CreateScreen`, narrator bridges, generated cover art | NOT built, deliberately. See the scope notes above and in `STATE.md`. | — |
+| `LibraryScreen` (U-10) | Built as one AGGREGATE view (no new per-item UI): Saved and History render as full rows (`epRow`/`archivedRow`) since Library is their only page; Playlists and Up Next render as short linked summaries (title/count, capped at 5) into their own existing pages (`#/playlists`, `#/queue`), since those already own their controls. The tab bar's Library tab points here | `app.js` (`#/library`, `renderLibrary()`) (Joey's #374, wired by PR #505) |
+| Narrator bridges, generated cover art | NOT built, deliberately. See the scope notes above and in `STATE.md`. Custom Foray generation from Create is D8's "not yet". | — |
 | `PlayerBridge` (m3 prototype) — the handoff screen between two sources | NOT built. What exists instead is the seam itself: 2.0 s of silence at every unbridged transition, which is the beat the bridge screen was drawn around | `player/seam-gap.js` |
 
 Two deviations worth knowing:
