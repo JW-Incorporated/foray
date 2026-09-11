@@ -1521,7 +1521,12 @@ const BACKEND_FLOORS = {
   /* +1 (F-49): the orchestrator hands finalize the tier-2 segments and source
      rows sourcing minted, without which the candidate names tape nothing can
      resolve. */
-  "test/runPipeline.test.ts": 13,
+  /* +3 (F-91): the topic is decided BEFORE the research map and the spine with
+     the archive's supply in view — a subject no candidate topic's family can
+     carry stops `no-supply` with the spine builder never called; run 8's
+     prompt proceeds under the engineering candidate that carries *Being an
+     Engineer*; a resolution with supply is left alone and recorded `best`. */
+  "test/runPipeline.test.ts": 16,
   /* §4.3's spine types: SpineSchema (strict, no per-act voice field),
      isClaimShaped (claim- vs topic-shaped beats), and validateSpine
      (§3's shape budgets with ±15% tolerance, the ~30% exploration
@@ -1775,7 +1780,15 @@ const BACKEND_FLOORS = {
      every other. Unit-tested against the REAL committed catalogue files,
      pinning relationships rather than counts, because the finding it closes
      (F-29) is precisely two real files that were never joined. */
-  "test/taxonomyFamily.test.ts": 17,
+  "test/taxonomyFamily.test.ts": 18,
+  /* F-91: supply-aware topic resolution (topicSupply.ts). `measureTopicSupply`
+     counts, per candidate topic, the archive entries and pool segments the
+     lineage gate admits — through the SAME predicates §4.5 applies — and
+     `chooseTopic` lets that count break a tie the word scorer could not,
+     within MIN_TOPIC_SUPPLY and TOPIC_SUPPLY_SCORE_FLOOR; no supply anywhere is
+     a `no-supply` verdict the pipeline stops on before the spine. Run 8's two
+     prompts are replayed against the REAL taxonomy and semantic index. */
+  "test/topicSupply.test.ts": 19,
   /* WS-B veracity metrics (generation fix plan 2026-09-09): the grounded-quote /
      attribution-stability / tape-relevance metrics and the publish gate, plus
      the process-wide token-usage collector every Anthropic builder feeds. */

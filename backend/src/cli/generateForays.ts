@@ -2,7 +2,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import { spawn } from "child_process";
-import { runForayPipeline, RefusedPartialError, type NarrationActTiming, type RunPipelineOutcome } from "../generation/runPipeline";
+import { runForayPipeline, RefusedPartialError, type NarrationActTiming, type PipelineTopicDecision, type RunPipelineOutcome } from "../generation/runPipeline";
 import type { SpineReask } from "../generation/buildSpine";
 import { FileTranscriptCueProvider } from "../generation/transcriptArchiveLookup";
 import { FileTranscriptTextIndex, type TranscriptTextIndex } from "../generation/transcriptTextIndex";
@@ -191,6 +191,12 @@ export function summarize(outcome: RunPipelineOutcome): string {
       return `AMBIGUOUS — ${outcome.question}`;
     case "unresolved-topic":
       return `NO TOPIC — nearest: ${outcome.candidates.slice(0, 3).map((c) => c.id).join(", ") || "(none)"}`;
+    case "no-supply":
+      /* F-91: the topic resolved, but no candidate topic's family admits enough
+         of the archive to source from, so the run stopped BEFORE the spine —
+         no Opus or Sonnet call was made. `reason` names every candidate and
+         its count. */
+      return `${outcome.reason} (stopped before ${outcome.stoppedBefore})`;
     case "no-tape":
       /* F-65: every beat degraded to narration, so §4.9 would refuse the Foray
          and the run stopped before narrating it. The per-slot lines name the
@@ -401,6 +407,11 @@ export type ReportEntry = {
    * violations it was asked to fix). Absent when the first spine passed —
    * the common case — and on a resume from a banked spine. */
   spineReasks?: SpineReask[];
+  /** F-91: how the topic was chosen — the resolver's pick, every candidate's
+   * supply, and whether supply moved the choice (`reason`). On every outcome
+   * that got as far as a decision (`no-supply`, `no-tape`, `generated`), so
+   * the ledger can cite the numbers a stop was made on. */
+  topicDecision?: PipelineTopicDecision;
   veracity?: VeracityMetrics;
   /** Written by `publishForay.ts --report` once the candidate has a PR — the
    * PR, the `origin/main` sha it was cut from, and the deploy id it shipped in
@@ -676,6 +687,7 @@ export async function generateOneCandidate(
       ? { narrationConcurrency: outcome.narration.concurrency, narrationActs: outcome.narration.acts }
       : {}),
     ...(spineReasks.length ? { spineReasks } : {}),
+    ...("topicDecision" in outcome ? { topicDecision: outcome.topicDecision } : {}),
     veracity,
     ...(resumes.length ? { resumes } : {}),
     ...(refusedPartials.length ? { refusedPartials } : {})

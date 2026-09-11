@@ -937,6 +937,7 @@ which is why G-30 sits in this phase, ahead of G-20.
   the trace names the seed's own gate; a test asserts a claim's seed window
   scores ≥ the quoted window's own share.
 - **Dependencies.** G-00. **Human gate.** none.
+- **F-91 (2026-09-11).** The topic-lineage collapse's root cause was the topic feeding the gate, not the gate: run 8 resolved a careers prompt to `business/careers` on one token and the gate refused *Being an Engineer* (334 episodes) wholesale — NO TAPE after seven model calls. Fixed by supply-aware topic resolution (`backend/src/generation/topicSupply.ts`): the topic is decided before the research map and the spine with each candidate's usable-tape count in view, and a subject with no supply in any candidate's family stops `no-supply` before any Opus/Sonnet call. Ledger entry F-91.
 
 ### G-25 · Seed more of the spine from tape — **H · M — overlord**
 - **Owner:** overlord (`backend/src/generation/`).

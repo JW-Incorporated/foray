@@ -1,4 +1,7 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { copyFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "fs";
+import { tmpdir } from "os";
+import { join } from "path";
 import { runForayPipeline, slotsFromSpine, runtimeSecFor, forayCopy, clampWords, MAX_COPY_WORDS } from "../src/generation/runPipeline";
 import { StubPromptUnderstander } from "../src/generation/StubPromptUnderstander";
 import { StubExternalResearcher } from "../src/generation/StubExternalResearcher";
@@ -10,6 +13,9 @@ import { StubContinuityBuilder } from "../src/generation/StubContinuityBuilder";
 import { finalizeForay, type FinalizeForayInput, type FinalizeForayResult } from "../src/generation/finalizeForay";
 import { stitchForay } from "../src/generation/stitchForay";
 import { checkpointFingerprint } from "../src/generation/checkpoint";
+import { resetTaxonomyCache } from "../src/generation/resolveTopic";
+import { resetTaxonomyFamilyCache, taxonomyRoot } from "../src/generation/taxonomyFamily";
+import type { TranscriptDigestEntry } from "../src/generation/transcriptArchiveLookup";
 import { FakeCheckpointStore } from "./helpers/fakeCheckpointStore";
 import type { GenerationRequest } from "../src/types/generation";
 import type { DeepenedAct, Spine } from "../src/types/spine";
@@ -836,5 +842,151 @@ describe("runForayPipeline — evidence is prefetched after source, off narratio
     const evidenceStage = out.timings.find((t) => t.name === "evidence")!;
     expect(evidenceStage.ms).toBeGreaterThan(0);
     expect(retrieval!.prefetchMs).toBe(evidenceStage.ms);
+  });
+});
+
+/**
+ * F-91 (docs/curation/generation-run-2026-09-09.md): the topic is decided
+ * BEFORE the research map and the spine, with the archive in view.
+ *
+ * Run 8 resolved "how engineering careers really work" to `business/careers`
+ * on one token, the lineage gate then refused the only show about the subject,
+ * and the run spent an Opus call and four Sonnet calls before §4.5 could say
+ * NO TAPE. Three things have to hold now: a subject the archive cannot carry
+ * stops before any builder is asked; a subject the archive carries under a
+ * lower-scoring candidate proceeds under THAT candidate, and the record says
+ * so; a resolution the archive can carry is left alone.
+ *
+ * Each test runs against a fixture root that holds the REAL taxonomy and
+ * semantic index with a catalogue of exactly the shows the test names, so
+ * what a show is classified as is the test's own statement and not whatever
+ * `data/catalog.json` says this week. The module-level catalogue caches are
+ * reset around each test so the fixture root neither inherits the real
+ * catalogue from an earlier test nor leaks into a later one.
+ */
+describe("runForayPipeline — supply-aware topic, decided before the spine (F-91)", () => {
+  const REAL_DATA = join(__dirname, "..", "..", "data");
+  const RUN_8_PROMPT =
+    "What engineers actually do all day: how engineering careers really work, from the first job and the first failure to leading a team, told by working engineers";
+  const roots: string[] = [];
+
+  function fixtureRoot(shows: Array<{ show_id: string; taxonomy_node_ids: string[] }>): string {
+    const root = mkdtempSync(join(tmpdir(), "f91-pipeline-"));
+    mkdirSync(join(root, "data"));
+    copyFileSync(join(REAL_DATA, "taxonomy.json"), join(root, "data", "taxonomy.json"));
+    copyFileSync(join(REAL_DATA, "semantic-index.json"), join(root, "data", "semantic-index.json"));
+    writeFileSync(join(root, "data", "catalog.json"), JSON.stringify({ shows: shows.map((s) => ({ ...s, title: s.show_id })) }));
+    roots.push(root);
+    return root;
+  }
+
+  function episodes(showId: string, n: number): TranscriptDigestEntry[] {
+    return Array.from({ length: n }, (_, i) => ({ show_id: showId, show_title: showId, guid: `${showId}-${i + 1}`, title: `${showId} episode ${i + 1}`, cues: 100 }));
+  }
+
+  /** The stub spine builder, with its one call counted. */
+  function countingSpineBuilder() {
+    const builder = new StubSpineBuilder();
+    const buildSpine = vi.fn(builder.buildSpine.bind(builder));
+    builder.buildSpine = buildSpine as unknown as SpineBuilder["buildSpine"];
+    return { builder, buildSpine };
+  }
+
+  beforeEach(() => {
+    resetTaxonomyCache();
+    resetTaxonomyFamilyCache();
+  });
+
+  afterEach(() => {
+    resetTaxonomyCache();
+    resetTaxonomyFamilyCache();
+    for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
+  });
+
+  it("stops BEFORE the research map and the spine with a `no-supply` outcome when no candidate topic's family has tape", async () => {
+    /* A grilling prompt resolves (`food/grilling-bbq`), but the archive holds
+       only a show the catalogue knows nothing about — the gate fails closed on
+       it — and the pool is empty. MUTATION THAT KILLS THIS: delete the
+       `no-supply` return before `research-shape` in runPipeline.ts — the
+       spine builder is called and the run ends `no-tape` five stages later. */
+    const root = fixtureRoot([]);
+    const { builder, buildSpine } = countingSpineBuilder();
+    let researchCalls = 0;
+    const researcher = new StubExternalResearcher();
+    const realResearch = researcher.research.bind(researcher);
+    researcher.research = async (...args: Parameters<typeof realResearch>) => {
+      researchCalls++;
+      return realResearch(...args);
+    };
+    const out = await runForayPipeline(
+      request,
+      { userId: "founder-1", now: options.now, root },
+      { ...stubDeps(), spineBuilder: builder, researcher, transcriptArchive: episodes("zz-unknown-show", 10), segmentPool: [] }
+    );
+
+    expect(out.outcome).toBe("no-supply");
+    if (out.outcome !== "no-supply") return;
+    expect(out.stoppedBefore).toBe("spine");
+    expect(out.reason).toMatch(/^NO SUPPLY: no transcript in the archive is in any candidate topic's family/);
+    expect(out.reason).toContain("food/grilling-bbq=0");
+    expect(out.topicDecision).toMatchObject({ reason: "no-supply", resolved: "food/grilling-bbq", topic: "food/grilling-bbq", basis: "archive" });
+    expect(out.title.length).toBeGreaterThan(0);
+    /* Nothing past §4.1 ran: no research, no spine, one timed stage. */
+    expect(buildSpine).not.toHaveBeenCalled();
+    expect(researchCalls).toBe(0);
+    expect(out.timings.map((t) => t.name)).toEqual(["understand"]);
+  });
+
+  it("run 8: proceeds under the engineering candidate the archive can carry, and the record says what moved it", async () => {
+    /* The show nodes are the six run 8's machine reported for *Being an
+       Engineer*; 334 episodes of it and nothing else. The resolver still picks
+       `business/careers`; the decision moves to the engineering root, the
+       spine IS built, and the outcome carries the decision. MUTATION THAT
+       KILLS THIS: use `resolvedTopic.resolved` for `topic` instead of
+       `topicDecision.topic` — the gate then refuses all 334 and the decision
+       on the outcome contradicts the topic sourcing ran under (asserted via
+       `reason`). */
+    const root = fixtureRoot([
+      {
+        show_id: "being-an-engineer",
+        taxonomy_node_ids: ["engineering", "engineering/energy-fusion", "engineering/precision-mfg", "engineering/disasters", "engineering/energy-grid", "engineering/ai-robotics"]
+      }
+    ]);
+    const { builder, buildSpine } = countingSpineBuilder();
+    const out = await runForayPipeline(
+      { ...request, prompt: RUN_8_PROMPT },
+      { userId: "founder-1", now: options.now, root },
+      { ...stubDeps(), spineBuilder: builder, transcriptArchive: episodes("being-an-engineer", 334), segmentPool: [] }
+    );
+
+    expect(out.outcome).not.toBe("no-supply");
+    expect(out.outcome).not.toBe("unresolved-topic");
+    expect(buildSpine).toHaveBeenCalledTimes(1);
+    expect("topicDecision" in out).toBe(true);
+    if (!("topicDecision" in out)) return;
+    expect(out.topicDecision.reason).toBe("supply-aware");
+    expect(out.topicDecision.resolved).toBe("business/careers");
+    expect(taxonomyRoot(out.topicDecision.topic)).toBe("engineering");
+    expect(out.topicDecision.considered.find((c) => c.id === out.topicDecision.topic)?.supply).toBe(334);
+    expect(out.topicDecision.considered.find((c) => c.id === "business/careers")?.supply).toBe(0);
+  });
+
+  it("leaves a resolution the archive can carry alone, and records it as `best`", async () => {
+    /* MUTATION THAT KILLS THIS: skip the `supplyOf(best) >= minSupply` early
+       return in `chooseTopic` — with a stand-in or a sibling in play the pick
+       could move off a topic that had tape all along. */
+    const root = fixtureRoot([{ show_id: "grill-show", taxonomy_node_ids: ["food/grilling-bbq"] }]);
+    const { builder, buildSpine } = countingSpineBuilder();
+    const out = await runForayPipeline(
+      request,
+      { userId: "founder-1", now: options.now, root },
+      { ...stubDeps(), spineBuilder: builder, transcriptArchive: episodes("grill-show", 5), segmentPool: [] }
+    );
+
+    expect(buildSpine).toHaveBeenCalledTimes(1);
+    expect("topicDecision" in out).toBe(true);
+    if (!("topicDecision" in out)) return;
+    expect(out.topicDecision).toMatchObject({ topic: "food/grilling-bbq", resolved: "food/grilling-bbq", reason: "best" });
+    expect(out.topicDecision.considered[0]).toMatchObject({ id: "food/grilling-bbq", supply: 5 });
   });
 });

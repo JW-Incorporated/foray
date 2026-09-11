@@ -93,6 +93,8 @@ function generatedOutcome(id = "fake-foray-1"): RunPipelineOutcome {
     spine: {} as never,
     spineReasks: [],
     tapeRelevance: [],
+    /* F-91: a pinned topic, as the driver's own `--topic` would record it. */
+    topicDecision: { topic: "food/grilling-bbq", resolved: null, reason: "pinned", considered: [], minSupply: 3, basis: "archive" },
     timings: [],
     ttlA1Ms: null,
     narration: { concurrency: 4, acts: [{ act: 0, startedAt: "2026-09-11T00:00:00.000Z", ms: 1 }] }
