@@ -19,6 +19,8 @@ import {
 import { capArgumentBeats, deepenActs } from "../src/generation/deepenActs";
 import { buildResearchShape } from "../src/generation/researchShape";
 import { buildSpine } from "../src/generation/buildSpine";
+import { buildSpinePrompt } from "../src/generation/AnthropicSpineBuilder";
+import { summarizeSeeding } from "../src/generation/spineSeeding";
 import { resolveTopic } from "../src/generation/resolveTopic";
 import { StubSpineBuilder } from "../src/generation/StubSpineBuilder";
 import { StubDeepenActBuilder } from "../src/generation/StubDeepenActBuilder";
@@ -26,7 +28,7 @@ import { StubExternalResearcher } from "../src/generation/StubExternalResearcher
 import { InMemoryCostEventSink } from "../src/cost/costEvents";
 import { BudgetGuard } from "../src/cost/budgetGuard";
 import type { IntentUnderstanding } from "../src/types/generation";
-import { mintSegmentSource } from "../src/generation/audioSourceLookup";
+import { createDigestAudioSourceResolver, mintSegmentSource } from "../src/generation/audioSourceLookup";
 import { validateSourcing, allSourcedBeats } from "../src/types/tapeSourcing";
 import { SPINE_MIN_SEEDED_BEATS_PER_ACT, type DeepenedAct } from "../src/types/spine";
 import type { SegmentRecord } from "../src/generation/segmentPoolLookup";
@@ -2776,11 +2778,13 @@ describe("sourceBeats — F-72: the seeded beat's own window is judged on share 
     expect(beats[0]!.sourcing).toBe("tape");
     /* The two beats are the same claim with the same seed, so the ONLY thing
        that differs between them is what the first one wrote into the ledger.
-       (The reported gate is the furthest one across the whole walk, which for
-       the second beat is a filler episode's `window-overlap` — `m4-share`
-       refuses pa-960 and the walk carries on past it, exactly as tier 1's
-       does.) */
+       (Since G-24 R3 the row reports `m4-share` on pa-960 itself — the seed
+       window cleared relevance and the cap is what refused it, which ranks
+       above the filler episodes' `window-overlap`; before G-24 the cap was
+       asked before the body was opened and a filler's row was the furthest.) */
     expect(beats[1]!.sourcing).toBe("narration");
+    expect(result.sourcingTrace[0]!.tier2!.gate).toBe("m4-share");
+    expect(result.sourcingTrace[0]!.tier2!.seedGate).toBe("m4-share");
   });
 });
 
@@ -2932,9 +2936,16 @@ describe("sourceBeats — F-70: tier 2 obeys M3 and M4, the same ledger tier 1 k
     expect(beats[1]!.sourcing).toBe("narration");
     const trace = result.sourcingTrace.find((t) => t.beatIndex === 1)!;
     expect(trace.tier2!.gate).toBe("m4-share");
-    /* Refused BEFORE the body is opened, so there is no window to report — the
-       answer is the same for every window of an episode already at its share. */
-    expect(trace.tier2!.windowStartSec).toBeUndefined();
+    /* THE SEED WINDOW'S NUMBERS ARE ON THE ROW (G-24 R3). Before G-24 the cap
+       was asked before the body was opened and the row could only say
+       "m4-share" — which, on attempt 6, left a 0.746 seed window reported as
+       "window-overlap 0.27" on another episode. For a seed the walk now opens
+       the body first and asks the cap after the relevance verdict, so the row
+       says what the refused tape actually scored. */
+    expect(trace.tier2!.windowStartSec).toBe(300);
+    expect(trace.tier2!.windowWeightedShare).toBe(1);
+    expect(trace.tier2!.seedGate).toBe("m4-share");
+    expect(trace.tier2!.seedWindowWeightedShare).toBe(1);
   });
 
   it("falls through to another episode when the seeded one is at its M4 share", () => {
@@ -3536,6 +3547,305 @@ describe("sourceBeats — D5's interquartile clause, asked after every placement
   });
 });
 
+/* G-24: THE THREE MECHANICAL BUGS IN TAPE SOURCING (docs/curation/
+ * tape-yield-brief-2026-09-10.md §4-5, R1-R3). Attempt 6 of generation run 2
+ * placed 11 tape beats of 32 — 10 seeded windows and one *Causality* segment
+ * about the Hyatt Regency walkway collapse playing under an agent-engineering
+ * claim — and three seeded beats were lost to mechanics rather than to the
+ * archive: a quote/seed boundary bug (R1, `researchShape.test.ts`), the M4 cap
+ * refusing a 0.746 seed before opening it while the trace blamed another
+ * episode (R3), and tier 1 pre-empting an on-claim seed with four generic
+ * words (R2). The cases below are R2 and R3 in miniature. */
+
+describe("sourceBeats — G-24 R2: a seeded beat's own window is asked BEFORE tier 1", () => {
+  /* Attempt 6's beat 2/0/0: the seed window (durable-agents 1769-1911) was
+     verbatim on-claim and never consulted, because tier 1 runs first and a
+     pool segment cleared its bar. Here a pool segment genuinely about the
+     claim — four of its five words, well over any bar — and a seed window
+     that says all five: the seed wins when the beat carries it, the pool
+     segment when it does not. */
+  const claim = "Gearboxes fail because bearings take torque reversals.";
+
+  const poolEpisode: TranscriptDigestEntry = {
+    show_id: "wind-show",
+    show_title: "Wind Show",
+    guid: "w1",
+    title: "Gearbox hour",
+    cues: 2,
+    feed_duration_sec: 3600
+  };
+  const poolCues: TranscriptCue[] = [
+    { text: "gearboxes fail when the bearings see torque going the wrong way", start_sec: 100, end_sec: 160 },
+    { text: "and the whole nacelle has to come down to replace them", start_sec: 160, end_sec: 220 }
+  ];
+  /** Joined to `poolEpisode` on `item_id` === `deriveItemId(poolEpisode)`, so
+   * tier 1 scores the claim against the tape inside the segment (F-06). */
+  const poolSegment = (): SegmentRecord => ({
+    ...fixtureSegmentPool()[0]!,
+    id: "wind-show--gearbox-hour#100",
+    item_id: "wind-show--gearbox-hour",
+    topic: "engineering/ai-robotics",
+    start_sec: 100,
+    end_sec: 220,
+    why: "Why gearboxes are the part that fails first on a turbine",
+    start_anchor: "gearboxes fail when the bearings",
+    end_anchor: "come down to replace them"
+  });
+
+  const seededEpisode: TranscriptDigestEntry = {
+    show_id: "practical-ai",
+    show_title: "Practical AI",
+    guid: "pa-970",
+    title: "Episode 970",
+    cues: 3,
+    feed_duration_sec: 3600,
+    enclosure_url: "https://cdn.example/pa-970.mp3"
+  };
+  const seededCues: TranscriptCue[] = [
+    { text: "welcome back to the programme we are in denmark this week", start_sec: 0, end_sec: 30 },
+    { text: "the gearboxes fail well before the design life says they should", start_sec: 300, end_sec: 330 },
+    { text: "bearings crack under torque reversals that were never in the load case", start_sec: 330, end_sec: 360 }
+  ];
+  const cuesByGuid: Record<string, TranscriptCue[]> = { w1: poolCues, "pa-970": seededCues };
+  const archive = [poolEpisode, seededEpisode];
+
+  function run(seed?: { episodeId: string; startSec: number; endSec: number }) {
+    return sourceBeats(
+      [makeDeepenedAct({ slots: [{ title: "Gearboxes", beats: [{ claim, exploration: false, kind: "account", ...(seed ? { seed } : {}) }] }] }, "G24R2")],
+      {
+        segmentPool: [poolSegment()],
+        transcriptArchive: archive,
+        cueProvider: { getCues: (entry) => cuesByGuid[entry.guid] ?? null },
+        textIndex: memoryTextIndex(archive, cuesByGuid),
+        topic: "engineering/ai-robotics"
+      }
+    );
+  }
+
+  it("takes the seed window, minted from the seeded episode, over a pool segment that clears tier 1", () => {
+    /* MUTATION THAT KILLS THIS: move the `walk.run([seeded], "seed-window")`
+       block in `resolveOneBeat` below the tier-1 lookup. Ran it — red: the beat
+       takes `wind-show--gearbox-hour#100` at tier 1. */
+    const result = run({ episodeId: "practical-ai--episode-970", startSec: 300, endSec: 360 });
+    const beat = allSourcedBeats(result.acts)[0]!;
+    expect(beat.sourcing).toBe("tape");
+    if (beat.sourcing === "tape") {
+      expect(beat.tape.tier).toBe(2);
+      expect(beat.tape.itemId).toBe("practical-ai--episode-970");
+      expect(beat.tape.startSec).toBe(300);
+    }
+    expect(result.tapeRelevance[0]!.seedWindowWon).toBe(true);
+    expect(result.newSegments).toHaveLength(1);
+  });
+
+  it("is the whole difference: the same claim with no seed takes the pool segment at tier 1, as §4.5's order says", () => {
+    const result = run();
+    const beat = allSourcedBeats(result.acts)[0]!;
+    expect(beat.sourcing).toBe("tape");
+    if (beat.sourcing === "tape") {
+      expect(beat.tape.tier).toBe(1);
+      expect(beat.tape.segmentId).toBe("wind-show--gearbox-hour#100");
+    }
+    expect(result.newSegments).toHaveLength(0);
+  });
+
+  it("falls back to tier 1 when the seed window does not carry the claim — the seed is a preference, not a permission", () => {
+    /* The seed points at the welcome, which says none of the claim's words. */
+    const result = run({ episodeId: "practical-ai--episode-970", startSec: 0, endSec: 30 });
+    const beat = allSourcedBeats(result.acts)[0]!;
+    expect(beat.sourcing).toBe("tape");
+    if (beat.sourcing === "tape") expect(beat.tape.tier).toBe(1);
+  });
+});
+
+describe("sourceBeats — G-24 R2: tier 1's transcript window faces the idf-weighted share and rare-word floor", () => {
+  /* THE HYATT-FOR-AGENTS CASE IN MINIATURE. Attempt 6's beat 2/0/0 — "the
+     questions that dominate agent engineering are operational: tool-call
+     timeouts, skip the re-ranker, cheaper model" — took a *Causality* segment
+     on the 1981 Hyatt Regency walkway collapse, because the segment's tape
+     says `engineering, good, enough, step`: four of fifteen claim words, an
+     unweighted quarter, and every one of them a word the corpus says
+     everywhere. Tier 2 retired that arithmetic with F-61; tier 1 now judges a
+     transcript window on the same weighted share and rare-word count. */
+  const agentsClaim =
+    "Agent engineering questions are operational: tool call timeouts, skipping the reranker, choosing a cheaper model, good enough at each step.";
+
+  const walkway: TranscriptDigestEntry = {
+    show_id: "causality-engineered-network",
+    show_title: "Causality",
+    guid: "c47",
+    title: "47: Hyatt Regency Kansas City",
+    cues: 2,
+    feed_duration_sec: 3600
+  };
+  const walkwayCues: TranscriptCue[] = [
+    { text: "the engineering on the walkway was good enough at each step and the personnel kept changing", start_sec: 2047, end_sec: 2110 },
+    { text: "so nobody owned the connection detail by the time the atrium was built", start_sec: 2110, end_sec: 2171 }
+  ];
+  const walkwaySegment = (): SegmentRecord => ({
+    ...fixtureSegmentPool()[0]!,
+    id: "causality-engineered-network--47-hyatt-regency-kansas-city#2047",
+    item_id: "causality-engineered-network--47-hyatt-regency-kansas-city",
+    topic: "engineering/disasters",
+    start_sec: 2047,
+    end_sec: 2171,
+    why: "Personnel churn on the walkway project meant nobody owned the connection detail",
+    start_anchor: "the engineering on the walkway was good",
+    end_anchor: "by the time the atrium was built"
+  });
+
+  /** Six more episodes that all say the trade's words and none of the claim's
+   * rare ones — the corpus that makes `engineering, good, enough, step`
+   * common. The claim's own words (`timeouts`, `reranker`, `cheaper`) are said
+   * nowhere, so they weigh one each and the four common words weigh a fraction. */
+  const filler: TranscriptDigestEntry[] = [1, 2, 3, 4, 5, 6].map((n) => ({
+    show_id: "practical-ai",
+    show_title: "Practical AI",
+    guid: `pa-98${n}`,
+    title: `Episode 98${n}`,
+    cues: 1,
+    feed_duration_sec: 3600
+  }));
+  const fillerCues: TranscriptCue[] = [
+    { text: "good engineering is good enough engineering one step at a time and the model is never the point", start_sec: 0, end_sec: 60 }
+  ];
+  const archive = [walkway, ...filler];
+  const cuesByGuid: Record<string, TranscriptCue[]> = { c47: walkwayCues };
+  for (const f of filler) cuesByGuid[f.guid] = fillerCues;
+
+  function run(claim: string) {
+    return sourceBeats([makeDeepenedAct({ slots: [{ title: "Agents", beats: [{ claim, exploration: false, kind: "account" }] }] }, "G24R2b")], {
+      segmentPool: [walkwaySegment()],
+      transcriptArchive: archive,
+      cueProvider: { getCues: (entry) => cuesByGuid[entry.guid] ?? null },
+      textIndex: memoryTextIndex(archive, cuesByGuid),
+      /* `engineering` is the walkway segment's lineage and the Foray's — the
+         family gate admits it, exactly as it did on attempt 6. */
+      topic: "engineering"
+    });
+  }
+
+  it("refuses the walkway segment for the agent-engineering claim: four common words clear the count bar and not the weighted floor", () => {
+    /* MUTATION THAT KILLS THIS: in `tier1BarClears`, return `true` after the
+       count bar for a transcript match (drop the weighted clause). Ran it —
+       red: the beat takes the walkway segment at tier 1, which is the finding. */
+    const result = run(agentsClaim);
+    const beat = allSourcedBeats(result.acts)[0]!;
+    expect(beat.sourcing).toBe("narration");
+    expect(result.tapeRelevance).toHaveLength(0);
+    const tier1 = result.sourcingTrace[0]!.tier1!;
+    expect(tier1.bestSegmentId).toBe("causality-engineered-network--47-hyatt-regency-kansas-city#2047");
+    expect(tier1.matchedIn).toBe("transcript");
+    /* The count bar is met — that is the whole problem — and the row says
+       which floor actually refused it. */
+    expect(tier1.score).toBeGreaterThanOrEqual(tier1.requiredScore);
+    expect(tier1.gate).toBe("threshold");
+    expect(tier1.windowWeightedShare).toBeLessThan(TIER2_WINDOW_MIN_SHARE);
+  });
+
+  it("still takes the same segment for a claim its tape actually makes", () => {
+    /* The control: the floor refuses generic overlap, not tier 1. */
+    const result = run("On the walkway project the personnel kept changing, so nobody owned the connection detail by the time the atrium was built.");
+    const beat = allSourcedBeats(result.acts)[0]!;
+    expect(beat.sourcing).toBe("tape");
+    if (beat.sourcing === "tape") expect(beat.tape.tier).toBe(1);
+  });
+});
+
+describe("sourceBeats — G-24 R3: the trace names the seed's own gate alongside the furthest candidate", () => {
+  /* Attempt 6's beat 1/0/0: its seed window on federated-learning part 2 scored
+     0.746 and was refused by M4's share cap before its body was opened; the
+     trace, which reports the candidate that got FURTHEST, said `window-overlap`
+     at 0.27 on part 1 — and that is the "weak reason" the founder read. Same
+     shape here: the seeded episode is already at its share, a second episode
+     mentions one of the claim's words. */
+  const seeded: TranscriptDigestEntry = {
+    show_id: "practical-ai",
+    show_title: "Practical AI",
+    guid: "pa-950",
+    title: "Episode 950",
+    cues: 7,
+    feed_duration_sec: 3600,
+    enclosure_url: "https://cdn.example/pa-950.mp3"
+  };
+  const other: TranscriptDigestEntry = { ...seeded, guid: "pa-951", title: "Episode 951", enclosure_url: "https://cdn.example/pa-951.mp3" };
+  const claim = "Gearboxes fail because bearings take torque reversals.";
+  const seededCues: TranscriptCue[] = [
+    { text: "welcome back to the programme we are in denmark this week", start_sec: 0, end_sec: 30 },
+    { text: "the gearboxes here are the part that gives everybody trouble", start_sec: 100, end_sec: 120 },
+    { text: "and it is the bearings that give up first on almost all of them", start_sec: 120, end_sec: 140 },
+    { text: "you get a lot of torque coming back the other direction as well", start_sec: 140, end_sec: 160 },
+    { text: "the gearboxes fail well before the design life says they should", start_sec: 300, end_sec: 320 },
+    { text: "bearings crack under torque that keeps switching direction on them", start_sec: 320, end_sec: 340 },
+    { text: "and those reversals were never in the original load case at all", start_sec: 340, end_sec: 360 }
+  ];
+  const otherCues: TranscriptCue[] = [
+    { text: "bearings are a commodity part and we buy them by the pallet", start_sec: 0, end_sec: 40 },
+    { text: "which is the one thing on the turbine nobody argues about", start_sec: 40, end_sec: 80 }
+  ];
+  const cuesByGuid: Record<string, TranscriptCue[]> = { "pa-950": seededCues, "pa-951": otherCues };
+  type Seed = { episodeId: string; startSec: number; endSec: number };
+  const beat = (seed: Seed) => ({ claim, exploration: false, kind: "account" as const, seed });
+
+  function run(beats: ReturnType<typeof beat>[]) {
+    return sourceBeats([makeDeepenedAct({ slots: [{ title: "Gearboxes", beats }] }, "G24R3")], {
+      segmentPool: [],
+      transcriptArchive: [seeded, other],
+      cueProvider: { getCues: (e) => cuesByGuid[e.guid] ?? null },
+      textIndex: memoryTextIndex([seeded, other], cuesByGuid),
+      topic: "engineering/ai-robotics"
+    });
+  }
+
+  it("reports `m4-share` on the seeded episode, with the seed window's own share, when the cap is what refused an on-claim seed", () => {
+    /* MUTATIONS THAT KILL THIS: (a) stop stamping `seedGate` in `tier2TraceFor`
+       — the two `seedGate` assertions go red; (b) drop the `m4-share`-with-window
+       exception in `progressOf` — the row's `gate` goes back to
+       `window-overlap` on Episode 951, which is the finding. Ran both — red. */
+    const result = run([beat({ episodeId: "pa-950", startSec: 100, endSec: 160 }), beat({ episodeId: "pa-950", startSec: 300, endSec: 360 })]);
+    const beats = allSourcedBeats(result.acts);
+    expect(beats[0]!.sourcing).toBe("tape");
+    expect(beats[1]!.sourcing).toBe("narration");
+    const row = result.sourcingTrace.find((t) => t.beatIndex === 1)!.tier2!;
+    expect(row.seedGate).toBe("m4-share");
+    expect(row.seedWindowWeightedShare).toBeGreaterThanOrEqual(TIER2_WINDOW_MIN_SHARE);
+    expect(row.seedWindowWeightedShare).toBe(1);
+    /* And the row itself is the seed's: an on-claim window the ledger refused
+       ranks above another episode's off-claim one. */
+    expect(row.gate).toBe("m4-share");
+    expect(row.bestEpisodeTitle).toBe("Episode 950");
+    expect(row.windowStartSec).toBe(300);
+    expect(row.windowWeightedShare).toBe(1);
+    /* So does everything a person reads off the run. */
+    expect(summarizeSourcing(result).some((line) => line.includes("top reason: tier2:m4-share"))).toBe(true);
+    const narrated = beats[1]!;
+    if (narrated.sourcing === "narration") expect(narrated.narration.reason).toContain("quarter of its segments");
+    expect(result.transcriptionQueueCandidates[0]!.reason).toContain("Nothing to transcribe");
+  });
+
+  it("reports the seed's `window-overlap` and its share when the seed window itself was not about the claim", () => {
+    const result = run([beat({ episodeId: "pa-950", startSec: 0, endSec: 30 }), beat({ episodeId: "pa-950", startSec: 0, endSec: 30 })]);
+    const beats = allSourcedBeats(result.acts);
+    /* The first beat's seed fails, the whole-episode fallback finds 300-360. */
+    expect(beats[0]!.sourcing).toBe("tape");
+    const row = result.sourcingTrace.find((t) => t.beatIndex === 1)!.tier2!;
+    expect(row.seedGate).toBe("window-overlap");
+    expect(row.seedWindowWeightedShare).toBe(0);
+    expect(row.seededEpisode).toBe("pa-950");
+    expect(row.seedWindowWon).toBe(false);
+  });
+
+  it("stamps neither field on an unseeded beat", () => {
+    const result = sourceBeats(
+      [makeDeepenedAct({ slots: [{ title: "Gearboxes", beats: [{ claim: "Turbine blades ice up in Norwegian winters.", exploration: false, kind: "account" }] }] }, "G24R3c")],
+      { segmentPool: [], transcriptArchive: [seeded, other], cueProvider: { getCues: (e) => cuesByGuid[e.guid] ?? null }, textIndex: memoryTextIndex([seeded, other], cuesByGuid) }
+    );
+    const row = result.sourcingTrace[0]!.tier2;
+    expect(row?.seedGate).toBeUndefined();
+    expect(row?.seedWindowWeightedShare).toBeUndefined();
+  });
+});
+
 /* THE OFFLINE HALF: the same code against the REAL transcript archive, which
    lives in `data-local/` and is on the generation machine only. These cases
    skip themselves, loudly and by name, anywhere else — a checkout without the
@@ -3794,9 +4104,29 @@ describe("sourceBeats — WS-H/F-61 offline: the real archive on the generation 
         );
       }
 
+      /* G-25: the size of the prompt the real builder would send for THIS map,
+         recorded because the card names it as the cost of six windows per
+         subtopic (the 23.7 k-char run-2 prompt was already the largest ttlA1
+         block). Printed, not asserted: it is a measurement, not a rule. */
+      const windowsOnMap = shape.subtopics.reduce((n, s) => n + s.tapeWindows.length, 0);
+      const episodesOnMap = new Set(shape.subtopics.flatMap((s) => s.tapeWindows.map((w) => w.episodeId))).size;
+      console.log(
+        `[G-25] research map: ${windowsOnMap} windows over ${episodesOnMap} episodes across ${shape.subtopics.length} subtopics; ` +
+          `spine prompt would be ${buildSpinePrompt(intent, shape, "medium").length} characters`
+      );
+
       const spine = await buildSpine(intent, shape, "medium", new StubSpineBuilder(guard), buildCtx);
       const seededBeats = spine.acts.flatMap((a) => a.slots.flatMap((s) => s.beats)).filter((b) => b.seed);
       expect(seededBeats.length).toBeGreaterThanOrEqual(SPINE_MIN_SEEDED_BEATS_PER_ACT * spine.acts.length);
+      /* G-25's claim-faithfulness property, on real tape: every seeded claim's
+         content words were spoken in the window it was seeded from. */
+      const windowsById = new Map(shape.subtopics.flatMap((s) => s.tapeWindows).map((w) => [`${w.episodeId}@${w.startSec}-${w.endSec}`, w]));
+      for (const beat of seededBeats) {
+        const window = windowsById.get(`${beat.seed!.episodeId}@${beat.seed!.startSec}-${beat.seed!.endSec}`);
+        expect(window, `seed ${JSON.stringify(beat.seed)} names a window the map listed`).toBeDefined();
+        const spoken = new Set(tokenizeForSourcing(window!.text));
+        expect(tokenizeForSourcing(beat.claim).filter((w) => !spoken.has(w)), `"${beat.claim}"`).toEqual([]);
+      }
 
       const deepened = await deepenActs(spine, new StubDeepenActBuilder(guard), buildCtx);
       const topic = resolveTopic(`${intent.subject} ${intent.angle}`).resolved;
@@ -3813,6 +4143,20 @@ describe("sourceBeats — WS-H/F-61 offline: the real archive on the generation 
           `${result.tapeRelevance.length + result.sourcingTrace.length}, ${throughTheSeed.length} through the seeded episode; ` +
           `first anchors: ${result.newSegments.slice(0, 2).map((s) => `"${s.startAnchor}"`).join(" | ")}`
       );
+      /* G-25: the driver's own Foray-wide line, and the material for the
+         card's five-beat on-claim spot-check — the claim beside the tape it was
+         seeded from, for a person to read. */
+      console.log(`[G-25] ${summarizeSeeding(deepened, result)}`);
+      for (const row of throughTheSeed.slice(0, 5)) {
+        const beat = deepened[row.actIndex]!.slots[row.slotIndex]!.beats[row.beatIndex]!;
+        const sourcedBeat = result.acts[row.actIndex]!.slots[row.slotIndex]!.beats[row.beatIndex]!;
+        const cut = sourcedBeat.sourcing === "tape" ? `${sourcedBeat.tape.startSec.toFixed(0)}-${sourcedBeat.tape.endSec.toFixed(0)}s` : "narration";
+        const window = windowsById.get(`${beat.seed!.episodeId}@${beat.seed!.startSec}-${beat.seed!.endSec}`);
+        console.log(
+          `[G-25 spot-check] ${row.actIndex}/${row.slotIndex}/${row.beatIndex} claim: "${beat.claim}"\n` +
+            `       tape ${row.itemId} ${cut} (seed window ${beat.seed!.startSec}-${beat.seed!.endSec}s): "${window?.text ?? "?"}"`
+        );
+      }
       /* And, for the seeded beats that did NOT make it, the gate and the share
          that refused them — the evidence this workstream's next threshold
          argument has to be made from. */
@@ -3825,6 +4169,86 @@ describe("sourceBeats — WS-H/F-61 offline: the real archive on the generation 
       /* The floor did not move: every one of those beats cleared F-61's window
          test on the tape it was written from. */
       for (const row of throughTheSeed) expect(row.itemId).toBe(row.seededEpisode);
+      /* G-24 R1: with the map quoting exactly the window's cues, every seed the
+         stub writes from a quote carries into its seed window — 7 of 8 before
+         G-24 (the eighth was written from the cue the quote used to prepend),
+         8 of 8 after. */
+      expect(refusedSeeds).toHaveLength(0);
+    },
+    300000
+  );
+
+  it(
+    "G-24: replays attempt 6's 32-beat checkpoint — zero wrong tape at the current floor, and the trace names the seed's own gate",
+    (ctx) => {
+      const real = realArchive();
+      if (!real) {
+        console.log(`[G-24] skipping attempt-6 replay: ${SKIP_REASON}`);
+        ctx.skip();
+        return;
+      }
+      /* THE FIXTURE IS THE BRIEF'S CHECKPOINT (`run2-attempt6-deepen-2026-09-09.json`,
+         reconstructed — see its `_source`): 32 beats, 14 seeded, 4 arguments,
+         the real pool and the real archive, the topic the run resolved. As it
+         ran it placed 11 tape beats, one of them a *Causality* Hyatt Regency
+         segment under an agent-engineering claim (tape-yield brief §2).
+
+         WHAT A REPLAY OF A FROZEN SPINE CAN AND CANNOT SHOW. R2 and R3's trace
+         half act at sourcing time and are measured here. R1 (the quote bounds)
+         and R3's map dedupe act BEFORE the spine is written, and this spine was
+         written from the pre-G-24 map: its seeds still carry the bounds that
+         exclude the cue two claims were written from (0/0/3, 0/1/1) and still
+         name two episodes twice (1/0/0, 2/0/0). Those beats stay narrated here
+         — the brief's "+3" is what a spine written from the fixed map recovers,
+         and the WS-L case above (8 of 8 seeds) is where R1 is measured. */
+      const fixture = JSON.parse(readFileSync(join(__dirname, "fixtures", "run2-attempt6-deepen-2026-09-09.json"), "utf8")) as {
+        acts: DeepenedAct[];
+      };
+      const result = sourceBeats(fixture.acts, {
+        segmentPool: loadSegmentPool(),
+        cueProvider: real.cueProvider,
+        textIndex: real.textIndex,
+        topic: "engineering/ai-robotics",
+        audioSourceFor: createDigestAudioSourceResolver()
+      });
+      const tape = result.tapeRelevance;
+      console.log(
+        `[G-24] attempt-6 replay (${real.kind} bodies): ${tape.length} tape / 32, ` +
+          `${tape.filter((r) => r.tier === 1).length} tier 1, ${tape.filter((r) => r.seedWindowWon).length} through the seed; ` +
+          `seeded narrated: ${result.sourcingTrace
+            .filter((t) => t.tier2?.seededEpisode)
+            .map((t) => `${t.actIndex}/${t.slotIndex}/${t.beatIndex} ${t.tier2!.seedGate}@${t.tier2!.seedWindowWeightedShare}`)
+            .join(", ")}`
+      );
+
+      /* ZERO WRONG TAPE. Every tape beat of this Foray is *Practical AI* — the
+         Hyatt Regency segment (R2) is refused, and nothing off-show replaces it. */
+      for (const row of tape) expect(row.itemId, `${row.actIndex}/${row.slotIndex}/${row.beatIndex} took ${row.segmentId}`).toMatch(/^practical-ai--/);
+      expect(tape.some((r) => /hyatt|causality/.test(r.itemId))).toBe(false);
+      /* The 10 seeded windows that carried their claims on attempt 6 still do. */
+      expect(tape.length).toBeGreaterThanOrEqual(10);
+
+      /* THE TRACE NAMES THE SEED'S OWN GATE. Beat 1/0/0 is the brief's example:
+         a 0.746 seed window on federated-learning part 2, refused by M4's share
+         cap, reported before G-24 as `window-overlap` at 0.27 on part 1. */
+      const federated = result.sourcingTrace.find((t) => t.actIndex === 1 && t.slotIndex === 0 && t.beatIndex === 0)!;
+      expect(federated.tier2!.seedGate).toBe("m4-share");
+      expect(federated.tier2!.seedWindowWeightedShare).toBeGreaterThan(0.7);
+      expect(federated.tier2!.gate).toBe("m4-share");
+      expect(federated.tier2!.bestEpisodeTitle).toContain("part 2");
+      /* And every seeded beat that ended up narrated says what refused ITS seed. */
+      for (const t of result.sourcingTrace) {
+        if (!t.tier2?.seededEpisode) continue;
+        expect(t.tier2.seedGate, `${t.actIndex}/${t.slotIndex}/${t.beatIndex}`).toBeDefined();
+      }
+      /* The Hyatt beat itself: its seed (durable-agents' second window) is what
+         M4 refused, and the pool's best *Causality* candidate — a walkway
+         segment sharing the trade's words — failed tier 1's weighted floor. */
+      const agents = result.sourcingTrace.find((t) => t.actIndex === 2 && t.slotIndex === 0 && t.beatIndex === 0)!;
+      expect(agents.tier2!.seedGate).toBe("m4-share");
+      expect(agents.tier1!.bestItemId).toContain("causality-engineered-network");
+      expect(agents.tier1!.gate).toBe("threshold");
+      expect(agents.tier1!.windowWeightedShare ?? 0).toBeLessThan(TIER2_WINDOW_MIN_SHARE);
     },
     300000
   );
