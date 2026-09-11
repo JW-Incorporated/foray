@@ -1723,6 +1723,10 @@ const BACKEND_FLOORS = {
      when the research map quoted windows, never satisfiable by an invented
      episode id, and thrown rather than reported. */
   "test/spineStructure.test.ts": 19,
+  /* F-86: the spine is re-asked once with the structural violations named
+     before the run fails — pipeline banks only the passing spine, the
+     re-ask is metered and reported, `SPINE_STRUCTURAL_REASKS` caps it. */
+  "test/spineReask.test.ts": 7,
   /* WS-C: §4.5's topic gate (taxonomyFamily.ts). A family is a node's LINEAGE
      in data/taxonomy.json — itself, its ancestors, its descendants — not a
      shared first path segment, which would put every sibling trade in scope of

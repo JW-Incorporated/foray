@@ -855,10 +855,26 @@ passing (fix plan WS-F.4).
 
 - **Checkpoint key:** `spine`, re-validated by `SpineSchema` on resume.
 - **Parallelism:** none, by design.
-- **Retries:** none at this stage. Either gate failing **fails the Foray** — the
-  spine is not re-asked automatically. The batch driver records `outcome: "error"`
-  and keeps the checkpoint (which holds `understand` and `research-shape`, so a
-  re-run pays only for the spine onward).
+- **Retries:** one structural re-ask (**F-86**; run 7 attempt 2, 2026-09-11: a
+  spine whose only defect was a two-sentence claim in act 2 failed the whole run
+  and cost its Opus call). When gate 2 refuses a reply, `buildSpine.ts`
+  (`buildSpineWithReasks`) asks the builder again — `SPINE_STRUCTURAL_REASKS`
+  times, default `1`; `0` is the old fail-on-first behaviour — with the exact
+  violations appended as a "fix only these" turn on the **same conversation**:
+  the prompt, the refused reply as the assistant's own turn (`spineReplyText`),
+  one user turn naming the violations (`buildSpineFixInstruction`). The model
+  keeps every act, slot, beat and seed the gate did not name. The gate runs
+  again on the reply, unchanged — one sentence per claim stays — and only then
+  does the run fail, with the same `InvalidSpineStructureError` message. The
+  re-ask is its own metered `spine_build` call; the checkpoint banks only the
+  spine that passed; the run log prints the violations when the re-ask is
+  decided; `report.json` carries `spineReasks` (§6.3). The builder sees the
+  re-ask as `SpineBuildContext.revision`; a builder that ignores it produces a
+  fresh spine, which the gate judges the same way. Gate 1 stays fail-fast: its
+  rules have never refused a real spine. The batch driver records
+  `outcome: "error"` on a final refusal and keeps the checkpoint (which holds
+  `understand` and `research-shape`, so a re-run pays only for the spine
+  onward).
 
 **Stub behaviour** (`StubSpineBuilder.ts`): builds a spine at the exact midpoint
 of the tier's act/slot/beat bands, distributes slots and beats evenly, marks
@@ -866,7 +882,9 @@ of the tier's act/slot/beat bands, distributes slots and beats evenly, marks
 across the range, and composes each claim from a template plus a **qualifier**
 list of 40 entries so no two beats in a 110-beat long-tier spine collide — a fix
 made after F-13's structural gate correctly began rejecting the stub's previously
-duplicated claims.
+duplicated claims. Told to (`twoSentenceClaimReplies: N`), its first N replies
+carry run 7's two-sentence claim in act 2's first beat, so the F-86 re-ask path
+is fixtured; it records every `revision` it is handed (`revisions`).
 
 ---
 
@@ -3083,6 +3101,12 @@ than have it buried in a string.
 wrap its final JSON in prose around tool calls: it takes the **last** fenced block
 if any exist, else the raw text, then delegates.
 
+The spine's **structural** re-ask (F-86, §3.3.4) takes the same shape one level
+up — the same conversation plus the refused reply plus one user turn naming what
+to fix — but is driven by `buildSpine.ts` after the gate, not by this parser:
+the reply parsed; what it said was wrong. Inside a structural re-ask the JSON
+re-ask above still applies, on the three-turn conversation.
+
 ### 4.4 Usage tracking
 
 `backend/src/generation/usageTracking.ts` — `recordUsage(response.usage)` is
@@ -3365,7 +3389,8 @@ cannot see the metric. Recorded at `finalizeForay.ts`'s `check-narration` call s
 ### 5.3 The spine structural gate
 
 `spineStructure.ts:assertSpineStructure`, run between §4.3 and §4.4. Full rule
-list in §3.3.3.
+list in §3.3.3. A refusal is re-asked once with the violations named before it
+fails the run (F-86, §3.3.4); the rules themselves are not loosened by that.
 
 ### 5.4 The veracity metrics
 
@@ -3531,6 +3556,8 @@ Written to `<out>/report.json` at the end of every non-dry run:
       "ms":       <sum of every stage's ms>,
       "file":     "<absolute path>",       // only when a candidate was written
       "ttlA1Ms":  <number | null>,
+      "spineReasks": [ { "attempt": 1, "violations": ["<gate message>", …] } ],
+                                           // F-86: only when §4.3 was re-asked; absent on the common path and on a resume
       "veracity": { /* §5.4 */ }           // present for every "generated" outcome
     }
   ]
@@ -3790,6 +3817,7 @@ never logged; `envPresenceSummary()` reports booleans only.
 | `DAILY_BUDGET_USD` | `25.00` | Daily per-user cap. Schema-validated: finite, ≥ 0, ≤ 1000; a present-but-malformed value **fails startup**. |
 | `EPISODE_BUDGET_USD` | `10.00` | Per-Foray cap — enforced only when a caller passes a `sessionId`, which the batch driver **now does** (the checkpoint key; §4.1). Leniently parsed. |
 | `NARRATION_ACT_CONCURRENCY` | `4` | G-32: how many acts §4.7 narrates at once (every slot of every in-flight act is itself in flight). `1` restores acts in series; the throttle for a key that returns 429s. Stitch and continuity (§4.8) run one act at a time in act order regardless. Read at call time by `writeNarration.ts`, not by `env.ts`; a present-but-malformed value **throws**, naming the variable only. `report.json` records the value as `narrationConcurrency` beside one `narrate:<i>` timing per act (`narrationActs`). |
+| `SPINE_STRUCTURAL_REASKS` | `1` | F-86: how many times §4.3's builder is re-asked, with the structural gate's violations named, before a refused spine fails the run (§3.3.4). `0` restores fail-on-first. Read at call time by `buildSpine.ts`, not by `env.ts`; a present-but-malformed value **throws**, naming the variable only. Each re-ask is a whole metered Opus call; `report.json` records them as `spineReasks`. |
 | `FORAY_MODEL_OPUS` | `claude-opus-5` | Override the id a tier resolves to. |
 | `FORAY_MODEL_SONNET` | `claude-sonnet-5` | Same. |
 | `FORAY_MODEL_HAIKU` | `claude-haiku-4-5-20251001` | Same. Pinned to a **dated snapshot** deliberately: it is the only tier whose alias still resolves to a 4.x model, and pinning makes "this is deliberately last-generation, not stale" reviewable — exactly what F-03 found missing. |

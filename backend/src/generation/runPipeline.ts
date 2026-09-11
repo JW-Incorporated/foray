@@ -11,7 +11,7 @@ import { NarratedBeatSchema } from "../types/narration";
 
 import { understandPrompt } from "./understandPrompt";
 import { buildResearchShape } from "./researchShape";
-import { buildSpine } from "./buildSpine";
+import { buildSpineWithReasks, type SpineReask } from "./buildSpine";
 import { deepenActs } from "./deepenActs";
 import { sourceBeats, summarizeSourcing } from "./sourceBeats";
 import { summarizeSeeding } from "./spineSeeding";
@@ -256,6 +256,14 @@ export interface RunPipelineOptions {
    * time in act order whatever the number is.
    */
   narrationActConcurrency?: number;
+  /**
+   * F-86: how many times §4.3's builder is re-asked when its reply fails the
+   * structural gate before the run fails. Defaults to the
+   * `SPINE_STRUCTURAL_REASKS` env (1 — see `spineStructuralReasks` in
+   * `buildSpine.ts`). `0` is the pre-F-86 behaviour: the first refusal fails
+   * the run.
+   */
+  spineStructuralReasks?: number;
 }
 
 /** G-32: one act's narration, as the report shows it — the `narrate:<i>`
@@ -275,17 +283,22 @@ export type RunPipelineOutcome =
   /** §4.1 could not read the prompt one way; a human has to disambiguate. */
   | { outcome: "needs-clarification"; question: string; readings: string[]; timings: StageTiming[] }
   /** The pipeline ran but no taxonomy node could be resolved — nothing is published. */
-  | { outcome: "unresolved-topic"; title: string; candidates: TopicCandidate[]; timings: StageTiming[] }
+  | { outcome: "unresolved-topic"; title: string; candidates: TopicCandidate[]; spineReasks: SpineReask[]; timings: StageTiming[] }
   /** §4.5 sourced every beat to narration (F-65). A Foray with no tape cannot
    * pass §4.9, so the run stops before paying for narration. `sourcing` is
    * `summarizeSourcing`'s one line per slot, top reason included. */
-  | { outcome: "no-tape"; title: string; sourcing: string[]; timings: StageTiming[] }
+  | { outcome: "no-tape"; title: string; sourcing: string[]; spineReasks: SpineReask[]; timings: StageTiming[] }
   /** A Foray was built. `validation.ok` says whether it may be published. */
   | {
       outcome: "generated";
       input: FinalizeForayInput;
       result: FinalizeForayResult;
       spine: Spine;
+      /** F-86: every structural re-ask §4.3 took, with the violations it was
+       * asked to fix. Empty on the common path (the first reply passed) and
+       * on a resume (the banked spine is the one that passed). Carried into
+       * `report.json` as `spineReasks`. */
+      spineReasks: SpineReask[];
       /** WS-C: one row per tape-sourced beat, carrying the topic gate's own
        * verdict on the anchor it took (see `TapeRelevanceInput`). Surfaced here
        * because §4.5 is the only stage that knows all of it at once, and
@@ -880,10 +893,26 @@ export async function runForayPipeline(
   );
 
   // §4.3 — the spine, frozen from here on (§6.1's invariant, batch-true).
+  /* F-86: the re-asks the stage took, for the report. Set only when the stage
+     actually RAN — a resumed spine is the banked one, which passed the gate
+     when it was banked, so a resume reports none. The checkpoint holds the
+     spine alone, never a refused reply: `buildSpineWithReasks` returns only a
+     spine that passed, and `stage` banks only what it returns. */
+  let spineReasks: SpineReask[] = [];
   const spine = await stage(
     "spine",
     (raw) => SpineSchema.parse(raw),
-    () => buildSpine(intent, researchShape, req.duration, spineBuilder, ctx)
+    async () => {
+      const built = await buildSpineWithReasks(intent, researchShape, req.duration, spineBuilder, ctx, {
+        ...(options.spineStructuralReasks !== undefined ? { maxStructuralReasks: options.spineStructuralReasks } : {}),
+        onReask: (reask) =>
+          console.log(
+            `  spine: reply ${reask.attempt} failed the structural check (F-13) — re-asking once with the violations named (F-86): ${reask.violations.join("; ")}`
+          )
+      });
+      spineReasks = built.reasks;
+      return built.spine;
+    }
   );
 
   /* THE FORAY'S TOPIC, RESOLVED HERE AND NOT AFTER NARRATION.
@@ -917,6 +946,7 @@ export async function runForayPipeline(
       outcome: "unresolved-topic",
       title,
       candidates: resolvedTopic.candidates,
+      spineReasks,
       timings: timings.all()
     };
   }
@@ -1012,7 +1042,7 @@ export async function runForayPipeline(
     0
   );
   if (tapeBeats === 0) {
-    return { outcome: "no-tape", title, sourcing: sourcingLines, timings: timings.all() };
+    return { outcome: "no-tape", title, sourcing: sourcingLines, spineReasks, timings: timings.all() };
   }
 
   /* G-35 — EVERY PAGE'S EVIDENCE, IN ONE FAN-OUT, BEFORE ANY ACT IS WRITTEN.
@@ -1348,6 +1378,7 @@ export async function runForayPipeline(
     input,
     result,
     spine,
+    spineReasks,
     tapeRelevance: sourced.tapeRelevance,
     timings: timings.all(),
     ttlA1Ms,
