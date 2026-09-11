@@ -4,6 +4,7 @@ import path from "node:path";
 import os from "node:os";
 import { readPartialCandidate } from "../src/generation/generationStatus";
 import type { PartialCandidate } from "../src/generation/partialCandidate";
+import { partialOnlyScope } from "../src/generation/partialProjection";
 
 /**
  * WS-D2's status-read path, unit-tested against plain fixture files rather
@@ -32,6 +33,7 @@ function candidate(overrides: Partial<PartialCandidate> = {}): PartialCandidate 
     builtAt: "2026-09-08T12:00:00.000Z",
     updatedAt: "2026-09-08T12:00:05.000Z",
     validation: { ok: true, checkForaysErrors: [], checkForaysWarnings: [], checkNarrationErrors: [], checkNarrationWarnings: [] },
+    ruleScope: partialOnlyScope("partial-only"),
     ...overrides
   };
 }

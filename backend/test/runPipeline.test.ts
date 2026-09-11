@@ -754,9 +754,11 @@ describe("runForayPipeline — each act is stitched as soon as it is narrated (F
     expect(out.outcome).toBe("generated");
     if (out.outcome !== "generated") return;
     expect(partials).toBeGreaterThan(1);
-    /* One finalize per act (the partial candidates) plus the whole-Foray one at
-       the end — every one of them handed the same pool. */
-    expect(finalize.seen).toHaveLength(partials + 1);
+    /* One finalize per act (the partial candidates), one more per NON-FINAL
+       act for F-79's projected whole (the last act's partial is the whole, so
+       it is not projected), plus the whole-Foray one at the end — every one
+       of them handed the same pool. That is 2 × partials. */
+    expect(finalize.seen).toHaveLength(partials * 2);
     for (const input of finalize.seen) {
       expect(input.segments).toBe(out.input.segments);
       expect(input.segmentSources).toBe(out.input.segmentSources);

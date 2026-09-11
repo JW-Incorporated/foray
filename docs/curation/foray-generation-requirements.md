@@ -2800,10 +2800,28 @@ Shape (`partialCandidate.ts:PartialCandidate`): `id`, `title`, `topic`, `summary
 `acts: [{index, title, status: "ready" | "pending"}]`, `slots`, `items`,
 `runtimeSec`, `ttlA1Ms`, `builtAt`, `updatedAt`, `validation`.
 
-Honestly noted in the module rather than hidden: some of `check-forays.mjs`'s
-checks (D5's interquartile floor over segment durations, for one) are sized for a
-whole Foray and **may read a short Act-1-only slice as a false failure** that the
-same content clears once every act is in.
+**The share-of-whole rules are judged on the projected whole, not the slice
+(F-79).** Some of `check-forays.mjs`'s rules have a denominator that grows with
+every act — M4 (one episode's share of segments and of tape runtime), D3 (mean
+segment duration), D5's interquartile floor, D2's end-of-Foray clause and D4's
+quote share — so their verdict on a one-act slice says nothing about the Foray.
+Run 5 was aborted after act 1 on `M4 FAIL: … 16.7 % of segments and 26.4 % of
+runtime` computed over 6 segments of a 25-segment plan. `runPipeline` therefore
+hands `buildPartialCandidate` the sourcing stage's plan
+(`PartialCandidateMeta.projection` = `sourced.acts` + the whole Foray's slots), and
+`partialProjection.ts` builds the **projected whole** — the partial's items
+followed by every later act's planned segments (a tape pointer already carries
+the segment id, the episode and the cut) and a band-midpoint narration estimate
+for each unwritten page — and runs it through the **same** `finalize`. Those five
+rules' lines are then read from the projection; every monotone rule (copy, shape,
+per-item, D1, D2's run clause, D5's triple clause, L2–L4, M3, the anchor rule) is
+read from the partial's own validation and stays strict on it. The candidate's
+`ruleScope` (`basis: "projected" | "whole" | "partial-only"`, `projected[]`,
+`partial[]`, `projection.{tapeSegments, items, runtimeSec, errors, warnings,
+supersededOnPartial}`) and an `F-79:` line in `checkForaysWarnings` say which rule
+was judged where. Nothing in `check-forays.mjs` changes, the last act is never
+projected (its partial is the whole), and G-30's abort default (§7.1.1) stays — it
+now fires only on a failure the finished Foray would also have.
 
 `ttlA1Ms` stays `null` on a **resumed** run whose `stitch` stage was checkpointed:
 the stored items are returned and `stitchForay` is never called, so no act

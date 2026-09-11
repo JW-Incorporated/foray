@@ -2,6 +2,14 @@ import type { ForayItem } from "./forayItems";
 import type { MintedSegmentSource } from "./audioSourceLookup";
 import type { NewSegment } from "../types/tapeSourcing";
 import { finalizeForay, type FinalizeForayInput, type FinalizeForayResult, type FinalizeForayValidation, type ForaySlot } from "./finalizeForay";
+import {
+  buildProjectedItems,
+  countTapeSegments,
+  mergeProjectedVerdict,
+  partialOnlyScope,
+  type PartialProjectionPlan,
+  type PartialRuleScope
+} from "./partialProjection";
 
 /**
  * WS-D2 — the partial-candidate shape (docs/curation/generation-fix-plan-2026-09-09.md,
@@ -29,15 +37,22 @@ import { finalizeForay, type FinalizeForayInput, type FinalizeForayResult, type 
  * second seam) that the whole-Foray path uses, handed only the items/slots
  * finished so far — "validated with the same check-forays gates, but for
  * Act 1's [and, on a later call, each subsequent act's] items only," per the
- * fix plan. HONESTLY NOTED, not hidden: some of `check-forays.mjs`'s checks
- * (D5's inter-quartile floor over segment durations, for one) are sized for
- * a whole Foray's worth of segments and MAY read a short Act-1-only slice as
- * a false failure that the same content clears once every act is in. That is
- * a real, inherited scope limit of reusing the whole-Foray checker on a
- * subset — exactly the kind of validator-scope gap `finalizeForay.ts`'s own
- * doc comment already states plainly for `check-narration.mjs` — not a
- * silent claim that a partial candidate's `validation` is a preview of the
- * final verdict.
+ * fix plan.
+ *
+ * …EXCEPT FOR THE RULES THAT ARE SHARES OF THE WHOLE (F-79). The paragraph
+ * that used to sit here said, honestly, that some of `check-forays.mjs`'s
+ * checks are sized for a whole Foray's worth of segments and MAY read a
+ * short Act-1-only slice as a false failure. Run 5 made that cost concrete:
+ * G-30's abort-on-refused-partial default ended a 25-tape-beat run after act
+ * 1 on an M4 share computed over 6 segments. So when the caller supplies the
+ * sourcing stage's plan (`PartialCandidateMeta.projection`), the share-of-
+ * whole rules — M4, D3, D5's IQR floor, D2's end-of-Foray clause, D4's share
+ * clause — are judged on the PROJECTED whole (this partial's items followed
+ * by every later act's planned segments and narration estimates), and every
+ * monotone rule stays strict on the partial alone. `partialProjection.ts`
+ * holds the argument for which rule is which; `ruleScope` on the candidate
+ * reports it. Without a plan (or on the last act, where the partial is the
+ * whole) every rule is judged on the partial, exactly as before.
  */
 
 export type PartialActStatus = "ready" | "pending";
@@ -79,6 +94,9 @@ export interface PartialCandidate {
    * a stale response from a fresh one without diffing the body. */
   updatedAt: string;
   validation: FinalizeForayValidation;
+  /** F-79: which rules `validation` judged on the projected whole and which
+   * on the partial's own items — see `partialProjection.ts`. */
+  ruleScope: PartialRuleScope;
 }
 
 /** Per-act info `runForayPipeline` hands this module — everything
@@ -134,6 +152,15 @@ export interface PartialCandidateMeta {
   /** Repo root, forwarded to `finalize` exactly as `runPipeline.ts` forwards
    * it to the whole-Foray `finalize` call. */
   root?: string;
+  /**
+   * F-79: the sourcing stage's plan — `sourced.acts` and the whole Foray's
+   * declared slots — so a partial's share-of-whole rules (M4, D3, D5-IQR,
+   * D2-end, D4-share) can be judged on the projected whole rather than on
+   * the one-act slice. Run-level, like `segments`: known before any page is
+   * written. Optional, so a caller without it (and every test written before
+   * F-79) gets exactly today's behaviour — every rule on the partial.
+   */
+  projection?: PartialProjectionPlan;
 }
 
 export type FinalizeFn = (input: FinalizeForayInput, root?: string) => Promise<FinalizeForayResult>;
@@ -170,6 +197,36 @@ export async function buildPartialCandidate(info: PartialActInfo, meta: PartialC
   const result = await finalize(finalizeInput, meta.root);
 
   const status: "partial" | "complete" = info.actIndex + 1 >= info.totalActs ? "complete" : "partial";
+
+  /* F-79 — THE ONE CALL SITE. The partial has just been judged on every rule;
+     now, if the sourcing plan is here and there are acts still to come, the
+     share-of-whole rules are re-judged on the projected whole and their
+     partial-slice verdicts set aside. Same `finalize`, same pool, same
+     minted tape (`segments`/`segmentSources` ride along for the F-71
+     reason); the projected record differs only in carrying every planned
+     later segment. On the last act the partial IS the whole — nothing to
+     project, and every rule's verdict already came from it. */
+  let validation: FinalizeForayValidation = result.validation;
+  let ruleScope: PartialRuleScope;
+  if (meta.projection && status === "partial") {
+    const built = buildProjectedItems(info.items, info.actIndex, meta.projection);
+    const projectedRuntimeSec = Math.round((info.runtimeSec + built.addedRuntimeSec) * 1000) / 1000;
+    const projected = await finalize(
+      {
+        ...finalizeInput,
+        slots: meta.projection.slots,
+        items: built.items,
+        runtimeSec: projectedRuntimeSec
+      },
+      meta.root
+    );
+    const merged = mergeProjectedVerdict(result.validation, projected.validation, built, countTapeSegments(info.items), projectedRuntimeSec);
+    validation = merged.validation;
+    ruleScope = merged.scope;
+  } else {
+    ruleScope = partialOnlyScope(status === "complete" ? "whole" : "partial-only");
+  }
+
   const acts: PartialCandidateAct[] = info.allActTitles.map((title, index) => ({
     index,
     title,
@@ -191,6 +248,7 @@ export async function buildPartialCandidate(info: PartialActInfo, meta: PartialC
     ttlA1Ms: info.ttlA1Ms,
     builtAt: meta.builtAt,
     updatedAt: new Date().toISOString(),
-    validation: result.validation
+    validation,
+    ruleScope
   };
 }
