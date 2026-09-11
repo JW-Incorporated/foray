@@ -17,6 +17,9 @@ import type { IntentUnderstanding } from "../src/types/generation";
 import type { ResearchShape } from "../src/types/research";
 import { InMemoryCostEventSink } from "../src/cost/costEvents";
 import { BudgetGuard } from "../src/cost/budgetGuard";
+import { m4SegmentCapFor } from "../src/generation/sourceBeats";
+import { SPINE_SEED_REPEAT_MIN } from "../src/generation/spineSeeding";
+import { tokenizeForSourcing } from "../src/generation/catalogueLookup";
 
 function makeIntent(overrides: Partial<IntentUnderstanding> = {}): IntentUnderstanding {
   return {
@@ -314,5 +317,152 @@ describe("buildSpine — WS-L: the stub writes beats from the research map's tap
     const { guard } = guardAndSink();
     const spine = await buildSpine(makeIntent(), makeResearchShape(), "medium", new StubSpineBuilder(guard), ctx);
     expect(allBeats(spine).every((b) => b.seed === undefined)).toBe(true);
+  });
+});
+
+/* G-25 (tape-yield brief §5 R4 + R3): the stub seeds every beat an admissible
+   window exists for, admissible meaning what §4.5's M4/M3 ledger will admit,
+   and every seeded claim is the window's own words. The fixture generator is
+   what the offline run-2 replay measures with, so these are the properties
+   that make its number mean something. */
+describe("buildSpine — G-25: the stub seeds every beat it can, one episode at a time until eight (R4, R3)", () => {
+  /** Three claim-shaped sentences about `topic`, distinct per topic so no two
+   * windows can produce the same claim. */
+  function windowText(topic: string): string {
+    return (
+      `The ${topic} pipeline failed on a Friday and nobody noticed the ${topic} outage until Monday morning. ` +
+      `The ${topic} retraining job ran on a fixed calendar rather than on any signal from the data itself. ` +
+      `An audit of the ${topic} labels found thousands of mislabelled validation images across the whole benchmark.`
+    );
+  }
+
+  function shapeWith(windows: Array<{ episode: string; startSec: number; topic: string }>): ResearchShape {
+    const base = makeResearchShape();
+    return {
+      ...base,
+      subtopics: base.subtopics.map((s, i) =>
+        i > 0
+          ? s
+          : {
+              ...s,
+              windowsUnavailable: null,
+              tapeWindows: windows.map((w) => ({
+                episodeId: `practical-ai--${w.episode}`,
+                showTitle: "Practical AI",
+                episodeTitle: w.episode,
+                startSec: w.startSec,
+                endSec: w.startSec + 100,
+                text: windowText(w.topic),
+                score: 2
+              }))
+            }
+      )
+    };
+  }
+
+  const tenEpisodes = ["inventory", "payments", "fraud", "search", "ranking", "speech", "vision", "logistics", "billing", "weather"].map(
+    (topic, i) => ({ episode: `episode-${900 + i}`, startSec: 100 + i * 10, topic })
+  );
+
+  it("seeds EVERY beat when the map's windows come from enough episodes — not the floor's two per act", async () => {
+    /* Run 2's spine seeded 14 of 32 beats and the unseeded 18 yielded nothing
+       at any floor (brief §3). The floor stays a floor; the ask is every beat.
+       MUTATION THAT KILLS THIS: put `seededThisAct < SPINE_MIN_SEEDED_BEATS_PER_ACT`
+       back as the condition on seeding in `StubSpineBuilder.ts`. Ran it — red
+       (8 of 32 seeded). */
+    const { guard } = guardAndSink();
+    const spine = await buildSpine(makeIntent(), shapeWith(tenEpisodes), "medium", new StubSpineBuilder(guard), ctx);
+    const beats = allBeats(spine);
+    expect(beats.length).toBeGreaterThanOrEqual(DURATION_SHAPE_BUDGETS.medium.items[0]);
+    expect(beats.filter((b) => b.seed).length).toBe(beats.length);
+    expect(beats.filter((b) => b.seed).length).toBeGreaterThan(SPINE_MIN_SEEDED_BEATS_PER_ACT * spine.acts.length);
+  });
+
+  it("names eight DIFFERENT episodes before it seeds any episode twice, and never runs one episode's tape backwards", async () => {
+    /* The run-2 spine seeded two episodes twice among fourteen seeds and lost
+       an on-claim window at `m4-share` (brief §4 cause 3). The map here is
+       adversarial: three windows of episode-900 come FIRST — the second LATER
+       on the tape (so only the share rule can refuse it), the third EARLIER
+       (so only the order rule can) — and a fourth window of it comes last.
+       MUTATIONS THAT KILL THIS: (a) make `SpineSeedLedger.shareAllows` return
+       true — the second seed is episode-900's 600 s window and the first eight
+       are no longer distinct; (b) make `orderAllows` return true — the 500 s
+       window is seeded again after the 700 s one, backwards. Ran both — red. */
+    const { guard } = guardAndSink();
+    const others = tenEpisodes.slice(1, 8); // seven more episodes: eight distinct in all
+    const shape = shapeWith([
+      { episode: "episode-900", startSec: 500, topic: "inventory" },
+      { episode: "episode-900", startSec: 600, topic: "returns" },
+      { episode: "episode-900", startSec: 100, topic: "checkout" },
+      ...others,
+      { episode: "episode-900", startSec: 700, topic: "shipping" }
+    ]);
+    const spine = await buildSpine(makeIntent(), shape, "medium", new StubSpineBuilder(guard), ctx);
+    const seeds = allBeats(spine).flatMap((b) => (b.seed ? [b.seed] : []));
+
+    const firstEight = seeds.slice(0, 8).map((s) => s.episodeId);
+    expect(new Set(firstEight).size).toBe(8);
+    /* At every prefix, no episode is over the share §4.5 would allow it if
+       every seed became a segment. */
+    const count = new Map<string, number>();
+    seeds.forEach((seed, i) => {
+      count.set(seed.episodeId, (count.get(seed.episodeId) ?? 0) + 1);
+      expect(count.get(seed.episodeId)!, `seed ${i + 1} (${seed.episodeId})`).toBeLessThanOrEqual(m4SegmentCapFor(i + 1));
+    });
+    /* The earlier-on-tape window of the repeated episode is never seeded... */
+    expect(seeds.some((s) => s.episodeId === "practical-ai--episode-900" && s.startSec === 100)).toBe(false);
+    /* ...and the later one is, once the spine carries eight. */
+    const lateRepeat = seeds.findIndex((s) => s.episodeId === "practical-ai--episode-900" && s.startSec === 700);
+    expect(lateRepeat).toBeGreaterThanOrEqual(SPINE_SEED_REPEAT_MIN - 1);
+    const starts900 = seeds.filter((s) => s.episodeId === "practical-ai--episode-900").map((s) => s.startSec);
+    for (let i = 1; i < starts900.length; i++) expect(starts900[i]!).toBeGreaterThanOrEqual(starts900[i - 1]!);
+  });
+
+  it("still meets the per-act floor when the map's tape lives in one episode — the ledger is a preference, the floor a gate", async () => {
+    /* "A subject whose tape lives in one episode still gets a spine." With one
+       episode the ledger refuses every seed after the first, and an act still
+       under its floor takes the next window regardless — otherwise
+       `assertSpineStructure` would refuse the dry-run spine for the archive's
+       thinness.
+       MUTATION THAT KILLS THIS: delete the floor fallback (the `??` branch on
+       `seededThisAct`) in `StubSpineBuilder.ts`. Ran it — red
+       (act-below-seeded-beat-floor). */
+    const { guard } = guardAndSink();
+    const shape = shapeWith([{ episode: "episode-900", startSec: 100, topic: "inventory" }]);
+    const spine = await buildSpine(makeIntent(), shape, "medium", new StubSpineBuilder(guard), ctx);
+    for (const [i, act] of spine.acts.entries()) {
+      const seeded = act.slots.flatMap((s) => s.beats).filter((b) => b.seed);
+      expect(seeded.length, `act ${i + 1}`).toBeGreaterThanOrEqual(SPINE_MIN_SEEDED_BEATS_PER_ACT);
+    }
+  });
+
+  it("every seeded claim's words are its own window's words — claim faithfulness, by §4.5's tokenizer", async () => {
+    /* The seed is a claim that the tape SAYS the claim (F-63), and §4.5 checks
+       it by the claim's content words against the window's. A stub that put
+       words in a seeded claim the window never said — a template, a framing
+       phrase — would be run 2's failure with a seed attached. Every seeded
+       beat, including the ones written after a window's sentences were spent
+       (32 beats from 10 windows), is held to it.
+       MUTATIONS THAT KILL THIS: (a) in `claimFromWindow`, return
+       `claimFor(...)` — red on the first beat; (b) put the "The tape says: …"
+       framing back into `runClaims` — red on the first reused window. Ran
+       both — red. */
+    const { guard } = guardAndSink();
+    const shape = shapeWith(tenEpisodes);
+    const windows = shape.subtopics[0]!.tapeWindows;
+    const spine = await buildSpine(makeIntent(), shape, "medium", new StubSpineBuilder(guard), ctx);
+    const seeded = allBeats(spine).filter((b) => b.seed);
+    expect(seeded.length).toBe(allBeats(spine).length);
+    for (const beat of seeded) {
+      const window = windows.find(
+        (w) => w.episodeId === beat.seed!.episodeId && w.startSec === beat.seed!.startSec && w.endSec === beat.seed!.endSec
+      );
+      expect(window, `seed ${JSON.stringify(beat.seed)} names a window the map listed`).toBeDefined();
+      const spoken = new Set(tokenizeForSourcing(window!.text));
+      const claimWords = tokenizeForSourcing(beat.claim);
+      expect(claimWords.length).toBeGreaterThan(0);
+      const foreign = claimWords.filter((w) => !spoken.has(w));
+      expect(foreign, `"${beat.claim}" carries words its window never said`).toEqual([]);
+    }
   });
 });

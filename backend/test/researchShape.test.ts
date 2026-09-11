@@ -463,4 +463,34 @@ describe("buildResearchShape — WS-L: the map carries what the tape says (F-63)
       expect(fusion.tapeWindows[i - 1]!.score).toBeGreaterThanOrEqual(fusion.tapeWindows[i]!.score);
     }
   });
+
+  it("attaches six windows per subtopic when six episodes say it — the supply G-25's seed-every-beat ask draws on (R4)", async () => {
+    /* The seed is the only path that yields (brief §3: unseeded 0/14 at every
+       floor, seeded 10/14), so tape beats are bounded by windows. Four per
+       subtopic gave the run-2 map 32 windows for a 32-beat spine that is now
+       asked to seed every account beat; six keeps the supply ahead of the ask.
+       MUTATION THAT KILLS THIS: put `RESEARCH_TAPE_WINDOWS_PER_SUBTOPIC` back
+       to 4. Ran it — red (4 windows, and the pin). */
+    expect(RESEARCH_TAPE_WINDOWS_PER_SUBTOPIC).toBe(6);
+    const { guard } = guardAndSink();
+    const episodes: TranscriptDigestEntry[] = [];
+    const cuesByGuid: Record<string, TranscriptCue[]> = {};
+    for (let i = 0; i < 9; i++) {
+      const guid = `pa-${900 + i}`;
+      episodes.push({ ...mlEpisode, guid, title: `Episode ${900 + i}` });
+      cuesByGuid[guid] = mlCues;
+    }
+    const shape = await buildResearchShape(makeIntent(), {
+      researcher: new StubExternalResearcher(guard),
+      ctx: { userId: "founder-1" },
+      catalogue: tapeFixtureCatalogue(),
+      topic: null,
+      textIndex: fakeIndex(episodes, cuesByGuid),
+      cueProvider: fakeCues(cuesByGuid)
+    });
+    const fusion = shape.subtopics.find((s) => s.label === "Fusion")!;
+    expect(fusion.tapeWindows.length).toBe(RESEARCH_TAPE_WINDOWS_PER_SUBTOPIC);
+    /* Still one window per episode, so those are six different conversations. */
+    expect(new Set(fusion.tapeWindows.map((w) => w.episodeId)).size).toBe(6);
+  });
 });

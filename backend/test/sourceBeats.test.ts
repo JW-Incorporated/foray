@@ -19,6 +19,8 @@ import {
 import { capArgumentBeats, deepenActs } from "../src/generation/deepenActs";
 import { buildResearchShape } from "../src/generation/researchShape";
 import { buildSpine } from "../src/generation/buildSpine";
+import { buildSpinePrompt } from "../src/generation/AnthropicSpineBuilder";
+import { summarizeSeeding } from "../src/generation/spineSeeding";
 import { resolveTopic } from "../src/generation/resolveTopic";
 import { StubSpineBuilder } from "../src/generation/StubSpineBuilder";
 import { StubDeepenActBuilder } from "../src/generation/StubDeepenActBuilder";
@@ -3794,9 +3796,29 @@ describe("sourceBeats — WS-H/F-61 offline: the real archive on the generation 
         );
       }
 
+      /* G-25: the size of the prompt the real builder would send for THIS map,
+         recorded because the card names it as the cost of six windows per
+         subtopic (the 23.7 k-char run-2 prompt was already the largest ttlA1
+         block). Printed, not asserted: it is a measurement, not a rule. */
+      const windowsOnMap = shape.subtopics.reduce((n, s) => n + s.tapeWindows.length, 0);
+      const episodesOnMap = new Set(shape.subtopics.flatMap((s) => s.tapeWindows.map((w) => w.episodeId))).size;
+      console.log(
+        `[G-25] research map: ${windowsOnMap} windows over ${episodesOnMap} episodes across ${shape.subtopics.length} subtopics; ` +
+          `spine prompt would be ${buildSpinePrompt(intent, shape, "medium").length} characters`
+      );
+
       const spine = await buildSpine(intent, shape, "medium", new StubSpineBuilder(guard), buildCtx);
       const seededBeats = spine.acts.flatMap((a) => a.slots.flatMap((s) => s.beats)).filter((b) => b.seed);
       expect(seededBeats.length).toBeGreaterThanOrEqual(SPINE_MIN_SEEDED_BEATS_PER_ACT * spine.acts.length);
+      /* G-25's claim-faithfulness property, on real tape: every seeded claim's
+         content words were spoken in the window it was seeded from. */
+      const windowsById = new Map(shape.subtopics.flatMap((s) => s.tapeWindows).map((w) => [`${w.episodeId}@${w.startSec}-${w.endSec}`, w]));
+      for (const beat of seededBeats) {
+        const window = windowsById.get(`${beat.seed!.episodeId}@${beat.seed!.startSec}-${beat.seed!.endSec}`);
+        expect(window, `seed ${JSON.stringify(beat.seed)} names a window the map listed`).toBeDefined();
+        const spoken = new Set(tokenizeForSourcing(window!.text));
+        expect(tokenizeForSourcing(beat.claim).filter((w) => !spoken.has(w)), `"${beat.claim}"`).toEqual([]);
+      }
 
       const deepened = await deepenActs(spine, new StubDeepenActBuilder(guard), buildCtx);
       const topic = resolveTopic(`${intent.subject} ${intent.angle}`).resolved;
@@ -3813,6 +3835,20 @@ describe("sourceBeats — WS-H/F-61 offline: the real archive on the generation 
           `${result.tapeRelevance.length + result.sourcingTrace.length}, ${throughTheSeed.length} through the seeded episode; ` +
           `first anchors: ${result.newSegments.slice(0, 2).map((s) => `"${s.startAnchor}"`).join(" | ")}`
       );
+      /* G-25: the driver's own Foray-wide line, and the material for the
+         card's five-beat on-claim spot-check — the claim beside the tape it was
+         seeded from, for a person to read. */
+      console.log(`[G-25] ${summarizeSeeding(deepened, result)}`);
+      for (const row of throughTheSeed.slice(0, 5)) {
+        const beat = deepened[row.actIndex]!.slots[row.slotIndex]!.beats[row.beatIndex]!;
+        const sourcedBeat = result.acts[row.actIndex]!.slots[row.slotIndex]!.beats[row.beatIndex]!;
+        const cut = sourcedBeat.sourcing === "tape" ? `${sourcedBeat.tape.startSec.toFixed(0)}-${sourcedBeat.tape.endSec.toFixed(0)}s` : "narration";
+        const window = windowsById.get(`${beat.seed!.episodeId}@${beat.seed!.startSec}-${beat.seed!.endSec}`);
+        console.log(
+          `[G-25 spot-check] ${row.actIndex}/${row.slotIndex}/${row.beatIndex} claim: "${beat.claim}"\n` +
+            `       tape ${row.itemId} ${cut} (seed window ${beat.seed!.startSec}-${beat.seed!.endSec}s): "${window?.text ?? "?"}"`
+        );
+      }
       /* And, for the seeded beats that did NOT make it, the gate and the share
          that refused them — the evidence this workstream's next threshold
          argument has to be made from. */

@@ -1648,6 +1648,8 @@ const BACKEND_FLOORS = {
   "test/mintedSegmentRow.test.ts": 18,
   /* FD-07 / F-75: the publish branch is cut from origin/main and pushes exactly one commit. */
   "test/publishForay.test.ts": 12,
+  /* G-25: spine seeding ledger (M4-derived caps) and seed order. */
+  "test/spineSeeding.test.ts": 5,
   /* G-30: self-resuming runs, abort on a refused partial, notification hook, id suffixing. */
   "test/generateForaysHandsFree.test.ts": 20,
   "test/finalizeForay.test.ts": 8,
