@@ -171,7 +171,18 @@ function parseInto(container, html) {
     const btn = makeEl("button");
     btn.className = forayBtnMatch[1];
     btn._attrs["data-cr-mode"] = "foray";
-    btn.disabled = /\bdisabled\b/.test(forayBtnMatch[2]);
+    /* A real attribute parse, NOT `/\bdisabled\b/`. `-` is a word boundary,
+       so that regex also matched the `disabled` INSIDE `aria-disabled="true"`
+       — and the card's own named mutation (remove the `disabled` attribute,
+       keep aria-disabled) stayed GREEN under it (audit, 2026-09-10: 8/8 pass
+       with only `disabled` removed from createToggleHtml). A button with
+       aria-disabled but no `disabled` is still focusable and clickable, which
+       is exactly the regression the acceptance line exists to catch. This
+       walks the tag's attributes by name so only a bare/`disabled="..."`
+       attribute counts. Verified: removing only ` disabled` from the Foray
+       button in app.js -> test 3 below goes red (1 fail / 7 pass). */
+    const attrNames = [...forayBtnMatch[2].matchAll(/(?:^|\s)([\w-]+)(?:="[^"]*")?/g)].map((mm) => mm[1]);
+    btn.disabled = attrNames.includes("disabled");
     if (btn.disabled) btn._attrs.disabled = "disabled";
     container.appendChild(btn);
   }
