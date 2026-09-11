@@ -2,7 +2,7 @@
 
 <!-- ha-format: 2 -->
 
-> **33 open.** Closed items are in `HUMAN-ACTIONS-DONE.md` — you never need it.
+> **32 open.** Closed items are in `HUMAN-ACTIONS-DONE.md` — you never need it.
 > To close one: reply `done` (or `skip <why>`) to its card in the project's human-action channel.
 > Anything else you reply is forwarded to a thread on the card.
 
@@ -75,7 +75,6 @@ assets. Measured against a real release already in this repo
 (`kokoro-fixture-t_f3c788ca`): a download URL
 (`github.com/<owner>/<repo>/releases/download/<tag>/<asset>`) redirects
 (302) to a presigned URL on `release-assets.githubusercontent.com` (an
-
 
 **Steps:**
 1. TODO — steps needed
@@ -207,18 +206,6 @@ click-t
 warnings on Main store listing or App content, and `4a` resolves in a Play search
 or on its own store URL.
 
-## #25 🟡 [DECIDE] Buy the company domain before writing either store listing — DONE
-<!-- ha filed=2026-09-11 kind=default -->
-
-**Why:** Both stores require a **Privacy Policy URL**; Apple also requires a
-
-**Steps:**
-1. Buy a domain. Reply with it.
-2. A session builds the static site — no dependencies, same CSP discipline as the app — and
-3. The listing fields in **#42** then have stable URLs to quote.
-
-**Worked if:** the three URLs above resolve, and #42's listing draft quotes them.
-
 ## #24 🟡 [DECIDE] Amend ADR-0008: a ranged GET can be lied to as well, and 5,461 transcripts rest on that
 <!-- ha filed=2026-09-11 kind=default -->
 
@@ -269,7 +256,7 @@ That file is on `DENIED_PREFIXES`, so the entry needs a separate PR carrying the
 evening and neither carried a number, so each one restarted the diagnosis — #224
 has been escalated, downgraded on one clean test, and re-escalated on a failure.
 Five changes have shipped into the seam and transport area (#227, #235, #239,
-#260, #266) with no 
+#260, #266) with no
 
 **Steps:**
 1. Before the drive, open the app's menu (☰) → **Playback diagnostics** → **Clear
@@ -300,24 +287,24 @@ artifact.
 ## #19 🟡 [DECIDE] Get an Apple Developer account and add seven secrets, so CI can put a build on TestFlight
 <!-- ha filed=2026-09-11 kind=default -->
 
-**Why:** #38 built the iOS build in CI, and **it works without any of this**: `.github/workflows/ios-build.yml` compiles the shell unsigned on every run, for both the simulator and a real device's architecture, and that is deliberate — an unsigned build that always runs is worth more than a signing job that 
+**Why:** #38 built the iOS build in CI, and **it works without any of this**: `.github/workflows/ios-build.yml` compiles the shell unsigned on every run, for both the simulator and a real device's architecture, and that is deliberate — an unsigned build that always runs is worth more than a signing job that
 
 **Steps:**
 1. Join the Apple Developer Program at **`https://developer.apple.com/programs/enroll/`** ($99/year). Apple may take a day or two to approve.
-2. In **App Store Connect** (`https://appstoreconnect.apple.com`) → **Users and Access** → **Integrations** → **App Store Connect API** → **+**, create a key with the **App Manager** role. You get three 
+2. In **App Store Connect** (`https://appstoreconnect.apple.com`) → **Users and Access** → **Integrations** → **App Store Connect API** → **+**, create a key with the **App Manager** role. You get three
 3. In the developer portal → **Certificates, Identifiers & Profiles**:
 4. Base64-encode the three files. On a Mac:
 5. At **`https://github.com/JW-Incorporated/foray/settings/secrets/actions`**, click **New repository secret** seven times and create **exactly these names** (the workflow reads these and no others — a t
 6. Run the workflow: **`https://github.com/JW-Incorporated/foray/actions/workflows/ios-build.yml`** → **Run workflow**.
 
-**Worked if:** a run of `ios-build` shows `state=ready` at the "Is signing configured?" step and a build appears in App Store Connect → TestFlight. If it gets as far as `altool` and then fails, that is the expected 
+**Worked if:** a run of `ios-build` shows `state=ready` at the "Is signing configured?" step and a build appears in App Store Connect → TestFlight. If it gets as far as `altool` and then fails, that is the expected
 
 ## #18 🟡 [DECIDE] On Android: settle whether our CSP kills Capacitor's bridge
 <!-- ha filed=2026-09-11 kind=default -->
 
 **Why:** This is the **top open risk** in the whole native-app change, and it can be settled by reading one line in a console.
 
-Capacitor injects its native bridge (`native-bridge.js`, the app config, and every plugin's JavaScript) into the page as an **inline `<script>`**. Foray's page carries a strict CSP 
+Capacitor injects its native bridge (`native-bridge.js`, the app config, and every plugin's JavaScript) into the page as an **inline `<script>`**. Foray's page carries a strict CSP
 
 **Steps:**
 1. Install **JDK 21** (Capacitor 8 dies on JDK 17 with `invalid source release: 21`) and the Android **platform tools** (for `adb`).
@@ -367,7 +354,7 @@ Capacitor injects its native bridge (`native-bridge.js`, the app config, and eve
 
 **Steps:**
 1. In the Supabase dashboard, open **SQL Editor** and add a `security definer` function that deletes the caller's own auth user — the standard shape is `delete from auth.users where id = auth.uid();` ins
-2. Tell whoever picks up the follow-up (or reply here) that it exists, and the client will call `POST /rest/v1/rpc/delete_own_account` as the last step of the deletion — **after** the row deletes, since 
+2. Tell whoever picks up the follow-up (or reply here) that it exists, and the client will call `POST /rest/v1/rpc/delete_own_account` as the last step of the deletion — **after** the row deletes, since
 3. Decide whether the same function should also cascade the per-user tables. It does not need to — the client already deletes them — but it makes the server-side path complete on its own, which matters i
 4. While in there: consider a **retention job** for anonymous accounts with no events at all (item 13, step 4, needs a number for the policy either way). The same sweep can collect shells from before thi
 
