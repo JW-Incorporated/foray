@@ -26,9 +26,8 @@
  *
  * MUTATION (run before trusting): remove the jingle item from the generated
  * Foray in `data/forays.json` -> red on `item.type = jingle is carried by a
- * committed Foray`. (Until the entry in `KNOWN_UNCOVERED` below is deleted,
- * that shape is instead asserted UNcovered — the same mutation in reverse:
- * add a jingle item -> red, naming the carrier and asking for the entry to go.)
+ * committed Foray` (the carrier is #632's "The Chain Reaction", merged
+ * 2026-09-11; the entry this list held for it until then is gone).
  *
  * `FORAY_DATA_ROOT` points this file at another checkout's `data/`, exactly as
  * `--root` does for the checker CLI and for the same reason its header gives:
@@ -104,11 +103,6 @@ const CARRIERS = {
  */
 const KNOWN_UNCOVERED = [
   {
-    field: "item.type",
-    value: "jingle",
-    why: "the first jingle-carrying generated Foray is PR #632 (open, not merged); it lands the carrier. Delete this entry when it merges.",
-  },
-  {
     field: "narration.mode",
     value: "correction",
     why: "neither generated Foray on main wrote a Correction beat; the pipeline may emit one on any run.",
@@ -140,7 +134,7 @@ const KNOWN_UNCOVERED = [
   },
 ];
 /** Raise this only with a written reason in the same PR. Lowering it is free. */
-const KNOWN_UNCOVERED_CEILING = 7;
+const KNOWN_UNCOVERED_CEILING = 6; // jingle carrier landed with #632 (2026-09-11)
 
 const isKnownUncovered = (field, value) => KNOWN_UNCOVERED.some((k) => k.field === field && k.value === value);
 
