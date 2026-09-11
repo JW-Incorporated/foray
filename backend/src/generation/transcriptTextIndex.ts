@@ -252,6 +252,10 @@ export class FileTranscriptTextIndex implements TranscriptTextIndex {
         totalLength += doc.length;
       });
       for (const term of terms) {
+        /* F-85: postings is keyed by transcript tokens, and a token can be a prototype
+           name ("constructor" is common speech in engineering episodes); `Object.hasOwn`
+           keeps an inherited function from masquerading as a posting list. */
+        if (!Object.hasOwn(index.postings, term)) continue;
         const postings = index.postings[term];
         if (!postings) continue;
         for (const [docIndex, tf] of postings) {
@@ -356,7 +360,8 @@ export class FileTranscriptTextIndex implements TranscriptTextIndex {
 
   private build(showId: string, entries: TranscriptDigestEntry[]): ShowIndex | null {
     const docs: IndexedDoc[] = [];
-    const postings: Record<string, Array<[number, number]>> = {};
+    /* F-85: a null-prototype map, so a token such as "constructor" or "__proto__" is a key like any other. */
+    const postings: Record<string, Array<[number, number]>> = Object.create(null);
     for (const entry of entries) {
       const stat = this.bodies.bodyStat(entry);
       if (!stat) continue;
@@ -390,6 +395,8 @@ export class FileTranscriptTextIndex implements TranscriptTextIndex {
       // eslint-disable-next-line security/detect-non-literal-fs-filename -- see above.
       const parsed = JSON.parse(fs.readFileSync(file, "utf8")) as ShowIndex;
       if (!parsed || !Array.isArray(parsed.docs) || typeof parsed.postings !== "object" || parsed.postings === null) return null;
+      /* F-85: a cached index parsed from JSON has Object.prototype; re-key it so prototype-named tokens read as their own postings. */
+      parsed.postings = Object.assign(Object.create(null), parsed.postings);
       return parsed;
     } catch {
       /* An unreadable or half-written cache is a cache miss, never a failure:

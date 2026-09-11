@@ -1593,7 +1593,7 @@ const BACKEND_FLOORS = {
      cache and the invalidation that makes a re-transcribed episode rebuild it,
      and the Null implementation CI actually runs. Raised to 12 by F-61: the
      idf a search scored with is carried out to tier 2's window search. */
-  "test/transcriptTextIndex.test.ts": 12,
+  "test/transcriptTextIndex.test.ts": 13,
   /* §4.7 end to end (kanban card t_5a8b77c3): writeNarration() writes one
      page per narration beat (mode budgets, per-claim sources array),
      always through a genuinely separate verifier call (never the writer —
