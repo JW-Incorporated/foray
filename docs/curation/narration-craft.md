@@ -513,6 +513,23 @@ its source. Three additions:
   narration beat from an assertion by an anonymous voice; what changed is that the
   proof is now auditable rather than merely audible.
 
+**A Frame's source is the tape it introduces** (F-81, 2026-09-11). A Frame that
+says what the next segment is about, or who is speaking in it, is describing the
+tape — and the tape is its source, in the same accompanying-text sense R3 (§6a)
+gives every other claim. Generation run 5 dropped eight Frames, and tape entered
+on silence, because the only source shape the pipeline knew was a verbatim span of
+print, and "declares no sources but states something about the world" was the
+verdict on a page whose every statement was about the tape beside it. So a Frame
+(or a Hinge or Marker doing the same hand-off job) may cite the segment it
+introduces — `{kind: "tape", segmentId, quote?}` in the candidate's `sources`,
+never in the published record — and is then verified against that segment's
+transcript window as a whole, not against a quote: the quote is optional, and when
+the page does echo a phrase of the tape's own words it must be in the window (§3i
+still applies to echoes). Nothing else loosens. A page with **no** source may still
+only ask a question or hand off to the listener; a Patch, Carry or Correction still
+cites print; and the spoiler rule (§3c) is unchanged — the tape is the Frame's
+source for *what the tape is about*, never a licence to state its answer.
+
 ### 3e. Cross the distance once, and name only the axis that matters
 
 Our seams cross place, time, discipline, register and room at once. The instinct is

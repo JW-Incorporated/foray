@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { phraseIsInWindow } from "./anchorText";
 
 /**
  * §4.7 narration types (docs/curation/generation-architecture.md §4.7).
@@ -76,30 +77,101 @@ export function scriptSeconds(chars: number): number {
  * ever reaching a spoken line). `claimText` ties this source to the
  * specific sentence/assertion it backs, so "every factual claim carries
  * a source" is checkable per-claim rather than only "the page has some
- * sources somewhere". */
-export const SourceSchema = z
+ * sources somewhere".
+ *
+ * TWO SHAPES (F-81). A PRINT source is a verbatim span of a held document
+ * — the shape every Patch and Carry cites, unchanged. A TAPE source is
+ * the segment a connective page introduces: a Frame that says what the
+ * tape is about, or who is speaking, is describing the tape, and the tape
+ * IS its source. It names the segment (`segmentId`), its holding document
+ * is that segment's transcript window (`tapeDocIdFor`), and its `quote`
+ * is OPTIONAL — a phrase of the tape's own words when the page echoes one,
+ * checked as a whole-word span of the window with the same
+ * canonicalisation §4.5 mints anchors with. The verifier reads the whole
+ * window as the source, not a quote. Run 5 dropped eight Frames for
+ * "declares no sources but states something about the world" (F-36/F-37/
+ * F-44) because the only source shape available was a span of print, and
+ * a description of what a segment says is not one; tape entered on
+ * silence. The shape lives in the pipeline's candidate and report only:
+ * `forayItems.ts` strips `sources` from the published record either way. */
+const SourceCommonShape = {
+  /** The factual assertion this source supports, in the author's own
+   * words — not necessarily verbatim from the script (a script may
+   * fold several claims into one sentence), but specific enough that a
+   * verifier can find and check it against the script. */
+  claimText: z.string().trim().min(1),
+  publication: z.string().trim().min(1),
+  url: z.string().trim().min(1).optional(),
+  /** ISO date the span was retrieved, when known. */
+  retrieved: z.string().trim().min(1).optional(),
+  /** §4.7 rule 3: a genuinely contested claim must say so, both here
+   * (structural — a verifier or downstream consumer can filter on it
+   * without re-parsing prose) and in the narration text itself
+   * (checked by `containsContestedLanguage` below, applied by the
+   * caller — this schema cannot itself read the script it belongs to). */
+  contested: z.boolean()
+};
+
+export const PrintSourceSchema = z
   .object({
-    /** The factual assertion this source supports, in the author's own
-     * words — not necessarily verbatim from the script (a script may
-     * fold several claims into one sentence), but specific enough that a
-     * verifier can find and check it against the script. */
-    claimText: z.string().trim().min(1),
+    ...SourceCommonShape,
     /** Verbatim span from the source. Never spoken — see the module doc
      * comment and Ruling 3. */
-    quote: z.string().trim().min(1),
-    publication: z.string().trim().min(1),
-    url: z.string().trim().min(1).optional(),
-    /** ISO date the span was retrieved, when known. */
-    retrieved: z.string().trim().min(1).optional(),
-    /** §4.7 rule 3: a genuinely contested claim must say so, both here
-     * (structural — a verifier or downstream consumer can filter on it
-     * without re-parsing prose) and in the narration text itself
-     * (checked by `containsContestedLanguage` below, applied by the
-     * caller — this schema cannot itself read the script it belongs to). */
-    contested: z.boolean()
+    quote: z.string().trim().min(1)
   })
   .strict();
+export type PrintSource = z.infer<typeof PrintSourceSchema>;
+
+export const TapeSourceSchema = z
+  .object({
+    ...SourceCommonShape,
+    kind: z.literal("tape"),
+    /** The `data/segments.json`-shaped id of the segment this page
+     * introduces — the same id its beat's `TapePointer.segmentId` carries
+     * and the transcript window in the evidence pack is keyed by. */
+    segmentId: z.string().trim().min(1),
+    /** A phrase of the tape's own words, when the page echoes one; absent
+     * when the page only describes what the segment is about. Never
+     * spoken as a citation either way. */
+    quote: z.string().trim().min(1).optional()
+  })
+  .strict();
+export type TapeSource = z.infer<typeof TapeSourceSchema>;
+
+/* Tape first: the two objects are `.strict()`, so a tape source fails the
+   print shape on its extra fields and a print source fails the tape shape
+   on its missing `kind`, and the order only decides which error a
+   malformed object is reported with. */
+export const SourceSchema = z.union([TapeSourceSchema, PrintSourceSchema]);
 export type Source = z.infer<typeof SourceSchema>;
+
+export function isTapeSource(source: Source): source is TapeSource {
+  return (source as TapeSource).kind === "tape";
+}
+
+/** The evidence-pack docId of a segment's transcript window — the ONE
+ * convention `gatherEvidence.ts` builds the window under and a tape source
+ * is resolved against. */
+export function tapeDocIdFor(segmentId: string): string {
+  return `tape:${segmentId}`;
+}
+
+/** The inverse: the segment id a tape document's docId names, or `null`
+ * for a document that is not a transcript window. */
+export function segmentIdOfTapeDoc(docId: string): string | null {
+  return docId.startsWith("tape:") && docId.length > 5 ? docId.slice(5) : null;
+}
+
+/** The connective modes that may cite the tape they hand into (F-81): the
+ * Frame that introduces a segment, and a Hinge or Marker doing the same
+ * job at a seam. Never a Patch or Carry — those carry the beat's content
+ * and cite print — and never a Correction, which bounds tape on the
+ * authority of a print source (narration-craft.md §3f). */
+export const TAPE_SOURCE_MODES: readonly NarrationMode[] = ["Frame", "Hinge", "Marker"];
+
+export function modeMayCiteTape(mode: NarrationMode): boolean {
+  return TAPE_SOURCE_MODES.includes(mode);
+}
 
 /**
  * One document the pipeline HOLDS the text of, as a narration page sees
@@ -288,7 +360,14 @@ export interface NarratedBeatValidationIssue {
     | "unsourced-negative-claim"
     /** Zero sources on a page that nonetheless asserts something
      * (F-36/F-37/F-44, settled here so the verifier never sees it). */
-    | "sources-empty-with-claims";
+    | "sources-empty-with-claims"
+    /** A tape source names a segment whose transcript window is not among
+     * the documents the page was given — a page may cite only the tape it
+     * introduces, and only when the pipeline holds its words (F-81). */
+    | "tape-window-not-held"
+    /** A tape source on a mode that carries content or corrects: a Patch,
+     * Carry or Correction cites print, never the tape beside it (F-81). */
+    | "tape-source-on-content-page";
   message: string;
 }
 export interface NarratedBeatValidationResult {
@@ -565,6 +644,11 @@ export function validateNarratedBeat(
   const heldDocs = opts.heldDocs;
   const purposeText = opts.purposeText;
   for (const source of beat.sources) {
+    if (isTapeSource(source)) {
+      issues.push(...validateTapeSource(source, beat.mode, heldDocs));
+      continue;
+    }
+
     const holding = heldDocs ? findHoldingDoc(source.quote, heldDocs) : null;
 
     if (heldDocs) {
@@ -597,7 +681,7 @@ export function validateNarratedBeat(
     }
   }
 
-  if (containsNegativeRecordClaim(beat.script) && !beat.sources.some((s) => containsNegativeRecordClaim(s.quote))) {
+  if (containsNegativeRecordClaim(beat.script) && !beat.sources.some((s) => containsNegativeRecordClaim(s.quote ?? ""))) {
     issues.push({
       code: "unsourced-negative-claim",
       message:
@@ -617,6 +701,62 @@ export function validateNarratedBeat(
   }
 
   return { valid: issues.length === 0, issues };
+}
+
+/**
+ * F-81's rules for a source that IS the tape the page introduces. Three,
+ * all mechanical:
+ *
+ *   - only a connective mode may cite tape (`TAPE_SOURCE_MODES`);
+ *   - when the held documents are known, the segment's transcript window
+ *     must be one of them (`tapeDocIdFor`) and the publication must be
+ *     that document's title, exactly as a print source's must be;
+ *   - a quote, if the source carries one, must be a whole-word span of
+ *     that window under the anchor canonicalisation (`phraseIsInWindow`).
+ *     No eight-word floor and no purpose-echo rule: the holding document
+ *     for a tape source is the WHOLE window, which the verifier reads, so
+ *     the quote is an echo the page chose to make and not the thing the
+ *     claim rests on. A short quote cannot "support anything" here (F-42's
+ *     worry) because nothing rests on it.
+ *
+ * With no `heldDocs` (a caller without an evidence pack) only the first
+ * rule runs, matching how the print rules degrade.
+ */
+export function validateTapeSource(
+  source: TapeSource,
+  mode: NarrationMode,
+  heldDocs?: EvidenceDoc[]
+): NarratedBeatValidationIssue[] {
+  const issues: NarratedBeatValidationIssue[] = [];
+  if (!modeMayCiteTape(mode)) {
+    issues.push({
+      code: "tape-source-on-content-page",
+      message: `a ${mode} page cites tape segment "${source.segmentId}" as its source — only a Frame, Hinge or Marker introducing that segment may; a ${mode} cites print (F-81)`
+    });
+  }
+  if (!heldDocs) return issues;
+
+  const window = heldDocs.find((d) => d.docId === tapeDocIdFor(source.segmentId));
+  if (!window) {
+    issues.push({
+      code: "tape-window-not-held",
+      message: `source cites tape segment "${source.segmentId}" but its transcript window is not among the documents this page was given — a page may cite only the tape it introduces, and only when the pipeline holds its words (F-81)`
+    });
+    return issues;
+  }
+  if (source.publication.trim() !== window.title.trim()) {
+    issues.push({
+      code: "publication-not-held",
+      message: `publication "${source.publication}" is not the title of the tape document the source names ("${window.title}") — attribution is read off the document, never written (F-30/F-32)`
+    });
+  }
+  if (source.quote !== undefined && !phraseIsInWindow(source.quote, window.text)) {
+    issues.push({
+      code: "quote-not-held",
+      message: `quote "${source.quote.slice(0, 60)}" is not spoken in the transcript window of segment "${source.segmentId}" — a tape source may only echo the tape's own words (F-81)`
+    });
+  }
+  return issues;
 }
 
 /**

@@ -243,7 +243,9 @@ describe("writeNarration — every factual claim carries a non-empty sources arr
     expect(page.sources.length).toBeGreaterThan(0);
     for (const source of page.sources) {
       expect(source.claimText.length).toBeGreaterThan(0);
-      expect(source.quote.length).toBeGreaterThan(0);
+      // A Patch cites print, whose quote is never optional (F-81's tape
+      // shape is the one with an optional quote, and it cannot be here).
+      expect(source.quote!.length).toBeGreaterThan(0);
     }
   });
 
@@ -491,7 +493,7 @@ describe("writeNarration — what a page carries out for WS-B's metrics", () => 
     const page = allWrittenNarration(written)[0]!;
     expect(page.evidence).toEqual(heldDocsOf({ purpose: "x", beatKind: "account", docs: [NBS_DOC] }));
     for (const source of page.sources) {
-      expect(page.evidence!.some((d) => d.text.includes(source.quote))).toBe(true);
+      expect(page.evidence!.some((d) => d.text.includes(source.quote!))).toBe(true);
     }
   });
 
@@ -533,7 +535,7 @@ describe("writeNarration — the dry-run path is structurally real, not a shortc
     for (const source of page.sources) {
       const doc = page.evidence!.find((d) => d.title === source.publication);
       expect(doc, `no held document titled "${source.publication}"`).toBeTruthy();
-      expect(normalizeForQuoteMatch(doc!.text)).toContain(normalizeForQuoteMatch(source.quote));
+      expect(normalizeForQuoteMatch(doc!.text)).toContain(normalizeForQuoteMatch(source.quote!));
     }
   });
 });
