@@ -245,6 +245,22 @@ export interface TapeRelevanceInput {
    * from the number of seeded beats, which says nothing about it.
    */
   seedFloor?: "share-only";
+  /**
+   * D5's triple clause is what chose this segment's LENGTH (F-80): the ladder
+   * rung's own cut of the window would have made the last three placed
+   * durations a uniform triple (`check-forays.mjs`'s "three consecutive
+   * durations within +/-20 % of each other"), and a different cut of the same
+   * window — a different ladder rung, or another cue-boundary length the
+   * growth rule reaches — escaped the band and was placed instead. Absent
+   * whenever the rung's cut escaped by itself, and always absent for tier 1
+   * (a pool segment's length is a curator's, and one that would make the
+   * triple is passed over rather than re-cut).
+   *
+   * Counting these rows counts the placements the rule DECIDED, which is the
+   * number to watch: a run where it fires often is a run whose ladder and
+   * passages are producing lengths the rule keeps having to correct.
+   */
+  lengthGate?: "d5-triple";
 }
 
 /**
@@ -289,8 +305,15 @@ export interface TapeRelevanceInput {
  *                        the run.
  *   - `d3-mean`        — taking it would drop the Foray's running mean segment
  *                        duration under D3's 90 s floor.
- *   - `d5-uniform`     — it and the two segments before it would be within
- *                        +/-20 % of each other, D5's uniform triple.
+ *   - `d5-triple`      — it and the two segments before it would be within
+ *                        +/-20 % of each other, D5's uniform triple, by
+ *                        `check-forays.mjs`'s own arithmetic (`d5Triple.ts`).
+ *                        A rule, not a preference, since F-80: for a pool
+ *                        segment the length is fixed and the candidate is
+ *                        passed over; for a tier-2 window every other length
+ *                        the window can be cut to is tried first, and the gate
+ *                        is reported only when none escapes the band. (Spelled
+ *                        `d5-uniform` in traces written by #571–#620.)
  *   - `m4-runtime`     — its episode already holds M4's quarter of the Foray's
  *                        tape SECONDS (the clause #569 left to the checker).
  *                        Never asked about an episode's first segment. */
@@ -303,7 +326,7 @@ export type Tier1Gate =
   | "m3-order"
   | "d2-short-run"
   | "d3-mean"
-  | "d5-uniform"
+  | "d5-triple"
   | "m4-runtime";
 
 /** Which tier-2 gate turned down the best-scoring archive episode.
@@ -361,7 +384,7 @@ export type Tier2Gate =
      duration. */
   | "d2-short-run"
   | "d3-mean"
-  | "d5-uniform"
+  | "d5-triple"
   | "m4-runtime";
 
 export interface Tier1TraceRow {
