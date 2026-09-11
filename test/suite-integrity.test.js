@@ -762,6 +762,16 @@ const FLOORS = {
      refused when it carries a timestamp only. Both branches are pinned, and so is
      the half-anchored case. */
   "tools/foray/check-forays.test.mjs": 130,
+  /* G-21c fixture-before-emit (F-89). Seven DECLARATIONS, not seven tests: two
+     of them sit inside a loop over `ACCEPTED_SHAPES` and expand to one test per
+     accepted value (~30 today), so the floor is the count of `test(` lines this
+     file's regex sees. Zero slack. The two loop-body declarations are the gate
+     itself — every shape the checker accepts must be carried by a committed
+     Foray, or be listed in `KNOWN_UNCOVERED` and asserted still uncovered — and
+     the source-scan test is what stops a new accepted literal reaching the
+     checker without joining the enumeration. Delete any of them and a shape can
+     again reach `data/` before a consumer has seen it in CI. */
+  "tools/foray/fixture-coverage.test.mjs": 7,
   /* The narration evidence gate (#247, and the founder's citation rulings of
      2026-08-19). Zero slack, and for a sharper reason than most suites here.
 
@@ -1668,9 +1678,23 @@ const BACKEND_FLOORS = {
      one named mutation per required field. */
   "test/mintedSegmentRow.test.ts": 18,
   /* FD-07 / F-75: the publish branch is cut from origin/main and pushes exactly one commit. */
-  /* F-88 raised this from 12: the PR body names every page verified by
-     synthesis and the pages it rests on. */
-  "test/publishForay.test.ts": 13,
+  /* +7 (G-21c): the written files are gated by the app's real-data suites —
+     a red suite refuses (assertion printed, bytes restored, branch abandoned),
+     --force proceeds and the PR body lists the failing assertions, a green
+     run touches nothing, detached-HEAD restore, a file that did not exist is
+     removed again, and the refusal lands on report.json as publish_refused.
+     One named mutation per test. */
+  /* F-88 +1: the PR body names every page verified by synthesis and the
+     pages it rests on. */
+  "test/publishForay.test.ts": 20,
+  /* G-21c: REAL_DATA_SUITES names the four roadmap suites and every other
+     suite the repo grep finds reading data/forays.json, data/segments.json or
+     data/segment-sources.json (the list cannot rot); the TAP parser (one
+     `not ok` → one failure with name/error/location, describe parents
+     skipped, load failures attributed by name); the runner's cwd/flags and
+     its three broken-run shapes; the summary and failure lines. One named
+     mutation per test. */
+  "test/publishSuites.test.ts": 15,
   /* G-25: spine seeding ledger (M4-derived caps) and seed order. */
   "test/spineSeeding.test.ts": 5,
   /* G-30: self-resuming runs, abort on a refused partial, notification hook, id suffixing. */
