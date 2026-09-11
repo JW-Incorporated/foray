@@ -1668,7 +1668,9 @@ const BACKEND_FLOORS = {
      one named mutation per required field. */
   "test/mintedSegmentRow.test.ts": 18,
   /* FD-07 / F-75: the publish branch is cut from origin/main and pushes exactly one commit. */
-  "test/publishForay.test.ts": 12,
+  /* F-88 raised this from 12: the PR body names every page verified by
+     synthesis and the pages it rests on. */
+  "test/publishForay.test.ts": 13,
   /* G-25: spine seeding ledger (M4-derived caps) and seed order. */
   "test/spineSeeding.test.ts": 5,
   /* G-30: self-resuming runs, abort on a refused partial, notification hook, id suffixing. */
@@ -1804,6 +1806,15 @@ const BACKEND_FLOORS = {
      throws before the checkers; and the half-second start rule is pinned in
      numbers. One named mutation per test. */
   "test/mintDedupe.test.ts": 11,
+  /* F-88 (run 7 attempt 4): nine thesis Hinges kept unverified because
+     print retrieval finds nothing for a generalisation. Synthesis
+     verification — the Hinge is written from the Foray's own verified pages
+     and verified as a fair generalisation of them, recorded as
+     `verification: { kind: "synthesis", restsOn, attempt }`; a Hinge naming
+     a case no verified page covers stays unverified (the mutation test); a
+     Patch never goes through it; the gate counts `synthesisVerifiedPages`
+     separately and treats them as verified. One named mutation per test. */
+  "test/synthesisVerify.test.ts": 17,
 };
 
 /* `it(` as well as `test(`: backend's suites use both spellings. */

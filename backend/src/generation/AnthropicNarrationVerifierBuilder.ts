@@ -10,6 +10,9 @@ import type {
   NarrationVerifierBuilder,
   NarrationVerifyRequest,
   NarrationVerifyResult,
+  SynthesisVerifyRequest,
+  SynthesisVerifyResult,
+  VerifiedPageSummary,
   VerifyPageBrief
 } from "./NarrationVerifierBuilder";
 import { recordUsage } from "./usageTracking";
@@ -70,6 +73,20 @@ const RawVerifyResultSchema = z.object({
   )
 });
 
+/* F-88: the synthesis verdict — the ids the page rests on, or a refusal. */
+const RawSynthesisResultSchema = z.object({
+  pages: z.array(
+    z.object({
+      pageId: z.string(),
+      synthesis: z.boolean(),
+      /* Optional in the reply — a refusal may leave it out — and read as
+         empty: a page that rests on nothing is refused in code either way. */
+      restsOn: z.array(z.string()).optional(),
+      notes: z.string().optional()
+    })
+  )
+});
+
 function roughTokenEstimate(text: string): number {
   return Math.ceil(text.length / 4);
 }
@@ -88,7 +105,18 @@ export class AnthropicNarrationVerifierBuilder implements NarrationVerifierBuild
   }
 
   async verifySlot(request: NarrationVerifyRequest, ctx: NarrationBuildContext): Promise<NarrationVerifyResult> {
-    const promptText = buildVerifyPrompt(request);
+    return this.ask(buildVerifyPrompt(request), RawVerifyResultSchema, ctx);
+  }
+
+  /** F-88: the synthesis question — the SAME call family (model, budget
+   * operation, re-ask) as `verifySlot`, with its own short prompt. Only
+   * `synthesisVerify.ts` calls it, and only after retrieval has failed. */
+  async verifySynthesis(request: SynthesisVerifyRequest, ctx: NarrationBuildContext): Promise<SynthesisVerifyResult> {
+    const raw = await this.ask(buildSynthesisPrompt(request), RawSynthesisResultSchema, ctx);
+    return { pages: raw.pages.map((p) => ({ ...p, restsOn: p.restsOn ?? [] })) };
+  }
+
+  private async ask<T>(promptText: string, schema: z.ZodType<T>, ctx: NarrationBuildContext): Promise<T> {
     const estimatedInputTokens = roughTokenEstimate(promptText);
     await this.budgetGuard.checkAndRecord({
       userId: ctx.userId,
@@ -141,8 +169,48 @@ export class AnthropicNarrationVerifierBuilder implements NarrationVerifierBuild
       return retryTextBlock.text;
     };
 
-    return parseWithRetry(RawVerifyResultSchema, textBlock.text, "LLM output", reask);
+    return parseWithRetry(schema, textBlock.text, "LLM output", reask);
   }
+}
+
+/**
+ * F-88: the synthesis prompt. Deliberately short, and asked only of a
+ * Hinge or Frame whose retrieval returned nothing (`synthesisVerify.ts`
+ * decides that; this prompt never sees a Patch or Carry). Exported for
+ * the prompt tests only — never instantiate the class in a test.
+ */
+export function buildSynthesisPrompt(request: SynthesisVerifyRequest): string {
+  return [
+    'You are the FACT-VERIFICATION pass for the narration pages of an audio documentary ("Foray"), judging SYNTHESIS pages.',
+    "A synthesis page is a short Hinge or Frame that generalises across what this Foray's OTHER, already-verified pages establish.",
+    "Nothing in print was found for it, so its only permitted ground is those pages. You did NOT write it.",
+    "",
+    "For each page to judge, decide whether its script is a fair generalisation of the verified pages listed — and ONLY them:",
+    "  - every concrete case, entity, number or claim the script names must be established by at least one verified page below;",
+    "  - the script must introduce no factual claim of its own beyond what those pages say;",
+    "  - a case the script names that no verified page covers is a REFUSAL, not a near miss.",
+    "Answer with the ids of the verified pages the script rests on (restsOn, every page whose sentences it quotes included), or refuse",
+    "(synthesis: false, restsOn: []) and say in notes which case or claim no verified page covers.",
+    "",
+    "VERIFIED PAGES (the only ground a synthesis may rest on):",
+    request.verifiedPages.map(verifiedPageLine).join("\n"),
+    "",
+    "PAGES TO JUDGE:",
+    request.pages.map(synthesisPageBlock).join("\n\n"),
+    "",
+    "Respond with ONLY a single JSON object, no markdown fences, no other text, matching exactly:",
+    '{"pages": [{"pageId": string, "synthesis": boolean, "restsOn": string[], "notes": string (required and specific whenever synthesis is false)}]}'
+  ].join("\n");
+}
+
+function verifiedPageLine(page: VerifiedPageSummary): string {
+  const established = page.established.length > 0 ? `\n    established: ${page.established.map((e) => `"${e}"`).join("; ")}` : "";
+  return `  [${page.pageId}] (${page.mode}) purpose: ${page.claim}\n    script: ${page.script}${established}`;
+}
+
+function synthesisPageBlock(page: VerifyPageBrief): string {
+  const sources = page.sources.map((s, i) => `  Source ${i + 1}: claim="${s.claimText}" quoted from page ${s.publication}`).join("\n");
+  return [`PAGE ${page.pageId} — mode ${page.mode}`, `Purpose: ${page.purpose}`, `Script:\n${page.script}`, `Sources:\n${sources || "  (none declared)"}`].join("\n");
 }
 
 /** Exported for the prompt tests only — never instantiate the class in a

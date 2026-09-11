@@ -91,7 +91,12 @@ export type BeatKind = "account" | "argument";
  * declaration of `{docId, title, url, text}` in the codebase rather than
  * two that can drift apart. */
 export interface EvidenceDoc extends HeldEvidenceDoc {
-  kind: "tape" | "print";
+  /** `tape` — a transcript window; `print` — a retrieved passage; `page`
+   * (F-88) — one of this Foray's OWN verified pages, handed to a thesis
+   * Hinge whose retrieval found nothing so it can be written as a
+   * synthesis of them (`synthesisVerify.ts`). Never produced by a
+   * gatherer: only the synthesis pass builds one. */
+  kind: "tape" | "print" | "page";
   retrievedAt?: string;
   /** F-82: where this transcript window sits relative to the page in
    * play order — the segment that plays just BEFORE the page, or just

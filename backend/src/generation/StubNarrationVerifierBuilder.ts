@@ -6,6 +6,10 @@ import type {
   NarrationVerifyRequest,
   NarrationVerifyResult,
   PageVerdict,
+  SynthesisVerdict,
+  SynthesisVerifyRequest,
+  SynthesisVerifyResult,
+  VerifiedPageSummary,
   VerifyPageBrief
 } from "./NarrationVerifierBuilder";
 
@@ -62,7 +66,95 @@ export class StubNarrationVerifierBuilder implements NarrationVerifierBuilder {
 
     return { pages: request.pages.map(verdictFor) };
   }
+
+  /**
+   * F-88's synthesis question, answered with the strongest STRUCTURAL
+   * signal a stub can honestly give: every named case in the page (a
+   * proper-noun-shaped token in its purpose or script — `namedCasesIn`)
+   * must appear on some verified page, or the page is refused naming the
+   * case; and the pages it rests on are the ones that carry a named case,
+   * plus every page its sources quote, plus — for a page that names no
+   * case at all — the pages sharing a content word with its script. A
+   * page that rests on nothing is refused. Whether the generalisation is
+   * FAIR is a reading judgement only the real verifier makes.
+   */
+  async verifySynthesis(request: SynthesisVerifyRequest, ctx: NarrationBuildContext): Promise<SynthesisVerifyResult> {
+    await this.budgetGuard.checkAndRecord({
+      userId: ctx.userId,
+      operation: "narration_verify",
+      provider: this.providerName,
+      estimatedUsd: 0,
+      dryRun: true,
+      sessionId: ctx.sessionId
+    });
+    return { pages: request.pages.map((page) => synthesisVerdictFor(page, request.verifiedPages)) };
+  }
 }
+
+export function synthesisVerdictFor(page: VerifyPageBrief, verifiedPages: VerifiedPageSummary[]): SynthesisVerdict {
+  const refuse = (notes: string): SynthesisVerdict => ({ pageId: page.pageId, synthesis: false, restsOn: [], notes });
+  if (verifiedPages.length === 0) return refuse("no verified page exists for this page to rest on");
+
+  const textOf = (v: VerifiedPageSummary): string => [v.claim, v.script, ...v.established].join(" ").toLowerCase();
+  const covered = (token: string, v: VerifiedPageSummary): boolean => quoteWords(textOf(v)).includes(token.toLowerCase());
+
+  const restsOn = new Set<string>();
+  /* Purpose and script read SEPARATELY: the purpose has no terminal mark,
+     and joined they would make the script's first word mid-sentence. */
+  for (const name of [...new Set([...namedCasesIn(page.purpose), ...namedCasesIn(page.script)])]) {
+    const holders = verifiedPages.filter((v) => covered(name, v));
+    if (holders.length === 0) {
+      return refuse(`the page names "${name}", and no verified page in this Foray covers it — a synthesis may generalise only the cases the Foray's verified pages establish`);
+    }
+    for (const v of holders) restsOn.add(v.pageId);
+  }
+  /* The pages the script quotes are pages it rests on by construction. A
+     `page:` docId names the page; anything else is not a synthesis source
+     and is left for the mechanical rules to have refused already. */
+  for (const source of page.sources) {
+    const cited = page.evidence.docs.find((d) => d.title === source.publication && d.kind === "page");
+    if (cited) restsOn.add(cited.docId.replace(/^page:/, ""));
+  }
+  if (restsOn.size === 0) {
+    const words = new Set(quoteWords(page.script).filter((w) => w.length > 3 && !SYNTHESIS_STOPWORDS.has(w)));
+    for (const v of verifiedPages) {
+      if (quoteWords(textOf(v)).some((w) => words.has(w))) restsOn.add(v.pageId);
+    }
+  }
+  if (restsOn.size === 0) return refuse("the page shares no case and no content word with any verified page in this Foray");
+  return { pageId: page.pageId, synthesis: true, restsOn: [...restsOn] };
+}
+
+/** Proper-noun-shaped tokens — capitalised, three letters or more, never
+ * the first word of a sentence (which is capitalised for a different
+ * reason) — in the order they appear, deduplicated. "Hyatt", "Regency",
+ * "Challenger", "NTSB"; never "The", "This" or "Most". */
+export function namedCasesIn(text: string): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const sentence of String(text ?? "").split(/(?<=[.!?…])\s+/)) {
+    const words = sentence.trim().split(/\s+/).filter(Boolean);
+    for (let i = 1; i < words.length; i++) {
+      const token = words[i]!.replace(/^["'“”‘’(]+/, "").replace(/["'“”‘’),.;:!?]+$/, "");
+      if (!/^[A-Z][A-Za-z'-]{2,}$/.test(token)) continue;
+      const key = token.toLowerCase();
+      if (seen.has(key) || CAPITALISED_FUNCTION_WORDS.has(key)) continue;
+      seen.add(key);
+      out.push(token);
+    }
+  }
+  return out;
+}
+
+/* Capitalised for a reason other than being a name — a quoted clause, a
+   title-cased heading, a model's emphasis. Never a case. */
+const CAPITALISED_FUNCTION_WORDS = new Set([
+  "the", "this", "that", "these", "those", "there", "then", "they", "them", "and", "but", "not", "nor", "for",
+  "what", "when", "where", "which", "while", "who", "whom", "whose", "why", "how", "most", "more", "some", "none",
+  "every", "each", "all", "any", "one", "two", "three", "yes", "now", "here", "with", "from", "into", "over"
+]);
+
+const SYNTHESIS_STOPWORDS = new Set(["this", "that", "line", "idea", "what", "just", "played", "opens", "closes", "sets", "with", "from", "into", "than", "their", "there", "these", "those", "were", "have", "been", "more", "most", "very", "when", "where", "which", "while"]);
 
 function verdictFor(page: VerifyPageBrief): PageVerdict {
   const notes: string[] = [];

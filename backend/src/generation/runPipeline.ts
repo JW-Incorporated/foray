@@ -17,6 +17,7 @@ import { sourceBeats, summarizeSourcing } from "./sourceBeats";
 import { summarizeSeeding } from "./spineSeeding";
 import { createDigestAudioSourceResolver, type AudioSourceResolver } from "./audioSourceLookup";
 import { createActGate, narrationActConcurrency, writeNarration } from "./writeNarration";
+import { countSynthesisCandidates, verifyBySynthesis } from "./synthesisVerify";
 import { PrefetchingEvidenceGatherer } from "./evidencePrefetch";
 import { createEvidenceGatherer, type EvidenceGatherer } from "./gatherEvidence";
 import { ForayStitcher } from "./stitchForay";
@@ -51,7 +52,7 @@ import type { ExternalResearcher } from "./ExternalResearcher";
 import type { SpineBuilder } from "./SpineBuilder";
 import type { DeepenActBuilder } from "./DeepenActBuilder";
 import type { NarrationBuildContext, NarrationWriterBuilder, SelectAndWriteRequest } from "./NarrationWriterBuilder";
-import type { NarrationVerifierBuilder } from "./NarrationVerifierBuilder";
+import type { NarrationVerifierBuilder, SynthesisVerifyRequest } from "./NarrationVerifierBuilder";
 import type { ContinuityBuilder } from "./ContinuityBuilder";
 import type { NarrationWriteStats, WrittenAct, WrittenSlot } from "./writeNarration";
 import type { TranscriptCueProvider } from "./transcriptArchiveLookup";
@@ -845,7 +846,19 @@ export async function runForayPipeline(
     verifySlot: (verifyRequest, verifyCtx) => {
       narrationVerifierCalls++;
       return narrationVerifier.verifySlot(verifyRequest, verifyCtx);
-    }
+    },
+    /* F-88: the synthesis question is one verifier request and counts as
+       one. Forwarded only when the wrapped verifier answers it — a wrapper
+       that always declared it would make `synthesisVerify.ts` call into
+       nothing. */
+    ...(narrationVerifier.verifySynthesis
+      ? {
+          verifySynthesis: (synthesisRequest: SynthesisVerifyRequest, synthesisCtx: NarrationBuildContext) => {
+            narrationVerifierCalls++;
+            return narrationVerifier.verifySynthesis!(synthesisRequest, synthesisCtx);
+          }
+        }
+      : {})
   };
 
   /* §4.0-4.1 — safety, then intent. Both non-"understood" outcomes end the run:
@@ -1304,10 +1317,44 @@ export async function runForayPipeline(
     return p;
   });
 
+  /* F-88: which acts' narration has landed, by position, for the synthesis
+     pass — it reads the whole Foray's verified pages, and `writeNarration`
+     is handed one act. A rejected act contributes nothing; the ordered loop
+     reports its error when it reaches it. */
+  const settledActs: Array<WrittenAct | undefined> = [];
+  narrations.forEach((p, j) => {
+    p.then(
+      (a) => {
+        settledActs[j] = a;
+      },
+      () => undefined
+    );
+  });
+
   const written: WrittenAct[] = [];
   try {
     for (let i = 0; i < sourced.acts.length; i++) {
-      const writtenAct = await narrations[i]!;
+      let writtenAct = await narrations[i]!;
+
+      /* F-88: SYNTHESIS, between this act's narration landing and its stitch.
+         A thesis Hinge whose retrieval found nothing (an F-60 hand-off) is
+         written from the Foray's verified pages and verified as a
+         generalisation of them — which needs every act's pages, so an act
+         holding one waits for the others' narration to settle first. An act
+         with none pays nothing. Its own `synthesis:<i>` key, so a resume
+         neither re-pays for it nor loses it: `narrate:<i>` still holds the
+         hand-off, and this stage holds the page that replaced it. Before the
+         stitch, because the stitcher owns a page's leading and trailing
+         sentences and the partial candidate leaves through `onActReady`. */
+      if (countSynthesisCandidates(writtenAct) > 0) {
+        await Promise.allSettled(narrations);
+        const before = writtenAct;
+        writtenAct = await stage(
+          `synthesis:${i}`,
+          (raw) => WrittenActSchema.parse(raw) as WrittenAct,
+          () => verifyBySynthesis(before, i, settledActs, { writer: countingNarrationWriter, verifier: countingNarrationVerifier, stats: narrationStats }, spine.voice, ctx)
+        );
+      }
       written.push(writtenAct);
 
       if (legacyStitched) continue;

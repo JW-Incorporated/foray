@@ -1,5 +1,5 @@
 import type { Voice } from "../types/spine";
-import type { Source } from "../types/narration";
+import type { NarrationMode, Source } from "../types/narration";
 import type { NarrationBuildContext, NarrationPageBrief } from "./NarrationWriterBuilder";
 
 /* Re-exported because every implementation of this interface imports its
@@ -45,6 +45,56 @@ export interface NarrationVerifierBuilder {
   readonly providerName: string;
 
   verifySlot(request: NarrationVerifyRequest, ctx: NarrationBuildContext): Promise<NarrationVerifyResult>;
+
+  /**
+   * F-88: the SYNTHESIS question, asked only after the retrieval path has
+   * failed a Hinge or Frame (never instead of it, and never for a Patch or
+   * Carry — `synthesisVerify.ts` decides eligibility, this only answers).
+   * Given the Foray's verified pages, is each page below a fair
+   * generalisation of them and only them? The answer is the ids of the
+   * pages it rests on, or a refusal naming the case or claim no verified
+   * page covers. Optional so a scripted or older verifier still compiles;
+   * a verifier without it leaves every such page unverified.
+   */
+  verifySynthesis?(request: SynthesisVerifyRequest, ctx: NarrationBuildContext): Promise<SynthesisVerifyResult>;
+}
+
+/** F-88: one verified page as the synthesis question sees it — what the
+ * page is for, what it says, and what its sources established. */
+export interface VerifiedPageSummary {
+  /** Foray-wide id (`synthesisVerify.ts`'s `forayPageId`). */
+  pageId: string;
+  claim: string;
+  mode: NarrationMode;
+  script: string;
+  /** The `claimText` of every source the page carries — the facts it
+   * established, tape-cited or print-verified. */
+  established: string[];
+}
+
+export interface SynthesisVerifyRequest {
+  voice: Voice;
+  /** The candidate synthesis pages, each written from the verified pages
+   * as its documents and already through every mechanical rule. */
+  pages: VerifyPageBrief[];
+  /** Every page the candidates may rest on. Nothing else counts. */
+  verifiedPages: VerifiedPageSummary[];
+}
+
+export interface SynthesisVerdict {
+  pageId: string;
+  /** True only when the script generalises the pages in `restsOn` and
+   * introduces no case, entity or claim they do not establish. */
+  synthesis: boolean;
+  /** The verified page ids the generalisation rests on. Empty on a
+   * refusal. */
+  restsOn: string[];
+  /** Required on a refusal: which case or claim no verified page covers. */
+  notes?: string;
+}
+
+export interface SynthesisVerifyResult {
+  pages: SynthesisVerdict[];
 }
 
 export interface VerifyPageBrief extends NarrationPageBrief {

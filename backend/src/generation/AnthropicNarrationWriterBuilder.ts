@@ -232,6 +232,9 @@ function evidenceBlock(page: NarrationPageBrief): string {
  * tape — that the window may be cited as a whole. A content page is told
  * the window is the tape beside it and nothing more: it stands on print. */
 function tapeDocNote(doc: EvidenceDoc, mode: NarrationMode): string {
+  /* F-88: a verified page of this same Foray, handed to a synthesis page.
+     Its whole sentences are quotable exactly as a print passage's are. */
+  if (doc.kind === "page") return " | a VERIFIED PAGE of this same Foray — quote one of its whole sentences";
   if (doc.kind !== "tape") return "";
   const where =
     doc.tapePosition === "previous"
