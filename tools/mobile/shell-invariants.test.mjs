@@ -96,6 +96,7 @@ import { PLUGIN_NAME } from "../../mobile/plugins/foray-audio/web/foray-audio-sh
 import {
   PLUGIN_NAME as MEDIA_PLUGIN_NAME, SET_METHOD, TRANSPORT_EVENT, ROUTABLE_ACTIONS,
 } from "../../mobile/plugins/foray-audio/web/foray-media-session.js";
+import { FORAY_AUDIO_REACHED_NEEDLE } from "./ios-ci.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, "..", "..");
@@ -1765,5 +1766,37 @@ test("the iOS ForayAudioPlugin never touches the AVAudioSession active state (F1
   assert.ok(
     !/setActive\s*\(/.test(code),
     "ForayAudioPlugin.swift calls AVAudioSession.setActive — the F11/F13 pause loop. The plugin must not touch session activation."
+  );
+});
+
+test("the iOS ForayAudioPlugin writes exactly the unified-log line ios-ci greps for (L-02)", () => {
+  /* L-02's acceptance wants "one setNowPlaying call reached the plugin (log
+     line)". `ios-ci.mjs`'s `forayAudioReached()` greps the simulator log for
+     `FORAY_AUDIO_REACHED_NEEDLE`; the Swift side writes it through `os.Logger`
+     on first contact. The two are copies of one string in two languages, and
+     nothing but this test keeps them equal: rename either side alone and every
+     future run would report `silent` about a line that is being written under
+     a different name. Read from CODE, not comments, so the header's own
+     mention of the needle cannot satisfy this. MUTATION: change the Logger
+     message in ForayAudioPlugin.swift -> this fails naming the drift. */
+  const swift = fs.readFileSync(
+    path.join(PLUGIN_DIR, "ios/Sources/ForayAudioPlugin/ForayAudioPlugin.swift"),
+    "utf8"
+  );
+  const code = swift.replace(/\/\/\/.*$/gm, "").replace(/\/\/.*$/gm, "");
+  assert.match(
+    code,
+    /Logger\(/,
+    "ForayAudioPlugin.swift no longer builds an os.Logger — the L-02 needle has no writer"
+  );
+  assert.ok(
+    code.includes(`"${FORAY_AUDIO_REACHED_NEEDLE} `) || code.includes(`"${FORAY_AUDIO_REACHED_NEEDLE}\\(`),
+    `ForayAudioPlugin.swift does not write a log line starting with "${FORAY_AUDIO_REACHED_NEEDLE}" — ` +
+      "ios-ci.mjs's forayAudioReached() would read every run as silent"
+  );
+  assert.match(
+    code,
+    /privacy:\s*\.public/,
+    "the state interpolation must be .public, or the unified log redacts it to <private>"
   );
 });

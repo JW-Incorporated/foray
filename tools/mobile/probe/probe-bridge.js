@@ -71,6 +71,99 @@
     } catch (e) {}
     out.hasServiceWorkerApi = !!navigator.serviceWorker;
     snapshotMediaSession();
+    snapshotMediaSessionTakeover();
+  }
+
+  /* L-02: is `navigator.mediaSession` OURS by the time the page is up? On iOS
+   * the polyfill (`foray-media-session.js`, a deferred module tag injected by
+   * `prepare-webdir.mjs`) takes over WebKit's live object and marks the result
+   * `forayPolyfill: true` -- the one expression that tells our object from
+   * WebKit's (`buildSession()` in that file). The reading that matters is the
+   * 3 s recheck, after module scripts have run; the document-parse-time reading
+   * is kept separately as `forayPolyfillAtLoad` because it is EXPECTED to say
+   * false (module scripts are deferred), and a reader who only saw one value
+   * could not tell "took over late" from "never took over".
+   *
+   * Read-only. This probe installs nothing and restores nothing -- the marker
+   * is read, `peek()` is read, and that is all. */
+  function snapshotMediaSessionTakeover() {
+    var t = { forayPolyfill: null, windowForayMediaSession: false, peekState: null };
+    try {
+      var s = navigator.mediaSession;
+      if (s) t.forayPolyfill = s.forayPolyfill === true;
+    } catch (e) { t.forayPolyfillError = String(e && e.message); }
+    try {
+      var fms = window.ForayMediaSession;
+      t.windowForayMediaSession = !!(fms && typeof fms.peek === "function");
+      if (t.windowForayMediaSession) {
+        var p = fms.peek();
+        t.peekState = p && typeof p.state === "string" ? p.state : null;
+      }
+    } catch (e) { t.peekError = String(e && e.message); }
+    if (out.mediaSessionTakeover && out.mediaSessionTakeover.forayPolyfillAtLoad !== undefined) {
+      t.forayPolyfillAtLoad = out.mediaSessionTakeover.forayPolyfillAtLoad;
+    } else {
+      t.forayPolyfillAtLoad = t.forayPolyfill;
+    }
+    out.mediaSessionTakeover = t;
+  }
+
+  /* L-02's other half: did ONE `setNowPlaying` call reach the plugin? Not
+   * inferred from the polyfill having installed -- MEASURED, by making the call
+   * from this probe page itself and recording the ANSWER. `platform: "ios"` in
+   * the resolved result is written by `ForayAudioPlugin.swift` and by nothing on
+   * the JS side, so its presence is proof the Swift half handled the call.
+   * `{state: "none"}` is the idle report (clears Now Playing, disables every
+   * command) -- the state the page is already in before the out-point phase
+   * starts its tone, so this changes nothing a later phase measures.
+   *
+   * Carried over localStorage like everything else here: the console channel is
+   * unproven (`ios-build.yml`'s own note). The Swift side ALSO writes a unified-
+   * log line on first contact (`ForayAudio.setNowPlaying reached`), which
+   * `ios-ci.mjs` greps as corroboration -- but this record is the measurement. */
+  function checkNowPlayingRoundTrip(done) {
+    var rt = { attempted: false, resolved: null, ok: null, platform: null, reason: null, elapsedMs: null };
+    out.setNowPlayingRoundTrip = rt;
+    var cap = null;
+    try { cap = window.Capacitor; } catch (e) {}
+    if (!cap || typeof cap.nativePromise !== "function") {
+      rt.error = "no Capacitor.nativePromise on this page";
+      return done();
+    }
+    var settled = false;
+    var started = Date.now();
+    var timer = null;
+    function finish() {
+      if (settled) return;
+      settled = true;
+      if (timer) clearTimeout(timer);
+      rt.elapsedMs = Date.now() - started;
+      done();
+    }
+    timer = setTimeout(function () { rt.resolved = false; rt.error = "timeout after 3000 ms"; finish(); }, 3000);
+    try {
+      rt.attempted = true;
+      var p = cap.nativePromise("ForayAudio", "setNowPlaying", { state: "none" });
+      if (!p || typeof p.then !== "function") {
+        rt.error = "nativePromise returned no promise";
+        return finish();
+      }
+      p.then(function (result) {
+        rt.resolved = true;
+        rt.ok = !!(result && result.ok === true);
+        rt.platform = result && typeof result.platform === "string" ? result.platform : null;
+        rt.reason = result && typeof result.reason === "string" ? result.reason : null;
+        finish();
+      }, function (e) {
+        rt.resolved = false;
+        rt.error = String((e && (e.message || e.code)) || e);
+        finish();
+      });
+    } catch (e) {
+      rt.resolved = false;
+      rt.error = "threw: " + String(e && e.message);
+      finish();
+    }
   }
 
   /* M-01: is `navigator.mediaSession` exposed in this WKWebView, and does it
@@ -239,13 +332,18 @@
     snapshot();
     out.recheckedAfterMs = 3000;
     checkWorkers(function () {
-      loadPhaseFile(function () {
-        var target = phaseTarget();
-        out.finishedAtWall = Date.now();
-        save();
-        try {
-          if (location.pathname.indexOf(target) < 0) location.replace(target);
-        } catch (e) {}
+      /* L-02's round trip sits between the worker count and the phase hand-over:
+         it has its own 3 s deadline (see the function), so it can delay the
+         phase page by at most that, and never strand it. */
+      checkNowPlayingRoundTrip(function () {
+        loadPhaseFile(function () {
+          var target = phaseTarget();
+          out.finishedAtWall = Date.now();
+          save();
+          try {
+            if (location.pathname.indexOf(target) < 0) location.replace(target);
+          } catch (e) {}
+        });
       });
     });
   }, 3000);

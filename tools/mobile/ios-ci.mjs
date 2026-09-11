@@ -2140,6 +2140,183 @@ export function nowPlayingCoverage(text) {
   };
 }
 
+/** L-02's log-side needle: the unified-log line `ForayAudioPlugin.swift` writes
+ *  through `os.Logger` on the FIRST `setNowPlaying` a process handles and on
+ *  every state change after (never per position write, which arrives at up to
+ *  4 Hz). `log stream` under the workflow's `process == "App" OR senderImagePath
+ *  CONTAINS "WebKit"` predicate captures the app's own unified-log lines — a
+ *  DIFFERENT channel from the WKWebView `console.log` forwarding that
+ *  `ios-build.yml` records as unproven — but the same honesty rule applies: an
+ *  absent log is no coverage, not a no. Copied from the Swift source the way
+ *  `NOW_PLAYING_NEEDLES` copies WebKit's vocabulary; `shell-invariants.test.mjs`
+ *  pins that the Swift file still writes exactly this string. */
+export const FORAY_AUDIO_REACHED_NEEDLE = "ForayAudio.setNowPlaying reached";
+
+/**
+ * L-02's corroborating channel: does any simulator log carry the Swift half's
+ * first-contact line? `text` is whichever log(s) the caller has — the bridge
+ * phase (where the probe's own call happens) is watched by `simulator-log.txt`,
+ * the seam pass by `simulator-log-seam.txt`, and a caller may join both.
+ */
+export function forayAudioReached(text) {
+  if (typeof text !== "string" || text.trim() === "") {
+    return {
+      verdict: "no-coverage",
+      matchCount: 0,
+      sampleLines: [],
+      headline: "no simulator log to check — no coverage, not a no",
+    };
+  }
+  const matches = text
+    .split("\n")
+    .filter((line) => line.includes(FORAY_AUDIO_REACHED_NEEDLE))
+    .map((line) => line.trim());
+  if (!matches.length) {
+    return {
+      verdict: "silent",
+      matchCount: 0,
+      sampleLines: [],
+      headline: "the log was present and watched and did not carry it (measured on this log's coverage only)",
+    };
+  }
+  return {
+    verdict: "found",
+    matchCount: matches.length,
+    sampleLines: matches.slice(0, 3),
+    headline: `found ${matches.length} line(s); sample \`${matches[0]}\``,
+  };
+}
+
+/**
+ * L-02's measured acceptance, verbatim from the card: "in the ios-shell
+ * simulator run, the page reports navigator.mediaSession is ours (a marker
+ * property the test can read) and one setNowPlaying call reached the plugin
+ * (log line)". Two records from `probe-bridge.js`, written at its 3 s recheck
+ * (after the deferred module tag that installs the polyfill has run):
+ *
+ *   - `mediaSessionTakeover.forayPolyfill` — `navigator.mediaSession.forayPolyfill
+ *     === true`, the marker `foray-media-session.js`'s `buildSession()` writes
+ *     and nothing else does.
+ *   - `setNowPlayingRoundTrip` — the probe's OWN `setNowPlaying({state:"none"})`
+ *     through `Capacitor.nativePromise`, and its answer. `platform: "ios"` in
+ *     that answer is written by `ForayAudioPlugin.swift` and by nothing on the
+ *     JS side, so it is proof the Swift half handled the call — carried over
+ *     localStorage, the only channel the workflow has ever seen a probe reach.
+ *
+ * `logText` feeds `forayAudioReached`, which corroborates the round trip from
+ * the native side. A probe record without these keys is an OLDER probe-bridge.js
+ * and reads as inconclusive — never as "not taken over", the same rule
+ * `mediaSessionVerdict` keeps for M-01's sub-record.
+ */
+export function mediaSessionTakeoverVerdict(probe, logText) {
+  const t = probe && typeof probe === "object" ? probe.mediaSessionTakeover : undefined;
+  const rt = probe && typeof probe === "object" ? probe.setNowPlayingRoundTrip : undefined;
+  const log = forayAudioReached(logText);
+  if (!t || typeof t !== "object") {
+    return {
+      verdict: "inconclusive",
+      forayPolyfill: null,
+      roundTrip: null,
+      log,
+      headline: "No mediaSession takeover probe data came back — L-02's measured half is UNMEASURED this run.",
+      detail:
+        "Either the bridge probe never reported, or it predates the L-02 marker read. Not a finding either way." +
+        (log.verdict === "found"
+          ? ` The simulator log did carry \`${FORAY_AUDIO_REACHED_NEEDLE}\` (${log.matchCount} line(s)), so the ` +
+            "plugin was reached by SOMETHING — but without the probe record this run cannot say by what."
+          : ""),
+    };
+  }
+  const marker = t.forayPolyfill === true;
+  const roundTrip =
+    rt && typeof rt === "object"
+      ? {
+          attempted: rt.attempted === true,
+          resolved: rt.resolved === true,
+          ok: rt.ok === true,
+          platform: typeof rt.platform === "string" ? rt.platform : null,
+          reason: typeof rt.reason === "string" && rt.reason !== "" ? rt.reason : null,
+          error: typeof rt.error === "string" ? rt.error : null,
+          elapsedMs: typeof rt.elapsedMs === "number" ? rt.elapsedMs : null,
+        }
+      : null;
+  /* `platform === "ios"` is the load-bearing half of "reached": a resolved
+     promise alone could be Capacitor's own "plugin not implemented" rejection
+     path turned into a soft answer by some future bridge — the Swift result
+     object is the only thing that writes that string. */
+  const reached = roundTrip !== null && roundTrip.resolved && roundTrip.platform === "ios";
+
+  let verdict;
+  let headline;
+  if (marker && reached) {
+    verdict = "taken-over";
+    headline =
+      "navigator.mediaSession is OURS (forayPolyfill marker read true at the 3 s recheck) AND one " +
+      "setNowPlaying call reached ForayAudioPlugin.swift (it answered platform \"ios\") — MEASURED, not inferred.";
+  } else if (marker) {
+    verdict = "marker-only";
+    headline =
+      "navigator.mediaSession is ours (marker true), but the probe's own setNowPlaying call did NOT come back " +
+      "from the Swift half — the page's writes may be landing on a polyfill with nothing behind it.";
+  } else if (reached) {
+    verdict = "plugin-only";
+    headline =
+      "ForayAudioPlugin.swift answered a direct setNowPlaying call, but navigator.mediaSession is NOT ours at " +
+      "the 3 s recheck — client.js's one-time read at init lands on WebKit's object, so the page's own writes " +
+      "never reach the plugin.";
+  } else {
+    verdict = "not-taken-over";
+    headline =
+      "navigator.mediaSession is NOT ours and no setNowPlaying call came back from the Swift half — L-02's " +
+      "takeover did not happen on this run (measured).";
+  }
+
+  const word = (v) => (v === true ? "true" : v === false ? "false" : "unreadable");
+  const facts = [];
+  facts.push(
+    `navigator.mediaSession.forayPolyfill at the 3 s recheck: \`${word(t.forayPolyfill)}\`` +
+      (t.forayPolyfillError ? ` (${t.forayPolyfillError})` : "") +
+      " (measured)"
+  );
+  if (t.forayPolyfillAtLoad !== undefined) {
+    facts.push(
+      `…and at document-parse time: \`${word(t.forayPolyfillAtLoad)}\` (measured; the polyfill is a deferred ` +
+        "module tag, so false here is expected and only the recheck counts)"
+    );
+  }
+  facts.push(
+    `window.ForayMediaSession.peek(): ${
+      t.windowForayMediaSession ? `present, state \`${t.peekState ?? "?"}\`` : "absent"
+    } (measured)`
+  );
+  if (!roundTrip || !roundTrip.attempted) {
+    facts.push(
+      `probe's own setNowPlaying call: not attempted${roundTrip && roundTrip.error ? ` (${roundTrip.error})` : ""} (measured)`
+    );
+  } else if (roundTrip.resolved) {
+    facts.push(
+      `probe's own setNowPlaying({state:"none"}) call: RESOLVED in ${roundTrip.elapsedMs ?? "?"} ms with ` +
+        `ok=${roundTrip.ok}, platform=\`${roundTrip.platform ?? "?"}\`` +
+        (roundTrip.reason ? `, reason "${roundTrip.reason}"` : "") +
+        " (measured)"
+    );
+  } else {
+    facts.push(
+      `probe's own setNowPlaying call: did NOT resolve${roundTrip.error ? ` (${roundTrip.error})` : ""} (measured)`
+    );
+  }
+  facts.push(`simulator log needle \`${FORAY_AUDIO_REACHED_NEEDLE}\`: ${log.headline}`);
+
+  return {
+    verdict,
+    forayPolyfill: t.forayPolyfill === true ? true : t.forayPolyfill === false ? false : null,
+    roundTrip,
+    log,
+    headline,
+    detail: facts.join("; "),
+  };
+}
+
 /** A SIMULATOR IS NOT A DEVICE, and this sentence ships with every verdict.
  *  The simulator runs on the host's CPU with the host's power policy: it does
  *  not model true suspension, the freezer, or RunningBoard's assertions. So a
@@ -2162,13 +2339,14 @@ export const SIMULATOR_CAVEAT =
  * the gate and "not configured" in the summary. A report that cannot observe what
  * it asserts should not assert it.
  */
-export function renderReport({ bridge, outPoint, seam, signingState, build, lifecycle, seamLogText }) {
+export function renderReport({ bridge, outPoint, seam, signingState, build, lifecycle, seamLogText, bridgeLogText }) {
   const b = bridgeVerdict(bridge);
   const o = outPointVerdict(outPoint);
   const s = seamTransitionVerdict(seam ?? null);
   const sus = suspensionVerdict({ seam: seam ?? null, lifecycle: lifecycle ?? null });
   const ms = mediaSessionVerdict(bridge);
   const npc = nowPlayingCoverage(typeof seamLogText === "string" ? seamLogText : null);
+  const tk = mediaSessionTakeoverVerdict(bridge, joinLogs(bridgeLogText, seamLogText));
   const lines = [];
   lines.push("## iOS shell — what this run actually established", "");
   if (build) lines.push(`**Build:** ${build}`, "");
@@ -2212,6 +2390,14 @@ export function renderReport({ bridge, outPoint, seam, signingState, build, life
     ""
   );
   lines.push(
+    `### 3d. L-02 — \`navigator.mediaSession\` is ours, and one \`setNowPlaying\` reached \`ForayAudio\` — \`${tk.verdict}\``,
+    "",
+    tk.headline,
+    "",
+    tk.detail,
+    ""
+  );
+  lines.push(
     `### 4. TestFlight upload — \`${signingState || "not reported"}\``,
     "",
     signingState
@@ -2220,6 +2406,15 @@ export function renderReport({ bridge, outPoint, seam, signingState, build, life
     ""
   );
   return lines.join("\n");
+}
+
+/** Both simulator logs, for a needle that can land in either: the bridge phase
+ *  (where the probe's own `setNowPlaying` call happens) is watched by
+ *  `simulator-log.txt`, the seam pass by `simulator-log-seam.txt`. `null` when
+ *  neither exists, so the honesty rule in `forayAudioReached` still applies. */
+function joinLogs(...texts) {
+  const present = texts.filter((t) => typeof t === "string" && t.trim() !== "");
+  return present.length ? present.join("\n") : null;
 }
 
 const SIGNING_STATE_NOTES = {
@@ -2341,6 +2536,12 @@ if (isMain) {
       const seamLogPath =
         rest[2] || (rest[0] ? path.join(path.dirname(path.resolve(rest[0])), "simulator-log-seam.txt") : null);
       const seamLogText = seamLogPath && fs.existsSync(seamLogPath) ? fs.readFileSync(seamLogPath, "utf8") : null;
+      /* THE BRIDGE PASS'S SYSTEM LOG, defaulted the same way and for the same reason
+         (a governed workflow, no new argv). L-02's round trip happens in the bridge
+         phase, so its Swift-side line lands here, not in the seam log. */
+      const bridgeLogPath = rest[0] ? path.join(path.dirname(path.resolve(rest[0])), "simulator-log.txt") : null;
+      const bridgeLogText =
+        bridgeLogPath && fs.existsSync(bridgeLogPath) ? fs.readFileSync(bridgeLogPath, "utf8") : null;
       const lifecycle = seamLogText != null ? parseSimulatorLifecycle(seamLogText) : null;
       const { bridge, outPoint, outPoints, seam, seams, sources } = collectProbes({ dump, consoleText });
       console.error(
@@ -2359,6 +2560,7 @@ if (isMain) {
         seam,
         lifecycle,
         seamLogText,
+        bridgeLogText,
         signingState: process.env.SIGNING_STATE || null,
         build: process.env.IOS_BUILD_STATUS || null,
       });
@@ -2370,11 +2572,12 @@ if (isMain) {
       const sus = suspensionVerdict({ seam, lifecycle });
       const ms = mediaSessionVerdict(bridge);
       const npc = nowPlayingCoverage(seamLogText);
+      const tk = mediaSessionTakeoverVerdict(bridge, joinLogs(bridgeLogText, seamLogText));
       if (process.env.GITHUB_OUTPUT) {
         fs.appendFileSync(
           process.env.GITHUB_OUTPUT,
           `bridge=${b.verdict}\noutpoint=${o.verdict}\nseam=${s.verdict}\nsuspension=${sus.verdict}\n` +
-            `mediasession=${ms.verdict}\nnowplaying=${npc.verdict}\n`
+            `mediasession=${ms.verdict}\nnowplaying=${npc.verdict}\ntakeover=${tk.verdict}\n`
         );
       }
       /* Deliberately exit 0 for every verdict, INCLUDING the bad ones. This step
