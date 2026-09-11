@@ -1500,7 +1500,7 @@ const BACKEND_FLOORS = {
   /* +1 (F-49): the orchestrator hands finalize the tier-2 segments and source
      rows sourcing minted, without which the candidate names tape nothing can
      resolve. */
-  "test/runPipeline.test.ts": 12,
+  "test/runPipeline.test.ts": 13,
   /* §4.3's spine types: SpineSchema (strict, no per-act voice field),
      isClaimShaped (claim- vs topic-shaped beats), and validateSpine
      (§3's shape budgets with ±15% tolerance, the ~30% exploration
@@ -1731,8 +1731,15 @@ const BACKEND_FLOORS = {
   /* F-60 raised this from 19: an empty retrieval for a page that CARRIES
      content is asked once more with the purpose stripped to its distinctive
      nouns, cached under that second query's own key, and a cached emptiness
-     stops being a cache hit after 24 hours. */
-  "test/gatherEvidence.test.ts": 27,
+     stops being a cache hit after 24 hours. G-35 raised it from 27: the two
+     queries now run concurrently (latched retriever proves the overlap, first
+     non-empty answer wins) and F-77 says what emptiness may be cached — only a
+     confirmed "two queries, nothing", for EVIDENCE_EMPTY_TTL_MS. */
+  "test/gatherEvidence.test.ts": 37,
+  /* G-35's prefetch stage (evidencePrefetch.ts): every page's evidence in one
+     bounded fan-out after `source`, memoised so writeNarration makes zero
+     retrieval calls; the concurrency cap is proven with latches. */
+  "test/evidencePrefetch.test.ts": 7,
   "test/narrationRules.test.ts": 21,
 };
 

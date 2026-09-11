@@ -17,6 +17,7 @@ import {
   titlesForItem
 } from "../src/generation/gatherEvidence";
 import { StubExternalResearcher } from "../src/generation/StubExternalResearcher";
+import { EMPTY_EVIDENCE_TTL_MS, emptyEvidenceTtlMs, readEvidenceCache } from "../src/generation/evidenceCache";
 import { findHoldingDoc } from "../src/types/narration";
 import { leadingNounPhrase } from "../src/types/spine";
 import type { CatalogueData } from "../src/generation/catalogueLookup";
@@ -318,10 +319,33 @@ describe("F-60 — an empty retrieval is asked once more, rephrased", () => {
     expect(pack.docs).toEqual([]);
   });
 
-  it("does not ask twice when the first query found something", async () => {
+  it("asks BOTH queries for a content page even when the first finds something — one extra call is the price of never waiting on an empty first (G-35 / M5)", async () => {
+    /* This used to assert ONE call. The serial protocol's saving was one
+       Haiku call (≈ $0.02) on the half of pages whose first query succeeds;
+       its cost was 12–30 s of waiting on the other half. The concurrent
+       protocol spends the call and never waits — see the G-35 suite below
+       for the overlap itself. */
     const retriever = new SequenceRetriever([FOUND]);
-    await gatherer(retriever).gather({ claim: P5_PURPOSE, requiresEvidence: true }, ctx);
-    expect(retriever.calls).toHaveLength(1);
+    const pack = await gatherer(retriever).gather({ claim: P5_PURPOSE, requiresEvidence: true }, ctx);
+    expect(retriever.calls).toHaveLength(2);
+    expect(pack.docs.map((d) => d.title)).toEqual(["Great Expectations documentation"]);
+  });
+
+  it("never dispatches either query when the claim's pack is already held — a cache hit races nothing", async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "foray-evidence-held-"));
+    try {
+      const retriever = new SequenceRetriever([FOUND]);
+      const options = { researcher: retriever, cacheDir: dir, catalogue: CATALOGUE, transcriptArchive: [] };
+      await new DefaultEvidenceGatherer(options).gather({ claim: P5_PURPOSE, requiresEvidence: true }, ctx);
+      expect(retriever.calls).toHaveLength(2);
+      /* MUTATION THAT KILLS THIS: drop the `held` check at the top of
+         `printEvidenceFor` — the retry query is then dispatched before the
+         first query's cache hit is seen, and the count reaches 3. */
+      await new DefaultEvidenceGatherer(options).gather({ claim: P5_PURPOSE, requiresEvidence: true }, ctx);
+      expect(retriever.calls).toHaveLength(2);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
   });
 
   it("caches the retry under its OWN key, so the first query's emptiness is never served in its place", async () => {
@@ -425,6 +449,219 @@ describe("F-60 — an empty retrieval is asked once more, rephrased", () => {
     expect(retryQueryFor("Charcoal briquettes were a Ford Motor Company waste-disposal scheme.")).toBe("");
     expect(retryQueryFor("It was over.")).toBe("");
     expect(retryQueryFor("")).toBe("");
+  });
+});
+
+/** A retriever whose every answer is held back until the test releases it —
+ * the latch that lets a test SEE two queries in flight at once, rather than
+ * inferring overlap from a call count that a serial protocol would match. */
+class LatchedRetriever implements ExternalResearcher {
+  readonly providerName = "latched";
+  calls: Array<{ request: PassageRetrievalRequest; resolve: (p: RetrievedPassage[]) => void; reject: (e: Error) => void; settled: boolean }> = [];
+  async research(): Promise<ExternalResearchResult> {
+    return { notes: "", controversies: [] };
+  }
+  retrievePassages(request: PassageRetrievalRequest): Promise<RetrievedPassage[]> {
+    return new Promise((resolve, reject) => {
+      const call = {
+        request,
+        settled: false,
+        resolve: (p: RetrievedPassage[]) => {
+          call.settled = true;
+          resolve(p);
+        },
+        reject: (e: Error) => {
+          call.settled = true;
+          reject(e);
+        }
+      };
+      this.calls.push(call);
+    });
+  }
+}
+
+class ThrowingRetriever implements ExternalResearcher {
+  readonly providerName = "throwing";
+  calls = 0;
+  async research(): Promise<ExternalResearchResult> {
+    return { notes: "", controversies: [] };
+  }
+  async retrievePassages(): Promise<RetrievedPassage[]> {
+    this.calls += 1;
+    throw new Error("search backend returned 503");
+  }
+}
+
+/** Lets every already-queued microtask and I/O callback run, so a gather
+ * that dispatches synchronously has dispatched everything it is going to. */
+const settle = () => new Promise<void>((resolve) => setImmediate(resolve));
+
+describe("G-35 — the two queries run concurrently, and the first non-empty answer wins", () => {
+  const P5_PURPOSE =
+    "Mature pipelines treat a dataset the way a build system treats source code: a schema check — wrong type, " +
+    "an out-of-range value, a null where one shouldn't be — fails the run outright, the same way a type error " +
+    "fails a compile, rather than letting a corrupted batch train a model that ships anyway.";
+  const FOUND: RetrievedPassage[] = [{ title: "Great Expectations documentation", text: "A failed expectation halts the pipeline run before the batch is written." }];
+  const ALSO_FOUND: RetrievedPassage[] = [{ title: "Data validation at scale", text: "Schema checks fail the run before a corrupted batch reaches training." }];
+
+  it("dispatches the rephrased query BEFORE the first has answered — the latches prove the overlap", async () => {
+    /* MUTATION THAT KILLS THIS: `await` the first `retrieveFor` before
+       calling the second (the pre-G-35 body). The second call is then not
+       in the log while the first is still latched, and the count is 1. */
+    const retriever = new LatchedRetriever();
+    const pending = gatherer(retriever).gather({ claim: P5_PURPOSE, requiresEvidence: true }, ctx);
+    await settle();
+
+    expect(retriever.calls).toHaveLength(2);
+    expect(retriever.calls.every((c) => !c.settled)).toBe(true);
+    expect(retriever.calls[0]!.request.claim).toBe(P5_PURPOSE);
+    expect(retriever.calls[1]!.request.claim).toBe(retryQueryFor(P5_PURPOSE));
+
+    retriever.calls[0]!.resolve([]);
+    retriever.calls[1]!.resolve([]);
+    expect((await pending).docs).toEqual([]);
+  });
+
+  it("returns the rephrased query's documents the moment they land, without waiting for the first query at all", async () => {
+    /* MUTATION THAT KILLS THIS: replace `firstNonEmpty` with `Promise.all`
+       and pick afterwards — the gather then cannot resolve while call 0 is
+       latched, and the `await pending` below hangs until the test times out. */
+    const retriever = new LatchedRetriever();
+    const pending = gatherer(retriever).gather({ claim: P5_PURPOSE, requiresEvidence: true }, ctx);
+    await settle();
+
+    retriever.calls[1]!.resolve(ALSO_FOUND);
+    const pack = await pending;
+    expect(pack.docs.map((d) => d.title)).toEqual(["Data validation at scale"]);
+    expect(retriever.calls[0]!.settled).toBe(false);
+    retriever.calls[0]!.resolve([]);
+  });
+
+  it("returns the first query's documents the moment they land, with the rephrased one still in flight", async () => {
+    const retriever = new LatchedRetriever();
+    const pending = gatherer(retriever).gather({ claim: P5_PURPOSE, requiresEvidence: true }, ctx);
+    await settle();
+
+    retriever.calls[0]!.resolve(FOUND);
+    const pack = await pending;
+    expect(pack.docs.map((d) => d.title)).toEqual(["Great Expectations documentation"]);
+    expect(retriever.calls[1]!.settled).toBe(false);
+    retriever.calls[1]!.resolve([]);
+  });
+
+  it("an empty first answer does not end the wait — the rephrased query's later documents still win", async () => {
+    /* MUTATION THAT KILLS THIS: resolve the race on the FIRST answer to land
+       whatever it holds (`Promise.race`). The empty first answer then wins and
+       the pack is empty. */
+    const retriever = new LatchedRetriever();
+    const pending = gatherer(retriever).gather({ claim: P5_PURPOSE, requiresEvidence: true }, ctx);
+    await settle();
+
+    retriever.calls[0]!.resolve([]);
+    await settle();
+    retriever.calls[1]!.resolve(ALSO_FOUND);
+    const pack = await pending;
+    expect(pack.docs.map((d) => d.title)).toEqual(["Data validation at scale"]);
+  });
+});
+
+describe("F-77 — an empty result is not a fact: only a confirmed 'two queries, nothing' is cached, and only for EVIDENCE_EMPTY_TTL_MS", () => {
+  const P5_PURPOSE =
+    "Mature pipelines treat a dataset the way a build system treats source code: a schema check — wrong type, " +
+    "an out-of-range value, a null where one shouldn't be — fails the run outright, the same way a type error " +
+    "fails a compile, rather than letting a corrupted batch train a model that ships anyway.";
+  const FOUND: RetrievedPassage[] = [{ title: "Great Expectations documentation", text: "A failed expectation halts the pipeline run before the batch is written." }];
+
+  function withDir<T>(fn: (dir: string) => Promise<T>): Promise<T> {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "foray-evidence-f77-"));
+    return fn(dir).finally(() => fs.rmSync(dir, { recursive: true, force: true }));
+  }
+
+  it("does not cache a connective page's single empty answer — the next run asks again", () =>
+    withDir(async (dir) => {
+      /* MUTATION THAT KILLS THIS: write the cache unconditionally in
+         `retrieveFor` (the pre-G-35 body). The file then exists and the
+         second gather is served emptiness for free. */
+      const retriever = new SequenceRetriever([[]]);
+      const options = { researcher: retriever, cacheDir: dir, catalogue: CATALOGUE, transcriptArchive: [] };
+      await new DefaultEvidenceGatherer(options).gather({ claim: P5_PURPOSE }, ctx);
+      expect(fs.readdirSync(dir)).toEqual([]);
+      await new DefaultEvidenceGatherer(options).gather({ claim: P5_PURPOSE }, ctx);
+      expect(retriever.calls).toHaveLength(2);
+    }));
+
+  it("does not cache a retrieval that failed — a 503 is not a fact about the web", () =>
+    withDir(async (dir) => {
+      const retriever = new ThrowingRetriever();
+      const options = { researcher: retriever, cacheDir: dir, catalogue: CATALOGUE, transcriptArchive: [] };
+      const pack = await new DefaultEvidenceGatherer(options).gather({ claim: P5_PURPOSE, requiresEvidence: true }, ctx);
+      expect(pack.docs).toEqual([]);
+      expect(retriever.calls).toBe(2);
+      expect(fs.readdirSync(dir)).toEqual([]);
+      await new DefaultEvidenceGatherer(options).gather({ claim: P5_PURPOSE, requiresEvidence: true }, ctx);
+      expect(retriever.calls).toBe(4);
+    }));
+
+  it("records the winning documents under the CLAIM's key when the rephrased query won — never the loser's emptiness", () =>
+    withDir(async (dir) => {
+      /* MUTATION THAT KILLS THIS: drop the `winner.query !== claim` write in
+         `printEvidenceFor`. The claim's key is then absent, and the re-run
+         pays for the first query again. */
+      const retriever = new SequenceRetriever([[], FOUND]);
+      const options = { researcher: retriever, cacheDir: dir, catalogue: CATALOGUE, transcriptArchive: [] };
+      await new DefaultEvidenceGatherer(options).gather({ claim: P5_PURPOSE, requiresEvidence: true }, ctx);
+      const underClaim = readEvidenceCache(dir, claimHash(P5_PURPOSE));
+      const underRetry = readEvidenceCache(dir, claimHash(retryQueryFor(P5_PURPOSE)));
+      expect(underClaim?.map((d) => d.title)).toEqual(["Great Expectations documentation"]);
+      expect(underRetry?.map((d) => d.title)).toEqual(["Great Expectations documentation"]);
+    }));
+
+  it("caches a confirmed 'two queries, nothing' under both keys, and stops serving it once EVIDENCE_EMPTY_TTL_MS has passed", () =>
+    withDir(async (dir) => {
+      const previous = process.env.EVIDENCE_EMPTY_TTL_MS;
+      process.env.EVIDENCE_EMPTY_TTL_MS = String(60 * 60 * 1000); // one hour, not a day
+      try {
+        const retriever = new SequenceRetriever([[]]);
+        const at = (iso: string) =>
+          new DefaultEvidenceGatherer({ researcher: retriever, cacheDir: dir, catalogue: CATALOGUE, transcriptArchive: [], now: () => new Date(iso) });
+
+        await at("2026-09-09T12:00:00.000Z").gather({ claim: P5_PURPOSE, requiresEvidence: true }, ctx);
+        expect(retriever.calls).toHaveLength(2);
+        expect(fs.readdirSync(dir).sort()).toEqual(
+          [`${claimHash(P5_PURPOSE)}.json`, `${claimHash(retryQueryFor(P5_PURPOSE))}.json`].sort()
+        );
+
+        // Thirty minutes on: still a verdict, no new call for either query.
+        await at("2026-09-09T12:30:00.000Z").gather({ claim: P5_PURPOSE, requiresEvidence: true }, ctx);
+        expect(retriever.calls).toHaveLength(2);
+
+        /* Two hours on: the operator's one-hour TTL has passed, and both
+           questions are asked again. MUTATION THAT KILLS THIS: read the TTL
+           from the constant instead of `emptyEvidenceTtlMs()` — the day-long
+           default then still serves the emptiness, and the count stays 2. */
+        await at("2026-09-09T14:00:00.000Z").gather({ claim: P5_PURPOSE, requiresEvidence: true }, ctx);
+        expect(retriever.calls).toHaveLength(4);
+      } finally {
+        if (previous === undefined) delete process.env.EVIDENCE_EMPTY_TTL_MS;
+        else process.env.EVIDENCE_EMPTY_TTL_MS = previous;
+      }
+    }));
+
+  it("falls back to the 24-hour default for an EVIDENCE_EMPTY_TTL_MS that is not a non-negative number", () => {
+    const previous = process.env.EVIDENCE_EMPTY_TTL_MS;
+    try {
+      for (const bad of ["", "  ", "soon", "-5", "Infinity"]) {
+        process.env.EVIDENCE_EMPTY_TTL_MS = bad;
+        expect(emptyEvidenceTtlMs()).toBe(EMPTY_EVIDENCE_TTL_MS);
+      }
+      process.env.EVIDENCE_EMPTY_TTL_MS = "0";
+      expect(emptyEvidenceTtlMs()).toBe(0);
+      delete process.env.EVIDENCE_EMPTY_TTL_MS;
+      expect(emptyEvidenceTtlMs()).toBe(24 * 60 * 60 * 1000);
+    } finally {
+      if (previous === undefined) delete process.env.EVIDENCE_EMPTY_TTL_MS;
+      else process.env.EVIDENCE_EMPTY_TTL_MS = previous;
+    }
   });
 });
 

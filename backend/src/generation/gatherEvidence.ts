@@ -122,10 +122,10 @@ export interface EvidenceBeat {
   /** This beat's page CARRIES content (a Patch or a Carry), so a pack with
    * no print documents in it is not a page that says less — it is no page
    * at all, and `writeNarration.ts` will not call the writer for it. Only
-   * for such a beat is an empty retrieval retried once with a rephrased
-   * query (F-60); a connective page can legitimately be written from no
-   * documents, and paying for a second search on its behalf buys nothing.
-   * Absent means false. */
+   * for such a beat is a second, rephrased query asked alongside the first
+   * (F-60; concurrently since G-35); a connective page can legitimately be
+   * written from no documents, and paying for a second search on its
+   * behalf buys nothing. Absent means false. */
   requiresEvidence?: boolean;
 }
 
@@ -280,6 +280,38 @@ export interface EvidenceGathererOptions {
   now?: () => Date;
 }
 
+/** What one query came back with, and HOW — the distinction F-77 turns on.
+ * `hit` and `retrieved` are answers (the cache's, or the web's); `failed`
+ * and `unavailable` are the absence of one, and are never mistaken for
+ * "nothing exists". */
+interface RetrievalOutcome {
+  status: "hit" | "retrieved" | "failed" | "unavailable";
+  query: string;
+  docs: EvidenceDoc[];
+}
+
+/** Resolves with the FIRST outcome to land holding documents, or `null`
+ * once every outcome has landed empty. The losers keep running — their
+ * caching is their own business (`retrieveFor`) — and an outcome promise
+ * that somehow rejects counts as landed-empty rather than as a crash of
+ * the race. */
+function firstNonEmpty(outcomes: Promise<RetrievalOutcome>[]): Promise<RetrievalOutcome | null> {
+  return new Promise((resolve) => {
+    let unsettled = outcomes.length;
+    if (unsettled === 0) resolve(null);
+    for (const outcome of outcomes) {
+      outcome
+        .then((r) => {
+          if (r.docs.length > 0) resolve(r);
+          else if (--unsettled === 0) resolve(null);
+        })
+        .catch(() => {
+          if (--unsettled === 0) resolve(null);
+        });
+    }
+  });
+}
+
 export class DefaultEvidenceGatherer implements EvidenceGatherer {
   private readonly researcher: ExternalResearcher;
   /** Public and readonly so a caller can PROVE it got the provider it
@@ -393,7 +425,8 @@ export class DefaultEvidenceGatherer implements EvidenceGatherer {
   }
 
   /**
-   * The print half of a pack, in at most TWO queries (F-60).
+   * The print half of a pack, in at most TWO queries (F-60) — asked AT THE
+   * SAME TIME (G-35 / latency model M5).
    *
    * Run 2's act 1 p5 asked once, got `{"passages": []}`, cached it, and
    * handed the writer a Carry page with no documents — which the
@@ -403,40 +436,92 @@ export class DefaultEvidenceGatherer implements EvidenceGatherer {
    * `retryQueryFor` cuts out of the purpose (F-69), cached under its own
    * hash so the first query's emptiness is never served in its place.
    *
+   * WHY THE TWO RUN CONCURRENTLY. Attempt 4b measured about half of first
+   * queries coming back empty, and the second query only started once the
+   * first had finished — 12–30 s of serial retrieval per such slot, on the
+   * path to the first playable act. Both are dispatched together now and THE
+   * FIRST NON-EMPTY RESULT WINS: a first query that finds text returns the
+   * moment it lands, a first query that finds nothing costs no extra wait
+   * because the rephrased one is already in flight. The price is one Haiku
+   * retrieval (≈ $0.02) spent on the loser whenever the first query
+   * succeeds; the loser's own documents, if it finds any, are still cached
+   * under its own key when they arrive.
+   *
+   * WHAT THE CACHE RECORDS. The winning documents are written under the
+   * CLAIM's hash — the key `writeNarration` and the prefetch stage look up
+   * by — as well as under the winner's own query hash, so a re-run finds the
+   * pack without re-asking either question. Emptiness is recorded ONLY as a
+   * VERDICT (F-77): when every query the protocol could ask ran, none
+   * failed, and none found anything, both keys get an empty entry with the
+   * short TTL `evidenceCache.ts` applies. A single query that came back
+   * empty while the other one is still out, a query that threw, and a
+   * connective page's one unretried question are not verdicts and are not
+   * written — the next run asks again.
+   *
    * Only for a page that carries content, and only ever once — a beat that
    * genuinely has no published text behind it must reach
    * `writeNarration.ts` with an empty pack, so that stage can degrade the
    * page instead of paying a model to fail.
    */
   private async printEvidenceFor(claim: string, ctx: ExternalResearchContext, requiresEvidence: boolean): Promise<EvidenceDoc[]> {
-    const first = await this.retrieveFor(claim, ctx);
-    if (first.length > 0 || !requiresEvidence) return first;
+    const claimKey = claimHash(claim);
+    const retryQuery = requiresEvidence ? retryQueryFor(claim) : "";
+    const twoQueries = retryQuery.length > 0 && claimHash(retryQuery) !== claimKey;
 
-    const retryQuery = retryQueryFor(claim);
-    if (!retryQuery || claimHash(retryQuery) === claimHash(claim)) return first;
+    /* A pack already held for the claim answers before anything is dispatched:
+       racing a second query against a cache hit would be the one wasted call
+       this design promises never to make. */
+    const held = this.readCache(claimKey);
+    if (held && held.length > 0) return held;
 
-    /* The query itself is in the line, verbatim and in full, because it is the
-       thing a run log is read for here: F-69 was found by reading these lines
-       and seeing that what they quoted was not a question (F-60/F-69). */
-    console.warn(
-      `gatherEvidence: nothing was retrieved for "${claim.slice(0, 60)}" — asking once more for "${retryQuery}" (F-60/F-69)`
+    if (!twoQueries) {
+      const only = await this.retrieveFor(claim, ctx);
+      /* One question was all the protocol had for a content page, and it was
+         answered: that is a verdict. A connective page's single question is
+         not — it was never pressed — so its emptiness is left unwritten. */
+      if (only.status === "retrieved" && only.docs.length === 0 && requiresEvidence) this.writeCache(claimKey, []);
+      return only.docs;
+    }
+
+    console.log(
+      `gatherEvidence: asking two queries at once for "${claim.slice(0, 60)}" — the purpose, and "${retryQuery}" (F-60/F-69, G-35)`
     );
-    return this.retrieveFor(retryQuery, ctx);
+    const first = this.retrieveFor(claim, ctx).catch((): RetrievalOutcome => ({ status: "failed", query: claim, docs: [] }));
+    const second = this.retrieveFor(retryQuery, ctx).catch((): RetrievalOutcome => ({ status: "failed", query: retryQuery, docs: [] }));
+    const winner = await firstNonEmpty([first, second]);
+    if (winner) {
+      /* The claim's key holds the claim's evidence, whichever question found
+         it. `retrieveFor` has already written it under the winner's own key. */
+      if (winner.query !== claim) this.writeCache(claimKey, winner.docs);
+      return winner.docs;
+    }
+
+    /* Both settled, both empty. A verdict only if both were genuine answers. */
+    const [a, b] = await Promise.all([first, second]);
+    const confirmed = [a, b].every((r) => r.status === "retrieved" || r.status === "hit");
+    if (confirmed && (a.status === "retrieved" || b.status === "retrieved")) {
+      this.writeCache(claimKey, []);
+      this.writeCache(claimHash(retryQuery), []);
+    }
+    console.warn(`gatherEvidence: nothing was retrieved for "${claim.slice(0, 60)}" by either query (F-60/F-69)`);
+    return [];
   }
 
-  /** One retrieval, cached by ITS OWN query's hash. */
-  private async retrieveFor(claim: string, ctx: ExternalResearchContext): Promise<EvidenceDoc[]> {
-    const hash = claimHash(claim);
+  /** One retrieval, cached by ITS OWN query's hash when it found something.
+   * Never rejects: a thrown retrieval is a `failed` outcome, which the
+   * caller treats as "no verdict" rather than as "nothing exists" (F-77). */
+  private async retrieveFor(query: string, ctx: ExternalResearchContext): Promise<RetrievalOutcome> {
+    const hash = claimHash(query);
     const cached = this.readCache(hash);
-    if (cached) return cached;
+    if (cached) return { status: "hit", query, docs: cached };
 
     const retrieve = this.researcher.retrievePassages?.bind(this.researcher);
-    if (!retrieve) return [];
+    if (!retrieve) return { status: "unavailable", query, docs: [] };
 
     let docs: EvidenceDoc[];
     try {
       const passages = await retrieve(
-        { claim, maxPassages: EVIDENCE_MAX_PRINT_PASSAGES, maxChars: EVIDENCE_MAX_PASSAGE_CHARS },
+        { claim: query, maxPassages: EVIDENCE_MAX_PRINT_PASSAGES, maxChars: EVIDENCE_MAX_PASSAGE_CHARS },
         ctx
       );
       docs = passages
@@ -455,13 +540,16 @@ export class DefaultEvidenceGatherer implements EvidenceGatherer {
          from whatever evidence DID arrive, and if that is nothing the
          mechanical rules downstream refuse to let it assert anything —
          which is the correct outcome, and a much better one than a page
-         that invents a citation because retrieval was down. */
-      console.warn(`gatherEvidence: print retrieval failed for "${claim.slice(0, 80)}" — continuing with the evidence already held (${err instanceof Error ? err.message : String(err)})`);
-      return [];
+         that invents a citation because retrieval was down. Nothing is
+         cached: a failure is not a fact about the web (F-77). */
+      console.warn(`gatherEvidence: print retrieval failed for "${query.slice(0, 80)}" — continuing with the evidence already held (${err instanceof Error ? err.message : String(err)})`);
+      return { status: "failed", query, docs: [] };
     }
 
-    this.writeCache(hash, docs);
-    return docs;
+    /* Documents are durable; emptiness is a verdict `printEvidenceFor` alone
+       can reach, because only it knows whether the other query is still out. */
+    if (docs.length > 0) this.writeCache(hash, docs);
+    return { status: "retrieved", query, docs };
   }
 
   private readCache(hash: string): EvidenceDoc[] | null {

@@ -14,6 +14,7 @@ import { FakeCheckpointStore } from "./helpers/fakeCheckpointStore";
 import type { GenerationRequest } from "../src/types/generation";
 import type { DeepenedAct, Spine } from "../src/types/spine";
 import type { WrittenAct } from "../src/generation/writeNarration";
+import type { EvidenceBeat, EvidenceGatherer, EvidencePack } from "../src/generation/gatherEvidence";
 import type { NarrationWriterBuilder } from "../src/generation/NarrationWriterBuilder";
 import type { SpineBuilder } from "../src/generation/SpineBuilder";
 import type { ContinuityBuilder } from "../src/generation/ContinuityBuilder";
@@ -128,9 +129,11 @@ describe("runForayPipeline", () => {
        same way since F-66, and sits BETWEEN the narrate stages rather than
        after all of them — act N is stitched the moment it is narrated, which
        is what makes `ttlA1Ms` a time to first listen. `request` is the short
-       tier, which is one act, so there is exactly one of each here. */
+       tier, which is one act, so there is exactly one of each here. `evidence`
+       is G-35's prefetch: every page's retrieval, right after `source` and
+       before any act is narrated. */
     expect(names).toEqual([
-      "understand", "research-shape", "spine", "deepen", "source", "narrate:0", "stitch:0", "finalize"
+      "understand", "research-shape", "spine", "deepen", "source", "evidence", "narrate:0", "stitch:0", "finalize"
     ]);
     for (const t of out.timings) expect(t.ms).toBeGreaterThanOrEqual(0);
   });
@@ -758,5 +761,54 @@ describe("runForayPipeline — each act is stitched as soon as it is narrated (F
       expect(input.segments).toBe(out.input.segments);
       expect(input.segmentSources).toBe(out.input.segmentSources);
     }
+  });
+});
+
+describe("runForayPipeline — evidence is prefetched after source, off narration's path (G-35)", () => {
+  it("gathers every page's evidence in the `evidence` stage and narration then retrieves nothing of its own; report carries the hit rate", async () => {
+    /* MUTATION THAT KILLS THIS: hand `writeNarration` no `evidence` option
+       (its pre-G-35 default). It then builds its own gatherer, the injected
+       one sees no narration-time calls at all, `retrieval.narrationGathers`
+       is 0 and `hitRate` is null. Or: drop the `timed("evidence", ...)` call
+       — the injected gatherer is first reached during `narrate:0`, so the
+       calls-before-narration count below is 0. */
+    const calls: EvidenceBeat[] = [];
+    let callsWhenNarrationStarted = -1;
+    const evidence: EvidenceGatherer = {
+      async gather(beat): Promise<EvidencePack> {
+        calls.push(beat);
+        return { purpose: beat.claim, beatKind: "account", docs: [] };
+      }
+    };
+    const stub = new StubNarrationWriterBuilder();
+    const writer: NarrationWriterBuilder = {
+      providerName: stub.providerName,
+      selectClaims: (request, narrationCtx) => {
+        if (callsWhenNarrationStarted < 0) callsWhenNarrationStarted = calls.length;
+        return stub.selectClaims(request, narrationCtx);
+      },
+      writePages: (request, narrationCtx) => stub.writePages(request, narrationCtx)
+    };
+
+    const out = await runForayPipeline(request, options, { ...stubDeps(), evidence, narrationWriter: writer });
+    expect(out.outcome).toBe("generated");
+    if (out.outcome !== "generated") return;
+
+    const names = out.timings.map((t) => t.name);
+    expect(names.indexOf("evidence")).toBe(names.indexOf("source") + 1);
+    expect(names.indexOf("evidence")).toBeLessThan(names.indexOf("narrate:0"));
+
+    const retrieval = out.input.meta?.veracity?.retrieval;
+    expect(retrieval).toBeDefined();
+    expect(retrieval!.prefetched).toBeGreaterThan(0);
+    expect(retrieval!.failed).toBe(0);
+    /* Everything the wrapped gatherer was ever asked for, it was asked for
+       BEFORE the first writer call — narration added nothing. */
+    expect(callsWhenNarrationStarted).toBe(retrieval!.prefetched);
+    expect(calls).toHaveLength(retrieval!.prefetched);
+    expect(retrieval!.narrationGathers).toBeGreaterThan(0);
+    expect(retrieval!.narrationHits).toBe(retrieval!.narrationGathers);
+    expect(retrieval!.hitRate).toBe(1);
+    expect(retrieval!.prefetchMs).toBe(out.timings.find((t) => t.name === "evidence")!.ms);
   });
 });
