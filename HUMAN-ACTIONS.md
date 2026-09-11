@@ -77,7 +77,11 @@ assets. Measured against a real release already in this repo
 (302) to a presigned URL on `release-assets.githubusercontent.com` (an
 
 **Steps:**
-1. TODO — steps needed
+1. Read docs/DECISIONS.md's 2026-09-05 'S-04b' entry: GitHub Release asset URLs redirect to release-assets.githubusercontent.com with no CORS headers, so a client fetch() fails as shipped.
+2. Choose option (a): front release assets with a CORS-capable proxy (e.g. a Cloudflare Worker or an object-storage mirror the pipeline also uploads to).
+3. Or choose option (b): route the fetch through this repo's own api/ layer as a same-origin proxy, matching the pattern api/shows/[show_id]/episodes.ts already uses.
+4. Say which option in a comment on this item or on the S-05 kanban card, since S-05 (the shard-index client) cannot start its CSP connect-src change without this call.
+5. Worked-if is already set: S-05's design doc or PR states which option it picked and why, and any CSP change lands in that same PR.
 
 **Worked if:** S-05's design doc (or its PR) states which option it picked
 and why, and the CSP change (if any) lands in that same PR per the
