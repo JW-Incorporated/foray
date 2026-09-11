@@ -1966,9 +1966,42 @@ text — the running order and the M3/M4 guarantees were fixed at sourcing time,
 over the whole Foray. **Acts stay sequential**, driven one at a time by
 `runPipeline` so each act can be checkpointed as it finishes.
 
-**Call count:** at most **3 model calls per slot per attempt**, whatever the page
+**Call count:** at most **3 model calls per slot per round**, whatever the page
 count — down from run 1's 4.2 calls *per beat*. And **zero** for a slot whose every
 content page arrived with an empty evidence pack (§3.8.2a).
+
+**G-34 — how the order above is paid for (latency model M3, levers a and b).**
+Nothing in the order changes; two things about its cost do:
+
+- **`select` and `prose` are one call** when the builder offers
+  `NarrationWriterBuilder.selectAndWrite` (the Anthropic and stub builders both
+  do; a builder without it gets the two-call pair). The reply carries, per page,
+  the claims *with* their quotes *and* the script. The mechanical gate on the
+  quotes (§3.8.4) runs on that reply exactly as it ran between the two replies —
+  a quote that is not a span of the named document still never becomes a source.
+  A page whose quotes all resolve keeps its script; a page with a quote that does
+  not has spent that script (the roadmap card accepts this: "a rejected quote now
+  wastes a script"), **keeps the claims that did resolve**, and re-runs **only
+  that page's prose** from them on the next round through `writePages`. A page
+  left with no grounded claim re-selects — there is nothing to write from.
+- **A rejection after the gate re-runs prose + verify for the rejected pages
+  only.** Whether the structural gate (§3.8.6) or the verifier (§3.8.8) refused
+  the page, its claims were proven spans of held documents and that proof does
+  not expire: the next round is one `writePages` call for those pages, from
+  those claims, plus one verifier call. Pages that passed keep their scripts and
+  are never named in a later request. This is uniform across the verifier's three
+  questions on purpose — even "not supported by its quote" is a property of the
+  *script* against the quote, and the writer can assert fewer claims without a
+  fresh selection.
+
+So a first round is two requests (merged, verify) and a retry round is two
+(prose, verify), where each used to be three for the whole slot. A page still
+gets at most `NARRATION_PAGE_ATTEMPTS` attempts (§3.8.9), and every F-51 outcome
+(§3.8.10) is unchanged. Lever (c) — treating a `purposeRevised` page's
+`purposeAccomplished: false` as accepted — is a founder decision (roadmap D6)
+and is **not** built; a test pins that such a page is still a rejection.
+`meta.veracity` reports `narrationCallsPerBeat`, `narrationCalls` and
+`retryRounds` (§5.4) so the saving is measured, not asserted.
 
 #### 3.8.2 Which beats get a page
 
@@ -2414,7 +2447,11 @@ joined with `; ` and suffixed with the verifier's own `notes` when present.
 computed that at a ~20 % second-attempt failure rate over 31 pages the chance of
 finishing a medium Foray was `0.8^31 ≈ 0.1 %`).
 
-An attempt operates on the slot's still-pending pages only. Each rejection is
+A round operates on the slot's still-pending pages only, and (G-34, §3.8.1) does
+for each page only what that page needs: a page with grounded claims from an
+earlier round is re-written from them, a page without any is re-selected. Every
+page a round takes leaves it with exactly one attempt recorded, so a page's
+`attempts.length` is the number of rounds it took part in. Each rejection is
 appended to `page.rejections`, and the retry note is rebuilt from the **whole
 history** (`writeNarration.ts:retryNoteFrom`) — **F-35**, because run 1 overwrote
 the note on each failure, so attempt 3 was told about attempt 2 only and regularly
@@ -2513,9 +2550,11 @@ the objection, which is the more useful thing to read.
   handed one act, so its own act index is always 0; the outer `i` names the key.
 - **Call counting:** `runPipeline` wraps both builders in counting proxies, so
   `callsPerBeat` counts **requests** — a four-page slot that passes first time
-  costs 2 writer calls and 1 verifier call, not 8 and 4. Selection and prose are
-  summed into the one writer counter deliberately, to stay comparable with run 1's
-  4.2.
+  costs 1 writer call (G-34's merged select+prose) and 1 verifier call, not 8
+  and 4. Selection, prose and the merged call are summed into the one writer
+  counter deliberately, to stay comparable with run 1's 4.2. The proxy forwards
+  `selectAndWrite` only when the wrapped builder offers it — its absence is what
+  sends `writeNarration` down the two-call path.
 
 **Stub behaviour.** `StubNarrationWriterBuilder` **quotes out of the evidence
 pack**: `firstLegalSpan` copies the first 8-word window of a held document that is
@@ -3333,7 +3372,10 @@ the same bug wearing a metrics hat.
 | `tapeRelevance` | the share of tape anchors sharing a taxonomy family with the Foray's resolved topic. Computed from §4.5's own `TapeRelevanceInput` rows when present — the gate must be scored on what the gate saw — else re-derived from disk by a coarser root-segment join | either there are no tape anchors at all (`tapeRelevanceAnchors` empty), or anchors exist but **none** resolved. The publish gate treats those two cases differently |
 | `tapeRelevanceAnchors` | every anchor as `{itemId, claim, onTopic, families}`, for human spot-check | per-anchor `onTopic: null` = neither signal resolved |
 | `firstAttemptPassRate` | share of **kept** pages with `attempts.length === 1`. Honest scope: a connective page dropped after 3 failures never reaches the written acts, so its 0-for-3 record is invisible here — `pagesDropped` counts those separately | no page carries `attempts` |
-| `callsPerBeat` | `(writerCalls + verifierCalls) / attemptedPages`, where attempted pages are recomputed deterministically from the sourced acts (every narration beat plus every tape beat `decideConnectiveNarration` assigned a mode) | zero attempted pages |
+| `callsPerBeat` | `(writerCalls + verifierCalls) / attemptedPages`, where attempted pages are recomputed deterministically from the sourced acts (every narration beat plus every tape beat `decideConnectiveNarration` assigned a mode). Per *page*, despite the name — kept for comparability with run 1's 4.2 | zero attempted pages |
+| `narrationCallsPerBeat` | **G-34.** The same request count over **every** beat in the sourced acts, tape and narration alike — the denominator the fix plan's ≤ 1.5 target is stated over | zero beats |
+| `narrationCalls` | **G-34.** `{writer, verifier}` — the raw request counts both rates are made from. A merged select+prose call is one writer request | — |
+| `retryRounds` | **G-34.** How many times a slot went back to the writer after its first round, summed over the run — the number the retry tax is paid in. Counted by `writeNarration` itself (`NarrationWriteStats`), not by the request proxies, which cannot tell a round from a call | the caller did not thread `stats` through (older callers) — reported as `null`, never guessed as zero |
 | `pagesDropped` | connective pages `decideConnectiveNarration` asked for that are absent from the final acts. Recomputed from the sourced acts with the same pure function the pipeline used, because a dropped page and a page never wanted look identical in the output | — (an integer) |
 | `unverifiedPages` | **F-51.** How many kept pages carry `verified: false` — a page the verifier refused three times, a page no prose call ever produced (`no-page`), or a page with no evidence to write from (`no-evidence`). **Read the count, not a rate**: one is a stop, so there is nothing for an average to say, and unlike `pagesDropped` each of these is a page a listener *would* hear, carrying an objection somebody has to answer | — (an integer) |
 | `unverifiedPageDetails` | the same pages as `FailingPage` rows — `{claim, mode, reason: "unverified-page", detail}`, the detail being the verifier's note (first 200 chars) or the recorded attempt count — so the gate can print which ones | — |

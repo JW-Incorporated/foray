@@ -14,7 +14,6 @@ import { FakeCheckpointStore } from "./helpers/fakeCheckpointStore";
 import type { GenerationRequest } from "../src/types/generation";
 import type { DeepenedAct, Spine } from "../src/types/spine";
 import type { WrittenAct } from "../src/generation/writeNarration";
-import type { NarrationWriterBuilder } from "../src/generation/NarrationWriterBuilder";
 import type { SpineBuilder } from "../src/generation/SpineBuilder";
 import type { ContinuityBuilder } from "../src/generation/ContinuityBuilder";
 import type { PartialCandidate } from "../src/generation/partialCandidate";
@@ -494,16 +493,18 @@ describe("runForayPipeline — each act is stitched as soon as it is narrated (F
    * separate one act from the next. */
   function orderedWriter(sleepMs: number) {
     const writer = new StubNarrationWriterBuilder();
-    const realWritePages = writer.writePages.bind(writer);
+    /* G-34: a clean slot's prose is requested through the merged
+       select+prose call, so that is the request to log. */
+    const realSelectAndWrite = writer.selectAndWrite.bind(writer);
     const events: string[] = [];
     /** Absolute `Date.now()` of every narration request, so an elapsed time
      * can be computed against the same origin `ttlA1Ms` is measured from. */
     const narrationAt: number[] = [];
-    writer.writePages = async (...args: Parameters<NarrationWriterBuilder["writePages"]>) => {
+    writer.selectAndWrite = async (...args: Parameters<StubNarrationWriterBuilder["selectAndWrite"]>) => {
       events.push(`narrate:${args[0].slotTitle}`);
       narrationAt.push(Date.now());
       if (sleepMs > 0) await new Promise((resolve) => setTimeout(resolve, sleepMs));
-      return realWritePages(...args);
+      return realSelectAndWrite(...args);
     };
     return { writer, events, narrationAt };
   }

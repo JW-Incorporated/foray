@@ -26,7 +26,8 @@ import type {
   NarrationPageBrief,
   NarrationWriterBuilder,
   ProsePageBrief,
-  SelectedClaim
+  SelectedClaim,
+  WrittenPage
 } from "./NarrationWriterBuilder";
 import type { NarrationVerifierBuilder, PageVerdict, VerifyPageBrief } from "./NarrationVerifierBuilder";
 
@@ -55,6 +56,30 @@ import type { NarrationVerifierBuilder, PageVerdict, VerifyPageBrief } from "./N
  * every incentive to declare less, shorter, or nothing, because declaring
  * was free and unverifiable; under this order a quote either resolves in a
  * held document or the page does not exist.
+ *
+ * THE RETRY TAX, CUT (G-34, latency model M3 levers a and b). Two things
+ * changed in how the order above is PAID for, and neither changes what it
+ * checks:
+ *
+ *   - select and prose are ONE call when the builder offers
+ *     `selectAndWrite` (the real and stub builders both do). The quote
+ *     gate runs on the combined reply exactly as it ran between the two
+ *     replies; a page whose quotes all resolve keeps its script, and a
+ *     page with a quote that does not has spent that script — the claims
+ *     that DID resolve are kept and only that page's prose is re-run.
+ *   - a rejection after the gate (a structural rule, or the verifier)
+ *     re-runs prose + verify for the rejected PAGES only. Pages that
+ *     passed keep their scripts, and the rejected page's claims are not
+ *     re-selected: they already passed the substring gate, and re-asking
+ *     for them was the whole slot's select → prose → verify a second
+ *     time, three calls where two are enough. A page that holds NO
+ *     grounded claim re-selects, because there is nothing to write prose
+ *     from and a merged call costs what a prose call costs.
+ *
+ * What is NOT changed: three attempts per page, the F-51 outcomes below,
+ * and every mechanical rule. Lever (c) of M3 — treating a `purposeRevised`
+ * page's `purposeAccomplished: false` as accepted — is a founder call and
+ * is not built here.
  *
  * §4.5's OWN NOTE, RESOLVED HERE: `SourcedBeat` only ever carries
  * `sourcing: "tape"` with a pointer or `sourcing: "narration"` with a
@@ -211,6 +236,18 @@ export interface WriteNarrationOptions {
    * settles, so a slot that finished is banked even when a sibling slot
    * throws, which is the whole point of the key. */
   onSlotWritten?: (actIndex: number, slotIndex: number, slot: WrittenSlot) => void | Promise<void>;
+  /** G-34: an accumulator this stage adds to as it runs, for the number
+   * the retry tax is paid in. The driver reads it after the stage and
+   * reports it in `meta.veracity.retryRounds`; request counts live in the
+   * driver's own proxies, which see requests and cannot tell a round. */
+  stats?: NarrationWriteStats;
+}
+
+/** What `writeNarration` counts that a request proxy cannot. */
+export interface NarrationWriteStats {
+  /** Every time a slot went back to the writer after its first round —
+   * one per round, whatever the number of pages in it. */
+  retryRounds: number;
 }
 
 /**
@@ -301,7 +338,7 @@ export async function writeNarration(acts: SourcedAct[], options: WriteNarration
       act.slots.map(async (slot, slotIndex) => {
         const resumed = options.resume?.(actIndex, slotIndex);
         if (resumed) return resumed;
-        const written = await writeSlot(slot, writer, verifier, evidence, voice, ctx);
+        const written = await writeSlot(slot, writer, verifier, evidence, voice, ctx, options.stats);
         await options.onSlotWritten?.(actIndex, slotIndex, written);
         return written;
       })
@@ -335,6 +372,12 @@ interface PendingPage {
   rejections: string[];
   attempts: NarrationAttemptRecord[];
   result?: NarratedBeat;
+  /* G-34: the grounded claims this page carries into its next round,
+     when the round it just had was rejected AFTER the quote gate (or
+     only partly at it). Set means "re-run prose only, from these";
+     unset means "select again". Never set to an empty list: a page with
+     nothing to write from re-selects. */
+  claims?: SelectedClaim[];
   /* F-51's two salvage slots. `kept` is the most recent page that cleared
      every MECHANICAL rule and was rejected only by the verifier — the page
      an editor can actually work with, and the one preferred when the third
@@ -352,7 +395,8 @@ async function writeSlot(
   verifier: NarrationVerifierBuilder,
   evidence: EvidenceGatherer,
   voice: Voice,
-  ctx: NarrationBuildContext
+  ctx: NarrationBuildContext,
+  stats?: NarrationWriteStats
 ): Promise<WrittenSlot> {
   const pages: PendingPage[] = [];
   for (let i = 0; i < slot.beats.length; i++) {
@@ -408,10 +452,17 @@ async function writeSlot(
     page.result = handOffPage("no-evidence", NO_EVIDENCE_NOTE, [], heldDocsOf(page.evidence));
   }
 
-  for (let attempt = 0; attempt < NARRATION_PAGE_ATTEMPTS; attempt++) {
-    const pending = pages.filter((p) => !p.result);
+  /* Rounds, not slot attempts (G-34). Every page still gets at most
+     `NARRATION_PAGE_ATTEMPTS` attempts — a round records exactly one
+     attempt (a rejection or a result) on every page it takes, so the
+     per-page filter is the rule and the loop bound is only its guard.
+     What a round DOES for a page depends on what the page already holds:
+     see `runSlotRound`. */
+  for (let round = 0; round < NARRATION_PAGE_ATTEMPTS; round++) {
+    const pending = pages.filter((p) => !p.result && p.attempts.length < NARRATION_PAGE_ATTEMPTS);
     if (pending.length === 0) break;
-    await runSlotAttempt(slot.title, pending, writer, verifier, voice, ctx);
+    if (round > 0 && stats) stats.retryRounds += 1;
+    await runSlotRound(slot.title, pending, writer, verifier, voice, ctx);
   }
 
   const beats: WrittenBeat[] = [];
@@ -553,9 +604,37 @@ function noPageFor(page: PendingPage | undefined, slotTitle: string, claim: stri
   return handOffPage("no-page", notes, page?.attempts ?? [], page ? heldDocsOf(page.evidence) : []);
 }
 
-/** One attempt over the slot's still-pending pages: select, check, write,
- * check, verify. At most three model calls, whatever the page count. */
-async function runSlotAttempt(
+/** A page's script for this round, with the grounded claims it was
+ * written from — whichever call produced it. */
+interface Draft {
+  page: PendingPage;
+  claims: SelectedClaim[];
+  written: WrittenPage;
+}
+
+/**
+ * One round over the slot's still-pending pages (G-34). A page arrives
+ * in one of two states and the round spends accordingly:
+ *
+ *   - NO grounded claims yet (its first round, or its last round failed
+ *     at the quote gate outright): it joins the SELECTION batch. That is
+ *     one merged select+prose call when the builder offers one — the
+ *     quote gate then runs on the reply, and a page whose quotes all
+ *     resolve is written — or the two-call pair when it does not.
+ *   - grounded claims from an earlier round (rejected after the gate,
+ *     or only partly at it): it joins the PROSE batch. One `writePages`
+ *     call for those pages only, from those claims only. Nothing is
+ *     re-selected — those quotes were proven once and are still proven.
+ *
+ * Both batches then go through the same structural gate and the same
+ * ONE verifier call. So a round is at most three requests (merged,
+ * prose, verify), a first round is two, and a retry round is two —
+ * where each used to be three for the whole slot.
+ *
+ * Every page the round takes leaves it with exactly one attempt
+ * recorded: a rejection or a result.
+ */
+async function runSlotRound(
   slotTitle: string,
   pending: PendingPage[],
   writer: NarrationWriterBuilder,
@@ -563,37 +642,67 @@ async function runSlotAttempt(
   voice: Voice,
   ctx: NarrationBuildContext
 ): Promise<void> {
-  const briefs = pending.map(briefFor);
-  const selection = await writer.selectClaims({ slotTitle, voice, pages: briefs }, ctx);
+  const needsSelection = pending.filter((p) => p.claims === undefined);
+  const needsProse = pending.filter((p) => p.claims !== undefined);
+  const drafts: Draft[] = [];
 
-  const proseBriefs: ProsePageBrief[] = [];
-  const byPageId = new Map(pending.map((p) => [p.pageId, p]));
-  for (const page of pending) {
-    const claims = decodeClaimEntities(selection.pages.find((s) => s.pageId === page.pageId)?.claims ?? []);
-    const issues = validateSelectedClaims(claims, page);
-    if (issues.length > 0) {
-      /* The prose call is skipped for this page entirely: writing a script
-         from claims that are not grounded would only produce a page that
-         fails a second time, one call later. */
-      reject(page, issues, []);
-      continue;
+  if (needsSelection.length > 0) {
+    const briefs = needsSelection.map(briefFor);
+    if (writer.selectAndWrite) {
+      const merged = await writer.selectAndWrite({ slotTitle, voice, pages: briefs }, ctx);
+      for (const page of needsSelection) {
+        const reply = merged.pages.find((r) => r.pageId === page.pageId);
+        if (!reply) {
+          reject(page, [`the writer returned no page for "${page.pageId}" — every page in the batch must come back`], []);
+          continue;
+        }
+        const gate = gateSelectedClaims(decodeClaimEntities(reply.claims ?? []), page);
+        if (gate.issues.length === 0) {
+          drafts.push({ page, claims: gate.valid, written: reply });
+          continue;
+        }
+        /* THE QUOTE GATE FAILED ON THIS PAGE, AFTER PROSE. The script is
+           spent — it may assert a claim that is not grounded — and the
+           card accepts that cost. What is NOT spent is every claim that
+           did resolve: they are carried to the next round, where only
+           this page's prose is re-run from them. A page left with none
+           re-selects, because there is nothing to write from. */
+        reject(page, gate.issues, []);
+        if (gate.valid.length > 0) page.claims = gate.valid;
+      }
+    } else {
+      const selection = await writer.selectClaims({ slotTitle, voice, pages: briefs }, ctx);
+      for (const page of needsSelection) {
+        const gate = gateSelectedClaims(decodeClaimEntities(selection.pages.find((s) => s.pageId === page.pageId)?.claims ?? []), page);
+        if (gate.issues.length > 0) {
+          /* The prose call is skipped for this page entirely: writing a
+             script from claims that are not grounded would only produce
+             a page that fails a second time, one call later. */
+          reject(page, gate.issues, []);
+          continue;
+        }
+        page.claims = gate.valid;
+        needsProse.push(page);
+      }
     }
-    proseBriefs.push({ ...briefFor(page), claims });
   }
-  if (proseBriefs.length === 0) return;
 
-  const prose = await writer.writePages({ slotTitle, voice, pages: proseBriefs }, ctx);
-
-  const toVerify: Array<{ page: PendingPage; brief: VerifyPageBrief; beat: NarratedBeat }> = [];
-  for (const brief of proseBriefs) {
-    const page = byPageId.get(brief.pageId)!;
-    const written = prose.pages.find((p) => p.pageId === brief.pageId);
-    if (!written) {
-      reject(page, [`the writer returned no page for "${brief.pageId}" — every page in the batch must come back`], []);
-      continue;
+  if (needsProse.length > 0) {
+    const proseBriefs: ProsePageBrief[] = needsProse.map((page) => ({ ...briefFor(page), claims: page.claims! }));
+    const prose = await writer.writePages({ slotTitle, voice, pages: proseBriefs }, ctx);
+    for (const page of needsProse) {
+      const written = prose.pages.find((p) => p.pageId === page.pageId);
+      if (!written) {
+        reject(page, [`the writer returned no page for "${page.pageId}" — every page in the batch must come back`], []);
+        continue;
+      }
+      drafts.push({ page, claims: page.claims!, written });
     }
+  }
 
-    const sources = sourcesFor(written.usedClaims, brief.claims, page.evidence);
+  const toVerify: Array<{ page: PendingPage; claims: SelectedClaim[]; brief: VerifyPageBrief; beat: NarratedBeat }> = [];
+  for (const { page, claims, written } of drafts) {
+    const sources = sourcesFor(written.usedClaims, claims, page.evidence);
     const beat: NarratedBeat = {
       mode: page.mode,
       // The script is the other half of the entity boundary — see
@@ -623,7 +732,11 @@ async function runSlotAttempt(
       }
     }
     if (issues.length > 0) {
+      /* Rejected AFTER the quote gate: the claims are still grounded, so
+         the next round re-runs this page's prose from them (G-34 lever
+         a). A page that had none re-selects — see `carryClaims`. */
       reject(page, issues, sources);
+      carryClaims(page, claims);
       continue;
     }
 
@@ -632,15 +745,16 @@ async function runSlotAttempt(
        reject three times is still the page F-51 keeps — a page that broke
        a substring rule is not. */
     page.kept = { beat };
-    toVerify.push({ page, brief: { ...brief, script: beat.script, sources }, beat });
+    toVerify.push({ page, claims, brief: { ...briefFor(page), script: beat.script, sources }, beat });
   }
   if (toVerify.length === 0) return;
 
   const verdicts = await verifier.verifySlot({ slotTitle, voice, pages: toVerify.map((v) => v.brief) }, ctx);
-  for (const { page, beat } of toVerify) {
+  for (const { page, claims, beat } of toVerify) {
     const verdict = verdicts.pages.find((v) => v.pageId === page.pageId);
     if (!verdict) {
       reject(page, [`the verifier returned no verdict for "${page.pageId}"`], beat.sources);
+      carryClaims(page, claims);
       continue;
     }
     const failures: string[] = [];
@@ -648,8 +762,20 @@ async function runSlotAttempt(
     if (!verdict.purposeAccomplished) failures.push("the page does not accomplish the purpose the beat was given");
     if (!verdict.contestedHandled) failures.push("a genuinely contested point is not handled as §4.7 rule 3 requires");
     if (failures.length > 0) {
+      /* A VERIFIER REJECTION RE-RUNS PROSE + VERIFY, NOT SELECT (G-34
+         lever b, "safe" in the latency model): every quote on this page
+         was proven a span of a held document before the verifier saw
+         it, and that proof does not expire. The writer is told what the
+         verifier objected to and writes again from the same claims —
+         asserting fewer of them if that is the fix. Uniform across the
+         three questions on purpose: even "not supported by its quote"
+         is a property of the SCRIPT against the quote, and the writer
+         can drop the claim it cannot support without a fresh selection.
+         Only when a page holds no grounded claim at all does it
+         re-select — there is nothing to write from. */
       page.kept = { beat, verdict };
       reject(page, [`${failures.join("; ")}${verdict.notes ? ` — ${verdict.notes}` : ""}`], beat.sources);
+      carryClaims(page, claims);
       continue;
     }
 
@@ -757,6 +883,15 @@ function reject(page: PendingPage, issues: string[], sources: Source[]): void {
   page.attempts.push({ attempt: page.attempts.length + 1, sources, rejected: true, rejectionNote: rejection });
 }
 
+/** G-34: what a rejected page takes into its next round. Grounded claims
+ * are carried, so the round re-runs prose only; a page with none goes
+ * back to selection, because a prose call from no claims can only
+ * produce a hand-off and a merged call costs the same request. */
+function carryClaims(page: PendingPage, claims: SelectedClaim[]): void {
+  if (claims.length > 0) page.claims = claims;
+  else delete page.claims;
+}
+
 /** The evidence pack as the validator sees it: documents, and nothing
  * about how they were found. */
 export function heldDocsOf(pack: EvidencePack): EvidenceDoc[] {
@@ -797,20 +932,23 @@ export function decodeClaimEntities(claims: SelectedClaim[]): SelectedClaim[] {
  * them is ever asked of a model.
  */
 export function validateSelectedClaims(claims: SelectedClaim[], page: PendingPage): string[] {
+  return gateSelectedClaims(claims, page).issues;
+}
+
+/**
+ * The same gate, claim by claim: `valid` is every claim that cleared every
+ * rule, `issues` names every one that did not. G-34 needs the partition
+ * because a merged reply has already written a script by the time the
+ * gate runs — the claims that resolved are kept and only that page's
+ * prose is re-run — where the split path only ever needed the verdict.
+ * The zero-claim rule (§4.7 rule 1) is judged on what SURVIVES, so a
+ * content page whose every claim failed is told both things.
+ */
+export function gateSelectedClaims(claims: SelectedClaim[], page: PendingPage): { valid: SelectedClaim[]; issues: string[] } {
   const issues: string[] = [];
+  const valid: SelectedClaim[] = [];
   const docs = heldDocsOf(page.evidence);
   const purposeText = [page.claim, page.contextNote].filter(Boolean).join(" ");
-
-  if (claims.length === 0) {
-    if (page.mode === "Patch" || page.mode === "Carry") {
-      issues.push(
-        docs.length === 0
-          ? `no evidence could be gathered for this ${page.mode} page, and a ${page.mode} page carries the beat's content — it cannot be written unsourced`
-          : `a ${page.mode} page carries the beat's content by definition and must select at least one claim from the documents provided (§4.7 rule 1)`
-      );
-    }
-    return issues;
-  }
 
   for (const claim of claims) {
     const where = `claim "${String(claim.claimText ?? "").slice(0, 50)}"`;
@@ -839,9 +977,19 @@ export function validateSelectedClaims(claims: SelectedClaim[], page: PendingPag
     }
     if (quoteEchoesPurpose(claim.quote, purposeText)) {
       issues.push(`${where}: the quote repeats this beat's own purpose or prompt text. The purpose is editorial direction, never a source (F-46).`);
+      continue;
     }
+    valid.push(claim);
   }
-  return issues;
+
+  if (valid.length === 0 && (page.mode === "Patch" || page.mode === "Carry")) {
+    issues.push(
+      docs.length === 0
+        ? `no evidence could be gathered for this ${page.mode} page, and a ${page.mode} page carries the beat's content — it cannot be written unsourced`
+        : `a ${page.mode} page carries the beat's content by definition and must select at least one claim from the documents provided (§4.7 rule 1)`
+    );
+  }
+  return { valid, issues };
 }
 
 /**
