@@ -1,11 +1,11 @@
 {
-  "deploy_id": "5fb422b5e01b8c4a",
+  "deploy_id": "e52699e42515e9c6",
   "files": {
     "app.js": "sha256:0d6295a0c08b6f05d62f6acd6c73ab34d61e64535288c5af671604e422681999",
-    "data/catalog-client.json": "sha256:83a6a83d4633326dbc422c57677a78438a41c69f3055439a0010d2057aec8864",
+    "data/catalog-client.json": "sha256:4ce82cc477acec4f50dd837322be267871e5a2b5d572c094854164fe3b1417e2",
     "data/dai-classification.json": "sha256:321fb915e4289a098cbd30ec7cc8e8503345a1c6cadb6cda2803ff656162a545",
     "data/discover.json": "sha256:8f9fe30d80b2bb0666fbf94ebded55795f2b63386c5cf9343527e56e7e14c60d",
-    "data/forays-directory.json": "sha256:76d7350c2b3460d263325462116c9e1a2e50607119909251e8c17e5179a9f72f",
+    "data/forays-directory.json": "sha256:cdd5ec690f9f6903d6bcc54c27cd9104e29a0890e40c1a203f182e2f13cbb04a",
     "data/forays.json": "sha256:b9f44a79f023962e4d70f3546a9c411ceba22c835283d33e33440ac22841d3f8",
     "data/item-tags.json": "sha256:e9cae336633eef728de0307420739e3a87bc496b96f2931c4083e351d62d84a6",
     "data/ladders.json": "sha256:7af481f27ac45de519f6ed6d75fccb3fee1208e6f642dd2dad4fad635c55de5b",
