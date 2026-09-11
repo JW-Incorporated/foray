@@ -1574,6 +1574,11 @@ const BACKEND_FLOORS = {
   /* +3 (F-49): the candidate's own minted tier-2 segments and source rows are
      merged into the pool and registry the checker is handed, never shadowing a
      committed row. */
+  /* FD-07 / F-78: the minted tier-2 row against the real merge-segments --check gate,
+     one named mutation per required field. */
+  "test/mintedSegmentRow.test.ts": 32,
+  /* FD-07 / F-75: the publish branch is cut from origin/main and pushes exactly one commit. */
+  "test/publishForay.test.ts": 10,
   "test/finalizeForay.test.ts": 8,
   /* The `data/segment-sources.json` row a minted tier-2 segment needs, and the
      refusals that stop this pipeline writing one it cannot vouch for — an
