@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-09-11T00:12:05.995Z",
+  "built_at": "2026-09-11T08:11:18.321Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-09-11-6b08bc6f",
+    "last_batch_id": "fresh-2026-09-11-a081176b",
     "last_batch_tier": 1
   },
   "entries": {
@@ -149138,11 +149138,35 @@
     },
     "1816248756": {
       "topics": [
-        "tv-film"
+        "tv-film",
+        "comedy",
+        "culture/pop-culture"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.92
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.78
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show spans TV & Film and related topics; multi-interest audience appeal.",
+      "display_title": "Yestergays with Justin Sylvester and Blakely Thornton",
+      "blurb": "Strap in and dial-up! Yestergays with Justin Sylvester and Blakely Thonton rewinds to the juiciest pop culture moments that defined a generation..",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-11-a081176b",
+      "classified_at": "2026-09-11T08:11:18.321Z"
     },
     "1816258373": {
       "topics": [
@@ -149636,11 +149660,30 @@
     },
     "1818157896": {
       "topics": [
-        "business/non-profit"
+        "business/non-profit",
+        "society"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/non-profit",
+          "confidence": 0.88
+        },
+        {
+          "node": "society",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show spans Non-Profit and related topics; multi-interest audience appeal.",
+      "display_title": "Sharpe Insights: Conversations With Your Planned Giving Experts",
+      "blurb": "Sharpe Insights: Conversations With Your Planned Giving Experts is the podcast for nonprofit development professionals looking to deepen their.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-11-a081176b",
+      "classified_at": "2026-09-11T08:11:18.321Z"
     },
     "1818164606": {
       "topics": [
@@ -149761,8 +149804,22 @@
         "sports/cricket"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/cricket",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focused Cricket content for enthusiasts and casual listeners.",
+      "display_title": "For The Love Of Cricket",
+      "blurb": "Stuart Broad and Jos Buttler are two of England's greatest ever cricketers. They've played together all over the world, won the Ashes, World Cups and.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-11-a081176b",
+      "classified_at": "2026-09-11T08:11:18.321Z"
     },
     "1818438116": {
       "topics": [
@@ -149980,19 +150037,62 @@
     },
     "1819481394": {
       "topics": [
-        "gaming"
+        "gaming",
+        "hobbies"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.88
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.82
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show spans Gaming and related topics; multi-interest audience appeal.",
+      "display_title": "Fireball the Gazebo",
+      "blurb": "Join the 8 Int Wizards as they discuss all things tabletop Role Playing Games, from funny stories to ways to improve and have more fun at the gaming.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-11-a081176b",
+      "classified_at": "2026-09-11T08:11:18.321Z"
     },
     "1819488714": {
       "topics": [
-        "news/tech"
+        "computing",
+        "business/startups",
+        "engineering"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.82
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.68
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show spans Computing and related topics; multi-interest audience appeal.",
+      "display_title": "Works in Progress Podcast",
+      "blurb": "Works in Progress is an online magazine devoted to new and underrated ideas about economic growth, scientific progress, and technology. Subscribe to.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-11-a081176b",
+      "classified_at": "2026-09-11T08:11:18.321Z"
     },
     "1819496342": {
       "topics": [
@@ -150005,20 +150105,57 @@
     },
     "1819512876": {
       "topics": [
-        "health/sexuality",
-        "fiction"
+        "health/sexuality"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/sexuality",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focused Sexuality content for enthusiasts and casual listeners.",
+      "display_title": "Dripping Wet Sex Stories",
+      "blurb": "We're Audiodesires , where wellness meets your pleasure. We create sexy audio stories to bring your most intimate fantasies to life",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-11-a081176b",
+      "classified_at": "2026-09-11T08:11:18.321Z"
     },
     "1819523094": {
       "topics": [
-        "hobbies"
+        "gaming",
+        "hobbies",
+        "culture/pop-culture"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.85
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show spans Gaming and related topics; multi-interest audience appeal.",
+      "display_title": "LoreCrimes: A Warhammer Podcast",
+      "blurb": "Welcome to Lorecrimes! A podcast devoted to the Lore and universe of Warhammer 400,000, Fantasy and Age of Sigmar! The team of Amber King, Deadlifts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-11-a081176b",
+      "classified_at": "2026-09-11T08:11:18.321Z"
     },
     "1819528921": {
       "topics": [
@@ -150173,8 +150310,22 @@
         "sports/wrestling"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/wrestling",
+          "confidence": 0.94
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focused Wrestling content for enthusiasts and casual listeners.",
+      "display_title": "Six Feet Under with The Undertaker",
+      "blurb": "Join The Undertaker as he talks shop with wrestlers, legends and celebrities. He’ll also take you behind the scenes of his career with stories he’s.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-11-a081176b",
+      "classified_at": "2026-09-11T08:11:18.321Z"
     },
     "1820216414": {
       "topics": [
@@ -150291,11 +150442,30 @@
     },
     "1820703126": {
       "topics": [
-        "history"
+        "history",
+        "education"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.85
+        },
+        {
+          "node": "education",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show spans History and related topics; multi-interest audience appeal.",
+      "display_title": "Boring History for Sleep",
+      "blurb": "Welcome to Boring History to Sleep — the only show where falling asleep in the middle is not only allowed… it’s encouraged. Each episode takes you on.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-11-a081176b",
+      "classified_at": "2026-09-11T08:11:18.321Z"
     },
     "1820707822": {
       "topics": [
@@ -150366,11 +150536,35 @@
     },
     "1821055332": {
       "topics": [
-        "news/tech"
+        "business/founders",
+        "business/startups",
+        "computing"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/founders",
+          "confidence": 0.88
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing",
+          "confidence": 0.68
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show spans Founders and related topics; multi-interest audience appeal.",
+      "display_title": "Cheeky Pint",
+      "blurb": "Stripe cofounder John Collison interviews founders, builders, and leaders over a pint.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-11-a081176b",
+      "classified_at": "2026-09-11T08:11:18.321Z"
     },
     "1821082665": {
       "topics": [
@@ -150451,11 +150645,30 @@
     },
     "1821561834": {
       "topics": [
-        "gaming"
+        "gaming",
+        "hobbies"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.9
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show spans Gaming and related topics; multi-interest audience appeal.",
+      "display_title": "Good Time Boys",
+      "blurb": "A Magic: the Gathering pod cast where we discuss interesting topics and keep you up to date on everything going on in the Magic community. New.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-11-a081176b",
+      "classified_at": "2026-09-11T08:11:18.321Z"
     },
     "1821652066": {
       "topics": [
@@ -150466,11 +150679,35 @@
     },
     "1821706362": {
       "topics": [
-        "medicine"
+        "medicine",
+        "health/fitness",
+        "health/nutrition"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.87
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.75
+        },
+        {
+          "node": "health/nutrition",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show spans Medicine and related topics; multi-interest audience appeal.",
+      "display_title": "The Popkin Method",
+      "blurb": "You’re not crazy. Your care is just fragmented",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-11-a081176b",
+      "classified_at": "2026-09-11T08:11:18.321Z"
     },
     "1821715383": {
       "topics": [
@@ -150482,11 +150719,38 @@
     },
     "1821753954": {
       "topics": [
-        "society"
+        "society/government",
+        "news",
+        "economics"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society/government",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.72
+        },
+        {
+          "node": "economics",
+          "confidence": 0.68
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show spans Government and related topics; multi-interest audience appeal.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /deep[\\s-]dive/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-11-a081176b",
+      "classified_at": "2026-09-11T08:11:18.321Z"
     },
     "1821764678": {
       "topics": [
@@ -150497,11 +150761,35 @@
     },
     "1821790998": {
       "topics": [
-        "society"
+        "paranormal",
+        "true-crime",
+        "society/law"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "paranormal",
+          "confidence": 0.82
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.75
+        },
+        {
+          "node": "society/law",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show spans Paranormal and related topics; multi-interest audience appeal.",
+      "display_title": "Mysteries at Bedtime",
+      "blurb": "Mysteries at Bedtime is a mystery podcast exploring the world's strangest unsolved mysteries, unexplained disappearances, UFO sightings, paranormal.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-11-a081176b",
+      "classified_at": "2026-09-11T08:11:18.321Z"
     },
     "1821811140": {
       "topics": [
@@ -150557,8 +150845,25 @@
         "religion/hinduism"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/hinduism",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Focused Hinduism content for enthusiasts and casual listeners.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 13w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-11-a081176b",
+      "classified_at": "2026-09-11T08:11:18.321Z"
     },
     "1821815942": {
       "topics": [
@@ -150813,11 +151118,35 @@
     },
     "1823228184": {
       "topics": [
-        "business/non-profit"
+        "business/non-profit",
+        "health/mental",
+        "society"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/non-profit",
+          "confidence": 0.88
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.75
+        },
+        {
+          "node": "society",
+          "confidence": 0.68
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show spans Non-Profit and related topics; multi-interest audience appeal.",
+      "display_title": "Warrior Freedom Service Dogs Podcast",
+      "blurb": "Warrior Freedom Service Dogs Podcast Real stories. Real Veterans",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-11-a081176b",
+      "classified_at": "2026-09-11T08:11:18.321Z"
     },
     "1823419019": {
       "topics": [
@@ -151146,11 +151475,30 @@
     },
     "1825425030": {
       "topics": [
-        "kids-family/stories"
+        "kids-family/stories",
+        "education"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.93
+        },
+        {
+          "node": "education",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show spans Stories for Kids and related topics; multi-interest audience appeal.",
+      "display_title": "Little Sleepers, Big Dreamers",
+      "blurb": "A bedtime podcast for Kids and Families, inviting them to enter a world of wonder, calm and confidence. Each episode combines heartwarming bedtime.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-11-a081176b",
+      "classified_at": "2026-09-11T08:11:18.321Z"
     },
     "1825425657": {
       "topics": [
@@ -151164,16 +151512,44 @@
         "sports/cricket"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/cricket",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focused Cricket content for enthusiasts and casual listeners.",
+      "display_title": "Rock and Roll it",
+      "blurb": "A show where we have some of the best minds behind covering cricket come together and review cricket matches. This should be the most in-depth.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-11-a081176b",
+      "classified_at": "2026-09-11T08:11:18.321Z"
     },
     "1825485084": {
       "topics": [
         "sports/basketball"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/basketball",
+          "confidence": 0.96
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focused Basketball content for enthusiasts and casual listeners.",
+      "display_title": "Post Moves with Candace Parker & Aliyah Boston",
+      "blurb": "Hosted by WNBA legend Candace Parker and Indiana Fever star Aliyah Boston, Post Moves brings bold takes, real talk, and plenty of laughs to the world.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-11-a081176b",
+      "classified_at": "2026-09-11T08:11:18.321Z"
     },
     "1825507118": {
       "topics": [
@@ -151213,12 +151589,25 @@
     },
     "1825826118": {
       "topics": [
-        "health/sexuality",
-        "fiction"
+        "health/sexuality"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/sexuality",
+          "confidence": 0.92
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focused Sexuality content for enthusiasts and casual listeners.",
+      "display_title": "BDSM Bondage Erotica",
+      "blurb": "We're Audiodesires , where wellness meets your pleasure. We create erotic audio stories to bring your most intimate fantasies to life",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-11-a081176b",
+      "classified_at": "2026-09-11T08:11:18.321Z"
     },
     "1825829164": {
       "topics": [
@@ -151629,11 +152018,30 @@
     },
     "1827834888": {
       "topics": [
-        "education/courses"
+        "education/courses",
+        "computing"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/courses",
+          "confidence": 0.9
+        },
+        {
+          "node": "computing",
+          "confidence": 0.82
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show spans Courses and related topics; multi-interest audience appeal.",
+      "display_title": "Certified - CompTIA Network + Audio Course",
+      "blurb": "The Network+ Audio Course is your comprehensive audio training series for mastering the CompTIA Network+ certification. Designed for learners on the.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-11-a081176b",
+      "classified_at": "2026-09-11T08:11:18.321Z"
     },
     "1827931786": {
       "topics": [
@@ -151660,11 +152068,35 @@
     },
     "1828015362": {
       "topics": [
-        "society"
+        "psychology",
+        "science",
+        "medicine/neuroscience"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.85
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        },
+        {
+          "node": "medicine/neuroscience",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show spans Psychology and related topics; multi-interest audience appeal.",
+      "display_title": "The Observable Unknown",
+      "blurb": "The Observable Unknown is a scientific and psychological podcast exploring consciousness, perception, behavior, identity, altered states, symbolism,.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-11-a081176b",
+      "classified_at": "2026-09-11T08:11:18.321Z"
     },
     "1828016572": {
       "topics": [
@@ -151718,11 +152150,30 @@
     },
     "1828309494": {
       "topics": [
+        "craft",
         "culture/design"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.78
+        },
+        {
+          "node": "culture/design",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show spans Craft & making and related topics; multi-interest audience appeal.",
+      "display_title": "Big Design Adventure",
+      "blurb": "Two mates, Tim Ross &mdash; comedian, broadcaster, and self-described design nerd &mdash; and Kevin McCloud &mdash; pundit, writer and celebrated.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-11-a081176b",
+      "classified_at": "2026-09-11T08:11:18.321Z"
     },
     "1828451983": {
       "topics": [
@@ -151734,11 +152185,33 @@
     },
     "1828469754": {
       "topics": [
-        "history"
+        "true-crime",
+        "paranormal"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.82
+        },
+        {
+          "node": "paranormal",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show spans True Crime and related topics; multi-interest audience appeal.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-11-a081176b",
+      "classified_at": "2026-09-11T08:11:18.321Z"
     },
     "1828491975": {
       "topics": [
@@ -152091,11 +152564,30 @@
     },
     "1830477750": {
       "topics": [
-        "society"
+        "comedy",
+        "personal-journals"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.6
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show spans Comedy and related topics; multi-interest audience appeal.",
+      "display_title": "Lucky Boy",
+      "blurb": "Gareth’s whole life has been defined by a relationship he had 35 years ago when, as a 14-year-old schoolboy, he fell in love with an attractive young.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-11-a081176b",
+      "classified_at": "2026-09-11T08:11:18.321Z"
     },
     "1830505769": {
       "topics": [
@@ -152419,11 +152911,35 @@
     },
     "1832119842": {
       "topics": [
-        "health/mental"
+        "psychology",
+        "education",
+        "business"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.8
+        },
+        {
+          "node": "education",
+          "confidence": 0.72
+        },
+        {
+          "node": "business",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show spans Psychology and related topics; multi-interest audience appeal.",
+      "display_title": "Office Hours with Arthur Brooks",
+      "blurb": "Hi Friends, I’m Arthur Brooks, a social scientist, Vanderbilt professor, and columnist at The Free Press. I write, speak, and teach about the science.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-11-a081176b",
+      "classified_at": "2026-09-11T08:11:18.321Z"
     },
     "1832126550": {
       "topics": [
@@ -152464,11 +152980,33 @@
     },
     "1832331486": {
       "topics": [
-        "personal-journals"
+        "food",
+        "hobbies"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.85
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show spans Food and related topics; multi-interest audience appeal.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-11-a081176b",
+      "classified_at": "2026-09-11T08:11:18.321Z"
     },
     "1832332505": {
       "topics": [
@@ -152634,11 +153172,35 @@
     },
     "1833063666": {
       "topics": [
-        "fiction/drama"
+        "history",
+        "paranormal",
+        "culture"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.75
+        },
+        {
+          "node": "paranormal",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture",
+          "confidence": 0.68
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show spans Paranormal and related topics; multi-interest audience appeal.",
+      "display_title": "American Afterlife",
+      "blurb": "What happens when the ground beneath you literally crumbles, leaving you to navigate a world turned upside down? In this gripping series, American.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-11-a081176b",
+      "classified_at": "2026-09-11T08:11:18.321Z"
     },
     "1833063933": {
       "topics": [
@@ -152755,11 +153317,30 @@
     },
     "1833396540": {
       "topics": [
+        "craft/diy-home",
         "hobbies"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.85
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.82
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show spans DIY & home and related topics; multi-interest audience appeal.",
+      "display_title": "Bonsai Builders Podcast",
+      "blurb": "This podcast is for when a hobby becomes an obsession. It chronicles the path of a dedicated hobbyist, focusing not just on shaping trees, but on.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-11-a081176b",
+      "classified_at": "2026-09-11T08:11:18.321Z"
     },
     "1833463409": {
       "topics": [
@@ -152793,11 +153374,30 @@
     },
     "1833673068": {
       "topics": [
-        "gaming"
+        "fiction",
+        "culture/art"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show spans Fiction & Audio Drama and related topics; multi-interest audience appeal.",
+      "display_title": "The Smiling Fox",
+      "blurb": "The Smiling Fox is an unofficial Mythic Bastionland podcast.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-11-a081176b",
+      "classified_at": "2026-09-11T08:11:18.321Z"
     },
     "1833682590": {
       "topics": [
@@ -152899,11 +153499,30 @@
     },
     "1834132500": {
       "topics": [
-        "education/how-to"
+        "education",
+        "society"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.8
+        },
+        {
+          "node": "society",
+          "confidence": 0.68
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show spans Education and related topics; multi-interest audience appeal.",
+      "display_title": "HerLearn Legacy Podcast",
+      "blurb": "Women’s and children’s education forms the backbone of a progressive and empowered society. When women have access to quality learning, they become.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-11-a081176b",
+      "classified_at": "2026-09-11T08:11:18.321Z"
     },
     "1834157069": {
       "topics": [
@@ -153090,12 +153709,25 @@
     },
     "1834894038": {
       "topics": [
-        "health/sexuality",
-        "fiction"
+        "health/sexuality"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/sexuality",
+          "confidence": 0.92
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focused Sexuality content for enthusiasts and casual listeners.",
+      "display_title": "Spicy Lesbian Smut",
+      "blurb": "Welcome to Audiodesires . We create short, erotic audio stories for women and couples, bringing your most intimate fantasies to life",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-11-a081176b",
+      "classified_at": "2026-09-11T08:11:18.321Z"
     },
     "1834896651": {
       "topics": [
@@ -153115,11 +153747,30 @@
     },
     "1834964940": {
       "topics": [
+        "culture/pop-culture",
         "tv-film"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.82
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show spans Pop Culture and related topics; multi-interest audience appeal.",
+      "display_title": "Kinsey Schofield Unfiltered",
+      "blurb": "The Sussexes, Hollywood scandals and royal analysis - join US commentator Kinsey Schofield as she takes you through all things pop culture. A.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-11-a081176b",
+      "classified_at": "2026-09-11T08:11:18.321Z"
     },
     "1834971759": {
       "topics": [
@@ -153207,11 +153858,35 @@
     },
     "1835369742": {
       "topics": [
-        "space"
+        "space",
+        "science"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.88
+        },
+        {
+          "node": "science",
+          "confidence": 0.82
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show spans Space and related topics; multi-interest audience appeal.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: banned /deep[\\s-]dive/i",
+        "blurb: banned /deep[\\s-]dive/i",
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-11-a081176b",
+      "classified_at": "2026-09-11T08:11:18.321Z"
     },
     "1835386103": {
       "topics": [
@@ -153676,11 +154351,30 @@
     },
     "1837044678": {
       "topics": [
-        "sports/football"
+        "sports/basketball",
+        "sports"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/basketball",
+          "confidence": 0.8
+        },
+        {
+          "node": "sports",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show spans Basketball and related topics; multi-interest audience appeal.",
+      "display_title": "DOUBLE COVERAGE PODCAST",
+      "blurb": "Double Coverage Podcast",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-11-a081176b",
+      "classified_at": "2026-09-11T08:11:18.321Z"
     },
     "1837048391": {
       "topics": [
@@ -153976,19 +154670,57 @@
     },
     "1838417520": {
       "topics": [
-        "medicine/biology"
+        "health/mental",
+        "psychology"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/mental",
+          "confidence": 0.82
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.78
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show spans Mental Health and related topics; multi-interest audience appeal.",
+      "display_title": "پادکست اتاق تراپی | The Therapy Room",
+      "blurb": "این یک پادکست تخصصی و علمی در حوزه روانشناسی است که به موضوعات مختلف نگاه بالینی و جدی دارد و با خیال راحت می‌توانید مطمئن باشید از روانشناسی زرد و.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-11-a081176b",
+      "classified_at": "2026-09-11T08:11:18.321Z"
     },
     "1838454402": {
       "topics": [
+        "paranormal",
         "fiction"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "paranormal",
+          "confidence": 0.75
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.72
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show spans Paranormal and related topics; multi-interest audience appeal.",
+      "display_title": "Midnight Shadows",
+      "blurb": "The Business Blueprint is your guide to building a successful business, developing a growth mindset, and turning ideas into meaningful results. Each.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-11-a081176b",
+      "classified_at": "2026-09-11T08:11:18.321Z"
     },
     "1838458869": {
       "topics": [
@@ -154059,19 +154791,60 @@
     },
     "1838530932": {
       "topics": [
-        "kids-family/education"
+        "nature/pets",
+        "nature/animal-cognition"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/pets",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature/animal-cognition",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show spans Pets & Animals and related topics; multi-interest audience appeal.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /deep[\\s-]dive/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-11-a081176b",
+      "classified_at": "2026-09-11T08:11:18.321Z"
     },
     "1838536758": {
       "topics": [
-        "society"
+        "tv-film",
+        "culture/fashion"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/fashion",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show spans TV & Film and related topics; multi-interest audience appeal.",
+      "display_title": "Curse of: America’s Next Top Model",
+      "blurb": "When America&rsquo;s Next Top Model premiered in the early 2000s, it looked like a golden ticket: a glamorous TV show that could catapult aspiring.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-11-a081176b",
+      "classified_at": "2026-09-11T08:11:18.321Z"
     },
     "1838578913": {
       "topics": [
@@ -154195,11 +154968,33 @@
     },
     "1839302742": {
       "topics": [
-        "hobbies"
+        "fiction",
+        "culture/mythology"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture/mythology",
+          "confidence": 0.72
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show spans Fiction & Audio Drama and related topics; multi-interest audience appeal.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-11-a081176b",
+      "classified_at": "2026-09-11T08:11:18.321Z"
     },
     "1839323732": {
       "topics": [
@@ -154373,11 +155168,30 @@
     },
     "1839995280": {
       "topics": [
-        "tv-film/reviews"
+        "tv-film",
+        "paranormal"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.78
+        },
+        {
+          "node": "paranormal",
+          "confidence": 0.72
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show spans TV & Film and related topics; multi-interest audience appeal.",
+      "display_title": "Dark Frights Horror News With Jimmy Star",
+      "blurb": "Dark Frights Horror News with Jimmy Star brings up to date horror news with world-renowned podcast host Jimmy Star (The Jimmy Star Show with Ron.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-11-a081176b",
+      "classified_at": "2026-09-11T08:11:18.321Z"
     },
     "1840006724": {
       "topics": [
@@ -154463,11 +155277,30 @@
     },
     "1840474338": {
       "topics": [
-        "education/how-to"
+        "education",
+        "education/self-improvement"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.82
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show spans Education and related topics; multi-interest audience appeal.",
+      "display_title": "School of Practice",
+      "blurb": "School of Practice, the first podcast from the team at Edutopia, brings you ready-to-use strategies to improve your teaching today. Join us for.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-11-a081176b",
+      "classified_at": "2026-09-11T08:11:18.321Z"
     },
     "1840522125": {
       "topics": [
@@ -154485,11 +155318,30 @@
     },
     "1840669662": {
       "topics": [
+        "culture/books",
         "fiction/drama"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.88
+        },
+        {
+          "node": "fiction/drama",
+          "confidence": 0.82
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show spans Books and related topics; multi-interest audience appeal.",
+      "display_title": "Jane Austen Stories",
+      "blurb": "Join Dame Julie Andrews as she reads Jane Austen's original, unabridged classics, brought to life with original music and immersive sound design..",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-11-a081176b",
+      "classified_at": "2026-09-11T08:11:18.321Z"
     },
     "1840678657": {
       "topics": [
@@ -154728,11 +155580,30 @@
     },
     "1841732688": {
       "topics": [
-        "business/management"
+        "business/management",
+        "business"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/management",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show spans Management and related topics; multi-interest audience appeal.",
+      "display_title": "A Podcast About Leadership",
+      "blurb": "Leadership has the power to shape the future — of work and of the world. But in a period of history increasingly defined by complexity, uncertainty,.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-11-a081176b",
+      "classified_at": "2026-09-11T08:11:18.321Z"
     },
     "1841737252": {
       "topics": [
@@ -154759,11 +155630,30 @@
     },
     "1841877084": {
       "topics": [
-        "craft/diy-home"
+        "craft/diy-home",
+        "food"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.82
+        },
+        {
+          "node": "food",
+          "confidence": 0.72
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show spans DIY & home and related topics; multi-interest audience appeal.",
+      "display_title": "Home Grown with Martha and Jamie",
+      "blurb": "Something exciting is sprouting! Home Grown is the brand-new gardening podcast for anyone who loves growing their own food, from balcony pots to full.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-11-a081176b",
+      "classified_at": "2026-09-11T08:11:18.321Z"
     },
     "1841909445": {
       "topics": [
@@ -154803,11 +155693,30 @@
     },
     "1842098316": {
       "topics": [
-        "health/sexuality"
+        "health/sexuality",
+        "fiction"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/sexuality",
+          "confidence": 0.88
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.72
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show spans Sexuality and related topics; multi-interest audience appeal.",
+      "display_title": "Dark Romance Porn Stories",
+      "blurb": "Welcome to Audiodesires . We create erotic audio stories to bring your most intimate desires to life",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-11-a081176b",
+      "classified_at": "2026-09-11T08:11:18.321Z"
     },
     "1842121245": {
       "topics": [
@@ -154983,11 +155892,35 @@
     },
     "1843355568": {
       "topics": [
-        "business/non-profit"
+        "health",
+        "business/non-profit",
+        "society"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health",
+          "confidence": 0.82
+        },
+        {
+          "node": "business/non-profit",
+          "confidence": 0.72
+        },
+        {
+          "node": "society",
+          "confidence": 0.68
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show spans Health & Fitness and related topics; multi-interest audience appeal.",
+      "display_title": "SIS: Sisters in Survivorship",
+      "blurb": "SIS: Sisters In Survivorship amplifies the voices of Black women navigating breast cancer and gives every sister the tools to advocate, heal, and.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-11-a081176b",
+      "classified_at": "2026-09-11T08:11:18.321Z"
     },
     "1843374573": {
       "topics": [
@@ -155488,11 +156421,33 @@
     },
     "1845657564": {
       "topics": [
-        "music"
+        "music",
+        "culture/pop-culture"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.88
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show spans Music and related topics; multi-interest audience appeal.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 13w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-11-a081176b",
+      "classified_at": "2026-09-11T08:11:18.321Z"
     },
     "1845817729": {
       "topics": [
@@ -155587,11 +156542,30 @@
     },
     "1846114752": {
       "topics": [
-        "personal-journals"
+        "health",
+        "education/self-improvement"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health",
+          "confidence": 0.75
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.72
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show spans Health & Fitness and related topics; multi-interest audience appeal.",
+      "display_title": "Mostly Thriving Podcast with Amanda + TJ",
+      "blurb": "Welcome to Mostly Thriving with Amanda + TJ! It may look like we are thriving but really we're just... mostly thriving",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-11-a081176b",
+      "classified_at": "2026-09-11T08:11:18.321Z"
     },
     "1846130101": {
       "topics": [
@@ -155657,9 +156631,23 @@
       "topics": [
         "religion/christianity"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.92
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focused Christianity content for enthusiasts and casual listeners.",
+      "display_title": "The Gospel Proclaimed",
+      "blurb": "Studying the gospel throughout the Scriptures. The preaching ministry of Pastor Young Park",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-11-a081176b",
+      "classified_at": "2026-09-11T08:11:18.321Z"
     },
     "1846555477": {
       "topics": [
@@ -155910,19 +156898,60 @@
     },
     "1847901984": {
       "topics": [
-        "tv-film/history"
+        "history",
+        "education"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.85
+        },
+        {
+          "node": "education",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Show spans History and related topics; multi-interest audience appeal.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 11w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-11-a081176b",
+      "classified_at": "2026-09-11T08:11:18.321Z"
     },
     "1847903898": {
       "topics": [
+        "business/management",
         "business"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/management",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show spans Management and related topics; multi-interest audience appeal.",
+      "display_title": "TWRS-Leadership Straight, No Chaser",
+      "blurb": "TWRS-Leadership Straight, No Chaser is where leadership meets real talk. Let's cut through the noise and gain raw, practical insights to grow with.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-11-a081176b",
+      "classified_at": "2026-09-11T08:11:18.321Z"
     },
     "1847960151": {
       "topics": [
@@ -155947,11 +156976,30 @@
     },
     "1847995986": {
       "topics": [
-        "tv-film"
+        "business",
+        "education"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.6
+        },
+        {
+          "node": "education",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show spans Business and related topics; multi-interest audience appeal.",
+      "display_title": "Tier1 Podcast",
+      "blurb": "Hosted by former Delta Force Operator, Brent Tucker, Tier1 Podcast delivers firsthand insight into elite missions, leadership under pressure, and the.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-11-a081176b",
+      "classified_at": "2026-09-11T08:11:18.321Z"
     },
     "1848020264": {
       "topics": [
@@ -155993,11 +157041,30 @@
     },
     "1848165636": {
       "topics": [
-        "history"
+        "education",
+        "travel"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.85
+        },
+        {
+          "node": "travel",
+          "confidence": 0.72
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show spans Education and related topics; multi-interest audience appeal.",
+      "display_title": "Today in Geography",
+      "blurb": "Today in Geography is a podcast produced by the Department of Geography, Environment, and Spatial Sciences at Michigan State University. Each.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-11-a081176b",
+      "classified_at": "2026-09-11T08:11:18.321Z"
     },
     "1848165879": {
       "topics": [
@@ -156030,11 +157097,35 @@
     },
     "1848363144": {
       "topics": [
-        "hobbies"
+        "transport/maritime",
+        "sports",
+        "travel"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "transport/maritime",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports",
+          "confidence": 0.7
+        },
+        {
+          "node": "travel",
+          "confidence": 0.68
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Show spans Maritime and related topics; multi-interest audience appeal.",
+      "display_title": "The Sailing Podcast",
+      "blurb": "From the team behind Practical Boat Owner, Yachting Monthly, and Yachting World comes a new sailing podcast, simply named: The Sailing Podcast.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-11-a081176b",
+      "classified_at": "2026-09-11T08:11:18.321Z"
     },
     "1848365152": {
       "topics": [
