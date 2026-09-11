@@ -1016,6 +1016,13 @@ export async function runForayPipeline(
       skipSlot: (actIndex, slotIndex) => checkpoint.has(`narrate:${actIndex}`) || checkpoint.has(`narrate:${actIndex}:${slotIndex}`)
     })
   );
+  /* ONE clock for the fan-out. The stage log's reading is the report's
+     `timings[]` entry; the gatherer's `prefetchMs` is set FROM it rather
+     than measured again alongside it, so the two numbers `report.json`
+     carries for the same work cannot differ by the millisecond that lands
+     between two `Date.now()` starts. */
+  const evidenceStage = timings.all().find((t) => t.name === "evidence");
+  if (evidenceStage) evidence.recordStageMs(evidenceStage.ms);
 
   /* The pool the runtime clock is measured against has to include what tier 2
      just minted, or a tier-2 tape item contributes 0 s to `runtime_sec` and

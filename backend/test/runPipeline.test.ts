@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { runForayPipeline, slotsFromSpine, runtimeSecFor, forayCopy, clampWords, MAX_COPY_WORDS } from "../src/generation/runPipeline";
 import { StubPromptUnderstander } from "../src/generation/StubPromptUnderstander";
 import { StubExternalResearcher } from "../src/generation/StubExternalResearcher";
@@ -794,7 +794,26 @@ describe("runForayPipeline — evidence is prefetched after source, off narratio
       writePages: (request, narrationCtx) => stub.writePages(request, narrationCtx)
     };
 
-    const out = await runForayPipeline(request, options, { ...stubDeps(), evidence, narrationWriter: writer });
+    /* A clock that ticks one millisecond per reading. The report carries the
+       fan-out's wall time twice — `timings[].evidence` and
+       `retrieval.prefetchMs` — and they must be ONE measurement: with a real
+       clock two independent `Date.now()` pairs bracketing the same work agree
+       except when a tick lands between their starts, which is a flake (PR
+       #623's CI run: `evidence` 1 ms, `prefetchMs` 0). Under this clock every
+       reading is distinct, so a second measurement can never coincide with
+       the first by luck. MUTATION THAT KILLS THIS: have `prefetch()` keep its
+       own `Date.now() - start` as `prefetchMs` instead of taking the stage's
+       number (`recordStageMs`) — the two then differ by exactly the readings
+       taken between the stage's start and the fan-out's. */
+    const realNow = Date.now();
+    let tick = 0;
+    const clock = vi.spyOn(Date, "now").mockImplementation(() => realNow + tick++);
+    let out: Awaited<ReturnType<typeof runForayPipeline>>;
+    try {
+      out = await runForayPipeline(request, options, { ...stubDeps(), evidence, narrationWriter: writer });
+    } finally {
+      clock.mockRestore();
+    }
     expect(out.outcome).toBe("generated");
     if (out.outcome !== "generated") return;
 
@@ -813,6 +832,9 @@ describe("runForayPipeline — evidence is prefetched after source, off narratio
     expect(retrieval!.narrationGathers).toBeGreaterThan(0);
     expect(retrieval!.narrationHits).toBe(retrieval!.narrationGathers);
     expect(retrieval!.hitRate).toBe(1);
-    expect(retrieval!.prefetchMs).toBe(out.timings.find((t) => t.name === "evidence")!.ms);
+    /* One measurement, reported twice — see the ticking clock above. */
+    const evidenceStage = out.timings.find((t) => t.name === "evidence")!;
+    expect(evidenceStage.ms).toBeGreaterThan(0);
+    expect(retrieval!.prefetchMs).toBe(evidenceStage.ms);
   });
 });

@@ -65,7 +65,12 @@ export function evidencePrefetchConcurrency(): number {
  * other timing in `stageTiming.ts`. */
 export interface EvidencePrefetchMetrics {
   /** Wall time of the whole fan-out — the retrieval that moved OFF the
-   * narration path. */
+   * narration path. When the fan-out ran as a timed pipeline stage this IS
+   * that stage's number (`recordStageMs`), not a second reading of the
+   * clock beside it: two `Date.now()` pairs bracketing the same work
+   * disagree by a millisecond whenever a tick lands between their starts,
+   * and PR #623's CI run caught exactly that — `evidence` at 1 ms,
+   * `prefetchMs` at 0. */
   prefetchMs: number;
   concurrency: number;
   /** Pages the fan-out was asked for, split by what happened to them. A
@@ -228,6 +233,14 @@ export class PrefetchingEvidenceGatherer implements EvidenceGatherer {
     });
     this.memo.set(key, pending);
     return pending;
+  }
+
+  /** The pipeline's `evidence` stage, once timed, hands its wall-clock
+   * number here so `report.json` carries ONE measurement of the fan-out
+   * (see `EvidencePrefetchMetrics.prefetchMs`). `prefetch()`'s own reading
+   * stands only for a caller that runs it outside a stage log. */
+  recordStageMs(ms: number): void {
+    this.stats.prefetchMs = ms;
   }
 
   metrics(): EvidencePrefetchMetrics {
