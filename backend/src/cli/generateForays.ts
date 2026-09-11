@@ -2,7 +2,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import { spawn } from "child_process";
-import { runForayPipeline, RefusedPartialError, type RunPipelineOutcome } from "../generation/runPipeline";
+import { runForayPipeline, RefusedPartialError, type NarrationActTiming, type RunPipelineOutcome } from "../generation/runPipeline";
 import { FileTranscriptCueProvider } from "../generation/transcriptArchiveLookup";
 import { FileTranscriptTextIndex, type TranscriptTextIndex } from "../generation/transcriptTextIndex";
 import { checkpointFingerprint } from "../generation/checkpoint";
@@ -391,6 +391,11 @@ export type ReportEntry = {
   ms: number;
   file?: string;
   ttlA1Ms?: number | null;
+  /** G-32: the act-concurrency cap the run narrated under
+   * (`NARRATION_ACT_CONCURRENCY`, default 4) and one `narrate:<i>` timing per
+   * act, so overlap is visible in the report. Only on a `generated` outcome. */
+  narrationConcurrency?: number;
+  narrationActs?: NarrationActTiming[];
   veracity?: VeracityMetrics;
   /** Written by `publishForay.ts --report` once the candidate has a PR — the
    * PR, the `origin/main` sha it was cut from, and the deploy id it shipped in
@@ -644,6 +649,9 @@ export async function generateOneCandidate(
     detail: line,
     ms,
     ttlA1Ms,
+    ...(outcome.outcome === "generated"
+      ? { narrationConcurrency: outcome.narration.concurrency, narrationActs: outcome.narration.acts }
+      : {}),
     veracity,
     ...(resumes.length ? { resumes } : {}),
     ...(refusedPartials.length ? { refusedPartials } : {})

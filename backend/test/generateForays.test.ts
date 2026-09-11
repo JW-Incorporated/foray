@@ -187,6 +187,11 @@ describe("generateOneCandidate — WS-D2 partial-file mechanics", () => {
     // in the report"): the entry this CLI would push into report.json
     // carries the same measurement the partial candidate did.
     expect(result.entry?.ttlA1Ms).toBe(first.ttlA1Ms);
+
+    /* G-32: the same entry says how many acts narrated at once and carries
+       one `narrate:<i>` timing per act — one row per partial write above. */
+    expect(result.entry?.narrationConcurrency).toBeGreaterThanOrEqual(1);
+    expect(result.entry?.narrationActs?.map((a) => a.act)).toEqual(writes.map((_w, i) => i));
   });
 
   it("writes nothing under --dry-run", async () => {

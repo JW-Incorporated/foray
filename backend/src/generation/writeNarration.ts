@@ -211,6 +211,111 @@ export interface WriteNarrationOptions {
    * settles, so a slot that finished is banked even when a sibling slot
    * throws, which is the whole point of the key. */
   onSlotWritten?: (actIndex: number, slotIndex: number, slot: WrittenSlot) => void | Promise<void>;
+  /** G-32: how many acts may be narrating at once. Defaults to
+   * `NARRATION_ACT_CONCURRENCY` (env, default 4 — `narrationActConcurrency`).
+   * Every slot of every in-flight act is itself in flight, so this is the
+   * lever a rate-limited key throttles with: at 1 the acts run in series,
+   * exactly as before G-32. */
+  actConcurrency?: number;
+}
+
+/**
+ * G-32: the env knob that caps how many acts narrate at once, and its
+ * default. Read at CALL time (`narrationActConcurrency`) rather than at
+ * import like `config/env.ts`'s budgets, for the same reason
+ * `FORAY_SKIP_CATALOGUE_CACHE` is: it is an operator's throttle, not a
+ * secret, and a test has to be able to set it without re-importing the
+ * module.
+ *
+ * WHY 4. The latency brief (§3 M1) put ~18 Sonnet + ~30 Haiku calls in
+ * flight if a medium Foray's four acts all narrate at once on a key of
+ * unknown rate tier, and named 429s as the risk. Four is "every act of a
+ * medium Foray", the shape the brief measured; a long Foray (5–7 acts)
+ * queues the rest, and an operator who sees 429s in G-20's report turns
+ * the number down rather than the feature off.
+ */
+export const NARRATION_ACT_CONCURRENCY_ENV = "NARRATION_ACT_CONCURRENCY";
+export const DEFAULT_NARRATION_ACT_CONCURRENCY = 4;
+
+/**
+ * The act-concurrency cap in force: `raw` (defaults to the env var) as a
+ * positive integer, or the default when the variable is unset. A variable
+ * that is PRESENT but not a positive integer throws, the way
+ * `DAILY_BUDGET_USD` does — a typo here silently becoming "4" is precisely
+ * the rate-limit surprise the operator was setting it to avoid. The message
+ * names the variable, never its value (`env.ts`'s convention).
+ */
+export function narrationActConcurrency(raw: string | undefined = process.env[NARRATION_ACT_CONCURRENCY_ENV]): number {
+  if (raw === undefined) return DEFAULT_NARRATION_ACT_CONCURRENCY;
+  const trimmed = raw.trim();
+  const n = trimmed.length === 0 ? NaN : Number(trimmed);
+  if (!Number.isInteger(n) || n < 1) {
+    throw new Error(`Invalid value for environment variable ${NARRATION_ACT_CONCURRENCY_ENV}: expected a positive integer`);
+  }
+  return n;
+}
+
+/**
+ * A FIFO gate that lets at most `limit` tasks run at once — the whole of
+ * G-32's throttle, and small enough to read in one sitting rather than a
+ * dependency.
+ *
+ * `run` starts `fn` immediately if a slot is free, otherwise queues it in
+ * arrival order. `abort` REJECTS every task still queued (they never start)
+ * with the given error, and leaves the in-flight ones alone: work a model
+ * is already doing is paid for and its slots are being checkpointed as they
+ * land, so the useful thing is to let it finish and bank, not to drop it.
+ * Once aborted the gate stays aborted — a task submitted afterwards rejects
+ * the same way.
+ */
+export interface ActGate {
+  run<T>(fn: () => Promise<T>): Promise<T>;
+  abort(reason: Error): void;
+}
+
+export function createActGate(limit: number): ActGate {
+  if (!Number.isInteger(limit) || limit < 1) {
+    throw new Error(`createActGate: limit must be a positive integer, got ${String(limit)}`);
+  }
+  let inFlight = 0;
+  let aborted: Error | null = null;
+  const queue: Array<{ start: () => void; reject: (err: Error) => void }> = [];
+
+  const next = (): void => {
+    while (inFlight < limit && queue.length > 0) {
+      inFlight++;
+      queue.shift()!.start();
+    }
+  };
+
+  return {
+    run<T>(fn: () => Promise<T>): Promise<T> {
+      return new Promise<T>((resolve, reject) => {
+        if (aborted) {
+          reject(aborted);
+          return;
+        }
+        queue.push({
+          start: () => {
+            fn().then(resolve, reject).finally(() => {
+              inFlight--;
+              next();
+            });
+          },
+          reject
+        });
+        next();
+      });
+    },
+    abort(reason: Error): void {
+      if (aborted) return;
+      aborted = reason;
+      /* Rejected NOW, not when a slot frees: a queued act must not outlive
+         the failure it is being refused for by however long the in-flight
+         acts take to finish. */
+      while (queue.length > 0) queue.shift()!.reject(reason);
+    }
+  };
 }
 
 /**
@@ -288,27 +393,58 @@ export async function writeNarration(acts: SourcedAct[], options: WriteNarration
   }
   const evidence = evidenceGathererFor(options);
 
-  const writtenActs: WrittenAct[] = [];
-  for (let actIndex = 0; actIndex < acts.length; actIndex++) {
-    const act = acts[actIndex]!;
-    /* WS-D1: every slot in an act is written in parallel. Nothing in a
-       slot depends on another slot's text — the running order and the M3/M4
-       episode-ordering guarantees were both fixed at sourcing time, over the
-       whole Foray, before any of this runs — so the only thing serialising
-       them bought was wall time, and narration is the largest stage. Acts
-       stay sequential here; WS-D2 is what makes act 1 playable early. */
-    const slots = await Promise.all(
-      act.slots.map(async (slot, slotIndex) => {
-        const resumed = options.resume?.(actIndex, slotIndex);
-        if (resumed) return resumed;
-        const written = await writeSlot(slot, writer, verifier, evidence, voice, ctx);
-        await options.onSlotWritten?.(actIndex, slotIndex, written);
-        return written;
-      })
-    );
-    writtenActs.push({ title: act.title, slots });
-  }
-  return writtenActs;
+  /* G-32: every act is written in parallel too, through a gate of
+     `actConcurrency`. Nothing in one act's narration depends on another
+     act's text, for the same reason nothing in one SLOT does (WS-D1, below):
+     the running order and the M3/M4 episode-ordering guarantees were fixed at
+     sourcing time, over the whole Foray, before any of this runs. What DOES
+     depend on act order — the continuity call at each act boundary and the
+     stitched item list — lives in §4.8, and `runPipeline.ts` still drives
+     that one act at a time, act N waiting on act N-1. Before G-32 acts 2–4
+     of a medium Foray were narrated after act 1 for no reason other than the
+     `for` loop that stood here, which is where 6–16 minutes of a keyed run
+     went (latency brief §2.3). */
+  const gate = createActGate(options.actConcurrency ?? narrationActConcurrency());
+  let firstFailure: unknown = null;
+  const settled = await Promise.allSettled(
+    acts.map((act, actIndex) =>
+      gate
+        .run(async (): Promise<WrittenAct> => {
+          /* WS-D1: every slot in an act is written in parallel. Nothing in
+             a slot depends on another slot's text (see above), so the only
+             thing serialising them bought was wall time, and narration is
+             the largest stage. */
+          const slots = await Promise.all(
+            act.slots.map(async (slot, slotIndex) => {
+              const resumed = options.resume?.(actIndex, slotIndex);
+              if (resumed) return resumed;
+              const written = await writeSlot(slot, writer, verifier, evidence, voice, ctx);
+              await options.onSlotWritten?.(actIndex, slotIndex, written);
+              return written;
+            })
+          );
+          return { title: act.title, slots };
+        })
+        .catch((err: unknown) => {
+          /* The FIRST act to fail is the error this call reports; the acts
+             still queued behind it are refused rather than started (their
+             rejection is the same error, and is not reported twice), and the
+             ones already in flight run to completion so every slot they
+             finish is banked through `onSlotWritten`. `allSettled` rather
+             than `all` so this function does not return — and the driver
+             does not move on to the next Foray — while narration calls for
+             THIS Foray are still landing; `usageTracking` brackets one run
+             at a time and that has to stay true. */
+          if (firstFailure === null) {
+            firstFailure = err;
+            gate.abort(err instanceof Error ? err : new Error(String(err)));
+          }
+          throw err;
+        })
+    )
+  );
+  if (firstFailure !== null) throw firstFailure;
+  return settled.map((s) => (s as PromiseFulfilledResult<WrittenAct>).value);
 }
 
 /**
