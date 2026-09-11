@@ -163,6 +163,28 @@ describe("transcriptTextIndex — ranking episodes by what they say", () => {
     });
   });
 
+  it("F-85: a token that names an Object.prototype member indexes and searches like any other word", () => {
+    /* Run 7 (2026-09-11, engineering disasters) died in research-shape with `list.push is not a
+       function`: postings was a plain object, so the spoken token "constructor" resolved to
+       Object.prototype.constructor. MUTATION: build postings with `{}` again → this throws. */
+    const archive = [entry("a", "Episode 41"), entry("b", "Episode 42")];
+    const bodies = new FakeBodySource();
+    bodies.set("a", [
+      "the constructor said the bridge constructor crew had no drawings for the walkway",
+      "so the constructor improvised and the __proto__ of that decision was cost"
+    ]);
+    bodies.set("b", ["a quiet episode about hasOwnProperty and toString in code reviews"]);
+    withTempIndexRoot((dir) => {
+      const index = new FileTranscriptTextIndex({ archive, bodies, indexRoot: dir });
+      const hits = index.search("what the constructor crew improvised on the walkway");
+      expect(hits[0]!.entry.guid).toBe("a");
+      /* And the cached copy, parsed back from JSON, must read the same way. */
+      const again = new FileTranscriptTextIndex({ archive, bodies, indexRoot: dir });
+      expect(again.search("constructor walkway")[0]!.entry.guid).toBe("a");
+      expect(again.search("toString reviews")[0]!.entry.guid).toBe("b");
+    });
+  });
+
   it("caps the ranking at the requested limit", () => {
     const archive = ["a", "b", "c", "d"].map((g, i) => entry(g, `Episode ${i}`));
     const bodies = new FakeBodySource();
