@@ -399,7 +399,15 @@ export type Tier2Gate =
      run already minted) begins, so the pool's cut is what would play there —
      and the Foray's ledger refused that cut (already played, M3, a length
      rule). A sibling id at the same start is never minted instead. */
-  | "pool-cut";
+  | "pool-cut"
+  /* F-87 (#315): the window's cut would END past the episode's feed-declared
+     duration (`TranscriptDigestEntry.feed_duration_sec`). Not clamped — a
+     transcript whose timeline overruns the audio it describes is exactly the
+     untrustworthy timeline #315 describes, and a shorter cut of it would be a
+     plausible-looking segment nobody has reason to re-examine. Run 7 attempt 3
+     minted `…bp-texas-city#2292` ending at 2375.72 s on a 2071 s episode and
+     `check-forays.mjs` refused act 1's partial after every act was narrated. */
+  | "past-duration";
 
 export interface Tier1TraceRow {
   /** The best-scoring pool segment, whatever gate then refused it. */
@@ -454,6 +462,13 @@ export interface Tier2TraceRow {
    * check, still shows what it would have quoted). */
   startAnchor?: string;
   endAnchor?: string;
+  /** F-87: where the cut would have ENDED, and the episode's feed-declared
+   * duration — both present on a `past-duration` row so the refusal can be
+   * read as the comparison it is (run 7: 2375.72 s past 2071 s). `spanEndSec`
+   * is set whenever the search cut a span; `feedDurationSec` whenever the
+   * digest declared one. */
+  spanEndSec?: number;
+  feedDurationSec?: number;
   /* WS-H (F-06/F-49): what the TEXT search saw, so a run can be argued with.
      Without these, a trace row saying `no-anchor` cannot be told from one that
      never searched the text at all — which is the confusion that let run 2's

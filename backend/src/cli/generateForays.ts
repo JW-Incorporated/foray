@@ -416,6 +416,15 @@ export type ReportEntry = {
    * was told to continue (`--continue-on-refused-partial`). The report says
    * so even when the finished Foray then passed. */
   refusedPartials?: number[];
+  /** F-87 (a G-32 note): where a `refused-partial` abort landed — the
+   * 0-based act whose partial `check-forays` refused, and how many acts the
+   * Foray has. Under G-32 every act's narration had already STARTED when act
+   * `act`'s partial was judged (the ordered stitch loop validates act 0 only
+   * after all narrations are in flight), so `totalActs - act - 1` acts of
+   * narration were paid for past the refusal. Run 7 attempt 3: `{act: 0,
+   * totalActs: 4}` after 81 calls. Only on an `aborted` row whose reason is
+   * `refused-partial`. */
+  refusedAtAct?: { act: number; totalActs: number };
   /** G-30 (c): model calls across every attempt of this prompt. */
   calls?: number;
   /** G-30 (c): what the notification hook returned, when one was configured. */
@@ -581,6 +590,8 @@ export async function generateOneCandidate(
       const failure = classifyFailure(err);
       const detail = failure.reason;
       const checkpointNote = args.dryRun ? "" : ` (checkpoint kept at ${checkpointStore.filePathFor(checkpointKey)})`;
+      /* F-87: the act the refusal landed on, for the report (`refusedAtAct`). */
+      const refusedAtAct = err instanceof RefusedPartialError ? { act: err.actIndex, totalActs: err.totalActs } : null;
 
       if (failure.kind === "transient" || failure.kind === "budget-window") {
         if (resumes.length < args.maxResumes) {
@@ -621,7 +632,8 @@ export async function generateOneCandidate(
           ms: 0,
           abort: { reason: failure.kind, detail },
           ...(resumes.length ? { resumes } : {}),
-          ...(refusedPartials.length ? { refusedPartials } : {})
+          ...(refusedPartials.length ? { refusedPartials } : {}),
+          ...(refusedAtAct ? { refusedAtAct } : {})
         };
         return { skipped: false, entry: await finishEntry(entry, `aborted:${failure.kind}`, lastPartialId) };
       }

@@ -1681,6 +1681,11 @@ const BACKEND_FLOORS = {
      for every monotone rule — run 5 was aborted on an M4 share computed over
      a one-act slice. */
   "test/partialProjection.test.ts": 7,
+  /* F-87 (#315): a tape window whose cut ends past the episode's declared
+     duration is refused at sourcing (`past-duration`), never clamped; the
+     trace carries both numbers; the projection inherits the rule. Fixture is
+     run 7 attempt 3's 2375.72 s cut on a 2071 s episode. */
+  "test/pastDuration.test.ts": 7,
   /* WS-F robustness (docs/curation/generation-fix-plan-2026-09-09.md), closing
      F-03, F-04, F-11, F-13, F-17 and F-18 from generation run 1:
        checkpoint / runPipelineCheckpoint — per-stage resume inside ONE Foray,
