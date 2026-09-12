@@ -1,11 +1,11 @@
 {
-  "deploy_id": "06ab2445b8a96d62",
+  "deploy_id": "aa619a0756d5ff64",
   "files": {
-    "app.js": "sha256:0d6295a0c08b6f05d62f6acd6c73ab34d61e64535288c5af671604e422681999",
+    "app.js": "sha256:a6b3e2ab6dd6da90ba5ca2c1b5d836f93b70427450d5cbfe509d0014e81533e6",
     "data/catalog-client.json": "sha256:4ce82cc477acec4f50dd837322be267871e5a2b5d572c094854164fe3b1417e2",
     "data/dai-classification.json": "sha256:321fb915e4289a098cbd30ec7cc8e8503345a1c6cadb6cda2803ff656162a545",
     "data/discover.json": "sha256:ed9a093f7c3848b2910a58a4da11ee02a6929a8b4f2e4107cc5381a0136af25a",
-    "data/forays-directory.json": "sha256:9e960d6142a925175c10de2078028c879b095e83fd7409ae5ecaae4ce274b8e0",
+    "data/forays-directory.json": "sha256:01f8c9816497b9b80e889d2082d2e40a54a4a625fe70a9223a3a982627f3343f",
     "data/forays.json": "sha256:e2fe2e76371261c335814f0387cbb70de78aba1fe82f186c009e29c2a2854c61",
     "data/item-tags.json": "sha256:17c403bd09345f4f4e0b96f37da4187649288fee3fbd31f05858f219a1c604b1",
     "data/ladders.json": "sha256:7af481f27ac45de519f6ed6d75fccb3fee1208e6f642dd2dad4fad635c55de5b",
@@ -20,9 +20,9 @@
     "icon-512.png": "sha256:1c7c61679d2e6935e361de64a774930230dfaddd1ecef00dc70288e2d38f2451",
     "index.html": "sha256:9bffe0be2e62bd95565e4607b6be1c3b05f28dfcfde216cef142b54cffaa1ff3",
     "manifest.json": "sha256:e99d17d7b18d314cf6a60286c9f28e77761f5642d44117115c219b2acfb9c118",
-    "player/client.js": "sha256:6c14ecc046c401e5009f9a40b7c2d70f089a3445812fa1827dca70550d54a7a3",
+    "player/client.js": "sha256:d202cb142b9fc74ec5e010d4255e3ab5d138a56877e401cd663cac877ffc48e4",
     "player/default-voice.js": "sha256:ebdd4cb5067b937ec0ba02e1be6d8fc84c7e73e58078bcafc2ce8911d26ba82f",
-    "player/diagnostic-log.js": "sha256:82f8b9492dfe4fde91d0d49e36905f4ce92dc404c7968b73052df1a64efab5b4",
+    "player/diagnostic-log.js": "sha256:27327b5ea038f0118b7be71edea70752afca9cc5b15249352db7cd428d169e95",
     "player/durable-store.js": "sha256:64b8a80cc7f0f2b3efb366ce2a595e381f80fd1abe9c9e9e0bc3cdc3f7f6eeeb",
     "player/event-log.js": "sha256:88987f4b3c55ca289bf6e43d3264b05287d130a2a4672a5223054297029c2f9c",
     "player/foray-directory.js": "sha256:f7ba80435e686c9e11206504214ad6b8d4e53aa9976ebb65e0d69deb698814a3",
@@ -33,6 +33,7 @@
     "player/html-audio-backend.js": "sha256:055bf98c479512972d1f2badf1e320298fbba998b6881d7d0fbe5889886a2d83",
     "player/idb-tier.js": "sha256:1bfe6d3a37ab405010d6977acc749efafade727369c138ff56d6172f4918dbcb",
     "player/interlude.js": "sha256:e9c072e5d71b47cacc36d960696feeb2f950a59db42e6778e957589a63c3469e",
+    "player/kokoro-probe.js": "sha256:11050edbb65d8783c301179508c635ae38b6828d364751c8a293bbefe287881a",
     "player/media-session.js": "sha256:e30e1afaf72e1a235eb3ef9703ff8153ea0ef267033e505bc7a887fc86bba755",
     "player/playback-rate.js": "sha256:0e7ca3c674afbc11e6da66ff64bd3302fb3ef382c0b98903e31d3e3cabddce58",
     "player/position-store.js": "sha256:f90a88f0d6999d9b42cdea34ff16dbae0fd87f54cecd81cade219fc07e0282bc",
@@ -43,7 +44,7 @@
     "player/seek-policy.js": "sha256:248ca07cef5c5c7c09bd5967b1e86d8a3254493033aec77bb8e3d4b8f25e350c",
     "player/segment-strip.js": "sha256:cf63065bc8898d7a7eaba64a6950b4eff1b06f6c6fd0b613bdf8a20a0643396a",
     "player/strip-scrub-gesture.js": "sha256:88415f256049ee1ac96c6738651819d3b1c76161f6fe685dc6eaeab71b0d487e",
-    "player/tts-bridge.js": "sha256:e3edaf5846782af44f2d0eebdd709e7d34292c5e6b6ea7a72d7a25ba05ca810a",
+    "player/tts-bridge.js": "sha256:3c99c93f934c2d9840bbbfad4e8e3c885e832eacfd2a616fc9034a276800db75",
     "search-engine.js": "sha256:680161045b4a907ddb19b45c42ac873066b5a7d6d5913ce91d40b53a28458d3c",
     "styles.css": "sha256:352f648fe741f39f3053d55e602a85e1570eb7724637ba0f60c319831b65bfdb"
   }
