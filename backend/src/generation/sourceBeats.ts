@@ -137,6 +137,33 @@ export const M4_LONG_CLIP_SEC = 300;
 export function m4SegmentCapFor(placedTapeSegments: number): number {
   return Math.max(1, Math.floor(placedTapeSegments * M4_ITEM_SHARE_MAX));
 }
+
+/**
+ * TWO BEATS ANSWERED IN ONE STRETCH OF TAPE ARE ONE CLIP (F-96).
+ *
+ * When a beat's window lies inside, overlaps, or starts within this many
+ * seconds after the clip this run minted most recently from the same episode
+ * — in the same act, with nothing placed since — the clip is EXTENDED to
+ * cover the beat's thought and the beat is attached to it
+ * (`SourcedBeat.mergedInto`), instead of the beat being refused. Before this
+ * the second beat was refused at `m4-share` (an episode's second segment
+ * needs eight placed) or, past that, minted as a second clip overlapping the
+ * first; both threw away the best case the founder asked for — "if there's
+ * a half hour of relevant content then let it ride" — which is exactly two
+ * beats' worth of one answer.
+ *
+ * Forty-five seconds is under one relevance window (`RELEVANCE_WINDOW_SEC`,
+ * 60 s): the bridge between the two thoughts is at most the host's segue
+ * between two answers, not a subject the extension already judged irrelevant
+ * for a whole minute. A hole in the tape (`TAPE_CUE_GAP_MAX_SEC`) inside the
+ * bridge refuses the merge, as it refuses every extension. The merged clip
+ * keeps the first clip's id and start (its start anchor and its place in the
+ * pool's id rule are unchanged, F-84), grows only forward, stays under
+ * `TAPE_WINDOW_MAX_SEC`, and is re-asked M4's long-clip and share clauses and
+ * D5's pair clause at its new length; a merge any of them refuses falls
+ * through to the ordinary walk.
+ */
+export const MERGE_GAP_SEC = 45;
 import {
   findTier1Match,
   loadSegmentPool,
@@ -155,6 +182,7 @@ import {
   cutWindowToSegment,
   deriveItemId,
   findTranscriptArchiveMatch,
+  indexCues,
   loadTranscriptArchive,
   seedFloorDecided,
   selectTapeWindow,
@@ -162,6 +190,8 @@ import {
   titleTokenScore,
   MIN_TAPE_SEGMENT_SEC,
   NullTranscriptCueProvider,
+  TAPE_CUE_GAP_MAX_SEC,
+  TAPE_WINDOW_MAX_SEC,
   TIER2_MATCH_THRESHOLD,
   TIER2_WINDOW_MIN_SHARE,
   TIER2_WINDOW_MIN_TERMS,
@@ -360,7 +390,8 @@ export function sourceBeats(deepenedActs: DeepenedAct[], options: SourceBeatsOpt
     placedDurations,
     placedSecByItem,
     longestSecByItem,
-    placed
+    placed,
+    lastMintedClip: null
   };
   const tapeRelevance: TapeRelevanceInput[] = [];
   /* One row per narration-degraded beat, saying what each tier saw and which
@@ -368,22 +399,29 @@ export function sourceBeats(deepenedActs: DeepenedAct[], options: SourceBeatsOpt
   const sourcingTrace: SourcingTrace[] = [];
 
   const acts: SourcedAct[] = deepenedActs.map((act, actIndex) => {
+    /* The act's thesis rides along (Q-01): the thought extension scores the
+       tape around a claim against the claim AND the thesis it serves, so an
+       answer that moves from the one to the other is still relevant tape.
+       AND THE THESIS'S OWN IDF WITH IT (F-96): the idf a candidate carries is
+       the claim search's and holds the claim's terms only, so the thesis's
+       words weighed one each — the weight of the claim's rarest word — and
+       run 9's extension stopped almost at once (`tapeExtent.ts`,
+       `relevanceScorer`). One index query per act, and the thesis is weighed
+       the way the claim is. */
+    const actContext: ActContext = { index: actIndex, thesis: act.thesis, thesisIdf: thesisIdfFor(act.thesis, state) };
     const slots: SourcedSlot[] = act.slots.map((slot, slotIndex) => {
       // Resolve tape-or-not for every beat in the slot FIRST, because the
       // Patch/Carry decision needs to know whether ANY beat in this slot —
       // not just this one — ended up tape-sourced (§4.5: "pick based on
       // whether the SLOT the beat belongs to has any other tape-sourced
       // beats").
-      /* The act's thesis rides along (Q-01): the thought extension scores the
-         tape around a claim against the claim AND the thesis it serves, so an
-         answer that moves from the one to the other is still relevant tape. */
-      const resolutions = slot.beats.map((beat) => resolveOneBeat(beat, state, act.thesis));
+      const resolutions = slot.beats.map((beat, beatIndex) => resolveOneBeat(beat, state, actContext, { slot: slotIndex, beat: beatIndex }));
       const slotHasTape = resolutions.some((r) => r.kind === "tape");
 
       const beats: SourcedBeat[] = slot.beats.map((beat, beatIndex) => {
         const resolution = resolutions[beatIndex]!;
         if (resolution.kind === "tape") {
-          tapeRelevance.push({
+          const row: TapeRelevanceInput = {
             actIndex,
             slotIndex,
             beatIndex,
@@ -417,9 +455,29 @@ export function sourceBeats(deepenedActs: DeepenedAct[], options: SourceBeatsOpt
             extendedBySec: resolution.extendedBySec,
             /* F-84: and whether the tape is the pool's own cut at the start
                tier 2's window reached — reused, never minted beside. */
-            poolCut: resolution.poolCut
-          });
-          return { sourcing: "tape", claim: beat.claim, exploration: beat.exploration, kind: beat.kind, tape: resolution.pointer };
+            poolCut: resolution.poolCut,
+            /* F-96: and, for a pool cut, how much longer this run's own
+               extent of the same window was — the seconds the pool's id rule
+               cost the listener, counted so a run log can say so. */
+            ...(resolution.poolCutShortBySec !== undefined ? { poolCutShortBySec: resolution.poolCutShortBySec } : {}),
+            /* F-96: the beat rides in an earlier beat's clip, extended to
+               cover it (`MERGE_GAP_SEC`); the row names that beat. */
+            ...(resolution.mergedInto ? { mergedInto: resolution.mergedInto } : {})
+          };
+          tapeRelevance.push(row);
+          /* A later beat merged into this clip lengthens it; the row that
+             says how far it was extended has to follow (F-96). */
+          if (state.lastMintedClip && state.lastMintedClip.pointer === resolution.pointer && !resolution.mergedInto) {
+            state.lastMintedClip.relevanceRow = row;
+          }
+          return {
+            sourcing: "tape",
+            claim: beat.claim,
+            exploration: beat.exploration,
+            kind: beat.kind,
+            tape: resolution.pointer,
+            ...(resolution.mergedInto ? { mergedInto: resolution.mergedInto } : {})
+          };
         }
         sourcingTrace.push({
           actIndex,
@@ -437,7 +495,17 @@ export function sourceBeats(deepenedActs: DeepenedAct[], options: SourceBeatsOpt
         const reason = slotHasTape
           ? `${resolution.reason} Slot "${slot.title}" has other tape-sourced beats — this beat patches what the slot's tape misses.`
           : `${resolution.reason} Slot "${slot.title}" has no tape-sourced beats at all — this beat carries the content alone.`;
-        return { sourcing: "narration", claim: beat.claim, exploration: beat.exploration, kind: beat.kind, narration: { mode, reason } };
+        return {
+          sourcing: "narration",
+          claim: beat.claim,
+          exploration: beat.exploration,
+          kind: beat.kind,
+          narration: { mode, reason },
+          /* F-96: a seeded beat that ends as narration has lost its seed —
+             the tape the spine wrote it from is not in the Foray. Carried for
+             the writer and verifier (see `SourcedBeatSchema`). */
+          ...(beat.seed ? { seedLost: true as const } : {})
+        };
       });
 
       return { title: slot.title, beats };
@@ -555,6 +623,9 @@ interface SourcingState {
   /** Where each placement came from, positionally parallel to
    * `placedDurations` — see the declaration in `sourceBeats`. */
   placed: PlacedSegment[];
+  /** The one clip a later beat's window may merge into (F-96) — the last
+   * segment this run minted, while nothing has been placed after it. */
+  lastMintedClip: LastMintedClip | null;
 }
 
 /** One placement's identity, for the rules the spread pass has to re-ask about
@@ -597,8 +668,62 @@ type BeatResolution =
       boundary?: TapeBoundary;
       extendedBySec?: number;
       poolCut?: "reused";
+      /** F-96: for a reused pool cut, how many seconds longer this run's
+       * extent of the same window would have been. */
+      poolCutShortBySec?: number;
+      /** F-96: the beat rides in an earlier beat's clip (`MERGE_GAP_SEC`);
+       * the position of that beat. */
+      mergedInto?: BeatAt;
     }
   | { kind: "narration"; reason: string; diagnosis: SourcingDiagnosis };
+
+/** A beat's position inside its act — the `carriedBy` shape narration
+ * beats already use, on the sourcing side (F-96). */
+export interface BeatAt {
+  slot: number;
+  beat: number;
+}
+
+/** What one act hands every beat it sources: its index, its thesis, and the
+ * thesis's own idf from the text index (F-96) — `undefined` when the index is
+ * the Null one or the thesis found no episode at all. */
+interface ActContext {
+  index: number;
+  thesis: string | null;
+  thesisIdf: ReadonlyMap<string, number> | undefined;
+}
+
+/**
+ * THE CLIP A LATER BEAT MAY MERGE INTO (F-96): the segment this run minted
+ * most recently, kept only while nothing has been placed after it
+ * (`placeTape` clears it). Holds live references — the `NewSegment` in
+ * `newSegments`, the `TapePointer` the first beat's `SourcedBeat` carries, the
+ * relevance row — because a merge LENGTHENS a clip that has already been
+ * returned to the caller, and every copy of its end has to move together.
+ */
+interface LastMintedClip {
+  itemId: string;
+  actIndex: number;
+  at: BeatAt;
+  /** The first beat's claim — what the merged clip is cut and anchored with. */
+  claim: string;
+  segment: NewSegment;
+  pointer: TapePointer;
+  span: TapeSpan;
+  cues: TranscriptCue[];
+  /** The first beat's claim window, so `extendedBySec` keeps meaning
+   * "seconds past the claim window" after a merge. */
+  claimStartSec: number;
+  claimEndSec: number;
+  /** The clip's slot in `placedDurations` / `placed`. */
+  placedIndex: number;
+  feedDurationSec: number | null;
+  /** The first beat's resolution — `sourceBeats` builds its relevance row
+   * from it AFTER the slot's beats have all resolved, so a merge made by a
+   * later beat of the slot has to have moved these numbers already. */
+  resolution: Extract<BeatResolution, { kind: "tape" }>;
+  relevanceRow?: TapeRelevanceInput;
+}
 
 /**
  * Whether a pool segment may be used, and if not, WHICH rule refused it.
@@ -821,6 +946,9 @@ function m4RuntimeAllows(itemId: string, durationSec: number, state: SourcingSta
  * move, so the two tiers cannot drift apart on what "placed" means — which is
  * exactly how tier 2 came to consult none of them. */
 function placeTape(segmentId: string, itemId: string, startSec: number, durationSec: number, state: SourcingState): void {
+  /* A placement after a minted clip closes it to merging (F-96): a beat
+     whose tape sits after ANOTHER clip in play order is not adjacent to it. */
+  state.lastMintedClip = null;
   state.usedSegmentIds.add(segmentId);
   state.lastStartByItem.set(itemId, startSec);
   state.usedCountByItem.set(itemId, (state.usedCountByItem.get(itemId) ?? 0) + 1);
@@ -875,7 +1003,32 @@ function archiveTraceRow(entry: TranscriptDigestEntry, score: number, gate: Tier
   return { bestShowId: entry.show_id, bestEpisodeTitle: entry.title, score, requiredScore: TIER2_MATCH_THRESHOLD, gate };
 }
 
-function resolveOneBeat(beat: Beat, state: SourcingState, thesis: string | null = null): BeatResolution {
+/** The lineage gate as a predicate over archive entries — what tier 2's
+ * candidate search and the act's thesis query (F-96) both filter by. */
+function usableArchiveEntry(state: SourcingState): (entry: TranscriptDigestEntry) => boolean {
+  return (entry: TranscriptDigestEntry) => familyGateAllows(state.forayTopic, nodesForArchiveEntry(entry, state.root), state.root);
+}
+
+/**
+ * The idf of the act's thesis's terms, from the same index and the same
+ * usable shows the claim searches run over (F-96). One query per act; the
+ * Null index answers nothing and the thesis is then weighed one per word,
+ * which is what every test written before F-96 already saw.
+ */
+function thesisIdfFor(thesis: string | null, state: SourcingState): ReadonlyMap<string, number> | undefined {
+  if (!thesis || !state.textIndex.enabled) return undefined;
+  return state.textIndex.search(thesis, { limit: 1, isUsable: usableArchiveEntry(state) })[0]?.idf;
+}
+
+/** The claim search's idf over the thesis's — a term the claim search
+ * weighed keeps that weight; the rest come from the thesis query. */
+function mergeIdf(claimIdf: ReadonlyMap<string, number> | undefined, thesisIdf: ReadonlyMap<string, number> | undefined): ReadonlyMap<string, number> | undefined {
+  if (!thesisIdf) return claimIdf;
+  if (!claimIdf) return thesisIdf;
+  return new Map([...thesisIdf, ...claimIdf]);
+}
+
+function resolveOneBeat(beat: Beat, state: SourcingState, act: ActContext, at: BeatAt): BeatResolution {
   const claim = beat.claim;
 
   /* ARGUMENTS ARE NOT ON TAPE (F-38). A thesis about a class of events —
@@ -899,10 +1052,9 @@ function resolveOneBeat(beat: Beat, state: SourcingState, thesis: string | null 
   /* TIER 2'S CANDIDATES ARE GATHERED BEFORE TIER 1 RUNS (G-24 R2), because one
      of them is asked first. Gathering is a text-index query and a title scan —
      no body is opened here. */
-  const archiveIsUsable = (entry: TranscriptDigestEntry) =>
-    familyGateAllows(state.forayTopic, nodesForArchiveEntry(entry, state.root), state.root);
+  const archiveIsUsable = usableArchiveEntry(state);
   const candidates = tier2Candidates(claim, state, archiveIsUsable, beat.seed);
-  const walk = new Tier2Walk(beat, candidates, state, thesis);
+  const walk = new Tier2Walk(beat, candidates, state, act, at);
 
   /* THE SEED WINDOW IS ASKED BEFORE TIER 1 (G-24 R2; tape-yield brief §4 cause
      4). §4.5's search order puts the pool first because a curated segment is the
@@ -1076,10 +1228,20 @@ class Tier2Walk {
     private readonly beat: Beat,
     private readonly candidates: Tier2Candidate[],
     private readonly state: SourcingState,
-    /** The act's thesis — what the thought extension scores tape against
-     * beside the claim (Q-01). `null` for a caller with no act. */
-    private readonly thesis: string | null = null
+    /** The act — its thesis, which the thought extension scores tape against
+     * beside the claim (Q-01), with the thesis's own idf (F-96). */
+    private readonly act: ActContext,
+    /** Where this beat sits in the act — what a clip that merges a later
+     * beat records as the beat it carries (F-96). */
+    private readonly at: BeatAt
   ) {}
+
+  /** Whether `itemId` is the episode of the clip a window could merge into
+   * (F-96): this run's last minted clip, from this act, nothing placed since. */
+  private mergeableInto(itemId: string): LastMintedClip | null {
+    const last = this.state.lastMintedClip;
+    return last && last.itemId === itemId && last.actIndex === this.act.index ? last : null;
+  }
 
   /** Walks `list` in `mode`; returns the accepted resolution or `null`. The
    * search pass ends with the deferred second chance. */
@@ -1111,8 +1273,13 @@ class Tier2Walk {
 
          THE SEED PASS IS THE ONE EXCEPTION (G-24 R3): there the body is opened
          first and share is asked after the relevance verdict, below, so the row
-         that says `m4-share` can also say what the seed window scored. */
-      if (!seedPass && !m4ShareAllows(itemId, state)) {
+         that says `m4-share` can also say what the seed window scored.
+
+         AND SO IS THE EPISODE OF THE LAST MINTED CLIP (F-96): its window may
+         MERGE into that clip, which places no second segment and so owes M4's
+         count nothing; the cap is asked after the merge has been tried. */
+      const mergeable = this.mergeableInto(itemId);
+      if (!seedPass && !mergeable && !m4ShareAllows(itemId, state)) {
         this.record({ candidate, gate: "m4-share" }, seedPass);
         continue;
       }
@@ -1166,9 +1333,20 @@ class Tier2Walk {
          window that would have cleared the searching floor anyway — the trace
          carries this so a run log can count how often the rule DECIDED. */
       const seedFloor: "share-only" | undefined = seedPass && seedFloorDecided(window) ? "share-only" : undefined;
+      /* TWO BEATS IN ONE STRETCH OF TAPE ARE ONE CLIP (F-96, `MERGE_GAP_SEC`).
+         The window is about the claim; if it lies inside, overlaps or sits
+         just after the clip this run minted last from this episode, that clip
+         is extended to cover the thought and the beat rides in it — no second
+         segment, no `m4-share`, no overlapping cut. Refused merges fall
+         through to the ordinary walk below. */
+      if (mergeable) {
+        const merged = this.mergeIntoClip(mergeable, candidate, cues, window!, seedFloor);
+        if (merged) return merged;
+      }
       /* M4's share, for the seed pass — asked here, after relevance, for the
-         trace's sake (see the class note). The rule and the answer are the same. */
-      if (seedPass && !m4ShareAllows(itemId, state)) {
+         trace's sake (see the class note). The rule and the answer are the
+         same. And for the mergeable episode whose merge was refused. */
+      if ((seedPass || mergeable) && !m4ShareAllows(itemId, state)) {
         this.record({ candidate, gate: "m4-share", window, seedFloor }, seedPass);
         continue;
       }
@@ -1195,7 +1373,7 @@ class Tier2Walk {
          candidate is given up on (Q-04) — see the chooser. */
       const choice = chooseCutForPlacement(
         claim,
-        this.thesis,
+        this.act,
         cues,
         window!,
         candidate.text?.idf,
@@ -1229,9 +1407,9 @@ class Tier2Walk {
           this.record({ candidate, gate: "pool-cut", window, span: choice.accepted.span, seedFloor }, seedPass);
           continue;
         }
-        return this.reuseCommittedCut(candidate, committed, seedFloor);
+        return this.reuseCommittedCut(candidate, committed, seedFloor, choice.accepted);
       }
-      const accepted = this.acceptCandidate(candidate, cues, window!, choice.accepted.span, itemId, seedFloor, choice.lengthGate);
+      const accepted = this.acceptCandidate(candidate, cues, window!, choice.accepted, itemId, seedFloor, choice.lengthGate, candidate.entry.feed_duration_sec ?? null);
       if (accepted) return accepted;
       this.record({ candidate, gate: "no-audio-source", window, span: choice.accepted.span, seedFloor }, seedPass);
     }
@@ -1261,14 +1439,24 @@ class Tier2Walk {
    * `data/segments.json` row — and the relevance row's `poolCut` says the
    * archive search is what found it.
    */
-  private reuseCommittedCut(candidate: Tier2Candidate, committed: SegmentRecord, seedFloor: "share-only" | undefined): BeatResolution {
+  private reuseCommittedCut(candidate: Tier2Candidate, committed: SegmentRecord, seedFloor: "share-only" | undefined, cut: PlacementCut): BeatResolution {
     const { state } = this;
     placeTape(committed.id, committed.item_id, committed.start_sec, committed.end_sec - committed.start_sec, state);
+    /* F-96: WHAT THE POOL'S ID RULE COST. Run 9 regenerated run 8's prompt
+       with run 8's sixteen pre-Q-01 cuts in the pool, and four of its ten
+       clips were those cuts reused at their old length (31.9-152 s) while
+       this run's extent of the same window ran 70-381 s — the seed path is
+       extended like every other, and this is where the extension was lost.
+       The row and the seeding line count the seconds so the run log says
+       so; the remedy is a pool decision (a generated draft's rows superseded
+       by a longer cut at the same start), not a sibling id (F-84). */
+    const shortBy = Math.round((cut.durationSec - (committed.end_sec - committed.start_sec)) * 1000) / 1000;
     return {
       kind: "tape",
       fromSeed: candidate.fromSeed === true,
       seedFloor,
       poolCut: "reused",
+      ...(shortBy > 0 ? { poolCutShortBySec: shortBy } : {}),
       nodes: nodesForPoolSegment(committed, state.root),
       pointer: {
         segmentId: committed.id,
@@ -1305,13 +1493,15 @@ class Tier2Walk {
     candidate: Tier2Candidate,
     cues: TranscriptCue[],
     window: TapeWindow,
-    span: TapeSpan,
+    cut: PlacementCut,
     itemId: string,
     seedFloor: "share-only" | undefined,
-    lengthGate: "d5-pair" | undefined
+    lengthGate: "d5-pair" | undefined,
+    feedDurationSec: number | null
   ): BeatResolution | null {
     const { state } = this;
     const claim = this.beat.claim;
+    const span = cut.span;
     /* TAPE NOTHING CAN PLAY IS NOT TAPE. A minted segment is a pointer into an
        episode's audio, and `check-forays.mjs` refuses a pool item id with no
        `data/segment-sources.json` row ("nothing can resolve its audio"). So the
@@ -1364,7 +1554,7 @@ class Tier2Walk {
     };
     state.newSegments.push(segment);
     placeTape(segmentId, itemId, span.startSec, span.endSec - span.startSec, state);
-    return {
+    const resolution: Extract<BeatResolution, { kind: "tape" }> = {
       kind: "tape",
       fromSeed: candidate.fromSeed === true,
       seedFloor,
@@ -1374,7 +1564,165 @@ class Tier2Walk {
       nodes: nodesForArchiveEntry(candidate.entry, state.root),
       pointer
     };
+    /* The clip the NEXT beat's window may merge into (F-96) — set after
+       `placeTape`, which clears it. */
+    state.lastMintedClip = {
+      itemId,
+      actIndex: this.act.index,
+      at: this.at,
+      claim,
+      segment,
+      pointer,
+      span,
+      cues,
+      claimStartSec: cut.extent.claimStartSec,
+      claimEndSec: cut.extent.claimEndSec,
+      placedIndex: state.placedDurations.length - 1,
+      feedDurationSec,
+      resolution
+    };
+    return resolution;
   }
+
+  /**
+   * MERGES THIS BEAT'S WINDOW INTO THE LAST MINTED CLIP (F-96), or returns
+   * `null` and lets the walk go on. The rules, in order:
+   *
+   *   1. The claim window starts at or after the clip's start — the tape that
+   *      carries THIS beat has to be inside the merged clip; a window that
+   *      begins before the clip is a different stretch (and M3 would refuse
+   *      it as a second segment anyway).
+   *   2. The beat's own thought extent (`extendToThought`, same terms and idf
+   *      as any cut) starts no later than `MERGE_GAP_SEC` after the clip's
+   *      end, and no hole in the tape (`TAPE_CUE_GAP_MAX_SEC`) lies between
+   *      the clip's last cue and the extent's first.
+   *   3. The merged clip is the clip's start to the later of the two ends —
+   *      it grows FORWARD only, so its id, start anchor and place in the pool
+   *      (F-84) are unchanged — and stays under `TAPE_WINDOW_MAX_SEC`.
+   *   4. At its new length it is re-asked what the walk asks any cut: the
+   *      feed's duration (F-87), M4's one-long-clip and share clauses, and
+   *      D5's pair clause against the clip placed BEFORE it (Q-04). A merge
+   *      any of them refuses is not made.
+   *
+   * On success every live copy of the clip's end moves — the `NewSegment`,
+   * the first beat's `TapePointer`, its relevance row, the length ledgers —
+   * and the beat resolves to the SAME pointer with `mergedInto` naming the
+   * beat whose clip it rides in. The end anchor is re-minted from the tape at
+   * the new last cue exactly as `cutWindowToSegment` mints any anchor.
+   */
+  private mergeIntoClip(
+    last: LastMintedClip,
+    candidate: Tier2Candidate,
+    cues: TranscriptCue[],
+    window: TapeWindow,
+    seedFloor: "share-only" | undefined
+  ): BeatResolution | null {
+    const { state } = this;
+    const claim = this.beat.claim;
+    if (window.startSec < last.segment.startSec) return null;
+    const terms = extentTermsFor(claim, this.act, candidate.text?.idf);
+    const extent = extendToThought(window, cues, { ...terms, maxSec: TAPE_WINDOW_MAX_SEC });
+    if (extent.startSec > last.segment.endSec + MERGE_GAP_SEC) return null;
+    const lastCue = Math.max(extent.lastCue, last.span.lastCue);
+    if (holeBetweenCues(cues, last.span.lastCue, lastCue)) return null;
+    const boundary = weakerBoundary(last.segment.boundary ?? "claim-only", extent.boundary);
+    const mergedWindow: TapeWindow = {
+      ...window,
+      firstCue: last.span.firstCue,
+      lastCue,
+      startSec: last.segment.startSec,
+      endSec: Math.max(extent.endSec, last.segment.endSec),
+      boundary,
+      claimStartSec: last.claimStartSec,
+      claimEndSec: last.claimEndSec,
+      extendedBySec: 0
+    };
+    if (mergedWindow.endSec - mergedWindow.startSec > TAPE_WINDOW_MAX_SEC) return null;
+    /* Cut with the FIRST beat's claim: the growth (a no-op past the floor)
+       and the anchors are the clip's, and `boundary` stays what the two
+       extents found unless the cut has to move an edge. */
+    const span = cutWindowToSegment(last.claim, cues, mergedWindow);
+    if (!span || !startsCoincide(span.startSec, last.segment.startSec)) return null;
+    const durationSec = span.endSec - span.startSec;
+    if (pastDurationGate(span, last.feedDurationSec)) return null;
+    if (!mergedClipEscapesLengthRules(last, durationSec, state)) return null;
+
+    /* Apply — every live copy of the end, together. */
+    const before = last.segment.endSec - last.segment.startSec;
+    last.segment.endSec = span.endSec;
+    last.segment.endAnchor = span.endAnchor;
+    last.segment.boundary = span.boundary ?? boundary;
+    last.segment.extendedBySec = span.extendedBySec ?? 0;
+    last.pointer.endSec = span.endSec;
+    last.pointer.endAnchor = span.endAnchor;
+    last.span = span;
+    last.resolution.boundary = last.segment.boundary;
+    last.resolution.extendedBySec = last.segment.extendedBySec;
+    if (last.relevanceRow) {
+      last.relevanceRow.boundary = last.segment.boundary;
+      last.relevanceRow.extendedBySec = last.segment.extendedBySec;
+    }
+    state.placedDurations[last.placedIndex] = durationSec;
+    state.placedSecByItem.set(last.itemId, (state.placedSecByItem.get(last.itemId) ?? 0) - before + durationSec);
+    state.longestSecByItem.set(last.itemId, Math.max(state.longestSecByItem.get(last.itemId) ?? 0, durationSec));
+
+    return {
+      kind: "tape",
+      fromSeed: candidate.fromSeed === true,
+      seedFloor,
+      boundary: last.segment.boundary,
+      extendedBySec: last.segment.extendedBySec,
+      nodes: nodesForArchiveEntry(candidate.entry, state.root),
+      pointer: last.pointer,
+      mergedInto: last.at
+    };
+  }
+}
+
+/** Whether a hole in the tape (`TAPE_CUE_GAP_MAX_SEC`) lies between cue
+ * `from` and cue `to` of the indexed cue list `cutWindowToSegment` counts by. */
+function holeBetweenCues(cues: TranscriptCue[], from: number, to: number): boolean {
+  const index = indexCues(cues);
+  for (let k = from + 1; k <= to && k < index.cues.length; k++) {
+    if (index.cues[k]!.start_sec - index.cues[k - 1]!.end_sec > TAPE_CUE_GAP_MAX_SEC) return true;
+  }
+  return false;
+}
+
+const BOUNDARY_RANK: Record<TapeBoundary, number> = { "claim-only": 0, sentence: 1, turn: 2 };
+function weakerBoundary(a: TapeBoundary, b: TapeBoundary): TapeBoundary {
+  return BOUNDARY_RANK[a] <= BOUNDARY_RANK[b] ? a : b;
+}
+
+/**
+ * The length rules a MERGED clip is re-asked at its new length (F-96) — the
+ * same arithmetic as `durationVetoFor`, with the clip's own old length taken
+ * out of the ledger first, because the ledger already holds it. D2 cannot
+ * refuse a clip that only grew; D5's pair is against the placement BEFORE
+ * the clip (nothing has been placed after it, or it could not be merged
+ * into); M4's two clauses read the episode's seconds with this clip at its
+ * new length.
+ */
+function mergedClipEscapesLengthRules(last: LastMintedClip, durationSec: number, state: SourcingState): boolean {
+  const before = state.placedDurations[last.placedIndex] ?? 0;
+  if (!placementEscapesD5Pair(state.placedDurations.slice(0, last.placedIndex), durationSec)) return false;
+  /* M4, with this clip's old length removed from every figure it appears in. */
+  const others = state.placedDurations.filter((_, i) => i !== last.placedIndex);
+  const episodeOthersSec = (state.placedSecByItem.get(last.itemId) ?? 0) - before;
+  let longestOther = 0;
+  let longOthers = 0;
+  state.placed.forEach((p, i) => {
+    if (i === last.placedIndex || p.itemId !== last.itemId) return;
+    const d = state.placedDurations[i] ?? 0;
+    longestOther = Math.max(longestOther, d);
+    if (d > M4_LONG_CLIP_SEC) longOthers += 1;
+  });
+  if (durationSec > M4_LONG_CLIP_SEC && longOthers > 0) return false;
+  const episodeSec = episodeOthersSec + durationSec;
+  const beyondLongest = episodeSec - Math.max(longestOther, durationSec);
+  const totalSec = others.reduce((a, b) => a + b, 0) + durationSec;
+  if (!(totalSec > 0)) return true;
+  return beyondLongest / totalSec <= M4_ITEM_SHARE_MAX;
 }
 
 /* ------------------------------------------------------------------------- */
@@ -1462,9 +1810,20 @@ interface ExtentTerms {
   idf: ReadonlyMap<string, number> | undefined;
 }
 
+/** The claim's terms, the act's thesis's terms, and the claim search's idf
+ * merged with the thesis's own (F-96) — what every extension of this beat's
+ * window scores relevance with. */
+function extentTermsFor(claim: string, act: ActContext, claimIdf: ReadonlyMap<string, number> | undefined): ExtentTerms {
+  return {
+    claimTerms: thoughtTerms(claim),
+    thesisTerms: act.thesis ? thoughtTerms(act.thesis) : [],
+    idf: mergeIdf(claimIdf, act.thesisIdf)
+  };
+}
+
 function chooseCutForPlacement(
   claim: string,
-  thesis: string | null,
+  act: ActContext,
   cues: TranscriptCue[],
   window: TapeWindow,
   idf: ReadonlyMap<string, number> | undefined,
@@ -1472,7 +1831,7 @@ function chooseCutForPlacement(
   feedDurationSec: number | null,
   state: SourcingState
 ): PlacementChoice | null {
-  const terms: ExtentTerms = { claimTerms: thoughtTerms(claim), thesisTerms: thesis ? thoughtTerms(thesis) : [], idf };
+  const terms = extentTermsFor(claim, act, idf);
   const full = cutExtent(claim, cues, window, terms, undefined);
   if (!full) return null;
   const fullGate = placementGateFor(full, itemId, feedDurationSec, state);

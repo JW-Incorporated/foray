@@ -591,7 +591,12 @@ const TapeRelevanceInputSchema = z.object({
   boundary: TapeBoundarySchema.optional(),
   extendedBySec: z.number().optional(),
   /* F-84: the pool's cut at the same start was reused. Optional likewise. */
-  poolCut: z.literal("reused").optional()
+  poolCut: z.literal("reused").optional(),
+  /* F-96: the seconds a reused pool cut fell short of this run's extent, and
+     the beat whose clip a merged beat rides in. Optional: a checkpoint
+     written before F-96 still resumes. */
+  poolCutShortBySec: z.number().optional(),
+  mergedInto: z.object({ slot: z.number().int().nonnegative(), beat: z.number().int().nonnegative() }).optional()
 });
 
 /* F-80 renamed the D5 gate from `d5-uniform` (a preference, #571) to

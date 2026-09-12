@@ -1622,7 +1622,12 @@ const BACKEND_FLOORS = {
      long-clip and beyond-the-longest-clip clauses (3), and the tier-2 clip as
      the thought around the claim with D5's pair clause asked of it (3). The
      extension itself has its own floored suite below (`tapeExtent.test.ts`). */
-  "test/sourceBeats.test.ts": 119,
+  /* RAISED 119 -> 124 by F-96 (Q-01 pass 2): the seed path extended, the
+     same-stretch merge (one clip, two beats), the gap and act-boundary
+     refusals, `seedLost` on a seeded beat that ends as narration, and the
+     end-to-end thesis case; the two ledger cases that pinned "a second beat
+     on the same episode is refused" now ask it across an act boundary. */
+  "test/sourceBeats.test.ts": 124,
   /* Q-04: the checker's D5 arithmetic mirrored in `d5Pair.ts` — the pair
      clause that replaced F-80's triple — pinned to `check-forays.mjs`'s own
      `d5UniformPairs` row by row (run in a Node subprocess, the only way that
@@ -1633,7 +1638,10 @@ const BACKEND_FLOORS = {
      (turn and sentence boundaries, the host's question, the relevance walk and
      its measured floor, the hole in the tape, the ceiling, the anchors) and the
      hand-set numbers pinned. Every case names its mutation. */
-  "test/tapeExtent.test.ts": 11,
+  /* RAISED 11 -> 13 by F-96: the claim and the thesis scored as two shares
+     (run 9's live timidity, the mutation being the old union query), and the
+     cut never shortening an extent below the boundary it found. */
+  "test/tapeExtent.test.ts": 13,
   /* WS-H’s new module: the BM25 index over the normalised cue text, its disk
      cache and the invalidation that makes a re-transcribed episode rebuild it,
      and the Null implementation CI actually runs. Raised to 12 by F-61: the
@@ -1682,7 +1690,8 @@ const BACKEND_FLOORS = {
   "test/forayItems.test.ts": 7,
   "test/measureCadence.test.ts": 3,
   "test/smoothSeam.test.ts": 8,
-  "test/stitchAct.test.ts": 9,
+  /* RAISED 9 -> 10 by F-96: a clip carrying two beats plays once. */
+  "test/stitchAct.test.ts": 10,
   "test/stitchForay.test.ts": 4,
   /* A3.1/Q3 (kanban t_8d1a6a58): backend/src/catalog/breadthCatalog.ts +
      searchBreadthShows.ts — show search over the FULL breadth catalogue
@@ -1722,7 +1731,9 @@ const BACKEND_FLOORS = {
      mutation per test. */
   "test/publishSuites.test.ts": 15,
   /* G-25: spine seeding ledger (M4-derived caps) and seed order. */
-  "test/spineSeeding.test.ts": 5,
+  /* RAISED 5 -> 6 by F-96: the seeding line's merged / pool-short / seedLost
+     counts. */
+  "test/spineSeeding.test.ts": 6,
   /* G-30: self-resuming runs, abort on a refused partial, notification hook, id suffixing. */
   "test/generateForaysHandsFree.test.ts": 20,
   "test/finalizeForay.test.ts": 8,
@@ -1743,7 +1754,8 @@ const BACKEND_FLOORS = {
      share-of-whole rules (M4, D3, D5-IQR, D2-end, D4-share) and on itself
      for every monotone rule — run 5 was aborted on an M4 share computed over
      a one-act slice. */
-  "test/partialProjection.test.ts": 7,
+  /* RAISED 7 -> 8 by F-96: a merged beat's clip is projected once. */
+  "test/partialProjection.test.ts": 8,
   /* F-87 (#315): a tape window whose cut ends past the episode's declared
      duration is refused at sourcing (`past-duration`), never clamped; the
      trace carries both numbers; the projection inherits the rule. Fixture is

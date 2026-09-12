@@ -53,6 +53,33 @@ describe("stitchAct — rule 1: silence is a valid bridge", () => {
   });
 });
 
+describe("stitchAct — F-96: a clip carrying two beats plays once", () => {
+  it("emits one tape item for two beats that point at the same segment, and covers both beats", () => {
+    /* §4.5 merges a beat whose thought sits in the stretch an earlier beat's
+       clip covers into that clip: both beats carry the same pointer. The clip
+       plays once, on the first beat; the second beat's claim is in the tape
+       already playing, so it emits nothing — not its item, not a connective
+       — and coverage still records it. A narration beat between them keeps
+       its page. MUTATION THAT KILLS THIS: drop the `emittedSegments` test —
+       the segment appears twice and `check-forays.mjs` refuses the Foray. */
+    const act = makeAct([
+      {
+        title: "slot 1",
+        beats: [
+          tapeBeat("First claim.", "ep-1", 100, 240),
+          narrationBeat("A bridge."),
+          tapeBeat("Second claim, carried by the same clip.", "ep-1", 100, 240, narratedBeat("An intro that has nothing to introduce."))
+        ]
+      }
+    ]);
+    const stitched = stitchAct(act, "act-1");
+    expect(stitched.items.map((i) => i.kind)).toEqual(["tape", "narration"]);
+    expect(stitched.items.filter((i) => i.kind === "tape")).toHaveLength(1);
+    expect(stitched.coverage.entries).toHaveLength(3);
+    expect(validateActCoverage(stitched.coverage, countActBeats(act)).valid).toBe(true);
+  });
+});
+
 describe("stitchAct — rule 2: the jingle marks a change of tape", () => {
   it("never leaves two consecutive cross-episode tape items with nothing between (jingle backstop)", () => {
     const act = makeAct([

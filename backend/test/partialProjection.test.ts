@@ -222,6 +222,23 @@ describe("buildProjectedItems — the sourcing plan, after the partial's own ite
   });
 });
 
+describe("buildProjectedItems — F-96: a merged beat's clip is projected once", () => {
+  it("projects one segment item for two later beats that share a pointer, and counts its seconds once", () => {
+    /* §4.5's merge gives the second beat the first beat's pointer; the stitch
+       emits that clip once, so the projection must too, or the projected M4
+       share would charge the episode twice for one clip. MUTATION THAT KILLS
+       THIS: drop the `projectedSegments` set. */
+    /* `plan` puts the first half of the ids in act 2 — the two copies land
+       there together, the way a merge only ever joins beats of one act. */
+    const twice = [laterDistinct[0]!, laterDistinct[0]!, laterDistinct[1]!];
+    const built = buildProjectedItems(partialItems, 0, plan(twice));
+    const later = built.items.slice(partialItems.length).filter((i) => i.type === "segment");
+    expect(later.map((s) => (s as { segment_id: string }).segment_id)).toEqual(laterDistinct.slice(0, 2));
+    expect(built.projectedTapeSegments).toBe(2);
+    expect(built.addedRuntimeSec).toBeCloseTo(2 * 120 + projectedNarrationSec("Patch") + projectedNarrationSec("Carry"), 3);
+  });
+});
+
 describe("buildPartialCandidate with a projection plan (F-79)", () => {
   it("run 5's shape: the partial's own M4 share is over the cap, the projected whole is under — the partial PASSES", async () => {
     /* THE FINDING. `ep-a` is 1 of 6 segments (16.7 %) and 200 of 750 tape
