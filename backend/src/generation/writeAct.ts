@@ -460,7 +460,7 @@ function mechanicalPass(seams: SeamState[], reply: ActWriteResult, clipById: Map
  * F-97: the mechanical gate alone, on a RECORDED writer exchange — the
  * request as the writer saw it and the reply it gave — so a run's queue
  * files can be replayed against the current rules without a model call
- * (the run-9 replay in PR #648's body). The seams are rebuilt from the
+ * (the run-9 replay in the F-97 PR body). The seams are rebuilt from the
  * writer's own briefs; nothing here depends on the sourced act. Returns,
  * per seam, the issues the gate raises now (none for a clean seam), the
  * gated claim count, and whether the seam is silent.
