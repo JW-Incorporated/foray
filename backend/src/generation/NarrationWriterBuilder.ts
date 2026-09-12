@@ -132,7 +132,13 @@ export interface BeatBrief {
 
 /** One seam of the act: the narration between two clips (or before the
  * first, or after the last). Its script carries the beats listed and, when
- * it introduces a clip, the Intro for it. */
+ * it introduces a clip, the Intro for it.
+ *
+ * F-97: THERE IS NO MODE ON THE BRIEF. Run 9 sent the writer "SEAM s0 —
+ * mode Patch" and then refused s0 in code because a Patch "must select at
+ * least one claim" — a rule about a page role the writer never chose. The
+ * mode is now assigned AFTER writing, from what the seam turned out to do
+ * (`actSeams.ts`'s `assignSeamMode`); the writer is given only the band. */
 export interface SeamBrief {
   /** `s<n>` in play order. */
   seamId: string;
@@ -145,16 +151,22 @@ export interface SeamBrief {
   introduces?: string;
   /** The introduction the clip in `introduces` needs. Absent with it. */
   intro?: IntroKind;
-  /** The mode the seam's page is recorded under: `Carry` when it carries
-   * a Carry beat, `Patch` when it carries beats, `Intro` when it only
-   * introduces. */
-  mode: NarrationMode;
   /** The character band the script must land in (`seamBand`). */
   band: [number, number];
   /** The seam's script from the previous round, when this is a retry —
    * the writer EDITS the act's prose rather than starting over (Q-03:
    * "a missed beat sends back a note, not a page"). */
   previousScript?: string;
+  /** F-97: true when this seam cleared every rule and the verifier
+   * confirmed it in an earlier round. The writer returns `previousScript`
+   * VERBATIM for a frozen seam — the orchestrator keeps the frozen text
+   * whatever comes back — so a retry for one seam can never cost another
+   * seam its text (run 9 dropped a clean Intro this way). */
+  frozen?: boolean;
+  /** F-97: what is wrong with THIS seam, when this is a retry and the seam
+   * is not frozen — the mechanical refusal or the verifier's note, with
+   * the sentence it objects to quoted where there is one. */
+  notes?: string;
 }
 
 export interface ActWriteRequest {
@@ -162,6 +174,9 @@ export interface ActWriteRequest {
   voice: Voice;
   seams: SeamBrief[];
   clips: ClipBrief[];
+  /** F-97: the verified pages of earlier acts this act's prose may rest
+   * on (their documents are in `documents` too, kind `page`). */
+  ground?: GroundPageBrief[];
   /** Every document the act may quote — print passages and the clips'
    * transcript windows, deduplicated act-wide. Nothing else is quotable. */
   documents: EvidenceDoc[];
@@ -170,10 +185,26 @@ export interface ActWriteRequest {
   retryNote?: string;
 }
 
-/** One seam's script with the claims it asserts. `claims` and
- * `usedClaims` mean exactly what they mean on a `SelectedAndWrittenPage`;
- * an empty script is allowed only on a seam with no beats whose intro is
- * not `full` — it means "no page here, silence bridges". */
+/** F-88's ground, on the act path (F-97): a page of this Foray verified in
+ * an act that has already landed. Listed to the verifier as an act source
+ * (`p<n>`) a thesis seam may rest on, and handed to the writer as a
+ * document of kind `page` it may quote whole sentences of. */
+export interface GroundPageBrief {
+  /** Foray-wide page id (`synthesisVerify.ts`'s `forayPageId`). */
+  pageId: string;
+  claim: string;
+  script: string;
+  /** The `claimText` of every source the page carries. */
+  established: string[];
+}
+
+/** One seam's script with the claims it selected. `claims` are gated
+ * mechanically exactly as a `SelectedAndWrittenPage`'s; `usedClaims` is
+ * kept for the reply shape but is no longer the seam's source list — since
+ * F-97 the act's whole claim pool is one source set, and the VERIFIER
+ * answers which of it each seam rests on (`SeamVerdict.restsOn`). An empty
+ * script is allowed only on a seam with no beats whose intro is not `full`
+ * — it means "no page here, silence bridges". */
 export interface WrittenSeam {
   seamId: string;
   script: string;

@@ -117,11 +117,22 @@ export class StubNarrationVerifierBuilder implements NarrationVerifierBuilder {
   }
 }
 
-/** Exported for the act tests. */
+/** Exported for the act tests. F-97: what a seam RESTS ON is answered
+ * here, deterministically — its own selected claims when it selected any;
+ * else, for a declarative bridge, the windows of the clips on either side
+ * of it (the act's sources include every held window as `c<n>`); else
+ * nothing. A declarative seam that rests on nothing is refused, which is
+ * F-36/F-37 act-scoped and what the real verifier is asked to do. */
 export function actVerdictFor(request: ActVerifyRequest): ActVerifyResult {
+  const sourceIds = new Set(request.sources.map((s) => s.id));
+  const restOf = (seam: ActVerifyRequest["seams"][number]): string[] => {
+    if (seam.selected.length > 0) return seam.selected;
+    if (!hasDeclarativeSentence(seam.script)) return [];
+    return [seam.follows, seam.introduces].filter((id): id is string => id !== undefined && sourceIds.has(id));
+  };
   const beats: BeatVerdict[] = request.beats.map((beat) => {
-    const carried = request.seams.some((seam) => scriptIsAboutPurpose(seam.script, beat.claim));
-    if (carried) return { beatId: beat.beatId, carried: true };
+    const carrier = request.seams.find((seam) => scriptIsAboutPurpose(seam.script, beat.claim));
+    if (carrier) return { beatId: beat.beatId, carried: true, carriedBy: carrier.seamId, restsOn: restOf(carrier) };
     const positioned = request.seams.find((seam) => seam.carries.includes(beat.beatId));
     return {
       beatId: beat.beatId,
@@ -129,18 +140,22 @@ export function actVerdictFor(request: ActVerifyRequest): ActVerifyResult {
       notes: `no seam's script shares a content word with the claim "${beat.claim.slice(0, 60)}"${positioned ? ` — it was positioned in seam ${positioned.seamId}` : ""}`
     };
   });
-  const seams: SeamVerdict[] = request.seams.map((seam) => {
-    const notes: string[] = [];
-    let claimsSupported = !seam.sources.some((s) => s.claimText.trim().length === 0);
-    if (!claimsSupported) notes.push("A source is attached to no claim at all.");
-    const contestedHandled = !seam.sources.some((s) => s.contested) || containsContestedLanguage(seam.script);
-    if (!contestedHandled) notes.push("A source is marked contested but the script never says so explicitly.");
-    if (seam.sources.length === 0 && hasDeclarativeSentence(seam.script)) {
-      claimsSupported = false;
-      notes.push("A zero-source seam reached verification with a declarative script — the structural rule upstream did not run.");
-    }
-    return { seamId: seam.seamId, claimsSupported, contestedHandled, ...(notes.length > 0 ? { notes: notes.join(" ") } : {}) };
-  });
+  const seams: SeamVerdict[] = request.seams
+    .filter((seam) => !seam.frozen)
+    .map((seam) => {
+      const notes: string[] = [];
+      const restsOn = restOf(seam);
+      const rested = request.sources.filter((s) => restsOn.includes(s.id));
+      let claimsSupported = !rested.some((s) => s.claimText.trim().length === 0);
+      if (!claimsSupported) notes.push("A source is attached to no claim at all.");
+      const contestedHandled = !rested.some((s) => s.contested) || containsContestedLanguage(seam.script);
+      if (!contestedHandled) notes.push("A source is marked contested but the script never says so explicitly.");
+      if (restsOn.length === 0 && hasDeclarativeSentence(seam.script)) {
+        claimsSupported = false;
+        notes.push(`The script states something — "${seam.script.split(/(?<=[.!?])\s+/)[0] ?? seam.script}" — and rests on no source in the act.`);
+      }
+      return { seamId: seam.seamId, claimsSupported, restsOn, contestedHandled, ...(notes.length > 0 ? { notes: notes.join(" ") } : {}) };
+    });
   return { beats, seams };
 }
 
