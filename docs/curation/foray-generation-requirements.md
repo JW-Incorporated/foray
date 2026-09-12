@@ -3296,12 +3296,13 @@ item to inherit one from and the checker rejects that case explicitly.
 |---|---|---|
 | **D1** | `D1_WINDOW_SEC = 600`; budget **8** for a Foray ≤ 45 min, **6** for ≤ 120 min, **5** above | at most *budget* segment starts in any rolling 600 s window |
 | **D2** | 60 s / 150 s | at most 2 consecutive segments under 60 s, and the next must be ≥ 150 s. Walked as **runs**, so a run of three is reported once and a Foray *ending* on two short segments still fails |
-| **D3** | `D3_MEAN_FLOOR_SEC = 90` | mean segment duration ≥ 90 s |
+| **D3** | — (retired by Q-04) | `mean_sec` is reported, not gated. Its purpose — clips long enough to hear a thought — is served per clip by Q-01's 60 s floor (`TAPE_WINDOW_MIN_SEC`) and by the thought boundaries themselves; a mean over clips of 60-1,800 s says nothing a listener hears. Was `D3_MEAN_FLOOR_SEC = 90` |
 | **D4** | `D4_QUOTE_SHARE_MAX = 0.2`, `D4_ADJACENT_QUOTE_MAX = 2` | quote share and adjacency — **skipped with a warning unless every item records a `role`** |
-| **D5** | `D5_TOLERANCE = 0.2`, `D5_IQR_FLOOR_SEC = 45` | no 3 consecutive durations within ±20 % of each other (**pairwise** reading: `max/min ≤ 1.2`), and the interquartile range (R-7) of segment durations ≥ 45 s. The mean-deviation reading is computed and reported as a **warning**, not gated |
+| **D5** | `D5_TOLERANCE = 0.2` | **no two consecutive clips within ±20 % of the same length** (`max/min ≤ 1.2`, `d5UniformPairs`; mirrored in `backend/src/generation/d5Pair.ts`). **Gated only on tape cut under Q-01** — a generated Foray at least one of whose played rows carries `boundary`; on every older Foray the pairs are reported as warnings (`d5_uniform_pairs`, `d5_gated`), because the pair clause is stricter than the triple it replaced and the eight Forays committed before Q-04 each hold 1-4 such pairs in tape that cannot be re-cut. The interquartile range is still reported (`d5_iqr_sec`), no longer gated. Was: the uniform-triple clause plus `D5_IQR_FLOOR_SEC = 45`, served in sourcing by the 105/165/135/210 s ladder (F-73/F-80) |
 | **L2/L3/L4** | `ROLE_FLOOR_SEC {quote 30, explanation 60, exchange 75, narrative 120}`, `ROLE_MAX_SEC {quote 90, explanation 360, exchange 480, narrative 480}`, `L4_SOFT_MAX_SEC = 240` | per-role floors and ceilings; past 240 s a segment needs `needs_review: true` **and** a `long_reason`. **Skipped entirely when `role` is absent** |
 | **M3** | — | segments from one episode never play out of chronological order |
-| **M4** | `M4_SHARE_MAX = 0.25` | no one episode over 25 % of **segments** or of **tape runtime**. The denominator is tape, deliberately: dividing by the listener's clock would let a Foray buy its way under the cap by adding narration |
+| **Q-01 row fields** | `SEGMENT_BOUNDARIES = [turn, sentence, claim-only]` | a played row may carry `boundary` (one of the three) and `extended_by_sec` (a non-negative number), written by the tier-2 mint (`tapeExtent.ts` via `finalizeForay.ts`); their presence is what tells the checker the Foray's tape was cut under Q-01 |
+| **M4** | `M4_SHARE_MAX = 0.25`, `M4_LONG_CLIP_SEC = 300` | no one episode over 25 % of **segments**; **at most one clip over 300 s per episode**; and no episode over 25 % of **tape runtime beyond its longest clip** (Q-04) — so a single let-it-ride clip of up to 1,800 s never trips the cap by construction, and everything else an episode contributes is held to the old line. The denominator is tape, deliberately: dividing by the listener's clock would let a Foray buy its way under the cap by adding narration. Was: 25 % of tape runtime, whole episode |
 | slots | — | slot blocks must be contiguous and in the declared order |
 | audio | — | a `dai_suspected` source fails every segment of that episode; `end_sec` may not exceed the episode's `duration_sec + 2` |
 
@@ -3314,8 +3315,8 @@ messages that appear when either row is missing.
 
 **What this means for a generated Foray today:** `forayItems.ts:toForayItem` emits
 no `role` and no `label`, so **D4 is warned-not-evaluated and L2/L3/L4 never run**.
-The rules that bind are the shape rules, the disclosure, D1, D2, D3, D5, M3, M4,
-the copy rules and the runtime agreement. **M4 is the one that actually bit**:
+The rules that bind are the shape rules, the disclosure, D1, D2, D5 (gated on
+Q-01 tape, reported on older), M3, M4, the copy rules and the runtime agreement. **M4 is the one that actually bit**:
 finding F-08 records a keyless stub run failing `M4 FAIL: one show is 30.9 % of
 runtime, over the 25 % cap` — the gate doing its job on a 212-row pool that
 concentrates on few shows.
@@ -3323,7 +3324,7 @@ concentrates on few shows.
 The report block per Foray carries `segments`, `runtime_sec`, `tape_runtime_sec`,
 `narration_items`, `narration_unvoiced`, `narration_sec`, `jingle_items`,
 `jingle_sec`, `narration_share`, `mean_sec`, `d1_budget`,
-`d1_max_starts_in_window`, `d5_iqr_sec`, `d5_pairwise_violations`.
+`d1_max_starts_in_window`, `d5_iqr_sec`, `d5_uniform_pairs`, `d5_gated`.
 **`narration_share` is reported, never gated** — narration-craft's 25 % target and
 35 % ceiling are that document's own invention, and it says the ratio is "a
 symptom, not a budget".

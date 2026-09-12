@@ -142,6 +142,15 @@ export const DURATION_SOURCES = Object.freeze([DURATION_MEASURED, DURATION_ESTIM
     `backend/src/generation/finalizeForay.ts`'s tier-2 mint. Listed so a
     consumer sees both provenances in CI, which is the point of G-21c. */
 export const SEGMENT_PROVENANCE = Object.freeze(["agent-v1", "generation-tier-2"]);
+/** `segment.boundary` (Q-01) — where a minted clip's edges landed once the
+    claim window was extended to the thought around it: both edges on speaker
+    turns, at least one on a sentence + pause boundary, or an edge that could
+    move to no boundary at all. Written by `backend/src/generation/tapeExtent.ts`
+    via `finalizeForay.ts`; absent on every hand-cut row and on every row minted
+    before Q-01. Its PRESENCE is what tells this checker a Foray's tape was cut
+    under Q-01's length regime — see the D5 block. `extended_by_sec` rides with
+    it (a number, never enumerated). */
+export const SEGMENT_BOUNDARIES = Object.freeze(["turn", "sentence", "claim-only"]);
 /** `segment-sources[].source` — only the tier-2 mint stamps a source row;
     a curated row carries no `source` field at all. */
 export const SOURCE_PROVENANCE = Object.freeze(["generation-tier-2"]);
@@ -167,6 +176,7 @@ export const ACCEPTED_SHAPES = Object.freeze({
   "segment.role": ROLES,
   "segment.transcript_source": Object.freeze([...TRANSCRIPT_SOURCES]),
   "segment.source": SEGMENT_PROVENANCE,
+  "segment.boundary": SEGMENT_BOUNDARIES,
   "segment.dai_suspected": Object.freeze([true, false]),
   "source.dai_suspected": Object.freeze([true, false]),
   "source.source": SOURCE_PROVENANCE,
@@ -201,63 +211,96 @@ export const NARRATION_MIN_CHARS = 50;
 export const NARRATION_MIN_SEC = Math.round((NARRATION_MIN_CHARS / NARRATION_CHARS_PER_SEC) * 1000) / 1000;
 
 /* D-tier constants. */
-export const D3_MEAN_FLOOR_SEC = 90;
 export const D4_QUOTE_SHARE_MAX = 0.2;
 export const D4_ADJACENT_QUOTE_MAX = 2;
-export const D5_IQR_FLOOR_SEC = 45;
+
+/*
+ * THE LENGTH RULES, RE-DERIVED FOR CLIPS OF A MINUTE TO HALF AN HOUR (Q-04,
+ * docs/curation/listening-quality-plan.md; F-94 in generation-run-2026-09-09.md).
+ *
+ * Q-01 changed what a generated clip IS: the claim's window extended to the
+ * boundaries of the thought around it and then for as long as the tape stays
+ * relevant — 60 to 1,800 s, at turn or sentence boundaries, instead of 30-240 s
+ * cut to cover the claim's words. Measured on the run-8 candidate that moved
+ * the sixteen clips from a 122 s mean to 208 s, the longest to 705 s. The
+ * D-tier rules were written for hand-cut tape of two to four minutes, and each
+ * was re-asked what LISTENING purpose it serves before its number was touched:
+ *
+ *   D1 (starts in a rolling 600 s window) — KEPT UNCHANGED. It is the
+ *      ad-safety rule: the anchoring constraint that lets an ad be inserted
+ *      between segments needs segment starts spaced out, and longer clips only
+ *      make it easier to meet.
+ *   D2 (runs of short segments) — KEPT UNCHANGED. A tier-2 clip is now never
+ *      under 60 s by construction; the rule still binds hand-cut tape.
+ *   D3 (mean segment duration >= 90 s) — RETIRED. Its purpose — clips long
+ *      enough to hear a thought — is served per clip by Q-01's 60 s floor and
+ *      by the thought boundaries themselves; a mean over clips that vary by an
+ *      order of magnitude says nothing a listener hears. `mean_sec` is still
+ *      reported.
+ *   D5 (variety: no uniform triple, interquartile range >= 45 s, served by a
+ *      length ladder) — RESTATED as ONE clause: no two CONSECUTIVE clips
+ *      within +/-20 % of the same length (`d5UniformPairs`). Two clips in a
+ *      row of the same length is the pattern a listener hears as metronomic;
+ *      the triple was a looser statement of the same thing, and an
+ *      interquartile floor over 60-1,800 s clips is met by construction. The
+ *      IQR is still reported (`d5_iqr_sec`), no longer gated.
+ *      GATED ONLY ON TAPE CUT UNDER Q-01 — a generated Foray at least one of
+ *      whose played rows carries `boundary`. The pair clause is STRICTER than
+ *      the triple it replaces (a uniform triple contains two uniform pairs; a
+ *      uniform pair need not be in any triple), and every Foray committed
+ *      before Q-04 — the four hand-cut ones and the four generated under the
+ *      ladder — has one to four adjacent pairs inside the band. Their tape
+ *      cannot be re-cut (a curator's decision; a published Foray's runtime),
+ *      so on them the pairs are REPORTED as warnings and the count is in the
+ *      report; nothing committed goes red for a rule its tape was never cut
+ *      under. Sourcing (`backend/src/generation/sourceBeats.ts`, `d5Pair.ts`)
+ *      asks the same arithmetic at placement, so a Q-01 Foray arrives here
+ *      already clear.
+ *   M4 (no one episode over 25 % of segments or of tape runtime) — the COUNT
+ *      clause is kept; the RUNTIME clause is restated so a single let-it-ride
+ *      clip does not trip it by construction (a 1,800 s clip is over 25 % of
+ *      any Foray under two hours of tape): at most ONE long clip
+ *      (`M4_LONG_CLIP_SEC`) per episode, and an episode's tape seconds BEYOND
+ *      ITS LONGEST CLIP at most 25 % of the tape. The number is unchanged;
+ *      what it is measured on leaves out the one clip the founder asked to let
+ *      ride and holds everything else an episode contributes to the old line.
+ *
+ * Every committed Foray passes unchanged under these (measured 2026-09-12, the
+ * eight on `main` @ #642). Old values: D3 90 s, D5 triple +/-20 % and IQR
+ * 45 s, M4 25 % of runtime; the ladder 105/165/135/210 s lived in sourcing.
+ */
 export const D5_TOLERANCE = 0.2;
 export const M4_SHARE_MAX = 0.25;
+/** A clip over this is LONG: five minutes is twice the longest hand cut in the
+    pool (260 s) and the point past which one clip is an act of the Foray rather
+    than a segment of it. Two such acts from one episode is that episode taking
+    the Foray over, whatever its share. */
+export const M4_LONG_CLIP_SEC = 300;
 
 /**
- * D5, first clause: "no 3 consecutive durations within +/-20 % of each other".
- *
- * THE DOC RECORDS THIS AS AMBIGUOUS AND DOES NOT CHOOSE. Two readings:
- *
- *   pairwise      a triple violates if max/min <= 1.2
- *   mean-deviation  a triple violates if all three sit within +/-20 % of the
- *                   triple's own mean
- *
- * THE GATE IMPLEMENTS PAIRWISE. Two reasons, in order of weight:
- *
- *   1. It is what the sentence says. "within +/-20 % of EACH OTHER" is a
- *      statement about the members of the triple, pairwise. The mean is a
- *      fourth quantity the rule never mentions, and reading it in makes the
- *      rule strictly stronger than its own text — 1.2x max/min is ~18 % either
- *      side of the mean, so mean-deviation fires on triples the words do not
- *      reach.
- *   2. Pairwise is the reading the rule's purpose supports. D5 exists to stop a
- *      Foray sounding metronomic. Three segments at 97.9 / 126.7 / 101.8 s do
- *      not sound uniform — the longest is 29 % longer than the shortest — and
- *      that triple is a mean-deviation violation. Gating on it would fail a
- *      Foray that has the variation the rule wants.
- *
- * The mean-deviation reading is NOT discarded: it is computed and reported as a
- * warning, so the three triples grilling-foray.md §5 names stay visible instead
- * of being quietly resolved in our favour.
+ * D5: "no two consecutive clips within +/-20 % of the same length" — every
+ * adjacent pair whose max/min ratio is inside the band. The pairwise reading
+ * the triple clause used ("within +/-20 % of EACH OTHER": a statement about the
+ * members, so max/min <= 1.2), on a run of two. Mirrored character for
+ * character in `backend/src/generation/d5Pair.ts`, which `test/d5Pair.test.ts`
+ * pins to this function row by row.
  */
-export function d5Triples(durations, { reading = "pairwise" } = {}) {
+export function d5UniformPairs(durations) {
   const hits = [];
-  for (let i = 0; i + 2 < durations.length; i++) {
-    const t = durations.slice(i, i + 3);
-    let worst;
-    if (reading === "pairwise") {
-      const ratio = Math.max(...t) / Math.min(...t);
-      if (ratio > 1 + D5_TOLERANCE) continue;
-      worst = ratio;
-    } else {
-      const mean = t.reduce((a, b) => a + b, 0) / 3;
-      worst = Math.max(...t.map((d) => Math.abs(d - mean) / mean));
-      if (worst > D5_TOLERANCE) continue;
-    }
-    hits.push({ index: i, durations: t, worst });
+  for (let i = 0; i + 1 < durations.length; i++) {
+    const t = durations.slice(i, i + 2);
+    const ratio = Math.max(...t) / Math.min(...t);
+    if (ratio > 1 + D5_TOLERANCE) continue;
+    hits.push({ index: i, durations: t, ratio });
   }
   return hits;
 }
 
 /** Interquartile range, R-7 / linear interpolation — NumPy's and R's default,
- * and Excel's QUARTILE.INC. D5 names no definition and batch 1 reported the
+ * and Excel's QUARTILE.INC. D5 named no definition and batch 1 reported the
  * ambiguity rather than picking; R-7 is picked here because it is the default
- * everywhere the number would be independently recomputed. */
+ * everywhere the number would be independently recomputed. Reported per Foray
+ * (`d5_iqr_sec`); no longer gated since Q-04 (see the length-rules note). */
 export function iqr(values) {
   const s = [...values].sort((a, b) => a - b);
   const q = (p) => {
@@ -717,6 +760,16 @@ export function checkForays(files) {
         E(`${at}: role "${item.role}" disagrees with segment "${seg.id}"'s role "${seg.role}" — the segment wins; drop the copy here`);
       }
 
+      /* Q-01's two optional row fields. Both are written by the tier-2 mint and
+       * by nothing else; a hand-cut row never carries them, and a row that does
+       * is what puts its Foray under the Q-04 length regime (D5 below). */
+      if (seg.boundary !== undefined && !SEGMENT_BOUNDARIES.includes(seg.boundary)) {
+        E(`${at}: segment "${seg.id}" has boundary ${JSON.stringify(seg.boundary)}; expected one of ${SEGMENT_BOUNDARIES.join(", ")}`);
+      }
+      if (seg.extended_by_sec !== undefined && !(typeof seg.extended_by_sec === "number" && Number.isFinite(seg.extended_by_sec) && seg.extended_by_sec >= 0)) {
+        E(`${at}: segment "${seg.id}" has extended_by_sec ${JSON.stringify(seg.extended_by_sec)}; expected a non-negative number`);
+      }
+
       played.push({ ...item, seg, role, duration: seg.end_sec - seg.start_sec });
       timeline.push({ kind: SEGMENT, duration: seg.end_sec - seg.start_sec });
     }
@@ -901,8 +954,8 @@ export function checkForays(files) {
       }
     }
 
-    /* ---- D3: mean duration floor */
-    if (mean < D3_MEAN_FLOOR_SEC) E(`D3 FAIL: mean segment duration ${mean.toFixed(1)} s is under the ${D3_MEAN_FLOOR_SEC} s floor`);
+    /* ---- D3: retired by Q-04 (see the length-rules note above the constants).
+     * The mean is still computed and reported as `mean_sec`. */
 
     /* ---- D4: quote share and adjacency (skipped when no roles are recorded) */
     const roles = played.map((p) => p.role);
@@ -920,21 +973,23 @@ export function checkForays(files) {
       W("D4 not evaluated — not every item records a `role`");
     }
 
-    /* ---- D5: anti-uniformity */
-    const d5 = d5Triples(durations, { reading: "pairwise" });
+    /* ---- D5: anti-uniformity — no two consecutive clips within 20 % of the
+     * same length (Q-04; the reasoning is the length-rules note above the
+     * constants). Gated on tape cut under Q-01 — a generated Foray at least one
+     * of whose played rows carries `boundary` — and reported on everything else,
+     * because tape cut under the old ladder or by hand cannot be re-cut and the
+     * pair clause is stricter than the triple it replaces. */
+    const cutUnderQ01 = isGeneratedForay(foray) && played.some((p) => p.seg.boundary !== undefined);
+    const d5 = d5UniformPairs(durations);
     for (const hit of d5) {
-      const names = played.slice(hit.index, hit.index + 3).map((p) => p.label ?? p.segment_id);
-      E(
-        `D5 FAIL: ${names.join(" / ")} are ${hit.durations.map((d) => d.toFixed(1)).join(" / ")} s — ` +
-          `three consecutive durations within +/-${D5_TOLERANCE * 100} % of each other (max/min ${hit.worst.toFixed(3)})`
-      );
-    }
-    for (const hit of d5Triples(durations, { reading: "mean-deviation" })) {
-      const names = played.slice(hit.index, hit.index + 3).map((p) => p.label ?? p.segment_id);
-      W(`D5 (mean-deviation reading, not gated): ${names.join(" / ")} worst deviation ${(hit.worst * 100).toFixed(1)} %`);
+      const names = played.slice(hit.index, hit.index + 2).map((p) => p.label ?? p.segment_id);
+      const line =
+        `${names.join(" / ")} are ${hit.durations.map((d) => d.toFixed(1)).join(" / ")} s — ` +
+        `two consecutive clips within +/-${D5_TOLERANCE * 100} % of the same length (max/min ${hit.ratio.toFixed(3)})`;
+      if (cutUnderQ01) E(`D5 FAIL: ${line}`);
+      else W(`D5 (reported, not gated — tape cut before Q-01): ${line}`);
     }
     const spread = iqr(durations);
-    if (spread < D5_IQR_FLOOR_SEC) E(`D5 FAIL: interquartile range ${spread.toFixed(1)} s is under the ${D5_IQR_FLOOR_SEC} s floor (R-7)`);
 
     /* ---- M3: same-episode segments never out of chronological order */
     const lastStart = new Map();
@@ -946,7 +1001,9 @@ export function checkForays(files) {
       lastStart.set(p.seg.item_id, p.seg.start_sec);
     }
 
-    /* ---- M4: no one episode over 25 % of segments or runtime
+    /* ---- M4: no one episode dominating — over 25 % of segments, more than
+     * one long clip, or over 25 % of tape runtime BEYOND its longest clip
+     * (Q-04; the reasoning is the length-rules note above the constants).
      *
      * TAPE runtime, deliberately. M4 asks whether one episode dominates the
      * sourcing, so the denominator has to be the thing episodes are competing
@@ -955,15 +1012,23 @@ export function checkForays(files) {
      * segment changing, and the imbalance the rule is about would be untouched. */
     const byEpisode = new Map();
     for (const p of played) {
-      const e = byEpisode.get(p.seg.item_id) ?? { n: 0, sec: 0 };
+      const e = byEpisode.get(p.seg.item_id) ?? { n: 0, sec: 0, longest: 0, long: 0 };
       e.n++; e.sec += p.duration;
+      e.longest = Math.max(e.longest, p.duration);
+      if (p.duration > M4_LONG_CLIP_SEC) e.long++;
       byEpisode.set(p.seg.item_id, e);
     }
     for (const [itemId, e] of byEpisode) {
       const nShare = e.n / played.length;
-      const secShare = e.sec / tapeRuntime;
-      if (nShare > M4_SHARE_MAX || secShare > M4_SHARE_MAX) {
-        E(`M4 FAIL: "${itemId}" is ${(nShare * 100).toFixed(1)} % of segments and ${(secShare * 100).toFixed(1)} % of runtime, over the ${M4_SHARE_MAX * 100} % cap`);
+      const beyondShare = (e.sec - e.longest) / tapeRuntime;
+      if (nShare > M4_SHARE_MAX) {
+        E(`M4 FAIL: "${itemId}" is ${(nShare * 100).toFixed(1)} % of segments, over the ${M4_SHARE_MAX * 100} % cap`);
+      }
+      if (e.long > 1) {
+        E(`M4 FAIL: "${itemId}" supplies ${e.long} clips over ${M4_LONG_CLIP_SEC} s; an episode may supply one long clip per Foray`);
+      }
+      if (beyondShare > M4_SHARE_MAX) {
+        E(`M4 FAIL: "${itemId}" is ${(beyondShare * 100).toFixed(1)} % of tape runtime beyond its longest clip, over the ${M4_SHARE_MAX * 100} % cap`);
       }
     }
 
@@ -1043,7 +1108,10 @@ export function checkForays(files) {
       d1_budget: budget,
       d1_max_starts_in_window: worst.count,
       d5_iqr_sec: +spread.toFixed(2),
-      d5_pairwise_violations: d5.length,
+      /* Q-04: adjacent pairs inside D5's band, and whether they were gated
+         (tape cut under Q-01) or only reported. */
+      d5_uniform_pairs: d5.length,
+      d5_gated: cutUnderQ01,
     });
   }
 
@@ -1091,7 +1159,7 @@ if (invokedDirectly) {
           (f.narration_unvoiced ? `\n  ${f.narration_unvoiced} narration item(s) authored but not yet voiced — excluded from the clock` : "") +
           "\n" +
           `  D1 ${f.d1_max_starts_in_window}/${f.d1_budget} starts per ${D1_WINDOW_SEC} s   ` +
-          `D5 ${f.d5_pairwise_violations} triples, IQR ${f.d5_iqr_sec} s`
+          `D5 ${f.d5_uniform_pairs} uniform pair(s)${f.d5_gated ? "" : " (reported, not gated)"}, IQR ${f.d5_iqr_sec} s`
       );
     }
     console.log(`${report.sources} source episodes registered`);

@@ -761,7 +761,11 @@ const FLOORS = {
      feed is accepted when it carries both of ADR-0007's boundary phrases and
      refused when it carries a timestamp only. Both branches are pinned, and so is
      the half-anchored case. */
-  "tools/foray/check-forays.test.mjs": 130,
+  /* LOWERED 130 -> 129 by Q-04: the D5 triple/IQR/mean-deviation cases (7) and
+     D3's (1) went with their rules; the pair clause gained six (reported on
+     pre-Q-01 tape, gated on a Q-01 Foray, the CLI exit, the row fields, the
+     IQR still reported, the helper) and M4's restatement three. */
+  "tools/foray/check-forays.test.mjs": 129,
   /* G-21c fixture-before-emit (F-89). Seven DECLARATIONS, not seven tests: two
      of them sit inside a loop over `ACCEPTED_SHAPES` and expand to one test per
      accepted value (~30 today), so the floor is the count of `test(` lines this
@@ -1610,11 +1614,26 @@ const BACKEND_FLOORS = {
      tape-relevance row records when the clause chose a length. The fixtures
      that filled a Foray with one length now alternate, because three of one
      length is exactly what the rule refuses. */
-  "test/sourceBeats.test.ts": 130,
-  /* F-80: the checker's D5 arithmetic mirrored in `d5Triple.ts`, pinned to
-     `check-forays.mjs`'s own `d5Triples` row by row (run in a Node subprocess,
-     the only way that file loads on a checkout with a space in its path). */
-  "test/d5Triple.test.ts": 5,
+  /* LOWERED 130 -> 119 by Q-01/Q-04 (docs/curation/listening-quality-plan.md),
+     deliberately and in the open: seventeen cases pinned rules Q-04 retired —
+     D3's running mean (3), the interquartile re-cut pass (6), the 105/165/135/
+     210 s ladder (1), M4's whole-episode runtime share (3) and F-80's triple
+     clause chooser (4) — and six new ones pin what replaced them: M4's one-
+     long-clip and beyond-the-longest-clip clauses (3), and the tier-2 clip as
+     the thought around the claim with D5's pair clause asked of it (3). The
+     extension itself has its own floored suite below (`tapeExtent.test.ts`). */
+  "test/sourceBeats.test.ts": 119,
+  /* Q-04: the checker's D5 arithmetic mirrored in `d5Pair.ts` — the pair
+     clause that replaced F-80's triple — pinned to `check-forays.mjs`'s own
+     `d5UniformPairs` row by row (run in a Node subprocess, the only way that
+     file loads on a checkout with a space in its path). `d5Triple.test.ts` (5)
+     went with the rule it pinned. */
+  "test/d5Pair.test.ts": 5,
+  /* Q-01: `tapeExtent.ts` — the claim window extended to the thought around it
+     (turn and sentence boundaries, the host's question, the relevance walk and
+     its measured floor, the hole in the tape, the ceiling, the anchors) and the
+     hand-set numbers pinned. Every case names its mutation. */
+  "test/tapeExtent.test.ts": 11,
   /* WS-H’s new module: the BM25 index over the normalised cue text, its disk
      cache and the invalidation that makes a re-transcribed episode rebuild it,
      and the Null implementation CI actually runs. Raised to 12 by F-61: the
