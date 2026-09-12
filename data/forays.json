@@ -2302,6 +2302,249 @@
           "slot": "the-fork-is-a-repeated-choice"
         }
       ]
+    },
+    {
+      "id": "what-engineers-actually-do-all-day-731735",
+      "kind": "deep-dive",
+      "title": "What Engineers Actually Do All Day",
+      "topic": "business/careers",
+      "status": "draft",
+      "summary": "How engineers actually progress from early failures to leading teams, in their own words",
+      "runtime_sec": 1929.48,
+      "generated": true,
+      "slots": [
+        {
+          "id": "lone-genius-broken-image",
+          "title": "Lone Genius, Broken Image"
+        },
+        {
+          "id": "nobody-starts-at-the-top",
+          "title": "Nobody Starts at the Top"
+        },
+        {
+          "id": "when-the-part-fails",
+          "title": "When the Part Fails"
+        },
+        {
+          "id": "when-the-product-fails-in-the-field",
+          "title": "When the Product Fails in the Field"
+        },
+        {
+          "id": "learning-to-speak-business",
+          "title": "Learning to Speak Business"
+        },
+        {
+          "id": "learning-to-trust-the-tools-you-once-feared",
+          "title": "Learning to Trust the Tools You Once Feared"
+        },
+        {
+          "id": "different-ladders-same-shift",
+          "title": "Different Ladders, Same Shift"
+        }
+      ],
+      "items": [
+        {
+          "type": "narration",
+          "id": "disclosure",
+          "script": "This is a Foray about The real arc of an engineering career. Much of what you'll hear is written by AI. We work hard to get the facts right, but AI gets things wrong — so take it as a starting point, not a source.",
+          "mode": "marker",
+          "slot": "lone-genius-broken-image"
+        },
+        {
+          "type": "narration",
+          "id": "act-1-introduction",
+          "script": "This is where the series starts: at the myth. Ask someone outside the field to picture an engineer and they will describe a type — solitary, brilliant, more comfortable with equations than with people. That image is durable, and it is wrong, and it starts being wrong on day one. Before anyone climbs a technical ladder, they have to answer a far less cinematic question: can people find you, trust you, and bring you back next time? This act follows that myth to its breaking point — through a consultancy owner juggling every chat app that exists just to stay reachable, through the strange side doors people actually walk through into engineering work, and through the very first jobs of engineers who didn't start anywhere near the top. By the end, the lone genius is gone, replaced by something less flattering and more true.",
+          "mode": "frame",
+          "slot": "lone-genius-broken-image"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-1-0-beat",
+          "script": "Ask a kid to sketch an engineer and you get the same figure every time: goggles on, headphones on, alone at a bench, the whole job solved by sheer brainpower with nobody else required. Pop culture is comfortable with a genius who can't hold a conversation. It never asks whether anyone can find him.\n\nRun a small engineering shop for a while and the myth flips inside out. Staying alive has almost nothing to do with being the smartest person in the room. It has to do with being reachable. So you end up carrying every channel that exists at once — Slack because the team lives there, Teams because one client insists on it, Google Meet because another one does, plain email because somebody still prefers it — not because you love software, but because going quiet, even to just do excellent work, is how a small practice disappears.\n\nThe real first rung on this ladder was never a harder technical problem. It was whether people could find you, trust you, and call you back next time.\n\nHere's someone whose path started in a lab, not a workshop.",
+          "mode": "patch",
+          "slot": "lone-genius-broken-image"
+        },
+        {
+          "type": "segment",
+          "slot": "lone-genius-broken-image",
+          "segment_id": "being-an-engineer--s2e28-test-stands-x-ray-other-instrumentation-william-gabler#30"
+        },
+        {
+          "type": "jingle",
+          "id": "jingle-cut-act-1-4"
+        },
+        {
+          "type": "segment",
+          "slot": "nobody-starts-at-the-top",
+          "segment_id": "being-an-engineer--s7e17-joe-couitt-how-to-design-for-swiss-machining#45"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-1-5-beat",
+          "script": "Couitt's own account of that start is unglamorous: mopping floors, then learning to swap collets and guide bushings before anyone let him near a lathe. Sweep first, cut later. Aaron Moncur's first job out of college ran that apprenticeship in reverse — handed a part to design in SolidWorks, he was sent straight to a milling machine and a lathe to make it himself, screen first, cut later. David Oh, who works in systems engineering at NASA, sits down with Being an Engineer to talk about what he built with his hands long before any of it was rockets: Legos, woodworking, a shop class.",
+          "mode": "patch",
+          "slot": "nobody-starts-at-the-top"
+        },
+        {
+          "type": "segment",
+          "slot": "nobody-starts-at-the-top",
+          "segment_id": "being-an-engineer--david-oh-nasa-systems-engineering-and-sending-robots-to-spac#283"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-1-7-beat",
+          "script": "Nobody actually hands you that choice on day one. The industry loves to talk about it later — individual contributor or manager, pick your tower — but that fork doesn't exist yet this early. The only identity shift available now is smaller and harder: believing you belong in the room at all. A guy with a PhD in Fiber and Polymer Science kept learning past the point most people stop. A guy whose first job was mopping floors kept climbing anyway. A kid who liked Legos growing up ended up building for NASA. None of them chose a lane first. They just stayed in the room, and reachable, long enough to get asked back.",
+          "mode": "patch",
+          "slot": "nobody-starts-at-the-top"
+        },
+        {
+          "type": "narration",
+          "id": "act-1-exit",
+          "script": "So the first identity shift turns out to be small and almost embarrassing: believing you belong in the room, that being findable and trusted counts for as much as being right. But belonging in the room doesn't protect anyone from what happens next. The next hinge doesn't announce itself as growth — it shows up as a mistake. A slipped pin. A weld that doesn't hold. And what happens in the aftermath of that mistake turns out to matter more than anything taught in a design review.",
+          "mode": "frame",
+          "slot": "nobody-starts-at-the-top"
+        },
+        {
+          "type": "narration",
+          "id": "act-2-introduction",
+          "script": "That mistake doesn't wait long to arrive. The ladder was never just technical — that much the last act already took apart. Fine. You're in the room now, findable, vouched for, handed a real part and a real deadline. And still, something is going to fail. Not because you're careless. Because nobody hands you a map of which weld should never have been made, which pin nobody checked, which mold was one shortcut from a crack — until the part fails and tells you itself. These are the failures that never make it onto a resume: the slipped pin, the fatigued weld, the recall, the shattered mold. We're taught to file them under shame, things to survive and never bring up again. But sit with enough engineers describing their worst mistake, and a different shape appears: the failure isn't a detour from the career. It's the place where the career starts actually teaching you something.",
+          "mode": "frame",
+          "slot": "when-the-part-fails"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-2-0-beat",
+          "script": "Every engineering failure starts out looking the same: a part that worked fine, right up until it didn't. The interesting part isn't the crack. It's what happens next — tracing that crack backward until it points at one specific thing, rather than at everyone who happened to touch the part along the way. That kind of backward tracing is easiest to recognize when you watch someone do it in real time: measuring, eliminating, refusing to settle for a hunch. On Being an Engineer, electromechanical engineer Daniel Servansky walks through exactly that process — a batch of stainless tubing that started leaking on the test bench, and the plain, stubborn question of why.",
+          "mode": "patch",
+          "slot": "when-the-part-fails"
+        },
+        {
+          "type": "segment",
+          "slot": "when-the-part-fails",
+          "segment_id": "being-an-engineer--daniel-servansky-electromechanical-engineering-root-cause-an#1139"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-2-2-beat",
+          "script": "Notice what actually solves the mystery in that story: not a hunch, but a measurement. Servansky doesn't stop until he can point to a number — a half a millimeter deflection on the outsides and a millimeter deflection on in the middle — and turn a shape nobody could explain into a defect he can redesign around. That's what naming a root cause really does. The moment you can say, that's it, that's the specific thing that gave way, a failure stops being a referendum on whoever built the part and becomes a problem you can take apart with your hands. Servansky puts his own method plainly: you look at everything that's happening and try to figure out what was really going wrong here. It's investigation, not confession. Spend a career doing that kind of work and it changes how you think about risk in general — which is exactly the territory the next conversation steps into. On Being an Engineer, Joel Williams talks with his host about why some engineering roles demand a person who thinks about risk constantly, and why that same instinct can leave an engineer blind to an opportunity sitting in plain sight.",
+          "mode": "patch",
+          "slot": "when-the-part-fails"
+        },
+        {
+          "type": "segment",
+          "slot": "when-the-product-fails-in-the-field",
+          "segment_id": "being-an-engineer--s2e39-processes-for-life-business-mcdonalds-ideas-feel-good#1525"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-2-6-beat",
+          "script": "Listen to how carefully Joel hedges there. A risk mindset is exactly right for some roles and exactly the wrong lens for others, and nobody hands you a rule for telling the two apart in the moment. He traces the instinct to training rather than temperament: many engineers, he says, are risk trained by their classes that talk about the space shuttle blowing up or the harrowing Tacoma Narrows Bridge collapse — stories built specifically to teach a whole profession to watch for the crack before it happens. And he names the tradeoff plainly: it's a problem, in his mind, because pointing out risk is very rarely rewarded, not compared with finding an opportunity, which is exactly why the two instincts keep pulling an engineer in opposite directions on the same project. The tube that quietly went oval and the risk nobody wanted to reward are the same lesson at two different sizes: whether you study a failure in a classroom or live through one on a test bench, that's what trains the eye. Stop asking whose fault it is. Start asking what, specifically, gave way.",
+          "mode": "patch",
+          "slot": "when-the-product-fails-in-the-field"
+        },
+        {
+          "type": "narration",
+          "id": "act-2-exit",
+          "script": "Notice what actually got built in each of these stories. Not a better weld schedule, not a smarter gauge — a person who now trusts their own judgment, because they watched it get tested and it held. That's the real credential, the one that never gets listed next to the failure it came from. But judgment built inside one failed part doesn't automatically carry over to the next problem in front of you, and eventually the next problem stops being about the part at all — it's about the schedule, the budget, and the people you now have to convince before you're even allowed to fix anything. That's a different kind of hinge. It's next.",
+          "mode": "frame",
+          "slot": "when-the-product-fails-in-the-field"
+        },
+        {
+          "type": "narration",
+          "id": "act-3-introduction",
+          "script": "This is that next hinge. By now the myth is dead and the failure has already done its work: the listener has watched judgment get forged in a slipped pin, a fatigued weld, a recall — the ugly tape nobody submits as a work sample. But judgment alone doesn't explain what happens next, in the middle of a career, when the problems on the desk stop looking like the problems from school, or even like the part that built that judgment in the first place. A part gets designed. A sketch gets finished. Then someone asks what it costs, when it ships, and who else has to sign off, and the engineer who only ever practiced the engineering has nothing to say. This act follows that particular silence, and the moment it breaks — when building the thing stops being the whole job, and translating it, into schedules, into budgets, into somebody else's expectations, becomes the actual work.",
+          "mode": "frame",
+          "slot": "learning-to-speak-business"
+        },
+        {
+          "type": "segment",
+          "slot": "learning-to-speak-business",
+          "segment_id": "being-an-engineer--ian-mceachern-artificial-hearts-times-square-led-displays-en#16"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-3-1-beat",
+          "script": "McEachern's introduction is built entirely out of hands and mistakes — a resume assembled from failure as much as success. \"Everything that I've learned where I'm at today, I learned from others and I learned by failure, and I learned by doing,\" he says, and that is the builder's instinct in miniature: the problem sits right in front of you, so you pick up a tool and fix it yourself. Somewhere in the middle of an engineering career, that instinct runs out of road. The hardest problems stop being differential equations and start being other people's calendars — the schedule, the dependencies, the plan nobody wrote down. On Being an Engineer, that shift echoes forward into an episode about simulation software, S5E19 with Krishna Raichur. The show opens on a word that means different things to different people depending on who you ask: the digital twin.",
+          "mode": "patch",
+          "slot": "learning-to-speak-business"
+        },
+        {
+          "type": "segment",
+          "slot": "learning-to-trust-the-tools-you-once-feared",
+          "segment_id": "being-an-engineer--s5e19-krishna-raichur-the-ins-outs-of-engineering-simulation#1440"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-3-7-beat",
+          "script": "That digital twin, in Raichur's telling, isn't a fancier drawing — “it's a combination of a physical device or asset, with a simulation model,” sensors feeding real numbers into a computer version of the same part, running fast enough to be useful in the moment. Simulation used to be the thing that separated real engineers from everyone else, a black box only specialists were trusted to open. Now it's a sensor feed and a laptop. The tool that once decided who counted as a real engineer becomes, a decade later, just infrastructure — proof the identity was never about the software to begin with.",
+          "mode": "patch",
+          "slot": "learning-to-trust-the-tools-you-once-feared"
+        },
+        {
+          "type": "narration",
+          "id": "act-3-exit",
+          "script": "The tool that once separated the real engineers from the pretenders is, a decade in, just another icon on the desktop — proof that the gatekeeping was never really about the software. What's left, once the software stops being the test, is the harder question: if technical mastery isn't the whole game, and neither is surviving one bad schedule or one bad tool launch, what is the actual shape of a career. The next four people answer that from four different rooms — a consultancy founder, a hospital-device executive, a machinist turned team lead, an academic who never left the lab — and none of them, it turns out, climbed the same ladder at all.",
+          "mode": "frame",
+          "slot": "learning-to-trust-the-tools-you-once-feared"
+        },
+        {
+          "type": "narration",
+          "id": "act-4-introduction",
+          "script": "That harder question about the actual shape of a career gets answered now, from four different rooms. The last act watched the ground shift under one engineer, mid-career, from building things to translating them — schedules, budgets, other people's expectations. This act pulls the camera back to the whole climb. Put four very different careers on the table: a man who spent twenty-five years as a practicing engineer before he ever ran a company, a woman who moved through four device makers on her way to running R&D for a catheter that shatters calcium with sound, a machinist who never left the shop floor so much as grew past its edges, and an academic who's spent decades watching engineers get judged for everything except the engineering. None of them climbed the ladder most listeners still picture — the one with a fork at the top, individual contributor on one side, manager on the other. Ask what actually moved each of them, and the answer isn't a promotion. It's a break — a moment the person they'd been couldn't handle — and a shift into someone new.",
+          "mode": "frame",
+          "slot": "different-ladders-same-shift"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-4-0-connective",
+          "script": "What actually changes when an engineering career takes a sharp turn? Listen, and judge for yourself.",
+          "mode": "intro",
+          "slot": "different-ladders-same-shift"
+        },
+        {
+          "type": "segment",
+          "slot": "different-ladders-same-shift",
+          "segment_id": "being-an-engineer--s6e46-rick-james-ansys-engineering-simulation#0"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-4-1-connective",
+          "script": "Rick James spent his childhood building things nobody asked for, including, in his words, \"a three story for it in the back of the house that was taller than our regular house.\" Our next guest built a career instead.",
+          "mode": "intro",
+          "slot": "different-ladders-same-shift"
+        },
+        {
+          "type": "segment",
+          "slot": "different-ladders-same-shift",
+          "segment_id": "being-an-engineer--s1e10-from-engineering-startups-to-established-corporations#14"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-4-2-beat",
+          "script": "Pat Stephens traces his own decision to a chance dinner, where a Denver mayor told him some of the best lawyers he'd worked with had trained as engineers first, the discipline outlasting the job title. Not everyone's turn arrives at a dinner table, though. For some engineers the hinge shows up as a move off the shop floor and into a room full of people who used to be their peers. For others it's slower: decades in, they're still working out how the work gets judged seems to hinge less on the work itself than on who's doing the judging. Dylan Lundberg works at Protolabs, and on this stretch of Being an Engineer he's mid-conversation about how those different pressures play out across a manufacturing floor, starting, as he puts it, with injection molding, where automation and a human mold designer are already working the same problem side by side.",
+          "mode": "patch",
+          "slot": "different-ladders-same-shift"
+        },
+        {
+          "type": "segment",
+          "slot": "different-ladders-same-shift",
+          "segment_id": "being-an-engineer--dylan-lundberg-protolabs#2129"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-4-5-beat",
+          "script": "None of this is unique to Dylan Lundberg's corner of manufacturing. A consultancy founder who once built treehouses instead of blueprints, a hospital-device engineer who found his calling at a dinner table, an operator watching automation take over the mill floor, different ladders entirely, and yet each one describes the same hinge: not a new fact to learn, but a new person to become. The engineering career, it turns out, was never really a climb from junior to senior. It's closer to a string of separate identities, apprentice, then the one who survives a bad design, then whoever comes after that, and each new self only shows up once the last one hits a wall it can't get past.",
+          "mode": "patch",
+          "slot": "different-ladders-same-shift"
+        },
+        {
+          "type": "narration",
+          "id": "act-4-exit",
+          "script": "There's no fifth identity waiting at the end of this, no summit where the shifting finally stops. The apprentice becomes the failure-survivor becomes the translator becomes whatever the next break demands, and the ladder these four describe was never a ladder at all — it was a series of doors, each one opened by something the last version of them couldn't get through. Not smarter. Not higher. Just, again and again, someone new.",
+          "mode": "frame",
+          "slot": "different-ladders-same-shift"
+        }
+      ]
     }
   ]
 }

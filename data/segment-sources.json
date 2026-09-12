@@ -1409,6 +1409,42 @@
       "duration_sec": 1837,
       "dai_suspected": true,
       "source": "generation-tier-2"
+    },
+    {
+      "id": "being-an-engineer--s7e17-joe-couitt-how-to-design-for-swiss-machining",
+      "show": "Being an Engineer",
+      "title": "S7E17 Joe Couitt | How to Design for Swiss Machining",
+      "feed_url": "https://rss.buzzsprout.com/995575.rss",
+      "episode_guid": "Buzzsprout-18978691",
+      "audio_url": "https://www.buzzsprout.com/995575/episodes/18978691-s7e17-joe-couitt-how-to-design-for-swiss-machining.mp3",
+      "audio_type": "audio/mpeg",
+      "duration_sec": 2652,
+      "dai_suspected": true,
+      "source": "generation-tier-2"
+    },
+    {
+      "id": "being-an-engineer--s2e39-processes-for-life-business-mcdonalds-ideas-feel-good",
+      "show": "Being an Engineer",
+      "title": "S2E39 Processes For Life & Business, McDonalds Ideas, & Feel Good vs Real Good | Joel Williams",
+      "feed_url": "https://rss.buzzsprout.com/995575.rss",
+      "episode_guid": "Buzzsprout-9166974",
+      "audio_url": "https://www.buzzsprout.com/995575/episodes/9166974-s2e39-processes-for-life-business-mcdonalds-ideas-feel-good-vs-real-good-joel-williams.mp3",
+      "audio_type": "audio/mpeg",
+      "duration_sec": 3242,
+      "dai_suspected": true,
+      "source": "generation-tier-2"
+    },
+    {
+      "id": "being-an-engineer--dylan-lundberg-protolabs",
+      "show": "Being an Engineer",
+      "title": "Dylan Lundberg | Protolabs",
+      "feed_url": "https://rss.buzzsprout.com/995575.rss",
+      "episode_guid": "Buzzsprout-11026786",
+      "audio_url": "https://www.buzzsprout.com/995575/episodes/11026786-dylan-lundberg-protolabs.mp3",
+      "audio_type": "audio/mpeg",
+      "duration_sec": 2804,
+      "dai_suspected": true,
+      "source": "generation-tier-2"
     }
   ]
 }
