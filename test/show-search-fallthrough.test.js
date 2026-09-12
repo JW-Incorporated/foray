@@ -259,6 +259,91 @@ test("an Apple fall-through result is rendered and cached like any other breadth
   assert.ok(m.state.breadthShowCache["999000111"], "and seeded so the tap resolves");
 });
 
+/* ---------- S-06, the client audit's finding 1: the ORDER survives ---------- */
+
+const APPLE_THREE = ["Zebra Talks", "Morning Brief", "Acquired"].map((title, i) => ({
+  /* Exactly what `api/shows/appleShowSearch.ts`'s `mapAppleShow` stamps: a
+     `tier: "breadth"` row with NO `chart_rank` — Apple's ranking is the array
+     order and nothing else. */
+  show_id: `90000${i}`,
+  title,
+  artwork_url: null,
+  artist_name: "Somebody Else",
+  editorial_note: null,
+  taxonomy_node_ids: [],
+  tier: "breadth",
+  source: "apple",
+}));
+
+test("the Apple fall-through's ranking survives the merge instead of being replaced by A-Z", async () => {
+  /* FINDING 1, client audit 2026-09-12, and the most expensive of the eight:
+     the fall-through only fires when NOTHING on the device matched, so on that
+     path 100% of what the listener sees is Apple's list — and `rankShows` was
+     throwing Apple's relevance away and re-sorting the whole thing
+     alphabetically.
+
+     WHY IT TIED ALL THE WAY DOWN TO THE TITLE. Apple matches on `artistName`
+     and fuzzily, so every row it returns is `SHOW_MATCH_UNMATCHED`; every row
+     is `tier: "breadth"`; and `mapAppleShow` stamps no `chart_rank`, so every
+     row lands in the same (empty) popularity band. Three ties, then
+     `compareTitles`.
+
+     MUTATION: delete the `if (a.bucket === SHOW_MATCH_UNMATCHED) return 0;`
+     line from `compareShowMatches` in search-engine.js. The three rows come
+     back "Acquired | Morning Brief | Zebra Talks" and this goes red — which is
+     the exact before-case the audit demonstrated. */
+  const m = mount({ breadth: APPLE_THREE });
+  m.input.value = "zzqx-no-such-show-anywhere";
+  m.byId.get("sh-form").fire("submit");
+  await sleep(20);
+  const html = m.results().innerHTML;
+  const order = APPLE_THREE
+    .map((r) => ({ title: r.title, at: html.indexOf(`href="#/show/${r.show_id}"`) }))
+    .sort((a, b) => a.at - b.at)
+    .map((r) => r.title);
+  assert.ok(order.every((t, i) => html.indexOf(APPLE_THREE[i].title) >= 0), "all three rendered");
+  assert.deepStrictEqual(order, ["Zebra Talks", "Morning Brief", "Acquired"],
+    `the endpoint's order is the listener's order; got ${order.join(" | ")}`);
+});
+
+test("a row the listener's own query DOES match still leads the server's suggestions", async () => {
+  /* The other direction, so the test above cannot be satisfied by a comparator
+     that has stopped ranking at all. A breadth row whose title actually
+     contains the typed text is a real match and is promoted above the
+     unmatched ones — that is the bucket rule `rankShows` documents, and it is
+     the half that must survive the fix.
+
+     MUTATION: return 0 from `compareShowMatches` unconditionally. The matching
+     row stays wherever the endpoint put it and this goes red. */
+  const m = mount({ breadth: [...APPLE_THREE, {
+    show_id: "900099", title: "Talking zzqx Weekly", artwork_url: null,
+    artist_name: null, editorial_note: null, taxonomy_node_ids: [], tier: "breadth", source: "apple",
+  }] });
+  m.input.value = "zzqx";
+  m.byId.get("sh-form").fire("submit");
+  await sleep(20);
+  const html = m.results().innerHTML;
+  assert.ok(html.indexOf('href="#/show/900099"') < html.indexOf('href="#/show/900000"'),
+    "a genuine title match outranks the server's unmatched suggestions");
+});
+
+test("`rankShows` never reorders a group it did not rank, on the exact three-row case", () => {
+  /* The same rule one level down, where it can be stated without a DOM: the
+     comparator's contract is "an unmatched pair keeps its arrival order", and
+     `Array.prototype.sort` has been required to be stable since ES2019, which
+     is what makes returning 0 sufficient.
+
+     Driven through the real search-engine.js the page loaded, so a mutation in
+     that file is what turns this red rather than a copy of it here. */
+  const m = mount();
+  const rank = (rows) => m.ctx.SearchEngine.rankShows("fridman", rows).map((r) => r.title);
+  assert.deepStrictEqual(rank(APPLE_THREE), ["Zebra Talks", "Morning Brief", "Acquired"]);
+  assert.deepStrictEqual(rank([...APPLE_THREE].reverse()), ["Acquired", "Morning Brief", "Zebra Talks"],
+    "arrival order, not one fixed order — reversing the input reverses the answer");
+  assert.strictEqual(m.ctx.SearchEngine.rankShows("fridman", APPLE_THREE).length, 3,
+    "and nothing is dropped: the server chose these rows by its own rule");
+});
+
 test("a breadth show page survives a cold open: showById's miss is resolved from the endpoint", async () => {
   /* #560 item 7 / requirements §6.8, and the acceptance line is literally
      "open #/show/<id> in a fresh session". `state.breadthShowCache` is

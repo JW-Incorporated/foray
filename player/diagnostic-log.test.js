@@ -1127,12 +1127,12 @@ test("a different failure starts a new entry, so a coalesced count always means 
 test("a search entry records query LENGTH, never the query text", () => {
   /* THE WHOLE POINT OF THE ENTRY, per docs/search-plan.md S-01 and this
      file's own "WHAT IS NEVER RECORDED" rule. MUTATION: store `query`
-     verbatim on the entry instead of (or as well as) `q_len`. Scanning the
+     verbatim on the entry instead of (or as well as) `qLen`. Scanning the
      stored blob for the literal query text catches either. */
   const { diag, store } = mk();
   diag.search({ qLen: 4, localMs: 0.05, localHits: 3, netMs: 210, netHits: 5, paintedMs: 12, path: "local+net" });
   const entry = parse(store).entries.find((e) => e.type === "search");
-  assert.equal(entry.q_len, 4);
+  assert.equal(entry.qLen, 4);
   const blob = JSON.stringify(entry);
   assert.ok(!/lex|radiolab|science/i.test(blob), "no recognisable query text may appear in the stored entry");
 });
@@ -1145,24 +1145,24 @@ test("a search entry's numeric fields are guarded — a non-numeric caller value
   const { diag, store } = mk();
   diag.search({ qLen: "lex", localMs: NaN, localHits: undefined, netMs: null, netHits: Infinity, paintedMs: 5, path: 123 });
   const entry = parse(store).entries.find((e) => e.type === "search");
-  assert.equal(entry.q_len, null);
-  assert.equal(entry.local_ms, null);
-  assert.equal(entry.local_hits, null);
-  assert.equal(entry.net_ms, null);
-  assert.equal(entry.net_hits, null, "Infinity is not finite and must not be stored");
-  assert.equal(entry.painted_ms, 5, "a genuinely finite number must still pass through");
+  assert.equal(entry.qLen, null);
+  assert.equal(entry.localMs, null);
+  assert.equal(entry.localHits, null);
+  assert.equal(entry.netMs, null);
+  assert.equal(entry.netHits, null, "Infinity is not finite and must not be stored");
+  assert.equal(entry.paintedMs, 5, "a genuinely finite number must still pass through");
   assert.equal(entry.path, null, "a non-string path must not be stored");
 });
 
-test("a search entry with no paint timing yet stores painted_ms: null rather than omitting the field or erroring", () => {
+test("a search entry with no paint timing yet stores paintedMs: null rather than omitting the field or erroring", () => {
   /* \"Absence is a real state\", this file's own rule applied to a caller
      that has not wired paint timing yet (e.g. the network-only half of a
      probe run). MUTATION: throw or omit the key when paintedMs is absent. */
   const { diag, store } = mk();
   diag.search({ qLen: 3, localMs: 0.1, localHits: 1 });
   const entry = parse(store).entries.find((e) => e.type === "search");
-  assert.equal(entry.painted_ms, null);
-  assert.ok("painted_ms" in entry, "the key must be present even when null");
+  assert.equal(entry.paintedMs, null);
+  assert.ok("paintedMs" in entry, "the key must be present even when null");
 });
 
 test("formatDiagnosticReport renders a search entry's fields on one legible line", () => {
@@ -1170,16 +1170,61 @@ test("formatDiagnosticReport renders a search entry's fields on one legible line
      acceptance line requires a diagnostics copy carrying \"at least one
      search entry with a non-null painted_ms\", so that number has to be
      visible on this text, not only reachable via JSON.parse.
-     MUTATION: drop painted_ms (or any other field) from lineFor's \"search\"
+     MUTATION: drop paintedMs (or any other field) from lineFor's \"search\"
      case. The corresponding substring assertion fails. */
   const { diag, log } = mk();
   diag.search({ qLen: 4, localMs: 0.05, localHits: 3, netMs: 210, netHits: 5, paintedMs: 12, path: "local+net" });
   const text = formatDiagnosticReport(log.read());
-  assert.match(text, /q_len=4/);
+  assert.match(text, /qLen=4/);
   assert.match(text, /local=0ms\/3h/);
   assert.match(text, /net=210ms\/5h/);
   assert.match(text, /painted=12ms/);
   assert.match(text, /path=local\+net/);
+});
+
+test("the search entry speaks this file's ONE vocabulary: camelCase keys, and `hidden` like every other row", () => {
+  /* Client audit 2026-09-12. This row shipped as the only snake_case entry in
+     the file and the only one omitting `hidden` — so a founder reading a pasted
+     record had to know which card wrote which row before they could name a
+     field, and a slow search could not be told apart from a slow search in a
+     BACKGROUNDED tab whose timers were throttled.
+
+     MUTATION: put `q_len:`/`local_ms:` back, or drop `hidden: this._isHidden()`
+     from `search()`. Either turns this red, and the `no_snake` sweep below is
+     what stops a later field arriving in the old dialect. */
+  const { diag, store } = mk();
+  diag.search({ qLen: 4, localMs: 0.05, localHits: 3, netMs: 210, netHits: 5, epMs: 480, epHits: 2, ctaMs: 1600, paintedMs: 12, path: "local+net" });
+  const entry = parse(store).entries.find((e) => e.type === "search");
+  assert.equal(entry.hidden, false, "`hidden` is recorded, exactly as voiceProbe/nowplaying record it");
+  const snake = Object.keys(entry).filter((k) => k.includes("_"));
+  assert.deepEqual(snake, [], `no snake_case key may survive on this entry: ${snake.join(", ")}`);
+  assert.deepEqual(
+    Object.keys(entry).filter((k) => !["type", "t", "seq", "wall"].includes(k)).sort(),
+    ["ctaMs", "epHits", "epMs", "hidden", "localHits", "localMs", "netHits", "netMs", "paintedMs", "path", "qLen"],
+    "the whole vocabulary, named once here so a new field cannot arrive unnoticed",
+  );
+});
+
+test("the search entry measures the EPISODES endpoint and the playlist CTA's scan, not only the shows half", () => {
+  /* Client audit 2026-09-12, findings 2 and 4. `createPlaylistCtaHtml` runs the
+     same 1.3-8 s relaxation scan `buildPlaylist` does, behind a `setTimeout(0)`
+     that bought one paint turn and then blocked the main thread for seconds —
+     and `api/episodes/search` (the slower of the two endpoints) was fired on
+     every debounce tick with nothing measuring it. Neither could appear in the
+     one record built to measure search, so neither could be seen.
+
+     MUTATION: drop `epMs`/`epHits`/`ctaMs` from `search()`, or from `lineFor`'s
+     case. The entry assertions or the line assertions go red. */
+  const { diag, log, store } = mk();
+  diag.search({ qLen: 7, localMs: 0.2, localHits: 0, netMs: 0, netHits: 8, epMs: 910, epHits: 4, ctaMs: 3200, paintedMs: 1, path: "local+cache" });
+  const entry = parse(store).entries.find((e) => e.type === "search");
+  assert.equal(entry.epMs, 910);
+  assert.equal(entry.epHits, 4);
+  assert.equal(entry.ctaMs, 3200, "a three-second main-thread scan is the number this field exists to expose");
+  const text = formatDiagnosticReport(log.read());
+  assert.match(text, /ep=910ms\/4h/);
+  assert.match(text, /cta=3200ms/);
+  assert.match(text, /hidden=n/);
 });
 
 test("formatDiagnosticReport renders a null search field as an em dash, not \"null\" or a blank", () => {

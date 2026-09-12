@@ -527,3 +527,83 @@ test("the full node tools/test-search.mjs battery still passes unchanged (assert
     assert.ok(name in SearchEngine, `SearchEngine must still export ${name}`);
   }
 });
+
+
+/* ==================================================================== */
+/* 7. ONE SCORED PASS (finding 9, client audit 2026-09-12)              */
+/* ==================================================================== */
+
+test("topicSearchStatus and buildPlaylist score a query ONCE, through the one extracted pass", () => {
+  /* They carried eight identical lines each — the same `interpretQuery`, the
+     same empty guard, the same `poolFiltered()`, the same three-part cache key
+     (query + family mode + `state._interestsGen`), the same miss-then-insert.
+     Two copies of a CACHE KEY is the duplication that bites, because the two
+     functions deliberately SHARE the entry: typing into Search costs nothing
+     once the builder has scored the same query. The day one copy learns about
+     a new input and the other does not, whichever ran first silently answers
+     for the other with the wrong pool — and no test would have said so,
+     because both would still return a plausible answer.
+
+     Asserted as a CALL COUNT on the scorer, which is the only thing that can
+     tell "the second reader used the first's entry" from "the second reader
+     happened to agree".
+
+     MUTATION: give either function its own `JSON.stringify([...])` cache key
+     again with any difference at all (drop `familyMode()`, say). The second
+     call misses, the scorer runs twice, and this goes red. */
+  const m = mount();
+  seedV2Empty(m);
+  m.state.discover = readJson("data/discover.json");
+  m.state.itemTags = readJson("data/item-tags.json");
+  m.state.semantic = readJson("data/semantic-index.json");
+
+  const SearchEngine = m.evalIn("SearchEngine");
+  const real = SearchEngine.searchWithRelaxation;
+  let scored = 0;
+  SearchEngine.searchWithRelaxation = (...args) => { scored++; return real(...args); };
+  try {
+    const status = m.evalIn("topicSearchStatus('meditation')");
+    assert.strictEqual(scored, 1, "the first reader pays for the scan");
+    assert.ok(status && typeof status.status === "string", "and gets a real answer back");
+
+    const built = m.evalIn("buildPlaylist('meditation')");
+    assert.strictEqual(scored, 1, "the second reader is served the first's cache entry");
+    assert.ok(built && typeof built.status === "string");
+
+    /* The other order, so the shared entry cannot be an accident of which
+       function happens to write it. */
+    m.evalIn("buildPlaylist('sleep')");
+    const after = scored;
+    m.evalIn("topicSearchStatus('sleep')");
+    assert.strictEqual(scored, after, "and it works in either order — one key, one entry");
+  } finally {
+    SearchEngine.searchWithRelaxation = real;
+  }
+});
+
+test("a query that says nothing to score never reaches the scorer at all", () => {
+  /* The empty guard, which was the other copied line. `scoredResultsFor`
+     returns null for a query with no groups and no filters, and both callers
+     report that as `status: "empty"` — not as an error, and not as a scan.
+
+     MUTATION: drop the `if (!interp.groups.length && !interp.filters.length)`
+     guard from `scoredResultsFor`. The scorer runs over the whole pool for a
+     query that asked nothing, and the count below goes to 1. */
+  const m = mount();
+  seedV2Empty(m);
+  m.state.discover = readJson("data/discover.json");
+  m.state.itemTags = readJson("data/item-tags.json");
+  m.state.semantic = readJson("data/semantic-index.json");
+
+  const SearchEngine = m.evalIn("SearchEngine");
+  const real = SearchEngine.searchWithRelaxation;
+  let scored = 0;
+  SearchEngine.searchWithRelaxation = (...args) => { scored++; return real(...args); };
+  try {
+    assert.strictEqual(m.evalIn("topicSearchStatus('   ')").status, "empty");
+    assert.strictEqual(m.evalIn("buildPlaylist('   ')").status, "empty");
+    assert.strictEqual(scored, 0, "nothing scored for a query with nothing in it");
+  } finally {
+    SearchEngine.searchWithRelaxation = real;
+  }
+});

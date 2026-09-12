@@ -750,21 +750,26 @@ function isNativeShell(win = window) {
 
 /** CUTOVER (U-11, founder override 2026-09-06 — see STATE.md and
     docs/ui-transition-plan.md §U-11): ui-v2 is now the only UI. The
-    cp_ui_v2 flag, its localStorage override, and the native-shell
-    fallback are retired; this always returns true. The pre-cutover
-    implementation (flag, Settings toggle, old Home/menu-nav screens)
-    is preserved intact in archive/legacy-ui-2026-09/ for recovery —
-    see that directory's README for exact restore steps. */
-function ui2On() {
-  return true;
-}
+    cp_ui_v2 flag, its localStorage override, the native-shell fallback and
+    the Settings entry that flipped it are retired. The pre-cutover
+    implementation (flag, toggle, old Home/menu-nav screens) is preserved
+    intact in archive/legacy-ui-2026-09/ for recovery — see that directory's
+    README for exact restore steps.
 
-/** Every page-render function replaces document.body.className wholesale
-    (see renderHome/renderShow/etc.), which would otherwise silently drop
-    ui-v2 on every single navigation. Route every one of those assignments
-    through this instead of writing document.body.className directly. */
+    `ui2On()` SURVIVED THE CUTOVER AS `return true` and four call sites went on
+    branching on it, which is worse than either answer: a reader has to prove
+    the constant to know the branch is dead, and the dead half is where a
+    v1-shaped bug hides (finding 7, client audit 2026-09-12). The function, its
+    branches, `bindUi2Control()` — which removed an element nothing created —
+    and the drawer label for a switch that no longer exists are all gone. The
+    `ui-v2` CLASS stays: it is what styles.css hangs the whole v2 sheet on.
+
+    Every page-render function replaces document.body.className wholesale (see
+    renderHome/renderShow/etc.), which would otherwise silently drop `ui-v2` on
+    every single navigation. Route every one of those assignments through this
+    instead of writing document.body.className directly. */
 function setBodyClass(base) {
-  document.body.className = ui2On() ? `${base} ui-v2` : base;
+  document.body.className = `${base} ui-v2`;
 }
 
 function poolFiltered() {
@@ -1533,6 +1538,49 @@ function queueRows() { return rowsForIds(queueIds()); }
        #1, not just the "autoplay chains" half. */
 function autoAdvanceOn() { return lsGet("cp_autoadvance", false); }
 
+/* ---------- cp_interlude: the jingle between a Foray's segments ----------
+
+   THE ONE `cp_` KEY THAT IS NOT JSON, and it has to stay that way: it is owned
+   by `player/interlude.js`'s `readInterludePref`, which reads `"off"` and
+   treats everything else — including an absent key — as ON, and `client.js`
+   passes that answer to the manager at boot. `lsGet`/`lsSet` JSON-encode, so
+   `lsSet("cp_interlude", false)` would store the string `"false"`, which is not
+   `"off"`, which reads back as ON: the off switch would silently never work.
+   These two read and write the raw word through the same `storageBackend()`
+   every other key uses, so the page and the player agree on one spelling.
+
+   Guarded like `lsGet`/`lsSet` themselves: a throwing or absent store is the
+   ordinary case (a private window, a WebView with storage blocked), not an
+   error, and ON is the default the policy promises. */
+function interludeOn() {
+  const store = storageBackend();
+  if (!store) return true;
+  try { return store.getItem("cp_interlude") !== "off"; } catch (_) { return true; }
+}
+
+/** Persist the setting AND tell a running player about it, so the switch is a
+    setting rather than a thing that takes effect next launch.
+
+    THE PLAYER IS THE PREFERRED WRITER, unlike every other `cp_` key on this
+    page: `player/interlude.js` owns this one (it is read at boot by
+    `client.js`, beside `cp_rate`'s) and its `writeInterludePref` is the only
+    place that knows the stored value is the literal word `"off"`. Going
+    through the bridge is also what makes the change LIVE — `client.js` reads
+    the key once, at boot, so a write alone would not reach a Foray already
+    playing.
+
+    The fallback is not decoration, the same argument `storageBackend()` makes
+    about `window.forayStorage`: the player module is deferred and may have
+    404'd from a stale service-worker cache, or may predate this method. The
+    setting must still stick, so the word is written here — and it is the only
+    place in this file that spells it. */
+function setInterludeOn(on) {
+  const player = window.ForayPlayer;
+  if (player && typeof player.setInterludeEnabled === "function") { player.setInterludeEnabled(on); return; }
+  const store = storageBackend();
+  try { if (store) store.setItem("cp_interlude", on ? "on" : "off"); } catch (_) { /* refused everywhere; the session still honours the flip */ }
+}
+
 /* Set the instant a queue-originated play is dispatched (bindPlay below,
    guarded by `origin === "queue"`), read the instant an episode ends
    (advanceQueueOnEnded). Cleared whenever ANY play starts that is NOT from
@@ -1861,7 +1909,6 @@ function taxonomyRootNodes() {
    restyled to tokens in styles.css under body.ui-v2 .fy-chip) rather than a
    new component, so there is exactly one taxonomy-chip renderer in the app. */
 function browsePillsHtml() {
-  if (!ui2On()) return "";
   const roots = taxonomyRootNodes();
   if (!roots.length) return "";
   return `<div class="sh-browse-pills">${roots.map(n => taxonomyChip(n.id)).join("")}</div>`;
@@ -1904,11 +1951,14 @@ function renderAllShows() {
      WHY THE COSTLY PASSES MOVED (each of the three was measured in §1.5, and
      naively adding an `input` listener would have multiplied all three by the
      keystroke):
-       - `renderEpisodeSearchResults` is a SECOND network call;
+       - `renderEpisodeSearchResults` is a SECOND network call, and the
+         SLOWER of the two;
        - the breadth pass is a network call, 0.4-1.1 s;
-       - `renderPlaylistSearchResults`'s CTA defers `topicSearchStatus()`, a
+       - `renderPlaylistSearchResults`'s CTA schedules `topicSearchStatus()`, a
          full relaxation scan this repo's own source measures at 1.3-8 s cold.
-     All three now run on the debounce tick only — see `runShowSearchCostly`. */
+     All three now run on the debounce tick only — see `runShowSearchCostly` —
+     each behind its own hot-query cache or the idle queue, and all three are
+     measured into the ONE `search` diagnostics record that tick writes. */
   $("#sh-form").addEventListener("submit", (e) => {
     e.preventDefault();
     const query = $("#sh-input").value.trim();
@@ -2534,29 +2584,30 @@ const searchCache = new Map();
    null (searchWithRelaxation only sets it when relaxation found results), so
    this changes nothing visible yet — it exists so the cache the two functions
    share never disagrees about what it holds. */
-function topicSearchStatus(query) {
+/** The scored pass both `topicSearchStatus` and `buildPlaylist` need, and the
+    ONE place that decides what goes in `searchCache`.
+ *
+ *  Extracted from the two of them (finding 9, client audit 2026-09-12): they
+ *  carried eight identical lines each — the same `interpretQuery`, the same
+ *  empty guard, the same `poolFiltered()`, the same three-part cache key, the
+ *  same miss-then-insert. Two copies of a cache key is the duplication that
+ *  actually bites: the two functions SHARE the entry (that is the point — a
+ *  search costs nothing once the builder has scored the same query), so the day
+ *  one copy learns about a new input and the other does not, whichever ran
+ *  first silently answers for the other with the wrong pool.
+ *
+ *  `null` means the query said nothing to score — no groups and no filters —
+ *  which both callers report as `status: "empty"` rather than as an error.
+ *
+ *  CACHES BEFORE classifyResults, NOT AFTER, which is why that call stays at
+ *  the two call sites: `classifyResults` reads `listenedShows()`, which changes
+ *  on every pick independent of the query, so caching past this point would
+ *  serve a stale listened-show penalty. It is O(results), not O(catalogue), so
+ *  leaving it uncached costs nothing. */
+function scoredResultsFor(query) {
   const ctx = searchCtx();
   const interp = SearchEngine.interpretQuery(query, ctx);
-  if (!interp.groups.length && !interp.filters.length) return { status: "empty", relaxed: null };
-  const pool = poolFiltered();
-  const cacheKey = JSON.stringify([query, familyMode(), state._interestsGen || 0]);
-  let cached = searchCache.get(cacheKey);
-  if (!cached) {
-    const { results, relaxed } = SearchEngine.searchWithRelaxation(pool, interp, 2, state.itemTags, interestScore);
-    cached = { results, relaxed };
-    if (searchCache.size >= SEARCH_CACHE_MAX) searchCache.clear();
-    searchCache.set(cacheKey, cached);
-  }
-  const status = SearchEngine.classifyResults(cached.results, { listenedShows: listenedShows() }).status;
-  return { status, relaxed: cached.relaxed || null };
-}
-
-function buildPlaylist(query) {
-  const ctx = searchCtx();
-  const interp = SearchEngine.interpretQuery(query, ctx);
-  if (!interp.groups.length && !interp.filters.length) {
-    return { status: "empty", suggestions: [] };
-  }
+  if (!interp.groups.length && !interp.filters.length) return null;
   const pool = poolFiltered(); // also refreshes state.itemIndex/state.poolIds (side effect)
   const cacheKey = JSON.stringify([query, familyMode(), state._interestsGen || 0]);
   let cached = searchCache.get(cacheKey);
@@ -2566,10 +2617,24 @@ function buildPlaylist(query) {
     if (searchCache.size >= SEARCH_CACHE_MAX) searchCache.clear();
     searchCache.set(cacheKey, cached);
   }
+  return { interp, cached };
+}
+
+function topicSearchStatus(query) {
+  const scored = scoredResultsFor(query);
+  if (!scored) return { status: "empty", relaxed: null };
+  const status = SearchEngine.classifyResults(scored.cached.results, { listenedShows: listenedShows() }).status;
+  return { status, relaxed: scored.cached.relaxed || null };
+}
+
+function buildPlaylist(query) {
+  const scored = scoredResultsFor(query);
+  if (!scored) return { status: "empty", suggestions: [] };
+  const { interp, cached } = scored;
   const { status, picks } = SearchEngine.classifyResults(cached.results, { listenedShows: listenedShows() });
 
   if (status === "empty") {
-    return { status: "empty", suggestions: SearchEngine.suggestAdjacentTopics(interp, ctx) };
+    return { status: "empty", suggestions: SearchEngine.suggestAdjacentTopics(interp, searchCtx()) };
   }
 
   /* `relaxed` was computed by searchWithRelaxation and thrown away here until
@@ -3499,12 +3564,66 @@ function paintShowSearchLocal(query, myToken) {
   return { localShows, localMs, paintedMs: nowMs() - localStart };
 }
 
+/** Run `fn` when the main thread is actually free, with a deadline.
+ *
+ *  `init()` has scheduled its vocabulary priming this way since the H bug
+ *  (kanban t_838a13c0); this is that idiom named once so the search tick can
+ *  use it too. `setTimeout(fn, 0)` is NOT the same thing and the difference is
+ *  the whole of finding 2 (client audit 2026-09-12): a zero timeout buys ONE
+ *  paint turn and then runs on the very next task, so CPU-bound work behind it
+ *  still lands on top of whatever the listener does next. `requestIdleCallback`
+ *  waits for a frame with time left in it, and the `timeout` is the promise
+ *  that a permanently busy thread does not mean "never".
+ *
+ *  Falls back to the 0 ms timeout where `requestIdleCallback` is absent —
+ *  older WebKit, the native shell, and every node:vm harness in `test/`. */
+function whenIdle(fn, timeoutMs = 2000) {
+  if (typeof requestIdleCallback === "function") requestIdleCallback(fn, { timeout: timeoutMs });
+  else setTimeout(fn, 0);
+}
+
 /** THE DEBOUNCE TICK. Everything §1.5 measured as expensive, in one place:
     the index's linear scan (only when the prefix pass under-delivered), the
-    breadth endpoint (only on a hot-cache miss), the episode endpoint, and the
-    playlist section whose CTA defers a 1.3-8 s relaxation scan. */
+    breadth endpoint (only on a hot-cache miss), the episode endpoint (only on
+    ITS hot-cache miss), and the playlist section whose CTA schedules a 1.3-8 s
+    relaxation scan.
+
+    ONE DIAGNOSTICS RECORD PER COMPLETED SEARCH, AND A SEARCH IS NOT COMPLETE
+    UNTIL EVERY SLOW HALF HAS ANSWERED (finding 2, client audit 2026-09-12).
+    The record used to be written the moment the SHOWS half landed, which is
+    why two multi-second passes could sit on this tick with nothing measuring
+    them: `painted_ms` was stamped from the local pass alone, the episode
+    endpoint — the slower of the two — was not in the record at all, and the
+    CTA's relaxation scan ran after the record was already on disk. Three
+    halves now report into one entry through `settle` below, which fires when
+    the last of them is in. `recordSearchDiagnostic`'s "exactly one call per
+    search" contract (test/search-probe-record.test.js) is unchanged: this
+    makes the one call later, not twice. */
 function runShowSearchCostly(query, myToken, local) {
   let shown = local.localShows;
+
+  const record = {
+    qLen: query.length,
+    localMs: local.localMs,
+    localHits: local.localShows.length,
+    paintedMs: local.paintedMs,
+    netMs: null, netHits: null,
+    epMs: null, epHits: null,
+    ctaMs: null,
+    path: null,
+  };
+  /* Three halves owed; `settle` is called exactly once by each, on EVERY exit
+     path including the early returns — a half that decided not to run still
+     has to say so, or the record never fires at all and a superseded search
+     goes unrecorded. A fetch that never settles is the one case with no
+     record, which was already true of the breadth half alone: `fetchApiJson`
+     swallows errors to `null` but cannot invent an answer for a socket that
+     simply hangs. */
+  let owed = 3;
+  const settle = (patch) => {
+    Object.assign(record, patch);
+    if (--owed === 0) recordSearchDiagnostic(record);
+  };
 
   /* The scan pass, gated twice: the index must be loaded, and the prefix pass
      must have under-delivered. `scanShowIndex` returns word-start and
@@ -3539,11 +3658,8 @@ function runShowSearchCostly(query, myToken, local) {
   const cached = showBreadthQueryCache.get(cacheKey);
   if (cached) {
     mergeBreadth(cached);
-    recordSearchDiagnostic({
-      qLen: query.length,
-      localMs: local.localMs, localHits: local.localShows.length,
+    settle({
       netMs: 0, netHits: cached.length,
-      paintedMs: local.paintedMs,
       path: myToken !== showSearchToken ? "superseded" : "local+cache",
     });
   } else {
@@ -3566,18 +3682,15 @@ function runShowSearchCostly(query, myToken, local) {
         showBreadthQueryCache.set(cacheKey, breadthShows);
       }
       if (!superseded && breadthShows.length) mergeBreadth(breadthShows);
-      recordSearchDiagnostic({
-        qLen: query.length,
-        localMs: local.localMs, localHits: local.localShows.length,
+      settle({
         netMs, netHits: data ? breadthShows.length : null,
-        paintedMs: local.paintedMs,
         path: superseded ? "superseded" : data ? "local+net" : "local-only",
       });
     }); // fetchApiJson already swallows network/parse errors and resolves null — no .catch needed
   }
 
-  renderEpisodeSearchResults(query, myToken);
-  renderPlaylistSearchResults(query, myToken);
+  renderEpisodeSearchResults(query, myToken, (epMs, epHits) => settle({ epMs, epHits }));
+  renderPlaylistSearchResults(query, myToken, (ctaMs) => settle({ ctaMs }));
 }
 
 /** Every keystroke. Local pass now; everything expensive on a 250 ms trailing
@@ -3634,20 +3747,10 @@ function renderShowSearchResults(query) {
    card adds no second path that can create a playlist -- there remains
    exactly one (#pl-form's bindPlaylistFormSubmit), matching D8's "the
    Foray half is not built, Playlist creation stays today's flow" scope. */
-function renderPlaylistSearchResults(query, myToken) {
+function renderPlaylistSearchResults(query, myToken, reportCtaMs = () => {}) {
   const container = $("#pl-search-results");
-  if (!container) return; // page markup not present (e.g. a caller that reuses renderShowIndexPage without it)
-  if (myToken !== showSearchToken) return; // superseded before this ran
-
-  /* U-05 ships behind cp_ui_v2 like every other card in this deck (plan §3:
-     "Every card ships behind cp_ui_v2 until U-11") -- a v1/flag-off listener
-     gets none of this new section, matching the card's own "offline
-     behaviour unchanged" acceptance line. */
-  if (!ui2On()) {
-    container.innerHTML = "";
-    container.hidden = true;
-    return;
-  }
+  if (!container) { reportCtaMs(null); return; } // page markup not present (e.g. a caller that reuses renderShowIndexPage without it)
+  if (myToken !== showSearchToken) { reportCtaMs(null); return; } // superseded before this ran
 
   const own = playlists().filter(p => playlistMatchesQuery(p, query));
   const ownIds = new Set(own.map(p => p.id));
@@ -3661,23 +3764,37 @@ function renderPlaylistSearchResults(query, myToken) {
        measurement (see buildPlaylist's SEARCH_CACHE_MAX comment). Calling
        it synchronously from here, on every show-name search that matches
        no playlist (the COMMON case -- e.g. "fridman"), would freeze the
-       whole Shows page exactly the way bindPlaylistFormSubmit's own
-       setTimeout(0)+"Building…" guard exists to prevent for #pl-form.
-       Same idiom, same reason: clear the section first so nothing stale
-       lingers, then let the browser get a paint turn before the CPU-bound
-       work runs, and guard with `myToken` so a fast retype's OLD deferred
-       computation can never clobber a newer query's freshly-painted
-       own/generated section. */
+       whole Shows page.
+
+       `setTimeout(…, 0)` WAS NOT ENOUGH, and that is finding 2 of the
+       2026-09-12 client audit. A zero timeout buys one paint turn and then
+       runs on the very next task — so the listener saw their results paint
+       and then watched the page stop responding for seconds, on the COMMON
+       path (a show-name query matching no playlist). `whenIdle` waits for a
+       frame with room in it and keeps a deadline, which is what `init()`'s
+       vocabulary priming has done since the H bug; the fallback for a host
+       without `requestIdleCallback` is the old zero timeout.
+
+       AND IT IS TIMED. The scan is now the `ctaMs` field of the one `search`
+       diagnostics entry, so the next time it grows nobody has to guess: it
+       was invisible before precisely because the record was written from the
+       local pass and closed before this ran.
+
+       Clear the section first so nothing stale lingers, and guard with
+       `myToken` so a fast retype's OLD deferred computation can never clobber
+       a newer query's freshly-painted own/generated section. */
     container.innerHTML = "";
     container.hidden = true;
-    setTimeout(() => {
-      if (myToken !== showSearchToken) return; // a newer query already superseded this one
+    whenIdle(() => {
+      if (myToken !== showSearchToken) { reportCtaMs(null); return; } // a newer query already superseded this one
+      const ctaStart = nowMs();
       const cta = createPlaylistCtaHtml(query);
+      reportCtaMs(nowMs() - ctaStart);
       if (!cta) return; // container already cleared above
       container.innerHTML = cta;
       container.hidden = false;
       bindCreatePlaylistCta(container);
-    }, 0);
+    });
     return;
   }
 
@@ -3698,6 +3815,7 @@ function renderPlaylistSearchResults(query, myToken) {
     </div>
   </section>`;
   container.hidden = false;
+  reportCtaMs(null); // the scan never ran: a playlist already matched
 }
 
 /* U-05 (#135, D7/D8): appears in place of a Playlists section when the topic
@@ -3710,7 +3828,6 @@ function renderPlaylistSearchResults(query, myToken) {
    generation stays out of the UI (D8), so this offers a Playlist instead,
    handed to the existing #pl-form flow rather than a new creation path. */
 function createPlaylistCtaHtml(query) {
-  if (!ui2On()) return "";
   if (topicSearchStatus(query).status !== "empty") return "";
   return `<div class="sh-create-cta">
     <button type="button" class="fy-btn fy-main" data-create-playlist="${esc(query)}">
@@ -3755,48 +3872,93 @@ function bindCreatePlaylistCta(scope) {
    index to fall back to for a query outside the curated pool, matching this
    file's own "absence is a real state" convention rather than a spinner
    that never resolves. */
-function renderEpisodeSearchResults(query, myToken) {
+
+/* S-05, THE EPISODE HALF (finding 4, client audit 2026-09-12).
+
+   The shows half got the hot-query cache, the pre-fetch supersession check and
+   the diagnostics row; the episode half — the SLOWER of the two endpoints —
+   got none of the three and fired on every debounce tick. Same cache, same
+   rules, same reasons as `showBreadthQueryCache` above (FIFO with a wholesale
+   clear, successful responses only, session-scoped and never persisted:
+   `fetchApiJson` passes `cache: "no-cache"`, so a retype otherwise pays the
+   whole round trip again, and a failure remembered as an answer would turn one
+   bad moment on a train into a permanently empty Episodes section).
+
+   Keyed on the same normalized query, because the endpoint lowercases and
+   trims server-side exactly as the shows one does. */
+const EPISODE_SEARCH_CACHE_MAX = 200;
+const episodeSearchQueryCache = new Map();
+
+/** Paints one episode answer, or the honest nothing. Split out of the fetch so
+    a cache hit and a fresh response cannot drift into two renderers. */
+function paintEpisodeSearchResults(query, data, container) {
+  const episodes = data?.episodes || [];
+  if (!episodes.length) {
+    container.innerHTML = "";
+    container.hidden = true;
+    return 0;
+  }
+  const fromApple = (data.source || []).includes("apple");
+  const ctx = "episode-search-" + query;
+  const rows = episodes.map((ep, i) => {
+    const id = `apple:${ep.show_id}:${ep.guid || (ep.title + "--" + i)}`;
+    const item = snapshot(id, {
+      show: ep.show_title || ep.show_id,
+      title: ep.title,
+      hook: ep.description_text || "",
+      audio_url: ep.audio_url,
+      duration_min: ep.duration_seconds ? Math.round(ep.duration_seconds / 60) : null,
+      duration_sec: ep.duration_seconds ?? null,
+      topics: [],
+    });
+    return epRow(item, i, ctx, -1);
+  });
+  container.innerHTML = `<section class="ep-more fy-episode-search">
+    <h3>Episodes${fromApple ? ` <span class="note">from Apple's index</span>` : ""}</h3>
+    ${rows.join("")}
+  </section>`;
+  container.hidden = false;
+  bindPickLogging(container);
+  bindStars(container);
+  bindUpNext(container);
+  bindPlay(container);
+  return episodes.length;
+}
+
+function renderEpisodeSearchResults(query, myToken, report = () => {}) {
   const container = $("#ep-search-results");
-  if (!container) return; // page markup not present (e.g. category page reusing renderShowIndexPage)
+  if (!container) { report(null, null); return; } // page markup not present (e.g. category page reusing renderShowIndexPage)
 
   if (typeof navigator !== "undefined" && navigator.onLine === false) {
     container.innerHTML = "";
     container.hidden = true;
+    report(null, null);
     return;
   }
 
+  /* THE TOKEN IS CHECKED BEFORE THE FETCH, not only on its response. The
+     shows half has done this since S-05; here the check existed only inside
+     the `.then`, so a superseded tick still spent the round trip — on a phone,
+     on the slower of the two endpoints, once per keystroke that outran the
+     debounce. */
+  if (myToken !== showSearchToken) { report(null, null); return; }
+
+  const cacheKey = showBreadthCacheKey(query);
+  const cached = episodeSearchQueryCache.get(cacheKey);
+  if (cached) {
+    report(0, paintEpisodeSearchResults(query, cached, container));
+    return;
+  }
+
+  const epStart = nowMs();
   fetchApiJson(`api/episodes/search?q=${encodeURIComponent(query)}&limit=10`).then((data) => {
-    if (myToken !== showSearchToken) return; // superseded — drop this response
-    const episodes = data?.episodes || [];
-    if (!episodes.length) {
-      container.innerHTML = "";
-      container.hidden = true;
-      return;
+    const epMs = nowMs() - epStart;
+    if (data) {
+      if (episodeSearchQueryCache.size >= EPISODE_SEARCH_CACHE_MAX) episodeSearchQueryCache.clear();
+      episodeSearchQueryCache.set(cacheKey, data);
     }
-    const fromApple = (data.source || []).includes("apple");
-    const ctx = "episode-search-" + query;
-    const rows = episodes.map((ep, i) => {
-      const id = `apple:${ep.show_id}:${ep.guid || (ep.title + "--" + i)}`;
-      const item = snapshot(id, {
-        show: ep.show_title || ep.show_id,
-        title: ep.title,
-        hook: ep.description_text || "",
-        audio_url: ep.audio_url,
-        duration_min: ep.duration_seconds ? Math.round(ep.duration_seconds / 60) : null,
-        duration_sec: ep.duration_seconds ?? null,
-        topics: [],
-      });
-      return epRow(item, i, ctx, -1);
-    });
-    container.innerHTML = `<section class="ep-more fy-episode-search">
-      <h3>Episodes${fromApple ? ` <span class="note">from Apple's index</span>` : ""}</h3>
-      ${rows.join("")}
-    </section>`;
-    container.hidden = false;
-    bindPickLogging(container);
-    bindStars(container);
-    bindUpNext(container);
-    bindPlay(container);
+    if (myToken !== showSearchToken) { report(epMs, null); return; } // superseded — drop this response
+    report(epMs, data ? paintEpisodeSearchResults(query, data, container) : null);
   });
 }
 
@@ -3828,9 +3990,9 @@ function renderEpisodeSearchResults(query, myToken) {
    directions — absent here, present there — so a future re-add fails CI
    rather than shipping. */
 /* CUTOVER (U-11, founder override 2026-09-06): renderHome() used to branch
-   on ui2On() and render the old four-card Home inline when the flag was
-   off. That branch is now unreachable (ui2On() always returns true) and
-   has been removed; the old implementation is preserved verbatim in
+   on the retired `cp_ui_v2` flag and render the old four-card Home inline
+   when it was off. That branch was unreachable and has been removed; the
+   old implementation is preserved verbatim in
    archive/legacy-ui-2026-09/app.js.pre-cutover-2026-09-06 (see that
    directory's README to restore it). */
 function renderHome() {
@@ -4873,9 +5035,16 @@ function voiceProbeOn() { return lsGet("cp_voice_probe", false); }
 
 /** The visibility options every Foray surface hands the bridge: the `?foray=`
     unlock AND the switch, together, so no call site can pass one and forget
-    the other. */
-function forayViewOpts() {
-  return { unlocked: unlockedForays(), showDrafts: showDraftsOn() };
+    the other.
+
+    `showDrafts` is an OVERRIDE rather than a fixed field, because
+    `splitTestTrackDrafts` needs both answers for the same unlock set: today's
+    list, and then the same list with the drafts admitted. It built both option
+    objects inline until the 2026-09-12 client audit — this function documents
+    itself as the thing that stops a call site forgetting an option, and the one
+    call site that needed a variant was the one that went around it. */
+function forayViewOpts(overrides = {}) {
+  return { unlocked: unlockedForays(), showDrafts: showDraftsOn(), ...overrides };
 }
 
 /** Order for the drafts the SWITCH admitted (never for the published list,
@@ -4895,11 +5064,10 @@ function draftTrackOrder(drafts) {
     `listed` is the SAME call, with the SAME options, that ran before the
     switch existed: with it off the second call never happens. */
 function splitTestTrackDrafts(listFn) {
-  const unlocked = unlockedForays();
-  const listed = listFn({ unlocked });
+  const listed = listFn(forayViewOpts({ showDrafts: false }));
   if (!showDraftsOn()) return { listed, drafts: [] };
   const seen = new Set(listed.map(f => f.id));
-  const drafts = draftTrackOrder(listFn({ unlocked, showDrafts: true }).filter(f => !seen.has(f.id)));
+  const drafts = draftTrackOrder(listFn(forayViewOpts({ showDrafts: true })).filter(f => !seen.has(f.id)));
   return { listed, drafts };
 }
 
@@ -6371,16 +6539,14 @@ function renderDrawer() {
   $("#drawer-playlists").innerHTML = recent.map(p =>
     `<a class="drawer-item" href="#/playlist/${esc(p.id)}">${esc(p.title)}</a>`).join("")
     || `<p class="drawer-empty">none yet</p>`;
-  $("#family-toggle").textContent = `Family mode: ${familyMode() ? "on" : "off"}`;
-  $("#player-toggle").textContent = `Open in: ${playerPref() === "apple" ? "Apple Podcasts" : "Pocket Casts (show page)"}`;
-  $("#autoadvance-toggle").textContent = `Up Next auto-advance: ${autoAdvanceOn() ? "on" : "off"}`;
-  const draftsBtn = $("#drafts-toggle");
-  if (draftsBtn) draftsBtn.textContent = `Show draft Forays: ${showDraftsOn() ? "on" : "off"}`;
-  const ui2Btn = $("#ui2-toggle");
-  if (ui2Btn) ui2Btn.textContent = `New look (preview): ${ui2On() ? "on" : "off"}`;
-  /* K-01: the toggle's own label AND whether the run button exists at all —
-     one call, because the two answers come from one key and painting them
-     apart is how a stale control survives a flip. */
+  /* Every switch's label, from the one registry `drawerToggle` fills. This was
+     five ad-hoc lines — three unguarded, two guarded, each spelling its own
+     on/off — and the sixth switch is what made that a shape rather than a
+     list (finding 6, client audit 2026-09-12). */
+  paintDrawerToggles();
+  /* K-01: whether the RUN button exists at all. The toggle's own label is
+     painted above with the others; this is the control that appears and
+     disappears with it, which no label line can express. */
   syncVoiceProbeRun();
 }
 
@@ -6450,10 +6616,6 @@ function tabForHash(hash) {
     drawer's own settings text. */
 function renderTabBar() {
   let bar = $("#tab-bar");
-  if (!ui2On()) {
-    if (bar) bar.remove();
-    return;
-  }
   if (!bar) {
     bar = document.createElement("nav");
     bar.className = "tab-bar";
@@ -6475,50 +6637,112 @@ function renderTabBar() {
   });
 }
 
-/** The test-track switch (see § showDraftsOn). A drawer toggle in the shape
-    of `#family-toggle`/`#autoadvance-toggle`, appended in JS rather than
-    written into index.html for the reason every control below gives: that
-    file is outside the auto-merge allowlist. Appended BEFORE the diagnostics/
-    voice/delete controls at init, so it lands with the other settings
-    toggles and "Delete my data" stays last. Flipping it re-renders the page
-    behind the drawer WITHOUT closing it (renderCurrentPage, not route —
-    test/drawer-settings-toggle.test.js's rule). No event is logged: this is
-    the founder's own test switch, not listener behaviour worth a row. */
-function bindDraftsControl() {
+/* ---------- the drawer's switches, in ONE shape ----------
+
+   Six of them now, and until the 2026-09-12 client audit there were five
+   copies of one idea: three bound by hand in `init()` against markup in
+   index.html, two injected by near-identical fifteen-line twins
+   (`bindDraftsControl`, `bindVoiceProbeControl`), and five ad-hoc label lines
+   in `renderDrawer` — three unguarded, two guarded, each spelling its own
+   on/off. Disclosure and test coverage were good; the COST was the sixth
+   switch, which is exactly what `cp_interlude` needed.
+
+   So: one `drawerToggle(id, label, read, write)`. A switch declares where its
+   state lives and what a tap does; the helper owns everything that was being
+   copied — adopting the button from index.html or appending one, binding the
+   click exactly once, and registering the label so `renderDrawer` paints it
+   with the rest.
+
+   APPENDED, NOT `hidden`-TOGGLED, for the reason `renderTabBar`'s comment
+   states and `test/home-layout.test.js`'s BUG 3 established: any author
+   `display` declaration beats the UA stylesheet's `[hidden]` rule.
+
+   A TAP NEVER CLOSES THE DRAWER (`renderCurrentPage`, never `route()` —
+   test/drawer-settings-toggle.test.js's rule), and `repaint` is what says
+   whether the page behind it has to be redrawn at all. */
+const drawerToggles = [];
+
+/**
+ * @param {string}   id      the element id, in index.html or appended here
+ * @param {string}   label   the text before the colon, e.g. "Family mode"
+ * @param {Function} read    () => boolean — the CURRENT state, read fresh
+ * @param {Function} write   (next: boolean) => void — persist it, log it
+ * @param {object}   [opts]
+ * @param {string[]} [opts.words]    the two state words, `[off, on]`
+ * @param {boolean}  [opts.repaint]  redraw the page behind the drawer too
+ */
+function drawerToggle(id, label, read, write, { words = ["off", "on"], repaint = false } = {}) {
   const drawer = $("#drawer");
-  if (!drawer || $("#drafts-toggle")) return;
-  const btn = ddEl("button", "drawer-item as-btn", "");
-  btn.type = "button";
-  btn.id = "drafts-toggle";
-  drawer.appendChild(btn);
+  if (!drawer) return;
+  if (!drawerToggles.some(t => t.id === id)) drawerToggles.push({ id, label, read, words });
+  let btn = $("#" + id);
+  if (!btn) {
+    btn = ddEl("button", "drawer-item as-btn", "");
+    btn.type = "button";
+    btn.id = id;
+    drawer.appendChild(btn);
+  }
+  if (btn._drawerToggleBound) return; // init() runs once, but a re-bind must never stack handlers
+  btn._drawerToggleBound = true;
   btn.addEventListener("click", () => {
-    lsSet("cp_show_drafts", !showDraftsOn());
+    write(!read());
     renderDrawer();
-    renderCurrentPage();
+    if (repaint) renderCurrentPage();
   });
 }
 
-/** K-01's switch and its run button (see § voiceProbeOn). The toggle is always
-    in the drawer, in the shape of `#drafts-toggle`; the RUN button exists only
-    while the toggle is on, and `renderDrawer` adds/removes it on every open so
-    a switch flipped on one screen cannot leave a stale control on another.
+/** Every registered switch's label, read fresh. Guarded per element because a
+    page can mount without one (a harness with a partial drawer) — the three
+    unguarded lines this replaced threw on exactly that. */
+function paintDrawerToggles() {
+  for (const t of drawerToggles) {
+    const btn = $("#" + t.id);
+    if (btn) btn.textContent = `${t.label}: ${t.words[t.read() ? 1 : 0]}`;
+  }
+}
 
-    APPENDED/REMOVED RATHER THAN `hidden`-TOGGLED, the rule `renderTabBar`'s own
-    comment states and `test/home-layout.test.js`'s BUG 3 established: any
-    author `display` declaration beats the UA stylesheet's `[hidden]` rule, so
-    a `hidden` control here would reappear the first time somebody gave
-    `.drawer-item` a `display`. */
-function bindVoiceProbeControl() {
-  const drawer = $("#drawer");
-  if (!drawer || $("#voice-probe-toggle")) return;
-  const btn = ddEl("button", "drawer-item as-btn", "");
-  btn.type = "button";
-  btn.id = "voice-probe-toggle";
-  drawer.appendChild(btn);
-  btn.addEventListener("click", () => {
-    lsSet("cp_voice_probe", !voiceProbeOn());
-    renderDrawer();
+/** The six, in the drawer's reading order: the listener's three from
+    index.html, the listener's fourth (the jingle) appended, then the two
+    founder switches. The diagnostic and destructive controls `init()` binds
+    after these are not switches and stay below them. */
+function bindDrawerToggles() {
+  drawerToggle("family-toggle", "Family mode", familyMode, (on) => {
+    lsSet("cp_family", on);
+    logEvent("family_mode", { on });
+    buildCards();
+  }, { repaint: true });
+
+  /* Not an on/off: the two states are two destinations, and "Open in: off"
+     would be nonsense. `words` is why the helper takes a pair rather than
+     hard-coding the two English words at five call sites. */
+  drawerToggle("player-toggle", "Open in", () => playerPref() === "apple", (on) => {
+    lsSet("cp_player", on ? "apple" : "pocketcasts");
+    logEvent("player_pref", { player: playerPref() });
+  }, { words: ["Pocket Casts (show page)", "Apple Podcasts"], repaint: true });
+
+  drawerToggle("autoadvance-toggle", "Up Next auto-advance", autoAdvanceOn, (on) => {
+    lsSet("cp_autoadvance", on);
+    logEvent("autoadvance_pref", { on });
   });
+
+  /* §13's jingle (player/interlude.js). THE CONTROL THE PRIVACY POLICY ALREADY
+     PROMISED: `docs/legal/privacy-policy.md` lists `cp_interlude` as "On unless
+     you turn it off", and until the 2026-09-12 client audit there was no way to
+     turn it off — `writeInterludePref` and `PlayerQueueManager.setInterludeEnabled`
+     were each called from their own test and nowhere else, and `client.js` read
+     the key once at boot. A disclosed setting with no surface is a disclosure
+     that is not true. */
+  drawerToggle("interlude-toggle", "Jingle between segments", interludeOn, setInterludeOn);
+
+  /* The founder's test track (see § showDraftsOn). No event is logged: this is
+     his own switch, not listener behaviour worth a row. */
+  drawerToggle("drafts-toggle", "Show draft Forays", showDraftsOn,
+    (on) => lsSet("cp_show_drafts", on), { repaint: true });
+
+  /* K-01's measurement switch (see § voiceProbeOn). Its RUN button is not a
+     switch and is added/removed by `syncVoiceProbeRun` instead. */
+  drawerToggle("voice-probe-toggle", "Voice engine probe", voiceProbeOn,
+    (on) => lsSet("cp_voice_probe", on));
 }
 
 /** The run control, created on demand by `renderDrawer`. Returns nothing; the
@@ -6527,7 +6751,6 @@ function syncVoiceProbeRun() {
   const drawer = $("#drawer");
   if (!drawer) return;
   const toggle = $("#voice-probe-toggle");
-  if (toggle) toggle.textContent = `Voice engine probe: ${voiceProbeOn() ? "on" : "off"}`;
   const existing = $("#voice-probe-run");
   if (!voiceProbeOn()) {
     if (existing) existing.remove();
@@ -6579,15 +6802,6 @@ async function runVoiceProbe() {
     ui.status.textContent = "The probe failed to run. Copy the record above and say what build this is.";
     return null;
   }
-}
-
-/** CUTOVER (U-11, founder override 2026-09-06): the flag has no off state
-    left to toggle (ui2On() always returns true), so the Settings entry
-    that flipped it is retired. Old body preserved in
-    archive/legacy-ui-2026-09/app.js.pre-cutover-2026-09-06. */
-function bindUi2Control() {
-  const existing = $("#ui2-toggle");
-  if (existing) existing.remove();
 }
 
 /* The Interests page (#/interests, U-07) is reachable from Settings, but
@@ -7741,8 +7955,8 @@ function renderCurrentPage() {
   else if (h === "#/interests") renderInterests();
   else renderHome();
   /* Called AFTER the page paints, not before: renderTabBar() reads
-     document.body's class to decide nothing (it reads ui2On() and
-     location.hash directly), but appending it after the page's own
+     document.body's class to decide nothing (it reads location.hash
+     directly), but appending it after the page's own
      document.body.className/innerHTML writes is what guarantees the bar
      survives those writes rather than a future page-render function
      clobbering an element the bar already placed. Every page above sets
@@ -8165,38 +8379,10 @@ async function init() {
   $("#drawer").addEventListener("click", (e) => {
     if (e.target.closest("a")) openDrawer(false);
   });
-  $("#family-toggle").addEventListener("click", () => {
-    lsSet("cp_family", !familyMode());
-    logEvent("family_mode", { on: familyMode() });
-    buildCards();
-    renderDrawer();
-    renderCurrentPage();
-  });
-  $("#player-toggle").addEventListener("click", () => {
-    lsSet("cp_player", playerPref() === "apple" ? "pocketcasts" : "apple");
-    logEvent("player_pref", { player: playerPref() });
-    renderDrawer();
-    renderCurrentPage();
-  });
-  $("#autoadvance-toggle").addEventListener("click", () => {
-    lsSet("cp_autoadvance", !autoAdvanceOn());
-    logEvent("autoadvance_pref", { on: autoAdvanceOn() });
-    renderDrawer();
-  });
-  /* The Settings entry for cp_ui_v2 itself (U-02). Placed ABOVE the field-
-     record/delete controls, same rule those two apply to each other:
-     the two truly destructive/diagnostic items stay at the bottom where a
-     scrolled thumb lands, and a cosmetic preview toggle is not one of them. */
-  bindUi2Control();
-  /* "Show draft Forays" — the founder's test track, with the other settings
-     toggles and above the diagnostic/destructive controls. */
-  bindDraftsControl();
-  /* K-01's measurement switch, with the other founder switches and above the
-     diagnostic/destructive controls — its run button writes into the field
-     record below it, so it has to be bound before that surface exists only in
-     the sense that both must exist; the order here is the drawer's reading
-     order, not a dependency. */
-  bindVoiceProbeControl();
+  /* Every settings switch, in one call — see `bindDrawerToggles`. They land
+     ABOVE the diagnostic and destructive controls bound below, so "Delete my
+     data" stays last where a scrolled thumb expects it. */
+  bindDrawerToggles();
   /* The field record's surface (#264), appended for the same reason as the
      control below it and deliberately ABOVE it: "Delete my data" must stay the
      drawer's last item, because it is the one control in there that cannot be
