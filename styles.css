@@ -1512,6 +1512,30 @@ body:not(.fp-expanded) .fp-close { display: none; }
 .fy-strip--static {
   cursor: default;
   touch-action: pan-y;
+  /* ONE ROW, TRIMMED AT THE CARD'S EDGE — and this rule is on the STATIC
+     modifier, never on `.fy-strip`, because the player page's strip is the full
+     hour and must not lose its tail.
+
+     A Home card gives the strip 210px of content box. `.fy-seg` is floored at
+     `--seg-min` (5px at `sm`) plus a 1px hairline and a 3px seam per capsule,
+     so a generated Foray — 56 items, 40 of them bridges — needs 431px of hard
+     minimum. Flex does not wrap, so what happened instead was OVERFLOW: 28 bars
+     hung outside the card, and since `.fy-strip` is `position: relative;
+     z-index: 1` they painted ON TOP of the next two cards, straight through
+     their titles. With rails whose cards have one- and two-line titles the
+     strips sit at two different heights, which is why the founder read it as
+     the beats "wrapping over several lines" and overlapping the title.
+     `overflow: hidden` — not `auto`: a scrollbar inside a 5px-tall row is not a
+     control anybody can use, and the rail already scrolls — clips the spill at
+     the same x a strip that fits would end on, so a trimmed card reads as a
+     card whose strip simply continues past the edge.
+
+     The floor stays 5px. Shrinking it to fit more bars is the one move that is
+     not available: see `--seg-min`'s comment above — under the seam width a
+     bridge reads as a gap, i.e. as its own absence. Fewer bars is what
+     `mergeNarration` is for, and it is the card's other half of this fix. */
+  flex-wrap: nowrap;
+  overflow: hidden;
 }
 .fy-seg {
   flex-basis: 0;

@@ -178,6 +178,78 @@ export function growOf(lengthSec) {
 }
 
 /**
+ * Collapse each RUN OF CONSECUTIVE NARRATION items into one bar.
+ *
+ * WHY THIS EXISTS, AND WHY IT IS NOT THE DEFAULT
+ * A generated Foray now interleaves a bridge with almost every cut:
+ * `what-engineers-actually-do-all-day` is 56 items, 40 of them narration, in
+ * 17 runs. At the card size that is 56 bars each floored at `--seg-min` (5px)
+ * inside a 210px card — 431px of hard minimum, which OVERFLOWS the card and,
+ * because `.fy-strip` is `position: relative; z-index: 1`, paints the spill
+ * straight over the NEXT card's title. Merging each run into one bar is the
+ * founder's own fix ("merging all back-to-back AI segments into one purple
+ * dot, perhaps the length varies") and it takes that Foray to 33 bars.
+ *
+ * It is OFF by default because the full player page's strip is the SCRUB
+ * TARGET: `player/strip-scrub-gesture.js` reads `data-seg` off the bar under
+ * the finger and the page then seeks to that item, so one bar standing for
+ * seven items would land a scrub on the wrong second of the Foray. Only the
+ * Home cards — which have no gesture bound at all (`fy-strip--static`) — pass
+ * `mergeNarration: true`.
+ *
+ * WHAT A MERGED BAR HAS TO GET RIGHT, all of it pinned in segment-strip.test.js:
+ *   - `index` stays a REAL item index (the run's first), because `data-seg` is
+ *     built from it and `applyStripGrow` and anything reading it later must
+ *     find an item there.
+ *   - `grow` is the SUM of the members' grows, not `growOf(summed length)`.
+ *     Those differ — each member carries its own `Math.max(1, round(...))` —
+ *     and only the sum leaves the whole row's proportions untouched.
+ *   - `state`/`progress` are computed ACROSS THE WHOLE RUN off the same
+ *     `currentIndex` the unmerged model uses, so the bar is `current` exactly
+ *     when the listener is inside any of its items, and fills fractionally
+ *     through the run rather than snapping per item.
+ *   - `runEnd` comes from the LAST member (`runStart` from the first), so the
+ *     cross-episode capsule seams still open and close where they did.
+ */
+function collapseNarrationRuns(segments, { positioned, currentIndex, elapsedSec }) {
+  const out = [];
+  for (let i = 0; i < segments.length; i++) {
+    const head = segments[i];
+    if (head.kind !== "narration") { out.push(head); continue; }
+    let end = i;
+    while (end + 1 < segments.length && segments[end + 1].kind === "narration") end++;
+    if (end === i) { out.push(head); continue; }
+
+    const members = segments.slice(i, end + 1);
+    const tail = members[members.length - 1];
+    const lengthSec = members.reduce((t, s) => t + s.lengthSec, 0);
+
+    let state = "idle";
+    let progress = 0;
+    if (positioned && currentIndex != null) {
+      if (currentIndex > tail.index) { state = "past"; progress = 1; }
+      else if (currentIndex >= head.index) {
+        state = "current";
+        progress = lengthSec > 0 ? clamp01((elapsedSec - head.startSec) / lengthSec) : 0;
+      } else state = "upcoming";
+    }
+
+    out.push({
+      ...head,
+      lengthSec,
+      share: members.reduce((t, s) => t + s.share, 0),
+      grow: members.reduce((t, s) => t + s.grow, 0),
+      itemCount: members.length,
+      runEnd: tail.runEnd,
+      state,
+      progress,
+    });
+    i = end;
+  }
+  return out;
+}
+
+/**
  * The whole element, as data.
  *
  * @param {object[]} items  a player queue (`resolved.playable`) or hydrated entries
@@ -185,15 +257,18 @@ export function growOf(lengthSec) {
  * @param {number|null} [opts.elapsed]  seconds into the WHOLE Foray, or null to
  *   render the browsing state. Null and 0 are different: 0 means "at the very
  *   start of a Foray somebody is listening to", null means "nobody is here".
+ * @param {boolean} [opts.mergeNarration]  draw each run of back-to-back
+ *   narration as ONE bar sized by the run's total. Off by default — see
+ *   `collapseNarrationRuns` for why the scrubbable strip must not use it.
  * @returns {{
  *   totalSec: number, positioned: boolean, currentIndex: number|null,
- *   elapsedSec: number,
+ *   elapsedSec: number, itemCount: number,
  *   segments: object[], runs: object[],
  *   segmentCount: number, narrationCount: number, sourceCount: number,
  *   shows: string[],
  * }}
  */
-export function stripModel(items, { elapsed = null } = {}) {
+export function stripModel(items, { elapsed = null, mergeNarration = false } = {}) {
   const list = Array.isArray(items) ? items.filter((i) => i && typeof i === "object") : [];
   // `itemRuntimeSec` already answers 0 for anything it cannot measure, so this
   // is its answer rather than a second opinion about it.
@@ -211,7 +286,7 @@ export function stripModel(items, { elapsed = null } = {}) {
   const at = positioned ? segmentAtElapsed(list, elapsed) : null;
   const currentIndex = at ? at.index : null;
 
-  const segments = list.map((item, index) => {
+  const perItem = list.map((item, index) => {
     const key = keys[index];
     const narration = key === NARRATOR_SOURCE;
     const lengthSec = lengths[index];
@@ -241,6 +316,11 @@ export function stripModel(items, { elapsed = null } = {}) {
       startSec: starts[index] ?? 0,
       share: totalSec > 0 ? lengthSec / totalSec : 0,
       grow: growOf(lengthSec),
+      /* How many QUEUE ITEMS this bar stands for. Always 1 here; only
+         `collapseNarrationRuns` ever raises it, and `stripSummary` reads it to
+         turn a `currentIndex` (always an item index) back into the bar that is
+         drawing that item. */
+      itemCount: 1,
       runStart,
       runEnd,
       state,
@@ -248,8 +328,12 @@ export function stripModel(items, { elapsed = null } = {}) {
     };
   });
 
+  /* CAPSULES ARE BUILT FROM THE ITEMS, BEFORE ANY MERGE. A run is "the stretch
+     that came out of one source episode", which is a fact about the Foray and
+     not about how many bars we chose to draw — so `runs` is identical whether
+     or not narration is merged, and a caller can compare the two. */
   const runs = [];
-  for (const seg of segments) {
+  for (const seg of perItem) {
     if (seg.runStart) {
       runs.push({
         index: runs.length, kind: seg.kind, sourceKey: seg.sourceKey,
@@ -263,16 +347,27 @@ export function stripModel(items, { elapsed = null } = {}) {
     }
   }
 
-  const tape = segments.filter((s) => s.kind === "segment");
+  const elapsedSec = positioned ? Math.min(Math.max(0, elapsed), totalSec) : 0;
+  const segments = mergeNarration
+    ? collapseNarrationRuns(perItem, { positioned, currentIndex, elapsedSec })
+    : perItem;
+
+  /* COUNTED OVER THE ITEMS, NOT THE BARS. `stripSummary` turns these into the
+     sentence a screen reader hears, and that sentence describes the FORAY —
+     "40 narrator bridges" is true of the running order however many bars the
+     picture chose to spend on it. Merging changes the drawing, never the
+     description. */
+  const tape = perItem.filter((s) => s.kind === "segment");
   return {
     totalSec,
     positioned,
     currentIndex,
-    elapsedSec: positioned ? Math.min(Math.max(0, elapsed), totalSec) : 0,
+    elapsedSec,
+    itemCount: perItem.length,
     segments,
     runs,
     segmentCount: tape.length,
-    narrationCount: segments.length - tape.length,
+    narrationCount: perItem.length - tape.length,
     sourceCount: new Set(tape.map((s) => s.sourceKey)).size,
     shows: [...new Set(tape.map((s) => s.show).filter(nonEmpty))],
   };
@@ -312,14 +407,31 @@ export function stripSummary(model) {
   let out = `Running order: ${parts.join(" and ")}, ${fmtSpan(m.totalSec)} in all.`;
 
   if (m.positioned && m.currentIndex != null) {
-    const cur = m.segments?.[m.currentIndex];
+    /* NOT `segments[currentIndex]`. `currentIndex` is an ITEM index and a
+       merged bar stands for several items, so the bar drawing item 9 may sit
+       at position 4 of the array — the old lookup read a bar belonging to a
+       different show, or none at all, the moment `mergeNarration` was on. The
+       bar is the one whose item range contains the index; the SENTENCE still
+       counts items ("piece 10 of 56"), because that is what the listener is
+       actually inside. */
+    const cur = currentBar(m);
     const from = cur?.kind === "narration"
       ? "the narrator"
       : (nonEmpty(cur?.show) ? cur.show : "an unnamed show");
-    out += ` Now on piece ${m.currentIndex + 1} of ${m.segments.length}, from ${from}, `
+    const pieces = m.itemCount ?? m.segments?.length ?? 0;
+    out += ` Now on piece ${m.currentIndex + 1} of ${pieces}, from ${from}, `
       + `${fmtClock(m.elapsedSec)} in.`;
   }
   return out;
+}
+
+/** The bar that is drawing item `currentIndex` — the run's bar when narration
+    is merged, the item's own bar when it is not. */
+function currentBar(m) {
+  const segs = Array.isArray(m?.segments) ? m.segments : [];
+  const i = m?.currentIndex;
+  if (!isNum(i)) return null;
+  return segs.find((s) => s.index <= i && i < s.index + (s.itemCount ?? 1)) ?? null;
 }
 
 /* ---------- the DOM half ---------- */
@@ -388,6 +500,16 @@ function paintSegments(doc, parent, model, playing) {
  * @param {number|null} [opts.elapsed]
  * @param {boolean} [opts.playing]  is audio actually running? See below.
  * @param {string} [opts.size]  "sm" | "md" | "lg"
+ *
+ * DELIBERATELY NO `mergeNarration`. This function mounts the ONE strip the
+ * player page scrubs on (`#fy-strip`), and the gesture in
+ * `player/strip-scrub-gesture.js` maps a horizontal position to the bar under
+ * it and then to that bar's `data-seg` item. A bar standing for a whole run of
+ * bridges would make the seek land on the run's FIRST item wherever in the run
+ * the finger was, and `paintSegFill` — which indexes `strip.children[i]` as
+ * item i — would write the fill onto the wrong bar from the first merged run
+ * onwards. Merging is for the string half (`segmentStripHtml`), whose callers
+ * are cards with no gesture. Passing the option here does nothing on purpose.
  * @returns {object} the model that was rendered
  */
 export function mountStrip(el, items, { document: doc, elapsed = null, playing = false, size = "md" } = {}) {
@@ -476,10 +598,16 @@ const escHtml = (s) => String(s ?? "").replace(/[&<>"']/g, (c) =>
  * @param {number|null} [opts.elapsed]  see `stripModel`
  * @param {boolean} [opts.playing]      see `mountStrip`
  * @param {string} [opts.size]          "sm" | "md" | "lg"
+ * @param {boolean} [opts.mergeNarration]  see `collapseNarrationRuns`. This is
+ *   the half of the module that merging is FOR: every caller of this function
+ *   renders a card, which has no scrub gesture bound to it.
  * @returns {string}
  */
-export function segmentStripHtml(items, { elapsed = null, playing = false, size = "md" } = {}) {
-  const model = stripModel(items, { elapsed });
+export function segmentStripHtml(
+  items,
+  { elapsed = null, playing = false, size = "md", mergeNarration = false } = {},
+) {
+  const model = stripModel(items, { elapsed, mergeNarration });
   if (model.segments.length === 0) return "";
 
   const chosen = SIZES.includes(size) ? size : "md";
