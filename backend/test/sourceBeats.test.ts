@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { existsSync, readFileSync } from "fs";
 import { join } from "path";
-import { sourceBeats, summarizeSourcing, deriveItemId, D5_TOLERANCE, M4_ITEM_SHARE_MAX, M4_LONG_CLIP_SEC, m4SegmentCapFor } from "../src/generation/sourceBeats";
+import { sourceBeats, summarizeSourcing, deriveItemId, D5_TOLERANCE, M4_ITEM_SHARE_MAX, M4_LONG_CLIP_SEC, MERGE_GAP_SEC, m4SegmentCapFor } from "../src/generation/sourceBeats";
 import { placementEscapesD5Pair } from "../src/generation/d5Pair";
 import { capArgumentBeats, deepenActs } from "../src/generation/deepenActs";
 import { buildResearchShape } from "../src/generation/researchShape";
@@ -16,7 +16,7 @@ import { InMemoryCostEventSink } from "../src/cost/costEvents";
 import { BudgetGuard } from "../src/cost/budgetGuard";
 import type { IntentUnderstanding } from "../src/types/generation";
 import { createDigestAudioSourceResolver, mintSegmentSource } from "../src/generation/audioSourceLookup";
-import { validateSourcing, allSourcedBeats } from "../src/types/tapeSourcing";
+import { validateSourcing, allSourcedBeats, type SourcedBeat } from "../src/types/tapeSourcing";
 import { SPINE_MIN_SEEDED_BEATS_PER_ACT, type DeepenedAct } from "../src/types/spine";
 import type { SegmentRecord } from "../src/generation/segmentPoolLookup";
 import type { TranscriptDigestEntry, TranscriptCue, TranscriptCueProvider } from "../src/generation/transcriptArchiveLookup";
@@ -2758,22 +2758,15 @@ describe("sourceBeats — F-72: the seeded beat's own window is judged on share 
     /* A share-only acceptance is a PLACEMENT, so it must move the ledgers — or
        F-70's fix would have a hole shaped exactly like F-72's rule. Two beats
        naming the same window: the first takes it, and the second is refused
-       because the Foray then holds one tape segment and M4's cap is one. */
+       because the Foray then holds one tape segment and M4's cap is one.
+       IN TWO ACTS (F-96): a second beat on the same stretch of the same
+       episode in the SAME act now rides in the first beat's clip (the merge
+       — its own cases below), so the ledger question is asked across an act
+       boundary, where a merge is never made. */
+    const seed = { episodeId: "pa-960", startSec: 100, endSec: 160 };
     const twoBeats: DeepenedAct[] = [
-      makeDeepenedAct(
-        {
-          slots: [
-            {
-              title: "Assurance",
-              beats: [
-                { claim, exploration: false, kind: "account", seed: { episodeId: "pa-960", startSec: 100, endSec: 160 } },
-                { claim, exploration: false, kind: "account", seed: { episodeId: "pa-960", startSec: 100, endSec: 160 } }
-              ]
-            }
-          ]
-        },
-        "F72M4"
-      )
+      makeDeepenedAct({ slots: [{ title: "Assurance", beats: [{ claim, exploration: false, kind: "account", seed }] }] }, "F72M4a"),
+      makeDeepenedAct({ slots: [{ title: "Assurance again", beats: [{ claim, exploration: false, kind: "account", seed }] }] }, "F72M4b")
     ];
     const result = sourceBeats(twoBeats, {
       segmentPool: [],
@@ -3595,13 +3588,23 @@ describe("sourceBeats — G-24 R3: the trace names the seed's own gate alongside
   const beat = (seed: Seed) => ({ claim, exploration: false, kind: "account" as const, seed });
 
   function run(beats: ReturnType<typeof beat>[]) {
-    return sourceBeats([makeDeepenedAct({ slots: [{ title: "Gearboxes", beats }] }, "G24R3")], {
-      segmentPool: [],
-      transcriptArchive: [seeded, other],
-      cueProvider: { getCues: (e) => cuesByGuid[e.guid] ?? null },
-      textIndex: memoryTextIndex([seeded, other], cuesByGuid),
-      topic: "engineering/ai-robotics"
-    });
+    return runActs([beats]);
+  }
+
+  /** One act per inner list — the way to ask the ledger about a second beat
+   * on the same episode without F-96's merge answering first (a merge is
+   * never made across an act boundary). */
+  function runActs(acts: ReturnType<typeof beat>[][]) {
+    return sourceBeats(
+      acts.map((beats, i) => makeDeepenedAct({ slots: [{ title: "Gearboxes", beats }] }, `G24R3-${i}`)),
+      {
+        segmentPool: [],
+        transcriptArchive: [seeded, other],
+        cueProvider: { getCues: (e) => cuesByGuid[e.guid] ?? null },
+        textIndex: memoryTextIndex([seeded, other], cuesByGuid),
+        topic: "engineering/ai-robotics"
+      }
+    );
   }
 
   it("reports `m4-share` on the seeded episode, with the seed window's own share, when the cap is what refused an on-claim seed", () => {
@@ -3631,11 +3634,13 @@ describe("sourceBeats — G-24 R3: the trace names the seed's own gate alongside
   });
 
   it("reports the seed's `window-overlap` and its share when the seed window itself was not about the claim", () => {
-    const result = run([beat({ episodeId: "pa-950", startSec: 0, endSec: 30 }), beat({ episodeId: "pa-950", startSec: 0, endSec: 30 })]);
+    /* Two acts (F-96): in one act the second beat's whole-episode fallback
+       lands on the clip the first beat just minted and rides in it. */
+    const result = runActs([[beat({ episodeId: "pa-950", startSec: 0, endSec: 30 })], [beat({ episodeId: "pa-950", startSec: 0, endSec: 30 })]]);
     const beats = allSourcedBeats(result.acts);
     /* The first beat's seed fails, the whole-episode fallback finds 300-360. */
     expect(beats[0]!.sourcing).toBe("tape");
-    const row = result.sourcingTrace.find((t) => t.beatIndex === 1)!.tier2!;
+    const row = result.sourcingTrace.find((t) => t.actIndex === 1)!.tier2!;
     expect(row.seedGate).toBe("window-overlap");
     expect(row.seedWindowWeightedShare).toBe(0);
     expect(row.seededEpisode).toBe("pa-950");
@@ -3669,6 +3674,185 @@ describe("sourceBeats — G-24 R3: the trace names the seed's own gate alongside
    actually be read for any episode in the archive — and answers it against the
    normalised bodies first (what production reads) and the raw ones second (what
    the normaliser is built from; see `helpers/rawVttCueProvider.ts`). */
+/* F-96 (Q-01 pass 2): what run 9 — the first live run under Q-01 — showed.
+ *
+ *   1. The seed path IS extended: the seed window goes through the same
+ *      chooser (`extendToThought`, then the cut) as a searched window. What
+ *      bypassed the extension in run 9 was F-84's pool reuse of run 8's
+ *      pre-Q-01 cuts at the same starts (its own case in the F-84 block).
+ *   2. Two beats whose thoughts sit in one stretch of one episode used to be
+ *      one clip and one `m4-share` refusal (an episode's second segment needs
+ *      eight placed). Now the clip is extended to cover the second beat's
+ *      thought and the beat rides in it (`MERGE_GAP_SEC`).
+ *   3. The extension's live timidity — the act's thesis weighed at 1 per word
+ *      because the claim search's idf holds only the claim's terms — is
+ *      pinned in `tapeExtent.test.ts`; here, that a thesis of many words no
+ *      index has weighed does not shorten a seeded clip.
+ *
+ * One episode, one-second pauses after every cue (so every cue end is a
+ * sentence boundary), the answer running from 100 s to 220 s, the host moving
+ * on at 241 s, and a second on-claim stretch at 301 s for the gap case. */
+describe("sourceBeats — F-96: the seed path is extended, and two beats in one stretch of tape are one clip", () => {
+  const entry: TranscriptDigestEntry = {
+    show_id: "practical-ai",
+    show_title: "Practical AI",
+    guid: "pa-970",
+    title: "Episode 970",
+    cues: 10,
+    feed_duration_sec: 3600,
+    enclosure_url: "https://cdn.example/pa-970.mp3"
+  };
+  const claimA = "Gearboxes fail because bearings take torque reversals.";
+  const claimB = "The reversals were never in the original load case.";
+  const cues: TranscriptCue[] = [
+    { text: "welcome back to the programme we are in denmark this week.", start_sec: 0, end_sec: 30 },
+    { text: "the gearboxes here are the part that gives everybody trouble.", start_sec: 100, end_sec: 120 },
+    { text: "and it is the bearings that give up first on almost all of them.", start_sec: 121, end_sec: 140 },
+    { text: "you get a lot of torque coming back the other direction as well.", start_sec: 141, end_sec: 160 },
+    { text: "so the gearboxes fail well before the design life says they should.", start_sec: 161, end_sec: 180 },
+    { text: "bearings crack under torque that keeps switching direction on them.", start_sec: 181, end_sec: 200 },
+    { text: "and those reversals were never in the original load case at all.", start_sec: 201, end_sec: 220 },
+    { text: "the load case simply never had one of those in it.", start_sec: 221, end_sec: 240 },
+    { text: "right, let us talk about the conference in denver next month.", start_sec: 241, end_sec: 260 },
+    { text: "the conference is in denver and the keynote is about coffee machines and hotels.", start_sec: 261, end_sec: 300 },
+    { text: "the reversals were never in the original load case, that is the whole story.", start_sec: 301, end_sec: 320 },
+    { text: "and the hotels in denver are cheap and the coffee is excellent.", start_sec: 321, end_sec: 380 }
+  ];
+  type Seed = { episodeId: string; startSec: number; endSec: number };
+  type F96Beat = { claim: string; exploration: boolean; kind: "account"; seed?: Seed };
+  const beat = (claim: string, seed: Seed): F96Beat => ({ claim, exploration: false, kind: "account", seed });
+  const seedA: Seed = { episodeId: "pa-970", startSec: 100, endSec: 160 };
+  const seedB: Seed = { episodeId: "pa-970", startSec: 201, endSec: 240 };
+  const seedBLater: Seed = { episodeId: "pa-970", startSec: 301, endSec: 320 };
+
+  function runActs(acts: F96Beat[][], thesis?: string) {
+    return sourceBeats(
+      acts.map((beats, i) => makeDeepenedAct({ slots: [{ title: "Gearboxes", beats }], ...(thesis ? { thesis } : {}) }, `F96-${i}`)),
+      {
+        segmentPool: [],
+        transcriptArchive: [entry],
+        cueProvider: { getCues: () => cues },
+        textIndex: memoryTextIndex([entry], { "pa-970": cues }),
+        topic: "engineering/ai-robotics"
+      }
+    );
+  }
+
+  it("extends a SEEDED window to its thought: the seed says where the tape is, the extension how much of it to play", () => {
+    /* The seed is 100-160; the answer runs on to 220 (three more cues that
+       say the claim's words) and the host moves on at 241. MUTATION THAT
+       KILLS THIS: in `Tier2Walk.run`, cut the seed window with
+       `cutWindowToSegment(claim, cues, window)` instead of through
+       `chooseCutForPlacement` — the clip is 100-160 and carries no
+       `boundary`. Ran it — red. */
+    const result = runActs([[beat(claimA, seedA)]]);
+    const segment = result.newSegments[0]!;
+    expect(segment.startSec).toBe(100);
+    expect(segment.endSec).toBe(220);
+    expect(segment.boundary).toBe("sentence");
+    expect(segment.extendedBySec).toBe(60);
+    const row = result.tapeRelevance[0]!;
+    expect(row.seedWindowWon).toBe(true);
+    expect(row.extendedBySec).toBe(60);
+  });
+
+  it("merges a second beat whose thought sits in the same stretch into the first beat's clip — one segment, two beats", () => {
+    /* Beat B's seed (201-240) overlaps the clip A already minted (100-220).
+       The clip grows to 240 and B rides in it: the same pointer, `mergedInto`
+       naming A, ONE minted segment, and A's relevance row re-reads the
+       extension. MUTATION THAT KILLS THIS: return `null` from `mergeIntoClip`
+       — B is refused at `m4-share` (the Foray holds one segment, the cap is
+       one) and becomes narration. Ran it — red. */
+    const result = runActs([[beat(claimA, seedA), beat(claimB, seedB)]]);
+    const beats = allSourcedBeats(result.acts);
+    expect(beats.map((b) => b.sourcing)).toEqual(["tape", "tape"]);
+    expect(result.newSegments).toHaveLength(1);
+    const segment = result.newSegments[0]!;
+    expect(segment.startSec).toBe(100);
+    expect(segment.endSec).toBe(240);
+    expect(segment.extendedBySec).toBe(80);
+    expect(canonicalizeForAnchorMatch(cues[7]!.text)).toContain(segment.endAnchor);
+    const [a, b] = beats as Array<Extract<SourcedBeat, { sourcing: "tape" }>>;
+    expect(a!.tape.segmentId).toBe(b!.tape.segmentId);
+    expect(a!.tape.endSec).toBe(240);
+    expect(b!.tape.endSec).toBe(240);
+    expect(a!.mergedInto).toBeUndefined();
+    expect(b!.mergedInto).toEqual({ slot: 0, beat: 0 });
+    /* The ledgers hold ONE placement at the merged length. */
+    expect(result.tapeRelevance).toHaveLength(2);
+    expect(result.tapeRelevance[0]!.extendedBySec).toBe(80);
+    expect(result.tapeRelevance[1]!.mergedInto).toEqual({ slot: 0, beat: 0 });
+    expect(result.sourcingTrace).toHaveLength(0);
+    expect(summarizeSeeding(runActsDeepened([[beat(claimA, seedA), beat(claimB, seedB)]]), result)).toContain("1 beat(s) carried by an earlier beat's clip");
+  });
+
+  /** The deepened acts `runActs` sources, for the seeding line. */
+  function runActsDeepened(acts: F96Beat[][]): DeepenedAct[] {
+    return acts.map((beats, i) => makeDeepenedAct({ slots: [{ title: "Gearboxes", beats }] }, `F96-${i}`));
+  }
+
+  it("does not merge across a gap wider than MERGE_GAP_SEC, nor across an act boundary — the ledger answers as before", () => {
+    /* B's thought at 301-320 starts 81 s after clip A ends at 220: not the
+       same stretch, and the walk goes on to `m4-share` as it did before F-96.
+       And the same adjacent B in a SECOND act is a different act's clip to
+       write; it is not merged either. MUTATION THAT KILLS THIS: drop the
+       `MERGE_GAP_SEC` test in `mergeIntoClip` (first case) or the act check in
+       `mergeableInto` (second). Ran both — red. */
+    expect(MERGE_GAP_SEC).toBe(45);
+    const gap = runActs([[beat(claimA, seedA), beat(claimB, seedBLater)]]);
+    const gapBeats = allSourcedBeats(gap.acts);
+    expect(gapBeats.map((b) => b.sourcing)).toEqual(["tape", "narration"]);
+    expect(gap.newSegments).toHaveLength(1);
+    expect(gap.newSegments[0]!.endSec).toBe(220);
+    expect(gap.sourcingTrace[0]!.tier2!.gate).toBe("m4-share");
+    /* F-96: a SEEDED beat that ends as narration has lost its seed, and says
+       so for the writer and verifier — the trace names the gate. An unseeded
+       narration beat carries no such flag (its own case below). MUTATION
+       THAT KILLS THIS: drop the `seedLost` spread in `sourceBeats`. */
+    const lost = gapBeats[1]!;
+    expect(lost.sourcing === "narration" && lost.seedLost).toBe(true);
+    expect(summarizeSeeding(runActsDeepened([[beat(claimA, seedA), beat(claimB, seedBLater)]]), gap)).toContain("1 seeded beat(s) ended without tape (seedLost, F-96)");
+
+    const acts = runActs([[beat(claimA, seedA)], [beat(claimB, seedB)]]);
+    expect(allSourcedBeats(acts.acts).map((b) => b.sourcing)).toEqual(["tape", "narration"]);
+    expect(acts.newSegments).toHaveLength(1);
+  });
+
+  it("marks `seedLost` on a seeded beat that ends as narration, and on nothing else (F-96)", () => {
+    /* Three beats: an unseeded one the archive has nothing for, a seeded one
+       whose seed window is the host's welcome (refused on relevance, and the
+       whole-episode fallback then lands on clip A — merged, so it is tape),
+       and a seeded one whose seed the ledger refuses. Only the last carries
+       the flag; a seeded beat that got tape another way does not. */
+    const unseeded = { claim: "Turbine blades ice up in Norwegian winters.", exploration: false, kind: "account" as const };
+    const result = runActs([[beat(claimA, seedA), unseeded, beat(claimB, seedBLater)]]);
+    const beats = allSourcedBeats(result.acts);
+    expect(beats.map((b) => b.sourcing)).toEqual(["tape", "narration", "narration"]);
+    expect(beats[1]!.sourcing === "narration" && beats[1]!.seedLost).toBeUndefined();
+    expect(beats[2]!.sourcing === "narration" && beats[2]!.seedLost).toBe(true);
+    const seededTape = runActs([[beat(claimA, seedA), beat(claimB, { episodeId: "pa-970", startSec: 0, endSec: 30 })]]);
+    const carried = allSourcedBeats(seededTape.acts)[1]!;
+    expect(carried.sourcing).toBe("tape");
+    expect((carried as { seedLost?: true }).seedLost).toBeUndefined();
+  });
+
+  it("is not shortened by a thesis of many words the index never weighed (run 9's live timidity, F-96)", () => {
+    /* Run 9: the act thesis's twenty-odd words entered the relevance query at
+       weight 1 each — the claim search's idf knows only the claim's terms —
+       and the walk stopped almost at once. The thesis is scored as its own
+       share now (`relevanceScorer`), so a thesis the tape never says cannot
+       cost the clip a second. The end-to-end property, on the seed path; the
+       scorer's mutation (fold the thesis into the claim's query) is pinned in
+       `tapeExtent.test.ts`, where the claim's words carry a real idf — on
+       this one-episode index they weigh the same as the thesis's, so the
+       union survives here and the case is the property, not the mutation. */
+    const thesis =
+      "The engineering career arc was never a ladder rising from junior to senior; it is a series of hinge points where early failures and the move from the bench to the inbox change what an engineer does all day.";
+    const result = runActs([[beat(claimA, seedA)]], thesis);
+    expect(result.newSegments[0]!.endSec).toBe(220);
+  });
+});
+
 describe("sourceBeats — WS-H/F-61 offline: the real archive on the generation machine", () => {
   /** A worktree has no `data-local/` of its own; point this at the checkout
    * that holds the archive to run these cases from one. */

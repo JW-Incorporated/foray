@@ -133,6 +133,22 @@ describe("summarizeSeeding — the driver's one Foray-wide seeding line (G-25)",
     expect(line).toBe("source: 3 of 4 beats seeded from the research map — 2 tape (2 through the seed) / 2 narration");
   });
 
+  it("appends the merged beats and the pool cuts reused short of their extent only when there were any (F-96)", () => {
+    /* Run 9's line could not say that four of its ten clips were run 8's
+       pre-Q-01 cuts reused at their old length. MUTATION THAT KILLS THIS:
+       count `mergedInto` rows as tape through the seed instead. */
+    const deepened = [act([{ claim: "a", seeded: true }, { claim: "b", seeded: true }, { claim: "c" }])];
+    const result = sourced([true, true, true], 2);
+    const rows = result.tapeRelevance as unknown as Array<Record<string, unknown>>;
+    rows[1]!.mergedInto = { slot: 0, beat: 0 };
+    rows[2]!.poolCut = "reused";
+    rows[2]!.poolCutShortBySec = 81.091;
+    expect(summarizeSeeding(deepened, result)).toBe(
+      "source: 2 of 3 beats seeded from the research map — 3 tape (2 through the seed) / 0 narration" +
+        "; 1 beat(s) carried by an earlier beat's clip (F-96); 1 pool cut(s) reused 81 s short of this run's extent (F-84/F-96)"
+    );
+  });
+
   it("says 0 tape in the same words the per-slot lines use, so a no-tape run's every line still reads `0 tape`", () => {
     /* `runPipeline.test.ts` asserts that EVERY sourcing line of a no-tape
        outcome matches /0 tape/; this line joins that list. */

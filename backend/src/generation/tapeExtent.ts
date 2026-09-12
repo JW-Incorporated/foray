@@ -166,9 +166,16 @@ export interface ExtendToThoughtOptions {
   claimTerms: readonly string[];
   /** The act's thesis, likewise — what the clip is meant to serve beyond the
    * one claim, so an answer that moves from the claim to the thesis's subject
-   * is still relevant. Optional: with none, the claim alone is the query. */
+   * is still relevant. Scored as its OWN share, never folded into the claim's
+   * (see `relevanceScorer`, F-96). Optional: with none, the claim alone is
+   * the query. */
   thesisTerms?: readonly string[];
-  /** The corpus idf the window search scored with (`TranscriptTextCandidate.idf`). */
+  /** The corpus idf the window search scored with
+   * (`TranscriptTextCandidate.idf`) — the CLAIM's terms — merged with the idf
+   * of the thesis's terms when the caller has one (`sourceBeats.ts` asks the
+   * index for the thesis once per act). A term with no entry weighs 1, the
+   * weight of its list's rarest word, which is why the thesis needs its own
+   * entries: see `relevanceScorer`. */
   idf?: ReadonlyMap<string, number>;
   /** The band. `maxSec` is the ceiling (default `TAPE_WINDOW_MAX_SEC`);
    * `minSec` (default `TAPE_WINDOW_MIN_SEC`, which is `MIN_TAPE_SEGMENT_SEC`)
@@ -367,18 +374,78 @@ export function extendToThought(window: TapeWindow, cues: TranscriptCue[], optio
  * tests can read the number the floor is compared against.
  */
 export function relevanceScorer(index: CueIndex, options: ExtendToThoughtOptions): (fromSec: number, toSec: number) => number {
-  const query: string[] = [];
+  /* THE CLAIM AND THE THESIS ARE TWO QUESTIONS, NOT ONE QUERY (F-96).
+   *
+   * Until run 9 the two term lists were folded into one query and a minute
+   * scored by the share of the UNION's weight it spoke. That is the wrong
+   * question and, live, it was asked with the wrong weights:
+   *
+   *   - the wrong weights: the idf the window search hands over
+   *     (`TranscriptTextCandidate.idf`) holds the CLAIM's terms and nothing
+   *     else, because the index computed it for the claim's search.
+   *     `claimTermWeigher` weighs a term it has no idf for at 1 — the weight
+   *     of the claim's RAREST word — so every word of the act's thesis
+   *     (twenty to forty words, live; the offline measurement in F-94 used the
+   *     slot title, three to five) entered the query at full weight. Measured
+   *     on the run-9 candidate's six minted clips: with the claim alone the
+   *     extension gives 195 / 72 / 148 / 188 / 319 / 93 s; with a thesis-length
+   *     sentence folded in at weight 1 it gives 150 / 72 / 371 / 188 / 169 /
+   *     78 s and reproduces the live rows exactly where the stand-in thesis
+   *     happens to share the tape's words — the clip's length depended on
+   *     whether the guest used the thesis's abstract vocabulary, which is
+   *     noise.
+   *   - the wrong question: a minute that CONTINUES the claim's answer
+   *     speaks none of the thesis, and under a union share the thesis's
+   *     weight in the denominator halves that minute's score — the answer
+   *     is penalised for not being the thesis. The intent (Q-01: "an answer
+   *     that moves from the claim to the thesis's subject is still
+   *     relevant") is a disjunction: the minute is about the claim, OR it
+   *     is about the thesis.
+   *
+   * So each list is scored as its own idf-weighted share, with its own
+   * rarest word as the unit, and the minute's score is the LARGER of the
+   * two. The claim's half is exactly the share F-94 measured the floor on
+   * (the slot title's three words moved it by little), so `RELEVANCE_FLOOR`
+   * stands. The thesis's half needs the thesis's OWN idf to mean anything —
+   * without it every thesis word weighs one and a minute saying two of
+   * twenty passes — so `sourceBeats.ts` asks the text index for the thesis
+   * once per act and merges that idf into the map handed here; a caller
+   * with no index (the tests) gets the unweighted thesis share, which is
+   * what the fixtures were written against.
+   */
+  const claim = dedupe(options.claimTerms);
+  const thesis = dedupe(options.thesisTerms ?? []);
+  const shareOf = makeShare(index, claim, options.idf);
+  const thesisShareOf = thesis.length > 0 ? makeShare(index, thesis, options.idf) : null;
+  if (!shareOf && !thesisShareOf) return () => 0;
+  return (fromSec: number, toSec: number): number => {
+    const a = shareOf ? shareOf(fromSec, toSec) : 0;
+    const b = thesisShareOf ? thesisShareOf(fromSec, toSec) : 0;
+    return Math.max(a, b);
+  };
+}
+
+function dedupe(terms: readonly string[]): string[] {
+  const out: string[] = [];
   const seen = new Set<string>();
-  for (const t of [...options.claimTerms, ...(options.thesisTerms ?? [])]) {
+  for (const t of terms) {
     if (seen.has(t)) continue;
     seen.add(t);
-    query.push(t);
+    out.push(t);
   }
-  if (query.length === 0) return () => 0;
-  const weightOf = claimTermWeigher(query, options.idf);
+  return out;
+}
+
+/** One term list's idf-weighted share of itself spoken inside a stretch —
+ * `selectTapeWindow`'s `weightedShare`, on a stretch of tape instead of a cue
+ * run. `null` when the list is empty or weighs nothing. */
+function makeShare(index: CueIndex, query: readonly string[], idf: ReadonlyMap<string, number> | undefined): ((fromSec: number, toSec: number) => number) | null {
+  if (query.length === 0) return null;
+  const weightOf = claimTermWeigher(query, idf);
   let total = 0;
   for (const t of query) total += weightOf(t);
-  if (!(total > 0)) return () => 0;
+  if (!(total > 0)) return null;
+  const wanted = new Set(query);
   return (fromSec: number, toSec: number): number => {
     const matched = new Set<string>();
     for (let k = 0; k < index.cues.length; k++) {
@@ -388,7 +455,7 @@ export function relevanceScorer(index: CueIndex, options: ExtendToThoughtOptions
       const overlap = Math.min(cue.end_sec, toSec) - Math.max(cue.start_sec, fromSec);
       const needed = Math.min((cue.end_sec - cue.start_sec) / 2, CUE_OVERLAP_MIN_SEC);
       if (overlap < needed) continue;
-      for (const term of index.terms[k]!) if (seen.has(term)) matched.add(term);
+      for (const term of index.terms[k]!) if (wanted.has(term)) matched.add(term);
     }
     let score = 0;
     for (const t of matched) score += weightOf(t);

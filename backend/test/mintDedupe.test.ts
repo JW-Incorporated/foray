@@ -210,18 +210,19 @@ describe("F-84 at sourcing — a tier-2 cut at a start the pool holds reuses the
       { text: "we will come back to that after the break", start_sec: 170, end_sec: 190 }
     ];
     const committedB = { ...poolRowAt(100.2, 140, `${itemB}#100`), item_id: itemB };
+    /* Two ACTS (F-96): in one act the second beat, refused its pool cut on B,
+       would fall back to episode A's tape — the same claim — and ride in the
+       clip the first beat just minted (the merge). Across an act boundary no
+       merge is made, and the pool-cut refusal is what decides. */
     const acts: DeepenedAct[] = [
       {
         ...seededAct()[0]!,
-        slots: [
-          {
-            title: "Labels",
-            beats: [
-              { claim, exploration: false, kind: "account", seed: { episodeId: ITEM_ID, startSec: 100, endSec: 132 } },
-              { claim, exploration: false, kind: "account", seed: { episodeId: itemB, startSec: 100, endSec: 170 } }
-            ]
-          }
-        ]
+        slots: [{ title: "Labels", beats: [{ claim, exploration: false, kind: "account", seed: { episodeId: ITEM_ID, startSec: 100, endSec: 132 } }] }]
+      },
+      {
+        ...seededAct()[0]!,
+        title: "Act B",
+        slots: [{ title: "Labels again", beats: [{ claim, exploration: false, kind: "account", seed: { episodeId: itemB, startSec: 100, endSec: 170 } }] }]
       }
     ];
     const cuesByGuid: Record<string, TranscriptCue[]> = { "pa-172": cues, "pa-173": cuesB };
