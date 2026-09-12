@@ -94,7 +94,13 @@ export class AnthropicSpineBuilder implements SpineBuilder {
       ? [
           { role: "user", content: promptText },
           { role: "assistant", content: spineReplyText(ctx.revision.previous) },
-          { role: "user", content: buildSpineFixInstruction(ctx.revision.violations) }
+          {
+            role: "user",
+            content:
+              ctx.revision.kind === "seed-floor"
+                ? buildSeedFloorInstruction(ctx.revision.violations)
+                : buildSpineFixInstruction(ctx.revision.violations)
+          }
         ]
       : [{ role: "user", content: promptText }];
     const conversationText = messages.map((m) => (typeof m.content === "string" ? m.content : "")).join("\n");
@@ -183,6 +189,40 @@ export function buildSpineFixInstruction(violations: string[]): string {
     "Every beat claim is ONE sentence (one full stop, at most 60 words); no claim appears twice; every act",
     "has a startState and an endState. Respond with ONLY the complete corrected JSON object, the same shape",
     "as before, no markdown fences, no other text."
+  ].join("\n");
+}
+
+/**
+ * F-98: the one user turn a SEED-FLOOR re-ask adds — same idiom as F-86's above
+ * (the whole prompt is still in the conversation, the model's own reply is the
+ * assistant turn, this names only what to change) and a deliberately different
+ * ask.
+ *
+ * The structural re-ask says "these beats are malformed; fix them and touch
+ * nothing else". This one says something the model can legitimately refuse for
+ * some of the beats named: the windows above may genuinely not say what a
+ * particular beat claims, and F-63's rule — never seed a claim its window does
+ * not say — is stronger than any yield target. So the instruction asks for the
+ * claim to be REWRITTEN from the window where the window has something to say,
+ * and for the beat to be left exactly as it is where it does not. A re-ask that
+ * demanded a seed per beat would buy seeds that `sourceBeats.ts` refuses one
+ * stage later and narrate the beat anyway, with the claim damaged on the way
+ * past. Exported for the test that pins the conversation.
+ */
+export function buildSeedFloorInstruction(violations: string[]): string {
+  return [
+    "Your previous spine is structurally fine, but too few of its beats are written from the quoted transcript",
+    "windows above — and those windows are where this Foray's tape comes from: a beat with no seed is narrated,",
+    "never played. The following beats carry no seed, each with the window that came closest to it:",
+    ...violations.map((v) => `- ${v}`),
+    "",
+    "For each one where the named window (or any other window quoted above) ACTUALLY SAYS something the beat is",
+    "about, rewrite that beat's claim in the window's own words and add its \"seed\": {\"episodeId\", \"startSec\",",
+    "\"endSec\"}. Where no quoted window says it, LEAVE THE BEAT EXACTLY AS IT IS — never seed a claim its window",
+    "does not carry, and never invent a window. Change nothing else: every other act, slot, beat, seed and the",
+    "voice stay as they were, every claim is still ONE sentence, and the exploration marks are unchanged.",
+    "",
+    "Respond with ONLY the complete JSON object, the same shape as before, no markdown fences, no other text."
   ].join("\n");
 }
 

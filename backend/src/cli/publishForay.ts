@@ -4,11 +4,17 @@ import path from "node:path";
 import { execFileSync } from "node:child_process";
 import {
   finalizeForay,
+  foraysReferencing,
   generationBatchId,
+  isGeneratedDraft,
   mintedPoolCollisions,
   mintedSegmentRow,
+  restateDraftRuntimes,
+  supersededAddedSec,
   type FinalizeForayInput,
-  type PoolRowLike
+  type ForayRowLike,
+  type PoolRowLike,
+  type RuntimeRestatement
 } from "../generation/finalizeForay";
 import { evaluateVeracityGate, type VeracityGateResult, type VeracityMetrics } from "../generation/veracityMetrics";
 import {
@@ -154,6 +160,9 @@ interface CliArgs {
   force: boolean;
   report: string | null;
   deployId: string | null;
+  /** F-98: the prior generated DRAFT of this same prompt, removed by this
+   * publish so the Foray list does not accumulate one draft per attempt. */
+  supersedes: string | null;
 }
 
 function parseArgs(argv: string[]): CliArgs {
@@ -167,7 +176,8 @@ function parseArgs(argv: string[]): CliArgs {
     hold: !argv.includes("--no-hold"),
     force: argv.includes("--force"),
     report: get("--report") ?? null,
-    deployId: get("--deploy-id") ?? null
+    deployId: get("--deploy-id") ?? null,
+    supersedes: get("--supersedes") ?? null
   };
 }
 
@@ -292,6 +302,31 @@ export interface PublishWritePlan {
   mintedSegments: NonNullable<FinalizeForayInput["segments"]>;
   mintedRows: Array<{ id: string; row: PoolRowLike }>;
   mintedSources: Array<{ id?: string }>;
+  /**
+   * F-98: `--supersedes <foray-id>` — the prior DRAFT of this same prompt, to be
+   * removed in the same commit that adds the new one, along with every minted
+   * pool row only it referenced.
+   *
+   * WHY THE FLAG EXISTS. A regenerated draft is a second attempt at one Foray,
+   * not a second Foray, and without this the list accumulates one draft per
+   * attempt — run 8 and run 9 are the same prompt and both sit in
+   * `data/forays.json`. Null on every ordinary publish, which is the whole of
+   * the pre-F-98 behaviour.
+   */
+  supersedesForayId?: string | null;
+}
+
+/** What the write did, beyond which files it touched. */
+export interface PublishWriteResult {
+  /** Repo-relative files actually changed — what `commitPublish` stages. */
+  files: string[];
+  /** F-98: pool rows this publish re-cut in place, and the drafts whose
+   * `runtime_sec` moved with them. */
+  superseded: Array<{ id: string; fromEndSec: number; toEndSec: number }>;
+  restated: RuntimeRestatement[];
+  /** F-98: the prior draft `--supersedes` removed, and the minted rows that went
+   * with it because nothing else played them. */
+  removed: { forayId: string; segmentIds: string[] } | null;
 }
 
 /**
@@ -300,12 +335,43 @@ export interface PublishWritePlan {
  * only `data/forays.json`). Throws — writing nothing further — on an F-84
  * collision; the caller restores the tree.
  */
-export function writePublishDataFiles(repoRoot: string, plan: PublishWritePlan, log: (line: string) => void = console.log): string[] {
+export function writePublishDataFiles(repoRoot: string, plan: PublishWritePlan, log: (line: string) => void = console.log): PublishWriteResult {
   const forayPath = path.join(repoRoot, "data", "forays.json");
-  const live = JSON.parse(fs.readFileSync(forayPath, "utf8")) as { forays: unknown[] };
-  live.forays.push(plan.forayRecord);
+  const live = JSON.parse(fs.readFileSync(forayPath, "utf8")) as { forays: ForayRowLike[] };
+
+  /* F-98, STEP ONE: THE PRIOR DRAFT GOES BEFORE THE NEW ONE ARRIVES.
+     Removed here rather than left for a person because the alternative is the
+     Foray list growing one row per regeneration attempt. Only a GENERATED DRAFT
+     can be removed — a curated or published Foray of the same prompt is
+     somebody's decision, and this refuses rather than quietly declining, so
+     `--supersedes` pointed at the wrong id is an error and not a silent no-op. */
+  let removed: PublishWriteResult["removed"] = null;
+  if (plan.supersedesForayId) {
+    const prior = live.forays.find((f) => f.id === plan.supersedesForayId);
+    if (!prior) {
+      throw new Error(`publishForay: --supersedes "${plan.supersedesForayId}" names no Foray in data/forays.json.`);
+    }
+    if (!isGeneratedDraft(prior)) {
+      throw new Error(
+        `publishForay: --supersedes "${plan.supersedesForayId}" is not a generated draft (generated: ${String(prior.generated)}, ` +
+          `status: ${String(prior.status)}) — only a draft this pipeline generated may be replaced by a regenerated attempt (F-98).`
+      );
+    }
+    live.forays = live.forays.filter((f) => f !== prior);
+    removed = { forayId: String(prior.id), segmentIds: [] };
+  }
+
+  /* Step two: the drafts timed on a row this publish re-cuts. Computed against
+     the list AFTER the removal above, so a runtime is never restated on a Foray
+     that is on its way out. */
+  const addedSecById = supersededAddedSec(plan.mintedSegments);
+  const { forays: restatedForays, restated } = restateDraftRuntimes(live.forays, addedSecById);
+  live.forays = [...restatedForays, plan.forayRecord as ForayRowLike];
   fs.writeFileSync(forayPath, `${JSON.stringify(live, null, 2)}\n`);
-  log(`Wrote data/forays.json (+1 Foray).`);
+  log(
+    `Wrote data/forays.json (+1 Foray${removed ? `, -1 superseded draft ${removed.forayId}` : ""}` +
+      `${restated.length > 0 ? `, ${restated.length} draft runtime(s) restated` : ""}).`
+  );
 
   /* THE TIER-2 TAPE THE FORAY REFERS TO (F-49 plumbing). `finalizeForay`
      validated the candidate against a pool with these merged in; publishing the
@@ -319,20 +385,61 @@ export function writePublishDataFiles(repoRoot: string, plan: PublishWritePlan, 
      an id the pool gate rejects (F-84, `mintedPoolCollisions`). Asked again at
      the write, not only at finalize, because this is the seam that writes. */
   const writtenDataFiles: string[] = ["data/forays.json"];
-  if (plan.mintedRows.length > 0) {
-    const poolPath = path.join(repoRoot, "data", "segments.json");
+  const superseded: PublishWriteResult["superseded"] = [];
+  const poolPath = path.join(repoRoot, "data", "segments.json");
+  if (plan.mintedRows.length > 0 || removed) {
     const pool = JSON.parse(fs.readFileSync(poolPath, "utf8")) as { segments: PoolRowLike[] };
     const collisions = mintedPoolCollisions(plan.mintedSegments, pool.segments);
     if (collisions.length > 0) {
       throw new Error(`publishForay: refusing to write data/segments.json — ${collisions.join("; ")}`);
     }
+    /* F-98: THE ORPHANS OF THE REMOVED DRAFT. A row the removed draft was the
+       only Foray to reference is a row nothing can play any more; left behind it
+       is pool litter that the next run's F-84 reuse would hand to a new Foray at
+       a length nobody chose. Removed only when it is a generated mint nobody has
+       reviewed and no SURVIVING Foray plays it — the same ownership test
+       `poolRowIsSupersedable` applies, asked against the list this write is
+       about to commit. */
+    if (removed) {
+      const survivors = live.forays;
+      const orphans = pool.segments.filter(
+        (row) =>
+          typeof row.id === "string" &&
+          (row as { needs_review?: unknown }).needs_review === true &&
+          (row as { source?: unknown }).source === "generation-tier-2" &&
+          foraysReferencing(survivors, row.id).length === 0
+      );
+      if (orphans.length > 0) {
+        const drop = new Set(orphans.map((o) => String(o.id)));
+        pool.segments = pool.segments.filter((row) => !drop.has(String(row.id)));
+        removed.segmentIds = [...drop];
+      }
+    }
+    /* F-98: a superseding row REWRITES its committed twin in place — same id,
+       same start, the longer end and `superseded_from` — rather than being
+       skipped by the "ids already on disk are the pool's" rule. The row keeps
+       its position in the file, so the diff a reviewer reads is the one row
+       whose end moved. */
+    const bySupersededId = new Map(plan.mintedRows.filter((m) => addedSecById.has(m.id)).map((m) => [m.id, m.row]));
+    if (bySupersededId.size > 0) {
+      pool.segments = pool.segments.map((row) => {
+        const replacement = typeof row.id === "string" ? bySupersededId.get(row.id) : undefined;
+        if (!replacement) return row;
+        superseded.push({ id: String(row.id), fromEndSec: Number(row.end_sec), toEndSec: Number(replacement.end_sec) });
+        return replacement;
+      });
+    }
     const known = new Set(pool.segments.map((s) => s.id));
     const added = plan.mintedRows.filter((m) => !known.has(m.id)).map((m) => m.row);
-    if (added.length > 0) {
-      pool.segments.push(...added);
+    if (added.length > 0) pool.segments.push(...added);
+    if (added.length > 0 || superseded.length > 0 || (removed?.segmentIds.length ?? 0) > 0) {
       fs.writeFileSync(poolPath, `${JSON.stringify(pool, null, 2)}\n`);
       writtenDataFiles.push("data/segments.json");
-      log(`Wrote data/segments.json (+${added.length} tier-2 segment(s), flagged needs_review).`);
+      log(
+        `Wrote data/segments.json (+${added.length} tier-2 segment(s), flagged needs_review` +
+          `${superseded.length > 0 ? `; ${superseded.length} draft row(s) superseded by a longer cut` : ""}` +
+          `${(removed?.segmentIds.length ?? 0) > 0 ? `; -${removed!.segmentIds.length} row(s) orphaned by the removed draft` : ""}).`
+      );
     }
   }
   if (plan.mintedSources.length > 0) {
@@ -347,7 +454,7 @@ export function writePublishDataFiles(repoRoot: string, plan: PublishWritePlan, 
       log(`Wrote data/segment-sources.json (+${added.length} episode source row(s)).`);
     }
   }
-  return writtenDataFiles;
+  return { files: writtenDataFiles, superseded, restated, removed };
 }
 
 /** Console sinks, injected so the gate's tests are quiet. */
@@ -418,7 +525,12 @@ export function publishPrBody(
   input: Pick<FinalizeForayInput, "id">,
   gate: VeracityGateResult,
   suites: Pick<SuiteRunResult, "ok" | "failures" | "counts" | "files"> | null = null,
-  veracity?: Pick<VeracityMetrics, "synthesisVerifiedPages" | "synthesisVerifiedPageDetails">
+  veracity?: Pick<VeracityMetrics, "synthesisVerifiedPages" | "synthesisVerifiedPageDetails">,
+  /** F-98: what this publish changed in the pool and the Foray list BESIDE
+   * adding one Foray — a re-cut row, a restated draft runtime, a removed prior
+   * draft. Every one of them touches something that was already on main, so
+   * every one of them is named in the body a founder reads. */
+  write?: Pick<PublishWriteResult, "superseded" | "restated" | "removed">
 ): string {
   const synthesis = synthesisVerifiedLines(veracity);
   return (
@@ -441,8 +553,38 @@ export function publishPrBody(
           .map((f) => `- ${formatSuiteFailure(f)}`)
           .join("\n")}`
       : "") +
-    (synthesis.length > 0 ? `\n\n**${synthesis[0]}**\n${synthesis.slice(1).map((l) => `- ${l}`).join("\n")}` : "")
+    (synthesis.length > 0 ? `\n\n**${synthesis[0]}**\n${synthesis.slice(1).map((l) => `- ${l}`).join("\n")}` : "") +
+    supersedeLines(write)
   );
+}
+
+/** F-98's paragraphs of the PR body — empty on a publish that only adds, which
+ * is every publish before this card. */
+export function supersedeLines(write?: Pick<PublishWriteResult, "superseded" | "restated" | "removed">): string {
+  if (!write) return "";
+  let out = "";
+  if (write.superseded.length > 0) {
+    out +=
+      `\n\n**${write.superseded.length} draft pool row(s) superseded by a longer cut at the same start (F-98).** ` +
+      "Each was `needs_review: true` and referenced only by generated drafts; the row is rewritten in place (same id, " +
+      "new `end_sec`/`end_anchor`, `superseded_from`, this batch's id) rather than minted beside (F-84's id rule).\n" +
+      write.superseded.map((s) => `- \`${s.id}\`: ${s.fromEndSec} s → ${s.toEndSec} s`).join("\n");
+  }
+  if (write.restated.length > 0) {
+    out +=
+      "\n\n**Draft Forays whose `runtime_sec` this publish restates** (the checker's 0.5 s drift rule — they play a row " +
+      "that got longer):\n" +
+      write.restated.map((r) => `- \`${r.forayId}\`: ${r.fromSec.toFixed(3)} s → ${r.toSec.toFixed(3)} s (${r.segmentIds.join(", ")})`).join("\n");
+  }
+  if (write.removed) {
+    out +=
+      `\n\n**\`--supersedes\`: the prior draft \`${write.removed.forayId}\` is removed by this PR** — a regenerated draft of ` +
+      "the same prompt replaces it rather than sitting beside it." +
+      (write.removed.segmentIds.length > 0
+        ? `\nMinted pool rows removed with it (no surviving Foray plays them): ${write.removed.segmentIds.map((id) => `\`${id}\``).join(", ")}`
+        : "\nNo pool rows were removed — every row it played is still referenced.");
+  }
+  return out;
 }
 
 /** What a publish leaves on the candidate's `report.json` row. `deploy_id` is
@@ -510,7 +652,7 @@ async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
   if (!args.input) {
     console.error(
-      "Usage: npm run publish-foray -- --input path/to/candidate.json [--dry-run] [--no-hold] [--force] [--report report.json] [--deploy-id <id>]"
+      "Usage: npm run publish-foray -- --input path/to/candidate.json [--dry-run] [--no-hold] [--force] [--report report.json] [--deploy-id <id>] [--supersedes <foray-id>]"
     );
     process.exitCode = 1;
     return;
@@ -562,7 +704,13 @@ async function main(): Promise<void> {
   const rowContext = { batchId: generationBatchId(input.id), sources: mintedSources };
   const mintedRows = mintedSegments.map((s) => ({ id: s.id, row: mintedSegmentRow(s, input.topic, rowContext) }));
 
-  const plan: PublishWritePlan = { forayRecord: result.forayRecord, mintedSegments, mintedRows, mintedSources };
+  const plan: PublishWritePlan = {
+    forayRecord: result.forayRecord,
+    mintedSegments,
+    mintedRows,
+    mintedSources,
+    supersedesForayId: args.supersedes
+  };
 
   if (args.dryRun) {
     /* G-21c: --dry-run still WRITES the three files — into the working tree,
@@ -601,9 +749,9 @@ async function main(): Promise<void> {
      G-21c nothing cleaned up after that throw — the checkout was left on a
      half-written publish branch for a person to untangle. */
   const snapshot = snapshotDataFiles(REPO_ROOT);
-  let writtenDataFiles: string[];
+  let write: PublishWriteResult;
   try {
-    writtenDataFiles = writePublishDataFiles(REPO_ROOT, plan);
+    write = writePublishDataFiles(REPO_ROOT, plan);
   } catch (err) {
     restoreDataFiles(REPO_ROOT, snapshot);
     abandonPublishBranch(run, branch, previousRef);
@@ -630,7 +778,7 @@ async function main(): Promise<void> {
   }
 
   // Step 3b — commit, prove it is only the publish, push, PR (foray-nightly.md step 7).
-  commitPublish(run, writtenDataFiles, `Generated Foray: ${input.title} (${input.id})`);
+  commitPublish(run, write.files, `Generated Foray: ${input.title} (${input.id})`);
   run("git", ["push", "-u", "origin", "HEAD"]);
 
   const prUrl = run("gh", [
@@ -641,7 +789,7 @@ async function main(): Promise<void> {
     "--title",
     `Generated Foray: ${input.title}`,
     "--body",
-    publishPrBody(input, gate, suites, input.meta?.veracity)
+    publishPrBody(input, gate, suites, input.meta?.veracity, write)
   ]);
   console.log(`Opened PR: ${prUrl}`);
 

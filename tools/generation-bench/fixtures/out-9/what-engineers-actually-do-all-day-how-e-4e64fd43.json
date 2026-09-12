@@ -1,0 +1,183 @@
+{
+  "id": "what-engineers-actually-do-all-day-731735",
+  "title": "What Engineers Actually Do All Day",
+  "runtimeSec": 1929.48,
+  "items": [
+    {
+      "type": "narration",
+      "id": "disclosure"
+    },
+    {
+      "type": "narration",
+      "id": "act-1-introduction"
+    },
+    {
+      "type": "narration",
+      "id": "narration-act-1-0-beat"
+    },
+    {
+      "type": "segment",
+      "slot": "lone-genius-broken-image",
+      "segment_id": "being-an-engineer--s2e28-test-stands-x-ray-other-instrumentation-william-gabler#30"
+    },
+    {
+      "type": "jingle",
+      "id": "jingle-cut-act-1-4"
+    },
+    {
+      "type": "segment",
+      "slot": "nobody-starts-at-the-top",
+      "segment_id": "being-an-engineer--s7e17-joe-couitt-how-to-design-for-swiss-machining#45"
+    },
+    {
+      "type": "narration",
+      "id": "narration-act-1-5-beat"
+    },
+    {
+      "type": "segment",
+      "slot": "nobody-starts-at-the-top",
+      "segment_id": "being-an-engineer--david-oh-nasa-systems-engineering-and-sending-robots-to-spac#283"
+    },
+    {
+      "type": "narration",
+      "id": "narration-act-1-7-beat"
+    },
+    {
+      "type": "narration",
+      "id": "act-1-exit"
+    },
+    {
+      "type": "narration",
+      "id": "act-2-introduction"
+    },
+    {
+      "type": "narration",
+      "id": "narration-act-2-0-beat"
+    },
+    {
+      "type": "segment",
+      "slot": "when-the-part-fails",
+      "segment_id": "being-an-engineer--daniel-servansky-electromechanical-engineering-root-cause-an#1139"
+    },
+    {
+      "type": "narration",
+      "id": "narration-act-2-2-beat"
+    },
+    {
+      "type": "segment",
+      "slot": "when-the-product-fails-in-the-field",
+      "segment_id": "being-an-engineer--s2e39-processes-for-life-business-mcdonalds-ideas-feel-good#1525"
+    },
+    {
+      "type": "narration",
+      "id": "narration-act-2-6-beat"
+    },
+    {
+      "type": "narration",
+      "id": "act-2-exit"
+    },
+    {
+      "type": "narration",
+      "id": "act-3-introduction"
+    },
+    {
+      "type": "segment",
+      "slot": "learning-to-speak-business",
+      "segment_id": "being-an-engineer--ian-mceachern-artificial-hearts-times-square-led-displays-en#16"
+    },
+    {
+      "type": "narration",
+      "id": "narration-act-3-1-beat"
+    },
+    {
+      "type": "segment",
+      "slot": "learning-to-trust-the-tools-you-once-feared",
+      "segment_id": "being-an-engineer--s5e19-krishna-raichur-the-ins-outs-of-engineering-simulation#1440"
+    },
+    {
+      "type": "narration",
+      "id": "narration-act-3-7-beat"
+    },
+    {
+      "type": "narration",
+      "id": "act-3-exit"
+    },
+    {
+      "type": "narration",
+      "id": "act-4-introduction"
+    },
+    {
+      "type": "narration",
+      "id": "narration-act-4-0-connective"
+    },
+    {
+      "type": "segment",
+      "slot": "different-ladders-same-shift",
+      "segment_id": "being-an-engineer--s6e46-rick-james-ansys-engineering-simulation#0"
+    },
+    {
+      "type": "narration",
+      "id": "narration-act-4-1-connective"
+    },
+    {
+      "type": "segment",
+      "slot": "different-ladders-same-shift",
+      "segment_id": "being-an-engineer--s1e10-from-engineering-startups-to-established-corporations#14"
+    },
+    {
+      "type": "narration",
+      "id": "narration-act-4-2-beat"
+    },
+    {
+      "type": "segment",
+      "slot": "different-ladders-same-shift",
+      "segment_id": "being-an-engineer--dylan-lundberg-protolabs#2129"
+    },
+    {
+      "type": "narration",
+      "id": "narration-act-4-5-beat"
+    },
+    {
+      "type": "narration",
+      "id": "act-4-exit"
+    }
+  ],
+  "segments": [
+    {
+      "id": "being-an-engineer--s7e17-joe-couitt-how-to-design-for-swiss-machining#45",
+      "itemId": "being-an-engineer--s7e17-joe-couitt-how-to-design-for-swiss-machining",
+      "startSec": 45.225,
+      "endSec": 194.93
+    },
+    {
+      "id": "being-an-engineer--david-oh-nasa-systems-engineering-and-sending-robots-to-spac#283",
+      "itemId": "being-an-engineer--david-oh-nasa-systems-engineering-and-sending-robots-to-spac",
+      "startSec": 282.75,
+      "endSec": 348
+    },
+    {
+      "id": "being-an-engineer--s2e39-processes-for-life-business-mcdonalds-ideas-feel-good#1525",
+      "itemId": "being-an-engineer--s2e39-processes-for-life-business-mcdonalds-ideas-feel-good",
+      "startSec": 1524.519,
+      "endSec": 1640.139
+    },
+    {
+      "id": "being-an-engineer--ian-mceachern-artificial-hearts-times-square-led-displays-en#16",
+      "itemId": "being-an-engineer--ian-mceachern-artificial-hearts-times-square-led-displays-en",
+      "startSec": 15.779,
+      "endSec": 204.03
+    },
+    {
+      "id": "being-an-engineer--s5e19-krishna-raichur-the-ins-outs-of-engineering-simulation#1440",
+      "itemId": "being-an-engineer--s5e19-krishna-raichur-the-ins-outs-of-engineering-simulation",
+      "startSec": 1439.639,
+      "endSec": 1586.219
+    },
+    {
+      "id": "being-an-engineer--dylan-lundberg-protolabs#2129",
+      "itemId": "being-an-engineer--dylan-lundberg-protolabs",
+      "startSec": 2129.089,
+      "endSec": 2206.609
+    }
+  ]
+}

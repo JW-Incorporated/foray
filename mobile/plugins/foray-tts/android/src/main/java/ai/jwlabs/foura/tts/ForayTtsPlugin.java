@@ -85,6 +85,50 @@ public class ForayTtsPlugin extends Plugin implements TextToSpeech.OnInitListene
     private boolean ttsReady = false;
     private boolean ttsInitFailed = false;
 
+    /* ── L-05 (founder feedback F12): pause, resume, stop ───────────────────
+       ANDROID HAS NO PAUSE. `TextToSpeech` exposes `speak`, `stop` and
+       nothing between them — this is a documented limitation of the platform
+       API, not of this plugin, and `README.md` says so in the same words so
+       nobody re-discovers it from the code.
+
+       WHAT IS IMPLEMENTED INSTEAD, and its exact cost: pause is `stop()` plus
+       remembering the last word boundary the engine reported
+       (`onRangeStart`), and resume is `speak()` of the REMAINDER of the same
+       text from that boundary. The listener hears the line continue from the
+       start of the word that was being spoken when they pressed pause, which
+       is within a word of the iOS behaviour (`pauseSpeaking(at: .word)`).
+
+       THE COST WHEN THE ENGINE REPORTS NO BOUNDARY: `onRangeStart` is API 24+
+       and an engine may never call it at all. Then the boundary stays 0 and
+       resume RE-SPEAKS THE WHOLE LINE. That is the honest fallback — a
+       narration line is one or two sentences, and hearing it again is
+       recoverable in a way silence from a lock-screen resume button is not.
+       `resume()`'s answer carries `fromStart` so the page can tell which
+       happened, and `foray-tts.js` surfaces it. */
+
+    /** The exact CharSequence handed to {@link TextToSpeech#speak}, kept so
+     *  {@link #resume} can re-speak its tail. Null when nothing has been
+     *  spoken this session. */
+    private String lastSpokenText = null;
+    /** The most recent {@code onRangeStart} start offset into
+     *  {@link #lastSpokenText}, or 0 when the engine has reported none. */
+    private int lastBoundary = 0;
+    /** True between a {@link #pause} and the {@link #resume}/{@link #stop}
+     *  that ends it. Android cannot be asked, so this class remembers. */
+    private boolean paused = false;
+    /** True while an utterance this plugin started is believed to be running.
+     *  Set on an accepted {@code speak}, cleared by {@code onDone}, a
+     *  {@code stop} or a {@code pause}. Android's
+     *  {@link TextToSpeech#isSpeaking} exists but answers about the ENGINE,
+     *  which other apps share; this answers about us. */
+    private boolean speaking = false;
+
+    /** The three words {@code state()} reports, matching iOS exactly so one
+     *  caller can read both platforms. */
+    private static final String STATE_SPEAKING = "speaking";
+    private static final String STATE_PAUSED = "paused";
+    private static final String STATE_IDLE = "idle";
+
     @Override
     public void load() {
         super.load();
@@ -221,8 +265,25 @@ public class ForayTtsPlugin extends Plugin implements TextToSpeech.OnInitListene
                 @Override
                 public void onStart(String utteranceId) { /* no-op: resolution is on accept, not on completion -- see class comment */ }
 
+                /* L-05. The only word-boundary signal `TextToSpeech` has, and
+                   the whole of what makes a resume land near where the pause
+                   did. API 24+; on anything older, and on any engine that does
+                   not implement it, this is simply never called and
+                   `lastBoundary` stays 0 — see the field's own comment for
+                   what that costs. `end`/`frame` are deliberately ignored:
+                   resume re-speaks from the START of the word in flight, which
+                   is the behaviour `pauseSpeaking(at: .word)` gives on iOS. */
+                @Override
+                public void onRangeStart(String utteranceId, int start, int end, int frame) {
+                    if (start >= 0) {
+                        lastBoundary = start;
+                    }
+                }
+
                 @Override
                 public void onDone(String utteranceId) {
+                    speaking = false;
+                    paused = false;
                     /* §7 item 3 (L-03). `speak()` itself stays accept-only
                        (see the class comment on why) -- this is the separate
                        completion signal, mirroring
@@ -254,6 +315,13 @@ public class ForayTtsPlugin extends Plugin implements TextToSpeech.OnInitListene
                item 3) -- `speak()`'s own promise stays accept-only. */
             Bundle params = new Bundle();
             int speakResult;
+            /* L-05's bookkeeping, reset BEFORE the call rather than after:
+               `onRangeStart` can fire on the engine's own thread before
+               `speak()` returns, and clearing the boundary afterwards would
+               throw away the first word of the line we are about to be able to
+               resume. */
+            lastBoundary = 0;
+            paused = false;
             if (androidSsml != null && !androidSsml.isEmpty()) {
                 /* TextToSpeech has no public "speak SSML" entry point distinct
                    from speak(CharSequence, ...) -- the undocumented behaviour
@@ -264,6 +332,13 @@ public class ForayTtsPlugin extends Plugin implements TextToSpeech.OnInitListene
             } else {
                 speakResult = tts.speak(text, TextToSpeech.QUEUE_FLUSH, params, utteranceId);
             }
+
+            /* What `resume()` will re-speak the tail of: the SAME CharSequence
+               that was handed to the engine, SSML markup included, because
+               `onRangeStart`'s offsets are into that string and not into the
+               plain text. */
+            lastSpokenText = (androidSsml != null && !androidSsml.isEmpty()) ? androidSsml : text;
+            speaking = speakResult == TextToSpeech.SUCCESS;
 
             pendingResult.put("ok", speakResult == TextToSpeech.SUCCESS);
             pendingResult.put("accepted", speakResult == TextToSpeech.SUCCESS);
@@ -527,12 +602,151 @@ public class ForayTtsPlugin extends Plugin implements TextToSpeech.OnInitListene
         }
     }
 
+    /**
+     * L-05. Stop speaking and remember where, so {@link #resume} can continue.
+     *
+     * <p>See the field block at the top of this class for why this is
+     * {@code stop()} plus a boundary rather than a real pause, and what it
+     * costs when the engine reports no boundary. Resolves always.</p>
+     */
+    @PluginMethod
+    public void pause(PluginCall call) {
+        JSObject result = new JSObject();
+        result.put("platform", "android");
+        boolean accepted = false;
+        if (tts != null && !ttsInitFailed && speaking && !paused) {
+            try {
+                tts.stop();
+                paused = true;
+                speaking = false;
+                accepted = true;
+            } catch (Exception e) {
+                Log.w(TAG, "pause() failed", e);
+            }
+        }
+        result.put("ok", true);
+        result.put("accepted", accepted);
+        /* THE PLATFORM'S LIMIT, ON THE WIRE. A caller comparing the two
+           platforms' answers should not have to know which one it is talking
+           to; `emulated` says that this pause is a stop-and-remember rather
+           than a real one, and iOS never sets it. */
+        result.put("emulated", true);
+        result.put("boundary", lastBoundary);
+        result.put("state", stateWord());
+        result.put("reason", accepted ? "" : "nothing was speaking");
+        call.resolve(result);
+    }
+
+    /**
+     * L-05. Re-speak the remainder of the paused line.
+     *
+     * <p>{@code fromStart} is true when no word boundary was ever reported and
+     * the whole line is being spoken again — the honest fallback, stated on
+     * the wire rather than hidden.</p>
+     */
+    @PluginMethod
+    public void resume(PluginCall call) {
+        JSObject result = new JSObject();
+        result.put("platform", "android");
+        boolean accepted = false;
+        boolean fromStart = false;
+        if (tts != null && !ttsInitFailed && paused && lastSpokenText != null) {
+            try {
+                int from = lastBoundary;
+                if (from < 0 || from >= lastSpokenText.length()) {
+                    from = 0;
+                }
+                fromStart = from == 0;
+                String remainder = lastSpokenText.substring(from);
+                Bundle params = new Bundle();
+                int speakResult = tts.speak(
+                    remainder, TextToSpeech.QUEUE_FLUSH, params, UUID.randomUUID().toString()
+                );
+                accepted = speakResult == TextToSpeech.SUCCESS;
+                if (accepted) {
+                    /* The remainder is a NEW string and `onRangeStart`'s
+                       offsets will be into IT, so the base has to move with
+                       it or a second pause would resume from the wrong place
+                       — off by however far the first pause had got. */
+                    lastSpokenText = remainder;
+                    lastBoundary = 0;
+                    paused = false;
+                    speaking = true;
+                }
+            } catch (Exception e) {
+                Log.w(TAG, "resume() failed", e);
+            }
+        }
+        result.put("ok", true);
+        result.put("accepted", accepted);
+        result.put("emulated", true);
+        result.put("fromStart", fromStart);
+        result.put("state", stateWord());
+        result.put("reason", accepted ? "" : "nothing was paused");
+        call.resolve(result);
+    }
+
+    /**
+     * L-05. Stop speaking and forget the line.
+     *
+     * <p>{@code player/client.js}'s {@code stopAndClose} is the caller that
+     * matters: closing the player must not leave a voice talking into a car.
+     * Deliberately does NOT raise {@code FINISHED_EVENT} — that event advances
+     * the queue, and a stop that advanced past the line it just silenced would
+     * be a skip. Android's {@code UtteranceProgressListener} agrees by
+     * construction: {@link TextToSpeech#stop} fires {@code onError}/nothing,
+     * never {@code onDone}.</p>
+     */
+    @PluginMethod
+    public void stop(PluginCall call) {
+        JSObject result = new JSObject();
+        result.put("platform", "android");
+        boolean accepted = false;
+        if (tts != null && !ttsInitFailed && (speaking || paused)) {
+            try {
+                tts.stop();
+                accepted = true;
+            } catch (Exception e) {
+                Log.w(TAG, "stop() failed", e);
+            }
+        }
+        speaking = false;
+        paused = false;
+        lastSpokenText = null;
+        lastBoundary = 0;
+        result.put("ok", true);
+        result.put("accepted", accepted);
+        result.put("state", stateWord());
+        result.put("reason", accepted ? "" : "nothing to act on");
+        call.resolve(result);
+    }
+
+    /** {@code speaking | paused | idle}. {@code paused} is checked first for
+     *  the same reason the iOS half checks {@code isPaused} first: a paused
+     *  line is not a speaking one, and a lock screen that offered a pause
+     *  button for already-silent audio would cost a press. */
+    private String stateWord() {
+        if (paused) {
+            return STATE_PAUSED;
+        }
+        if (speaking) {
+            return STATE_SPEAKING;
+        }
+        return STATE_IDLE;
+    }
+
     @PluginMethod
     public void state(PluginCall call) {
         JSObject result = new JSObject();
         result.put("platform", "android");
         result.put("ready", ttsReady);
         result.put("initFailed", ttsInitFailed);
+        /* L-05. The word, ALONGSIDE the two booleans rather than instead of
+           them: `state()` shipped with `ready`/`initFailed` and something may
+           already read those. */
+        result.put("state", stateWord());
+        result.put("speaking", speaking);
+        result.put("paused", paused);
         call.resolve(result);
     }
 

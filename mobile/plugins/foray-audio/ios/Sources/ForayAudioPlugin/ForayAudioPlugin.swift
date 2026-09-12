@@ -1,6 +1,7 @@
 import Foundation
 import AVFAudio
 import MediaPlayer
+import UIKit
 import Capacitor
 import os
 
@@ -81,6 +82,29 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     /// rename on one side does not silently drop every press.
     static let TRANSPORT_EVENT = "transport"
 
+    /// M-03 (founder feedback F16, #548). The event this plugin raises when
+    /// the SYSTEM changes something under the player: an `AVAudioSession`
+    /// interruption, a route change, a media-services reset, the app moving
+    /// between background and foreground.
+    ///
+    /// ── WHY THIS IS A CARD AT ALL ────────────────────────────────────────
+    /// The founder's record for the F16 drive holds exactly one finding:
+    /// `stop element pausedUnexpectedly` + `reconcile unexplainedPause` at
+    /// `hidden=y`, `seams 0`, about 30 s after play with the screen off. That
+    /// says the element stopped and says NOTHING about why, because the page
+    /// cannot see any of the four things above — `<audio>` reports a bare
+    /// `pause` event for a phone call, a Bluetooth disconnect, a Siri
+    /// invocation and a media-services reset alike. This plugin can see all
+    /// four, and until now threw them away.
+    ///
+    /// REPORTED, NEVER ACTED ON. Nothing here resumes, pauses or reconciles:
+    /// `player/queue-manager.js` owns the transport, and a plugin that
+    /// resumed on `shouldResume` would be a second opinion about it. What is
+    /// added is evidence — `player/diagnostic-log.js`'s `session` entry — so
+    /// the next copy of the record answers the founder's question instead of
+    /// restarting the diagnosis.
+    static let SESSION_EVENT = "session"
+
     private let commandCenter = MPRemoteCommandCenter.shared()
     private var commandsRegistered = false
 
@@ -98,9 +122,136 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         category: "ForayAudio"
     )
     private var lastLoggedState: NowPlayingPayload.State?
+    /// L-06's log-side needle, written on the same state-change cadence as
+    /// `lastLoggedState` — see `logNowPlayingFields`.
+    private var lastLoggedFields: String?
 
     override public func load() {
         registerCommandHandlers()
+        registerSessionObservers()
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
+
+    // MARK: - M-03: native interruption and lifecycle events
+
+    /// Four notification sources, one event. See `SESSION_EVENT` for why they
+    /// are reported rather than handled.
+    ///
+    /// `UIApplication`'s two are included even though the page already sees
+    /// `visibilitychange`, and the redundancy is the point: the F16 record
+    /// shows `hidden=y` with no correlated cause, so the open question is
+    /// whether the WebView was descheduled BEFORE or AFTER the audio stopped.
+    /// The page's own `visibilitychange` cannot answer that — a page that has
+    /// been suspended does not run its handler until it is resumed, which is
+    /// exactly when the timestamp stops being useful. A native observer runs
+    /// on the app's main queue while the WebView is already frozen.
+    private func registerSessionObservers() {
+        let center = NotificationCenter.default
+        center.addObserver(
+            self, selector: #selector(handleInterruption(_:)),
+            name: AVAudioSession.interruptionNotification, object: nil
+        )
+        center.addObserver(
+            self, selector: #selector(handleRouteChange(_:)),
+            name: AVAudioSession.routeChangeNotification, object: nil
+        )
+        center.addObserver(
+            self, selector: #selector(handleServicesReset(_:)),
+            name: AVAudioSession.mediaServicesWereResetNotification, object: nil
+        )
+        center.addObserver(
+            self, selector: #selector(handleDidEnterBackground(_:)),
+            name: UIApplication.didEnterBackgroundNotification, object: nil
+        )
+        center.addObserver(
+            self, selector: #selector(handleWillEnterForeground(_:)),
+            name: UIApplication.willEnterForegroundNotification, object: nil
+        )
+    }
+
+    @objc private func handleInterruption(_ note: Notification) {
+        let raw = (note.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt) ?? 0
+        /* Compared as RAW VALUES rather than as `InterruptionType(rawValue:) == .began`:
+           that form relies on Swift promoting the implicit member on the right into an
+           Optional, which compiles but reads as a nil-vs-value comparison at a glance.
+           This one cannot be misread, and it has no optional to unwrap. */
+        let began = raw == AVAudioSession.InterruptionType.began.rawValue
+        let options = (note.userInfo?[AVAudioSessionInterruptionOptionKey] as? UInt) ?? 0
+        let shouldResume = AVAudioSession.InterruptionOptions(rawValue: options).contains(.shouldResume)
+        emitSession(
+            kind: began ? "interruptionBegan" : "interruptionEnded",
+            reason: began ? "began" : (shouldResume ? "should-resume" : "no-resume")
+        )
+    }
+
+    @objc private func handleRouteChange(_ note: Notification) {
+        let raw = (note.userInfo?[AVAudioSessionRouteChangeReasonKey] as? UInt) ?? 0
+        emitSession(kind: "routeChange", reason: Self.routeChangeReason(raw))
+    }
+
+    @objc private func handleServicesReset(_ note: Notification) {
+        emitSession(kind: "mediaServicesReset", reason: "reset")
+    }
+
+    @objc private func handleDidEnterBackground(_ note: Notification) {
+        emitSession(kind: "background", reason: "did-enter")
+    }
+
+    @objc private func handleWillEnterForeground(_ note: Notification) {
+        emitSession(kind: "foreground", reason: "will-enter")
+    }
+
+    /// `AVAudioSession.RouteChangeReason` -> the closed vocabulary
+    /// `player/diagnostic-log.js`'s `dataTokenOf()` admits. A dashed
+    /// lower-case token and NEVER the route's name: a Bluetooth route is
+    /// named after the person who owns the car, and this record is pasted
+    /// into issues — the rule `diagnostic-log.js` already states for
+    /// `route.autoResume.knownCar=`, applied at the source. `internal` so
+    /// `ForayAudioPluginTests` can pin the mapping without a live session.
+    static func routeChangeReason(_ raw: UInt) -> String {
+        switch AVAudioSession.RouteChangeReason(rawValue: raw) {
+        case .some(.newDeviceAvailable): return "new-device"
+        case .some(.oldDeviceUnavailable): return "old-device-gone"
+        case .some(.categoryChange): return "category-change"
+        case .some(.override): return "override"
+        case .some(.wakeFromSleep): return "wake"
+        case .some(.noSuitableRouteForCategory): return "no-route"
+        case .some(.routeConfigurationChange): return "config-change"
+        case .some(.unknown): return "unknown"
+        default: return "unknown"
+        }
+    }
+
+    private func emitSession(kind: String, reason: String) {
+        /* THE UNIFIED LOG AS WELL AS THE BRIDGE, and the duplication is the
+           point. A `notifyListeners` reaches a WebView that may be suspended —
+           which is precisely the case M-03 is about — and Capacitor drops an
+           event with no live listener. `os.Logger` lands in the unified log,
+           which `ios-build.yml`'s `log stream` already captures, so the
+           simulator's screen-off pass has a channel that does not depend on
+           the page being awake. `tools/mobile/ios-ci.mjs`'s
+           `FORAY_SESSION_NEEDLE` reads exactly this string. Both halves carry
+           only the closed vocabulary above, so `.public` is safe. */
+        Self.logger.notice(
+            "ForayAudio.session kind=\(kind, privacy: .public) reason=\(reason, privacy: .public)"
+        )
+        notifyListeners(Self.SESSION_EVENT, data: Self.sessionEvent(kind: kind, reason: reason))
+    }
+
+    /// The wire shape, pure and `internal` so a test can pin it without a
+    /// notification centre. `at` is epoch MILLISECONDS — the unit
+    /// `diagnostic-log.js` stamps every entry with, so a reader never has to
+    /// guess which clock a native event is on.
+    static func sessionEvent(kind: String, reason: String, at: Double = Date().timeIntervalSince1970 * 1000) -> JSObject {
+        var event = JSObject()
+        event["kind"] = kind
+        event["reason"] = reason
+        event["producer"] = "audio"
+        event["at"] = Int(at.rounded())
+        return event
     }
 
     // MARK: - setNowPlaying
@@ -171,6 +322,42 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         }
 
         MPNowPlayingInfoCenter.default().nowPlayingInfo = info
+        logNowPlayingFields(payload, hasArtwork: info[MPMediaItemPropertyArtwork] != nil)
+    }
+
+    /// L-06's log-side needle: WHICH of the three fields were non-empty in the
+    /// payload that just reached `MPNowPlayingInfoCenter`.
+    ///
+    /// ── PRESENCE, NEVER CONTENT, AND THAT IS NOT SQUEAMISHNESS ───────────
+    /// F15 is "the lock screen showed only 4a", and there are three
+    /// explanations: an empty payload, a payload we built wrong, or a payload
+    /// that never arrived (WebKit's default Now Playing is the app name). Which
+    /// one it is depends only on whether each field was EMPTY — the titles
+    /// themselves add nothing to that question, and the unified log is uploaded
+    /// as a CI artifact and pasted into issues, so a publisher's episode titles
+    /// (and, through them, what the founder listens to) would ride out of the
+    /// device for no diagnostic gain. `player/diagnostic-log.js`'s `nowplaying`
+    /// entry carries the truncated strings themselves; that record stays on the
+    /// phone and is copied by hand. Two channels, two different exposures, and
+    /// the field content only crosses the lower one.
+    ///
+    /// Written on the SAME cadence as the state needle — only when the answer
+    /// changes — because `setNowPlaying` runs at up to 4 Hz and a per-write log
+    /// line would bury the log the seam parser also has to read.
+    private func logNowPlayingFields(_ payload: NowPlayingPayload, hasArtwork: Bool) {
+        let fields = Self.fieldPresence(
+            title: payload.title, artist: payload.artist, album: payload.album, hasArtwork: hasArtwork
+        )
+        guard lastLoggedFields != fields else { return }
+        lastLoggedFields = fields
+        Self.logger.notice("ForayAudio.nowPlaying fields=\(fields, privacy: .public)")
+    }
+
+    /// `title=y artist=n album=y artwork=y`. Pure and `internal` so
+    /// `ForayAudioPluginTests` can pin it without a Now Playing centre.
+    static func fieldPresence(title: String, artist: String, album: String, hasArtwork: Bool) -> String {
+        let flag = { (s: String) in s.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "n" : "y" }
+        return "title=\(flag(title)) artist=\(flag(artist)) album=\(flag(album)) artwork=\(hasArtwork ? "y" : "n")"
     }
 
     /// Artwork via `MPMediaItemArtwork`: loaded from the bundle's `public/`

@@ -57,13 +57,38 @@ export interface SeamBeat extends BeatPosition {
   mode: "Patch" | "Carry";
   kind: BeatKind;
   exploration: boolean;
+  /** F-99: the beat was seeded from tape the Foray never clipped
+   * (`SourcedBeat.seedLost`, F-96). The writer carries it only as far as
+   * the act's sources go; the verifier does not demand its specifics. */
+  seedLost?: true;
+}
+
+/** One beat a clip carries — the beat whose clip it is, or a beat merged
+ * into that clip (F-96 `mergedInto`). */
+export interface ClipBeat extends BeatPosition {
+  beatId: string;
+  claim: string;
 }
 
 /** A clip (tape beat) at one edge of a seam. */
 export interface SeamClip extends BeatPosition {
   clipId: string;
+  /** The first beat's claim — kept for the callers that read one. */
   claim: string;
   tape: TapePointer;
+  /**
+   * F-99: EVERY beat this clip carries, in play order — the beat whose
+   * clip it is first, then each beat §4.5 merged into it (`mergedInto`,
+   * F-96: the clip was extended forward to cover the second beat's
+   * thought, and both resolve to ONE segment pointer). One clip, two
+   * claims: the writer is told "CLIP c1 — carries beats b2, b3", the
+   * Intro and bridge rules apply once, and the plan has one seam into it
+   * and one out of it — the way `stitchAct` and the partial projection
+   * already play the segment once. Before F-99 the plan laid the clip out
+   * once per beat, so a merged clip got two Intros and a beatless seam
+   * between two plays of the same tape.
+   */
+  carries: ClipBeat[];
 }
 
 export interface SeamPlan {
@@ -101,6 +126,11 @@ export function planActSeams(act: SourcedAct): SeamPlan[] {
   const seams: SeamPlan[] = [];
   let open: SeamPlan = { seamId: "s0", beats: [] };
   let clipCount = 0;
+  /* F-99: the clips laid out so far, by the segment they play — the key
+     `stitchAct` decides "played once" on — and by the position of the
+     beat whose clip it is, which is what `mergedInto` names. */
+  const clipsBySegment = new Map<string, SeamClip>();
+  const clipsByPosition = new Map<string, SeamClip>();
   actBeatsInOrder(act).forEach(({ slot, beat, sourced }, flatIndex) => {
     if (sourced.sourcing === "narration") {
       open.beats.push({
@@ -110,11 +140,31 @@ export function planActSeams(act: SourcedAct): SeamPlan[] {
         claim: sourced.claim,
         mode: sourced.narration.mode,
         kind: beatKindOf(sourced as unknown as { kind?: unknown }),
-        exploration: sourced.exploration
+        exploration: sourced.exploration,
+        ...(sourced.seedLost ? { seedLost: true as const } : {})
       });
       return;
     }
-    const clip: SeamClip = { slot, beat, clipId: `c${clipCount++}`, claim: sourced.claim, tape: sourced.tape };
+    /* F-99: a beat that rides in an earlier beat's clip (F-96) joins THAT
+       clip's beats and opens no seam — the tape plays once, so the plan
+       has one clip. Found by the position `mergedInto` names, else by the
+       segment (a beat pointing at a segment already laid out cannot play
+       again whatever the field says — `stitchAct` skips it). */
+    const merged = (sourced.mergedInto && clipsByPosition.get(`${sourced.mergedInto.slot}/${sourced.mergedInto.beat}`)) || clipsBySegment.get(sourced.tape.segmentId);
+    if (merged) {
+      merged.carries.push({ slot, beat, beatId: beatIdAt(flatIndex), claim: sourced.claim });
+      return;
+    }
+    const clip: SeamClip = {
+      slot,
+      beat,
+      clipId: `c${clipCount++}`,
+      claim: sourced.claim,
+      tape: sourced.tape,
+      carries: [{ slot, beat, beatId: beatIdAt(flatIndex), claim: sourced.claim }]
+    };
+    clipsBySegment.set(sourced.tape.segmentId, clip);
+    clipsByPosition.set(`${slot}/${beat}`, clip);
     open.introduces = clip;
     seams.push(open);
     open = { seamId: `s${seams.length}`, beats: [], follows: clip };

@@ -43,6 +43,18 @@
  *                there is no record of what the error path wrote.
  *   `visibility` transitions WITH DURATIONS, so a hidden window can be correlated
  *                with a stall rather than guessed at.
+ *   `nowplaying` (L-06) the three strings actually written to the lock screen,
+ *                truncated, plus whether the payload reached native at all.
+ *                Founder feedback F15 — "it showed only 4a" — had three
+ *                indistinguishable explanations and nothing in the record
+ *                could separate them.
+ *   `session`    (M-03) the native audio-session and app-lifecycle events an
+ *                `<audio>` element cannot report: an interruption, a route
+ *                change, a media-services reset, background/foreground. F16's
+ *                record holds one unexplained stop and no cause, because
+ *                until now the page could not see one.
+ *   `transport`  (M-03) which surface asked for a play/pause/stop — a tap, a
+ *                remote command, our own reconcile, a session event.
  *
  * ── WHAT IS NEVER RECORDED, BY CONSTRUCTION ────────────────────────────────
  * No audio, no URLs, no listener identity. The rule that guarantees it: a
@@ -57,6 +69,15 @@
  *      most `STAGE_NAME_MAX`) rather than by a fixed list, because a `TypeError`
  *      from module skew is exactly the case that needs recording. See
  *      `errorNameOf` for why a shape is safe here and what would break it.
+ *
+ * ONE EXCEPTION, ARGUED RATHER THAN SLIPPED IN: the `nowplaying` entry stores
+ * the three AUTHORED strings the lock screen was given — an episode title, a
+ * show name, a Foray title — capped at `NOWPLAYING_FIELD_MAX`. They are
+ * catalogue metadata this repo already ships in `data/`, not listener input,
+ * and nothing but the strings themselves can separate F15's three
+ * explanations. See the block above `nowPlayingFieldOf` for the full pricing,
+ * and note that the unified-log half of the same measurement deliberately
+ * carries only `title=y artist=n`, because that channel leaves the device.
  *
  * So `audio.error code=4 src=https://cdn.example/…` stores `code=4` and the stage
  * `audio.error`, and the URL — which `html-audio-backend.js`'s `short()` truncates
@@ -458,6 +479,83 @@ export const DATA_PHASES = new Set(["boot", "refresh", "stale-shell"]);
 export const DATA_SOURCES = new Set(["bundle", "cache", "network", "sw-cache"]);
 /** The three documents, in the pointer's own vocabulary. */
 export const DATA_FILE_KEYS = ["forays", "segments", "sources"];
+
+/* ---------- L-06: what was sent to the lock screen ----------
+
+   THE ONE PLACE THIS RECORD HOLDS AUTHORED PROSE, AND IT IS A DELIBERATE
+   EXCEPTION TO §"What is never recorded", NOT AN OVERSIGHT.
+
+   Founder feedback F15: the lock screen and the car showed only "4a". Three
+   explanations produce that symptom and they are indistinguishable from
+   outside — a narration line with no `nextItem` and an empty Foray title (the
+   old `mediaMetadata()` then emitted "4a" as BOTH title and artist), an item
+   whose own `title`/`show` are empty, or a payload that never reached
+   `MPNowPlayingInfoCenter` at all (WebKit's default Now Playing is the app
+   name, which is also "4a"). Nothing but the three strings themselves can
+   separate the first two, so the three strings are recorded.
+
+   THE EXPOSURE, PRICED. What enters the record is catalogue metadata —
+   episode titles, show names, the Foray's own title — all of which are
+   already public, authored strings that this repo ships in `data/`. It is not
+   listener input, not a URL, not a route name. `NOWPLAYING_FIELD_MAX` caps
+   each at 40 characters, which is about what a car head unit renders anyway,
+   so a long title is truncated to roughly what the founder was looking at.
+   Everything else about the payload is a flag or a number.
+
+   The unified-log half deliberately does NOT carry them: `ForayAudioPlugin.swift`
+   logs `title=y artist=n album=y` and nothing more, because that channel is
+   uploaded as a CI artifact. Two channels, two exposures, and the field
+   content only crosses the lower one. */
+
+/** Each of title/artist/album, capped. 40 rather than 60 because the question
+    is "was this field empty, and did it say what we think it said" — a car
+    display's own limit, and an answer that does not need the whole string. */
+export const NOWPLAYING_FIELD_MAX = 40;
+
+/** One Now Playing field: trimmed, capped, and `""` for anything that is not a
+    string. `null` is NOT returned for a missing field, because the empty
+    string IS the finding here — an absent field and an empty one are the same
+    defect from a lock screen, and `lineFor` renders both as `—`. */
+export function nowPlayingFieldOf(v) {
+  const s = asText(v).trim();
+  return s.length > NOWPLAYING_FIELD_MAX ? `${s.slice(0, NOWPLAYING_FIELD_MAX - 1)}…` : s;
+}
+
+/* ---------- M-03: why did it stop? ----------
+
+   The native side of the record. `ForayAudioPlugin.swift` and
+   `ForayTtsPlugin.swift` observe `AVAudioSession`'s interruption, route-change
+   and media-services-reset notifications plus `UIApplication`'s
+   background/foreground, and raise one `session` event each. This is the
+   vocabulary those events are admitted against — the same closed-set
+   discipline `STAGE_ROOTS` and `DATA_PHASES` already keep, for the same
+   reason: an event arrives from native code and must not be able to put a
+   sentence, a device name or a URL in a record the founder pastes into an
+   issue.
+
+   AN UNRECOGNISED KIND IS DROPPED, not stored as "unknown". A record that
+   invented a row for an event it could not name would be worse than a gap:
+   the gap is readable as "this build's plugin says something this build's
+   page does not understand", which is a real and findable condition. */
+
+/** The five things a native plugin may report. Mirrors the `kind` strings in
+    `ForayAudioPlugin.swift`/`ForayTtsPlugin.swift`'s `emitSession` calls. */
+export const SESSION_KINDS = new Set([
+  "interruptionBegan", "interruptionEnded", "routeChange", "mediaServicesReset",
+  "background", "foreground",
+]);
+
+/** Which plugin spoke. Two producers, because a narration line and a tape
+    segment are silenced through different objects and a record that could not
+    tell them apart would answer "the audio stopped" when the question is
+    "which audio". */
+export const SESSION_PRODUCERS = new Set(["audio", "tts", "page"]);
+
+/** M-03(b). Where a play or a pause came from. The founder's F16 record shows
+    a stop with no cause; half of "no cause" is that nothing ever recorded
+    which surface asked for the state the player was in when it stopped. */
+export const TRANSPORT_SOURCES = new Set(["tap", "remote", "reconcile", "session", "restore"]);
+export const TRANSPORT_ACTIONS = new Set(["play", "pause", "stop"]);
 
 /** A status, a trigger, a validation code: a lower-case dashed token, never a
     sentence. `sha256-forays`, `segment-missing`, `foreground` all pass; a reason
@@ -865,6 +963,120 @@ export class PlayerDiagnostics {
     return null;
   }
 
+  /* ---------- L-06: what the lock screen was actually told ---------- */
+
+  /**
+   * One `setNowPlaying`, as it was sent.
+   *
+   * Called from `player/media-session.js`'s `onWrite` hook, which fires only
+   * when metadata was ACTUALLY assigned to the platform — not on every
+   * `syncMediaSession()`. That is what makes an empty stretch of record a
+   * finding rather than a gap: a Foray that played for ten minutes with no
+   * `nowplaying` row never reached the OS at all, which is the third of F15's
+   * three explanations and the one nobody could previously distinguish.
+   *
+   * `native` is the shim's own verdict, read by the caller from
+   * `window.ForayMediaSession.inspect()` — `sends` (how many payloads have
+   * crossed the Capacitor bridge this session) and whether the last one came
+   * back with a reason. A `nowplaying` row whose `sends` never moves is the
+   * same finding stated positively.
+   *
+   * @param {object} fields
+   * @param {object} [fields.metadata] `{ title, artist, album, artwork }`
+   * @param {string} [fields.playbackState]
+   * @param {object} [fields.native] `{ installed, sends, lastReason }`
+   */
+  nowPlaying({ metadata = null, playbackState = null, native = null } = {}) {
+    const m = metadata && typeof metadata === "object" ? metadata : {};
+    const artwork = Array.isArray(m.artwork) ? m.artwork : [];
+    return this.log.record("nowplaying", {
+      title: nowPlayingFieldOf(m.title),
+      artist: nowPlayingFieldOf(m.artist),
+      album: nowPlayingFieldOf(m.album),
+      /* THE COUNT, NOT THE URL. An artwork `src` is a publisher's CDN URL with
+         whatever a query string happens to carry, and this record is pasted
+         into issues — the same rule the `audio.error` handler keeps when it
+         stores a code and drops the source. The count answers the only
+         question a blank square raises: was one offered at all. */
+      artworkCount: artwork.length,
+      state: dataTokenOf(playbackState) ?? "",
+      /* The shim's verdict, admitted by SHAPE. `installed` and `sends` are a
+         boolean and a number; `lastReason` is an exception message from an
+         arbitrary throw, so only an `errorNameOf`-shaped identifier survives
+         and prose is dropped. */
+      native: native && typeof native === "object"
+        ? {
+          installed: native.installed === true,
+          sends: Number.isFinite(native.sends) ? native.sends : null,
+          reason: errorNameOf(native.lastReason),
+        }
+        : null,
+      hidden: this._isHidden(),
+    });
+  }
+
+  /* ---------- M-03: why did it stop? ---------- */
+
+  /**
+   * A native audio-session or app-lifecycle event (M-03, founder feedback F16
+   * / #548).
+   *
+   * The founder's record for that drive holds ONE row — `stop element
+   * pausedUnexpectedly` at `hidden=y` — and cannot say why, because the page
+   * cannot see any of the things that cause it: an `<audio>` element reports
+   * a bare `pause` for a phone call, a Bluetooth disconnect, a Siri
+   * invocation and a media-services reset alike. The plugins can see all
+   * four. This is where what they saw lands, in the SAME ring as the `stop`
+   * row it explains, so the answer is one line above the question.
+   *
+   * AN UNRECOGNISED `kind` IS DROPPED AND `null` IS RETURNED. `SESSION_KINDS`
+   * is the contract with the Swift; a row invented for an event this build
+   * cannot name would put an unbounded native string in the record.
+   *
+   * @param {object} event `{ kind, reason, producer, at }` — the wire shape
+   *   `ForayAudioPlugin.swift`'s `sessionEvent(kind:reason:)` writes.
+   */
+  sessionEvent({ kind = null, reason = null, producer = null, at = null } = {}) {
+    const k = asText(kind).trim();
+    if (!SESSION_KINDS.has(k)) return null;
+    const who = asText(producer).trim();
+    /* THE NATIVE CLOCK, KEPT SEPARATELY FROM `wall`. `record()` stamps `wall`
+       with the PAGE's clock at the moment the event was handled, and a page
+       that was suspended handles a background event late — by exactly the
+       interval M-03 is trying to measure. `at` is the plugin's own epoch-ms
+       stamp from the moment the notification fired, so the pair is the
+       delivery lag, and the lag is itself a finding. */
+    const nativeAt = Number.isFinite(at) && at > 0 ? at : null;
+    return this.log.record("session", {
+      kind: k,
+      reason: dataTokenOf(reason) ?? "",
+      producer: SESSION_PRODUCERS.has(who) ? who : "audio",
+      at: nativeAt,
+      lagMs: nativeAt == null ? null : this._now() - nativeAt,
+      hidden: this._isHidden(),
+    });
+  }
+
+  /**
+   * WHO asked for this play/pause/stop (M-03(b)).
+   *
+   * The other half of "why did it stop". A `stop` row says the element
+   * stopped; it does not say whether a person pressed something, a car sent a
+   * remote command, our own reconcile decided the element was lying, or a
+   * session event arrived. Those are four different bugs and the record could
+   * not tell them apart.
+   *
+   * Both fields come from closed sets and an unrecognised one is DROPPED
+   * rather than stored — the same rule `sessionEvent` keeps, for the same
+   * reason.
+   */
+  transport(source, action) {
+    const s = asText(source).trim();
+    const a = asText(action).trim();
+    if (!TRANSPORT_SOURCES.has(s) || !TRANSPORT_ACTIONS.has(a)) return null;
+    return this.log.record("transport", { source: s, action: a, hidden: this._isHidden() });
+  }
+
   /* ---------- resume decisions ---------- */
 
   /** What was WRITTEN as the resume point — or, when `wrote` is false, why
@@ -1144,6 +1356,29 @@ function lineFor(e) {
     /* `over Ns` is not decoration: `x50` alone cannot separate a hand mashing a
        dead button from a listener coming back to it across five minutes, and those
        are different bugs. */
+    /* L-06. The three fields, in the order the lock screen stacks them, with
+       `—` for an empty one — because "empty" is the whole finding for F15 and
+       a blank between two pipes would read as a formatting accident. `sent=`
+       is the shim's own count: a row where it never moves is a payload that
+       never reached `MPNowPlayingInfoCenter`, which is the third explanation
+       and the one this line exists to make visible. */
+    case "nowplaying": {
+      const f = (v) => (v == null || v === "" ? "—" : v);
+      const n = e.native;
+      const native = n == null
+        ? "native=—"
+        : `native=${n.installed ? "on" : "off"}/sent=${n.sends ?? "—"}` + (n.reason ? `/${n.reason}` : "");
+      return `${head} "${f(e.title)}" / "${f(e.artist)}" / "${f(e.album)}"` +
+        `  art=${e.artworkCount ?? 0}  state=${f(e.state)}  ${native}  hidden=${e.hidden ? "y" : "n"}`;
+    }
+    /* M-03. `lag` is the delivery lag between the plugin's own stamp and the
+       page handling the event — on a suspended WebView it is the length of
+       the suspension, which is the measurement the F16 drive could not make. */
+    case "session":
+      return `${head} ${e.producer ?? "?"} ${e.kind}${e.reason ? ` (${e.reason})` : ""}` +
+        `  lag ${ms(e.lagMs)}  hidden=${e.hidden ? "y" : "n"}`;
+    case "transport":
+      return `${head} ${e.action} from ${e.source}  hidden=${e.hidden ? "y" : "n"}`;
     case "tapFail":
       return `${head} ${e.phase ?? "?"} failed  error=${e.error ?? "none"}` +
         (e.repeated > 1 ? `  x${e.repeated}` : "") +
@@ -1175,6 +1410,11 @@ export function formatDiagnosticReport(record) {
   const open = seams.filter(
     (e) => e.observedGapMs == null && e.endOfQueue !== true && e.cutBy == null
   );
+  /* L-06 / M-03. Counted here rather than in the rows because the header is
+     what a founder reads on a phone mid-drive; the rows are for pasting. */
+  const nowPlaying = entries.filter((e) => e.type === "nowplaying");
+  const blankCredit = nowPlaying.filter((e) => !e.artist).length;
+  const sessions = entries.filter((e) => e.type === "session");
   const gaps = measured.map((e) => e.observedGapMs).sort((a, b) => a - b);
   const worst = gaps.length ? gaps[gaps.length - 1] : null;
   const mid = gaps.length
@@ -1202,6 +1442,16 @@ export function formatDiagnosticReport(record) {
     `seams ${seams.length}: ${measured.length} measured, ${open.length} never started`
       + (cut.length ? `, ${cut.length} cut short` : ""),
     `gap median ${ms(mid)}, worst ${ms(worst)}`,
+    /* L-06 ON THE HEADER, not only in the rows, because this is the line a
+       founder reads on the phone during a drive test. `0 sent` answers F15
+       outright — the payload never reached the OS — and `n with an empty
+       credit` answers it the other way, without scrolling 200 rows. */
+    `now playing ${nowPlaying.length} written`
+      + (nowPlaying.length ? `, ${blankCredit} with an empty credit` : ""),
+    /* M-03. `0` here against a `stop` row below is itself the finding the card
+       asks for: the stop was preceded by nothing the plugins could see. */
+    `session events ${sessions.length}`
+      + (sessions.length ? ` (${[...new Set(sessions.map((e) => e.kind))].join(", ")})` : ""),
     r.loadError ? `earlier record unreadable: ${r.loadError}` : null,
     `updated ${r.updatedAt ?? "—"}`,
     "",

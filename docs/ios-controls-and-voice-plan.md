@@ -137,6 +137,10 @@ reading). The lock screen offered no controls.
 | H2 | Wyatt | **#40** — download one Enhanced voice and listen. After V-01, the listen happens through the picker's Audition button, not the diagnostic Foray. | The server-vs-device narration decision |
 | H3 | Wyatt | **The 2x re-check** for #490's rate curve: pick 2x in the app, tap Audition on the counting line, time it with a stopwatch; ~50 s means the curve is right, materially off means the *shape* is wrong. New HUMAN-ACTIONS item, written by V-01. | Confirming #490 |
 | H4 | Wyatt | `founder-approved` label for the one `.github/` change (running the plugins' XCTests in `ios-kit`, L-01). Batch with the R-deck's label sitting. | L-01's tests running in CI |
+| H5 | Wyatt | **The narration pause test** (L-05, #654). On a TestFlight build carrying L-05: start a Foray with a narration line and, while it is SPEAKING, press pause (a) in the mini-player and (b) on the lock screen. Each must silence the voice within about a second, and resume must continue from the same sentence rather than restarting the line. Then close the player mid-line and confirm the voice stops. ~3 minutes, at a desk. | Closing F12 |
+| H6 | Wyatt | **The Now Playing display** (L-06, #654). Same build, in the car or on the locked phone: read back title / artist / album / artwork for a Foray SEGMENT and for a NARRATION line. None of the six text fields may say "4a". Then copy the Playback diagnostics and paste the `now playing` header line plus a few `nowplaying` rows. | Closing F15 |
+| H7 | Wyatt | **The why-did-it-stop copy** (M-03, #654). Reproduce F16 if it still happens — play with the screen off, wait for it to stop — then copy the diagnostics. A `session` row above the `stop` row names the cause; no `session` row at all is itself the finding. Whatever it names becomes a follow-up card with the evidence attached. | Closing F16 / #548 |
+| H8 | anyone with an Android phone | **The Android narration pause pass** (L-05, #654). Android's pause is emulated — `TextToSpeech` has none — so whether `onRangeStart` fires at all on the shipping engine, and therefore whether resume continues mid-line or re-speaks the whole line, is a device reading nobody has taken. `resume()`'s `fromStart` flag answers it. | The Android half of F12 |
 
 Not a gate here, recorded so nobody thinks it is: a **CarPlay app** (a Foray list on
 the car's display) needs Apple's CarPlay audio entitlement, a founder request with a
@@ -275,7 +279,7 @@ HUMAN-ACTIONS #29 (RESULT) and #40.
 - **Governance:** all auto-merge paths. `player/` is shared with U-08 (which promises
   not to touch `player/*.js`) — no conflict by construction.
 
-#### L-05 · Pause, stop and resume for spoken narration — **M** — *added 2026-09-06 from founder feedback F12*
+#### L-05 · Pause, stop and resume for spoken narration — **M** — *added 2026-09-06 from founder feedback F12* — **DONE** (#654, 2026-09-12; `pause`/`resume`/`stop` on `ForayTtsPlugin.swift`, `ForayTtsPlugin.java` (emulated — `TextToSpeech` has no pause on any API level, said on the wire as `emulated`/`fromStart` and in the README), `web/foray-tts.js`, `player/tts-bridge.js`, and both reducer effect sites; `stop()`/`dispose()` silence speech and the narration clock freezes across a pause so Now Playing keeps its state. The card's own mutation — swap pause and resume — is `player/queue-manager.test.js`'s "resume after a narration pause CONTINUES it". **Still open: H5**, the founder's 3-minute desk test, and an Android device pass for whether `onRangeStart` fires at all on the shipping engine — both named in `docs/ios-lock-screen.md` §7.4)
 - **What Wyatt hit (TestFlight 2026090603):** *"Once the on-device narration foray
   test starts, none of the pause buttons work."* **Root cause, measured in code:**
   `mobile/plugins/foray-tts` exposes `speak`, `state` and `listVoices` only — there
@@ -352,7 +356,7 @@ HUMAN-ACTIONS #29 (RESULT) and #40.
 - **Dependencies:** L-01, L-02 merged; ideally one TestFlight build in Wyatt's hands.
 - **Governance:** docs only; auto-merge.
 
-#### L-06 · Now Playing fields match Apple Podcasts — and the record shows what was sent — **M** — *added 2026-09-09 from founder feedback F15*
+#### L-06 · Now Playing fields match Apple Podcasts — and the record shows what was sent — **M** — *added 2026-09-09 from founder feedback F15* — **DONE** (#654, 2026-09-12; the parity rule is `narrationCredit()` and `media-session.js` §1b — a segment unchanged, a line we wrote credited to the FORAY's title with a real-name fallback ladder, and `"4a"` no longer the artist of anything a listener hears while F-89's no-empty-credit requirement survives on the first rung. The instrumentation half is `createMediaSession`'s `onWrite` hook, which fires only on a REAL write, into a `nowplaying` entry carrying the three capped strings, the artwork count and the shim's `installed`/`sends` — so a Foray with no `nowplaying` rows is itself the third explanation. **Still open: H6**, the display read-back and diagnostics copy, §7.4)
 - **Ask:** on the lock screen and in the car the founder saw only "4a" — no title,
   artist or album. Two halves. (1) **Instrument before designing:** the playback
   diagnostics record (`player/diagnostic-log.js`) gains a `nowplaying` entry per
@@ -379,7 +383,7 @@ HUMAN-ACTIONS #29 (RESULT) and #40.
   Foray segment AND for a narration line; H1's drive test re-run for the display only.
 - **Governance:** `mobile/www/` and `tools/mobile/` auto-merge.
 
-#### M-03 · Why did it stop? — native interruption and lifecycle events in the record, then the screen-off reproduction — **M** — *added 2026-09-09 from founder feedback F16 (#548)*
+#### M-03 · Why did it stop? — native interruption and lifecycle events in the record, then the screen-off reproduction — **M** — *added 2026-09-09 from founder feedback F16 (#548)* — **DONE** (#654, 2026-09-12; (a) both iOS plugins observe `AVAudioSession` interruption / route change / media-services reset and `UIApplication` background/foreground and raise one `session` event, re-broadcast on `window` by `foray-media-session.js` and recorded against a closed vocabulary that never admits a route's NAME, keeping the plugin's own stamp beside the page's so the delivery lag — the suspension's length — is readable; (b) every play/pause records its source, `tap` vs `remote`, BEFORE the no-op early return so an F5-style dead press still leaves a row; (c) the screen-off half landed as `foraySessionEvents()` over the UNIFIED LOG rather than as a new probe, because that is the only channel a suspended WKWebView cannot silence and `ios-build.yml` already captures it — **so this needed no `.github/` change and no `founder-approved` label**. Silence reads as `no-coverage` and cannot fail the job. Per the card, the FIX for whatever the record names is a follow-up with the evidence attached. **Still open: H7**, the founder's diagnostics copy after a reproduction, §7.4)
 - **Ask:** the founder's record shows ONE `stop element pausedUnexpectedly` +
   `reconcile unexplainedPause` at `hidden=y`, `seams 0` — not #224's seam path, and not
   the F11/F13 loop #537 closed — about 30 s (his clock; the record has no play entries)

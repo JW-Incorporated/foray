@@ -51,10 +51,46 @@
    `forayNowPlaying`) so the two surfaces cannot drift.
 
    Narration items (`kind === "tts"`) take `title = "Up next: <episode>"`,
-   verbatim from `04_VOICE_AUDIO_SPEC.md` line 11, and `artist = "4a"` —
-   we wrote that audio, and putting a publisher's name on a line they did not
-   record would be the one credit error this module must not make. No Foray
-   ships narration yet, which is exactly why the branch is tested.
+   verbatim from `04_VOICE_AUDIO_SPEC.md` line 11. Their CREDIT is L-06's
+   correction, below.
+
+   ── 1b. THE APPLE PODCASTS PARITY RULE, AND WHY "4a" LEFT THE CREDIT ──────
+
+   Founder feedback F15 (2026-09-09, TestFlight, in the car): the lock screen
+   and the head unit showed **only "4a"** — no title, no artist, no album. The
+   bug was not that a field was dropped in transit; it was this file. Narration
+   and jingle lines were credited `artist = "4a"`, and a narration line with no
+   `nextItem` ALSO fell back to `"4a"` for its title, so the one moment a
+   listener glances at the display can legitimately have said "4a / 4a".
+
+   What Apple Podcasts shows, which is the bar a podcast app is measured
+   against: title = episode, artist = SHOW, album = show. For a segment that is
+   already exactly what we send (§1) and it does not change. For a line we
+   wrote ourselves — narration, jingle — there is no show, and the question is
+   what stands in for one. The answer is the FORAY'S TITLE:
+
+     - it is a collection name, which is the kind of thing the artist slot is
+       for, and it is always a sentence rather than a slug;
+     - it is TRUE — "The history of grilling" really is what this line belongs
+       to — whereas the app's own name is true of every line in the product and
+       therefore tells a listener nothing;
+     - it keeps F-89's requirement intact (a jingle must never resolve to an
+       EMPTY credit, which is what made the real-data test fail) without
+       putting our name where a publisher's goes on every other row.
+
+   `"4a" MAY NOT APPEAR AS THE TITLE OR ARTIST OF ANYTHING A LISTENER HEARS.`
+   That is the rule L-06 states and `narrationCredit` enforces. The fallback
+   ladder when a Foray has no title of its own: the next item's episode title,
+   then the next item's show. Each of those is a real name of a real thing on
+   this display right now. Only the degenerate call with NO item at all — which
+   is not a thing anyone is hearing, and is how `client.js` renders an empty
+   player — still says "4a".
+
+   Album keeps the Foray title plus the part counter (§1), and single-episode
+   playback keeps an empty album because a single episode is not a collection.
+
+   Artwork for a narration or jingle line stays OUR icon: a publisher's square
+   on a line they did not record is the same credit error in a picture.
 
    Nothing is ever invented: a missing show yields an empty `artist`, never a
    guess. See `mediaMetadata`.
@@ -284,6 +320,40 @@ export function mediaArtworkList({ showArtworkUrl = null, appArtworkUrl = APP_AR
 
 /* ---------- metadata ---------- */
 
+/** The app's own name. Exported so a test can assert where it may and may not
+    appear rather than re-typing the string, and named rather than inlined
+    because L-06's rule is ABOUT this string: it may stand in for a title that
+    does not exist, and it may never stand in for a credit. */
+export const APP_NAME = "4a";
+
+/**
+ * The `artist` for a line WE wrote — narration or a jingle. L-06 / F15; §1b is
+ * the argument.
+ *
+ * Three rungs, each a real name of a real thing on this display:
+ *   1. the Foray's title — a collection name, which is what the artist slot is
+ *      for, and what every line in this Foray genuinely belongs to;
+ *   2. the next item's episode title — when a Foray somehow has no title, the
+ *      thing this line is announcing is still named;
+ *   3. the next item's show — the publisher whose episode is about to play.
+ *
+ * Then `""`. NEVER `APP_NAME`, and that is the whole point of the function
+ * existing instead of a `??` chain: an empty credit is recoverable and reads
+ * as "unknown", while "4a" on every narration line is what the founder
+ * actually saw in the car and read as "this app knows nothing about what it
+ * is playing". F-89's requirement — a jingle must not resolve to an empty
+ * artist — is met by rung 1, which is non-empty for every Foray this repo
+ * ships; rungs 2 and 3 exist so that a Foray with a blank title degrades to a
+ * true name rather than straight to blank.
+ *
+ * Rung 3 is NOT a mis-credit. It names the show whose episode is next, on a
+ * line that says "Up next: <that show's episode>" — the two agree, and it is
+ * only reached when nothing better exists.
+ */
+export function narrationCredit({ forayTitle = "", nextItem = null } = {}) {
+  return clean(forayTitle) || clean(nextItem?.title) || clean(nextItem?.show) || "";
+}
+
 /**
  * foray + segment + source -> the three strings and the artwork. §1 above is
  * the argument; this is the whole of the mechanism.
@@ -321,19 +391,20 @@ export function mediaMetadata({
   let title;
   let artist;
   if (jingle) {
-    title = foray || "4a";
-    artist = "4a";
+    title = foray || APP_NAME;
+    // L-06 (F15). Was `"4a"`. See §1b: the Foray's title, never the app's.
+    artist = narrationCredit({ forayTitle: foray, nextItem });
   } else if (narration) {
     // 04_VOICE_AUDIO_SPEC.md line 11, verbatim.
     const upNext = clean(nextItem?.title);
     // Deliberately NOT the narration item's own title when there is nothing
     // after it: an authored narration id is a slug (`bridge-3`), and a slug on a
     // car display is worse than the Foray's name, which is always a sentence.
-    title = upNext ? `Up next: ${upNext}` : (foray || "4a");
-    // Our line, our name. Never a publisher's.
-    artist = "4a";
+    title = upNext ? `Up next: ${upNext}` : (foray || APP_NAME);
+    // L-06 (F15). Was `"4a"`. See §1b.
+    artist = narrationCredit({ forayTitle: foray, nextItem });
   } else {
-    title = clean(item?.title) || foray || "4a";
+    title = clean(item?.title) || foray || APP_NAME;
     artist = clean(item?.show);
   }
 
@@ -495,6 +566,21 @@ function attempt(fn) {
  * @param {object} [opts.nav]  a `navigator`, or anything with `.mediaSession`
  * @param {Function} [opts.MediaMetadata]  the constructor; a plain object is
  *   assigned when it is absent, which some engines accept and none break on
+ * @param {Function} [opts.onWrite]  L-06. Called with
+ *   `{ metadata, playbackState }` EVERY TIME metadata is actually written to
+ *   the platform, and never when a write is skipped as unchanged.
+ *
+ *   WHY IT HANGS OFF THE WRITE AND NOT OFF `syncMediaSession()`. F15's whole
+ *   difficulty was that three explanations produced the same symptom — an
+ *   empty payload, a payload we built wrong, and a payload that never reached
+ *   `MPNowPlayingInfoCenter` at all (WebKit's default Now Playing is the app
+ *   name, which is also "4a"). A hook on the CALLER would fire for all three
+ *   identically. A hook here fires exactly when `ms.metadata` was assigned, so
+ *   a record with no `nowplaying` rows during a Foray is itself the finding.
+ *
+ *   It is called INSIDE the same `attempt()` guard the write is, so a
+ *   diagnostics sink that throws cannot cost the page its lock screen — the
+ *   rule §6 states for every other call on this surface.
  * @returns {{
  *   supported: boolean,
  *   setActions(surface, opts): string[],   installed action names
@@ -503,9 +589,10 @@ function attempt(fn) {
  *   release(): void,                       clear, and remove every handler
  * }}
  */
-export function createMediaSession({ nav = null, MediaMetadata = null } = {}) {
+export function createMediaSession({ nav = null, MediaMetadata = null, onWrite = null } = {}) {
   const ms = nav && typeof nav === "object" ? nav.mediaSession : null;
   if (!ms || typeof ms !== "object") return inertBridge();
+  const report = typeof onWrite === "function" ? onWrite : null;
 
   /** Which actions we have a handler installed for. Tracked so switching from a
       Foray to a single episode REMOVES `nexttrack` instead of leaving a stale
@@ -561,6 +648,8 @@ export function createMediaSession({ nav = null, MediaMetadata = null } = {}) {
           attempt(() => {
             ms.metadata = typeof MediaMetadata === "function" ? new MediaMetadata(metadata) : { ...metadata };
           });
+          // L-06. After the assignment, so what is reported is what was sent.
+          if (report) attempt(() => report({ metadata, playbackState }));
         }
       }
       if (playbackState && playbackState !== lastState) {
