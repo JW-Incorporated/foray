@@ -8,7 +8,7 @@ import { StubNarrationWriterBuilder } from "../src/generation/StubNarrationWrite
 import { StubNarrationVerifierBuilder } from "../src/generation/StubNarrationVerifierBuilder";
 import { StubContinuityBuilder } from "../src/generation/StubContinuityBuilder";
 import { FakeCheckpointStore } from "./helpers/fakeCheckpointStore";
-import { checkpointFingerprint } from "../src/generation/checkpoint";
+import { CHECKPOINT_VERSION, checkpointFingerprint } from "../src/generation/checkpoint";
 import { BudgetExceededError, BudgetGuard, EpisodeBudgetExceededError, BudgetStopError } from "../src/cost/budgetGuard";
 import { InMemoryCostEventSink } from "../src/cost/costEvents";
 import type { FinalizeForayInput, FinalizeForayResult } from "../src/generation/finalizeForay";
@@ -151,58 +151,47 @@ describe("per-stage checkpoint and resume inside one Foray (F-17/F-18)", () => {
     expect(staged.filter((s) => /^narrate:\d+:\d+$/.test(s))).toEqual([]);
   });
 
-  it("a per-slot checkpoint left by a per-page run (runs 1–8) is still read: a fully banked act resumes without a writer call, a half-banked act is written whole (F-51 / Q-03)", async () => {
-    /* MUTATION THAT KILLS THIS: stop honouring `resume` on the act path
-       (the second run then pays one act-write), or honour a PARTIAL set of
-       slots (the third run then pays nothing and the act's seams — which
-       span slots — are assembled from a page-shaped slot and nothing).
-       Ran both — red. */
+  it("F-100: a pre-version-2 checkpoint is REJECTED whole rather than half-understood, and no per-slot narration key is ever written", async () => {
+    /* WHAT THIS REPLACES. Until F-100 this test drove a per-page run that
+       banked `narrate:<i>:<slot>` keys and then resumed an act from them.
+       Q-03 made the ACT the unit of writing — a seam spans slots, so half
+       an act's slots are not a resumable state — and F-100 deleted both
+       the per-page path that wrote those keys and the branch that read
+       them, bumping `CHECKPOINT_VERSION` to 2 in the same PR. What is
+       pinned now is the guarantee that replaces them: a file written by an
+       older build is discarded, so no stage is ever resumed from a shape
+       this code would read differently than the code that wrote it.
+
+       MUTATION THAT KILLS THIS: leave `CHECKPOINT_VERSION` at 1 (the old
+       file resumes and the run reports stages it never ran), or start
+       writing a per-slot narration key again. Ran the first — red. */
     const store = new FakeCheckpointStore(FP);
 
-    /* Run 1: the per-page path — a writer without the act contract — banks
-       every slot of the act, then the act. */
-    const legacy = countingDeps();
-    (legacy.deps.narrationWriter as { writeAct?: unknown }).writeAct = undefined;
-    const first = await runForayPipeline(
+    const first = countingDeps();
+    const written = await runForayPipeline(
       request,
       { userId: "u", checkpointKey: KEY, now: () => new Date("2026-09-09T00:00:00Z") },
-      { ...legacy.deps, finalize: fakeFinalize().fn, checkpoint: store }
+      { ...first.deps, finalize: fakeFinalize().fn, checkpoint: store }
     );
-    expect(first.outcome).toBe("generated");
-    const slotKeys = store.stageKeys(KEY).filter((s) => /^narrate:0:\d+$/.test(s));
-    expect(slotKeys.length).toBeGreaterThan(0);
+    expect(written.outcome).toBe("generated");
+    expect(store.stageKeys(KEY)).toContain("narrate:0");
+    expect(store.stageKeys(KEY).filter((s) => /^narrate:\d+:\d+$/.test(s))).toEqual([]);
 
-    /* Forget the act key and keep the slots — the shape a run that died
-       between its last slot's save and the act's leaves behind. */
-    const stages = store.files.get(KEY)!.stages as Record<string, unknown>;
-    delete stages["narrate:0"];
+    /* The same file, stamped with the version a pre-F-100 build wrote. */
+    const file = store.files.get(KEY)!;
+    store.files.set(KEY, { ...file, version: CHECKPOINT_VERSION - 1 });
+
     const second = countingDeps();
-    const resumed = await runForayPipeline(
+    const rerun = await runForayPipeline(
       request,
       { userId: "u", checkpointKey: KEY, now: () => new Date("2026-09-09T00:00:00Z") },
       { ...second.deps, finalize: fakeFinalize().fn, checkpoint: store }
     );
-    expect(resumed.outcome).toBe("generated");
-    expect(second.calls.write).toBe(0);
-    expect(second.calls.spine).toBe(0);
-
-    /* Forget the act key and ONE slot: the act is written whole — one
-       act-write, no per-slot key added. (The store rebuilds its stage map on
-       every save, so the map is fetched again after the second run.) */
-    const stagesAfterResume = store.files.get(KEY)!.stages as Record<string, unknown>;
-    delete stagesAfterResume["narrate:0"];
-    delete stagesAfterResume[slotKeys[0]!];
-    const third = countingDeps();
-    const rebuilt = await runForayPipeline(
-      request,
-      { userId: "u", checkpointKey: KEY, now: () => new Date("2026-09-09T00:00:00Z") },
-      { ...third.deps, finalize: fakeFinalize().fn, checkpoint: store }
-    );
-    expect(rebuilt.outcome).toBe("generated");
-    expect(third.calls.write).toBe(1);
-    expect(third.calls.spine).toBe(0);
-    expect(store.stageKeys(KEY).filter((s) => /^narrate:0:\d+$/.test(s))).toEqual(slotKeys.slice(1));
-    expect(store.stageKeys(KEY)).toContain("narrate:0");
+    expect(rerun.outcome).toBe("generated");
+    /* Nothing was resumed: every stage ran again, which is the cost of a
+       version bump and the whole of its point. */
+    expect(second.calls.spine).toBeGreaterThan(0);
+    expect(second.calls.write).toBeGreaterThan(0);
   }, 120_000);
 
   it("a second run with the same prompt makes no model calls at all", async () => {

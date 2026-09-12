@@ -1,24 +1,15 @@
 import * as crypto from "crypto";
 import { defaultBudgetGuard, type BudgetGuard } from "../cost/budgetGuard";
-import { MIN_QUOTE_WORDS, MODE_CHAR_BANDS, quoteEchoesPurpose, type PronunciationHint } from "../types/narration";
+import { MIN_QUOTE_WORDS, quoteEchoesPurpose } from "../types/narration";
 import type { EvidenceDoc } from "./gatherEvidence";
 import type {
   ActWriteRequest,
   ActWriteResult,
-  ClaimSelectionRequest,
-  ClaimSelectionResult,
   ClipBrief,
   NarrationBuildContext,
-  NarrationPageBrief,
   NarrationWriterBuilder,
-  ProsePageBrief,
-  ProseWriteRequest,
-  ProseWriteResult,
   SeamBrief,
-  SelectAndWriteRequest,
-  SelectAndWriteResult,
   SelectedClaim,
-  WrittenPage,
   WrittenSeam
 } from "./NarrationWriterBuilder";
 
@@ -42,65 +33,17 @@ import type {
  * A fixture generator, not a content-quality stand-in — the real
  * provider (AnthropicNarrationWriterBuilder) does the actual prose
  * judgement §4.7 asks for.
+ *
+ * ONE METHOD SINCE F-100. This class used to fake the three per-page
+ * calls as well (`selectClaims`, `writePages`, `selectAndWrite`), which is
+ * what made `--dry-run` exercise the per-page path. Q-03 moved production
+ * and `--dry-run` alike onto `writeAct`, so those three fixtures only ever
+ * ran for a test that asked for them; they are deleted with the path.
  */
 export class StubNarrationWriterBuilder implements NarrationWriterBuilder {
   readonly providerName = "stub";
 
   constructor(private readonly budgetGuard: BudgetGuard = defaultBudgetGuard) {}
-
-  async selectClaims(request: ClaimSelectionRequest, ctx: NarrationBuildContext): Promise<ClaimSelectionResult> {
-    await this.budgetGuard.checkAndRecord({
-      userId: ctx.userId,
-      operation: "narration_select_claims",
-      provider: this.providerName,
-      estimatedUsd: 0,
-      dryRun: true,
-      sessionId: ctx.sessionId
-    });
-
-    return {
-      pages: request.pages.map((page) => ({ pageId: page.pageId, claims: claimsFor(page) }))
-    };
-  }
-
-  async writePages(request: ProseWriteRequest, ctx: NarrationBuildContext): Promise<ProseWriteResult> {
-    await this.budgetGuard.checkAndRecord({
-      userId: ctx.userId,
-      operation: "narration_write",
-      provider: this.providerName,
-      estimatedUsd: 0,
-      dryRun: true,
-      sessionId: ctx.sessionId
-    });
-
-    return {
-      pages: request.pages.map((page) => writtenPageFor(page, request.voice.register))
-    };
-  }
-
-  /**
-   * G-34: the dry-run path takes the merged call too, so `--dry-run`
-   * exercises the same one-call shape production does — the stub selects
-   * exactly what `selectClaims` would and writes exactly what
-   * `writePages` would from it, in one reply.
-   */
-  async selectAndWrite(request: SelectAndWriteRequest, ctx: NarrationBuildContext): Promise<SelectAndWriteResult> {
-    await this.budgetGuard.checkAndRecord({
-      userId: ctx.userId,
-      operation: "narration_select_and_write",
-      provider: this.providerName,
-      estimatedUsd: 0,
-      dryRun: true,
-      sessionId: ctx.sessionId
-    });
-
-    return {
-      pages: request.pages.map((page) => {
-        const claims = claimsFor(page);
-        return { ...writtenPageFor({ ...page, claims }, request.voice.register), claims };
-      })
-    };
-  }
 
   /**
    * Q-03: the per-act contract, so `--dry-run` writes per act exactly as
@@ -180,48 +123,14 @@ export function stubSeam(seam: SeamBrief, clips: Map<string, ClipBrief>, documen
   };
 }
 
-function writtenPageFor(page: ProsePageBrief, register: string): WrittenPage {
-  const [min, max] = MODE_CHAR_BANDS[page.mode];
-  const target = Math.round((min + max) / 2);
-  return {
-    pageId: page.pageId,
-    script: padToBand(scriptSeedSentence(page, register, target), min, max, target, page.mode, page.claims.length === 0 ? CLAIM_FREE_FILLERS : FILLERS),
-    /* Every claim the selection produced. A page that could select
-       none (nothing was retrieved for it) writes a script that
-       asserts nothing — see `questionOnlyScript` — because
-       `validateNarratedBeat` allows zero sources only there
-       (F-36/F-37/F-44). */
-    usedClaims: page.claims.map((_, i) => i),
-    /* F-50's permission exists for the live writer; a stub that
-       claimed it would be asserting an editorial judgement it has no
-       way to make ("did the documents contradict the purpose?"), and
-       a dry-run candidate would carry a flag nothing decided. Always
-       false, and the field is present rather than omitted so the
-       dry-run path exercises the same shape production does. */
-    purposeRevised: false,
-    pronunciationHints: hintsFor(page)
-  };
-}
-
 /**
- * Copies a span out of the first document that yields a legal one. Legal
- * means: at least `MIN_QUOTE_WORDS` words long, and sharing no run with
- * the beat purpose — a stub that quoted the purpose back would reproduce
- * F-46 in the dry-run path and be rejected by the same rule the live
- * writer is. Deterministic: always the first legal window, never a
- * sampled one.
- */
-function claimsFor(page: NarrationPageBrief): SelectedClaim[] {
-  const purposeText = [page.purpose, page.contextNote].filter(Boolean).join(" ");
-  for (const doc of page.evidence.docs) {
-    const quote = firstLegalSpan(doc.text, purposeText);
-    if (!quote) continue;
-    return [{ claimText: page.purpose, quote, docId: doc.docId, contested: false }];
-  }
-  return [];
-}
-
-/** The first window of `MIN_QUOTE_WORDS` words that is not an echo of the
+ * Copies a span out of a document. Legal means: at least
+ * `MIN_QUOTE_WORDS` words long, and sharing no run with the beats'
+ * claims — a stub that quoted the purpose back would reproduce F-46 in the
+ * dry-run path and be rejected by the same rule the live writer is.
+ * Deterministic: always the first legal window, never a sampled one.
+ *
+ * The first window of `MIN_QUOTE_WORDS` words that is not an echo of the
  * purpose, or `null` when the document has none. */
 export function firstLegalSpan(text: string, purposeText: string): string | null {
   const words = String(text ?? "").trim().split(/\s+/).filter(Boolean);
@@ -231,41 +140,6 @@ export function firstLegalSpan(text: string, purposeText: string): string | null
     if (!quoteEchoesPurpose(span, purposeText)) return span;
   }
   return null;
-}
-
-function scriptSeedSentence(page: ProsePageBrief, register: string, target: number): string {
-  if (page.claims.length === 0) return questionOnlyScript(page);
-  const modeVerb: Record<string, string> = {
-    Hinge: "closes what just played and opens",
-    Frame: "sets up",
-    Marker: "announces a turn in",
-    Correction: "bounds a claim in",
-    Patch: "supplies the missing part of",
-    Carry: "carries"
-  };
-  const verb = modeVerb[page.mode] ?? "addresses";
-  const full = `In the voice of a ${register.toLowerCase()}, this line ${verb} the idea that ${lowerFirst(page.purpose)}`;
-  if (full.length <= target) return full;
-  /* A band too short for the long form — a Hinge is 50–135 characters,
-     and F-82 is the first time the dry-run path WRITES one (a content beat
-     with no print but the tape beside it) — gets the short form, with the
-     purpose cut on a word boundary and never mid-word. `padToBand` used to
-     slice the long form at the band's midpoint, which left "…the idea
-     that t": a script with no content word of its purpose in it, which the
-     stub verifier then refused three times. The seed keeps the purpose's
-     leading words so it stays about its subject. */
-  const short = `This line ${verb} the idea that `;
-  const room = Math.max(0, target - short.length);
-  const purpose = lowerFirst(page.purpose);
-  const cut = purpose.length <= room ? purpose : purpose.slice(0, room).replace(/\s+\S*$/, "");
-  return `${short}${cut}`.replace(/[\s,;:—–-]+$/, "");
-}
-
-/** No evidence arrived, so the page may assert nothing at all: a question
- * and a hand-off, which is the one shape `validateNarratedBeat` lets
- * through with zero sources. */
-function questionOnlyScript(page: ProsePageBrief): string {
-  return `What would it take to settle that? Listen for the answer in what comes next, and for what the ${page.mode.toLowerCase()} leaves open.`;
 }
 
 function lowerFirst(s: string): string {
@@ -329,13 +203,6 @@ function padToBand(seed: string, min: number, max: number, target: number, mode:
 function hashToInt(input: string): number {
   const digest = crypto.createHash("sha1").update(input).digest();
   return digest.readUInt32BE(0);
-}
-
-function hintsFor(page: ProsePageBrief): PronunciationHint[] {
-  return hardWordsIn(page.purpose).map((word) => ({
-    word,
-    hint: `Say "${word}" as spelled — no override configured (stub fixture).`
-  }));
 }
 
 /** Very small heuristic for "words worth a pronunciation hint": long,

@@ -7,45 +7,23 @@ import type { EvidenceDoc, EvidencePack } from "./gatherEvidence";
  * §4.7), behind the same stub/real-provider split as every other
  * generation-stage collaborator (`SpineBuilder`, `DeepenActBuilder`).
  *
- * TWO CALLS, NOT ONE, AND BATCHED PER SLOT — the WS-A shape, and a
- * deliberate replacement of the previous "one `writePage` per page":
+ * ONE CALL, PER ACT (Q-03, `writeAct` below). The writer is handed an
+ * act's whole verified material and writes its prose in one reply; a
+ * quote it attaches to a claim is checked against the held documents IN
+ * CODE (`writeNarration.ts`'s `gateSelectedClaims`), never by a model, and
+ * attribution is derived from the documents the pipeline holds so a
+ * publication cannot be free text, a slug, or a plausibility label
+ * (F-30/F-32).
  *
- *   1. `selectClaims` reads the evidence pack and returns, per page, the
- *      claims it intends to make and the exact span of a held document
- *      that backs each. Whether that span really is in that document is
- *      then decided IN CODE (`writeNarration.ts`), never by a model, so
- *      the prose call can only ever be given claims that are already
- *      grounded.
- *   2. `writePages` writes the scripts from those claims and nothing
- *      else. It does not return sources: attribution is derived from the
- *      documents the pipeline holds, so a publication cannot be free
- *      text, a slug, or a plausibility label (F-30/F-32). A page says
- *      which of its claims it used, by index, and that is all.
- *
- * BOTH take the whole slot at once. Run 1 spent 4.2 narration calls per
- * beat over 31 beats; a call per slot rather than per page is most of the
- * way to the ≤1.5 target, and slots within an act run in parallel
- * (WS-D1). The M3/M4 ordering guarantees are not affected — they were
- * enforced at sourcing time, over the whole Foray, before any of this
- * runs.
- *
- * ONE CALL WHERE THE DESIGN ALLOWS (G-34). `selectAndWrite` is the two
- * calls above folded into one reply: per page, the claims WITH their
- * quotes AND the script written from them. The mechanical quote gate is
- * unchanged and still runs in code — after the combined reply instead of
- * between two replies — so a quote that is not a span of the named
- * document still never becomes a source. What changes is only the cost
- * of the common case: a slot whose quotes all resolve pays one writer
- * call instead of two. A page whose quotes do NOT all resolve has spent
- * its script (the card accepts that: "a rejected quote now wastes a
- * script"), keeps the claims that did pass, and re-runs prose alone —
- * ONE page, not the slot — through `writePages`, which is why that
- * method stays.
- *
- * Optional, because the orchestrator falls back to `selectClaims` +
- * `writePages` when a builder does not offer it. That is what keeps every
- * scripted test writer and every older provider working, and keeps the
- * two-call path itself exercised.
+ * WHAT USED TO BE HERE (F-100). Runs 1–8 wrote a page at a time and this
+ * interface carried three more methods for it — `selectClaims`,
+ * `writePages`, and G-34's merged `selectAndWrite`. Q-03 replaced that
+ * orchestration and F-100 deleted it, together with these methods, the
+ * prompt that built their requests, and the request/reply types only they
+ * used. They were not a fallback anyone could reach: both classes
+ * `createNarrationWriterBuilder()` can return implement `writeAct`, so
+ * nothing outside a test that deliberately hid it ever took the per-page
+ * path.
  *
  * NEVER the same class/instance as a `NarrationVerifierBuilder` — §5's
  * topology table and this stage's own task brief both require the
@@ -55,10 +33,6 @@ import type { EvidenceDoc, EvidencePack } from "./gatherEvidence";
 export interface NarrationWriterBuilder {
   readonly providerName: string;
 
-  selectClaims(request: ClaimSelectionRequest, ctx: NarrationBuildContext): Promise<ClaimSelectionResult>;
-  writePages(request: ProseWriteRequest, ctx: NarrationBuildContext): Promise<ProseWriteResult>;
-  /** G-34: selection and prose in one reply. See the class comment. */
-  selectAndWrite?(request: SelectAndWriteRequest, ctx: NarrationBuildContext): Promise<SelectAndWriteResult>;
   /**
    * Q-03: THE WHOLE ACT IN ONE CALL. The writer is handed an act's verified
    * material — its clips (opening text, guest/show), its documents, its
@@ -70,14 +44,14 @@ export interface NarrationWriterBuilder {
    * template it fills; a seam's script may carry a beat's claim wherever it
    * belongs. The reply is one script per seam with the claims it asserts
    * and the spans that back them — the same mechanical quote gate as the
-   * per-page calls runs on it afterwards.
+   * whole act's material runs on it afterwards.
    *
-   * Optional: a writer without it (a scripted test writer, an older
-   * provider) takes the per-slot, per-page path above, which is kept as
-   * the fallback and as F-88's drafting path. The real and stub builders
-   * both offer it, so production and `--dry-run` write per act.
+   * REQUIRED since F-100. It was optional while a per-page fallback
+   * existed; with that deleted, a writer without this method cannot write
+   * narration at all, and saying so in the type is better than a runtime
+   * branch into a second orchestration.
    */
-  writeAct?(request: ActWriteRequest, ctx: NarrationBuildContext): Promise<ActWriteResult>;
+  writeAct(request: ActWriteRequest, ctx: NarrationBuildContext): Promise<ActWriteResult>;
 }
 
 /* ------------------------------------------------------------------ *
@@ -242,9 +216,9 @@ export interface ActWriteResult {
   seams: WrittenSeam[];
 }
 
-/** One page's brief, shared by both calls and by the verifier. */
+/** One page's brief, as the verifier reads it. */
 export interface NarrationPageBrief {
-  /** Identifies this page within its slot batch, in both directions. */
+  /** Identifies this page within its batch, in both directions. */
   pageId: string;
   /** The beat's claim (narration-sourced) or the editorial job this
    * connective item exists to do (tape-adjacent) — always the thing the
@@ -272,64 +246,6 @@ export interface SelectedClaim {
   /** §4.7 rule 3, narrowly: reputable sources actively disagree about the
    * fact itself. Not the writer's own uncertainty. */
   contested: boolean;
-}
-
-export interface ClaimSelectionRequest {
-  slotTitle: string;
-  voice: Voice;
-  pages: NarrationPageBrief[];
-}
-
-export interface ClaimSelectionResult {
-  pages: Array<{ pageId: string; claims: SelectedClaim[] }>;
-}
-
-export interface ProsePageBrief extends NarrationPageBrief {
-  /** The validated claims — the only material the script may assert. */
-  claims: SelectedClaim[];
-}
-
-export interface ProseWriteRequest {
-  slotTitle: string;
-  voice: Voice;
-  pages: ProsePageBrief[];
-}
-
-export interface WrittenPage {
-  pageId: string;
-  script: string;
-  /** Indices into the page's `claims`, for the claims the script actually
-   * asserts. A page that asserts nothing returns none — and then may not
-   * contain a declarative sentence (F-36/F-37/F-44). */
-  usedClaims: number[];
-  pronunciationHints: PronunciationHint[];
-  /** F-50: true when this script departs from its purpose BECAUSE the
-   * documents contradicted or complicated it — the page reports the
-   * tension instead of asserting the purpose. Self-reported by the
-   * writer, so it is recorded rather than trusted: the verifier answers
-   * the same question separately and both answers reach the page
-   * (`NarratedBeat.purposeRevised` / `purposeRevisedByVerifier`). */
-  purposeRevised?: boolean;
-}
-
-export interface ProseWriteResult {
-  pages: WrittenPage[];
-}
-
-/** The same brief as a selection call: the pages, their purposes and
- * the documents each may quote. The reply carries the scripts too. */
-export type SelectAndWriteRequest = ClaimSelectionRequest;
-
-/** One page of a combined reply: what it selected AND what it wrote.
- * `usedClaims` indexes `claims` exactly as `WrittenPage.usedClaims`
- * indexes a `ProsePageBrief`'s — and every claim is still put through
- * the mechanical gate before any index is honoured. */
-export interface SelectedAndWrittenPage extends WrittenPage {
-  claims: SelectedClaim[];
-}
-
-export interface SelectAndWriteResult {
-  pages: SelectedAndWrittenPage[];
 }
 
 export interface NarrationBuildContext {

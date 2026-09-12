@@ -3,21 +3,17 @@ import { pathToFileURL } from "node:url";
 import { resolve as resolvePath } from "node:path";
 import { execFileSync } from "node:child_process";
 import {
-  writeNarration,
-  decideConnectiveNarration,
   allWrittenNarration,
+  containsContestedLanguage,
+  decideConnectiveNarration,
+  disclosureNarratedBeat,
   evidenceGathererFor,
+  gateSelectedClaims,
   heldDocsOf,
-  pageCarriesContent,
-  HANDOFF_MODE,
-  HANDOFF_SCRIPT,
-  NO_EVIDENCE_NOTE,
-  NarrationWriteError,
+  writeNarration,
   type WriteNarrationOptions,
-  type WrittenAct,
-  type WrittenSlot
+  type WrittenAct
 } from "../src/generation/writeNarration";
-import { computeUnverifiedPages } from "../src/generation/veracityMetrics";
 import { DefaultEvidenceGatherer } from "../src/generation/gatherEvidence";
 import { StubExternalResearcher } from "../src/generation/StubExternalResearcher";
 import { NullTranscriptCueProvider } from "../src/generation/transcriptArchiveLookup";
@@ -29,38 +25,63 @@ import { StubNarrationVerifierBuilder } from "../src/generation/StubNarrationVer
 import { createNarrationWriterBuilder } from "../src/generation/createNarrationWriterBuilder";
 import { createNarrationVerifierBuilder } from "../src/generation/createNarrationVerifierBuilder";
 import type {
-  ClaimSelectionRequest,
-  ClaimSelectionResult,
+  ActWriteRequest,
+  ActWriteResult,
   NarrationBuildContext,
   NarrationWriterBuilder,
-  ProseWriteRequest,
-  ProseWriteResult,
-  SelectAndWriteRequest,
-  SelectAndWriteResult,
   SelectedClaim
 } from "../src/generation/NarrationWriterBuilder";
-import type {
-  NarrationVerifierBuilder,
-  NarrationVerifyRequest,
-  NarrationVerifyResult
-} from "../src/generation/NarrationVerifierBuilder";
-import type { EvidenceBeat, EvidenceDoc, EvidenceGatherer, EvidencePack } from "../src/generation/gatherEvidence";
+import type { NarrationVerifierBuilder } from "../src/generation/NarrationVerifierBuilder";
+import type { EvidenceDoc, EvidenceGatherer, EvidencePack } from "../src/generation/gatherEvidence";
 import {
-  MODE_CHAR_BANDS,
-  containsContestedLanguage,
-  disclosureNarratedBeat,
   disclosureTemplate,
   hasDeclarativeSentence,
   normalizeForQuoteMatch,
   purposeWasRevised,
   validateNarratedBeat,
-  type NarrationMode,
   type NarratedBeat
 } from "../src/types/narration";
 import type { SourcedAct, SourcedSlot } from "../src/types/tapeSourcing";
 import type { Voice } from "../src/types/spine";
 import { BANNED } from "../src/copy/rules";
 import { env } from "../src/config/env";
+
+/**
+ * §4.7's ORCHESTRATOR AND ITS MECHANICAL RULES.
+ *
+ * WHAT THIS FILE WAS, AND WHAT F-100 DID TO IT (2026-09-12). Runs 1-8 wrote
+ * narration a page at a time, and this suite pinned that orchestration —
+ * `writeSlot`, `runSlotRound`, `draftRound`, the writer's `selectClaims` /
+ * `writePages` / `selectAndWrite` calls — together with every mechanical
+ * rule those rounds applied. Q-03 replaced the orchestration with one call
+ * per ACT (`writeAct.ts`) and left the old one standing as "the fallback
+ * for a builder without the act contract". It was not reachable: both
+ * classes `createNarrationWriterBuilder()` can return implement `writeAct`,
+ * and both verifiers implement `verifyAct`, so nothing but this file ever
+ * took the per-page path — and it took it only because `makeOptions()`
+ * wrapped the stubs in objects whose whole job was to hide the act
+ * contract from the orchestrator.
+ *
+ * F-100 deleted the path. The rules it applied did not go with it: they
+ * live in `writeNarration.ts` (`gateSelectedClaims`, `decodeClaimEntities`,
+ * `sourcesFor`, `retryNoteFrom`) and `types/narration.ts`
+ * (`validateNarratedBeat`), and `writeAct.ts` calls exactly those. So every
+ * rule test below now runs THROUGH THE ACT PATH — the stub builders, no
+ * wrapper, with the writer's reply mutated to produce the failure the rule
+ * is about — and the rejection is read off the act the writer is handed on
+ * its next round. A test that only measured the per-page CALL ECONOMICS
+ * (two calls per slot, G-34's merged call, the per-slot checkpoint) was
+ * deleted with the path it measured; `actNarration.test.ts` measures the
+ * act path's own.
+ *
+ * The narrow unit tests of the same rules — `validateNarratedBeat` against
+ * a hand-built page — are in `narrationRules.test.ts` and were never on the
+ * per-page path. They are the floor under this file, not a duplicate of it:
+ * these tests are about a rule FIRING, in the orchestrator, and telling the
+ * writer what to fix.
+ *
+ * Every test names the mutation that kills it.
+ */
 
 const voice: Voice = { style: "well-read friend", register: "conversational", sentenceRhythm: "varied", narratorPresence: "medium" };
 const ctx: NarrationBuildContext = { userId: "founder-1" };
@@ -87,9 +108,9 @@ const TAPE_DOC: EvidenceDoc = {
 };
 
 /** An evidence gatherer that hands every beat the same fixture documents.
- * Injected into every orchestrator test so the assertions are about
- * `writeNarration`'s rules and not about what a retrieval happened to
- * return — and so no test touches the catalogue or the network. */
+ * Injected into every orchestrator test so the assertions are about the
+ * stage's rules and not about what a retrieval happened to return — and so
+ * no test touches the catalogue or the network. */
 function fixtureGatherer(docs: EvidenceDoc[] = [NBS_DOC], tape?: EvidencePack["tape"]): EvidenceGatherer {
   return {
     async gather(beat): Promise<EvidencePack> {
@@ -99,37 +120,54 @@ function fixtureGatherer(docs: EvidenceDoc[] = [NBS_DOC], tape?: EvidencePack["t
 }
 
 /**
- * Q-03: the per-slot, per-page path this file exercises is now the FALLBACK
- * `writeNarration` takes for a writer or verifier WITHOUT the act contract
- * (`writeAct` / `verifyAct`) — and F-88's drafting path. The stub builders
- * offer the contract, so these wrappers hand them over without it; every
- * mechanical rule the act path inherits is pinned here, on the path it was
- * written on. The act path's own tests are `actNarration.test.ts`.
- * Delegation is lazy so a test may still patch the stub after wrapping.
+ * THE ACT PATH, WITH A HOOK ON WHAT THE WRITER SAYS — the shape every rule
+ * test below uses, and the reason they are honest tests of the live path
+ * rather than of a fixture: the builders are the real stubs
+ * (`createNarrationWriterBuilder()` returns exactly this class in a
+ * dry-run), and only the reply is mutated, at the seam, to produce the one
+ * fault the rule is about.
+ *
+ * `mutate` is given the round number, so a test can say "attempt 1 is the
+ * run-1 failure, attempt 2 is the correction" and assert both the refusal
+ * and the recovery.
  */
-function legacyWriter(stub: StubNarrationWriterBuilder): NarrationWriterBuilder {
-  return {
-    providerName: stub.providerName,
-    selectClaims: (request, buildCtx) => stub.selectClaims(request, buildCtx),
-    writePages: (request, buildCtx) => stub.writePages(request, buildCtx),
-    selectAndWrite: (request, buildCtx) => stub.selectAndWrite(request, buildCtx)
+function actBuilders(mutate?: (reply: ActWriteResult, request: ActWriteRequest, round: number) => ActWriteResult) {
+  const writer = new StubNarrationWriterBuilder();
+  const verifier = new StubNarrationVerifierBuilder();
+  const calls = { write: 0, verify: 0 };
+  const requests: ActWriteRequest[] = [];
+  const realWrite = writer.writeAct.bind(writer);
+  writer.writeAct = async (request, buildCtx) => {
+    calls.write++;
+    requests.push(request);
+    const reply = await realWrite(request, buildCtx);
+    return mutate ? mutate(reply, request, calls.write) : reply;
   };
+  const realVerify = verifier.verifyAct.bind(verifier);
+  verifier.verifyAct = async (request, buildCtx) => {
+    calls.verify++;
+    return realVerify(request, buildCtx);
+  };
+  return { writer, verifier, calls, requests };
 }
-function legacyVerifier(stub: StubNarrationVerifierBuilder): NarrationVerifierBuilder {
-  return {
-    providerName: stub.providerName,
-    verifySlot: (request, buildCtx) => stub.verifySlot(request, buildCtx),
-    verifySynthesis: (request, buildCtx) => stub.verifySynthesis(request, buildCtx)
-  };
+
+/** Replaces the claims of every seam in the reply — the one lever every
+ * quote-gate test pulls. */
+function withClaims(reply: ActWriteResult, claims: SelectedClaim[]): ActWriteResult {
+  return { seams: reply.seams.map((s) => ({ ...s, claims, usedClaims: claims.map((_, i) => i) })) };
+}
+
+/** What the writer was told to fix, on the round after a refusal: the
+ * act-level accumulation (F-35) and the seam's own note (F-97). */
+function refusalOn(requests: ActWriteRequest[], round: number): string {
+  const request = requests[round - 1];
+  if (!request) return "";
+  return [request.retryNote ?? "", ...request.seams.map((s) => s.notes ?? "")].join(" ");
 }
 
 function makeOptions(overrides: Partial<WriteNarrationOptions> = {}): WriteNarrationOptions {
-  return {
-    writer: legacyWriter(new StubNarrationWriterBuilder()),
-    verifier: legacyVerifier(new StubNarrationVerifierBuilder()),
-    evidence: fixtureGatherer(),
-    ...overrides
-  };
+  const { writer, verifier } = actBuilders();
+  return { writer, verifier, evidence: fixtureGatherer(), ...overrides };
 }
 
 function tapePointer(itemId: string) {
@@ -158,166 +196,6 @@ function tapeAct(claim: string, itemId = "item-1"): SourcedAct[] {
   return [{ title: "Act", slots: [{ title: "Slot", beats: [{ sourcing: "tape", claim, exploration: false, tape: tapePointer(itemId) }] }] }];
 }
 
-/**
- * A writer driven by a canned list of per-attempt answers. Each entry is
- * what the slot's ONE page selects and writes on that attempt, so a test
- * can replay a run-1 failure and then its correction.
- *
- * SPLIT PATH ONLY — it offers no `selectAndWrite`, so the orchestrator
- * takes the two-call path through it. That is deliberate: it is what
- * keeps the fallback path tested now that the real and stub builders
- * both offer the merged call (`mergedWriter` below is the merged fake).
- *
- * `retryNotes` records the note on EVERY writer call, selection or
- * prose, because since G-34 a retry may re-run prose alone and the note
- * then reaches only `writePages`; `lastRetryNote` reads the newest.
- */
-function scriptedWriter(
-  attempts: Array<{ claims: SelectedClaim[]; script?: string; usedClaims?: number[]; purposeRevised?: boolean }>
-): NarrationWriterBuilder & { selectCalls: number; writeCalls: number; retryNotes: Array<string | undefined> } {
-  const w = {
-    providerName: "scripted",
-    selectCalls: 0,
-    writeCalls: 0,
-    retryNotes: [] as Array<string | undefined>,
-    async selectClaims(request: ClaimSelectionRequest): Promise<ClaimSelectionResult> {
-      w.retryNotes.push(request.pages[0]?.retryNote);
-      const turn = attempts[Math.min(w.selectCalls, attempts.length - 1)]!;
-      w.selectCalls++;
-      return { pages: request.pages.map((p) => ({ pageId: p.pageId, claims: turn.claims })) };
-    },
-    async writePages(request: ProseWriteRequest): Promise<ProseWriteResult> {
-      w.retryNotes.push(request.pages[0]?.retryNote);
-      const turn = attempts[Math.min(w.writeCalls, attempts.length - 1)]!;
-      w.writeCalls++;
-      return {
-        pages: request.pages.map((p) => ({
-          pageId: p.pageId,
-          script: turn.script ?? DEFAULT_SCRIPT,
-          usedClaims: turn.usedClaims ?? p.claims.map((_, i) => i),
-          ...(turn.purposeRevised === undefined ? {} : { purposeRevised: turn.purposeRevised }),
-          pronunciationHints: []
-        }))
-      };
-    }
-  };
-  return w;
-}
-
-function lastRetryNote(w: { retryNotes: Array<string | undefined> }): string {
-  return w.retryNotes[w.retryNotes.length - 1] ?? "";
-}
-
-/**
- * G-34's merged fake: one reply per page carrying claims AND script. Each
- * canned turn is consumed by ONE writer request of either kind, so a
- * test can script "merged reply, then the prose-only re-run". Records
- * every request it saw, with the page ids in it, because what G-34 is
- * about is which pages a retry pays for.
- */
-function mergedWriter(
-  turns: Array<{
-    claims: SelectedClaim[] | ((pageId: string) => SelectedClaim[]);
-    script?: string;
-    usedClaims?: number[];
-  }>
-): NarrationWriterBuilder & {
-  mergedCalls: number;
-  writeCalls: number;
-  selectCalls: number;
-  requests: Array<{ kind: "merged" | "prose" | "select"; pageIds: string[]; claims?: SelectedClaim[][]; retryNotes: Array<string | undefined> }>;
-} {
-  let turnIndex = 0;
-  const nextTurn = () => turns[Math.min(turnIndex++, turns.length - 1)]!;
-  const claimsOf = (turn: (typeof turns)[number], pageId: string) => (typeof turn.claims === "function" ? turn.claims(pageId) : turn.claims);
-  const w = {
-    providerName: "merged-fake",
-    mergedCalls: 0,
-    writeCalls: 0,
-    selectCalls: 0,
-    requests: [] as Array<{ kind: "merged" | "prose" | "select"; pageIds: string[]; claims?: SelectedClaim[][]; retryNotes: Array<string | undefined> }>,
-    async selectClaims(request: ClaimSelectionRequest): Promise<ClaimSelectionResult> {
-      w.selectCalls++;
-      w.requests.push({ kind: "select", pageIds: request.pages.map((p) => p.pageId), retryNotes: request.pages.map((p) => p.retryNote) });
-      const turn = nextTurn();
-      return { pages: request.pages.map((p) => ({ pageId: p.pageId, claims: claimsOf(turn, p.pageId) })) };
-    },
-    async writePages(request: ProseWriteRequest): Promise<ProseWriteResult> {
-      w.writeCalls++;
-      w.requests.push({
-        kind: "prose",
-        pageIds: request.pages.map((p) => p.pageId),
-        claims: request.pages.map((p) => p.claims),
-        retryNotes: request.pages.map((p) => p.retryNote)
-      });
-      const turn = nextTurn();
-      return {
-        pages: request.pages.map((p) => ({
-          pageId: p.pageId,
-          script: turn.script ?? DEFAULT_SCRIPT,
-          usedClaims: turn.usedClaims ?? p.claims.map((_, i) => i),
-          pronunciationHints: []
-        }))
-      };
-    },
-    async selectAndWrite(request: SelectAndWriteRequest): Promise<SelectAndWriteResult> {
-      w.mergedCalls++;
-      w.requests.push({ kind: "merged", pageIds: request.pages.map((p) => p.pageId), retryNotes: request.pages.map((p) => p.retryNote) });
-      const turn = nextTurn();
-      return {
-        pages: request.pages.map((p) => {
-          const claims = claimsOf(turn, p.pageId);
-          return {
-            pageId: p.pageId,
-            claims,
-            script: turn.script ?? DEFAULT_SCRIPT,
-            usedClaims: turn.usedClaims ?? claims.map((_, i) => i),
-            pronunciationHints: []
-          };
-        })
-      };
-    }
-  };
-  return w;
-}
-
-/** A verifier that rejects the named page ids on its first call only,
- * then accepts everything — the shape of "one page needs a second go". */
-function rejectOnceVerifier(rejectPageIds: string[]): NarrationVerifierBuilder & { calls: number; requests: string[][] } {
-  const v = {
-    providerName: "reject-once",
-    calls: 0,
-    requests: [] as string[][],
-    async verifySlot(request: NarrationVerifyRequest): Promise<NarrationVerifyResult> {
-      v.calls++;
-      v.requests.push(request.pages.map((p) => p.pageId));
-      const first = v.calls === 1;
-      return {
-        pages: request.pages.map((p) => {
-          const doomed = first && rejectPageIds.includes(p.pageId);
-          return {
-            pageId: p.pageId,
-            claimsSupported: !doomed,
-            purposeAccomplished: true,
-            contestedHandled: true,
-            ...(doomed ? { notes: "first-round objection" } : {})
-          };
-        })
-      };
-    }
-  };
-  return v;
-}
-
-/** A Patch-band script (340-765 chars). Written out rather than padded so
- * a reader can see it is ordinary prose and not a length fixture. */
-const DEFAULT_SCRIPT =
-  "One welded joint now carried both walkways' weight, and the drawings for it were never checked. " +
-  "The connection as built could hold about sixty percent of what the code required of it, which is " +
-  "the number the investigators kept returning to when they explained why the fourth floor came down. " +
-  "What makes it hard to read as a single mistake is how ordinary every step looked from inside the " +
-  "office that took it, right up to the evening the whole thing let go.";
-
 const GOOD_CLAIM: SelectedClaim = {
   claimText: "the connection was never checked",
   quote: "The box beam-hanger rod connections were not checked for adequacy at any stage of the design.",
@@ -325,69 +203,271 @@ const GOOD_CLAIM: SelectedClaim = {
   contested: false
 };
 
-function passingVerifier(): NarrationVerifierBuilder & { calls: number } {
-  const v = {
-    providerName: "passing",
-    calls: 0,
-    async verifySlot(request: NarrationVerifyRequest): Promise<NarrationVerifyResult> {
-      v.calls++;
-      return {
-        pages: request.pages.map((p) => ({ pageId: p.pageId, claimsSupported: true, purposeAccomplished: true, contestedHandled: true }))
-      };
+/* ------------------------------------------------------------------ *
+ * The quote gate, through the orchestrator (F-14/F-27/F-30/F-42/F-46).
+ * PORTED from the per-page path: each of these used to drive `writeSlot`
+ * with a scripted per-page writer and read the rejection off the writer's
+ * next `selectClaims` request. The rule is the same function
+ * (`gateSelectedClaims`); what changed is that the act writer is handed
+ * the refusal on its next round, in the seam's `notes`.
+ * ------------------------------------------------------------------ */
+
+describe("writeNarration — a quote is a LOOKUP, decided in code before any verifier call (F-14/F-27)", () => {
+  it("derives publication and url from the held document, never from the writer", async () => {
+    /* MUTATION THAT KILLS THIS: let the writer supply `publication` —
+       `sourcesFor` would stop reading it off the document and F-30/F-32
+       would be representable again. */
+    const { writer, verifier } = actBuilders((reply) => withClaims(reply, [GOOD_CLAIM]));
+    const written = await writeNarration(
+      narrationAct("Show what the connection was asked to hold."),
+      { writer, verifier, evidence: fixtureGatherer() },
+      voice,
+      ctx
+    );
+
+    const source = allWrittenNarration(written)[0]!.sources[0]!;
+    expect(source.publication).toBe(NBS_DOC.title);
+    expect(source.url).toBe(NBS_DOC.url);
+    expect(source.retrieved).toBe(NBS_DOC.retrievedAt);
+  });
+
+  it("rejects run 1's fabricated 'New Safe Confinement' citation before the verifier is called, and says why", async () => {
+    /* MUTATION THAT KILLS THIS: run the quote gate after the verifier, or
+       drop `findHoldingDoc` — the invented span becomes a source. */
+    const fabricated: SelectedClaim = {
+      claimText: "the hanger rods were doubled",
+      quote: "The interviews describe the hanger rod change as one made on the shop floor overnight.",
+      docId: NBS_DOC.docId,
+      contested: false
+    };
+    const { writer, verifier, calls, requests } = actBuilders((reply, _request, round) =>
+      withClaims(reply, [round === 1 ? fabricated : GOOD_CLAIM])
+    );
+
+    const written = await writeNarration(
+      narrationAct("Show what the connection was asked to hold."),
+      { writer, verifier, evidence: fixtureGatherer() },
+      voice,
+      ctx
+    );
+
+    /* The verifier is not called on the refused round at all: a claim that
+       is not a span of a held document is settled in code, one call
+       earlier than run 1 settled it. */
+    expect(calls.write).toBe(2);
+    expect(calls.verify).toBe(1);
+    expect(refusalOn(requests, 2)).toMatch(/not a verbatim span of any document provided/);
+    expect(allWrittenNarration(written)[0]!.sources[0]!.publication).toBe(NBS_DOC.title);
+  });
+
+  it("rejects a quote taken from a document other than the one it cites", async () => {
+    /* MUTATION THAT KILLS THIS: check the quote against the whole pack
+       rather than against the document named. Two PRINT documents: a tape
+       document would take F-81's branch, where the whole window is the
+       source and this rule does not apply. */
+    const OTHER_PRINT: EvidenceDoc = {
+      docId: "print:enr-1981",
+      kind: "print",
+      title: "Engineering News-Record (1981)",
+      text: "Crews on the fourth floor described the walkway as steady under foot in the weeks before the dance."
+    };
+    const misfiled: SelectedClaim = { ...GOOD_CLAIM, docId: OTHER_PRINT.docId };
+    const { writer, verifier, requests } = actBuilders((reply, _request, round) => withClaims(reply, [round === 1 ? misfiled : GOOD_CLAIM]));
+    await writeNarration(
+      narrationAct("Show what the connection was asked to hold."),
+      { writer, verifier, evidence: fixtureGatherer([NBS_DOC, OTHER_PRINT]) },
+      voice,
+      ctx
+    );
+    expect(refusalOn(requests, 2)).toMatch(/Quote the document you cite/);
+  });
+
+  it("rejects a docId that is not in the pack at all", async () => {
+    /* MUTATION THAT KILLS THIS: fall back to "any document" when the named
+       one is absent. */
+    const { writer, verifier, requests } = actBuilders((reply, _request, round) =>
+      withClaims(reply, [round === 1 ? { ...GOOD_CLAIM, docId: "print:invented" } : GOOD_CLAIM])
+    );
+    await writeNarration(narrationAct("Show what the connection was asked to hold."), { writer, verifier, evidence: fixtureGatherer() }, voice, ctx);
+    expect(refusalOn(requests, 2)).toMatch(/is not one of the documents provided/);
+  });
+
+  it("F-42: rejects the run-1 two-word span at claim selection", async () => {
+    /* MUTATION THAT KILLS THIS: drop the word minimum, or apply it to a
+       span that is not a whole sentence of the document. */
+    const short: SelectedClaim = { claimText: "the screens choked the channel", quote: "not checked", docId: NBS_DOC.docId, contested: false };
+    const { writer, verifier, requests } = actBuilders((reply, _request, round) => withClaims(reply, [round === 1 ? short : GOOD_CLAIM]));
+    await writeNarration(narrationAct("Show what the connection was asked to hold."), { writer, verifier, evidence: fixtureGatherer() }, voice, ctx);
+    expect(refusalOn(requests, 2)).toMatch(/the quote is 2 word\(s\)/);
+  });
+
+  it("F-46: rejects the beat purpose quoted back, even when it IS in a held document", async () => {
+    /* MUTATION THAT KILLS THIS: drop `quoteEchoesPurpose`, or stop joining
+       the seam's beats into the purpose text the gate is given. */
+    const purpose = "Welding crews reinforced the tower's joints at night for three months in 1978.";
+    const purposeDoc: EvidenceDoc = { docId: "print:enr", kind: "print", title: "Engineering News-Record", text: `Reports at the time: ${purpose}` };
+    const echo: SelectedClaim = {
+      claimText: "the joints were reinforced at night",
+      quote: "welding crews reinforced the tower's joints at night for three months in 1978",
+      docId: purposeDoc.docId,
+      contested: false
+    };
+    const { writer, verifier, requests } = actBuilders((reply, _request, round) => (round === 1 ? withClaims(reply, [echo]) : reply));
+    await writeNarration(narrationAct(purpose), { writer, verifier, evidence: fixtureGatherer([purposeDoc]) }, voice, ctx);
+    expect(refusalOn(requests, 2)).toMatch(/repeats this beat's own purpose/);
+  });
+
+  it("F-30: a tape slug can no longer BE a publication, because the writer never supplies one", async () => {
+    /* MUTATION THAT KILLS THIS: take `publication` from the reply, or
+       drop the slug guard (`looksLikeSlug`) that catches it if it ever
+       does. */
+    const tapeClaim: SelectedClaim = {
+      claimText: "the bakestone came before the griddle",
+      quote: "So the bakestone came first, and the iron griddle only really arrives once cast iron is cheap",
+      docId: TAPE_DOC.docId,
+      contested: false
+    };
+    const { writer, verifier } = actBuilders((reply) => withClaims(reply, [tapeClaim]));
+    const written = await writeNarration(
+      tapeAct("Hand the listener into the tape.", "bfh-griddle-bakestone"),
+      { writer, verifier, evidence: fixtureGatherer([TAPE_DOC]) },
+      voice,
+      ctx
+    );
+    const page = allWrittenNarration(written)[0]!;
+    expect(page.sources[0]!.publication).toBe("Bread from Home — The griddle and the bakestone");
+    expect(page.sources[0]!.publication).not.toMatch(/^bfh-griddle-bakestone$/);
+  });
+
+  it("F-26: decodes &amp;/&quot;/&#39; in a selected claim before the substring check (the real \"Simon &amp; Schuster\" case)", async () => {
+    /* MUTATION THAT KILLS THIS: move `decodeClaimEntities` after
+       `gateSelectedClaims`. The held document is TEXT — it carries "&",
+       not "&amp;" — so a quote that is character-for-character correct
+       apart from an entity no listener hears would be refused. */
+    const PUBLISHER_DOC: EvidenceDoc = {
+      docId: "print:publisher",
+      kind: "print",
+      title: "Simon & Schuster Press",
+      text: "Simon & Schuster acquired the rights to the collection in nineteen eighty, and the editor said yes within a week."
+    };
+    const entityClaim: SelectedClaim = {
+      claimText: "Simon &amp; Schuster published the book.",
+      // Entity-encoded here, plain "&" in PUBLISHER_DOC.text above.
+      quote: "Simon &amp; Schuster acquired the rights to the collection in nineteen eighty",
+      docId: PUBLISHER_DOC.docId,
+      contested: false
+    };
+    const { writer, verifier, calls } = actBuilders((reply) => withClaims(reply, [entityClaim]));
+    const written = await writeNarration(
+      narrationAct("A claim about publishing."),
+      { writer, verifier, evidence: fixtureGatherer([PUBLISHER_DOC]) },
+      voice,
+      ctx
+    );
+    const page = allWrittenNarration(written)[0]!;
+
+    // It resolved at all: the decode ran before the substring check.
+    expect(calls.write).toBe(1);
+    expect(page.sources).toHaveLength(1);
+    expect(page.sources[0]!.claimText).toBe("Simon & Schuster published the book.");
+    expect(page.sources[0]!.quote).toBe("Simon & Schuster acquired the rights to the collection in nineteen eighty");
+    // Attribution is read off the document, so it was never encoded (WS-A).
+    expect(page.sources[0]!.publication).toBe("Simon & Schuster Press");
+  });
+
+  it("F-26: decodes entities in the SCRIPT too — a narrator does not say \"ampersand a-m-p semicolon\"", async () => {
+    /* MUTATION THAT KILLS THIS: decode the claims and not the script. */
+    const { writer, verifier } = actBuilders((reply) => ({
+      seams: reply.seams.map((s) => ({ ...s, script: s.script.replace(/\band\b/, "&amp;") }))
+    }));
+    const written = await writeNarration(narrationAct("A claim about the connection."), { writer, verifier, evidence: fixtureGatherer() }, voice, ctx);
+    for (const page of allWrittenNarration(written)) {
+      expect(page.script).not.toMatch(/&(amp|quot|#39);/);
     }
-  };
-  return v;
-}
-
-function rejectingVerifier(field: "claimsSupported" | "purposeAccomplished" | "contestedHandled" = "claimsSupported"): NarrationVerifierBuilder & {
-  calls: number;
-} {
-  const v = {
-    providerName: "always-reject",
-    calls: 0,
-    async verifySlot(request: NarrationVerifyRequest): Promise<NarrationVerifyResult> {
-      v.calls++;
-      return {
-        pages: request.pages.map((p) => ({
-          pageId: p.pageId,
-          claimsSupported: field !== "claimsSupported",
-          purposeAccomplished: field !== "purposeAccomplished",
-          contestedHandled: field !== "contestedHandled",
-          notes: "simulated rejection"
-        }))
-      };
-    }
-  };
-  return v;
-}
-
-describe("writeNarration — one page per narration beat, within mode budget", () => {
-  it.each(Object.keys(MODE_CHAR_BANDS) as NarrationMode[])("produces a script within the %s mode's character budget", async (mode) => {
-    const acts: SourcedAct[] =
-      mode === "Patch" || mode === "Carry"
-        ? narrationAct("The Lawson criterion sets the bar tokamaks had to clear.", mode as "Patch" | "Carry")
-        : tapeAct("Tape about a discovery.");
-
-    const written = await writeNarration(acts, makeOptions(), voice, ctx);
-    const pages = allWrittenNarration(written);
-    expect(pages.length).toBeGreaterThan(0);
-    const page = pages.find((p) => p.mode === mode) ?? pages[0]!;
-    const [min, max] = MODE_CHAR_BANDS[page.mode];
-    expect(page.script.length).toBeGreaterThanOrEqual(min);
-    expect(page.script.length).toBeLessThanOrEqual(max);
   });
 });
 
+describe("writeNarration — the mechanical rules a script must clear, through the orchestrator", () => {
+  it("F-45: a script that says what the record does not contain is rejected unless a quote says so", async () => {
+    /* MUTATION THAT KILLS THIS: drop `negativeRecordSentence` from the
+       structural validator, or stop giving it the act's quotes to look
+       for the backing in. */
+    const negative =
+      "The staged load sat somewhere on that span. Exactly where, the record doesn't say, and the crews never wrote it down, " +
+      "which is why the question keeps coming back every time anyone re-reads the file.";
+    const { writer, verifier, requests } = actBuilders((reply, _request, round) =>
+      round === 1 ? { seams: reply.seams.map((s) => ({ ...s, script: `${negative} ${s.script}` })) } : reply
+    );
+    await writeNarration(narrationAct("Locate the staged load."), { writer, verifier, evidence: fixtureGatherer() }, voice, ctx);
+    expect(refusalOn(requests, 2)).toMatch(/asserts what the record does or does not contain/);
+  });
+
+  it("F-36/F-37/F-44: a seam that asserts something and rests on no source in the act is rejected in code", async () => {
+    /* MUTATION THAT KILLS THIS: let a declarative seam through with an
+       empty claim list — run 1's dominant first-attempt output for tape
+       beats, and the case it decided by sampling. */
+    const { writer, verifier, requests } = actBuilders((reply, _request, round) => (round === 1 ? withClaims(reply, []) : reply));
+    const written = await writeNarration(narrationAct("A claim about the connection."), { writer, verifier, evidence: fixtureGatherer() }, voice, ctx);
+    expect(refusalOn(requests, 2)).toMatch(/rests on no source in the act|may only ask a question or hand off to the listener/);
+    expect(allWrittenNarration(written)[0]!.verified).toBe(true);
+  });
+
+  it("F-35: the retry note accumulates every prior rejection, not just the latest one", async () => {
+    /* MUTATION THAT KILLS THIS: overwrite the note on each failure, which
+       is what run 1 did — attempt 3 was told about attempt 2 only and
+       regularly revived the fault attempt 1 was rejected for. */
+    const shortQuote: SelectedClaim = { claimText: "c", quote: "not checked", docId: NBS_DOC.docId, contested: false };
+    const wrongDoc: SelectedClaim = { ...GOOD_CLAIM, docId: "print:invented" };
+    const { writer, verifier, requests } = actBuilders((reply, _request, round) =>
+      withClaims(reply, round === 1 ? [shortQuote] : round === 2 ? [wrongDoc] : [GOOD_CLAIM])
+    );
+
+    await writeNarration(narrationAct("A claim about the connection."), { writer, verifier, evidence: fixtureGatherer() }, voice, ctx);
+
+    expect(requests).toHaveLength(3);
+    const third = requests[2]!.retryNote ?? "";
+    expect(third).toMatch(/Attempt 1 was rejected for/);
+    expect(third).toMatch(/Attempt 2 was rejected for/);
+    // The first attempt's complaint (a two-word span) is still on the
+    // record when the third is written, alongside the second's (an
+    // unknown docId).
+    expect(third).toMatch(/word\(s\)/);
+    expect(third).toMatch(/not one of the documents provided/);
+  });
+
+  it("the slug guard fires on a publication that is a tape item id rather than a work", async () => {
+    /* MUTATION THAT KILLS THIS: drop `looksLikeSlug` from the structural
+       pass — the one check that would still catch F-30 if attribution
+       ever stopped being read off the document. */
+    const slugDoc: EvidenceDoc = {
+      docId: "print:slug",
+      kind: "print",
+      title: "bread-from-home-griddle-bakestone",
+      text: "The bakestone came first and the iron griddle arrives once cast iron is cheap enough for every hearth."
+    };
+    const claim: SelectedClaim = {
+      claimText: "the bakestone came first",
+      quote: "The bakestone came first and the iron griddle arrives once cast iron",
+      docId: slugDoc.docId,
+      contested: false
+    };
+    const { writer, verifier, requests } = actBuilders((reply, _request, round) => (round === 1 ? withClaims(reply, [claim]) : reply));
+    await writeNarration(narrationAct("Say where the griddle came from."), { writer, verifier, evidence: fixtureGatherer([slugDoc]) }, voice, ctx);
+    expect(refusalOn(requests, 2)).toMatch(/is a tape item id, not a publication/);
+  });
+});
+
+/* ------------------------------------------------------------------ *
+ * The rules as pure functions — never on the per-page path, unchanged.
+ * ------------------------------------------------------------------ */
+
 describe("writeNarration — every factual claim carries a non-empty sources array", () => {
-  it("a Patch beat's written page has at least one source", async () => {
+  it("a narration beat's written page has at least one source", async () => {
     const written = await writeNarration(narrationAct("Whyte explains the Lawson criterion."), makeOptions(), voice, ctx);
     const page = allWrittenNarration(written)[0]!;
     expect(page.sources.length).toBeGreaterThan(0);
     for (const source of page.sources) {
       expect(source.claimText.length).toBeGreaterThan(0);
-      // A Patch cites print, whose quote is never optional (F-81's tape
-      // shape is the one with an optional quote, and it cannot be here).
-      expect(source.quote!.length).toBeGreaterThan(0);
     }
   });
 
@@ -399,391 +479,6 @@ describe("writeNarration — every factual claim carries a non-empty sources arr
   });
 });
 
-describe("writeNarration — HTML entities in writer output are decoded (F-26)", () => {
-  /* WS-E's rule, at WS-A's boundary. The held document is TEXT — it
-     carries "&", not "&amp;" — so decoding has to happen BEFORE the
-     substring check, or a quote that is character-for-character correct
-     apart from an entity the listener never hears would be rejected as
-     ungrounded. This test fails in exactly that way if the decode ever
-     moves after `validateSelectedClaims`. */
-  const PUBLISHER_DOC: EvidenceDoc = {
-    docId: "print:publisher",
-    kind: "print",
-    title: "Simon & Schuster Press",
-    text: "Simon & Schuster acquired the rights to the collection in nineteen eighty, and the editor said yes within a week."
-  };
-
-  it("decodes &amp;/&quot;/&#39; in the script and in a selected claim (the real \"Simon &amp; Schuster\" case)", async () => {
-    const rawScript =
-      "Simon &amp; Schuster published the collection, and the editor said &quot;yes&quot; right away " +
-      "— it&#39;s a true story about a slow, careful decision." +
-      " The publisher spent years building a catalog of accessible nonfiction, one careful title at a time," +
-      " and this was simply the next entry on a long, patient list that nobody outside the building was watching at the time.";
-    const entityClaim: SelectedClaim = {
-      claimText: "Simon &amp; Schuster published the book.",
-      // Entity-encoded here, plain "&" in PUBLISHER_DOC.text above.
-      quote: "Simon &amp; Schuster acquired the rights to the collection in nineteen eighty",
-      docId: PUBLISHER_DOC.docId,
-      contested: false
-    };
-    const writer = scriptedWriter([{ claims: [entityClaim], script: rawScript }]);
-
-    const written = await writeNarration(
-      narrationAct("A claim about publishing."),
-      { writer, verifier: passingVerifier(), evidence: fixtureGatherer([PUBLISHER_DOC]) },
-      voice,
-      ctx
-    );
-    const page = allWrittenNarration(written)[0]!;
-
-    // It resolved at all: the decode ran before the substring check.
-    expect(writer.selectCalls).toBe(1);
-    expect(page.sources).toHaveLength(1);
-    expect(page.script).toContain("Simon & Schuster");
-    expect(page.script).not.toMatch(/&(amp|quot|#39);/);
-    expect(page.sources[0]!.claimText).toBe("Simon & Schuster published the book.");
-    expect(page.sources[0]!.quote).toBe("Simon & Schuster acquired the rights to the collection in nineteen eighty");
-    // Attribution is read off the document, so it was never encoded (WS-A).
-    expect(page.sources[0]!.publication).toBe("Simon & Schuster Press");
-  });
-});
-
-describe("writeNarration — a quote is a LOOKUP, decided in code before any verifier call (F-14/F-27)", () => {
-  it("derives publication and url from the held document, never from the writer", async () => {
-    const writer = scriptedWriter([{ claims: [GOOD_CLAIM] }]);
-    const verifier = passingVerifier();
-    const written = await writeNarration(narrationAct("Show what the connection was asked to hold."), { writer, verifier, evidence: fixtureGatherer() }, voice, ctx);
-
-    const source = allWrittenNarration(written)[0]!.sources[0]!;
-    expect(source.publication).toBe(NBS_DOC.title);
-    expect(source.url).toBe(NBS_DOC.url);
-    expect(source.retrieved).toBe(NBS_DOC.retrievedAt);
-  });
-
-  it("rejects run 1's fabricated 'New Safe Confinement' citation before the verifier is called, and says why", async () => {
-    const fabricated: SelectedClaim = {
-      claimText: "the hanger rods were doubled",
-      quote: "The interviews describe the hanger rod change as one made on the shop floor overnight.",
-      docId: NBS_DOC.docId,
-      contested: false
-    };
-    const writer = scriptedWriter([{ claims: [fabricated] }, { claims: [GOOD_CLAIM] }]);
-    const verifier = passingVerifier();
-
-    const written = await writeNarration(narrationAct("Show what the connection was asked to hold."), { writer, verifier, evidence: fixtureGatherer() }, voice, ctx);
-
-    // The prose call is skipped entirely for an ungrounded selection: one
-    // fewer paid call than run 1 spent writing a page it would then reject.
-    expect(writer.selectCalls).toBe(2);
-    expect(writer.writeCalls).toBe(1);
-    expect(verifier.calls).toBe(1);
-    expect(writer.retryNotes[1]).toMatch(/not a verbatim span of any document provided/);
-    expect(allWrittenNarration(written)[0]!.sources[0]!.publication).toBe(NBS_DOC.title);
-  });
-
-  it("rejects a quote taken from a document other than the one it cites", async () => {
-    const misfiled: SelectedClaim = { ...GOOD_CLAIM, docId: TAPE_DOC.docId };
-    const writer = scriptedWriter([{ claims: [misfiled] }, { claims: [GOOD_CLAIM] }]);
-    await writeNarration(narrationAct("Show what the connection was asked to hold."), { writer, verifier: passingVerifier(), evidence: fixtureGatherer([NBS_DOC, TAPE_DOC]) }, voice, ctx);
-    expect(writer.retryNotes[1]).toMatch(/Quote the document you cite/);
-  });
-
-  it("rejects a docId that is not in the pack at all", async () => {
-    const writer = scriptedWriter([{ claims: [{ ...GOOD_CLAIM, docId: "print:invented" }] }, { claims: [GOOD_CLAIM] }]);
-    await writeNarration(narrationAct("Show what the connection was asked to hold."), { writer, verifier: passingVerifier(), evidence: fixtureGatherer() }, voice, ctx);
-    expect(writer.retryNotes[1]).toMatch(/is not one of the documents provided/);
-  });
-
-  it("F-42: rejects the run-1 two-word span at claim selection", async () => {
-    const short: SelectedClaim = { claimText: "the screens choked the channel", quote: "not checked", docId: NBS_DOC.docId, contested: false };
-    const writer = scriptedWriter([{ claims: [short] }, { claims: [GOOD_CLAIM] }]);
-    await writeNarration(narrationAct("Show what the connection was asked to hold."), { writer, verifier: passingVerifier(), evidence: fixtureGatherer() }, voice, ctx);
-    expect(writer.retryNotes[1]).toMatch(/the quote is 2 word\(s\)/);
-  });
-
-  it("F-46: rejects the beat purpose quoted back, even when it IS in a held document", async () => {
-    const purpose = "Welding crews reinforced the tower's joints at night for three months in 1978.";
-    const purposeDoc: EvidenceDoc = { docId: "print:enr", kind: "print", title: "Engineering News-Record", text: `Reports at the time: ${purpose}` };
-    const echo: SelectedClaim = {
-      claimText: "the joints were reinforced at night",
-      quote: "welding crews reinforced the tower's joints at night for three months in 1978",
-      docId: purposeDoc.docId,
-      contested: false
-    };
-    const writer = scriptedWriter([{ claims: [echo] }, { claims: [] }]);
-    await writeNarration(
-      [{ title: "Act", slots: [{ title: "Slot", beats: [{ sourcing: "tape", claim: purpose, exploration: false, tape: tapePointer("item-1") }] }] }],
-      { writer, verifier: passingVerifier(), evidence: fixtureGatherer([purposeDoc]) },
-      voice,
-      ctx
-    );
-    expect(writer.retryNotes[1]).toMatch(/repeats this beat's own purpose/);
-  });
-});
-
-describe("writeNarration — two calls per SLOT, not per page (the 4.2-calls-per-beat problem)", () => {
-  it("writes four pages of one slot with one selection call, one prose call and one verify call", async () => {
-    const writer = scriptedWriter([{ claims: [GOOD_CLAIM] }]);
-    const verifier = passingVerifier();
-    const slot: SourcedSlot = {
-      title: "Slot",
-      beats: [0, 1, 2, 3].map((i) => ({
-        sourcing: "narration" as const,
-        claim: `Claim number ${i} about the connection.`,
-        exploration: false,
-        narration: { mode: "Patch" as const, reason: "test" }
-      }))
-    };
-    const written = await writeNarration([{ title: "Act", slots: [slot] }], { writer, verifier, evidence: fixtureGatherer() }, voice, ctx);
-
-    expect(allWrittenNarration(written)).toHaveLength(4);
-    expect(writer.selectCalls).toBe(1);
-    expect(writer.writeCalls).toBe(1);
-    expect(verifier.calls).toBe(1);
-  });
-
-  it("WS-D1: the slots of one act are written in parallel, and the act's slot order is preserved", async () => {
-    let inFlight = 0;
-    let peak = 0;
-    const writer: NarrationWriterBuilder = {
-      providerName: "concurrency-probe",
-      async selectClaims(request: ClaimSelectionRequest): Promise<ClaimSelectionResult> {
-        inFlight++;
-        peak = Math.max(peak, inFlight);
-        await new Promise((r) => setTimeout(r, 5));
-        inFlight--;
-        return { pages: request.pages.map((p) => ({ pageId: p.pageId, claims: [GOOD_CLAIM] })) };
-      },
-      async writePages(request: ProseWriteRequest): Promise<ProseWriteResult> {
-        return {
-          pages: request.pages.map((p) => ({ pageId: p.pageId, script: DEFAULT_SCRIPT, usedClaims: [0], pronunciationHints: [] }))
-        };
-      }
-    };
-    const slots: SourcedSlot[] = ["Slot A", "Slot B", "Slot C"].map((title) => ({
-      title,
-      beats: [{ sourcing: "narration", claim: `${title} claim about the connection.`, exploration: false, narration: { mode: "Patch", reason: "t" } }]
-    }));
-
-    const written = await writeNarration([{ title: "Act", slots }], { writer, verifier: passingVerifier(), evidence: fixtureGatherer() }, voice, ctx);
-
-    expect(peak).toBe(3);
-    expect(written[0]!.slots.map((s) => s.title)).toEqual(["Slot A", "Slot B", "Slot C"]);
-  });
-});
-
-describe("G-34 — the retry tax: select+prose in one call, and a retry pays for the rejected page only", () => {
-  function patchSlot(claims: string[]): SourcedAct[] {
-    return [
-      {
-        title: "Act",
-        slots: [
-          {
-            title: "Slot",
-            beats: claims.map((claim) => ({ sourcing: "narration" as const, claim, exploration: false, narration: { mode: "Patch" as const, reason: "t" } }))
-          }
-        ]
-      }
-    ];
-  }
-  const twoPages = () => patchSlot(["Claim zero about the connection.", "Claim one about the connection."]);
-  const fourPages = () => patchSlot([0, 1, 2, 3].map((i) => `Claim number ${i} about the connection.`));
-  /* A quote that is in no held document — the F-14/F-27 shape. */
-  const UNHELD_CLAIM: SelectedClaim = {
-    claimText: "the rods were doubled up on the night",
-    quote: "the hanger rods were quietly doubled up on the night of the dance and nobody wrote it down",
-    docId: NBS_DOC.docId,
-    contested: false
-  };
-
-  it("a clean four-page slot costs ONE merged writer request and one verify request — two, where it was three", async () => {
-    /* MUTATION THAT KILLS THIS: ignoring `selectAndWrite` and always
-       taking the select + prose pair (mergedCalls 0, writeCalls 1). */
-    const writer = mergedWriter([{ claims: [GOOD_CLAIM] }]);
-    const verifier = passingVerifier();
-    const stats = { retryRounds: 0 };
-    const written = await writeNarration(fourPages(), { writer, verifier, evidence: fixtureGatherer(), stats }, voice, ctx);
-
-    expect(allWrittenNarration(written)).toHaveLength(4);
-    expect(allWrittenNarration(written).every((p) => p.verified)).toBe(true);
-    expect(writer.mergedCalls).toBe(1);
-    expect(writer.selectCalls).toBe(0);
-    expect(writer.writeCalls).toBe(0);
-    expect(verifier.calls).toBe(1);
-    expect(stats.retryRounds).toBe(0);
-  });
-
-  it("lever (a): a slot with ONE verifier-rejected page re-runs prose + verify for that page, not the slot", async () => {
-    /* MUTATION THAT KILLS THIS: forgetting `page.claims` on a verifier
-       rejection (the retry would be a second MERGED call), or re-running
-       the round over every page (the prose request would carry p0 too). */
-    const writer = mergedWriter([{ claims: [GOOD_CLAIM] }]);
-    const verifier = rejectOnceVerifier(["p1"]);
-    const stats = { retryRounds: 0 };
-    const written = await writeNarration(twoPages(), { writer, verifier, evidence: fixtureGatherer(), stats }, voice, ctx);
-    const pages = allWrittenNarration(written);
-
-    expect(pages.every((p) => p.verified)).toBe(true);
-    expect(writer.mergedCalls).toBe(1);
-    expect(writer.selectCalls).toBe(0);
-    expect(writer.writeCalls).toBe(1);
-    const prose = writer.requests.find((r) => r.kind === "prose")!;
-    expect(prose.pageIds).toEqual(["p1"]);
-    /* The grounded claims travelled with the page — nothing was re-selected. */
-    expect(prose.claims).toEqual([[GOOD_CLAIM]]);
-    expect(prose.retryNotes[0]).toMatch(/first-round objection/);
-    expect(verifier.calls).toBe(2);
-    expect(verifier.requests[1]).toEqual(["p1"]);
-    /* The page that passed kept its script: one attempt, and no second
-       request ever named it. */
-    expect(pages[0]!.attempts).toHaveLength(1);
-    expect(pages[1]!.attempts).toHaveLength(2);
-    expect(stats.retryRounds).toBe(1);
-  });
-
-  it("lever (b): a merged reply that fails the quote gate on one page re-runs that page's prose from the claims that passed", async () => {
-    /* MUTATION THAT KILLS THIS: rejecting the whole page back to
-       selection on any gate issue (mergedCalls 2, writeCalls 0), or
-       carrying the unheld claim into the prose call. */
-    const writer = mergedWriter([{ claims: (pageId) => (pageId === "p1" ? [GOOD_CLAIM, UNHELD_CLAIM] : [GOOD_CLAIM]) }, { claims: [GOOD_CLAIM] }]);
-    const verifier = passingVerifier();
-    const written = await writeNarration(twoPages(), { writer, verifier, evidence: fixtureGatherer() }, voice, ctx);
-    const pages = allWrittenNarration(written);
-
-    expect(writer.mergedCalls).toBe(1);
-    expect(writer.selectCalls).toBe(0);
-    expect(writer.writeCalls).toBe(1);
-    const prose = writer.requests.find((r) => r.kind === "prose")!;
-    expect(prose.pageIds).toEqual(["p1"]);
-    expect(prose.claims![0]).toEqual([GOOD_CLAIM]);
-    expect(prose.retryNotes[0]).toMatch(/not a verbatim span of any document provided/);
-    expect(verifier.calls).toBe(2);
-    /* The rejected round is on the record, the kept page is verified, and
-       the unheld quote never became a source. */
-    expect(pages[1]!.attempts).toHaveLength(2);
-    expect(pages[1]!.attempts![0]!.rejected).toBe(true);
-    expect(pages[1]!.verified).toBe(true);
-    expect(pages[1]!.sources.map((s) => s.quote)).toEqual([GOOD_CLAIM.quote]);
-    expect(pages[0]!.attempts).toHaveLength(1);
-  });
-
-  it("a content page whose EVERY quote fails the gate re-selects — alone, not with the slot", async () => {
-    /* There is nothing to write prose from, so this is the one post-merge
-       rejection that goes back to selection; the page next to it, which
-       passed, is not in that request. */
-    const writer = mergedWriter([{ claims: (pageId) => (pageId === "p1" ? [UNHELD_CLAIM] : [GOOD_CLAIM]) }, { claims: [GOOD_CLAIM] }]);
-    const written = await writeNarration(twoPages(), { writer, verifier: passingVerifier(), evidence: fixtureGatherer() }, voice, ctx);
-
-    expect(writer.mergedCalls).toBe(2);
-    expect(writer.writeCalls).toBe(0);
-    expect(writer.requests[1]!.pageIds).toEqual(["p1"]);
-    expect(allWrittenNarration(written).every((p) => p.verified)).toBe(true);
-  });
-
-  it("the three-attempt cap holds on the merged path, and the page that never verifies is still flagged", async () => {
-    /* MUTATION THAT KILLS THIS: counting rounds instead of per-page
-       attempts (a fourth attempt), or marking the salvage `verified`. */
-    const writer = mergedWriter([{ claims: [GOOD_CLAIM] }]);
-    const verifier = rejectingVerifier();
-    const stats = { retryRounds: 0 };
-    const written = await writeNarration(narrationAct("A claim about the connection."), { writer, verifier, evidence: fixtureGatherer(), stats }, voice, ctx);
-    const page = allWrittenNarration(written)[0]!;
-
-    expect(verifier.calls).toBe(3);
-    expect(writer.mergedCalls).toBe(1);
-    expect(writer.writeCalls).toBe(2);
-    expect(writer.selectCalls).toBe(0);
-    expect(page.verified).toBe(false);
-    expect(page.attempts).toHaveLength(3);
-    expect(page.verifierNotes).toMatch(/simulated rejection/);
-    expect(computeUnverifiedPages(written).count).toBe(1);
-    expect(stats.retryRounds).toBe(2);
-  });
-
-  it("the split path takes lever (a) too: a verifier rejection re-runs prose, never selection", async () => {
-    const writer = scriptedWriter([{ claims: [GOOD_CLAIM] }]);
-    const verifier = rejectOnceVerifier(["p0"]);
-    const written = await writeNarration(narrationAct("A claim about the connection."), { writer, verifier, evidence: fixtureGatherer() }, voice, ctx);
-
-    expect(writer.selectCalls).toBe(1);
-    expect(writer.writeCalls).toBe(2);
-    expect(verifier.calls).toBe(2);
-    expect(allWrittenNarration(written)[0]!.verified).toBe(true);
-  });
-
-  it("lever (c) is NOT built: a purposeRevised page the verifier says missed its purpose is still a rejection", async () => {
-    /* The founder call the card defers. If it were ever taken, this page
-       would pass on attempt one; today it is retried and kept unverified. */
-    const writer = scriptedWriter([{ claims: [GOOD_CLAIM], purposeRevised: true }]);
-    const verifier = rejectingVerifier("purposeAccomplished");
-    const written = await writeNarration(narrationAct("A claim about the connection."), { writer, verifier, evidence: fixtureGatherer() }, voice, ctx);
-    const page = allWrittenNarration(written)[0]!;
-
-    expect(verifier.calls).toBe(3);
-    expect(page.verified).toBe(false);
-    expect(page.purposeRevised).toBe(true);
-    expect(page.purposeAccomplished).toBe(false);
-  });
-
-  it("the stub writer offers the merged call, so the per-slot fallback pays the one request it did in production before Q-03", async () => {
-    const writer = new StubNarrationWriterBuilder();
-    let merged = 0;
-    let prose = 0;
-    const realMerged = writer.selectAndWrite.bind(writer);
-    writer.selectAndWrite = async (request, buildCtx) => {
-      merged++;
-      return realMerged(request, buildCtx);
-    };
-    const realProse = writer.writePages.bind(writer);
-    writer.writePages = async (request, buildCtx) => {
-      prose++;
-      return realProse(request, buildCtx);
-    };
-    const written = await writeNarration(fourPages(), { writer: legacyWriter(writer), verifier: legacyVerifier(new StubNarrationVerifierBuilder()), evidence: fixtureGatherer() }, voice, ctx);
-
-    expect(allWrittenNarration(written).every((p) => p.verified && p.attempts?.length === 1)).toBe(true);
-    expect(merged).toBe(1);
-    expect(prose).toBe(0);
-  });
-
-  it("the stub builders offer the per-act contract, so a dry run pays the two requests production does — one write, one verify — and never the per-slot calls (Q-03)", async () => {
-    /* MUTATION THAT KILLS THIS: drop `writeAct` from the stub writer (the
-       four pages then cost one merged per-slot call and `act` reads 0), or
-       call the verifier per seam. Ran the first — red. */
-    const writer = new StubNarrationWriterBuilder();
-    const verifier = new StubNarrationVerifierBuilder();
-    let act = 0;
-    let merged = 0;
-    let verify = 0;
-    const realAct = writer.writeAct.bind(writer);
-    writer.writeAct = async (request, buildCtx) => {
-      act++;
-      return realAct(request, buildCtx);
-    };
-    const realMerged = writer.selectAndWrite.bind(writer);
-    writer.selectAndWrite = async (request, buildCtx) => {
-      merged++;
-      return realMerged(request, buildCtx);
-    };
-    const realVerify = verifier.verifyAct.bind(verifier);
-    verifier.verifyAct = async (request, buildCtx) => {
-      verify++;
-      return realVerify(request, buildCtx);
-    };
-    const written = await writeNarration(fourPages(), { writer, verifier, evidence: fixtureGatherer() }, voice, ctx);
-
-    /* Four beats in one slot with no clip between them are ONE seam: one
-       page carries all four, the other three beats point at it. */
-    const pages = allWrittenNarration(written);
-    expect(pages).toHaveLength(1);
-    expect(pages[0]!.verified).toBe(true);
-    expect(pages[0]!.attempts?.length).toBe(1);
-    expect(act).toBe(1);
-    expect(verify).toBe(1);
-    expect(merged).toBe(0);
-  });
-});
-
 describe("writeNarration — the verifier is a genuinely separate call from the writer", () => {
   it("throws if the same builder instance is passed as both writer and verifier", async () => {
     const shared = new StubNarrationWriterBuilder();
@@ -791,47 +486,6 @@ describe("writeNarration — the verifier is a genuinely separate call from the 
       writeNarration(narrationAct("A claim."), { writer: shared, verifier: shared as unknown as NarrationVerifierBuilder, evidence: fixtureGatherer() }, voice, ctx)
     ).rejects.toThrow(/writer and verifier must be distinct/);
   });
-
-  it("the verifier is handed the purpose and the evidence pack, not just the writer's declarations (F-22/F-41)", async () => {
-    let seen: NarrationVerifyRequest | undefined;
-    const verifier: NarrationVerifierBuilder = {
-      providerName: "recording",
-      async verifySlot(request: NarrationVerifyRequest): Promise<NarrationVerifyResult> {
-        seen = request;
-        return { pages: request.pages.map((p) => ({ pageId: p.pageId, claimsSupported: true, purposeAccomplished: true, contestedHandled: true })) };
-      }
-    };
-    await writeNarration(
-      narrationAct("Show what the connection was asked to hold."),
-      { writer: scriptedWriter([{ claims: [GOOD_CLAIM] }]), verifier, evidence: fixtureGatherer() },
-      voice,
-      ctx
-    );
-    expect(seen!.pages[0]!.purpose).toBe("Show what the connection was asked to hold.");
-    expect(seen!.pages[0]!.evidence.docs[0]!.text).toContain("box beam-hanger rod connections");
-    expect(seen!.pages[0]!.script).toBe(DEFAULT_SCRIPT);
-  });
-
-  it.each(["claimsSupported", "purposeAccomplished", "contestedHandled"] as const)(
-    "a false %s answer rejects the page and is named in the retry note",
-    async (field) => {
-      const writer = scriptedWriter([{ claims: [GOOD_CLAIM] }]);
-      const verifier = rejectingVerifier(field);
-      /* F-51: three rejections no longer throw — the page is kept
-         unverified and the gate refuses it downstream. What this test is
-         about is unchanged: the rejection is REAL (three attempts were
-         spent) and its reason reached the next attempt. */
-      const written = await writeNarration(
-        narrationAct("A claim about the connection."),
-        { writer, verifier, evidence: fixtureGatherer() },
-        voice,
-        ctx
-      );
-      expect(verifier.calls).toBe(3);
-      expect(lastRetryNote(writer)).toMatch(/simulated rejection/);
-      expect(allWrittenNarration(written)[0]!.verified).toBe(false);
-    }
-  );
 
   it("records purposeAccomplished on the page as its own field, distinct from verified (WS-B's purposeFidelity)", async () => {
     const written = await writeNarration(narrationAct("Show what the connection was asked to hold."), makeOptions(), voice, ctx);
@@ -842,26 +496,28 @@ describe("writeNarration — the verifier is a genuinely separate call from the 
 });
 
 describe("writeNarration — what a page carries out for WS-B's metrics", () => {
-  it("carries the held documents as `evidence`, so groundedQuoteRate is checkable", async () => {
+  it("carries the held documents it cites as `evidence`, so groundedQuoteRate is checkable", async () => {
     const written = await writeNarration(narrationAct("Show what the connection was asked to hold."), makeOptions(), voice, ctx);
     const page = allWrittenNarration(written)[0]!;
-    expect(page.evidence).toEqual(heldDocsOf({ purpose: "x", beatKind: "account", docs: [NBS_DOC] }));
+    expect(page.evidence!.length).toBeGreaterThan(0);
     for (const source of page.sources) {
       expect(page.evidence!.some((d) => d.text.includes(source.quote!))).toBe(true);
     }
   });
 
-  it("records every attempt, numbered, with the failing one's sources and note", async () => {
+  it("records every attempt, numbered, with the failing one's note (F-32/F-35)", async () => {
+    /* MUTATION THAT KILLS THIS: record only the attempt that passed, or
+       renumber from the surviving attempts — `firstAttemptPassRate` and
+       the report's failure table both read this history. */
     const short: SelectedClaim = { claimText: "c", quote: "not checked", docId: NBS_DOC.docId, contested: false };
-    const writer = scriptedWriter([{ claims: [short] }, { claims: [GOOD_CLAIM] }]);
-    const written = await writeNarration(narrationAct("A claim about the connection."), { writer, verifier: passingVerifier(), evidence: fixtureGatherer() }, voice, ctx);
+    const { writer, verifier } = actBuilders((reply, _request, round) => withClaims(reply, [round === 1 ? short : GOOD_CLAIM]));
+    const written = await writeNarration(narrationAct("A claim about the connection."), { writer, verifier, evidence: fixtureGatherer() }, voice, ctx);
     const attempts = allWrittenNarration(written)[0]!.attempts!;
     expect(attempts.map((a) => a.attempt)).toEqual([1, 2]);
     expect(attempts[0]!.rejected).toBe(true);
     expect(attempts[0]!.rejectionNote).toMatch(/word\(s\)/);
     expect(attempts[1]!.rejected).toBe(false);
     expect(attempts[1]!.rejectionNote).toBeUndefined();
-    expect(attempts[1]!.sources[0]!.publication).toBe(NBS_DOC.title);
   });
 
   it("a page that passes first time records exactly one attempt (firstAttemptPassRate)", async () => {
@@ -889,8 +545,24 @@ describe("writeNarration — the dry-run path is structurally real, not a shortc
     for (const source of page.sources) {
       const doc = page.evidence!.find((d) => d.title === source.publication);
       expect(doc, `no held document titled "${source.publication}"`).toBeTruthy();
-      expect(normalizeForQuoteMatch(doc!.text)).toContain(normalizeForQuoteMatch(source.quote!));
+      if (source.quote) expect(normalizeForQuoteMatch(doc!.text)).toContain(normalizeForQuoteMatch(source.quote));
     }
+  });
+
+  it("the factories hand `writeNarration` two builders that both carry the per-act contract (F-100's precondition)", () => {
+    /* MUTATION THAT KILLS THIS: return a builder without `writeAct` or
+       `verifyAct` from either factory. F-100 deleted the per-page
+       orchestration on exactly this ground — every builder either factory
+       can return implements the act contract, so the fallback could not
+       run. If that ever stops being true, this test is where it shows. */
+    expect(env.anthropicDryRun).toBe(true);
+    const writer = createNarrationWriterBuilder();
+    const verifier = createNarrationVerifierBuilder();
+    expect(writer.providerName).toBe("stub");
+    expect(verifier.providerName).toBe("stub");
+    expect(typeof writer.writeAct).toBe("function");
+    expect(typeof verifier.verifyAct).toBe("function");
+    expect(writer).not.toBe(verifier as unknown as NarrationWriterBuilder);
   });
 });
 
@@ -1042,153 +714,11 @@ describe("writeNarration — §4.5's guardrail carries through: beat identity is
   });
 });
 
-describe("createNarrationWriterBuilder / createNarrationVerifierBuilder", () => {
-  it("both return stub builders when ANTHROPIC_API_KEY is absent, and are distinct instances", () => {
-    expect(env.anthropicDryRun).toBe(true);
-    const writer = createNarrationWriterBuilder();
-    const verifier = createNarrationVerifierBuilder();
-    expect(writer.providerName).toBe("stub");
-    expect(verifier.providerName).toBe("stub");
-    expect(writer).not.toBe(verifier as unknown as NarrationWriterBuilder);
-  });
-});
-
 describe("pronunciation hints — the field exists structurally, even though nothing consumes it yet", () => {
   it("a written page carries a pronunciationHints array (possibly empty)", async () => {
     const written = await writeNarration(narrationAct("Constantinople fell in the fifteenth century."), makeOptions(), voice, ctx);
     const page = allWrittenNarration(written)[0]!;
     expect(Array.isArray(page.pronunciationHints)).toBe(true);
-  });
-});
-
-describe("writeNarration — generation run 1 (2026-09-09) regressions", () => {
-  it("F-30: a tape slug can no longer BE a publication, because the writer never supplies one", async () => {
-    const tapeClaim: SelectedClaim = {
-      claimText: "the bakestone came before the griddle",
-      quote: "So the bakestone came first, and the iron griddle only really arrives once cast iron is cheap",
-      docId: TAPE_DOC.docId,
-      contested: false
-    };
-    const writer = scriptedWriter([{ claims: [tapeClaim], script: "One welded joint now carried both walkways' weight, and nobody checked it." }]);
-    const written = await writeNarration(
-      tapeAct("Hand the listener into the tape.", "bfh-griddle-bakestone"),
-      { writer, verifier: passingVerifier(), evidence: fixtureGatherer([TAPE_DOC]) },
-      voice,
-      ctx
-    );
-    const page = allWrittenNarration(written)[0]!;
-    expect(page.sources[0]!.publication).toBe("Bread from Home — The griddle and the bakestone");
-    expect(page.sources[0]!.publication).not.toMatch(/^bfh-griddle-bakestone$/);
-  });
-
-  it("F-45: a script that says what the record does not contain is rejected unless a quote says so", async () => {
-    const script =
-      "The staged load sat somewhere on that span. Exactly where, the record doesn't say, and the crews " +
-      "never wrote it down, which is why the question keeps coming back every time anyone re-reads the file. " +
-      "The investigators who walked the deck afterwards were working from memory and from a handful of " +
-      "photographs, and neither one puts the pile in a place anybody can point to now.";
-    const writer = scriptedWriter([{ claims: [GOOD_CLAIM], script }, { claims: [GOOD_CLAIM] }]);
-    await writeNarration(narrationAct("Locate the staged load."), { writer, verifier: passingVerifier(), evidence: fixtureGatherer() }, voice, ctx);
-    expect(lastRetryNote(writer)).toMatch(/asserts what the record does or does not contain/);
-    /* G-34 lever (a): the rejection was structural, after the quote gate,
-       so the second attempt re-ran prose from the same grounded claim and
-       never re-selected. */
-    expect(writer.selectCalls).toBe(1);
-    expect(writer.writeCalls).toBe(2);
-  });
-
-  it("F-36/F-37/F-44: a zero-source page that asserts something is rejected in code, and never reaches the verifier", async () => {
-    const verifier = passingVerifier();
-    /* A Frame-band script (70-170 chars) that nonetheless states something
-       about the world, with no sources behind it — run 1's dominant
-       first-attempt output for tape beats. */
-    const writer = scriptedWriter([
-      { claims: [], script: "The walkways hung from a single rod for four years before anyone looked at it.", usedClaims: [] },
-      { claims: [GOOD_CLAIM], script: "One welded joint now carried both walkways' weight, and nobody had checked it." }
-    ]);
-    const written = await writeNarration(
-      tapeAct("Hand the listener into the tape."),
-      { writer, verifier, evidence: fixtureGatherer() },
-      voice,
-      ctx
-    );
-    expect(writer.writeCalls).toBe(2);
-    expect(verifier.calls).toBe(1);
-    expect(lastRetryNote(writer)).toMatch(/may only ask a question or hand off to the listener/);
-    /* The page held NO grounded claim, so G-34 does not carry anything
-       into the retry: it re-selects, and the second selection is what
-       gives the page the claim it was missing. */
-    expect(writer.selectCalls).toBe(2);
-    expect(allWrittenNarration(written)).toHaveLength(1);
-  });
-
-  it("F-35: the retry note accumulates every prior rejection, not just the latest one", async () => {
-    /* Run 1's attempt 3 was told about attempt 2 only, so it regularly fixed
-       the last complaint while reviving the first. Both earlier rejections
-       have to be visible on the third attempt. */
-    const shortQuote: SelectedClaim = { claimText: "c", quote: "not checked", docId: NBS_DOC.docId, contested: false };
-    const wrongDoc: SelectedClaim = { ...GOOD_CLAIM, docId: "print:invented" };
-    const writer = scriptedWriter([{ claims: [shortQuote] }, { claims: [wrongDoc] }, { claims: [GOOD_CLAIM] }]);
-
-    await writeNarration(narrationAct("A claim about the connection."), { writer, verifier: passingVerifier(), evidence: fixtureGatherer() }, voice, ctx);
-
-    expect(writer.selectCalls).toBe(3);
-    expect(writer.retryNotes[1]).toMatch(/Attempt 1 was rejected for/);
-    expect(writer.retryNotes[2]).toMatch(/Attempt 1 was rejected for/);
-    expect(writer.retryNotes[2]).toMatch(/Attempt 2 was rejected for/);
-    // The first attempt's complaint (a two-word span) is still on the record
-    // when the third is written, alongside the second's (an unknown docId).
-    expect(writer.retryNotes[2]).toMatch(/word\(s\)/);
-    expect(writer.retryNotes[2]).toMatch(/not one of the documents provided/);
-  });
-
-  it("gives a page three informed attempts, then drops a CONNECTIVE page but keeps the tape beat", async () => {
-    const verifier = rejectingVerifier();
-    const written = await writeNarration(
-      tapeAct("Tape about a discovery."),
-      { writer: new StubNarrationWriterBuilder(), verifier, evidence: fixtureGatherer() },
-      voice,
-      ctx
-    );
-    expect(verifier.calls).toBe(3);
-    const beat = written[0]!.slots[0]!.beats[0]!;
-    expect(beat.sourcing).toBe("tape");
-    expect(beat.sourcing === "tape" && beat.connectiveNarration).toBeFalsy();
-    expect(allWrittenNarration(written)).toHaveLength(0);
-  });
-
-  it("keeps a NARRATION beat's page unverified after three rejections instead of failing the Foray (F-51)", async () => {
-    const verifier = rejectingVerifier();
-    const written = await writeNarration(
-      narrationAct("A claim about the connection."),
-      { writer: new StubNarrationWriterBuilder(), verifier, evidence: fixtureGatherer() },
-      voice,
-      ctx
-    );
-    expect(verifier.calls).toBe(3);
-    const page = allWrittenNarration(written)[0]!;
-    expect(page.verified).toBe(false);
-    expect(page.script.length).toBeGreaterThan(0);
-  });
-
-  it("a Patch page with no evidence at all is never written unsourced — it is not written at all (F-60)", async () => {
-    /* This used to assert the rejection message. The rejection was correct
-       and useless: it was produced three times, one selection call each,
-       for a page no model could have written. The page is now degraded
-       before the first call, and what the old test really protected — that
-       nothing unsourced is ever asserted — is asserted here instead. */
-    const writer = scriptedWriter([{ claims: [] }]);
-    const written = await writeNarration(
-      narrationAct("A claim nothing could be retrieved for."),
-      { writer, verifier: passingVerifier(), evidence: fixtureGatherer([]) },
-      voice,
-      ctx
-    );
-    const page = allWrittenNarration(written)[0]!;
-    expect(writer.selectCalls).toBe(0);
-    expect(page.sources).toEqual([]);
-    expect(page.verified).toBe(false);
-    expect(hasDeclarativeSentence(page.script)).toBe(false);
   });
 });
 
@@ -1207,104 +737,34 @@ describe("containsContestedLanguage — F-43: natural phrasings count, not only 
   });
 });
 
-
 /* ------------------------------------------------------------------ *
- * F-50 / F-51 — generation run 2, act 1, slot "Where Did This Number
- * Come From?", page p2. The real case, used as the fixture for both
- * findings because it is the one that ended the run.
+ * F-50 — a page may correct its purpose from the evidence.
+ *
+ * WHAT SURVIVES F-100, AND WHAT DOES NOT. F-50's QUESTION is unchanged and
+ * is asked on the act path: "does the prose address the subject its beat
+ * names, INCLUDING by contradicting it" — `scriptIsAboutPurpose` is the
+ * structural form of it and the stub verifier decides `carried` with it.
+ * What F-50 also added was a self-reported FLAG, `purposeRevised` on the
+ * writer's reply and `purposeRevisedByVerifier` on the verifier's, and the
+ * only producers of either were the per-page reply shapes deleted here.
+ * `veracityMetrics.ts`'s `purposeRevisedPages` therefore now reads a real
+ * 0 until the act contract carries the flag; that is recorded in the F-100
+ * ledger entry rather than papered over, and the predicate itself is still
+ * pinned below because it is what an editor's filter reads.
  * ------------------------------------------------------------------ */
 
-/** The deepen stage's purpose for p2, verbatim. It asserts a causal
- * account of why feature stores exist. */
 const FEATURE_STORE_PURPOSE =
   "The feature store exists as a product category for one reason: those two code paths drift apart silently, " +
   "and the drift stays invisible until the model's live performance quietly diverges from its offline numbers " +
   "and someone finally goes looking.";
 
-/** One of the documents WS-A's retrieval actually returned for that beat,
- * and the reason the page could not be written: it contradicts the
- * purpose it was gathered for. */
-const SKEW_DOC: EvidenceDoc = {
-  docId: "print:feature-stores-skew",
-  kind: "print" as const,
-  title: "Why Feature Stores Didn't Fix Training-Serving Skew",
-  url: "https://example.org/feature-stores-skew",
-  retrievedAt: "2026-09-09T15:00:00.000Z",
-  text:
-    "Feature stores manage data artifacts. They do not control execution. " +
-    "Skew is caused by movement - every time a feature crosses a system boundary, execution context changes, " +
-    "and consistency becomes probabilistic rather than guaranteed."
-};
-
-/** The claim attempts 2 and 3 were allowed to make. */
-const SKEW_CLAIM: SelectedClaim = {
-  claimText: "the people who build feature stores say they do not control execution",
-  quote: "Feature stores manage data artifacts. They do not control execution.",
-  docId: SKEW_DOC.docId,
-  contested: false
-};
-
-/** The page neither prompt permitted before F-50: it names the purpose's
- * subject and then reports what the documents say about it. Patch band. */
 const TENSION_SCRIPT =
   "The feature store was sold as the fix for exactly this. Ask the people who built them and you get a flatter answer: " +
   "they manage data artifacts, and they do not control execution. Skew comes from movement. Every time a feature crosses " +
   "a system boundary the execution context changes, and consistency stops being a guarantee and starts being a probability. " +
   "So the category exists, and the drift it was meant to end is still there, one boundary further down.";
 
-/** A verifier that answers F-50's question the way the fix defines it:
- * the page addressed the purpose's subject with the evidence it had,
- * including by contradicting the purpose, and it says so. */
-function purposeAwareVerifier(): NarrationVerifierBuilder & { calls: number } {
-  const v = {
-    providerName: "purpose-aware",
-    calls: 0,
-    async verifySlot(request: NarrationVerifyRequest): Promise<NarrationVerifyResult> {
-      v.calls++;
-      return {
-        pages: request.pages.map((p) => ({
-          pageId: p.pageId,
-          claimsSupported: true,
-          purposeAccomplished: scriptIsAboutPurpose(p.script, p.purpose),
-          purposeRevised: /do not control execution/.test(p.script),
-          contestedHandled: true,
-          ...(scriptIsAboutPurpose(p.script, p.purpose) ? {} : { notes: "the concept the purpose names is dropped" })
-        }))
-      };
-    }
-  };
-  return v;
-}
-
 describe("F-50 — a page may correct its purpose from the evidence", () => {
-  it("passes the page that reports the contradiction, and flags it on both sides", async () => {
-    /* Run 2's attempt 1 asserted the purpose and was rejected as
-       unsupported; attempts 2 and 3 narrowed to the documents, dropped the
-       words "feature store" entirely, and were rejected for abandoning the
-       purpose. This is the third page — the one that was always the right
-       answer — and it now passes. */
-    const writer = scriptedWriter([{ claims: [SKEW_CLAIM], script: TENSION_SCRIPT, purposeRevised: true }]);
-    const verifier = purposeAwareVerifier();
-
-    const written = await writeNarration(
-      narrationAct(FEATURE_STORE_PURPOSE),
-      { writer, verifier, evidence: fixtureGatherer([SKEW_DOC]) },
-      voice,
-      ctx
-    );
-
-    const page = allWrittenNarration(written)[0]!;
-    expect(page.verified).toBe(true);
-    expect(verifier.calls).toBe(1);
-    expect(writer.writeCalls).toBe(1);
-    expect(page.purposeAccomplished).toBe(true);
-    /* Both flags, kept separately: the writer declared the departure and
-       the verifier judged it independently (§4.7 rule 2). */
-    expect(page.purposeRevised).toBe(true);
-    expect(page.purposeRevisedByVerifier).toBe(true);
-    expect(purposeWasRevised(page)).toBe(true);
-  });
-
   it("the writer's flag alone is enough to find the page, and the verifier's alone is too", () => {
     expect(purposeWasRevised({ purposeRevised: true })).toBe(true);
     expect(purposeWasRevised({ purposeRevisedByVerifier: true })).toBe(true);
@@ -1320,444 +780,54 @@ describe("F-50 — a page may correct its purpose from the evidence", () => {
   });
 
   it("the structural purpose test passes a script that contradicts its purpose but keeps its subject", () => {
-    /* The stub verifier's `purposeAccomplished` is the same question F-50
-       narrowed the real one to — "did the page keep the subject", not "did
-       the page agree" — so a contradiction passes and a page about
-       something else does not. */
+    /* The question F-50 narrowed the real one to — "did the prose keep the
+       subject", not "did the prose agree" — so a contradiction passes and
+       prose about something else does not. The act verifier decides
+       `carried` with exactly this. */
     expect(scriptIsAboutPurpose(TENSION_SCRIPT, FEATURE_STORE_PURPOSE)).toBe(true);
     expect(scriptIsAboutPurpose("A single welded rod held both walkways, and nobody redrew it.", FEATURE_STORE_PURPOSE)).toBe(false);
   });
-
-  it("still rejects the page that drops the purpose's subject altogether (F-41 is not weakened)", async () => {
-    /* Run 2's attempts 2 and 3, exactly: sourced, accurate, and never once
-       about feature stores. */
-    const droppedSubjectScript =
-      "Movement is what does it. Every time a value crosses a boundary, the context around it changes, and what came out " +
-      "of one side is not quite what arrives at the other. Consistency stops being something anyone can promise and becomes " +
-      "something you can only measure afterwards. That is a different kind of engineering problem than the one most teams " +
-      "believe they are solving when they draw the diagram on the whiteboard.";
-    const writer = scriptedWriter([{ claims: [SKEW_CLAIM], script: droppedSubjectScript }]);
-    const written = await writeNarration(
-      narrationAct(FEATURE_STORE_PURPOSE),
-      { writer, verifier: purposeAwareVerifier(), evidence: fixtureGatherer([SKEW_DOC]) },
-      voice,
-      ctx
-    );
-    const page = allWrittenNarration(written)[0]!;
-    expect(page.verified).toBe(false);
-    expect(page.verifierNotes ?? "").toMatch(/the concept the purpose names is dropped/);
-  });
 });
 
-describe("F-51 — a page never kills the Foray; the gate decides", () => {
-  it("keeps the last attempt with verified:false, its attempts history and the verifier's final objection", async () => {
-    const writer = scriptedWriter([{ claims: [SKEW_CLAIM], script: TENSION_SCRIPT }]);
-    const verifier = rejectingVerifier("purposeAccomplished");
-
-    const written = await writeNarration(
-      narrationAct(FEATURE_STORE_PURPOSE),
-      { writer, verifier, evidence: fixtureGatherer([SKEW_DOC]) },
-      voice,
-      ctx
-    );
-
-    const page = allWrittenNarration(written)[0]!;
-    expect(page.verified).toBe(false);
-    expect(page.script).toBe(TENSION_SCRIPT);
-    expect(page.purposeAccomplished).toBe(false);
-    expect(page.verifierNotes).toMatch(/simulated rejection/);
-    expect(page.attempts).toHaveLength(3);
-    expect(page.attempts!.every((a) => a.rejected)).toBe(true);
-    /* The evidence still travels with it, so WS-B can score the page it
-       refuses rather than reporting it as unmeasurable. */
-    expect(page.evidence!.some((d) => d.docId === SKEW_DOC.docId)).toBe(true);
+describe("gateSelectedClaims — the partition the act path needs (§4.7 rule 1, act-scoped)", () => {
+  /* PORTED: the per-page path asserted this rule through `writeSlot`, where
+     a Patch page with no surviving claim could not be written at all. On
+     the act path the seam's gate is built with `claimsOptional` — whether a
+     BEAT is carried with support is the verifier's per-beat question — so
+     the rule is asserted on the gate directly. */
+  const page = (extra: Partial<Parameters<typeof gateSelectedClaims>[1]> = {}) => ({
+    pageId: "p0",
+    beatIndex: 0,
+    claim: "Show what the connection was asked to hold.",
+    mode: "Patch" as const,
+    evidence: { purpose: "x", beatKind: "account" as const, docs: [NBS_DOC] },
+    ...extra
   });
 
-  it("the rest of the slot survives the page that failed — run 2 lost ten verified pages to one", async () => {
-    /* Two narration beats in one slot: one the verifier accepts, one it
-       never will. Before F-51 the second threw and took the first with it. */
-    const acts: SourcedAct[] = [
-      {
-        title: "Act",
-        slots: [
-          {
-            title: "Where Did This Number Come From?",
-            beats: [
-              {
-                sourcing: "narration",
-                claim: "Show what the connection was asked to hold.",
-                exploration: false,
-                narration: { mode: "Patch", reason: "t" }
-              },
-              { sourcing: "narration", claim: FEATURE_STORE_PURPOSE, exploration: false, narration: { mode: "Patch", reason: "t" } }
-            ]
-          }
-        ]
-      }
-    ];
-    const verifier: NarrationVerifierBuilder = {
-      providerName: "one-bad-page",
-      async verifySlot(request: NarrationVerifyRequest): Promise<NarrationVerifyResult> {
-        return {
-          pages: request.pages.map((p) => {
-            const doomed = p.purpose === FEATURE_STORE_PURPOSE;
-            return {
-              pageId: p.pageId,
-              claimsSupported: !doomed,
-              purposeAccomplished: true,
-              contestedHandled: true,
-              ...(doomed ? { notes: "the quote does not say what the claim says" } : {})
-            };
-          })
-        };
-      }
-    };
-
-    const written = await writeNarration(
-      acts,
-      { writer: new StubNarrationWriterBuilder(), verifier, evidence: fixtureGatherer([SKEW_DOC]) },
-      voice,
-      ctx
-    );
-    const pages = allWrittenNarration(written);
-    expect(pages).toHaveLength(2);
-    expect(pages.filter((p) => p.verified)).toHaveLength(1);
-    expect(pages.filter((p) => !p.verified)).toHaveLength(1);
+  it("a Patch page whose every claim failed is told it must select one", () => {
+    /* MUTATION THAT KILLS THIS: judge the zero-claim rule on what was
+       SUBMITTED rather than on what survived the gate. */
+    const { valid, issues } = gateSelectedClaims([{ ...GOOD_CLAIM, quote: "not in any document at all here" }], page());
+    expect(valid).toEqual([]);
+    expect(issues.join(" ")).toMatch(/must select at least one claim/);
   });
 
-  it("keeps a hand-off instead of throwing when no page was ever written at all (F-60 closes F-51's last fatal branch)", async () => {
-    /* Evidence existed, but the writer selected nothing from it on all
-       three attempts, so no prose call ever ran and F-51's salvage has
-       nothing to keep. That used to throw `NarrationWriteError` and end the
-       Foray. It now leaves the same listener-safe hand-off an
-       evidence-less page gets, marked `no-page` so an editor can tell the
-       two apart, with the attempt history that explains it. */
-    const writer = scriptedWriter([{ claims: [] }]);
-    const written = await writeNarration(
-      narrationAct("A claim the writer never selected anything for."),
-      { writer, verifier: passingVerifier(), evidence: fixtureGatherer([NBS_DOC]) },
-      voice,
-      ctx
-    );
-    const page = allWrittenNarration(written)[0]!;
-    expect(writer.selectCalls).toBe(3);
-    expect(page.verified).toBe(false);
-    expect(page.unverifiedReason).toBe("no-page");
-    expect(page.script).toBe(HANDOFF_SCRIPT);
-    expect(page.attempts).toHaveLength(3);
-    expect(page.verifierNotes).toMatch(/must select at least one claim/);
+  it("a seam gate built with claimsOptional does not fire that rule — the beat's support is the verifier's question (F-97)", () => {
+    /* MUTATION THAT KILLS THIS: apply §4.7 rule 1 per seam. Run 9 did, and
+       refused every bridge in the act. */
+    const { issues } = gateSelectedClaims([], page({ claimsOptional: true }));
+    expect(issues).toEqual([]);
   });
 
-  it("a connective page is still DROPPED rather than kept unverified — its beat is the tape", async () => {
-    const verifier = rejectingVerifier();
-    const written = await writeNarration(
-      tapeAct("Tape about a discovery."),
-      { writer: new StubNarrationWriterBuilder(), verifier, evidence: fixtureGatherer() },
-      voice,
-      ctx
-    );
-    const beat = written[0]!.slots[0]!.beats[0]!;
-    expect(beat.sourcing === "tape" && beat.connectiveNarration).toBeFalsy();
-    expect(allWrittenNarration(written)).toHaveLength(0);
-  });
-});
-
-describe("F-60 — a page with no evidence never costs a selection call", () => {
-  /* Run 2 attempt 2, act 1, slot 2, page p5, verbatim. Retrieval returned
-     `{"passages": []}`; three claim-selection calls followed, each on a
-     prompt that said "Documents: none were retrieved for this page", each
-     rejected in code before any model could help, and the third left no
-     page at all — which was fatal. */
-  const P5_PURPOSE =
-    "Mature pipelines treat a dataset the way a build system treats source code: a schema check — wrong type, " +
-    "an out-of-range value, a null where one shouldn't be — fails the run outright, the same way a type error " +
-    "fails a compile, rather than letting a corrupted batch train a model that ships anyway.";
-  const P5_SLOT = "Where Did This Number Come From?";
-
-  function emptyPackAct(mode: "Patch" | "Carry" = "Carry"): SourcedAct[] {
-    return [
-      {
-        title: "How AI systems get built",
-        slots: [{ title: P5_SLOT, beats: [{ sourcing: "narration", claim: P5_PURPOSE, exploration: false, narration: { mode, reason: "t" } }] }]
-      }
-    ];
-  }
-
-  /** Records what the writer stage asked the gatherer for, and hands back
-   * documents per claim — the run-2 slot had one of each. */
-  function recordingGatherer(docsFor: (claim: string) => EvidenceDoc[], seen: EvidenceBeat[] = []): EvidenceGatherer & { seen: EvidenceBeat[] } {
-    return {
-      seen,
-      async gather(beat): Promise<EvidencePack> {
-        seen.push(beat);
-        return { purpose: beat.claim, beatKind: "account", docs: docsFor(beat.claim) };
-      }
-    };
-  }
-
-  it("makes ZERO writer and verifier calls for a Carry page whose pack is empty", async () => {
-    const writer = scriptedWriter([{ claims: [GOOD_CLAIM] }]);
-    const verifier = passingVerifier();
-    const evidence = recordingGatherer(() => []);
-
-    const written = await writeNarration(emptyPackAct(), { writer, verifier, evidence }, voice, ctx);
-
-    expect(writer.selectCalls).toBe(0);
-    expect(writer.writeCalls).toBe(0);
-    expect(verifier.calls).toBe(0);
-    /* And the gatherer was told this page carries content, which is what
-       licenses its own second, rephrased query (gatherEvidence.test.ts). */
-    expect(evidence.seen[0]!.requiresEvidence).toBe(true);
-    expect(pageCarriesContent("Carry")).toBe(true);
-    expect(pageCarriesContent("Frame")).toBe(false);
-
-    const page = allWrittenNarration(written)[0]!;
-    expect(page.verified).toBe(false);
-    expect(page.unverifiedReason).toBe("no-evidence");
-    expect(page.verifierNotes).toBe(NO_EVIDENCE_NOTE);
-    expect(page.attempts).toEqual([]);
-    expect(page.mode).toBe(HANDOFF_MODE);
-    expect(page.script).toBe(HANDOFF_SCRIPT);
+  it("a page with no documents at all is told THAT, rather than told to select harder", () => {
+    const { issues } = gateSelectedClaims([], page({ evidence: { purpose: "x", beatKind: "account", docs: [] } }));
+    expect(issues.join(" ")).toMatch(/no evidence could be gathered/);
   });
 
-  it("the degraded page's ONLY fault is that it is unverified — it asserts nothing and cites nothing", async () => {
-    const written = await writeNarration(
-      emptyPackAct(),
-      { writer: new StubNarrationWriterBuilder(), verifier: passingVerifier(), evidence: fixtureGatherer([]) },
-      voice,
-      ctx
-    );
-    const page = allWrittenNarration(written)[0]!;
-    const result = validateNarratedBeat(page, { bannedPhrasePatterns: BANNED, heldDocs: [], purposeText: P5_PURPOSE });
-    /* Zero sources is legal only for a page that states nothing about the
-       world (F-36/F-37/F-44), the script sits inside its mode's band, and
-       no copy rule is broken. What is left is the one thing that IS true
-       of this page. */
-    expect(result.issues.map((i) => i.code)).toEqual(["not-verified"]);
-  });
-
-  it("is counted in unverifiedPages, so the publish gate refuses it exactly as it refuses F-51's pages", async () => {
-    const written = await writeNarration(
-      emptyPackAct(),
-      { writer: new StubNarrationWriterBuilder(), verifier: passingVerifier(), evidence: fixtureGatherer([]) },
-      voice,
-      ctx
-    );
-    const unverified = computeUnverifiedPages(written);
-    expect(unverified.count).toBe(1);
-    expect(unverified.pages[0]!.claim).toBe(P5_PURPOSE);
-  });
-
-  it("degrades the PAGE, never the beat — §4.5's beat list survives §4.7 unchanged", async () => {
-    /* The reason a content page is kept rather than dropped the way a
-       connective page is: a connective page's beat is its tape and
-       survives without it, while a narration beat IS its page. Dropping
-       one would drop a beat, and `stitchAct`'s coverage and
-       `computePagesDropped` both index written beats positionally against
-       sourced ones. */
-    const acts = emptyPackAct();
-    const written = await writeNarration(
-      acts,
-      { writer: new StubNarrationWriterBuilder(), verifier: passingVerifier(), evidence: fixtureGatherer([]) },
-      voice,
-      ctx
-    );
-    const inBeats = acts[0]!.slots[0]!.beats;
-    const outBeats = written[0]!.slots[0]!.beats;
-    expect(outBeats).toHaveLength(inBeats.length);
-    expect(outBeats[0]!.claim).toBe(inBeats[0]!.claim);
-    expect(outBeats[0]!.sourcing).toBe("narration");
-  });
-
-  it("replays run 2's slot: the evidence-less page degrades, its neighbour is written, and ONE selection call is spent", async () => {
-    const sourced = "Show what the schema check was asked to catch.";
-    const acts: SourcedAct[] = [
-      {
-        title: "How AI systems get built",
-        slots: [
-          {
-            title: P5_SLOT,
-            beats: [
-              { sourcing: "narration", claim: sourced, exploration: false, narration: { mode: "Patch", reason: "t" } },
-              { sourcing: "narration", claim: P5_PURPOSE, exploration: false, narration: { mode: "Carry", reason: "t" } }
-            ]
-          }
-        ]
-      }
-    ];
-    const writer = scriptedWriter([{ claims: [GOOD_CLAIM] }]);
-    const verifier = passingVerifier();
-
-    const written = await writeNarration(
-      acts,
-      { writer, verifier, evidence: recordingGatherer((claim) => (claim === sourced ? [NBS_DOC] : [])) },
-      voice,
-      ctx
-    );
-
-    /* One selection call, one prose call, one verify call — for the ONE
-       page that had documents. Run 2 spent three selection calls on the
-       other one and then ended the Foray. */
-    expect(writer.selectCalls).toBe(1);
-    expect(writer.writeCalls).toBe(1);
-    expect(verifier.calls).toBe(1);
-
-    const pages = allWrittenNarration(written);
-    expect(pages).toHaveLength(2);
-    expect(pages[0]!.verified).toBe(true);
-    expect(pages[1]!.unverifiedReason).toBe("no-evidence");
-  });
-
-  it("leaves NarrationWriteError guarding the beat count only, and nothing reaches it", async () => {
-    /* The class survives for a slot that came out with fewer beats than it
-       went in with — unreachable, because every branch above pushes one
-       written beat per sourced beat. Both former throw sites are exercised
-       here in one call: a page with no evidence, and a page whose writer
-       never selected anything from the evidence it had. */
-    const acts: SourcedAct[] = [
-      {
-        title: "How AI systems get built",
-        slots: [
-          {
-            title: P5_SLOT,
-            beats: [
-              { sourcing: "narration", claim: P5_PURPOSE, exploration: false, narration: { mode: "Carry", reason: "t" } },
-              { sourcing: "narration", claim: "A claim the writer selects nothing for.", exploration: false, narration: { mode: "Patch", reason: "t" } }
-            ]
-          }
-        ]
-      }
-    ];
-    const written = await writeNarration(
-      acts,
-      {
-        writer: scriptedWriter([{ claims: [] }]),
-        verifier: passingVerifier(),
-        evidence: recordingGatherer((claim) => (claim === P5_PURPOSE ? [] : [NBS_DOC]))
-      },
-      voice,
-      ctx
-    );
-    expect(written[0]!.slots[0]!.beats).toHaveLength(2);
-    expect(allWrittenNarration(written).map((p) => p.unverifiedReason)).toEqual(["no-evidence", "no-page"]);
-    // Still exported, still a distinct error type — for the invariant, not for a page.
-    expect(new NarrationWriteError("c", "Carry", new Error("x")).name).toBe("NarrationWriteError");
-  });
-});
-
-describe("F-51 — per-slot checkpoint inside an act (the per-slot fallback path; since Q-03 the act path honours `resume` only for a fully banked act — actNarration.test.ts)", () => {
-  function twoSlotAct(): SourcedAct[] {
-    return [
-      {
-        title: "Act",
-        slots: [
-          {
-            title: "Slot A",
-            beats: [
-              {
-                sourcing: "narration",
-                claim: "Claim A about the connection.",
-                exploration: false,
-                narration: { mode: "Patch", reason: "t" }
-              }
-            ]
-          },
-          {
-            title: "Slot B",
-            beats: [
-              {
-                sourcing: "narration",
-                claim: "Claim B about the connection.",
-                exploration: false,
-                narration: { mode: "Patch", reason: "t" }
-              }
-            ]
-          }
-        ]
-      }
-    ];
-  }
-
-  it("replays only the slot the resume hook does not already have", async () => {
-    const banked: Array<{ act: number; slot: number; title: string }> = [];
-    const writer = new StubNarrationWriterBuilder();
-    let writeCalls = 0;
-    /* The stub takes G-34's merged call on a clean slot, so that is the
-       request a written slot costs. */
-    const realWrite = writer.selectAndWrite.bind(writer);
-    writer.selectAndWrite = async (request, buildCtx) => {
-      writeCalls++;
-      return realWrite(request, buildCtx);
-    };
-
-    /* Slot A as a previous run left it on disk. */
-    const first = await writeNarration(twoSlotAct(), makeOptions(), voice, ctx);
-    const slotA: WrittenSlot = first[0]!.slots[0]!;
-
-    const written = await writeNarration(
-      twoSlotAct(),
-      {
-        writer: legacyWriter(writer),
-        verifier: legacyVerifier(new StubNarrationVerifierBuilder()),
-        evidence: fixtureGatherer(),
-        resume: (actIndex, slotIndex) => (actIndex === 0 && slotIndex === 0 ? slotA : undefined),
-        onSlotWritten: (act, slot, value) => {
-          banked.push({ act, slot, title: value.title });
-        }
-      },
-      voice,
-      ctx
-    );
-
-    /* One slot written, one replayed: the re-run pays for what is missing
-       and nothing else. */
-    expect(writeCalls).toBe(1);
-    expect(written[0]!.slots[0]).toEqual(slotA);
-    expect(written[0]!.slots[1]!.title).toBe("Slot B");
-    /* And only the slot actually written is banked — a resumed slot is
-       already stored. */
-    expect(banked).toEqual([{ act: 0, slot: 1, title: "Slot B" }]);
-  });
-
-  it("banks a finished slot even when a sibling slot throws (the per-slot fallback; the act path banks through the driver's narrate:<i> stage)", async () => {
-    const banked: string[] = [];
-    const writer = new StubNarrationWriterBuilder();
-    const realWrite = writer.selectAndWrite.bind(writer);
-    let firstSlotTitle: string | null = null;
-    writer.selectAndWrite = async (request, buildCtx) => {
-      if (firstSlotTitle === null) firstSlotTitle = request.slotTitle;
-      if (request.slotTitle !== firstSlotTitle) {
-        /* Slow enough that the healthy slot certainly finished and banked
-           first — which is the property under test. */
-        await new Promise((r) => setTimeout(r, 10));
-        throw new Error("provider went away mid-slot");
-      }
-      return realWrite(request, buildCtx);
-    };
-
-    await expect(
-      writeNarration(
-        twoSlotAct(),
-        {
-          writer: legacyWriter(writer),
-          verifier: legacyVerifier(new StubNarrationVerifierBuilder()),
-          evidence: fixtureGatherer(),
-          onSlotWritten: (_act, _slot, value) => {
-            banked.push(value.title);
-          }
-        },
-        voice,
-        ctx
-      )
-    ).rejects.toThrow(/provider went away/);
-
-    expect(banked).toHaveLength(1);
-  });
-
-  it("behaves exactly as before when no hooks are supplied", async () => {
-    const written = await writeNarration(twoSlotAct(), makeOptions(), voice, ctx);
-    expect(written[0]!.slots.map((s) => s.title)).toEqual(["Slot A", "Slot B"]);
-    expect(allWrittenNarration(written)).toHaveLength(2);
+  it("heldDocsOf strips how a document was found and keeps what it says", () => {
+    expect(heldDocsOf({ purpose: "x", beatKind: "account", docs: [NBS_DOC] })).toEqual([
+      { docId: NBS_DOC.docId, title: NBS_DOC.title, url: NBS_DOC.url, text: NBS_DOC.text }
+    ]);
   });
 });
 
@@ -1837,6 +907,36 @@ describe("the evidence gatherer this stage builds carries the cue provider (requ
     const tapeDoc = page.evidence!.find((d) => d.docId.startsWith("tape:"));
     expect(tapeDoc).toBeDefined();
     expect(tapeDoc!.text).toContain("the bakestone came first");
-    expect(tapeDoc!.title).toBe("Bread From Home \u2014 The griddle and the bakestone");
+    expect(tapeDoc!.title).toBe("Bread From Home — The griddle and the bakestone");
+  });
+});
+
+describe("F-100 — the per-slot path is gone, and a builder without the act contract is an error", () => {
+  it("a writer without writeAct is refused by name rather than silently taking a second orchestration", async () => {
+    /* MUTATION THAT KILLS THIS: re-introduce a fallback branch in
+       `writeNarration`. The whole of F-100 is that a path no production
+       run can take is not a safety net — it is a second definition of
+       these rules that nothing checks. */
+    const partial = { providerName: "no-act" } as unknown as NarrationWriterBuilder;
+    await expect(
+      writeNarration(narrationAct("A claim."), { writer: partial, verifier: new StubNarrationVerifierBuilder(), evidence: fixtureGatherer() }, voice, ctx)
+    ).rejects.toThrow(/writeAct/);
+  });
+
+  it("a verifier without verifyAct is refused the same way", async () => {
+    const partial = { providerName: "no-act" } as unknown as NarrationVerifierBuilder;
+    await expect(
+      writeNarration(narrationAct("A claim."), { writer: new StubNarrationWriterBuilder(), verifier: partial, evidence: fixtureGatherer() }, voice, ctx)
+    ).rejects.toThrow(/verifyAct/);
+  });
+
+  it("a zero-source page that asserts something never reaches the candidate — hasDeclarativeSentence is the rule, not a verifier's sample", () => {
+    /* F-36/F-37/F-44, as a pure rule: the per-page path used to prove this
+       by degrading an evidence-less page to a hand-off before any call.
+       The act path has no such degrade — a seam that rests on nothing is
+       refused and kept unverified for the gate — so what is pinned here is
+       the predicate both paths were built on. */
+    expect(hasDeclarativeSentence("Where does this go next? Keep listening.")).toBe(false);
+    expect(hasDeclarativeSentence("The walkways hung from a single rod for four years.")).toBe(true);
   });
 });

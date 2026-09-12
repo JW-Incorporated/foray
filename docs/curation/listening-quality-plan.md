@@ -140,7 +140,9 @@ segments of the act's prose between clips (the data model keeps `narration`
 items; there are simply fewer and longer of them).
 **Owned.** `writeNarration.ts`, `AnthropicNarrationWriterBuilder.ts`,
 `NarrationVerifierBuilder.ts`, `synthesisVerify.ts` (F-88 becomes the normal path
-for thesis prose), `runPipeline.ts` (per-act call already exists, G-32), tests.
+for thesis prose — and, with F-100, its separate post-pass is deleted: the ground
+reaches the act writer and the act verifier directly), `runPipeline.ts` (per-act
+call already exists, G-32), tests.
 **Done when.** Narration items per Foray fall from ~40 to roughly one per seam;
 `firstAttemptPassRate` is measured against beats, not pages; a fixture act with
 four beats and two clips yields prose that the verifier passes on all four; a
@@ -196,6 +198,33 @@ lanes; the overlord labels under standing approval. No generation run is
 launched for any reason other than Q-06 until this deck is done.
 
 ## 5. Rules for the agents
+
+**A card that supersedes a path DELETES the path in the same PR.** This is not
+a style preference; it is the finding of the 2026-09-12 audit and of F-100, and
+it has cost this pipeline three times. Q-03 replaced the per-slot narration
+orchestration and left it standing as "the fallback for a builder without the
+act contract" — a fallback no builder either factory returns could ever take,
+so what it really was is a second definition of every mechanical rule that
+nothing in production exercised. F-88 shipped a synthesis pass whose only
+eligible input was produced by that same path, so from Q-03 onward it ran on
+nothing. `CHECKPOINT_VERSION` stayed at 1 through nine stage changes, each
+paying for itself with a back-compat shim reading a file that, given how
+checkpoints are fingerprinted and discarded, does not exist anywhere. None of
+the three is a bandaid; each is an un-deleted predecessor, and each made the
+code read as though a choice were still open that had in fact been made.
+
+So, concretely, in the PR that lands the card: delete the branch, the methods,
+the prompts and the request/reply types the superseded path owned; make the new
+contract REQUIRED on the interface rather than optional-with-a-fallback, so a
+builder without it is a type error instead of a silent second route; bump
+`CHECKPOINT_VERSION` and drop the shim rather than teaching the reader two
+shapes; and PORT the tests — a test that only proves the old path still works
+goes with it, a test of a RULE moves onto the new path and keeps its mutation
+header. Say in the PR body how many were ported, how many deleted as flow-only,
+and what behaviour is genuinely gone rather than translated. If deleting is
+genuinely not possible in the same PR, say why in the card and open the
+follow-up in the same breath; "we will clean it up later" is what produced the
+three above.
 
 One PR per card, tests green, mutation named in every test header, CRLF stays
 CRLF, no `format:write` repo-wide, never `git worktree remove` a worktree whose

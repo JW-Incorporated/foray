@@ -181,7 +181,7 @@ function builders(
 ) {
   const writer = new StubNarrationWriterBuilder();
   const verifier = new StubNarrationVerifierBuilder();
-  const calls = { write: 0, verify: 0, merged: 0, verifySlot: 0 };
+  const calls = { write: 0, verify: 0 };
   const requests: ActWriteRequest[] = [];
   const realWrite = writer.writeAct.bind(writer);
   writer.writeAct = async (request, buildCtx) => {
@@ -190,11 +190,6 @@ function builders(
     const reply = await realWrite(request, buildCtx);
     return mutate ? mutate(reply, request, calls.write) : reply;
   };
-  const realMerged = writer.selectAndWrite.bind(writer);
-  writer.selectAndWrite = async (request, buildCtx) => {
-    calls.merged++;
-    return realMerged(request, buildCtx);
-  };
   const realVerify = verifier.verifyAct.bind(verifier);
   const verifyRequests: ActVerifyRequest[] = [];
   verifier.verifyAct = async (request, buildCtx) => {
@@ -202,11 +197,6 @@ function builders(
     verifyRequests.push(request);
     const verdict = await realVerify(request, buildCtx);
     return mutateVerdict ? mutateVerdict(verdict, request, calls.verify) : verdict;
-  };
-  const realSlot = verifier.verifySlot.bind(verifier);
-  verifier.verifySlot = async (request, buildCtx) => {
-    calls.verifySlot++;
-    return realSlot(request, buildCtx);
   };
   return { writer, verifier, calls, requests, verifyRequests };
 }
@@ -230,15 +220,17 @@ const narrationBeatsOf = (act: WrittenAct) => act.slots.flatMap((s) => s.beats).
 
 describe("Q-03 — narration is written per act and verified per beat", () => {
   it("a fixture act with four beats and two clips yields prose the verifier passes on all four, in two calls (≤ 3), one page per seam", async () => {
-    /* MUTATION THAT KILLS THIS: call the writer per slot (`writeSlot`) when
+    /* MUTATION THAT KILLS THIS: call the writer per slot when
        the builders offer the act contract — the call count rises to one per
        slot and the page count to one per beat. Or: place the seam's page on
        EVERY beat of the seam rather than the first — `pages` reads 4 and
-       `carriedBy` is never set. */
+       `carriedBy` is never set. (Since F-100 the per-slot calls the old
+       count also pinned at 0 do not exist to make: the writer has one
+       method and the verifier one.) */
     const { writer, verifier, calls } = builders();
     const [act] = await writeNarration([fourBeatsTwoClips()], { writer, verifier, evidence: gatherer() }, voice, ctx);
 
-    expect(calls).toEqual({ write: 1, verify: 1, merged: 0, verifySlot: 0 });
+    expect(calls).toEqual({ write: 1, verify: 1 });
     expect(calls.write + calls.verify).toBeLessThanOrEqual(3);
 
     const beats = narrationBeatsOf(act!);
@@ -335,16 +327,18 @@ describe("Q-03 — narration is written per act and verified per beat", () => {
     expect(pagesInOrder(rebuilt!)).toHaveLength(3);
   });
 
-  it("writeActNarration refuses a writer or verifier without the act contract, and writeNarration falls back to the per-slot path for one", async () => {
-    /* MUTATION THAT KILLS THIS: take the act path whenever the WRITER offers
-       it, ignoring the verifier — a scripted verifier without `verifyAct` is
-       then called into nothing. */
+  it("a writer or verifier without the act contract is an ERROR, not a second orchestration (F-100)", async () => {
+    /* MUTATION THAT KILLS THIS: re-introduce a fallback branch in
+       `writeNarration` for a builder without `writeAct`/`verifyAct`. Until
+       F-100 there was one — the per-slot, per-page path runs 1-8 used —
+       and it could not be reached in production or in `--dry-run`, because
+       both builder factories return builders that implement the contract.
+       A path no run can take is not a safety net; it is a second
+       definition of these rules that nothing checks. */
     const { writer } = builders();
-    const legacyVerifier = { providerName: "stub", verifySlot: (r: Parameters<StubNarrationVerifierBuilder["verifySlot"]>[0], c: NarrationBuildContext) => new StubNarrationVerifierBuilder().verifySlot(r, c) };
-    await expect(writeActNarration(fourBeatsTwoClips(), { writer, verifier: legacyVerifier, evidence: gatherer() }, voice, ctx)).rejects.toThrow(/per-act contract/);
-    const [act] = await writeNarration([fourBeatsTwoClips()], { writer, verifier: legacyVerifier, evidence: gatherer() }, voice, ctx);
-    /* The per-page path: one page per narration beat plus Frames — more than one per seam. */
-    expect(pagesInOrder(act!).length).toBeGreaterThan(3);
+    const noActVerifier = { providerName: "stub" } as unknown as StubNarrationVerifierBuilder;
+    await expect(writeActNarration(fourBeatsTwoClips(), { writer, verifier: noActVerifier, evidence: gatherer() }, voice, ctx)).rejects.toThrow(/per-act contract/);
+    await expect(writeNarration([fourBeatsTwoClips()], { writer, verifier: noActVerifier, evidence: gatherer() }, voice, ctx)).rejects.toThrow(/per-act contract/);
   });
 });
 

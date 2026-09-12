@@ -1251,6 +1251,23 @@ Every number in §1.2 comes from `report.json` (per Foray: outcome, wall,
 - Blocking labels are `hold` and `founder-decision`; the founder queue label
   is `needs-founder`.
 
+**A card that supersedes a path DELETES the path in the same PR** (F-100,
+2026-09-12). Not a style preference — the finding of the audit that produced
+F-100, and three times over in this pipeline: Q-03's per-slot narration
+orchestration kept as a fallback no builder could reach, F-88's synthesis pass
+left running on an input nothing produced after Q-03, and a `CHECKPOINT_VERSION`
+held at 1 through nine stage changes with a back-compat shim for each. An
+un-deleted predecessor is not a safety net; it is a second definition of the
+rules that nothing checks, and it makes the code read as though a decision were
+still open that has been made. In the PR that lands the card: delete the branch,
+the methods, the prompts and the types the old path owned; make the new contract
+REQUIRED on the interface, not optional-with-a-fallback; bump the checkpoint
+version rather than shimming; port the tests of RULES onto the new path with
+their mutation headers and delete the tests of the old FLOW; and say in the PR
+body how many were ported, how many deleted, and what behaviour is genuinely
+gone. If it truly cannot be deleted in the same PR, say why in the card and open
+the follow-up in the same breath.
+
 **Conventions**, as in the S-/L-/R-decks: branch `t_<card>/<slug>`; one PR per
 card titled `G-nn: …`; a STATE.md entry per PR; sizing S ≤ ½ day, M ≤ 2 days,
 L ≤ 5 days; L cards post a design comment before code. Tests green (`npm test`

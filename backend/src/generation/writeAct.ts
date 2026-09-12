@@ -453,8 +453,6 @@ function seamStateOf(plan: SeamPlan, intro: IntroKind | undefined, documents: Ev
       claim: purpose,
       mode: seamMode(plan),
       evidence: { purpose, beatKind: "account", docs: documents },
-      rejections: [],
-      attempts: [],
       citesTape: true,
       claimsOptional: true
     },
@@ -585,9 +583,10 @@ export function actDocuments(packs: EvidencePack[]): EvidenceDoc[] {
   return [...out.values()];
 }
 
-/** F-88's ground as the writer's documents — the same shape
- * `synthesisVerify.ts`'s `pageDocsFor` hands the synthesis writer, so a
- * quote of a verified page resolves the same way on both paths. */
+/** F-88's ground (`synthesisVerify.ts`) as the writer's documents, so a quote
+ * of a verified page resolves through the same gate every other quote
+ * does. The ONE builder of these documents since F-100 deleted F-88's own
+ * pass and the second, identical copy that lived in it. */
 export function groundDocsFor(ground: ReadonlyArray<GroundPageBrief>): EvidenceDoc[] {
   return ground.map((p) => ({
     docId: pageDocIdFor(p.pageId),
