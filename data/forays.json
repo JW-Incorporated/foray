@@ -1904,6 +1904,404 @@
           "slot": "what-the-chain-teaches"
         }
       ]
+    },
+    {
+      "id": "what-engineers-actually-do-all-day-e08236",
+      "kind": "deep-dive",
+      "title": "What Engineers Actually Do All Day",
+      "topic": "business/careers",
+      "status": "draft",
+      "summary": "Working engineers describe the failures, identity shifts, and tradeoffs that actually shape a real engineering career.",
+      "runtime_sec": 2521.866,
+      "generated": true,
+      "slots": [
+        {
+          "id": "the-myth-sold-as-fact",
+          "title": "The Myth Sold as Fact"
+        },
+        {
+          "id": "the-craft-before-the-crisis",
+          "title": "The Craft Before the Crisis"
+        },
+        {
+          "id": "trading-the-bench-for-the-inbox",
+          "title": "Trading the Bench for the Inbox"
+        },
+        {
+          "id": "the-side-project-that-proves-the-point",
+          "title": "The Side Project That Proves the Point"
+        },
+        {
+          "id": "the-fix-that-never-made-the-resume",
+          "title": "The Fix That Never Made the Resume"
+        },
+        {
+          "id": "the-fork-is-a-repeated-choice",
+          "title": "The Fork Is a Repeated Choice"
+        }
+      ],
+      "items": [
+        {
+          "type": "narration",
+          "id": "disclosure",
+          "script": "This is a Foray about The real, non-linear arc of an engineering career. Much of what you'll hear is written by AI. We work hard to get the facts right, but AI gets things wrong — so take it as a starting point, not a source.",
+          "mode": "marker",
+          "slot": "the-myth-sold-as-fact"
+        },
+        {
+          "type": "narration",
+          "id": "act-1-introduction",
+          "script": "Every engineer hears some version of the same pitch early: get better at the tool, and the ladder takes care of itself. Learn the CAD. Learn the FEA. Put in the hours at the machine or the workstation, and title, scope, and paycheck will follow your competence in lockstep. It's a tidy story. It's also, this act argues, a story that had to be sold -- by software companies with a number to hit, by veterans repeating a figure nobody ever actually measured -- to engineers who wanted badly enough to believe that mastering the tool was the whole game. Fever and FOMO, one of them calls it. Not evidence. This act starts where every engineer starts: hands on a real machine, loving the work for its own sake, before showing how the actual climb runs on prestige and scope instead of skill -- and how the hands-on craft that got them noticed in the first place is the first thing the climb asks them to give up.",
+          "mode": "frame",
+          "slot": "the-myth-sold-as-fact"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-1-0-connective",
+          "script": "CAD systems cost as much as a house. One veteran remembers exactly how the salesmen justified the price tag.",
+          "mode": "frame",
+          "slot": "the-myth-sold-as-fact"
+        },
+        {
+          "type": "segment",
+          "slot": "the-myth-sold-as-fact",
+          "segment_id": "being-an-engineer--s5e50-roopinder-tara-timing-fea-the-beginning-of-cad#1575"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-1-1-connective",
+          "script": "Rick James spent twenty-five years as a hands-on engineer before he became CEO of the top ANSYS partner in North America.",
+          "mode": "frame",
+          "slot": "the-myth-sold-as-fact"
+        },
+        {
+          "type": "segment",
+          "slot": "the-myth-sold-as-fact",
+          "segment_id": "being-an-engineer--s6e46-rick-james-ansys-engineering-simulation#0"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-1-2-beat",
+          "script": "Rick built a go-kart as a kid. The ladder ahead runs on budgets and headcount, not skill. Next: what drew Aaron Moncur to engineering.",
+          "mode": "hinge",
+          "slot": "the-myth-sold-as-fact"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-1-3-connective",
+          "script": "Before the layoffs, before any of that, here's what actually hooked Aaron Moncur on engineering.",
+          "mode": "frame",
+          "slot": "the-craft-before-the-crisis"
+        },
+        {
+          "type": "segment",
+          "slot": "the-craft-before-the-crisis",
+          "segment_id": "being-an-engineer--s2e36-shaking-things-up-as-we-get-to-know-aaron-moncur#668"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-1-4-beat",
+          "script": "This isn't Joe Couitt's start. Moncur got to design a part, then machine it himself — next, Andy Thompson on GD&T.",
+          "mode": "hinge",
+          "slot": "the-craft-before-the-crisis"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-1-5-connective",
+          "script": "Two decades ago, Andy Thompson was running CNC machines. Now he leads structural engineering teams.",
+          "mode": "frame",
+          "slot": "the-craft-before-the-crisis"
+        },
+        {
+          "type": "segment",
+          "slot": "the-craft-before-the-crisis",
+          "segment_id": "being-an-engineer--s6s25-andy-thompson-practical-applications-of-gd-t#27"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-1-6-connective",
+          "script": "Krishna Raichur builds digital twins for a living: computer models paired with real sensors, watching machines in real time.",
+          "mode": "frame",
+          "slot": "the-craft-before-the-crisis"
+        },
+        {
+          "type": "segment",
+          "slot": "the-craft-before-the-crisis",
+          "segment_id": "being-an-engineer--s5e19-krishna-raichur-the-ins-outs-of-engineering-simulation#1527"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-1-7-beat",
+          "script": "Not about ease of learning. Raichur's models turn sensor data fast enough to shut an overheating pump down before it fails.",
+          "mode": "hinge",
+          "slot": "the-craft-before-the-crisis"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-1-8-beat",
+          "script": "Simulation software sold like a house-sized leap. Raichur still reads the model himself, then calls the shutdown.",
+          "mode": "hinge",
+          "slot": "the-craft-before-the-crisis"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-1-9-beat",
+          "script": "Rick James spent twenty-five years hands-on before he became CEO. Andy Thompson went from CNC operator to engineering leader.",
+          "mode": "hinge",
+          "slot": "the-craft-before-the-crisis"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-1-10-beat",
+          "script": "Rick built go-karts. Aaron Moncur was hooked the same way. Now Andy Thompson leads teams instead of running the machine himself.",
+          "mode": "hinge",
+          "slot": "the-craft-before-the-crisis"
+        },
+        {
+          "type": "narration",
+          "id": "act-1-exit",
+          "script": "By the end of this act, the myth is cracked but not gone: the listener knows the ladder was marketed, and that the hands-on craft is the first casualty of climbing it. What they still assume is that climbing means more engineering -- bigger assemblies, higher-stakes simulations, more consequential machines. The next act takes that assumption apart tape by tape, following engineers past the point where the craft disappears entirely, into inboxes, calendars, and budget meetings -- and showing that even the ones who quit to build something of their own don't outrun this. They just relocate it.",
+          "mode": "frame",
+          "slot": "the-craft-before-the-crisis"
+        },
+        {
+          "type": "narration",
+          "id": "act-2-introduction",
+          "script": "The crack in the ladder leaves one assumption standing: that climbing further just means bigger assemblies and higher-stakes builds. This act follows that assumption until it breaks, tracing engineers past the point where the craft disappears -- not into more consequential machines, but into inboxes, calendars, group chats, budget meetings. The tools change first. Then the job description quietly changes underneath them, until the person with 'engineer' on their title is spending the day doing something else entirely. And the ones who quit to build something of their own don't escape it either -- they just find the same shift waiting for them under a different roof.",
+          "mode": "frame",
+          "slot": "trading-the-bench-for-the-inbox"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-2-0-connective",
+          "script": "Keegan Schoch built his own engineering consultancy. First he had to learn the client relationship matters as much as the analysis.",
+          "mode": "frame",
+          "slot": "trading-the-bench-for-the-inbox"
+        },
+        {
+          "type": "segment",
+          "slot": "trading-the-bench-for-the-inbox",
+          "segment_id": "being-an-engineer--s6e5-keegan-schoch-pro-tips-on-creating-an-engineering-consu#2645"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-2-1-beat",
+          "script": "That long relationship paid off for Schoch. Next, McEachern on students bidding real client work.",
+          "mode": "hinge",
+          "slot": "trading-the-bench-for-the-inbox"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-2-2-connective",
+          "script": "Freelance work put Ian McEachern's engineering in Times Square, the Disney parks, and the Smithsonian. Here's how he got there.",
+          "mode": "frame",
+          "slot": "trading-the-bench-for-the-inbox"
+        },
+        {
+          "type": "segment",
+          "slot": "trading-the-bench-for-the-inbox",
+          "segment_id": "being-an-engineer--ian-mceachern-artificial-hearts-times-square-led-displays-en#416"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-2-3-beat",
+          "script": "As McEachern put it: engineers can't just build things for fun. Revenue has to attach somewhere.",
+          "mode": "hinge",
+          "slot": "trading-the-bench-for-the-inbox"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-2-4-beat",
+          "script": "The pull toward engineering came before any paycheck. Even these pages insist the work still has to earn its keep.",
+          "mode": "hinge",
+          "slot": "the-side-project-that-proves-the-point"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-2-5-beat",
+          "script": "Elsewhere in the Foray, engineers who went out on their own found managing clients mattered as much as engineering.",
+          "mode": "hinge",
+          "slot": "the-side-project-that-proves-the-point"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-2-6-beat",
+          "script": "Founding a company doesn't end it. Schoch still needed clients; McEachern's freelance work still needed paying outlets.",
+          "mode": "hinge",
+          "slot": "the-side-project-that-proves-the-point"
+        },
+        {
+          "type": "narration",
+          "id": "act-2-exit",
+          "script": "Nobody in this act describes a single dramatic failure -- just the slow erosion of the job they trained for, absorbed as the price of moving up or the price of going it alone. That framing only holds as long as the failures stay invisible. Act 3 goes looking for the ones that don't make it onto a resume.",
+          "mode": "frame",
+          "slot": "the-side-project-that-proves-the-point"
+        },
+        {
+          "type": "narration",
+          "id": "act-3-introduction",
+          "script": "Those failures didn't stop happening -- they just stopped being visible, and that's exactly where this act starts looking. By this point the ladder is dead and so is the exit ramp -- moving up routes an engineer into inboxes and schedules, and founding your own thing just relocates the same trap. What survives all of that, on paper, is the resume, the LinkedIn summary, the clean paragraph of launches and promotions that's supposed to stand in for a career. It doesn't. The stretches that actually taught these engineers something -- a slipped pin that shouldn't have slipped, a weld that shouldn't have been there, a ventilator recalled after it left the building -- are exactly the stretches that get cut first, and not because they don't matter. Because they're the ones that admit something went wrong.",
+          "mode": "frame",
+          "slot": "the-fix-that-never-made-the-resume"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-3-0-connective",
+          "script": "Daniel Servansky was mid-test when his stainless tubes started leaking, and nobody could say why.",
+          "mode": "frame",
+          "slot": "the-fix-that-never-made-the-resume"
+        },
+        {
+          "type": "segment",
+          "slot": "the-fix-that-never-made-the-resume",
+          "segment_id": "being-an-engineer--daniel-servansky-electromechanical-engineering-root-cause-an#1139"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-3-1-connective",
+          "script": "Metallurgist Jonathan MacWilliams says a fracture will tell you exactly why a part failed, if you know how to read it.",
+          "mode": "frame",
+          "slot": "the-fix-that-never-made-the-resume"
+        },
+        {
+          "type": "segment",
+          "slot": "the-fix-that-never-made-the-resume",
+          "segment_id": "being-an-engineer--s4e45-jonathan-macwilliams-career-planning-metallurgy-dealin#463"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-3-2-beat",
+          "script": "MacWilliams' point, still ringing: what looks like overload is often low-cycle fatigue underneath, symptom patched, cause untouched.",
+          "mode": "hinge",
+          "slot": "the-fix-that-never-made-the-resume"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-3-3-beat",
+          "script": "Coming up, Jon Montcrief on who actually finds the risks in a medical device before it ever reaches an operating room.",
+          "mode": "hinge",
+          "slot": "the-fix-that-never-made-the-resume"
+        },
+        {
+          "type": "segment",
+          "slot": "the-fix-that-never-made-the-resume",
+          "segment_id": "being-an-engineer--s5e9-jon-montcrief-medical-device-engineering-leaders-8#428"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-3-5-beat",
+          "script": "As Montcrief just said, saying you helped build an implant that went into someone's mom or grandfather lands harder than any chip bag.",
+          "mode": "hinge",
+          "slot": "the-fix-that-never-made-the-resume"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-3-6-beat",
+          "script": "Every fix in this record starts the same way: naming exactly what broke — a leak, a fracture, the truth of it.",
+          "mode": "hinge",
+          "slot": "the-fix-that-never-made-the-resume"
+        },
+        {
+          "type": "narration",
+          "id": "act-3-exit",
+          "script": "Every fix in this act started the same unglamorous way: someone naming, out loud, that they'd been wrong. That's not a résumé line, and it's not a ladder rung either -- it's a choice made under pressure, alone, that a career summary will never record. Strip away the résumé's version of events and what's left isn't a hierarchy of skill at all. It's a person deciding, over and over, whether owning the failure is worth more than looking like someone who never has one -- the same fork that's about to show up again, at every level, with no ladder left to hide it.",
+          "mode": "frame",
+          "slot": "the-fix-that-never-made-the-resume"
+        },
+        {
+          "type": "narration",
+          "id": "act-4-introduction",
+          "script": "Two acts back, the ladder cracked. One act back, that crack forced a choice nobody puts on a resume: naming a failure out loud instead of dressing it up as a lesson learned. What's left standing is not a straight climb and not a tidy narrative -- it's a lane. Picture it the way the tape does: a bowling lane with no guardrails, ball in your hands, and one decision most people assume gets made exactly once -- stay the person who builds the thing, or become the person who manages the people who build it. That's the fork the listener is still picturing walking into this act. It doesn't happen once. It happens again, and again, sometimes at a new company, sometimes in a field the engineer never trained for, sometimes so far from the original craft that calling it the same career is generous -- and every time, with no ladder left to hide behind, it's that same fork all over again.",
+          "mode": "frame",
+          "slot": "the-fork-is-a-repeated-choice"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-4-0-connective",
+          "script": "Nikolaj Kloch went from designing parts at Boeing to running his own businesses, in public speaking and medical wearables.",
+          "mode": "frame",
+          "slot": "the-fork-is-a-repeated-choice"
+        },
+        {
+          "type": "segment",
+          "slot": "the-fork-is-a-repeated-choice",
+          "segment_id": "being-an-engineer--s6e18-nikolaj-kloch-public-speaking-career-changes-leading-w#386"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-4-1-connective",
+          "script": "Pat Stephens started at Gore, moved through Boston Scientific and Medtronic, and now runs R&D at Shockwave Medical — a resume that reads like steady climbing.",
+          "mode": "frame",
+          "slot": "the-fork-is-a-repeated-choice"
+        },
+        {
+          "type": "segment",
+          "slot": "the-fork-is-a-repeated-choice",
+          "segment_id": "being-an-engineer--s1e10-from-engineering-startups-to-established-corporations#14"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-4-2-connective",
+          "script": "Dhruv Bhate has spent ten years in industry and thirty in academia. Next, he's asked what frustrates him most about being an engineer.",
+          "mode": "frame",
+          "slot": "the-fork-is-a-repeated-choice"
+        },
+        {
+          "type": "segment",
+          "slot": "the-fork-is-a-repeated-choice",
+          "segment_id": "being-an-engineer--s4e30-dhruv-bhate-engineering-in-india-biomimicry-using-whit#2530"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-4-3-connective",
+          "script": "Next: David Oh, from Being an Engineer, on how a kid good at science and math found his way into engineering.",
+          "mode": "frame",
+          "slot": "the-fork-is-a-repeated-choice"
+        },
+        {
+          "type": "segment",
+          "slot": "the-fork-is-a-repeated-choice",
+          "segment_id": "being-an-engineer--david-oh-nasa-systems-engineering-and-sending-robots-to-spac#293"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-4-4-connective",
+          "script": "Ray Kampmeier explains the transistor — the tiny switch that ended up running everything from your phone to your monitor.",
+          "mode": "frame",
+          "slot": "the-fork-is-a-repeated-choice"
+        },
+        {
+          "type": "segment",
+          "slot": "the-fork-is-a-repeated-choice",
+          "segment_id": "being-an-engineer--ray-kampmeier-the-humble-transistor#1259"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-4-5-connective",
+          "script": "William Gabler's path ran through a bachelor's in chemistry, a master's in textile chemistry, and a PhD in fiber and polymer science — before he became an engineer.",
+          "mode": "frame",
+          "slot": "the-fork-is-a-repeated-choice"
+        },
+        {
+          "type": "segment",
+          "slot": "the-fork-is-a-repeated-choice",
+          "segment_id": "being-an-engineer--s2e28-test-stands-x-ray-other-instrumentation-william-gabler#30"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-4-6-beat",
+          "script": "This tape: Gabler once saw himself an architect, let it go when the schooling ran long, and rebuilt himself in a PhD.",
+          "mode": "hinge",
+          "slot": "the-fork-is-a-repeated-choice"
+        },
+        {
+          "type": "narration",
+          "id": "act-4-exit",
+          "script": "None of the six people in this act ended up where they started, and none of them planned the detour that got them there -- Kloch didn't sign up to guide his own ball down an unguarded lane, Oh didn't grow up wanting to run systems engineering on a robot bound for space instead of becoming a physicist, Gabler didn't set out to become an engineer at all. That's not a flaw in their careers. That's the whole mechanism. The ladder was never real, the job changes shape the moment you're good enough to get promoted out of it, the failures that taught the most got left off the resume, and the fork itself turns out to be the one thing nobody warned you would show up twice. What's left, once the ladder and the guardrails are both gone, is a simpler question than 'how do I get promoted' -- it's how many times you're willing to lose the version of yourself that felt like an engineer, and build another one.",
+          "mode": "frame",
+          "slot": "the-fork-is-a-repeated-choice"
+        }
+      ]
     }
   ]
 }
