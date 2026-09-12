@@ -332,7 +332,7 @@ const FLOORS = {
      app.js and data/ for the diagnostic Foray instrument's three identifying
      strings (HUMAN-ACTIONS.md #29) so it cannot silently come back into a
      release build once deleted. */
-  "test/release-gates.test.js": 6,
+  "test/release-gates.test.js": 7, // S-07/G1 (2026-09-12): +1 — the Option-B contract, that §2 states the Shows-search lookup is unconditional rather than merely dropping the old promise; 6 -> 7
   /* The shared search matcher (#218/#219). Floored because both of the things it
      pins are invisible when they break. Loosening the prefix guard buys recall
      and reintroduces a documented collision flood that only the ~170-second
@@ -486,6 +486,44 @@ const FLOORS = {
      local-only/local+net/superseded path field, and that a missing or
      throwing bridge never breaks the search itself. */
   "test/search-probe-record.test.js": 9,
+  /* The S-deck's client half (docs/search-plan.md, cards S-02 to S-05).
+     Four suites rather than one addition to show-search.test.js, because they
+     fail independently and for different reasons — which is the same argument
+     the field-record trio at the top of this file makes:
+
+       `show-search-live.test.js`     S-02/S-03's LOAD BEHAVIOUR: a keystroke
+                                      paints locally and fires no fetch; ten
+                                      keystrokes inside 250 ms produce one
+                                      costly pass; submit skips the debounce;
+                                      clearing restores the A-Z list; the
+                                      index is fetched zero times before the
+                                      box is focused and once after, and a
+                                      504 on it is invisible to the listener.
+       `show-search-ranking.test.js`  S-04's RULE: four buckets, curated
+                                      before breadth, the popularity prior
+                                      BUCKETED (never raw — `chart_rank` is
+                                      per-genre and from one harvest), and a
+                                      determinism check over the real
+                                      catalogue in two input orders.
+       `show-index.test.js`           S-03's CLIENT half over the real
+                                      committed data/show-index.tsv: the sort
+                                      order the binary search depends on,
+                                      parity with a reference linear filter
+                                      on the whole 12-query probe battery,
+                                      the gzipped budget, and the id shape a
+                                      tapped result resolves through.
+       `show-search-cache.test.js`    S-05's hot-query cache: a repeat fires
+                                      zero requests, a failure is not cached,
+                                      the bound clears rather than grows, and
+                                      no query text reaches localStorage.
+
+     A single merged suite would let any one of those four be gutted while the
+     others kept the file's count up, which is precisely what a floor cannot
+     see. */
+  "test/show-search-live.test.js": 10,
+  "test/show-search-ranking.test.js": 9,
+  "test/show-index.test.js": 11,
+  "test/show-search-cache.test.js": 6,
   /* U-05 (docs/ui-transition-plan.md, kanban t_53381ee4, resolves issue
      #135): the Playlists results section under Shows/Episodes on the Shows
      page, plus the "Create a playlist about X" CTA. Floored new rather than
@@ -630,7 +668,7 @@ const FLOORS = {
      evidence that THIS suite pins its behaviour; with a floor 19 below the real
      count, an auto-merged `test/` change could thin it while the claim stayed
      green. Zero slack from here on, for the reason media-session has none. */
-  "test/sw-generation.test.js": 51,
+  "test/sw-generation.test.js": 52, // S-03 (2026-09-12): +1 — cachePut's untracked-path branch is load-bearing now that data/show-index.tsv uses it; 51 -> 52
   /* U-01 (docs/ui-transition-plan.md): the ui-v2 token scope. Four tests --
      the nine tokens' names+values, the "no raw hex leaks outside the block"
      mutation guard, the amber/violet consumption check, and the self-hosted
@@ -732,7 +770,15 @@ const FLOORS = {
      network contract, the report validator) -- driven by fakes and an
      injected fetch, no real catalogue/network. See
      test/search-probe-record.test.js for the wiring/mutation-guard half. */
-  "tools/search-probe.test.mjs": 27,
+  "tools/search-probe.test.mjs": 30, // S-03/S-08 (2026-09-12): +3 — the index battery reports the prefix and scan passes separately, and the validator refuses a report that lost either p95 or the whole section; 27 -> 30
+  /* S-03 (docs/search-plan.md): the BUILD half of the show index — the merge,
+     the in_curated dedupe, the chart_rank cut, the control-character sanitiser,
+     the four-column row shape, and the parity of the committed
+     data/show-index.tsv with what this script derives. Its sibling,
+     test/show-index.test.js, pins the same file from the CLIENT side; both are
+     needed because the sort order is a contract between two files and either
+     side can break it alone. */
+  "tools/build-show-index.test.mjs": 9,
   /* 82 since #226 (PR #237) added "Foray #1 is labelled superseded". Raised in a
      follow-up rather than in that PR, which is the mistake this floor exists to
      catch: it left one test of slack, and slack is what lets the new gate be
@@ -874,7 +920,7 @@ const FLOORS = {
 
      `shell-invariants` gained one: the same slice against TODAY'S real documents,
      independently of the fixture suite. */
-  "tools/mobile/prepare-webdir.test.mjs": 77, // FD-04 (2026-09-10): the seed is a subset of the directory's files; the seed pointer is optional; 72 -> 74. F-92 (2026-09-12): the seed leaves generated drafts to the directory — the rule on the fixture, the verifier as a reached guard, and the real repo's draft absent from the real bundle; 74 -> 77
+  "tools/mobile/prepare-webdir.test.mjs": 78, // FD-04 (2026-09-10): the seed is a subset of the directory's files; the seed pointer is optional; 72 -> 74. F-92 (2026-09-12): the seed leaves generated drafts to the directory — the rule on the fixture, the verifier as a reached guard, and the real repo's draft absent from the real bundle; 74 -> 77. S-03 (2026-09-12): the unpinned show index is named, bundled and budgeted; 77 -> 78
   "tools/mobile/shell-invariants.test.mjs": 57, // +4: the L-05 plugin methods and the M-03 session needle/event name (2026-09-12) // +1: iOS plugin never calls setActive (F11/F13, 2026-09-09); +1: Swift writes the L-02 log needle (2026-09-10)
   /* 2026-09-04: the bundle's JS/CSS is minified (comments + whitespace, identifiers
      kept) and its JSON re-serialised on the way in — docs/mobile-shell.md §3.4.

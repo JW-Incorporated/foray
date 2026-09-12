@@ -49,6 +49,7 @@ import {
   assertDiscoverSliceComplete, serializeSlice, sliceBytes, assertSlicesOnDisk, projectData,
   referencedSegmentIds, segmentSlice, segmentSourceSlice, assertForaySliceComplete,
   WHY_COPIED_WHOLE, isBundledData, SEED_POINTER, seedPointerPlan,
+  UNPINNED_DATA, unpinnedDataPlan, unpinnedDataOverBudget,
   seedCarries, seedForays, assertSeedForaysComplete, seedPointerDoc,
 } from "./prepare-webdir.mjs";
 import { isMinified, minifySource } from "./minify.mjs";
@@ -1841,7 +1842,34 @@ test("REAL REPO: the sliced bundle, its budgets and the headroom that is left", 
          rate (~7 KB/day after minification, ~25 before). The code half is the one that
          actually runs away, and it is what this alarm now mostly measures — which is
          why it is not set at ~100 nights of item-tags the way the previous two were. */
-      r.total < 2.0 * 1024 * 1024,
+      /* RAISED 2.0 -> 2.5 MB on 2026-09-12, S-03 (docs/search-plan.md), and this is
+         the third re-baseline of this line, so it owes the fullest argument yet.
+
+         WHAT MOVED: `data/show-index.tsv`, 436 KB raw — the client-side show index
+         that lets the search box answer 10,113 shows from the device instead of 220
+         plus a 0.4-1.1 s round trip. Feature code, one step, and the bundle went
+         1.79 -> 2.22 MB.
+
+         WHY THIS IS THE "straw, not the load" CASE AND NOT THE ONE THE COMMENT ABOVE
+         FORBIDS. The forbidden re-baseline is the one that buys a month against an
+         UNBOUNDED trend (`data/item-tags.json`, ~3.3 KB a night) and hides it. This
+         file is the opposite of unbounded: its size is a pure function of
+         `tools/build-show-index.mjs`'s `BUILD_MAX_RANK`, it carries its own per-file
+         budget in `UNPINNED_DATA` (512 KB), `buildPlan` throws by name if it breaches
+         that, and `test/show-index.test.js` asserts its GZIPPED size against S-03's
+         400 KB web budget besides. It has two tighter alarms of its own; this one was
+         never the thing guarding it.
+
+         AND THE ALARM KEEPS ITS TEETH, measured rather than asserted: 2.5 MB against
+         today's 2.22 MB is ~286 KB of headroom, which is MORE than the ~210 KB the
+         2.0 MB line had the day it was set, i.e. ~85 nights of item-tags growth
+         before it fires and ~240 before the 3 MB cap. The quantity this line
+         measures — everything with no budget of its own — has not moved at all.
+
+         If this goes red again and the cause is item-tags rather than a feature step,
+         the instruction from the 2026-09-04 note stands unchanged: build the df
+         sidecar, do not raise it a fourth time. */
+      r.total < 2.5 * 1024 * 1024,
       `the bundle is ${(r.total / 1024 / 1024).toFixed(2)} MB, leaving ` +
         `${((MAX_BYTES - r.total) / 1024).toFixed(0)} KB of headroom under the 3 MB cap`
     );
@@ -1861,7 +1889,12 @@ test("REAL REPO: the sliced bundle, its budgets and the headroom that is left", 
           nights the previous number had. Same shape, re-measured. */
     const dataBytes = r.files.filter((f) => f.rel.startsWith("data/")).reduce((n, f) => n + f.bytes, 0);
     assert.ok(
-      dataBytes < 1.4 * 1024 * 1024,
+      /* RAISED 1.4 -> 1.85 MB on 2026-09-12 (S-03), for the same one file and the same
+         reason as A: the data half went 1,165 -> ~1,602 KB in one bounded step, and
+         1.85 MB leaves ~294 KB above today — the same ~80-90 nights of item-tags the
+         1.4 MB line was set to leave. Same shape, re-measured, and the new file is the
+         one member of `data/` that has a per-file budget of its own. */
+      dataBytes < 1.85 * 1024 * 1024,
       `the bundle's data/ half is ${(dataBytes / 1024).toFixed(0)} KB — something in data/ stopped being bounded`
     );
     assert.ok(dataBytes > 512 * 1024, `the bundle's data/ half is only ${(dataBytes / 1024).toFixed(0)} KB — the plan has collapsed`);
@@ -2546,4 +2579,46 @@ test("FD-04: the seed's pointer rides along when it exists, and its absence is n
     () => assertSlicesOnDisk(path.join(withPointer, "www"), withPointer),
     /not the repo's pointer marked partial/
   );
+});
+
+test("S-03: the unpinned show index is named explicitly, bundled, and held to its own budget", () => {
+  /* THE DERIVATION CANNOT SEE THIS FILE, and that is the whole reason it is
+     listed. `runtimeDataFiles()` scans app.js for literal
+     `fetchJson("data/….json")` call sites; app.js fetches
+     `data/show-index.tsv` with a BARE `fetch()`, because `fetchJson` pins to the
+     deploy generation and sw.js answers a bare 504 for a pinned file no
+     generation holds (docs/search-plan.md §1.5). So an unpinned fetch is
+     invisible here by construction, and a bundle silently missing the index
+     would build, install, pass every size check, and quietly degrade the
+     phone's search to the curated 220 — green everywhere, wrong in the hand.
+     Same reason `SEED_POINTER` is named rather than derived.
+
+     MUTATION 1: drop `...unpinnedDataPlan(root)` from `buildPlan`. The index is
+     on disk and never bundled; the third assertion is red.
+     MUTATION 2: make `unpinnedDataPlan` return every entry unconditionally.
+     `buildPlan` on the bare fixture repo (which has no index) fails "not on
+     disk"; red.
+     MUTATION 3: raise `tools/build-show-index.mjs`'s BUILD_MAX_RANK to 200 and
+     rebuild. The file goes to ~874 KB raw, over the 512 KB budget, and
+     `buildPlan` throws — which is the check doing its job, because the native
+     bundle counts RAW bytes against MAX_BYTES while the web budget is
+     gzipped. */
+  const bare = makeFakeRepo();
+  assert.deepEqual(unpinnedDataPlan(bare), [], "a checkout from before S-03 has no index, and that is not an error");
+  assert.doesNotThrow(() => buildPlan(bare));
+
+  const rel = "data/show-index.tsv";
+  assert.ok(UNPINNED_DATA.some((f) => f.rel === rel), "the index must be named in UNPINNED_DATA");
+  assert.ok(!runtimeDataFiles(fs.readFileSync(path.join(ROOT, "app.js"), "utf8")).includes(rel),
+    "if the derivation CAN see it, app.js started pinning it and sw.js will 504 on it");
+  assert.ok(buildPlan(ROOT).includes(rel), "the real bundle must carry the index");
+  assert.deepEqual(unpinnedDataOverBudget(ROOT), [], "the committed index must be inside its own budget");
+
+  const over = makeFakeRepo();
+  fs.mkdirSync(path.join(over, "data"), { recursive: true });
+  const budget = UNPINNED_DATA.find((f) => f.rel === rel).maxBytes;
+  fs.writeFileSync(path.join(over, rel), "x".repeat(budget + 1));
+  assert.equal(unpinnedDataOverBudget(over).length, 1);
+  assert.throws(() => buildPlan(over), /BUILD_MAX_RANK/,
+    "and the error must name the knob that fixes it, not just the number");
 });

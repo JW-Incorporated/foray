@@ -73,6 +73,13 @@ const RUNTIME_DATA = [
   "personas.json",
   "ladders.json",
   "dai-classification.json",
+  /* S-03 (docs/search-plan.md): the client-side show index. Listed HERE and
+     deliberately NOT in tools/ci/generate-manifest.mjs's RUNTIME_DATA — it is
+     served but not precached and not pinned, which is option B in
+     tools/build-show-index.mjs's design comment. app.js fetches it with a bare
+     `fetch()` on the first focus of the search box; a listener who never
+     searches never pays for it, and a deploy does not re-download it. */
+  "show-index.tsv",
 ];
 
 /* The player modules (#23/#24/#33). Loaded as ES modules by the client once

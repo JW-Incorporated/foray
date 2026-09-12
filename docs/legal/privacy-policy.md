@@ -183,14 +183,22 @@ Two things worth calling out plainly, because a generic policy would hide them:
 entirely on your device against files already downloaded (`search-engine.js`)
 and is never logged as an event; playlist events are local-only.
 
-**The Shows search box works the same way — until it has to look further
-than your device.** Typing a search first checks 4a's local catalogue
-on-device, the same as the playlist box, and if a show or episode is already
-in that local catalogue nothing you typed leaves your device. If it is not —
-you are searching for something outside 4a's local catalogue — 4a sends your
-typed query off-device to look it up against a shard/index so it can still
-find it. That query, and nothing else about you, is what is transmitted for
-that lookup. Separately from anything you type, when 4a launches and each time
+**The Shows search box is different: what you type there does leave your
+device.** Read this one plainly, because an earlier version of this policy
+promised something narrower. Typing into the Shows search box is answered
+first from the catalogue already on your device — that part is instant and
+local — and 4a **also** sends the text you typed to our own server
+(`app.js:API_ORIGIN`) so it can search the full catalogue, and, when nothing
+we hold matches at all, on to Apple's public podcast directory
+(`itunes.apple.com`) so a show we have never listed can still be found. **It
+does this whether or not the show was already on your device.** There is no
+"only if we cannot find it locally" condition; the previous wording said
+there was, and the code never had one. What is sent is the text you typed and
+nothing else — no account id, no device identifier, no record of your other
+searches, and nothing is stored against you. It is not sent per keystroke
+either: 4a waits until you stop typing (250 ms) and sends once, and a query
+you repeat in the same session is answered from memory without asking again.
+Separately from anything you type, when 4a launches and each time
 you bring it back to the foreground it fetches the current foray directory —
 the small pointer `data/forays-directory.json` and, only when that pointer
 names a newer version than the one on your device, `data/forays.json`,

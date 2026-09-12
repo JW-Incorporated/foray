@@ -297,6 +297,109 @@ the local equivalent per S-01's own acceptance line.
 ---
 
 
+### 1.7 S-08's after numbers (2026-09-12, `feat/search-deck-s02-s08` @ `b3a12a6`+)
+
+**Measured**, `node tools/search-probe.mjs --check`, same sandbox and same
+12-query battery as §1.6, 20 reps, median and p95. Read this section beside
+§1.6, not instead of it: the local 220-show pass is **unchanged code** and its
+numbers move only with machine load, which is exactly why it is the control.
+
+**(a) The curated 220-show pass — the control.**
+
+| query | len | hits | median ms | p95 ms |
+|---|---|---|---|---|
+| `l` | 1 | 112 | 0.916 | 28.994 |
+| `le` | 2 | 27 | 0.143 | 0.737 |
+| `lex` | 3 | 1 | 0.084 | 0.152 |
+| `lex f` | 5 | 1 | 0.123 | 0.138 |
+| `sci` | 3 | 9 | 0.107 | 0.182 |
+| `science f` | 9 | 1 | 0.083 | 0.113 |
+| `hist` | 4 | 11 | 0.139 | 0.162 |
+| `the daily` | 9 | 0 | 0.126 | 0.234 |
+| `radiolab` | 8 | 1 | 0.147 | 0.867 |
+| `99%` | 3 | 1 | 0.076 | 0.171 |
+| `zzqx` | 4 | 0 | 0.070 | 0.129 |
+| `伊藤洋一のRound Up World Now！` | 24 | 0 | 0.048 | 0.068 |
+
+Hit counts are **identical to §1.6's** for every query, which is the check that
+matters here: S-04 changed the ORDER, not the membership. The times are ~3-5x
+§1.6's because this sandbox was under load (§1.6's `l` read 0.074 ms median and
+0.610 p95; this run reads 0.916 / 28.994 for the same unchanged code). Treat the
+absolute ms as environment-dependent — the durable finding is that the curated
+pass is still far inside a frame.
+
+**(b) The index pass — the number S-03 exists to produce.** `data/show-index.tsv`,
+10,113 rows, 446,334 B on disk, **201.1 KB gzipped** (level 9) against S-03's
+400 KB budget. `parseShowIndex` decode: median **51.6 ms**, p95 **102.9 ms** —
+which is why it runs once, on first focus, and never at `init()` or on a
+keystroke.
+
+| query | pfx hits | pfx median | pfx p95 | scan hits | scan median | scan p95 | scan run? |
+|---|---|---|---|---|---|---|---|
+| `l` | 418 | 1.808 | 14.215 | 5332 | 232.042 | 471.331 | no |
+| `le` | 90 | 0.350 | 0.498 | 1382 | 94.482 | 136.817 | no |
+| `lex` | 1 | 0.004 | 0.012 | 15 | 46.296 | 74.340 | yes |
+| `lex f` | 1 | 0.004 | 0.004 | 0 | 22.346 | 42.625 | yes |
+| `sci` | 14 | 0.022 | 0.025 | 117 | 24.879 | 45.737 | no |
+| `science f` | 3 | 0.006 | 0.010 | 7 | 18.147 | 40.959 | yes |
+| `hist` | 15 | 0.029 | 0.049 | 110 | 28.730 | 47.789 | no |
+| `the daily` | 18 | 0.035 | 0.059 | 2 | 27.763 | 54.623 | no |
+| `radiolab` | 1 | 0.005 | 0.026 | 0 | 18.625 | 36.987 | yes |
+| `99%` | 1 | 0.004 | 0.005 | 0 | 13.839 | 24.290 | yes |
+| `zzqx` | 0 | 0.003 | 0.004 | 0 | 10.594 | 23.728 | yes |
+| `伊藤洋一のRound Up World Now！` | 24 | 0.004 | 0.006 | 0 | 9.227 | 18.561 | yes |
+
+**"scan run?" is the column that makes this table honest.** The scan is the
+linear pass; app.js runs it **only on the debounce tick and only when the prefix
+pass returned fewer than 10 hits** (`SHOW_PREFIX_UNDERDELIVERS_BELOW`). So `l`'s
+232 ms scan is measured here and **never paid** — the queries whose scans are
+actually reached cost 9-46 ms, on a tick 250 ms after the last keystroke, which
+is the budget §1.3 set for it.
+
+**Against §1.3's prediction, which held.** §1.3 measured a linear scan of all
+19,904 titles at 12.9-19.9 ms and concluded it was over a frame budget; this run
+measures the same shape at 9-232 ms over 10,113 rows on a loaded sandbox, and
+the prefix pass it prescribed instead at **0.003-0.035 ms median for every query
+longer than one character**. The one-character query `l` costs 1.8 ms median,
+and that cost is the SORT of its 418 results rather than the search.
+
+**A measurement bug found and fixed while producing this table**, recorded
+because it would have made S-03 look like it failed its own acceptance line: the
+first version of `indexPassBattery` ran the prefix and scan reps interleaved per
+query, which put the prefix timing inside the scan's GC window. `l`'s prefix
+median read **22-43 ms** interleaved and **1.8-2.3 ms** when the two passes are
+swept separately, for identical work. The probe now sweeps them separately and
+says so in its own header.
+
+**(c) The breadth round-trip — unchanged, and still the reason S-03 exists.**
+
+| sample | ttfb ms | status | Cache-Control | X-Vercel-Cache | Age |
+|---|---|---|---|---|---|
+| MISS 1 | 2978 | 200 | `public, max-age=300` | MISS | 0 |
+| MISS 2 | 944 | 200 | `public, max-age=300` | MISS | 0 |
+| MISS 3 | 169 | 200 | `public, max-age=300` | MISS | 0 |
+| repeat 1 | 178 | 200 | `public, max-age=300` | MISS | 0 |
+| repeat 2 | 249 | 200 | `public, max-age=300` | HIT | 0 |
+| repeat 3 | 112 | 200 | `public, max-age=300` | HIT | 0 |
+
+**`stale-while-revalidate` is still missing from the response** even though
+`api/shows/search.ts` sets it — third independent observation (§1.4, §1.6, here).
+S-05's source-comment correction is in the follow-up `api/**` PR.
+
+**The comparison that matters, stated in one line.** Before: every keystroke was
+worthless (there was no keystroke path at all) and every submit paid
+**101-2978 ms** for a result. After: every keystroke is answered in **under
+0.04 ms** from 10,113 shows on the device, and the round trip happens once, 250 ms
+after the listener stops typing, and not at all on a repeat of a query already
+asked this session.
+
+**Still owed, and named rather than implied:** a run of this same probe **on the
+founder's device**. Every number above and in §1.6 is from this sandbox. S-01's
+acceptance line asked for a device run and it has not happened; the phone-side
+claims in §1.3 ("a mid-range phone is commonly 2-4x slower") remain **inferred**.
+
+---
+
 
 ## 2. Target
 
@@ -372,7 +475,7 @@ prefix lists.
 
 ---
 
-#### S-01 · Measure first: a search probe with a before number — **M**
+#### S-01 · Measure first: a search probe with a before number — **M** — **DONE** (#576, 2026-09-10; before numbers in §1.6. Extended by #657: the probe now also measures S-03's index — both passes reported separately — and its entrypoint guard was silently false on Windows, so it printed nothing and exited 0 on the founder's own machine)
 
 - **Ask:** a probe that produces, on the CI runner and on the founder's device,
   the three numbers every later card is graded against. (a) `tools/search-probe.mjs`,
@@ -410,7 +513,7 @@ prefix lists.
   no `X-Vercel-Cache` beside it.
 - **Governance:** all auto-merge paths.
 
-#### S-02 · Live filtering, debounce, and the Go button (F2) — **M**
+#### S-02 · Live filtering, debounce, and the Go button (F2) — **M** — **DONE** (#657, 2026-09-12; `input` runs the local pass and fires nothing, the three expensive passes moved onto a 250 ms trailing debounce, Enter/Go skip it, clearing restores the A-Z list. G2's default taken: the button survives, the requirement does not. G1 having been ruled Option B, the network half shipped with the rest rather than staying behind the submit trigger)
 
 - **Ask:** `renderAllShows` binds `input` on `#sh-input` as well as `submit` on
   `#sh-form`. On **every keystroke**: run the **local** pass and repaint —
@@ -453,7 +556,7 @@ prefix lists.
   `topicSearchStatus()` call occurs while the query is still changing.
 - **Governance:** all auto-merge paths. No `index.html` touch.
 
-#### S-03 · The breadth catalogue as a client-side prefix index — **L** — *design comment first*
+#### S-03 · The breadth catalogue as a client-side prefix index — **L** — *design comment first* — **DONE** (#657, 2026-09-12; `tools/build-show-index.mjs` → `data/show-index.tsv`, 10,113 shows at the `chart_rank <= 100` cut, 436 KB raw / 201 KB gzipped. The design comment is at the top of the new module rather than in the PR thread — a thread is read once, that file is read by everyone who touches the index. **Option B**, and it needed NO new `sw.js` code: `cachePut`'s existing untracked-path branch already caches it, now pinned by name in `test/sw-generation.test.js`. G5 answered with measurements — the full 19,904 set is 398.4 KB gzipped against a 400 KB budget, a 0.4 % margin the next harvest breaks, and would put the native bundle at 89 % of its cap)
 
 - **Ask:** a build step that emits a compact title index over the merged
   catalogue, and a client that loads it lazily and searches it in O(log n).
@@ -533,7 +636,7 @@ prefix lists.
   `tools/ci/generate-manifest.mjs` → **`founder-approved`, G4**. If the label
   wait would block, split that one file into its own PR.
 
-#### S-04 · Ranking: exact, prefix, word-start, substring — with the popularity prior — **M**
+#### S-04 · Ranking: exact, prefix, word-start, substring — with the popularity prior — **M** — **DONE** (#657, 2026-09-12; four buckets, curated before breadth, `chart_rank` bucketed `<=10/<=50/<=200/unranked` because it is per-genre, then a cached-collator `localeCompare`. `node tools/test-search.mjs` passes unchanged. The server rule in `backend/src/catalog/searchBreadthShows.ts` was NOT mirrored — the divergence is deliberate, recorded in `docs/DECISIONS.md`, and defensible only while S-03 keeps the endpoint off the interactive path. U-05's "no `search-engine.js` scoring changes" line needs a pointer here)
 
 - **Ask:** one ranking rule, in `search-engine.js`, applied to the local pass and
   the index pass alike. Buckets, in order: **0** exact title match
@@ -682,7 +785,7 @@ prefix lists.
   goes client-side, the CSP line makes this a second human-merge file and
   `test/api-origin.test.js`'s pin must be widened in the same PR.
 
-#### S-07 · The privacy conditional: write both diffs, let the founder pick — **S** — **BLOCKS EVERYTHING ABOVE THAT TOUCHES THE NETWORK**
+#### S-07 · The privacy conditional: write both diffs, let the founder pick — **S** — **DONE** (#657, 2026-09-12; **G1 was ruled Option B on 2026-09-11** — `git show a554fb6`, `docs/DECISIONS.md` — so this card did not write both diffs, it wrote the one the founder chose. §2's conditional is gone and replaced with an affirmative unconditional statement; `SHOWS_SEARCH_OFF_DEVICE = true` arms `test/release-gates.test.js`'s AND-gate for real, its "the flag is false" test is inverted with the reason, and a new case pins that the replacement is affirmative rather than merely absent. Option A's cost and Option C's partial truth are both recorded in DECISIONS)
 
 - **Ask:** this card does **not** decide. It makes the decision cheap by putting
   both answers side by side as real diffs, on a branch, and then waits for

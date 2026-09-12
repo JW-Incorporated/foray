@@ -7,6 +7,47 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
+### Hermes search deck S-02..S-05/S-07, client half (2026-09-12) — `feat/search-deck-s02-s08`
+
+- **What:** `docs/search-plan.md`'s client cards. **S-02** the Shows search
+  filters live as you type (founder feedback F2) — `input` runs the LOCAL pass
+  only and fires nothing; a 250 ms trailing debounce carries the breadth
+  endpoint, the episode endpoint and the playlist CTA's 1.3-8 s topic scan;
+  Enter and the Go button skip the debounce; clearing restores the A-Z list.
+  **S-03** `tools/build-show-index.mjs` -> `data/show-index.tsv` (10,113 shows,
+  436 KB raw / 201 KB gzipped at the `chart_rank <= 100` cut), fetched UNPINNED
+  and lazily on the first focus of `#sh-input`, searched with binary search on
+  the keystroke and a linear scan only on the debounce tick when the prefix
+  pass returned fewer than 10 hits. **S-04** four ranking buckets (exact >
+  prefix > word-start > substring), curated before breadth, `chart_rank` as a
+  BUCKETED prior (it is per-genre; a raw sort compares two scales),
+  `localeCompare` via a cached collator for a deterministic tie. **S-05's
+  client half** a bounded in-memory hot-query cache in the `SEARCH_CACHE_MAX`
+  idiom. **S-07** G1's Option B: the privacy policy's "nothing you typed leaves
+  your device" conditional is gone and replaced with an affirmative
+  unconditional statement, and `SHOWS_SEARCH_OFF_DEVICE = true` arms the
+  release tripwire for real.
+- **Touches:** `app.js`, `search-engine.js`, `data/show-index.tsv` (new),
+  `tools/build-show-index.mjs` (+ `.test.mjs`, new, 9, floored),
+  `tools/search-probe.mjs` (+ its test, 27 -> 30) — the probe now measures the
+  index's two passes separately and its Windows entrypoint guard is fixed,
+  `tools/web/prepare-dist.mjs`, `tools/mobile/prepare-webdir.mjs` (+ its test,
+  77 -> 78), `test/show-search-live.test.js` / `show-search-ranking.test.js` /
+  `show-index.test.js` / `show-search-cache.test.js` (new, floored),
+  `test/release-gates.test.js` (6 -> 7), `test/sw-generation.test.js`
+  (51 -> 52), `test/suite-integrity.test.js`, `.gitattributes`,
+  `docs/legal/privacy-policy.md`, `docs/CATALOG-PIPELINE.md` (requirement #5
+  amended), `docs/DECISIONS.md`, `docs/search-plan.md`, `STATE.md`.
+- **Not done here:** S-05's `api/shows/search.ts` degraded-branch header and
+  S-06 (the `id` lookup + Apple fall-through) — both are `api/**`, which is
+  UNLISTED in `tools/ci/path-policy.mjs` and therefore needs a human merge
+  click (G3), so they are batched into ONE follow-up PR rather than two.
+  Also not done: mirroring S-04's rule into
+  `backend/src/catalog/searchBreadthShows.ts` — the divergence is deliberate
+  and recorded in `docs/DECISIONS.md`.
+- **Gates:** `docs/DECISIONS.md` is a DENIED path -> `founder-approved` (G4).
+  G5 (the index budget) was answered with measurements rather than left open;
+  raising the cut is one flag and a rebuild if the founder disagrees.
 ### "Show draft Forays" — the founder's test-track switch (2026-09-11) — `feat/show-draft-forays`
 
 - **What:** Wyatt: "I can't see these forays in the app, please fix that." The

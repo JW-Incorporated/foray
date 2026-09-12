@@ -1882,12 +1882,49 @@ function renderAllShows() {
       <a class="page-link-row" href="#/starred-shows">Starred shows \u203a</a>
       ${vouchForHtml()}`);
 
+  /* S-02 (docs/search-plan.md, founder feedback F2: "Shows search should
+     filter live as you type. Hitting Go should not be required.").
+
+     THREE BINDINGS, AND THE SPLIT BETWEEN THEM IS THE WHOLE CARD:
+
+       input   -> the LOCAL pass only, every keystroke, no network, no episode
+                  search, no playlist CTA. Measured (docs/search-plan.md §1.6):
+                  0.010-0.074 ms median over the curated 220, 0.004-2.1 ms over
+                  S-03's 10,113-row index — inside a 16 ms frame either way.
+                  Then a 250 ms trailing debounce for everything that costs
+                  something.
+       submit  -> the same thing with the debounce SKIPPED. Enter and the Go
+                  button both land here. The button survives (G2's default:
+                  "keep the button, keep Enter, make neither required" — it is
+                  now "search now, skip the debounce", not "search at all").
+       focus   -> S-03's lazy index load, once. Never at init(): the decode is
+                  ~113 ms measured, and it must not sit on the boot path or on
+                  a keystroke.
+
+     WHY THE COSTLY PASSES MOVED (each of the three was measured in §1.5, and
+     naively adding an `input` listener would have multiplied all three by the
+     keystroke):
+       - `renderEpisodeSearchResults` is a SECOND network call;
+       - the breadth pass is a network call, 0.4-1.1 s;
+       - `renderPlaylistSearchResults`'s CTA defers `topicSearchStatus()`, a
+         full relaxation scan this repo's own source measures at 1.3-8 s cold.
+     All three now run on the debounce tick only — see `runShowSearchCostly`. */
   $("#sh-form").addEventListener("submit", (e) => {
     e.preventDefault();
     const query = $("#sh-input").value.trim();
     if (!query) return;
     renderShowSearchResults(query);
   });
+
+  const input = $("#sh-input");
+  if (input) {
+    input.addEventListener("input", () => onShowSearchInput(input.value));
+    /* Once. `loadShowIndex` is itself idempotent (it returns the in-flight
+       promise, then the resolved index), so a second focus costs nothing and
+       this needs no `{ once: true }` — which would be wrong anyway, since a
+       first attempt that failed offline should be retried on a later focus. */
+    input.addEventListener("focus", () => { loadShowIndex(); });
+  }
 }
 
 /* Stage 3b (docs/show-pages-plan.md §Stage 3, kanban t_567b570f): full
@@ -3186,7 +3223,38 @@ function vouchForHtml() {
    showing. A network failure degrades to the curated-only results silently
    — never a broken/blank state (matches showsForCategory's and renderShow's
    own "absence is a real state, not an error" rule). */
+/* S-07 / G1 (docs/search-plan.md §3, docs/DECISIONS.md 2026-09-11). The
+   founder ruled OPTION B: the typed Shows-search query may leave the device,
+   unconditionally, and docs/legal/privacy-policy.md §2 was rewritten to say so
+   rather than the code being gated on a local miss.
+
+   THIS CONSTANT IS THE RELEASE TRIPWIRE'S SOURCE FLAG, not a behaviour switch,
+   and nothing in this file reads it. `test/release-gates.test.js` does: a
+   release build fails to start if this is true WHILE the policy still carries
+   the old absolute no-transmission sentence. It is set now because the claim
+   it makes is true now — the debounced passes below reach
+   `api/shows/search` and `api/episodes/search` on every query, hit or miss.
+   Turning it off without also restoring a local-miss gate would be a lie about
+   the same code, which is the one thing that suite exists to prevent. */
+const SHOWS_SEARCH_OFF_DEVICE = true;
+
 let showSearchToken = 0; // guards a slow in-flight fetch from clobbering a newer query's results
+
+/* S-02: the debounce timer, and `showSearchToken` now guards it as well as the
+   in-flight responses. A fast retype must CANCEL the pending tick, not merely
+   drop its answer — otherwise ten keystrokes inside 250 ms would still fire
+   ten costly passes, each of which would then discover it had been superseded
+   after paying for itself. Two mechanisms, because they fail at different
+   moments: `clearTimeout` stops work that has not started, the token drops
+   work that has already started. */
+let showSearchDebounceTimer = null;
+const SHOW_SEARCH_DEBOUNCE_MS = 250;
+
+/* Below this many hits from the prefix pass, the debounce tick also runs the
+   LINEAR scan over the index (12.9-19.9 ms measured over 19,904 rows, 4.1 ms
+   median over the committed 10,113-row cut — either way too expensive for a
+   keystroke, and pointless when the prefix pass already filled the list). */
+const SHOW_PREFIX_UNDERDELIVERS_BELOW = 10;
 
 /** Monotonic where available (S-01, docs/search-plan.md): `performance.now()`
     in a browser, `Date.now()` in the node:vm test harness that has no
@@ -3198,78 +3266,272 @@ function nowMs() {
     ? performance.now() : Date.now();
 }
 
-function renderShowSearchResults(query) {
-  const myToken = ++showSearchToken;
+/* ---------- S-03: the client-side show index ----------
+
+   `data/show-index.tsv` — 10,113 shows, 436 KB raw / 201 KB gzipped, built by
+   `tools/build-show-index.mjs` (whose header carries the whole design
+   argument, including why this fetch is UNPINNED). Three rules live here and
+   nowhere else:
+
+   1. LAZY, ON FIRST FOCUS OF `#sh-input`. Never at `init()`. The decode is
+      ~113 ms measured; on the boot path that is a visible stall for a listener
+      who came to press play.
+   2. UNPINNED — a bare `fetch`, not `fetchJson`, and the parentheses are
+      left off that name ON PURPOSE: tools/mobile/prepare-webdir.mjs derives
+      the native bundle's data list by counting literal CALL SITES of that
+      helper in this file, and a mention of its name followed by an open
+      parenthesis — even inside a comment — is counted as one of them, so it
+      is written bare here and pinned by that file's own derivation test.
+      `fetchJson` appends
+      `?_fdid=<deploy id>` and `sw.js:handleData`'s tagged branch answers a
+      bare 504 for a pinned file the generation does not hold, so a pinned
+      fetch of a file that is not in `deploy-manifest.json` fails HARD, online
+      and offline alike (docs/search-plan.md §1.5). Unpinned goes through the
+      untagged branch: origin first, generation cache second.
+   3. ABSENCE IS A REAL STATE. A failed or 404ing index is not an error the
+      listener ever sees: `localShowMatches` falls back to the curated 220 and
+      the debounced breadth endpoint still answers. A later focus retries. */
+const SHOW_INDEX_PATH = "data/show-index.tsv";
+let showIndex = null;          // { keys, rows } once decoded
+let showIndexPromise = null;   // the in-flight load, so N focuses cost one fetch
+let showIndexFetchCount = 0;   // test-visible: the index is fetched at most once
+
+function loadShowIndex() {
+  if (showIndex) return Promise.resolve(showIndex);
+  if (showIndexPromise) return showIndexPromise;
+  showIndexFetchCount++;
+  showIndexPromise = (async () => {
+    try {
+      const res = await fetch(SHOW_INDEX_PATH, { cache: "no-cache" });
+      if (!res || !res.ok) return null;
+      const parsed = SearchEngine.parseShowIndex(await res.text());
+      /* An empty parse is a failure, not an empty index: it means the file
+         arrived truncated or in a shape `parseShowIndex` does not read, and
+         adopting it would permanently shadow the curated pass with nothing. */
+      if (!parsed.rows.length) return null;
+      showIndex = parsed;
+      repaintShowSearchForIndex();
+      return showIndex;
+    } catch (_) {
+      return null; // offline, blocked, or a 504 from the worker — see rule 3
+    } finally {
+      showIndexPromise = null;
+    }
+  })();
+  return showIndexPromise;
+}
+
+/** The index landing mid-query must improve the list already on screen — a
+    listener who typed before it resolved would otherwise keep the 220-show
+    answer until the next keystroke. Re-runs the LOCAL pass only: the costly
+    passes stay on the debounce tick, and this is not a keystroke. */
+function repaintShowSearchForIndex() {
+  const input = $("#sh-input");
+  const query = input && String(input.value || "").trim();
+  if (!query) return;
+  paintShowSearchLocal(query, showSearchToken);
+}
+
+/** Curated 220 + the index's PREFIX answer, merged and ranked once by
+    `SearchEngine.searchShows` so the two sources cannot produce two orders.
+    Curated records win a duplicate id deliberately: they carry `artwork_url`
+    and `editorial_note`, which the index's title projection does not. */
+function localShowMatches(query) {
+  const curated = state.catalog?.shows || [];
+  if (!showIndex) return SearchEngine.searchShows(query, curated);
+  const seen = new Set(curated.map((s) => s.show_id));
+  const fromIndex = SearchEngine.prefixSearchShows(query, showIndex)
+    .filter((s) => !seen.has(s.show_id));
+  return SearchEngine.searchShows(query, curated.concat(fromIndex));
+}
+
+/* ---------- S-05: the hot-query cache ----------
+
+   `fetchApiJson` passes `{ cache: "no-cache" }` (measured, docs/search-plan.md
+   §1.5), so the browser's own HTTP cache is defeated BY DESIGN and the
+   endpoint's `max-age=300` buys the app nothing — a retype of a query typed
+   three seconds ago pays the whole 0.4-1.1 s round trip again. So the cache
+   has to live here.
+
+   FIFO-with-wholesale-clear, following `SEARCH_CACHE_MAX`/`searchCache` above
+   rather than inventing a second cache convention in the same file: every
+   entry is a pure function of its key and cheap to rebuild, so evicting all
+   of them on overflow is fine and needs no LRU bookkeeping. Session-scoped,
+   never persisted — a reload gets fresh results, which is the right default
+   for a catalogue that refreshes nightly.
+
+   ONLY SUCCESSFUL RESPONSES ARE CACHED. A failed fetch resolves `null` and is
+   not an answer; caching it would turn one bad moment on a train into a
+   permanently empty breadth pass for that query.
+
+   THE REFUSAL THIS CARD IS REALLY ABOUT: no warm-up ping, no keep-warm cron.
+   Measured (§1.4): forced-MISS ttfb 0.72-0.88 s, repeat-HIT 0.41-1.12 s — a
+   ~0.3 s delta on a ~0.8 s wall time, because a Vercel HIT does not invoke
+   the function at all. Cold start is not what makes search feel slow; the
+   round trip is, and S-03 is what removes it. A scheduled warm-up job would
+   buy a third of the wrong number. */
+const SHOW_BREADTH_CACHE_MAX = 200;
+const showBreadthQueryCache = new Map();
+
+function showBreadthCacheKey(query) {
+  return String(query || "").trim().toLowerCase();
+}
+
+/* S-01's diagnostics call site (docs/search-plan.md, `player/diagnostic-log.js`'s
+   `search` entry kind). ONE call per completed search. QUERY LENGTH, NEVER THE
+   QUERY TEXT -- `diag.search`'s own guard would drop a string in `qLen` to
+   null, but the discipline starts here: nothing downstream of this line ever
+   holds the literal query. Guarded the same way `forayNoteTapFailure` is
+   guarded (`player/client.js`): a record that will not write, or does not
+   exist yet on an older bundle, must not break the search it is measuring. */
+function recordSearchDiagnostic(fields) {
+  try {
+    if (typeof window.forayRecordSearch === "function") window.forayRecordSearch(fields);
+  } catch (_) {
+    // A diagnostics write failing is not a reason to break search.
+  }
+}
+
+/** Back to the unfiltered A-Z list, which is still in the page underneath —
+    NOT to an empty results box with a "no shows match" note for a query the
+    listener just deleted (S-02's own acceptance line). */
+function clearShowSearchResults() {
   const note = $("#sh-note");
   const results = $("#sh-results");
+  const eps = $("#ep-search-results");
+  const pls = $("#pl-search-results");
+  if (results) { results.innerHTML = ""; results.hidden = true; }
+  if (note) { note.textContent = ""; note.hidden = true; }
+  if (eps) { eps.innerHTML = ""; eps.hidden = true; }
+  if (pls) { pls.innerHTML = ""; pls.hidden = true; }
+}
+
+/** Paints one set of show rows into `#sh-results`, or the honest empty state.
+    Token-guarded so a slow costly pass cannot repaint over a newer query. */
+function paintShowResults(query, shows, myToken) {
+  if (myToken !== showSearchToken) return; // a newer query already superseded this one
+  const note = $("#sh-note");
+  const results = $("#sh-results");
+  if (!note || !results) return;
+  if (!shows.length) {
+    results.innerHTML = "";
+    results.hidden = true;
+    note.textContent = `No shows match "${query}" in 4a's catalogue.`;
+    note.hidden = false;
+    return;
+  }
+  note.hidden = true;
+  results.innerHTML = shows.map(showResultRow).join("");
+  results.hidden = false;
+}
+
+/** THE KEYSTROKE PATH. Local only: no fetch, no episode search, no playlist
+    CTA, nothing deferred. Returns what it painted plus its own timings, which
+    the costly pass folds into the one diagnostics record. */
+function paintShowSearchLocal(query, myToken) {
   const localStart = nowMs();
-  const localShows = SearchEngine.searchShows(query, state.catalog?.shows || []);
+  const localShows = localShowMatches(query);
   const localMs = nowMs() - localStart;
+  paintShowResults(query, localShows, myToken);
+  return { localShows, localMs, paintedMs: nowMs() - localStart };
+}
 
-  const paint = (shows) => {
-    if (myToken !== showSearchToken) return; // a newer query already superseded this one
-    if (!shows.length) {
-      results.innerHTML = "";
-      results.hidden = true;
-      note.textContent = `No shows match "${query}" in 4a's catalogue.`;
-      note.hidden = false;
-      return;
+/** THE DEBOUNCE TICK. Everything §1.5 measured as expensive, in one place:
+    the index's linear scan (only when the prefix pass under-delivered), the
+    breadth endpoint (only on a hot-cache miss), the episode endpoint, and the
+    playlist section whose CTA defers a 1.3-8 s relaxation scan. */
+function runShowSearchCostly(query, myToken, local) {
+  let shown = local.localShows;
+
+  /* The scan pass, gated twice: the index must be loaded, and the prefix pass
+     must have under-delivered. `scanShowIndex` returns word-start and
+     substring hits only, so there is nothing here to dedupe against the
+     prefix answer beyond the curated rows. */
+  if (showIndex && shown.length < SHOW_PREFIX_UNDERDELIVERS_BELOW) {
+    const seen = new Set(shown.map((s) => s.show_id));
+    const scanned = SearchEngine.scanShowIndex(query, showIndex).filter((s) => !seen.has(s.show_id));
+    if (scanned.length) {
+      shown = SearchEngine.searchShows(query, shown.concat(scanned));
+      paintShowResults(query, shown, myToken);
     }
-    note.hidden = true;
-    results.innerHTML = shows.map(showResultRow).join("");
-    results.hidden = false;
+  }
+
+  const mergeBreadth = (breadthShows) => {
+    const seen = new Set(shown.map((s) => s.show_id));
+    const additions = [];
+    for (const s of breadthShows) {
+      // so showById can resolve it once a result is tapped, and so a richer
+      // record (artwork, editorial note) replaces the index's title-only row
+      state.breadthShowCache[s.show_id] = s;
+      if (seen.has(s.show_id)) continue;
+      seen.add(s.show_id);
+      additions.push(s);
+    }
+    if (!additions.length) return;
+    shown = SearchEngine.searchShows(query, shown.concat(additions));
+    paintShowResults(query, shown, myToken);
   };
 
-  paint(localShows);
-  const paintedMs = nowMs() - localStart;
-
-  /* S-01's diagnostics call site (docs/search-plan.md, `player/diagnostic-log.js`'s
-     `search` entry kind). ONE call per completed search, fired from the network
-     pass's own resolution -- `fetchApiJson` always resolves (it swallows
-     network/parse errors to `null`, see its own header), so this fires exactly
-     once per query regardless of whether the breadth pass actually landed
-     anything, and regardless of whether this query was itself later superseded
-     by a faster retype. QUERY LENGTH, NEVER THE QUERY TEXT -- `diag.search`'s own
-     guard would drop a string in `qLen` to null, but the discipline starts here:
-     nothing downstream of this line ever holds the literal query. Guarded the
-     same way `forayNoteTapFailure` is guarded (`player/client.js`): a record
-     that will not write, or does not exist yet on an older bundle, must not
-     break the search it is trying to measure. */
-  const recordSearch = (fields) => {
-    try {
-      if (typeof window.forayRecordSearch === "function") window.forayRecordSearch(fields);
-    } catch (_) {
-      // A diagnostics write failing is not a reason to break search.
-    }
-  };
-
-  const netStart = nowMs();
-  fetchApiJson(`api/shows/search?q=${encodeURIComponent(query)}&limit=25`).then((data) => {
-    const netMs = nowMs() - netStart;
-    const superseded = myToken !== showSearchToken;
-    const breadthShows = superseded ? [] : (data?.shows || []);
-    if (!superseded && breadthShows.length) {
-      const seen = new Set(localShows.map((s) => s.show_id));
-      const additions = [];
-      for (const s of breadthShows) {
-        if (seen.has(s.show_id)) continue;
-        seen.add(s.show_id);
-        state.breadthShowCache[s.show_id] = s; // so showById can resolve it once a result is tapped
-        additions.push(s);
-      }
-      if (additions.length) paint(localShows.concat(additions));
-    }
-    recordSearch({
+  const cacheKey = showBreadthCacheKey(query);
+  const cached = showBreadthQueryCache.get(cacheKey);
+  if (cached) {
+    mergeBreadth(cached);
+    recordSearchDiagnostic({
       qLen: query.length,
-      localMs, localHits: localShows.length,
-      netMs, netHits: data ? breadthShows.length : null,
-      paintedMs,
-      path: superseded ? "superseded" : data ? "local+net" : "local-only",
+      localMs: local.localMs, localHits: local.localShows.length,
+      netMs: 0, netHits: cached.length,
+      paintedMs: local.paintedMs,
+      path: myToken !== showSearchToken ? "superseded" : "local+cache",
     });
-  }); // fetchApiJson already swallows network/parse errors and resolves null — no .catch needed
+  } else {
+    const netStart = nowMs();
+    fetchApiJson(`api/shows/search?q=${encodeURIComponent(query)}&limit=25`).then((data) => {
+      const netMs = nowMs() - netStart;
+      const superseded = myToken !== showSearchToken;
+      const breadthShows = data?.shows || [];
+      if (data) {
+        if (showBreadthQueryCache.size >= SHOW_BREADTH_CACHE_MAX) showBreadthQueryCache.clear();
+        showBreadthQueryCache.set(cacheKey, breadthShows);
+      }
+      if (!superseded && breadthShows.length) mergeBreadth(breadthShows);
+      recordSearchDiagnostic({
+        qLen: query.length,
+        localMs: local.localMs, localHits: local.localShows.length,
+        netMs, netHits: data ? breadthShows.length : null,
+        paintedMs: local.paintedMs,
+        path: superseded ? "superseded" : data ? "local+net" : "local-only",
+      });
+    }); // fetchApiJson already swallows network/parse errors and resolves null — no .catch needed
+  }
 
   renderEpisodeSearchResults(query, myToken);
   renderPlaylistSearchResults(query, myToken);
+}
+
+/** Every keystroke. Local pass now; everything expensive on a 250 ms trailing
+    debounce, cancelled by the next keystroke. */
+function onShowSearchInput(rawValue) {
+  const query = String(rawValue || "").trim();
+  const myToken = ++showSearchToken; // supersedes any in-flight costly pass
+  if (showSearchDebounceTimer) clearTimeout(showSearchDebounceTimer);
+  showSearchDebounceTimer = null;
+  if (!query) { clearShowSearchResults(); return; }
+  const local = paintShowSearchLocal(query, myToken);
+  showSearchDebounceTimer = setTimeout(() => {
+    showSearchDebounceTimer = null;
+    if (myToken !== showSearchToken) return; // a newer keystroke already owns the page
+    runShowSearchCostly(query, myToken, local);
+  }, SHOW_SEARCH_DEBOUNCE_MS);
+}
+
+/** Enter, the Go button, and every existing caller: the same two passes with
+    the debounce SKIPPED — the exact idiom the show page's episode search
+    already ships (`onSearchInputChange`/`runSearch`, above). */
+function renderShowSearchResults(query) {
+  const myToken = ++showSearchToken;
+  if (showSearchDebounceTimer) { clearTimeout(showSearchDebounceTimer); showSearchDebounceTimer = null; }
+  const local = paintShowSearchLocal(query, myToken);
+  runShowSearchCostly(query, myToken, local);
 }
 
 /* U-05 (docs/ui-transition-plan.md D7): the Playlists section under Shows
