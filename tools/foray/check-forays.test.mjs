@@ -92,14 +92,13 @@ const durationOf = (f, segmentId) => {
   const s = f.segments.segments.find((x) => x.id === segmentId);
   return s.end_sec - s.start_sec;
 };
-/** THE REGIME A FORAY'S LENGTH RULES ARE JUDGED UNDER (Q-04, F-96): D5's
-    pair clause is GATED on tape cut under Q-01 — a generated Foray at least
-    one of whose played rows carries `boundary` — and REPORTED on everything
-    else. The checker's own rule, restated here so every test below asks it
-    per Foray rather than assuming the whole committed set is one regime:
-    the first Q-01 Foray (PR #648) made that assumption false. */
-const cutUnderQ01 = (f, foray) =>
-  foray.generated === true && segmentItems(foray).some((i) => f.segments.segments.find((x) => x.id === i.segment_id)?.boundary !== undefined);
+/** Every D5 line the checker emitted for one Foray. There is exactly one
+    shape of them since F-102 — a warning — and the tests below count warnings
+    against the durations rather than asking which regime a Foray is in. The
+    helper that answered THAT question (`cutUnderQ01`, Q-04/F-96) went with the
+    gate; its `boundary` sniff survives nowhere because no verdict turns on it
+    any more. */
+const d5WarningsFor = (warnings, forayId) => warnings.filter((w) => /D5 \(reported, not gated/.test(w) && w.includes(`"${forayId}"`));
 /** A fixture item and its pooled segment, by label — the two handles every
     mutation below needs. `assert` rather than `?.` so a renamed label fails as a
     missing fixture rather than as a confusing TypeError three lines later. */
@@ -282,10 +281,10 @@ test("every committed Foray's report is consistent with the items it lists", () 
     );
     assert.ok(Math.abs(r.mean_sec - tape / segs.length) < 0.06, `${where}mean ${r.mean_sec}`);
     assert.ok(r.d1_max_starts_in_window <= r.d1_budget, `${where}D1 ${r.d1_max_starts_in_window}/${r.d1_budget}`);
-    /* Q-04 / F-96: D5's pair clause is gated on a Foray cut under Q-01 and
-       reported on older tape, and the report says which regime applied — per
-       Foray, because the committed set holds both since PR #648. */
-    assert.equal(r.d5_gated, cutUnderQ01(live, foray), `${where}d5_gated must say whether this Foray's tape was cut under Q-01`);
+    /* Q-04 / F-102: D5's pair clause is reported on every Foray and gates
+       none, so the report carries the count and no regime flag. `d5_gated` is
+       asserted GONE: a flag that is permanently false is worse than no flag. */
+    assert.equal(r.d5_gated, undefined, `${where}d5_gated went with the gate (F-102)`);
     assert.equal(r.d5_uniform_pairs, d5UniformPairs(segs.map((i) => durationOf(live, i.segment_id))).length, `${where}D5 pairs`);
     assert.ok(typeof r.d5_iqr_sec === "number" && r.d5_iqr_sec >= 0, `${where}IQR ${r.d5_iqr_sec} is still reported`);
     // The stated runtime is the drift detector the checker itself runs; asserted
@@ -772,58 +771,39 @@ test("no segment runs past the end of its episode", () => {
   }
 });
 
-test("D5's pair clause is reported on tape cut before Q-01 and gated on tape cut under it — per committed Foray (Q-04, F-96)", () => {
-  /* THE RULING `check-forays.mjs` RECORDS (Q-04): "no two consecutive clips
-     within 20 % of the same length" is STRICTER than the triple clause it
-     replaced — a uniform triple holds two uniform pairs, a uniform pair need
-     be in no triple — and every Foray committed before Q-04 has one to four
-     adjacent pairs inside the band (measured 2026-09-12: 3 / 1 / 2 / 4 on the
-     hand-cut four, 1 / 3 / 1 / 3 on the generated four). Their tape cannot be
-     re-cut, so on them the pairs are WARNINGS, each one counted in the report,
-     and the gate binds only a Foray whose played rows carry Q-01's `boundary`.
+test("D5's pair clause is reported on every committed Foray and gates none of them (Q-04, F-102)", () => {
+  /* THE RULING `check-forays.mjs` RECORDS (F-102, 2026-09-12). "No two
+     consecutive clips within 20 % of the same length" was an ERROR for one day,
+     on a Foray whose tape was cut under Q-01. Q-01 and Q-04 are two cards of
+     one series that moved the same quantity in opposite directions — a clip
+     runs as long as the tape stays relevant; two clips in a row must not be the
+     same length — and a gate can only settle that by shortening a clip or
+     refusing its tape, both of which make the Foray play LESS. So the clause is
+     a COUNT now: every pair is a warning on every Foray, the report carries
+     `d5_uniform_pairs` and `d5_iqr_sec`, and no verdict turns on either.
 
-     PER FORAY, NOT PER DATA SET (F-96). The first draft of this asserted
-     `d5_gated === false` for EVERY committed Foray — true until the first
-     Q-01 Foray landed (PR #648, run 9), and false the moment it did, which is
-     exactly what G-21c requires of it (a committed fixture for every shape).
-     So the rule is asked of each Foray in the regime its own rows put it in:
-     pre-Q-01 tape — every pair a warning, none an error; Q-01 tape — every
-     pair an error, none a warning; and the report's count and flag agree
-     with the rows either way. The boundary fixture's D5 block below pins the
-     same two regimes on data this file owns. */
+     MUTATION THAT KILLS THIS: restore the gate — `if (cutUnderQ01) E(...)` in
+     the D5 block — and every generated Foray whose rows carry `boundary` goes
+     red here on `no D5 line is ever an error`. Ran it — red.
+
+     WHAT IT USED TO ASSERT, kept because the numbers are the baseline: each of
+     the eight committed Forays holds one to four adjacent pairs inside the band
+     (measured 2026-09-12: 3 / 1 / 2 / 4 hand-cut, 1 / 3 / 1 / 3 generated), and
+     every one of them is counted. */
   const { warnings, errors, report } = checkForays(live);
   let reported = 0;
-  let gated = 0;
-  let gatedForays = 0;
   for (const f of live.forays.forays) {
     const durs = segmentItems(f).map((i) => durationOf(live, i.segment_id));
     const pairs = d5UniformPairs(durs).length;
     const r = report.forays.find((x) => x.id === f.id);
-    const q01 = cutUnderQ01(live, f);
     assert.equal(r.d5_uniform_pairs, pairs, `${f.id}: the report counts ${r.d5_uniform_pairs} pairs and the durations hold ${pairs}`);
-    assert.equal(r.d5_gated, q01, `${f.id}: d5_gated ${r.d5_gated}, but its rows say ${q01 ? "cut under Q-01" : "cut before Q-01"}`);
-    const own = (line) => line.includes(`"${f.id}"`);
-    const ownWarnings = warnings.filter((w) => /D5 \(reported, not gated/.test(w) && own(w)).length;
-    const ownErrors = errors.filter((e) => /D5 FAIL/.test(e) && own(e)).length;
-    if (q01) {
-      gatedForays += 1;
-      gated += pairs;
-      assert.equal(ownErrors, pairs, `${f.id}: cut under Q-01, so its ${pairs} pair(s) are errors, not warnings (${ownWarnings} warned)`);
-      assert.equal(ownWarnings, 0, `${f.id}: a Q-01 Foray's pairs are never merely reported`);
-    } else {
-      reported += pairs;
-      assert.equal(ownWarnings, pairs, `${f.id}: cut before Q-01, so its ${pairs} pair(s) are warnings`);
-      assert.equal(ownErrors, 0, `${f.id}: a pair on pre-Q-01 tape must never fail the build`);
-    }
+    assert.equal(r.d5_gated, undefined, `${f.id}: the regime flag went with the regime (F-102)`);
+    assert.equal(d5WarningsFor(warnings, f.id).length, pairs, `${f.id}: its ${pairs} pair(s) are each reported once`);
+    reported += pairs;
   }
-  assert.equal(warnings.filter((w) => /D5 \(reported, not gated/.test(w)).length, reported, "every pre-Q-01 pair is reported as a warning, and nothing else is");
-  assert.equal(errors.filter((e) => /D5 FAIL/.test(e)).length, gated, "every Q-01 pair is an error, and nothing else is");
+  assert.equal(warnings.filter((w) => /D5 \(reported, not gated/.test(w)).length, reported, "every pair is reported as a warning, and nothing else is");
+  assert.deepEqual(errors.filter((e) => /^D5/.test(e.replace(/^foray "[^"]*": /, ""))), [], "no D5 line is ever an error");
   assert.ok(reported > 0, "the committed Forays hold uniform pairs today, or this test proves nothing about reporting");
-  /* A committed Q-01 Foray with a uniform pair cannot exist — the gate above
-     ("passes with zero errors") refuses it — so on committed data the gated
-     count is always zero; the assertion is that the REGIME is right, which the
-     per-Foray `d5_gated` line carries whether or not a Q-01 Foray has landed. */
-  if (gatedForays > 0) assert.equal(gated, 0, "a committed Q-01 Foray holds no uniform pair, or the zero-errors gate above is broken");
 });
 
 /* ============================================================================
@@ -934,7 +914,6 @@ test("the fixture's numbers are the ones its README derives", () => {
   assert.equal(r.d1_budget, 6, "52.0 min falls in §5c's 45-120 minute band");
   assert.equal(r.d5_iqr_sec, 76, "quartiles land on 72 s and 148 s");
   assert.equal(r.d5_uniform_pairs, 0, "the period alternates, so no two neighbours are inside D5's band");
-  assert.equal(r.d5_gated, false, "the fixture's tape predates Q-01");
 });
 
 /* ------------------------------------------------------------------- D1 */
@@ -1030,8 +1009,8 @@ test("D1 FAILS on a pathological shortest-first order", () => {
   boundary(f).items.sort((a, b) => durationOf(f, a.segment_id) - durationOf(f, b.segment_id));
   const kinds = new Set(errorsFor(f).map((e) => e.match(/(D\d|M\d) FAIL/)?.[0]).filter(Boolean));
   assert.ok(kinds.has("D1 FAIL"), [...kinds].join(", "));
-  /* D5's pair clause is reported, not gated, on the fixture's pre-Q-01 tape
-     (Q-04) — shortest-first still makes uniform pairs, and they still surface. */
+  /* D5's pair clause is reported, never gated (Q-04, F-102) — shortest-first
+     still makes uniform pairs, and they still surface as warnings. */
   assert.ok(!kinds.has("D5 FAIL"), [...kinds].join(", "));
   assert.ok(checkForays(f).warnings.some((w) => /D5 \(reported, not gated/.test(w)), "shortest-first must still surface D5's pairs");
   assert.ok(kinds.has("M3 FAIL"), [...kinds].join(", "));
@@ -1090,30 +1069,34 @@ function nineOfAKind(f) {
   return f;
 }
 
-test("D5 reports no pair on the fixture: the period alternates, and the tape predates Q-01", () => {
+test("D5 reports no pair on the fixture: the period alternates", () => {
   const r = checkForays(fixture).report.forays.find((x) => x.id === "boundary-1");
   assert.equal(r.d5_uniform_pairs, 0, "72 / 148 / 84 / 168 / 65 / 88 never puts two neighbours inside the band");
-  assert.equal(r.d5_gated, false);
 });
 
-test("D5 WARNS on a uniform pair in tape cut before Q-01, and FAILS on the same pair in a Q-01 Foray", () => {
+test("D5 WARNS on a uniform pair and never fails — whatever the tape was cut under (F-102)", () => {
   /* The same edit — the second clip stretched to 1.1x the first — on the plain
-     fixture and on the fixture stamped as Q-01 tape. One warning and no error;
-     then one error naming the pair. MUTATION THAT KILLS THIS: gate the pair
-     clause unconditionally (drop `cutUnderQ01`) — the first half fails; or
-     never gate it — the second half fails. Ran both — red. */
-  const pre = pairUp(fx());
-  const preErrors = errorsFor(pre);
-  assert.deepEqual(preErrors.filter((e) => /D5 FAIL/.test(e)), [], preErrors.join("\n"));
-  const warned = checkForays(pre).warnings.filter((w) => /D5 \(reported, not gated — tape cut before Q-01\)/.test(w));
-  assert.equal(warned.length, 1, warned.join("\n"));
-  assert.match(warned[0], /A-1 \/ B-1 are 134\.5 \/ 148\.0 s — two consecutive clips within \+\/-20 % of the same length \(max\/min 1\.100\)/);
+     fixture and on the same fixture stamped as Q-01 tape. One warning and no
+     error, BOTH TIMES. Q-01's stamp used to be what turned the warning into a
+     build failure, and the only cure for that failure at placement was to play
+     less tape (F-102); the stamp is inert here now, which is the whole of the
+     fix on this side.
 
-  const q01 = pairUp(stampQ01(fx()));
-  const d5 = errorsFor(q01).filter((e) => /D5 FAIL/.test(e));
-  assert.equal(d5.length, 1, errorsFor(q01).join("\n"));
-  assert.match(d5[0], /D5 FAIL: .* two consecutive clips within \+\/-20 % of the same length \(max\/min 1\.100\)/);
-  assert.equal(checkForays(q01).report.forays.find((x) => x.id === "boundary-1").d5_gated, true);
+     MUTATION THAT KILLS THIS: put the regime back — restore `const cutUnderQ01 =
+     isGeneratedForay(foray) && played.some((p) => p.seg.boundary !== undefined)`
+     and `if (cutUnderQ01) E(...)` in the D5 block — and the Q-01 half goes red
+     on both the error list and the warning count. Ran it — red on both. */
+  for (const [what, f] of [
+    ["tape cut before Q-01", pairUp(fx())],
+    ["tape cut under Q-01", pairUp(stampQ01(fx()))]
+  ]) {
+    const errs = errorsFor(f);
+    assert.deepEqual(errs.filter((e) => /D5/.test(e)), [], `${what}: ${errs.join(" | ")}`);
+    const warned = checkForays(f).warnings.filter((w) => /D5 \(reported, not gated/.test(w));
+    assert.equal(warned.length, 1, `${what}: ${warned.join(" | ")}`);
+    assert.match(warned[0], /A-1 \/ B-1 are 134\.5 \/ 148\.0 s — two consecutive clips within \+\/-20 % of the same length \(max\/min 1\.100\)/);
+    assert.equal(checkForays(f).report.forays.find((x) => x.id === "boundary-1").d5_uniform_pairs, 1, `${what}: the pair is counted`);
+  }
 });
 
 test("a `boundary` outside the accepted three, or a negative `extended_by_sec`, is rejected on the row", () => {
@@ -1127,28 +1110,35 @@ test("a `boundary` outside the accepted three, or a negative `extended_by_sec`, 
   assert.deepEqual(errorsFor(stampQ01(fx(), "turn")), [], "a well-formed Q-01 Foray passes clean");
 });
 
-test("the CLI exits 1 on a Q-01 Foray with a uniform pair, and 0 on the same pair in pre-Q-01 tape (the red-CI proof)", () => {
-  const gated = runCli(mutatedCheckout((f) => pairUp(stampQ01(f))));
-  assert.equal(gated.status, 1, "the CLI must exit non-zero");
-  assert.match(gated.stderr, /D5 FAIL/);
-  /* `runCli` captures stderr only on a non-zero exit, so the warning itself is
-     asserted in-process above; here the proof is the exit code. */
-  const reported = runCli(mutatedCheckout((f) => pairUp(f)));
-  assert.equal(reported.status, 0, reported.stderr);
+test("the CLI exits 0 on a uniform pair in a Q-01 Foray — a variety count is not a build failure (F-102)", () => {
+  /* The green-CI proof, and the exact inverse of the assertion that stood here
+     for a day ("exits 1 on a Q-01 Foray with a uniform pair"). A run that
+     places two adjacent clips of near-equal length has produced a publishable
+     Foray; what it must not do is play less tape to avoid saying so.
+
+     MUTATION THAT KILLS THIS: restore the gate in the D5 block — the Q-01
+     checkout exits 1. Ran it — red. */
+  for (const mutate of [(f) => pairUp(stampQ01(f)), (f) => pairUp(f)]) {
+    const run = runCli(mutatedCheckout(mutate));
+    assert.equal(run.status, 0, run.stderr);
+  }
 });
 
-test("D5's IQR is still reported at 76.0 s on the fixture, and no longer gated (Q-04)", () => {
+test("D5's IQR is still reported at 76.0 s on the fixture, and neither clause is gated (Q-04, F-102)", () => {
   const durs = segmentItems(boundary(fixture)).map((i) => durationOf(fixture, i.segment_id));
   assert.equal(iqr(durs), 76);
   assert.equal(checkForays(fixture).report.forays.find((x) => x.id === "boundary-1").d5_iqr_sec, 76);
   /* Nine copies of one duration: an IQR of 0, which used to fail the 45 s
-     floor, and eight identical adjacent pairs. On pre-Q-01 tape: eight
-     warnings, no error. On a Q-01 Foray: eight errors. */
-  const pre = nineOfAKind(fx());
-  assert.deepEqual(errorsFor(pre).filter((e) => /D5 FAIL|interquartile/.test(e)), []);
-  assert.equal(checkForays(pre).warnings.filter((w) => /D5 \(reported/.test(w)).length, 8);
-  const q01 = stampQ01(nineOfAKind(fx()));
-  assert.equal(errorsFor(q01).filter((e) => /D5 FAIL/.test(e)).length, 8);
+     floor, and eight identical adjacent pairs — the most metronomic Foray this
+     fixture can express. Eight warnings, no error, on pre-Q-01 tape and on a
+     Q-01 Foray alike (F-102). It publishes, and the eight-line count plus the
+     zero IQR are how the report says what it sounds like. */
+  for (const f of [nineOfAKind(fx()), stampQ01(nineOfAKind(fx()))]) {
+    assert.deepEqual(errorsFor(f).filter((e) => /D5|interquartile/.test(e)), []);
+    assert.equal(checkForays(f).warnings.filter((w) => /D5 \(reported/.test(w)).length, 8);
+    assert.equal(checkForays(f).report.forays.find((x) => x.id === "boundary-1").d5_uniform_pairs, 8);
+    assert.equal(checkForays(f).report.forays.find((x) => x.id === "boundary-1").d5_iqr_sec, 0);
+  }
 });
 
 /* ------------------------------------------------------------- M4 (§6c) */

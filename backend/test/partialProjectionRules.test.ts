@@ -81,8 +81,9 @@ const out = {};
   played(f).slice(0, 10).forEach((i) => { i.role = "quote"; });
   out.d4 = checkForays(f).errors;
 }
-/* D5's pair clause (monotone, Q-04) — gated on tape cut under Q-01, so the
-   Foray is marked generated and one played row carries a boundary. */
+/* D5's pair clause (monotone, Q-04) — a WARNING since F-102, never an error,
+   so the line comes from the warnings list; the Q-01 stamp is kept only to
+   prove it no longer changes which list the line lands in. */
 {
   const f = clone();
   foray(f).generated = true;
@@ -92,7 +93,9 @@ const out = {};
   const b = segOf(f, items[1].segment_id);
   a.end_sec = a.start_sec + 100;
   b.end_sec = b.start_sec + 105;
-  out.d5pair = checkForays(f).errors;
+  const run = checkForays(f);
+  out.d5pair = run.errors;
+  out.d5pairWarnings = run.warnings;
 }
 process.stdout.write(JSON.stringify(out));
 `;
@@ -113,10 +116,17 @@ function checkerErrors(): Record<string, string[]> {
 
 /** The checker prefixes every Foray-scoped line with `foray "<id>": `, which
  * `projectedRuleOf` strips before matching. Strip it here too so the patterns
- * are asserted against exactly what they are asked to match. */
+ * are asserted against exactly what they are asked to match.
+ *
+ * ERRORS ONLY. Since F-102 one driver case also collects `warnings` (D5's pair
+ * clause is reported rather than gated), and a pattern in
+ * `PROJECTED_RULE_PATTERNS` must be proven against a line the checker put in
+ * the list the projection actually reads — `errors`. A pattern that matched
+ * only a warning would pass the guard below while classifying nothing real. */
 const bodies = (emitted: Record<string, string[]>): string[] =>
-  Object.values(emitted)
-    .flat()
+  Object.entries(emitted)
+    .filter(([key]) => !key.endsWith("Warnings"))
+    .flatMap(([, lines]) => lines)
     .map((e) => e.replace(/^foray "[^"]*": /, ""));
 
 describe("F-101 — the projected-rule table matches what check-forays.mjs actually emits", () => {
@@ -161,11 +171,20 @@ describe("F-101 — the projected-rule table matches what check-forays.mjs actua
 
     expect(classify(find("d2run", /D2 FAIL: \d+ consecutive segments/))).toBeNull();
     expect(classify(find("d4", /D4 FAIL: \d+ adjacent/))).toBeNull();
-    /* The one the audit found riding on luck: D5's current message names the
-       two clips, matches no pattern, and falls through to monotone. Correct for
-       a pair rule — the offending pair is already in the prefix — and now
-       asserted against the checker's own text rather than assumed. */
-    expect(classify(find("d5pair", /D5 FAIL: /))).toBeNull();
+    /* The one the audit found riding on luck: D5's message names the two clips,
+       matches no pattern, and falls through to monotone. Correct for a pair
+       rule — the offending pair is already in the prefix — and asserted against
+       the checker's own text rather than assumed.
+
+       F-102 MOVED IT OUT OF `errors` ENTIRELY. The pair clause is reported and
+       gates nothing, so its line is a WARNING now and the projection never sees
+       it at all; the classification below is asserted on the real warning text
+       so the table stays honest if the clause is ever gated again. And the
+       checker emitting NO D5 error is pinned here, next to the reason: a
+       partial refused for a uniform pair is a run aborted so a Foray can play
+       less tape. */
+    expect(classify(find("d5pairWarnings", /D5 \(reported, not gated/))).toBeNull();
+    expect(emitted["d5pair"]?.some((e) => /^foray "[^"]*": D5/.test(e))).toBe(false);
   });
 
   it("no line the checker emits for a retired rule is classified at all", () => {

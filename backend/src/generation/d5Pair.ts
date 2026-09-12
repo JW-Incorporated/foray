@@ -17,6 +17,34 @@
  * the pattern a listener hears; a triple was a looser statement of the same
  * thing.
  *
+ * AND IT IS A MEASUREMENT, NOT A VETO (F-102, 2026-09-12). Q-01 and Q-04 are
+ * two cards of one series that changed the same quantity from opposite
+ * directions, and for a day the pair clause won: Q-01 said "if there's a half
+ * hour of relevant content then let it ride" and Q-04's pair clause was wired
+ * into `placementAllows` as a hard refusal, so sourcing's only two answers to a
+ * collision were to SHORTEN the clip (`d5EscapeBelow`, deleted with this
+ * paragraph) or to throw the beat's tape away. Measured on the real archive
+ * that day: four seeded beats refused at `d5-pair` and nine clips placed where
+ * the suite's floor asks for ten. Both answers make the Foray play LESS tape,
+ * which is the one thing the founder's instruction forbids.
+ *
+ * The rule is now asked of every placement and ANSWERED IN THE REPORT, never in
+ * the placement: `check-forays.mjs` counts each Foray's uniform pairs and its
+ * interquartile spread and gates on neither, the relevance row marks the clip
+ * that made a pair, and nothing is shortened or refused. Why variety is not
+ * pursued by ORDERING either — the one lever that would cost no tape — is
+ * argued at `placementAllows` in `sourceBeats.ts`: every order sourcing is free
+ * to change is ranked by how well the tape carries the claim, and buying
+ * rhythm with relevance is buying listening variety with veracity, which is
+ * exactly the trade Q-04 says this rule must not make.
+ *
+ * WHY THE BAND IS STILL WORTH MEASURING. Under the old ladder two equal lengths
+ * meant the ladder had put them there, and the number counted a defect. Under
+ * Q-01 a clip's length is where a thought ended, so a uniform pair is a
+ * coincidence of the tape — and a run of them is still something a listener
+ * hears and an editor may want to know about. The count answers "how uniform is
+ * this Foray's rhythm?"; it no longer answers "may this clip play?".
+ *
  * THIS MODULE IS THE ARITHMETIC, MIRRORED EXACTLY. `tools/foray/check-forays.mjs`
  * is the authority on the rule and a plain-JS build script Vitest cannot load
  * on every checkout (its loader percent-encodes a space in the checkout path —
@@ -79,28 +107,17 @@ export function d5Pairs(durations: readonly number[]): D5PairHit[] {
 
 /**
  * Whether placing a segment of `durationSec` after `placed` (in play order)
- * leaves the last two durations OUTSIDE D5's band — the placement-time form of
- * the clause. With nothing placed there is no pair to make, so every length
- * escapes.
+ * leaves the last two durations OUTSIDE D5's band. With nothing placed there is
+ * no pair to make, so every length escapes.
+ *
+ * THIS IS A QUESTION, NOT A PERMISSION (F-102). It used to be the
+ * placement-time form of a gate; `placementAllows` no longer consults it, and
+ * the one caller left asks it to MARK the clip that made a pair on the
+ * relevance row. A caller that treats `false` as a refusal has reintroduced the
+ * defect this function's own header describes — `sourceBeats.test.ts`'s F-102
+ * cases are the guard.
  */
 export function placementEscapesD5Pair(placed: readonly number[], durationSec: number): boolean {
   if (placed.length < 1) return true;
   return !d5PairIsUniform(placed[placed.length - 1]!, durationSec);
-}
-
-/**
- * The longest length under the previous duration that escapes the band, or
- * `null` when there is no previous duration. What `sourceBeats.ts` asks the
- * thought extension to stop at when the full extent would be a uniform pair:
- * the clip is cut back to a boundary short of `previous / (1 + D5_TOLERANCE)`,
- * which is the nearest escape that keeps every second of tape it can. (The
- * other escape — longer than `previous * (1 + D5_TOLERANCE)` — is not a length
- * a clip can be asked for: the extent is already as long as relevance allows.)
- */
-export function d5EscapeBelow(placed: readonly number[]): number | null {
-  const previous = placed[placed.length - 1];
-  if (previous === undefined || !(previous > 0)) return null;
-  /* Strictly under the band's edge: at exactly previous / 1.2 the ratio is 1.2,
-     which is NOT greater than 1 + 0.2 and so still uniform. */
-  return previous / (1 + D5_TOLERANCE) - 0.001;
 }

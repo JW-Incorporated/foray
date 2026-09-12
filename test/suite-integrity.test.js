@@ -1778,12 +1778,35 @@ const BACKEND_FLOORS = {
   /* RAISED 124 -> 127 by F-101: `placementAllows` is the ONE length-rule
      predicate, asked by the tier that places a clip and the tier that grows
      one — the merge's hand-mirrored copy of M4's runtime clause is gone. */
-  "test/sourceBeats.test.ts": 127,
+  /* RAISED 127 -> 128 by F-102 — ONE net case, while four were rewritten in
+     place. D5's pair clause stopped being a placement veto (it could only ever
+     be satisfied by playing less tape, and on the real archive it cost four
+     seeded beats theirs), so the four cases that pinned the veto now pin its
+     absence: the pool segment that makes a pair is PLACED, the full thought is
+     placed and MARKED rather than re-cut shorter, no beat is narrated for a
+     length, and `placementAllows` does not consult the clause on either path.
+     The added one is the case that NEVER SKIPS: it logs whether the offline
+     block ran and asserts that only a missing archive can skip it. That block
+     holds the two assertions guarding TAPE YIELD, CI structurally cannot run
+     it, and its silence is how F-102 survived a day with main's `backend` job
+     reporting `129 tests | 5 skipped` and green while both were red here.
+     (This floor counts `it(`/`test(` statically; Vitest reports 130 for the
+     same file, two cases being written in the multi-line `it(
+ "name",`
+     form. The two numbers have always differed by two; only this one is the
+     floor.) */
+  "test/sourceBeats.test.ts": 128,
   /* Q-04: the checker's D5 arithmetic mirrored in `d5Pair.ts` — the pair
      clause that replaced F-80's triple — pinned to `check-forays.mjs`'s own
      `d5UniformPairs` row by row (run in a Node subprocess, the only way that
      file loads on a checkout with a space in its path). `d5Triple.test.ts` (5)
      went with the rule it pinned. */
+  /* UNCHANGED AT 5 BY F-102, one case swapped for another: `d5EscapeBelow` —
+     the function that told sourcing how far to CUT a clip back so a pair would
+     escape — is deleted, and the case that pinned its arithmetic is replaced by
+     one asserting this module exports no function returning a LENGTH at all.
+     The mirror-to-the-checker case is untouched; the arithmetic did not change,
+     only who obeys it. */
   "test/d5Pair.test.ts": 5,
   /* Q-01: `tapeExtent.ts` — the claim window extended to the thought around it
      (turn and sentence boundaries, the host's question, the relevance walk and

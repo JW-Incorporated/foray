@@ -3096,36 +3096,50 @@ describe("sourceBeats — F-73 / Q-04: the length ledger, kept by both tiers", (
 
   /* ------------------------------------------------------------------ D5 */
 
-  it("passes over a pool segment that would make D5's uniform pair, and narrates rather than place one (d5-pair)", () => {
-    /* CHECKER ERROR THIS PREVENTS: "D5 FAIL: … two consecutive clips within
-       +/-20 % of the same length" — Q-04's restatement of the triple clause run
-       5 was refused on. Both halves on one pool:
+  it("places a pool segment that makes D5's uniform pair rather than lose the beat's tape (F-102)", () => {
+    /* THE DEFECT THIS PINS. Until F-102 this rule was a veto: a pool segment
+       within 20 % of the previous clip's length was passed over, and a beat
+       whose only usable tape was such a segment NARRATED. That is a listening-
+       variety rule costing the Foray real tape, against the founder's standing
+       instruction for clip length (Q-01: "if there's a half hour of relevant
+       content then let it ride"). Both halves of the old test are inverted
+       here, on the same pools:
 
-         - given a choice, the second beat takes the 200 s segment over the
-           120 s one, because 120 after 120 is the pair D5 refuses;
-         - given no choice, it NARRATES, and the trace names the rule. Tier 1
-           cannot re-cut a curator's segment, and there is no archive here for
-           tier 2 to cut from; the Q-01/Q-04 cases below are where a window is
-           extended to a different length instead. */
-    const withEscape = runPool(
+         - given a choice, the second beat still takes whichever segment the
+           ranked walk ranks first — the clause no longer reorders anything,
+           because every order sourcing is free to change is ranked by how well
+           the tape carries the claim;
+         - given NO choice, it takes the 120 s segment and plays it. No beat is
+           narrated, no trace names `d5-pair`, and the Foray reads 120 / 120 —
+           which `check-forays.mjs` counts (`d5_uniform_pairs`) and passes.
+
+       MUTATION THAT KILLS THIS: restore the clause in `placementAllows`
+       (`if (!placementEscapesD5Pair(priorDurations, durationSec)) return
+       "d5-pair"`) — the second beat narrates and the trace names the gate
+       again. Ran it — red on the tape/narration assertions below. */
+    const noEscape = runPool([gearboxBeat(), ...fillerBeats(1)], [segAt("ep-a", 100, 120, gearboxWhy), segAt("ep-c", 100, 120)], "F102D5");
+    const beats = allSourcedBeats(noEscape.acts);
+    expect(beats[0]!.sourcing).toBe("tape");
+    expect(beats[1]!.sourcing).toBe("tape");
+    if (beats[1]!.sourcing === "tape") {
+      expect(beats[1]!.tape.itemId).toBe("ep-c");
+      expect(beats[1]!.tape.endSec - beats[1]!.tape.startSec).toBe(120);
+    }
+    expect(noEscape.sourcingTrace).toHaveLength(0);
+    /* The arithmetic still SAYS the pair is uniform — the module answers the
+       question; nothing acts on the answer. */
+    expect(placementEscapesD5Pair([120], 120)).toBe(false);
+
+    /* And the pool with an alternative places the same first choice, so the
+       clause is proven not to be reordering the walk either. */
+    const withChoice = runPool(
       [gearboxBeat(), ...fillerBeats(1)],
       [segAt("ep-a", 100, 120, gearboxWhy), segAt("ep-c", 100, 120), segAt("ep-d", 100, 200)],
-      "F73D5a"
+      "F102D5b"
     );
-    const chosen = allSourcedBeats(withEscape.acts)[1]!;
+    const chosen = allSourcedBeats(withChoice.acts)[1]!;
     expect(chosen.sourcing).toBe("tape");
-    if (chosen.sourcing === "tape") expect(chosen.tape.endSec - chosen.tape.startSec).toBe(200);
-
-    /* MUTATION THAT KILLS THIS: return `null` from `durationVetoFor` for
-       `d5-pair` — the 120 s segment is placed and the Foray reads 120/120. */
-    const noEscape = runPool([gearboxBeat(), ...fillerBeats(1)], [segAt("ep-a", 100, 120, gearboxWhy), segAt("ep-c", 100, 120)], "F73D5b");
-    expect(allSourcedBeats(noEscape.acts)[0]!.sourcing).toBe("tape");
-    const refused = allSourcedBeats(noEscape.acts)[1]!;
-    expect(refused.sourcing).toBe("narration");
-    const trace = noEscape.sourcingTrace.find((t) => t.beatIndex === 1)!;
-    expect(trace.tier1!.gate).toBe("d5-pair");
-    expect(trace.tier1!.bestSegmentId).toBe("ep-c#100");
-    expect(placementEscapesD5Pair([120], 120)).toBe(false);
+    if (chosen.sourcing === "tape") expect(chosen.tape.endSec - chosen.tape.startSec).toBe(120);
   });
 
   /* ------------------------------------------------------------------ M4 */
@@ -3209,14 +3223,15 @@ describe("sourceBeats — F-73 / Q-04: the length ledger, kept by both tiers", (
   });
 });
 
-describe("sourceBeats — Q-01 / Q-04: a tier-2 clip is the thought around the claim, and D5's pair clause is asked of it", () => {
+describe("sourceBeats — Q-01 / Q-04 / F-102: a tier-2 clip is the whole thought around the claim, and D5's pair clause only counts", () => {
   /* WHAT THIS PINS THROUGH THE WHOLE STAGE, not only `tapeExtent.ts`'s own
      suite: the window search finds where the claim is spoken, `extendToThought`
      moves the edges to the thought around it and runs on while the tape stays
      relevant, `cutWindowToSegment` mints the anchors at the new edges, and the
      minted row and the relevance row carry `boundary` / `extendedBySec`. And
-     when the full thought would be within 20 % of the previous clip, the same
-     window is extended to a shorter boundary first (Q-04). */
+     when the full thought happens to be within 20 % of the previous clip, the
+     clip is placed WHOLE and the row records the pair (Q-04 as F-102 left it:
+     a rule about how a Foray sounds cannot make it play less tape). */
 
   const claim = "Gearboxes fail because bearings take torque reversals.";
   const fillerClaim = "The Lawson criterion is a statement about tokamak plasma confinement.";
@@ -3300,50 +3315,65 @@ describe("sourceBeats — Q-01 / Q-04: a tier-2 clip is the thought around the c
     expect(result.tapeRelevance[0]!.lengthGate).toBeUndefined();
   });
 
-  it("extends the same window to a shorter thought when the full one would pair with the previous clip (d5-pair)", () => {
-    /* An 80 s pool clip first; the full thought is 96 s — 96 / 80 is exactly
-       1.2, which is NOT over the tolerance, so it is inside the band. The
-       chooser asks the extension for the longest thought under 80 / 1.2
-       (66.7 s): the sentence boundary at 75 s, 33 s, which the cut then grows
-       through the next cue (it shares `bearings` and `torque`) to 54 s and no
-       further — the cue after would pass the ceiling. 80 / 54 is 1.48: the
-       pair escapes, and the row says the clause chose the length. The growth
-       moved the edge off the boundary the extension chose, so the clip reports
-       `claim-only` rather than claim a boundary it no longer sits on.
+  it("plays the whole thought when it would pair with the previous clip, and marks the row (F-102)", () => {
+    /* THE DEFECT THIS PINS, and the measurement that found it. An 80 s pool
+       clip first; the full thought is 96 s — 96 / 80 is exactly 1.2, which is
+       NOT over the tolerance and so inside D5's band. Until F-102 the chooser
+       answered that by asking the same window for the longest thought under
+       80 / 1.2 and placing 54 s: fifty-four seconds of a ninety-six second
+       thought, the other forty-two thrown away to satisfy a listening-variety
+       rule. The founder's standing instruction for clip length is the opposite
+       ("if there's a half hour of relevant content then let it ride", Q-01),
+       and Q-04's own card says D5 is about variety, not veracity — so the
+       clause cannot be allowed to spend tape.
 
-       MUTATION THAT KILLS THIS: in `chooseCutForPlacement`, return `{ refused:
-       full, gate: fullGate }` for `d5-pair` as for every other gate — the beat
-       narrates. Or return `null` from `durationVetoFor` for `d5-pair` — it
-       places 96 s and the Foray reads 80 / 96. Or drop the `maxSec` the chooser
-       hands `cutWindowToSegment` — the growth runs to 75 s, 80 / 75 is 1.07,
-       and the beat narrates. Ran all three — red. */
+       The clip is now 96 s, the whole thought, and the relevance row carries
+       `lengthGate: "d5-pair"` as a MARK: this Foray has an adjacent pair in it,
+       counted here and counted again by `check-forays.mjs`'s
+       `d5_uniform_pairs`, and nothing was shortened or refused to say so.
+
+       MUTATION THAT KILLS THIS: restore the shorter-cut branch in
+       `chooseCutForPlacement` (re-extend with `d5EscapeBelow(state.placedDurations)`
+       as the ceiling when the full extent is inside the band) — the durations
+       read 80 / 54 again. Or drop the mark (`return { accepted: full }`
+       unconditionally) — `lengthGate` goes undefined and the Foray can no
+       longer say how uniform its rhythm is. Ran both — red. */
     const result = run([fillerBeat(), tapeBeat()], [filler(80)]);
-    expect(durationsOf(result)).toEqual([80, 54]);
+    expect(durationsOf(result)).toEqual([80, 96]);
     expect(placementEscapesD5Pair([80], 96)).toBe(false);
-    expect(placementEscapesD5Pair([80], 54)).toBe(true);
     const row = result.tapeRelevance[1]!;
     expect(row.lengthGate).toBe("d5-pair");
-    expect(row.boundary).toBe("claim-only");
-    expect(result.newSegments[0]!.endSec - result.newSegments[0]!.startSec).toBe(54);
+    expect(row.boundary).toBe("sentence");
+    expect(result.newSegments[0]!.endSec - result.newSegments[0]!.startSec).toBe(96);
   });
 
-  it("refuses the window when no shorter thought escapes the band, names d5-pair, and narrates", () => {
-    /* A 70 s pool clip first and the shorter tape, whose thought is 42-117 s:
-       75 / 70 is 1.07, inside the band, and the longest escape under it is
-       58 s — under the 60 s floor, so no shorter thought is asked for. The beat
-       is narrated, the trace names the rule, and the reason says the tape
-       exists and this Foray's running order refused it. */
+  it("never narrates a beat for D5's pair clause, however short the escape would have to be (F-102)", () => {
+    /* THE FOUR REFUSALS F-102 WAS MEASURED ON, in miniature. A 70 s pool clip
+       first and the shorter tape, whose thought is 42-117 s: 75 / 70 is 1.07,
+       inside the band, and the longest escape under it is 58 s — under the
+       60 s floor, so no shorter thought could be asked for at all. Until F-102
+       that combination NARRATED the beat: tape that is about the claim, found,
+       anchored and playable, thrown away because it was the wrong length next
+       to its neighbour. On the real archive it cost four seeded beats their
+       tape in one run and took the Foray from thirteen clips to nine.
+
+       The beat now plays its 75 s, the trace is empty (nothing refused it), and
+       the pair is a count rather than a loss.
+
+       MUTATION THAT KILLS THIS: restore the `d5-pair` branch in
+       `placementAllows` — the beat narrates, `sourcingTrace` names
+       `tier2:d5-pair`, and the narration reason says "metronomic". Ran it —
+       red on every assertion below. */
     const result = run([fillerBeat(), tapeBeat()], [filler(70)], shortThought);
     const beats = allSourcedBeats(result.acts);
-    expect(beats[1]!.sourcing).toBe("narration");
-    expect(result.newSegments).toHaveLength(0);
-    const trace = result.sourcingTrace.find((t) => t.beatIndex === 1)!;
-    expect(trace.tier2!.gate).toBe("d5-pair");
-    expect(trace.tier2!.bestEpisodeTitle).toBe("Episode 700");
-    expect(trace.tier2!.boundary).toBe("sentence");
-    if (beats[1]!.sourcing === "narration") expect(beats[1]!.narration.reason).toContain("metronomic");
-    expect(result.transcriptionQueueCandidates.at(-1)!.reason).toContain("Nothing to transcribe");
-    expect(summarizeSourcing(result).some((line) => line.includes("top reason: tier2:d5-pair"))).toBe(true);
+    expect(beats[1]!.sourcing).toBe("tape");
+    expect(durationsOf(result)).toEqual([70, 75]);
+    expect(result.newSegments).toHaveLength(1);
+    expect(result.sourcingTrace).toHaveLength(0);
+    expect(result.tapeRelevance[1]!.lengthGate).toBe("d5-pair");
+    expect(placementEscapesD5Pair([70], 75)).toBe(false);
+    /* And no queue row blames this Foray's assembly rules for tape it played. */
+    expect(result.transcriptionQueueCandidates).toHaveLength(0);
   });
 });
 
@@ -3904,6 +3934,68 @@ describe("sourceBeats — WS-H/F-61 offline: the real archive on the generation 
     return shared;
   }
 
+  /** How many cases in this block are guarded by the archive. Pinned so that
+   * adding or removing one forces the author past the line below, which is the
+   * only place a CI log says what went unchecked. */
+  const OFFLINE_CASES = 5;
+
+  it("says, on every machine, whether these offline cases ran — and that only a missing archive can skip them (F-102)", () => {
+    /* WHY THIS TEST EXISTS. The two assertions that guard TAPE YIELD on the
+       real archive — WS-L's "no seeded beat is refused" and G-24's "at least
+       ten clips" — live in this block, and CI cannot run it: the GitHub runner
+       has no `data-local/transcripts/`. That is correct and unavoidable. What
+       was not correct is that it was INVISIBLE: main's `backend` job reported
+       `129 tests | 5 skipped` and went green while both assertions were red on
+       the one machine that can run them, and D5's pair clause spent a day
+       costing four beats their tape with nothing anywhere saying so.
+
+       This case never skips. It costs no archive, it runs everywhere, and it
+       does two things CI can read:
+
+         1. LOGS ONE LINE naming what did or did not run and what that leaves
+            unchecked — so a green run that checked nothing says so in its own
+            output, next to the reason;
+         2. ASSERTS THE SKIPPING IS THE ARCHIVE'S DOING. Every `ctx.skip()` in
+            this block must sit inside the `if (!real)` guard, and no case may
+            be disabled by `it.skip` / `describe.skip` / `it.todo`. A case
+            parked for an unrelated reason — a flaky assertion someone meant to
+            come back to — would otherwise be indistinguishable, in the run
+            summary, from a case CI structurally cannot run.
+
+       WHY THIS ONE AND NOT A CI CHANGE. The alternatives were to give the
+       runner an archive (it cannot have one — the transcripts are not
+       redistributable and are tens of gigabytes) or to make the block's absence
+       fail CI (which would make every CI run red on purpose, and a
+       permanently-red job is read by nobody). A line in the log plus a
+       structural assertion is the cheapest thing that is still honest.
+
+       MUTATION THAT KILLS THIS: change any case in this block to `it.skip`, or
+       move a `ctx.skip()` out of its `if (!real)` guard. Ran both — red. */
+    const source = readFileSync(__filename, "utf8");
+    const block = source.slice(source.indexOf("sourceBeats — WS-H/F-61 offline"));
+    const skips = block.match(/ctx\.skip\(\);/g) ?? [];
+    expect(skips).toHaveLength(OFFLINE_CASES);
+    expect(block.match(/\b(it|test|describe)\.(skip|todo)\(/g)).toBeNull();
+    /* Each skip is the archive guard and nothing else: `if (!real) {`, one
+       line saying which case is skipped and why, then the skip. */
+    const guarded = block.match(/if \(!real\) \{[\s\S]{0,200}?skipping[\s\S]{0,200}?ctx\.skip\(\);/g) ?? [];
+    expect(guarded).toHaveLength(OFFLINE_CASES);
+
+    const real = realArchive();
+    console.log(
+      real
+        ? `[F-102] real archive present (${real.kind} bodies under ${LOCAL_TRANSCRIPTS}) — the ${OFFLINE_CASES} offline cases below RAN, ` +
+            `including the two that guard tape yield (WS-L: no seeded beat refused; G-24: >= 10 clips of 32).`
+        : `[F-102] real archive ABSENT — the ${OFFLINE_CASES} offline cases below did NOT run, and nothing in this job checked tape yield. ` +
+            `Unguarded here: WS-L's "no seeded beat is refused" and G-24's ">= 10 clips of 32", which is the pair that went red for a ` +
+            `day under D5's pair clause while CI stayed green. Reason: ${SKIP_REASON}. ` +
+            `Set FORAY_LOCAL_TRANSCRIPTS to a checkout that holds the archive to run them.`
+    );
+    /* And the reason is the archive's presence, not a stale path: when there is
+       no archive the configured root really does hold no body this suite can
+       read, so the log line above is telling the truth about WHY. */
+    if (!real) expect(ARCHIVE.some((entry) => new FileTranscriptCueProvider(NORMALIZED_ROOT).bodyStat(entry) !== null)).toBe(false);
+  });
   it("mints real Practical AI tape for a claim the show actually makes, and refuses it without the index", (ctx) => {
     const real = realArchive();
     if (!real) {
@@ -4163,8 +4255,21 @@ describe("sourceBeats — WS-H/F-61 offline: the real archive on the generation 
       /* G-24 R1: with the map quoting exactly the window's cues, every seed the
          stub writes from a quote carries into its seed window — 7 of 8 before
          G-24 (the eighth was written from the cue the quote used to prepend),
-         8 of 8 after. */
+         8 of 8 after.
+
+         F-102 IS WHY THIS IS BACK AT ZERO, and the number it was at when the
+         defect was found is worth writing down: 4, every one of them
+         `d5-pair@1` — four seeded beats whose tape was found, anchored and
+         playable and refused for being within 20 % of the length of the clip
+         before it. `28 tape / 4 narration` became `32 tape / 0 narration` when
+         the clause stopped being a veto (measured on this machine's archive,
+         2026-09-12). The second assertion is the one that would have caught it
+         standing alone: whatever else may refuse a seeded beat, a LENGTH may
+         not, because the Foray's answer to a length it dislikes is always to
+         play less tape. */
       expect(refusedSeeds).toHaveLength(0);
+      expect(refusedSeeds.filter((t) => t.tier2!.gate === "d5-pair").map((t) => `${t.actIndex}/${t.slotIndex}/${t.beatIndex}`)).toEqual([]);
+      expect(result.tapeRelevance.length).toBeGreaterThanOrEqual(32);
     },
     300000
   );
@@ -4216,8 +4321,21 @@ describe("sourceBeats — WS-H/F-61 offline: the real archive on the generation 
          Hyatt Regency segment (R2) is refused, and nothing off-show replaces it. */
       for (const row of tape) expect(row.itemId, `${row.actIndex}/${row.slotIndex}/${row.beatIndex} took ${row.segmentId}`).toMatch(/^practical-ai--/);
       expect(tape.some((r) => /hyatt|causality/.test(r.itemId))).toBe(false);
-      /* The 10 seeded windows that carried their claims on attempt 6 still do. */
+      /* The 10 seeded windows that carried their claims on attempt 6 still do.
+
+         THIS IS THE ASSERTION F-102 WAS FOUND BY, and it was RED on this
+         machine for a day: 9 of the 10, because D5's pair clause refused one
+         clip outright and no later placement could give it back. It is at 10
+         again, and the count is exact — the replay is deterministic on a fixed
+         archive, so `toBe(10)` would be the honest form; it is left as a FLOOR
+         because the archive on this machine grows, and a new episode that
+         carries an eleventh claim must not turn this red. What must never
+         happen again is the number going DOWN because a rule about how a Foray
+         SOUNDS refused tape that is about the claim. A length rule that costs
+         tape is the mutation; `sourcingTrace` carrying no `d5-pair` row is how
+         this file says so, here and in the WS-L case above. */
       expect(tape.length).toBeGreaterThanOrEqual(10);
+      expect(result.sourcingTrace.filter((t) => t.tier2?.gate === "d5-pair" || t.tier1?.gate === "d5-pair")).toEqual([]);
 
       /* THE TRACE NAMES THE SEED'S OWN GATE. Beat 1/0/0 is the brief's example:
          a 0.746 seed window on federated-learning part 2, refused by M4's share
@@ -4300,21 +4418,38 @@ describe("sourceBeats — F-101: one placement predicate, asked by both the tier
     expect(mergedOver).toBe("m4-runtime");
   });
 
-  it("`replacing` skips D2 and narrows D5's window to the placements BEFORE the clip, and changes nothing else", () => {
-    /* MUTATION THAT KILLS THIS: ask `d2RunAllows` on the merge path too, or
-       give D5 the whole `placedDurations` instead of the slice. The first
-       refuses a clip that only grew — D2 is a rule about runs of SHORT
-       segments and a merged clip is longer than it was; the second compares
-       the merged clip against ITSELF at its old length, which is a uniform
-       pair by construction (ratio 1.0 after a no-op merge). Ran both — red. */
+  it("`replacing` skips D2, and D5 is not among the rules either path asks (F-102)", () => {
+    /* MUTATION THAT KILLS THIS: ask `d2RunAllows` on the merge path too — it
+       refuses a clip that only grew, D2 being a rule about runs of SHORT
+       segments and a merged clip being longer than it was. Ran it — red on the
+       merge line below.
+
+       SECOND MUTATION (F-102): restore D5's pair clause to `placementAllows`
+       (`if (!placementEscapesD5Pair(priorDurations, durationSec)) return
+       "d5-pair"`). The merge line below goes red immediately — 45 after 40 is
+       1.125, inside the band — and so does the fresh 45 s placement. The clause
+       is a measurement now (`placementMakesUniformPair`, which writes the
+       relevance row and refuses nothing); a predicate that decides whether tape
+       may play must not consult it, because its only way to be satisfied is for
+       the Foray to play less. Ran it — red on both lines. */
     const shortRun = [{ itemId: "ep-a", sec: 40 }, { itemId: "ep-b", sec: 45 }];
     /* Fresh: a third short segment after two is D2's run clause. */
     expect(placementAllows("ep-c", 40, ledgerState(shortRun))).toBe("d2-short-run");
     /* The same length, as a merge of the clip at index 1: D2 is not asked, and
-       D5 sees only index 0 (40 s) — 45/40 is 1.125, inside the band. */
-    expect(placementAllows("ep-b", 45, ledgerState(shortRun), { replacing: 1 })).toBe("d5-pair");
-    /* Grown past the band, the merge is allowed: neither D2 nor D5 refuses it,
-       and M4 is asked in full with the clip's old 45 s out of every figure. */
+       nothing else refuses it — 45 after 40 is a uniform pair (1.125) and that
+       is no longer a verdict this predicate has. */
+    expect(placementAllows("ep-b", 45, ledgerState(shortRun), { replacing: 1 })).toBe(null);
+    /* Nor is it a verdict on the fresh path: after a 100 s clip, a 200 s
+       placement and a 100 s placement are both allowed, and only the second is
+       a pair. (Lengths over D2's 60 s floor, so nothing else can be what lets
+       them through.) */
+    const longRun = [{ itemId: "ep-a", sec: 300 }, { itemId: "ep-b", sec: 100 }];
+    expect(placementAllows("ep-c", 200, ledgerState(longRun))).toBe(null);
+    expect(placementAllows("ep-c", 100, ledgerState(longRun))).toBe(null);
+    expect(placementEscapesD5Pair([300, 100], 200)).toBe(true);
+    expect(placementEscapesD5Pair([300, 100], 100)).toBe(false);
+    /* And M4 is still asked in full on the merge, with the clip's old 45 s out
+       of every figure it appears in. */
     expect(placementAllows("ep-b", 120, ledgerState(shortRun), { replacing: 1 })).toBe(null);
   });
 
