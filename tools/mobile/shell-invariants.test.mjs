@@ -97,7 +97,7 @@ import { PLUGIN_NAME } from "../../mobile/plugins/foray-audio/web/foray-audio-sh
 import {
   PLUGIN_NAME as MEDIA_PLUGIN_NAME, SET_METHOD, TRANSPORT_EVENT, ROUTABLE_ACTIONS,
 } from "../../mobile/plugins/foray-audio/web/foray-media-session.js";
-import { FORAY_AUDIO_REACHED_NEEDLE } from "./ios-ci.mjs";
+import { FORAY_AUDIO_REACHED_NEEDLE, FORAY_SESSION_NEEDLE } from "./ios-ci.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, "..", "..");
@@ -1816,5 +1816,116 @@ test("the iOS ForayAudioPlugin writes exactly the unified-log line ios-ci greps 
     code,
     /privacy:\s*\.public/,
     "the state interpolation must be .public, or the unified log redacts it to <private>"
+  );
+});
+
+/* ---------- L-05 / M-03: the two new native contracts ---------- */
+
+test("the iOS ForayTtsPlugin declares pause, resume and stop as bridged methods (L-05)", () => {
+  /* Founder feedback F12: "none of the pause buttons work" during narration.
+     The cause was that these three methods did not exist — `pluginMethods` is
+     what Capacitor's bridge builds its JS proxy from, so a method missing from
+     that array is unreachable from the page even if the `@objc func` is there.
+     `web/foray-tts.js` calls each by name over `nativePromise`, and nothing but
+     this test keeps the two lists equal.
+     MUTATION: delete any one line from `pluginMethods` -> this fails naming it. */
+  const swift = fs.readFileSync(
+    path.join(MOBILE, "plugins/foray-tts/ios/Sources/ForayTtsPlugin/ForayTtsPlugin.swift"),
+    "utf8"
+  );
+  const code = swift.replace(/\/\/\/.*$/gm, "").replace(/\/\/.*$/gm, "");
+  /* From the `= [` and not from the word `pluginMethods`: the DECLARATION's own
+     type annotation is `[CAPPluginMethod]`, so the first `]` after the name
+     closes the type rather than the array, and a slice taken that way is empty
+     and every assertion below fails for the wrong reason. (It did, once.) */
+  const open = code.indexOf("= [", code.indexOf("pluginMethods"));
+  assert.ok(open > 0, "ForayTtsPlugin.swift no longer declares a pluginMethods array");
+  const methods = code.slice(open, code.indexOf("]", open));
+  for (const name of ["speak", "pause", "resume", "stop", "state", "listVoices"]) {
+    assert.ok(
+      methods.includes(`CAPPluginMethod(name: "${name}"`),
+      `ForayTtsPlugin.swift does not bridge "${name}" — foray-tts.js calls it and would get nothing`
+    );
+    assert.ok(
+      code.includes(`@objc func ${name}(`),
+      `ForayTtsPlugin.swift bridges "${name}" with no @objc func behind it`
+    );
+  }
+});
+
+test("the Android ForayTtsPlugin exposes the same three transport methods (L-05)", () => {
+  /* The card asks for both platforms. Android's pause is emulated
+     (stop + remembered boundary; `README.md` states the platform limit), but
+     the METHOD NAMES have to match or one platform's pause button works and
+     the other's does not — which is F12 again, halved.
+     MUTATION: rename `resume` to `continue` on either side. */
+  const java = fs.readFileSync(
+    path.join(MOBILE, "plugins/foray-tts/android/src/main/java/ai/jwlabs/foura/tts/ForayTtsPlugin.java"),
+    "utf8"
+  );
+  for (const name of ["speak", "pause", "resume", "stop", "state", "listVoices"]) {
+    assert.ok(
+      java.includes(`public void ${name}(PluginCall`),
+      `ForayTtsPlugin.java has no @PluginMethod ${name}() — the two platforms have different transports`
+    );
+  }
+  assert.match(
+    java,
+    /onRangeStart/,
+    "Android's emulated pause needs the word-boundary callback, or resume always re-speaks the whole line"
+  );
+});
+
+test("the iOS ForayAudioPlugin writes the M-03 session needle ios-ci greps for", () => {
+  /* M-03(c): the screen-off pass reads the unified log, because a suspended
+     WKWebView cannot write the localStorage record — which is the whole reason
+     that pass exists. `ios-ci.mjs`'s `foraySessionEvents()` greps for
+     `FORAY_SESSION_NEEDLE`; the Swift writes it through `os.Logger`. Two copies
+     of one string in two languages, and nothing else keeps them equal.
+     MUTATION: change either side alone -> every future run reports `silent`
+     about lines that are being written under a different name. */
+  const swift = fs.readFileSync(
+    path.join(PLUGIN_DIR, "ios/Sources/ForayAudioPlugin/ForayAudioPlugin.swift"),
+    "utf8"
+  );
+  const code = swift.replace(/\/\/\/.*$/gm, "").replace(/\/\/.*$/gm, "");
+  assert.ok(
+    code.includes(`"${FORAY_SESSION_NEEDLE}`),
+    `ForayAudioPlugin.swift does not write "${FORAY_SESSION_NEEDLE}" — foraySessionEvents() reads every run as silent`
+  );
+  for (const name of ["interruptionNotification", "routeChangeNotification",
+    "mediaServicesWereResetNotification", "didEnterBackgroundNotification",
+    "willEnterForegroundNotification"]) {
+    assert.ok(code.includes(name), `ForayAudioPlugin.swift no longer observes ${name} — M-03 loses that cause`);
+  }
+});
+
+test("the session event name is one string across the Swift and the web half (M-03)", () => {
+  /* `foray-media-session.js` subscribes with `SESSION_EVENT` and re-broadcasts
+     on `SESSION_DOM_EVENT`; `player/client.js` listens for the latter. A rename
+     on any one of the three silently drops every native cause from the record —
+     and the record would still look healthy, which is the failure mode this
+     whole deck keeps hitting.
+     MUTATION: rename SESSION_EVENT in either Swift file. */
+  const web = fs.readFileSync(path.join(PLUGIN_DIR, "web/foray-media-session.js"), "utf8");
+  const eventName = /export const SESSION_EVENT = "([^"]+)"/.exec(web);
+  assert.ok(eventName, "foray-media-session.js no longer exports SESSION_EVENT");
+  const domName = /export const SESSION_DOM_EVENT = "([^"]+)"/.exec(web);
+  assert.ok(domName, "foray-media-session.js no longer exports SESSION_DOM_EVENT");
+  for (const rel of [
+    "../foray-audio/ios/Sources/ForayAudioPlugin/ForayAudioPlugin.swift",
+    "../foray-tts/ios/Sources/ForayTtsPlugin/ForayTtsPlugin.swift",
+  ]) {
+    const swift = fs.readFileSync(path.join(PLUGIN_DIR, rel), "utf8");
+    assert.match(
+      swift,
+      new RegExp(`static let SESSION_EVENT = "${eventName[1]}"`),
+      `${rel} raises a different session event name than the web half subscribes to`
+    );
+  }
+  const client = fs.readFileSync(path.join(ROOT, "player/client.js"), "utf8");
+  assert.ok(
+    client.includes(`"${domName[1]}"`),
+    `player/client.js does not listen for ${domName[1]} — every native cause is dropped before the record`
   );
 });

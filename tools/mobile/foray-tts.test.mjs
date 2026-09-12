@@ -21,6 +21,10 @@ import {
   speak,
   createForayTtsShell,
   onFinished,
+  pause,
+  resume,
+  stop,
+  state,
 } from "../../mobile/plugins/foray-tts/web/foray-tts.js";
 
 const LEXICON = [
@@ -557,4 +561,128 @@ test("createForayTtsShell: exposes onFinished wired to the same baked-in bridge"
   const shell = createForayTtsShell({ bridge });
   shell.onFinished(() => {});
   assert.equal(listeners.get(`${PLUGIN_NAME}:${FINISHED_EVENT}`)?.size, 1);
+});
+
+/* ------------------------------------------- L-05: pause, resume, stop
+
+   Founder feedback F12, TestFlight 2026090603: "Once the on-device narration
+   foray test starts, none of the pause buttons work." This module exposed
+   `speak`, `listVoices` and `state` and no transport at all, so
+   `player/queue-manager.js`'s pause effect had nowhere to send a narration
+   pause and the voice kept talking through every button in the app.
+
+   Everything below runs against fakes in Node, the same limit this file's own
+   header states: no WebView, no `AVSpeechSynthesizer`, no `TextToSpeech`. */
+
+/** A `speechSynthesis` stand-in that models the two booleans the real one has,
+    including the property that matters: `speaking` stays TRUE while paused. */
+function fakeSynth() {
+  return {
+    calls: [],
+    speaking: true,
+    paused: false,
+    pause() { this.calls.push("pause"); this.paused = true; },
+    resume() { this.calls.push("resume"); this.paused = false; },
+    cancel() { this.calls.push("cancel"); this.speaking = false; this.paused = false; },
+  };
+}
+
+// TO SEE IT FAIL: swap any two of the three method names in `transport`'s call
+// sites — e.g. have `stop()` send "pause". On device that turns a listener's
+// stop into a pause that never resumes, with the player's own state machine
+// already past it.
+test("pause/resume/stop each call the MATCHING native method, and hoist `accepted`", async () => {
+  const { calls, bridge } = fakeBridge(() => ({ accepted: true, state: "paused", platform: "ios" }));
+  const p = await pause({ bridge });
+  await resume({ bridge });
+  await stop({ bridge });
+  assert.deepEqual(calls.map((c) => c.method), ["pause", "resume", "stop"]);
+  assert.equal(calls[0].plugin, PLUGIN_NAME);
+  assert.equal(p.path, "native");
+  assert.equal(p.accepted, true, "`accepted` is hoisted so a caller need not branch on platform");
+  assert.equal(p.state, "paused");
+});
+
+// TO SEE IT FAIL: default `accepted` to true when the native answer omits it.
+// A shell built before this card has no `accepted` key, and reporting "it took"
+// for a call that reached a plugin with no such method is the one lie this
+// surface must not tell — the page's state machine would move and the voice
+// would keep talking, which is F12 again wearing a green test.
+test("an older native answer with no `accepted` key reads as NOT accepted", async () => {
+  const { bridge } = fakeBridge(() => ({ ok: true, platform: "ios" }));
+  const out = await pause({ bridge });
+  assert.equal(out.ok, true);
+  assert.equal(out.accepted, false);
+});
+
+// TO SEE IT FAIL: remove the try/catch around `nativePromise` in `transport`.
+// A native call that throws must degrade to Web Speech exactly as `speak()`
+// does — the whole reason this module exists.
+test("a native transport call that throws falls back to Web Speech", async () => {
+  const bridge = { nativePromise: async () => { throw new Error("native boom"); } };
+  const speechSynth = fakeSynth();
+  const out = await pause({ bridge, speechSynth, log: () => {} });
+  assert.equal(out.path, "web-speech");
+  assert.deepEqual(speechSynth.calls, ["pause"]);
+});
+
+// TO SEE IT FAIL: map `stop` to `speechSynthesis.stop` (which does not exist)
+// instead of `cancel`. The call silently does nothing and the fallback is dead.
+test("Web Speech: stop is `cancel`, because that is what the spec calls it", async () => {
+  const speechSynth = fakeSynth();
+  await stop({ speechSynth });
+  assert.deepEqual(speechSynth.calls, ["cancel"]);
+});
+
+// TO SEE IT FAIL: read `speaking` before `paused` in `webSpeechState`. A paused
+// engine still reports `speaking === true` — that is the API, not a fake's
+// quirk — so the lock screen would offer a pause button for silent audio.
+test("the state word checks `paused` BEFORE `speaking`, on every path", async () => {
+  const speechSynth = fakeSynth();
+  assert.equal((await state({ speechSynth })).state, "speaking");
+  speechSynth.paused = true;
+  assert.equal((await state({ speechSynth })).state, "paused",
+    "a paused engine is not a speaking one, even though `speaking` is still true");
+  speechSynth.paused = false;
+  speechSynth.speaking = false;
+  assert.equal((await state({ speechSynth })).state, "idle");
+});
+
+// TO SEE IT FAIL: return `state: ""` when a native `state()` answers with only
+// the two booleans. A caller would then have three shapes to handle and would
+// handle one of them wrongly.
+test("state(): an older native answer of two booleans still yields one word", async () => {
+  const { bridge } = fakeBridge(() => ({ platform: "ios", speaking: true, paused: true }));
+  assert.equal((await state({ bridge })).state, "paused");
+  const { bridge: b2 } = fakeBridge(() => ({ platform: "ios", speaking: true, paused: false }));
+  assert.equal((await state({ bridge: b2 })).state, "speaking");
+  const { bridge: b3 } = fakeBridge(() => ({ platform: "ios", speaking: false, paused: false }));
+  assert.equal((await state({ bridge: b3 })).state, "idle");
+});
+
+// TO SEE IT FAIL: let any of the four reject when there is neither a bridge nor
+// a `speechSynthesis`. The caller is a reducer effect; an unhandled rejection
+// there leaves the player believing it paused something it did not.
+test("with no bridge and no speechSynthesis, all four resolve honestly", async () => {
+  for (const fn of [pause, resume, stop]) {
+    const out = await fn({ bridge: undefined, speechSynth: undefined });
+    assert.equal(out.ok, false);
+    assert.equal(out.accepted, false);
+    assert.equal(out.path, "none");
+  }
+  const st = await state({ bridge: undefined, speechSynth: undefined });
+  assert.equal(st.state, "idle");
+});
+
+// TO SEE IT FAIL: leave `pause`/`resume`/`stop`/`state` off the shell object.
+// `player/tts-bridge.js` delegates by name, so an absent method there is the
+// same defect as an absent plugin method — reported, and the voice keeps going.
+test("createForayTtsShell exposes the whole transport, bound to the baked-in bridge", async () => {
+  const { calls, bridge } = fakeBridge(() => ({ accepted: true, state: "idle" }));
+  const shell = createForayTtsShell({ bridge });
+  for (const name of ["pause", "resume", "stop", "state"]) {
+    assert.equal(typeof shell[name], "function", name);
+    await shell[name]();
+  }
+  assert.deepEqual(calls.map((c) => c.method), ["pause", "resume", "stop", "state"]);
 });

@@ -92,7 +92,7 @@ const FLOORS = {
   /* 50 -> 55 with S-01 (docs/search-plan.md, kanban t_46366383): a new
      `search` entry kind on PlayerDiagnostics — query length only, never the
      query text, per this suite's own §7. */
-  "player/diagnostic-log.test.js": 57, // FD-01 (2026-09-10): the `data` entry's vocabulary and its line; 55 -> 57
+  "player/diagnostic-log.test.js": 68, // L-06 + M-03 (2026-09-12): the `nowplaying`, `session` and `transport` entries; 57 -> 68 // FD-01 (2026-09-10): the `data` entry's vocabulary and its line; 55 -> 57
   "player/diagnostic-record.test.js": 23,
   "player/episode-link.test.js": 6,
   /* The durable store (#40). Both of these guard against silent DATA LOSS
@@ -174,7 +174,7 @@ const FLOORS = {
      actual, and the pre-push review proved what that bought: all four pins could
      be deleted and the floor stayed green — the exact failure this file exists to
      make loud. Raise it when the suite grows. */
-  "player/media-session.test.js": 132, // F-89 (2026-09-11): a jingle item is credited to 4a; 131 -> 132
+  "player/media-session.test.js": 139, // L-06 (2026-09-12): the Apple Podcasts parity rule + the onWrite hook; 132 -> 139 // F-89 (2026-09-11): a jingle item is credited to 4a; 131 -> 132
   /* Playback speed (#242). Floored with ZERO SLACK, like media-session and
      data-deletion above and for the same reason: what this suite guards is a set of
      PRODUCT decisions, each one edit from its opposite and none of them visible in
@@ -191,7 +191,7 @@ const FLOORS = {
      is a default that can silently drift back to #491's "best installed
      voice of any name", the exact behaviour the founder overruled. */
   "player/default-voice.test.js": 10,
-  "player/queue-manager.test.js": 115, // +1: L-03 position-increases acceptance (2026-09-10)
+  "player/queue-manager.test.js": 129, // L-05 (2026-09-12): pause/resume/stop for spoken narration; 115 -> 129 // +1: L-03 position-increases acceptance (2026-09-10)
   "player/queue-state.test.js": 56,
   "player/seam-gap.test.js": 16,
   /* The SegmentStrip (#128) — the element that makes a Foray legible as
@@ -218,7 +218,7 @@ const FLOORS = {
      one non-obvious case is a SHELL BUILT BEFORE IT EXISTED -- the bundle holds a
      flattened build-time copy of `foray-tts.js`, so "the module loaded but has
      no such method" is a real state and not defensiveness. */
-  "player/tts-bridge.test.js": 20,
+  "player/tts-bridge.test.js": 25, // L-05 (2026-09-12): the transport half of the bridge; 20 -> 25
   /* The app's name on the surfaces users read (#302), 6 -> 8 when the two
      published legal documents were added, 8 -> 21 when the shipped UI copy that
      suite had only RECORDED as a known gap was renamed and pinned -- twenty
@@ -862,7 +862,7 @@ const FLOORS = {
      `shell-invariants` gained one: the same slice against TODAY'S real documents,
      independently of the fixture suite. */
   "tools/mobile/prepare-webdir.test.mjs": 77, // FD-04 (2026-09-10): the seed is a subset of the directory's files; the seed pointer is optional; 72 -> 74. F-92 (2026-09-12): the seed leaves generated drafts to the directory — the rule on the fixture, the verifier as a reached guard, and the real repo's draft absent from the real bundle; 74 -> 77
-  "tools/mobile/shell-invariants.test.mjs": 53, // +1: iOS plugin never calls setActive (F11/F13, 2026-09-09); +1: Swift writes the L-02 log needle (2026-09-10)
+  "tools/mobile/shell-invariants.test.mjs": 57, // +4: the L-05 plugin methods and the M-03 session needle/event name (2026-09-12) // +1: iOS plugin never calls setActive (F11/F13, 2026-09-09); +1: Swift writes the L-02 log needle (2026-09-10)
   /* 2026-09-04: the bundle's JS/CSS is minified (comments + whitespace, identifiers
      kept) and its JSON re-serialised on the way in — docs/mobile-shell.md §3.4.
      `minify.test.mjs` pins the transform (nothing renamed, nothing rewritten, only
@@ -889,7 +889,7 @@ const FLOORS = {
      Speech fallback applies one, that a voice which is not installed is REPORTED
      rather than silently substituted, and that `listVoices()` answers on every
      path without throwing. */
-  "tools/mobile/foray-tts.test.mjs": 45,
+  "tools/mobile/foray-tts.test.mjs": 53, // L-05 (2026-09-12): pause/resume/stop/state on all three paths; 45 -> 53
   /* The foreground service's web half (#27's Android half, on #37). Zero slack, and
      for the reason `media-session.test.js` above gives: what this suite guards is
      mostly a set of single-line edits away from their opposites, on a surface nobody
@@ -912,7 +912,7 @@ const FLOORS = {
      only thing standing between a lock screen that works and one that silently says
      the wrong episode. Section 7 of that doc maps each mechanism to the mutation that
      kills it, which is where to look before concluding these are vacuous. */
-  "tools/mobile/foray-media-session.test.mjs": 75,
+  "tools/mobile/foray-media-session.test.mjs": 79, // M-03 (2026-09-12): the session event reaches the page; 75 -> 79
   /* iOS on a runner (#38). These four are the only tests in the repo that can be
      run for a macOS-only feature by someone with no Mac, which makes their
      deletion unusually attractive to a future session that finds them
@@ -976,7 +976,7 @@ const FLOORS = {
      inject-app-icon: byte-level --check, refuse a half fix. Floored exact. */
   "tools/mobile/inject-splash.test.mjs": 19,
   "tools/mobile/inject-background-audio.test.mjs": 41,
-  "tools/mobile/ios-ci.test.mjs": 132, // +7: L-02 takeover verdict + reached needle (2026-09-10)
+  "tools/mobile/ios-ci.test.mjs": 136, // +7: L-02 takeover verdict + reached needle (2026-09-10); +4: M-03 session needle (2026-09-12)
   "tools/mobile/ios-workflow.test.mjs": 39,
   "tools/mobile/probe/install-probe.test.mjs": 39,
   /* The one-shot that gets a newly curated show's back catalogue into the pipeline
