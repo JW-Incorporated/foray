@@ -17,6 +17,7 @@ import assert from "node:assert/strict";
 import {
   median, p95, timeReps, localPassBattery, decodeStats, breadthRoundTrip,
   runProbe, formatTable, validateReport, QUERY_BATTERY, NON_ASCII_QUERY, REPS,
+  indexPassBattery,
 } from "./search-probe.mjs";
 
 /* ==================================================================== */
@@ -208,9 +209,14 @@ test("breadthRoundTrip records Cache-Control, X-Vercel-Cache and Age exactly as 
 
 function validReport() {
   return {
-    v: 1,
+    v: 2,
     battery: QUERY_BATTERY.map((q) => ({ query_len: q.length, ms_median: 1, ms_p95: 2, hits: 0 })),
     decode: { ms_median: 1, ms_p95: 2 },
+    /* S-03's section. `skipped: true` is the DEFAULT-VALID shape here, not a
+       degraded one: a checkout with no data/show-index.tsv reports "no
+       coverage" and is still a structurally valid report, exactly the way the
+       network section behaves when the origin is unreachable. */
+    index: { skipped: true, reason: "not on disk", rows: 0, decode: null, battery: [] },
     network: {
       skipped: false,
       misses: [{ ms: 1, status: 200, cache_control: "public, max-age=300", x_vercel_cache: "MISS", age: "0" }],
@@ -326,4 +332,90 @@ test("REPS is 20, matching S-01's own \"20 reps\" acceptance line, not some othe
   // test in this file (they parametrize reps explicitly) while silently
   // violating the card's own stated rep count for the default CLI run.
   assert.equal(REPS, 20);
+});
+
+
+/* ---------------------------------------------- S-03: the index battery ---- */
+
+function validIndexSection() {
+  return {
+    skipped: false, reason: null, rows: 10113, bytes: 446334,
+    decode: { ms_median: 47, ms_p95: 78 },
+    battery: QUERY_BATTERY.map((q) => ({
+      query_len: q.length,
+      prefix_hits: 1, prefix_ms_median: 0.004, prefix_ms_p95: 0.013,
+      scan_hits: 0, scan_ms_median: 8, scan_ms_p95: 13, scan_reached: true, scan_reached: true,
+    })),
+  };
+}
+
+test("indexPassBattery reports the prefix pass and the scan pass SEPARATELY, never as one number", () => {
+  /* The two run at different moments and are graded against different
+     budgets: the prefix pass sits on a KEYSTROKE (16 ms frame), the scan on
+     the DEBOUNCE TICK. One averaged column would read as "the index costs
+     ~20 ms", which is true of neither pass and is the exact shape S-01's
+     "never a mean" rule exists to forbid.
+
+     Driven by fakes with known return lengths — this asserts the SHAPE of the
+     report, not the speed of a real index (test/show-index.test.js measures
+     that against the committed file).
+
+     MUTATION: have indexPassBattery return one `ms_median` per row, averaged
+     over both passes. The four-field assertion below fails. */
+  const prefix = (q) => new Array(q.length).fill(0);
+  const scan = (q) => new Array(q.length * 2).fill(0);
+  const rows = indexPassBattery(prefix, scan, { keys: [], rows: [] }, ["ab", "cde"], 3);
+  assert.equal(rows.length, 2);
+  assert.deepEqual(rows.map((r) => r.prefix_hits), [2, 3]);
+  assert.deepEqual(rows.map((r) => r.scan_hits), [4, 6]);
+  /* `scan_reached` says whether app.js would EVER pay this row's scan cost: it
+     runs the scan only on the debounce tick and only when the prefix pass
+     returned fewer than 10 hits. Without the column, a table row showing a
+     500 ms scan for "l" reads as a cost the app pays; it never does, because
+     "l" returns 418 prefix hits.
+     MUTATION: hardcode `scan_reached: true`. The wide-prefix case below
+     returns 12 hits and goes red. */
+  assert.deepEqual(rows.map((r) => r.scan_reached), [true, true]);
+  const wide = indexPassBattery(() => new Array(12).fill(0), scan, { keys: [], rows: [] }, ["ab"], 2);
+  assert.deepEqual(wide.map((r) => r.scan_reached), [false]);
+  for (const r of rows) {
+    for (const k of ["prefix_ms_median", "prefix_ms_p95", "scan_ms_median", "scan_ms_p95"]) {
+      assert.equal(typeof r[k], "number", `${k} must be reported in its own right`);
+    }
+  }
+});
+
+test("validateReport accepts a populated index section and rejects one that lost a pass's p95", () => {
+  /* The contract the doc's after-table quotes from. A report that silently
+     stopped reporting the scan pass's p95 would still print a plausible table
+     and still exit 0 — the same "stat quietly disappeared" failure the
+     battery and network validators already guard.
+
+     MUTATION: check only `prefix_ms_p95`. The second half goes green when it
+     must not. */
+  const ok = validReport();
+  ok.index = validIndexSection();
+  assert.deepEqual(validateReport(ok), []);
+
+  const missing = validReport();
+  missing.index = validIndexSection();
+  delete missing.index.battery[0].scan_ms_p95;
+  assert.ok(validateReport(missing).some((e) => /p95/.test(e)));
+
+  const short = validReport();
+  short.index = validIndexSection();
+  short.index.battery = short.index.battery.slice(0, 2);
+  assert.ok(validateReport(short).length > 0);
+});
+
+test("validateReport rejects an index section with no explicit skipped flag", () => {
+  /* Same rule as the network section: an absent index must say "no coverage",
+     not be silent. A report with no `index` key at all is the shape a
+     pre-S-03 tool would produce, and reading that as "the index is fast" is
+     exactly the inference this validator exists to make impossible.
+
+     MUTATION: drop the index-section check from validateReport. Red. */
+  const r = validReport();
+  delete r.index;
+  assert.ok(validateReport(r).some((e) => /index section/.test(e)));
 });

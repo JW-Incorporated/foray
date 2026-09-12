@@ -1316,3 +1316,63 @@ test("a stale-shell message with no deployId (an unretained/unknown generation) 
   assert.doesNotThrow(() => page.send({ source: "foray-sw", reason: "stale-shell", deployId: null }));
   assert.ok(page.notice());
 });
+
+test("an untracked data file (S-03's show index) is runtime-cached into the current generation and survives a dead zone", async () => {
+  /* S-03 (docs/search-plan.md) needs `data/show-index.tsv` to be readable
+     offline, and it is deliberately NOT in `deploy-manifest.json` — it is a
+     lazily fetched title projection, not part of the code/data pair #233 is
+     about. The question the card had to answer was whether that costs a new
+     runtime-cache branch in this file. It does not, and this test is why: a
+     path the manifest never tracked is already cached by `cachePut`'s final
+     branch ("there is no verified copy for it to corrupt") and answered from
+     the current generation by `handleData`'s untagged fallback.
+
+     `cachePut`'s own header says of that branch "there are none today, but the
+     check costs nothing and keeps this correct if one is ever added". One has
+     now been added, so the branch is load-bearing rather than defensive, and
+     this test is what says so — WITHOUT it, deleting that branch as dead code
+     would silently take the offline search index with it.
+
+     The verified-path half is unchanged and still guarded: a manifest-tracked
+     file whose bytes do not re-verify is still dropped, which is the second
+     assertion here.
+
+     MUTATION: change `cachePut`'s untracked branch to `return` instead of
+     `cache.put(key, response)`. The offline read below answers 504 and this
+     goes red. */
+  const files = { "app.js": "APP@1" };
+  const h = loadWorker({ network: networkFor(manifestFor("1", files), files) });
+  await h.lifecycle("install");
+  await h.lifecycle("activate");
+
+  const INDEX = "data/show-index.tsv";
+  const BODY = "Radiolab\tradiolab\t\t1\n";
+  h.setNetwork((url) => (url.endsWith(INDEX) ? ok(BODY) : offline()));
+  const live = await h.fetch(sub(INDEX));
+  await h.settle();
+  assert.equal(live.status, 200);
+
+  h.setNetwork(offline);
+  const offlineRead = await h.fetch(sub(INDEX));
+  await h.settle();
+  assert.equal(offlineRead.status, 200, "an untracked data file must be readable from the generation cache offline");
+  assert.equal(await offlineRead.text(), BODY);
+
+  /* And the other direction, so this test cannot be satisfied by making every
+     origin answer overwrite whatever is staged: app.js IS manifest-tracked, so
+     a live answer with different bytes is dropped and install's verified copy
+     stands. */
+  h.setNetwork((url) => (url.endsWith("app.js") ? ok("APP@tampered") : offline()));
+  await h.fetch(sub("app.js"));
+  await h.settle();
+  h.setNetwork(offline);
+  const appRead = await h.fetch(sub("app.js"));
+  await h.settle();
+  const appBody = await appRead.text();
+  /* `includes`, not equality: handleShell stamps the pin into a shell
+     response before it leaves the worker, so the bytes on the wire are never
+     byte-identical to what is cached. The claim here is about WHICH copy was
+     served, not about the stamp. */
+  assert.ok(appBody.includes("APP@1"), "a manifest-tracked path keeps the bytes install verified");
+  assert.ok(!appBody.includes("APP@tampered"));
+});

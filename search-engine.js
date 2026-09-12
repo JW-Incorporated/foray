@@ -1754,24 +1754,250 @@ function prettyConceptLabel(id) {
    is not wired to fall back on anything else. No STOPWORDS/ALIASES/df
    machinery: a show's name is not a topic query, and running it through the
    topic tokenizer would strip words like "The" or "On" out of an actual
-   show title ("The Daily", "On Being") that a listener typed on purpose. */
+   show title ("The Daily", "On Being") that a listener typed on purpose.
+
+   S-04 (docs/search-plan.md) REPLACED THE THREE-BUCKET RULE WITH FOUR, and
+   the fourth is the whole point: a match on a WORD BOUNDARY inside the title
+   ("fridman" -> *Lex Fridman Podcast*) used to land in the same bucket as a
+   match in the middle of a word ("ridm"), so the show a listener obviously
+   meant was buried under every accidental substring. The order is now
+   exact > prefix > word-start > substring-anywhere.
+
+   TIE-BREAKS INSIDE A BUCKET, in order, and each one is load-bearing:
+     1. CURATED BEFORE BREADTH — the same rule
+        backend/src/catalog/searchBreadthShows.ts already applies server-side.
+     2. THE POPULARITY PRIOR, `chart_rank`, BUCKETED — never as a raw score.
+        Measured (docs/search-plan.md §1.1): it is present on all 19,787
+        breadth rows, it is Apple's PER-GENRE chart position 1-200 (paired
+        with `chart_genre_id`), and it is from the 2026-07-09 harvest. Rank 3
+        in *Life Sciences* is NOT rank 3 in *Comedy*, so comparing two raw
+        ranks across genres compares two different things. `popularityBand`
+        therefore collapses it to <=10 / <=50 / <=200 / unranked, which is the
+        most the data honestly supports. Curated shows carry no `chart_rank`
+        and need none: rule 1 has already placed them.
+     3. `title.localeCompare` — so ties are stable and deterministic for a
+        fixed catalogue snapshot, rather than depending on the input order
+        (which for the index pass is byte order and for the curated pass is
+        catalog.json's order — two different things that must not produce two
+        different result lists for the same query).
+   The match INDEX is deliberately NOT a tie-break any more: inside one bucket
+   it varies with title length rather than with relevance, and it is what made
+   the old ordering depend on which catalogue a row came from.
+
+   NOT SHARED WITH THE SERVER. `backend/src/catalog/searchBreadthShows.ts`
+   still applies the old three-bucket rule. The two now differ, on purpose —
+   see S-04's own card and the PR that landed it: once S-03's index is on the
+   device the endpoint is the FALL-THROUGH rather than the interactive path,
+   so the ranking a listener sees is this file's. Mirroring it server-side is
+   a `backend/src/` (DENIED-path) change that buys nothing while that holds. */
+
+/** The four buckets, named once. `SHOW_MATCH_NONE` is a real answer ("this
+    title does not match at all"), not an error code — every caller filters on
+    it rather than on a separate boolean. */
+const SHOW_MATCH_EXACT = 0;
+const SHOW_MATCH_PREFIX = 1;
+const SHOW_MATCH_WORD_START = 2;
+const SHOW_MATCH_SUBSTRING = 3;
+const SHOW_MATCH_NONE = -1;
+
+/* What separates two words of a title. Unicode property escapes rather than
+   `\W`, because `\W` is ASCII-only and this catalogue is not: "伊藤洋一のRound
+   Up World Now！" and "99% Invisible" both have to tokenize sensibly, and an
+   ASCII-only class would call every CJK character a word break. */
+const SHOW_WORD_BREAK = /[^\p{L}\p{N}]/u;
+
+/** Which bucket `title` falls in for an ALREADY trimmed+lowercased `q`, plus
+    the index the bucket was decided at (kept for callers that want to
+    highlight, never used as a tie-break — see the header). */
+function showMatchBucket(title, q) {
+  const t = String(title || "").toLowerCase();
+  const query = String(q || "");
+  if (!query) return { bucket: SHOW_MATCH_NONE, idx: -1 };
+  const first = t.indexOf(query);
+  if (first === -1) return { bucket: SHOW_MATCH_NONE, idx: -1 };
+  if (t === query) return { bucket: SHOW_MATCH_EXACT, idx: 0 };
+  if (first === 0) return { bucket: SHOW_MATCH_PREFIX, idx: 0 };
+  /* EVERY occurrence is checked, not just the first: "ridman" occurs once in
+     "Lex Fridman Podcast" mid-word, but "the" occurs mid-word in "Anything"
+     and again at a word start in "The Daily Anything" — stopping at the first
+     hit would file the second one as a plain substring. */
+  for (let p = first; p !== -1; p = t.indexOf(query, p + 1)) {
+    if (SHOW_WORD_BREAK.test(t[p - 1])) return { bucket: SHOW_MATCH_WORD_START, idx: p };
+  }
+  return { bucket: SHOW_MATCH_SUBSTRING, idx: first };
+}
+
+/** `true` for a row that came from the breadth catalogue or the breadth
+    endpoint. ABSENCE OF `tier` MEANS CURATED, deliberately: the 220-show
+    `data/catalog-client.json` rows carry no `tier` field at all, and they are
+    the curated set by construction. Only a row that says `breadth` is one. */
+function isBreadthShow(show) {
+  return show?.tier === "breadth";
+}
+
+/** The bucketed popularity prior. See the header for why it is bucketed. */
+const SHOW_PRIOR_BANDS = [10, 50, 200];
+function popularityBand(show) {
+  if (!isBreadthShow(show)) return 0; // curated — rule 1 already placed it
+  const rank = Number(show?.chart_rank);
+  if (!Number.isFinite(rank) || rank <= 0) return SHOW_PRIOR_BANDS.length + 1;
+  for (let i = 0; i < SHOW_PRIOR_BANDS.length; i++) {
+    if (rank <= SHOW_PRIOR_BANDS[i]) return i + 1;
+  }
+  return SHOW_PRIOR_BANDS.length + 1;
+}
+
+/* `title.localeCompare(other)` is what S-04's card names, and this is exactly
+   that with the collator built ONCE instead of per comparison. Measured
+   (2026-09-12, Node 22, the real 10,113-row index): a 90-hit prefix sort cost
+   216 ms on the first call with bare `localeCompare` — ICU builds a fresh
+   collator per call — and 0.3 ms once the collator is cached. A 216 ms
+   keystroke is the entire problem S-03 exists to solve, reintroduced by the
+   tie-break, so this is not a micro-optimisation. Falls back to code-unit
+   order where `Intl` is absent (the node:vm test harness with no ICU), which
+   is still a total, deterministic order. */
+let showTitleCollator = null;
+function compareTitles(a, b) {
+  if (showTitleCollator === null) {
+    showTitleCollator = (typeof Intl !== "undefined" && typeof Intl.Collator === "function")
+      ? new Intl.Collator(undefined, { sensitivity: "variant" })
+      : false;
+  }
+  if (showTitleCollator) return showTitleCollator.compare(a, b);
+  return a < b ? -1 : a > b ? 1 : 0;
+}
+
+/** The one comparator, over `{ show, bucket }` pairs. Used by the curated
+    pass, the index prefix pass and the index scan alike, so all three orders
+    agree and a result cannot jump when the index finishes loading. */
+function compareShowMatches(a, b) {
+  if (a.bucket !== b.bucket) return a.bucket - b.bucket;
+  const ab = isBreadthShow(a.show) ? 1 : 0;
+  const bb = isBreadthShow(b.show) ? 1 : 0;
+  if (ab !== bb) return ab - bb;
+  const ap = popularityBand(a.show);
+  const bp = popularityBand(b.show);
+  if (ap !== bp) return ap - bp;
+  return compareTitles(String(a.show?.title || ""), String(b.show?.title || ""));
+}
+
 function searchShows(query, shows) {
   const q = String(query || "").trim().toLowerCase();
   if (!q) return [];
   const scored = [];
   for (const show of shows || []) {
-    const title = String(show?.title || "");
-    const idx = title.toLowerCase().indexOf(q);
-    if (idx === -1) continue;
-    /* Ranked, not just filtered: an exact title match should lead, then a
-       match at the start of the title, then a match anywhere inside it.
-       Ties within a rank keep the catalogue's own title order (stable
-       sort), so results are deterministic for a fixed catalog snapshot. */
-    const rank = title.toLowerCase() === q ? 0 : idx === 0 ? 1 : 2;
-    scored.push({ show, rank, idx });
+    const { bucket } = showMatchBucket(show?.title, q);
+    if (bucket === SHOW_MATCH_NONE) continue;
+    scored.push({ show, bucket });
   }
-  scored.sort((a, b) => a.rank - b.rank || a.idx - b.idx);
+  scored.sort(compareShowMatches);
   return scored.map(s => s.show);
+}
+
+/* ---------- the client-side show index (S-03, docs/search-plan.md) ----------
+
+   `data/show-index.tsv` is a title projection of the merged catalogue
+   (curated 220 + breadth minus `in_curated`), built by
+   `tools/build-show-index.mjs` and sorted by LOWERCASED TITLE IN CODE-UNIT
+   ORDER. The sort order is the contract: `prefixSearchShows` binary-searches
+   the same order, so a builder that sorted with `localeCompare` and a client
+   that compares with `<` would silently disagree on every accented title.
+   Both sides use `<` on the lowercased title. Nothing here calls
+   `localeCompare` except the final tie-break, which runs over an already
+   selected slice and therefore cannot move the search itself.
+
+   WHY A SORTED ARRAY AND NOT A TRIE/FST (docs/search-plan.md §1.3, measured):
+   a linear `indexOf` scan of all 19,904 titles is 12.9-19.9 ms — over a 16 ms
+   frame budget on a desktop, worse on a phone — while a prefix answer here is
+   two binary searches, ~15 comparisons, and free. A trie would buy the same
+   prefix answer for a bespoke binary format and a decoder nobody else in this
+   repo reads. So: binary search on every keystroke, linear scan only on the
+   debounce tick and only when the prefix pass under-delivers. */
+
+/** Decodes the TSV into `{ keys, rows }` — `keys[i]` is the lowercased title
+    `rows[i]` is sorted by, precomputed once so the per-keystroke path never
+    lowercases 19,904 strings again. Tolerant of a trailing newline and of a
+    malformed row (skipped, not thrown): a truncated download degrades to a
+    smaller index, and the curated pass is still underneath it. */
+function parseShowIndex(text) {
+  const keys = [];
+  const rows = [];
+  for (const raw of String(text || "").split("\n")) {
+    /* The trailing `\r` is stripped rather than assumed absent. `.gitattributes`
+       marks `data/show-index.tsv` `-text` so git cannot hand a Windows checkout
+       a CRLF copy, but a copy can still arrive from somewhere git does not
+       control, and the failure mode is the silent kind: `curated` would read
+       "1\r", never equal "1", and EVERY curated show in the index would be
+       ranked as breadth-tier. */
+    const line = raw.endsWith("\r") ? raw.slice(0, -1) : raw;
+    if (!line) continue;
+    const parts = line.split("\t");
+    if (parts.length < 4) continue;
+    const title = parts[0];
+    const show_id = parts[1];
+    if (!title || !show_id) continue;
+    const rank = Number.parseInt(parts[2], 10);
+    rows.push({
+      show_id,
+      title,
+      chart_rank: Number.isFinite(rank) ? rank : null,
+      tier: parts[3] === "1" ? "curated" : "breadth",
+    });
+    keys.push(title.toLowerCase());
+  }
+  return { keys, rows };
+}
+
+/** First index whose key is >= `needle`, by code-unit order. */
+function showIndexLowerBound(keys, needle) {
+  let lo = 0;
+  let hi = keys.length;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (keys[mid] < needle) lo = mid + 1;
+    else hi = mid;
+  }
+  return lo;
+}
+
+/** The prefix pass: every row whose lowercased title starts with `query`,
+    ranked by the same comparator the curated pass uses. O(log n) + the size
+    of the answer. `￿` is the upper sentinel — the largest BMP code unit,
+    so `q + "￿"` sorts after every string that starts with `q` and before
+    the next distinct prefix. */
+function prefixSearchShows(query, index, limit = 0) {
+  const q = String(query || "").trim().toLowerCase();
+  if (!q || !index || !index.keys || !index.keys.length) return [];
+  const lo = showIndexLowerBound(index.keys, q);
+  const hi = showIndexLowerBound(index.keys, q + "￿");
+  const scored = [];
+  for (let i = lo; i < hi; i++) {
+    scored.push({ show: index.rows[i], bucket: index.keys[i] === q ? SHOW_MATCH_EXACT : SHOW_MATCH_PREFIX });
+  }
+  scored.sort(compareShowMatches);
+  const picked = scored.map(s => s.show);
+  return limit > 0 ? picked.slice(0, limit) : picked;
+}
+
+/** The scan pass: the 12.9-19.9 ms one. Callers run it on the debounce tick
+    only, and only when the prefix pass under-delivered — see app.js's own
+    call site, which is the single place that policy lives. Returns word-start
+    and substring hits ONLY; a prefix/exact hit is already the prefix pass's
+    answer and returning it twice would make the caller dedupe. */
+function scanShowIndex(query, index, limit = 0) {
+  const q = String(query || "").trim().toLowerCase();
+  if (!q || !index || !index.keys || !index.keys.length) return [];
+  const scored = [];
+  for (let i = 0; i < index.keys.length; i++) {
+    const key = index.keys[i];
+    if (key.indexOf(q) <= 0) continue; // -1 = no match, 0 = the prefix pass's own answer
+    const { bucket } = showMatchBucket(key, q);
+    if (bucket === SHOW_MATCH_NONE || bucket === SHOW_MATCH_EXACT || bucket === SHOW_MATCH_PREFIX) continue;
+    scored.push({ show: index.rows[i], bucket });
+  }
+  scored.sort(compareShowMatches);
+  const picked = scored.map(s => s.show);
+  return limit > 0 ? picked.slice(0, limit) : picked;
 }
 
 const SearchEngine = {
@@ -1785,6 +2011,15 @@ const SearchEngine = {
   strongPrefix,
   suggestAdjacentTopics, prettyConceptLabel,
   searchShows,
+  /* S-04 / S-03 (docs/search-plan.md). Exported rather than private because
+     three other readers name these: test/show-search-ranking.test.js pins the
+     buckets by name, tools/build-show-index.mjs's reference scan compares
+     against `showMatchBucket`, and app.js chooses between the prefix pass and
+     the scan pass on the debounce tick. */
+  SHOW_MATCH_EXACT, SHOW_MATCH_PREFIX, SHOW_MATCH_WORD_START, SHOW_MATCH_SUBSTRING, SHOW_MATCH_NONE,
+  SHOW_PRIOR_BANDS,
+  showMatchBucket, isBreadthShow, popularityBand, compareShowMatches,
+  parseShowIndex, showIndexLowerBound, prefixSearchShows, scanShowIndex,
 };
 
 if (typeof module !== "undefined" && module.exports) {
