@@ -56,4 +56,16 @@ export interface SpineRevisionRequest {
   violations: string[];
   /** 1-based: the first re-ask is 1. */
   attempt: number;
+  /**
+   * WHICH RE-ASK THIS IS (F-98). Two conditions now re-ask the spine, and they
+   * ask for different things: `"structure"` (F-86's, the default and the
+   * behaviour of every call written before this field) says a claim is
+   * malformed and to fix only what the gate named; `"seed-floor"` says the
+   * reply is structurally fine but seeds too few of its beats from the windows
+   * the prompt offered, and names the beats and the windows. One instruction
+   * text per condition — telling a model to "fix only these violations" about
+   * beats that violate nothing is how a re-ask comes back worse than the reply
+   * it re-asked.
+   */
+  kind?: "structure" | "seed-floor";
 }

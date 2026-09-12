@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { writeNarration, allWrittenNarration, pageOfWrittenBeat, type WrittenAct } from "../src/generation/writeNarration";
+import { writeNarration, allWrittenNarration, pageOfWrittenBeat, type NarrationWriteStats, type WrittenAct } from "../src/generation/writeNarration";
 import { writeActNarration, actDocuments, buildActSources, groundDocsFor, sourcesForRest, titlesForClip } from "../src/generation/writeAct";
 import {
   CLIP_FIRST_SENTENCES_WORDS,
@@ -991,3 +991,279 @@ describe("F-97 — Q-03 pass 2: act-scoped support, modes assigned after writing
     expect(validateNarratedBeat(negative, { charBand: [10, 500], actSourceCount: 1, actSourceQuotes: ["the record does not say where the crew stood"] }).valid).toBe(true);
   });
 });
+
+/* ------------------------------------------------------------- F-99 */
+
+/**
+ * F-99 (this PR) — the two loose ends the sourcing pass (F-96) left for
+ * the narration lane, both of them this lane CONSUMING a field §4.5 now
+ * sets on the `SourcedBeat`:
+ *
+ *   1. `mergedInto` — a clip extended forward to cover a second beat's
+ *      thought carries TWO beats and plays ONCE. The act plan now lays it
+ *      out once, as one `SeamClip` carrying both.
+ *   2. `seedLost` — a beat seeded from tape §4.5 could not place. The
+ *      writer and verifier are told the seed is gone, and a beat the
+ *      act's sources cannot reach is closed after ONE round.
+ *
+ * Every test names the mutation that kills it.
+ */
+
+/** F-99: §4.5 merged the third beat into the second beat's clip — both
+ * resolve to ONE segment pointer, and `mergedInto` names the beat whose
+ * clip it is. Flat ids: b0 (narration) / b1 (the clip) / b2 (merged into
+ * b1) / b3 (narration). */
+function mergedClipAct(): SourcedAct {
+  return {
+    title: "Act 3: One clip, two beats",
+    slots: [
+      {
+        title: "Opening",
+        beats: [
+          narration(CLAIMS.b0),
+          tape("A guest explains why skills decide the tools.", TAPE_A),
+          { ...tape("And why the hire comes before the model.", TAPE_A), mergedInto: { slot: 0, beat: 1 } },
+          narration(CLAIMS.b3)
+        ]
+      }
+    ]
+  };
+}
+
+/** F-99: a beat G-25 seeded from a transcript this Foray never clips. Its
+ * claim names a guest the act has no tape and no print for — the shape of
+ * six of run 9's eight unverified pages. It replaces b5 (the last beat of
+ * the four-beat fixture, alone in seam s2). Deliberately shares no content
+ * word with any other seam's script or the stub's padding, so the stub
+ * verifier's carrier search can only find it in its own seam. */
+const SEED_CLAIM = "Aaron Moncur began as a machinist, and says the floor taught him what mattered.";
+
+function seedLostAct(): SourcedAct {
+  const act = fourBeatsTwoClips();
+  act.slots[1]!.beats[2] = { ...narration(SEED_CLAIM), seedLost: true };
+  return act;
+}
+
+/** Long enough to hold s2's band (340-765) with no content word of
+ * `SEED_CLAIM` in it: the seam that should have carried the seed-lost beat
+ * says nothing about it. Every sentence is one of the stub's own vetted
+ * fillers, so no mechanical rule fires on it. */
+const SEED_LOST_FILLER =
+  "That thread runs further than most listeners expect. It is worth sitting with it. " +
+  "The popular version of this is tidier than what happened. Nothing about that was inevitable at the time. " +
+  "The people closest to it saw it differently. That detail is easy to miss and easy to underrate. " +
+  "That thread runs further than most listeners expect. It is worth sitting with it.";
+
+describe("F-99 — merged clips are one clip in the act plan; seed-lost beats are carried only as far as the sources go", () => {
+  it("a clip §4.5 merged two beats into is ONE clip in the plan, carrying both beats, with one seam into it and one out of it", () => {
+    /* THE MUTATION, named: lay the clip out once per BEAT — drop the
+       `mergedInto`/segment lookup in `planActSeams`. The plan then reads
+       two clips (c0 and c1) for one segment, with a beatless seam between
+       two plays of the same tape and an Intro before each, while
+       `stitchAct` and the partial projection play it once. That is the
+       shape F-96 shipped and named for this lane to fix. */
+    const seams = planActSeams(mergedClipAct());
+    expect(seams.map((s) => [s.seamId, s.beats.map((b) => b.beatId), s.follows?.clipId ?? null, s.introduces?.clipId ?? null])).toEqual([
+      ["s0", ["b0"], null, "c0"],
+      ["s1", ["b3"], "c0", null]
+    ]);
+    const clip = seams[0]!.introduces!;
+    /* Both beats are POSITIONED on the one clip, in play order, the beat
+       whose clip it is first. */
+    expect(clip.carries.map((c) => [c.beatId, c.claim, c.slot, c.beat])).toEqual([
+      ["b1", "A guest explains why skills decide the tools.", 0, 1],
+      ["b2", "And why the hire comes before the model.", 0, 2]
+    ]);
+    expect([clip.slot, clip.beat, clip.tape.segmentId]).toEqual([0, 1, SEGMENT_A]);
+    /* And without the field: a second beat pointing at a segment already
+       laid out cannot play again whatever it says — the same rule
+       `stitchAct` decides on (F-96). */
+    const noField = mergedClipAct();
+    delete (noField.slots[0]!.beats[2] as { mergedInto?: unknown }).mergedInto;
+    expect(planActSeams(noField).map((s) => s.introduces?.clipId ?? null)).toEqual(["c0", null]);
+    /* An UNmerged act is untouched: one clip per tape beat, each carrying
+       its own beat alone. */
+    expect(planActSeams(fourBeatsTwoClips()).map((s) => s.introduces?.carries.map((c) => c.beatId) ?? null)).toEqual([["b2"], ["b4"], null]);
+  });
+
+  it("the merged clip reaches the writer and the verifier as ONE clip carrying both beats, is introduced once, and plays once", async () => {
+    /* MUTATION THAT KILLS THIS: build `ClipBrief.carries` from the clip's
+       own beat only — the writer is never told the tape makes the second
+       beat's point, and the verifier judges a beat it cannot see against a
+       window it was not given. Or: lay the clip out per beat (above) — the
+       request then carries two clips and two Intro seams for one window,
+       and `stitchAct` emits one tape item for two CLIP briefs. */
+    const { writer, verifier, requests, verifyRequests } = builders();
+    const [act] = await writeNarration([mergedClipAct()], { writer, verifier, evidence: gatherer() }, voice, ctx);
+
+    expect(requests[0]!.clips.map((c) => c.clipId)).toEqual(["c0"]);
+    expect(requests[0]!.clips[0]!.carries!.map((b) => b.beatId)).toEqual(["b1", "b2"]);
+    expect(requests[0]!.seams.map((s) => [s.seamId, s.introduces ?? null, s.intro ?? null])).toEqual([
+      ["s0", "c0", "full"],
+      ["s1", null, null]
+    ]);
+    expect(verifyRequests[0]!.clips[0]!.carries!.map((b) => b.beatId)).toEqual(["b1", "b2"]);
+
+    /* One Intro, one page per seam, and the tape plays once. */
+    const stitched = stitchAct(act!, "act-3");
+    expect(stitched.items.map((i) => i.kind)).toEqual(["narration", "tape", "narration"]);
+    expect(stitched.coverage.entries.map((e) => e.status)).toEqual(["present", "present", "present", "present"]);
+    expect(pagesInOrder(act!)).toHaveLength(2);
+    expect(pagesInOrder(act!).every((p) => p.verified)).toBe(true);
+  });
+
+  it("the prompts print a merged clip as one CLIP carrying both beats, and a seed-lost beat with the line the writer and the verifier each need", () => {
+    /* MUTATION THAT KILLS THIS: print the CLIP line without its beats (the
+       writer introduces the same tape twice, or narrates what it is about
+       to say), or drop the SEED LOST lines — the writer then attributes an
+       incident to a guest the act never plays, and the verifier demands
+       the specifics only the missing tape could supply, which is how six
+       of run 9's eight unverified pages came about. */
+    const req = requestWithMergedClip();
+    const prompt = buildActWritePrompt(req);
+    expect(prompt).toContain(`CLIP c0 — "${TITLE_A}" on ${SHOW}, 120 s of tape (document ${tapeDocIdFor(SEGMENT_A)}) — carries beats b1, b2`);
+    expect(prompt).toContain("  it carries beat b1: A guest explains why skills decide the tools.");
+    expect(prompt).toContain("  it carries beat b2: And why the hire comes before the model.");
+    expect(prompt).toContain("One CLIP can carry more than one beat");
+    expect(prompt).toContain(`  carries beat b0: ${SEED_CLAIM}`);
+    expect(prompt).toContain("    SEED LOST — beat b0's tape was not available: do not attribute specifics to anyone this claim names; say only what the act's sources say, or hand off.");
+    expect(prompt).toContain("A beat marked SEED LOST was written from a stretch of tape this Foray does NOT play");
+
+    /* A clip carrying its own beat alone says nothing new — the ordinary
+       CLIP line is unchanged. */
+    const plain = buildActWritePrompt({ ...req, clips: [{ ...req.clips[0]!, carries: [req.clips[0]!.carries![0]!] }] });
+    expect(plain).not.toContain("carries beats");
+    expect(plain).not.toContain("it carries beat b1");
+
+    const verifyPrompt = buildActVerifyPrompt(verifyRequestWithSeedLost());
+    expect(verifyPrompt).toContain(`  b0: ${SEED_CLAIM}`);
+    expect(verifyPrompt).toContain("    SEED LOST — the tape this claim was written from is NOT in this act");
+    expect(verifyPrompt).toContain("do NOT demand the names, numbers or incidents that only the missing tape could supply");
+    expect(verifyPrompt).toContain(`CLIP c0 — "${TITLE_A}" on ${SHOW}, 120 s of tape (${tapeDocIdFor(SEGMENT_A)}) — carries beats b1, b2, judged against this one window`);
+    expect(verifyPrompt).toContain("  it carries beat b2: And why the hire comes before the model.");
+  });
+
+  it("a seed-lost beat the act's sources cannot carry is reported uncarried:seed-lost after ONE round, not retried three times", async () => {
+    /* THE MUTATION, applied deliberately: seam s2 comes back saying nothing
+       about b5 — the same shape as the dropped-beat test above, which costs
+       three rounds and a note no writer can answer. b5 carries `seedLost`:
+       §4.3 wrote it from a stretch of tape §4.5 could not place, so no
+       source in the act names Aaron Moncur and none ever will.
+       MUTATION THAT KILLS THIS: ignore the flag — treat it as an ordinary
+       uncarried beat — and the act goes back to the writer twice more
+       (write 3, verify 3), the page carries no `unverifiedReason`, and
+       `seedLostBeats` reads 0 while three narration calls are spent. */
+    const { writer, verifier, calls } = builders((reply) => ({
+      seams: reply.seams.map((s) => (s.seamId === "s2" ? { ...s, script: SEED_LOST_FILLER, claims: [], usedClaims: [] } : s))
+    }));
+    const stats: NarrationWriteStats = { retryRounds: 0 };
+    const [act] = await writeNarration([seedLostAct()], { writer, verifier, evidence: gatherer(), stats }, voice, ctx);
+
+    expect(calls).toMatchObject({ write: 1, verify: 1 });
+    expect(stats.retryRounds).toBe(0);
+    expect(stats.seedLostBeats).toBe(1);
+
+    const pages = pagesInOrder(act!);
+    const s2 = pages[2]!;
+    expect(s2.verified).toBe(false);
+    expect(s2.purposeAccomplished).toBe(false);
+    expect(s2.unverifiedReason).toBe("seed-lost");
+    expect(s2.verifierNotes).toMatch(/beat b5 was seeded from tape this Foray never clipped/);
+    expect(s2.verifierNotes).toMatch(/uncarried: seed-lost/);
+    /* ONE attempt, not three: nothing was retried. */
+    expect(s2.attempts).toHaveLength(1);
+    /* The other seams are untouched, verified on the first round. */
+    expect(pages[0]!.verified).toBe(true);
+    expect(pages[1]!.verified).toBe(true);
+
+    /* The report tells the two apart: a seed-lost page is still a publish
+       stop, but its reason and its detail say the fix is at SEEDING. */
+    const unverified = computeUnverifiedPages([act!]);
+    expect(unverified.count).toBe(1);
+    expect(unverified.pages[0]!.reason).toBe("seed-lost");
+    expect(unverified.pages[0]!.detail).toContain("the beat's seed tape is not in this Foray");
+    expect(unverified.pages[0]!.detail).not.toContain("after every attempt");
+  });
+
+  it("a seed-lost beat the act's prose does carry verifies normally — the flag changes nothing when the sources reach the claim", async () => {
+    /* MUTATION THAT KILLS THIS: close every `seedLost` beat as seed-lost
+       without asking the verifier — the beat's page is then reported
+       unverified with a reason, and a claim the act genuinely carries
+       (another clip's window, a document the retrieval found) is thrown
+       away. The flag says the SEED is gone, not that the claim is
+       uncarriable. */
+    const { writer, verifier, calls } = builders();
+    const stats: NarrationWriteStats = { retryRounds: 0 };
+    const [act] = await writeNarration([seedLostAct()], { writer, verifier, evidence: gatherer(), stats }, voice, ctx);
+
+    expect(calls).toMatchObject({ write: 1, verify: 1 });
+    expect(stats.seedLostBeats).toBeUndefined();
+    const beats = narrationBeatsOf(act!);
+    expect(beats.map((b) => b.sourcing === "narration" && b.verifiedAtAttempt)).toEqual([1, 1, 1, 1]);
+    const pages = pagesInOrder(act!);
+    expect(pages).toHaveLength(3);
+    expect(pages.every((p) => p.verified && p.unverifiedReason === undefined)).toBe(true);
+    expect(computeUnverifiedPages([act!]).count).toBe(0);
+  });
+
+  it("the beat brief carries `seedLost` to both collaborators, and `buildVeracityMetrics` reports `seedLostBeats` as a count, never as a guessed zero", async () => {
+    /* MUTATION THAT KILLS THIS: build `BeatBrief` without the flag — the
+       prompts above have nothing to print and the orchestrator has nothing
+       to close on. Or: default `seedLostBeats` to 0 in
+       `buildVeracityMetrics` — a run that never counted them then reads the
+       same as a run that counted none. */
+    const { writer, verifier, requests, verifyRequests } = builders();
+    await writeNarration([seedLostAct()], { writer, verifier, evidence: gatherer() }, voice, ctx);
+    expect(requests[0]!.seams.flatMap((s) => s.beats).find((b) => b.beatId === "b5")).toMatchObject({ seedLost: true });
+    expect(verifyRequests[0]!.beats.find((b) => b.beatId === "b5")).toMatchObject({ seedLost: true });
+    expect(requests[0]!.seams.flatMap((s) => s.beats).filter((b) => b.seedLost).map((b) => b.beatId)).toEqual(["b5"]);
+
+    const base = { sourcedActs: [], writtenActs: [], topic: "t", writerCalls: 1, verifierCalls: 1, pipelineTokens: 0, stageTimings: [] };
+    expect(buildVeracityMetrics(base).seedLostBeats).toBe(null);
+    expect(buildVeracityMetrics({ ...base, seedLostBeats: 0 }).seedLostBeats).toBe(0);
+    expect(buildVeracityMetrics({ ...base, seedLostBeats: 3 }).seedLostBeats).toBe(3);
+  });
+});
+
+/** The prompt fixture for F-99's writer prompt: one merged clip carrying
+ * two beats, and one seed-lost narration beat. */
+function requestWithMergedClip(): ActWriteRequest {
+  return {
+    actTitle: "Act 3",
+    voice,
+    seams: [
+      { seamId: "s0", beats: [{ beatId: "b0", claim: SEED_CLAIM, mode: "Patch", kind: "account", seedLost: true }], introduces: "c0", intro: "full", band: [340, 1025] },
+      { seamId: "s1", beats: [], follows: "c0", band: [30, 260] }
+    ],
+    clips: [
+      {
+        clipId: "c0",
+        segmentId: SEGMENT_A,
+        itemId: ITEM_A,
+        show: SHOW,
+        title: TITLE_A,
+        docId: tapeDocIdFor(SEGMENT_A),
+        opening: clipOpening(WINDOW_A, ANCHOR_A),
+        durationSec: 120,
+        intro: "full",
+        carries: [
+          { beatId: "b1", claim: "A guest explains why skills decide the tools." },
+          { beatId: "b2", claim: "And why the hire comes before the model." }
+        ]
+      }
+    ],
+    documents: [NBS, { docId: tapeDocIdFor(SEGMENT_A), kind: "tape", title: `${SHOW} — ${TITLE_A}`, text: WINDOW_A }]
+  };
+}
+
+function verifyRequestWithSeedLost(): ActVerifyRequest {
+  return {
+    actTitle: "Act 3",
+    voice,
+    beats: [{ beatId: "b0", claim: SEED_CLAIM, mode: "Patch", kind: "account", seedLost: true }],
+    seams: [{ seamId: "s0", script: "The floor taught him what mattered, as far as this act can say.", selected: [], carries: ["b0"], introduces: "c0", intro: "full" }],
+    clips: [{ ...requestWithMergedClip().clips[0]!, windowText: WINDOW_A }],
+    sources: [{ id: "c0", kind: "clip", claimText: `what is said in clip c0 — "${TITLE_A}" on ${SHOW}`, publication: `${SHOW} — ${TITLE_A}`, contested: false, docId: tapeDocIdFor(SEGMENT_A) }],
+    documents: [NBS]
+  };
+}

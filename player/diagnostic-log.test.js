@@ -33,6 +33,8 @@ import {
   DiagnosticLog, PlayerDiagnostics, formatDiagnosticReport, stageOf, errorNameOf, tapPhaseOf,
   DIAG_KEY, DIAG_CAP, STAGE_CAP, DIAG_VERSION, MEDIA_STAGES,
   dataTokenOf, dataVersionOf, dataFileTagOf, dataIdOf, DATA_PHASES, DATA_SOURCES,
+  nowPlayingFieldOf, NOWPLAYING_FIELD_MAX, SESSION_KINDS, SESSION_PRODUCERS,
+  TRANSPORT_SOURCES, TRANSPORT_ACTIONS,
 } from "./diagnostic-log.js";
 
 /* ==================================================================== */
@@ -1330,4 +1332,181 @@ test("the report prints a successful probe with every number K-01 asks for", () 
   assert.match(line, /locked=y/);
   assert.match(line, /batt -3%/);
   assert.match(line, /over 77\.4s/);
+});
+/* L-06: what the lock screen was actually told (founder feedback F15)  */
+/* ==================================================================== */
+
+test("nowPlayingFieldOf caps each field and turns absence into the empty string", () => {
+  /* MUTATION: return `null` for a missing field instead of `""`. `lineFor`
+     renders both as `—`, so the ROW would look identical and only the stored
+     entry can tell them apart — the exact vacuous-test shape §6 of this suite
+     was written after. MUTATION 2: raise the cap and the truncation assertion
+     is red. */
+  assert.equal(nowPlayingFieldOf(null), "");
+  assert.equal(nowPlayingFieldOf(undefined), "");
+  assert.equal(nowPlayingFieldOf("   "), "");
+  assert.equal(nowPlayingFieldOf("  Origin Stories  "), "Origin Stories");
+  const long = "x".repeat(NOWPLAYING_FIELD_MAX + 40);
+  const out = nowPlayingFieldOf(long);
+  assert.equal(out.length, NOWPLAYING_FIELD_MAX);
+  assert.ok(out.endsWith("\u2026"), "a truncated field says so rather than looking complete");
+});
+
+test("a nowplaying entry stores the three fields, the artwork COUNT and the shim's verdict", () => {
+  /* This is the whole of F15's instrumentation half. MUTATION: store
+     `artwork[0].src` instead of the count — a publisher's CDN URL, with whatever
+     its query string carries, in a record that gets pasted into issues. The
+     `doesNotMatch` below goes red. */
+  const { diag, log } = mk();
+  diag.nowPlaying({
+    metadata: {
+      title: "Episode 09: Did Cooking Make Us Human?",
+      artist: "Origin Stories",
+      album: "The history of grilling \u00b7 part 12 of 32",
+      artwork: [{ src: "https://is1-ssl.mzstatic.com/image/thumb/x.jpg?token=SECRET" }],
+    },
+    playbackState: "playing",
+    native: { installed: true, sends: 42, lastReason: null },
+  });
+  const e = log.read().entries[0];
+  assert.equal(e.type, "nowplaying");
+  assert.equal(e.artist, "Origin Stories");
+  assert.equal(e.album, "The history of grilling \u00b7 part 12 of 32");
+  assert.equal(e.artworkCount, 1);
+  assert.equal(e.state, "playing");
+  assert.deepEqual(e.native, { installed: true, sends: 42, reason: null });
+  assert.doesNotMatch(JSON.stringify(e), /mzstatic|SECRET|https/, "no artwork URL ever reaches the record");
+});
+
+test("F15's own three explanations are each distinguishable in the record", () => {
+  /* The card's whole point: "it showed only 4a" had three causes and nothing
+     could separate them. MUTATION: drop the `native` block from the entry and
+     the third row stops being distinguishable from the first two. */
+  const { diag, log } = mk();
+  // (1) an empty payload we built
+  diag.nowPlaying({ metadata: { title: "4a", artist: "", album: "" }, playbackState: "playing",
+    native: { installed: true, sends: 9 } });
+  // (2) a real payload that reached native
+  diag.nowPlaying({ metadata: { title: "Ep 9", artist: "Origin Stories", album: "F \u00b7 part 1 of 3" },
+    playbackState: "playing", native: { installed: true, sends: 10 } });
+  // (3) a payload that never crossed the bridge at all
+  diag.nowPlaying({ metadata: { title: "Ep 9", artist: "Origin Stories", album: "F \u00b7 part 1 of 3" },
+    playbackState: "playing", native: { installed: false, sends: 0 } });
+  const [a, b, c] = log.read().entries;
+  assert.equal(a.artist, "", "(1) reads as an empty credit we generated");
+  assert.equal(b.native.sends, 10, "(2) reads as sent");
+  assert.equal(c.native.installed, false, "(3) reads as never installed, so never sent");
+  assert.notEqual(a.artist, b.artist);
+});
+
+test("a nowplaying entry admits the shim's reason only as an identifier, never as prose", () => {
+  /* MUTATION: pass `native.lastReason` straight through. `foray-media-session.js`
+     sets it from `String(e.message)` on an arbitrary throw, which is unbounded
+     text from a layer this record does not control. */
+  const { diag, log } = mk();
+  diag.nowPlaying({ metadata: { title: "t" }, native: { installed: true, sends: 1, lastReason: "TypeError" } });
+  diag.nowPlaying({ metadata: { title: "u" }, native: { installed: true, sends: 2, lastReason: "cannot read property src of https://cdn/x?t=1" } });
+  const [ok, prose] = log.read().entries;
+  assert.equal(ok.native.reason, "TypeError");
+  assert.equal(prose.native.reason, null, "a sentence is dropped, not stored");
+});
+
+test("formatDiagnosticReport renders a nowplaying row and counts empty credits in the header", () => {
+  /* MUTATION: delete the `nowplaying` case from `lineFor` — the default branch
+     prints a JSON blob and the `doesNotMatch` is red. MUTATION 2: delete the
+     header line and the founder loses the one answer readable without scrolling
+     200 rows on a phone. */
+  const { diag, log } = mk();
+  diag.nowPlaying({ metadata: { title: "Ep 9", artist: "", album: "F" }, playbackState: "playing",
+    native: { installed: true, sends: 3 } });
+  const text = formatDiagnosticReport(log.read());
+  assert.match(text, /now playing 1 written, 1 with an empty credit/);
+  assert.match(text, /nowplaying\s+"Ep 9" \/ "\u2014" \/ "F"/);
+  assert.match(text, /native=on\/sent=3/);
+  assert.doesNotMatch(text, /\{"/, "no JSON blob for a known type");
+});
+
+/* ==================================================================== */
+/* M-03: why did it stop? (founder feedback F16 / #548)                 */
+/* ==================================================================== */
+
+test("a session event is admitted only from the closed vocabulary the Swift writes", () => {
+  /* MUTATION: store an unrecognised `kind` as "unknown" instead of dropping the
+     row. A native plugin's string would then reach a record that is pasted into
+     issues, which is the rule `STAGE_ROOTS` and the `knownCar` handler already
+     keep for the same reason. */
+  const { diag, log } = mk();
+  assert.ok(diag.sessionEvent({ kind: "interruptionBegan", reason: "began", producer: "audio" }));
+  assert.equal(diag.sessionEvent({ kind: "somethingNew", reason: "began" }), null);
+  assert.equal(diag.sessionEvent({ kind: "routeChange", reason: "Wyatt's Civic" }).reason, "",
+    "a route NAME is not a token and is dropped — it is somebody's name");
+  assert.equal(diag.sessionEvent({ kind: "routeChange", reason: "old-device-gone" }).reason, "old-device-gone");
+  assert.equal(log.read().entries.length, 3);
+  for (const k of ["interruptionBegan", "interruptionEnded", "routeChange", "mediaServicesReset",
+    "background", "foreground"]) {
+    assert.ok(SESSION_KINDS.has(k), k);
+  }
+});
+
+test("a session event keeps the NATIVE clock beside the page's, and the lag between them", () => {
+  /* The measurement M-03 exists for: a suspended WKWebView handles a background
+     event late by exactly the length of the suspension. MUTATION: drop `at` and
+     keep only `wall` — the lag is unrecoverable and the record answers "when we
+     noticed" instead of "when it happened". */
+  const { diag, log, clock: c } = mk();
+  const firedAt = c.now() - 30_000;
+  const e = diag.sessionEvent({ kind: "background", reason: "did-enter", producer: "audio", at: firedAt });
+  assert.equal(e.at, firedAt);
+  assert.equal(e.lagMs, 30_000);
+  assert.equal(diag.sessionEvent({ kind: "foreground", reason: "will-enter" }).lagMs, null,
+    "no native stamp is honestly null, never zero");
+});
+
+test("an unknown producer falls back to audio rather than storing a native string", () => {
+  const { diag } = mk();
+  assert.equal(diag.sessionEvent({ kind: "background", producer: "tts" }).producer, "tts");
+  assert.equal(diag.sessionEvent({ kind: "background", producer: "whatever" }).producer, "audio");
+  assert.ok(SESSION_PRODUCERS.has("page"));
+});
+
+test("transport records WHO asked, from closed sets on both halves", () => {
+  /* MUTATION: accept any string for `source`. `client.js` passes it from a
+     surface, and a record that could hold arbitrary text there is a record with
+     no rule at all. MUTATION 2: swap `source` and `action` at the call site —
+     both drop, because neither vocabulary accepts the other's words. */
+  const { diag, log } = mk();
+  assert.ok(diag.transport("remote", "play"));
+  assert.ok(diag.transport("tap", "pause"));
+  assert.equal(diag.transport("siri", "play"), null);
+  assert.equal(diag.transport("remote", "rewind"), null);
+  assert.equal(diag.transport("play", "remote"), null, "transposed arguments are refused, not stored");
+  assert.equal(log.read().entries.length, 2);
+  assert.ok(TRANSPORT_SOURCES.has("reconcile") && TRANSPORT_ACTIONS.has("stop"));
+});
+
+test("the record can answer \"why did it stop?\" — the cause sits one row above the stop", () => {
+  /* The card's acceptance, as a property of the record rather than a claim: a
+     stop is preceded by the session event that caused it, or by nothing, and
+     nothing is itself the finding. MUTATION: record the session event without a
+     `type` of its own (fold it into `stop`) and the two become indistinguishable,
+     which is the state the F16 record was already in. */
+  const { diag, log } = mk();
+  diag.transport("tap", "play");
+  diag.sessionEvent({ kind: "interruptionBegan", reason: "began", producer: "audio" });
+  diag.note("audio.pausedUnexpectedly — nobody asked for this pause");
+  const types = log.read().entries.map((e) => e.type);
+  assert.deepEqual(types, ["transport", "session", "stop"]);
+  const text = formatDiagnosticReport(log.read());
+  assert.match(text, /session events 1 \(interruptionBegan\)/);
+  assert.match(text, /session\s+audio interruptionBegan \(began\)/);
+  assert.match(text, /transport\s+play from tap/);
+});
+
+test("no session events at all is stated on the header, because silence is the finding", () => {
+  /* MUTATION: omit the `session events` header line when the count is zero. A
+     founder reading a stop with no cause could not then tell "the plugins saw
+     nothing" from "this build does not report". */
+  const { diag, log } = mk();
+  diag.note("audio.pausedUnexpectedly — nobody asked for this pause");
+  assert.match(formatDiagnosticReport(log.read()), /session events 0/);
 });

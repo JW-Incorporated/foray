@@ -304,6 +304,28 @@ storageReady.then(() => {
   if (typeof document !== "undefined") {
     document.addEventListener("visibilitychange", () => diag.visibility(document.hidden === true));
   }
+  /* M-03 (founder feedback F16 / #548). The native side of "why did it stop?".
+     `ForayAudioPlugin.swift` and `ForayTtsPlugin.swift` observe the
+     `AVAudioSession` interruption / route-change / media-services-reset
+     notifications and `UIApplication`'s background / foreground, and
+     `foray-media-session.js` re-broadcasts each one on `window` as
+     `SESSION_DOM_EVENT`. A DOM event rather than a direct call because
+     `player/` may not import a Capacitor plugin's web half (see
+     `tts-bridge.js`'s header on the two-URL problem) and because the shim is a
+     separate module tag that may load before or after this one.
+
+     REGISTERED ALONGSIDE `visibilitychange`, inside the same hydration wait
+     and for the same reason: `sessionEvent()` records, and a record written
+     before the durable tier has been pulled up would overwrite it.
+
+     `diag.sessionEvent` drops anything whose `kind` is not in its own closed
+     set, so an untrusted `CustomEvent` dispatched by a page script cannot put
+     a string in the record. */
+  if (typeof window !== "undefined") {
+    window.addEventListener("foray:session", (e) => {
+      try { diag.sessionEvent(e?.detail ?? {}); } catch (_) { /* diagnostics must never break the page */ }
+    });
+  }
 }).catch(() => {});
 
 /** The record, as text, for the surface app.js builds. Published beside
@@ -1198,8 +1220,15 @@ function openRatePicker() {
  * as two separate actions and a `play` that arrived while already playing must
  * not pause.
  */
-async function setRunning(want) {
+async function setRunning(want, source = "tap") {
   if (!manager) return;
+  /* M-03(b). RECORDED BEFORE THE EARLY RETURN, and that is the interesting
+     case rather than an accident: a remote command that arrives while the
+     player already believes it is in that state does nothing, and "the car's
+     play button did nothing" is exactly what F5 reported. A record that only
+     logged the presses that changed something would be silent for precisely
+     the presses being complained about. */
+  diag.transport(source, want ? "play" : "pause");
   if (want === isRunning()) { render(); return; }
   if (want) await manager.resume();
   else await manager.pause();
@@ -1254,9 +1283,13 @@ async function stopAndClose({ persist = true } = {}) {
     rather than restated. Seeking is on the Foray's clock, through the scrubber's
     own path. */
 const forayMediaSurface = {
-  play: () => setRunning(true),
-  pause: () => setRunning(false),
-  stop: () => stopAndClose(),
+  /* `"remote"` (M-03(b)): a press that came from the lock screen, the car or
+     the headphone pinch rather than from our own page. The distinction is the
+     whole of F5 — "pressed play on the car's controls, nothing happened" —
+     and until now the record could not tell that from a tap on the mini bar. */
+  play: () => setRunning(true, "remote"),
+  pause: () => setRunning(false, "remote"),
+  stop: () => { diag.transport("remote", "stop"); return stopAndClose(); },
   next: () => ForayPlayer.forayNext(),
   previous: () => ForayPlayer.forayPrevious(),
   seekBy: (offset) => ForayPlayer.foraySeek(Math.max(0, forayPosition() + offset)),
@@ -1267,12 +1300,39 @@ const forayMediaSurface = {
     principle 1 — no autoplay chains), so `next`/`previous` are absent and the
     OS greys those buttons out instead of offering ones that do nothing. */
 const episodeMediaSurface = {
-  play: () => setRunning(true),
-  pause: () => setRunning(false),
-  stop: () => stopAndClose(),
+  play: () => setRunning(true, "remote"),
+  pause: () => setRunning(false, "remote"),
+  stop: () => { diag.transport("remote", "stop"); return stopAndClose(); },
   seekBy: (offset) => manager.seek(Math.max(0, (backend?.currentTime ?? 0) + offset), { precise: true }),
   seekTo: (position) => manager.seek(position, { precise: true }),
 };
+
+/**
+ * L-06. What the native shim says about its own traffic, or `null` on the web.
+ *
+ * `window.ForayMediaSession` is `foray-media-session.js`'s auto-installed
+ * instance — the polyfill that takes over `navigator.mediaSession` inside the
+ * Capacitor shell and forwards every write to `ForayAudioPlugin`'s
+ * `setNowPlaying`. `inspect()` is its own diagnostic surface (that file's
+ * comment: "`sends` is the one number a device pass should read twice a minute
+ * apart"), and `sends` is exactly the number that separates F15's third
+ * explanation — nothing ever reached `MPNowPlayingInfoCenter` — from the two
+ * that are about what we built.
+ *
+ * READ AT THE MOMENT OF THE WRITE, never cached: the two scripts are
+ * independent module tags and neither may assume the other has run, the same
+ * lazy-lookup rule `foray-media-session.js`'s own `onLoadedChange` states.
+ * Total and never throws — a diagnostics read must not be able to cost the
+ * page its lock screen.
+ */
+function mediaSessionShimState() {
+  try {
+    const shim = typeof window !== "undefined" ? window.ForayMediaSession : null;
+    if (!shim || typeof shim.inspect !== "function") return null;
+    const info = shim.inspect();
+    return info && typeof info === "object" ? info : null;
+  } catch (_) { return null; }
+}
 
 /** Live state -> the pure view the bridge writes. Called from `render()`, which
     every media event and the seam-beat hook already drive, so there is no second
@@ -1614,6 +1674,13 @@ function ensureBooted() {
   media = createMediaSession({
     nav: typeof navigator !== "undefined" ? navigator : null,
     MediaMetadata: typeof window !== "undefined" ? window.MediaMetadata : null,
+    /* L-06 (founder feedback F15). Every payload that ACTUALLY reaches the
+       platform, into the field record — the three strings and whether the
+       Capacitor shim got it across. `media-session.js` fires this only on a
+       real write, so a Foray that produced no `nowplaying` rows is the
+       measurement, not a hole in it: the payload never left the page. */
+    onWrite: ({ metadata, playbackState }) =>
+      diag.nowPlaying({ metadata, playbackState, native: mediaSessionShimState() }),
   });
 
   ui = buildUI();

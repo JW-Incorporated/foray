@@ -320,6 +320,17 @@ export interface NarrationWriteStats {
   /** Every time a slot went back to the writer after its first round —
    * one per round, whatever the number of pages in it. */
   retryRounds: number;
+  /**
+   * F-99: beats closed as SEED-LOST (`writeAct.ts`) — seeded from a
+   * stretch of tape §4.5 could not place (`SourcedBeat.seedLost`, F-96),
+   * and the act's sources could not carry the claim either. Each one is a
+   * beat the retry loop deliberately did NOT spend two more rounds on,
+   * and a page the gate refuses with `unverifiedReason: "seed-lost"`. The
+   * number to watch is the one that says the fix belongs at seeding, not
+   * in narration. Optional: only the act path counts them, and a caller
+   * that passes no accumulator reports `null` rather than a guessed zero.
+   */
+  seedLostBeats?: number;
 }
 
 /**

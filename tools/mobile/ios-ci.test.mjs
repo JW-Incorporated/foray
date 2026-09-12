@@ -37,8 +37,10 @@ import {
   SIGNING_SECRETS,
   SIMULATOR_CAVEAT,
   FORAY_AUDIO_REACHED_NEEDLE,
+  FORAY_SESSION_NEEDLE,
   bridgeVerdict,
   forayAudioReached,
+  foraySessionEvents,
   collectProbes,
   decodeLocalStorageRows,
   medianMs,
@@ -2075,4 +2077,75 @@ test("the report carries section 3d with the takeover verdict, and reads the BRI
   // An older bridge record still renders the section, as inconclusive.
   const old = renderReport({ bridge: { capacitorType: "object" }, outPoint: null, seam: null, signingState: "absent" });
   assert.match(old, /### 3d\. L-02 .* — `inconclusive`/);
+});
+
+/* ---------- M-03: why did it stop? (founder feedback F16 / #548) ----------
+
+   The founder's record for that drive holds ONE row — `stop element
+   pausedUnexpectedly` at `hidden=y`, `seams 0` — and cannot say why. The
+   plugins now emit a `session` event for every `AVAudioSession` interruption,
+   route change and media-services reset, and for the app's own
+   background/foreground; `ForayAudioPlugin.swift` also writes each one through
+   `os.Logger`, which is the only channel that still works while the WebView is
+   suspended — which is exactly the case the card's screen-off pass is about. */
+
+// TO SEE IT FAIL: return `silent` for an absent log. `parseSimulatorLifecycle`
+// and `forayAudioReached` both keep "no coverage is not a no" and a third
+// function in the same file answering differently is how a run starts lying.
+test("the session needle: no log is no-coverage, an uninterrupted run is silent", () => {
+  assert.equal(foraySessionEvents(null).verdict, "no-coverage");
+  assert.equal(foraySessionEvents("   ").verdict, "no-coverage");
+  const quiet = foraySessionEvents(logLine("20:24:10.000", "some unrelated App line"));
+  assert.equal(quiet.verdict, "silent");
+  assert.equal(quiet.matchCount, 0);
+  assert.match(quiet.headline, /expected on a run that never backgrounded/);
+});
+
+// TO SEE IT FAIL: tally the whole rest of the line instead of the leading
+// alphabetic token. The reason half carries a route-change code, and a tally
+// keyed on `kind reason=...` would produce a new bucket per reason and count
+// nothing.
+test("the session needle tallies by KIND, and samples the real lines", () => {
+  const text = [
+    logLine("20:24:10.000", "unrelated"),
+    logLine("20:24:11.000", `[ai.jwlabs.foura:ForayAudio] ${FORAY_SESSION_NEEDLE}background reason=did-enter`),
+    logLine("20:24:41.000", `[ai.jwlabs.foura:ForayAudio] ${FORAY_SESSION_NEEDLE}interruptionBegan reason=began`),
+    logLine("20:24:42.000", `[ai.jwlabs.foura:ForayAudio] ${FORAY_SESSION_NEEDLE}routeChange reason=old-device-gone`),
+    logLine("20:25:00.000", `[ai.jwlabs.foura:ForayAudio] ${FORAY_SESSION_NEEDLE}routeChange reason=new-device`),
+  ].join("\n");
+  const v = foraySessionEvents(text);
+  assert.equal(v.verdict, "found");
+  assert.equal(v.matchCount, 4);
+  assert.deepEqual(v.kinds, { background: 1, interruptionBegan: 1, routeChange: 2 });
+  assert.match(v.headline, /routeChangex2/);
+  assert.equal(v.sampleLines.length, 3, "at most three samples, as the other needles do");
+});
+
+// TO SEE IT FAIL: let `session` move `verdict`. A simulator run that is never
+// interrupted legitimately reports nothing, and failing the job on silence
+// would manufacture a finding on every green run.
+test("session events ride on the takeover verdict without being able to change it", () => {
+  const quiet = logLine("20:24:11.000", `${FORAY_AUDIO_REACHED_NEEDLE} state=none`);
+  const base = mediaSessionTakeoverVerdict(takeoverRecord(), quiet);
+  const loud = mediaSessionTakeoverVerdict(
+    takeoverRecord(),
+    [quiet, logLine("20:24:41.000", `${FORAY_SESSION_NEEDLE}interruptionBegan reason=began`)].join("\n")
+  );
+  assert.equal(loud.verdict, base.verdict, "a session event is evidence, never a verdict");
+  assert.equal(base.session.verdict, "silent");
+  assert.equal(loud.session.verdict, "found");
+  assert.match(loud.detail, /interruptionBeganx1/);
+});
+
+// TO SEE IT FAIL: attach `session` only on the happy exit. A run whose probe
+// never reported can still have a log full of interruption lines — and that is
+// the run whose "why did it stop?" is hardest to answer.
+test("a run with no probe record still reports what the native side saw", () => {
+  const v = mediaSessionTakeoverVerdict(
+    {},
+    logLine("20:24:41.000", `${FORAY_SESSION_NEEDLE}mediaServicesReset reason=reset`)
+  );
+  assert.equal(v.verdict, "inconclusive");
+  assert.equal(v.session.verdict, "found");
+  assert.deepEqual(v.session.kinds, { mediaServicesReset: 1 });
 });

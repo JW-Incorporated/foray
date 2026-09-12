@@ -1,0 +1,377 @@
+{
+  "generated_at": "2026-09-12T05:23:10.728Z",
+  "dry_run": false,
+  "max_resumes": 3,
+  "continue_on_refused_partial": false,
+  "resumes": 0,
+  "aborts": 0,
+  "notify": null,
+  "notification": null,
+  "entries": [
+    {
+      "prompt": "What engineers actually do all day: how engineering careers really work, from the first job and the first failure to leading a team, told by working engineers",
+      "outcome": "generated",
+      "detail": "OK what-engineers-actually-do-all-day-731735 (32 items, 1929.48s)",
+      "ms": 6460925,
+      "ttlA1Ms": 2321065,
+      "narrationConcurrency": 4,
+      "narrationActs": [
+        {
+          "act": 0,
+          "startedAt": "2026-09-12T04:52:11.959Z",
+          "ms": 1502915
+        },
+        {
+          "act": 1,
+          "startedAt": "2026-09-12T04:52:11.962Z",
+          "ms": 1748506
+        },
+        {
+          "act": 2,
+          "startedAt": "2026-09-12T04:52:11.963Z",
+          "ms": 1187829
+        },
+        {
+          "act": 3,
+          "startedAt": "2026-09-12T04:52:11.963Z",
+          "ms": 1097138
+        }
+      ],
+      "topicDecision": {
+        "topic": "business/careers",
+        "resolved": "business/careers",
+        "reason": "best",
+        "considered": [
+          {
+            "id": "business/careers",
+            "score": 1.5,
+            "supply": 350,
+            "eligible": true
+          },
+          {
+            "id": "computing/software-engineering",
+            "score": 0.75,
+            "supply": 2,
+            "eligible": false
+          },
+          {
+            "id": "engineering",
+            "score": 0.75,
+            "supply": 488,
+            "eligible": true,
+            "standInFor": "computing/software-engineering"
+          },
+          {
+            "id": "engineering/ai-robotics",
+            "score": 0.75,
+            "supply": 84,
+            "eligible": false
+          },
+          {
+            "id": "engineering/disasters",
+            "score": 0.75,
+            "supply": 55,
+            "eligible": false
+          },
+          {
+            "id": "engineering/energy-fusion",
+            "score": 0.75,
+            "supply": 1,
+            "eligible": false
+          }
+        ],
+        "minSupply": 3,
+        "basis": "bodies"
+      },
+      "veracity": {
+        "groundedQuoteRate": 1,
+        "groundedQuoteCounts": {
+          "checkable": 16,
+          "grounded": 16
+        },
+        "ungroundedPages": [],
+        "attributionStability": 1,
+        "purposeFidelity": 0.3333333333333333,
+        "tapeRelevance": 1,
+        "tapeRelevanceAnchors": [
+          {
+            "itemId": "being-an-engineer--s2e28-test-stands-x-ray-other-instrumentation-william-gabler",
+            "claim": "The credentialing path into engineering work can wind through degrees that aren't engineering at all — a chemistry bachelor's, a textile-chemistry master's, and a PhD in fiber and polymer science feeding straight into an engineering-adjacent career.",
+            "onTopic": true,
+            "families": [
+              "business",
+              "engineering",
+              "craft"
+            ]
+          },
+          {
+            "itemId": "being-an-engineer--s7e17-joe-couitt-how-to-design-for-swiss-machining",
+            "claim": "Joe Couitt's first job in manufacturing, handed to him by his machinist father the year he turned eighteen, was mopping floors — not running a single machine.",
+            "onTopic": true,
+            "families": [
+              "engineering",
+              "craft",
+              "business"
+            ]
+          },
+          {
+            "itemId": "being-an-engineer--david-oh-nasa-systems-engineering-and-sending-robots-to-spac",
+            "claim": "David Oh didn't know what engineering even was until he got to college; growing up with two doctor parents in Birmingham, all he knew was that he loved space and was good at science and math.",
+            "onTopic": true,
+            "families": [
+              "engineering",
+              "craft",
+              "business"
+            ]
+          },
+          {
+            "itemId": "being-an-engineer--daniel-servansky-electromechanical-engineering-root-cause-an",
+            "claim": "After tracing an inconsistent press result back to a single slipped locating pin, Daniel Servansky didn't stop at fixing that one part — he built new go/no-go gauges and a preventative-maintenance task specifically so that failure mode could never happen again on that line.",
+            "onTopic": true,
+            "families": [
+              "business",
+              "engineering",
+              "craft"
+            ]
+          },
+          {
+            "itemId": "being-an-engineer--s2e39-processes-for-life-business-mcdonalds-ideas-feel-good",
+            "claim": "Joel Williams argues that pointing out risk is rarely rewarded compared to finding opportunity — except in safety-critical work like airplane design, where a risk mindset is non-negotiable.",
+            "onTopic": true,
+            "families": [
+              "engineering",
+              "craft",
+              "business"
+            ]
+          },
+          {
+            "itemId": "being-an-engineer--ian-mceachern-artificial-hearts-times-square-led-displays-en",
+            "claim": "Ian McEachern, whose kinetic sculptures have landed in Times Square, Walt Disney World, and the Smithsonian, learned that even that kind of work only keeps getting built once it is tied to a client's revenue, not made purely for its own sake.",
+            "onTopic": true,
+            "families": [
+              "engineering",
+              "craft",
+              "business"
+            ]
+          },
+          {
+            "itemId": "being-an-engineer--s5e19-krishna-raichur-the-ins-outs-of-engineering-simulation",
+            "claim": "Krishna Raichur describes reduced-order simulation models that run in seconds against live sensor data, letting an engineer spot overheating and schedule maintenance before a machine actually fails.",
+            "onTopic": true,
+            "families": [
+              "engineering",
+              "craft",
+              "business"
+            ]
+          },
+          {
+            "itemId": "being-an-engineer--s6e46-rick-james-ansys-engineering-simulation",
+            "claim": "Rick James spent twenty-five years working as a mechanical and electrical engineer before founding SimuTech Group and building it into ANSYS's number-one reseller partner in North America.",
+            "onTopic": true,
+            "families": [
+              "business",
+              "engineering",
+              "craft"
+            ]
+          },
+          {
+            "itemId": "being-an-engineer--s1e10-from-engineering-startups-to-established-corporations",
+            "claim": "Pat Stephens moved from a product-development engineering role at Gore, through Boston Scientific and Medtronic, to VP of R&D at Shockwave Medical, where her team builds balloon catheters that use acoustic waves to break up calcification inside arteries.",
+            "onTopic": true,
+            "families": [
+              "business",
+              "engineering",
+              "craft"
+            ]
+          },
+          {
+            "itemId": "being-an-engineer--dylan-lundberg-protolabs",
+            "claim": "Dylan Lundberg describes automation turning modern milling floors into button-pushing and simple loading, against a traditional mill shop where a single machinist babysits just one or two molds.",
+            "onTopic": true,
+            "families": [
+              "engineering",
+              "craft",
+              "business"
+            ]
+          }
+        ],
+        "firstAttemptPassRate": 0.047619047619047616,
+        "callsPerBeat": 0.5483870967741935,
+        "narrationCallsPerBeat": 0.5483870967741935,
+        "narrationCalls": {
+          "writer": 12,
+          "verifier": 5
+        },
+        "retryRounds": 8,
+        "pagesDropped": 2,
+        "unverifiedPages": 8,
+        "unverifiedPageDetails": [
+          {
+            "claim": "Aaron Moncur's first job out of college handed him a part to design in SolidWorks, then sent him straight to a milling machine and a lathe to make it himself.",
+            "mode": "Patch",
+            "reason": "unverified-page",
+            "detail": "kept unverified after every attempt — a statement in the script is not supported by the source attached to it — The sentence describing Aaron Moncur's first job (handed a part to design in SolidWorks, then sent to a milling machine and la"
+          },
+          {
+            "claim": "Jonathan MacWilliams traces low-cycle fatigue failures to two recurring root causes: welds placed where the design never called for one, and welds that were never fully heat-treated afterward, leaving them sitting in the finished part as stress concentrators waiting to crack.",
+            "mode": "Patch",
+            "reason": "unverified-page",
+            "detail": "kept unverified after every attempt — beat b0 positioned in this seam is not carried"
+          },
+          {
+            "claim": "A named root cause — this weld, this pin, this heat-treat step skipped — turns a mistake from a personal failing into an engineered defect, and that renaming is the exact moment an engineer stops taking a failure personally and starts taking it apart.",
+            "mode": "Patch",
+            "reason": "unverified-page",
+            "detail": "kept unverified after every attempt — beats b3, b4 positioned in this seam are not carried"
+          },
+          {
+            "claim": "The engineers who later get trusted to lead are disproportionately the ones who lived through a recall, a fatigue crack, or a slipped gauge — not the ones who managed to avoid one.",
+            "mode": "Patch",
+            "reason": "unverified-page",
+            "detail": "kept unverified after every attempt — beats b6, b7 positioned in this seam are not carried"
+          },
+          {
+            "claim": "Milan Cerovic says his biggest engineering frustration was never the technical tools — it's the project schedule, because once a delivery date slips, realigning the whole team around a new plan is harder than solving the original technical problem.",
+            "mode": "Patch",
+            "reason": "unverified-page",
+            "detail": "kept unverified after every attempt — the script asserts what the record does or does not contain, but no source's quote says so — drop the assertion rather than turning an unsourced true claim into a sourced-looking false one (F-45)"
+          },
+          {
+            "claim": "The tool that once decided who counted as a 'real' engineer becomes, a decade later, just infrastructure — proof the identity was never about the software.",
+            "mode": "Patch",
+            "reason": "unverified-page",
+            "detail": "kept unverified after every attempt — Patch narration carries a factual claim by definition and must have at least one source (§4.7 rule 1); the page declares no sources but its script states something about the world — a page with no sou"
+          },
+          {
+            "claim": "Andy Thompson spent two decades moving from operating CNC machines on a shop floor to leading structural engineering teams.",
+            "mode": "Patch",
+            "reason": "unverified-page",
+            "detail": "kept unverified after every attempt — a statement in the script is not supported by the source attached to it — The sentences 'For some engineers the hinge shows up as a move off the shop floor and into a room full of people who used to b"
+          },
+          {
+            "claim": "None of these is the same ladder — a consultancy founder, a hospital-device executive, a CNC operator turned team lead, and a career academic — yet all four describe the identical hinge: a forced shift in who they had to become, not what they had to know.",
+            "mode": "Patch",
+            "reason": "unverified-page",
+            "detail": "kept unverified after every attempt — beat b5 positioned in this seam is not carried"
+          }
+        ],
+        "synthesisVerifiedPages": 0,
+        "synthesisVerifiedPageDetails": [],
+        "purposeRevisedPages": 0,
+        "tapeCitedPages": 11,
+        "narrationPagesPerSeam": 0.8571428571428571,
+        "narrationShare": 0.3157071243533215,
+        "tapeShare": 0.6842928756466785,
+        "introRestates": 0,
+        "narrationCallsPerAct": 4.25,
+        "pipelineTokens": 128050,
+        "stageTimings": [
+          {
+            "name": "understand",
+            "startedAt": "2026-09-12T04:38:34.525Z",
+            "ms": 72551
+          },
+          {
+            "name": "research-shape",
+            "startedAt": "2026-09-12T04:39:50.310Z",
+            "ms": 3151
+          },
+          {
+            "name": "spine",
+            "startedAt": "2026-09-12T04:39:53.465Z",
+            "ms": 244178
+          },
+          {
+            "name": "deepen",
+            "startedAt": "2026-09-12T04:43:57.660Z",
+            "ms": 247163
+          },
+          {
+            "name": "source",
+            "startedAt": "2026-09-12T04:48:04.823Z",
+            "ms": 3518
+          },
+          {
+            "name": "evidence",
+            "startedAt": "2026-09-12T04:48:08.352Z",
+            "ms": 243603
+          },
+          {
+            "name": "narrate:3",
+            "startedAt": "2026-09-12T04:52:11.963Z",
+            "ms": 1097138
+          },
+          {
+            "name": "narrate:2",
+            "startedAt": "2026-09-12T04:52:11.963Z",
+            "ms": 1187829
+          },
+          {
+            "name": "narrate:0",
+            "startedAt": "2026-09-12T04:52:11.959Z",
+            "ms": 1502915
+          },
+          {
+            "name": "stitch:0",
+            "startedAt": "2026-09-12T05:17:14.884Z",
+            "ms": 167
+          },
+          {
+            "name": "narrate:1",
+            "startedAt": "2026-09-12T04:52:11.962Z",
+            "ms": 1748506
+          },
+          {
+            "name": "stitch:1",
+            "startedAt": "2026-09-12T05:21:20.483Z",
+            "ms": 34499
+          },
+          {
+            "name": "stitch:2",
+            "startedAt": "2026-09-12T05:21:54.992Z",
+            "ms": 35575
+          },
+          {
+            "name": "stitch:3",
+            "startedAt": "2026-09-12T05:22:30.576Z",
+            "ms": 40118
+          },
+          {
+            "name": "finalize",
+            "startedAt": "2026-09-12T05:23:10.713Z",
+            "ms": 14
+          },
+          {
+            "name": "finalize.build-record",
+            "startedAt": "2026-09-12T05:23:10.713Z",
+            "ms": 0
+          },
+          {
+            "name": "finalize.check-forays",
+            "startedAt": "2026-09-12T05:23:10.713Z",
+            "ms": 9
+          },
+          {
+            "name": "finalize.check-narration",
+            "startedAt": "2026-09-12T05:23:10.722Z",
+            "ms": 5
+          }
+        ],
+        "retrieval": {
+          "prefetchMs": 243603,
+          "concurrency": 6,
+          "pages": 31,
+          "prefetched": 31,
+          "failed": 0,
+          "skipped": 0,
+          "narrationGathers": 31,
+          "narrationHits": 31,
+          "hitRate": 1,
+          "narrationRetrievalMs": 78
+        }
+      },
+      "file": "what-engineers-actually-do-all-day-how-e-4e64fd43.json",
+      "calls": 69
+    }
+  ]
+}

@@ -55,6 +55,9 @@ public class ForayTtsPlugin: CAPPlugin, CAPBridgedPlugin, AVSpeechSynthesizerDel
     public let jsName = "ForayTts"
     public let pluginMethods: [CAPPluginMethod] = [
         CAPPluginMethod(name: "speak", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "pause", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "resume", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "stop", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "state", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "listVoices", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "kokoroProbe", returnType: CAPPluginReturnPromise)
@@ -72,10 +75,133 @@ public class ForayTtsPlugin: CAPPlugin, CAPBridgedPlugin, AVSpeechSynthesizerDel
     /// discipline `TRANSPORT_EVENT` already established).
     static let FINISHED_EVENT = "finished"
 
+    /// M-03. The event this plugin raises when the SYSTEM takes speech away —
+    /// an `AVAudioSession` interruption, a route change, a media-services
+    /// reset. Same name and same `{kind, reason, at}` shape
+    /// `ForayAudioPlugin.swift` raises for the element's side, deliberately:
+    /// the founder's question is "why did it stop?", and an answer split
+    /// across two event names with two vocabularies would have to be rejoined
+    /// by whoever reads the record. `player/diagnostic-log.js`'s
+    /// `sessionEvent()` is the one reader and it does not care which plugin
+    /// spoke — `producer` says which, and nothing else differs.
+    static let SESSION_EVENT = "session"
+
+    /// The word `state()` reports and `pause`/`resume`/`stop` return, so the
+    /// page never has to derive it from two booleans that can both be false
+    /// for two different reasons. Exactly the three L-05 names.
+    static let STATE_SPEAKING = "speaking"
+    static let STATE_PAUSED = "paused"
+    static let STATE_IDLE = "idle"
+
     private let synthesizer = AVSpeechSynthesizer()
 
     override public func load() {
         synthesizer.delegate = self
+        registerSessionObservers()
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
+
+    // MARK: - M-03: why did it stop?
+
+    /// Observe the three notifications that can silence a synthesizer without
+    /// anybody pressing anything, and report each one to the page.
+    ///
+    /// REPORTED, NOT ACTED ON, and that is the whole of this card. An
+    /// interruption that ends with `shouldResume` is a decision about whether
+    /// the listener wants their narration back, and `player/queue-manager.js`
+    /// owns every such decision — a plugin that resumed itself would be a
+    /// second opinion about the transport, which is the thing L-05 exists to
+    /// remove. What is added here is evidence.
+    ///
+    /// `AVSpeechSynthesizer` does NOT surface interruptions of its own: it
+    /// stops when the session it uses (`usesApplicationAudioSession`, see
+    /// `speak()`) is taken, and the delegate's `didCancel` is not called for
+    /// that. So the session's own notification is the only channel there is.
+    private func registerSessionObservers() {
+        let center = NotificationCenter.default
+        center.addObserver(
+            self,
+            selector: #selector(handleInterruption(_:)),
+            name: AVAudioSession.interruptionNotification,
+            object: nil
+        )
+        center.addObserver(
+            self,
+            selector: #selector(handleRouteChange(_:)),
+            name: AVAudioSession.routeChangeNotification,
+            object: nil
+        )
+        center.addObserver(
+            self,
+            selector: #selector(handleServicesReset(_:)),
+            name: AVAudioSession.mediaServicesWereResetNotification,
+            object: nil
+        )
+    }
+
+    @objc private func handleInterruption(_ note: Notification) {
+        let raw = (note.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt) ?? 0
+        /* Compared as RAW VALUES rather than as `InterruptionType(rawValue:) == .began`:
+           that form relies on Swift promoting the implicit member on the right into an
+           Optional, which compiles but reads as a nil-vs-value comparison at a glance.
+           This one cannot be misread, and it has no optional to unwrap. */
+        let began = raw == AVAudioSession.InterruptionType.began.rawValue
+        let options = (note.userInfo?[AVAudioSessionInterruptionOptionKey] as? UInt) ?? 0
+        let shouldResume = AVAudioSession.InterruptionOptions(rawValue: options).contains(.shouldResume)
+        emitSession(
+            kind: began ? "interruptionBegan" : "interruptionEnded",
+            reason: began ? "began" : (shouldResume ? "should-resume" : "no-resume")
+        )
+    }
+
+    @objc private func handleRouteChange(_ note: Notification) {
+        let raw = (note.userInfo?[AVAudioSessionRouteChangeReasonKey] as? UInt) ?? 0
+        emitSession(kind: "routeChange", reason: Self.routeChangeReason(raw))
+    }
+
+    @objc private func handleServicesReset(_ note: Notification) {
+        emitSession(kind: "mediaServicesReset", reason: "reset")
+    }
+
+    /// `AVAudioSession.RouteChangeReason` -> the closed vocabulary
+    /// `player/diagnostic-log.js`'s `dataTokenOf()` admits. A dashed
+    /// lower-case token and never a device NAME: a route is something a
+    /// person named after themselves, and this record gets pasted into
+    /// issues — the same rule `diagnostic-log.js` already enforces for
+    /// `route.autoResume.knownCar=`. `internal` (not `private`) so
+    /// `ForayTtsPluginTests` can pin the mapping without a live session.
+    static func routeChangeReason(_ raw: UInt) -> String {
+        switch AVAudioSession.RouteChangeReason(rawValue: raw) {
+        case .some(.newDeviceAvailable): return "new-device"
+        case .some(.oldDeviceUnavailable): return "old-device-gone"
+        case .some(.categoryChange): return "category-change"
+        case .some(.override): return "override"
+        case .some(.wakeFromSleep): return "wake"
+        case .some(.noSuitableRouteForCategory): return "no-route"
+        case .some(.routeConfigurationChange): return "config-change"
+        case .some(.unknown): return "unknown"
+        default: return "unknown"
+        }
+    }
+
+    private func emitSession(kind: String, reason: String) {
+        notifyListeners(Self.SESSION_EVENT, data: Self.sessionEvent(kind: kind, reason: reason))
+    }
+
+    /// The wire shape, pure and `internal` so a test can pin it without a
+    /// notification centre. `at` is epoch MILLISECONDS, the same unit
+    /// `diagnostic-log.js` stamps every entry with, so a reader never has to
+    /// guess which clock a native event is on.
+    static func sessionEvent(kind: String, reason: String, at: Double = Date().timeIntervalSince1970 * 1000) -> JSObject {
+        var event = JSObject()
+        event["kind"] = kind
+        event["reason"] = reason
+        event["producer"] = "tts"
+        event["at"] = Int(at.rounded())
+        return event
     }
 
     /// `AVSpeechSynthesizerDelegate`. Documented as "real future work" at the
@@ -592,11 +718,110 @@ public class ForayTtsPlugin: CAPPlugin, CAPBridgedPlugin, AVSpeechSynthesizerDel
         call.resolve(result)
     }
 
+    // MARK: - L-05: pause, resume, stop
+
+    /* ── WHY THESE THREE EXIST (L-05, founder feedback F12) ──────────────────
+       TestFlight 2026090603: "Once the on-device narration foray test starts,
+       none of the pause buttons work." The cause was not in the page. This
+       plugin exposed `speak`, `state` and `listVoices` and nothing else, so
+       `player/queue-manager.js`'s pause effect could only ever reach
+       `backend.pause()` — which pauses the `<audio>` element while
+       `AVSpeechSynthesizer` keeps talking. Nothing in the app could silence
+       narration once it started. For a driving app that is a safety defect.
+
+       THE THREE FRAMEWORK CALLS, AND THE BOUNDARY EACH USES.
+       `pauseSpeaking(at: .word)` rather than `.immediate`: resuming from a
+       cut-off syllable is how a synthesizer sounds broken, and the longest a
+       word costs is a few hundred milliseconds — which is inside the "within a
+       second" the card asks for. `stopSpeaking(at: .immediate)` is the
+       opposite trade and deliberately so: a stop is a listener asking for
+       silence NOW, and finishing the word first would be the app arguing.
+
+       `stopSpeaking` FIRES `didCancel`, NOT `didFinish`, which is the property
+       that keeps this card and L-03 from fighting: `speechSynthesizer(_:didFinish:)`
+       is what raises `FINISHED_EVENT`, and that event advances the queue. A
+       stop that advanced the queue past the line it just silenced would turn
+       every pause-then-stop into a skip. There is no `didCancel` handler here
+       precisely so that nothing is emitted on that path — the absence is the
+       mechanism, which is why it is written down. */
+
+    /// Pause the current utterance at the next word boundary.
+    ///
+    /// RESOLVES ALWAYS (class header). `paused: false` with the state word is
+    /// the honest answer when nothing was speaking — `AVSpeechSynthesizer`
+    /// returns `false` from `pauseSpeaking` in that case and inventing a
+    /// success would make the page's own state machine wrong.
+    @objc func pause(_ call: CAPPluginCall) {
+        let accepted = synthesizer.isSpeaking && !synthesizer.isPaused
+            ? synthesizer.pauseSpeaking(at: .word)
+            : false
+        resolveTransport(call, accepted: accepted)
+    }
+
+    /// Continue a paused utterance from where it stopped.
+    @objc func resume(_ call: CAPPluginCall) {
+        /* The session may have been taken while we were paused (a call, another
+           app) — `continueSpeaking()` on a session we no longer hold is silent.
+           Re-asserting the category and activation here is safe in a way the
+           equivalent call in `ForayAudioPlugin.setNowPlaying` is NOT: that one
+           sits on `render()`'s 4 Hz hot path and re-interrupting WebKit there
+           was the F11/F13 pause loop. This runs once per listener press. */
+        try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .spokenAudio, options: [])
+        try? AVAudioSession.sharedInstance().setActive(true)
+        let accepted = synthesizer.isPaused ? synthesizer.continueSpeaking() : false
+        resolveTransport(call, accepted: accepted)
+    }
+
+    /// Stop speaking and discard everything queued.
+    ///
+    /// `stopAndClose` in `player/client.js` is the caller that matters: closing
+    /// the player must not leave a voice talking into a car.
+    @objc func stop(_ call: CAPPluginCall) {
+        let accepted = synthesizer.isSpeaking || synthesizer.isPaused
+            ? synthesizer.stopSpeaking(at: .immediate)
+            : false
+        resolveTransport(call, accepted: accepted)
+    }
+
+    private func resolveTransport(_ call: CAPPluginCall, accepted: Bool) {
+        var result = JSObject()
+        result["ok"] = true
+        result["platform"] = "ios"
+        result["accepted"] = accepted
+        result["state"] = currentStateWord()
+        result["reason"] = accepted ? "" : "nothing to act on"
+        call.resolve(result)
+    }
+
+    /// `speaking | paused | idle`, from the synthesizer's two booleans.
+    ///
+    /// ORDER MATTERS AND IS NOT ARBITRARY: `isSpeaking` stays TRUE while
+    /// paused (Apple's documented behaviour — a paused synthesizer is still
+    /// "speaking" an utterance), so reading `isSpeaking` first would report a
+    /// paused synthesizer as speaking and the lock screen would show a pause
+    /// button for audio that is already silent. `isPaused` is therefore
+    /// checked first. Pure and `internal` so `ForayTtsPluginTests` can pin the
+    /// precedence without a synthesizer.
+    static func stateWord(isSpeaking: Bool, isPaused: Bool) -> String {
+        if isPaused { return STATE_PAUSED }
+        if isSpeaking { return STATE_SPEAKING }
+        return STATE_IDLE
+    }
+
+    private func currentStateWord() -> String {
+        Self.stateWord(isSpeaking: synthesizer.isSpeaking, isPaused: synthesizer.isPaused)
+    }
+
     @objc func state(_ call: CAPPluginCall) {
         var result = JSObject()
         result["platform"] = "ios"
         result["speaking"] = synthesizer.isSpeaking
         result["paused"] = synthesizer.isPaused
+        /* The word, ALONGSIDE the two booleans rather than instead of them.
+           `state()` shipped with the pair and something may already read it;
+           L-05 needs one value the page can put in a switch. Both is cheaper
+           than a migration. */
+        result["state"] = currentStateWord()
         call.resolve(result)
     }
 

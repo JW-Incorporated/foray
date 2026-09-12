@@ -208,7 +208,23 @@ export const NewSegmentSchema = z
      * accepts (G-21c) and reads to decide which length regime a Foray is under.
      */
     boundary: TapeBoundarySchema.optional(),
-    extendedBySec: z.number().nonnegative().optional()
+    extendedBySec: z.number().nonnegative().optional(),
+    /**
+     * F-98: this row REPLACES a committed pool row at the same id and start,
+     * and this is the `end_sec` it replaces.
+     *
+     * Present only when sourcing decided the committed row was supersedable —
+     * a draft mint nobody has reviewed, referenced by generated draft Forays
+     * only (`SourceBeatsOptions.supersedableCut`). `mintedPoolCollisions` reads
+     * it to tell this deliberate re-cut from the shadowing F-84 refuses, and
+     * `publishForay` writes it onto the row as `superseded_from`, rewrites the
+     * row in place, and restates `runtime_sec` on every draft Foray that was
+     * timed against the old end.
+     *
+     * Absent is the normal case and means exactly what it always meant: a cut
+     * at a start the pool does not hold.
+     */
+    supersedesEndSec: z.number().positive().optional()
   })
   .strict();
 export type NewSegment = z.infer<typeof NewSegmentSchema>;

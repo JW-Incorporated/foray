@@ -433,3 +433,100 @@ test("client.js runs the probe through the SAME shared bridge instance", () => {
     "runVoiceProbe must use the shared ttsBridge");
   assert.ok(!body.includes("createTtsBridge("), "and must not build a second one");
 });
+
+/* ---------------------------------------------- L-05: pause, resume, stop
+
+   Founder feedback F12: "Once the on-device narration foray test starts, none
+   of the pause buttons work." The bridge is where that failure was structural
+   — it exposed `speak` and `listVoices` and no transport at all, so
+   `queue-manager.js`'s pause effect had nowhere to send a narration pause. */
+
+/** The L-05 half of the fake module: records which transport calls arrived. */
+function fakeTransportModule(over = {}) {
+  const calls = [];
+  const answer = (name) => async () => { calls.push(name); return { ok: true, accepted: true, path: "native" }; };
+  return {
+    calls,
+    speak: async () => ({ ok: true, path: "native" }),
+    pause: answer("pause"),
+    resume: answer("resume"),
+    stop: answer("stop"),
+    state: async () => { calls.push("state"); return { ok: true, path: "native", state: "speaking" }; },
+    ...over,
+  };
+}
+
+// TO SEE IT FAIL: point `_transport("pause")` at `mod.stop` (or swap any two of
+// the three names in the bridge's `pause`/`resume`/`stop` methods). The queue
+// manager's pause would then silence the line permanently instead of pausing
+// it, and nothing else in this repo notices.
+test("pause, resume and stop each reach the MATCHING method on the module", async () => {
+  const mod = fakeTransportModule();
+  const bridge = createTtsBridge({ load: async () => mod });
+  await bridge.speak("hello");          // the module only loads once something speaks
+  await bridge.pause();
+  await bridge.resume();
+  await bridge.stop();
+  assert.deepEqual(mod.calls, ["pause", "resume", "stop"]);
+});
+
+// TO SEE IT FAIL: delete the `if (!pending)` early return from `_transport` (or
+// add `if (!pending) pending = loadModule();` to it, which is the shape `speak`
+// uses). A pause pressed before anything has spoken would then pull the plugin
+// module over the network mid-drive to be told there is nothing to pause.
+test("a transport call before anything has spoken does NOT load the module", async () => {
+  let loads = 0;
+  const bridge = createTtsBridge({ load: async () => { loads += 1; return fakeTransportModule(); } });
+  const out = await bridge.pause();
+  assert.equal(loads, 0, "pausing before anything spoke must not fetch the plugin");
+  assert.equal(out.ok, false);
+  assert.equal(out.accepted, false);
+  assert.match(out.reason, /nothing has spoken/);
+});
+
+// TO SEE IT FAIL: drop the `typeof mod[name] !== "function"` guard from
+// `_transport`. A Capacitor shell built before L-05 carries a FLATTENED COPY of
+// `foray-tts.js` made at build time by `tools/mobile/prepare-webdir.mjs`, so
+// `mod.pause` really is undefined there — and without the guard the reducer's
+// pause effect takes a TypeError instead of a reported refusal.
+test("an older shell's module — a speak() and no pause() — is reported, not thrown", async () => {
+  const bridge = createTtsBridge({ load: async () => ({ speak: async () => ({ ok: true }) }) });
+  await bridge.speak("hello");
+  const out = await bridge.pause();
+  assert.equal(out.ok, false);
+  assert.equal(out.accepted, false);
+  assert.match(out.reason, /no pause\(\)/);
+});
+
+// TO SEE IT FAIL: have `state()` return `{ state: "speaking" }` when nothing has
+// spoken. A lock screen would then offer a pause button on a silent page.
+test("state() is idle, without a fetch, until something has spoken", async () => {
+  let loads = 0;
+  const mod = fakeTransportModule();
+  const bridge = createTtsBridge({ load: async () => { loads += 1; return mod; } });
+  const before = await bridge.state();
+  assert.equal(before.state, "idle");
+  assert.equal(loads, 0);
+  await bridge.speak("hello");
+  assert.equal((await bridge.state()).state, "speaking");
+  assert.equal(loads, 1, "the module is memoised — one load per page, not one per call");
+});
+
+// TO SEE IT FAIL: let `_transport` return `mod[name]()` without the module-null
+// check, or make the failed-load path throw. `loadModule` returning null is the
+// ordinary "no plugin on this host" case, and a rejection there would land in
+// `_perform`'s caller and abort a transition the listener already saw happen.
+test("a module that will not load leaves a transport call resolved, never rejected", async () => {
+  const bridge = createTtsBridge({
+    load: async () => { throw new Error("404"); },
+    log: () => {},
+    candidates: ["nope.js"],
+  });
+  await bridge.speak("hello");
+  for (const name of ["pause", "resume", "stop"]) {
+    const out = await bridge[name]();
+    assert.equal(out.ok, false, name);
+    assert.equal(out.accepted, false, name);
+    assert.match(out.reason, /could not be loaded/, name);
+  }
+});

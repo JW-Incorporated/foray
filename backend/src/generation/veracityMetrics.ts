@@ -63,7 +63,11 @@ export function flattenWrittenPages(acts: WrittenAct[]): FlatWrittenPage[] {
 export interface FailingPage {
   claim: string;
   mode: string;
-  reason: "ungrounded-quote" | "off-topic-tape" | "unverified-page";
+  /** F-99: `seed-lost` is an unverified page with a DISTINCT cause — the
+   * beat was seeded from tape §4.5 could not place, so no writer call
+   * could ever have carried its specifics and none was spent trying. Read
+   * it as "re-seed or cut the beat", never as "the prose is wrong". */
+  reason: "ungrounded-quote" | "off-topic-tape" | "unverified-page" | "seed-lost";
   detail: string;
 }
 
@@ -535,6 +539,21 @@ export function computeUnverifiedPages(writtenActs: WrittenAct[]): UnverifiedPag
   const pages: FailingPage[] = [];
   for (const { claim, page } of flattenWrittenPages(writtenActs)) {
     if (page.verified) continue;
+    /* F-99: a seed-lost page is still a stop — the beat's claim is not
+       carried and a listener would hear the gap — but it is not the same
+       failure, and the detail must not say "after every attempt" when no
+       attempt was spent on it. */
+    if (page.unverifiedReason === "seed-lost") {
+      pages.push({
+        claim,
+        mode: page.mode,
+        reason: "seed-lost",
+        detail: page.verifierNotes
+          ? `the beat's seed tape is not in this Foray, so the act's sources cannot carry it — ${page.verifierNotes.slice(0, 200)}`
+          : "the beat's seed tape is not in this Foray, so the act's sources cannot carry it (F-99)"
+      });
+      continue;
+    }
     pages.push({
       claim,
       mode: page.mode,
@@ -739,6 +758,11 @@ export interface VeracityMetrics {
    * round, summed over the run — the number the retry tax is paid in.
    * `null` when the caller did not count it. */
   retryRounds: number | null;
+  /** F-99: beats closed as seed-lost — seeded from tape §4.5 could not
+   * place, and unreachable from the act's own sources. Each is a beat the
+   * retry loop deliberately did not spend two more rounds on; the fix is
+   * at seeding. `null` when the caller did not count them. */
+  seedLostBeats: number | null;
   pagesDropped: number;
   /** F-51: pages kept with `verified: false`. Any is a publish stop. */
   unverifiedPages: number;
@@ -793,6 +817,9 @@ export interface BuildVeracityMetricsInput {
   /** G-34: `writeNarration`'s own count of retry rounds. Optional for
    * older callers; reported as `null` rather than guessed at zero. */
   retryRounds?: number;
+  /** F-99: `writeAct`'s own count of beats closed as seed-lost. Optional
+   * for older callers; reported as `null` rather than guessed at zero. */
+  seedLostBeats?: number;
   pipelineTokens: number;
   stageTimings: StageTiming[];
   /** G-35: carried through verbatim when the caller ran a prefetch. */
@@ -822,6 +849,7 @@ export function buildVeracityMetrics(input: BuildVeracityMetricsInput): Veracity
     narrationCallsPerBeat: computeNarrationCallsPerBeat(input.sourcedActs, input.writerCalls, input.verifierCalls),
     narrationCalls: { writer: input.writerCalls, verifier: input.verifierCalls },
     retryRounds: typeof input.retryRounds === "number" ? input.retryRounds : null,
+    seedLostBeats: typeof input.seedLostBeats === "number" ? input.seedLostBeats : null,
     pagesDropped: computePagesDropped(input.sourcedActs, input.writtenActs),
     unverifiedPages: unverified.count,
     unverifiedPageDetails: unverified.pages,

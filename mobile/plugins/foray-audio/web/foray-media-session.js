@@ -130,6 +130,26 @@ export const SET_METHOD = "setNowPlaying";
  *  for something. Its payload is `{ action, positionMs?, offsetMs? }`. */
 export const TRANSPORT_EVENT = "transport";
 
+/** M-03 (founder feedback F16 / #548). The event native raises when the SYSTEM
+ *  changes something under the player rather than asking for something: an
+ *  `AVAudioSession` interruption, a route change, a media-services reset, the
+ *  app entering background or foreground. Payload
+ *  `{ kind, reason, producer, at }`; `ForayAudioPlugin.swift`'s and
+ *  `ForayTtsPlugin.swift`'s `SESSION_EVENT` are the writers, and
+ *  `player/diagnostic-log.js`'s `sessionEvent()` is the reader. */
+export const SESSION_EVENT = "session";
+
+/** How a `SESSION_EVENT` reaches `player/client.js`.
+ *
+ *  A DOM EVENT AND NOT A DIRECT CALL, for the two reasons this file's own
+ *  auto-install block already states for `onLoadedChange`: `player/` may not
+ *  import a Capacitor plugin's web half (`player/tts-bridge.js`'s header is the
+ *  long form of why — the module lives at a different URL per host), and the
+ *  two scripts are independent module tags in which neither may assume the
+ *  other has run. `window` is the one object both of them are guaranteed to
+ *  find. Namespaced so nothing else on the page can collide with it. */
+export const SESSION_DOM_EVENT = "foray:session";
+
 /** Every action we can route, which is exactly `MEDIA_ACTIONS` in
  *  `player/media-session.js`. An action outside this set THROWS from
  *  `setActionHandler`, which is what Chromium does and therefore what
@@ -478,6 +498,10 @@ export function createForayMediaSession(env) {
   let hadOwn = false;
   let previous;
   let subscription = null;
+  /** M-03's own handle, kept separately from `subscription` above: `session`
+   *  events are diagnostics and `transport` events are the lock screen's
+   *  buttons, so a bridge that refuses one must not cost the other. */
+  let sessionSubscription = null;
   /** How `install()` took the property, so `uninstall()` knows how to give it
    *  back: `"replace"` swapped the whole `navigator.mediaSession` property (the
    *  Android path, and the iOS path when the existing property is configurable);
@@ -719,21 +743,51 @@ export function createForayMediaSession(env) {
   }
 
   function subscribe() {
-    /* `addListener` is on the injected bridge itself (`native-bridge.js`'s
-       `initEvents`), so this needs no `@capacitor/core` proxy — the same reason
-       `foray-audio-shell.js` uses `nativePromise` directly. `nativeCallback` is the
-       fallback because `addListener` is a thin wrapper over exactly that call, and
-       one of the two is present in every bridge that has plugins at all. */
+    return subscribeTo(TRANSPORT_EVENT, dispatch);
+  }
+
+  /** M-03. One native `session` event -> one `SESSION_DOM_EVENT` on `window`.
+   *
+   *  FORWARDED VERBATIM AND JUDGED NOWHERE HERE. The vocabulary belongs to
+   *  `player/diagnostic-log.js`, which admits a fixed set of `kind`s and drops
+   *  everything else; a second filter in this file would be two answers to one
+   *  question, and the one that lives beside the record is the one that can
+   *  keep the record's own no-prose rule. */
+  function dispatchSession(event) {
+    const detail = event && typeof event === "object" ? event : {};
+    try {
+      if (typeof window === "undefined" || typeof window.dispatchEvent !== "function") return;
+      const Ctor = window.CustomEvent;
+      if (typeof Ctor !== "function") return;
+      window.dispatchEvent(new Ctor(SESSION_DOM_EVENT, { detail: detail }));
+    } catch (e) {
+      /* A native event that cannot be re-broadcast must not take the transport
+         down with it: this whole channel is diagnostics, and the lock screen's
+         buttons are not. */
+      log("foray-media-session: could not re-broadcast " + SESSION_EVENT, e);
+    }
+  }
+
+  function subscribeSession() {
+    return subscribeTo(SESSION_EVENT, dispatchSession);
+  }
+
+  /* `addListener` is on the injected bridge itself (`native-bridge.js`'s
+     `initEvents`), so this needs no `@capacitor/core` proxy — the same reason
+     `foray-audio-shell.js` uses `nativePromise` directly. `nativeCallback` is the
+     fallback because `addListener` is a thin wrapper over exactly that call, and
+     one of the two is present in every bridge that has plugins at all. */
+  function subscribeTo(eventName, handler) {
     try {
       if (typeof capacitor.addListener === "function") {
-        return capacitor.addListener(PLUGIN_NAME, TRANSPORT_EVENT, dispatch);
+        return capacitor.addListener(PLUGIN_NAME, eventName, handler);
       }
       if (typeof capacitor.nativeCallback === "function") {
-        capacitor.nativeCallback(PLUGIN_NAME, "addListener", { eventName: TRANSPORT_EVENT }, dispatch);
+        capacitor.nativeCallback(PLUGIN_NAME, "addListener", { eventName: eventName }, handler);
         return { remove: function () {} };
       }
     } catch (e) {
-      log("foray-media-session: could not subscribe to " + TRANSPORT_EVENT, e);
+      log("foray-media-session: could not subscribe to " + eventName, e);
     }
     return null;
   }
@@ -975,6 +1029,8 @@ export function createForayMediaSession(env) {
 
     installed = true;
     subscription = subscribe();
+    // M-03. A SECOND, INDEPENDENT SUBSCRIPTION — see `sessionSubscription`.
+    sessionSubscription = subscribeSession();
     return true;
   }
 
@@ -999,6 +1055,14 @@ export function createForayMediaSession(env) {
       log("foray-media-session: could not remove the transport listener", e);
     }
     subscription = null;
+    try {
+      if (sessionSubscription && typeof sessionSubscription.remove === "function") {
+        sessionSubscription.remove();
+      }
+    } catch (e) {
+      log("foray-media-session: could not remove the session listener", e);
+    }
+    sessionSubscription = null;
     /* ONLY IF OURS IS STILL THE ONE THERE. If something replaced it after we
        installed, restoring blindly would delete that — the mirror of the care
        `foray-audio-shell.js` takes over the `play` patch. In "wrap" mode "ours"
