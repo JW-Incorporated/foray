@@ -15,7 +15,8 @@ import { MODE_CHAR_BANDS } from "../src/types/narration";
 
 /**
  * F-79 — a partial candidate is judged on the PROJECTED whole for the rules
- * that are shares of the whole (M4, D3, D5-IQR, D2-end, D4-share) and on
+ * that are shares of the whole (M4, D2-end, D4-share; Q-04 retired D3 and
+ * D5's IQR clause, and F-101 took them out of the table) and on
  * itself for every monotone rule. The real `check-forays.mjs` cannot be
  * loaded under Vitest on this checkout (a path with a space — see
  * `RunPipelineDeps.finalize`), so the checker is stood in for by a fake
@@ -162,20 +163,30 @@ const meta: PartialCandidateMeta = { id: "f-79", title: "T", topic: "technology/
 /* ---- tests ------------------------------------------------------------- */
 
 describe("projectedRuleOf — which check-forays lines are shares of the whole", () => {
-  it("names M4, D3, D5's IQR clause, D2's end-of-Foray clause and D4's share clause, and nothing monotone", () => {
+  it("names M4, D2's end-of-Foray clause and D4's share clause, and nothing monotone — and no longer names Q-04's retired D3 or D5-IQR", () => {
     /* MUTATION THAT KILLS THIS: match D5 or D2 on the rule prefix alone
-       (`/^D5 FAIL/`). D5's consecutive-triple clause and D2's run clause —
+       (`/^D5 FAIL/`). D5's consecutive-pair clause and D2's run clause —
        both local, both monotone — would then be read from the projection and
-       a partial with three near-identical segments in a row would pass on
-       an estimate. Ran it — red on the two `null` lines below. */
+       a partial with two near-identical segments in a row would pass on
+       an estimate. Ran it — red on the two `null` lines below.
+       SECOND MUTATION (F-101): put `["D3", /^D3 FAIL:/]` back in
+       `PROJECTED_RULE_PATTERNS`. Q-04 retired D3 and restated D5's IQR
+       clause out of existence, and for two cards this table still listed
+       both — red on the two `toBeNull()` lines added below, and red in
+       `partialProjectionRules.test.ts`, which asks the real checker. */
     const id = 'foray "x": ';
-    expect(projectedRuleOf(`${id}M4 FAIL: "ep" is 16.7 % of segments and 26.4 % of runtime, over the 25 % cap`)).toBe("M4");
-    expect(projectedRuleOf(`${id}D3 FAIL: mean segment duration 76.1 s is under the 90 s floor`)).toBe("D3");
-    expect(projectedRuleOf(`${id}D5 FAIL: interquartile range 15.6 s is under the 45 s floor (R-7)`)).toBe("D5-IQR");
+    expect(projectedRuleOf(`${id}M4 FAIL: "ep" is 16.7 % of segments, over the 25 % cap`)).toBe("M4");
     expect(projectedRuleOf(`${id}D2 FAIL: the Foray ends on two consecutive segments under 60 s (x onward); the rule requires a following segment of at least 150 s, and there is none`)).toBe("D2-end");
     expect(projectedRuleOf(`${id}D4 FAIL: 3/10 segments are \`quote\`, over the 20 % cap`)).toBe("D4-share");
 
-    expect(projectedRuleOf(`${id}D5 FAIL: a / b / c are 100.0 / 105.0 / 110.0 s — three consecutive durations within +/-20 % of each other (max/min 1.100)`)).toBeNull();
+    /* Retired by Q-04. Were the checker ever to emit them again they would be
+       monotone-by-default, which is the safe direction: judged on the partial. */
+    expect(projectedRuleOf(`${id}D3 FAIL: mean segment duration 76.1 s is under the 90 s floor`)).toBeNull();
+    expect(projectedRuleOf(`${id}D5 FAIL: interquartile range 15.6 s is under the 45 s floor (R-7)`)).toBeNull();
+
+    /* D5's real current message (`check-forays.mjs`'s `E(\`D5 FAIL: ${line}\`)`),
+       pinned live against the checker in `partialProjectionRules.test.ts`. */
+    expect(projectedRuleOf(`${id}D5 FAIL: a / b are 100.0 / 105.0 s — two consecutive clips within +/-20 % of the same length (max/min 1.050)`)).toBeNull();
     expect(projectedRuleOf(`${id}D2 FAIL: 3 consecutive segments under 60 s starting at x`)).toBeNull();
     expect(projectedRuleOf(`${id}D2 FAIL: two consecutive segments under 60 s at x are followed by 90.0 s, under the 150 s recovery floor`)).toBeNull();
     expect(projectedRuleOf(`${id}D4 FAIL: 3 adjacent \`quote\` segments ending at x`)).toBeNull();
@@ -319,7 +330,7 @@ describe("buildPartialCandidate with a projection plan (F-79)", () => {
 
     expect(candidate.ruleScope.basis).toBe("projected");
     expect(candidate.ruleScope.projected).toEqual([...PROJECTED_RULES]);
-    expect(candidate.ruleScope.projected).toEqual(["M4", "D3", "D5-IQR", "D2-end", "D4-share"]);
+    expect(candidate.ruleScope.projected).toEqual(["M4", "D2-end", "D4-share"]);
     expect(candidate.ruleScope.partial).toEqual([...PARTIAL_RULES]);
     expect(candidate.ruleScope.partial).toContain("M3");
     expect(candidate.ruleScope.partial).toContain("D1");
@@ -328,7 +339,7 @@ describe("buildPartialCandidate with a projection plan (F-79)", () => {
 
     const scopeLine = candidate.validation.checkForaysWarnings.find((w) => w.startsWith("F-79:"));
     expect(scopeLine).toBeDefined();
-    expect(scopeLine).toMatch(/M4, D3, D5-IQR, D2-end, D4-share judged on the projected whole \(25 tape segments across 2 projected act\(s\)/);
+    expect(scopeLine).toMatch(/M4, D2-end, D4-share judged on the projected whole \(25 tape segments across 2 projected act\(s\)/);
     expect(scopeLine).toMatch(/every other rule judged on the partial \(6 tape segment\(s\)\)/);
     expect(scopeLine).toMatch(/1 share-rule line\(s\) on the partial set aside/);
     /* The partial's own warnings are kept, not replaced. */

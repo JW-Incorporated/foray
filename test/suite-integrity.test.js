@@ -885,7 +885,10 @@ const FLOORS = {
      COMMITTED table against the COMMITTED baseline — the archived reports live
      on the generation host, not in this repo, so that pair is the only thing
      that can catch a hand-edited cell in the deck. */
-  "tools/generation-bench/run.test.mjs": 38,
+  /* RAISED 38 -> 40 by F-101: the two first-attempt units are separate
+     columns and an undeclared unit is never guessed into one; `tape_share`
+     reads the renamed report field and falls back to the old name. */
+  "tools/generation-bench/run.test.mjs": 40,
   /* The native shell (#36). `shell-invariants` is the one to be most careful
      with: four of the five things it pins are properties of files OUTSIDE
      tools/ — the root package.json staying dependency-free, index.html's CSP,
@@ -1732,7 +1735,10 @@ const BACKEND_FLOORS = {
      refusals, `seedLost` on a seeded beat that ends as narration, and the
      end-to-end thesis case; the two ledger cases that pinned "a second beat
      on the same episode is refused" now ask it across an act boundary. */
-  "test/sourceBeats.test.ts": 124,
+  /* RAISED 124 -> 127 by F-101: `placementAllows` is the ONE length-rule
+     predicate, asked by the tier that places a clip and the tier that grows
+     one — the merge's hand-mirrored copy of M4's runtime clause is gone. */
+  "test/sourceBeats.test.ts": 127,
   /* Q-04: the checker's D5 arithmetic mirrored in `d5Pair.ts` — the pair
      clause that replaced F-80's triple — pinned to `check-forays.mjs`'s own
      `d5UniformPairs` row by row (run in a Node subprocess, the only way that
@@ -1862,11 +1868,19 @@ const BACKEND_FLOORS = {
   "test/generationStatus.test.ts": 4,
   "test/partialCandidate.test.ts": 6,
   /* F-79: a partial candidate is judged on the PROJECTED whole for the
-     share-of-whole rules (M4, D3, D5-IQR, D2-end, D4-share) and on itself
-     for every monotone rule — run 5 was aborted on an M4 share computed over
-     a one-act slice. */
+     share-of-whole rules (M4, D2-end, D4-share) and on itself for every
+     monotone rule — run 5 was aborted on an M4 share computed over a one-act
+     slice. Q-04 retired D3 and D5's interquartile clause and F-101 took them
+     out of the table. */
   /* RAISED 7 -> 8 by F-96: a merged beat's clip is projected once. */
   "test/partialProjection.test.ts": 8,
+  /* F-101 — the generalising guard the stale table needed. It drives the REAL
+     `tools/foray/check-forays.mjs` over mutated fixtures in a child process
+     (Vitest cannot import the `.mjs` on a path with a space) and asserts every
+     pattern in `PROJECTED_RULE_PATTERNS` matches a line the checker actually
+     emits, so a renamed or retired rule turns the table red instead of
+     silently reclassifying a share-of-whole rule as monotone. */
+  "test/partialProjectionRules.test.ts": 3,
   /* F-87 (#315): a tape window whose cut ends past the episode's declared
      duration is refused at sourcing (`past-duration`), never clamped; the
      trace carries both numbers; the projection inherits the rule. Fixture is
@@ -1940,7 +1954,10 @@ const BACKEND_FLOORS = {
   /* F-50/F-51 raised this from 31: `unverifiedPages` (the count the publish
      gate now refuses on, replacing writeNarration's throw) and
      `purposeRevisedPages` (reported, never gated). */
-  "test/veracityMetrics.test.ts": 43,
+  /* RAISED 43 -> 47 by F-101: `computeFirstAttemptPassRates` emits the pages
+     and beats units separately and declares which the legacy scalar carries;
+     `computeListeningShares` says its denominator in the field name. */
+  "test/veracityMetrics.test.ts": 47,
   /* WS-A evidence-first narration (generation fix plan 2026-09-09): the
      per-beat evidence pack (tape cue window + up to three retrieved print
      passages, cached by claim hash) and the mechanical narration rules run 1's
