@@ -98,10 +98,35 @@ function fixtureGatherer(docs: EvidenceDoc[] = [NBS_DOC], tape?: EvidencePack["t
   };
 }
 
+/**
+ * Q-03: the per-slot, per-page path this file exercises is now the FALLBACK
+ * `writeNarration` takes for a writer or verifier WITHOUT the act contract
+ * (`writeAct` / `verifyAct`) — and F-88's drafting path. The stub builders
+ * offer the contract, so these wrappers hand them over without it; every
+ * mechanical rule the act path inherits is pinned here, on the path it was
+ * written on. The act path's own tests are `actNarration.test.ts`.
+ * Delegation is lazy so a test may still patch the stub after wrapping.
+ */
+function legacyWriter(stub: StubNarrationWriterBuilder): NarrationWriterBuilder {
+  return {
+    providerName: stub.providerName,
+    selectClaims: (request, buildCtx) => stub.selectClaims(request, buildCtx),
+    writePages: (request, buildCtx) => stub.writePages(request, buildCtx),
+    selectAndWrite: (request, buildCtx) => stub.selectAndWrite(request, buildCtx)
+  };
+}
+function legacyVerifier(stub: StubNarrationVerifierBuilder): NarrationVerifierBuilder {
+  return {
+    providerName: stub.providerName,
+    verifySlot: (request, buildCtx) => stub.verifySlot(request, buildCtx),
+    verifySynthesis: (request, buildCtx) => stub.verifySynthesis(request, buildCtx)
+  };
+}
+
 function makeOptions(overrides: Partial<WriteNarrationOptions> = {}): WriteNarrationOptions {
   return {
-    writer: new StubNarrationWriterBuilder(),
-    verifier: new StubNarrationVerifierBuilder(),
+    writer: legacyWriter(new StubNarrationWriterBuilder()),
+    verifier: legacyVerifier(new StubNarrationVerifierBuilder()),
     evidence: fixtureGatherer(),
     ...overrides
   };
@@ -700,7 +725,7 @@ describe("G-34 — the retry tax: select+prose in one call, and a retry pays for
     expect(page.purposeAccomplished).toBe(false);
   });
 
-  it("the stub writer offers the merged call, so a dry run pays the one request production does", async () => {
+  it("the stub writer offers the merged call, so the per-slot fallback pays the one request it did in production before Q-03", async () => {
     const writer = new StubNarrationWriterBuilder();
     let merged = 0;
     let prose = 0;
@@ -714,11 +739,48 @@ describe("G-34 — the retry tax: select+prose in one call, and a retry pays for
       prose++;
       return realProse(request, buildCtx);
     };
-    const written = await writeNarration(fourPages(), { writer, verifier: new StubNarrationVerifierBuilder(), evidence: fixtureGatherer() }, voice, ctx);
+    const written = await writeNarration(fourPages(), { writer: legacyWriter(writer), verifier: legacyVerifier(new StubNarrationVerifierBuilder()), evidence: fixtureGatherer() }, voice, ctx);
 
     expect(allWrittenNarration(written).every((p) => p.verified && p.attempts?.length === 1)).toBe(true);
     expect(merged).toBe(1);
     expect(prose).toBe(0);
+  });
+
+  it("the stub builders offer the per-act contract, so a dry run pays the two requests production does — one write, one verify — and never the per-slot calls (Q-03)", async () => {
+    /* MUTATION THAT KILLS THIS: drop `writeAct` from the stub writer (the
+       four pages then cost one merged per-slot call and `act` reads 0), or
+       call the verifier per seam. Ran the first — red. */
+    const writer = new StubNarrationWriterBuilder();
+    const verifier = new StubNarrationVerifierBuilder();
+    let act = 0;
+    let merged = 0;
+    let verify = 0;
+    const realAct = writer.writeAct.bind(writer);
+    writer.writeAct = async (request, buildCtx) => {
+      act++;
+      return realAct(request, buildCtx);
+    };
+    const realMerged = writer.selectAndWrite.bind(writer);
+    writer.selectAndWrite = async (request, buildCtx) => {
+      merged++;
+      return realMerged(request, buildCtx);
+    };
+    const realVerify = verifier.verifyAct.bind(verifier);
+    verifier.verifyAct = async (request, buildCtx) => {
+      verify++;
+      return realVerify(request, buildCtx);
+    };
+    const written = await writeNarration(fourPages(), { writer, verifier, evidence: fixtureGatherer() }, voice, ctx);
+
+    /* Four beats in one slot with no clip between them are ONE seam: one
+       page carries all four, the other three beats point at it. */
+    const pages = allWrittenNarration(written);
+    expect(pages).toHaveLength(1);
+    expect(pages[0]!.verified).toBe(true);
+    expect(pages[0]!.attempts?.length).toBe(1);
+    expect(act).toBe(1);
+    expect(verify).toBe(1);
+    expect(merged).toBe(0);
   });
 });
 
@@ -1583,7 +1645,7 @@ describe("F-60 — a page with no evidence never costs a selection call", () => 
   });
 });
 
-describe("F-51 — per-slot checkpoint inside an act", () => {
+describe("F-51 — per-slot checkpoint inside an act (the per-slot fallback path; since Q-03 the act path honours `resume` only for a fully banked act — actNarration.test.ts)", () => {
   function twoSlotAct(): SourcedAct[] {
     return [
       {
@@ -1635,8 +1697,8 @@ describe("F-51 — per-slot checkpoint inside an act", () => {
     const written = await writeNarration(
       twoSlotAct(),
       {
-        writer,
-        verifier: new StubNarrationVerifierBuilder(),
+        writer: legacyWriter(writer),
+        verifier: legacyVerifier(new StubNarrationVerifierBuilder()),
         evidence: fixtureGatherer(),
         resume: (actIndex, slotIndex) => (actIndex === 0 && slotIndex === 0 ? slotA : undefined),
         onSlotWritten: (act, slot, value) => {
@@ -1657,7 +1719,7 @@ describe("F-51 — per-slot checkpoint inside an act", () => {
     expect(banked).toEqual([{ act: 0, slot: 1, title: "Slot B" }]);
   });
 
-  it("banks a finished slot even when a sibling slot throws", async () => {
+  it("banks a finished slot even when a sibling slot throws (the per-slot fallback; the act path banks through the driver's narrate:<i> stage)", async () => {
     const banked: string[] = [];
     const writer = new StubNarrationWriterBuilder();
     const realWrite = writer.selectAndWrite.bind(writer);
@@ -1677,8 +1739,8 @@ describe("F-51 — per-slot checkpoint inside an act", () => {
       writeNarration(
         twoSlotAct(),
         {
-          writer,
-          verifier: new StubNarrationVerifierBuilder(),
+          writer: legacyWriter(writer),
+          verifier: legacyVerifier(new StubNarrationVerifierBuilder()),
           evidence: fixtureGatherer(),
           onSlotWritten: (_act, _slot, value) => {
             banked.push(value.title);

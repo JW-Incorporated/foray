@@ -50,9 +50,10 @@ export const ForaySegmentItemSchema = z
   .strict();
 export type ForaySegmentItem = z.infer<typeof ForaySegmentItemSchema>;
 
-/** The six modes, LOWERCASE — matches `check-narration.mjs`'s
- * `MODE_CHAR_BANDS` keys exactly (see this module's doc comment). */
-export const ForayNarrationModeSchema = z.enum(["hinge", "frame", "marker", "correction", "patch", "carry"]);
+/** The modes, LOWERCASE — matches `check-narration.mjs`'s
+ * `MODE_CHAR_BANDS` keys exactly (see this module's doc comment). `intro`
+ * is Q-02's introduction before a clip (`types/narration.ts`). */
+export const ForayNarrationModeSchema = z.enum(["hinge", "frame", "marker", "correction", "patch", "carry", "intro"]);
 export type ForayNarrationMode = z.infer<typeof ForayNarrationModeSchema>;
 
 export const ForayNarrationItemSchema = z
@@ -96,7 +97,7 @@ function lowercaseMode(mode: string): ForayNarrationMode {
   const lowered = mode.toLowerCase();
   const parsed = ForayNarrationModeSchema.safeParse(lowered);
   if (!parsed.success) {
-    throw new Error(`toForayItem: narration mode "${mode}" does not map to any of the six check-forays.mjs modes`);
+    throw new Error(`toForayItem: narration mode "${mode}" does not map to any of the check-forays.mjs modes`);
   }
   return parsed.data;
 }

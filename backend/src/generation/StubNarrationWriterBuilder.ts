@@ -1,19 +1,25 @@
 import * as crypto from "crypto";
 import { defaultBudgetGuard, type BudgetGuard } from "../cost/budgetGuard";
 import { MIN_QUOTE_WORDS, MODE_CHAR_BANDS, quoteEchoesPurpose, type PronunciationHint } from "../types/narration";
+import type { EvidenceDoc } from "./gatherEvidence";
 import type {
+  ActWriteRequest,
+  ActWriteResult,
   ClaimSelectionRequest,
   ClaimSelectionResult,
+  ClipBrief,
   NarrationBuildContext,
   NarrationPageBrief,
   NarrationWriterBuilder,
   ProsePageBrief,
   ProseWriteRequest,
   ProseWriteResult,
+  SeamBrief,
   SelectAndWriteRequest,
   SelectAndWriteResult,
   SelectedClaim,
-  WrittenPage
+  WrittenPage,
+  WrittenSeam
 } from "./NarrationWriterBuilder";
 
 /**
@@ -95,6 +101,78 @@ export class StubNarrationWriterBuilder implements NarrationWriterBuilder {
       })
     };
   }
+
+  /**
+   * Q-03: the per-act contract, so `--dry-run` writes per act exactly as
+   * production does. One script per seam: an introduction to the clip it
+   * leads into, weighted as the orchestrator decided (Q-02 — a question
+   * and a listener imperative naming the show, so it asserts nothing and
+   * cites nothing, and a same-episode follow-on is one clause), then one
+   * sentence per beat the seam carries, each backed by a span COPIED out
+   * of a held document, padded to the seam's band. A seam with no beats
+   * and no introduction to make returns an empty script — no page there.
+   */
+  async writeAct(request: ActWriteRequest, ctx: NarrationBuildContext): Promise<ActWriteResult> {
+    await this.budgetGuard.checkAndRecord({
+      userId: ctx.userId,
+      operation: "narration_write_act",
+      provider: this.providerName,
+      estimatedUsd: 0,
+      dryRun: true,
+      sessionId: ctx.sessionId
+    });
+    const clips = new Map(request.clips.map((c) => [c.clipId, c]));
+    return { seams: request.seams.map((seam) => stubSeam(seam, clips, request.documents, request.voice.register)) };
+  }
+}
+
+/** Exported for the act tests: the deterministic seam the stub writes,
+ * so a test can mutate one sentence of it (drop a beat, repeat the clip's
+ * opening) and watch the gate or the verifier go red. */
+export function stubSeam(seam: SeamBrief, clips: Map<string, ClipBrief>, documents: EvidenceDoc[], register: string): WrittenSeam {
+  const clip = seam.introduces ? clips.get(seam.introduces) : undefined;
+  const [min, max] = seam.band;
+  const sentences: string[] = [];
+  const claims: SelectedClaim[] = [];
+  if (clip && clip.intro === "full") {
+    /* F-81's shape, on the act path: the introduction cites the clip's
+       own window (a tape source, no quote) when the pipeline holds it;
+       with no window held it asserts nothing — a question and a listener
+       imperative that still name the show and episode. */
+    if (clip.docId) {
+      claims.push({ claimText: `the clip that follows is from ${clip.show || "the show"}: "${clip.title}"`, quote: "", docId: clip.docId, contested: false });
+      sentences.push(`Next, from ${clip.show || "the show"}, "${clip.title}". Listen for who is doing the talking.`);
+    } else {
+      sentences.push(`Who speaks next, and where? Listen for ${clip.show || "the show"}, and for "${clip.title}".`);
+    }
+  } else if (clip && clip.intro === "light") {
+    sentences.push(`Stay with ${clip.show || "the same voice"}.`);
+  }
+  const purposeText = seam.beats.map((b) => b.claim).join(" ");
+  for (const beat of seam.beats) {
+    /* Print first, quoted (a span copied out of the document, F-14/F-27);
+       failing that, the first transcript window the act holds, cited as a
+       whole with no echoed quote — F-81/F-82's shape for a beat whose
+       claim is what the tape beside it says, which is what the run-6
+       claims were (the window's every span echoes the purpose, so no
+       quote of it is legal, and none is needed). */
+    const print = documents.filter((doc) => doc.kind !== "tape").map((doc) => ({ doc, quote: firstLegalSpan(doc.text, purposeText) })).find((x) => x.quote !== null);
+    const window = documents.find((doc) => doc.kind === "tape");
+    if (print) claims.push({ claimText: beat.claim, quote: print.quote!, docId: print.doc.docId, contested: false });
+    else if (window) claims.push({ claimText: beat.claim, quote: "", docId: window.docId, contested: false });
+    else continue;
+    sentences.push(`In the voice of a ${register.toLowerCase()}, this stretch carries the idea that ${lowerFirst(beat.claim)}.`);
+  }
+  if (sentences.length === 0) return { seamId: seam.seamId, script: "", claims: [], usedClaims: [], pronunciationHints: [] };
+  const seed = sentences.join(" ");
+  const script = padToBand(seed, min, max, Math.min(max, Math.max(min, seed.length)), seam.mode, claims.length === 0 ? CLAIM_FREE_FILLERS : FILLERS);
+  return {
+    seamId: seam.seamId,
+    script,
+    claims,
+    usedClaims: claims.map((_, i) => i),
+    pronunciationHints: seam.beats.flatMap((b) => hardWordsIn(b.claim).map((word) => ({ word, hint: `Say "${word}" as spelled — no override configured (stub fixture).` })))
+  };
 }
 
 function writtenPageFor(page: ProsePageBrief, register: string): WrittenPage {

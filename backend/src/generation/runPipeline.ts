@@ -61,8 +61,8 @@ import type { PromptUnderstander } from "./PromptUnderstander";
 import type { ExternalResearcher } from "./ExternalResearcher";
 import type { SpineBuilder } from "./SpineBuilder";
 import type { DeepenActBuilder } from "./DeepenActBuilder";
-import type { NarrationBuildContext, NarrationWriterBuilder, SelectAndWriteRequest } from "./NarrationWriterBuilder";
-import type { NarrationVerifierBuilder, SynthesisVerifyRequest } from "./NarrationVerifierBuilder";
+import type { ActWriteRequest, NarrationBuildContext, NarrationWriterBuilder, SelectAndWriteRequest } from "./NarrationWriterBuilder";
+import type { ActVerifyRequest, NarrationVerifierBuilder, SynthesisVerifyRequest } from "./NarrationVerifierBuilder";
 import type { ContinuityBuilder } from "./ContinuityBuilder";
 import type { NarrationWriteStats, WrittenAct, WrittenSlot } from "./writeNarration";
 import { loadTranscriptArchive, type TranscriptCueProvider, type TranscriptDigestEntry } from "./transcriptArchiveLookup";
@@ -733,11 +733,17 @@ const WrittenBeatSchema = z.union([
     tape: TapePointerSchema,
     connectiveNarration: NarratedBeatSchema.optional()
   }),
+  /* Q-03: a narration beat holds its seam's page, or points at the beat
+     that does (`carriedBy`), and records the round its claim was first
+     confirmed on. Every field the per-page path wrote is still here, so a
+     `narrate:<i>` key from runs 1–8 parses unchanged. */
   z.object({
     sourcing: z.literal("narration"),
     claim: z.string(),
     exploration: z.boolean(),
-    narration: NarratedBeatSchema
+    narration: NarratedBeatSchema.optional(),
+    carriedBy: z.object({ slot: z.number().int().nonnegative(), beat: z.number().int().nonnegative() }).optional(),
+    verifiedAtAttempt: z.number().int().min(1).optional()
   })
 ]);
 const WrittenSlotSchema = z.object({ title: z.string(), beats: z.array(WrittenBeatSchema) });
@@ -894,6 +900,18 @@ export async function runForayPipeline(
             return narrationWriter.selectAndWrite!(mergedRequest, mergedCtx);
           }
         }
+      : {}),
+    /* Q-03: the per-act call is ONE request and counts as one. Forwarded
+       only when the wrapped builder offers it, for the same reason as
+       `selectAndWrite`: its absence is what sends `writeNarration` down
+       the per-slot path. */
+    ...(narrationWriter.writeAct
+      ? {
+          writeAct: (actRequest: ActWriteRequest, actCtx: NarrationBuildContext) => {
+            narrationWriterCalls++;
+            return narrationWriter.writeAct!(actRequest, actCtx);
+          }
+        }
       : {})
   };
   /* G-34: `retryRounds` is counted by the stage itself (a round is a
@@ -915,6 +933,15 @@ export async function runForayPipeline(
           verifySynthesis: (synthesisRequest: SynthesisVerifyRequest, synthesisCtx: NarrationBuildContext) => {
             narrationVerifierCalls++;
             return narrationVerifier.verifySynthesis!(synthesisRequest, synthesisCtx);
+          }
+        }
+      : {}),
+    /* Q-03: the per-act verdict is one request. */
+    ...(narrationVerifier.verifyAct
+      ? {
+          verifyAct: (actRequest: ActVerifyRequest, actCtx: NarrationBuildContext) => {
+            narrationVerifierCalls++;
+            return narrationVerifier.verifyAct!(actRequest, actCtx);
           }
         }
       : {})
@@ -1272,6 +1299,13 @@ export async function runForayPipeline(
      `writeNarration`'s `resume` hook reads them back, so a re-run pays only
      for the slots that never landed.
 
+     SINCE Q-03 THE ACT IS THE UNIT OF WRITING (`writeAct.ts`), so a fresh run
+     writes no per-slot key: the act's seams span its slots and are banked
+     together under `narrate:<i>` the moment the act lands. The per-slot keys
+     are still READ — a run-1…8 checkpoint whose every slot of an act was
+     banked resumes that act without a call — and still written by the
+     per-slot fallback path. Both legacy key names stay readable.
+
      AND §4.8 NOW RUNS INSIDE THIS SAME LOOP (F-66). Stitching used to be one
      stage AFTER the loop, so act 1's items — and with them WS-D2's partial
      candidate and `ttlA1Ms` — did not exist until the LAST act had been
@@ -1446,7 +1480,11 @@ export async function runForayPipeline(
                  always 0; `i` is what names the slot's key. */
               resume: (_actIndex, slotIndex) =>
                 checkpoint.resumeSync(`narrate:${i}:${slotIndex}`, (raw) => WrittenSlotSchema.parse(raw) as WrittenSlot),
-              onSlotWritten: (_actIndex, slotIndex, slot) => checkpoint.save(`narrate:${i}:${slotIndex}`, slot)
+              onSlotWritten: (_actIndex, slotIndex, slot) => checkpoint.save(`narrate:${i}:${slotIndex}`, slot),
+              /* Q-02: the rows tier 2 minted this run, so an Intro before a
+                 clip the committed registry does not hold yet can still be
+                 checked against its show and episode title. */
+              segmentSources: sourced.newSegmentSources
             },
             spine.voice,
             ctx

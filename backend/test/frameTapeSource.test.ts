@@ -251,8 +251,9 @@ describe("F-81 — the structural validator: a Frame's source is the tape it int
     expect(result.issues.map((i) => i.code)).toContain("tape-source-on-content-page");
   });
 
-  it("exactly Frame, Hinge and Marker may cite tape", () => {
-    expect([...TAPE_SOURCE_MODES].sort()).toEqual(["Frame", "Hinge", "Marker"]);
+  it("exactly Frame, Hinge, Marker and Intro may cite tape", () => {
+    /* Q-02 added Intro: the page that only introduces a clip cites the clip. */
+    expect([...TAPE_SOURCE_MODES].sort()).toEqual(["Frame", "Hinge", "Intro", "Marker"]);
     for (const mode of TAPE_SOURCE_MODES) expect(modeMayCiteTape(mode)).toBe(true);
   });
 
@@ -409,9 +410,12 @@ describe("F-81 — writeNarration: the run-5 Frame is written, gated and verifie
     expect(asPrint).toEqual({ claimText: claim.claimText, quote: claim.quote, publication: TAPE_DOC.title, contested: false });
   });
 
-  it("the dry-run path produces a tape source on a Frame: stub writer + real gatherer + a held cue window", async () => {
+  it("the dry-run path produces a tape source on the Intro before a clip (Q-02): stub writer + real gatherer + a held cue window", async () => {
     /* MUTATION THAT KILLS THIS: have the gatherer key the window under a
-       docId `sourcesFor` does not recognise as tape. */
+       docId `sourcesFor` does not recognise as tape. Since Q-02/Q-03 the
+       dry-run path writes per act, and the page before a clip that opens
+       a slot is an Intro rather than a Frame; it cites the clip's window
+       as a whole (no echoed quote), which is F-81's tape-source shape. */
     const DIGEST: TranscriptDigestEntry = { show_id: "practical-ai", show_title: "Practical AI", guid: "pai-0042", title: "Open source self-driving with comma.ai", cues: 2 };
     const CATALOGUE: CatalogueData = {
       items: [{ id: "practical-ai--open-source-self-driving-with-comma-ai", show: "Practical AI", title: "Open source self-driving with comma.ai", topics: [], hook: "" }],
@@ -442,12 +446,12 @@ describe("F-81 — writeNarration: the run-5 Frame is written, gated and verifie
       ctx
     );
     const page = allWrittenNarration(written)[0]!;
-    expect(page.mode).toBe("Frame");
+    expect(page.mode).toBe("Intro");
     expect(page.verified).toBe(true);
     const source = page.sources[0]!;
     expect(isTapeSource(source)).toBe(true);
     expect((source as TapeSource).segmentId).toBe(SEGMENT_ID);
-    expect(phraseIsInWindow(source.quote!, WINDOW_TEXT)).toBe(true);
+    if (source.quote !== undefined) expect(phraseIsInWindow(source.quote, WINDOW_TEXT)).toBe(true);
   });
 });
 

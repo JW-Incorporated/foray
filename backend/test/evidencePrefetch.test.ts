@@ -104,14 +104,16 @@ class CountingGatherer implements EvidenceGatherer {
 const settle = () => new Promise<void>((resolve) => setImmediate(resolve));
 
 describe("evidenceBeatsFor — the same page list writeSlot gathers for", () => {
-  it("lists every page in writeSlot's terms: a Frame for the opening tape beat, no page for the same-item continuation, and content flags on the Patch and Carry", () => {
-    /* MUTATION THAT KILLS THIS: give every tape beat a page (skip
-       `decideConnectiveNarration`). The same-item continuation then appears
-       and the list is four long. Or: set `requiresEvidence` from the beat's
-       sourcing instead of `pageCarriesContent` — the Frame page is then
-       flagged as content and pays for a second query it can never use. */
+  it("lists every page in the act's terms: a window for every tape beat — the same-item continuation included (Q-02) — and content flags on the Patch and Carry", () => {
+    /* MUTATION THAT KILLS THIS: skip the same-item continuation again
+       (`if (!mode) continue` without the `?? "Intro"` default). The list is
+       three long and the act path's gather for that clip misses the memo.
+       Or: set `requiresEvidence` from the beat's sourcing instead of
+       `pageCarriesContent` — a connective page is then flagged as content
+       and pays for a second query it can never use. */
     const beats = evidenceBeatsFor(MIXED_SLOT);
     expect(beats.map((b) => [b.claim.slice(0, 12), b.requiresEvidence, b.tape?.itemId ?? null])).toEqual([
+      ["The engineer", false, "item-1"],
       ["The engineer", false, "item-1"],
       ["The as-built", true, null],
       ["The connecti", true, null]
@@ -138,10 +140,10 @@ describe("PrefetchingEvidenceGatherer — the fan-out, and what narration finds 
     const evidence = new PrefetchingEvidenceGatherer(inner);
     const prefetch = await evidence.prefetch([MIXED_ACT], ctx, { concurrency: 3 });
 
-    expect(prefetch.pages).toBe(3);
-    expect(prefetch.prefetched).toBe(3);
+    expect(prefetch.pages).toBe(4);
+    expect(prefetch.prefetched).toBe(4);
     expect(prefetch.failed).toBe(0);
-    expect(inner.calls).toHaveLength(3);
+    expect(inner.calls).toHaveLength(4);
 
     const written = await writeNarration(
       [MIXED_ACT],
@@ -150,11 +152,11 @@ describe("PrefetchingEvidenceGatherer — the fan-out, and what narration finds 
       ctx
     );
     expect(written).toHaveLength(1);
-    expect(inner.calls).toHaveLength(3);
+    expect(inner.calls).toHaveLength(4);
 
     const after = evidence.metrics();
-    expect(after.narrationGathers).toBe(3);
-    expect(after.narrationHits).toBe(3);
+    expect(after.narrationGathers).toBe(4);
+    expect(after.narrationHits).toBe(4);
     expect(after.hitRate).toBe(1);
     expect(after.narrationRetrievalMs).toBeGreaterThanOrEqual(0);
     expect(after.prefetchMs).toBeGreaterThanOrEqual(0);
@@ -223,11 +225,11 @@ describe("PrefetchingEvidenceGatherer — the fan-out, and what narration finds 
     const evidence = new PrefetchingEvidenceGatherer(inner);
     const prefetch = await evidence.prefetch([MIXED_ACT], ctx, { concurrency: 2 });
     expect(prefetch.failed).toBe(1);
-    expect(prefetch.prefetched).toBe(2);
+    expect(prefetch.prefetched).toBe(3);
 
     const pack = await evidence.gather({ claim: "The as-built connection carried sixty percent of the code load.", requiresEvidence: true }, ctx);
     expect(pack.docs).toEqual([DOC]);
-    expect(inner.calls).toHaveLength(4);
+    expect(inner.calls).toHaveLength(5);
     const after = evidence.metrics();
     expect(after.narrationGathers).toBe(1);
     expect(after.narrationHits).toBe(0);
@@ -242,9 +244,9 @@ describe("PrefetchingEvidenceGatherer — the fan-out, and what narration finds 
       { title: "Act 2", slots: [{ title: "Later", beats: [narrationBeat("A later claim about the inquiry's findings.")] }] }
     ];
     const metrics = await evidence.prefetch(acts, ctx, { skipSlot: (actIndex) => actIndex === 0 });
-    expect(metrics.skipped).toBe(3);
+    expect(metrics.skipped).toBe(4);
     expect(metrics.prefetched).toBe(1);
-    expect(metrics.pages).toBe(4);
+    expect(metrics.pages).toBe(5);
     expect(inner.calls.map((b) => b.claim)).toEqual(["A later claim about the inquiry's findings."]);
   });
 

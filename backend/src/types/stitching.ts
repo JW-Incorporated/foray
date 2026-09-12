@@ -53,7 +53,7 @@ export const StitchedNarrationItemSchema = z
      * index this narration item covers coverage for. */
     beatIndex: z.number().int().nonnegative().optional(),
     slotTitle: z.string().trim().min(1).optional(),
-    mode: z.enum(["Hinge", "Frame", "Marker", "Correction", "Patch", "Carry"]),
+    mode: z.enum(["Hinge", "Frame", "Marker", "Correction", "Patch", "Carry", "Intro"]),
     script: z.string().trim().min(1),
     id: z.string().trim().min(1)
   })

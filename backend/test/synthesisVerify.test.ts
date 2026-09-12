@@ -156,7 +156,7 @@ function scriptedVerifier(answer: (request: SynthesisVerifyRequest) => Synthesis
 
 async function runPass(acts: WrittenAct[], writer: NarrationWriterBuilder = new StubNarrationWriterBuilder(), verifier: NarrationVerifierBuilder = new StubNarrationVerifierBuilder()) {
   const act1 = await verifyBySynthesis(acts[1]!, 1, acts, { writer, verifier }, voice, ctx);
-  return { acts: [acts[0]!, act1], thesis: (act1.slots[0]!.beats[0] as Extract<WrittenBeat, { sourcing: "narration" }>).narration };
+  return { acts: [acts[0]!, act1], thesis: (act1.slots[0]!.beats[0] as Extract<WrittenBeat, { sourcing: "narration" }>).narration! };
 }
 
 describe("F-88 — a thesis Hinge is verified by synthesis of the Foray's own verified pages", () => {
@@ -296,7 +296,7 @@ describe("F-88 — eligibility: only a Hinge or Frame whose retrieval returned n
     const writer = countingWriter();
     const act1 = await verifyBySynthesis(acts[1]!, 1, acts, { writer, verifier: new StubNarrationVerifierBuilder() }, voice, ctx);
     expect(writer.calls).toBe(0);
-    expect((act1.slots[0]!.beats[0] as Extract<WrittenBeat, { sourcing: "narration" }>).narration.verified).toBe(false);
+    expect((act1.slots[0]!.beats[0] as Extract<WrittenBeat, { sourcing: "narration" }>).narration!.verified).toBe(false);
   });
 
   it("a verified page that asserts nothing (no sources) is not ground, and an act whose narration has not landed contributes nothing", () => {
