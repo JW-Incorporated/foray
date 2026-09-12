@@ -14,7 +14,7 @@ import {
   PUBLISHED, indexSegments, indexSources, allForays, forayVisibility,
   listableForays, findForay, foraysReferencingShow, hydrateForayItems, resolveForay, groupBySlot,
   segmentStarts, segmentAtElapsed, forayElapsed, fmtClock, fmtSpan, progressSegments,
-  validateForayDocuments, VALIDATION_CODES, isGeneratedDraft,
+  validateForayDocuments, VALIDATION_CODES, isGeneratedDraft, showIdFromSourceId, resolveCites,
 } from "./foray-resolve.js";
 /* The resume half of #40. Imported here rather than tested in
    foray-progress.test.js because `progressSegments` is the adapter between the
@@ -687,3 +687,131 @@ test("isGeneratedDraft: generated AND draft, both, and it is not the visibility 
   assert.equal(forayVisibility({ generated: false, status: "draft" }).visible, false);
   assert.equal(isGeneratedDraft({ generated: false, status: "draft" }), false);
 });
+
+/* ==================================================================== */
+/* THE SHOW IDENTIFIER, AND A NARRATION BEAT'S CITATIONS                 */
+/* (founder report 2026-09-12: "I want to be able to easily navigate to  */
+/*  the show's page ... not just for what I'm currently listening to")   */
+/* ==================================================================== */
+
+test("showIdFromSourceId takes the `--` prefix and refuses to invent one", () => {
+  /* A source row's id is `<show_id>--<episode slug>` for every harvested
+     episode, which is the only SHOW IDENTIFIER either of the two joined
+     documents carries — `show` is a title, and a title is a string a publisher
+     can reword. A hand-curated row (`origin-stories-cooking-human`) has no
+     `--` and its leading words are NOT a show_id, so answering with the whole
+     id would hand a surface a link to a show page that does not exist.
+
+     MUTATION: return `sourceId` when there is no `--` (or split on the first
+     single `-`). The `origin-stories-cooking-human` and `bfh-griddle` cases go
+     from null to a fabricated id, and this is red. MUTATION 2: use
+     `indexOf("--") >= 0` instead of `> 0` — the leading-`--` case returns "". */
+  assert.equal(showIdFromSourceId("being-an-engineer--s7e17-ceramics"), "being-an-engineer");
+  assert.equal(showIdFromSourceId("practical-ai--e300"), "practical-ai");
+  assert.equal(showIdFromSourceId("origin-stories-cooking-human"), null);
+  assert.equal(showIdFromSourceId("bfh-griddle-bakestone"), null);
+  assert.equal(showIdFromSourceId("--leading"), null);
+  assert.equal(showIdFromSourceId(""), null);
+  assert.equal(showIdFromSourceId(null), null);
+  assert.equal(showIdFromSourceId(undefined), null);
+});
+
+test("a hydrated segment carries show_id and source_id beside the show title", () => {
+  /* The running order links each beat to `#/show/:show_id`, and the id has to
+     ride the entry rather than be re-derived at render time — app.js is not
+     allowed to walk the source pool (see this module's header), so if the
+     identifier does not come through the join it cannot be had at all.
+
+     MUTATION: drop `show_id` (or `source_id`) from the entry literal in
+     hydrateForayItems. Red here, and every row in the app degrades to plain
+     text — which is why test/foray-row-links.test.js asserts the link too. */
+  const f = fixture({
+    items: [item("s1")],
+    sources: [src("being-an-engineer--s7e17", { show: "Being an Engineer" })],
+    segments: [seg("s1", { item_id: "being-an-engineer--s7e17" })],
+  });
+  const [e] = hydrateForayItems(f.foray, { segments: f.segments, sources: f.sources }).items;
+  assert.equal(e.show, "Being an Engineer");
+  assert.equal(e.show_id, "being-an-engineer");
+  assert.equal(e.source_id, "being-an-engineer--s7e17");
+});
+
+test("a hydrated segment from a hand-curated source row carries a null show_id, not a guess", () => {
+  /* The other half of the rule above, and the one that protects the listener:
+     22 of the 98 committed source rows have no `--`. A guessed id would render
+     a link that lands on "Show not found."
+     MUTATION: make showIdFromSourceId fall back to the whole id. Red. */
+  const f = fixture({
+    items: [item("s1")],
+    sources: [src("origin-stories-cooking-human", { show: "Origin Stories" })],
+    segments: [seg("s1", { item_id: "origin-stories-cooking-human" })],
+  });
+  const [e] = hydrateForayItems(f.foray, { segments: f.segments, sources: f.sources }).items;
+  assert.equal(e.show, "Origin Stories");
+  assert.equal(e.show_id, null);
+  assert.equal(e.source_id, "origin-stories-cooking-human");
+});
+
+test("resolveCites denormalises a tape cite from the segment pool and drops one that cannot resolve", () => {
+  /* F-103. The producer ships a tape cite as `{kind, segment_id}` and nothing
+     else, deliberately: the show and episode title are already in the two
+     documents this module joins, and shipping them again would duplicate bytes
+     into forays.json that can go stale against the pool. So the lookup happens
+     HERE, once, where both indexes are in hand.
+
+     MUTATION: return the cite unchanged instead of looking it up. `show` and
+     `episode_title` come back undefined and this is red. MUTATION 2: keep a
+     cite whose segment is missing — the "drops" assertion fails, and the app
+     would draw a citation bullet with no text in it. */
+  const segments = indexSegments({ segments: [seg("cited", { item_id: "practical-ai--e300" })] });
+  const sources = indexSources({ sources: [src("practical-ai--e300", { show: "Practical AI", title: "Episode 300" })] });
+  const out = resolveCites([
+    { kind: "tape", segment_id: "cited" },
+    { kind: "tape", segment_id: "not-in-the-pool" },
+    { kind: "print", publication: "Smithsonian Magazine", url: "https://example.test/a" },
+    { kind: "print", publication: "Journal of Human Evolution" },
+    { kind: "print" },
+    { kind: "sideways", publication: "Nope" },
+    null,
+  ], { segments, sources });
+  assert.deepEqual(out, [
+    { kind: "tape", segment_id: "cited", show: "Practical AI", show_id: "practical-ai", episode_title: "Episode 300" },
+    { kind: "print", publication: "Smithsonian Magazine", url: "https://example.test/a" },
+    { kind: "print", publication: "Journal of Human Evolution", url: null },
+  ]);
+});
+
+test("resolveCites answers null for absent, empty and all-unresolvable citation lists", () => {
+  /* ABSENCE IS THE NORMAL CASE: every committed Foray predates the pipeline
+     change, and by the producer's honesty rule a page the verifier did not
+     confirm ships no `cites` at all. The renderer keys on null, so an empty
+     array must never come back as one — a `[]` would draw an empty "Sources"
+     heading under every narration beat in the app.
+     MUTATION: `return out;` instead of `return out.length ? out : null;`. The
+     last two assertions fail. */
+  const segments = indexSegments({ segments: [] });
+  const sources = indexSources({ sources: [] });
+  assert.equal(resolveCites(undefined, { segments, sources }), null);
+  assert.equal(resolveCites(null, { segments, sources }), null);
+  assert.equal(resolveCites("nope", { segments, sources }), null);
+  assert.equal(resolveCites([], { segments, sources }), null);
+  assert.equal(resolveCites([{ kind: "tape", segment_id: "gone" }], { segments, sources }), null);
+});
+
+test("a narration entry carries its resolved cites onto the running order", () => {
+  /* The join point: `cites` has to reach the running order on the ENTRY, the
+     same way `show` does, or the renderer cannot see it.
+     MUTATION: drop the `cites:` line from the narration branch of
+     hydrateForayItems: the entry reaches the renderer with no cites and the
+     citation block can never appear. (The degrade against the COMMITTED data —
+     where no Foray carries cites yet — is asserted in
+     test/foray-row-links.test.js, which owns the renderer.) */
+  const f = fixture({
+    items: [bridge("nar-1", { cites: [{ kind: "print", publication: "Nature" }] }), item("s1")],
+  });
+  const [n] = hydrateForayItems(f.foray, { segments: f.segments, sources: f.sources }).items;
+  assert.deepEqual(n.cites, [{ kind: "print", publication: "Nature", url: null }]);
+  const [, tape] = hydrateForayItems(f.foray, { segments: f.segments, sources: f.sources }).items;
+  assert.equal(tape.cites, undefined, "a tape beat has no citations of its own — only narration does");
+});
+

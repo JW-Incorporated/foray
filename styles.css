@@ -1681,7 +1681,7 @@ body:not(.fp-expanded) .fp-close { display: none; }
    survives. So `.fy-jump` is the play affordance and carries the is-playing /
    is-played state that app.js paints; `.fy-row` is the card around it. */
 .fy-row {
-  display: flex; align-items: flex-start; gap: 8px; width: 100%;
+  display: flex; flex-direction: column; gap: 3px; width: 100%;
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 12px;
@@ -1689,9 +1689,20 @@ body:not(.fp-expanded) .fp-close { display: none; }
   padding: 11px 12px;
   margin-bottom: 8px;
 }
+/* The credit line is hoisted out of the play button (a link inside a button is
+   invalid HTML), so the card stacks: credit, then the play row, then a
+   narration beat's transcript. `.fy-play-row` is the horizontal band the row
+   used to be — button plus thumbs — and keeps that layout exactly.
+
+   NOT named `.fy-main`: that class already exists on the transport's Play
+   button (`.fy-btn.fy-main`), which declares no display or width of its own, so
+   a bare `.fy-main` rule here would have stretched it across the transport
+   row. */
+.fy-play-row { display: flex; align-items: flex-start; gap: 8px; width: 100%; }
 .fy-jump {
   display: flex; align-items: flex-start; gap: 10px;
   flex: 1; min-width: 0;
+  min-height: 30px;
   text-align: left;
   background: none;
   border: 0;
@@ -1700,6 +1711,12 @@ body:not(.fp-expanded) .fp-close { display: none; }
   font: inherit;
   cursor: pointer;
 }
+/* A narration beat has no `why`, so without this its play button would be a
+   zero-height strip with nothing to aim at. The floor plus the resting ▶ keep
+   it a real target on a touch screen; the transcript beneath is NOT part of it,
+   so reading a transcript can never start playback by accident. */
+.fy-jump.is-bare { min-height: 30px; align-items: center; }
+.fy-jump.is-bare .fy-state::before { content: "▶"; font-size: 0.7rem; opacity: 0.45; }
 /* Hover follows the PLAY affordance, not the whole card — the thumbs are not a
    way to start a segment and should not look like one. */
 .fy-row:has(.fy-jump:hover) { border-color: var(--accent); }
@@ -1712,23 +1729,65 @@ body:not(.fp-expanded) .fp-close { display: none; }
   background: var(--surface-2);
 }
 .fy-jump.is-playing { opacity: 1; }
-.fy-label {
-  flex: none;
-  min-width: 52px;
-  font-size: 0.68rem; font-weight: 700;
-  letter-spacing: 0.04em;
-  color: var(--text-dim);
-  padding-top: 2px;
-}
-.fy-jump.is-playing .fy-label { color: var(--accent); }
 .fy-body { flex: 1; min-width: 0; }
+/* `.fy-meta` is no longer inside the button, so the two state rules the button
+   used to hand it have to reach it from the row. Same `:has()` precedent the
+   thumbs already set two rules up, and the same reason it is acceptable: where
+   `:has()` is unsupported the credit simply stays at full contrast, which is
+   the undimmed state it had before any of this. */
 .fy-meta { font-size: 0.74rem; color: var(--text-dim); }
+.fy-row:has(.fy-jump.is-played) .fy-meta { opacity: 0.55; }
+.fy-row:has(.fy-jump.is-playing) .fy-meta { color: var(--accent); }
+/* The show link. Padded vertically so it clears the 44px-ish thumb target on a
+   phone without pushing the credit line taller than the text it wraps — the
+   padding overlaps the row's own gap rather than adding to it. */
+.fy-credit { color: inherit; }
+a.fy-credit { padding: 2px 0; }
 .fy-why {
   margin: 3px 0 0;
   font-family: var(--serif);
   font-size: 0.92rem;
   line-height: 1.35;
 }
+.fy-why:empty { display: none; }
+
+/* ---------- a narration beat's transcript (founder report, 2026-09-12) ----------
+   Collapsed to the height of a card that has no control on it, expanded in
+   place so the rows below simply move down. The clamp is six lines because the
+   longest script that never collapses is 250 characters — see
+   NARRATION_CLAMP_CHARS in app.js for where that number comes from. */
+.fy-script-wrap { margin-top: 4px; }
+.fy-script {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: 0.88rem;
+  line-height: 1.4;
+  color: var(--text-dim);
+}
+.fy-script.is-clamped {
+  display: -webkit-box;
+  -webkit-line-clamp: 6;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.fy-script-more {
+  margin-top: 4px;
+  padding: 4px 0;
+  background: none; border: 0;
+  color: var(--accent);
+  font: inherit; font-size: 0.74rem;
+  cursor: pointer;
+}
+.fy-script-more:hover { text-decoration: underline; }
+.fy-cites { margin-top: 6px; }
+.fy-cites-head {
+  margin: 0;
+  font-size: 0.68rem; font-weight: 700;
+  letter-spacing: 0.04em; text-transform: uppercase;
+  color: var(--text-dim);
+}
+.fy-cites ul { margin: 2px 0 0; padding-left: 16px; }
+.fy-cites li { font-size: 0.74rem; color: var(--text-dim); }
 .fy-state { flex: none; width: 14px; padding-top: 3px; color: var(--accent); }
 .fy-jump.is-playing .fy-state::before { content: "▶"; font-size: 0.7rem; }
 .fy-jump.is-played .fy-state::before { content: "✓"; font-size: 0.75rem; color: var(--text-dim); }
@@ -2392,9 +2451,12 @@ body.ui-v2 .fy-row {
 body.ui-v2 .fy-row:has(.fy-jump:hover) { border-color: var(--violet); }
 body.ui-v2 .fy-row:has(.fy-jump.is-playing) { border-color: var(--violet); background: var(--surface2); }
 body.ui-v2 .fy-jump { color: var(--text); }
-body.ui-v2 .fy-label { color: var(--muted); }
-body.ui-v2 .fy-jump.is-playing .fy-label { color: var(--violet); }
 body.ui-v2 .fy-meta { color: var(--muted); }
+body.ui-v2 .fy-row:has(.fy-jump.is-playing) .fy-meta { color: var(--violet); }
+body.ui-v2 .fy-script { color: var(--muted); }
+body.ui-v2 .fy-script-more { color: var(--violet); }
+body.ui-v2 .fy-cites-head,
+body.ui-v2 .fy-cites li { color: var(--muted); }
 body.ui-v2 .fy-why { font-family: var(--font-display); }
 body.ui-v2 .fy-state { color: var(--violet); }
 body.ui-v2 .fy-jump.is-played .fy-state::before { color: var(--muted); }

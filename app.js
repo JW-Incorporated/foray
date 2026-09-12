@@ -5167,28 +5167,243 @@ function thumbsHtml(entry) {
   // silently does nothing is worse than no control.
   if (!entry.segment_id || !entry.topic) return "";
   const vote = feedbackFor(entry.segment_id)?.direction || "";
+  /* NAMED BY THE SHOW, NOT BY THE CURATION CODE. These used to read "More like
+     ORI-1" — the same editorial shorthand the left gutter used to print, and
+     the same reason it is gone: a screen reader was being handed a string from
+     the spreadsheet a producer built the Foray in. `forayBeatName` is the one
+     place that decides what a beat is called out loud, so the play button and
+     the thumbs cannot name the same beat two different ways. */
+  const named = forayBeatName(entry);
   const one = (dir, glyph, label) =>
     `<button type="button" class="fy-thumb ${vote === dir ? "on" : ""}" data-thumb="${dir}"
         data-seg-id="${esc(entry.segment_id)}" aria-pressed="${vote === dir}"
-        aria-label="${esc(label)} ${esc(entry.label)}">${glyph}</button>`;
+        aria-label="${esc(label)} ${esc(named)}">${glyph}</button>`;
   return `<div class="fy-fb">
     ${one("up", "👍", "More like")}${one("down", "👎", "Less like")}
   </div>`;
 }
 
+/* ---------- a beat's credit: whose work is this? ---------- */
+
+/** An authored narration beat — 4a's own writing, read by 4a's own voice. The
+    other authored type is `segment` (somebody else's tape); a `jingle` is
+    neither and is credited to nobody. */
+function isForayNarration(entry) {
+  return entry?.type === "narration";
+}
+
+/* WHICH CATALOGUE SHOW A BEAT BELONGS TO, or null when nothing joins.
+
+   Two joins, asked in this order, and the order is the point:
+
+     1. THE IDENTIFIER, carried from the source row's id prefix by
+        `showIdFromSourceId` in player/foray-resolve.js. It is only a candidate
+        there — that module is pure and has no catalogue — so it is verified
+        here, against the catalogue this surface already holds. An id that does
+        not resolve is not linked; a `#/show/…` route for a show nothing knows
+        renders "Show not found.", which is worse than plain text.
+     2. THE TITLE, via `showIdForShowName`, which every other show link in the
+        app already uses.
+
+   Measured on the committed data (98 source rows): the identifier join answers
+   for 76 and the title join for 78, and the first set is entirely INSIDE the
+   second — so today the identifier join adds no linkable row the title join
+   would have missed, and deleting it would not change a single rendered page.
+   It is asked first anyway, because a publisher can reword a title and cannot
+   reword the id we harvested the episode under; the only test that separates
+   the two is therefore a synthetic renamed-show case, and it is labelled as
+   such in test/foray-row-links.test.js.
+
+   Across the eight committed Forays' 131 tape beats: 67 link by identifier, 9
+   more by title, and 55 do not link at all. That 55 is almost entirely the two
+   hand-curated grilling Forays and `capital-types-1`, whose small independent
+   shows were never in the curated 220; all four GENERATED Forays link every
+   beat they have. A show that does not join renders exactly today's plain text.
+
+   Narration is excluded rather than falling through: a narration entry has no
+   `show`, so the title join would return null anyway, but saying so here is
+   what keeps "AI Narrator" from ever being asked to be a link. */
+function forayShowId(entry) {
+  if (!entry || isForayNarration(entry)) return null;
+  if (entry.show_id && showById(entry.show_id)) return entry.show_id;
+  return showIdForShowName(entry.show);
+}
+
+/* The credit that leads a row's meta line: a link to the show, the show's name
+   as plain text when it does not join, or "AI Narrator" for a beat we wrote.
+
+   "AI Narrator" is deliberately NOT a link. There is no 4a show page to send
+   anyone to, and a control that navigates nowhere is worse than a label — the
+   same rule `thumbsHtml` keeps. It carries the same class and sits in the same
+   slot as a show credit so the two row kinds read as siblings: one credits a
+   podcast, one credits us. */
+function forayCreditHtml(entry) {
+  if (isForayNarration(entry)) {
+    return `<span class="fy-credit is-narrator">AI Narrator</span>`;
+  }
+  if (!entry.show) return "";
+  const showId = forayShowId(entry);
+  /* A real <a href>, not a button wired through JS, for the reason written
+     against `taxonomyChip`: right-click, long-press and open-in-new-tab are
+     browser behaviours a handler cannot fake. And a SIBLING of the play button
+     rather than inside it, for the reason written against `thumbsHtml`: an
+     interactive element inside a button is invalid HTML whose click never
+     survives the parent's handler. */
+  return showId
+    ? `<a class="fy-credit show-link" href="#/show/${esc(showId)}">${esc(entry.show)}</a>`
+    : `<span class="fy-credit">${esc(entry.show)}</span>`;
+}
+
+/** What a beat is called when it is spoken aloud — for the play button's
+    accessible name and the thumbs'. The show and the beat's own `why` is what
+    a listener would use to tell two rows apart; the curation code
+    (`entry.label`) never was, and is no longer rendered anywhere on this page. */
+function forayBeatName(entry) {
+  if (isForayNarration(entry)) return "narration by 4a's AI Narrator";
+  return [entry.show, entry.why].filter(Boolean).join(", ") || "this clip";
+}
+
+/* ---------- a narration beat's transcript ---------- */
+
+/* HOW LONG IS "LONG", AND WHY THIS NUMBER.
+
+   Measured over the 157 scripted narration items in the four committed
+   generated Forays. The lengths are not a smooth curve; they cluster by the
+   beat's authored `mode`:
+
+     hinge   36 items    95–134 chars
+     frame   76 items    71–166, then a gap, then 305–1057
+     marker   4 items   223–250
+     patch   35 items   358–627
+     carry    6 items   941–1332
+
+   So there is a real empty band between 250 and 305: no committed script is
+   anywhere in it. Every threshold inside that band partitions the committed
+   data IDENTICALLY — 84 items render whole, 73 collapse — so the choice within
+   it is arbitrary by construction, and the honest pick is its midpoint, which
+   is as far as possible from the nearest real script on either side. A round
+   200 or 300 would NOT have been arbitrary: 200 cuts through the markers and
+   300 through the long frames, and either produces a "Show more" that reveals
+   a line and a half.
+
+   The clamp is SIX lines rather than four so that the tallest uncollapsed
+   script (250 chars) and a collapsed one occupy about the same height — the
+   card is one size whether or not it has a control on it. */
+const NARRATION_CLAMP_CHARS = 277;
+
+/* The transcript, and the control that opens it.
+
+   The text is always in the DOM in full: the collapse is CSS (`-webkit-line-
+   clamp` on `.fy-script.is-clamped`), so "Show more" is one class toggle, the
+   card grows in place and every row below it moves down — no modal, no inner
+   scroller, no second copy of the script to keep in sync. It also means a
+   screen reader and a find-in-page reach the whole script while it is visually
+   collapsed, which is the right trade for a transcript.
+
+   The control is a SIBLING of the play button, not inside it — same invalid-
+   HTML rule as the thumbs and the show link. */
+function narrationScriptHtml(entry) {
+  const script = typeof entry.script === "string" ? entry.script.trim() : "";
+  if (!isForayNarration(entry) || !script) return "";
+  const long = script.length > NARRATION_CLAMP_CHARS;
+  const id = `fy-script-${esc(String(entry.ord))}`;
+  const text = `<p class="fy-script${long ? " is-clamped" : ""}" id="${id}">${esc(script)}</p>`;
+  const cites = citesHtml(entry);
+  if (!long) return `<div class="fy-script-wrap">${text}${cites}</div>`;
+  return `<div class="fy-script-wrap">
+    ${text}
+    <button type="button" class="fy-script-more" data-script-for="${id}"
+        aria-expanded="false" aria-controls="${id}">Show more</button>
+    ${cites}
+  </div>`;
+}
+
+/* F-103: what the narrator's claims rest on, when the producer has recorded it.
+
+   ABSENT IS THE NORMAL CASE and must look exactly like today: every committed
+   Foray predates the pipeline change, and by the producer's honesty rule a page
+   the verifier did not confirm ships no `cites` at all rather than shipping its
+   unconfirmed sources as support. So silence here means "nothing confirmed",
+   never "nothing was written", and the UI says nothing rather than implying
+   either.
+
+   A tape cite links to the cited show's page through the same two joins a tape
+   beat's own credit uses; a print cite links out when it has a URL and is plain
+   text when it does not. `player/foray-resolve.js` has already dropped any cite
+   that could not be resolved, so nothing here can render an empty citation. */
+function citesHtml(entry) {
+  const cites = Array.isArray(entry.cites) ? entry.cites : [];
+  if (!cites.length) return "";
+  const one = (c) => {
+    if (c.kind === "tape") {
+      const showId = c.show_id && showById(c.show_id) ? c.show_id : showIdForShowName(c.show);
+      const name = showId
+        ? `<a class="show-link" href="#/show/${esc(showId)}">${esc(c.show)}</a>`
+        : esc(c.show);
+      return `<li>${name}${c.episode_title ? ` — ${esc(c.episode_title)}` : ""}</li>`;
+    }
+    const pub = c.url
+      ? `<a class="show-link" href="${esc(safeUrl(c.url))}" target="_blank" rel="noopener">${esc(c.publication)}</a>`
+      : esc(c.publication);
+    return `<li>${pub}</li>`;
+  };
+  return `<div class="fy-cites">
+    <p class="fy-cites-head">Sources</p>
+    <ul>${cites.map(one).join("")}</ul>
+  </div>`;
+}
+
+/* Expand a transcript in place. Bound once per render, on the list rather than
+   per button, so a Foray with forty narration beats costs one listener.
+
+   NOTHING REPAINTS THIS LIST, so nothing has to restore the open state:
+   `paintForay` and `paintFeedback` — the only two things that touch the running
+   order after it is built — toggle classes on elements they find, and never
+   rewrite `innerHTML`. The list is built once by `renderForay`, which only runs
+   on a route change, and a route change is supposed to forget. */
+function bindForayScripts() {
+  const view = $("#view");
+  if (!view) return;
+  view.addEventListener("click", (e) => {
+    const btn = e.target.closest?.("[data-script-for]");
+    if (!btn) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const text = view.querySelector(`#${CSS.escape(btn.dataset.scriptFor)}`);
+    if (!text) return;
+    const open = btn.getAttribute("aria-expanded") === "true";
+    btn.setAttribute("aria-expanded", open ? "false" : "true");
+    btn.textContent = open ? "Show more" : "Show less";
+    text.classList.toggle("is-clamped", open);
+  });
+}
+
 function forayRow(entry) {
   const dur = window.ForayPlayer ? window.ForayPlayer.fmtSpan(entry.duration_sec) : "";
-  const meta = [entry.show, dur].filter(Boolean).join(" · ");
+  /* HTML, not text, and named so — the credit is a link when the show joins.
+     The duration stays escaped text and is joined on afterwards so a credit
+     that comes back empty (a beat with no show at all) does not leave a
+     dangling separator. */
+  const credit = forayCreditHtml(entry);
+  const metaHtml = [credit, dur ? esc(dur) : ""].filter(Boolean).join(" · ");
+  /* The credit line is hoisted OUT of the play button, because a link inside a
+     button is invalid HTML whose click never survives the parent's handler —
+     the same rule that put the thumbs outside it. It reads in the same place it
+     always did: the 52px curation-code gutter that used to indent this line is
+     gone, so the hoisted line lands flush left where the indented one used to
+     start. */
   if (!entry.playable) {
     return `<div class="fy-row is-out">
-      <div class="fy-jump">
-        <span class="fy-label">${esc(entry.label)}</span>
-        <div class="fy-body">
-          <div class="fy-meta">${esc(meta)}</div>
-          <p class="fy-why">${esc(entry.why)}</p>
-          <p class="fy-out">Can't play: ${esc(entry.reason || "unresolved")}</p>
+      <div class="fy-meta">${metaHtml}</div>
+      <div class="fy-play-row">
+        <div class="fy-jump">
+          <div class="fy-body">
+            <p class="fy-why">${esc(entry.why)}</p>
+            <p class="fy-out">Can't play: ${esc(entry.reason || "unresolved")}</p>
+          </div>
         </div>
       </div>
+      ${narrationScriptHtml(entry)}
     </div>`;
   }
   /* The row used to BE the button. It cannot be any more: a thumb inside a
@@ -5197,16 +5412,18 @@ function forayRow(entry) {
      `data-fy` — which paintForay and the transport both key on — moves with the
      button, not with the container. */
   return `<div class="fy-row">
-    <button type="button" class="fy-jump" data-fy="${esc(String(entry.queueIndex))}"
-        aria-label="Play ${esc(entry.label)}, ${esc(entry.show)}">
-      <span class="fy-label">${esc(entry.label)}</span>
-      <div class="fy-body">
-        <div class="fy-meta">${esc(meta)}</div>
-        <p class="fy-why">${esc(entry.why)}</p>
-      </div>
-      <span class="fy-state" aria-hidden="true"></span>
-    </button>
-    ${thumbsHtml(entry)}
+    <div class="fy-meta">${metaHtml}</div>
+    <div class="fy-play-row">
+      <button type="button" class="fy-jump${entry.why ? "" : " is-bare"}" data-fy="${esc(String(entry.queueIndex))}"
+          aria-label="Play ${esc(forayBeatName(entry))}">
+        <div class="fy-body">
+          <p class="fy-why">${esc(entry.why)}</p>
+        </div>
+        <span class="fy-state" aria-hidden="true"></span>
+      </button>
+      ${thumbsHtml(entry)}
+    </div>
+    ${narrationScriptHtml(entry)}
   </div>`;
 }
 
@@ -5509,6 +5726,7 @@ async function renderForay(id) {
   // the disagreement itself: the hook is pinned in player/foray-playback.test.js.
   if (resume) { const fill = $("#fy-bar-fill"); if (fill) fill.style.width = `${resume.percent}%`; }
   bindFeedback(r);
+  bindForayScripts();
   bindSourceLinks(r);
   bindForayTransport(r, player, resume);
 }
