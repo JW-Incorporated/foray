@@ -393,31 +393,34 @@ function selectAndWriteBlock(page: NarrationPageBrief): string {
 
 /** The shared claim rules, restated for an act: the documents are the
  * act's, a statement about a clip cites the clip's window, and the
- * purpose lines are now the beats' claims. */
+ * purpose lines are now the beats' claims. F-97: the act's claims are ONE
+ * source set — a seam may rest on what another seam selected or on a
+ * clip's window without selecting anything of its own. */
 const ACT_CLAIM_RULES = [
   `A quote must be copied character for character out of the document you name, and must be at least ${MIN_QUOTE_WORDS} words or one whole sentence.`,
   "Never quote a beat's claim, a clip's opening as printed in the layout, or this prompt: they are direction, not documents.",
-  "A statement about a CLIP — what it is about, who is speaking, what was said in it — cites that clip's transcript window (its docId is on the CLIP line)",
-  "as the claim's docId, with either a short phrase of the clip's own words as the quote or an empty quote (\"\"). The whole window is that source, so the word minimum does not apply to it.",
-  "Never back a statement about a clip with an outside publication, and never make one with no source at all.",
-  "A statement about the world cites a print document. If no document supports a claim worth making, do not make it.",
+  "A statement about a CLIP — what it is about, who is speaking, what was said in it — rests on that clip's transcript window (its docId is on the CLIP line).",
+  "Select it as a claim with that docId and either a short phrase of the clip's own words as the quote or an empty quote (\"\"); the whole window is that source, so the word minimum does not apply to it.",
+  "Never back a statement about a clip with an outside publication.",
+  "A statement about the world beyond the clips rests on a print document, or on a VERIFIED PAGE of this Foray when one is listed: select the claim and copy the span. If no document supports a claim worth making, do not make it.",
+  "THE ACT'S SOURCES ARE ONE SET. Every claim any seam selects, every clip's window and every verified page listed can support a statement in ANY seam: a bridge that restates what the clip before it established, or sets up the clip after it, rests on those windows and need not select a claim of its own. Select each claim ONCE, on the seam that first makes it; the verifier reads the whole act's sources.",
   "If the documents contradict or complicate a beat, write the tension: that carries the beat.",
   '"contested" means reputable sources actively disagree about the fact itself — not that you are unsure.',
   "Every quote is checked by machine against the document you name after you answer; a quote that is not found there is discarded together with the seam's script."
 ];
 
 const ACT_PROSE_RULES = [
-  "One voice, one story. The beats are the checklist the prose must carry, not its template: make each beat's point where it belongs, in your own words, joined to what comes before and after it.",
+  "One voice, one story. The beats are the checklist the prose must carry, not its template: make each beat's point where it belongs, in your own words, joined to what comes before and after it. A beat may be carried in any seam, and by what a clip itself says.",
   "Never announce a beat, never list the beats, never say what the next clip is going to say.",
-  "A seam that follows a clip may restate what that clip said once, in the act's own words, citing the clip's window — then move on.",
+  "A seam that follows a clip may restate what that clip said once, in the act's own words — then move on.",
   "Introductions, by the weight given on the SEAM line:",
   "  full  — one or two sentences: who is speaking (name and role, as the tape or the episode title gives them) and on which show, and what to listen for. Write it from the clip's OPENING as printed on its CLIP line — what the listener is about to hear — never from the point the clip goes on to make. Do not repeat the clip's first sentences.",
   "  light — the same guest and show as the clip before: one clause at most, or nothing.",
   "  none  — the host introduces the guest in the clip itself: add nothing about who is speaking.",
   "A seam with no beats and a light or none introduction may return an empty script: the clips then run together.",
   "Each seam's script MUST land inside the character band on its SEAM line. Longer is not better: narration is at most a quarter of the listening.",
-  "List, per seam, the indices of the claims its script actually asserts.",
-  "Do not say what the record does or does not contain unless a claim says it.",
+  "List, per seam, the indices of the claims its script asserts (usedClaims).",
+  "NEVER assert what the record does or does not contain — no \"nobody wrote it down\", \"there is no record of\", \"the file doesn't say\", \"we still don't know\" — unless a quote you selected says exactly that. Say what a source DOES say instead: not \"the plan nobody wrote down\" but \"the plan that lived in people's heads, as he tells it\"; not \"the report never explains why\" but \"the report names the drawing, and stops there\" (only if it does), or leave the point out.",
   "",
   "Copy rules, unchanged and non-negotiable:",
   "- Never say: fascinating, deep dive, delve, explores.",
@@ -451,12 +454,18 @@ export function buildActWritePrompt(request: ActWriteRequest): string {
     ...ACT_CLAIM_RULES,
     "",
     "DOCUMENTS — the only things you may quote:",
-    request.documents.map((doc) => `--- docId: ${doc.docId} | ${doc.title}${doc.url ? ` | ${doc.url}` : ""}${doc.kind === "tape" ? " | TRANSCRIPT WINDOW of a clip (cite it for statements about that clip)" : ""}\n${doc.text}`).join("\n\n"),
+    request.documents
+      .map(
+        (doc) =>
+          `--- docId: ${doc.docId} | ${doc.title}${doc.url ? ` | ${doc.url}` : ""}${doc.kind === "tape" ? " | TRANSCRIPT WINDOW of a clip (cite it for statements about that clip)" : doc.kind === "page" ? " | a VERIFIED PAGE of this same Foray, from an earlier act — quote one of its whole sentences" : ""}\n${doc.text}`
+      )
+      .join("\n\n"),
     "",
     ...(request.retryNote
       ? [
           `REJECTIONS SO FAR: ${request.retryNote}`,
-          "Each seam's previous script is printed on its SEAM line. EDIT the act's prose to answer every note — add a missed beat where it belongs, drop or re-source an unsupported sentence — and keep what was not objected to.",
+          "Seams marked FROZEN are verified: return each one's script VERBATIM and select no claims for it. Seams marked EDIT carry their previous script and a `fix` line:",
+          "EDIT only those, to answer their notes — add a missed beat where it belongs, drop or re-source an unsupported sentence, replace an assertion about the record with what a source says — and keep every sentence that was not objected to.",
           ""
         ]
       : []),
@@ -473,10 +482,15 @@ function actLayout(seams: SeamBrief[], clips: Map<string, ClipBrief>): string {
     const edges: string[] = [];
     if (seam.follows) edges.push(`follows CLIP ${seam.follows}`);
     if (seam.introduces) edges.push(`introduces CLIP ${seam.introduces} (introduction: ${seam.intro ?? "full"})`);
-    lines.push(`SEAM ${seam.seamId} — mode ${seam.mode}, ${seam.band[0]}-${seam.band[1]} characters${edges.length > 0 ? ` — ${edges.join(", ")}` : ""}`);
+    lines.push(`SEAM ${seam.seamId} — ${seam.band[0]}-${seam.band[1]} characters${edges.length > 0 ? ` — ${edges.join(", ")}` : ""}${seam.frozen ? " — FROZEN" : seam.previousScript !== undefined ? " — EDIT" : ""}`);
     if (seam.beats.length === 0) lines.push("  carries no beat — the introduction only, or nothing");
     for (const beat of seam.beats) lines.push(`  carries beat ${beat.beatId}${beat.kind === "argument" ? " (an argument — what it means)" : ""}: ${beat.claim}`);
-    if (seam.previousScript !== undefined) lines.push(`  previous script: ${JSON.stringify(seam.previousScript)}`);
+    if (seam.frozen && seam.previousScript !== undefined) {
+      lines.push(`  FROZEN — verified; return this script verbatim, with no claims: ${JSON.stringify(seam.previousScript)}`);
+    } else if (seam.previousScript !== undefined) {
+      lines.push(`  previous script: ${JSON.stringify(seam.previousScript)}`);
+      if (seam.notes) lines.push(`  fix: ${seam.notes}`);
+    }
     if (seam.introduces) {
       const clip = clips.get(seam.introduces);
       if (clip) {
