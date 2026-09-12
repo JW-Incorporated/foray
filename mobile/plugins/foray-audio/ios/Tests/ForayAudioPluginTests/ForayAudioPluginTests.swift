@@ -1,4 +1,5 @@
 import XCTest
+import AVFAudio
 @testable import ForayAudioPlugin
 
 /// Mirrors `NowPlayingParsingTest.java` / `NowPlayingHubTest.java` on Android,
@@ -199,4 +200,98 @@ final class ForayAudioPluginTests: XCTestCase {
         XCTAssertNil(plain["positionMs"])
         XCTAssertNil(plain["offsetMs"])
     }
+
+    // MARK: - M-03: the session event (founder feedback F16, #548)
+
+    /// The founder's F16 record holds one unexplained stop and no cause,
+    /// because the page cannot see an `AVAudioSession` interruption, a route
+    /// change or a media-services reset — an `<audio>` element reports a bare
+    /// `pause` for all of them. This plugin can see them; these pin the wire
+    /// shape it reports them in.
+    ///
+    /// TO SEE IT FAIL: rename `SESSION_EVENT` here without renaming it in
+    /// `web/foray-media-session.js`. `notifyListeners` then has no subscriber
+    /// and every native cause is dropped before it reaches the record — with
+    /// nothing anywhere reading as an error. `shell-invariants.test.mjs` pins
+    /// the same equality from the JS side.
+    func testSessionEventNameMatchesTheWebHalf() {
+        XCTAssertEqual(ForayAudioPlugin.SESSION_EVENT, "session")
+    }
+
+    /// `{kind, reason, producer, at}`, with `at` in epoch MILLISECONDS — the
+    /// unit `player/diagnostic-log.js` stamps every entry with, so a reader
+    /// never has to guess which clock a native event is on. The pair of that
+    /// stamp and the page's own `wall` is the delivery LAG, which on a
+    /// suspended WKWebView is the length of the suspension: the measurement
+    /// M-03 exists to make.
+    ///
+    /// TO SEE IT FAIL: emit `at` in seconds. The record's `lagMs` then reads as
+    /// roughly 1.7 trillion milliseconds and the whole channel is nonsense.
+    func testSessionEventCarriesKindReasonProducerAndAnEpochMsStamp() {
+        let event = ForayAudioPlugin.sessionEvent(kind: "background", reason: "did-enter", at: 1_700_000_000_000)
+        XCTAssertEqual(event["kind"] as? String, "background")
+        XCTAssertEqual(event["reason"] as? String, "did-enter")
+        XCTAssertEqual(event["producer"] as? String, "audio")
+        XCTAssertEqual(event["at"] as? Int, 1_700_000_000_000)
+    }
+
+    /// A route change reports a CODE, never the route's name. A Bluetooth
+    /// route is named after the person who owns the car, and this record is
+    /// pasted into issues — the rule `player/diagnostic-log.js` already keeps
+    /// for `route.autoResume.knownCar=`, applied at the source.
+    ///
+    /// TO SEE IT FAIL: return the raw value's description, or `String(raw)`.
+    /// `dataTokenOf()` in the record admits only a lower-case dashed token, so
+    /// anything else lands as an empty reason and the row says nothing.
+    func testRouteChangeReasonIsAClosedVocabularyOfDashedTokens() {
+        XCTAssertEqual(
+            ForayAudioPlugin.routeChangeReason(AVAudioSession.RouteChangeReason.oldDeviceUnavailable.rawValue),
+            "old-device-gone"
+        )
+        XCTAssertEqual(
+            ForayAudioPlugin.routeChangeReason(AVAudioSession.RouteChangeReason.newDeviceAvailable.rawValue),
+            "new-device"
+        )
+        // An unknown raw value degrades to `unknown` rather than to a number.
+        XCTAssertEqual(ForayAudioPlugin.routeChangeReason(9_999), "unknown")
+        for raw: UInt in 0...8 {
+            let token = ForayAudioPlugin.routeChangeReason(raw)
+            XCTAssertFalse(token.isEmpty)
+            XCTAssertEqual(token, token.lowercased())
+            XCTAssertFalse(token.contains(" "))
+        }
+    }
+
+    // MARK: - L-06: the Now Playing field needle (founder feedback F15)
+
+    /// PRESENCE, NEVER CONTENT. F15 is "the lock screen showed only 4a", and
+    /// which of its three explanations applies depends only on whether each
+    /// field was EMPTY. The unified log is uploaded as a CI artifact, so the
+    /// titles themselves must not ride out in it — the truncated strings go in
+    /// the on-device record instead, which is copied by hand.
+    ///
+    /// TO SEE IT FAIL: interpolate the field VALUES into the log line.
+    func testFieldPresenceReportsEmptinessAndNeverTheStrings() {
+        let line = ForayAudioPlugin.fieldPresence(
+            title: "Episode 09: Did Cooking Make Us Human?",
+            artist: "",
+            album: "The history of grilling",
+            hasArtwork: true
+        )
+        XCTAssertEqual(line, "title=y artist=n album=y artwork=y")
+        XCTAssertFalse(line.contains("Cooking"))
+        XCTAssertFalse(line.contains("grilling"))
+    }
+
+    /// Whitespace is not content: a field of spaces renders as a blank lock
+    /// screen, so it has to read as `n`.
+    ///
+    /// TO SEE IT FAIL: drop the `trimmingCharacters` call.
+    func testFieldPresenceTreatsWhitespaceAsEmpty() {
+        XCTAssertEqual(
+            ForayAudioPlugin.fieldPresence(title: "   ", artist: "\t", album: "\n", hasArtwork: false),
+            "title=n artist=n album=n artwork=n"
+        )
+    }
+
 }

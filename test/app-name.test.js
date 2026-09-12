@@ -70,12 +70,57 @@ test("the PWA manifest installs under the app name", () => {
   assert.equal(mf.short_name, APP_NAME);
 });
 
-/* KILLED BY: reverting `artist = "4a"` in player/media-session.js. This is the
-   line a car stereo and a lock screen show for narration we recorded ourselves.
-   It is deliberately our name and never a publisher's -- putting a publisher on
-   audio they did not record is the one credit error that module must not make. */
-test("the lock screen credits the app, not a publisher, for our own narration", () => {
-  assert.match(read("player/media-session.js"), /artist = "4a";/);
+/* REWRITTEN BY L-06 (founder feedback F15, 2026-09-12), and the rewrite is the
+   point rather than an accommodation.
+
+   This test used to assert the literal `artist = "4a";` in
+   `player/media-session.js` -- the credit a car stereo and a lock screen showed
+   for narration we recorded ourselves. The half of that rule which still holds
+   is that a line WE wrote never carries a PUBLISHER's name: putting a publisher
+   on audio they did not record is the one credit error that module must not
+   make. The half that did not survive contact with a car is the app's name
+   standing in for the credit. F15, verbatim: the lock screen and the head unit
+   showed only "4a" -- and for a narration line with no `nextItem` and a blank
+   Foray title, "4a" really was BOTH the title and the artist. `media-session.js`
+   §1b is the argument; `narrationCredit()` is the mechanism, and it walks the
+   Foray's title -> the next episode -> the next show and ends at EMPTY, never
+   at the app's name.
+
+   So what is pinned here is now the two things this file has always been for:
+   that the app's name is spelled once in that module rather than scattered as a
+   literal, and that a line of ours is still credited to something of OURS and
+   never to a publisher.
+
+   KILLED BY: inlining "4a" back into either narration branch of
+   `mediaMetadata`, or pointing the jingle/narration credit at `item.show`.
+   `player/media-session.test.js` holds the behavioural half of the same rule
+   (`narrationCredit walks Foray title -> next episode -> next show`); this is
+   the rename surface's own guard, which is why it reads the source. */
+test("the lock screen credits something of OURS, never a publisher, for our own narration", () => {
+  const src = read("player/media-session.js");
+  /* COMMENTS STRIPPED FOR THE NEGATIVE HALF, and the first version of this test
+     did not do it and went red on its own subject file: `media-session.js` §1b
+     QUOTES the old `artist = "4a"` line while explaining why it left. A negative
+     assertion that a prose explanation can trip is a test that punishes writing
+     the argument down, which is the opposite of what this repo wants. */
+  const code = src
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/^\s*\/\/.*$/gm, "");
+  assert.match(src, /export const APP_NAME = "4a";/,
+    "player/media-session.js no longer spells the app name once, as a named constant");
+  assert.match(src, /export function narrationCredit\(/,
+    "the narration/jingle credit ladder is gone -- see media-session.js §1b");
+  /* Both branches take the ladder. A jingle reverting to a publisher's show is
+     exactly the F-89 defect wearing the opposite sign. */
+  const matches = src.match(/artist = narrationCredit\(\{ forayTitle: foray, nextItem \}\);/g) || [];
+  assert.equal(matches.length, 2,
+    "both the jingle and the narration branch must credit through narrationCredit()");
+  /* The negative half, stated as a rule rather than a spelling: nothing may
+     assign the app's name to `artist`. */
+  assert.doesNotMatch(code, /artist = APP_NAME/,
+    '"4a" may not be the artist of anything a listener hears (L-06 / F15)');
+  assert.doesNotMatch(code, /artist = "4a"/,
+    '"4a" may not be the artist of anything a listener hears (L-06 / F15)');
 });
 
 /* KILLED BY: reverting the Android notification title string.

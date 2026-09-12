@@ -170,6 +170,7 @@ import {
   requiredOverlapFor,
   scoreSegmentsAgainstClaim,
   segmentAtStart,
+  SEGMENT_START_TOLERANCE_SEC,
   startsCoincide,
   tier1BarClears,
   TIER1_MATCH_THRESHOLD,
@@ -321,6 +322,23 @@ export interface SourceBeatsOptions {
    * resolve its audio").
    */
   audioSourceFor?: AudioSourceResolver;
+  /**
+   * F-98 (B): whether a committed pool row at a start this run's window reached
+   * may be SUPERSEDED by a longer cut of the same window, rather than reused at
+   * its own length (F-84).
+   *
+   * The rule the predicate encodes lives with the caller because only the caller
+   * can read `data/forays.json`: a row is supersedable when it is still
+   * `needs_review: true` — no person has listened to it — and every Foray that
+   * references it is a generated draft (`generated: true`, `status: "draft"`).
+   * Anything else is somebody's: a curated row, a published Foray's clip, a row
+   * a person shortened on purpose. `runPipeline.ts` supplies the predicate.
+   *
+   * INERT WHEN OMITTED, like `topic` and `audioSourceFor` above and for the same
+   * reason: a caller that cannot read the Foray list must not guess, and gets
+   * exactly the unconditional reuse this module did before F-98.
+   */
+  supersedableCut?: (segment: SegmentRecord) => boolean;
 }
 
 /**
@@ -379,6 +397,7 @@ export function sourceBeats(deepenedActs: DeepenedAct[], options: SourceBeatsOpt
     forayTopic,
     root: options.root,
     audioSourceFor: options.audioSourceFor,
+    supersedableCut: options.supersedableCut,
     mintedIds,
     newSegments,
     newSegmentSources,
@@ -601,6 +620,9 @@ interface SourcingState {
   /** See `SourceBeatsOptions.audioSourceFor` — undefined leaves tier 2 exactly
    * as it was before a minted segment had to be resolvable to audio. */
   audioSourceFor: AudioSourceResolver | undefined;
+  /** See `SourceBeatsOptions.supersedableCut` — undefined means nothing is
+   * supersedable and every committed cut is reused at its own length (F-84). */
+  supersedableCut: ((segment: SegmentRecord) => boolean) | undefined;
   mintedIds: Set<string>;
   newSegments: NewSegment[];
   newSegmentSources: Map<string, MintedSegmentSource>;
@@ -1402,14 +1424,44 @@ class Tier2Walk {
          walk moves on; a sibling id is never the answer. See
          `reuseCommittedCut` for why the row is reused rather than extended. */
       const committed = committedCutAt(itemId, choice.accepted.span.startSec, state);
+      /* F-98 (B): A DRAFT MINT MAY BE SUPERSEDED BY A LONGER CUT AT THE SAME
+         START. Four of run 9's ten clips were run 8's pre-Q-01 rows reused at
+         their old lengths — 32/70/78/152 s where this run's extent of the same
+         window wanted 32/70/158/381 s — because the reuse above is
+         unconditional and F-84's id rule leaves no second id to mint under.
+         F-84's reasoning holds for a row a PERSON has reviewed or a published
+         Foray plays: lengthening it would break that Foray's runtime check in
+         the same commit. It does not hold for a row this pipeline minted, that
+         nobody has listened to (`needs_review: true`) and that only generated
+         DRAFT Forays reference — those Forays are ours to restate, and
+         `publishForay` restates them. `supersedableCut` is the predicate that
+         knows the difference; absent (every test written before this, every
+         caller with no `data/forays.json` to read) nothing is supersedable and
+         the reuse below is exactly what it was. */
       if (committed) {
-        if (reuseVetoFor(committed, state) !== null) {
-          this.record({ candidate, gate: "pool-cut", window, span: choice.accepted.span, seedFloor }, seedPass);
-          continue;
+        const supersede =
+          !state.usedSegmentIds.has(committed.id) &&
+          choice.accepted.durationSec > committed.end_sec - committed.start_sec + SEGMENT_START_TOLERANCE_SEC &&
+          state.supersedableCut?.(committed) === true;
+        if (!supersede) {
+          if (reuseVetoFor(committed, state) !== null) {
+            this.record({ candidate, gate: "pool-cut", window, span: choice.accepted.span, seedFloor }, seedPass);
+            continue;
+          }
+          return this.reuseCommittedCut(candidate, committed, seedFloor, choice.accepted);
         }
-        return this.reuseCommittedCut(candidate, committed, seedFloor, choice.accepted);
       }
-      const accepted = this.acceptCandidate(candidate, cues, window!, choice.accepted, itemId, seedFloor, choice.lengthGate, candidate.entry.feed_duration_sec ?? null);
+      const accepted = this.acceptCandidate(
+        candidate,
+        cues,
+        window!,
+        choice.accepted,
+        itemId,
+        seedFloor,
+        choice.lengthGate,
+        candidate.entry.feed_duration_sec ?? null,
+        committed ?? undefined
+      );
       if (accepted) return accepted;
       this.record({ candidate, gate: "no-audio-source", window, span: choice.accepted.span, seedFloor }, seedPass);
     }
@@ -1497,7 +1549,12 @@ class Tier2Walk {
     itemId: string,
     seedFloor: "share-only" | undefined,
     lengthGate: "d5-pair" | undefined,
-    feedDurationSec: number | null
+    feedDurationSec: number | null,
+    /* F-98: the committed row this mint SUPERSEDES — same id, same start, a
+       longer end. Present only when the walk decided the row is supersedable
+       (a draft mint nobody has reviewed); absent on every ordinary mint, and
+       then the id is minted the way F-84 requires. */
+    supersedes?: SegmentRecord
   ): BeatResolution | null {
     const { state } = this;
     const claim = this.beat.claim;
@@ -1512,7 +1569,13 @@ class Tier2Walk {
     const audioSource = state.audioSourceFor ? state.audioSourceFor(candidate.entry, itemId) : null;
     if (state.audioSourceFor && !audioSource) return null;
     if (audioSource) state.newSegmentSources.set(itemId, audioSource);
-    const segmentId = mintSegmentId(itemId, span.startSec, state.mintedIds);
+    /* A supersede keeps the committed row's id — it IS that row, re-cut — so it
+       does not pass through `mintSegmentId`, whose whole job is to refuse an id
+       the pool already holds (F-84). The id it would have minted is the same
+       string either way (`<item_id>#<start rounded>` at a start that coincides);
+       what differs is that this one is allowed to collide, exactly once, with
+       the row it replaces. */
+    const segmentId = supersedes ? supersedes.id : mintSegmentId(itemId, span.startSec, state.mintedIds);
     const referenceDurationSec = candidate.entry.feed_duration_sec ?? span.endSec;
     /* `span.startSec`/`span.endSec` are the CUE BOUNDARIES `cutWindowToSegment`
        chose for the window, not a phrase's own few seconds (F-24(c)) — the
@@ -1540,7 +1603,11 @@ class Tier2Walk {
       transcriptSource: state.cueProvider.transcriptSource?.(candidate.entry) ?? "publisher",
       /* Q-01: where the clip's edges landed and how far past the claim window
          relevance carried it — onto the row, so the ledger can count both. */
-      ...(span.boundary !== undefined ? { boundary: span.boundary, extendedBySec: span.extendedBySec ?? 0 } : {})
+      ...(span.boundary !== undefined ? { boundary: span.boundary, extendedBySec: span.extendedBySec ?? 0 } : {}),
+      /* F-98: the end this cut replaces. `publishForay` writes it onto the row
+         as `superseded_from` and rewrites the row in place; `mintedPoolCollisions`
+         reads it to tell a deliberate supersede from the shadowing F-84 refuses. */
+      ...(supersedes ? { supersedesEndSec: supersedes.end_sec } : {})
     };
     const pointer: TapePointer = {
       segmentId,

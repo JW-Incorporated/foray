@@ -92,7 +92,7 @@ const FLOORS = {
   /* 50 -> 55 with S-01 (docs/search-plan.md, kanban t_46366383): a new
      `search` entry kind on PlayerDiagnostics — query length only, never the
      query text, per this suite's own §7. */
-  "player/diagnostic-log.test.js": 57, // FD-01 (2026-09-10): the `data` entry's vocabulary and its line; 55 -> 57
+  "player/diagnostic-log.test.js": 68, // L-06 + M-03 (2026-09-12): the `nowplaying`, `session` and `transport` entries; 57 -> 68 // FD-01 (2026-09-10): the `data` entry's vocabulary and its line; 55 -> 57
   "player/diagnostic-record.test.js": 23,
   "player/episode-link.test.js": 6,
   /* The durable store (#40). Both of these guard against silent DATA LOSS
@@ -174,7 +174,7 @@ const FLOORS = {
      actual, and the pre-push review proved what that bought: all four pins could
      be deleted and the floor stayed green — the exact failure this file exists to
      make loud. Raise it when the suite grows. */
-  "player/media-session.test.js": 132, // F-89 (2026-09-11): a jingle item is credited to 4a; 131 -> 132
+  "player/media-session.test.js": 139, // L-06 (2026-09-12): the Apple Podcasts parity rule + the onWrite hook; 132 -> 139 // F-89 (2026-09-11): a jingle item is credited to 4a; 131 -> 132
   /* Playback speed (#242). Floored with ZERO SLACK, like media-session and
      data-deletion above and for the same reason: what this suite guards is a set of
      PRODUCT decisions, each one edit from its opposite and none of them visible in
@@ -191,7 +191,7 @@ const FLOORS = {
      is a default that can silently drift back to #491's "best installed
      voice of any name", the exact behaviour the founder overruled. */
   "player/default-voice.test.js": 10,
-  "player/queue-manager.test.js": 115, // +1: L-03 position-increases acceptance (2026-09-10)
+  "player/queue-manager.test.js": 129, // L-05 (2026-09-12): pause/resume/stop for spoken narration; 115 -> 129 // +1: L-03 position-increases acceptance (2026-09-10)
   "player/queue-state.test.js": 56,
   "player/seam-gap.test.js": 16,
   /* The SegmentStrip (#128) — the element that makes a Foray legible as
@@ -218,7 +218,7 @@ const FLOORS = {
      one non-obvious case is a SHELL BUILT BEFORE IT EXISTED -- the bundle holds a
      flattened build-time copy of `foray-tts.js`, so "the module loaded but has
      no such method" is a real state and not defensiveness. */
-  "player/tts-bridge.test.js": 20,
+  "player/tts-bridge.test.js": 25, // L-05 (2026-09-12): the transport half of the bridge; 20 -> 25
   /* The app's name on the surfaces users read (#302), 6 -> 8 when the two
      published legal documents were added, 8 -> 21 when the shipped UI copy that
      suite had only RECORDED as a known gap was renamed and pinned -- twenty
@@ -521,18 +521,9 @@ const FLOORS = {
      others kept the file's count up, which is precisely what a floor cannot
      see. */
   "test/show-search-live.test.js": 10,
-  "test/show-search-ranking.test.js": 10, // S-06 (2026-09-12): +1 — `rankShows` orders without filtering, so a server's (or Apple's) answer is never discarded client-side; 9 -> 10
+  "test/show-search-ranking.test.js": 9,
   "test/show-index.test.js": 11,
   "test/show-search-cache.test.js": 6,
-  /* S-06 (docs/search-plan.md): the CLIENT side of the Apple fall-through
-     gate and of breadth-show linkability. Floored separately from
-     show-search-live.test.js because it pins a different thing entirely —
-     that one is about WHEN work happens, this one is about whether we spend
-     somebody else's rate limit and whether a shared link resolves. The
-     server side is api/test/shows-search-apple.test.mjs, which is NOT
-     floorable here (api/ is not a SCANNED_DIR — it has its own required CI
-     job, see tools/ci/run-suites.mjs's header for why). */
-  "test/show-search-fallthrough.test.js": 7,
   /* U-05 (docs/ui-transition-plan.md, kanban t_53381ee4, resolves issue
      #135): the Playlists results section under Shows/Episodes on the Shows
      page, plus the "Create a playlist about X" CTA. Floored new rather than
@@ -863,6 +854,19 @@ const FLOORS = {
      and the request payload drifting apart, which is the failure mode that turns
      a $6 projection into a bill nobody predicted. */
   "tools/narrate/narrate.test.mjs": 61,
+  /* The benchmark harness over generation reports (roadmap G-42a). Zero slack.
+     What it guards is a class of quiet lie rather than a crash: the harness
+     turns `report.json` into the rows of `docs/curation/generation-kpis.md`,
+     which is what the roadmap's §1.2 acceptance table will be read off and what
+     G-42b will diff once D11 lands. Its failure modes are all plausible-looking
+     numbers — a `?? 0` that reports "0 seed-lost beats" for a run that never
+     measured them, a *proposed* target printed as though D0 had confirmed it, a
+     clip mean taken over the 6 clips a run minted instead of the 10 it played.
+     Thirteen of the 38 tests exist only to kill `?? 0`, and two more pin the
+     COMMITTED table against the COMMITTED baseline — the archived reports live
+     on the generation host, not in this repo, so that pair is the only thing
+     that can catch a hand-edited cell in the deck. */
+  "tools/generation-bench/run.test.mjs": 38,
   /* The native shell (#36). `shell-invariants` is the one to be most careful
      with: four of the five things it pins are properties of files OUTSIDE
      tools/ — the root package.json staying dependency-free, index.html's CSP,
@@ -916,8 +920,8 @@ const FLOORS = {
 
      `shell-invariants` gained one: the same slice against TODAY'S real documents,
      independently of the fixture suite. */
-  "tools/mobile/prepare-webdir.test.mjs": 78, // FD-04 (2026-09-10): the seed is a subset of the directory's files; the seed pointer is optional; 72 -> 74. F-92 (2026-09-12): the seed leaves generated drafts to the directory — the rule on the fixture, the verifier as a reached guard, and the real repo's draft absent from the real bundle; 74 -> 77. S-03 (2026-09-12): the unpinned show index is named, bundled and budgeted; 77 -> 78
-  "tools/mobile/shell-invariants.test.mjs": 53, // +1: iOS plugin never calls setActive (F11/F13, 2026-09-09); +1: Swift writes the L-02 log needle (2026-09-10)
+  "tools/mobile/prepare-webdir.test.mjs": 78, // FD-04 (2026-09-10): the seed is a subset of the directory's files; the seed pointer is optional; 72 -> 74. F-92 (2026-09-12): the seed leaves generated drafts to the directory — the rule on the fixture, the verifier as a reached guard, and the real repo's draft absent from the real bundle; 74 -> 77. S-03 (2026-09-12): the unpinned show index is named, bundled and budgeted; 77 -> 78
+  "tools/mobile/shell-invariants.test.mjs": 57, // +4: the L-05 plugin methods and the M-03 session needle/event name (2026-09-12) // +1: iOS plugin never calls setActive (F11/F13, 2026-09-09); +1: Swift writes the L-02 log needle (2026-09-10)
   /* 2026-09-04: the bundle's JS/CSS is minified (comments + whitespace, identifiers
      kept) and its JSON re-serialised on the way in — docs/mobile-shell.md §3.4.
      `minify.test.mjs` pins the transform (nothing renamed, nothing rewritten, only
@@ -944,7 +948,7 @@ const FLOORS = {
      Speech fallback applies one, that a voice which is not installed is REPORTED
      rather than silently substituted, and that `listVoices()` answers on every
      path without throwing. */
-  "tools/mobile/foray-tts.test.mjs": 45,
+  "tools/mobile/foray-tts.test.mjs": 53, // L-05 (2026-09-12): pause/resume/stop/state on all three paths; 45 -> 53
   /* The foreground service's web half (#27's Android half, on #37). Zero slack, and
      for the reason `media-session.test.js` above gives: what this suite guards is
      mostly a set of single-line edits away from their opposites, on a surface nobody
@@ -967,7 +971,7 @@ const FLOORS = {
      only thing standing between a lock screen that works and one that silently says
      the wrong episode. Section 7 of that doc maps each mechanism to the mutation that
      kills it, which is where to look before concluding these are vacuous. */
-  "tools/mobile/foray-media-session.test.mjs": 75,
+  "tools/mobile/foray-media-session.test.mjs": 79, // M-03 (2026-09-12): the session event reaches the page; 75 -> 79
   /* iOS on a runner (#38). These four are the only tests in the repo that can be
      run for a macOS-only feature by someone with no Mac, which makes their
      deletion unusually attractive to a future session that finds them
@@ -1031,7 +1035,7 @@ const FLOORS = {
      inject-app-icon: byte-level --check, refuse a half fix. Floored exact. */
   "tools/mobile/inject-splash.test.mjs": 19,
   "tools/mobile/inject-background-audio.test.mjs": 41,
-  "tools/mobile/ios-ci.test.mjs": 132, // +7: L-02 takeover verdict + reached needle (2026-09-10)
+  "tools/mobile/ios-ci.test.mjs": 136, // +7: L-02 takeover verdict + reached needle (2026-09-10); +4: M-03 session needle (2026-09-12)
   "tools/mobile/ios-workflow.test.mjs": 39,
   "tools/mobile/probe/install-probe.test.mjs": 39,
   /* The one-shot that gets a newly curated show's back catalogue into the pipeline
@@ -1776,7 +1780,9 @@ const BACKEND_FLOORS = {
      One named mutation per test. */
   /* F-88 +1: the PR body names every page verified by synthesis and the
      pages it rests on. */
-  "test/publishForay.test.ts": 20,
+  /* RAISED 20 -> 26 by F-98: the superseded row rewritten in place, the draft
+     runtimes restated, --supersedes and the PR body paragraphs. */
+  "test/publishForay.test.ts": 26,
   /* G-21c: REAL_DATA_SUITES names the four roadmap suites and every other
      suite the repo grep finds reading data/forays.json, data/segments.json or
      data/segment-sources.json (the list cannot rot); the TAP parser (one
@@ -1785,6 +1791,10 @@ const BACKEND_FLOORS = {
      its three broken-run shapes; the summary and failure lines. One named
      mutation per test. */
   "test/publishSuites.test.ts": 15,
+  /* F-98: deterministic post-seeding, the seed floor and its one re-ask —
+     the scorer and its floor, the M4 ledger an assigned seed faces, the
+     summary line, and the re-ask that is kept only when it is better. */
+  "test/postSeedSpine.test.ts": 15,
   /* G-25: spine seeding ledger (M4-derived caps) and seed order. */
   /* RAISED 5 -> 6 by F-96: the seeding line's merged / pool-short / seedLost
      counts. */
@@ -1930,7 +1940,10 @@ const BACKEND_FLOORS = {
      the same-id different cut, accepts the idempotent twin, and finalize
      throws before the checkers; and the half-second start rule is pinned in
      numbers. One named mutation per test. */
-  "test/mintDedupe.test.ts": 11,
+  /* RAISED 11 -> 17 by F-98: a draft mint superseded by a longer cut at the
+     same start — when sourcing may re-cut a committed row, when F-84 reuse
+     stands, and what the collision gate admits. */
+  "test/mintDedupe.test.ts": 17,
   /* F-88 (run 7 attempt 4): nine thesis Hinges kept unverified because
      print retrieval finds nothing for a generalisation. Synthesis
      verification — the Hinge is written from the Foray's own verified pages
@@ -1960,7 +1973,7 @@ const BACKEND_FLOORS = {
      sentence quoted; the verifier re-checks only what changed; F-88's ground
      reaches the act; the validator's zero-source rules are act-scoped.
      One named mutation per test. */
-  "test/actNarration.test.ts": 32,
+  "test/actNarration.test.ts": 38,
 };
 
 /* `it(` as well as `test(`: backend's suites use both spellings. */

@@ -16,10 +16,14 @@ import {
   recordRefusalInReport,
   restoreDataFiles,
   snapshotDataFiles,
+  supersedeLines,
+  writePublishDataFiles,
   type Out,
   type Runner
 } from "../src/cli/publishForay";
 import type { SuiteSpawn } from "../src/cli/publishSuites";
+import { mintedSegmentRow } from "../src/generation/finalizeForay";
+import type { NewSegment } from "../src/types/tapeSourcing";
 
 /**
  * F-75 (FD-07): the publish branch is cut from `origin/main`, never from the
@@ -388,5 +392,199 @@ describe("the PR body and the report carry the suites' verdict", () => {
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
     }
+  });
+});
+
+/**
+ * F-98 (B) AT THE WRITE: a draft pool row superseded by a longer cut is
+ * rewritten IN PLACE, the drafts timed on it are restated, and `--supersedes`
+ * removes the prior draft of the same prompt with the rows only it played.
+ *
+ * Run 9 reused four of run 8's pre-Q-01 cuts at their old lengths because
+ * F-84's id rule leaves no second id to mint under. Sourcing now decides when a
+ * row is ours to re-cut (`poolRowIsSupersedable`); this is the other half — the
+ * write that makes the decision true on disk without breaking the Forays that
+ * were timed on the old cut.
+ *
+ * MUTATIONS, each named in the test that kills it:
+ *   - append the superseding row instead of replacing it → "in place"
+ *   - skip the runtime restatement                        → "restates"
+ *   - restate a curated or published Foray's runtime      → "only drafts"
+ *   - remove a Foray `--supersedes` names that is not a generated draft → "refuses"
+ *   - drop rows a surviving Foray still plays             → "only the orphans"
+ *   - drop the paragraphs from the PR body                → "PR body"
+ */
+describe("F-98 at publish — a superseded row, the drafts timed on it, and --supersedes", () => {
+  let dir = "";
+  const POOL_ID = "being-an-engineer--ep-3#200";
+  const OTHER_ID = "being-an-engineer--ep-9#900";
+
+  const poolRow = (id: string, endSec: number) => ({
+    id,
+    item_id: id.split("#")[0],
+    topic: "business/careers",
+    start_sec: 200,
+    end_sec: endSec,
+    reference_duration_sec: 3600,
+    start_anchor: "the recall cost us four million",
+    end_anchor: "and i signed the drawing that released it",
+    why: "A recall cost four million dollars after a bracket failed fatigue testing.",
+    confidence: "medium",
+    transcript_source: "publisher",
+    dai_suspected: false,
+    source: "generation-tier-2",
+    batch_id: "generation-prior-draft",
+    needs_review: true
+  });
+
+  const forayRow = (id: string, segmentIds: string[], extra: Record<string, unknown> = {}) => ({
+    id,
+    kind: "foray",
+    title: id,
+    topic: "business/careers",
+    status: "draft",
+    summary: "s",
+    runtime_sec: 100,
+    generated: true,
+    slots: [],
+    items: segmentIds.map((sid) => ({ type: "segment", slot: "s", segment_id: sid })),
+    ...extra
+  });
+
+  const minted = (id: string, endSec: number, supersedesEndSec?: number): NewSegment => ({
+    id,
+    itemId: id.split("#")[0]!,
+    startSec: 200,
+    endSec,
+    referenceDurationSec: 3600,
+    startAnchor: "the recall cost us four million",
+    endAnchor: "and i signed the drawing that released it",
+    confidence: "medium",
+    why: "A recall cost four million dollars after a bracket failed fatigue testing.",
+    transcriptSource: "publisher",
+    ...(supersedesEndSec !== undefined ? { supersedesEndSec } : {})
+  });
+
+  function writeFiles(forays: unknown[], segments: unknown[]): void {
+    fs.writeFileSync(path.join(dir, "data", "forays.json"), `${JSON.stringify({ forays }, null, 2)}\n`);
+    fs.writeFileSync(path.join(dir, "data", "segments.json"), `${JSON.stringify({ segments }, null, 2)}\n`);
+    fs.writeFileSync(path.join(dir, "data", "segment-sources.json"), `${JSON.stringify({ sources: [] }, null, 2)}\n`);
+  }
+  const readForays = () => JSON.parse(fs.readFileSync(path.join(dir, "data", "forays.json"), "utf8")).forays as Array<Record<string, unknown>>;
+  const readSegments = () => JSON.parse(fs.readFileSync(path.join(dir, "data", "segments.json"), "utf8")).segments as Array<Record<string, unknown>>;
+
+  /** The plan a publish builds: the minted rows in `data/segments.json`'s own
+   * field names, exactly as `main` builds them. */
+  function planFor(segments: NewSegment[], opts: { supersedes?: string | null } = {}) {
+    const rowContext = { batchId: "generation-new-draft", sources: [{ id: "being-an-engineer--ep-3", dai_suspected: false }, { id: "being-an-engineer--ep-9", dai_suspected: false }] };
+    return {
+      forayRecord: forayRow("new-draft", segments.map((s) => s.id)),
+      mintedSegments: segments,
+      mintedRows: segments.map((s) => ({ id: s.id, row: mintedSegmentRow(s, "business/careers", rowContext) as unknown as { id: string } })),
+      mintedSources: [],
+      supersedesForayId: opts.supersedes ?? null
+    };
+  }
+
+  beforeEach(() => {
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), "foray-f98-"));
+    fs.mkdirSync(path.join(dir, "data"));
+  });
+  afterEach(() => {
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  it("in place: the superseded row keeps its id and position, gains the longer end and `superseded_from`", () => {
+    /* MUTATION THAT KILLS THIS: append the superseding row instead of replacing
+       it — the pool then holds two rows under one id and `merge-segments.mjs
+       --check` refuses the PR, which is the F-84 failure this card must not
+       reintroduce. */
+    writeFiles([forayRow("prior-draft", [POOL_ID])], [poolRow(POOL_ID, 232), poolRow(OTHER_ID, 999)]);
+    const result = writePublishDataFiles(dir, planFor([minted(POOL_ID, 381, 232)]), () => {});
+
+    const rows = readSegments();
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toMatchObject({ id: POOL_ID, start_sec: 200, end_sec: 381, superseded_from: 232, batch_id: "generation-new-draft", needs_review: true });
+    expect(rows[1]!.id).toBe(OTHER_ID);
+    expect(result.superseded).toEqual([{ id: POOL_ID, fromEndSec: 232, toEndSec: 381 }]);
+    expect(result.files).toEqual(["data/forays.json", "data/segments.json"]);
+  });
+
+  it("restates the runtime of every draft that plays the row, by the seconds the cut gained", () => {
+    /* The checker's 0.5 s drift rule: a Foray whose clip got 149 s longer and
+       whose `runtime_sec` did not move fails, and it fails in the same commit
+       that lengthened it. MUTATION THAT KILLS THIS: skip the restatement. */
+    writeFiles(
+      [forayRow("prior-draft", [POOL_ID, POOL_ID]), forayRow("unrelated-draft", [OTHER_ID])],
+      [poolRow(POOL_ID, 232), poolRow(OTHER_ID, 999)]
+    );
+    const result = writePublishDataFiles(dir, planFor([minted(POOL_ID, 381, 232)]), () => {});
+
+    const forays = readForays();
+    // Two references to the same row: the runtime moves by twice the gain.
+    expect(forays.find((f) => f.id === "prior-draft")!.runtime_sec).toBeCloseTo(100 + 2 * 149, 6);
+    expect(forays.find((f) => f.id === "unrelated-draft")!.runtime_sec).toBe(100);
+    expect(result.restated).toEqual([{ forayId: "prior-draft", fromSec: 100, toSec: 398, segmentIds: [POOL_ID] }]);
+    expect(forays[forays.length - 1]!.id).toBe("new-draft");
+  });
+
+  it("only drafts are restated: a curated or published Foray's runtime is never touched", () => {
+    /* The rule `poolRowIsSupersedable` keeps at sourcing, kept again here so the
+       two seams cannot disagree. MUTATION THAT KILLS THIS: restate every Foray
+       that plays the row. */
+    writeFiles(
+      [forayRow("published-1", [POOL_ID], { status: "published" }), forayRow("curated-1", [POOL_ID], { generated: false })],
+      [poolRow(POOL_ID, 232)]
+    );
+    const result = writePublishDataFiles(dir, planFor([minted(POOL_ID, 381, 232)]), () => {});
+    expect(result.restated).toEqual([]);
+    for (const f of readForays().filter((f) => f.id !== "new-draft")) expect(f.runtime_sec).toBe(100);
+  });
+
+  it("--supersedes removes the prior draft and only the orphans it leaves behind", () => {
+    /* A regenerated draft is a second attempt at one Foray, not a second Foray.
+       MUTATION THAT KILLS THIS: drop rows a surviving Foray still plays — the
+       `unrelated-draft` below then references a segment id nothing can resolve,
+       which is exactly the "unknown segment_id" failure the publish exists to
+       prevent. */
+    writeFiles(
+      [forayRow("prior-draft", [POOL_ID, OTHER_ID]), forayRow("unrelated-draft", [OTHER_ID])],
+      [poolRow(POOL_ID, 232), poolRow(OTHER_ID, 999)]
+    );
+    const result = writePublishDataFiles(dir, planFor([], { supersedes: "prior-draft" }), () => {});
+
+    expect(readForays().map((f) => f.id)).toEqual(["unrelated-draft", "new-draft"]);
+    expect(result.removed).toEqual({ forayId: "prior-draft", segmentIds: [POOL_ID] });
+    expect(readSegments().map((r) => r.id)).toEqual([OTHER_ID]);
+  });
+
+  it("refuses a --supersedes that names no Foray, or one that is not a generated draft", () => {
+    /* Silently declining would leave the list growing and nobody would know.
+       MUTATION THAT KILLS THIS: filter by id and move on. */
+    writeFiles([forayRow("published-1", [POOL_ID], { status: "published" })], [poolRow(POOL_ID, 232)]);
+    expect(() => writePublishDataFiles(dir, planFor([], { supersedes: "no-such-foray" }), () => {})).toThrow(/names no Foray/);
+    expect(() => writePublishDataFiles(dir, planFor([], { supersedes: "published-1" }), () => {})).toThrow(/not a generated draft/);
+    // Nothing was written by either refusal: the Foray list is untouched.
+    expect(readForays().map((f) => f.id)).toEqual(["published-1"]);
+  });
+
+  it("PR body: the re-cut row, the restated runtimes and the removed draft are all named for the founder", () => {
+    /* Every one of the three touches something already on main. MUTATION THAT
+       KILLS THIS: drop `supersedeLines` from the body — the PR then reads as
+       "+1 Foray" while it rewrites a pool row and another Foray's runtime. */
+    const body = publishPrBody({ id: "new-draft" }, { ok: true, failures: [] }, null, undefined, {
+      superseded: [{ id: POOL_ID, fromEndSec: 232, toEndSec: 381 }],
+      restated: [{ forayId: "prior-draft", fromSec: 100, toSec: 249, segmentIds: [POOL_ID] }],
+      removed: { forayId: "older-draft", segmentIds: [OTHER_ID] }
+    });
+    expect(body).toContain("superseded by a longer cut at the same start (F-98)");
+    expect(body).toContain(`\`${POOL_ID}\`: 232 s → 381 s`);
+    expect(body).toContain("restates");
+    expect(body).toContain("prior-draft`: 100.000 s → 249.000 s");
+    expect(body).toContain("the prior draft `older-draft` is removed by this PR");
+    expect(body).toContain(OTHER_ID);
+    /* And a publish that only adds reads exactly as it did before F-98. */
+    expect(supersedeLines(undefined)).toBe("");
+    expect(supersedeLines({ superseded: [], restated: [], removed: null })).toBe("");
   });
 });

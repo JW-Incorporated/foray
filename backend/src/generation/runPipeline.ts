@@ -12,6 +12,7 @@ import { NarratedBeatSchema } from "../types/narration";
 import { understandPrompt } from "./understandPrompt";
 import { buildResearchShape } from "./researchShape";
 import { buildSpineWithReasks, type SpineReask } from "./buildSpine";
+import { postSeedWithFloor, summarizeSeedFloor, SPINE_SEED_FLOOR } from "./postSeedSpine";
 import { deepenActs } from "./deepenActs";
 import { sourceBeats, summarizeSourcing } from "./sourceBeats";
 import { summarizeSeeding } from "./spineSeeding";
@@ -24,6 +25,7 @@ import { ForayStitcher } from "./stitchForay";
 import {
   finalizeForay,
   generationBatchId,
+  makeSupersedableCut,
   mintedSegmentRow,
   readExistingForayIds,
   type FinalizeForayInput,
@@ -286,6 +288,13 @@ export interface RunPipelineOptions {
    * the run.
    */
   spineStructuralReasks?: number;
+  /**
+   * F-98: how many times §4.3's builder is re-asked when, AFTER deterministic
+   * post-seeding, the seeded share of non-argument beats is still below
+   * `SPINE_SEED_FLOOR`. Defaults to `DEFAULT_SEED_FLOOR_REASKS` (1). `0` spends
+   * no call on the floor — post-seeding still runs, since it calls nothing.
+   */
+  spineSeedFloorReasks?: number;
 }
 
 /** G-32: one act's narration, as the report shows it — the `narrate:<i>`
@@ -1100,6 +1109,12 @@ export async function runForayPipeline(
      spine alone, never a refused reply: `buildSpineWithReasks` returns only a
      spine that passed, and `stage` banks only what it returns. */
   let spineReasks: SpineReask[] = [];
+  /* F-98: whether the seed floor spent its one re-ask. A resumed spine reports
+     `false` for the same reason a resumed spine reports no structural re-asks —
+     the checkpoint is the spine, not the conversation that produced it — while
+     the counts in the line itself are read off the banked spine's `seedSource`
+     marks and are therefore right either way. */
+  let seedFloorReasked = false;
   const spine = await stage(
     "spine",
     (raw) => SpineSchema.parse(raw),
@@ -1112,9 +1127,24 @@ export async function runForayPipeline(
           )
       });
       spineReasks = built.reasks;
-      return built.spine;
+      /* F-98 — DETERMINISTIC POST-SEEDING, THEN THE FLOOR. Inside the spine
+         stage, so what the checkpoint banks is the spine the rest of the run
+         will use: a resume must not re-decide the seeds, and the seed is what
+         decides where the tape comes from. `postSeedSpine.ts` owns both halves;
+         the only thing that happens here is the logging. */
+      const seeded = await postSeedWithFloor(built.spine, intent, researchShape, req.duration, spineBuilder, ctx, {
+        ...(options.spineSeedFloorReasks !== undefined ? { maxSeedFloorReasks: options.spineSeedFloorReasks } : {}),
+        onReask: ({ share, violations }) =>
+          console.log(
+            `  spine: ${(share * 100).toFixed(0)} % of non-argument beats seeded after post-seeding, below the ${SPINE_SEED_FLOOR} floor — ` +
+              `re-asking once with ${violations.length} unseeded beat(s) named (F-98)`
+          )
+      });
+      seedFloorReasked = seeded.reasked;
+      return seeded.spine;
     }
   );
+  console.log(`  ${summarizeSeedFloor(spine, seedFloorReasked)}`);
 
   /* THE POST-SPINE FALLBACK (F-91). Until F-91 the topic was resolved HERE —
      the first point where both the intent and the frozen spine existed — from
@@ -1223,7 +1253,15 @@ export async function runForayPipeline(
         root: options.root,
         /* Tier 2 may only mint tape whose audio can be honestly registered
            (F-49 plumbing) — see `audioSourceLookup.ts`. */
-        audioSourceFor: deps.audioSourceFor ?? createDigestAudioSourceResolver({ root: options.root })
+        audioSourceFor: deps.audioSourceFor ?? createDigestAudioSourceResolver({ root: options.root }),
+        /* F-98 (B): which committed pool rows a longer cut of the same window
+           may supersede. The rule is `poolRowIsSupersedable`'s — a machine's
+           unreviewed cut, played only by generated drafts — and the Foray list
+           it is asked against is the one on disk, read once here rather than
+           per candidate. A checkout without `data/forays.json` (CI, a fixture
+           run) supersedes nothing, which is the same inert default every other
+           catalogue-reading option in this call has. */
+        supersedableCut: makeSupersedableCut(options.root)
       })
   );
 
@@ -1623,6 +1661,10 @@ export async function runForayPipeline(
     writerCalls: narrationWriterCalls,
     verifierCalls: narrationVerifierCalls,
     retryRounds: narrationStats.retryRounds,
+    /* F-99: beats the act writer closed as seed-lost rather than retrying.
+       Zero is a real answer here — the accumulator was passed — so it is
+       reported as 0, not as "not counted". */
+    seedLostBeats: narrationStats.seedLostBeats ?? 0,
     pipelineTokens: getUsageTotals().total,
     stageTimings: timings.all(),
     retrieval: evidence.metrics(),

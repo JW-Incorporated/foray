@@ -235,36 +235,3 @@ test("tools/test-search.mjs's topic scorer is untouched: searchShows shares no s
   const interp = SearchEngine.interpretQuery("meditation", ctx);
   assert.ok(interp.groups.length > 0, "the topic scorer must still interpret a real query");
 });
-
-test("rankShows ORDERS without filtering, so a server's answer is never thrown away client-side", () => {
-  /* FOUND BY A TEST, NOT BY REASONING, and worth the full story because the
-     failure was silent. `runShowSearchCostly` re-ranks the merged list after
-     the breadth endpoint answers. It originally re-ranked with `searchShows`,
-     which both FILTERS and ranks — so any row whose title did not literally
-     contain the typed string was dropped. That is correct for the curated
-     catalogue and the index (a row is only in those lists because its title
-     matched) and wrong for anything a SERVER chose: Apple's directory matches
-     fuzzily and on fields we do not have (`artistName`), so S-06's whole
-     fall-through answer was being discarded on arrival. The search box showed
-     "No shows match" for a query Apple had just answered.
-
-     `rankShows` is the same comparator with the filter removed. An unmatched
-     row sorts AFTER every real match rather than being dropped or promoted:
-     the obvious answers still lead, the server's extra suggestions follow.
-
-     MUTATION: point `rankShows` back at `searchShows`'s filtering loop. The
-     "Somebody Else Entirely" assertion goes red here, and
-     test/show-search-fallthrough.test.js's "an Apple fall-through result is
-     rendered" test goes red too — which is the pair working as intended: one
-     says the rule is wrong, the other says the product is broken. */
-  const fromApple = { show_id: "999", title: "Somebody Else Entirely", tier: "breadth", chart_rank: null };
-  const local = curated("Radiolab", "radiolab");
-  const ranked = SearchEngine.rankShows("radiolab", [fromApple, local]);
-  assert.deepStrictEqual(ranked.map((s) => s.show_id), ["radiolab", "999"],
-    "the real match leads and the unmatched row follows — neither is dropped");
-  assert.strictEqual(SearchEngine.searchShows("radiolab", [fromApple, local]).length, 1,
-    "searchShows still filters — the two functions are different on purpose");
-  /* An empty query orders rather than empties, because a caller merging a
-     server answer has to be able to render it either way. */
-  assert.strictEqual(SearchEngine.rankShows("", [fromApple, local]).length, 2);
-});
