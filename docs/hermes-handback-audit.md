@@ -10,6 +10,33 @@ This is a point-in-time audit. The decks themselves stay authoritative for their
 cards; each card that lands from here on gets its **DONE** marker in its own deck,
 in the idiom `docs/release-lockstep-plan.md` uses.
 
+> ## ⚠ SUPERSEDED THE SAME DAY IT WAS WRITTEN — read the decks, not this file
+>
+> This audit landed as `5923501` (#653) on **2026-09-12** and **seven commits
+> overtook it within hours of the same day**. Its "outstanding" column was
+> accurate for about a morning. Corrected 2026-09-12 by the machinery-audit pass;
+> the body below is left as written, because a point-in-time audit that is
+> silently edited is worth less than one that says when it stopped being true.
+>
+> **What has landed since, and what §1's table therefore gets wrong:**
+>
+> | this file says | actually, as of 2026-09-12 evening |
+> |---|---|
+> | §1 / §3: `search-plan.md` — only S-01 landed, **S-02..S-08 outstanding** | **the whole deck landed**: S-02/S-03/S-04/S-05/S-07 in #657 (`27ea7ce`), S-05's degraded header + S-06 + S-08 in #658 (`590e952`) |
+> | §3: "no `tools/build-show-index.mjs` and no `data/show-index.tsv` (S-03)" | both exist. `data/show-index.tsv` is **446,334 B, 10,113 rows**, pinned `-text` in `.gitattributes` |
+> | §1 / §3: `bundled-voice-plan.md` — **none of seven** K-cards landed | **K-01 (probe only), K-02, K-03, K-06, K-07 landed** in #661 (`3998b31`). K-04 and K-05 remain, and K-01's measurement is still `HUMAN-ACTIONS.md` #45 |
+> | §3: "there is no `fetch-models.mjs`, no phonemize stage" | `tools/mobile/fetch-models.mjs` and `tools/narration/phonemize.py` + `backend/src/generation/phonemize.ts` all exist. **But see the K-02 caveat**: the phonemize module has no production caller, so "the stage exists" is true of the code and not of the pipeline |
+> | §3: "**G-42a** … is an unblocked Hermes card that has not started" | landed in #660 (`283e20d`): `tools/generation-bench/run.mjs` with 38 tests, runs 4–9 backfilled |
+> | §1 / §2: `ios-controls-and-voice-plan.md` — **L-05, L-06, M-03** outstanding | all three landed in #654 (`759089b`) |
+>
+> **And one place it was wrong OPTIMISTICALLY, which no later commit fixed** —
+> see the M-02 correction in §1 and §2 below.
+>
+> The general lesson, and the reason this banner exists rather than a quiet edit:
+> a hand-written audit of eight decks is stale the moment the next PR merges, and
+> nothing told anyone. `tools/ci/deck-claims.mjs` (added 2026-09-12) is the
+> mechanical floor under the part of this that a machine can check.
+
 ---
 
 ## 1. The seven decks
@@ -18,7 +45,7 @@ in the idiom `docs/release-lockstep-plan.md` uses.
 |---|---|---|---|---|
 | `ui-transition-plan.md` | U-01..U-13 | all | — | closed |
 | `release-lockstep-plan.md` | R-01..R-08 | R-01..R-07 | R-08 (human) | Wyatt |
-| `ios-controls-and-voice-plan.md` | L-, V-, D-, M- | L-01..L-04, M-01, M-02, V-01, D-01 | **L-05, L-06, M-03** | overlord |
+| `ios-controls-and-voice-plan.md` | L-, V-, D-, M- | L-01..L-04, M-01, V-01, D-01 — **M-02 is listed here in error, see below** | **L-05, L-06, M-03** (all three landed in #654 after this audit) | overlord |
 | `search-plan.md` | S-01..S-08 | S-01 | **S-02..S-08** | overlord |
 | `bundled-voice-plan.md` | K-01..K-07 | none | **K-01..K-07** | overlord |
 | `foray-directory-plan.md` | FD-01..FD-07 | all | — | closed (overlord, not Hermes) |
@@ -38,7 +65,15 @@ testers. That is a Play Console action, not code. It also gates R-07's third
 acceptance item (the Play email). Nobody but Wyatt can close it.
 
 **iOS controls and voice (L-/V-/D-/M-cards) — three cards outstanding.** L-01/L-02/L-03
-landed in PR #607, L-04, M-01 and M-02 with them; V-01 shipped as the voice picker
+landed in PR #607, L-04 and M-01 with them;
+**M-02 did NOT land** — corrected 2026-09-12. Its deliverable is
+`tools/mobile/probe/probe-tap.js` (the card's own **Owned:** line) and that file
+does not exist; `tools/mobile/probe/` holds `probe-bridge`, `probe-outpoint` and
+`install-probe` only. The card is a UI-tap probe for the dead play/pause taps of
+founder feedback F11/F13, so listing it as landed says a defect was reproduced
+that never was. This is the one place this audit erred in the OPTIMISTIC
+direction, which is the more expensive one: an overstated outstanding column
+costs a re-read, an overstated landed column closes an open bug. V-01 shipped as the voice picker
 (PR #575) and was then re-scoped to Samantha-only on founder feedback; D-01 deleted
 the diagnostic Foray and gates releases on its absence. **L-05** (pause, stop and
 resume for spoken narration — founder feedback F12), **L-06** (Now Playing fields
