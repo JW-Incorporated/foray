@@ -117,7 +117,7 @@ import {
 import { createDurableStore } from "./durable-store.js";
 import { createTtsBridge } from "./tts-bridge.js";
 import { runKokoroProbe, formatProbeReport, probeVerdict } from "./kokoro-probe.js";
-import { createInterludePlayer, readInterludePref } from "./interlude.js";
+import { createInterludePlayer, readInterludePref, writeInterludePref } from "./interlude.js";
 import { makeIdbTier } from "./idb-tier.js";
 import { createEventLog } from "./event-log.js";
 import {
@@ -1916,6 +1916,33 @@ const ForayPlayer = {
       console; the shipped controls all cycle. */
   setPlaybackRate(rate) {
     return applyRate(rate);
+  },
+
+  /**
+   * §13's jingle, on or off, for the drawer switch app.js now carries
+   * (finding 5, client audit 2026-09-12: `docs/legal/privacy-policy.md` has
+   * disclosed `cp_interlude` as "On unless you turn it off" since FD-06, and
+   * `setInterludeEnabled` was called from its own test and nowhere else).
+   *
+   * SHAPED EXACTLY LIKE `applyRate`, and for the same two reasons: persist,
+   * then tell a manager that may already be running. `cp_interlude` is the one
+   * `cp_` key `player/` owns rather than the page (`readInterludePref` above
+   * is read at boot, beside `cp_rate`'s), so the WRITE belongs beside the read
+   * — in `player/interlude.js`, which is the only file that knows the value is
+   * the literal word `"off"` and not JSON. app.js calls through here rather
+   * than spelling that itself.
+   *
+   * WORKS WITH NOTHING BOOTED. Setting it before pressing play is ordinary, so
+   * with no manager this writes the value and stops; `ensureBooted` reads the
+   * key back at the next play. app.js keeps its own raw-string fallback for
+   * the case this module never loaded at all — the same posture
+   * `storageBackend()` takes towards `window.forayStorage`.
+   */
+  setInterludeEnabled(on) {
+    const v = on !== false;
+    writeInterludePref(storage, v);
+    if (manager) manager.setInterludeEnabled(v);
+    return v;
   },
 
   /* ---------- V-01: the narration voice picker ---------- */

@@ -1465,3 +1465,40 @@ test("index.html's CSP already permits https artwork, so nothing here widened it
   assert.match(csp[1], /img-src[^;]*https:/);
   assert.match(csp[1], /img-src[^;]*data:/);
 });
+
+
+test("this module is TEXT to every search tool: no raw NUL byte anywhere in it", () => {
+  /* FINDING 8, client audit 2026-09-12. Three literal `0x00` bytes lived in the
+     metadata-dedupe key on line 644 — `${title}\0${artist}\0${album}\0`
+     written as raw NULs rather than as the escape `\u0000`. A single NUL is all
+     `grep` and ripgrep need to classify a file as binary: both answered
+     "Binary file player/media-session.js matches" and printed nothing, so a
+     698-line module — the one that owns the lock screen, the car and the
+     headphone pinch — dropped out of every repo-wide search. Nobody
+     grepping for `mediaMetadata`, `lastMetaKey` or `setPositionState` could
+     see it, which is the kind of invisibility that ends in a second,
+     parallel implementation (the thing part 6 above exists to prevent).
+
+     Read as RAW BYTES on purpose: `readText` decodes UTF-8 and would turn the
+     question into one about code points. Asserted over the whole `player/`
+     tree, not just this file, so the next module cannot acquire one quietly.
+
+     MUTATION: put a literal NUL back in the template literal. The offset this
+     prints is the one `grep` reports. */
+  const dir = path.join(ROOT, "player");
+  const offenders = [];
+  for (const name of fs.readdirSync(dir)) {
+    if (!name.endsWith(".js")) continue;
+    const bytes = fs.readFileSync(path.join(dir, name));
+    const at = bytes.indexOf(0);
+    if (at >= 0) offenders.push(`${name} @ byte ${at}`);
+  }
+  assert.deepEqual(offenders, [],
+    "a NUL byte makes a source file binary to grep/ripgrep; write \\u0000 in the string instead");
+
+  /* And the key still separates two different metadata sets — the escape has
+     to be the CHARACTER, not the six literal characters. */
+  const src = readText("player/media-session.js");
+  assert.match(src, /\$\{metadata\.title\}\\u0000\$\{metadata\.artist\}/,
+    "the separator is still there, written as an escape");
+});

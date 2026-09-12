@@ -1096,29 +1096,6 @@ export class PlayerDiagnostics {
   /* ---------- search (S-01, docs/search-plan.md) ---------- */
 
   /**
-   * One completed Shows search, once per query — never per keystroke, and
-   * never the query text itself.
-   *
-   * QUERY LENGTH, NEVER THE QUERY TEXT. `app.js`'s single call site
-   * (`renderShowSearchResults`) passes `q_len`, not `query`, for the exact
-   * reason every other entry in this file admits numbers, ids and stage
-   * names and nothing else (see this file's header, "WHAT IS NEVER
-   * RECORDED"): a founder's search terms are a materially richer signal
-   * about what he listens to than anything else in this record, and this
-   * module has no consent-gated transport to carry them even if it wanted
-   * to. `Number.isFinite` guards `q_len` the same way every numeric field
-   * elsewhere in this file is guarded — a non-numeric value is dropped to
-   * `null` rather than stored, so a caller that ever passed the raw string
-   * by mistake stores nothing rather than storing the string.
-   *
-   * `painted_ms` is nullable by design: the local pass paints synchronously
-   * (§1.3 measures it at sub-millisecond for 220 shows) so a caller with no
-   * paint-timing instrumentation yet, or one measuring only the local half,
-   * still gets a valid entry with `painted_ms: null` — "no timing" is a real
-   * state here, not an error, matching this record's "absence is a real
-   * state" rule everywhere else.
-   */
-  /**
    * K-01's voice-engine measurement, as one row in the record
    * (`docs/bundled-voice-plan.md` K-01; `player/kokoro-probe.js` owns the
    * arithmetic that produced it).
@@ -1155,19 +1132,73 @@ export class PlayerDiagnostics {
     });
   }
 
+  /**
+   * One completed Shows search, once per query — never per keystroke, and
+   * never the query text itself.
+   *
+   * (The comment you are reading was, until the 2026-09-12 client audit,
+   * sitting above `voiceProbe()` instead: a K-01 card inserted a function
+   * between this JSDoc and the function it documents, and JSDoc has no way to
+   * notice. It is back where it belongs.)
+   *
+   * QUERY LENGTH, NEVER THE QUERY TEXT. `app.js`'s single call site
+   * (`recordSearchDiagnostic`) passes `qLen`, not `query`, for the exact
+   * reason every other entry in this file admits numbers, ids and stage
+   * names and nothing else (see this file's header, "WHAT IS NEVER
+   * RECORDED"): a founder's search terms are a materially richer signal
+   * about what he listens to than anything else in this record, and this
+   * module has no consent-gated transport to carry them even if it wanted
+   * to. `Number.isFinite` guards `qLen` the same way every numeric field
+   * elsewhere in this file is guarded — a non-numeric value is dropped to
+   * `null` rather than stored, so a caller that ever passed the raw string
+   * by mistake stores nothing rather than storing the string.
+   *
+   * `paintedMs` is nullable by design: the local pass paints synchronously
+   * (§1.3 measures it at sub-millisecond for 220 shows) so a caller with no
+   * paint-timing instrumentation yet, or one measuring only the local half,
+   * still gets a valid entry with `paintedMs: null` — "no timing" is a real
+   * state here, not an error, matching this record's "absence is a real
+   * state" rule everywhere else.
+   *
+   * THE FIELD NAMES ARE camelCase LIKE EVERY OTHER ENTRY IN THIS FILE, as of
+   * the audit. This row shipped in snake_case — `q_len`, `local_ms` — and was
+   * the only one, which meant a reader of a pasted record had to know which
+   * card wrote which row before they could name a field. One vocabulary.
+   *
+   * `hidden` for the same reason: it was the only entry omitting it (compare
+   * `voiceProbe` directly above), and it is the field that separates "search
+   * took 900 ms" from "search took 900 ms in a backgrounded tab whose timers
+   * were throttled" — exactly the question a slow-search report asks.
+   *
+   * THE THREE SLOW HALVES ARE ALL HERE, and that is the audit's other half:
+   *   `netMs`/`netHits`  the breadth (shows) endpoint, or 0 on a cache hit
+   *   `epMs`/`epHits`    the EPISODES endpoint — the slower of the two, and
+   *                      until the audit it was measured by nothing at all
+   *   `ctaMs`            the create-a-playlist CTA's relaxation scan, a
+   *                      1.3-8 s synchronous pass that used to run behind a
+   *                      `setTimeout(0)` where no number could see it
+   * Null means "this half did not run on this search", which is a real state
+   * for all three (a cache hit, a page with no episode section, a query that
+   * already matched a playlist) and not an error.
+   */
   search({
     qLen = null, localMs = null, localHits = null,
-    netMs = null, netHits = null, paintedMs = null, path = null,
+    netMs = null, netHits = null, epMs = null, epHits = null,
+    ctaMs = null, paintedMs = null, path = null,
   } = {}) {
     const num = (v) => (Number.isFinite(v) ? v : null);
     return this.log.record("search", {
-      q_len: num(qLen),
-      local_ms: num(localMs),
-      local_hits: num(localHits),
-      net_ms: num(netMs),
-      net_hits: num(netHits),
-      painted_ms: num(paintedMs),
+      qLen: num(qLen),
+      localMs: num(localMs),
+      localHits: num(localHits),
+      netMs: num(netMs),
+      netHits: num(netHits),
+      epMs: num(epMs),
+      epHits: num(epHits),
+      ctaMs: num(ctaMs),
+      paintedMs: num(paintedMs),
       path: typeof path === "string" && path.length <= STAGE_NAME_MAX ? path : null,
+      hidden: this._isHidden(),
     });
   }
 
@@ -1375,16 +1406,21 @@ function lineFor(e) {
       return `${head} ${parts.join(" ")}  hidden=${e.hidden ? "y" : "n"}`;
     }
     case "search": {
-      /* One line, all seven fields — the doc's own acceptance line names
-         painted_ms as the field a probe run must find non-null at least
+      /* One line, every field — the doc's own acceptance line names
+         paintedMs as the field a probe run must find non-null at least
          once, so it has to be visible on the one surface a founder pastes
          out, not only in the raw JSON. `—` for null fields keeps the line
          legible when a caller has not wired one half yet (e.g. paint timing
-         landing in a later card than the network pass). */
+         landing in a later card than the network pass), and is also how the
+         three halves that did not run on this search read.
+
+         `hidden=` at the end like every other line that carries it (2026-09-12
+         audit: this was the only case printing none). */
       const n = (v) => (v == null ? "—" : v);
-      return `${head} q_len=${n(e.q_len)} local=${ms(e.local_ms)}/${n(e.local_hits)}h` +
-        ` net=${ms(e.net_ms)}/${n(e.net_hits)}h painted=${ms(e.painted_ms)}` +
-        ` path=${n(e.path)}`;
+      return `${head} qLen=${n(e.qLen)} local=${ms(e.localMs)}/${n(e.localHits)}h` +
+        ` net=${ms(e.netMs)}/${n(e.netHits)}h ep=${ms(e.epMs)}/${n(e.epHits)}h` +
+        ` cta=${ms(e.ctaMs)} painted=${ms(e.paintedMs)}` +
+        ` path=${n(e.path)}  hidden=${e.hidden ? "y" : "n"}`;
     }
     /* `error=none` rather than an empty space, because the two are different
        findings: a tap that failed with no error CLASS is a `playForay` that

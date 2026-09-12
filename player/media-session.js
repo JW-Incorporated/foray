@@ -641,7 +641,7 @@ export function createMediaSession({ nav = null, MediaMetadata = null, onWrite =
 
     update({ metadata = null, positionState = null, playbackState = null } = {}) {
       if (metadata) {
-        const key = `${metadata.title} ${metadata.artist} ${metadata.album} ` +
+        const key = `${metadata.title}\u0000${metadata.artist}\u0000${metadata.album}\u0000` +
           (metadata.artwork ?? []).map((a) => a.src).join(",");
         if (key !== lastMetaKey) {
           lastMetaKey = key;

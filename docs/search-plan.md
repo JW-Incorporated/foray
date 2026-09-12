@@ -278,13 +278,13 @@ handshake cold-start observed), so treat the **shape** (MISS→HIT delta small,
 `stale-while-revalidate` missing) as the durable finding and the absolute
 ms as environment-dependent.
 
-**A diagnostics copy carrying a `search` entry with a non-null `painted_ms`**
+**A diagnostics copy carrying a `search` entry with a non-null `paintedMs`**
 (from `player/diagnostic-log.js`'s new entry kind, S-01's other acceptance
 line), produced via `PlayerDiagnostics.search()` and rendered by
 `formatDiagnosticReport`:
 
 ```
-#1    04:39:28.030 search     q_len=3 local=0ms/1h net=313ms/0h painted=1ms path=local+net
+#1    04:39:28.030 search     qLen=3 local=0ms/1h net=313ms/0h ep=—/—h cta=— painted=1ms path=local+net  hidden=n
 ```
 
 **CI run id**: `node --test` run over `tools/search-probe.test.mjs` (27
@@ -495,8 +495,8 @@ prefix lists.
   report says "no coverage" the way `parseSimulatorLifecycle` already does.
   (c) **Results-to-paint** in the page: a `search` entry kind in
   `player/diagnostic-log.js` (the idiom L-06 uses for `nowplaying`), written by
-  `app.js` once per completed search with `{q_len, local_ms, local_hits,
-  net_ms, net_hits, painted_ms, path}` — **query length, never the query
+  `app.js` once per completed search with `{qLen, localMs, localHits,
+  netMs, netHits, epMs, epHits, ctaMs, paintedMs, path, hidden}` — **query length, never the query
   text**, because `diagnostic-log.js`'s header is explicit that this record does
   not transmit and must not become a reason to reconsider that. Surfaced in the
   existing *Playback diagnostics* copy-out.
@@ -508,7 +508,7 @@ prefix lists.
 - **Dependencies:** none. Day 0.
 - **Acceptance:** a CI run id with the twelve-query table, median and p95, on the
   runner; a diagnostics copy from the founder's device carrying at least one
-  `search` entry with a non-null `painted_ms`; the doc quotes both. **Not
+  `search` entry with a non-null `paintedMs`; the doc quotes both. **Not
   acceptable:** a single sample, a mean without a p95, or a network number with
   no `X-Vercel-Cache` beside it.
 - **Governance:** all auto-merge paths.

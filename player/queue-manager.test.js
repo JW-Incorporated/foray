@@ -2620,6 +2620,117 @@ test("L-05: a bridge whose pause REJECTS is recorded, never thrown", async () =>
   assert.ok(log.some((l) => l.includes("tts.pause.failed")), `got ${log.join(" | ")}`);
 });
 
+/* ---------- L-05, the client audit's half: the transport ANSWERS ----------
+
+   `_resumeNarration` used to move the clock, clear the pause flag and restart
+   the ticker BEFORE awaiting the transport, and then throw the transport's
+   answer away. Android has no real pause — the plugin emulates one and says so
+   with `emulated`/`fromStart` — and an older shell refuses a resume outright.
+   Neither was read. The two suites below are the two answers. */
+
+/** A fake whose `resume` answers with fields the real Android plugin sends. */
+function ttsAnswering(answer) {
+  const tts = fakeTts();
+  tts.resume = async () => { tts.transport.push("resume"); return answer; };
+  return tts;
+}
+
+async function narrating(tts, scheduler) {
+  const made = make({ tts, scheduler });
+  await made.m.playForay(foray([
+    { type: "narration", id: "nar-1", script: "a line Android is about to re-speak from the top" },
+    fseg(),
+  ]), { resolveItem });
+  return made;
+}
+
+// TO SEE IT FAIL: delete the `fromStart` branch from `_resumeNarration` (or put
+// the unconditional `_narrationStartedAtMs += pausedFor` back). Android's
+// `resume()` re-speaks the WHOLE line when `onRangeStart` never fired, and the
+// clock then claims the position the pause happened at while the voice is back
+// at the first word — the in-page clock, the Now Playing elapsed and the
+// segment strip all lie by however long the listener had already heard.
+test("L-05 (audit): an Android `fromStart` resume restarts the narration clock with the line", async () => {
+  const scheduler = manualScheduler();
+  const tts = ttsAnswering({ ok: true, accepted: true, platform: "android", emulated: true, fromStart: true, state: "speaking" });
+  const { m } = await narrating(tts, scheduler);
+
+  await scheduler.advance(2000);
+  const atPause = m.narrationElapsedSec;
+  assert.ok(atPause >= 2, `the clock ran before the pause, got ${atPause}`);
+
+  await m.pause();
+  await scheduler.advance(5000);
+  assert.equal(m.narrationElapsedSec, atPause, "frozen through the pause, as L-05 already required");
+
+  await m.resume();
+  assert.deepEqual(transportsOf(tts), ["pause", "resume"]);
+  assert.ok(
+    m.narrationElapsedSec < 0.001,
+    `a re-spoken line is at its first word, so the clock is back at zero — got ${m.narrationElapsedSec}`,
+  );
+  await scheduler.advance(1000);
+  assert.ok(m.narrationElapsedSec >= 1 && m.narrationElapsedSec < atPause,
+    `and it runs again from there — got ${m.narrationElapsedSec}`);
+});
+
+// TO SEE IT FAIL: drop the `accepted !== true` branch from `_resumeNarration`.
+// An older shell's `foray-tts.js` has a `speak` and no `resume`, so
+// `tts-bridge.js` answers `{ ok: false, accepted: false, reason }` and NOTHING
+// is speaking — but the flag cleared, the ticker restarted, and the page ran a
+// clock, a moving progress bar and a lock-screen position for silence.
+test("L-05 (audit): a REFUSED resume leaves narration paused and its clock stopped", async () => {
+  const scheduler = manualScheduler();
+  const ticks = [];
+  const tts = ttsAnswering({ ok: false, path: "none", accepted: false, reason: "this build of foray-tts has no resume" });
+  const made = make({ tts, scheduler, onNarrationTick: () => ticks.push(1) });
+  await made.m.playForay(foray([
+    { type: "narration", id: "nar-1", script: "a line an older shell cannot continue" },
+    fseg(),
+  ]), { resolveItem });
+  const { m, log } = made;
+
+  await scheduler.advance(2000);
+  await m.pause();
+  const atPause = m.narrationElapsedSec;
+  const ticksAtPause = ticks.length;
+
+  await m.resume();
+  assert.deepEqual(transportsOf(tts), ["pause", "resume"], "it still ASKED — a refusal is an answer, not a reason to skip the call");
+  await scheduler.advance(5000);
+  await scheduler.advance(5000);
+  assert.equal(m.narrationElapsedSec, atPause,
+    "the clock must not run for a voice that never resumed");
+  assert.equal(ticks.length, ticksAtPause, "and the ticker must not repaint a position nobody is at");
+  assert.ok(log.some((l) => l.includes("tts.resume.refused")), `the refusal is in the record; got ${log.join(" | ")}`);
+});
+
+// TO SEE IT FAIL: treat a `null` result (no transport at all) as a refusal.
+// `_ttsTransport` returns null when there is no `_tts`, no method of that name,
+// or the call threw — and in every one of those cases the PAUSE could not have
+// happened either, so the voice never stopped. Freezing the clock there would
+// invent the opposite lie.
+test("L-05 (audit): a bridge that cannot answer at all still resumes the clock", async () => {
+  const scheduler = manualScheduler();
+  const bare = {
+    calls: [],
+    async speak(text, opts = {}) { this.calls.push({ text, rate: opts.rate }); return { ok: true }; },
+  };
+  const { m } = make({ tts: bare, scheduler });
+  await m.playForay(foray([
+    { type: "narration", id: "nar-1", script: "an older shell speaks this and cannot stop it" },
+    fseg(),
+  ]), { resolveItem });
+
+  await scheduler.advance(2000);
+  const atPause = m.narrationElapsedSec;
+  await m.pause();
+  await m.resume();
+  await scheduler.advance(1000);
+  assert.ok(m.narrationElapsedSec > atPause,
+    `no answer is not a refusal — got ${m.narrationElapsedSec} against ${atPause}`);
+});
+
 // TO SEE IT FAIL: route a NON-synth item's pause to the bridge (drop the
 // `_loadedIsSynth` condition). Every ordinary segment's pause would then cross
 // the Capacitor bridge and the element would keep playing — F12 with the two
