@@ -123,11 +123,51 @@ export function planActSeams(act: SourcedAct): SeamPlan[] {
   return seams;
 }
 
-/** The mode a seam's page is recorded under: what it carries decides. */
+/** The mode a seam is PLANNED under — what its beats ask of it: the
+ * provisional mode the mechanical gate runs with before the verifier has
+ * answered. Since F-97 this is not the mode the page is recorded under;
+ * `assignSeamMode` decides that after writing, from what the seam did. */
 export function seamMode(seam: Pick<SeamPlan, "beats">): NarrationMode {
   if (seam.beats.some((b) => b.mode === "Carry")) return "Carry";
   if (seam.beats.length > 0) return "Patch";
   return "Intro";
+}
+
+/** What a seam turned out to rest on, as the verifier answered it. */
+export interface SeamRest {
+  /** True when any source the seam rests on is print (a span of a
+   * document, or a verified page of this Foray). */
+  print: boolean;
+  /** True when any source the seam rests on is a clip's window. */
+  tape: boolean;
+}
+
+/**
+ * F-97: THE MODE IS ASSIGNED AFTER WRITING, from what the seam does, not
+ * before as a contract the writer must hit. Run 9 planned every seam with
+ * beats as a Patch and then refused it in code for not selecting a claim
+ * — but a seam that carries its beats by bridging two clips, resting on
+ * their windows, is a Frame doing a Frame's job, and the per-page rules
+ * for a Patch were never about it. The data model keeps its modes; this
+ * is how a seam page gets one:
+ *
+ *   Intro  — no beat positioned in the seam: the introduction only;
+ *   Carry  — a Carry beat is positioned in it and it rests on print;
+ *   Patch  — it rests on print (a document span or a verified page);
+ *   Frame  — it rests on tape only and plays into a clip;
+ *   Hinge  — it rests on tape only after the last clip, or on nothing (a
+ *            question, a hand-off).
+ *
+ * Every mode here is one `check-forays.mjs` admits, and a Frame/Hinge
+ * resting on a tape source is what `TAPE_SOURCE_MODES` already allows —
+ * so the assigned page is valid under the per-page rules, not only the
+ * act's.
+ */
+export function assignSeamMode(seam: Pick<SeamPlan, "beats" | "introduces">, rest: SeamRest): NarrationMode {
+  if (seam.beats.length === 0) return "Intro";
+  if (rest.print) return seam.beats.some((b) => b.mode === "Carry") ? "Carry" : "Patch";
+  if (rest.tape) return seam.introduces ? "Frame" : "Hinge";
+  return "Hinge";
 }
 
 /**

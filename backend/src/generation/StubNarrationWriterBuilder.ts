@@ -130,6 +130,11 @@ export class StubNarrationWriterBuilder implements NarrationWriterBuilder {
  * so a test can mutate one sentence of it (drop a beat, repeat the clip's
  * opening) and watch the gate or the verifier go red. */
 export function stubSeam(seam: SeamBrief, clips: Map<string, ClipBrief>, documents: EvidenceDoc[], register: string): WrittenSeam {
+  /* F-97: a frozen seam comes back verbatim, as the real writer is told
+     to return it — the orchestrator keeps the confirmed text either way. */
+  if (seam.frozen && seam.previousScript !== undefined) {
+    return { seamId: seam.seamId, script: seam.previousScript, claims: [], usedClaims: [], pronunciationHints: [] };
+  }
   const clip = seam.introduces ? clips.get(seam.introduces) : undefined;
   const [min, max] = seam.band;
   const sentences: string[] = [];
@@ -165,7 +170,7 @@ export function stubSeam(seam: SeamBrief, clips: Map<string, ClipBrief>, documen
   }
   if (sentences.length === 0) return { seamId: seam.seamId, script: "", claims: [], usedClaims: [], pronunciationHints: [] };
   const seed = sentences.join(" ");
-  const script = padToBand(seed, min, max, Math.min(max, Math.max(min, seed.length)), seam.mode, claims.length === 0 ? CLAIM_FREE_FILLERS : FILLERS);
+  const script = padToBand(seed, min, max, Math.min(max, Math.max(min, seed.length)), seam.beats.length === 0 ? "Intro" : "seam", claims.length === 0 ? CLAIM_FREE_FILLERS : FILLERS);
   return {
     seamId: seam.seamId,
     script,

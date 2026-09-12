@@ -1,12 +1,13 @@
 import { describe, it, expect } from "vitest";
 import { writeNarration, allWrittenNarration, pageOfWrittenBeat, type WrittenAct } from "../src/generation/writeNarration";
-import { writeActNarration, actDocuments, titlesForClip } from "../src/generation/writeAct";
+import { writeActNarration, actDocuments, buildActSources, groundDocsFor, sourcesForRest, titlesForClip } from "../src/generation/writeAct";
 import {
   CLIP_FIRST_SENTENCES_WORDS,
   CLIP_OPENING_WORDS,
   HOST_INTRO_PATTERNS,
   INTRO_RESTATE_RUN_WORDS,
   SEAM_MAX_CHARS,
+  assignSeamMode,
   clipOpening,
   decideIntro,
   hostIntroducesGuest,
@@ -31,10 +32,10 @@ import {
   computePagesDropped,
   computeUnverifiedPages
 } from "../src/generation/veracityMetrics";
-import { MODE_CHAR_BANDS, TAPE_SOURCE_MODES, tapeDocIdFor, validateNarratedBeat, type NarratedBeat } from "../src/types/narration";
+import { MODE_CHAR_BANDS, TAPE_SOURCE_MODES, negativeRecordSentence, tapeDocIdFor, validateNarratedBeat, type NarratedBeat } from "../src/types/narration";
 import type { EvidenceBeat, EvidenceDoc, EvidenceGatherer, EvidencePack } from "../src/generation/gatherEvidence";
 import type { ActWriteRequest, ActWriteResult, NarrationBuildContext } from "../src/generation/NarrationWriterBuilder";
-import type { ActVerifyRequest } from "../src/generation/NarrationVerifierBuilder";
+import type { ActVerifyRequest, ActVerifyResult } from "../src/generation/NarrationVerifierBuilder";
 import type { SourcedAct, TapePointer } from "../src/types/tapeSourcing";
 import type { Voice } from "../src/types/spine";
 
@@ -50,6 +51,12 @@ import type { Voice } from "../src/types/spine";
  *
  * Every test names the mutation that kills it. The fixture is the deck's
  * acceptance shape: one act, four narration beats, two clips.
+ *
+ * F-97 (Q-03 pass 2, after run 9 did not converge): support is ACT-scoped
+ * — a seam may rest on any source in the act, and its `sources` are what
+ * the verifier answers it rests on; the mode is assigned after writing;
+ * the retry edits only the seams that failed, and a clean Intro is never
+ * dropped for another seam's failure. The F-97 block at the end.
  */
 
 const voice: Voice = { style: "well-read friend", register: "conversational", sentenceRhythm: "varied", narratorPresence: "medium" };
@@ -166,8 +173,12 @@ function gatherer(windows: Record<string, string> = { [SEGMENT_A]: WINDOW_A, [SE
   return g;
 }
 
-/** The stub builders, counted, with a hook to mutate what the writer says. */
-function builders(mutate?: (reply: ActWriteResult, request: ActWriteRequest, round: number) => ActWriteResult) {
+/** The stub builders, counted, with a hook to mutate what the writer says
+ * and one to mutate what the verifier answers. */
+function builders(
+  mutate?: (reply: ActWriteResult, request: ActWriteRequest, round: number) => ActWriteResult,
+  mutateVerdict?: (verdict: ActVerifyResult, request: ActVerifyRequest, round: number) => ActVerifyResult
+) {
   const writer = new StubNarrationWriterBuilder();
   const verifier = new StubNarrationVerifierBuilder();
   const calls = { write: 0, verify: 0, merged: 0, verifySlot: 0 };
@@ -185,16 +196,31 @@ function builders(mutate?: (reply: ActWriteResult, request: ActWriteRequest, rou
     return realMerged(request, buildCtx);
   };
   const realVerify = verifier.verifyAct.bind(verifier);
+  const verifyRequests: ActVerifyRequest[] = [];
   verifier.verifyAct = async (request, buildCtx) => {
     calls.verify++;
-    return realVerify(request, buildCtx);
+    verifyRequests.push(request);
+    const verdict = await realVerify(request, buildCtx);
+    return mutateVerdict ? mutateVerdict(verdict, request, calls.verify) : verdict;
   };
   const realSlot = verifier.verifySlot.bind(verifier);
   verifier.verifySlot = async (request, buildCtx) => {
     calls.verifySlot++;
     return realSlot(request, buildCtx);
   };
-  return { writer, verifier, calls, requests };
+  return { writer, verifier, calls, requests, verifyRequests };
+}
+
+/** Three clips, one intro-only seam: s0 {b0} → c0 (A); s1 {} → c1 (B, a
+ * different episode, so a full Intro); s2 {b3} after c1. */
+function threeClipsIntroOnly(): SourcedAct {
+  return {
+    title: "Act 2: An intro-only seam",
+    slots: [
+      { title: "Opening", beats: [narration(CLAIMS.b0), tape("A guest explains why skills decide the tools.", TAPE_A), tape("The robot in the simulator.", TAPE_B)] },
+      { title: "The turn", beats: [narration(CLAIMS.b3)] }
+    ]
+  };
 }
 
 const pagesInOrder = (act: WrittenAct): NarratedBeat[] => allWrittenNarration([act]);
@@ -383,8 +409,17 @@ describe("Q-02 — every clip gets a light introduction", () => {
     );
     const [act] = await writeNarration([fourBeatsTwoClips()], { writer, verifier, evidence: gatherer() }, voice, ctx);
     expect(calls.write).toBe(2);
-    expect(calls.verify).toBe(1);
+    /* F-97: the clean seams (s1, s2) are judged on round 1 while s0 is
+       edited, and s0 alone is judged on round 2 — two verifier calls, and
+       s1/s2 are frozen on the retry. */
+    expect(calls.verify).toBe(2);
     expect(requests[1]!.retryNote).toMatch(/repeats the clip's own first sentences/);
+    expect(requests[1]!.seams.map((s) => [s.seamId, s.frozen === true])).toEqual([
+      ["s0", false],
+      ["s1", true],
+      ["s2", true]
+    ]);
+    expect(requests[1]!.seams[0]!.notes).toMatch(/repeats the clip's own first sentences/);
     const s0 = pagesInOrder(act!)[0]!;
     expect(s0.verified).toBe(true);
     expect(s0.attempts?.[0]).toMatchObject({ attempt: 1, rejected: true });
@@ -590,8 +625,8 @@ describe("the per-act prompts", () => {
     actTitle: "Act 1",
     voice,
     seams: [
-      { seamId: "s0", beats: [{ beatId: "b0", claim: CLAIMS.b0, mode: "Patch", kind: "account" }], introduces: "c0", intro: "full", mode: "Patch", band: [340, 1025] },
-      { seamId: "s1", beats: [], follows: "c0", introduces: "c1", intro: "light", mode: "Intro", band: [30, 260], previousScript: "Stay with the same voice." }
+      { seamId: "s0", beats: [{ beatId: "b0", claim: CLAIMS.b0, mode: "Patch", kind: "account" }], introduces: "c0", intro: "full", band: [340, 1025], previousScript: "The hangers carried double.", notes: "the prose does not carry beat b0" },
+      { seamId: "s1", beats: [], follows: "c0", introduces: "c1", intro: "light", band: [30, 260], previousScript: "Stay with the same voice.", frozen: true }
     ],
     clips: [
       { clipId: "c0", segmentId: SEGMENT_A, itemId: ITEM_A, show: SHOW, title: TITLE_A, docId: tapeDocIdFor(SEGMENT_A), opening: clipOpening(WINDOW_A, ANCHOR_A), durationSec: 120, intro: "full" },
@@ -601,56 +636,86 @@ describe("the per-act prompts", () => {
     retryNote: "Attempt 1 was rejected for: the prose does not carry beat b0."
   });
 
-  it("the writer prompt lays the act out in play order — seams with their beats and bands, clips with their openings and introduction weights — and carries the previous scripts on a retry", () => {
+  it("the writer prompt lays the act out in play order — seams with their beats and bands (no mode), clips with their openings and introduction weights — and on a retry marks each seam FROZEN (verbatim) or EDIT with its own fix line", () => {
     /* MUTATION THAT KILLS THIS: list the beats as a flat checklist above the
-       layout (the beat then has no seam), or omit `previousScript` (the
-       retry rewrites instead of editing). */
+       layout (the beat then has no seam), omit `previousScript` (the retry
+       rewrites instead of editing), put the planned mode back on the SEAM
+       line (the writer is again asked to hit a page role — F-97), or drop
+       the FROZEN marking (a retry for one seam rewrites them all). */
     const prompt = buildActWritePrompt(request());
     expect(prompt).toContain('one act ("Act 1")');
-    expect(prompt).toContain("SEAM s0 — mode Patch, 340-1025 characters — introduces CLIP c0 (introduction: full)");
+    expect(prompt).toContain("SEAM s0 — 340-1025 characters — introduces CLIP c0 (introduction: full) — EDIT");
+    expect(prompt).not.toMatch(/SEAM s\d — mode/);
     expect(prompt).toContain(`  carries beat b0: ${CLAIMS.b0}`);
+    expect(prompt).toContain('  previous script: "The hangers carried double."');
+    expect(prompt).toContain("  fix: the prose does not carry beat b0");
     expect(prompt).toContain(`CLIP c0 — "${TITLE_A}" on ${SHOW}, 120 s of tape (document ${tapeDocIdFor(SEGMENT_A)})`);
     expect(prompt).toContain('  it opens: "so the first thing to understand is');
-    expect(prompt).toContain("SEAM s1 — mode Intro, 30-260 characters — follows CLIP c0, introduces CLIP c1 (introduction: light)");
+    expect(prompt).toContain("SEAM s1 — 30-260 characters — follows CLIP c0, introduces CLIP c1 (introduction: light) — FROZEN");
     expect(prompt).toContain("  carries no beat — the introduction only, or nothing");
-    expect(prompt).toContain('  previous script: "Stay with the same voice."');
+    expect(prompt).toContain('  FROZEN — verified; return this script verbatim, with no claims: "Stay with the same voice."');
     expect(prompt).toContain("its opening is not held");
     expect(prompt).toContain("REJECTIONS SO FAR: Attempt 1 was rejected for: the prose does not carry beat b0.");
-    expect(prompt).toContain("EDIT the act's prose");
+    expect(prompt).toContain("Seams marked FROZEN are verified: return each one's script VERBATIM");
     expect(prompt).toContain("Do not repeat the clip's first sentences");
     expect(prompt).toContain("TRANSCRIPT WINDOW of a clip");
+    /* F-97: the act's sources are one set, and the record rule is stated
+       plainly with the allowed phrasing beside it. */
+    expect(prompt).toContain("THE ACT'S SOURCES ARE ONE SET.");
+    expect(prompt).toContain("NEVER assert what the record does or does not contain");
+    expect(prompt).toContain('not "the plan nobody wrote down" but');
     expect(prompt.indexOf("SEAM s0")).toBeLessThan(prompt.indexOf("CLIP c0"));
     expect(prompt.indexOf("CLIP c0")).toBeLessThan(prompt.indexOf("SEAM s1"));
     expect(prompt).toContain('{"seams": [{"seamId": string, "script": string, "claims": [');
   });
 
-  it("the verifier prompt puts the beats first as the checklist, asks `carried` per beat and support/contested per seam, prints every clip's window, and exempts the introduction from the support question", () => {
+  it("the verifier prompt puts the beats first as the checklist, prints the act's sources ONCE as one set, asks `carried`/`carriedBy`/`restsOn` per beat and support/`restsOn`/contested per seam, marks frozen seams as context, prints every clip's window, and exempts the introduction from the support question", () => {
     /* MUTATION THAT KILLS THIS: ask `purposeAccomplished` per seam instead
        of `carried` per beat — a beat carried in another seam is then refused
-       with its seam. */
+       with its seam. Or (F-97): print each seam's own sources under it and
+       ask whether its statements follow from "the source attached to it" —
+       run 9's prompt, which refused every bridge. */
     const req: ActVerifyRequest = {
       actTitle: "Act 1",
       voice,
       beats: [{ beatId: "b0", claim: CLAIMS.b0, mode: "Patch", kind: "account" }],
-      seams: [{ seamId: "s0", mode: "Patch", script: "The hangers carried double.", sources: [{ kind: "tape", segmentId: SEGMENT_A, claimText: "who speaks", publication: `${SHOW} — ${TITLE_A}`, contested: false }], carries: ["b0"], introduces: "c0", intro: "full" }],
+      seams: [
+        { seamId: "s0", script: "The hangers carried double.", selected: ["k0"], carries: ["b0"], introduces: "c0", intro: "full" },
+        { seamId: "s1", script: "Stay with the same voice.", selected: [], carries: [], follows: "c0", frozen: true }
+      ],
       clips: [{ clipId: "c0", segmentId: SEGMENT_A, itemId: ITEM_A, show: SHOW, title: TITLE_A, docId: tapeDocIdFor(SEGMENT_A), opening: "", durationSec: 120, intro: "full", windowText: WINDOW_A }],
+      sources: [
+        { id: "k0", kind: "claim", claimText: "who speaks", publication: `${SHOW} — ${TITLE_A}`, contested: false, selectedBy: "s0", docId: tapeDocIdFor(SEGMENT_A) },
+        { id: "c0", kind: "clip", claimText: `what is said in clip c0 — "${TITLE_A}" on ${SHOW}`, publication: `${SHOW} — ${TITLE_A}`, contested: false, docId: tapeDocIdFor(SEGMENT_A) },
+        { id: "p0", kind: "page", claimText: "An earlier act's thesis.", publication: "This Foray, page a0-s0-b0", contested: false, docId: "page:a0-s0-b0" }
+      ],
       documents: [NBS]
     };
     const prompt = buildActVerifyPrompt(req);
-    expect(prompt).toContain("THE CHECKLIST — every beat the act's narration must carry:");
+    expect(prompt).toContain("THE CHECKLIST — the beats to judge this round");
     expect(prompt).toContain(`  b0: ${CLAIMS.b0}`);
-    expect(prompt.indexOf("THE CHECKLIST")).toBeLessThan(prompt.indexOf("SEAM s0"));
-    expect(prompt).toContain("SEAM s0 — mode Patch, positioned beats b0 — introduces CLIP c0 (introduction: full)");
-    expect(prompt).toContain(`Source 1 [TAPE ${SEGMENT_A}]`);
+    expect(prompt.indexOf("THE CHECKLIST")).toBeLessThan(prompt.indexOf("THE ACT'S SOURCES"));
+    expect(prompt.indexOf("THE ACT'S SOURCES")).toBeLessThan(prompt.indexOf("SEAM s0"));
+    expect(prompt).toContain("  k0 (selected by seam s0) [TAPE]: claim=\"who speaks\"");
+    expect(prompt).toContain("  c0: the transcript window of CLIP c0");
+    expect(prompt).toContain("  p0: a VERIFIED PAGE of this Foray from an earlier act");
+    expect(prompt).toContain("SEAM s0 — positioned beats b0 — introduces CLIP c0 (introduction: full)");
+    expect(prompt).toContain("  Selected sources: k0");
+    expect(prompt).toContain("SEAM s1 — FROZEN (confirmed in an earlier round; context only)");
+    expect(prompt).toContain("For each SEAM to judge (s0; the FROZEN seams are confirmed already");
     expect(prompt).toContain(`  Transcript window:\n${WINDOW_A}`);
     expect(prompt).toContain("carried — does the act's narration (any seam");
+    expect(prompt).toContain("follow from SOME act source above");
+    expect(prompt).toContain("QUOTE the sentence in notes");
     expect(prompt).toContain("EXEMPT from this question: the sentences that introduce a clip");
-    expect(prompt).toContain('{"beats": [{"beatId": string, "carried": boolean');
+    expect(prompt).toContain('{"beats": [{"beatId": string, "carried": boolean, "carriedBy": string');
+    expect(prompt).toContain('"restsOn": string[], "contestedHandled": boolean');
     expect(prompt).toContain(NBS.text);
   });
 
-  it("the stub verifier answers per beat with a note naming the seam the beat was positioned in", () => {
-    /* MUTATION THAT KILLS THIS: mark every beat carried. */
+  it("the stub verifier answers per beat with its carrier and what it rests on, a note naming the seam the beat was positioned in, and per seam what it rests on — a declarative seam resting on nothing is refused", () => {
+    /* MUTATION THAT KILLS THIS: mark every beat carried; or rest a
+       declarative bridge with no selected claims on nothing and pass it. */
     const verdicts = actVerdictFor({
       actTitle: "A",
       voice,
@@ -658,15 +723,27 @@ describe("the per-act prompts", () => {
         { beatId: "b0", claim: "The hangers carried double the load.", mode: "Patch", kind: "account" },
         { beatId: "b1", claim: "Investigators traced the fabricator's drawing.", mode: "Patch", kind: "account" }
       ],
-      seams: [{ seamId: "s0", mode: "Patch", script: "The hangers carried double the load the design assumed.", sources: [{ claimText: "c", quote: "q", publication: "P", contested: false }], carries: ["b0", "b1"] }],
+      seams: [
+        { seamId: "s0", script: "The hangers carried double the load the design assumed.", selected: ["k0"], carries: ["b0", "b1"], introduces: "c0" },
+        { seamId: "s1", script: "That was the whole of it, as the guest tells it.", selected: [], carries: [], follows: "c0" },
+        { seamId: "s2", script: "That was the whole of it, as nobody tells it.", selected: [], carries: [] }
+      ],
       clips: [],
+      sources: [
+        { id: "k0", kind: "claim", claimText: "c", quote: "q", publication: "P", contested: false, selectedBy: "s0", docId: "print:p" },
+        { id: "c0", kind: "clip", claimText: "what is said in clip c0", publication: "W", contested: false, docId: tapeDocIdFor(SEGMENT_A) }
+      ],
       documents: []
     });
     expect(verdicts.beats).toEqual([
-      { beatId: "b0", carried: true },
+      { beatId: "b0", carried: true, carriedBy: "s0", restsOn: ["k0"] },
       { beatId: "b1", carried: false, notes: expect.stringContaining("positioned in seam s0") }
     ]);
-    expect(verdicts.seams[0]).toMatchObject({ seamId: "s0", claimsSupported: true, contestedHandled: true });
+    expect(verdicts.seams).toEqual([
+      { seamId: "s0", claimsSupported: true, restsOn: ["k0"], contestedHandled: true },
+      { seamId: "s1", claimsSupported: true, restsOn: ["c0"], contestedHandled: true },
+      { seamId: "s2", claimsSupported: false, restsOn: [], contestedHandled: true, notes: expect.stringContaining("rests on no source in the act") }
+    ]);
   });
 
   it("the stub writer's seam names the show and episode, cites the clip's window for the introduction when it is held, and pads to the seam's band", () => {
@@ -680,7 +757,8 @@ describe("the per-act prompts", () => {
     expect(seam.script.length).toBeGreaterThanOrEqual(340);
     expect(seam.script.length).toBeLessThanOrEqual(1025);
     const hostedClips = new Map(request().clips.map((c) => [c.clipId, c.clipId === "c1" ? { ...c, intro: "none" as const } : c]));
-    const empty = stubSeam({ ...request().seams[1]!, intro: "none" }, hostedClips, request().documents, "conversational");
+    const { frozen: _frozen, ...s1 } = request().seams[1]!;
+    const empty = stubSeam({ ...s1, intro: "none" }, hostedClips, request().documents, "conversational");
     expect(empty.script).toBe("");
   });
 
@@ -713,5 +791,203 @@ describe("the per-act prompts", () => {
     expect(stitched.items.map((i) => i.kind)).toEqual(["narration", "tape", "narration", "tape", "narration"]);
     expect(stitched.coverage.entries.map((e) => e.status)).toEqual(["present", "present", "present", "present", "present", "present"]);
     expect(act!.slots.flatMap((s) => s.beats).map((b) => pageOfWrittenBeat(b) !== undefined)).toEqual([true, false, false, true, false, true]);
+  });
+});
+
+/* ------------------------------------------------------------- F-97 */
+
+describe("F-97 — Q-03 pass 2: act-scoped support, modes assigned after writing, retries edit only what failed", () => {
+  it("a bridge seam supported only by the previous clip's window passes: it selects no claim of its own and rests on the act's sources", async () => {
+    /* THE MUTATION, applied deliberately: seam s1 (between c0 and c1,
+       carrying b3) comes back with NO claims — a bridge that restates what
+       c0 established and sets up c1. Run 9 refused exactly this in code
+       three rounds running ("the page declares no sources but its script
+       states something about the world"). MUTATION THAT KILLS THIS: judge
+       the seam against its own declared sources again — drop
+       `actSourceCount` from the validator call, or have the verifier rest
+       a claim-free seam on nothing — and s1 is refused, unverified after
+       three rounds. */
+    const { writer, verifier, calls } = builders((reply) => ({
+      seams: reply.seams.map((s) => (s.seamId === "s1" ? { ...s, claims: [], usedClaims: [] } : s))
+    }));
+    const [act] = await writeNarration([fourBeatsTwoClips()], { writer, verifier, evidence: gatherer() }, voice, ctx);
+    expect(calls).toMatchObject({ write: 1, verify: 1 });
+    const [, s1] = pagesInOrder(act!);
+    expect(s1!.verified).toBe(true);
+    /* Its sources are what the verifier answered it rests on — the windows
+       of the clips on either side — not what the writer declared (nothing). */
+    expect(s1!.sources.map((s) => ("kind" in s && s.kind === "tape" ? s.segmentId : "print"))).toEqual([SEGMENT_A, SEGMENT_B]);
+    const beats = narrationBeatsOf(act!);
+    expect(beats.map((b) => b.sourcing === "narration" && b.verifiedAtAttempt)).toEqual([1, 1, 1, 1]);
+  });
+
+  it("a beat carried in a seam that turns out to be a Frame — tape support only, playing into a clip — is verified, and the mode is assigned after writing from what the seam rests on", async () => {
+    /* MUTATION THAT KILLS THIS: record the seam under its PLANNED mode
+       (`seamMode`, Patch for any seam with beats) — the page then claims to
+       be a Patch resting on tape alone, which the per-page rules refuse
+       (`tape-source-on-content-page`), and §4.7 rule 1's "a Patch must
+       select at least one claim" fires again at the gate. */
+    const { writer, verifier } = builders((reply) => ({
+      seams: reply.seams.map((s) => (s.seamId === "s1" ? { ...s, claims: [], usedClaims: [] } : s))
+    }));
+    const [act] = await writeNarration([fourBeatsTwoClips()], { writer, verifier, evidence: gatherer() }, voice, ctx);
+    const [s0, s1, s2] = pagesInOrder(act!);
+    expect(s1!.mode).toBe("Frame");
+    expect(s1!.verified).toBe(true);
+    expect(s1!.purposeAccomplished).toBe(true);
+    /* Valid under the PER-PAGE rules too: a Frame may carry tape sources. */
+    expect(validateNarratedBeat(s1!, { charBand: seamBand(planActSeams(fourBeatsTwoClips())[1]!) }).valid).toBe(true);
+    /* The seams resting on print are Patches, as before. */
+    expect(s0!.mode).toBe("Patch");
+    expect(s2!.mode).toBe("Patch");
+
+    /* The rule itself, as a table. */
+    const plan = planActSeams(fourBeatsTwoClips());
+    expect(assignSeamMode(plan[0]!, { print: true, tape: true })).toBe("Patch");
+    expect(assignSeamMode({ ...plan[0]!, beats: plan[0]!.beats.map((b) => ({ ...b, mode: "Carry" as const })) }, { print: true, tape: false })).toBe("Carry");
+    expect(assignSeamMode(plan[1]!, { print: false, tape: true })).toBe("Frame");
+    expect(assignSeamMode(plan[2]!, { print: false, tape: true })).toBe("Hinge");
+    expect(assignSeamMode(plan[2]!, { print: false, tape: false })).toBe("Hinge");
+    expect(assignSeamMode({ beats: [], introduces: plan[0]!.introduces }, { print: false, tape: true })).toBe("Intro");
+  });
+
+  it("a clean Intro survives a retry for another seam: it is frozen, returned verbatim, never dropped — pagesDropped 0 — and the writer's edits to a frozen seam are ignored", async () => {
+    /* THE MUTATION, applied deliberately: s0 repeats c0's first sentence on
+       EVERY round, so it is refused in code three times; from round 2 the
+       writer also rewrites the frozen s1. Run 9 dropped the clean Intro in
+       exactly this case ("this seam was clean; the act was sent back for
+       seam s1, s2"). MUTATION THAT KILLS THIS: send the act back whole —
+       clear every seam's draft on a mechanical refusal, or skip the
+       verifier while any seam is refused — and the intro-only seam never
+       reaches the verifier, so `finalPageFor` drops it and
+       `computePagesDropped` reads 1. Or: take the writer's round-2 text for
+       a frozen seam. */
+    const openingA = clipOpening(WINDOW_A, ANCHOR_A);
+    const firstSentence = openingA.split(/(?<=[.!?])\s+/)[0]!;
+    const { writer, verifier, calls, requests } = builders((reply, _request, round) => ({
+      seams: reply.seams.map((s) => {
+        if (s.seamId === "s0") return { ...s, script: `${firstSentence} ${s.script}` };
+        if (s.seamId === "s1" && round > 1) return { ...s, script: "Something else entirely, rewritten on the retry." };
+        return s;
+      })
+    }));
+    const sourced = threeClipsIntroOnly();
+    const [act] = await writeNarration([sourced], { writer, verifier, evidence: gatherer() }, voice, ctx);
+    expect(calls.write).toBe(3);
+    /* One verifier call: s1 and s2 were judged on round 1 and frozen; the
+       later rounds had nothing clean and unconfirmed to judge. */
+    expect(calls.verify).toBe(1);
+    expect(requests[1]!.seams.map((s) => [s.seamId, s.frozen === true])).toEqual([
+      ["s0", false],
+      ["s1", true],
+      ["s2", true]
+    ]);
+    expect(requests[2]!.seams[1]!.previousScript).toBe(requests[1]!.seams[1]!.previousScript);
+
+    const clipB = act!.slots[0]!.beats[2]!;
+    expect(clipB.sourcing === "tape" && clipB.connectiveNarration?.mode).toBe("Intro");
+    expect(clipB.sourcing === "tape" && clipB.connectiveNarration?.verified).toBe(true);
+    expect(clipB.sourcing === "tape" && clipB.connectiveNarration?.script).toBe(requests[1]!.seams[1]!.previousScript);
+    expect(introNamesSource(clipB.sourcing === "tape" ? clipB.connectiveNarration!.script : "", { show: SHOW, title: TITLE_B })).toBe(true);
+    expect(computePagesDropped([sourced], [act!])).toBe(0);
+    /* s0 is the one that failed, and only s0: unverified, three attempts. */
+    const [s0] = pagesInOrder(act!);
+    expect(s0!.verified).toBe(false);
+    expect(s0!.attempts).toHaveLength(3);
+    expect(computeUnverifiedPages([act!]).count).toBe(1);
+    const last = pagesInOrder(act!).at(-1)!;
+    expect(last.verified).toBe(true);
+  });
+
+  it("a contested-record assertion is refused in code with the sentence quoted, the writer's fix line carries it, and the corrected round passes", async () => {
+    /* THE MUTATION, applied on round 1 only: s0 ends with "the plan nobody
+       wrote down" — run 9's "Identity Shift" act was refused for exactly
+       this sentence three rounds running, told only that "the script
+       asserts what the record does or does not contain". MUTATION THAT
+       KILLS THIS: report the rule without the sentence (the note no longer
+       names it), or drop F-45 from the act path (round 1 passes). */
+    const sentence = "The rest was the plan nobody wrote down.";
+    const { writer, verifier, calls, requests } = builders((reply, _request, round) =>
+      round === 1 ? { seams: reply.seams.map((s) => (s.seamId === "s0" ? { ...s, script: `${s.script} ${sentence}` } : s)) } : reply
+    );
+    const [act] = await writeNarration([fourBeatsTwoClips()], { writer, verifier, evidence: gatherer() }, voice, ctx);
+    expect(calls.write).toBe(2);
+    expect(requests[1]!.retryNote).toContain(`"${sentence}"`);
+    expect(requests[1]!.retryNote).toMatch(/F-45/);
+    expect(requests[1]!.seams[0]!.notes).toContain(sentence);
+    expect(requests[1]!.seams[0]!.frozen).toBeUndefined();
+    expect(pagesInOrder(act!)[0]!.verified).toBe(true);
+    expect(negativeRecordSentence(`Fine so far. ${sentence} And on.`)).toEqual({ sentence, phrase: "nobody wrote" });
+    expect(negativeRecordSentence("The report names the drawing, and stops there.")).toBeNull();
+  });
+
+  it("a seam's sources are what the VERIFIER answers it rests on — another seam's claim included — not what the writer declared", async () => {
+    /* MUTATION THAT KILLS THIS: build the page's `sources` from the writer's
+       `usedClaims` — s2 then carries its own print claim rather than k0. */
+    const { writer, verifier, verifyRequests } = builders(undefined, (verdict, request) => ({
+      ...verdict,
+      seams: verdict.seams.map((v) => (v.seamId === "s2" ? { ...v, restsOn: [request.sources.find((s) => s.selectedBy === "s0" && s.kind === "claim")!.id] } : v))
+    }));
+    const [act] = await writeNarration([fourBeatsTwoClips()], { writer, verifier, evidence: gatherer() }, voice, ctx);
+    const k0 = verifyRequests[0]!.sources.find((s) => s.selectedBy === "s0" && s.kind === "claim")!;
+    const s2 = pagesInOrder(act!)[2]!;
+    expect(s2.verified).toBe(true);
+    expect(s2.sources).toHaveLength(1);
+    expect(s2.sources[0]).toMatchObject({ claimText: k0.claimText, publication: k0.publication });
+    /* The set itself: every seam's gated claims, every held window, in id order. */
+    expect(verifyRequests[0]!.sources.map((s) => s.id)).toEqual([...verifyRequests[0]!.sources.filter((s) => s.kind === "claim").map((_, i) => `k${i}`), "c0", "c1"]);
+    expect(verifyRequests[0]!.seams.map((s) => s.selected.length > 0)).toEqual([true, true, true]);
+  });
+
+  it("the verifier judges only the seams that changed and the beats still open; a beat is re-opened when the seam carrying it is edited", async () => {
+    /* MUTATION THAT KILLS THIS: send every seam and every beat to the
+       verifier each round — the round-2 request lists s0 and s2 as seams to
+       judge (not frozen) and b0/b1/b5 on the checklist. */
+    const filler = "That thread runs further than most listeners expect, and the people closest to it saw it very differently at the time.";
+    const { writer, verifier, verifyRequests } = builders((reply) => ({
+      seams: reply.seams.map((s) => {
+        if (s.seamId !== "s1") return s;
+        const claims = s.claims.filter((c) => c.claimText !== CLAIMS.b2);
+        return { ...s, script: s.script.replace(/[^.]*investigators traced[^.]*\./i, filler), claims, usedClaims: claims.map((_, i) => i) };
+      })
+    }));
+    await writeNarration([fourBeatsTwoClips()], { writer, verifier, evidence: gatherer() }, voice, ctx);
+    expect(verifyRequests).toHaveLength(3);
+    expect(verifyRequests[0]!.beats.map((b) => b.beatId)).toEqual(["b0", "b1", "b3", "b5"]);
+    expect(verifyRequests[1]!.beats.map((b) => b.beatId)).toEqual(["b3"]);
+    expect(verifyRequests[1]!.seams.map((s) => [s.seamId, s.frozen === true])).toEqual([
+      ["s0", true],
+      ["s1", false],
+      ["s2", true]
+    ]);
+  });
+
+  it("F-88's ground reaches the act: earlier acts' verified pages are documents the writer may quote and `p<n>` sources the verifier may rest a seam on", async () => {
+    /* MUTATION THAT KILLS THIS: drop `ground` from the request — the writer
+       sees no page document and the verifier's source set has no `p0`. */
+    const ground = [{ pageId: "a0-s0-b0", claim: "The first act's thesis.", script: "Skills decide the tools, every time.", established: ["skills decide the tools"] }];
+    const { writer, verifier, requests, verifyRequests } = builders();
+    await writeActNarration(fourBeatsTwoClips(), { writer, verifier, evidence: gatherer(), ground }, voice, ctx);
+    expect(requests[0]!.ground).toEqual(ground);
+    expect(requests[0]!.documents.some((d) => d.kind === "page" && d.docId === "page:a0-s0-b0" && d.text === ground[0]!.script)).toBe(true);
+    expect(groundDocsFor(ground)[0]!.title).toContain("This Foray, page a0-s0-b0");
+    expect(verifyRequests[0]!.sources.find((s) => s.id === "p0")).toMatchObject({ kind: "page", claimText: "The first act's thesis." });
+    /* Resting on a ground page records the F-88 verification shape. */
+    const resolved = sourcesForRest(["p0", "nope"], buildActSources([], [], ground, groundDocsFor(ground)));
+    expect(resolved).toEqual({ sources: [], pageIds: ["a0-s0-b0"], rest: { print: true, tape: false }, unknown: ["nope"] });
+  });
+
+  it("the validator's zero-source rules are act-scoped when told the act's source count, and the negative-record rule looks for its backing quote among the act's quotes", () => {
+    /* MUTATION THAT KILLS THIS: ignore `actSourceCount` — the declarative
+       claim-free page is refused `sources-empty-with-claims` regardless. */
+    const bridge: NarratedBeat = { mode: "Patch", script: "The guest said the fix was a hire, not a model, and the next clip picks that up.", sources: [], pronunciationHints: [], verified: true };
+    const codes = (opts: Parameters<typeof validateNarratedBeat>[1]) => validateNarratedBeat(bridge, { charBand: [10, 500], ...opts }).issues.map((i) => i.code);
+    expect(codes({})).toEqual(expect.arrayContaining(["sources-empty-with-claims", "missing-sources"]));
+    expect(codes({ actSourceCount: 2 })).toEqual([]);
+    expect(codes({ actSourceCount: 0 })).toEqual(expect.arrayContaining(["sources-empty-with-claims", "missing-sources"]));
+    const negative: NarratedBeat = { ...bridge, script: "Exactly where, the record does not say." };
+    expect(validateNarratedBeat(negative, { charBand: [10, 500], actSourceCount: 1 }).issues.map((i) => i.code)).toEqual(["unsourced-negative-claim"]);
+    expect(validateNarratedBeat(negative, { charBand: [10, 500], actSourceCount: 1 }).issues[0]!.message).toContain('"the record does not" in "Exactly where, the record does not say."');
+    expect(validateNarratedBeat(negative, { charBand: [10, 500], actSourceCount: 1, actSourceQuotes: ["the record does not say where the crew stood"] }).valid).toBe(true);
   });
 });

@@ -1884,8 +1884,16 @@ const BACKEND_FLOORS = {
      (`narrationPagesPerSeam`, `narrationShare`, `tapeShare`, `introRestates`,
      `narrationCallsPerAct`, a beat-level `firstAttemptPassRate`); the seam
      plan and Intro rules; the two prompts; the stitcher's one item per seam.
+     F-97 (Q-03 pass 2, after run 9 did not converge): support is act-scoped
+     — a bridge seam resting only on the previous clip's window passes and
+     its sources are what the verifier answered; the mode is assigned after
+     writing (a tape-only bridge is a Frame, valid under the per-page rules);
+     a clean Intro survives a retry for another seam (frozen, verbatim,
+     pagesDropped 0); a contested-record assertion is refused with the
+     sentence quoted; the verifier re-checks only what changed; F-88's ground
+     reaches the act; the validator's zero-source rules are act-scoped.
      One named mutation per test. */
-  "test/actNarration.test.ts": 24,
+  "test/actNarration.test.ts": 32,
 };
 
 /* `it(` as well as `test(`: backend's suites use both spellings. */
