@@ -475,7 +475,7 @@ prefix lists.
 
 ---
 
-#### S-01 · Measure first: a search probe with a before number — **M**
+#### S-01 · Measure first: a search probe with a before number — **M** — **DONE** (#576, 2026-09-10; before numbers in §1.6. Extended by #657: the probe now also measures S-03's index — both passes reported separately — and its entrypoint guard was silently false on Windows, so it printed nothing and exited 0 on the founder's own machine)
 
 - **Ask:** a probe that produces, on the CI runner and on the founder's device,
   the three numbers every later card is graded against. (a) `tools/search-probe.mjs`,
@@ -513,7 +513,7 @@ prefix lists.
   no `X-Vercel-Cache` beside it.
 - **Governance:** all auto-merge paths.
 
-#### S-02 · Live filtering, debounce, and the Go button (F2) — **M**
+#### S-02 · Live filtering, debounce, and the Go button (F2) — **M** — **DONE** (#657, 2026-09-12; `input` runs the local pass and fires nothing, the three expensive passes moved onto a 250 ms trailing debounce, Enter/Go skip it, clearing restores the A-Z list. G2's default taken: the button survives, the requirement does not. G1 having been ruled Option B, the network half shipped with the rest rather than staying behind the submit trigger)
 
 - **Ask:** `renderAllShows` binds `input` on `#sh-input` as well as `submit` on
   `#sh-form`. On **every keystroke**: run the **local** pass and repaint —
@@ -556,7 +556,7 @@ prefix lists.
   `topicSearchStatus()` call occurs while the query is still changing.
 - **Governance:** all auto-merge paths. No `index.html` touch.
 
-#### S-03 · The breadth catalogue as a client-side prefix index — **L** — *design comment first*
+#### S-03 · The breadth catalogue as a client-side prefix index — **L** — *design comment first* — **DONE** (#657, 2026-09-12; `tools/build-show-index.mjs` → `data/show-index.tsv`, 10,113 shows at the `chart_rank <= 100` cut, 436 KB raw / 201 KB gzipped. The design comment is at the top of the new module rather than in the PR thread — a thread is read once, that file is read by everyone who touches the index. **Option B**, and it needed NO new `sw.js` code: `cachePut`'s existing untracked-path branch already caches it, now pinned by name in `test/sw-generation.test.js`. G5 answered with measurements — the full 19,904 set is 398.4 KB gzipped against a 400 KB budget, a 0.4 % margin the next harvest breaks, and would put the native bundle at 89 % of its cap)
 
 - **Ask:** a build step that emits a compact title index over the merged
   catalogue, and a client that loads it lazily and searches it in O(log n).
@@ -636,7 +636,7 @@ prefix lists.
   `tools/ci/generate-manifest.mjs` → **`founder-approved`, G4**. If the label
   wait would block, split that one file into its own PR.
 
-#### S-04 · Ranking: exact, prefix, word-start, substring — with the popularity prior — **M**
+#### S-04 · Ranking: exact, prefix, word-start, substring — with the popularity prior — **M** — **DONE** (#657, 2026-09-12; four buckets, curated before breadth, `chart_rank` bucketed `<=10/<=50/<=200/unranked` because it is per-genre, then a cached-collator `localeCompare`. `node tools/test-search.mjs` passes unchanged. The server rule in `backend/src/catalog/searchBreadthShows.ts` was NOT mirrored — the divergence is deliberate, recorded in `docs/DECISIONS.md`, and defensible only while S-03 keeps the endpoint off the interactive path. U-05's "no `search-engine.js` scoring changes" line needs a pointer here)
 
 - **Ask:** one ranking rule, in `search-engine.js`, applied to the local pass and
   the index pass alike. Buckets, in order: **0** exact title match
@@ -785,7 +785,7 @@ prefix lists.
   goes client-side, the CSP line makes this a second human-merge file and
   `test/api-origin.test.js`'s pin must be widened in the same PR.
 
-#### S-07 · The privacy conditional: write both diffs, let the founder pick — **S** — **BLOCKS EVERYTHING ABOVE THAT TOUCHES THE NETWORK**
+#### S-07 · The privacy conditional: write both diffs, let the founder pick — **S** — **DONE** (#657, 2026-09-12; **G1 was ruled Option B on 2026-09-11** — `git show a554fb6`, `docs/DECISIONS.md` — so this card did not write both diffs, it wrote the one the founder chose. §2's conditional is gone and replaced with an affirmative unconditional statement; `SHOWS_SEARCH_OFF_DEVICE = true` arms `test/release-gates.test.js`'s AND-gate for real, its "the flag is false" test is inverted with the reason, and a new case pins that the replacement is affirmative rather than merely absent. Option A's cost and Option C's partial truth are both recorded in DECISIONS)
 
 - **Ask:** this card does **not** decide. It makes the decision cheap by putting
   both answers side by side as real diffs, on a branch, and then waits for
