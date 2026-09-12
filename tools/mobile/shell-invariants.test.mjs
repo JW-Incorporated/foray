@@ -89,6 +89,7 @@ import {
   MAX_BYTES, MIN_DERIVED_DATA_FILES, PROJECTED_DATA, BUNDLED_ITEMS_PER_SHOW,
   discoverSlice, assertDiscoverSliceComplete, sliceBytes,
   referencedSegmentIds, segmentSlice, segmentSourceSlice, assertForaySliceComplete,
+  seedForays, seedCarries,
 } from "./prepare-webdir.mjs";
 import { artworkUrlsByShow, collectionIdsByShow } from "../../player/foray-sources.js";
 import { hydrateForayItems, indexSegments, indexSources } from "../../player/foray-resolve.js";
@@ -384,7 +385,7 @@ test("the derivation floor is pinned at 6 files", () => {
   assert.equal(MIN_DERIVED_DATA_FILES, 6);
 });
 
-test("the sliced files' per-file budgets are pinned, all three of them", () => {
+test("the sliced files' per-file budgets are pinned, all four of them", () => {
   /* THE THIRD INSTANCE OF THE SAME SELF-REFERENTIAL SHAPE, added with the budgets
      themselves rather than after somebody defeated them. `prepare-webdir` only fails
      when a slice EXCEEDS its own `maxBytes`, so raising `maxBytes` satisfies both
@@ -407,8 +408,15 @@ test("the sliced files' per-file budgets are pinned, all three of them", () => {
      `data/discover.json` 800 -> 720 KB on 2026-09-04: the slice is now written with
      no JSON whitespace (745 -> 636 KB), and 800 KB would have turned a ~13% alarm
      into a 26% one. The new number keeps the same distance — about 30 new shows at
-     the minified ~2.9 KB each. */
+     the minified ~2.9 KB each.
+
+     `data/forays.json` 64 KB, added 2026-09-12 (F-92) when the file stopped being
+     copied whole: the seed carries every Foray except a generated draft, so this
+     budget watches PUBLISHED generated Forays entering the seed at ~20 KB of
+     narration each — 17 KB today for the four curated ones, room for about two
+     published generated ones before the seed needs "the newest N" as its rule. */
   assert.deepEqual(PROJECTED_DATA.map((p) => [p.rel, p.maxBytes]), [
+    ["data/forays.json", 64 * 1024],
     ["data/discover.json", 720 * 1024],
     ["data/segments.json", 100 * 1024],
     ["data/segment-sources.json", 40 * 1024],
@@ -419,13 +427,20 @@ test("the sliced files' per-file budgets are pinned, all three of them", () => {
   assert.ok(BUNDLED_ITEMS_PER_SHOW <= 6, "a per-show cap this high is not a bounded slice any more");
 });
 
-test("the bundled segment slice is exactly what today's Forays reference, and the join agrees", () => {
+test("the bundled segment slice is exactly what today's SEEDED Forays reference, and the join agrees", (t) => {
   /* DELIBERATELY A SECOND, INDEPENDENT SUITE, for the same reason the catalogue slice
      has one below: `prepare-webdir.test.mjs` covers this in detail against a fixture,
      and this asserts it against TODAY'S REAL documents, from the file that owns the
      shell's invariants. The failure it guards is invisible — a Foray that opens in
      the app and resolves to an empty running order, playing fine on the website. */
-  const forays = readJson(path.join(ROOT, "data", "forays.json"));
+  const repoForays = readJson(path.join(ROOT, "data", "forays.json"));
+  /* THE SEEDED document (F-92): the generated drafts are the directory's, and the
+     slices are computed against what the seed carries. Today's real document has at
+     least one generated draft, or this is the pre-F-92 slice by another name. */
+  const forays = seedForays(repoForays);
+  assert.ok(repoForays.forays.some((f) => !seedCarries(f)), "no generated draft in data/forays.json today — the seed rule is untested here");
+  assert.ok(repoForays.forays.length > forays.forays.length, "the seed is not leaving anything to the directory");
+  assert.deepEqual(forays.forays, repoForays.forays.filter(seedCarries));
   const segments = readJson(path.join(ROOT, "data", "segments.json"));
   const sources = readJson(path.join(ROOT, "data", "segment-sources.json"));
 
@@ -458,10 +473,13 @@ test("the bundled segment slice is exactly what today's Forays reference, and th
   assert.ok(played >= 50, `the real documents resolve to only ${played} segment entries — the comparison is vacuous`);
   assert.deepEqual(hydrate({ segments: slice, sources: srcSlice }), before);
 
-  /* Inside their budgets, with the headroom the budgets claim. */
-  for (const [rel, doc] of [["data/segments.json", slice], ["data/segment-sources.json", srcSlice]]) {
+  /* Inside their budgets, with the headroom the budgets claim — the seed's three
+     files (F-92 added the Foray list). The numbers are reported so a red run and a
+     green run both say what the seed weighed. */
+  for (const [rel, doc] of [["data/forays.json", forays], ["data/segments.json", slice], ["data/segment-sources.json", srcSlice]]) {
     const budget = PROJECTED_DATA.find((p) => p.rel === rel).maxBytes;
     const bytes = sliceBytes(doc);
+    t.diagnostic(`${rel}: ${(bytes / 1024).toFixed(1)} KB of ${budget / 1024} KB`);
     assert.ok(bytes < budget, `the real ${rel} slice is ${(bytes / 1024).toFixed(1)} KB, over its budget`);
     assert.ok(bytes > budget * 0.2, `${rel}'s budget is loose enough that it would not notice a quadrupling`);
   }

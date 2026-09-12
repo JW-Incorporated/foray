@@ -69,11 +69,13 @@ const BASE = () => ({
   sources: readData("data/segment-sources.json"),
 });
 /** A published Foray that exists nowhere in the repo, with its own two segments
-    over its own two episodes — the "new Foray" every directory test is about. */
-function withNewForay(set, { id = "fd-new-1", host = "cdn.directory.test" } = {}) {
+    over its own two episodes — the "new Foray" every directory test is about.
+    `status`/`generated` make it a generated draft instead (F-92). */
+function withNewForay(set, { id = "fd-new-1", host = "cdn.directory.test", status = "published", generated = false } = {}) {
   const out = JSON.parse(JSON.stringify(set));
   out.forays.forays.push({
-    id, kind: "deep-dive", title: "A Foray that arrived by directory", status: "published",
+    id, kind: "deep-dive", title: "A Foray that arrived by directory", status,
+    ...(generated ? { generated: true } : {}),
     slots: [{ id: "one", title: "One" }],
     items: [
       { type: "segment", slot: "one", label: "L1", role: "explanation", segment_id: `${id}-s1` },
@@ -249,13 +251,15 @@ const INSTANT = {
  *   answers from the "bundle"; null = 404, which is today's shell
  * @param {object|null} [opts.cacheSet]  a set pre-written to the fake IndexedDB
  * @param {boolean} [opts.emptySeed]  404 the three bundled Foray files (FD-04)
+ * @param {object} [opts.localStorageItems]  `cp_` keys already on the device
+ *   before app.js runs, as values (JSON-encoded the way lsSet writes them)
  * @param {string} [opts.hash]  the route to boot on
  */
 process.on("unhandledRejection", () => {});
 
 async function mount({
   remote = {}, remoteMode = null, localPointer = null, cacheSet = null,
-  emptySeed = false, hash = "#/forays", appSrc = APP_SRC,
+  emptySeed = false, hash = "#/forays", appSrc = APP_SRC, localStorageItems = {},
 } = {}) {
   const { dir, resolve, progress, diag, qm } = await mods;
   const fetched = [];
@@ -321,6 +325,7 @@ async function mount({
   ctx.window = ctx;
   ctx.self = ctx;
   ctx.globalThis = ctx;
+  for (const [k, v] of Object.entries(localStorageItems)) ctx.localStorage.setItem(k, JSON.stringify(v));
   vm.createContext(ctx);
 
   /* The real field record, over a Storage of its own. */
@@ -347,7 +352,9 @@ async function mount({
       const doc = resolve.findForay(foraysDoc, id, { unlocked });
       return doc ? resolve.resolveForay(doc, { segments: resolve.indexSegments(segmentsDoc), sources: resolve.indexSources(sourcesDoc) }) : null;
     },
-    listForays: (doc, { unlocked = [] } = {}) => resolve.listableForays(doc, { unlocked }),
+    /* `showDrafts` passed through as player/client.js passes it (#631), so the
+       founder's switch reaches the resolver here too (F-92). */
+    listForays: (doc, { unlocked = [], showDrafts = false } = {}) => resolve.listableForays(doc, { unlocked, showDrafts }),
     foraysUsingShow: (doc, names, { segmentsDoc, sourcesDoc, unlocked = [] } = {}) =>
       resolve.foraysReferencingShow(doc, names, { segments: resolve.indexSegments(segmentsDoc), sources: resolve.indexSources(sourcesDoc), unlocked }),
     fmtClock: resolve.fmtClock, fmtSpan: resolve.fmtSpan, itemLen: () => 1,
@@ -558,6 +565,47 @@ test("FD-04: the shell boots with an EMPTY seed, and a directory set then fills 
   assert.strictEqual(h.directory.describe().last.status, "adopted");
   assert.ok(h.state().forays.forays.some((f) => f.id === "fd-new-1"));
   assert.match(h.view(), /A Foray that arrived by directory/);
+});
+
+test("F-92: a fresh install whose seed pointer names the LIVE version still fetches the set once, and the switch then lists the generated draft", async () => {
+  /* THE SEED LEAVES GENERATED DRAFTS TO THE DIRECTORY (tools/mobile/prepare-webdir.mjs
+     `seedCarries`), and a package built from the same commit as the live site holds
+     that subset at the live version. Before F-92 a version match was `current` and
+     nothing was fetched — so with the founder's switch on, the phone would list no
+     generated draft until the next deploy moved the version. The bundled pointer
+     now carries `partial: true` (`seedPointerDoc`) and the directory treats a
+     partial held set as "fetch whole, once".
+     MUTATION: in player/foray-directory.js `run()`, drop `held.partial !== true`
+     from the `current` early return. The refresh answers `current`, state never
+     holds `fd-gen-draft-1`, and the page never lists it. */
+  const next = withNewForay(BASE(), { id: "fd-gen-draft-1", status: "draft", generated: true });
+  const ptr = await pointerFor(next, "deploy-live");
+  /* The pointer as prepare-webdir writes it into the bundle: the deploy's own, plus the flag. */
+  const seedPointer = { version: ptr.version, built_at: ptr.built_at, files: ptr.files, partial: true };
+  const h = await mount({
+    remote: routesFor(ptr, next), localPointer: seedPointer, localStorageItems: { cp_show_drafts: true },
+  });
+  assert.strictEqual(h.directory.describe().version, "deploy-live", "the seed booted at the live version");
+  await bootRefreshDone(h);
+  await h.settle();
+  assert.strictEqual(h.directory.describe().last.status, "adopted", "a partial seed at the live version is fetched whole");
+  assert.ok(h.state().forays.forays.some((f) => f.id === "fd-gen-draft-1"), "state holds the generated draft");
+  assert.ok(h.ids().includes("fd-gen-draft-1"), "and the switch lists it");
+  assert.strictEqual(h.tier.writes, 1, "the whole set is cached");
+  assert.strictEqual(h.location.reloads, 0);
+
+  /* THE CONTROL: the same package under an unmarked pointer is `current` at once —
+     the pre-F-92 answer, and still right for a seed that IS the whole set. */
+  const { partial: _partial, ...unmarked } = seedPointer;
+  const c = await mount({
+    remote: routesFor(ptr, next), localPointer: unmarked, localStorageItems: { cp_show_drafts: true },
+  });
+  await bootRefreshDone(c);
+  await c.settle();
+  assert.strictEqual(c.directory.describe().last.status, "current");
+  assert.ok(!c.state().forays.forays.some((f) => f.id === "fd-gen-draft-1"));
+  assert.ok(!c.ids().includes("fd-gen-draft-1"));
+  assert.strictEqual(c.tier.writes, 0);
 });
 
 /* ==================================================================== */

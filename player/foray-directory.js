@@ -44,10 +44,19 @@
    refused as `older` rather than adopted, so a stale edge cannot walk a phone
    backwards; a real rollback is a revert commit and carries a newer `built_at`.
 
-   The bundled pointer is read for `version`/`built_at` ONLY. The bundle carries
-   slices of two of the three files (`prepare-webdir.mjs` §"the Foray segment
-   slice"), so the pointer's byte sizes and sha256s describe the site's files and
-   would not match the seed — the seed is trusted as the package it came in.
+   The bundled pointer is read for `version`/`built_at`/`partial` ONLY. The bundle
+   carries slices of all three files (`prepare-webdir.mjs` §"the Foray segment
+   slice" and `seedCarries`), so the pointer's byte sizes and sha256s describe the
+   site's files and would not match the seed — the seed is trusted as the package
+   it came in.
+
+   THE SEED IS PARTIAL (F-92, 2026-09-12). The package leaves generated drafts —
+   the founder's test track, `cp_show_drafts` — to the directory, so its pointer
+   carries `partial: true` (`prepare-webdir.mjs` `seedPointerDoc`). A held set
+   marked partial is never `current`, whatever version the live pointer names: a
+   fresh install built from the same deploy as the live site would otherwise hold
+   a subset at the live version and fetch nothing until the next deploy. The set
+   the refresh adopts is whole, is cached whole, and IS `current` from then on.
 
    Nothing here is user data. The cache holds public JSON that the site serves to
    anyone, keyed by deploy id, in its own IndexedDB database rather than under a
@@ -143,6 +152,9 @@ export function validatePointer(raw) {
       files: paths,
       bytes: pickBytes(raw.bytes),
       sha256: pickHashes(raw.sha256),
+      /* Strictly `true`: only the bundled pointer ever carries it, and a pointer
+         from the origin saying anything else is not partial. */
+      partial: raw.partial === true,
     },
   };
 }
@@ -320,6 +332,10 @@ export function createForayDirectory({
       sources: seed?.sources ?? null,
       version: seedPointer?.version ?? null,
       built_at: seedPointer?.built_at ?? null,
+      /* The package says whether what it carries at that version is the whole set
+         (F-92). No pointer at all is not partial: an unversioned seed already
+         re-fetches on every version, because it can never be `current`. */
+      partial: seedPointer?.partial === true,
       source: SOURCE_BUNDLE,
     };
     const seedCheck = safeValidate(seedSet);
@@ -392,7 +408,10 @@ export function createForayDirectory({
     if (!v.ok) return outcome({ status: STATUS.BAD_POINTER, reason, code: v.code });
     const ptr = v.pointer;
 
-    if (held && held.version && held.version === ptr.version) {
+    /* `current` only for a WHOLE held set (F-92): a partial seed at the live
+       version still has the rest of the set to fetch, once. The older-than guard
+       below is unchanged for it — a partial seed is still never walked backwards. */
+    if (held && held.version && held.version === ptr.version && held.partial !== true) {
       return outcome({ status: STATUS.CURRENT, reason, version: ptr.version });
     }
     if (held && isOlderThan(ptr.built_at, held.built_at)) {
@@ -442,6 +461,7 @@ export function createForayDirectory({
       fetched_at: new Date(now()).toISOString(),
       source: SOURCE_NETWORK,
       valid: true,
+      partial: false,
     };
     held = set;
     let cacheWrite = cache ? "written" : "no-cache";
@@ -526,6 +546,7 @@ export function createForayDirectory({
       version: held?.version ?? null,
       built_at: held?.built_at ?? null,
       valid: held?.valid ?? null,
+      partial: held?.partial ?? null,
       cache: cache ? "idb" : "none",
       last,
     }),
