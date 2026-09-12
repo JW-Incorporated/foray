@@ -46,19 +46,35 @@ test("the four buckets rank exact, then prefix, then word-start, then substring"
      — putting the mid-WORD hit ahead of the word-START hit whenever its index
      happened to be smaller, which is exactly what buried "fridman".
 
+     THE MID-WORD ROW WAS "Ricochet Showcase" AND IT WAS NOT A MID-WORD ROW
+     (found 2026-09-12 while mirroring this rule into
+     backend/src/catalog/searchBreadthShows.ts, whose copy of this fixture went
+     red where this one was green). "Showcase" follows a SPACE, so it buckets
+     WORD_START exactly like "Casual Show Talk" — the two tied, the
+     alphabetical tie-break ordered them C-before-R, and the assertion below
+     passed with or without the bucket it exists to pin. The named mutation did
+     not kill it. "Roadshow" follows "d", a letter and therefore no word break,
+     so it is a genuine plain substring, and the explicit bucket assertions
+     below say which row is which rather than leaving it to a comment.
+
      MUTATION: delete the word-start branch from `showMatchBucket` (return the
-     substring bucket instead). "Casual Show Talk" and "Ricochet Showcase" then
-     land in the same bucket and the four-way ordering below fails. */
+     substring bucket instead). "Casual Show Talk" and "Antiques Roadshow
+     Detours" then land in the same bucket, the title tie-break puts
+     "Antiques…" first, and the four-way ordering below fails. */
   const shows = [
-    breadth("Ricochet Showcase", 5),          // substring, mid-word
+    breadth("Antiques Roadshow Detours", 5),  // substring, genuinely mid-word
     breadth("Casual Show Talk", 5),           // word-start
     breadth("Show Me The Numbers", 5),        // prefix
     breadth("Show", 5),                       // exact
   ];
   const got = SearchEngine.searchShows("show", shows).map((s) => s.title);
   assert.deepStrictEqual(got, [
-    "Show", "Show Me The Numbers", "Casual Show Talk", "Ricochet Showcase",
+    "Show", "Show Me The Numbers", "Casual Show Talk", "Antiques Roadshow Detours",
   ]);
+  assert.strictEqual(SearchEngine.showMatchBucket("Casual Show Talk", "show").bucket,
+    SearchEngine.SHOW_MATCH_WORD_START);
+  assert.strictEqual(SearchEngine.showMatchBucket("Antiques Roadshow Detours", "show").bucket,
+    SearchEngine.SHOW_MATCH_SUBSTRING);
 });
 
 test("a word-start match reaches the show a listener meant: \"fridman\" puts Lex Fridman Podcast first", () => {
@@ -234,4 +250,74 @@ test("tools/test-search.mjs's topic scorer is untouched: searchShows shares no s
   const ctx = { semantic: readJson("data/semantic-index.json"), itemTags: readJson("data/item-tags.json"), discover };
   const interp = SearchEngine.interpretQuery("meditation", ctx);
   assert.ok(interp.groups.length > 0, "the topic scorer must still interpret a real query");
+});
+test("the server's bucket table is THIS file's bucket table, constant for constant", () => {
+  /* THE PIN THE OLD HEADER ASKED A HUMAN FOR.
+     `backend/src/catalog/searchBreadthShows.ts` reimplements this rule over the
+     ~19,904-row merged catalogue, and its header used to end: "if the rule ever
+     needs a fourth rank bucket, update both call sites (this file's header
+     names the twin)." S-04 then added `SHOW_MATCH_WORD_START` here and not
+     there, and nothing noticed for as long as it took a client audit to read
+     both files. The endpoint TRUNCATES to `limit` before this file ever sees
+     the list, so a divergence there is not cosmetic: the rows it cut are gone.
+
+     So the discipline is mechanical now. Both files declare the bucket table as
+     plain `const NAME = <integer>;` lines and this reads both and compares
+     them. A fifth bucket that lands on one side only is a red suite here, on
+     the very first run, with no reviewer required to notice.
+
+     `SHOW_MATCH_UNMATCHED` is correctly absent from the server's table and is
+     excluded by construction rather than by an exception list: it is declared
+     here as `SHOW_MATCH_SUBSTRING + 1` — an expression, not an integer literal
+     — because it is the bucket for a row a SERVER chose that matched no title,
+     which only `rankShows` can produce. The server filters `SHOW_MATCH_NONE`
+     out and never emits one. The assertion below states that too, so this
+     exclusion cannot quietly become "the pin stopped seeing a constant".
+
+     MUTATION: add a fifth bucket (or renumber one) in either file alone —
+     e.g. change `SHOW_MATCH_SUBSTRING` to 4 in searchBreadthShows.ts. The
+     deepStrictEqual fails naming the constant that differs. */
+  const DECLARATION = /^(?:export )?const (SHOW_MATCH_[A-Z_]+) = (-?\d+);$/gm;
+  const tableOf = (rel) => {
+    const src = fs.readFileSync(path.join(ROOT, rel), "utf8");
+    const table = {};
+    for (const m of src.matchAll(DECLARATION)) table[m[1]] = Number(m[2]);
+    return table;
+  };
+
+  const client = tableOf("search-engine.js");
+  const server = tableOf("backend/src/catalog/searchBreadthShows.ts");
+
+  assert.deepStrictEqual(server, client,
+    "the two bucket tables must be identical — a bucket added on one side only is this suite's whole reason for existing");
+  assert.deepStrictEqual(client, {
+    SHOW_MATCH_EXACT: 0, SHOW_MATCH_PREFIX: 1, SHOW_MATCH_WORD_START: 2,
+    SHOW_MATCH_SUBSTRING: 3, SHOW_MATCH_NONE: -1,
+  }, "and they must still be the four buckets plus NONE this suite documents");
+
+  /* The parse is of live code, not of dead text: every constant it found is
+     the value the module actually exports. */
+  for (const [name, value] of Object.entries(client)) {
+    assert.strictEqual(SearchEngine[name], value, `${name} is exported with a different value than it is declared with`);
+  }
+
+  /* UNMATCHED is client-only, and it is an expression rather than a literal —
+     which is exactly why the parse above does not see it. */
+  assert.strictEqual(SearchEngine.SHOW_MATCH_UNMATCHED, SearchEngine.SHOW_MATCH_SUBSTRING + 1);
+  assert.ok(!("SHOW_MATCH_UNMATCHED" in server), "the server never emits an unmatched row, so it must not declare that bucket");
+
+  /* The word-break class is half the word-start bucket's meaning, so it is
+     pinned character for character too: an ASCII-only `\W` on one side would
+     bucket every CJK title differently while the integers above still agreed.
+     MUTATION: change either file's SHOW_WORD_BREAK literal. */
+  const wordBreak = (rel) => {
+    const m = fs.readFileSync(path.join(ROOT, rel), "utf8").match(/const SHOW_WORD_BREAK = (\/.+?\/u);/);
+    assert.ok(m, `${rel} must declare SHOW_WORD_BREAK as a regex literal`);
+    return m[1];
+  };
+  assert.strictEqual(
+    wordBreak("backend/src/catalog/searchBreadthShows.ts"),
+    wordBreak("search-engine.js"),
+    "both sides must split words the same way, or the word-start bucket means two different things"
+  );
 });
