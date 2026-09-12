@@ -1721,7 +1721,9 @@ const BACKEND_FLOORS = {
      One named mutation per test. */
   /* F-88 +1: the PR body names every page verified by synthesis and the
      pages it rests on. */
-  "test/publishForay.test.ts": 20,
+  /* RAISED 20 -> 26 by F-98: the superseded row rewritten in place, the draft
+     runtimes restated, --supersedes and the PR body paragraphs. */
+  "test/publishForay.test.ts": 26,
   /* G-21c: REAL_DATA_SUITES names the four roadmap suites and every other
      suite the repo grep finds reading data/forays.json, data/segments.json or
      data/segment-sources.json (the list cannot rot); the TAP parser (one
@@ -1730,6 +1732,10 @@ const BACKEND_FLOORS = {
      its three broken-run shapes; the summary and failure lines. One named
      mutation per test. */
   "test/publishSuites.test.ts": 15,
+  /* F-98: deterministic post-seeding, the seed floor and its one re-ask —
+     the scorer and its floor, the M4 ledger an assigned seed faces, the
+     summary line, and the re-ask that is kept only when it is better. */
+  "test/postSeedSpine.test.ts": 15,
   /* G-25: spine seeding ledger (M4-derived caps) and seed order. */
   /* RAISED 5 -> 6 by F-96: the seeding line's merged / pool-short / seedLost
      counts. */
@@ -1875,7 +1881,10 @@ const BACKEND_FLOORS = {
      the same-id different cut, accepts the idempotent twin, and finalize
      throws before the checkers; and the half-second start rule is pinned in
      numbers. One named mutation per test. */
-  "test/mintDedupe.test.ts": 11,
+  /* RAISED 11 -> 17 by F-98: a draft mint superseded by a longer cut at the
+     same start — when sourcing may re-cut a committed row, when F-84 reuse
+     stands, and what the collision gate admits. */
+  "test/mintDedupe.test.ts": 17,
   /* F-88 (run 7 attempt 4): nine thesis Hinges kept unverified because
      print retrieval finds nothing for a generalisation. Synthesis
      verification — the Hinge is written from the Foray's own verified pages

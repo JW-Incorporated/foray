@@ -116,12 +116,30 @@ export const BeatSeedSchema = z
   .strict();
 export type BeatSeed = z.infer<typeof BeatSeedSchema>;
 
+/**
+ * WHO PUT THE SEED THERE (F-98).
+ *
+ * `"spine"` — §4.3 wrote the claim FROM that window, which is the whole of
+ * WS-L's claim about why a seed is the best-informed guess in the pipeline.
+ * `"assigned"` — `postSeedSpine.ts` scored the offered windows against a claim
+ * the spine left unseeded and attached the best one. The two are the same
+ * POINTER and face the same gates downstream, but they are not the same
+ * evidence, and run 8 vs run 9 is why the distinction has to survive into the
+ * run log: seed yield is model variance, and a line that reported one number
+ * could not say whether a good run was a good reply or a good rescue.
+ *
+ * Absent means the beat has no seed, or the spine predates this field.
+ */
+export const BeatSeedSourceSchema = z.enum(["spine", "assigned"]);
+export type BeatSeedSource = z.infer<typeof BeatSeedSourceSchema>;
+
 export const BeatSchema = z
   .object({
     claim: z.string().trim().min(1),
     exploration: z.boolean(),
     kind: BeatKindSchema.optional(),
-    seed: BeatSeedSchema.optional()
+    seed: BeatSeedSchema.optional(),
+    seedSource: BeatSeedSourceSchema.optional()
   })
   .strict();
 export type Beat = z.infer<typeof BeatSchema>;

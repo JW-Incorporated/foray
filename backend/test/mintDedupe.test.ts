@@ -1,7 +1,7 @@
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { deriveItemId, sourceBeats } from "../src/generation/sourceBeats";
-import { buildCandidateFiles, mintedPoolCollisions } from "../src/generation/finalizeForay";
+import { buildCandidateFiles, mintedPoolCollisions, poolRowIsSupersedable } from "../src/generation/finalizeForay";
 import { SEGMENT_START_TOLERANCE_SEC, segmentAtStart, startsCoincide, type SegmentRecord } from "../src/generation/segmentPoolLookup";
 import { runtimeSecFor } from "../src/generation/runPipeline";
 import { FileTranscriptTextIndex } from "../src/generation/transcriptTextIndex";
@@ -323,5 +323,160 @@ describe("F-84 — the one definition of 'the same start'", () => {
     expect(segmentAtStart(pool, "a", 826.8)).toBe(pool[0]);
     expect(segmentAtStart(pool, "a", 900)).toBeNull();
     expect(segmentAtStart(pool, "c", 826.36)).toBeNull();
+  });
+});
+
+/**
+ * F-98 (B): A DRAFT MINT MAY BE SUPERSEDED BY A LONGER CUT AT THE SAME START.
+ *
+ * F-84's reuse above is unconditional, and run 9 is the bill: four of its ten
+ * clips were run 8's pre-Q-01 rows reused at their old lengths (32/70/78/152 s)
+ * while this run's extent of the same windows wanted 32/70/158/381 s. The id
+ * rule leaves no second id to mint under, so the extension Q-01 bought was lost
+ * at exactly the beats the seed path found.
+ *
+ * The rule F-84 states holds for a row somebody owns — a curated cut, a clip a
+ * published Foray plays — because lengthening it would break THAT Foray's
+ * runtime check in the same commit. It does not hold for a row this pipeline
+ * minted, that nobody has reviewed (`needs_review: true`) and that only
+ * generated DRAFT Forays reference: those are ours to restate, and
+ * `publishForay` restates them in the same commit.
+ *
+ * MUTATIONS, each named in the test that kills it:
+ *   - supersede unconditionally (drop `supersedableCut`)        -> "never superseded"
+ *   - supersede a cut that is not longer                        -> "already long enough"
+ *   - drop `supersedesEndSec` from the minted segment           -> "same id, longer end"
+ *   - let `poolRowIsSupersedable` ignore `needs_review`         -> "reviewed row"
+ *   - let it ignore who references the row                      -> "never superseded"
+ *   - admit a shadow with no `supersedesEndSec` in collisions   -> "collisions still refuse"
+ */
+describe("F-98 — a longer cut supersedes a draft mint at the same start", () => {
+  /** A pool row a machine cut and nobody has listened to. */
+  const draftRow = (startSec: number, endSec: number): SegmentRecord => ({
+    ...poolRowAt(startSec, endSec),
+    source: "generation-tier-2",
+    batch_id: "generation-prior-draft",
+    needs_review: true
+  });
+
+  const draftForay = (segmentId: string) => ({
+    id: "prior-draft",
+    generated: true,
+    status: "draft",
+    runtime_sec: 100,
+    items: [{ type: "segment", slot: "s", segment_id: segmentId }]
+  });
+
+  function runWith(segmentPool: SegmentRecord[], supersedableCut?: (row: SegmentRecord) => boolean) {
+    return sourceBeats(seededAct(), {
+      segmentPool,
+      transcriptArchive: [episode],
+      cueProvider: { getCues: () => cues },
+      textIndex: textIndexOver([episode], { "pa-172": cues }),
+      topic: TOPIC,
+      ...(supersedableCut ? { supersedableCut } : {})
+    });
+  }
+
+  it("same id, longer end: the row is re-cut rather than reused, and the mint says which end it replaces", () => {
+    /* The committed cut is 100.2-115 (14.8 s); this run's extent of the same
+       window is 100-132 (32 s). MUTATION THAT KILLS THIS: drop
+       `supersedesEndSec` from the minted segment — the collision gate below
+       then reads the row as a shadow and refuses the publish. */
+    const committed = draftRow(100.2, 115);
+    const result = runWith([committed], (row) => poolRowIsSupersedable(row, [draftForay(committed.id)]));
+    const beat = allSourcedBeats(result.acts)[0]!;
+    expect(beat.sourcing).toBe("tape");
+    if (beat.sourcing !== "tape") return;
+    expect(beat.tape.segmentId).toBe(committed.id);
+    expect(beat.tape.segmentId).not.toMatch(/-\d+$/);
+    expect(beat.tape.endSec).toBe(132);
+    expect(result.newSegments).toHaveLength(1);
+    expect(result.newSegments[0]).toMatchObject({ id: committed.id, startSec: 100, endSec: 132, supersedesEndSec: 115 });
+    /* And the publish gate admits exactly this row against the pool it replaces. */
+    expect(mintedPoolCollisions(result.newSegments, [committed])).toEqual([]);
+  });
+
+  it("never superseded when a curated or published Foray plays the row — the pool's cut is reused at its own length", () => {
+    /* THE RULE F-84 KEEPS. MUTATION THAT KILLS THIS: let
+       `poolRowIsSupersedable` ignore who references the row — the cut then
+       moves under a Foray whose `runtime_sec` this publish may not restate. */
+    const committed = draftRow(100.2, 115);
+    for (const owner of [
+      { ...draftForay(committed.id), status: "published" },
+      { ...draftForay(committed.id), generated: false },
+      { ...draftForay(committed.id), id: "curated-1", generated: false, status: "draft" }
+    ]) {
+      expect(poolRowIsSupersedable(committed, [owner])).toBe(false);
+      const result = runWith([committed], (row) => poolRowIsSupersedable(row, [owner]));
+      const beat = allSourcedBeats(result.acts)[0]!;
+      expect(beat.sourcing).toBe("tape");
+      if (beat.sourcing !== "tape") return;
+      expect(beat.tape.endSec).toBe(115);
+      expect(result.newSegments).toHaveLength(0);
+    }
+  });
+
+  it("a reviewed row is never superseded, whoever plays it; an unreferenced draft row still is", () => {
+    /* MUTATION THAT KILLS THIS: drop the `needs_review` clause — a cut a person
+       shortened on purpose then moves back out under the next run. */
+    const reviewed = { ...draftRow(100.2, 115), needs_review: false };
+    expect(poolRowIsSupersedable(reviewed, [])).toBe(false);
+    expect(poolRowIsSupersedable(draftRow(100.2, 115), [])).toBe(true);
+    const result = runWith([reviewed], (row) => poolRowIsSupersedable(row, []));
+    expect(result.newSegments).toHaveLength(0);
+  });
+
+  it("already long enough: a pool cut at or past the wanted extent is reused, never re-cut shorter", () => {
+    /* MUTATION THAT KILLS THIS: supersede whenever the row is supersedable
+       rather than only when the new cut is LONGER — the committed 49.8 s row
+       is then replaced by a 32 s one and every draft timed on it loses 17.8 s
+       of runtime it still plays. */
+    const committed = draftRow(100.2, 150);
+    const result = runWith([committed], () => true);
+    const beat = allSourcedBeats(result.acts)[0]!;
+    expect(beat.sourcing).toBe("tape");
+    if (beat.sourcing !== "tape") return;
+    expect(beat.tape.endSec).toBe(150);
+    expect(result.newSegments).toHaveLength(0);
+  });
+
+  it("with no `supersedableCut` supplied nothing is supersedable — F-84's reuse, unchanged", () => {
+    /* The inert default every catalogue-reading option in `sourceBeats` takes:
+       a caller that cannot read `data/forays.json` must not guess.
+       MUTATION THAT KILLS THIS: default `supersedableCut` to `() => true`. */
+    const result = runWith([draftRow(100.2, 115)]);
+    const beat = allSourcedBeats(result.acts)[0]!;
+    expect(beat.sourcing).toBe("tape");
+    if (beat.sourcing !== "tape") return;
+    expect(beat.tape.endSec).toBe(115);
+    expect(result.newSegments).toHaveLength(0);
+  });
+
+  it("collisions still refuse a shadow: only a row naming the committed end, and longer than it, is admitted", () => {
+    /* MUTATION THAT KILLS THIS: admit any row carrying `supersedesEndSec`
+       without checking it against the committed end — a run sourced against a
+       different pool then overwrites a row it never saw. */
+    const ITEM = "practical-ai--ai-policy-and-the-battle-for-computing-power";
+    const onDisk = { id: `${ITEM}#826`, item_id: ITEM, start_sec: 826.36, end_sec: 921.04 };
+    const base: NewSegment = {
+      id: `${ITEM}#826`,
+      itemId: ITEM,
+      startSec: 826.36,
+      endSec: 957.07,
+      referenceDurationSec: 3000,
+      startAnchor: "the fabs in taiwan are the thing that matters",
+      endAnchor: "and that is the whole of the chip fight",
+      confidence: "medium",
+      why: "Taiwan's chip factories carry more weight in this fight than the chips themselves.",
+      transcriptSource: "publisher"
+    };
+    expect(mintedPoolCollisions([{ ...base, supersedesEndSec: 921.04 }], [onDisk])).toEqual([]);
+    // A different end than the one on disk: this run saw another pool.
+    expect(mintedPoolCollisions([{ ...base, supersedesEndSec: 900 }], [onDisk])[0]).toMatch(/would shadow committed/);
+    // Shorter than what it replaces: the drafts timed on it would be over-long.
+    expect(mintedPoolCollisions([{ ...base, endSec: 900, supersedesEndSec: 921.04 }], [onDisk])[0]).toMatch(/would shadow committed/);
+    // And no claim at all is the F-84 refusal, untouched.
+    expect(mintedPoolCollisions([base], [onDisk])[0]).toMatch(/would shadow committed/);
   });
 });

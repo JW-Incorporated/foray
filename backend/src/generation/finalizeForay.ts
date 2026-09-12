@@ -230,7 +230,13 @@ export function mintedSegmentRow(segment: NewSegment, topic: string, ctx: Minted
        was. `check-forays.mjs` reads `boundary` to tell a Q-01 Foray from one
        cut under the old ladder, and the ledger counts both fields. */
     ...(segment.boundary !== undefined ? { boundary: segment.boundary } : {}),
-    ...(segment.extendedBySec !== undefined ? { extended_by_sec: segment.extendedBySec } : {})
+    ...(segment.extendedBySec !== undefined ? { extended_by_sec: segment.extendedBySec } : {}),
+    /* F-98: the end this row replaces, when it replaces one. A curator opening
+       `data/segments.json` can see that the row was re-cut and from what, and a
+       later pass can tell a superseded row from a first mint without diffing
+       git. Written only on a supersede, so an ordinary minted row is
+       byte-for-byte what it was. */
+    ...(segment.supersedesEndSec !== undefined ? { superseded_from: segment.supersedesEndSec } : {})
   };
 }
 
@@ -307,6 +313,24 @@ export function mintedPoolCollisions(minted: ReadonlyArray<NewSegment>, pool: Re
     const twin = byId.get(s.id);
     if (twin) {
       if (startsCoincide(twin.start_sec, s.startSec) && Math.abs(twin.end_sec - s.endSec) <= SEGMENT_START_TOLERANCE_SEC) continue;
+      /* F-98: A DELIBERATE SUPERSEDE IS NOT THE SHADOWING THIS REFUSES. The
+         failure above is a row that would differ from the committed one while
+         the committed one keeps playing — two lengths, one of which is a lie.
+         A supersede REPLACES the committed row (`publishForay` rewrites it in
+         place and restates the drafts timed on it), so there is one length
+         again. Admitted only when it says which end it replaces AND that end is
+         the committed row's, and only when it is LONGER: a supersede that
+         shortened a row would strand the drafts the other way, and a claimed
+         `supersededEndSec` that does not match what is on disk means this run
+         was sourced against a different pool than the one being written. */
+      if (
+        s.supersedesEndSec !== undefined &&
+        startsCoincide(twin.start_sec, s.startSec) &&
+        Math.abs(twin.end_sec - s.supersedesEndSec) <= SEGMENT_START_TOLERANCE_SEC &&
+        s.endSec > twin.end_sec
+      ) {
+        continue;
+      }
       errors.push(
         `minted segment ${describe({ id: s.id, start_sec: s.startSec, end_sec: s.endSec })} would shadow committed ${describe(twin)} ` +
           "with a different cut — the committed row is what plays, so the Foray must reference its cut and be timed on it (F-84)"
@@ -322,6 +346,137 @@ export function mintedPoolCollisions(minted: ReadonlyArray<NewSegment>, pool: Re
     }
   }
   return errors;
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+   F-98 (B): THE OTHER HALF OF SUPERSEDING A ROW — THE FORAYS TIMED ON IT.
+   ──────────────────────────────────────────────────────────────────────────── */
+
+/** One draft Foray whose `runtime_sec` a supersede moved. */
+export interface RuntimeRestatement {
+  forayId: string;
+  fromSec: number;
+  toSec: number;
+  /** Which superseded segments it plays, and how many times each. */
+  segmentIds: string[];
+}
+
+/** The three fields the supersede rules read off a `data/forays.json` row. */
+export interface ForayRowLike {
+  id?: unknown;
+  generated?: unknown;
+  status?: unknown;
+  runtime_sec?: unknown;
+  items?: unknown;
+}
+
+/** Which Foray rows play `segmentId`, in file order. Exported because two
+ * different rules ask it: whether a pool row may be superseded at all (every
+ * referencing Foray must be a generated draft) and which runtimes a supersede
+ * has to restate. */
+export function foraysReferencing(forays: readonly ForayRowLike[], segmentId: string): ForayRowLike[] {
+  return forays.filter((f) => segmentReferenceCount(f, segmentId) > 0);
+}
+
+function segmentReferenceCount(foray: ForayRowLike, segmentId: string): number {
+  if (!Array.isArray(foray.items)) return 0;
+  return foray.items.filter((i) => (i as { type?: unknown; segment_id?: unknown }).segment_id === segmentId).length;
+}
+
+/** A Foray this pipeline generated and nobody has curated: the only kind whose
+ * clips this pipeline may re-cut, and whose runtime it may restate. */
+export function isGeneratedDraft(foray: ForayRowLike): boolean {
+  return foray.generated === true && foray.status === "draft";
+}
+
+/**
+ * WHETHER A POOL ROW MAY BE SUPERSEDED BY A LONGER CUT (F-98 B).
+ *
+ * Two conditions, and both are about who owns the row. `needs_review: true`
+ * says no person has listened to this cut, so its length is a machine's guess
+ * rather than a judgement. And every Foray that plays it must be a generated
+ * draft — because a supersede lengthens the clip those Forays play, and their
+ * `runtime_sec` is restated in the same commit. A curated or published Foray is
+ * NOT ours to restate: F-84's original reasoning ("one Foray's publish breaks
+ * another's") holds exactly there, and this function is where it is kept.
+ *
+ * A row nothing references is supersedable on `needs_review` alone — there is
+ * nobody to break — which is the case a draft that was already removed by
+ * `--supersedes` leaves behind.
+ */
+export function poolRowIsSupersedable(row: { id?: unknown; needs_review?: unknown }, forays: readonly ForayRowLike[]): boolean {
+  if (row.needs_review !== true) return false;
+  if (typeof row.id !== "string") return false;
+  return foraysReferencing(forays, row.id).every(isGeneratedDraft);
+}
+
+/**
+ * Restates `runtime_sec` on every generated draft that plays a superseded row,
+ * by the seconds the supersede ADDED — not by recomputing the runtime from
+ * scratch.
+ *
+ * WHY BY DELTA. `check-forays.mjs` computes a Foray's runtime from its segment
+ * durations plus an ESTIMATE of each narration page's spoken length, and the
+ * committed `runtime_sec` on these drafts already agrees with that computation
+ * to within the checker's 0.5 s (they passed it when they were published). The
+ * only thing this change moves is one clip's length, by a known number of
+ * seconds, so adding that number keeps the agreement exactly and cannot
+ * re-derive a narration estimate slightly differently from the one committed.
+ *
+ * Returns the rows it rewrote (new objects — the input array is not mutated) and
+ * what it did to each, which is what the PR body lists.
+ */
+export function restateDraftRuntimes(
+  forays: readonly ForayRowLike[],
+  addedSecById: ReadonlyMap<string, number>
+): { forays: ForayRowLike[]; restated: RuntimeRestatement[] } {
+  const restated: RuntimeRestatement[] = [];
+  const rewritten = forays.map((foray) => {
+    if (!isGeneratedDraft(foray) || typeof foray.runtime_sec !== "number") return foray;
+    let added = 0;
+    const segmentIds: string[] = [];
+    for (const [segmentId, seconds] of addedSecById) {
+      const count = segmentReferenceCount(foray, segmentId);
+      if (count === 0) continue;
+      added += seconds * count;
+      segmentIds.push(segmentId);
+    }
+    if (added === 0) return foray;
+    const toSec = Math.round((foray.runtime_sec + added) * 1000) / 1000;
+    restated.push({ forayId: String(foray.id), fromSec: foray.runtime_sec, toSec, segmentIds });
+    return { ...foray, runtime_sec: toSec };
+  });
+  return { forays: rewritten, restated };
+}
+
+/**
+ * `SourceBeatsOptions.supersedableCut`, built from the Foray list on disk.
+ *
+ * Read ONCE per run, not per candidate: the list does not change under a run,
+ * and a per-candidate read would open `data/forays.json` once per window the
+ * pipeline considers. A checkout without the file (CI, a fixture run) returns
+ * `undefined` — nothing is supersedable — which is the same honest-nothing
+ * default `topic`, `audioSourceFor` and `textIndex` all take: the rule is about
+ * who owns a row, and a caller that cannot see the Forays cannot answer it.
+ */
+export function makeSupersedableCut(
+  root: string = REPO_ROOT
+): ((row: { id?: unknown; needs_review?: unknown }) => boolean) | undefined {
+  const file = path.join(root, "data/forays.json");
+  if (!fs.existsSync(file)) return undefined;
+  const live = JSON.parse(fs.readFileSync(file, "utf8")) as { forays?: ForayRowLike[] };
+  const forays = live.forays ?? [];
+  return (row) => poolRowIsSupersedable(row, forays);
+}
+
+/** How many seconds each superseding row adds to the cut it replaces. */
+export function supersededAddedSec(minted: ReadonlyArray<NewSegment>): Map<string, number> {
+  const added = new Map<string, number>();
+  for (const s of minted) {
+    if (s.supersedesEndSec === undefined) continue;
+    added.set(s.id, Math.round((s.endSec - s.supersedesEndSec) * 1000) / 1000);
+  }
+  return added;
 }
 
 /** Loads the four files `check-forays.mjs` validates against, with this
@@ -359,15 +514,38 @@ export function buildCandidateFiles(
     sources: minted.sources ?? []
   };
 
+  /* F-98: a superseding row REPLACES the committed row of the same id rather
+     than being filtered out by the "ids already on disk are the pool's" rule
+     above — that rule exists so a re-publish does not duplicate a row, and a
+     supersede is the one case where the minted cut is the authority. Validated
+     against the replaced pool for the same reason `publishForay` writes it that
+     way: `check-forays.mjs` recomputes every Foray's runtime from the pool it
+     is handed, so the candidate has to be checked against the pool that will
+     actually be committed. */
+  const superseding = new Map(
+    (minted.segments ?? []).filter((s) => s.supersedesEndSec !== undefined && poolIds.has(s.id)).map((s) => [s.id, s])
+  );
+  const mergedPool = [
+    ...(pool.segments ?? []).map((row) => {
+      const replacement = superseding.get(String((row as { id?: unknown }).id));
+      return replacement ? mintedSegmentRow(replacement, minted.topic, rowContext) : row;
+    }),
+    ...(minted.segments ?? []).filter((s) => !poolIds.has(s.id)).map((s) => mintedSegmentRow(s, minted.topic, rowContext))
+  ];
+
+  /* And the drafts that were timed on the old cut, restated in the same breath:
+     `check-forays.mjs` recomputes EVERY Foray's runtime from the pool it is
+     handed, so a candidate validated against a lengthened row while its
+     siblings still carry the old `runtime_sec` fails on the siblings. Validating
+     the same tree the publish writes is the only honest way to check it. */
+  const { forays: restatedForays } = restateDraftRuntimes(
+    live.forays as ForayRowLike[],
+    supersededAddedSec((minted.segments ?? []).filter((s) => poolIds.has(s.id)))
+  );
+
   return {
-    forays: { ...live, forays: [...live.forays, candidateRecord] },
-    segments: {
-      ...pool,
-      segments: [
-        ...(pool.segments ?? []),
-        ...(minted.segments ?? []).filter((s) => !poolIds.has(s.id)).map((s) => mintedSegmentRow(s, minted.topic, rowContext))
-      ]
-    },
+    forays: { ...live, forays: [...restatedForays, candidateRecord] },
+    segments: { ...pool, segments: mergedPool },
     sources: {
       ...registry,
       sources: [...(registry.sources ?? []), ...(minted.sources ?? []).filter((s) => !registryIds.has(s.id))]
