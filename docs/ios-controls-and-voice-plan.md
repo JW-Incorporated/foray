@@ -80,14 +80,15 @@ quoted here because Hermes cannot read it):
   (`ForayTtsPlugin.swift:439-440`). Knowing when an utterance **finishes** is
   documented as "real future work" (`:465`); the queue does not advance past a spoken
   item.
-- The diagnostic instrument from #29 is **still in the tree**: Foray
-  `tts-locked-screen-check` in `data/forays.json`, `DIAGNOSTIC_FORAY_ID` /
-  `withDiagnosticUnlock()` in `player/foray-resolve.js`, call sites in
-  `player/client.js:99,1377`, tests in `player/foray-playback.test.js`. #29's own
-  step says: *"When it is answered, delete the instrument… None of it should be in the
-  App Store build."* #29 is answered (DONE 2026-09-05). It has not been deleted
-  because #40 (voice re-listen) and the 2x rate re-check still use it. This deck
-  replaces that dependency (V-01) and then deletes it (D-01).
+- ~~The diagnostic instrument from #29 is **still in the tree**~~ — **superseded 2026-09-12.**
+  D-01 deleted it: Foray `tts-locked-screen-check` is gone from `data/forays.json`,
+  `DIAGNOSTIC_FORAY_ID` / `withDiagnosticUnlock()` from `player/foray-resolve.js`, and its
+  call sites and tests with them. A repo-wide search finds the strings only inside the
+  tripwire that forbids them (`test/release-gates.test.js:389-391`, the gate itself at
+  `:406`), and `test/suite-integrity.test.js:121` records the floor going 54 -> 59 when the
+  instrument landed and 59 -> 54 when D-01 removed it. `docs/curation/tts-locked-screen-check.md`
+  is kept as the measurement record, as the card asked. The paragraph below is left as written
+  because it is what was true when this deck was cut.
 - HUMAN-ACTIONS #40 is OPEN: download one Enhanced voice, re-listen. Its step 4 plays
   the diagnostic Foray. Its own note admits there is "no UI for" `listVoices()`.
 
@@ -475,6 +476,9 @@ HUMAN-ACTIONS #29 (RESULT) and #40.
 ### Track D — retire the instrument
 
 #### D-01 · Delete the diagnostic Foray and gate releases on its absence — **S**
+- **DONE** 2026-09-12 (verified in an audit, not at merge time): the instrument is absent
+  from `player/`, `app.js` and `data/`, and `test/release-gates.test.js:406` gates every
+  release on its absence.
 - **Ask:** one commit, as #29's steps prescribe: remove Foray `tts-locked-screen-check`
   from `data/forays.json`, `DIAGNOSTIC_FORAY_ID` and `withDiagnosticUnlock()` from
   `player/foray-resolve.js`, their call sites in `player/client.js`, and the tests
