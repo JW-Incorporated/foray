@@ -56,7 +56,13 @@ const FORAYS = readJson("data/forays.json");
 const SEGMENTS = readJson("data/segments.json");
 const SOURCES = readJson("data/segment-sources.json");
 
-/** Both committed running orders, by id. Drafts, so each is opened by name. */
+/** The two HAND-CURATED running orders, by id. Drafts, so each is opened by
+    name. `data/forays.json` has since grown four GENERATED Forays as well —
+    ~50 items apiece, ~40 of them narrator bridges — and those are the data
+    section 8 measures the card strip against. The two here stay the ruler for
+    everything about tape and seams: they are the orders whose episode structure
+    this file's header describes, and a regenerated Foray must not be able to
+    quietly change what "a capsule is an episode" is tested on. */
 const REAL_IDS = ["grilling-history-2", "capital-types-1"];
 
 function realDoc(id) {
@@ -76,9 +82,11 @@ const real = (id) => resolveDoc(realDoc(id));
 
 /** A narrator bridge in the shape `data/forays.json` authors one (#260/#287):
     `type: "narration"` with an asset, which is what `buildForayQueue` requires
-    and what turns into `kind: "tts"` on the queue. No committed Foray has one
-    yet, so the running orders below are REAL orders with bridges inserted —
-    real tape, real seams, authored narration on top. */
+    and what turns into `kind: "tts"` on the queue. The two curated orders above
+    carry none, so the running orders below are REAL orders with bridges
+    inserted — real tape, real seams, authored narration on top. (The generated
+    Forays DO carry them, in the `mode: "marker"` shape; section 8 uses those
+    directly rather than splicing.) */
 const bridge = (id, slot) => ({
   type: "narration", id, slot,
   asset: `https://cdn.test/${id}.mp3`,
@@ -1042,3 +1050,410 @@ function escapeForAssert(s) {
   return String(s ?? "").replace(/[&<>"']/g, (c) =>
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
+
+/* ---------- 8. the card strip: merged bridges, one clipped line ----------
+
+   THE DEFECT, as the founder reported it: "when some Forays are very long or
+   have a lot of beats, the card for them has the beats wrapping over several
+   lines. The title can also take several lines, in which case they overlap."
+
+   THE MECHANISM, measured in Chrome against the committed data rather than
+   reasoned about: it is neither a wrap nor a text overlap. Flex does not wrap,
+   so the 56-item `what-engineers-actually-do-all-day` needs 431px of floored
+   bars inside a 210px card content box and simply OVERFLOWS it — 28 bars
+   hanging outside the card. `.fy-strip` is `position: relative; z-index: 1`, so
+   those bars paint ON TOP of the next two cards in the rail, straight through
+   their titles (`document.elementFromPoint` over the neighbour's title returns
+   the first card's strip). Cards whose titles run to one line and to two put
+   their strips at two different heights, which is what reads, correctly, as
+   beats on several lines overlapping a title.
+
+   THE FIX IS TWO HALVES and this section holds both: merge each run of
+   back-to-back bridges into ONE bar (fewer bars — and the card is the only
+   caller allowed to, because the player's strip is a scrub target), and clip
+   the card's strip to one line in CSS on `.fy-strip--static` alone. */
+
+/** The generated Forays are why this section exists: `data/forays.json` no
+    longer holds only the two hand-curated drafts the head of this file
+    describes, and the generated ones run ~50 items of which ~40 are bridges.
+    Read off the file rather than pinned — a curator regenerating one must not
+    have to edit this test — but asserted to still have the SHAPE the defect
+    needs, or the section is measuring nothing. */
+const GENERATED_ID = "what-engineers-actually-do-all-day-e08236";
+
+function generated() {
+  const r = real(GENERATED_ID);
+  const m = stripModel(r.playable);
+  assert.ok(
+    m.narrationCount >= 20 && m.segments.length >= 40,
+    `${GENERATED_ID} is now ${m.segments.length} items with ${m.narrationCount} bridges — ` +
+    "too small to exercise the overflow this section is about; point it at a bigger one"
+  );
+  return r;
+}
+
+/** Runs of two or more consecutive narration items, as item-index pairs,
+    derived from the ITEMS rather than from the merged model — the thing under
+    test cannot also be the ruler. */
+function narrationRuns(items) {
+  const runs = [];
+  let start = null;
+  items.forEach((item, i) => {
+    if (isNarration(item)) { if (start == null) start = i; return; }
+    if (start != null && i - start > 1) runs.push([start, i - 1]);
+    start = null;
+  });
+  if (start != null && items.length - start > 1) runs.push([start, items.length - 1]);
+  return runs;
+}
+
+test("mergeNarration draws one bar per run of back-to-back bridges, and leaves every other bar alone", () => {
+  const r = generated();
+  const plain = stripModel(r.playable);
+  const merged = stripModel(r.playable, { mergeNarration: true });
+  const runs = narrationRuns(r.playable);
+
+  assert.ok(runs.length > 0, "no run of consecutive bridges in the data");
+  assert.equal(
+    merged.segments.length,
+    plain.segments.length - runs.reduce((t, [a, b]) => t + (b - a), 0),
+    "one bar per run, every other item keeping its own"
+  );
+  /* Every TAPE bar survives the merge field for field: merging is a statement
+     about narration only, and a merge that also collapsed same-episode tape
+     would erase the within-episode cuts this element exists to show. */
+  assert.deepEqual(
+    merged.segments.filter((s) => s.kind === "segment"),
+    plain.segments.filter((s) => s.kind === "segment"),
+  );
+  // And off by default, which is the whole reason the player page is safe.
+  assert.deepEqual(stripModel(r.playable).segments, plain.segments);
+  /* MUTATION (killed): in collapseNarrationRuns, drop the `kind !== "narration"`
+     guard so any two neighbours merge — segments.length collapses to the run
+     count and the tape deepEqual fails on the first cut. */
+});
+
+test("a merged bar still points at a real item, the run's first", () => {
+  const r = generated();
+  const merged = stripModel(r.playable, { mergeNarration: true });
+  const runs = narrationRuns(r.playable);
+  const byIndex = new Map(merged.segments.map((s) => [s.index, s]));
+
+  for (const [from, to] of runs) {
+    const bar = byIndex.get(from);
+    assert.ok(bar, `no bar carries item index ${from}, the first of a bridge run`);
+    assert.equal(bar.itemCount, to - from + 1);
+    /* No bar may claim an index the run swallowed: `data-seg` is read back as
+       an item index, so a bar pointing at `to` would send anything reading it
+       to the END of the bridges when the listener touched their START. */
+    for (let i = from + 1; i <= to; i++) {
+      assert.equal(byIndex.has(i), false, `item ${i} is inside a run but still has its own bar`);
+    }
+  }
+  for (const s of merged.segments) {
+    assert.ok(
+      Number.isInteger(s.index) && s.index >= 0 && s.index < r.playable.length,
+      `bar index ${s.index} is not an item of this Foray`
+    );
+  }
+  /* MUTATION (killed): `out.push({ ...head, ... })` -> `{ ...tail, ... }`.
+     byIndex.get(from) comes back undefined on the first run. */
+});
+
+test("merging changes the number of bars and NOTHING about the row's proportions", () => {
+  const r = generated();
+  const plain = stripModel(r.playable);
+  const merged = stripModel(r.playable, { mergeNarration: true });
+  const sum = (segs, k) => segs.reduce((t, s) => t + s[k], 0);
+
+  assert.equal(sum(merged.segments, "grow"), sum(plain.segments, "grow"));
+  assert.ok(Math.abs(sum(merged.segments, "share") - sum(plain.segments, "share")) < 1e-9);
+  assert.ok(Math.abs(sum(merged.segments, "lengthSec") - plain.totalSec) < 1e-6);
+
+  /* AND `grow` IS THE SUM OF THE MEMBERS', NOT `growOf` OF THE SUMMED LENGTH.
+     They are not the same number — each member carries its own
+     `Math.max(1, Math.round(...))` — and only the sum leaves the row's
+     proportions identical to the unmerged one. That they disagree SOMEWHERE in
+     this data is asserted first, so the distinction cannot go vacuous. */
+  const mergedBars = merged.segments.filter((s) => s.itemCount > 1);
+  assert.ok(mergedBars.length > 0);
+  assert.ok(
+    mergedBars.some((s) => s.grow !== growOf(s.lengthSec)),
+    "no run in this data distinguishes the two roundings, so the assertion below is untested"
+  );
+  for (const [i, s] of merged.segments.entries()) {
+    const members = plain.segments.slice(s.index, s.index + s.itemCount);
+    assert.equal(s.grow, sum(members, "grow"), `bar ${i} (items ${s.index}+${s.itemCount})`);
+    assert.equal(s.lengthSec, sum(members, "lengthSec"));
+    assert.equal(s.startSec, members[0].startSec);
+  }
+  /* MUTATION (killed): `grow: members.reduce(...)` -> `grow: growOf(lengthSec)`.
+     The per-bar loop fails on the first run where the two roundings disagree
+     (four of them do here), and the row total fails with it. */
+});
+
+test("a merged bar's start and length still tile the Foray clock exactly", () => {
+  const r = generated();
+  const merged = stripModel(r.playable, { mergeNarration: true });
+  const starts = segmentStarts(r.playable);
+  let clock = 0;
+  for (const s of merged.segments) {
+    assert.ok(Math.abs(s.startSec - clock) < 1e-6, `bar at item ${s.index} starts at the wrong second`);
+    assert.equal(s.startSec, starts[s.index], "a bar's start must be its first item's start");
+    clock += s.lengthSec;
+  }
+  assert.ok(Math.abs(clock - merged.totalSec) < 1e-6);
+  /* MUTATION (killed): a merged bar's `lengthSec` -> `head.lengthSec`. The
+     clock falls behind at the first run and every later start disagrees. */
+});
+
+test("position runs ACROSS a merged run: current the whole way through, filling fractionally", () => {
+  const r = generated();
+  const runs = narrationRuns(r.playable);
+  /* A run of three or more that does NOT open the Foray: this test walks the
+     listener from before the run to after it, and the opening run has no
+     "before". */
+  const [from, to] = runs.find(([a, b]) => a > 0 && b - a >= 2) ?? runs[runs.length - 1];
+  const starts = segmentStarts(r.playable);
+  const lengths = r.playable.map((i) => itemRuntimeSec(i));
+  const runStart = starts[from];
+  const runLen = lengths.slice(from, to + 1).reduce((t, n) => t + n, 0);
+  const barAt = (elapsed) => {
+    const m = stripModel(r.playable, { mergeNarration: true, elapsed });
+    return m.segments.find((s) => s.index === from);
+  };
+
+  assert.ok(runLen > 0 && to > from, "need a real multi-item run to walk through");
+
+  assert.equal(barAt(Math.max(0, runStart - 1)).state, "upcoming");
+
+  /* Inside the SECOND member of the run — the case a per-item formula gets
+     wrong: it divides by the first bridge's length and clamps to 1. */
+  const mid = starts[from + 1] + lengths[from + 1] / 2;
+  const inside = barAt(mid);
+  assert.equal(inside.state, "current");
+  const expected = (mid - runStart) / runLen;
+  assert.ok(
+    Math.abs(inside.progress - expected) < 1e-9,
+    `progress ${inside.progress} is not the run fraction ${expected}`
+  );
+  assert.ok(inside.progress > 0 && inside.progress < 1, "a fill that snapped to an end is not a fill");
+
+  const after = barAt(runStart + runLen + 1);
+  assert.equal(after.state, "past");
+  assert.equal(after.progress, 1);
+  /* MUTATION (killed), either half:
+       - `currentIndex > tail.index` -> `> head.index`: the bar goes `past` while
+         the listener is still inside its second bridge.
+       - `(elapsedSec - head.startSec) / lengthSec` -> `/ head.lengthSec`:
+         progress reads a clamped 1 from the second member onwards. */
+});
+
+test("merging does not move a capsule seam", () => {
+  const r = generated();
+  const plain = stripModel(r.playable);
+  const merged = stripModel(r.playable, { mergeNarration: true });
+
+  /* A seam is an item index at which a capsule opens (or closes). Both models
+     must name the same ones: merging is a drawing decision, and the seams are
+     the one thing this element exists to state. */
+  const opens = (m) => m.segments.filter((s) => s.runStart).map((s) => s.index);
+  const closes = (m) => m.segments.filter((s) => s.runEnd).map((s) => s.index + s.itemCount - 1);
+  assert.deepEqual(opens(merged), opens(plain));
+  assert.deepEqual(closes(merged), closes(plain));
+  assert.deepEqual(merged.runs, plain.runs, "`runs` describes the Foray, not the drawing");
+  /* MUTATION (killed): `runEnd: tail.runEnd` -> `runEnd: head.runEnd`. A merged
+     bar stops closing its capsule, so the violet run loses its right-hand
+     rounding and butts into the next episode with no seam gap — the very
+     distinction this file's header calls the element's whole point. */
+});
+
+test("the accessible label still names the show the listener is actually inside, under merging", () => {
+  const r = generated();
+  const runs = narrationRuns(r.playable);
+  const starts = segmentStarts(r.playable);
+  const lengths = r.playable.map((i) => itemRuntimeSec(i));
+
+  /* Mid-run: the piece count is in ITEMS (what the listener is inside, and what
+     the running-order rows below the strip are numbered by), and the source is
+     the narrator. */
+  const [from, to] = runs[0];
+  const at = starts[to] + lengths[to] / 2;
+  const label = stripSummary(stripModel(r.playable, { mergeNarration: true, elapsed: at }));
+  assert.ok(from < to);
+  assert.match(label, new RegExp(`Now on piece ${to + 1} of ${r.playable.length}, from the narrator,`));
+
+  // And the whole sentence is unchanged by merging — it describes the Foray.
+  for (const elapsed of [0, at, starts[starts.length - 1] + 1]) {
+    assert.equal(
+      stripSummary(stripModel(r.playable, { mergeNarration: true, elapsed })),
+      stripSummary(stripModel(r.playable, { elapsed })),
+      `the label changed at ${elapsed}s just because the picture has fewer bars`
+    );
+  }
+  /* MUTATION (killed): in stripSummary, `currentBar(m)` -> `m.segments[m.currentIndex]`.
+     With merging on, index 41 of a 33-bar array is undefined and the label says
+     "from an unnamed show" while the listener is inside a bridge. */
+});
+
+test("mountStrip NEVER merges — the scrubbable strip keeps one bar per item", () => {
+  /* The invariant that makes merging safe to ship at all. app.js's painter
+     indexes `strip.children[i]` as item i and the scrub gesture seeks to the
+     `data-seg` under the finger; one bar standing for seven items breaks both.
+     So the option is not plumbed into this half AT ALL, and asking for it here
+     must be inert rather than honoured. */
+  const r = generated();
+  const items = r.playable;
+  const plain = mount(items);
+  const asked = mount(items, { mergeNarration: true });
+
+  assert.equal(plain.el.children.length, items.length);
+  assert.equal(asked.markup, plain.markup);
+  assert.deepEqual(
+    asked.el.children.map((b) => b.getAttribute("data-seg")),
+    items.map((_, i) => String(i)),
+    "every bar must be item i at position i"
+  );
+  /* MUTATION (killed): thread the option through — add `mergeNarration = false`
+     to mountStrip's destructure and pass it to stripModel. children.length drops
+     to 33 and the data-seg sequence stops being 0..n-1. */
+});
+
+test("segmentStripHtml carries mergeNarration through to the markup the cards render", () => {
+  const r = generated();
+  const items = r.playable;
+  const bars = (html) => [...html.matchAll(/data-seg="(\d+)" data-grow="(\d+)"/g)]
+    .map((m) => [Number(m[1]), Number(m[2])]);
+
+  const plainBars = bars(segmentStripHtml(items, { size: "sm" }));
+  const mergedBars = bars(segmentStripHtml(items, { size: "sm", mergeNarration: true }));
+
+  assert.equal(plainBars.length, items.length, "the default is still one bar per item (U-08's callers)");
+  assert.equal(mergedBars.length, stripModel(items, { mergeNarration: true }).segments.length);
+  assert.ok(mergedBars.length < plainBars.length, "merging must actually remove bars in this data");
+
+  /* The two things app.js depends on survive the string half: every `data-seg`
+     is a real item and appears once, and applyStripGrow's numbers still sum to
+     the same row. */
+  const seen = mergedBars.map(([i]) => i);
+  assert.deepEqual(seen, [...new Set(seen)]);
+  for (const i of seen) assert.ok(i >= 0 && i < items.length);
+  assert.equal(
+    mergedBars.reduce((t, [, g]) => t + g, 0),
+    plainBars.reduce((t, [, g]) => t + g, 0),
+  );
+  /* MUTATION (killed): drop `mergeNarration` from segmentStripHtml's destructure
+     so it never reaches stripModel. mergedBars.length comes back 56 and the
+     "must actually remove bars" assertion fails. */
+});
+
+/* ---------- 8b. the clip itself, read off the stylesheet ---------- */
+
+/** Rules a page resolves UNCONDITIONALLY: every at-rule body is dropped whole,
+    so a `@media (prefers-reduced-motion)` copy of `.fy-strip` cannot stand in
+    for the base rule the strip is actually built on. Brace-counted, for the
+    same reason `withoutLightBlocks` above it is. */
+function withoutAtRuleBlocks(css) {
+  let out = css;
+  for (;;) {
+    const start = out.search(/@(media|supports)\b/);
+    if (start < 0) return out;
+    let i = out.indexOf("{", start);
+    assert.ok(i > 0, "an at-rule with no body");
+    let depth = 0;
+    for (; i < out.length; i++) {
+      if (out[i] === "{") depth++;
+      else if (out[i] === "}" && --depth === 0) break;
+    }
+    assert.equal(depth, 0, "unbalanced braces in styles.css");
+    out = out.slice(0, start) + out.slice(i + 1);
+  }
+}
+
+const CSS_FLAT = withoutAtRuleBlocks(CSS.replace(/\/\*[\s\S]*?\*\//g, ""));
+
+/** The declarations of exactly one unconditional rule, matched on the WHOLE
+    selector text — `.fy-strip` must not match `.fy-strip--static`, which is the
+    entire distinction this fix turns on. `contains` narrows a comma-joined
+    selector list to the one rule that also mentions a given string. */
+function declarationsFor(selector, { contains = null } = {}) {
+  const hits = [...CSS_FLAT.matchAll(/([^{}]+)\{([^{}]*)\}/g)].filter((m) => {
+    const sel = m[1].trim();
+    return contains ? sel.includes(contains) && sel.includes(selector) : sel === selector;
+  });
+  assert.equal(
+    hits.length, 1,
+    `styles.css must have exactly one \`${selector}\` rule (found ${hits.length})`
+  );
+  return hits[0][2];
+}
+
+/** A length declared in a rule, in px. */
+function px(decls, prop) {
+  const m = decls.match(new RegExp(`(?:^|[;{\\s])${prop}:\\s*(-?[\\d.]+)px`));
+  assert.ok(m, `no \`${prop}\` in \`${decls.trim().slice(0, 60)}…\``);
+  return Number(m[1]);
+}
+
+test("the card's strip clips to one line, and the player's strip does not", () => {
+  const staticRule = declarationsFor(".fy-strip--static");
+  const baseRule = declarationsFor(".fy-strip");
+
+  assert.match(staticRule, /overflow:\s*hidden/, "the card's strip must clip what does not fit");
+  assert.match(staticRule, /flex-wrap:\s*nowrap/, "the card's strip must stay on one row");
+  assert.doesNotMatch(
+    staticRule, /overflow(-x)?:\s*(auto|scroll)/,
+    "a scrollbar inside a 5px-tall row is not a control anybody can use"
+  );
+
+  /* THE OTHER HALF, and the reason this lives on the modifier: `#fy-strip` on
+     the player page is the scrub target and shows the whole hour. Clipping it
+     would hide the end of a long Foray from the one screen with room for it. */
+  assert.doesNotMatch(
+    baseRule, /overflow:/,
+    "`.fy-strip` is shared with the player page's scrubber and must not clip"
+  );
+  /* MUTATION (killed), either way round: delete `overflow: hidden` from
+     `.fy-strip--static` (the first assertion goes red), or move it up to
+     `.fy-strip` so both strips clip (the last one does). */
+});
+
+test("the clip is load-bearing: even merged, the worst committed Foray does not fit the card", () => {
+  /* The numbers off the committed stylesheet rather than remembered: a card is
+     240px wide with 14px of padding and a 1px border each side, and at `sm` a
+     bar is floored at `--seg-min` with a 1px hairline between bars and a
+     `--seam` before every capsule but the first. Chrome measures 293px of bars
+     in a 210px card for this Foray; this reproduces that from the CSS. */
+  const card = declarationsFor(".hv2-foray-card", { contains: "body.ui-v2" });
+  const content = px(card, "width") - 2 * px(card, "padding") - 2 * px(card, "border");
+
+  const strip = declarationsFor(".fy-strip");
+  const sm = declarationsFor(".fy-strip--sm");
+  const gap = px(strip, "gap");
+  const segMin = px(sm, "--seg-min");
+  const seam = px(sm, "--seam");
+
+  const merged = stripModel(generated().playable, { mergeNarration: true }).segments;
+  const capsules = merged.filter((s) => s.runStart).length;
+  // `.fy-seg:first-child { margin-left: 0 }`, so the first capsule pays no seam.
+  const floor = merged.length * segMin + (merged.length - 1) * gap + (capsules - 1) * seam;
+
+  assert.equal(content, 210, "the card's content box moved — re-measure before trusting the rest");
+  assert.ok(
+    floor > content,
+    `the merged row is ${floor}px inside a ${content}px card — it fits now, so the clip is no ` +
+    "longer what keeps the strip inside the card, and this test wants rewriting, not deleting"
+  );
+
+  /* AND THE FLOOR IS NOT WHERE THE FIT GETS PAID FOR. `--seg-min`'s own comment
+     states the rule: a bar narrower than the whole break (`gap` + `--seam`)
+     reads as a wider-than-usual gap, i.e. as the bridge's absence. Cramming
+     more bars in by shrinking it is the tempting wrong fix. */
+  assert.ok(
+    segMin >= gap + seam,
+    `--seg-min is ${segMin}px against a ${gap + seam}px break — a bar that thin reads as a gap`
+  );
+  /* MUTATION (killed): `.fy-strip--sm { --seg-min: 5px }` -> `3px`, the change
+     that makes the worst Foray very nearly fit. The last assertion fails,
+     naming both numbers. */
+});

@@ -3080,7 +3080,13 @@ function showFirstTimeExplainerOnce() {
         ...forayViewOpts(),
       });
       if (!r) return "";
-      return player.segmentStripHtml(r.playable, { size: "sm" }) || "";
+      /* mergeNarration: a card is 210px of content box and a generated Foray
+         is now ~56 items, 40 of them bridges — one bar each overflows the card
+         and paints over its neighbour. Merging each run of back-to-back
+         bridges into one violet bar (sized by the run's real total) is the fix;
+         it is safe HERE and only here because nothing scrubs a card's strip.
+         See collapseNarrationRuns in player/segment-strip.js. */
+      return player.segmentStripHtml(r.playable, { size: "sm", mergeNarration: true }) || "";
     } catch (_) {
       // Malformed segments/sources data must not break the first-run Home
       // render — "degrades to nothing" (this function's own contract) has to
@@ -4141,7 +4147,9 @@ function forayCardV2Html(foray, { stretch = false, draft = false } = {}) {
         id: foray.id, segmentsDoc: state.segments, sourcesDoc: state.segmentSources,
         ...forayViewOpts(),
       });
-      if (r) stripHtml = player.segmentStripHtml(r.playable, { size: "sm" }) || "";
+      /* mergeNarration — same reason as welcomeStripHtml() above: a card is not
+         a scrub target, so a run of bridges may be one bar. */
+      if (r) stripHtml = player.segmentStripHtml(r.playable, { size: "sm", mergeNarration: true }) || "";
     } catch (_) {
       stripHtml = ""; // malformed segments/sources must not break Home
     }
