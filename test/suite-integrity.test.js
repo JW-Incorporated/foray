@@ -808,6 +808,19 @@ const FLOORS = {
      and the request payload drifting apart, which is the failure mode that turns
      a $6 projection into a bill nobody predicted. */
   "tools/narrate/narrate.test.mjs": 61,
+  /* The benchmark harness over generation reports (roadmap G-42a). Zero slack.
+     What it guards is a class of quiet lie rather than a crash: the harness
+     turns `report.json` into the rows of `docs/curation/generation-kpis.md`,
+     which is what the roadmap's §1.2 acceptance table will be read off and what
+     G-42b will diff once D11 lands. Its failure modes are all plausible-looking
+     numbers — a `?? 0` that reports "0 seed-lost beats" for a run that never
+     measured them, a *proposed* target printed as though D0 had confirmed it, a
+     clip mean taken over the 6 clips a run minted instead of the 10 it played.
+     Thirteen of the 38 tests exist only to kill `?? 0`, and two more pin the
+     COMMITTED table against the COMMITTED baseline — the archived reports live
+     on the generation host, not in this repo, so that pair is the only thing
+     that can catch a hand-edited cell in the deck. */
+  "tools/generation-bench/run.test.mjs": 38,
   /* The native shell (#36). `shell-invariants` is the one to be most careful
      with: four of the five things it pins are properties of files OUTSIDE
      tools/ — the root package.json staying dependency-free, index.html's CSP,

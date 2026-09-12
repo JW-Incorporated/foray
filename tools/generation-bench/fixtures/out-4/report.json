@@ -1,0 +1,13 @@
+{
+  "generated_at": "2026-09-11T07:28:38.897Z",
+  "dry_run": false,
+  "entries": [
+    {
+      "prompt": "The history of India: from the Indus Valley cities and the Mauryan and Mughal empires to the British Raj, Partition and the modern republic",
+      "outcome": "no-tape",
+      "detail": "NO TAPE — every beat sourced to narration; source: act 1 slot 1 \"The First Collapse\" — 0 tape / 5 narration; top reason: tier2:lineage (5 of 5) | source: act 1 slot 2 \"A Grammar for Absorption\" — 0 tape / 4 narration; top reason: tier2:lineage (4 of 4) | source: act 2 slot 1 \"Ashoka's Empire and Its Ghosts\" — 0 tape / 4 narration; top reason: tier2:lineage (4 of 4) | source: act 2 slot 2 \"Digesting the Foreigners\" — 0 tape / 5 narration; top reason: tier2:lineage (5 of 5) | source: act 3 slot 1 \"The Sultanate and the Mughal Synthesis\" — 0 tape / 6 narration; top reason: tier2:lineage (6 of 6) | source: act 3 slot 2 \"The Company That Didn't Settle\" — 0 tape / 6 narration; top reason: tier2:lineage (5 of 6) | source: act 4 slot 1 \"Stitching the Map\" — 0 tape / 4 narration; top reason: tier2:lineage (3 of 4)",
+      "ms": 266463,
+      "ttlA1Ms": null
+    }
+  ]
+}

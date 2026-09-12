@@ -1179,6 +1179,35 @@ Every number in §1.2 comes from `report.json` (per Foray: outcome, wall,
 `ttlA1Ms`, `timings`, `usage`, `meta.veracity`) and the run doc's KPI tables.
 
 ### G-42a · Benchmark harness on the generation host — **M · S — Hermes**
+- **DONE 2026-09-12** — the harness is `tools/generation-bench/run.mjs`; the
+  trend is `docs/curation/generation-kpis.md` and its machine twin
+  `tools/generation-bench/baseline.jsonl`, **backfilled with runs 4–9** from the
+  archived `report.json` of each (and the candidate Foray beside it for the clip
+  columns). `--append docs/curation/generation-kpis.md` splices a run's row in,
+  replacing rather than duplicating a run id already there, and `--format jsonl`
+  emits the line G-42b will diff. It grades nothing: a *proposed* §1.2 target
+  prints with a `?` and D0 is named in the legend, and nothing in the harness
+  compares a value to a target (this card's own "trend with a tolerance band,
+  not a hard pass/fail"). A field the report does not carry prints `—` and
+  serialises as `null` beside a `sources` entry reading `absent` — never 0 —
+  which is what runs 4–9 actually need: run 4's row has no `calls`, runs 4–8
+  have no Q-05 listening KPIs, **no report ever written carries `seedLostBeats`
+  or a dollar figure**. Fixtures and the suite (38 tests, mutations named) are
+  offline and committed.
+  - **Not yet done, and why.** The card's "done when" is *two scheduled runs
+    have appended rows*, which needs a key on the host and the schedule itself.
+    What is blocked is the **running**, not the reading: the harness reproduces
+    the deck's own published readings from the archive (tape-over-runtime 0.598
+    / 0.595 / 0.776 / 0.557 for runs 6–9, against §1.2's "59–61 % (runs 5–7),
+    78 % (run 8)" and the ledger's 56 % for run 9), so the rows a scheduled run
+    appends will be comparable with the six already there.
+  - **One thing the harness found.** Two different quantities are both called
+    "tape share". `report.json`'s `tapeShare` (Q-05, tape ÷ tape + narration,
+    present from run 9 on) reads **0.684** on run 9; the reading §1.2 quotes
+    (tape ÷ the candidate's `runtimeSec`, which also counts jingles) reads
+    **0.557** on the same run. They are separate columns, and §1.2's tape-share
+    row should say which of the two its ≥ 70 % proposal is about before D0
+    closes it.
 - **Owner:** Hermes (`tools/`, `docs/` lanes).
 - **Ask.** `tools/generation-bench/run.mjs` runs the two fixed prompts keyed on
   the host **on a schedule** (not per PR — ≈ $2–8 per run, §7), appends one row
