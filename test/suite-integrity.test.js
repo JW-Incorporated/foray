@@ -136,7 +136,7 @@ const FLOORS = {
      never drop a cached set on a network error — is one deleted test away from
      a phone that either hangs on a dead cell or plays a torn deploy. The page-
      level half is test/foray-directory.test.js, floored separately below. */
-  "player/foray-directory.test.js": 28,
+  "player/foray-directory.test.js": 29, // +1 F-92 (2026-09-12): `partial` on the bundled pointer defeats the `current` short-circuit exactly once
   "player/foray-sources.test.js": 24,
     /* 108 -> 109 with #264: a telemetry sink that throws must not reject a load. That
      became reachable when `player/client.js` gave this backend its first real sink —
@@ -283,7 +283,7 @@ const FLOORS = {
      route() and never awaited — and the FD-05 playback cases (a swap mid-session
      leaves the queue and the playhead alone; a vanished Foray reads `dropped`;
      the seam prefetch never warms an unvalidated set's audio). Zero slack. */
-  "test/foray-directory.test.js": 14,
+  "test/foray-directory.test.js": 15, // +1 F-92 (2026-09-12): a partial seed at the live version is fetched whole once, and the switch then lists the generated draft
   /* "Show draft Forays" (2026-09-11, Wyatt: "I can't see these forays in the
      app"): the founder's test-track switch AT THE PAGE — the real app.js over
      the real resolver and the real data. What only this suite can see is that
@@ -857,7 +857,7 @@ const FLOORS = {
 
      `shell-invariants` gained one: the same slice against TODAY'S real documents,
      independently of the fixture suite. */
-  "tools/mobile/prepare-webdir.test.mjs": 74, // FD-04 (2026-09-10): the seed is a subset of the directory's files; the seed pointer is optional; 72 -> 74
+  "tools/mobile/prepare-webdir.test.mjs": 77, // FD-04 (2026-09-10): the seed is a subset of the directory's files; the seed pointer is optional; 72 -> 74. F-92 (2026-09-12): the seed leaves generated drafts to the directory — the rule on the fixture, the verifier as a reached guard, and the real repo's draft absent from the real bundle; 74 -> 77
   "tools/mobile/shell-invariants.test.mjs": 53, // +1: iOS plugin never calls setActive (F11/F13, 2026-09-09); +1: Swift writes the L-02 log needle (2026-09-10)
   /* 2026-09-04: the bundle's JS/CSS is minified (comments + whitespace, identifiers
      kept) and its JSON re-serialised on the way in — docs/mobile-shell.md §3.4.

@@ -282,7 +282,7 @@ than copied; `item-tags.json` could not be, for the reason §3.1 measures — se
 | `data/item-tags.json` | 329 KB, 1,704 entries | **copied whole** | trimming it to the bundled pool re-ranks search in the app and not on the web — still true after #275, for a smaller reason; see §3.1 |
 | `data/segments.json` | 165 KB, 212 segments | **41 KB, 57 segments** | exactly the segments the bundled Forays reference — §3.3 |
 | `data/segment-sources.json` | 52 KB, 64 episodes | **15 KB, 19 episodes** | the episodes those segments play out of — §3.3 |
-| `data/forays.json` | 20 KB, 3 Forays | **copied whole** | it is the *selector* for the two rows above; slice it and the segments it names leave with it |
+| `data/forays.json` | 20 KB, 3 Forays (85 KB, 7 on 2026-09-12) | **copied whole** until F-92; **17 KB, the 4 curated Forays** since 2026-09-12 | every Foray except a *generated draft* (`seedCarries`); drafts are founder-switch-only and reach the phone through the directory, whose seed pointer is marked `partial` so a fresh install fetches the whole set once. It is still the *selector* for the two rows above, which are sliced against the seeded document — see F-92 in `docs/curation/generation-run-2026-09-09.md` |
 
 **36 files, 2.10 MB of 3.00 MB** when this section was written; **40 files, 1.46 MB
 (1,530 KB)** since 2026-09-04, and the table's "Bundled" column is now written

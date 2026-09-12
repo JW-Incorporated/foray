@@ -93,7 +93,9 @@
  * nightly refresh grows them. `data/segments.json` and `data/segment-sources.json`
  * are the two whose size is a function of the SEGMENT POOL, and every extraction
  * batch grows those — see the § above `referencedSegmentIds` for why that is the
- * worse of the two shapes and what #327 did about it.
+ * worse of the two shapes and what #327 did about it. `data/forays.json` is the
+ * third (F-92): its size is a function of how many Forays the GENERATOR has
+ * appended, and the seed carries all but its drafts — see `seedCarries`.
  *
  * Measured over 2026-07-19..08-18, `discover.json`
  * grew 681 KB -> 1.70 MB, about 35 KB a night, and `item-tags.json` 162 KB ->
@@ -158,17 +160,27 @@
  * foreground (`player/foray-directory.js`, driven from `app.js`'s `init()`), keeps
  * the last validated set in IndexedDB, and paints from that cache first.
  *
- * So these three files are still copied and sliced exactly as below, and for one
- * reason only: A FRESH INSTALL MUST PLAY OFFLINE. Their job is to be the set the
- * app holds before it has ever reached the network — the seed — not to be
- * complete. That answers #327's unbounded-pool worry for good: the bundle can
- * carry a CAPPED slice (the per-file budgets in `PROJECTED_DATA` are that cap —
- * 100 KB of segments, 40 KB of sources — and `assertForaySliceComplete` keeps the
- * slice honest against the Forays it ships) while the directory carries
+ * So these three files are still sliced exactly as below, and for one reason
+ * only: A FRESH INSTALL MUST PLAY OFFLINE. Their job is to be the set the app
+ * holds before it has ever reached the network — the seed — not to be complete.
+ * That answers #327's unbounded-pool worry for good: the bundle can carry a
+ * CAPPED slice (the per-file budgets in `PROJECTED_DATA` are that cap — 64 KB of
+ * Forays, 100 KB of segments, 40 KB of sources — and `assertForaySliceComplete`
+ * keeps the slice honest against the Forays it ships) while the directory carries
  * everything, and the app boots correctly with an EMPTY seed too
  * (`test/foray-directory.test.js`). The seed is by construction a SUBSET of the
- * directory's files: the same Forays, and the rows they reference, from the same
- * commit — `prepare-webdir.test.mjs` asserts that row for row.
+ * directory's files: a subset of the Forays, and the rows they reference, from the
+ * same commit — `prepare-webdir.test.mjs` asserts that row for row.
+ *
+ * WHICH FORAYS THE SEED CARRIES (F-92, 2026-09-12): every one except a GENERATED
+ * DRAFT — `seedCarries` is the rule, in one place. `data/forays.json` was copied
+ * whole until the fourth generated Foray (PR #642) took the seed's source slice to
+ * 42.4 KB against its 40 KB budget, with all four generated Forays still drafts
+ * that only the founder's switch can list. A draft reaches the phone through the
+ * directory on first launch; the seed's `data/forays-directory.json` is marked
+ * `partial` (`seedPointerDoc`) so the shell never mistakes the seed for the whole
+ * set and skips that fetch. Re-baselining the budget was not the fix, for the
+ * reason the § above `referencedSegmentIds` gives.
  *
  * USAGE
  *   node tools/mobile/prepare-webdir.mjs               # writes mobile/www
@@ -481,11 +493,13 @@ export function buildPlan(root = REPO_ROOT) {
 
 /** The directory pointer, `{ version, built_at, files, bytes, sha256 }`, written
  *  beside `deploy-manifest.json` by `tools/ci/generate-manifest.mjs` (FD-02). When
- *  it is on disk the bundle carries it, so a fresh install knows WHICH deploy its
- *  seed came from and can skip fetching a directory it already holds. The app
- *  reads it for `version`/`built_at` ONLY: its byte sizes and sha256s describe the
- *  site's whole files, and two of the seed's three are slices (§ the Foray segment
- *  slice), so they would not match — `player/foray-directory.js`'s header says so.
+ *  it is on disk the bundle carries it — plus one field, `partial: true`
+ *  (`seedPointerDoc`) — so a fresh install knows WHICH deploy its seed came from
+ *  (the diagnostics row, and the "never walk a phone backwards" guard) and knows
+ *  that what it holds at that version is a SUBSET, to be fetched whole once. The
+ *  app reads it for `version`/`built_at`/`partial` ONLY: its byte sizes and
+ *  sha256s describe the site's whole files, and all three of the seed's are
+ *  slices, so they would not match — `player/foray-directory.js`'s header says so.
  *
  *  OPTIONAL, AND NAMED AS THE ONE OPTIONAL FILE, rather than derived from a
  *  `fetchJson` call: `app.js` does not read it through `fetchJson` (the module
@@ -497,6 +511,26 @@ export const SEED_POINTER = "data/forays-directory.json";
 
 export function seedPointerPlan(root = REPO_ROOT) {
   return fs.existsSync(path.join(root, SEED_POINTER)) ? [SEED_POINTER] : [];
+}
+
+/** The pointer AS THE BUNDLE CARRIES IT: the repo's pointer plus `partial: true`.
+ *
+ *  WHY (F-92). The shell's refresh answers `current` — and fetches nothing — when
+ *  the live pointer names the version it already holds, and the seed's version is
+ *  the deploy the package was built from. While the seed carried every Foray that
+ *  was right: a package built from the same commit as the live site held the whole
+ *  set. Now that the seed leaves generated drafts to the directory (`seedCarries`),
+ *  that same fresh install would hold a subset at the live version and never fetch
+ *  the rest until the next deploy moved the version — the founder's switch on, and
+ *  no draft on the phone. `partial: true` tells `player/foray-directory.js` that a
+ *  held set at this version is a subset: the first refresh that reaches the origin
+ *  fetches the whole set once, and the set it adopts and caches is whole and
+ *  answers `current` from then on. UNCONDITIONAL rather than "only when a Foray
+ *  was left out": two of the seed's three files were already slices, and one fetch
+ *  of a few hundred KB on first launch is what fills the cache anyway.
+ *  `assertSlicesOnDisk` re-reads the bundled pointer and demands this shape. */
+export function seedPointerDoc(pointer) {
+  return { ...pointer, partial: true };
 }
 
 /** `SHELL_ONLY_FILES`, with every source proven to be on disk.
@@ -815,15 +849,167 @@ export function assertDiscoverSliceComplete(source, slice) {
  * re-runs the REAL `hydrateForayItems` over both pairs of documents rather than
  * trusting that rule.
  *
- * ALL FORAYS, NOT THE PUBLISHED ONES. `forayVisibility` makes an unpublished Foray
- * reachable by asking for it by id (`?foray=<id>`) — that is how the founder tests
- * one before publishing — so a draft's segments are as fetchable as a published
- * one's. Slicing against `listableForays` would ship a Foray that resolves to
- * nothing the moment somebody opened the link they were given, with every test here
- * green. ALL THREE Forays in the document are drafts today, so that rule would
- * reference zero segments and ship an empty pool — which the guard in `segmentSlice`
- * catches, but only because the guard exists.
+ * EVERY SEEDED FORAY, NOT ONLY THE PUBLISHED ONES. `forayVisibility` makes an
+ * unpublished Foray reachable by asking for it by id (`?foray=<id>`) — that is how
+ * the founder tested one before publishing — so a draft's segments are as fetchable
+ * as a published one's. Slicing against `listableForays` would ship a Foray that
+ * resolves to nothing the moment somebody opened the link they were given, with
+ * every test here green. ALL THREE Forays in the document were drafts when this was
+ * written, so that rule would have referenced zero segments and shipped an empty
+ * pool — which the guard in `segmentSlice` catches, but only because the guard
+ * exists.
+ *
+ * AND THE SEED IS NOT EVERY FORAY (F-92). The two slices are computed against the
+ * SEEDED Foray document — `seedForays` of the repo's, which leaves out generated
+ * drafts — and not against the repo's, because a slice computed from a wider
+ * selector than the document the bundle ships would carry rows nothing in the
+ * bundle can reach: exactly the unreachable bytes #327 took out. The rule for
+ * what the seed carries lives in `seedCarries`, once; this file's job is to slice
+ * against whatever that says and to prove, through `assertForaySliceComplete`
+ * over the document AS BUNDLED, that every seeded Foray resolves.
  */
+
+/* ------------------------------------------ what the seed carries (F-92) */
+
+/**
+ * Does the offline seed carry this Foray?
+ *
+ * THE RULE, IN ONE PLACE: every Foray EXCEPT a generated draft — `generated: true`
+ * AND `status: "draft"`. The curated Forays (drafts included) and every published
+ * Foray, generated or not, ship in the package; a generated draft reaches the phone
+ * through the directory instead.
+ *
+ * WHY (F-92, measured 2026-09-12 00:40Z). The fourth generated Foray (PR #642, +16
+ * segments, +16 source rows) took the seed's `data/segment-sources.json` to 42.4 KB
+ * against its 40 KB budget — the G-21c real-data gate's first real catch — with
+ * every one of the four generated Forays still a draft. A draft is founder-switch-
+ * only in the app (`cp_show_drafts`; `forayVisibility` in
+ * `player/foray-resolve.js`; #631): nobody but the founder can list one, and the
+ * founder tests it on a phone that has reached the network. The seed is the set
+ * that plays BEFORE the network has ever been reached (FD-04) — its job is to make
+ * a fresh install play offline, not to carry the founder's test track — and the
+ * directory carries everything (the live site's three files, fetched at boot and
+ * on every return to the foreground, `player/foray-directory.js`). So a generated
+ * draft costs the seed nothing and is on the phone the moment the first directory
+ * fetch lands; the bundled pointer is marked `partial` so that fetch is never
+ * skipped (`seedPointerDoc`).
+ *
+ * Why not "published only": the curated drafts are hand-authored, reachable by id,
+ * and small — 17 KB of Foray document for all four today. The generated ones are
+ * the ones that grow without bound: the generator appends one per run at ~20 KB of
+ * narration each plus its segments and sources, and they are what the switch
+ * exists for. Publishing one is a deliberate act, and a published generated Foray
+ * DOES enter the seed — `data/forays.json`'s budget in `PROJECTED_DATA` is the
+ * alarm for how many of those the seed can hold before it needs a rule of its own.
+ *
+ * `generated: true` and `status: "draft"` are read exactly as `app.js`'s
+ * `draftTrackOrder` and `forayVisibility` read them, so the seed leaves out
+ * precisely the Forays the switch admits.
+ */
+export function seedCarries(foray) {
+  return !(foray?.generated === true && foray?.status === "draft");
+}
+
+/**
+ * The seed's `data/forays.json`: the source document with the Forays the seed does
+ * not carry removed, in document order, every other top-level key kept, and a
+ * `bundled_from` note naming what was left to the directory — so a phone listing
+ * four Forays where the site lists eight is legible as "the seed" rather than as
+ * a broken document.
+ *
+ * @throws {WebDirError} on a document with no Forays, or one that seeds none — the
+ *   same fails-green guard every other projection opens with.
+ */
+export function seedForays(foraysDoc) {
+  const forays = foraysDoc?.forays;
+  if (!Array.isArray(forays) || forays.length === 0) {
+    throw new WebDirError(
+      `data/forays.json has no non-empty "forays" array, so there is nothing to seed. ` +
+        `Refusing to write an empty Foray list: it would pass every budget in this file and ` +
+        `give a fresh install nothing to play offline.`
+    );
+  }
+  const kept = forays.filter(seedCarries);
+  if (kept.length === 0) {
+    throw new WebDirError(
+      `every Foray in data/forays.json is a generated draft, so the seed would carry none. ` +
+        `A package with an empty seed plays nothing until it reaches the network — publish ` +
+        `one, or keep a curated Foray in the document.`
+    );
+  }
+  const { forays: _all, ...rest } = foraysDoc;
+  return {
+    ...rest,
+    bundled_from: {
+      forays: forays.length,
+      kept: kept.length,
+      directory_only: forays.filter((f) => !seedCarries(f)).map((f) => f?.id ?? null),
+    },
+    forays: kept,
+  };
+}
+
+/**
+ * Prove the seed's Foray document is the source's minus exactly the Forays
+ * `seedCarries` refuses — no more, no fewer, every kept row unchanged, every other
+ * top-level key intact.
+ *
+ * A separate, exported, tested function for the reason the other two verifiers
+ * are: without it a projection that filtered too much writes a smaller file and
+ * reports success, and a smaller file is what this projection exists to produce.
+ * Too much is the silent failure — a Foray the seed should carry, gone from the
+ * package, playing fine on the website. Too little is the bytes F-92 took out,
+ * back in.
+ *
+ * @param {object} source  the repo's `data/forays.json`
+ * @param {object} written what the bundle carries (or will)
+ */
+export function assertSeedForaysComplete(source, written) {
+  const all = allForays(source);
+  if (all.length === 0) {
+    throw new WebDirError(
+      `data/forays.json carries no Forays, so "the seed is the source minus its generated ` +
+        `drafts" is trivially true and the bundle would ship an empty list on the strength of it.`
+    );
+  }
+  const kept = allForays(written);
+  if (kept.length > all.length) {
+    throw new WebDirError(
+      `the seed's data/forays.json carries ${kept.length} Forays and the source ${all.length}. ` +
+        `A seed cannot carry more than the document it is seeded from, so this is not the ` +
+        `document it claims to be derived from.`
+    );
+  }
+  const expected = all.filter(seedCarries);
+  if (!isDeepStrictEqual(kept, expected)) {
+    const keptIds = kept.map((f) => f?.id ?? null);
+    const wantIds = expected.map((f) => f?.id ?? null);
+    const missing = wantIds.filter((id) => !keptIds.includes(id));
+    const extra = keptIds.filter((id) => !wantIds.includes(id));
+    const what = missing.length
+      ? `it is missing ${JSON.stringify(missing.slice(0, 3))} — a Foray the seed must carry, ` +
+        `gone from the package and playing fine on the website`
+      : extra.length
+        ? `it carries ${JSON.stringify(extra.slice(0, 3))}, which the seed must leave to the ` +
+          `directory — the bytes F-92 took out, back in`
+        : `a seeded Foray differs from the source's row of the same id, or the order changed`;
+    throw new WebDirError(
+      `the seed's data/forays.json is not the source minus its generated drafts (seedCarries): ` +
+        `${what}. The seed is the selector for the two segment slices, so a Foray the seed ` +
+        `carries that the slices were not computed from resolves to an empty running order.`
+    );
+  }
+  for (const key of Object.keys(source)) {
+    if (key === "forays") continue;
+    if (!isDeepStrictEqual(source[key], written?.[key])) {
+      throw new WebDirError(
+        `the seed's data/forays.json lost or changed its top-level "${key}". The projection ` +
+          `spreads every key it has not heard of straight through; only "forays" is filtered.`
+      );
+    }
+  }
+  return true;
+}
 
 /** Every segment id any Foray in the bundled document references.
  *
@@ -1127,12 +1313,14 @@ export function assertForaySliceComplete(foraysDoc, full, sliced) {
 /**
  * Which bundled data files are written as a slice rather than copied.
  *
- * THREE ENTRIES, TWO DIFFERENT REASONS, and the difference is what each budget
+ * FOUR ENTRIES, THREE DIFFERENT REASONS, and the difference is what each budget
  * means. `data/discover.json` is sliced because its size tracks the CATALOGUE and
  * the nightly refresh grows it whether or not anybody decided anything. The two
- * Foray documents are sliced because their size tracks the SEGMENT POOL, which
+ * segment documents are sliced because their size tracks the SEGMENT POOL, which
  * grows with every extraction batch — and unlike the catalogue, none of that growth
  * is reachable from the app until somebody authors a Foray against it (#327).
+ * `data/forays.json` is seeded (F-92) because its size tracks the GENERATOR, which
+ * appends a draft per run that only the founder's switch can list.
  *
  * `maxBytes` is a PER-FILE budget and the tighter of this file's two alarms. It
  * answers a different question from `MAX_BYTES`: not "did something enormous get
@@ -1144,6 +1332,12 @@ export function assertForaySliceComplete(foraysDoc, full, sliced) {
  *     silence. UNCHANGED by #327; LOWERED 800 -> 720 KB on 2026-09-04 when the
  *     JSON whitespace went (745 -> 636 KB), to keep it the same ~13% alarm it was
  *     rather than a 26% one.
+ *   - `data/forays.json` — 17 KB today (the four curated Forays; the four generated
+ *     drafts are the directory's), budget 64 KB. Its unit is a PUBLISHED GENERATED
+ *     Foray, ~18–26 KB of narration-heavy JSON each at today's size, so this is
+ *     room for about two of them. When it fires, the question is not the number
+ *     but the rule: the seed then needs "the newest N published" rather than
+ *     "every published", and `seedCarries` is where that goes.
  *   - `data/segments.json` — 41 KB today, budget 100 KB. Its unit is a Foray: at
  *     ~0.74 KB per referenced segment and ~19 segments per Foray, that is about
  *     four more Forays the size of today's three combined. Authoring a Foray is a
@@ -1159,6 +1353,20 @@ export function assertForaySliceComplete(foraysDoc, full, sliced) {
  * hole `MAX_BYTES` has.
  */
 export const PROJECTED_DATA = [
+  {
+    rel: "data/forays.json",
+    maxBytes: 64 * 1024,
+    whenBreached:
+      "Its unit is a PUBLISHED generated Foray: a generated draft costs zero bytes here " +
+      "(it is the directory's), a curated Foray is a few KB, and a published generated one " +
+      "is ~20 KB of narration. So this moves when generated Forays are published — a " +
+      "deliberate act — or when the seed rule came undone (seedCarries returning true for " +
+      "a generated draft, or seedForays reverted to a copy). If it really is published " +
+      "work, the seed needs a rule of its own — the newest N published — not a bigger " +
+      "number.",
+    project: (source) => seedForays(source),
+    verify: (source, written) => assertSeedForaysComplete(source, written),
+  },
   {
     rel: "data/discover.json",
     maxBytes: 720 * 1024,
@@ -1187,7 +1395,10 @@ export const PROJECTED_DATA = [
       "name got fatter. Neither is a knob to turn — check that it really is authored work " +
       "and not the slice having come undone (referencedSegmentIds returning too much, or " +
       "the filter in segmentSlice reverted to a copy).",
-    project: (source, ctx) => segmentSlice(source, ctx.source("data/forays.json")),
+    /* Against the SEEDED Foray document, not the repo's — the selector must be the
+       document the bundle ships, and `seedForays` is a pure function of the source,
+       so this stays independent of where forays.json sits in this list. */
+    project: (source, ctx) => segmentSlice(source, seedForays(ctx.source("data/forays.json"))),
     verify: (source, written, ctx) =>
       assertForaySliceComplete(
         ctx.bundled("data/forays.json"),
@@ -1204,7 +1415,9 @@ export const PROJECTED_DATA = [
       "than a longer one. Same check as data/segments.json: authored work, or a slice " +
       "that stopped slicing.",
     project: (source, ctx) =>
-      segmentSourceSlice(source, ctx.source("data/segments.json"), ctx.source("data/forays.json")),
+      segmentSourceSlice(
+        source, ctx.source("data/segments.json"), seedForays(ctx.source("data/forays.json"))
+      ),
     verify: (source, written, ctx) =>
       assertForaySliceComplete(
         ctx.bundled("data/forays.json"),
@@ -1229,13 +1442,14 @@ export const PROJECTED_DATA = [
  *  `data/item-tags.json`: see the § above `PROJECTED_DATA`; trimming it re-ranks
  *  search in the app and not on the website.
  *
- *  `data/forays.json`: it is the SELECTOR for the two segment slices, so the bundle
- *  must carry the same Foray document the slice was computed from. Slice or reorder
- *  it and the segments it names go out of the bundle with it — a Foray listed in the
- *  app whose every item resolves to nothing. It is 20 KB and bounded by how many
- *  Forays exist, so there is nothing to gain by trimming it and a silent empty
- *  running order to lose. */
-export const COPIED_WHOLE = ["data/item-tags.json", "data/forays.json"];
+ *  `data/forays.json` WAS here until F-92 (2026-09-12), with the reason "it is the
+ *  SELECTOR for the two segment slices, so the bundle must carry the same Foray
+ *  document the slice was computed from" — which is still the invariant, and is
+ *  now kept by `assertForaySliceComplete` verifying against the document AS
+ *  BUNDLED and `assertSeedForaysComplete` pinning that document to
+ *  `seedForays(source)`. What changed is that "bounded by how many Forays exist"
+ *  stopped being a bound once the generator started appending one per run. */
+export const COPIED_WHOLE = ["data/item-tags.json"];
 
 /** Why each `COPIED_WHOLE` entry is copied whole, keyed by the same path.
  *
@@ -1249,10 +1463,6 @@ export const WHY_COPIED_WHOLE = {
     `search-engine.js's tagDF() reads the WHOLE map, so a trimmed one re-ranks 12 query ` +
     `expansions and 62 score multipliers in the app and not on the website — sampling ` +
     `skew since #275, arithmetic before it.`,
-  "data/forays.json":
-    `it is the SELECTOR for the two segment slices, so the bundle must carry the same Foray ` +
-    `document the slice was computed from. A Foray that is in the app but not in the ` +
-    `selector had its segments sliced away, and it resolves to an empty running order.`,
 };
 
 /** Exactly how a bundled data file is serialised, in one place, because the bytes
@@ -1377,6 +1587,20 @@ export function assertSlicesOnDisk(absOut, root = REPO_ROOT) {
      document" is exactly the property that transform must preserve. */
   for (const rel of bundledDataFiles(absOut)) {
     if (PROJECTED_DATA.some((p) => p.rel === rel) || COPIED_WHOLE.includes(rel)) continue;
+    /* The one data file that is neither a slice nor a copy: the seed's pointer, which
+       must arrive as the repo's pointer PLUS `partial: true` — see `seedPointerDoc`.
+       Without the flag a fresh install built from the live deploy holds a subset it
+       believes is whole, and no draft ever reaches it. */
+    if (rel === SEED_POINTER) {
+      if (!isDeepStrictEqual(seedPointerDoc(source(rel)), bundled(rel))) {
+        throw new Error(
+          `the bundled ${rel} is not the repo's pointer marked partial. The seed leaves ` +
+            `generated drafts to the directory (F-92), so its pointer must say "partial: true" ` +
+            `or the shell answers "current" at the seed's version and never fetches them.`
+        );
+      }
+      continue;
+    }
     if (!isDeepStrictEqual(source(rel), bundled(rel))) {
       throw new Error(
         `the bundled ${rel} does not parse to the same document as the source. It is neither ` +
@@ -1466,6 +1690,7 @@ export function prepare({
   for (const rel of plan) {
     const src = path.join(root, rel);
     if (slices.has(rel)) reserialize(src, rel, slices.get(rel));
+    else if (rel === SEED_POINTER) reserialize(src, rel, seedPointerDoc(JSON.parse(fs.readFileSync(src, "utf8"))));
     else if (isBundledData(rel)) reserialize(src, rel);
     else if (isMinified(rel)) minify(src, rel);
     else copy(src, rel);
