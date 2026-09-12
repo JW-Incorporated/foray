@@ -2384,7 +2384,7 @@ D13; kanban card S-04a (`t_835d1a3c`, itself a workspace-bug redo of
 
 ## 2026-09-12 (the show search moves onto the device: a client-side title index, and what it costs)
 
-**Decision (S-03, `docs/search-plan.md`, PR TBD):** the client fetches a
+**Decision (S-03, `docs/search-plan.md`, PR #657):** the client fetches a
 derived title index, `data/show-index.tsv`, and answers the keystroke from it.
 **10,113 shows, 436KB raw, 201KB gzipped**, fetched lazily on the **first focus**
 of the search box and never at `init()`.
@@ -2430,7 +2430,7 @@ the current generation, which `test/sw-generation.test.js` now pins by name.
 
 ## 2026-09-12 (show-search ranking: four buckets, and the popularity prior is bucketed, not scored)
 
-**Decision (S-04, `docs/search-plan.md`, PR TBD):** `search-engine.js:searchShows`
+**Decision (S-04, `docs/search-plan.md`, PR #657):** `search-engine.js:searchShows`
 ranks exact title, then title prefix, then **word-start**, then substring; inside
 a bucket, curated before breadth, then a **bucketed** `chart_rank`, then
 `title.localeCompare`. The word-start bucket is the point: "fridman" used to land
@@ -2502,7 +2502,7 @@ claimed here as done.
 
 ## 2026-09-12 (the Apple fall-through, and the two gates that keep it from firing)
 
-**Decision (S-06, `docs/search-plan.md`, the `api/**` PR):** when a show search
+**Decision (S-06, `docs/search-plan.md`, PR #658):** when a show search
 finds nothing, `api/shows/search` asks Apple's public directory
 (`itunes.apple.com/search?entity=podcast`) **server-side**, reusing
 `api/episodes/appleBucket.ts`'s `SlidingWindowBucket` and

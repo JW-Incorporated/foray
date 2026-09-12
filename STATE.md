@@ -7,7 +7,7 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
-### Hermes search deck S-05/S-06/S-08, the `api/**` batch (2026-09-12) — `feat/search-deck-api`
+### Hermes search deck S-05/S-06/S-08, the `api/**` batch (2026-09-12, PR #658) — `feat/search-deck-api`
 
 - **Stacked on `feat/search-deck-s02-s08` (PR #657), not on `main`** — it
   builds on S-03's index and S-04's comparator. Merge #657 first.

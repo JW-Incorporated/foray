@@ -367,7 +367,7 @@ artwork, no popularity, no chart rank.
 
 ### 3.3 Shows search — a local pass and a breadth pass
 
-> **SUPERSEDED IN PART, 2026-09-12 (PR #657 / the follow-up `api/**` PR,
+> **SUPERSEDED IN PART, 2026-09-12 (PR #657 / PR #658,
 > `docs/search-plan.md` S-02/S-03/S-04/S-06).** The description below is kept
 > as the record of what shipped before the S-deck, because §6.2, §6.8 and
 > §6.11 all reason from it. What is now different:
@@ -833,7 +833,7 @@ reliable across module transforms.
 > page's existing `onSearchInputChange`/`runSearch` idiom rather than
 > inventing a second debounce. **The Go button survived** (§6.13 row 1, G2's
 > default): Enter still submits, the button still submits, neither is
-> required. The issue this section says is unfiled is filed as part of S-08.
+> required. The issue this section says is unfiled is now filed: **#659**.
 
 
 `app.js:renderAllShows` binds `#sh-form`'s `submit` only. F2's own note is
@@ -919,7 +919,7 @@ root by expanding it the way `app.js:expandTaxonomyPick` already does (the
 taxonomy is capped at two levels, so one parent-lookup covers it). Nothing
 records the defect or the fix.
 
-### 6.8 A breadth show page is not linkable or reloadable — RESOLVED (the `api/**` PR, 2026-09-12)
+### 6.8 A breadth show page is not linkable or reloadable — RESOLVED (PR #658, 2026-09-12)
 
 > **RESOLVED by `docs/search-plan.md` S-06(b).** Both halves of the fix this
 > section says do not exist now do: `GET /api/shows/search?id=<id>` returns

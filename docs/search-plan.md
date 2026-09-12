@@ -384,7 +384,7 @@ says so in its own header.
 
 **`stale-while-revalidate` is still missing from the response** even though
 `api/shows/search.ts` sets it — third independent observation (§1.4, §1.6, here).
-S-05's source-comment correction is in the follow-up `api/**` PR.
+S-05's source-comment correction is in PR #658.
 
 **The comparison that matters, stated in one line.** Before: every keystroke was
 worthless (there was no keystroke path at all) and every submit paid
@@ -720,7 +720,7 @@ prefix lists.
   unlisted → human merge (G3).** Batch it with S-06's `api/` change into one PR
   if the two land together.
 
-#### S-06 · Fall-through to Apple's directory, and a breadth show page that survives a reload — **L** — *design comment first* — **DONE** (the `api/**` PR, 2026-09-12; the design comment is at the top of `api/shows/appleShowSearch.ts`. Server-side, TWO independent gates — the client asks only when its own local pass found nothing, the endpoint calls only when the full 19,904 merged rows also found nothing — its own bucket instance so Shows cannot starve Episodes, `artistName` kept as the only author field in the product, and `?id=` + `resolveMissingShow` for linkability. **`api/test/vercel-bundle.test.mjs` needed no extension**: it was already rewritten to DISCOVER handlers and their whole import closure rather than the two hardcoded `TARGETS` the card describes — verified green over the new module)
+#### S-06 · Fall-through to Apple's directory, and a breadth show page that survives a reload — **L** — *design comment first* — **DONE** (#658, 2026-09-12; the design comment is at the top of `api/shows/appleShowSearch.ts`. Server-side, TWO independent gates — the client asks only when its own local pass found nothing, the endpoint calls only when the full 19,904 merged rows also found nothing — its own bucket instance so Shows cannot starve Episodes, `artistName` kept as the only author field in the product, and `?id=` + `resolveMissingShow` for linkability. **`api/test/vercel-bundle.test.mjs` needed no extension**: it was already rewritten to DISCOVER handlers and their whole import closure rather than the two hardcoded `TARGETS` the card describes — verified green over the new module)
 
 - **Ask:** two halves that share one endpoint change, which is why they share a
   card.
@@ -836,7 +836,7 @@ prefix lists.
 - **Governance:** `docs/legal/`, `app.js`, `test/` auto-merge.
   **`docs/DECISIONS.md` is DENIED → `founder-approved` (G4).**
 
-#### S-08 · Records, and the after numbers — **S** — **DONE** (#657 + the `api/**` PR, 2026-09-12; the after table is §1.7 above, beside §1.6's before table, and the probe was extended to measure the index's two passes separately. Requirements §3.3 superseded-in-part, §6.2 / §6.8 / §6.11 RESOLVED, §6.12's degraded-header bullet FIXED with the `stale-while-revalidate` finding added beside it, §6.13 rows 1 and 6 answered, §7.2's new constants. `docs/DECISIONS.md` carries four entries: the client index, the ranking rule and its deliberate client/server divergence, S-07's Option B, and the fall-through's two gates. **Still owed:** a probe run on the founder's device — every number in §1.6 and §1.7 is from this sandbox)
+#### S-08 · Records, and the after numbers — **S** — **DONE** (#657 + #658, 2026-09-12; the after table is §1.7 above, beside §1.6's before table, and the probe was extended to measure the index's two passes separately. Requirements §3.3 superseded-in-part, §6.2 / §6.8 / §6.11 RESOLVED, §6.12's degraded-header bullet FIXED with the `stale-while-revalidate` finding added beside it, §6.13 rows 1 and 6 answered, §7.2's new constants. `docs/DECISIONS.md` carries four entries: the client index, the ranking rule and its deliberate client/server divergence, S-07's Option B, and the fall-through's two gates. The F2 issue §6.2 said was unfiled is filed as **#659**, and **#560** carries a comment naming what this deck resolved (items 2, 7, 10's header half), what it CORRECTED (item 1's severity — production is not failing green, and the test item 1 blames was already rewritten to discover handlers rather than name two) and what it deliberately did not touch. **Still owed:** a probe run on the founder's device — every number in §1.6 and §1.7 is from this sandbox)
 
 - **Ask:** close the loop the way the other decks do.
   Re-run **S-01's probe** on the CI runner and paste the after table beside the
@@ -967,14 +967,14 @@ eight, split on GOVERNANCE rather than on card boundaries:
 | PR | Cards | Why together |
 |---|---|---|
 | **#657** | S-02, S-03, S-04, S-05 (client half), S-07 | All `ALLOWED_PREFIXES` except `docs/DECISIONS.md` (G4's label). S-03 and S-04 cannot sensibly be split — the ranking prior only exists in the index. |
-| **the `api/**` PR** (stacked on #657) | S-05 (`api/` half), S-06, S-08 | **`api/**` is UNLISTED in `tools/ci/path-policy.mjs` → a human merge click (G3), and no label helps.** Both `api/**` touches in this deck are batched into one PR so that is one click, not two — the deck's own "batch every unlisted touch into as few PRs as possible" rule. |
+| **#658** (stacked on #657) | S-05 (`api/` half), S-06, S-08 | **`api/**` is UNLISTED in `tools/ci/path-policy.mjs` → a human merge click (G3), and no label helps.** Both `api/**` touches in this deck are batched into one PR so that is one click, not two — the deck's own "batch every unlisted touch into as few PRs as possible" rule. |
 
 **Gates as they stand:**
 
 - **G1** — RULED Option B, 2026-09-11. Shipped by S-07.
 - **G2** — not asked; the deck's stated default was taken (the button survives,
   the requirement does not). A one-line follow-up if the founder wants it gone.
-- **G3** — **OPEN.** The `api/**` PR needs a human merge click.
+- **G3** — **OPEN.** PR #658 needs a human merge click.
 - **G4** — **OPEN.** `docs/DECISIONS.md` is touched by both PRs and needs the
   `founder-approved` label. Batch with the R-deck's and L-deck's sittings.
 - **G5** — answered with measurements rather than by the founder: the full
