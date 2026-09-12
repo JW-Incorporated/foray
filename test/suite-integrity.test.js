@@ -539,6 +539,10 @@ const FLOORS = {
   "test/show-search-ranking.test.js": 9,
   "test/show-index.test.js": 11,
   "test/show-search-cache.test.js": 6,
+  /* S-06 (2026-09-12): the Apple fall-through is asked for only on a genuine local miss,
+     its rows render and cache like any other breadth row, and a breadth show page survives
+     a cold open. Restored with the card after a merge took main's side on app.js. */
+  "test/show-search-fallthrough.test.js": 7,
   /* U-05 (docs/ui-transition-plan.md, kanban t_53381ee4, resolves issue
      #135): the Playlists results section under Shows/Episodes on the Shows
      page, plus the "Create a playlist about X" CTA. Floored new rather than
