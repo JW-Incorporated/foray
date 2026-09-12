@@ -17,7 +17,7 @@ import { sourceBeats, summarizeSourcing } from "./sourceBeats";
 import { summarizeSeeding } from "./spineSeeding";
 import { createDigestAudioSourceResolver, type AudioSourceResolver } from "./audioSourceLookup";
 import { createActGate, narrationActConcurrency, writeNarration } from "./writeNarration";
-import { countSynthesisCandidates, verifyBySynthesis } from "./synthesisVerify";
+import { countSynthesisCandidates, verifiedPageSummaries, verifyBySynthesis } from "./synthesisVerify";
 import { PrefetchingEvidenceGatherer } from "./evidencePrefetch";
 import { createEvidenceGatherer, type EvidenceGatherer } from "./gatherEvidence";
 import { ForayStitcher } from "./stitchForay";
@@ -1471,6 +1471,12 @@ export async function runForayPipeline(
      what the ordering cost against what it saved. */
   const actConcurrency = options.narrationActConcurrency ?? narrationActConcurrency();
   const gate = createActGate(actConcurrency);
+  /* F-88: which acts' narration has landed, by position, for the synthesis
+     pass — it reads the whole Foray's verified pages, and `writeNarration`
+     is handed one act. A rejected act contributes nothing; the ordered loop
+     reports its error when it reaches it. Declared BEFORE the acts start
+     because F-97 reads it from inside them too (`ground`). */
+  const settledActs: Array<WrittenAct | undefined> = [];
   const narrations: Array<Promise<WrittenAct>> = sourced.acts.map((act, i) => {
     const p = gate.run(() =>
       stage(
@@ -1502,7 +1508,12 @@ export async function runForayPipeline(
               /* Q-02: the rows tier 2 minted this run, so an Intro before a
                  clip the committed registry does not hold yet can still be
                  checked against its show and episode title. */
-              segmentSources: sourced.newSegmentSources
+              segmentSources: sourced.newSegmentSources,
+              /* F-97: F-88's ground on the act path — the verified pages of
+                 the acts that have already landed when THIS act starts. With
+                 `actConcurrency` acts starting together the first wave sees
+                 none; a later act's thesis seam may rest on them. */
+              ground: () => verifiedPageSummaries(settledActs)
             },
             spine.voice,
             ctx
@@ -1518,11 +1529,6 @@ export async function runForayPipeline(
     return p;
   });
 
-  /* F-88: which acts' narration has landed, by position, for the synthesis
-     pass — it reads the whole Foray's verified pages, and `writeNarration`
-     is handed one act. A rejected act contributes nothing; the ordered loop
-     reports its error when it reaches it. */
-  const settledActs: Array<WrittenAct | undefined> = [];
   narrations.forEach((p, j) => {
     p.then(
       (a) => {

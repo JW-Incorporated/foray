@@ -606,6 +606,30 @@ export function containsNegativeRecordClaim(text: string): boolean {
   return NEGATIVE_RECORD_PATTERNS.some((rx) => rx.test(t));
 }
 
+/** F-97: the first SENTENCE of `text` that asserts what the record does or
+ * does not contain, and the PHRASE that tripped the rule, so a refusal
+ * can quote both — run 9's writer was told "the script asserts what the
+ * record does or does not contain" three rounds running about "the plan
+ * nobody wrote down" and never found the sentence. Null when none does. */
+export function negativeRecordSentence(text: string): { sentence: string; phrase: string } | null {
+  const sentences = String(text ?? "")
+    .split(/(?<=[.!?…])\s+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const hit = (s: string): { sentence: string; phrase: string } | null => {
+    for (const rx of NEGATIVE_RECORD_PATTERNS) {
+      const m = rx.exec(s);
+      if (m) return { sentence: s, phrase: m[0] };
+    }
+    return null;
+  };
+  for (const sentence of sentences) {
+    const found = hit(sentence);
+    if (found) return found;
+  }
+  return hit(String(text ?? "").trim());
+}
+
 /* F-37/F-44: the design disagreed with itself about whether a connective
    page needs sources, and the verifier decided it by sampling (one
    zero-source Frame passed in eleven). Settled here, structurally, so the
@@ -656,6 +680,19 @@ export interface ValidateNarratedBeatOptions {
    * against that window (F-82's rule, act-wide). The per-page path never
    * sets this: there a Patch cites print (F-81). */
   tapeCitable?: boolean;
+  /** F-97: SUPPORT IS ACT-SCOPED. The sources the page's statements may
+   * rest on beyond its own — every other seam's gated claims, every clip's
+   * window, every ground page of the act — as a count. When supplied, the
+   * two zero-source rules (F-36/F-37/F-44's "declares no sources but
+   * states something about the world" and §4.7 rule 1's "a Patch must have
+   * a source") are judged against the page's sources PLUS these: a seam
+   * that states something about the world must be supported by at least
+   * one act source, not declare one on its own page — which source it
+   * rests on is the verifier's answer, not the writer's declaration. The
+   * negative-record rule (F-45) likewise looks for the backing quote among
+   * `actSourceQuotes`. The per-page path never sets either. */
+  actSourceCount?: number;
+  actSourceQuotes?: string[];
 }
 
 /**
@@ -686,14 +723,21 @@ export function validateNarratedBeat(
     });
   }
 
+  /* F-97: the sources the page may rest on — its own, plus the act's when
+     the caller judges support act-wide. */
+  const supportingSources = beat.sources.length + (opts.actSourceCount ?? 0);
+
   // A Patch/Carry page IS a beat's content (or supplies the part its tape
   // misses) — either way it is asserting something, so it must carry at
   // least one source. Hinge/Frame/Marker/Correction connective narration
   // may legitimately carry none (a pure handoff introduces no new claim).
-  if ((beat.mode === "Patch" || beat.mode === "Carry") && beat.sources.length === 0) {
+  if ((beat.mode === "Patch" || beat.mode === "Carry") && supportingSources === 0) {
     issues.push({
       code: "missing-sources",
-      message: `${beat.mode} narration carries a factual claim by definition and must have at least one source (§4.7 rule 1)`
+      message:
+        opts.actSourceCount !== undefined
+          ? `${beat.mode} narration carries a factual claim by definition and the act holds no source at all for it to rest on (§4.7 rule 1, act-scoped)`
+          : `${beat.mode} narration carries a factual claim by definition and must have at least one source (§4.7 rule 1)`
     });
   }
 
@@ -708,11 +752,13 @@ export function validateNarratedBeat(
   /* Zero sources is legitimate for a page that asserts nothing, and only
      for that page. Checked before the per-source rules so an empty page
      is told the one thing wrong with it. */
-  if (beat.sources.length === 0 && hasDeclarativeSentence(beat.script)) {
+  if (supportingSources === 0 && hasDeclarativeSentence(beat.script)) {
     issues.push({
       code: "sources-empty-with-claims",
       message:
-        "the page declares no sources but its script states something about the world — a page with no sources may only ask a question or hand off to the listener (F-36/F-37/F-44)"
+        opts.actSourceCount !== undefined
+          ? "the script states something about the world and the act holds no source at all — no clip window, no document, no claim — for it to rest on; with nothing to rest on a seam may only ask a question or hand off to the listener (F-36/F-37/F-44, act-scoped)"
+          : "the page declares no sources but its script states something about the world — a page with no sources may only ask a question or hand off to the listener (F-36/F-37/F-44)"
     });
   }
 
@@ -756,11 +802,13 @@ export function validateNarratedBeat(
     }
   }
 
-  if (containsNegativeRecordClaim(beat.script) && !beat.sources.some((s) => containsNegativeRecordClaim(s.quote ?? ""))) {
+  const negative = negativeRecordSentence(beat.script);
+  if (negative !== null && ![...beat.sources.map((s) => s.quote ?? ""), ...(opts.actSourceQuotes ?? [])].some((q) => containsNegativeRecordClaim(q))) {
+    const shown = negative.sentence.length > 200 ? `…${negative.sentence.slice(Math.max(0, negative.sentence.indexOf(negative.phrase) - 80), negative.sentence.indexOf(negative.phrase) + negative.phrase.length + 60)}…` : negative.sentence;
     issues.push({
       code: "unsourced-negative-claim",
       message:
-        "the script asserts what the record does or does not contain, but no source's quote says so — drop the assertion rather than turning an unsourced true claim into a sourced-looking false one (F-45)"
+        `the script asserts what the record does or does not contain — "${negative.phrase}" in "${shown}" — but no source's quote says so; drop the assertion or say only what a source does say, rather than turning an unsourced true claim into a sourced-looking false one (F-45)`
     });
   }
 

@@ -36,6 +36,7 @@ import {
   type EvidencePack
 } from "./gatherEvidence";
 import type {
+  GroundPageBrief,
   NarrationBuildContext,
   NarrationPageBrief,
   NarrationWriterBuilder,
@@ -305,6 +306,13 @@ export interface WriteNarrationOptions {
    * committed registry is read through the pack (`titlesForItem`); these
    * are the rows not in it yet. */
   segmentSources?: ReadonlyArray<{ id: string; show: string; title: string }>;
+  /** F-97: F-88's ground on the act path — the verified pages of the acts
+   * that have already landed, read once when an act starts writing. A
+   * callback because the driver narrates acts concurrently (G-32) and the
+   * set grows while this act is in flight; a thesis seam of a later act
+   * may rest on them. Absent (and empty for the acts that start together)
+   * means the act rests on its own clips and documents, as before. */
+  ground?: () => ReadonlyArray<GroundPageBrief>;
 }
 
 /** What `writeNarration` counts that a request proxy cannot (G-34). */
@@ -605,7 +613,12 @@ export async function writeNarration(acts: SourcedAct[], options: WriteNarration
           if (writer.writeAct && verifier.verifyAct) {
             const banked = act.slots.map((_, slotIndex) => options.resume?.(actIndex, slotIndex));
             if (banked.every((s): s is WrittenSlot => s !== undefined)) return { title: act.title, slots: banked };
-            return writeActNarration(act, { writer, verifier, evidence, stats: options.stats, segmentSources: options.segmentSources }, voice, ctx);
+            return writeActNarration(
+              act,
+              { writer, verifier, evidence, stats: options.stats, segmentSources: options.segmentSources, ground: options.ground?.() ?? [] },
+              voice,
+              ctx
+            );
           }
 
           /* WS-D1: every slot in an act is written in parallel. Nothing in
@@ -690,6 +703,12 @@ export interface PendingPage {
      holds whatever its mode (`ValidateNarratedBeatOptions.tapeCitable`).
      Never set on the per-page path. */
   citesTape?: boolean;
+  /* F-97: the page is one seam of an act's prose, and whether a beat's
+     claim is carried with support is decided per BEAT by the verifier,
+     not per page role at the gate — so §4.7 rule 1's "a Patch must select
+     at least one claim" does not fire here. Never set on the per-page
+     path, where a Patch page IS the beat's content. */
+  claimsOptional?: boolean;
 }
 
 async function writeSlot(
@@ -1386,7 +1405,7 @@ export function gateSelectedClaims(claims: SelectedClaim[], page: PendingPage): 
     valid.push(claim);
   }
 
-  if (valid.length === 0 && (page.mode === "Patch" || page.mode === "Carry")) {
+  if (valid.length === 0 && (page.mode === "Patch" || page.mode === "Carry") && page.claimsOptional !== true) {
     issues.push(
       docs.length === 0
         ? `no evidence could be gathered for this ${page.mode} page, and a ${page.mode} page carries the beat's content — it cannot be written unsourced`
