@@ -79,7 +79,14 @@ export const SourcedBeatSchema = z.discriminatedUnion("sourcing", [
       /** Carried through from §4.4 so §4.7 knows what it is writing around;
        * absent means `account` (see BeatKindSchema in types/spine.ts). */
       kind: BeatKindSchema.optional(),
-      tape: TapePointerSchema
+      tape: TapePointerSchema,
+      /** F-96: this beat rides in an EARLIER beat's clip — the clip was
+       * extended to cover its thought (`sourceBeats.ts`, `MERGE_GAP_SEC`)
+       * and `tape` is that clip's pointer, shared. Names the beat whose clip
+       * it is, the way a narration beat's `carriedBy` names the beat holding
+       * its page. `stitchAct` emits the clip once, on the first beat; the
+       * act writer sees one clip carrying both claims. */
+      mergedInto: z.object({ slot: z.number().int().nonnegative(), beat: z.number().int().nonnegative() }).strict().optional()
     })
     .strict(),
   z
@@ -88,7 +95,21 @@ export const SourcedBeatSchema = z.discriminatedUnion("sourcing", [
       claim: z.string().trim().min(1),
       exploration: z.boolean(),
       kind: BeatKindSchema.optional(),
-      narration: NarrationAssignmentSchema
+      narration: NarrationAssignmentSchema,
+      /**
+       * F-96: THE SEED IS GONE. §4.3 wrote this beat FROM a stretch of tape
+       * (`Beat.seed`, G-25) and §4.5 could not place that tape — the seed
+       * window did not carry the claim (`window-overlap`), or the ledger or
+       * the audio row refused it — and nothing else carried it either. The
+       * beat names a guest and a moment the Foray will never play: run 9's
+       * replay (PR #650) found six of its eight unverified pages were such
+       * beats, whose claims could be neither tape-cited nor retrieved. Set
+       * only on a seeded beat that ends as narration, so the writer and
+       * verifier can be told the tape behind the claim is not in the Foray
+       * (the narration lane consumes it; sourcing only carries it). The
+       * trace row says which gate refused the seed (`seedGate`).
+       */
+      seedLost: z.literal(true).optional()
     })
     .strict()
 ]);
@@ -298,6 +319,17 @@ export interface TapeRelevanceInput {
    * rows counts the beats the previous Forays' tape served again.
    */
   poolCut?: "reused";
+  /**
+   * F-96: for a reused pool cut, how many seconds LONGER this run's own
+   * extent of the same window was — the length the pool's id rule (F-84)
+   * cost the listener. Run 9 reused four of run 8's pre-Q-01 cuts at
+   * 31.9-152 s against extents of 70-381 s. Absent when the pool's cut was
+   * at least as long.
+   */
+  poolCutShortBySec?: number;
+  /** F-96: the beat rides in an earlier beat's clip, extended to cover it;
+   * the position of that beat (see `SourcedBeat.mergedInto`). */
+  mergedInto?: { slot: number; beat: number };
 }
 
 /**

@@ -98,8 +98,26 @@ export function summarizeSeeding(deepened: readonly Act[], sourced: SourceBeatsR
     0
   );
   const throughSeed = sourced.tapeRelevance.filter((row) => row.seedWindowWon === true).length;
+  /* F-96: two things run 9's line could not say. How many beats ride in an
+     earlier beat's clip (one clip, two claims — the merge), and how many
+     pool cuts were reused SHORT of this run's own extent of the same window
+     (F-84's id rule: run 9 reused four of run 8's pre-Q-01 cuts at their old
+     lengths). Appended only when they happened, so the line reads as it did. */
+  const merged = sourced.tapeRelevance.filter((row) => row.mergedInto !== undefined).length;
+  const short = sourced.tapeRelevance.filter((row) => typeof row.poolCutShortBySec === "number" && row.poolCutShortBySec > 0);
+  const shortSec = Math.round(short.reduce((sum, row) => sum + (row.poolCutShortBySec ?? 0), 0));
+  /* And the seeded beats that ended WITHOUT tape (`seedLost`, F-96) — the
+     ones whose claims name a guest the Foray never plays; PR #650 found six
+     of run 9's eight unverified pages were these. */
+  const seedLost = sourced.acts.reduce(
+    (sum, act) => sum + act.slots.reduce((s, slot) => s + slot.beats.filter((b) => b.sourcing === "narration" && b.seedLost === true).length, 0),
+    0
+  );
   return (
     `source: ${seeded} of ${beats.length} beats seeded from the research map — ` +
-    `${tape} tape (${throughSeed} through the seed) / ${beats.length - tape} narration`
+    `${tape} tape (${throughSeed} through the seed) / ${beats.length - tape} narration` +
+    (merged > 0 ? `; ${merged} beat(s) carried by an earlier beat's clip (F-96)` : "") +
+    (short.length > 0 ? `; ${short.length} pool cut(s) reused ${shortSec} s short of this run's extent (F-84/F-96)` : "") +
+    (seedLost > 0 ? `; ${seedLost} seeded beat(s) ended without tape (seedLost, F-96)` : "")
   );
 }

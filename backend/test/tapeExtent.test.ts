@@ -238,6 +238,63 @@ describe("extendToThought — Q-01: thought boundaries, relevance, the clamp", (
     expect(weighted(60, 120)).toBeLessThan(RELEVANCE_FLOOR);
   });
 
+  it("scores the claim and the thesis as two shares and takes the larger — a thesis the tape never says costs nothing (F-96)", () => {
+    /* RUN 9'S LIVE TIMIDITY, PINNED. The idf the window search hands over
+       holds the claim's terms only, so every thesis word weighed 1 — the
+       claim's rarest word's weight — and a twenty-word thesis the guest never
+       spoke diluted a claim-continuing minute below the floor. Two minutes:
+       the first continues the CLAIM, the second turns to the THESIS's subject.
+       Under the old union query, with the claim's idf and none for the
+       thesis, the first minute scores 2 words of 5 + 20 = under 0.08 and the
+       clip stops; scored as two shares, it is the claim's own 0.4 and the
+       second minute is the thesis's. MUTATION THAT KILLS THIS: fold the two
+       lists into one query and divide by the union's weight. */
+    const cues: TranscriptCue[] = [
+      cue(0, 60, "The bearings crack because the torque keeps switching direction on them."),
+      cue(60, 120, "The turbines break early, years early, and the operators are the ones who pay.")
+    ];
+    const longThesis =
+      "Why the turbines on these farms break early and what it costs the operators who bought them on a twenty year design life that nobody had tested.";
+    const idf = new Map<string, number>();
+    for (const t of thoughtTerms(claim)) idf.set(t, 5);
+    const index = indexCues(cues);
+    const scorer = relevanceScorer(index, { claimTerms: thoughtTerms(claim), thesisTerms: thoughtTerms(longThesis), idf });
+    const claimOnly = relevanceScorer(index, { claimTerms: thoughtTerms(claim), idf });
+    /* The claim minute scores exactly what it scores without the thesis. */
+    expect(scorer(0, 60)).toBe(claimOnly(0, 60));
+    expect(scorer(0, 60)).toBeGreaterThanOrEqual(RELEVANCE_FLOOR);
+    /* And the thesis minute, which says none of the claim, still passes on
+       the thesis's own share. */
+    expect(claimOnly(60, 120)).toBe(0);
+    expect(scorer(60, 120)).toBeGreaterThanOrEqual(RELEVANCE_FLOOR);
+    /* What the union did: a share of the combined weight, the thesis at 1 a
+       word — the claim minute's score cut to a fraction of itself by words
+       the guest never said (under half here; live, under the floor). */
+    const unionTerms = [...new Set([...thoughtTerms(claim), ...thoughtTerms(longThesis)])];
+    const unionScorer = relevanceScorer(index, { claimTerms: unionTerms, idf });
+    expect(unionScorer(0, 60)).toBeLessThan(claimOnly(0, 60) / 2);
+  });
+
+  it("cutWindowToSegment never shortens an extended window below the boundary the extension found", () => {
+    /* The cut GROWS towards the floor and mints anchors; it has no step that
+       moves an edge inwards. Stated over every extent the fixtures produce.
+       MUTATION THAT KILLS THIS: in `cutWindowToSegment`, clamp `last` back to
+       `window.lastCue - 1` when the span is over the search band. */
+    for (const [cues, first, last] of [
+      [qa, 5, 6],
+      [qa, 4, 4],
+      [monologue, 2, 3],
+      [monologue, 6, 7]
+    ] as Array<[TranscriptCue[], number, number]>) {
+      const extent = extendToThought(windowAt(cues, first, last), cues, terms());
+      const span = cutWindowToSegment(claim, cues, extent)!;
+      expect(span.firstCue).toBeLessThanOrEqual(extent.firstCue);
+      expect(span.lastCue).toBeGreaterThanOrEqual(extent.lastCue);
+      expect(span.startSec).toBeLessThanOrEqual(extent.startSec);
+      expect(span.endSec).toBeGreaterThanOrEqual(extent.endSec);
+    }
+  });
+
   it("caps at maxSec at a boundary, and leaves the floor to the cut's claim-overlap growth rather than padding (F-62)", () => {
     /* THE FLOOR IS A TARGET, NOT A PAD. One twenty-second claim cue between
        off-topic sentences comes out of the extension twenty seconds long —

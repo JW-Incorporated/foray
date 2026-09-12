@@ -120,11 +120,25 @@ export function stitchAct(act: WrittenAct, actLabel: string): StitchedAct {
    * boundary the ear can rest on" and reset the clock (§4.8 rule 3). */
   let elapsedSinceMarker = 0;
   let previousTape: StitchedTapeItem | null = null;
+  /** Segment ids this act has already emitted (F-96). */
+  const emittedSegments = new Set<string>();
 
   for (const slot of act.slots) {
     for (const beat of slot.beats) {
       const myIndex = beatIndex++;
       coverage.push({ status: "present", beatIndex: myIndex, claim: beat.claim });
+
+      /* F-96: A CLIP CARRYING TWO BEATS PLAYS ONCE. §4.5 merges a beat whose
+         thought sits in the same stretch of tape as an earlier beat's clip
+         into that clip (`SourcedBeat.mergedInto`) — both beats point at one
+         segment. The clip was emitted on the first beat; the second emits
+         nothing, its claim being in the tape already playing. Coverage still
+         records it `present` above, the way a narration beat carried by a
+         seam page is. Decided on the segment id rather than the field so a
+         writer that rebuilds its tape beats without the field (`writeAct.ts`
+         does) still cannot make one segment play twice — `check-forays.mjs`
+         refuses a Foray in which one does. */
+      if (beat.sourcing === "tape" && emittedSegments.has(beat.tape.segmentId)) continue;
 
       if (beat.sourcing === "narration") {
         /* Q-03: a beat carried by another beat's page (`carriedBy`) has no
@@ -193,6 +207,7 @@ export function stitchAct(act: WrittenAct, actLabel: string): StitchedAct {
         endSec: beat.tape.endSec
       };
       items.push(tapeItem);
+      emittedSegments.add(tapeItem.segmentId);
       elapsedSinceMarker += tapeItem.endSec - tapeItem.startSec;
       previousTape = tapeItem;
     }

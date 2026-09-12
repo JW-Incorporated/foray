@@ -173,12 +173,17 @@ export function buildProjectedItems(partialItems: ForayItem[], actIndex: number,
     }
     projectedActs += 1;
     let beatIndex = 0;
+    /** F-96: a beat merged into an earlier beat's clip shares its segment;
+     * the clip is projected once, as `stitchAct` emits it once. */
+    const projectedSegments = new Set<string>();
     for (const slot of act.slots) {
       const slotId = plan.slots[flatSlot]?.id ?? slugifySlotTitle(slot.title);
       flatSlot += 1;
       for (const beat of slot.beats) {
         const n = beatIndex++;
         if (beat.sourcing === "tape") {
+          if (projectedSegments.has(beat.tape.segmentId)) continue;
+          projectedSegments.add(beat.tape.segmentId);
           items.push({ type: "segment", segment_id: beat.tape.segmentId, slot: slotId });
           addedRuntimeSec += beat.tape.endSec - beat.tape.startSec;
           projectedTapeSegments += 1;
