@@ -49,12 +49,12 @@ import {
   checkForays,
   loadFiles,
   d1Budget,
-  d5Triples,
+  d5UniformPairs,
   iqr,
   maxStartsInWindow,
   D1_WINDOW_SEC,
-  D5_IQR_FLOOR_SEC,
   L4_SOFT_MAX_SEC,
+  M4_LONG_CLIP_SEC,
   M4_SHARE_MAX,
 } from "./check-forays.mjs";
 
@@ -240,7 +240,7 @@ test("every committed Foray's report is consistent with the items it lists", () 
      this called the whole test "strictly stronger". The recomputations do: the
      segment count, the tape sum, tape-plus-narration, the mean and the stated
      runtime are all this file's own arithmetic against the checker's. The two
-     rule verdicts below (D1 within budget, no D5 triples) do NOT — they are
+     rule verdicts below (D1 within budget, D5's pairs reported) do NOT — they are
      implied by "the committed data passes with zero errors" above, and they are
      kept only because a failure here names WHICH Foray and by how much, which
      that test cannot.
@@ -269,8 +269,11 @@ test("every committed Foray's report is consistent with the items it lists", () 
     );
     assert.ok(Math.abs(r.mean_sec - tape / segs.length) < 0.06, `${where}mean ${r.mean_sec}`);
     assert.ok(r.d1_max_starts_in_window <= r.d1_budget, `${where}D1 ${r.d1_max_starts_in_window}/${r.d1_budget}`);
-    assert.equal(r.d5_pairwise_violations, 0, `${where}D5 triples`);
-    assert.ok(r.d5_iqr_sec >= D5_IQR_FLOOR_SEC, `${where}IQR ${r.d5_iqr_sec}`);
+    /* Q-04: every committed Foray's tape predates Q-01, so D5's pair clause is
+       reported on it, never gated, and the report says which regime applied. */
+    assert.equal(r.d5_gated, false, `${where}tape cut before Q-01 must not be gated on D5's pair clause`);
+    assert.equal(r.d5_uniform_pairs, d5UniformPairs(segs.map((i) => durationOf(live, i.segment_id))).length, `${where}D5 pairs`);
+    assert.ok(typeof r.d5_iqr_sec === "number" && r.d5_iqr_sec >= 0, `${where}IQR ${r.d5_iqr_sec} is still reported`);
     // The stated runtime is the drift detector the checker itself runs; asserted
     // here per Foray so a failure names which document is stale.
     assert.ok(
@@ -755,77 +758,33 @@ test("no segment runs past the end of its episode", () => {
   }
 });
 
-test("the mean-deviation reading is the stricter one, and it only ever warns", () => {
-  /* The ruling `check-forays.mjs` records: D5's first clause is ambiguous, the
-     gate implements pairwise, and the mean-deviation reading is computed and
-     REPORTED so it is not quietly resolved in our favour.
+test("D5's pair clause is reported, never gated, on every committed Foray — its tape predates Q-01 (Q-04)", () => {
+  /* THE RULING `check-forays.mjs` RECORDS (Q-04): "no two consecutive clips
+     within 20 % of the same length" is STRICTER than the triple clause it
+     replaced — a uniform triple holds two uniform pairs, a uniform pair need
+     be in no triple — and every Foray committed before Q-04 has one to four
+     adjacent pairs inside the band (measured 2026-09-12: 3 / 1 / 2 / 4 on the
+     hand-cut four, 1 / 3 / 1 / 3 on the generated four). Their tape cannot be
+     re-cut, so on them the pairs are WARNINGS, each one counted in the report,
+     and the gate binds only a Foray whose played rows carry Q-01's `boundary`.
 
-     Was pinned as "3 grilling names and 2 capital names", which is curation.
-
-     THE SEPARATION IS PROVEN ON THE FIXTURE, not on live curation (#236 review).
-     The first draft required some live Foray to have more mean-deviation triples
-     than pairwise ones, which is another existence requirement on curation — and
-     the fixture holds exactly that shape by construction (4 mean-deviation, 0
-     pairwise), which is what a fixture is for. The live data then only has to obey
-     the ORDERING (never looser) and have every triple reach the warnings. */
-  const perForay = live.forays.forays.map((f) => {
-    const durs = segmentItems(f).map((i) => durationOf(live, i.segment_id));
-    return {
-      id: f.id,
-      pairwise: d5Triples(durs, { reading: "pairwise" }).length,
-      meanDev: d5Triples(durs, { reading: "mean-deviation" }).length,
-    };
-  });
-  for (const p of perForay) {
-    assert.ok(p.meanDev >= p.pairwise, `${p.id}: mean-deviation found fewer triples than pairwise`);
-  }
-  const fixtureDurs = segmentItems(boundary(fixture)).map((i) => durationOf(fixture, i.segment_id));
-  const fixtureSplit = {
-    pairwise: d5Triples(fixtureDurs, { reading: "pairwise" }).length,
-    meanDev: d5Triples(fixtureDurs, { reading: "mean-deviation" }).length,
-  };
-  assert.deepEqual(fixtureSplit, { pairwise: 0, meanDev: 4 }, "the fixture is what separates the two readings");
-  /* Warn-only, said as narrowly as it is true: the mean-deviation triples reach
-     the warnings and NONE of them reaches the errors. Asserting the whole error
-     list is empty here blamed the stricter reading for any failure in the data,
-     which would point a curator with a genuine pairwise D5 FAIL at the wrong
-     rule; "the committed data passes with zero errors" is the test that owns
-     that message. */
-  const { warnings, errors } = checkForays(live);
-  assert.deepEqual(errors.filter((e) => /mean-deviation/.test(e)), [], "the stricter reading must never fail the build");
-  assert.equal(
-    warnings.filter((w) => /mean-deviation/.test(w)).length,
-    perForay.reduce((n, p) => n + p.meanDev, 0),
-    "every mean-deviation triple must be reported as a warning"
-  );
-});
-
-test("the closest pairwise triple in every Foray still clears D5's 1.2", () => {
-  /* D5's first clause has no margin reported anywhere: the gate says pass or
-     fail, and a Foray one hundredth away from failing looks identical to one
-     nowhere near it. grilling-foray.md §5 named ARG-5/6/7 at "+32 %" as its
-     closest call and had the wrong triple, which is the kind of mistake only a
-     computed number catches.
-
-     Derived rather than pinned to a label and a ratio (#236): the property is
-     "the closest call clears the rule", which is true of any Foray, and the
-     margin goes in the failure message so it is visible on the day it goes. */
+     Said as narrowly as it is true: every pair reaches the warnings, none
+     reaches the errors, and the report's count agrees with the warnings. The
+     Q-01 half — the same pairs as errors on a Foray cut under Q-01 — is the
+     D5 block below. */
+  const { warnings, errors, report } = checkForays(live);
+  assert.deepEqual(errors.filter((e) => /D5 FAIL/.test(e)), [], "a pair on pre-Q-01 tape must never fail the build");
+  let reported = 0;
   for (const f of live.forays.forays) {
-    const items = segmentItems(f);
-    const durs = items.map((i) => durationOf(live, i.segment_id));
-    assert.ok(durs.length >= 3, `${f.id} has too few segments for D5 to say anything`);
-    let tightest = { ratio: Infinity, at: -1 };
-    for (let i = 0; i + 2 < durs.length; i++) {
-      const t = durs.slice(i, i + 3);
-      const ratio = Math.max(...t) / Math.min(...t);
-      if (ratio < tightest.ratio) tightest = { ratio, at: i };
-    }
-    const names = items.slice(tightest.at, tightest.at + 3).map((i) => i.label);
-    assert.ok(
-      tightest.ratio > 1.2,
-      `${f.id}: ${names.join(" / ")} are within ${((tightest.ratio - 1) * 100).toFixed(1)} % of each other`
-    );
+    const durs = segmentItems(f).map((i) => durationOf(live, i.segment_id));
+    const pairs = d5UniformPairs(durs).length;
+    const r = report.forays.find((x) => x.id === f.id);
+    assert.equal(r.d5_uniform_pairs, pairs, `${f.id}: the report counts ${r.d5_uniform_pairs} pairs and the durations hold ${pairs}`);
+    assert.equal(r.d5_gated, false, `${f.id}: gated, but its tape predates Q-01`);
+    reported += pairs;
   }
+  assert.equal(warnings.filter((w) => /D5 \(reported, not gated/.test(w)).length, reported, "every pair must be reported as a warning");
+  assert.ok(reported > 0, "the committed Forays hold uniform pairs today, or this test proves nothing about reporting");
 });
 
 /* ============================================================================
@@ -847,20 +806,15 @@ test("maxStartsInWindow counts starts, not gaps", () => {
   assert.equal(maxStartsInWindow([0, 600]).count, 1);
 });
 
-test("d5Triples pairwise fires only when max/min <= 1.2", () => {
-  assert.equal(d5Triples([100, 110, 119]).length, 1);
-  assert.equal(d5Triples([100, 110, 121]).length, 0);
-  assert.equal(d5Triples([100, 121, 110]).length, 0, "order within the triple must not matter");
-});
-
-test("d5Triples mean-deviation is the stricter reading of the same sentence", () => {
-  // 97.9 / 126.7 / 101.8 — grilling-foray.md §5's MOSS-2/MOSS-3/SM-1. Pairwise
-  // says fine (max/min 1.294); mean-deviation says violation. A literal on
-  // purpose: these three numbers are the doc's worked example, not a shape of
-  // anybody's Foray, and they are what makes the two readings differ at all.
-  const t = [97.9, 126.7, 101.8];
-  assert.equal(d5Triples(t, { reading: "pairwise" }).length, 0);
-  assert.equal(d5Triples(t, { reading: "mean-deviation" }).length, 1);
+test("d5UniformPairs fires only when max/min <= 1.2, whichever order the pair comes in", () => {
+  assert.equal(d5UniformPairs([100, 119]).length, 1);
+  assert.equal(d5UniformPairs([100, 121]).length, 0);
+  assert.equal(d5UniformPairs([121, 100]).length, 0, "order within the pair must not matter");
+  assert.equal(d5UniformPairs([100, 120]).length, 1, "exactly 1.2 is not over the tolerance, so it is uniform");
+  /* Run 8's sixteen durations: three adjacent pairs and — the difference
+     between this clause and the triple it replaced — not one uniform triple. */
+  const run8 = [167.3, 69.7, 65.6, 116.7, 113.8, 174.2, 98.3, 152.1, 90.7, 176.7, 158.3, 31.9, 170.5, 130.9, 162.8, 78.0];
+  assert.deepEqual(d5UniformPairs(run8).map((h) => h.index), [1, 3, 9]);
 });
 
 test("iqr uses R-7 linear interpolation", () => {
@@ -937,10 +891,11 @@ test("the fixture's numbers are the ones its README derives", () => {
   assert.equal(r.segments, 30);
   assert.equal(r.runtime_sec, 3121, "5 x 625 s of period, less the one 168 -> 164 cut");
   assert.equal(r.tape_runtime_sec, 3121, "no narration is authored in the fixture");
-  assert.equal(r.mean_sec, 104, "3121 / 30, over D3's 90 s floor");
+  assert.equal(r.mean_sec, 104, "3121 / 30 — reported; D3's floor was retired by Q-04");
   assert.equal(r.d1_budget, 6, "52.0 min falls in §5c's 45-120 minute band");
   assert.equal(r.d5_iqr_sec, 76, "quartiles land on 72 s and 148 s");
-  assert.equal(r.d5_pairwise_violations, 0);
+  assert.equal(r.d5_uniform_pairs, 0, "the period alternates, so no two neighbours are inside D5's band");
+  assert.equal(r.d5_gated, false, "the fixture's tape predates Q-01");
 });
 
 /* ------------------------------------------------------------------- D1 */
@@ -1036,92 +991,56 @@ test("D1 FAILS on a pathological shortest-first order", () => {
   boundary(f).items.sort((a, b) => durationOf(f, a.segment_id) - durationOf(f, b.segment_id));
   const kinds = new Set(errorsFor(f).map((e) => e.match(/(D\d|M\d) FAIL/)?.[0]).filter(Boolean));
   assert.ok(kinds.has("D1 FAIL"), [...kinds].join(", "));
-  assert.ok(kinds.has("D5 FAIL"), [...kinds].join(", "));
+  /* D5's pair clause is reported, not gated, on the fixture's pre-Q-01 tape
+     (Q-04) — shortest-first still makes uniform pairs, and they still surface. */
+  assert.ok(!kinds.has("D5 FAIL"), [...kinds].join(", "));
+  assert.ok(checkForays(f).warnings.some((w) => /D5 \(reported, not gated/.test(w)), "shortest-first must still surface D5's pairs");
   assert.ok(kinds.has("M3 FAIL"), [...kinds].join(", "));
 });
 
 /* ------------------------------------------------------------------- D5 */
 
-test("D5 (pairwise) passes on the fixture", () => {
-  assert.equal(checkForays(fixture).report.forays.find((x) => x.id === "boundary-1").d5_pairwise_violations, 0);
-});
-
-test("D5 FAILS when three near-equal segments are made consecutive", () => {
-  // B-1 / F-3 / A-4 are 148 / 164 / 168 s — within 13.5 % of each other, and the
-  // fixture deliberately never plays them adjacently. Force it and the gate must
-  // fire, naming all three in order.
-  const f = fx();
-  const items = boundary(f).items;
-  const [a, b, c] = ["B-1", "F-3", "A-4"].map((l) => items.find((i) => i.label === l));
-  const rest = items.filter((i) => ![a, b, c].includes(i));
-  boundary(f).items = [...rest.slice(0, 4), a, b, c, ...rest.slice(4)];
-  const d5 = errorsFor(f).filter((e) => /D5 FAIL/.test(e));
-  assert.equal(d5.length, 1, d5.join("\n"));
-  assert.match(d5[0], /D5 FAIL: B-1 \/ F-3 \/ A-4 are 148\.0 \/ 164\.0 \/ 168\.0 s/);
-});
-
-test("D5 FAILS in isolation on a swap that breaks only D5, and only two such swaps exist", () => {
-  /* THE FOURTH ACCEPTANCE PROPERTY, and the one that is only a proof because D1
-     sits exactly at budget: almost any swap of this order trips D1 too, because
-     moving a long segment out of a window makes that window tighter than 600 s.
-     A-1 <-> F-1 moves 16 s into 21 s of slack, so D1 survives; positions 5-7
-     become 65 / 72 / 72 and D5 fires once. It needs no other edit either — a
-     swap does not change the sum, so `runtime_sec` stays true, and both
-     positions are in the same slot block.
-
-     The exhaustive claim is SEARCHED, not asserted from a comment. The previous
-     version of this test said "exhaustively searched: of the 496 pair swaps ...
-     SM-1 <-> TRA-1 is the only one" in prose, which is a fact nobody could
-     re-check without redoing the search by hand. 435 checks cost about half a
-     second.
-
-     Mutation: widen D5_TOLERANCE past 0.108, and the isolating swaps drop to
-     zero — the search below fails rather than the assertion silently passing on
-     a different swap. */
-  const errors = errorsFor(swapA1AndF1(fx()));
-  assert.equal(errors.length, 1, `expected D5 alone, got:\n${errors.join("\n")}`);
-  assert.match(errors[0], /D5 FAIL: E-1 \/ A-1 \/ B-2 are 65\.0 \/ 72\.0 \/ 72\.0 s/);
-
-  /* Bounded by the ITEM list, not by the segment count. They are the same today
-     because the fixture is all segments, and review was right that they would not
-     be if a bridge were ever added to it: the search would silently stop short of
-     the tail and the exhaustiveness claim below would quietly become false. */
-  const n = boundary(fixture).items.length;
-  assert.equal(n, 30, "the fixture's item count, which the 435 below is C(n, 2) of");
-  const isolating = [];
-  for (let i = 0; i < n; i++) {
-    for (let j = i + 1; j < n; j++) {
-      const f = fx();
-      const items = boundary(f).items;
-      [items[i], items[j]] = [items[j], items[i]];
-      const e = errorsFor(f);
-      if (e.length && e.every((x) => /D5 FAIL/.test(x))) isolating.push(`${items[j].label}<->${items[i].label}`);
-    }
+/** The fixture as a Q-01 Foray, IN PLACE: generated, the disclosure spliced in
+    first, and every pool row stamped with the `boundary` the tier-2 mint
+    writes — which is what puts a Foray under the Q-04 length regime. The
+    in-place shape is what `mutatedCheckout` needs. */
+function stampQ01(f, boundaryKind = "sentence") {
+  const foray = boundary(f);
+  foray.generated = true;
+  const firstSlot = Array.isArray(foray.slots) && foray.slots.length ? foray.slots[0].id : undefined;
+  foray.items.unshift({
+    type: "narration", id: "disclosure", mode: "marker", script: DISCLOSURE_SCRIPT,
+    ...(firstSlot !== undefined ? { slot: firstSlot } : {}),
+  });
+  if (typeof foray.runtime_sec === "number") {
+    foray.runtime_sec = +(foray.runtime_sec + Math.round((DISCLOSURE_SCRIPT.length / 17) * 1000) / 1000).toFixed(2);
   }
-  assert.equal(n * (n - 1) / 2, 435, "the search has to cover every pair for the claim below to be exhaustive");
-  assert.deepEqual(
-    isolating,
-    ["A-1<->F-1", "C-3<->B-3"],
-    "exactly two of the 435 pair swaps isolate D5 — the designed one and the same move one period later"
-  );
-});
+  for (const s of f.segments.segments) {
+    s.boundary = boundaryKind;
+    s.extended_by_sec = 0;
+  }
+  return f;
+}
 
-test("the CLI exits 1 on a D5-breaking order (the red-CI proof)", () => {
-  const { status, stderr } = runCli(mutatedCheckout(swapA1AndF1));
-  assert.equal(status, 1, "the CLI must exit non-zero");
-  assert.match(stderr, /D5 FAIL/);
-  assert.doesNotMatch(stderr, /D1 FAIL/, "this mutation must isolate D5");
-});
+/** Puts the fixture's first two played clips within 10 % of each other, in
+    place: the FIRST is lengthened to a tenth under the second (72 -> 134.5 s
+    beside B-1's 148 s), which spreads the later starts out rather than packing
+    them (the fixture sits exactly on D1's budget) and touches no other
+    neighbour (148 / 84 stays outside the band). The two items lose their
+    `role` so L3's per-role ceiling does not fire on the longer quote. The
+    fixture never plays two neighbours inside the band by design, so this is
+    the one edit that makes exactly one pair. */
+function pairUp(f) {
+  const items = segmentItems(boundary(f)).slice(0, 2);
+  const [a, b] = items.map((i) => f.segments.segments.find((s) => s.id === i.segment_id));
+  a.end_sec = +(a.start_sec + (b.end_sec - b.start_sec) / 1.1).toFixed(3);
+  for (const i of items) delete i.role;
+  delete boundary(f).runtime_sec;
+  return f;
+}
 
-test("D5's IQR clause holds on the fixture at 76.0 s", () => {
-  const durs = segmentItems(boundary(fixture)).map((i) => durationOf(fixture, i.segment_id));
-  assert.equal(iqr(durs), 76);
-  assert.equal(checkForays(fixture).report.forays.find((x) => x.id === "boundary-1").d5_iqr_sec, 76);
-});
-
-test("D5 FAILS when every segment is the same length (IQR floor)", () => {
-  const f = fx();
-  // Nine copies of one duration: IQR 0, and every triple pairwise-identical.
+/** Nine copies of one duration, in place: every adjacent pair identical. */
+function nineOfAKind(f) {
   const one = f.segments.segments[0];
   f.segments.segments = Array.from({ length: 9 }, (_, i) => ({ ...one, id: `x#${i}`, item_id: "x" }));
   f.sources.sources = [{ ...f.sources.sources[0], id: "x", duration_sec: one.reference_duration_sec }];
@@ -1129,7 +1048,68 @@ test("D5 FAILS when every segment is the same length (IQR floor)", () => {
   boundary(f).label_prefixes = { X: "x" };
   delete boundary(f).runtime_sec;
   delete boundary(f).slots;
-  assert.match(errorsFor(f).join("\n"), /interquartile range 0\.0 s is under the 45 s floor/);
+  return f;
+}
+
+test("D5 reports no pair on the fixture: the period alternates, and the tape predates Q-01", () => {
+  const r = checkForays(fixture).report.forays.find((x) => x.id === "boundary-1");
+  assert.equal(r.d5_uniform_pairs, 0, "72 / 148 / 84 / 168 / 65 / 88 never puts two neighbours inside the band");
+  assert.equal(r.d5_gated, false);
+});
+
+test("D5 WARNS on a uniform pair in tape cut before Q-01, and FAILS on the same pair in a Q-01 Foray", () => {
+  /* The same edit — the second clip stretched to 1.1x the first — on the plain
+     fixture and on the fixture stamped as Q-01 tape. One warning and no error;
+     then one error naming the pair. MUTATION THAT KILLS THIS: gate the pair
+     clause unconditionally (drop `cutUnderQ01`) — the first half fails; or
+     never gate it — the second half fails. Ran both — red. */
+  const pre = pairUp(fx());
+  const preErrors = errorsFor(pre);
+  assert.deepEqual(preErrors.filter((e) => /D5 FAIL/.test(e)), [], preErrors.join("\n"));
+  const warned = checkForays(pre).warnings.filter((w) => /D5 \(reported, not gated — tape cut before Q-01\)/.test(w));
+  assert.equal(warned.length, 1, warned.join("\n"));
+  assert.match(warned[0], /A-1 \/ B-1 are 134\.5 \/ 148\.0 s — two consecutive clips within \+\/-20 % of the same length \(max\/min 1\.100\)/);
+
+  const q01 = pairUp(stampQ01(fx()));
+  const d5 = errorsFor(q01).filter((e) => /D5 FAIL/.test(e));
+  assert.equal(d5.length, 1, errorsFor(q01).join("\n"));
+  assert.match(d5[0], /D5 FAIL: .* two consecutive clips within \+\/-20 % of the same length \(max\/min 1\.100\)/);
+  assert.equal(checkForays(q01).report.forays.find((x) => x.id === "boundary-1").d5_gated, true);
+});
+
+test("a `boundary` outside the accepted three, or a negative `extended_by_sec`, is rejected on the row", () => {
+  /* G-21c: the two Q-01 fields are enumerated (`segment.boundary`) and
+     validated where present, and absent on every row minted before Q-01. */
+  const f = stampQ01(fx(), "paragraph");
+  assert.match(errorsFor(f).join("\n"), /has boundary "paragraph"; expected one of turn, sentence, claim-only/);
+  const g = stampQ01(fx());
+  g.segments.segments[0].extended_by_sec = -5;
+  assert.match(errorsFor(g).join("\n"), /has extended_by_sec -5; expected a non-negative number/);
+  assert.deepEqual(errorsFor(stampQ01(fx(), "turn")), [], "a well-formed Q-01 Foray passes clean");
+});
+
+test("the CLI exits 1 on a Q-01 Foray with a uniform pair, and 0 on the same pair in pre-Q-01 tape (the red-CI proof)", () => {
+  const gated = runCli(mutatedCheckout((f) => pairUp(stampQ01(f))));
+  assert.equal(gated.status, 1, "the CLI must exit non-zero");
+  assert.match(gated.stderr, /D5 FAIL/);
+  /* `runCli` captures stderr only on a non-zero exit, so the warning itself is
+     asserted in-process above; here the proof is the exit code. */
+  const reported = runCli(mutatedCheckout((f) => pairUp(f)));
+  assert.equal(reported.status, 0, reported.stderr);
+});
+
+test("D5's IQR is still reported at 76.0 s on the fixture, and no longer gated (Q-04)", () => {
+  const durs = segmentItems(boundary(fixture)).map((i) => durationOf(fixture, i.segment_id));
+  assert.equal(iqr(durs), 76);
+  assert.equal(checkForays(fixture).report.forays.find((x) => x.id === "boundary-1").d5_iqr_sec, 76);
+  /* Nine copies of one duration: an IQR of 0, which used to fail the 45 s
+     floor, and eight identical adjacent pairs. On pre-Q-01 tape: eight
+     warnings, no error. On a Q-01 Foray: eight errors. */
+  const pre = nineOfAKind(fx());
+  assert.deepEqual(errorsFor(pre).filter((e) => /D5 FAIL|interquartile/.test(e)), []);
+  assert.equal(checkForays(pre).warnings.filter((w) => /D5 \(reported/.test(w)).length, 8);
+  const q01 = stampQ01(nineOfAKind(fx()));
+  assert.equal(errorsFor(q01).filter((e) => /D5 FAIL/.test(e)).length, 8);
 });
 
 /* ------------------------------------------------------------- M4 (§6c) */
@@ -1165,9 +1145,81 @@ test("M4 passes on the fixture with room, and FAILS when one episode takes over 
   delete boundary(f).runtime_sec;
   delete boundary(f).slots;
   for (const i of boundary(f).items) delete i.slot;
+  /* Both clauses that can see it fire: each episode is 50 % of the segments,
+     and each one's tape beyond its longest clip is around half the runtime
+     (Q-04's restatement of the runtime clause). Four lines, two per episode. */
   const m4 = errorsFor(f).filter((e) => /M4 FAIL/.test(e));
-  assert.equal(m4.length, 2, m4.join("\n"));
+  assert.equal(m4.filter((e) => /of segments/.test(e)).length, 2, m4.join("\n"));
+  assert.equal(m4.filter((e) => /beyond its longest clip/.test(e)).length, 2, m4.join("\n"));
   assert.match(m4[0], /is 50\.0 % of segments/);
+});
+
+/* ---- M4, restated for clips of a minute to half an hour (Q-04) --------- */
+
+/** A draft Foray built from `[episode, seconds]` clips in play order — the
+    shape M4's two Q-04 clauses are asked about. Starts step by 100 s so M3's
+    order holds within an episode. */
+function builtForayByEpisode(clips, { forayId = "built-m4" } = {}) {
+  const f = fx();
+  const items = [];
+  const seen = new Set();
+  let n = 0;
+  for (const [ep, sec] of clips) {
+    const eid = `${forayId}-${ep}`;
+    if (!seen.has(eid)) {
+      seen.add(eid);
+      f.sources.sources.push({
+        id: eid, show: "Built Show", title: `Built episode ${ep}`,
+        audio_url: `https://cdn.example/${eid}.mp3`, audio_type: "audio/mpeg",
+        duration_sec: 7200, dai_suspected: false,
+      });
+    }
+    const sid = `${eid}#${n * 100}`;
+    f.segments.segments.push({ id: sid, item_id: eid, start_sec: n * 100, end_sec: n * 100 + sec, reference_duration_sec: 7200 });
+    items.push({ type: "segment", slot: "one", segment_id: sid });
+    n++;
+  }
+  f.forays.forays.push({
+    id: forayId, kind: "deep-dive", status: "draft", topic: boundary(fixture).topic,
+    title: "A built Foray", summary: "A built Foray",
+    slots: [{ id: "one", title: "One" }], items,
+  });
+  return f;
+}
+const m4ErrorsIn = (f, forayId = "built-m4") => errorsFor(f).filter((e) => e.includes(`foray "${forayId}"`) && e.includes("M4 FAIL"));
+
+test("M4 lets a single let-it-ride clip through whatever share of the tape it is (Q-04)", () => {
+  /* THE FOUNDER'S CASE. A 1,500 s clip beside four of 100 / 125 s is 77 % of
+     the tape and 20 % of the segments. Under the plain runtime share it failed
+     by construction; the restated clause measures an episode's tape BEYOND its
+     longest clip, which for a single clip is zero. Mutation: measure the
+     share on the whole episode again — this fails at 77 %. */
+  assert.deepEqual(m4ErrorsIn(builtForayByEpisode([["a", 1500], ["b", 100], ["c", 125], ["d", 100], ["e", 125]])), []);
+  assert.ok(1500 / 1950 > M4_SHARE_MAX, "the case has to be over the old line to prove anything");
+});
+
+test("M4 FAILS when one episode supplies two clips over M4_LONG_CLIP_SEC (Q-04)", () => {
+  /* Seven other episodes at 200 / 250 s, then *a* at 500 s and again at
+     350 s: 2 of 9 segments, and 350 of 2,400 s beyond the longest (14.6 %) —
+     under the share cap. Only the one-long-clip clause fires, once. Mutation:
+     delete the `e.long > 1` check — no error at all. */
+  const m4 = m4ErrorsIn(
+    builtForayByEpisode([["b", 200], ["c", 250], ["d", 200], ["e", 250], ["f", 200], ["g", 250], ["h", 200], ["a", 500], ["a", 350]])
+  );
+  assert.equal(m4.length, 1, m4.join("\n"));
+  assert.match(m4[0], new RegExp(`supplies 2 clips over ${M4_LONG_CLIP_SEC} s`));
+});
+
+test("M4 FAILS on an episode's tape beyond its longest clip past 25 %, and passes under it (Q-04)", () => {
+  /* Seven others at 60 / 75 s (465 s), then *a* at 400 s and at 300 s: the
+     300 s is *a*'s tape beyond its longest clip, 25.8 % of 1,165 s. One clip
+     is long, not two; 400 / 300 is outside D5's band; 2 of 9 segments. One
+     error, naming the clause. At 250 s (22.4 %) there is none. */
+  const seven = [["b", 60], ["c", 75], ["d", 60], ["e", 75], ["f", 60], ["g", 75], ["h", 60]];
+  const over = m4ErrorsIn(builtForayByEpisode([...seven, ["a", 400], ["a", 300]]));
+  assert.equal(over.length, 1, over.join("\n"));
+  assert.match(over[0], /25\.8 % of tape runtime beyond its longest clip/);
+  assert.deepEqual(m4ErrorsIn(builtForayByEpisode([...seven, ["a", 400], ["a", 250]])), []);
 });
 
 /* ------------------------------------------------------- D2 / D3 / D4 / L / M */
@@ -1236,13 +1288,6 @@ test("L4's escape hatch needs BOTH fields, not either", () => {
   delete boundary(f).runtime_sec;
   itemAt(f, "D-1").long_reason = "reason but no flag";
   assert.match(errorsFor(f).join("\n"), /L4 FAIL: D-1/);
-});
-
-test("D3 FAILS when the mean segment duration drops under 90 s", () => {
-  const f = fx();
-  for (const s of f.segments.segments) s.end_sec = s.start_sec + 70;
-  delete boundary(f).runtime_sec;
-  assert.match(errorsFor(f).join("\n"), /D3 FAIL: mean segment duration 70\.0 s/);
 });
 
 test("D2 FAILS when two sub-60 s segments are followed by a short one", () => {

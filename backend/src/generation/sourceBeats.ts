@@ -50,8 +50,8 @@ import {
  * and a 15.6 s interquartile range and was refused on D2, D3, D5 and M4's
  * runtime clause at once. */
 
-/** M4: no one episode over this share of a Foray's segments — or of its tape
-    SECONDS, which is the clause F-73 added a gate for (`m4RuntimeAllows`). */
+/** M4: no one episode over this share of a Foray's segments — or, since Q-04,
+    of its tape SECONDS BEYOND ITS LONGEST CLIP (`m4RuntimeAllows`). */
 export const M4_ITEM_SHARE_MAX = 0.25;
 
 /** D2: a segment under this is "short", and at most two may run consecutively
@@ -62,72 +62,37 @@ export const D2_SHORT_SEC = 60;
     ends here — so it never lets the debt be taken on: see `d2RunAllows`. */
 export const D2_RECOVERY_SEC = 150;
 
-/** D3: the floor under a Foray's MEAN segment duration. */
-export const D3_MEAN_FLOOR_SEC = 90;
 /**
- * How many placed segments the running-mean gate waits for.
+ * D5, RESTATED (Q-04): no two consecutive clips within +/- `D5_TOLERANCE` of
+ * the same length. The arithmetic lives in `d5Pair.ts`, mirrored from the
+ * checker and pinned to it by `test/d5Pair.test.ts`; re-exported here so every
+ * importer of this module's constants keeps working.
  *
- * The same exemption, for the same reason, as `m4SegmentCapFor`'s `max(1, …)`:
- * with one or two segments the mean is whatever those one or two happen to be,
- * and the answer to a tape-starved Foray is more tape, not less. Refusing the
- * second segment for being short would take the mean no closer to the floor and
- * cost the Foray a piece of tape it needs. Three is the smallest count at which
- * a refusal can actually move the number the rule reads.
+ * WHAT WENT WITH THE RULES. Until Q-04 this block also mirrored D3's mean floor
+ * (`D3_MEAN_FLOOR_SEC` 90 s, gated from the third placement), D5's
+ * interquartile floor (`D5_IQR_FLOOR_SEC` 45 s, served by a post-placement
+ * re-cut pass) and the length LADDER the two were sized against
+ * (`D_TARGET_LADDER_SEC` 105/165/135/210 s, F-73; the triple clause's re-cut,
+ * F-80). All three were rules about the lengths a window was CUT to. With Q-01 a
+ * clip's length is what the tape's own relevance measures (`tapeExtent.ts`) —
+ * a minute to half an hour, at thought boundaries — so there is no target to
+ * ladder, the mean floor is served per clip by the 60 s floor, and a spread
+ * over clips that vary by an order of magnitude is met by construction. The
+ * pair clause is what remains of D5's listening purpose, and it is asked where
+ * the length is decided (`chooseCutForPlacement`).
  */
-export const D3_MEAN_MIN_PLACED = 3;
-
-/** D5, first clause: three consecutive durations within +/- this of each other
-    are a uniformity violation. The PAIRWISE reading, which is the one
-    `check-forays.mjs` gates on — see its own `d5Triples` note on why. The
-    arithmetic itself lives in `d5Triple.ts` (F-80), mirrored from the checker
-    and pinned to it by `test/d5Triple.test.ts`; re-exported here so every
-    importer of this module's constants keeps working. */
-export { D5_TOLERANCE } from "./d5Triple";
-/**
- * D5, second clause: the interquartile range of the durations must reach this.
- *
- * MIRRORED FOR THE READER, DELIBERATELY NOT GATED HERE. An IQR is a property of
- * the whole finished multiset and it is not monotone in a single placement: with
- * three or four segments placed almost any candidate lowers it, so a
- * placement-time refusal would decline tape early on precisely in order to
- * protect a number that only becomes meaningful later — and a Foray with less
- * tape has a worse IQR, not a better one. What sourcing does about D5's spread
- * instead is `D_TARGET_LADDER_SEC`: it asks consecutive placements for
- * deliberately different lengths, so the spread is built rather than filtered
- * for. This number is what that ladder is sized against.
- */
-export const D5_IQR_FLOOR_SEC = 45;
+export { D5_TOLERANCE } from "./d5Pair";
 
 /**
- * THE LENGTHS §4.5 ASKS CONSECUTIVE TAPE PLACEMENTS TO GROW TOWARDS (F-73).
- *
- * WHY A LADDER AND NOT ONE NUMBER. One target makes every segment the same
- * length, which satisfies D3's mean and fails both of D5's clauses — the exact
- * trade the old 60-120 s band made in reverse. The D rules want a mean over 90 s
- * AND a spread, so the targets have to differ from each other by more than D5's
- * own tolerance, and they do: no two adjacent entries are within +/-20 % (the
- * closest pair is 135/165, a ratio of 1.222), so a run of placements that all
- * reach their targets cannot produce a uniform triple.
- *
- * HOW THE FOUR NUMBERS WERE CHOSEN. Sorted, any four consecutive entries are
- * 105/135/165/210, whose R-7 interquartile range is 48.75 s — clear of
- * `D5_IQR_FLOOR_SEC` with a little room, and their mean is 153.75 s, clear of
- * `D3_MEAN_FLOOR_SEC` with a lot. The top of the ladder stays under
- * `MAX_TAPE_SEGMENT_SEC` and under check-forays' own L4 240 s soft maximum, so
- * reaching a target can never itself require a `long_reason`.
- *
- * IT IS A TARGET, NOT A LENGTH. `cutWindowToSegment` only grows while the tape
- * is still saying the claim's words, so most spans stop short of their target —
- * which is additional spread, not a failure. Indexed by how many tape segments
- * the Foray has already placed, so the sequence is deterministic for a given
- * run and a replay produces the same cuts.
+ * M4, RESTATED (Q-04): "no single episode dominating", for clips that may be
+ * half an hour long. A clip over this many seconds is a LONG clip, and an
+ * episode may supply at most one of them per Foray — `check-forays.mjs`'s
+ * `M4_LONG_CLIP_SEC`, mirrored. Five minutes is twice the longest hand cut in
+ * the pool (260 s) and the point past which one clip is an act of the Foray
+ * rather than a segment of it; two such acts from one episode is the episode
+ * taking the Foray over. The share clause is `m4RuntimeAllows`.
  */
-export const D_TARGET_LADDER_SEC = [105, 165, 135, 210];
-
-/** The length the next tape placement grows towards. */
-export function tapeTargetFor(placedTapeSegments: number): number {
-  return D_TARGET_LADDER_SEC[placedTapeSegments % D_TARGET_LADDER_SEC.length]!;
-}
+export const M4_LONG_CLIP_SEC = 300;
 
 /**
  * HOW MANY SEGMENTS ONE EPISODE MAY SUPPLY, given how many tape segments this
@@ -195,12 +160,12 @@ import {
   selectTapeWindow,
   tapeWindowIsRelevant,
   titleTokenScore,
-  MAX_TAPE_SEGMENT_SEC,
   MIN_TAPE_SEGMENT_SEC,
   NullTranscriptCueProvider,
   TIER2_MATCH_THRESHOLD,
   TIER2_WINDOW_MIN_SHARE,
   TIER2_WINDOW_MIN_TERMS,
+  type TapeBoundary,
   type TapeSpan,
   type TapeWindow,
   type TranscriptCue,
@@ -214,7 +179,8 @@ import {
   type TranscriptTextIndex
 } from "./transcriptTextIndex";
 import { tokenizeForSourcing } from "./catalogueLookup";
-import { d5DistanceFromPrevious, d5Triples, placementEscapesD5Triple } from "./d5Triple";
+import { d5EscapeBelow, placementEscapesD5Pair } from "./d5Pair";
+import { extendToThought, thoughtTerms, type ThoughtExtent } from "./tapeExtent";
 
 /**
  * §4.5-4.6 orchestrator (docs/curation/generation-architecture.md §4.5,
@@ -360,20 +326,18 @@ export function sourceBeats(deepenedActs: DeepenedAct[], options: SourceBeatsOpt
      (F-70). `placedTapeCount` is that denominator: every tape placement, tier 1
      or tier 2, increments it. */
   const usedCountByItem = new Map<string, number>();
-  /* And the D-tier ledger (F-73): the durations of everything placed, in playing
-     order, plus the tape seconds each episode has contributed. D2, D3 and D5 are
-     functions of the first; M4's runtime clause is a function of both. Foray-wide
-     for the same reason as the two above — the running order they judge is the
-     whole Foray's. */
+  /* And the D-tier ledger (F-73, restated by Q-04): the durations of everything
+     placed, in playing order, plus the tape seconds each episode has contributed
+     and the longest single clip it has contributed. D2 and D5's pair clause are
+     functions of the first; M4's runtime clause is a function of the other
+     three. Foray-wide for the same reason as the two above — the running order
+     they judge is the whole Foray's. */
   const placedDurations: number[] = [];
   const placedSecByItem = new Map<string, number>();
+  const longestSecByItem = new Map<string, number>();
   /* Which episode each placement came from and where in it, positionally
-     parallel to `placedDurations` — what the post-placement spread pass (F-73,
-     D5) needs to re-ask M3 and M4 about a Foray it is CHANGING rather than
-     extending. The running gates never need it, because a candidate's own item
-     id is in their hands already. */
+     parallel to `placedDurations`. */
   const placed: PlacedSegment[] = [];
-  const recuts: TapeRecut[] = [];
 
   const forayTopic = options.topic ?? null;
   const state: SourcingState = {
@@ -395,8 +359,8 @@ export function sourceBeats(deepenedActs: DeepenedAct[], options: SourceBeatsOpt
     placedTapeCount: 0,
     placedDurations,
     placedSecByItem,
-    placed,
-    recuts
+    longestSecByItem,
+    placed
   };
   const tapeRelevance: TapeRelevanceInput[] = [];
   /* One row per narration-degraded beat, saying what each tier saw and which
@@ -410,7 +374,10 @@ export function sourceBeats(deepenedActs: DeepenedAct[], options: SourceBeatsOpt
       // not just this one — ended up tape-sourced (§4.5: "pick based on
       // whether the SLOT the beat belongs to has any other tape-sourced
       // beats").
-      const resolutions = slot.beats.map((beat) => resolveOneBeat(beat, state));
+      /* The act's thesis rides along (Q-01): the thought extension scores the
+         tape around a claim against the claim AND the thesis it serves, so an
+         answer that moves from the one to the other is still relevant tape. */
+      const resolutions = slot.beats.map((beat) => resolveOneBeat(beat, state, act.thesis));
       const slotHasTape = resolutions.some((r) => r.kind === "tape");
 
       const beats: SourcedBeat[] = slot.beats.map((beat, beatIndex) => {
@@ -439,10 +406,15 @@ export function sourceBeats(deepenedActs: DeepenedAct[], options: SourceBeatsOpt
                that tape through — the field a run log counts to say how often
                the rule decided. */
             seedFloor: resolution.seedFloor,
-            /* F-80: and whether D5's triple clause is what chose this segment's
-               LENGTH — the ladder rung's own cut would have made a uniform
-               triple, and a different cut of the same window escaped it. */
+            /* Q-04: and whether D5's pair clause is what chose this segment's
+               LENGTH — the full extent would have been within 20 % of the
+               previous clip, and a shorter extent of the same window escaped. */
             lengthGate: resolution.lengthGate,
+            /* Q-01: what kind of boundary the clip landed on and how far past
+               the claim window relevance carried it — the two numbers the
+               ledger reads to say how often a real boundary was found. */
+            boundary: resolution.boundary,
+            extendedBySec: resolution.extendedBySec,
             /* F-84: and whether the tape is the pool's own cut at the start
                tier 2's window reached — reused, never minted beside. */
             poolCut: resolution.poolCut
@@ -473,10 +445,6 @@ export function sourceBeats(deepenedActs: DeepenedAct[], options: SourceBeatsOpt
 
     return { title: act.title, slots };
   });
-
-  /* EVERY BEAT HAS BEEN PLACED; THE ONE D-TIER RULE THAT COULD NOT BE ASKED
-     UNTIL NOW IS ASKED HERE (F-73, D5's interquartile clause). */
-  liftDurationSpread(state, tapeRelevance);
 
   const validation = validateSourcing(deepenedActs, acts);
   if (!validation.valid) {
@@ -576,20 +544,17 @@ interface SourcingState {
    * by `placeTape`, which is the only thing allowed to move any of these. */
   placedTapeCount: number;
   /** Every placed segment's duration, IN PLAYING ORDER — beats are resolved in
-   * playing order here, and `check-forays.mjs` reads D2/D3/D5 off exactly this
-   * sequence (segments only; narration and jingles are not cuts). The D-tier
-   * ledger F-73 added is a function of this array and nothing else. */
+   * playing order here, and `check-forays.mjs` reads D2/D5 off exactly this
+   * sequence (segments only; narration and jingles are not cuts). */
   placedDurations: number[];
-  /** Tape SECONDS per episode — M4's second clause, which counts seconds rather
-   * than segments and which #569 deliberately left to the checker (F-73). */
+  /** Tape SECONDS per episode — M4's runtime clause (F-73, restated Q-04). */
   placedSecByItem: Map<string, number>;
+  /** And the longest single clip per episode — what M4's runtime clause now
+   * excludes from the share, and what its one-long-clip clause counts. */
+  longestSecByItem: Map<string, number>;
   /** Where each placement came from, positionally parallel to
    * `placedDurations` — see the declaration in `sourceBeats`. */
   placed: PlacedSegment[];
-  /** The tier-2 placements the spread pass may re-cut, in placing order. A tier
-   * 1 hit is not in here: its length is a curator's decision, not this stage's
-   * (`liftDurationSpread`). */
-  recuts: TapeRecut[];
 }
 
 /** One placement's identity, for the rules the spread pass has to re-ask about
@@ -597,31 +562,6 @@ interface SourcingState {
 interface PlacedSegment {
   itemId: string;
   startSec: number;
-}
-
-/**
- * EVERYTHING NEEDED TO CUT ONE TIER-2 PLACEMENT AGAIN (F-73, D5's spread).
- *
- * The window a segment was cut from, the claim it was cut for, and the objects
- * the cut is written into. Recorded at placement time because none of it can be
- * recovered afterwards: the cues came from a provider call this pass will not
- * repeat, and the window was chosen by a relevance search this pass must not
- * re-run — a re-cut changes a segment's LENGTH and never what it is about.
- */
-interface TapeRecut {
-  claim: string;
-  cues: TranscriptCue[];
-  window: TapeWindow;
-  itemId: string;
-  /** This placement's index in `placedDurations` / `placed`. */
-  placement: number;
-  /** The episode's own length where the feed states one — the ceiling a longer
-   * cut may not pass, and what `referenceDurationSec` is re-derived from. */
-  feedDurationSec: number | null;
-  /** The two records a new cut is written into. Held by reference: they are the
-   * very objects `acts` and `newSegments` carry out of this module. */
-  pointer: TapePointer;
-  segment: NewSegment;
 }
 
 /** The trace rows a narration-degraded beat carries out with it — the caller
@@ -639,9 +579,11 @@ type BeatResolution =
    * (WS-L). `seedFloor` — the seed window's share-only floor is what admitted
    * this window (F-72); absent whenever the searching floor would have taken it
    * anyway, so counting it counts decisions rather than applications.
-   * `lengthGate` — D5's triple clause chose this cut's LENGTH (F-80): the
-   * ladder rung's own cut would have been a uniform triple; absent whenever the
-   * rung's cut escaped the band by itself, for the same counting reason.
+   * `lengthGate` — D5's pair clause chose this cut's LENGTH (Q-04): the full
+   * thought extent would have been within 20 % of the previous clip; absent
+   * whenever the full extent escaped by itself, for the same counting reason.
+   * `boundary` / `extendedBySec` — where the clip's edges landed and how far
+   * relevance carried it past the claim window (Q-01); absent for a pool cut.
    * `poolCut` — tier 2's window began where a committed pool segment begins and
    * the pool's cut was placed under its own id instead of a minted sibling
    * (F-84). */
@@ -651,7 +593,9 @@ type BeatResolution =
       nodes: string[];
       fromSeed: boolean;
       seedFloor?: "share-only";
-      lengthGate?: "d5-triple";
+      lengthGate?: "d5-pair";
+      boundary?: TapeBoundary;
+      extendedBySec?: number;
       poolCut?: "reused";
     }
   | { kind: "narration"; reason: string; diagnosis: SourcingDiagnosis };
@@ -770,7 +714,7 @@ function m3OrderAllows(itemId: string, startSec: number, state: SourcingState): 
    is stricter the comment says so and says why. */
 
 /** Which D-tier rule a candidate duration would break, or `null`. */
-type DurationGate = "d2-short-run" | "d3-mean" | "d5-triple" | "m4-runtime";
+type DurationGate = "d2-short-run" | "d5-pair" | "m4-runtime";
 
 /**
  * ALL FOUR ARE HARD. Each refuses tape whose LENGTH does damage no later
@@ -803,8 +747,7 @@ type DurationGate = "d2-short-run" | "d3-mean" | "d5-triple" | "m4-runtime";
  */
 function durationVetoFor(itemId: string, durationSec: number, state: SourcingState): DurationGate | null {
   if (!d2RunAllows(durationSec, state)) return "d2-short-run";
-  if (!d3MeanAllows(durationSec, state)) return "d3-mean";
-  if (!placementEscapesD5Triple(state.placedDurations, durationSec)) return "d5-triple";
+  if (!placementEscapesD5Pair(state.placedDurations, durationSec)) return "d5-pair";
   if (!m4RuntimeAllows(itemId, durationSec, state)) return "m4-runtime";
   return null;
 }
@@ -830,53 +773,48 @@ function d2RunAllows(durationSec: number, state: SourcingState): boolean {
   return previous === undefined || previous >= D2_SHORT_SEC;
 }
 
-/** D3: the running mean of placed durations may not fall under the floor, once
- * there are enough placements for a refusal to move it (`D3_MEAN_MIN_PLACED`). */
-function d3MeanAllows(durationSec: number, state: SourcingState): boolean {
-  const count = state.placedDurations.length + 1;
-  if (count < D3_MEAN_MIN_PLACED) return true;
-  const total = state.placedDurations.reduce((a, b) => a + b, 0) + durationSec;
-  return total / count >= D3_MEAN_FLOOR_SEC;
-}
-
-/* D5's first clause is `placementEscapesD5Triple` in `d5Triple.ts` (F-80): the
-   checker's own arithmetic, asked against the two most recently placed durations
-   because that is the only triple this placement can create. The second clause
-   (the interquartile range) is NOT asked here — see `D5_IQR_FLOOR_SEC`. */
+/* D5's pair clause is `placementEscapesD5Pair` in `d5Pair.ts` (Q-04): the
+   checker's own arithmetic, asked against the most recently placed duration
+   because that is the only pair this placement can create. When it refuses a
+   tier-2 cut the chooser asks the same window for a shorter extent first —
+   `chooseCutForPlacement`. */
 
 /**
- * M4's SECOND clause: no episode over `M4_ITEM_SHARE_MAX` of the Foray's tape
- * SECONDS. #569 gated the count clause and deliberately left this one to
- * `check-forays.mjs`; run 2 attempt 5 then failed on it — one *Practical AI*
- * window at 34.3 % of a 5-segment Foray's runtime — which is F-73.
+ * M4's RUNTIME clause, restated for clips that may be half an hour long (Q-04).
+ * `check-forays.mjs` is the authority; this is its arithmetic, mirrored.
  *
- * THE SAME SMALL-COUNT EXEMPTION `m4SegmentCapFor` GIVES, AND FOR THE SAME
- * REASON: an episode's FIRST segment is never refused for its length. With one
- * segment an episode's share of the seconds is whatever fraction of a short
- * Foray it happens to be, and #569's argument applies unchanged — refusing an
- * episode's only segment for being long costs the Foray tape without moving any
- * other episode's share, and would make the D-tier ladder above self-defeating
- * (a deliberately long segment would be refused for being long). From an
- * episode's second segment on, the clause is asked in full, which is where
- * genuine over-representation in seconds actually appears.
+ * TWO CLAUSES, ONE PURPOSE — no single episode dominating the Foray:
+ *   1. at most ONE long clip (over `M4_LONG_CLIP_SEC`) per episode — a
+ *      thirty-minute answer is one act of the Foray, and a second one from the
+ *      same episode is that episode taking the Foray over;
+ *   2. an episode's tape seconds BEYOND ITS LONGEST CLIP are at most
+ *      `M4_ITEM_SHARE_MAX` of the Foray's tape.
  *
- * WHAT THIS DOES NOT PROMISE, STATED PLAINLY. A single long segment in a
- * tape-starved Foray can still put its episode over 25 % of the runtime, and
- * nothing at placement time can see that — the share depends on a total this
- * stage has not finished accumulating, and unlike the count clause's
- * `floor(p * 0.25)` a runtime share is not monotone in the safe direction for a
- * candidate judged early. `check-forays.mjs` therefore remains the authority.
- * What closes the gap in practice is the rest of F-73: a mean over 90 s and eight
- * to twelve segments put the 25 % line above `MAX_TAPE_SEGMENT_SEC`, where no
- * single segment can reach it.
+ * WHY THE LONGEST CLIP IS LEFT OUT OF THE SHARE. Until Q-04 the clause was the
+ * plain share of the tape seconds, asked from an episode's second segment on;
+ * a single clip could not trip it because no clip could pass 240 s. Now a
+ * single clip can be 1,800 s, and the founder's own instruction is that it may
+ * ("if there's a half hour of relevant content then let it ride", 2026-09-12)
+ * — a share cap a let-it-ride clip trips by construction would be a cap on
+ * exactly the thing the founder asked for. Leaving each episode's longest clip
+ * out of both the numerator and nothing else keeps the 25 % line where it was
+ * for everything an episode contributes BESIDES that one clip: two 290 s
+ * clips from one episode in a 2,000 s Foray are 14.5 % beyond the longest and
+ * pass, four of them are 43.5 % and are refused, exactly as the old share would
+ * have refused them. The number is unchanged; what it is measured on is.
+ *
+ * The first-segment exemption #569 gave is no longer needed: an episode's first
+ * clip IS its longest, so its share beyond it is zero and clause 1 cannot count
+ * two. From the second clip on both clauses are asked in full.
  */
 function m4RuntimeAllows(itemId: string, durationSec: number, state: SourcingState): boolean {
-  const alreadyPlaced = state.usedCountByItem.get(itemId) ?? 0;
-  if (alreadyPlaced === 0) return true;
+  const longestBefore = state.longestSecByItem.get(itemId) ?? 0;
+  if (durationSec > M4_LONG_CLIP_SEC && longestBefore > M4_LONG_CLIP_SEC) return false;
   const episodeSec = (state.placedSecByItem.get(itemId) ?? 0) + durationSec;
+  const beyondLongest = episodeSec - Math.max(longestBefore, durationSec);
   const totalSec = state.placedDurations.reduce((a, b) => a + b, 0) + durationSec;
   if (!(totalSec > 0)) return true;
-  return episodeSec / totalSec <= M4_ITEM_SHARE_MAX;
+  return beyondLongest / totalSec <= M4_ITEM_SHARE_MAX;
 }
 
 /** Writes one tape placement into every Foray-wide ledger. The ONLY place they
@@ -890,323 +828,7 @@ function placeTape(segmentId: string, itemId: string, startSec: number, duration
   state.placedDurations.push(durationSec);
   state.placed.push({ itemId, startSec });
   state.placedSecByItem.set(itemId, (state.placedSecByItem.get(itemId) ?? 0) + durationSec);
-}
-
-/* ------------------------------------------------------------------------- */
-/* D5's SECOND CLAUSE, ASKED WHERE IT CAN BE ANSWERED (F-73).
- *
- * THE PROBLEM #571 LEFT OPEN, STATED EXACTLY. The interquartile range of a
- * Foray's segment durations is a property of the finished multiset, and it is
- * not monotone in one placement: with three or four segments down, almost any
- * candidate lowers it, so a placement-time refusal declines tape early in order
- * to protect a number that only means anything later — and a Foray with less
- * tape has a worse IQR, not a better one. So `durationVetoFor` gates the triple
- * clause and deliberately does not gate this one, and a run can still reach
- * `check-forays.mjs` and be refused on it ("D5 FAIL: interquartile range 15.6 s
- * is under the 45 s floor").
- *
- * WHAT IS DIFFERENT AFTER THE LAST BEAT. The multiset EXISTS. The question
- * "would this length break the spread" was unanswerable one placement at a
- * time; "which segment, cut differently, would most raise the spread" has an
- * answer, and every rule the change could break can be re-asked against the
- * whole running order rather than guessed at.
- *
- * WHAT THIS PASS IS ALLOWED TO DO, AND WHAT IT IS NOT.
- *   - It re-CUTS at most `D5_RECUT_MAX_SEGMENTS` tier-2 placements, by asking
- *     `cutWindowToSegment` for a different length from `RECUT_TARGETS_SEC`. The
- *     window is untouched, so a re-cut segment is about exactly what it was
- *     about, and growth still only follows the claim's own words
- *     (`growByClaimOverlap`) — a longer cut is never bought with off-claim tape
- *     and a shorter one is a prefix of what the beat already had.
- *   - It NEVER drops tape, never adds any, never changes which beat is sourced
- *     from what, and never touches a tier-1 segment: a pool segment's length is
- *     a curator's decision and not this stage's to revise.
- *   - It refuses any re-cut that would newly break D2, D3, D5's triple clause,
- *     M3 or M4 — each re-asked over the WHOLE sequence, in the form "no worse
- *     than it is now" (`recutKeepsEveryOtherRule`).
- *   - When it cannot reach the floor it says so in one line and leaves every
- *     duration as placed. `check-forays.mjs` stays the authority on the rule;
- *     this is a stage declining to hand it a Foray it can already see refused.
- */
-
-/** How many placements the spread pass may re-cut. Two, because two is what it
- * takes to move both quartiles of a small Foray and because every re-cut is a
- * segment whose length was chosen for a reason at placement time — the ladder
- * target it grew towards. A pass that re-cut everything would be a second
- * length policy competing with `D_TARGET_LADDER_SEC`, not a repair. */
-export const D5_RECUT_MAX_SEGMENTS = 2;
-
-/** The lengths a re-cut may ask for: the ladder's own four, plus the shortest
- * and longest a segment may be. The floor and ceiling are what make SHORTENING
- * available at all — the ladder never asks for 45 s, and lowering the bottom
- * quartile is half of what an interquartile range is. */
-export const RECUT_TARGETS_SEC: number[] = [...new Set([MIN_TAPE_SEGMENT_SEC, ...D_TARGET_LADDER_SEC, MAX_TAPE_SEGMENT_SEC])].sort(
-  (a, b) => a - b
-);
-
-/**
- * Interquartile range, R-7 / linear interpolation — NumPy's, R's and Excel's
- * default, and `check-forays.mjs`'s own `iqr`, mirrored here for the reason the
- * constants above it are (that file is an `.mjs` build script Vitest cannot
- * load on every checkout). `check-forays.test.mjs` pins the definition.
- */
-export function interquartileRange(values: number[]): number {
-  if (values.length === 0) return 0;
-  const sorted = [...values].sort((a, b) => a - b);
-  const quantile = (p: number): number => {
-    const h = (sorted.length - 1) * p;
-    const lo = Math.floor(h);
-    const hi = Math.ceil(h);
-    return sorted[lo]! + (h - lo) * (sorted[hi]! - sorted[lo]!);
-  };
-  return quantile(0.75) - quantile(0.25);
-}
-
-/** One re-cut the pass is considering: which placement, cut how, and what the
- * Foray's spread would be if it were taken. */
-interface SpreadRecut {
-  entry: TapeRecut;
-  span: TapeSpan;
-  durationSec: number;
-  spreadSec: number;
-}
-
-/** The pass itself — see the block comment above. Mutates the placement ledgers
- * and the very pointer/segment objects the caller is about to return, which is
- * why it runs after every beat is resolved and before nothing at all. */
-function liftDurationSpread(state: SourcingState, tapeRelevance: TapeRelevanceInput[]): void {
-  /* A SPREAD NEEDS SOMETHING TO SPREAD. With one segment the interquartile
-     range is 0 by definition and no cut of any length can move it; with none,
-     `check-forays.mjs` never reaches D5 at all ("no resolvable segment items",
-     which is F-65 and a different problem). Neither is a case this pass can say
-     anything true about, so it says nothing. */
-  if (state.placedDurations.length < 2) return;
-  if (interquartileRange(state.placedDurations) >= D5_IQR_FLOOR_SEC) return;
-
-  const recut = new Set<number>();
-  for (let pass = 0; pass < D5_RECUT_MAX_SEGMENTS; pass++) {
-    const best = bestSpreadRecut(state, recut);
-    if (!best) break;
-    applyRecut(best, state, tapeRelevance);
-    recut.add(best.entry.placement);
-    if (interquartileRange(state.placedDurations) >= D5_IQR_FLOOR_SEC) return;
-  }
-
-  /* ONE LINE, AND THE RUN CONTINUES. The alternative — refusing to finish a
-     Foray whose lengths are what the tape allows — would cost every beat's work
-     for a rule about variety, and the checker is the authority on whether the
-     finished record passes. What this line buys is that nobody has to re-derive
-     from a checker error whether sourcing tried. */
-  console.warn(
-    `sourceBeats: the ${state.placedDurations.length} placed segment${state.placedDurations.length === 1 ? "" : "s"} have an ` +
-      `interquartile range of ${interquartileRange(state.placedDurations).toFixed(1)} s, under D5's ${D5_IQR_FLOOR_SEC} s floor, ` +
-      `and no re-cut of up to ${D5_RECUT_MAX_SEGMENTS} of them reaches it without breaking D2, D3, D5's triple clause, M3 or M4 ` +
-      `(${state.recuts.length} of them are tier-2 cuts this stage may re-cut at all) — leaving every duration as placed; ` +
-      "check-forays.mjs is the authority on the rule (F-73)"
-  );
-}
-
-/**
- * The single re-cut that raises the spread most, or `null` when none does.
- *
- * Deterministic twice over: the placements are walked in placing order and the
- * targets in ascending order, and a tie keeps the candidate found first — so a
- * replay of the same run produces the same cuts, which is the property the
- * whole sourcing stage is built on.
- */
-function bestSpreadRecut(state: SourcingState, alreadyRecut: Set<number>): SpreadRecut | null {
-  const current = interquartileRange(state.placedDurations);
-  let best: SpreadRecut | null = null;
-
-  for (const entry of state.recuts) {
-    if (alreadyRecut.has(entry.placement)) continue;
-    const placedDuration = state.placedDurations[entry.placement];
-    if (placedDuration === undefined) continue;
-
-    for (const targetSec of RECUT_TARGETS_SEC) {
-      const span = cutWindowToSegment(entry.claim, entry.cues, entry.window, { targetSec });
-      if (!span) continue;
-      const durationSec = span.endSec - span.startSec;
-      if (durationSec === placedDuration) continue;
-      /* A cut may not run past the episode: `merge-segments.mjs` compares a
-         minted segment's `reference_duration_sec` against the audio row's own
-         `duration_sec`, and `check-forays.mjs` refuses an `end_sec` past it.
-         The same rule the placement itself faces (`pastDurationGate`, F-87). */
-      if (pastDurationGate(span, entry.feedDurationSec) !== null) continue;
-      /* And a re-cut may not MOVE onto a start another segment already holds
-         (F-84): the id is the start, and `applyRecut` re-mints it when the start
-         moves, so a start the pool or this run already has a row at would be a
-         sibling id. The placement's own start is not a collision with itself. */
-      if (recutStartIsTaken(entry, span, state)) continue;
-
-      const durations = [...state.placedDurations];
-      durations[entry.placement] = durationSec;
-      const spreadSec = interquartileRange(durations);
-      if (spreadSec <= current) continue;
-      if (!recutKeepsEveryOtherRule(entry, span, durations, state)) continue;
-      if (!best || spreadSec > best.spreadSec) best = { entry, span, durationSec, spreadSec };
-    }
-  }
-  return best;
-}
-
-/** Whether a re-cut's start would take an id the pool or this run already
- * holds (F-84) — asked only when the start moves to a different rounded
- * second, since `applyRecut` keeps the id otherwise; the placement's own row is
- * not a collision with itself. */
-function recutStartIsTaken(entry: TapeRecut, span: TapeSpan, state: SourcingState): boolean {
-  if (Math.round(span.startSec) === Math.round(entry.pointer.startSec)) return false;
-  if (state.mintedIds.has(`${entry.itemId}#${Math.round(span.startSec)}`)) return true;
-  const held = committedCutAt(entry.itemId, span.startSec, state);
-  return held !== null && held.id !== entry.pointer.segmentId;
-}
-
-/**
- * Whether a proposed re-cut leaves every OTHER rule no worse than it is.
- *
- * "No worse than it is" rather than "satisfied", deliberately: a Foray can
- * arrive here already failing a clause the checker will refuse it on — the
- * relaxed pass takes a uniform triple when that is the only tape there is, and
- * a tape-starved Foray's mean can sit under D3's floor with nothing available
- * to lift it. Demanding satisfaction would make this pass inert in exactly
- * those runs; demanding no regression means a re-cut can never be the reason a
- * rule fails, which is the honest guarantee.
- */
-function recutKeepsEveryOtherRule(entry: TapeRecut, span: TapeSpan, durations: number[], state: SourcingState): boolean {
-  const placed = state.placedDurations;
-
-  /* D2, in the stricter form sourcing keeps at placement time (`d2RunAllows`):
-     never two consecutive short segments, because the recovery segment the rule
-     would forgive them for cannot be promised. */
-  if (shortRunCount(durations) > shortRunCount(placed)) return false;
-
-  /* D5's OWN triple clause. Buying a spread with a uniform triple trades one
-     D5 failure for another. */
-  if (uniformTripleCount(durations) > uniformTripleCount(placed)) return false;
-
-  /* D3's mean. */
-  const mean = meanOf(durations);
-  if (mean < D3_MEAN_FLOOR_SEC && mean < meanOf(placed)) return false;
-
-  /* M4's runtime clause, per episode — with `m4RuntimeAllows`'s own exemption
-     for an episode that supplies exactly one segment, mirrored here so the two
-     halves of this module enforce the same rule. The argument is #569's,
-     unchanged: with one segment an episode's share of the seconds is whatever
-     fraction of a short Foray it happens to be, nothing this stage does can move
-     it (there is no other segment of that episode to shorten), and treating it
-     as a veto would freeze the pass solid on precisely the tape-starved Forays
-     whose spread most needs lifting. `check-forays.mjs` remains the authority. */
-  const counts = placementCountsByItem(state.placed);
-  const after = runtimeSharesByItem(durations, state.placed);
-  const before = runtimeSharesByItem(placed, state.placed);
-  for (const [itemId, share] of after) {
-    if ((counts.get(itemId) ?? 0) < 2) continue;
-    if (share > M4_ITEM_SHARE_MAX && share > (before.get(itemId) ?? 0)) return false;
-  }
-
-  /* And M3: a re-cut can move a segment's START, and segments from one episode
-     must play in ascending time order. */
-  let lastStart = -Infinity;
-  for (let i = 0; i < state.placed.length; i++) {
-    const at = state.placed[i]!;
-    if (at.itemId !== entry.itemId) continue;
-    const startSec = i === entry.placement ? span.startSec : at.startSec;
-    if (startSec < lastStart) return false;
-    lastStart = startSec;
-  }
-  return true;
-}
-
-/** Adjacent pairs where both segments are short — D2's debt, counted. */
-function shortRunCount(durations: number[]): number {
-  let runs = 0;
-  for (let i = 1; i < durations.length; i++) {
-    if (durations[i]! < D2_SHORT_SEC && durations[i - 1]! < D2_SHORT_SEC) runs += 1;
-  }
-  return runs;
-}
-
-/** Consecutive triples within D5's tolerance of each other, pairwise — the
- * reading `check-forays.mjs` gates on, by the mirrored helper (`d5Triple.ts`). */
-function uniformTripleCount(durations: number[]): number {
-  return d5Triples(durations).length;
-}
-
-function meanOf(durations: number[]): number {
-  if (durations.length === 0) return 0;
-  return durations.reduce((a, b) => a + b, 0) / durations.length;
-}
-
-/** How many segments each episode supplied — M4's small-count exemption. */
-function placementCountsByItem(placed: PlacedSegment[]): Map<string, number> {
-  const counts = new Map<string, number>();
-  for (const at of placed) counts.set(at.itemId, (counts.get(at.itemId) ?? 0) + 1);
-  return counts;
-}
-
-/** Each episode's share of the Foray's tape SECONDS, for M4's runtime clause. */
-function runtimeSharesByItem(durations: number[], placed: PlacedSegment[]): Map<string, number> {
-  const total = durations.reduce((a, b) => a + b, 0);
-  const shares = new Map<string, number>();
-  if (!(total > 0)) return shares;
-  const seconds = new Map<string, number>();
-  for (let i = 0; i < placed.length; i++) {
-    const itemId = placed[i]!.itemId;
-    seconds.set(itemId, (seconds.get(itemId) ?? 0) + (durations[i] ?? 0));
-  }
-  for (const [itemId, sec] of seconds) shares.set(itemId, sec / total);
-  return shares;
-}
-
-/**
- * Writes one re-cut everywhere the old cut was written: the minted segment, the
- * beat's pointer, the placement ledgers, and the `tapeRelevance` row that names
- * the segment by id.
- *
- * THE ID IS RE-MINTED WHEN THE START MOVES, because the id is not opaque:
- * `merge-segments.mjs` derives it as `<item_id>#<start_sec rounded>` and would
- * disagree with an id that names a second the segment no longer begins at.
- */
-function applyRecut(recut: SpreadRecut, state: SourcingState, tapeRelevance: TapeRelevanceInput[]): void {
-  const { entry, span, durationSec } = recut;
-  const previousId = entry.pointer.segmentId;
-  const previousDuration = state.placedDurations[entry.placement]!;
-  const segmentId =
-    Math.round(span.startSec) === Math.round(entry.pointer.startSec)
-      ? previousId
-      : mintSegmentId(entry.itemId, span.startSec, state.mintedIds);
-
-  entry.pointer.segmentId = segmentId;
-  entry.pointer.startSec = span.startSec;
-  entry.pointer.endSec = span.endSec;
-  entry.pointer.startAnchor = span.startAnchor;
-  entry.pointer.endAnchor = span.endAnchor;
-
-  entry.segment.id = segmentId;
-  entry.segment.startSec = span.startSec;
-  entry.segment.endSec = span.endSec;
-  entry.segment.startAnchor = span.startAnchor;
-  entry.segment.endAnchor = span.endAnchor;
-  /* Re-derived exactly as `acceptCandidate` derives it, so a checkout with no
-     feed duration keeps the property that the reference covers the segment. */
-  entry.segment.referenceDurationSec = entry.feedDurationSec ?? span.endSec;
-
-  state.placedDurations[entry.placement] = durationSec;
-  state.placed[entry.placement]!.startSec = span.startSec;
-  state.placedSecByItem.set(entry.itemId, (state.placedSecByItem.get(entry.itemId) ?? 0) - previousDuration + durationSec);
-  if (segmentId !== previousId) {
-    state.usedSegmentIds.delete(previousId);
-    state.usedSegmentIds.add(segmentId);
-    for (const row of tapeRelevance) {
-      if (row.segmentId === previousId) row.segmentId = segmentId;
-    }
-  }
-  /* M3's ledger reads the LAST start placed for an episode, and a re-cut can
-     move it. Recomputed from the running order rather than patched, because the
-     re-cut placement is not necessarily the episode's last one. */
-  let lastStart: number | undefined;
-  for (const at of state.placed) if (at.itemId === entry.itemId) lastStart = at.startSec;
-  if (lastStart !== undefined) state.lastStartByItem.set(entry.itemId, lastStart);
+  state.longestSecByItem.set(itemId, Math.max(state.longestSecByItem.get(itemId) ?? 0, durationSec));
 }
 
 /** What tier 1 saw, once it has decided it has nothing (F-49). Must be called
@@ -1253,7 +875,7 @@ function archiveTraceRow(entry: TranscriptDigestEntry, score: number, gate: Tier
   return { bestShowId: entry.show_id, bestEpisodeTitle: entry.title, score, requiredScore: TIER2_MATCH_THRESHOLD, gate };
 }
 
-function resolveOneBeat(beat: Beat, state: SourcingState): BeatResolution {
+function resolveOneBeat(beat: Beat, state: SourcingState, thesis: string | null = null): BeatResolution {
   const claim = beat.claim;
 
   /* ARGUMENTS ARE NOT ON TAPE (F-38). A thesis about a class of events —
@@ -1280,7 +902,7 @@ function resolveOneBeat(beat: Beat, state: SourcingState): BeatResolution {
   const archiveIsUsable = (entry: TranscriptDigestEntry) =>
     familyGateAllows(state.forayTopic, nodesForArchiveEntry(entry, state.root), state.root);
   const candidates = tier2Candidates(claim, state, archiveIsUsable, beat.seed);
-  const walk = new Tier2Walk(beat, candidates, state);
+  const walk = new Tier2Walk(beat, candidates, state, thesis);
 
   /* THE SEED WINDOW IS ASKED BEFORE TIER 1 (G-24 R2; tape-yield brief §4 cause
      4). §4.5's search order puts the pool first because a curated segment is the
@@ -1453,7 +1075,10 @@ class Tier2Walk {
   constructor(
     private readonly beat: Beat,
     private readonly candidates: Tier2Candidate[],
-    private readonly state: SourcingState
+    private readonly state: SourcingState,
+    /** The act's thesis — what the thought extension scores tape against
+     * beside the claim (Q-01). `null` for a caller with no act. */
+    private readonly thesis: string | null = null
   ) {}
 
   /** Walks `list` in `mode`; returns the accepted resolution or `null`. The
@@ -1551,26 +1176,33 @@ class Tier2Walk {
          the tape at the window's own boundary cues, so they can be found again in
          a listener's differently-stitched copy; growth to segment length follows
          the claim rather than padding symmetrically (F-62). */
-      /* AND HOW LONG A SEGMENT IT IS CUT TO (F-73, F-80). The window is chosen
-         for relevance and nothing else, which is right; the D-tier rules are
-         about LENGTH, and a cut that stopped at `MIN_TAPE_SEGMENT_SEC` left them
-         to whatever the window happened to be. The target comes from
-         `D_TARGET_LADDER_SEC`, indexed by what this Foray has already placed, so
-         consecutive segments are asked for deliberately different lengths — and
-         the cut still only grows while the tape is saying the claim's own words,
-         so no target is ever bought with off-claim seconds.
+      /* AND HOW LONG A SEGMENT IT IS CUT TO (Q-01, Q-04). The window is chosen
+         for relevance and nothing else, which is right; the clip is the THOUGHT
+         around it — the window extended to turn or sentence boundaries and then
+         as far as the tape stays relevant to the claim and the act's thesis
+         (`extendToThought`), a minute to half an hour. No ladder, no target: the
+         length is what the tape measures.
 
          THE CUT IS JUDGED BY THE ORDER RULE AND THE LENGTH LEDGER TOGETHER
          (`chooseCutForPlacement`): M3 on the span's own start, because a
          segment's place in its episode is not real until the window has been
-         cut to cue boundaries (F-70); the D-tier rules on the span's own length,
+         cut to cue boundaries (F-70); the length rules on the span's own length,
          for the same reason (F-73). Both are asked BEFORE the audio-source
          resolution below, so a candidate this Foray cannot use never leaves a
          `data/segment-sources.json` row behind for an episode no segment ends up
-         coming from. And when the ladder rung's own cut is the one thing D5's
-         triple clause refuses, the SAME window is cut to a different length
-         before the candidate is given up on (F-80) — see the chooser. */
-      const choice = chooseCutForPlacement(claim, cues, window!, itemId, candidate.entry.feed_duration_sec ?? null, state);
+         coming from. And when the full extent is the one thing D5's pair clause
+         refuses, the SAME window is extended to a shorter boundary before the
+         candidate is given up on (Q-04) — see the chooser. */
+      const choice = chooseCutForPlacement(
+        claim,
+        this.thesis,
+        cues,
+        window!,
+        candidate.text?.idf,
+        itemId,
+        candidate.entry.feed_duration_sec ?? null,
+        state
+      );
       if (!choice) {
         this.record({ candidate, gate: "no-anchor", window, seedFloor }, seedPass);
         continue;
@@ -1676,7 +1308,7 @@ class Tier2Walk {
     span: TapeSpan,
     itemId: string,
     seedFloor: "share-only" | undefined,
-    lengthGate: "d5-triple" | undefined
+    lengthGate: "d5-pair" | undefined
   ): BeatResolution | null {
     const { state } = this;
     const claim = this.beat.claim;
@@ -1715,7 +1347,10 @@ class Tier2Walk {
       endAnchor: span.endAnchor,
       confidence: "medium",
       why: whyFromClaim(claim),
-      transcriptSource: state.cueProvider.transcriptSource?.(candidate.entry) ?? "publisher"
+      transcriptSource: state.cueProvider.transcriptSource?.(candidate.entry) ?? "publisher",
+      /* Q-01: where the clip's edges landed and how far past the claim window
+         relevance carried it — onto the row, so the ledger can count both. */
+      ...(span.boundary !== undefined ? { boundary: span.boundary, extendedBySec: span.extendedBySec ?? 0 } : {})
     };
     const pointer: TapePointer = {
       segmentId,
@@ -1728,24 +1363,14 @@ class Tier2Walk {
       confidence: "medium"
     };
     state.newSegments.push(segment);
-    /* Recorded BEFORE `placeTape`, so `placement` is the index this placement
-       is about to take in `placedDurations` (F-73, D5's spread). */
-    state.recuts.push({
-      claim,
-      cues,
-      window,
-      itemId,
-      placement: state.placedDurations.length,
-      feedDurationSec: candidate.entry.feed_duration_sec ?? null,
-      pointer,
-      segment
-    });
     placeTape(segmentId, itemId, span.startSec, span.endSec - span.startSec, state);
     return {
       kind: "tape",
       fromSeed: candidate.fromSeed === true,
       seedFloor,
       lengthGate,
+      boundary: span.boundary,
+      extendedBySec: span.extendedBySec,
       nodes: nodesForArchiveEntry(candidate.entry, state.root),
       pointer
     };
@@ -1753,65 +1378,45 @@ class Tier2Walk {
 }
 
 /* ------------------------------------------------------------------------- */
-/* WHICH CUT OF A WINDOW IS PLACED (F-80).
+/* WHICH CUT OF A WINDOW IS PLACED (Q-01, Q-04).
  *
- * THE FAILURE THIS CLOSES. Run 5 narrated a 25-segment Foray end to end and
- * `check-forays.mjs` refused it at finalize: "practical-ai--tiny-recursive-
- * networks#603 / …#2297 / …#1650 are 152.0 / 142.2 / 169.4 s — three consecutive
- * durations within +/-20 % of each other (max/min 1.191)". Every one of those
- * three was a tier-2 cut of a window that could have been cut LONGER or SHORTER
- * at a cue boundary; sourcing asked for one length (the ladder rung), found it
- * inside the band, and — the clause being a preference under #571 — took it
- * anyway. The rule was never enforced where the length was decided.
+ * THE WINDOW `selectTapeWindow` FOUND IS WHERE THE CLAIM IS SPOKEN; THE CLIP IS
+ * THE THOUGHT AROUND IT. `extendToThought` (`tapeExtent.ts`) moves the window's
+ * edges to the boundaries of the speaker's turn or sentence and then as far as
+ * the tape stays relevant to the claim and the act's thesis — a minute to half
+ * an hour. `cutWindowToSegment` then cuts that extent to whole cues with the
+ * tape's own words as anchors, exactly as it cut the bare window before Q-01.
+ * There is no ladder any more (F-73's `D_TARGET_LADDER_SEC`) and no target: a
+ * clip's length is what the tape measures, and the D-tier rules were restated
+ * for that (Q-04 — `d5Pair.ts`, `m4RuntimeAllows`).
  *
- * THE RULE, AS IMPLEMENTED HERE.
- *   1. The window is cut to the ladder rung for this placement, exactly as
- *      before. If that cut clears M3 and every length rule, it is the cut — the
- *      ladder stays the length policy, and a placement the clause never
- *      touched carries no `lengthGate`.
- *   2. If the rung's cut is refused by D5's triple clause ALONE — the last two
- *      placed durations and this one within +/-20 % of each other, by the
- *      checker's own arithmetic (`placementEscapesD5Triple`) — every other
- *      length this window can be cut to is tried: the ladder's other rungs
- *      first, then every cue-boundary length between `MIN_TAPE_SEGMENT_SEC` and
- *      `MAX_TAPE_SEGMENT_SEC` that the growth rule reaches (still by claim
- *      overlap only, still never across a > 5 s gap — `cutWindowToSegment` is
- *      the only thing that cuts). Within each group the cut FARTHEST from the
- *      two previous durations is preferred (`d5DistanceFromPrevious`), so the
- *      escape is by the widest margin the window allows. The first that
- *      escapes the band and clears M3 and the other three length rules is
- *      placed, and the tape-relevance row records `lengthGate: "d5-triple"` so
- *      a run log can count how often the clause chose a length.
- *   3. If NO cut of this window escapes the band, the candidate is refused
- *      with gate `d5-triple` — a fall-through to the next candidate episode,
- *      like every other gate — and the trace names the rule. The beat is
- *      narrated only when every candidate's window is like this, which is the
- *      only case in which the finished Foray could not have been given this
- *      tape at all.
- *
- * WHY THE RUNG STAYS FIRST rather than always taking the farthest cut: the
- * ladder is what builds D5's second clause (the interquartile range) and D3's
- * mean, and a cut chosen for maximum distance from its neighbours on every
- * placement would be a second length policy competing with it. The clause
- * chooses a length only when the ladder's choice would break the rule.
+ * THE ONE RULE THAT CAN ASK FOR A DIFFERENT LENGTH IS D5's PAIR CLAUSE. When
+ * the full extent would be within 20 % of the previous clip's length, the same
+ * window is extended again with a ceiling just under the band
+ * (`d5EscapeBelow`), so relevance stops one boundary earlier and the pair
+ * escapes; the tape-relevance row records `lengthGate: "d5-pair"` so a run log
+ * can count the placements the clause decided. If even that cut is refused —
+ * by the pair clause again (the ceiling fell under the 60 s floor, or the
+ * boundary before it was still inside the band) or by any other gate — the
+ * candidate is refused with the gate that got furthest, a fall-through to the
+ * next episode like every other gate. A LONGER escape is never asked for: the
+ * extent is already as long as relevance allows, and a clip bought with tape
+ * relevance refused would be F-62's padding back under another name.
  */
 
-/** One length a window can be cut to, and how it was asked for. */
+/** One length a window can be cut to, and the extent it was cut from. */
 interface PlacementCut {
   span: TapeSpan;
   durationSec: number;
-  /** The `targetSec` that produced it. */
-  targetSec: number;
-  /** Whether that target is one of the ladder's own rungs. */
-  ladderRung: boolean;
+  extent: ThoughtExtent;
 }
 
 type PlacementGate = "past-duration" | "m3-order" | DurationGate;
 
-/** The chooser's answer: the cut to place (and whether D5's triple clause is
+/** The chooser's answer: the cut to place (and whether D5's pair clause is
  * what chose its length), or the cut that got furthest and the gate that
  * refused it. `null` when the window yields no anchored span at all. */
-type PlacementChoice = { accepted: PlacementCut; lengthGate?: "d5-triple" } | { refused: PlacementCut; gate: PlacementGate };
+type PlacementChoice = { accepted: PlacementCut; lengthGate?: "d5-pair" } | { refused: PlacementCut; gate: PlacementGate };
 
 /**
  * F-87 (#315): a cut may not END past the episode's feed-declared duration.
@@ -1840,8 +1445,8 @@ function pastDurationGate(span: TapeSpan, feedDurationSec: number | null): "past
 }
 
 /** The duration ceiling first (F-87), then M3 on the span's own start, then
- * the four length rules on its own length — the order the walk has asked them
- * in since F-73. */
+ * the length rules on its own length — the order the walk has asked them in
+ * since F-73. */
 function placementGateFor(cut: PlacementCut, itemId: string, feedDurationSec: number | null, state: SourcingState): PlacementGate | null {
   const pastDuration = pastDurationGate(cut.span, feedDurationSec);
   if (pastDuration) return pastDuration;
@@ -1849,95 +1454,60 @@ function placementGateFor(cut: PlacementCut, itemId: string, feedDurationSec: nu
   return durationVetoFor(itemId, cut.durationSec, state);
 }
 
+/** What the extension scores relevance against: the claim's own terms and the
+ * act's thesis, with the corpus idf the window search used. */
+interface ExtentTerms {
+  claimTerms: string[];
+  thesisTerms: string[];
+  idf: ReadonlyMap<string, number> | undefined;
+}
+
 function chooseCutForPlacement(
   claim: string,
+  thesis: string | null,
   cues: TranscriptCue[],
   window: TapeWindow,
+  idf: ReadonlyMap<string, number> | undefined,
   itemId: string,
   feedDurationSec: number | null,
   state: SourcingState
 ): PlacementChoice | null {
-  const rungSec = tapeTargetFor(state.placedTapeCount);
-  const rung = cutAtTarget(claim, cues, window, rungSec, true);
-  if (!rung) return null;
-  const rungGate = placementGateFor(rung, itemId, feedDurationSec, state);
-  if (rungGate === null) return { accepted: rung };
-  if (rungGate !== "d5-triple") return { refused: rung, gate: rungGate };
+  const terms: ExtentTerms = { claimTerms: thoughtTerms(claim), thesisTerms: thesis ? thoughtTerms(thesis) : [], idf };
+  const full = cutExtent(claim, cues, window, terms, undefined);
+  if (!full) return null;
+  const fullGate = placementGateFor(full, itemId, feedDurationSec, state);
+  if (fullGate === null) return { accepted: full };
+  if (fullGate !== "d5-pair") return { refused: full, gate: fullGate };
 
-  /* The rung's cut is inside the band. Every other length this window admits,
-     in preference order: the ladder's other rungs before anything else, and
-     within each group the farthest from the two previous durations first. Ties
-     go to the longer cut — D3's mean is served by length, and no cut here can
-     pass `MAX_TAPE_SEGMENT_SEC` or the checker's 240 s L4 soft maximum. */
-  const placed = state.placedDurations;
-  const alternatives = admissibleCuts(claim, cues, window)
-    .filter((cut) => cut.durationSec !== rung.durationSec)
-    .sort((a, b) => {
-      if (a.ladderRung !== b.ladderRung) return a.ladderRung ? -1 : 1;
-      const byDistance = d5DistanceFromPrevious(placed, b.durationSec) - d5DistanceFromPrevious(placed, a.durationSec);
-      if (byDistance !== 0) return byDistance;
-      return b.durationSec - a.durationSec;
-    });
-
+  /* The full extent is inside the band with the previous clip. Ask the same
+     window for the longest extent that escapes UNDER it — still at a thought
+     boundary, still only tape relevance kept — and judge that cut by every
+     rule in turn. */
+  const ceiling = d5EscapeBelow(state.placedDurations);
+  const shorter = ceiling !== null && ceiling >= MIN_TAPE_SEGMENT_SEC ? cutExtent(claim, cues, window, terms, ceiling) : null;
+  if (!shorter || shorter.durationSec >= full.durationSec) return { refused: full, gate: fullGate };
+  const gate = placementGateFor(shorter, itemId, feedDurationSec, state);
+  if (gate === null) return { accepted: shorter, lengthGate: "d5-pair" };
   /* The trace reports the cut that got FURTHEST, by the same progress order the
-     walk ranks candidates on: a cut that escaped the band and was then refused
-     on M4's runtime clause got further than the rung's cut did, and that is the
-     gate a person would go and argue with. */
-  let furthest: { cut: PlacementCut; gate: PlacementGate } = { cut: rung, gate: rungGate };
-  for (const cut of alternatives) {
-    const gate = placementGateFor(cut, itemId, feedDurationSec, state);
-    if (gate === null) return { accepted: cut, lengthGate: "d5-triple" };
-    if (TIER2_GATE_PROGRESS[gate] > TIER2_GATE_PROGRESS[furthest.gate]) furthest = { cut, gate };
-  }
-  return { refused: furthest.cut, gate: furthest.gate };
+     walk ranks candidates on. */
+  return TIER2_GATE_PROGRESS[gate] > TIER2_GATE_PROGRESS[fullGate] ? { refused: shorter, gate } : { refused: full, gate: fullGate };
 }
 
-function cutAtTarget(claim: string, cues: TranscriptCue[], window: TapeWindow, targetSec: number, ladderRung: boolean): PlacementCut | null {
-  const span = cutWindowToSegment(claim, cues, window, { targetSec });
+/** The window extended to its thought (to `maxSec` when given) and cut to
+ * anchored cues — `null` only when the tape yields no anchor. */
+function cutExtent(claim: string, cues: TranscriptCue[], window: TapeWindow, terms: ExtentTerms, maxSec: number | undefined): PlacementCut | null {
+  const extent = extendToThought(window, cues, {
+    claimTerms: terms.claimTerms,
+    thesisTerms: terms.thesisTerms,
+    idf: terms.idf,
+    ...(maxSec !== undefined ? { maxSec } : {})
+  });
+  /* The same ceiling on the floor growth: a cut shortened to escape D5's band
+     must not be grown back into it one cue at a time. */
+  const span = cutWindowToSegment(claim, cues, extent, maxSec !== undefined ? { maxSec } : {});
   if (!span) return null;
-  return { span, durationSec: span.endSec - span.startSec, targetSec, ladderRung };
+  return { span, durationSec: span.endSec - span.startSec, extent };
 }
-
-/**
- * Every distinct length `cutWindowToSegment` can cut this window to, each one
- * asked for once: the ladder's four rungs, then the growth rule's own path from
- * `MIN_TAPE_SEGMENT_SEC` upward, one cue at a time.
- *
- * WHY WALKING THE PATH IS EXHAUSTIVE. The growth rule's choice at each step —
- * which neighbouring cue shares more of the claim — depends only on the span it
- * has so far, never on the target, so every target yields the first point on
- * one fixed path whose length reaches it (or the path's end). Asking for "just
- * past the length we have" therefore visits each point of that path in turn,
- * and the path is every length this window can honestly be. A length that is
- * not on it is a length the growth rule would not cut — off-claim tape, or a cut
- * across a gap — and it is not offered here either.
- */
-function admissibleCuts(claim: string, cues: TranscriptCue[], window: TapeWindow): PlacementCut[] {
-  const cuts: PlacementCut[] = [];
-  const seen = new Set<number>();
-  const ask = (targetSec: number, ladderRung: boolean): number | null => {
-    const cut = cutAtTarget(claim, cues, window, targetSec, ladderRung);
-    if (!cut) return null;
-    if (!seen.has(cut.durationSec)) {
-      seen.add(cut.durationSec);
-      cuts.push(cut);
-    }
-    return cut.durationSec;
-  };
-  for (const rungSec of D_TARGET_LADDER_SEC) ask(rungSec, true);
-  let reached = ask(MIN_TAPE_SEGMENT_SEC, false);
-  while (reached !== null && reached < MAX_TAPE_SEGMENT_SEC) {
-    const next = ask(reached + PATH_STEP_SEC, false);
-    if (next === null || next <= reached) break;
-    reached = next;
-  }
-  return cuts;
-}
-
-/** How far past the length already reached the next ask sits — small enough
- * that no cue is shorter, so each ask advances the growth path by exactly one
- * cue. */
-const PATH_STEP_SEC = 0.001;
 
 /** One episode tier 2 is willing to open for a claim, and how it was found. */
 interface Tier2Candidate {
@@ -1996,20 +1566,21 @@ const TIER2_GATE_PROGRESS: Record<Tier2Gate, number> = {
      all, so it sits between "no anchors" and the ledger. */
   "past-duration": 7,
   "m3-order": 8,
-  /* F-73's four length gates sit where the walk asks them too: after the span is
-     cut (so its duration is real) and before the audio-source row is written. A
+  /* The length gates sit where the walk asks them too: after the span is cut
+     (so its duration is real) and before the audio-source row is written. A
      beat that reached one of these got further than one refused on M3, because
-     M3 is answered first, on the same span. */
+     M3 is answered first, on the same span. `d3-mean` is no longer asked (Q-04)
+     and keeps a slot only so a checkpoint written under F-73 still ranks. */
   "d2-short-run": 9,
   "d3-mean": 10,
-  "d5-triple": 11,
-  "m4-runtime": 12,
+  "d5-pair": 10,
+  "m4-runtime": 11,
   /* F-84: asked after the cut has cleared M3 and the length rules on ITS
      length — the pool's cut at the same start then faces the same ledger and
      is what refused the candidate. Further than any of them, before the
      audio-source row, which a reused pool cut never needs. */
-  "pool-cut": 13,
-  "no-audio-source": 14
+  "pool-cut": 12,
+  "no-audio-source": 13
 };
 
 /**
@@ -2181,6 +1752,10 @@ function tier2TraceFor(
   if (span) {
     row.startAnchor = span.startAnchor;
     row.endAnchor = span.endAnchor;
+    if (span.boundary !== undefined) {
+      row.boundary = span.boundary;
+      row.extendedBySec = span.extendedBySec ?? 0;
+    }
     /* F-87: where the cut would have ended — read against `feedDurationSec`
        below on a `past-duration` row (run 7: 2375.72 s past 2071 s). */
     row.spanEndSec = span.endSec;
@@ -2211,12 +1786,10 @@ function narrationReasonFor(furthest: Tier2Progress | null): string {
        LENGTH would be reading a falsehood. */
     case "d2-short-run":
       return "Tape for this beat was found, but it is short and the segment before it is short too, and the running order does not allow a run of short segments here.";
-    case "d3-mean":
-      return "Tape for this beat was found, but it is short enough that taking it would pull this Foray's mean segment length under the floor the running-order rules set.";
-    case "d5-triple":
-      return "Tape for this beat was found, but no cut of it escapes the length of the two segments before it, and three segments of one length would make the Foray sound metronomic.";
+    case "d5-pair":
+      return "Tape for this beat was found, but no cut of it escapes the length of the segment before it, and two segments of one length in a row would make the Foray sound metronomic.";
     case "m4-runtime":
-      return "Tape for this beat is in an episode that already supplies a quarter of this Foray's tape seconds, so taking more would unbalance it.";
+      return "Tape for this beat is in an episode that already supplies a long clip or a quarter of this Foray's tape seconds beyond its longest clip, so taking more would let one episode dominate.";
     case "no-audio-source":
       return "Tape was found for this beat but its episode's audio cannot be resolved, so it cannot be played.";
     /* F-87: the tape exists and is about the claim; its transcript's timeline
@@ -2240,9 +1813,8 @@ const ASSEMBLY_REFUSAL_CLAUSE: Record<"m4-share" | "m3-order" | DurationGate, st
   "m4-share": "the episode already supplies its quarter of the segments",
   "m3-order": "the window sits earlier in an episode already joined later",
   "d2-short-run": "it is short and the segment before it is short too",
-  "d3-mean": "taking it would pull the Foray's mean segment length under the floor",
-  "d5-triple": "every cut of it is within a fifth of the length of each of the two segments before it",
-  "m4-runtime": "the episode already supplies its quarter of the tape seconds"
+  "d5-pair": "every cut of it is within a fifth of the length of the segment before it",
+  "m4-runtime": "the episode already supplies a long clip, or its quarter of the tape seconds beyond its longest clip"
 };
 
 /** One queue row per narrated beat, naming the episode the search got furthest
@@ -2265,8 +1837,7 @@ function transcriptionQueueRow(claim: string, furthest: Tier2Progress | null): T
     case "m4-share":
     case "m3-order":
     case "d2-short-run":
-    case "d3-mean":
-    case "d5-triple":
+    case "d5-pair":
     case "m4-runtime":
       return {
         claim,

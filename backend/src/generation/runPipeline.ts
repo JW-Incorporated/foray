@@ -4,7 +4,7 @@ import { StageTimingLog, type StageTiming } from "./stageTiming";
 import { BudgetStopError, EpisodeBudgetExceededError, findBudgetError } from "../cost/budgetGuard";
 import { CheckpointSession, checkpointFingerprint, type CheckpointStore } from "./checkpoint";
 import { DeepenedActSchema, SpineSchema } from "../types/spine";
-import { NewSegmentSchema, SourcedActSchema, TapePointerSchema, TranscriptionQueueCandidateSchema } from "../types/tapeSourcing";
+import { NewSegmentSchema, SourcedActSchema, TapeBoundarySchema, TapePointerSchema, TranscriptionQueueCandidateSchema } from "../types/tapeSourcing";
 import { ResearchShapeSchema } from "../types/research";
 import { ForayItemSchema } from "./forayItems";
 import { NarratedBeatSchema } from "../types/narration";
@@ -579,19 +579,29 @@ const TapeRelevanceInputSchema = z.object({
   /* F-72: which floor admitted a seeded beat's window. Optional for the same
      reason as the pair above. */
   seedFloor: z.literal("share-only").optional(),
-  /* F-80: D5's triple clause chose this segment's length. Optional likewise. */
-  lengthGate: z.literal("d5-triple").optional(),
+  /* Q-04: D5's pair clause chose this segment's length (F-80's triple clause
+     before it — a checkpoint written under F-80 carries the old spelling and
+     reads as the new gate). Optional likewise. */
+  lengthGate: z
+    .enum(["d5-pair", "d5-triple"])
+    .transform((): "d5-pair" => "d5-pair")
+    .optional(),
+  /* Q-01: where the clip's edges landed and how far relevance carried it.
+     Optional so a checkpoint written before Q-01 still resumes. */
+  boundary: TapeBoundarySchema.optional(),
+  extendedBySec: z.number().optional(),
   /* F-84: the pool's cut at the same start was reused. Optional likewise. */
   poolCut: z.literal("reused").optional()
 });
 
 /* F-80 renamed the D5 gate from `d5-uniform` (a preference, #571) to
-   `d5-triple` (a rule). A checkpoint written by #571–#620 can carry the old
+   `d5-triple` (a rule), and Q-04 restated the rule as a PAIR (`d5-pair`). A
+   checkpoint written by #571–#620 or by F-80–Q-04 can carry either old
    spelling in its trace, and a resume must not fail on the runs the ledger
-   decided — so the legacy spelling is accepted and read as the new one. */
-const LEGACY_D5_GATE = "d5-uniform";
-const readLegacyD5Gate = <G extends string>(gate: G | typeof LEGACY_D5_GATE): G | "d5-triple" =>
-  gate === LEGACY_D5_GATE ? "d5-triple" : gate;
+   decided — so both legacy spellings are accepted and read as the new one. */
+const LEGACY_D5_GATES = ["d5-uniform", "d5-triple"] as const;
+const readLegacyD5Gate = <G extends string>(gate: G | (typeof LEGACY_D5_GATES)[number]): G | "d5-pair" =>
+  (LEGACY_D5_GATES as readonly string[]).includes(gate) ? "d5-pair" : (gate as G);
 
 /* Mirrors `SourcingTrace` (types/tapeSourcing.ts, F-49): why each narrated beat
    got no tape. Checkpointed with the stage for the same reason `tapeRelevance`
@@ -613,8 +623,8 @@ const TIER2_GATE_SCHEMA = z
     "m3-order",
     "d2-short-run",
     "d3-mean",
-    "d5-triple",
-    LEGACY_D5_GATE,
+    "d5-pair",
+    ...LEGACY_D5_GATES,
     "m4-runtime",
     "pool-cut",
     "past-duration"
@@ -643,8 +653,8 @@ const SourcingTraceSchema = z.object({
           "m3-order",
           "d2-short-run",
           "d3-mean",
-          "d5-triple",
-          LEGACY_D5_GATE,
+          "d5-pair",
+          ...LEGACY_D5_GATES,
           "m4-runtime"
         ])
         .transform(readLegacyD5Gate),
@@ -677,6 +687,9 @@ const SourcingTraceSchema = z.object({
       feedDurationSec: z.number().optional(),
       startAnchor: z.string().optional(),
       endAnchor: z.string().optional(),
+      /* Q-01: the cut's boundary kind and extension, beside its anchors. */
+      boundary: TapeBoundarySchema.optional(),
+      extendedBySec: z.number().optional(),
       /* WS-H: what tier 2's text search saw (`types/tapeSourcing.ts`). Optional
          so a checkpoint written before WS-H still parses on resume. */
       foundBy: z.enum(["text-index", "title"]).optional(),

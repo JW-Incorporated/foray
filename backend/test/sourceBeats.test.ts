@@ -1,22 +1,8 @@
 import { describe, it, expect, vi } from "vitest";
 import { existsSync, readFileSync } from "fs";
 import { join } from "path";
-import {
-  sourceBeats,
-  summarizeSourcing,
-  deriveItemId,
-  D3_MEAN_FLOOR_SEC,
-  D5_IQR_FLOOR_SEC,
-  D5_RECUT_MAX_SEGMENTS,
-  D5_TOLERANCE,
-  D_TARGET_LADDER_SEC,
-  interquartileRange,
-  M4_ITEM_SHARE_MAX,
-  m4SegmentCapFor,
-  RECUT_TARGETS_SEC,
-  tapeTargetFor
-} from "../src/generation/sourceBeats";
-import { placementEscapesD5Triple } from "../src/generation/d5Triple";
+import { sourceBeats, summarizeSourcing, deriveItemId, D5_TOLERANCE, M4_ITEM_SHARE_MAX, M4_LONG_CLIP_SEC, m4SegmentCapFor } from "../src/generation/sourceBeats";
+import { placementEscapesD5Pair } from "../src/generation/d5Pair";
 import { capArgumentBeats, deepenActs } from "../src/generation/deepenActs";
 import { buildResearchShape } from "../src/generation/researchShape";
 import { buildSpine } from "../src/generation/buildSpine";
@@ -2163,7 +2149,11 @@ describe("sourceBeats — F-62: a short window grows toward the claim, never sym
     const segment = run(leadInIsOffClaim).newSegments[0]!;
     expect(segment.startSec).toBe(26);
     expect(segment.endSec).toBe(76);
-    expect(segment.endSec - segment.startSec).toBeGreaterThanOrEqual(MIN_TAPE_SEGMENT_SEC);
+    /* Q-01: the 60 s floor is a TARGET the growth reaches for through cues
+       that share the claim, never a pad — fifty seconds of the claim beats a
+       minute that ends on the new guest (F-62's own rule, unchanged). */
+    expect(segment.endSec - segment.startSec).toBeGreaterThanOrEqual(ABSOLUTE_MIN_TAPE_SEGMENT_SEC);
+    expect(segment.endSec - segment.startSec).toBeLessThan(MIN_TAPE_SEGMENT_SEC);
   });
 
   it("grows backwards instead when that is the side the claim is on", () => {
@@ -2209,48 +2199,55 @@ describe("sourceBeats — F-62: a short window grows toward the claim, never sym
     expect(segment.endSec - segment.startSec).toBeGreaterThanOrEqual(ABSOLUTE_MIN_TAPE_SEGMENT_SEC);
   });
 
-  /* F-73: the same rule, asked for more of the passage.
+  /* Q-01: the same rule, asked for the whole THOUGHT.
    *
-   * `cutWindowToSegment` now takes a target length (`D_TARGET_LADDER_SEC`, via
-   * `tapeTargetFor`) and keeps growing towards it AFTER `MIN_TAPE_SEGMENT_SEC` —
-   * but only through cues that share the claim's words, so the growth stops where
-   * the passage does. These two cases are that pair: it reaches past 90 s when the
-   * tape keeps talking about the claim, and it stops dead at the cue that does
-   * not. */
+   * F-73 grew the cut towards a ladder target through cues that share the
+   * claim's words. Q-01 replaced the ladder with `extendToThought`: the window
+   * runs on while sixty-second stretches of the tape stay relevant to the claim
+   * and backs up to a thought boundary before the first stretch that drifts.
+   * These two cases are that pair: it reaches past the window when the tape
+   * keeps talking about the claim, and it stops at the boundary before the
+   * minute that does not. */
   const passageRunsOn: TranscriptCue[] = [
-    { text: "before the break we were arguing about which coffee machine the office should buy", start_sec: 0, end_sec: 26 },
+    { text: "before the break we were arguing about which coffee machine the office should buy.", start_sec: 0, end_sec: 25 },
     { text: "so the retraining calendar slipped by about a week that time", start_sec: 26, end_sec: 58 },
     { text: "and the recommender was serving stale inventory to everybody for days", start_sec: 58, end_sec: 90 },
-    { text: "the stale rows came out of the same inventory feed the calendar drives", start_sec: 90, end_sec: 122 },
-    { text: "right after this we have got a completely different guest and a new subject", start_sec: 122, end_sec: 150 }
+    { text: "the stale rows came out of the same inventory feed the calendar drives.", start_sec: 90, end_sec: 122 },
+    { text: "right after this we have got a completely different guest and a new subject", start_sec: 123, end_sec: 150 },
+    { text: "and a word from our sponsor about coffee machines and hotels in denver", start_sec: 150, end_sec: 190 },
+    { text: "the hotels in denver are cheap and the coffee is excellent", start_sec: 190, end_sec: 250 }
   ];
 
-  it("grows past the D3 mean floor while the tape is still saying the claim's words (F-73)", () => {
+  it("runs on past the claim window while the tape is still saying the claim's words (Q-01)", () => {
     /* The window search stops at 26-90: 64 s, every content word of the claim
        already spoken, and at equal coverage the shorter window wins. That is a
-       correct WINDOW and a segment 26 s under the 90 s mean the D-tier rules
-       require, which is the whole of F-73 — run 2 attempt 5's five segments all
-       landed in that band and D3 refused the Foray at 76.1 s.
+       correct WINDOW and, before Q-01, the whole segment — cut at the sentence
+       that proved the claim, which is the founder's complaint. The minute after
+       it (90-150) is still about the stale inventory feed, so the clip runs
+       through it.
 
-       MUTATION THAT KILLS THIS: delete the second `while` loop in
-       `growByClaimOverlap` (the `targetSec` phase). The span comes back 26-90.
-       Ran it — red. */
+       MUTATION THAT KILLS THIS: return `window` unchanged from
+       `extendToThought`. The span comes back 26-90. Ran it — red. */
     const segment = run(passageRunsOn).newSegments[0]!;
     expect(segment.startSec).toBe(26);
-    expect(segment.endSec).toBe(122);
-    expect(segment.endSec - segment.startSec).toBeGreaterThanOrEqual(D3_MEAN_FLOOR_SEC);
+    expect(segment.endSec).toBeGreaterThan(90);
+    expect(segment.extendedBySec).toBeGreaterThan(0);
   });
 
-  it("still stops at the first cue that says nothing the claim says, target or no target (F-73)", () => {
-    /* The target for a Foray's first placement is 105 s and the span above is
-       96 s, so the growth stopped SHORT of what it was asked for rather than
-       taking the two cues that would have got it there — the office coffee
-       machine at the front and the new guest at the back. A phase that padded to
-       its target would have taken one of them. */
+  it("stops at the boundary before the first minute that says nothing the claim says (Q-01)", () => {
+    /* The minute from 150 s is the sponsor and the hotels, so the walk stops
+       there and the clip backs up to the last boundary before it: the full stop
+       and one-second pause at 122 s. The new guest's first sentence (123-150),
+       which the sixty-second grid had reached, is not in the clip. Neither is
+       the coffee machine at the front: nothing before 26 s is about the claim.
+
+       MUTATION THAT KILLS THIS: in `extendToThought`'s end step 2, take the
+       reach cue instead of `lastEndBoundaryUpTo` — the clip ends at 150 s, on
+       the new guest. Ran it — red. */
     const segment = run(passageRunsOn).newSegments[0]!;
-    expect(segment.endSec - segment.startSec).toBeLessThan(tapeTargetFor(0));
-    expect(segment.startSec).toBeGreaterThan(0);
-    expect(segment.endSec).toBeLessThan(150);
+    expect(segment.endSec).toBe(122);
+    expect(segment.startSec).toBe(26);
+    expect(segment.boundary).toBe("sentence");
   });
 
   it("never pads symmetrically: the two sides are asked, not alternated", () => {
@@ -2873,8 +2870,16 @@ describe("sourceBeats — F-70: tier 2 obeys M3 and M4, the same ledger tier 1 k
       end_sec: 100 + (i % 2 === 0 ? 120 : 150)
     }));
 
+  /* The second episode says the same things at two thirds the pace (Q-04): a
+     clip cut from it is half as long again as the same stretch of the first,
+     so a fall-through to it is never inside D5's pair band with the clip it
+     follows — the pair clause is asked at placement now, and two identical
+     transcripts would make every fall-through below a `d5-pair` refusal that
+     has nothing to do with M3 or M4. */
+  const slower: TranscriptCue[] = cues.map((c) => ({ ...c, start_sec: c.start_sec * 1.5, end_sec: c.end_sec * 1.5 }));
+
   function run(beats: Array<{ claim: string; exploration: boolean; kind?: "account"; seed?: Seed }>, archive: TranscriptDigestEntry[]) {
-    const cuesByGuid: Record<string, TranscriptCue[]> = { "pa-950": cues, "pa-951": cues };
+    const cuesByGuid: Record<string, TranscriptCue[]> = { "pa-950": cues, "pa-951": slower };
     return sourceBeats([makeDeepenedAct({ slots: [{ title: "Gearboxes", beats }] }, "F70")], {
       segmentPool: fillerPool(),
       transcriptArchive: archive,
@@ -2998,29 +3003,28 @@ describe("sourceBeats — F-70: tier 2 obeys M3 and M4, the same ledger tier 1 k
   });
 });
 
-describe("sourceBeats — F-73: the D-tier length ledger, kept by both tiers", () => {
+describe("sourceBeats — F-73 / Q-04: the length ledger, kept by both tiers", () => {
   /* WHAT THIS IS ABOUT. Run 2 attempt 5's act-1 candidate had 5 tier-2 segments,
      every one of them cut from a 60-120 s research window, and
-     `check-forays.mjs` refused it four times over: D2 (it ended on two sub-60 s
-     segments), D3 (76.1 s mean, under the 90 s floor), D5 (15.6 s interquartile
-     range) and M4's RUNTIME clause (one episode at 34.3 %). None of those rules
-     was read anywhere in the pipeline. They are now, at the one point where a
-     candidate's duration is real, by both tiers, as fall-throughs. */
+     `check-forays.mjs` refused it four times over: D2, D3, D5 and M4's runtime
+     clause. F-73 put the length rules at the one point where a candidate's
+     duration is real, for both tiers, as fall-throughs. Q-04 then re-derived
+     them for clips of a minute to half an hour (Q-01): D2 unchanged; D3
+     retired; D5 restated as "no two consecutive clips within 20 % of the same
+     length" (`d5Pair.ts`); M4's runtime clause restated as one long clip per
+     episode plus a quarter of the tape BEYOND the episode's longest clip, so a
+     single let-it-ride clip never trips it. The cases below are those rules,
+     each on the tier that decides it. */
 
-  const claim = "Gearboxes fail because bearings take torque reversals.";
-  type Seed = { episodeId: string; startSec: number; endSec: number };
-  const gearboxBeat = (seed?: Seed) => ({ claim, exploration: false, kind: "account" as const, ...(seed ? { seed } : {}) });
-
+  const fillerClaim = "The Lawson criterion is a statement about tokamak plasma confinement.";
   /** Tier-1 filler of a chosen length, one segment per episode, all answering
    * one claim — the ledger's starting position, written the cheap way.
    *
-   * ODD-NUMBERED FILLERS TAKE `alternateSec` (F-80) — a quarter longer by
-   * default, which is outside D5's +/-20 % band. The triple clause is enforced
-   * at placement now, so fillers of one length would place two and refuse the
-   * third, and every case below that needs the Foray full would be measuring
-   * that refusal instead of its own rule. Each case's arithmetic is stated
-   * against the lengths it actually gets. */
-  const fillerClaim = "The Lawson criterion is a statement about tokamak plasma confinement.";
+   * ODD-NUMBERED FILLERS TAKE `alternateSec` — a quarter longer by default,
+   * which is outside D5's +/-20 % band. The pair clause is enforced at
+   * placement, so fillers of one length would place one and refuse the next,
+   * and every case below that needs the Foray full would be measuring that
+   * refusal instead of its own rule. */
   const fillerPool = (n: number, durationSec: number, alternateSec = Math.round(durationSec * 1.25)): SegmentRecord[] =>
     Array.from({ length: n }, (_v, i) => ({
       ...fixtureSegmentPool()[0]!,
@@ -3031,189 +3035,30 @@ describe("sourceBeats — F-73: the D-tier length ledger, kept by both tiers", (
     }));
   const fillerBeats = (n: number) => Array.from({ length: n }, () => ({ claim: fillerClaim, exploration: false }));
 
-  function run(
-    beats: Array<{ claim: string; exploration: boolean; kind?: "account"; seed?: Seed }>,
-    archive: TranscriptDigestEntry[],
-    cuesByGuid: Record<string, TranscriptCue[]>,
-    filler: SegmentRecord[]
-  ) {
-    return sourceBeats([makeDeepenedAct({ slots: [{ title: "Gearboxes", beats }] }, "F73")], {
-      segmentPool: filler,
-      transcriptArchive: archive,
-      cueProvider: { getCues: (e) => cuesByGuid[e.guid] ?? null },
-      textIndex: memoryTextIndex(archive, cuesByGuid)
-    });
+  /** A pool segment of a chosen length at a chosen start of one episode — the
+   * shape M4's two clauses are asked about. */
+  const gearboxWhy = "Wind turbine gearboxes fail early because bearings take torque reversals";
+  const gearboxBeat = () => ({ claim: "Wind turbine gearboxes fail early because their bearings take torque reversals.", exploration: false });
+  /** A second claim from the same episode, worded so that ITS pool segment is
+   * the best-scoring candidate for it — the trace names the gate that refused
+   * the best-scoring segment, and the first clip, already played, would
+   * otherwise be reported first as `exhausted`. */
+  const crackWhy = "Bearings crack under reversing torque and the turbine gearbox fails within a year";
+  const crackBeat = () => ({ claim: "Bearings crack under reversing torque and the turbine gearbox fails within a year.", exploration: false });
+  const segAt = (item: string, startSec: number, durationSec: number, why = fixtureSegmentPool()[0]!.why): SegmentRecord => ({
+    ...fixtureSegmentPool()[0]!,
+    id: `${item}#${startSec}`,
+    item_id: item,
+    start_sec: startSec,
+    end_sec: startSec + durationSec,
+    why
+  });
+
+  function runPool(beats: Array<{ claim: string; exploration: boolean }>, pool: SegmentRecord[], label: string) {
+    return sourceBeats([makeDeepenedAct({ slots: [{ title: "Gearboxes", beats }] }, label)], { segmentPool: pool, transcriptArchive: [] });
   }
 
-  const entry = (guid: string, title: string): TranscriptDigestEntry => ({
-    show_id: "practical-ai",
-    show_title: "Practical AI",
-    guid,
-    title,
-    cues: 6,
-    feed_duration_sec: 3600,
-    enclosure_url: `https://cdn.example/${guid}.mp3`
-  });
-
-  /* ------------------------------------------------------------------ D3 */
-
-  /** One 32 s passage about the claim, walled off by cues that say nothing of
-   * it — so the window is 32 s, the growth has nowhere to go, and the segment
-   * this episode can offer is a short one. */
-  const shortPassage: TranscriptCue[] = [
-    { text: "before the break we were arguing about which coffee machine the office should buy", start_sec: 0, end_sec: 30 },
-    { text: "the gearboxes fail when bearings take torque reversals on the shaft", start_sec: 30, end_sec: 62 },
-    { text: "right after this we have got a completely different guest and a new subject", start_sec: 62, end_sec: 140 }
-  ];
-
-  /** A 150 s passage about the same claim in a different episode. */
-  const longPassage: TranscriptCue[] = [
-    { text: "the gearboxes fail earlier than anyone expects on these machines", start_sec: 0, end_sec: 40 },
-    { text: "and the bearings take torque reversals every single rotation of the shaft", start_sec: 40, end_sec: 90 },
-    { text: "which is why the torque reversals matter so much for the bearings", start_sec: 90, end_sec: 150 },
-    { text: "anyway that is enough of that let us talk about the conference next month", start_sec: 150, end_sec: 220 }
-  ];
-
-  const shortEpisode = entry("pa-short", "Episode 800");
-  const longEpisode = entry("pa-long", "Episode 801");
-  const bothBodies = { "pa-short": shortPassage, "pa-long": longPassage };
-
-  it("refuses a span that would pull the running mean under D3's floor, and says so (d3-mean)", () => {
-    /* CHECKER ERROR THIS PREVENTS: "D3 FAIL: mean segment duration 76.1 s is
-       under the 90 s floor", verbatim from run 2 attempt 5.
-
-       Three 95 s segments are placed first, so the mean stands at 95 s. The only
-       tape for the fourth beat is the 32 s passage, and (95*3 + 32)/4 is 79.25 s.
-
-       MUTATION THAT KILLS THIS: delete the `d3MeanAllows` clause from
-       `durationVetoFor`. The beat then takes the 32 s span and the finished
-       Foray's mean is the number the checker refuses. Ran it — red. */
-    const result = run([...fillerBeats(3), gearboxBeat()], [shortEpisode], { "pa-short": shortPassage }, fillerPool(3, 95));
-    const beats = allSourcedBeats(result.acts);
-    expect(beats[3]!.sourcing).toBe("narration");
-    expect(result.newSegments).toHaveLength(0);
-
-    const trace = result.sourcingTrace.find((t) => t.beatIndex === 3)!;
-    expect(trace.tier2!.gate).toBe("d3-mean");
-    /* The row still names the episode and the window it refused, so a person can
-       go and listen rather than take the gate's word for it. */
-    expect(trace.tier2!.bestEpisodeTitle).toBe("Episode 800");
-    expect(trace.tier2!.windowStartSec).toBe(30);
-    expect(trace.tier2!.windowEndSec).toBe(62);
-  });
-
-  it("falls through to another episode's longer tape rather than dropping the beat to narration (d3-mean)", () => {
-    /* Tier 1's rule, applied to F-73's gates: an assembly veto sends the search
-       on to the next candidate. The 32 s passage is refused and the 150 s one is
-       taken, so the beat keeps its tape AND the mean stays over the floor. */
-    const result = run([...fillerBeats(3), gearboxBeat()], [shortEpisode, longEpisode], bothBodies, fillerPool(3, 95));
-    const beats = allSourcedBeats(result.acts);
-    expect(beats[3]!.sourcing).toBe("tape");
-    expect(result.newSegments).toHaveLength(1);
-    const minted = result.newSegments[0]!;
-    expect(minted.itemId).toContain("episode-801");
-    expect(minted.endSec - minted.startSec).toBe(150);
-
-    const mean = [95, 95, 95, 150].reduce((a, b) => a + b, 0) / 4;
-    expect(mean).toBeGreaterThanOrEqual(D3_MEAN_FLOOR_SEC);
-  });
-
-  it("exempts the first two placements, because a refusal there cannot move the mean", () => {
-    /* `D3_MEAN_MIN_PLACED`, and the same argument `m4SegmentCapFor`'s `max(1, …)`
-       makes: with one segment placed the mean is that segment, and refusing the
-       second for being short would leave a tape-starved Foray shorter still
-       without moving the number the rule reads. The same 32 s span the case above
-       refuses is taken here, as the SECOND placement. */
-    const result = run([...fillerBeats(1), gearboxBeat()], [shortEpisode], { "pa-short": shortPassage }, fillerPool(1, 95));
-    expect(allSourcedBeats(result.acts)[1]!.sourcing).toBe("tape");
-    expect(result.newSegments[0]!.endSec - result.newSegments[0]!.startSec).toBe(32);
-  });
-
-  /* ------------------------------------------------------------- M4 runtime */
-
-  /** Two stretches of ONE episode, both about the claim: 100-300 s (which cuts
-   * to 200 s) and 400-460 s. The 100 s hole between them is a real transcript
-   * gap and growth will not cross it (`TAPE_CUE_GAP_MAX_SEC`). */
-  const twoStretches: TranscriptCue[] = [
-    { text: "welcome back to the programme we are in denmark this week", start_sec: 0, end_sec: 30 },
-    { text: "the gearboxes here are the part that gives everybody trouble", start_sec: 100, end_sec: 150 },
-    { text: "and it is the bearings that give up first on almost all of them", start_sec: 150, end_sec: 200 },
-    { text: "you get a lot of torque coming back the other direction as well", start_sec: 200, end_sec: 250 },
-    { text: "and those reversals were never in the original load case at all", start_sec: 250, end_sec: 300 },
-    { text: "the gearboxes fail well before the design life says they should", start_sec: 400, end_sec: 430 },
-    { text: "bearings crack under torque that keeps switching direction on them", start_sec: 430, end_sec: 460 },
-    { text: "anyway that is enough of that let us talk about the conference next month", start_sec: 460, end_sec: 520 }
-  ];
-
-  const twoStretchEpisode = entry("pa-two", "Episode 950");
-  const secondEpisode = entry("pa-other", "Episode 951");
-
-  /** Seven 100 s tier-1 segments first, for M4's COUNT clause: an episode is not
-   * asked for a second segment until the Foray holds eight (`m4SegmentCapFor`),
-   * so without these the count clause would refuse the second window before the
-   * runtime clause was ever asked and this would pass for the wrong reason. */
-  const runtimeBeats = [
-    ...fillerBeats(7),
-    gearboxBeat({ episodeId: "pa-two", startSec: 100, endSec: 300 }),
-    gearboxBeat({ episodeId: "pa-two", startSec: 400, endSec: 460 })
-  ];
-
-  it("refuses an episode's second segment when it would take a quarter of the tape SECONDS (m4-runtime)", () => {
-    /* CHECKER ERROR THIS PREVENTS: "M4 FAIL: … is 20.0 % of segments and 34.3 %
-       of runtime, over the 25 % cap" — the RUNTIME half, which #569 gated the
-       count half of and deliberately left to the checker.
-
-       Seven fillers alternating 100 / 80 s (640 s) and a 200 s window put
-       *Episode 950* at 200 of 840 s. Its second window is 60 s more, which is
-       260 of 900 s — 28.9 %, over the cap — while the COUNT clause allows it
-       (2 of 9, cap 2), D3's mean is 100 s, and 100 / 200 / 60 is no uniform
-       triple. So this is the runtime clause and nothing else.
-
-       MUTATION THAT KILLS THIS: delete the `m4RuntimeAllows` clause from
-       `durationVetoFor`. The second window is minted and the Foray fails M4 on
-       runtime. Ran it — red. */
-    const result = run(runtimeBeats, [twoStretchEpisode], { "pa-two": twoStretches }, fillerPool(7, 100, 80));
-    const beats = allSourcedBeats(result.acts);
-    expect(beats[7]!.sourcing).toBe("tape");
-    expect(result.newSegments).toHaveLength(1);
-    expect(result.newSegments[0]!.endSec - result.newSegments[0]!.startSec).toBe(200);
-
-    expect(beats[8]!.sourcing).toBe("narration");
-    const trace = result.sourcingTrace.find((t) => t.beatIndex === 8)!;
-    expect(trace.tier2!.gate).toBe("m4-runtime");
-    expect(trace.tier2!.bestEpisodeTitle).toBe("Episode 950");
-    /* And the reason the beat carries into §4.7 says seconds, not segments —
-       a writer reading "no tape found" here would be reading a falsehood. */
-    expect(result.transcriptionQueueCandidates.at(-1)!.reason).toContain("quarter of the tape seconds");
-  });
-
-  it("falls through to a different episode rather than losing the beat's tape (m4-runtime)", () => {
-    const result = run(runtimeBeats, [twoStretchEpisode, secondEpisode], { "pa-two": twoStretches, "pa-other": twoStretches }, fillerPool(7, 100, 80));
-    const beats = allSourcedBeats(result.acts);
-    expect(beats[8]!.sourcing).toBe("tape");
-    expect(result.newSegments).toHaveLength(2);
-    expect(result.newSegments[1]!.itemId).toContain("episode-951");
-  });
-
-  it("never asks the runtime clause about an episode's FIRST segment", () => {
-    /* The same exemption `m4SegmentCapFor` gives, for the reason #569 wrote down:
-       refusing an episode's only segment for being long costs the Foray tape
-       without moving any other episode's share — and it would make the length
-       ladder self-defeating, since the ladder deliberately asks some placements
-       to be long. Two beats, one episode, and the first window is 200 of 200 s —
-       100 % of the tape seconds, and taken. */
-    const result = run([gearboxBeat({ episodeId: "pa-two", startSec: 100, endSec: 300 })], [twoStretchEpisode], { "pa-two": twoStretches }, []);
-    const only = allSourcedBeats(result.acts)[0]!;
-    expect(only.sourcing).toBe("tape");
-    /* 150 s here and 200 s in the case above, from the same tape and the same
-       seed: this is the Foray's FIRST placement, so its ladder target is 105 s
-       and the window already clears it, while the eighth placement is asked for
-       210 s and grows. The ladder is the only difference. */
-    expect(result.newSegments[0]!.endSec - result.newSegments[0]!.startSec).toBe(150);
-    expect(result.newSegments[0]!.endSec - result.newSegments[0]!.startSec).toBeGreaterThanOrEqual(tapeTargetFor(0));
-  });
-
-  /* ------------------------------------------------------------------ D2/D5 */
+  /* ------------------------------------------------------------------ D2 */
 
   it("never starts a run of two short segments, because it cannot promise the recovery one (d2-short-run)", () => {
     /* CHECKER ERROR THIS PREVENTS: "D2 FAIL: the Foray ends on two consecutive
@@ -3256,350 +3101,256 @@ describe("sourceBeats — F-73: the D-tier length ledger, kept by both tiers", (
     expect(beats[1]!.sourcing).toBe("narration");
   });
 
-  it("passes over a pool segment that would make D5's uniform triple, and narrates rather than place one (d5-triple)", () => {
-    /* CHECKER ERROR THIS PREVENTS: "D5 FAIL: … three consecutive durations
-       within +/-20 % of each other (max/min 1.191)" — run 5's, verbatim, on a
-       Foray narrated end to end (F-80).
+  /* ------------------------------------------------------------------ D5 */
 
-       Under #571 this clause was the one PREFERENCE in the ledger: given no
-       other candidate the uniform segment was taken, on the argument that a
-       tape-starved Foray fails worse than a metronomic one. Run 5 showed what
-       that buys — every page of narration written for a Foray finalize refuses —
-       and #620 keeps the clause strict on the partial candidate too, so the
-       relaxed placement now ends the run under G-30. Both halves on one pool:
+  it("passes over a pool segment that would make D5's uniform pair, and narrates rather than place one (d5-pair)", () => {
+    /* CHECKER ERROR THIS PREVENTS: "D5 FAIL: … two consecutive clips within
+       +/-20 % of the same length" — Q-04's restatement of the triple clause run
+       5 was refused on. Both halves on one pool:
 
-         - given a choice, the third beat takes the 200 s segment over the 120 s
-           one, because 120/120/120 is the triple D5 refuses;
+         - given a choice, the second beat takes the 200 s segment over the
+           120 s one, because 120 after 120 is the pair D5 refuses;
          - given no choice, it NARRATES, and the trace names the rule. Tier 1
            cannot re-cut a curator's segment, and there is no archive here for
-           tier 2 to cut from; the F-80 cases below are where a window is cut to
-           a different length instead. */
-    /* The first two beats are about gearboxes and take ep-a / ep-b; the third
-       is the Lawson claim, so ep-c (and ep-d, when offered) are ITS candidates
-       and the trace's best-scoring segment is the one the rule refused rather
-       than one an earlier beat used up. */
-    const seg = (item: string, durationSec: number, why = fixtureSegmentPool()[0]!.why): SegmentRecord => ({
-      ...fixtureSegmentPool()[0]!,
-      id: `${item}#100`,
-      item_id: item,
-      start_sec: 100,
-      end_sec: 100 + durationSec,
-      why
-    });
-    const gearboxWhy = "Wind turbine gearboxes fail early because bearings take torque reversals";
-    const gearboxBeat = () => ({ claim: "Wind turbine gearboxes fail early because their bearings take torque reversals.", exploration: false });
-    const threeBeats = () => [gearboxBeat(), gearboxBeat(), ...fillerBeats(1)];
-
-    const withEscape = sourceBeats([makeDeepenedAct({ slots: [{ title: "Lawson", beats: threeBeats() }] }, "F73D5a")], {
-      segmentPool: [seg("ep-a", 120, gearboxWhy), seg("ep-b", 120, gearboxWhy), seg("ep-c", 120), seg("ep-d", 200)],
-      transcriptArchive: []
-    });
-    const chosen = allSourcedBeats(withEscape.acts)[2]!;
+           tier 2 to cut from; the Q-01/Q-04 cases below are where a window is
+           extended to a different length instead. */
+    const withEscape = runPool(
+      [gearboxBeat(), ...fillerBeats(1)],
+      [segAt("ep-a", 100, 120, gearboxWhy), segAt("ep-c", 100, 120), segAt("ep-d", 100, 200)],
+      "F73D5a"
+    );
+    const chosen = allSourcedBeats(withEscape.acts)[1]!;
     expect(chosen.sourcing).toBe("tape");
     if (chosen.sourcing === "tape") expect(chosen.tape.endSec - chosen.tape.startSec).toBe(200);
 
-    /* MUTATION THAT KILLS THIS: restore #571's second `findTier1Match` pass with
-       the triple clause dropped (or return `null` from `durationVetoFor` for
-       `d5-triple`) — the 120 s segment is placed and the Foray reads
-       120/120/120. Ran it — red. */
-    const noEscape = sourceBeats([makeDeepenedAct({ slots: [{ title: "Lawson", beats: threeBeats() }] }, "F73D5b")], {
-      segmentPool: [seg("ep-a", 120, gearboxWhy), seg("ep-b", 120, gearboxWhy), seg("ep-c", 120)],
-      transcriptArchive: []
-    });
-    expect(allSourcedBeats(noEscape.acts).slice(0, 2).map((b) => b.sourcing)).toEqual(["tape", "tape"]);
-    const refused = allSourcedBeats(noEscape.acts)[2]!;
+    /* MUTATION THAT KILLS THIS: return `null` from `durationVetoFor` for
+       `d5-pair` — the 120 s segment is placed and the Foray reads 120/120. */
+    const noEscape = runPool([gearboxBeat(), ...fillerBeats(1)], [segAt("ep-a", 100, 120, gearboxWhy), segAt("ep-c", 100, 120)], "F73D5b");
+    expect(allSourcedBeats(noEscape.acts)[0]!.sourcing).toBe("tape");
+    const refused = allSourcedBeats(noEscape.acts)[1]!;
     expect(refused.sourcing).toBe("narration");
-    const trace = noEscape.sourcingTrace.find((t) => t.beatIndex === 2)!;
-    expect(trace.tier1!.gate).toBe("d5-triple");
+    const trace = noEscape.sourcingTrace.find((t) => t.beatIndex === 1)!;
+    expect(trace.tier1!.gate).toBe("d5-pair");
     expect(trace.tier1!.bestSegmentId).toBe("ep-c#100");
+    expect(placementEscapesD5Pair([120], 120)).toBe(false);
   });
 
-  it("asks consecutive placements for lengths D5's interquartile floor can be met with", () => {
-    /* The ladder is what sourcing does about D5's SECOND clause, which is a
-       property of the whole finished multiset and cannot be gated one placement
-       at a time (see `D5_IQR_FLOOR_SEC`). Four consecutive targets, sorted, must
-       have an interquartile range clear of the floor and a mean clear of D3's —
-       otherwise a Foray that reached every target would still be refused, and the
-       ladder would be decoration. */
-    const four = [0, 1, 2, 3].map((i) => tapeTargetFor(i)).sort((a, b) => a - b);
-    const q = (p: number) => {
-      const h = (four.length - 1) * p;
-      const lo = Math.floor(h);
-      return four[lo]! + (h - lo) * (four[Math.ceil(h)]! - four[lo]!);
-    };
-    expect(q(0.75) - q(0.25)).toBeGreaterThanOrEqual(D5_IQR_FLOOR_SEC);
-    expect(four.reduce((a, b) => a + b, 0) / four.length).toBeGreaterThanOrEqual(D3_MEAN_FLOOR_SEC);
-    /* And no two adjacent targets are inside D5's own tolerance, so a run of
-       placements that all reach their target cannot make a uniform triple. */
-    for (let i = 0; i + 1 < four.length; i++) expect(four[i + 1]! / four[i]!).toBeGreaterThan(1 + D5_TOLERANCE);
-    /* Never past `check-forays.mjs`'s L4 soft maximum, which is also this
-       module's own longest segment — a target that needed a `long_reason` would
-       trade one checker error for another. */
-    for (const target of four) expect(target).toBeLessThanOrEqual(MAX_TAPE_SEGMENT_SEC);
+  /* ------------------------------------------------------------------ M4 */
+
+  it("lets a single let-it-ride clip through whatever share of the tape it is (m4-runtime, Q-04)", () => {
+    /* THE FOUNDER'S CASE. Four fillers of 100 / 125 s and then one 1,500 s
+       clip from *ep-a*: 1,500 of 1,950 s, 77 % of the tape, and it is placed.
+       An episode's first clip is its longest, so its tape BEYOND the longest is
+       zero, and one long clip is what the rule allows. Under the plain runtime
+       share this was a refusal by construction — "if there's a half hour of
+       relevant content then let it ride" cannot coexist with a 25 % cap on a
+       single clip.
+
+       MUTATION THAT KILLS THIS: restore the plain share
+       (`episodeSec / totalSec <= M4_ITEM_SHARE_MAX`) in `m4RuntimeAllows` —
+       the clip is refused at 77 %. Ran it — red. */
+    const result = runPool([...fillerBeats(4), gearboxBeat()], [...fillerPool(4, 100), segAt("ep-a", 100, 1500, gearboxWhy)], "F73M4a");
+    const beat = allSourcedBeats(result.acts)[4]!;
+    expect(beat.sourcing).toBe("tape");
+    if (beat.sourcing === "tape") {
+      expect(beat.tape.itemId).toBe("ep-a");
+      expect(beat.tape.endSec - beat.tape.startSec).toBe(1500);
+    }
+    expect(1500 / 1950).toBeGreaterThan(M4_ITEM_SHARE_MAX);
+  });
+
+  it("refuses an episode's second long clip (m4-runtime, Q-04)", () => {
+    /* Seven fillers of 200 / 250 s (1,550 s), then *ep-a* at 500 s and again
+       at 350 s: both over `M4_LONG_CLIP_SEC`. The share beyond the longest is
+       350 of 2,400 s (14.6 %), under the cap; 500 / 350 is 1.43, outside D5's
+       band; the count clause allows a second segment at eight placed. So the
+       one-long-clip clause is the only thing that can refuse the second, and
+       it does: two acts of the Foray from one episode is that episode taking
+       the Foray over.
+
+       MUTATION THAT KILLS THIS: delete the `longestBefore > M4_LONG_CLIP_SEC`
+       clause from `m4RuntimeAllows` — the 350 s clip is placed. Ran it — red. */
+    const result = runPool(
+      [...fillerBeats(7), gearboxBeat(), crackBeat()],
+      [...fillerPool(7, 200), segAt("ep-a", 100, 500, gearboxWhy), segAt("ep-a", 1000, 350, crackWhy)],
+      "F73M4b"
+    );
+    const beats = allSourcedBeats(result.acts);
+    expect(beats[7]!.sourcing).toBe("tape");
+    expect(beats[8]!.sourcing).toBe("narration");
+    const trace = result.sourcingTrace.find((t) => t.beatIndex === 8)!;
+    expect(trace.tier1!.gate).toBe("m4-runtime");
+    expect(trace.tier1!.bestSegmentId).toBe("ep-a#1000");
+    expect(500).toBeGreaterThan(M4_LONG_CLIP_SEC);
+    expect(350).toBeGreaterThan(M4_LONG_CLIP_SEC);
+  });
+
+  it("refuses an episode's tape beyond its longest clip past a quarter of the Foray, and places it under (m4-runtime, Q-04)", () => {
+    /* Seven fillers of 60 / 75 s (465 s), then *ep-a* at 400 s and again at
+       300 s: the 300 s is the tape beyond the episode's longest clip, and 300
+       of 1,165 s is 25.8 %. Not a long-clip refusal (300 s is not over the
+       line), not a pair (1.33) — the share clause alone. At 250 s (22.4 %) the
+       same second clip is placed.
+
+       MUTATION THAT KILLS THIS: measure the share on the whole episode again —
+       the 250 s clip is refused too (650 of 1,115 s). Ran it — red. */
+    const over = runPool(
+      [...fillerBeats(7), gearboxBeat(), crackBeat()],
+      [...fillerPool(7, 60), segAt("ep-a", 100, 400, gearboxWhy), segAt("ep-a", 1000, 300, crackWhy)],
+      "F73M4c"
+    );
+    expect(allSourcedBeats(over.acts)[7]!.sourcing).toBe("tape");
+    expect(allSourcedBeats(over.acts)[8]!.sourcing).toBe("narration");
+    expect(over.sourcingTrace.find((t) => t.beatIndex === 8)!.tier1!.gate).toBe("m4-runtime");
+    expect(300 / 1165).toBeGreaterThan(M4_ITEM_SHARE_MAX);
+
+    const under = runPool(
+      [...fillerBeats(7), gearboxBeat(), crackBeat()],
+      [...fillerPool(7, 60), segAt("ep-a", 100, 400, gearboxWhy), segAt("ep-a", 1000, 250, crackWhy)],
+      "F73M4d"
+    );
+    const second = allSourcedBeats(under.acts)[8]!;
+    expect(second.sourcing).toBe("tape");
+    if (second.sourcing === "tape") expect(second.tape.endSec - second.tape.startSec).toBe(250);
+    expect(250 / 1115).toBeLessThan(M4_ITEM_SHARE_MAX);
   });
 });
 
-describe("sourceBeats — D5's interquartile clause, asked after every placement (F-73)", () => {
-  /* WHAT THIS CLOSES. #571 gates D5's TRIPLE clause at placement as a preference
-     and leaves the INTERQUARTILE clause ungated, because an IQR is a property of
-     the finished multiset and is not monotone in one placement — a Foray can
-     therefore still reach `check-forays.mjs` and be refused on "interquartile
-     range 15.6 s is under the 45 s floor". After the last beat the multiset
-     exists, so the question can be asked and answered: re-cut the one or two
-     tier-2 segments whose change most raises the spread, refusing any re-cut
-     that would newly break D2, D3, D5's triple clause, M3 or M4. */
+describe("sourceBeats — Q-01 / Q-04: a tier-2 clip is the thought around the claim, and D5's pair clause is asked of it", () => {
+  /* WHAT THIS PINS THROUGH THE WHOLE STAGE, not only `tapeExtent.ts`'s own
+     suite: the window search finds where the claim is spoken, `extendToThought`
+     moves the edges to the thought around it and runs on while the tape stays
+     relevant, `cutWindowToSegment` mints the anchors at the new edges, and the
+     minted row and the relevance row carry `boundary` / `extendedBySec`. And
+     when the full thought would be within 20 % of the previous clip, the same
+     window is extended to a shorter boundary first (Q-04). */
 
   const claim = "Gearboxes fail because bearings take torque reversals.";
   const fillerClaim = "The Lawson criterion is a statement about tokamak plasma confinement.";
 
-  const filler = (item: string, durationSec: number): SegmentRecord => ({
+  /** Cues a second apart, every one ending a sentence: an off-topic lead-in,
+   * a thirty-three second cue that says every claim word (so the claim search,
+   * whose band starts at 30 s, takes it alone: 42-75 s), three more cues about
+   * the claim, the host moving on. The thought runs to the full stop at 138 s,
+   * where the minute after drifts. */
+  const thought: TranscriptCue[] = [
+    { text: "Welcome back to the show, this week we are in Denver.", start_sec: 0, end_sec: 20 },
+    { text: "The coffee here is excellent and the hotels are cheap.", start_sec: 21, end_sec: 41 },
+    { text: "The gearboxes fail because the bearings take torque reversals, every single one of them, and nobody designs for it.", start_sec: 42, end_sec: 75 },
+    { text: "Every rotation the torque comes back and the bearings crack.", start_sec: 76, end_sec: 96 },
+    { text: "So the bearings crack under torque that keeps switching direction.", start_sec: 97, end_sec: 117 },
+    { text: "That is why the gearboxes fail well before the design life says.", start_sec: 118, end_sec: 138 },
+    { text: "Anyway, that is enough of that, let us talk about the conference.", start_sec: 139, end_sec: 159 },
+    { text: "The conference is in Denver and the keynote is about coffee machines.", start_sec: 160, end_sec: 180 },
+    { text: "I love Denver, the coffee there is excellent and the hotels are cheap.", start_sec: 181, end_sec: 201 }
+  ];
+  /** The same tape with the answer one sentence shorter: the thought runs to
+   * 117 s and the host moves on at 118 s. */
+  const shortThought: TranscriptCue[] = thought.map((c, k) =>
+    k === 5 ? { ...c, text: "Anyway, that is enough of that, let us move on to the conference." } : c
+  );
+  const episode: TranscriptDigestEntry = {
+    show_id: "practical-ai",
+    show_title: "Practical AI",
+    guid: "pa-thought",
+    title: "Episode 700",
+    cues: 9,
+    feed_duration_sec: 3600,
+    enclosure_url: "https://cdn.example/pa-thought.mp3"
+  };
+  const filler = (durationSec: number): SegmentRecord => ({
     ...fixtureSegmentPool()[0]!,
-    id: `${item}#100`,
-    item_id: item,
+    id: `filler-0#100`,
+    item_id: "filler-0",
     start_sec: 100,
     end_sec: 100 + durationSec
   });
 
-  const entry = (guid: string, title: string): TranscriptDigestEntry => ({
-    show_id: "practical-ai",
-    show_title: "Practical AI",
-    guid,
-    title,
-    cues: 12,
-    feed_duration_sec: 3600,
-    enclosure_url: `https://cdn.example/${guid}.mp3`
-  });
-
-  /** A long passage about the claim: an off-claim lead-in, then nine 30 s cues
-   * that all say some of the claim's words, then an off-claim ending. The
-   * window search takes the densest stretch of it and `cutWindowToSegment` can
-   * grow that stretch anywhere between 60 s and the full 240 s — which is what
-   * gives the pass something to choose between. */
-  const passage: TranscriptCue[] = (() => {
-    const cues: TranscriptCue[] = [{ text: "welcome back to the programme this week we are in denmark", start_sec: 0, end_sec: 30 }];
-    const lines = [
-      "the gearboxes here give everybody trouble",
-      "and the bearings give up first on nearly all of them",
-      "the gearboxes fail well before the design life says",
-      "torque comes back the other way every rotation",
-      "reversals were never in the original load case",
-      "bearings crack under torque that keeps switching",
-      "the gearboxes fail and the bearings take the torque",
-      "reversals again and the bearings crack again",
-      "torque reversals are what the gearboxes cannot take"
-    ];
-    let t = 30;
-    for (const text of lines) {
-      cues.push({ text, start_sec: t, end_sec: t + 30 });
-      t += 30;
-    }
-    cues.push({ text: "anyway that is enough of that let us talk about the conference", start_sec: t, end_sec: t + 60 });
-    return cues;
-  })();
-
-  /** One 32 s passage walled off by cues that say nothing the claim says: the
-   * growth rule has nowhere to go, so this window has exactly ONE cut and the
-   * pass has nothing to choose from. */
-  const walledPassage: TranscriptCue[] = [
-    { text: "before the break we were arguing about which coffee machine to buy", start_sec: 0, end_sec: 30 },
-    { text: "the gearboxes fail when bearings take torque reversals on the shaft", start_sec: 30, end_sec: 62 },
-    { text: "right after this we have a completely different guest and subject", start_sec: 62, end_sec: 140 }
-  ];
-
-  function run(beats: Array<{ claim: string; exploration: boolean; kind?: "account" }>, bodies: Record<string, TranscriptCue[]>, pool: SegmentRecord[]) {
-    const archive = Object.keys(bodies).map((guid, i) => entry(guid, `Episode ${800 + i}`));
-    return sourceBeats([makeDeepenedAct({ slots: [{ title: "Gearboxes", beats }] }, "D5IQR")], {
+  function run(beats: Array<{ claim: string; exploration: boolean; kind?: "account" }>, pool: SegmentRecord[], tape: TranscriptCue[] = thought) {
+    const archive = [episode];
+    return sourceBeats([makeDeepenedAct({ slots: [{ title: "Gearboxes", beats }] }, "Q01")], {
       segmentPool: pool,
       transcriptArchive: archive,
-      cueProvider: { getCues: (e) => bodies[e.guid] ?? null },
-      textIndex: memoryTextIndex(archive, bodies)
+      cueProvider: { getCues: () => tape },
+      textIndex: memoryTextIndex(archive, { "pa-thought": tape })
     });
   }
-
+  const tapeBeat = () => ({ claim, exploration: false, kind: "account" as const });
+  const fillerBeat = () => ({ claim: fillerClaim, exploration: false });
   const durationsOf = (result: ReturnType<typeof sourceBeats>) =>
     allSourcedBeats(result.acts)
       .filter((b) => b.sourcing === "tape")
       .map((b) => (b.sourcing === "tape" ? b.tape.endSec - b.tape.startSec : 0));
 
-  /** R-7, the same definition `check-forays.mjs` gates on. */
-  const iqr = (values: number[]): number => {
-    const s = [...values].sort((a, b) => a - b);
-    const q = (p: number) => {
-      const h = (s.length - 1) * p;
-      const lo = Math.floor(h);
-      return s[lo]! + (h - lo) * (s[Math.ceil(h)]! - s[lo]!);
-    };
-    return q(0.75) - q(0.25);
-  };
+  it("mints the thought around the claim, with its boundary and extension on the segment and on the relevance row (Q-01)", () => {
+    /* The claim window is 42-75 s; the clip is 42-138 s — the same sentence
+       start, and the end moved past three more sentences about the claim to
+       the full stop before the host changes the subject. 63 s of extension,
+       both edges on sentence boundaries, anchors verbatim from the tape at the
+       new edges.
 
-  const tapeBeat = () => ({ claim, exploration: false, kind: "account" as const });
-  const fillerBeat = () => ({ claim: fillerClaim, exploration: false });
-
-  it("re-cuts the segment whose change most raises the spread, until the IQR clears the floor", () => {
-    /* CHECKER ERROR THIS PREVENTS: "D5 FAIL: interquartile range 17.5 s is under
-       the 45 s floor (R-7)".
-
-       Four placements: two pool segments of 100 s and 140 s, then two tier-2
-       cuts that the ladder asks for 135 s and 210 s and that come out 150 s and
-       210 s — both outside D5's band with their two predecessors, so the
-       ladder's own cuts stand (F-80 steers a cut only when the rung's would be
-       a uniform triple; 140 / 150 as the first two would have been, which is
-       why the fixture is not that). Sorted, that is 100/140/150/210 — an IQR of
-       35 s. The pass re-cuts the 150 s tier-2 segment to the longest cut its
-       own window supports, 240 s, and the spread goes to 87.5 s.
-
-       MUTATION THAT KILLS THIS: delete the `liftDurationSpread(state,
-       tapeRelevance)` call from `sourceBeats`. The durations stay
-       100/140/150/210 and the IQR stays 35 s. Ran it — red. */
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-    try {
-      const result = run(
-        [fillerBeat(), fillerBeat(), tapeBeat(), tapeBeat()],
-        { "pa-a": passage, "pa-b": passage },
-        [filler("ep-a", 100), filler("ep-b", 140)]
-      );
-
-      expect(durationsOf(result)).toEqual([100, 140, 240, 210]);
-      expect(iqr(durationsOf(result))).toBeGreaterThanOrEqual(D5_IQR_FLOOR_SEC);
-      /* Nothing was dropped and nothing was added: four beats, four pieces of
-         tape, and the two minted segments are still the two episodes the search
-         chose. */
-      expect(result.newSegments).toHaveLength(2);
-      expect(result.newSegments.map((s) => s.itemId)).toEqual([
-        "practical-ai--episode-800",
-        "practical-ai--episode-801"
-      ]);
-      /* And no line was logged, because the floor was reached. */
-      expect(warn.mock.calls.flat().join(" ")).not.toContain("interquartile range");
-    } finally {
-      warn.mockRestore();
-    }
+       MUTATION THAT KILLS THIS: return `window` unchanged from
+       `extendToThought` — 42-75 s, no `boundary`, `extendedBySec` 0. */
+    const result = run([tapeBeat()], []);
+    const beat = allSourcedBeats(result.acts)[0]!;
+    expect(beat.sourcing).toBe("tape");
+    const segment = result.newSegments[0]!;
+    expect(segment.startSec).toBe(42);
+    expect(segment.endSec).toBe(138);
+    expect(segment.boundary).toBe("sentence");
+    expect(segment.extendedBySec).toBe(63);
+    const spoken = canonicalizeForAnchorMatch(thought.map((c) => c.text).join(" "));
+    expect(spoken).toContain(segment.startAnchor);
+    expect(spoken).toContain(segment.endAnchor);
+    expect(result.tapeRelevance[0]!.boundary).toBe("sentence");
+    expect(result.tapeRelevance[0]!.extendedBySec).toBe(63);
+    expect(result.tapeRelevance[0]!.lengthGate).toBeUndefined();
   });
 
-  it("writes the new cut everywhere the old one was written — pointer, minted segment, and the id", () => {
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-    try {
-      const result = run(
-        [fillerBeat(), fillerBeat(), tapeBeat(), tapeBeat()],
-        { "pa-a": passage, "pa-b": passage },
-        [filler("ep-a", 100), filler("ep-b", 140)]
-      );
-      const beat = allSourcedBeats(result.acts)[2]!;
-      expect(beat.sourcing).toBe("tape");
-      if (beat.sourcing !== "tape") return;
-      const minted = result.newSegments.find((s) => s.itemId === beat.tape.itemId)!;
+  it("extends the same window to a shorter thought when the full one would pair with the previous clip (d5-pair)", () => {
+    /* An 80 s pool clip first; the full thought is 96 s — 96 / 80 is exactly
+       1.2, which is NOT over the tolerance, so it is inside the band. The
+       chooser asks the extension for the longest thought under 80 / 1.2
+       (66.7 s): the sentence boundary at 75 s, 33 s, which the cut then grows
+       through the next cue (it shares `bearings` and `torque`) to 54 s and no
+       further — the cue after would pass the ceiling. 80 / 54 is 1.48: the
+       pair escapes, and the row says the clause chose the length. The growth
+       moved the edge off the boundary the extension chose, so the clip reports
+       `claim-only` rather than claim a boundary it no longer sits on.
 
-      /* The pointer §4.7 will narrate from and the segment `merge-segments.mjs`
-         would write are the same cut, down to the anchors — a re-cut that
-         updated one of them would put a beat's narration against tape nothing
-         can play. */
-      expect(minted.startSec).toBe(beat.tape.startSec);
-      expect(minted.endSec).toBe(beat.tape.endSec);
-      expect(minted.startAnchor).toBe(beat.tape.startAnchor);
-      expect(minted.endAnchor).toBe(beat.tape.endAnchor);
-      expect(minted.id).toBe(beat.tape.segmentId);
-      /* And the id still names the second the segment begins at, which is how
-         `merge-segments.mjs` derives it (`<item_id>#<start_sec rounded>`). */
-      expect(minted.id).toBe(`${minted.itemId}#${Math.round(minted.startSec)}`);
-      /* The re-cut moved the START, so this is a re-minted id and not the one
-         the placement walk handed out. */
-      expect(minted.startSec).toBe(60);
-      /* The anchors are the tape's own words at the NEW boundaries. */
-      const spoken = passage.map((c) => c.text).join(" ");
-      expect(spoken).toContain(minted.startAnchor);
-      expect(spoken).toContain(minted.endAnchor);
-      /* And the `tapeRelevance` row WS-B aggregates names the segment that
-         exists, not the one that was replaced. */
-      const row = result.tapeRelevance.find((r) => r.itemId === beat.tape.itemId)!;
-      expect(row.segmentId).toBe(minted.id);
-
-      /* The window was not re-chosen — the re-cut changes a LENGTH, never what a
-         segment is about. Every second of it is still inside the passage the
-         relevance search picked. */
-      expect(minted.startSec).toBeGreaterThanOrEqual(0);
-      expect(minted.endSec).toBeLessThanOrEqual(300);
-    } finally {
-      warn.mockRestore();
-    }
+       MUTATION THAT KILLS THIS: in `chooseCutForPlacement`, return `{ refused:
+       full, gate: fullGate }` for `d5-pair` as for every other gate — the beat
+       narrates. Or return `null` from `durationVetoFor` for `d5-pair` — it
+       places 96 s and the Foray reads 80 / 96. Or drop the `maxSec` the chooser
+       hands `cutWindowToSegment` — the growth runs to 75 s, 80 / 75 is 1.07,
+       and the beat narrates. Ran all three — red. */
+    const result = run([fillerBeat(), tapeBeat()], [filler(80)]);
+    expect(durationsOf(result)).toEqual([80, 54]);
+    expect(placementEscapesD5Pair([80], 96)).toBe(false);
+    expect(placementEscapesD5Pair([80], 54)).toBe(true);
+    const row = result.tapeRelevance[1]!;
+    expect(row.lengthGate).toBe("d5-pair");
+    expect(row.boundary).toBe("claim-only");
+    expect(result.newSegments[0]!.endSec - result.newSegments[0]!.startSec).toBe(54);
   });
 
-  it("says so in one line and changes nothing when no re-cut can reach the floor", () => {
-    /* Three pool segments of 110 / 135 / 110 s (135 / 110 is 1.227, so the
-       triple is legal — F-80 would refuse three of one length at placement)
-       and one tier-2 beat whose passage is walled off by cues that say nothing
-       the claim says: the growth rule has nowhere to go, so that window has
-       exactly one cut at 32 s and every target returns it. The IQR is 25.75 s
-       and there is no re-cut to make.
-
-       MUTATION THAT KILLS THIS: delete the `liftDurationSpread(state,
-       tapeRelevance)` call from `sourceBeats`. The run goes to
-       `check-forays.mjs`'s D5 refusal with nothing in the log to say sourcing
-       ever looked at the spread. Ran it — red. */
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-    try {
-      const result = run(
-        [fillerBeat(), fillerBeat(), fillerBeat(), tapeBeat()],
-        { "pa-a": walledPassage },
-        [filler("ep-a", 110), filler("ep-b", 135), filler("ep-c", 110)]
-      );
-
-      expect(durationsOf(result)).toEqual([110, 135, 110, 32]);
-      expect(iqr(durationsOf(result))).toBeLessThan(D5_IQR_FLOOR_SEC);
-      expect(result.newSegments).toHaveLength(1);
-      expect(result.newSegments[0]!.endSec - result.newSegments[0]!.startSec).toBe(32);
-
-      const lines = warn.mock.calls.map((c) => String(c[0]));
-      const line = lines.filter((l) => l.includes("interquartile range"));
-      expect(line).toHaveLength(1);
-      expect(line[0]).toContain(`under D5's ${D5_IQR_FLOOR_SEC} s floor`);
-      expect(line[0]).toContain("check-forays.mjs is the authority");
-    } finally {
-      warn.mockRestore();
-    }
-  });
-
-  it("never re-cuts a pool segment — a tier-1 length is a curator's decision", () => {
-    /* Four pool segments alternating 120 / 150 s (every triple is 1.25, outside
-       D5's band, so all four place — F-80): the IQR is 30 s, the floor is
-       unreachable, and the one thing this pass must not do to fix it is re-cut
-       somebody else's segment. Nothing is minted and every duration is exactly
-       as placed. */
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-    try {
-      const result = run(
-        [fillerBeat(), fillerBeat(), fillerBeat(), fillerBeat()],
-        {},
-        [filler("ep-a", 120), filler("ep-b", 150), filler("ep-c", 120), filler("ep-d", 150)]
-      );
-      expect(durationsOf(result)).toEqual([120, 150, 120, 150]);
-      expect(result.newSegments).toHaveLength(0);
-      expect(warn.mock.calls.map((c) => String(c[0])).filter((l) => l.includes("interquartile range"))).toHaveLength(1);
-    } finally {
-      warn.mockRestore();
-    }
-  });
-
-  it("re-cuts at most D5_RECUT_MAX_SEGMENTS of them, from a fixed set of target lengths", () => {
-    /* The two constants the pass is bounded by, asserted rather than described:
-       a repair that re-cut every segment would be a second length policy
-       competing with `D_TARGET_LADDER_SEC`, and a target outside
-       [MIN, MAX] is not a segment this module will cut. */
-    expect(D5_RECUT_MAX_SEGMENTS).toBe(2);
-    expect(RECUT_TARGETS_SEC[0]).toBe(MIN_TAPE_SEGMENT_SEC);
-    expect(RECUT_TARGETS_SEC.at(-1)).toBe(MAX_TAPE_SEGMENT_SEC);
-    for (const target of D_TARGET_LADDER_SEC) expect(RECUT_TARGETS_SEC).toContain(target);
-    for (let i = 1; i < RECUT_TARGETS_SEC.length; i++) expect(RECUT_TARGETS_SEC[i]!).toBeGreaterThan(RECUT_TARGETS_SEC[i - 1]!);
-  });
-
-  it("computes the interquartile range the way the checker does (R-7)", () => {
-    /* The gate's own worked numbers: the sorted ladder, whose IQR is what
-       `D_TARGET_LADDER_SEC` was sized against. */
-    expect(interquartileRange([105, 135, 165, 210])).toBeCloseTo(48.75, 6);
-    expect(interquartileRange([120, 120, 120, 120])).toBe(0);
-    /* And a definition that does not throw on the degenerate inputs a
-       tape-starved Foray hands it. */
-    expect(interquartileRange([])).toBe(0);
-    expect(interquartileRange([90])).toBe(0);
+  it("refuses the window when no shorter thought escapes the band, names d5-pair, and narrates", () => {
+    /* A 70 s pool clip first and the shorter tape, whose thought is 42-117 s:
+       75 / 70 is 1.07, inside the band, and the longest escape under it is
+       58 s — under the 60 s floor, so no shorter thought is asked for. The beat
+       is narrated, the trace names the rule, and the reason says the tape
+       exists and this Foray's running order refused it. */
+    const result = run([fillerBeat(), tapeBeat()], [filler(70)], shortThought);
+    const beats = allSourcedBeats(result.acts);
+    expect(beats[1]!.sourcing).toBe("narration");
+    expect(result.newSegments).toHaveLength(0);
+    const trace = result.sourcingTrace.find((t) => t.beatIndex === 1)!;
+    expect(trace.tier2!.gate).toBe("d5-pair");
+    expect(trace.tier2!.bestEpisodeTitle).toBe("Episode 700");
+    expect(trace.tier2!.boundary).toBe("sentence");
+    if (beats[1]!.sourcing === "narration") expect(beats[1]!.narration.reason).toContain("metronomic");
+    expect(result.transcriptionQueueCandidates.at(-1)!.reason).toContain("Nothing to transcribe");
+    expect(summarizeSourcing(result).some((line) => line.includes("top reason: tier2:d5-pair"))).toBe(true);
   });
 });
 
@@ -4308,201 +4059,4 @@ describe("sourceBeats — WS-H/F-61 offline: the real archive on the generation 
     },
     300000
   );
-});
-
-
-describe("sourceBeats — F-80: D5's triple clause is enforced where the length is decided", () => {
-  /* THE FAILURE. Run 5 (2026-09-11) sourced 25 tape beats of 34, narrated the
-     Foray end to end, and `check-forays.mjs` refused it at finalize:
-     "practical-ai--tiny-recursive-networks#603 / …#2297 / …#1650 are 152.0 /
-     142.2 / 169.4 s — three consecutive durations within +/-20 % of each other
-     (max/min 1.191)". #571 gated the clause at placement as a PREFERENCE and took
-     the uniform cut when nothing else was to hand; #620 keeps the clause strict
-     on the partial too, so under G-30 the same placement now ends the run after
-     act 1. The cases below are that placement in miniature: the same window,
-     cut to a length that escapes the band, or refused and named. */
-
-  const claim = "Gearboxes fail because bearings take torque reversals.";
-  const fillerClaim = "The Lawson criterion is a statement about tokamak plasma confinement.";
-
-  const filler = (item: string, durationSec: number): SegmentRecord => ({
-    ...fixtureSegmentPool()[0]!,
-    id: `${item}#100`,
-    item_id: item,
-    start_sec: 100,
-    end_sec: 100 + durationSec
-  });
-
-  const entry = (guid: string, title: string): TranscriptDigestEntry => ({
-    show_id: "practical-ai",
-    show_title: "Practical AI",
-    guid,
-    title,
-    cues: 12,
-    feed_duration_sec: 3600,
-    enclosure_url: `https://cdn.example/${guid}.mp3`
-  });
-
-  /** Nine 30 s cues about the claim between an off-claim lead-in and ending —
-   * the passage the interquartile cases above use. The ladder's rungs cut it
-   * to 120 / 150 / 180 / 210 s, and the growth path runs from the window up to
-   * 240 s, so this window has several lengths to choose between. */
-  const passage: TranscriptCue[] = (() => {
-    const cues: TranscriptCue[] = [{ text: "welcome back to the programme this week we are in denmark", start_sec: 0, end_sec: 30 }];
-    const lines = [
-      "the gearboxes here give everybody trouble",
-      "and the bearings give up first on nearly all of them",
-      "the gearboxes fail well before the design life says",
-      "torque comes back the other way every rotation",
-      "reversals were never in the original load case",
-      "bearings crack under torque that keeps switching",
-      "the gearboxes fail and the bearings take the torque",
-      "reversals again and the bearings crack again",
-      "torque reversals are what the gearboxes cannot take"
-    ];
-    let t = 30;
-    for (const text of lines) {
-      cues.push({ text, start_sec: t, end_sec: t + 30 });
-      t += 30;
-    }
-    cues.push({ text: "anyway that is enough of that let us talk about the conference", start_sec: t, end_sec: t + 60 });
-    return cues;
-  })();
-
-  /** ONE 150 s cue about the claim, walled off by cues that say nothing of it:
-   * the growth rule has nowhere to go, so this window has exactly one cut, at
-   * 150 s, whatever it is asked for. */
-  const walled150: TranscriptCue[] = [
-    { text: "before the break we were arguing about which coffee machine the office should buy", start_sec: 0, end_sec: 30 },
-    {
-      text:
-        "the gearboxes fail when bearings take torque reversals on the shaft and the bearings crack under torque " +
-        "that keeps switching direction which is why the gearboxes fail so early on nearly every one of these machines",
-      start_sec: 30,
-      end_sec: 180
-    },
-    { text: "right after this we have got a completely different guest and a new subject", start_sec: 180, end_sec: 260 }
-  ];
-
-  function run(beats: Array<{ claim: string; exploration: boolean; kind?: "account" }>, bodies: Record<string, TranscriptCue[]>, pool: SegmentRecord[]) {
-    const archive = Object.keys(bodies).map((guid, i) => entry(guid, `Episode ${900 + i}`));
-    return sourceBeats([makeDeepenedAct({ slots: [{ title: "Gearboxes", beats }] }, "F80")], {
-      segmentPool: pool,
-      transcriptArchive: archive,
-      cueProvider: { getCues: (e) => bodies[e.guid] ?? null },
-      textIndex: memoryTextIndex(archive, bodies)
-    });
-  }
-
-  const durationsOf = (result: ReturnType<typeof sourceBeats>) =>
-    allSourcedBeats(result.acts)
-      .filter((b) => b.sourcing === "tape")
-      .map((b) => (b.sourcing === "tape" ? b.tape.endSec - b.tape.startSec : 0));
-
-  const tapeBeat = () => ({ claim, exploration: false, kind: "account" as const });
-  const fillerBeat = () => ({ claim: fillerClaim, exploration: false });
-
-  it("cuts the third segment to a different length when the ladder rung's cut would make run 5's uniform triple", () => {
-    /* CHECKER ERROR THIS PREVENTS: the D5 FAIL quoted above, verbatim.
-
-       Two pool segments of 152 s and 142.2 s — run 5's first two — and then the
-       passage, whose ladder rung for a third placement is 135 s and whose cut
-       for that rung is 150 s: 152 / 142.2 / 150 is max/min 1.069, inside the
-       band. The chooser tries the ladder's other rungs farthest-from-the-two
-       first — 210 s is ln(210/152) = 0.32 away, 120 s and 180 s about 0.17 —
-       and 210 s escapes (210 / 142.2 = 1.48), so that is the cut. The fourth
-       placement's rung is 210 s again and 142.2 / 210 / 210 is 1.48, so the
-       ladder's own cut stands there and the row carries no `lengthGate`.
-
-       MUTATION THAT KILLS THIS: in `chooseCutForPlacement`, return `{ refused:
-       rung, gate: rungGate }` for `d5-triple` as for every other gate — the
-       third beat narrates. Or restore #571's preference (return `null` from
-       `durationVetoFor` for the triple) — it places 150 s and the Foray reads
-       152 / 142.2 / 150, the refusal itself. Ran both — red. */
-    const result = run(
-      [fillerBeat(), fillerBeat(), tapeBeat(), tapeBeat()],
-      { "pa-a": passage, "pa-b": passage },
-      [filler("ep-a", 152), filler("ep-b", 142.2)]
-    );
-    expect(durationsOf(result)).toEqual([152, 142.2, 210, 210]);
-    for (let i = 0; i + 2 < 4; i++) {
-      const [a, b, c] = durationsOf(result).slice(i, i + 3) as [number, number, number];
-      expect(Math.max(a, b, c) / Math.min(a, b, c), `triple at ${i}`).toBeGreaterThan(1 + D5_TOLERANCE);
-    }
-    /* The row says the clause DECIDED the third length and not the fourth. */
-    const rows = result.tapeRelevance;
-    expect(rows).toHaveLength(4);
-    expect(rows[2]!.lengthGate).toBe("d5-triple");
-    expect(rows[3]!.lengthGate).toBeUndefined();
-    expect(rows[0]!.lengthGate).toBeUndefined();
-    /* And the minted segment IS the 210 s cut — pointer and segment agree, and
-       every second of it is inside the passage the relevance search chose. */
-    const minted = result.newSegments[0]!;
-    expect(minted.endSec - minted.startSec).toBe(210);
-    const spoken = passage.map((c) => c.text).join(" ");
-    expect(spoken).toContain(minted.startAnchor);
-    expect(spoken).toContain(minted.endAnchor);
-  });
-
-  it("leaves the ladder rung's cut alone when it escapes the band by itself", () => {
-    /* The control for the counting claim on `lengthGate`: 50 / 140 and then
-       the rung's 150 s cut (150 / 50 = 3) — nothing to steer, nothing recorded.
-       (50 rather than 100 so the three already spread 50 s across the
-       quartiles and the interquartile pass has no reason to re-cut the 150.) */
-    const result = run([fillerBeat(), fillerBeat(), tapeBeat()], { "pa-a": passage }, [filler("ep-a", 50), filler("ep-b", 140)]);
-    expect(durationsOf(result)).toEqual([50, 140, 150]);
-    expect(result.tapeRelevance[2]!.lengthGate).toBeUndefined();
-  });
-
-  it("refuses a window no cut of which escapes the band, names d5-triple, and narrates only when no other candidate can", () => {
-    /* 150 / 140 placed, then a window with exactly ONE cut, 150 s: 150 / 140 /
-       150 is 1.071 whatever it is asked for. With that episode the only
-       candidate, the beat is narrated and the trace names the rule; the
-       narration reason and the queue row say the tape exists and this Foray's
-       running order refused it, not "no tape found".
-
-       MUTATION THAT KILLS THIS: restore #571's preference — the 150 s cut is
-       placed and the Foray reads 150 / 140 / 150. Ran it — red. */
-    const alone = run([fillerBeat(), fillerBeat(), tapeBeat()], { "pa-wall": walled150 }, [filler("ep-a", 150), filler("ep-b", 140)]);
-    const beats = allSourcedBeats(alone.acts);
-    expect(beats[2]!.sourcing).toBe("narration");
-    expect(alone.newSegments).toHaveLength(0);
-    const trace = alone.sourcingTrace.find((t) => t.beatIndex === 2)!;
-    expect(trace.tier2!.gate).toBe("d5-triple");
-    expect(trace.tier2!.bestEpisodeTitle).toBe("Episode 900");
-    expect(trace.tier2!.startAnchor).toBeDefined();
-    if (beats[2]!.sourcing === "narration") expect(beats[2]!.narration.reason).toContain("metronomic");
-    expect(alone.transcriptionQueueCandidates.at(-1)!.reason).toContain("Nothing to transcribe");
-    expect(summarizeSourcing(alone).some((line) => line.includes("top reason: tier2:d5-triple"))).toBe(true);
-
-    /* A FALL-THROUGH, LIKE EVERY OTHER GATE. Give the archive a second episode
-       whose window CAN be cut outside the band and the beat takes that one:
-       150 / 140 and then the passage's 210 s rung cut (1.5). */
-    const withEscape = run(
-      [fillerBeat(), fillerBeat(), tapeBeat()],
-      { "pa-wall": walled150, "pa-b": passage },
-      [filler("ep-a", 150), filler("ep-b", 140)]
-    );
-    const escaped = allSourcedBeats(withEscape.acts)[2]!;
-    expect(escaped.sourcing).toBe("tape");
-    if (escaped.sourcing === "tape") expect(escaped.tape.itemId).toBe("practical-ai--episode-901");
-    expect(withEscape.newSegments).toHaveLength(1);
-    expect(placementEscapesD5Triple([150, 140], durationsOf(withEscape)[2]!)).toBe(true);
-  });
-
-  it("changes nothing about run 2's frozen spine, where no triple ever forms (the G-24 counts hold)", () => {
-    /* The run-2 deepen checkpoint against the real pool with no transcript
-       bodies — the state every CI checkout is in and the case the G-24 replay
-       above pins: 35 traces, 29 arguments skipped, 6 searched, no tape. F-80
-       decides nothing here, and says so — no gate anywhere reads `d5-triple`. */
-    const RUN2 = (JSON.parse(readFileSync(join(__dirname, "fixtures", "run2-deepen-2026-09-09.json"), "utf8")) as { acts: DeepenedAct[] }).acts;
-    const result = sourceBeats(RUN2, { topic: "engineering/energy-fusion", cueProvider: { getCues: () => null } });
-    expect(result.sourcingTrace).toHaveLength(35);
-    expect(result.tapeRelevance).toHaveLength(0);
-    expect(result.sourcingTrace.filter((t) => t.outcome === "skipped:argument")).toHaveLength(29);
-    for (const t of result.sourcingTrace) {
-      expect(t.tier1?.gate).not.toBe("d5-triple");
-      expect(t.tier2?.gate).not.toBe("d5-triple");
-    }
-  });
 });

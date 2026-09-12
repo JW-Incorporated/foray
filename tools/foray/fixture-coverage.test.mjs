@@ -87,6 +87,7 @@ const CARRIERS = {
   "segment.role": (v) => ids(playedSegments().filter((x) => (x.seg.role ?? x.item.role ?? null) === v)),
   "segment.transcript_source": (v) => ids(playedSegments().filter((x) => x.seg.transcript_source === v)),
   "segment.source": (v) => ids(playedSegments().filter((x) => x.seg.source === v)),
+  "segment.boundary": (v) => ids(playedSegments().filter((x) => x.seg.boundary === v)),
   "segment.dai_suspected": (v) => ids(playedSegments().filter((x) => x.seg.dai_suspected === v)),
   "source.dai_suspected": (v) => ids(playedSources().filter((x) => x.src.dai_suspected === v)),
   "source.source": (v) => ids(playedSources().filter((x) => x.src.source === v)),
@@ -140,9 +141,30 @@ const KNOWN_UNCOVERED = [
     value: "narrative",
     why: "no committed Foray plays a `narrative`-role segment (quote/explanation/exchange are all carried).",
   },
+  /* Q-01 (2026-09-12): `boundary` is written by the tier-2 mint once the claim
+     window has been extended to its thought (`tapeExtent.ts`). No generation
+     run has been launched since — the listening-quality deck forbids one until
+     Q-06 — so no committed row carries any of the three values yet. The first
+     Q-01 Foray to publish carries `turn` and `sentence` on the run-8 measurement
+     (10 and 5 of 16); `claim-only` was 1 of 16 there. */
+  {
+    field: "segment.boundary",
+    value: "turn",
+    why: "no Foray has been generated under Q-01 yet; the deck holds generation runs until Q-06.",
+  },
+  {
+    field: "segment.boundary",
+    value: "sentence",
+    why: "as above.",
+  },
+  {
+    field: "segment.boundary",
+    value: "claim-only",
+    why: "as above — 1 of 16 run-8 clips landed here (a clip the floor growth carried past its boundary).",
+  },
 ];
 /** Raise this only with a written reason in the same PR. Lowering it is free. */
-const KNOWN_UNCOVERED_CEILING = 7; // jingle carrier landed with #632 (2026-09-11); +1 for narration.mode=intro (Q-02, 2026-09-12) until Q-06 lands its carrier
+const KNOWN_UNCOVERED_CEILING = 10; // 6 (jingle carrier landed with #632, 2026-09-11) + 1 narration.mode=intro (Q-02, 2026-09-12) + 3 segment.boundary values (Q-01, 2026-09-12), all until Q-06 lands their carriers
 
 const isKnownUncovered = (field, value) => KNOWN_UNCOVERED.some((k) => k.field === field && k.value === value);
 

@@ -2,7 +2,7 @@ import * as fs from "fs";
 import * as path from "path";
 import { tokenizeForSourcing } from "./catalogueLookup";
 import { canonicalizeForAnchorMatch } from "../types/anchorText";
-import type { TranscriptSource } from "../types/tapeSourcing";
+import type { TapeBoundary, TranscriptSource } from "../types/tapeSourcing";
 
 /**
  * §4.5 tier-2 lookup: the transcript archive — "episodes we hold
@@ -190,6 +190,16 @@ export interface TranscriptCue {
   text: string;
   start_sec: number;
   end_sec: number;
+  /**
+   * Who is speaking, when the transcript says (Q-01). `tools/segments/`'s
+   * normalized bodies carry a `speaker` per cue — a name for a diarised
+   * publisher transcript (*Being an Engineer*: 334 of 337 bodies name
+   * `Presenter` / the host / the guest), `null` for one that is not. Optional
+   * on the type so every inline test provider and every caller that builds
+   * cues by hand stays valid; `tapeExtent.ts` reads it to find turn
+   * boundaries and falls back to sentence + pause boundaries when it is absent.
+   */
+  speaker?: string | null;
 }
 
 /** Supplies real transcript cue text for an episode, if it is available.
@@ -380,7 +390,8 @@ function readCues(file: string): TranscriptCue[] | null {
     const start = typeof c?.start_sec === "number" ? c.start_sec : null;
     const end = typeof c?.end_sec === "number" ? c.end_sec : null;
     if (text === null || start === null || end === null || !Number.isFinite(start) || !Number.isFinite(end) || end < start) continue;
-    cues.push({ text, start_sec: start, end_sec: end });
+    const speaker = typeof c?.speaker === "string" && c.speaker.trim().length > 0 ? c.speaker.trim() : null;
+    cues.push({ text, start_sec: start, end_sec: end, speaker });
   }
   return cues.length ? cues : null;
 }
@@ -439,30 +450,56 @@ function canonicalWords(text: string): string[] {
    IS about the claim but its edges yield no quotable phrase — a rare,
    structural failure of a word-level transcript rather than a judgement. */
 
-/** Shortest cue run tier 2 will treat as a window. Below half a minute a
- * "window" is one or two sentences, and one or two sentences can share three
- * words with almost anything — the same arithmetic that made the old four-word
- * run meaningless. A run shorter than this is considered only when the
- * transcript (or the stretch of it before a gap larger than
- * `TAPE_WINDOW_MAX_SEC`) is itself shorter. */
-export const TAPE_WINDOW_MIN_SEC = 30;
-
-/** And the longest. A window is a candidate SEGMENT, and the real pool's
- * longest segment is 260 s; a window allowed to grow to an episode would
- * always win on term coverage while being about everything. */
-export const TAPE_WINDOW_MAX_SEC = 180;
+/**
+ * THE CLAIM SEARCH'S BAND, AND THE TAPE WINDOW'S BAND, ARE TWO DIFFERENT THINGS
+ * (Q-01, docs/curation/listening-quality-plan.md).
+ *
+ * `selectTapeWindow` answers one question — WHERE in the episode is the claim
+ * spoken — by scoring every cue run in a band by the claim's distinct content
+ * words. That question wants a short band: below half a minute a "window" is
+ * one or two sentences, and one or two sentences can share three words with
+ * almost anything (the arithmetic that made the old four-word run meaningless);
+ * above three minutes a window always wins on term coverage while being about
+ * everything, which is the wrong window for a search whose whole job is to
+ * locate. So the SEARCH keeps its 30-180 s band, `TAPE_CLAIM_SEARCH_MIN_SEC` /
+ * `TAPE_CLAIM_SEARCH_MAX_SEC` — the values the search was measured with.
+ *
+ * The TAPE WINDOW a listener hears is a different object: the claim's window
+ * extended to the boundaries of the thought it sits in and then for as long as
+ * the content stays relevant (`tapeExtent.ts`, `extendToThought`). Its band is
+ * `TAPE_WINDOW_MIN_SEC` / `TAPE_WINDOW_MAX_SEC`: a floor of a minute — the
+ * least a listener can be dropped into and hear a thought rather than a
+ * soundbite — and a ceiling of thirty minutes, the founder's own number
+ * (2026-09-12: "if there's a half hour of relevant content then let it ride").
+ * The two are the only hand-set numbers in the extension; everything between
+ * them is measured from the tape.
+ */
+export const TAPE_CLAIM_SEARCH_MIN_SEC = 30;
+export const TAPE_CLAIM_SEARCH_MAX_SEC = 180;
+/** The floor on a tape window a listener hears — see the note above. Was 30 s
+ * (the search's floor) until Q-01 split the two bands. */
+export const TAPE_WINDOW_MIN_SEC = 60;
+/** And the ceiling — thirty minutes, the founder's "let it ride". Was 180 s. */
+export const TAPE_WINDOW_MAX_SEC = 1800;
 
 /**
  * A minted tier-2 segment is a SEGMENT, not a soundbite (F-24(c): run 1's
  * minted spans were "`startSec` of the anchor's first word to `endSec` of its
  * last — a few seconds of audio, not a segment"). The real pool's shortest
- * segment is 50 s and its median is 124 s; 45 s is under the shortest thing a
- * curator has ever cut, so a span that reaches it is at least in the same
- * category of object.
+ * segment is 50 s and its median is 124 s.
+ *
+ * Q-01 moved this from 45 s to `TAPE_WINDOW_MIN_SEC` (60 s): the segment's
+ * floor and the tape window's floor are the same floor, because the segment IS
+ * the extended window cut to whole cues. A minute is the least a listener can
+ * be dropped into and hear a thought rather than a soundbite; it is also
+ * `check-forays.mjs`'s D2 "short" line, so a tier-2 segment can no longer start
+ * a run of short ones by construction.
  */
-export const MIN_TAPE_SEGMENT_SEC = 45;
-/** And not the whole episode either — the pool's longest segment is 260 s. */
-export const MAX_TAPE_SEGMENT_SEC = 240;
+export const MIN_TAPE_SEGMENT_SEC = TAPE_WINDOW_MIN_SEC;
+/** And the ceiling is the tape window's (Q-01): thirty minutes, the founder's
+ * "let it ride". Was 240 s — the pool's longest hand cut plus a margin — while
+ * the window was sized to cover the claim's words rather than the thought. */
+export const MAX_TAPE_SEGMENT_SEC = TAPE_WINDOW_MAX_SEC;
 
 /**
  * The floor below which a span is not tape at all, and the only reason
@@ -570,15 +607,17 @@ export const TIER2_DISTINCTIVE_WEIGHT = 0.5;
 export const TIER2_WINDOW_MIN_SHARE = 0.35;
 
 /** Cues with their canonical words and content words, once, so the window
- * search and the cut agree about which cue is cue `n`. Cues with no words at
- * all are dropped (a music/silence marker is not a boundary). */
-interface CueIndex {
+ * search, the cut and the thought extension (`tapeExtent.ts`) agree about
+ * which cue is cue `n`. Cues with no words at all are dropped (a music/silence
+ * marker is not a boundary). Exported for `tapeExtent.ts` only, which has to
+ * count cues exactly as the search that handed it `firstCue`/`lastCue` did. */
+export interface CueIndex {
   cues: TranscriptCue[];
   words: string[][];
   terms: Array<Set<string>>;
 }
 
-function indexCues(cues: TranscriptCue[]): CueIndex {
+export function indexCues(cues: TranscriptCue[]): CueIndex {
   const kept: TranscriptCue[] = [];
   const words: string[][] = [];
   const terms: Array<Set<string>> = [];
@@ -629,7 +668,29 @@ export interface TapeWindow {
   weightedShare: number;
   /** The idf-weighted overlap itself, which is what windows are ranked by. */
   score: number;
+  /**
+   * WHERE THE WINDOW'S EDGES LANDED, once `extendToThought` (`tapeExtent.ts`,
+   * Q-01) has moved them: `"turn"` — both edges are speaker-turn boundaries
+   * (the host's question that prompted the answer, the end of the answer);
+   * `"sentence"` — at least one edge is a sentence boundary marked by a pause
+   * rather than a turn; `"claim-only"` — an edge could not be moved to any
+   * boundary and stayed where the claim search left it. Absent on a window
+   * straight out of `selectTapeWindow`, which knows nothing about thoughts.
+   */
+  boundary?: TapeBoundary;
+  /** How many seconds the extension added over the claim window it started
+   * from, both directions together. Absent until extended. */
+  extendedBySec?: number;
+  /** The claim window's own edges, kept so the trace can say what the search
+   * found and what the extension did with it. Absent until extended. */
+  claimStartSec?: number;
+  claimEndSec?: number;
 }
+
+/** See `TapeWindow.boundary`. Declared in `types/tapeSourcing.ts` (the three
+ * values are the vocabulary `check-forays.mjs` accepts on a minted row's
+ * `boundary`, G-21c) and re-exported here for the modules that work in cues. */
+export type { TapeBoundary };
 
 export interface SelectTapeWindowOptions {
   /** Inverse document frequency per term, from the text index that produced the
@@ -638,8 +699,11 @@ export interface SelectTapeWindowOptions {
   idf?: ReadonlyMap<string, number>;
   /**
    * The duration band a window may occupy, defaulting to
-   * `TAPE_WINDOW_MIN_SEC`/`TAPE_WINDOW_MAX_SEC` — the §4.5 values, which is
-   * what every tier-2 caller uses and what every existing test measures.
+   * `TAPE_CLAIM_SEARCH_MIN_SEC`/`TAPE_CLAIM_SEARCH_MAX_SEC` — the §4.5 search
+   * band, which is what every tier-2 caller uses and what every existing test
+   * measures. (Until Q-01 these were `TAPE_WINDOW_MIN/MAX_SEC`; the tape window
+   * a listener hears now has its own band, and this search keeps the one it was
+   * measured with — see the note on `TAPE_CLAIM_SEARCH_MAX_SEC`.)
    *
    * Overridable for ONE caller and one reason (WS-L): §4.2's research map
    * quotes windows into the spine prompt, where a window is something a person
@@ -719,8 +783,8 @@ export function claimTermWeigher(claimTerms: readonly string[], idf: ReadonlyMap
  * The stretch of `cues` that carries `claimText` best, or `null` when the
  * episode has no usable cues or the claim no content words.
  *
- * WHAT IS BEING RANKED. Every cue run between `TAPE_WINDOW_MIN_SEC` and
- * `TAPE_WINDOW_MAX_SEC` is scored by the claim's DISTINCT content words spoken
+ * WHAT IS BEING RANKED. Every cue run between `TAPE_CLAIM_SEARCH_MIN_SEC` and
+ * `TAPE_CLAIM_SEARCH_MAX_SEC` is scored by the claim's DISTINCT content words spoken
  * inside it (idf-weighted when the index supplied weights). Distinct, not
  * total, because a host repeating one word twenty times is one fact about the
  * tape, not twenty. The best-scoring window wins; ties go to the one with more
@@ -739,8 +803,8 @@ export function selectTapeWindow(claimText: string, cues: TranscriptCue[], optio
   const index = indexCues(cues);
   const n = index.cues.length;
   if (n === 0) return null;
-  const minSec = options.minSec ?? TAPE_WINDOW_MIN_SEC;
-  const maxSec = options.maxSec ?? TAPE_WINDOW_MAX_SEC;
+  const minSec = options.minSec ?? TAPE_CLAIM_SEARCH_MIN_SEC;
+  const maxSec = options.maxSec ?? TAPE_CLAIM_SEARCH_MAX_SEC;
   /* The confined search (F-68). Both bounds are inclusive of a cue that starts
      or ends a hair outside them, per `WINDOW_WITHIN_TOLERANCE_SEC`. */
   const within = options.within;
@@ -894,6 +958,12 @@ export interface TapeSpan {
    * `growByClaimOverlap` had to reach `MIN_TAPE_SEGMENT_SEC`. */
   firstCue: number;
   lastCue: number;
+  /** Carried from the window when it was extended to a thought (Q-01) — see
+   * `TapeWindow.boundary`. `extendedBySec` counts the growth this cut added on
+   * top of the extension as well, so it is always "seconds past the claim
+   * window". Absent for a cut of an unextended window. */
+  boundary?: TapeBoundary;
+  extendedBySec?: number;
 }
 
 /**
@@ -934,6 +1004,15 @@ export interface CutWindowOptions {
    * longer than the pool's longest.
    */
   targetSec?: number;
+  /**
+   * A ceiling under `MAX_TAPE_SEGMENT_SEC` that the growth may not pass
+   * (Q-04). `sourceBeats.ts`'s chooser asks for one when it re-extends a
+   * window to escape D5's pair band: the extension stopped under
+   * `previous / 1.2`, and the floor growth here must not grow the cut back
+   * into the band one cue at a time. Omitted, the ceiling is
+   * `MAX_TAPE_SEGMENT_SEC`, exactly as before.
+   */
+  maxSec?: number;
 }
 
 export function cutWindowToSegment(
@@ -948,7 +1027,7 @@ export function cutWindowToSegment(
   if (window.firstCue < 0 || window.lastCue >= n || window.firstCue > window.lastCue) return null;
 
   const claimTerms = new Set(tokenizeForSourcing(claimText));
-  const { first, last } = growByClaimOverlap(index, claimTerms, window.firstCue, window.lastCue, options.targetSec);
+  const { first, last } = growByClaimOverlap(index, claimTerms, window.firstCue, window.lastCue, options.targetSec, options.maxSec);
 
   const startSec = index.cues[first]!.start_sec;
   const endSec = index.cues[last]!.end_sec;
@@ -958,7 +1037,21 @@ export function cutWindowToSegment(
   const endAnchor = endAnchorFor(index, first, last);
   if (!startAnchor || !endAnchor) return null;
 
-  return { startSec, endSec, startAnchor, endAnchor, firstCue: first, lastCue: last };
+  const span: TapeSpan = { startSec, endSec, startAnchor, endAnchor, firstCue: first, lastCue: last };
+  if (window.boundary !== undefined) {
+    /* Growth to the floor moves an edge off the boundary the extension chose;
+       a clip that no longer sits on it says so rather than claim a boundary
+       (Q-01). */
+    span.boundary = first === window.firstCue && last === window.lastCue ? window.boundary : "claim-only";
+    /* Everything past the claim window: the extension's own seconds plus
+       whatever the growth above added to reach the floor. */
+    const claimSec =
+      typeof window.claimStartSec === "number" && typeof window.claimEndSec === "number"
+        ? window.claimEndSec - window.claimStartSec
+        : window.endSec - window.startSec - (window.extendedBySec ?? 0);
+    span.extendedBySec = Math.max(0, Math.round((endSec - startSec - claimSec) * 1000) / 1000);
+  }
+  return span;
 }
 
 /** F-62's rule, stated once: grow toward the claim, never symmetrically. */
@@ -967,7 +1060,8 @@ function growByClaimOverlap(
   claimTerms: Set<string>,
   firstCue: number,
   lastCue: number,
-  targetSec?: number
+  targetSec?: number,
+  maxSec: number = MAX_TAPE_SEGMENT_SEC
 ): { first: number; last: number } {
   const n = index.cues.length;
   let first = firstCue;
@@ -984,8 +1078,8 @@ function growByClaimOverlap(
   while (duration() < MIN_TAPE_SEGMENT_SEC) {
     const prev = first - 1;
     const next = last + 1;
-    const canPrev = prev >= 0 && endOf(last) - startOf(prev) <= MAX_TAPE_SEGMENT_SEC;
-    const canNext = next < n && endOf(next) - startOf(first) <= MAX_TAPE_SEGMENT_SEC;
+    const canPrev = prev >= 0 && endOf(last) - startOf(prev) <= maxSec;
+    const canNext = next < n && endOf(next) - startOf(first) <= maxSec;
     if (!canPrev && !canNext) break;
 
     const prevShared = canPrev ? sharedWith(prev) : -1;
@@ -1037,13 +1131,13 @@ function growByClaimOverlap(
    * different lengths whenever their passages differ, and `sourceBeats.ts` varies
    * the target as well (`D_TARGET_LADDER_SEC`) so that they are not even asked
    * for the same one. */
-  const target = Math.min(Math.max(targetSec ?? MIN_TAPE_SEGMENT_SEC, MIN_TAPE_SEGMENT_SEC), MAX_TAPE_SEGMENT_SEC);
+  const target = Math.min(Math.max(targetSec ?? MIN_TAPE_SEGMENT_SEC, MIN_TAPE_SEGMENT_SEC), maxSec);
   while (duration() < target) {
     const prev = first - 1;
     const next = last + 1;
     /* Contiguous, as well as in budget: `TAPE_CUE_GAP_MAX_SEC` is why. */
-    const canPrev = prev >= 0 && endOf(last) - startOf(prev) <= MAX_TAPE_SEGMENT_SEC && startOf(first) - endOf(prev) <= TAPE_CUE_GAP_MAX_SEC;
-    const canNext = next < n && endOf(next) - startOf(first) <= MAX_TAPE_SEGMENT_SEC && startOf(next) - endOf(last) <= TAPE_CUE_GAP_MAX_SEC;
+    const canPrev = prev >= 0 && endOf(last) - startOf(prev) <= maxSec && startOf(first) - endOf(prev) <= TAPE_CUE_GAP_MAX_SEC;
+    const canNext = next < n && endOf(next) - startOf(first) <= maxSec && startOf(next) - endOf(last) <= TAPE_CUE_GAP_MAX_SEC;
     const prevShared = canPrev ? sharedWith(prev) : 0;
     const nextShared = canNext ? sharedWith(next) : 0;
     /* Neither side is still talking about the claim — or there is no side left,

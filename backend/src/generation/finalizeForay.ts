@@ -223,7 +223,14 @@ export function mintedSegmentRow(segment: NewSegment, topic: string, ctx: Minted
     dai_suspected: source.dai_suspected,
     source: "generation-tier-2",
     batch_id: ctx.batchId,
-    needs_review: true
+    needs_review: true,
+    /* Q-01: where the clip's edges landed and how far past the claim window
+       relevance carried it. Written only when the mint recorded them (a cut
+       made under Q-01), so a row minted before Q-01 is byte-for-byte what it
+       was. `check-forays.mjs` reads `boundary` to tell a Q-01 Foray from one
+       cut under the old ladder, and the ledger counts both fields. */
+    ...(segment.boundary !== undefined ? { boundary: segment.boundary } : {}),
+    ...(segment.extendedBySec !== undefined ? { extended_by_sec: segment.extendedBySec } : {})
   };
 }
 

@@ -7,8 +7,14 @@ import {
   RESEARCH_TAPE_WINDOW_MAX_SEC,
   RESEARCH_TAPE_WINDOW_MIN_SEC
 } from "../src/generation/researchShape";
-import { D3_MEAN_FLOOR_SEC } from "../src/generation/sourceBeats";
-import { TAPE_WINDOW_MAX_SEC, TAPE_WINDOW_MIN_SEC, cueWindowText, selectTapeWindow } from "../src/generation/transcriptArchiveLookup";
+import {
+  TAPE_CLAIM_SEARCH_MAX_SEC,
+  TAPE_CLAIM_SEARCH_MIN_SEC,
+  TAPE_WINDOW_MAX_SEC,
+  TAPE_WINDOW_MIN_SEC,
+  cueWindowText,
+  selectTapeWindow
+} from "../src/generation/transcriptArchiveLookup";
 import { tokenizeForSourcing } from "../src/generation/catalogueLookup";
 import type { ResearchTapeWindow } from "../src/types/research";
 import { FileTranscriptTextIndex } from "../src/generation/transcriptTextIndex";
@@ -352,27 +358,30 @@ describe("buildResearchShape — WS-L: the map carries what the tape says (F-63)
     expect(window.score).toBeGreaterThan(0);
   });
 
-  it("sizes its window band for the duration rules the finished Foray is judged by (F-73)", () => {
+  it("sizes its window band inside the claim search's band and over the tape window's floor (F-73, Q-01)", () => {
     /* A window quoted here is not only read. §4.3 seeds a beat with this
        episode AND these seconds, and F-68 then confines §4.5's search to exactly
-       this stretch — so this band is, in practice, the band every generated tape
-       segment is cut from. At 60-120 s it put every one of them under
-       `narration-craft.md` §0's 90 s mean floor by construction, which is what
-       refused run 2 attempt 5's act-1 candidate at a 76.1 s mean.
+       this stretch — so this band is, in practice, the CLAIM window every
+       generated tape segment starts from. Since Q-01 the segment is that window
+       extended to its thought (`tapeExtent.ts`), so what this band has to
+       promise is narrower than it was under F-73: a research window must be a
+       stretch the claim search could itself have found (inside
+       `TAPE_CLAIM_SEARCH_MIN/MAX_SEC`) and never shorter than the floor a tape
+       window is clamped to (`TAPE_WINDOW_MIN_SEC`), so a seed never asks the
+       extension to grow a window the search would have refused.
 
-       MUTATION THAT KILLS THIS: put `RESEARCH_TAPE_WINDOW_MIN_SEC` back to 60.
-       Ran it — red. */
-    expect(RESEARCH_TAPE_WINDOW_MIN_SEC).toBeGreaterThanOrEqual(D3_MEAN_FLOOR_SEC);
-    /* And still inside §4.5's own band, both ends: a research window that could
-       not be a segment would be quoting the spine tape it cannot have. */
+       MUTATION THAT KILLS THIS: put `RESEARCH_TAPE_WINDOW_MIN_SEC` to 30 — under
+       the tape window's floor. Ran it — red. */
     expect(RESEARCH_TAPE_WINDOW_MIN_SEC).toBeGreaterThanOrEqual(TAPE_WINDOW_MIN_SEC);
+    expect(RESEARCH_TAPE_WINDOW_MIN_SEC).toBeGreaterThanOrEqual(TAPE_CLAIM_SEARCH_MIN_SEC);
+    expect(RESEARCH_TAPE_WINDOW_MAX_SEC).toBeLessThanOrEqual(TAPE_CLAIM_SEARCH_MAX_SEC);
     expect(RESEARCH_TAPE_WINDOW_MAX_SEC).toBeLessThanOrEqual(TAPE_WINDOW_MAX_SEC);
     expect(RESEARCH_TAPE_WINDOW_MAX_SEC).toBeGreaterThan(RESEARCH_TAPE_WINDOW_MIN_SEC);
   });
 
   it("quotes a stretch long enough to be cut into a segment the D-tier rules accept (F-73)", async () => {
     /* The band above, measured on a real window rather than asserted about the
-       constants: the fixture's tape yields a window over the mean floor. */
+       constants: the fixture's tape yields a window at least the band's floor. */
     const { guard } = guardAndSink();
     const shape = await buildResearchShape(makeIntent(), {
       researcher: new StubExternalResearcher(guard),
@@ -383,7 +392,7 @@ describe("buildResearchShape — WS-L: the map carries what the tape says (F-63)
       cueProvider: fakeCues({ "pa-900": mlCues })
     });
     const window = shape.subtopics.find((s) => s.label === "Fusion")!.tapeWindows[0]!;
-    expect(window.endSec - window.startSec).toBeGreaterThanOrEqual(D3_MEAN_FLOOR_SEC);
+    expect(window.endSec - window.startSec).toBeGreaterThanOrEqual(RESEARCH_TAPE_WINDOW_MIN_SEC);
   });
 
   it("says WHY it has no windows rather than leaving an empty list to be read as an empty archive", async () => {

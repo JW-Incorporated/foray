@@ -154,6 +154,12 @@ export type TranscriptSource = z.infer<typeof TranscriptSourceSchema>;
  * mint's. A checkpoint written before these fields existed does not resume
  * (zod names the missing field); such a run's tape could not have been
  * published anyway. */
+/** The three boundary kinds a Q-01 clip can land on — the vocabulary
+ * `check-forays.mjs` enumerates under `segment.boundary` (G-21c). */
+export const TAPE_BOUNDARIES = ["turn", "sentence", "claim-only"] as const;
+export const TapeBoundarySchema = z.enum(TAPE_BOUNDARIES);
+export type TapeBoundary = (typeof TAPE_BOUNDARIES)[number];
+
 export const NewSegmentSchema = z
   .object({
     id: z.string().trim().min(1),
@@ -168,7 +174,20 @@ export const NewSegmentSchema = z
      * `mintedSegmentCopy.ts`'s `whyFromClaim` (≤ 18 words, ASCII punctuation,
      * clamped at a word boundary). */
     why: z.string().trim().min(1),
-    transcriptSource: TranscriptSourceSchema
+    transcriptSource: TranscriptSourceSchema,
+    /**
+     * Q-01: where the clip's edges landed once the claim window was extended to
+     * the thought around it (`tapeExtent.ts`) — `"turn"` both edges on speaker
+     * turns, `"sentence"` at least one on a sentence + pause boundary,
+     * `"claim-only"` an edge that could move to no boundary — and how many
+     * seconds the extension added past the claim window. Both optional: a
+     * checkpoint written before Q-01 resumes, and a pool cut reused under its
+     * own id (F-84) carries neither. `finalizeForay.ts` writes them onto the
+     * pool row as `boundary` / `extended_by_sec`, which `check-forays.mjs`
+     * accepts (G-21c) and reads to decide which length regime a Foray is under.
+     */
+    boundary: TapeBoundarySchema.optional(),
+    extendedBySec: z.number().nonnegative().optional()
   })
   .strict();
 export type NewSegment = z.infer<typeof NewSegmentSchema>;
@@ -246,21 +265,30 @@ export interface TapeRelevanceInput {
    */
   seedFloor?: "share-only";
   /**
-   * D5's triple clause is what chose this segment's LENGTH (F-80): the ladder
-   * rung's own cut of the window would have made the last three placed
-   * durations a uniform triple (`check-forays.mjs`'s "three consecutive
-   * durations within +/-20 % of each other"), and a different cut of the same
-   * window — a different ladder rung, or another cue-boundary length the
-   * growth rule reaches — escaped the band and was placed instead. Absent
-   * whenever the rung's cut escaped by itself, and always absent for tier 1
-   * (a pool segment's length is a curator's, and one that would make the
-   * triple is passed over rather than re-cut).
+   * D5's pair clause is what chose this segment's LENGTH (Q-04; F-80 for the
+   * triple clause it replaced): the full thought extent of the window would
+   * have put this clip within +/-20 % of the previous clip's length
+   * (`check-forays.mjs`'s "no two consecutive clips within 20 % of the same
+   * length"), and a shorter extent of the same window — relevance stopped one
+   * boundary earlier — escaped the band and was placed instead. Absent
+   * whenever the full extent escaped by itself, and always absent for tier 1
+   * (a pool segment's length is a curator's, and one that would make the pair
+   * is passed over rather than re-cut).
    *
    * Counting these rows counts the placements the rule DECIDED, which is the
-   * number to watch: a run where it fires often is a run whose ladder and
-   * passages are producing lengths the rule keeps having to correct.
+   * number to watch: a run where it fires often is a run whose passages keep
+   * coming out the same length as their neighbours.
    */
-  lengthGate?: "d5-triple";
+  lengthGate?: "d5-pair";
+  /**
+   * Q-01: what kind of boundary the clip landed on and how far past the claim
+   * window relevance carried it — copied from the minted segment so the run
+   * report can say, per Foray, how often a real turn boundary was found and
+   * what the mean extension was. Absent for a pool cut (tier 1, or F-84's
+   * reused cut), whose edges a curator chose.
+   */
+  boundary?: TapeBoundary;
+  extendedBySec?: number;
   /**
    * Tier 2's window was cut to a start the committed pool already holds a
    * segment at, and the POOL'S cut was placed under the pool's own id instead
@@ -312,20 +340,25 @@ export interface TapeRelevanceInput {
  *                        is the run D2 only permits if a 150 s segment follows —
  *                        something sourcing cannot promise, so it never starts
  *                        the run.
- *   - `d3-mean`        — taking it would drop the Foray's running mean segment
- *                        duration under D3's 90 s floor.
- *   - `d5-triple`      — it and the two segments before it would be within
- *                        +/-20 % of each other, D5's uniform triple, by
- *                        `check-forays.mjs`'s own arithmetic (`d5Triple.ts`).
- *                        A rule, not a preference, since F-80: for a pool
- *                        segment the length is fixed and the candidate is
- *                        passed over; for a tier-2 window every other length
- *                        the window can be cut to is tried first, and the gate
- *                        is reported only when none escapes the band. (Spelled
- *                        `d5-uniform` in traces written by #571–#620.)
- *   - `m4-runtime`     — its episode already holds M4's quarter of the Foray's
- *                        tape SECONDS (the clause #569 left to the checker).
- *                        Never asked about an episode's first segment. */
+ *   - `d5-pair`        — it and the segment before it would be within +/-20 %
+ *                        of each other, D5's uniform pair, by
+ *                        `check-forays.mjs`'s own arithmetic (`d5Pair.ts`;
+ *                        Q-04 restated F-80's triple clause as a pair). A
+ *                        rule, not a preference: for a pool segment the length
+ *                        is fixed and the candidate is passed over; for a
+ *                        tier-2 window a shorter thought extent is tried first,
+ *                        and the gate is reported only when that does not
+ *                        escape the band either. (Spelled `d5-uniform` in
+ *                        traces written by #571–#620 and `d5-triple` by
+ *                        F-80–Q-04; both read as this gate on resume.)
+ *   - `d3-mean`        — LEGACY, never emitted since Q-04: taking it would
+ *                        have dropped the Foray's running mean under D3's 90 s
+ *                        floor, a rule Q-04 retired. Kept in the union so a
+ *                        checkpoint written under F-73 still resumes.
+ *   - `m4-runtime`     — its episode already supplies a long clip, or its
+ *                        quarter of the Foray's tape SECONDS beyond its longest
+ *                        clip (Q-04's restatement of the clause #569 left to
+ *                        the checker). */
 export type Tier1Gate =
   | "no-candidates"
   | "threshold"
@@ -335,7 +368,7 @@ export type Tier1Gate =
   | "m3-order"
   | "d2-short-run"
   | "d3-mean"
-  | "d5-triple"
+  | "d5-pair"
   | "m4-runtime";
 
 /** Which tier-2 gate turned down the best-scoring archive episode.
@@ -393,7 +426,7 @@ export type Tier2Gate =
      duration. */
   | "d2-short-run"
   | "d3-mean"
-  | "d5-triple"
+  | "d5-pair"
   | "m4-runtime"
   /* F-84: the window's cut begins where a COMMITTED pool segment (or one this
      run already minted) begins, so the pool's cut is what would play there —
@@ -469,6 +502,11 @@ export interface Tier2TraceRow {
    * digest declared one. */
   spanEndSec?: number;
   feedDurationSec?: number;
+  /** Q-01: the boundary kind and extension of the cut the search reached, so a
+   * refused beat's row says what clip it would have been. Present with the
+   * anchors. */
+  boundary?: TapeBoundary;
+  extendedBySec?: number;
   /* WS-H (F-06/F-49): what the TEXT search saw, so a run can be argued with.
      Without these, a trace row saying `no-anchor` cannot be told from one that
      never searched the text at all — which is the confusion that let run 2's
