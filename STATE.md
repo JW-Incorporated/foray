@@ -7,6 +7,45 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
+### Hermes search deck S-05/S-06/S-08, the `api/**` batch (2026-09-12, PR #658) — `feat/search-deck-api`
+
+- **Stacked on `feat/search-deck-s02-s08` (PR #657), not on `main`** — it
+  builds on S-03's index and S-04's comparator. Merge #657 first.
+- **What:** **S-05's remaining half** — `api/shows/search.ts`'s degraded branch
+  sets `Cache-Control: no-store` (#560 item 10, requirements §6.12), and the
+  source records that the `stale-while-revalidate` it sets does not arrive in
+  the response (measured three times; no `s-maxage` was added, because that
+  would be a second unverified directive beside the first). **S-06(a)** the
+  Apple fall-through, server-side, behind TWO gates: the client asks only when
+  its own local pass found nothing, and the endpoint calls only when the full
+  19,904-row merged catalogue also found nothing. **S-06(b)** `?id=` returns one
+  merged-catalogue row and `app.js:resolveMissingShow` seeds
+  `state.breadthShowCache` from it, so a breadth show page survives a reload, a
+  shared link and a restored tab. **S-08** records: requirements §3.3/§6.2/§6.8/
+  §6.11/§6.12/§6.13/§7.2, `docs/DECISIONS.md`, the deck's DONE markers.
+- **Touches:** `api/shows/search.ts`, `api/shows/appleShowSearch.ts` (new),
+  `api/test/shows-search-apple.test.mjs` (new, 15), `app.js`,
+  `search-engine.js` (`rankShows`), `test/show-search-fallthrough.test.js`
+  (new, 7, floored), `test/show-search-ranking.test.js` (9 -> 10),
+  `test/show-page.test.js` (two tests made async — the not-found path is no
+  longer synchronous), `test/suite-integrity.test.js`, `docs/DECISIONS.md`,
+  `docs/product/suggested-shows-requirements.md`, `docs/search-plan.md`,
+  `STATE.md`.
+- **A bug this batch found in the previous one:** `runShowSearchCostly`
+  re-ranked merged results with `searchShows`, which FILTERS as well as ranks —
+  so Apple's (fuzzy, `artistName`-matched) answer was being discarded on
+  arrival and the box said "No shows match" for a query Apple had just
+  answered. `search-engine.js:rankShows` is the same comparator without the
+  filter. Found by a test.
+- **Not done here:** `api/test/vercel-bundle.test.mjs` — S-06 asks to extend
+  its "hardcoded `TARGETS`", but that suite was already rewritten to DISCOVER
+  handlers and their whole import closure (its own header says so), so the new
+  `api/shows/appleShowSearch.ts` and the `id` lookup are covered with no edit.
+  Verified by running it: green, and it finds the new module's closure. Also
+  not done: a re-harvest that keeps `artistName` on our own breadth rows.
+- **Gates:** **`api/**` is UNLISTED in `tools/ci/path-policy.mjs` → a human
+  merge click (G3), and no label helps.** Both `api/**` touches in this deck are
+  batched here for that reason. `docs/DECISIONS.md` → `founder-approved` (G4).
 ### Hermes search deck S-02..S-05/S-07, client half (2026-09-12) — `feat/search-deck-s02-s08`
 
 - **What:** `docs/search-plan.md`'s client cards. **S-02** the Shows search

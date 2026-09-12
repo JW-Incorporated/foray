@@ -462,6 +462,12 @@ test("both shell notices name the app", () => {
    all -- it moved OUT of the set this test enumerates, not out of the app.
    See "a removed/missing playlist still renders a page head with a working
    ‹ back link" in test/back-navigation.test.js for its own coverage. */
+/* RAISED 7 -> 8 on 2026-09-12 (S-06, docs/search-plan.md), which is what this
+   count is for: `renderShow`'s not-found path became asynchronous, so
+   `resolveMissingShow` renders a "Loading show…" note while the id lookup is
+   in flight and the existing "Show not found." only after it confirms the
+   miss. Two notes where there was one. The unit rule below applies to the new
+   one exactly as it does to the others. */
 test("no note this app renders into #view capitalises the unit", () => {
   const notes = [
     ...read("app.js").matchAll(
@@ -470,8 +476,8 @@ test("no note this app renders into #view capitalises the unit", () => {
   ].map((m) => m[1]);
   assert.equal(
     notes.length,
-    7,
-    `expected seven one-line #view notes, found ${notes.length}. More is fine -- ` +
+    8,
+    `expected eight one-line #view notes, found ${notes.length}. More is fine -- ` +
       "raise this count so the new one is covered. Fewer means a note was lost " +
       `or reshaped: ${notes.join(" | ")}`
   );

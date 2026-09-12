@@ -2136,10 +2136,73 @@ async function searchShowEpisodesScoped(show_id, query) {
   return { episodes: data.episodes };
 }
 
+/* S-06(b) / #560 item 7 / requirements §6.8: a breadth show page that survives
+   a reload.
+
+   THE BUG, stated exactly. `showById` resolves `state.catalog` (the curated
+   220) and then `state.breadthShowCache`, which is IN-MEMORY and populated
+   only by a search response THIS SESSION. So `#/show/1234567890` rendered
+   "Show not found." on a cold open, a shared link, a reload, or a restored
+   tab — every way of reaching a breadth show that is not "I just searched for
+   it", which is every way a link is actually used.
+
+   WHICH PATH ANSWERS, AND WHY — the card asks for this to be argued rather
+   than assumed:
+
+     1. THE LOADED INDEX, if it is already in memory. Free, no network. It is
+        in memory exactly when the listener searched before tapping, which is
+        the common in-session case.
+     2. OTHERWISE THE ENDPOINT, one row over the wire. NOT the index: fetching
+        436 KB and paying a ~50 ms decode to render one show page would be a
+        worse trade than one ~200 ms round trip for one row, and a cold open of
+        a shared link is precisely when the index is not loaded. So this never
+        triggers an index fetch.
+
+   A genuine miss — the endpoint answers with `show: null` — still renders
+   "Show not found." That is a real state, not an error, and the endpoint
+   returns 200 for it deliberately so the client can tell it apart from a dead
+   endpoint (which `fetchApiJson` also reports as `null`).
+
+   RE-ENTRY IS BOUNDED: the seed goes into `state.breadthShowCache` first, so
+   the `renderShow` call below takes the resolving branch and cannot come back
+   here. If the seed somehow did not take, the guard is that we only re-render
+   when `showById` now answers. */
+function resolveMissingShow(show_id) {
+  const view = $("#view");
+  const fromIndex = showIndex
+    ? showIndex.rows.find((r) => r.show_id === show_id)
+    : null;
+  if (fromIndex) {
+    state.breadthShowCache[show_id] = {
+      show_id: fromIndex.show_id, title: fromIndex.title, artwork_url: null,
+      editorial_note: null, taxonomy_node_ids: [], tier: fromIndex.tier,
+    };
+    renderShow(show_id);
+    return;
+  }
+
+  if (view) view.innerHTML = `<div class="page"><p class="note">Loading show…</p></div>`;
+  const wanted = `#/show/${show_id}`;
+  fetchApiJson(`api/shows/search?id=${encodeURIComponent(show_id)}`).then((data) => {
+    /* Navigated away while the row was in flight — repainting #view now would
+       clobber whatever page the listener is actually on. Same "still mounted"
+       rule renderShow's own episode fetch follows. */
+    if (location.hash !== wanted) return;
+    const row = data?.show || null;
+    if (!row) {
+      const v = $("#view");
+      if (v) v.innerHTML = `<div class="page"><p class="note">Show not found.</p></div>`;
+      return;
+    }
+    state.breadthShowCache[show_id] = row;
+    if (showById(show_id)) renderShow(show_id);
+  }); // fetchApiJson swallows network/parse errors to null — the branch above covers it
+}
+
 function renderShow(show_id) {
   setBodyClass("view-page");
   const show = showById(show_id);
-  if (!show) { $("#view").innerHTML = `<div class="page"><p class="note">Show not found.</p></div>`; return; }
+  if (!show) { resolveMissingShow(show_id); return; }
   fullPool(); // populate itemIndex/poolIds so curated-pool episode rows can play in-app
   const curatedEps = episodesForShow(show);
   const ctx = "show-" + show.show_id;
@@ -3451,7 +3514,7 @@ function runShowSearchCostly(query, myToken, local) {
     const seen = new Set(shown.map((s) => s.show_id));
     const scanned = SearchEngine.scanShowIndex(query, showIndex).filter((s) => !seen.has(s.show_id));
     if (scanned.length) {
-      shown = SearchEngine.searchShows(query, shown.concat(scanned));
+      shown = SearchEngine.rankShows(query, shown.concat(scanned));
       paintShowResults(query, shown, myToken);
     }
   }
@@ -3468,7 +3531,7 @@ function runShowSearchCostly(query, myToken, local) {
       additions.push(s);
     }
     if (!additions.length) return;
-    shown = SearchEngine.searchShows(query, shown.concat(additions));
+    shown = SearchEngine.rankShows(query, shown.concat(additions));
     paintShowResults(query, shown, myToken);
   };
 
@@ -3484,8 +3547,17 @@ function runShowSearchCostly(query, myToken, local) {
       path: myToken !== showSearchToken ? "superseded" : "local+cache",
     });
   } else {
+    /* S-06(a): the CLIENT's half of the Apple fall-through gate. Ask for it
+       only when everything on the device found nothing — the curated 220, the
+       index's prefix pass, and (just above) the index's linear scan. The
+       endpoint has its OWN gate over the full 19,904 merged rows and will not
+       call Apple unless that is empty too; see `api/shows/search.ts`'s header
+       for why one gate is not enough. Two gates, and the flag is what makes
+       the client's intent explicit rather than implied by an empty result the
+       server cannot see. */
     const netStart = nowMs();
-    fetchApiJson(`api/shows/search?q=${encodeURIComponent(query)}&limit=25`).then((data) => {
+    const fallthrough = shown.length === 0 ? "&fallthrough=1" : "";
+    fetchApiJson(`api/shows/search?q=${encodeURIComponent(query)}&limit=25${fallthrough}`).then((data) => {
       const netMs = nowMs() - netStart;
       const superseded = myToken !== showSearchToken;
       const breadthShows = data?.shows || [];
