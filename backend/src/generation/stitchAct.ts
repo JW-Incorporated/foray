@@ -127,6 +127,12 @@ export function stitchAct(act: WrittenAct, actLabel: string): StitchedAct {
       coverage.push({ status: "present", beatIndex: myIndex, claim: beat.claim });
 
       if (beat.sourcing === "narration") {
+        /* Q-03: a beat carried by another beat's page (`carriedBy`) has no
+           page of its own — its claim is in the seam's prose, already
+           emitted on the seam's first beat — so it emits nothing. Coverage
+           still records it `present` above: the beat is in the Foray, in
+           the item that carries it. */
+        if (!beat.narration) continue;
         const narrationItem: StitchedNarrationItem = {
           kind: "narration",
           narrationKind: "beat",

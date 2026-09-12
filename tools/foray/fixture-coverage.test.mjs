@@ -109,6 +109,14 @@ const KNOWN_UNCOVERED = [
     why: "neither generated Foray on main wrote a Correction beat; the pipeline may emit one on any run.",
   },
   {
+    field: "narration.mode",
+    value: "intro",
+    why:
+      "Q-02 (listening-quality deck): the introduction before a clip, written per act since Q-03. No generation run has " +
+      "been launched since the mode landed (the deck forbids one until Q-06), so no committed Foray carries it yet; the " +
+      "first re-narrated candidate (Q-06's listening test) is its fixture.",
+  },
+  {
     field: "narration.duration_source",
     value: "measured",
     why: "tools/narrate/ has not stamped `duration_sec` on any committed narration item yet.",
@@ -156,7 +164,7 @@ const KNOWN_UNCOVERED = [
   },
 ];
 /** Raise this only with a written reason in the same PR. Lowering it is free. */
-const KNOWN_UNCOVERED_CEILING = 9; // 6 -> 9 with Q-01's `segment.boundary` (2026-09-12): three values, no run since
+const KNOWN_UNCOVERED_CEILING = 10; // 6 (jingle carrier landed with #632, 2026-09-11) + 1 narration.mode=intro (Q-02, 2026-09-12) + 3 segment.boundary values (Q-01, 2026-09-12), all until Q-06 lands their carriers
 
 const isKnownUncovered = (field, value) => KNOWN_UNCOVERED.some((k) => k.field === field && k.value === value);
 

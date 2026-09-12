@@ -1,11 +1,15 @@
 import { defaultBudgetGuard, type BudgetGuard } from "../cost/budgetGuard";
 import { containsContestedLanguage, hasDeclarativeSentence, quoteWords } from "../types/narration";
 import type {
+  ActVerifyRequest,
+  ActVerifyResult,
+  BeatVerdict,
   NarrationBuildContext,
   NarrationVerifierBuilder,
   NarrationVerifyRequest,
   NarrationVerifyResult,
   PageVerdict,
+  SeamVerdict,
   SynthesisVerdict,
   SynthesisVerifyRequest,
   SynthesisVerifyResult,
@@ -89,6 +93,55 @@ export class StubNarrationVerifierBuilder implements NarrationVerifierBuilder {
     });
     return { pages: request.pages.map((page) => synthesisVerdictFor(page, request.verifiedPages)) };
   }
+
+  /**
+   * Q-03: the per-beat question, answered with the same structural signal
+   * `verifySlot` uses for a page's purpose — a beat is carried when some
+   * seam's script shares a content word with its claim (F-41's "did the
+   * prose drop the subject entirely"), and a beat no seam is about is not,
+   * with a note naming the seam it was positioned in. Per seam, the two
+   * structural checks `verdictFor` makes (a source with no claim; a
+   * contested source the script never flags). Whether the prose FAIRLY
+   * carries a beat is a reading judgement only the real verifier makes.
+   */
+  async verifyAct(request: ActVerifyRequest, ctx: NarrationBuildContext): Promise<ActVerifyResult> {
+    await this.budgetGuard.checkAndRecord({
+      userId: ctx.userId,
+      operation: "narration_verify",
+      provider: this.providerName,
+      estimatedUsd: 0,
+      dryRun: true,
+      sessionId: ctx.sessionId
+    });
+    return actVerdictFor(request);
+  }
+}
+
+/** Exported for the act tests. */
+export function actVerdictFor(request: ActVerifyRequest): ActVerifyResult {
+  const beats: BeatVerdict[] = request.beats.map((beat) => {
+    const carried = request.seams.some((seam) => scriptIsAboutPurpose(seam.script, beat.claim));
+    if (carried) return { beatId: beat.beatId, carried: true };
+    const positioned = request.seams.find((seam) => seam.carries.includes(beat.beatId));
+    return {
+      beatId: beat.beatId,
+      carried: false,
+      notes: `no seam's script shares a content word with the claim "${beat.claim.slice(0, 60)}"${positioned ? ` — it was positioned in seam ${positioned.seamId}` : ""}`
+    };
+  });
+  const seams: SeamVerdict[] = request.seams.map((seam) => {
+    const notes: string[] = [];
+    let claimsSupported = !seam.sources.some((s) => s.claimText.trim().length === 0);
+    if (!claimsSupported) notes.push("A source is attached to no claim at all.");
+    const contestedHandled = !seam.sources.some((s) => s.contested) || containsContestedLanguage(seam.script);
+    if (!contestedHandled) notes.push("A source is marked contested but the script never says so explicitly.");
+    if (seam.sources.length === 0 && hasDeclarativeSentence(seam.script)) {
+      claimsSupported = false;
+      notes.push("A zero-source seam reached verification with a declarative script — the structural rule upstream did not run.");
+    }
+    return { seamId: seam.seamId, claimsSupported, contestedHandled, ...(notes.length > 0 ? { notes: notes.join(" ") } : {}) };
+  });
+  return { beats, seams };
 }
 
 export function synthesisVerdictFor(page: VerifyPageBrief, verifiedPages: VerifiedPageSummary[]): SynthesisVerdict {

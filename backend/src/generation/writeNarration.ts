@@ -44,6 +44,7 @@ import type {
   WrittenPage
 } from "./NarrationWriterBuilder";
 import type { NarrationVerifierBuilder, PageVerdict, VerifyPageBrief } from "./NarrationVerifierBuilder";
+import { writeActNarration } from "./writeAct";
 
 /**
  * §4.7 end to end (docs/curation/generation-architecture.md §4.7): takes
@@ -52,6 +53,20 @@ import type { NarrationVerifierBuilder, PageVerdict, VerifyPageBrief } from "./N
  * connective narration around it, writes a page — grounded in an
  * EVIDENCE PACK gathered first, then checked mechanically, then read by a
  * SEPARATE `NarrationVerifierBuilder`.
+ *
+ * TWO PATHS SINCE Q-03 (docs/curation/listening-quality-plan.md). The
+ * PER-ACT path (`writeAct.ts`) is the one production and `--dry-run`
+ * take: the writer is handed the whole act — clips, evidence, beats — and
+ * writes continuous prose, one page per SEAM (`actSeams.ts`), with an
+ * Intro before each clip (Q-02); the verifier checks each BEAT's claim
+ * against that prose and the clips, and a retry edits the act. Every
+ * mechanical rule below (the quote gate, `sourcesFor`, the structural
+ * validator) is shared with it. The PER-SLOT, PER-PAGE path in this file
+ * is the fallback for a writer or verifier without the act contract — a
+ * scripted test builder, an older provider — and remains F-88's drafting
+ * path (`synthesisVerify.ts` drafts a synthesis page through
+ * `draftRound`). It is the path every finding below was made on, and its
+ * rules are what the act path inherits.
  *
  * THE ORDER OF OPERATIONS IS THE DESIGN (WS-A):
  *
@@ -203,12 +218,33 @@ export class InvalidNarratedBeatError extends Error {
 }
 
 /** One beat's §4.7 result, preserving its position in the sourced spine.
- * A tape beat carries `connectiveNarration` only when
- * `decideConnectiveNarration` decided one was needed; a narration beat
- * always carries `narration`. */
+ * A tape beat carries `connectiveNarration` only when a page plays just
+ * before it — a Frame on the per-page path, an Intro on the per-act path
+ * (Q-02). A narration beat carries `narration` when it holds a page: on
+ * the per-page path always; on the per-act path (Q-03) when it is the
+ * first narration beat of its seam, whose page is the seam's whole prose.
+ * The seam's other narration beats carry `carriedBy` — the position of the
+ * beat holding the page their claim lives in — and no page of their own,
+ * so `stitchAct` emits one item per seam. `verifiedAtAttempt` is the round
+ * on which the verifier first confirmed the act's prose carries this
+ * beat's claim (per-act path only; the beat-level reading
+ * `firstAttemptPassRate` is now made from). */
 export type WrittenBeat =
   | { sourcing: "tape"; claim: string; exploration: boolean; tape: TapePointer; connectiveNarration?: NarratedBeat }
-  | { sourcing: "narration"; claim: string; exploration: boolean; narration: NarratedBeat };
+  | {
+      sourcing: "narration";
+      claim: string;
+      exploration: boolean;
+      narration?: NarratedBeat;
+      carriedBy?: { slot: number; beat: number };
+      verifiedAtAttempt?: number;
+    };
+
+/** The page a written beat holds, whichever side of the union it is on,
+ * or undefined for a beat carried by another beat's page. */
+export function pageOfWrittenBeat(beat: WrittenBeat): NarratedBeat | undefined {
+  return beat.sourcing === "narration" ? beat.narration : beat.connectiveNarration;
+}
 
 export interface WrittenSlot {
   title: string;
@@ -263,6 +299,12 @@ export interface WriteNarrationOptions {
    * lever a rate-limited key throttles with: at 1 the acts run in series,
    * exactly as before G-32. */
   actConcurrency?: number;
+  /** Q-02: the segment source rows this run minted (tier 2), so an Intro
+   * can be checked against the show and episode title the clip actually
+   * comes from when the evidence pack's tape context has no titles. The
+   * committed registry is read through the pack (`titlesForItem`); these
+   * are the rows not in it yet. */
+  segmentSources?: ReadonlyArray<{ id: string; show: string; title: string }>;
 }
 
 /** What `writeNarration` counts that a request proxy cannot (G-34). */
@@ -550,6 +592,22 @@ export async function writeNarration(acts: SourcedAct[], options: WriteNarration
     acts.map((act, actIndex) =>
       gate
         .run(async (): Promise<WrittenAct> => {
+          /* Q-03: THE ACT IS THE UNIT OF WRITING when both builders offer
+             the per-act contract — the real and stub builders do. The
+             writer gets the whole act's material and writes continuous
+             prose; the verifier checks each beat against it; a retry edits
+             the act. Per-slot resume is honoured only when EVERY slot of
+             the act was banked by an earlier (per-page) run: a seam spans
+             slots, so a half-banked act is written whole. A writer or
+             verifier without the contract — a scripted test builder, an
+             older provider — takes the per-slot path below, which is also
+             F-88's drafting path. */
+          if (writer.writeAct && verifier.verifyAct) {
+            const banked = act.slots.map((_, slotIndex) => options.resume?.(actIndex, slotIndex));
+            if (banked.every((s): s is WrittenSlot => s !== undefined)) return { title: act.title, slots: banked };
+            return writeActNarration(act, { writer, verifier, evidence, stats: options.stats, segmentSources: options.segmentSources }, voice, ctx);
+          }
+
           /* WS-D1: every slot in an act is written in parallel. Nothing in
              a slot depends on another slot's text (see above), so the only
              thing serialising them bought was wall time, and narration is
@@ -628,6 +686,10 @@ export interface PendingPage {
      behind rather than ending the Foray. */
   kept?: { beat: NarratedBeat; verdict?: PageVerdict };
   lastBeat?: NarratedBeat;
+  /* Q-03: a seam page written per act may cite any transcript window it
+     holds whatever its mode (`ValidateNarratedBeatOptions.tapeCitable`).
+     Never set on the per-page path. */
+  citesTape?: boolean;
 }
 
 async function writeSlot(
@@ -1349,8 +1411,8 @@ function positionOf(page: Pick<PendingPage, "evidence">, docId: string): string 
  * gate and `sourcesFor` share, so a claim cannot pass one as tape and
  * leave the other as print.
  */
-export function isTapeClaim(claim: SelectedClaim, page: Pick<PendingPage, "mode" | "evidence">): boolean {
-  if (!modeMayCiteTape(page.mode)) return false;
+export function isTapeClaim(claim: SelectedClaim, page: Pick<PendingPage, "mode" | "evidence" | "citesTape">): boolean {
+  if (page.citesTape !== true && !modeMayCiteTape(page.mode)) return false;
   return page.evidence.docs.find((d) => d.docId === claim.docId)?.kind === "tape";
 }
 
@@ -1362,7 +1424,7 @@ export function isTapeClaim(claim: SelectedClaim, page: Pick<PendingPage, "mode"
  * same span moving between Wikipedia and Britannica across two attempts)
  * unrepresentable rather than merely forbidden.
  */
-export function sourcesFor(usedClaims: number[] | undefined, claims: SelectedClaim[], pack: EvidencePack, mode: NarrationMode): Source[] {
+export function sourcesFor(usedClaims: number[] | undefined, claims: SelectedClaim[], pack: EvidencePack, mode: NarrationMode, citesTape = false): Source[] {
   const out: Source[] = [];
   const seen = new Set<number>();
   for (const index of usedClaims ?? []) {
@@ -1371,7 +1433,7 @@ export function sourcesFor(usedClaims: number[] | undefined, claims: SelectedCla
     const claim = claims[index]!;
     const doc = pack.docs.find((d) => d.docId === claim.docId);
     if (!doc) continue;
-    const segmentId = isTapeClaim(claim, { mode, evidence: pack }) ? segmentIdOfTapeDoc(doc.docId) : null;
+    const segmentId = isTapeClaim(claim, { mode, evidence: pack, citesTape }) ? segmentIdOfTapeDoc(doc.docId) : null;
     if (segmentId) {
       /* F-81: a claim on the tape window is a TAPE source — the segment
          named, the quote carried only when the page echoed one, and the
@@ -1408,8 +1470,8 @@ export function allWrittenNarration(acts: WrittenAct[]): NarratedBeat[] {
   for (const act of acts) {
     for (const slot of act.slots) {
       for (const beat of slot.beats) {
-        if (beat.sourcing === "narration") out.push(beat.narration);
-        else if (beat.connectiveNarration) out.push(beat.connectiveNarration);
+        const page = pageOfWrittenBeat(beat);
+        if (page) out.push(page);
       }
     }
   }

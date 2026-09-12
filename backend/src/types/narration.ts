@@ -34,11 +34,23 @@ import { phraseIsInWindow } from "./anchorText";
  * so nothing has to be retrofitted later — `pronunciationHints` below.
  */
 
-/** The six narration modes, §2.1 / narration-craft.md §0. Capitalized to
+/** The narration modes, §2.1 / narration-craft.md §0 — the six the craft
+ * doc named, plus `Intro` (Q-02, listening-quality deck). Capitalized to
  * match `tapeSourcing.ts`'s existing `NarrationAssignmentSchema` enum
  * ("Patch" | "Carry") rather than introducing a second casing for the
- * same four extra modes this stage adds (Hinge/Frame/Marker/Correction). */
-export const NarrationModeSchema = z.enum(["Hinge", "Frame", "Marker", "Correction", "Patch", "Carry"]);
+ * same extra modes this stage adds (Hinge/Frame/Marker/Correction/Intro).
+ *
+ * INTRO (Q-02). One or two sentences before a clip: who is speaking (name
+ * and role), on which show, and what to listen for — written from the
+ * clip's OPENING, never from its point. It replaces the Frame/Hinge that
+ * F-81/F-82 made restate the tape they introduce (the narrator said the
+ * point, then the guest said the point — Wyatt's second complaint). It is
+ * verified structurally, not by a model: it must name the show or someone
+ * the episode title names, and it must not repeat the clip's first
+ * sentences (`actSeams.ts`). Under the per-act writer (Q-03) a seam page
+ * that carries beats AND introduces a clip keeps its content mode
+ * (Patch/Carry); `Intro` is the mode of a page that ONLY introduces. */
+export const NarrationModeSchema = z.enum(["Hinge", "Frame", "Marker", "Correction", "Patch", "Carry", "Intro"]);
 export type NarrationMode = z.infer<typeof NarrationModeSchema>;
 
 /** narration-craft.md §0's table, in CHARACTERS — the primitive
@@ -59,7 +71,11 @@ export const MODE_CHAR_BANDS: Record<NarrationMode, [number, number]> = {
   Marker: [135, 340],
   Correction: [100, 205],
   Patch: [340, 765],
-  Carry: [765, 1870]
+  Carry: [765, 1870],
+  /* Q-02: "one or two sentences" — one clause (a same-guest follow-on,
+     "don't go overkill") up to two full sentences naming guest, role, show
+     and what to listen for. ~2–15 s at the planning rate. */
+  Intro: [30, 260]
 };
 
 /** narration-craft.md §2a: the planning rate the whole cost model rests
@@ -167,7 +183,7 @@ export function segmentIdOfTapeDoc(docId: string): string | null {
  * job at a seam. Never a Patch or Carry — those carry the beat's content
  * and cite print — and never a Correction, which bounds tape on the
  * authority of a print source (narration-craft.md §3f). */
-export const TAPE_SOURCE_MODES: readonly NarrationMode[] = ["Frame", "Hinge", "Marker"];
+export const TAPE_SOURCE_MODES: readonly NarrationMode[] = ["Frame", "Hinge", "Marker", "Intro"];
 
 export function modeMayCiteTape(mode: NarrationMode): boolean {
   return TAPE_SOURCE_MODES.includes(mode);
@@ -628,6 +644,18 @@ export interface ValidateNarratedBeatOptions {
   /** The beat purpose plus any other prompt text the writer was handed,
    * so a quote of it can be rejected (F-46). */
   purposeText?: string;
+  /** Q-03: the character band to hold the script to INSTEAD of its mode's
+   * `MODE_CHAR_BANDS` row. A seam page written per act carries several
+   * beats' worth of prose (and an Intro), so its budget is the sum of the
+   * bands it carries (`actSeams.ts`'s `seamBand`), not one beat's. Absent
+   * means the mode's own band, as for every per-page path. */
+  charBand?: [number, number];
+  /** Q-03: the page may cite any transcript window it holds whatever its
+   * mode. A seam page is Patch/Carry by its beats, and the act's clips are
+   * documents it may restate — cited to the window, judged by the verifier
+   * against that window (F-82's rule, act-wide). The per-page path never
+   * sets this: there a Patch cites print (F-81). */
+  tapeCitable?: boolean;
 }
 
 /**
@@ -647,12 +675,14 @@ export function validateNarratedBeat(
     issues.push({ code: "script-empty", message: "script is empty" });
   }
 
-  const band = MODE_CHAR_BANDS[beat.mode];
+  const band = opts.charBand ?? MODE_CHAR_BANDS[beat.mode];
   const chars = beat.script.length;
   if (chars < band[0] || chars > band[1]) {
     issues.push({
       code: "out-of-budget",
-      message: `${chars} chars is outside the ${beat.mode} band ${band[0]}-${band[1]} (narration-craft.md §0)`
+      message: opts.charBand
+        ? `${chars} chars is outside this seam's band ${band[0]}-${band[1]} (the bands of the beats it carries, summed — narration-craft.md §0)`
+        : `${chars} chars is outside the ${beat.mode} band ${band[0]}-${band[1]} (narration-craft.md §0)`
     });
   }
 
@@ -690,7 +720,7 @@ export function validateNarratedBeat(
   const purposeText = opts.purposeText;
   for (const source of beat.sources) {
     if (isTapeSource(source)) {
-      issues.push(...validateTapeSource(source, beat.mode, heldDocs));
+      issues.push(...validateTapeSource(source, beat.mode, heldDocs, opts.tapeCitable === true));
       continue;
     }
 
@@ -765,15 +795,18 @@ export function validateNarratedBeat(
  *     worry) because nothing rests on it.
  *
  * With no `heldDocs` (a caller without an evidence pack) only the first
- * rule runs, matching how the print rules degrade.
+ * rule runs, matching how the print rules degrade. `tapeCitable` (Q-03)
+ * waives the first rule for a seam page written per act — see
+ * `ValidateNarratedBeatOptions.tapeCitable`.
  */
 export function validateTapeSource(
   source: TapeSource,
   mode: NarrationMode,
-  heldDocs?: EvidenceDoc[]
+  heldDocs?: EvidenceDoc[],
+  tapeCitable = false
 ): NarratedBeatValidationIssue[] {
   const issues: NarratedBeatValidationIssue[] = [];
-  if (!modeMayCiteTape(mode)) {
+  if (!tapeCitable && !modeMayCiteTape(mode)) {
     issues.push({
       code: "tape-source-on-content-page",
       message: `a ${mode} page cites tape segment "${source.segmentId}" as its source — only a Frame, Hinge or Marker introducing that segment may; a ${mode} cites print (F-81)`

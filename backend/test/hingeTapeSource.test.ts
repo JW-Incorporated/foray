@@ -467,10 +467,14 @@ describe("F-82 — writeNarration: the run-6 page is written as a Hinge from the
     }
   });
 
-  it("the dry-run path writes the run-6 shape end to end: stub writer, stub verifier, a Hinge with a tape source on the previous segment", async () => {
+  it("the dry-run path writes the run-6 shape end to end: stub writer, stub verifier, a seam page in the beat's own mode with a tape source on the previous segment", async () => {
     /* MUTATION THAT KILLS THIS: have the stub writer's first legal span
        come from a window the page does not hold, or key the neighbouring
-       window under a docId `sourcesFor` does not recognise as tape. */
+       window under a docId `sourcesFor` does not recognise as tape. Since
+       Q-03 the dry-run path writes per act: the content beat between two
+       clips is a seam page in its own mode (Carry), tape-citable whatever
+       the mode (`tapeCitable`), so F-82's Hinge rewrite is not needed to
+       cite the segment that just played. */
     const written = await writeNarration(
       betweenTape("The host argued that the mix of skills in the organization decides the tools, and the model choice comes last."),
       { writer: new StubNarrationWriterBuilder(), verifier: new StubNarrationVerifierBuilder(), evidence: neighbourGatherer() },
@@ -479,9 +483,11 @@ describe("F-82 — writeNarration: the run-6 page is written as a Hinge from the
     );
     const beat = written[0]!.slots[0]!.beats[1]!;
     const page = beat.sourcing === "narration" ? beat.narration : undefined;
-    expect(page?.mode).toBe(HANDOFF_MODE);
+    expect(page?.mode).toBe("Carry");
     expect(page?.verified).toBe(true);
-    expect(page?.sources[0]).toMatchObject({ kind: "tape", segmentId: SEGMENT_A, publication: TITLE_A });
+    /* The seam both introduces clip B (a tape source on B's window, Q-02)
+       and restates clip A; the run-6 property is the source on A. */
+    expect(page?.sources).toContainEqual(expect.objectContaining({ kind: "tape", segmentId: SEGMENT_A, publication: TITLE_A }));
   });
 });
 

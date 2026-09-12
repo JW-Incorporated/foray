@@ -21,7 +21,7 @@ that document names the file.
 
 ## 0. TL;DR — the numbers
 
-**Six modes.** A script author picks one per item and the mode fixes the budget.
+**Six modes, plus Intro.** A script author picks one per item and the mode fixes the budget. Since the listening-quality deck (Q-02/Q-03, 2026-09-12) a generated Foray's narration is written per act, one item per seam, and the item before a clip carries an Intro — the seventh row.
 
 | mode | job | seconds | words | characters |
 |---|---|---|---|---|
@@ -31,6 +31,7 @@ that document names the file.
 | **Correction** | bounds, attributes or contradicts adjacent tape | 6–12 | 17–34 | 100–205 |
 | **Patch** | supplies the part of a beat its tape misses | 20–45 | 57–128 | 340–765 |
 | **Carry** | *is* the beat; there is no tape | 45–110 | 128–312 | 765–1,870 |
+| **Intro** | introduces the clip that follows — who is speaking, on which show, what to listen for; written from the clip's opening, never its point (Q-02) | 2–15 | 5–43 | 30–260 |
 
 | | value | kind |
 |---|---|---|

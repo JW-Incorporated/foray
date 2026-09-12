@@ -89,13 +89,13 @@ function countingDeps() {
   };
 
   const narrationWriter = new StubNarrationWriterBuilder();
-  /* WS-A: the call that writes a page takes a whole slot at a time — so
-     this counts slot-writes, not page-writes. Since G-34 that call is the
-     merged select+prose request on a clean slot. The assertions below only
-     ask whether narration was PAID FOR again after a resume, which that
+  /* Q-03: the call that writes narration takes a whole ACT at a time — so
+     this counts act-writes. (WS-A made it a slot, G-34 the merged
+     select+prose request on a clean slot.) The assertions below only ask
+     whether narration was PAID FOR again after a resume, which that
      answers exactly. */
-  const realWrite = narrationWriter.selectAndWrite.bind(narrationWriter);
-  narrationWriter.selectAndWrite = async (...args: Parameters<StubNarrationWriterBuilder["selectAndWrite"]>) => {
+  const realWrite = narrationWriter.writeAct.bind(narrationWriter);
+  narrationWriter.writeAct = async (...args: Parameters<StubNarrationWriterBuilder["writeAct"]>) => {
     calls.write++;
     return realWrite(...args);
   };
@@ -144,75 +144,66 @@ describe("per-stage checkpoint and resume inside one Foray (F-17/F-18)", () => {
        a failure in one act not costing the acts that already finished. */
     expect(staged.filter((s) => s.startsWith("deepen:")).length).toBeGreaterThan(0);
     expect(staged.filter((s) => s.startsWith("narrate:")).length).toBeGreaterThan(0);
-    /* F-51: per-SLOT keys inside the act, too. `narrate:0` is only written
-       when the whole act finishes, so run 2's death at act 1 page p2 left
-       nothing banked and its re-run would have re-paid for all twelve
-       pages to reach the one that failed. */
-    expect(staged.filter((s) => /^narrate:\d+:\d+$/.test(s)).length).toBeGreaterThan(0);
+    /* Q-03: the act is the unit of writing, so a fresh run banks the act
+       under `narrate:<i>` and writes NO per-slot key — F-51's
+       `narrate:<i>:<slot>` keys are the per-page path's, still read (the
+       test below) and still written by that fallback. */
+    expect(staged.filter((s) => /^narrate:\d+:\d+$/.test(s))).toEqual([]);
   });
 
-  it("a slot that finished is banked even though the act never did, and the re-run pays only for the rest (F-51)", async () => {
+  it("a per-slot checkpoint left by a per-page run (runs 1–8) is still read: a fully banked act resumes without a writer call, a half-banked act is written whole (F-51 / Q-03)", async () => {
+    /* MUTATION THAT KILLS THIS: stop honouring `resume` on the act path
+       (the second run then pays one act-write), or honour a PARTIAL set of
+       slots (the third run then pays nothing and the act's seams — which
+       span slots — are assembled from a page-shaped slot and nothing).
+       Ran both — red. */
     const store = new FakeCheckpointStore(FP);
-    const failing = countingDeps();
 
-    /* One slot of act 0 writes; every other slot's provider goes away. The
-       short tier is one act of two slots (`DURATION_SHAPE_BUDGETS`), so
-       this is exactly run 2's shape: part of an act done, the act itself
-       unfinished. */
-    const realWrite = failing.deps.narrationWriter.selectAndWrite.bind(failing.deps.narrationWriter);
-    let firstSlotTitle: string | null = null;
-    failing.deps.narrationWriter.selectAndWrite = async (request, buildCtx) => {
-      if (firstSlotTitle === null) firstSlotTitle = request.slotTitle;
-      if (request.slotTitle !== firstSlotTitle) {
-        /* Wait until the healthy slot has actually banked before going
-           away — that ordering is the property under test, so it is waited
-           for rather than assumed from a fixed sleep. (A 10 ms sleep held
-           while this sabotage sat on the doomed slot's SECOND request; since
-           G-34 it sits on its first, and under full-suite load the healthy
-           slot's whole round did not always fit in 10 ms.) The deadline only
-           turns a hung run into a failure. */
-        const deadline = Date.now() + 5000;
-        while (!store.stageKeys(KEY).some((s) => /^narrate:0:\d+$/.test(s)) && Date.now() < deadline) {
-          await new Promise((r) => setTimeout(r, 5));
-        }
-        throw new Error("provider went away mid-slot");
-      }
-      return realWrite(request, buildCtx);
-    };
-
-    await expect(
-      runForayPipeline(request, { userId: "u", checkpointKey: KEY }, { ...failing.deps, finalize: fakeFinalize().fn, checkpoint: store })
-    ).rejects.toThrow(/provider went away/);
-
-    const staged = store.stageKeys(KEY);
-    /* The ACT key is absent — the act never finished — but the slot that
-       did is on disk. */
-    expect(staged).not.toContain("narrate:0");
-    const bankedBeforeRetry = staged.filter((s) => /^narrate:0:\d+$/.test(s));
-    expect(bankedBeforeRetry).toHaveLength(1);
-
-    const retry = countingDeps();
-    const outcome = await runForayPipeline(
+    /* Run 1: the per-page path — a writer without the act contract — banks
+       every slot of the act, then the act. */
+    const legacy = countingDeps();
+    (legacy.deps.narrationWriter as { writeAct?: unknown }).writeAct = undefined;
+    const first = await runForayPipeline(
       request,
       { userId: "u", checkpointKey: KEY, now: () => new Date("2026-09-09T00:00:00Z") },
-      { ...retry.deps, finalize: fakeFinalize().fn, checkpoint: store }
+      { ...legacy.deps, finalize: fakeFinalize().fn, checkpoint: store }
     );
+    expect(first.outcome).toBe("generated");
+    const slotKeys = store.stageKeys(KEY).filter((s) => /^narrate:0:\d+$/.test(s));
+    expect(slotKeys.length).toBeGreaterThan(0);
 
-    expect(outcome.outcome).toBe("generated");
-    expect(retry.calls.spine).toBe(0);
-    expect(retry.calls.deepen).toBe(0);
-    /* Exactly the slots that never landed — not the whole act. Counted
-       against the act's real slot count rather than a hard-coded one, so
-       the test says what it means when the duration tier's shape moves. */
-    const slotsInAct = store.stageKeys(KEY).filter((s) => /^narrate:0:\d+$/.test(s)).length;
-    expect(slotsInAct).toBeGreaterThan(bankedBeforeRetry.length);
-    expect(retry.calls.write).toBe(slotsInAct - bankedBeforeRetry.length);
-    /* Two full stub pipeline runs, the first of which now waits for a slot
-       to bank before it fails. Its siblings here run as long under a loaded
-       machine but spend that time synchronously, so the default 10 s timer
-       never gets to fire on them; this one yields while it waits, so it
-       needs the budget its work actually takes. */
-  }, 60_000);
+    /* Forget the act key and keep the slots — the shape a run that died
+       between its last slot's save and the act's leaves behind. */
+    const stages = store.files.get(KEY)!.stages as Record<string, unknown>;
+    delete stages["narrate:0"];
+    const second = countingDeps();
+    const resumed = await runForayPipeline(
+      request,
+      { userId: "u", checkpointKey: KEY, now: () => new Date("2026-09-09T00:00:00Z") },
+      { ...second.deps, finalize: fakeFinalize().fn, checkpoint: store }
+    );
+    expect(resumed.outcome).toBe("generated");
+    expect(second.calls.write).toBe(0);
+    expect(second.calls.spine).toBe(0);
+
+    /* Forget the act key and ONE slot: the act is written whole — one
+       act-write, no per-slot key added. (The store rebuilds its stage map on
+       every save, so the map is fetched again after the second run.) */
+    const stagesAfterResume = store.files.get(KEY)!.stages as Record<string, unknown>;
+    delete stagesAfterResume["narrate:0"];
+    delete stagesAfterResume[slotKeys[0]!];
+    const third = countingDeps();
+    const rebuilt = await runForayPipeline(
+      request,
+      { userId: "u", checkpointKey: KEY, now: () => new Date("2026-09-09T00:00:00Z") },
+      { ...third.deps, finalize: fakeFinalize().fn, checkpoint: store }
+    );
+    expect(rebuilt.outcome).toBe("generated");
+    expect(third.calls.write).toBe(1);
+    expect(third.calls.spine).toBe(0);
+    expect(store.stageKeys(KEY).filter((s) => /^narrate:0:\d+$/.test(s))).toEqual(slotKeys.slice(1));
+    expect(store.stageKeys(KEY)).toContain("narrate:0");
+  }, 120_000);
 
   it("a second run with the same prompt makes no model calls at all", async () => {
     const store = new FakeCheckpointStore(FP);
@@ -267,7 +258,7 @@ describe("per-stage checkpoint and resume inside one Foray (F-17/F-18)", () => {
        the spine and three deepened acts with it. */
     const store = new FakeCheckpointStore(FP);
     const failing = countingDeps();
-    failing.deps.narrationWriter.selectAndWrite = async () => {
+    failing.deps.narrationWriter.writeAct = async () => {
       throw new Error("page rejected three times");
     };
 

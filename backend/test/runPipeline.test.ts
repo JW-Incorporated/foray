@@ -504,20 +504,20 @@ describe("runForayPipeline — each act is stitched as soon as it is narrated (F
    * readiness from the run's; "act 2 could not have finished" does, and a
    * latch is what makes that a fact rather than a race. `isLater` needs the
    * captured spine, so it is consulted per call, not at construction. */
-  function latchedWriter(isLater: (slotTitle: string) => boolean) {
+  function latchedWriter(isLater: (actTitle: string) => boolean) {
     const writer = new StubNarrationWriterBuilder();
-    /* G-34: a clean slot's prose is requested through the merged
-       select+prose call, so that is the request to log. */
-    const realSelectAndWrite = writer.selectAndWrite.bind(writer);
+    /* Q-03: an act's prose is requested through the per-act call, so that
+       is the request to log — one per act, keyed by the act's title. */
+    const realWriteAct = writer.writeAct.bind(writer);
     const events: string[] = [];
     let release!: () => void;
     const held = new Promise<void>((resolve) => {
       release = resolve;
     });
-    writer.selectAndWrite = async (...args: Parameters<StubNarrationWriterBuilder["selectAndWrite"]>) => {
-      events.push(`narrate:${args[0].slotTitle}`);
-      if (isLater(args[0].slotTitle)) await held;
-      return realSelectAndWrite(...args);
+    writer.writeAct = async (...args: Parameters<StubNarrationWriterBuilder["writeAct"]>) => {
+      events.push(`narrate:${args[0].actTitle}`);
+      if (isLater(args[0].actTitle)) await held;
+      return realWriteAct(...args);
     };
     return { writer, events, release };
   }
@@ -558,7 +558,7 @@ describe("runForayPipeline — each act is stitched as soon as it is narrated (F
        which are released only after `ready:0`, and `waitForAct1Ready` fails.
        Ran it — red. */
     const { builder: spineBuilder, captured } = capturingSpineBuilder();
-    const isLater = (slotTitle: string) => captured.spine!.acts.slice(1).some((a) => a.slots.some((s) => s.title === slotTitle));
+    const isLater = (actTitle: string) => captured.spine!.acts.slice(1).some((a) => a.title === actTitle);
     const { writer, events, release } = latchedWriter(isLater);
 
     const run = runForayPipeline(multiAct, options, {
@@ -584,14 +584,15 @@ describe("runForayPipeline — each act is stitched as soon as it is narrated (F
     if (!spine) return;
     expect(spine.acts.length).toBeGreaterThan(1);
 
-    /* The slot title is the join between the latch and the act structure.
-       If the spine ever reuses one across acts this test would read a false
-       pass, so it says that out loud rather than assuming it. */
-    const allSlotTitles = spine.acts.flatMap((a) => a.slots.map((s) => s.title));
-    expect(new Set(allSlotTitles).size).toBe(allSlotTitles.length);
+    /* The act title is the join between the latch and the act structure
+       (Q-03: the writer is called once per act). If the spine ever reuses
+       one this test would read a false pass, so it says that out loud
+       rather than assuming it. */
+    const allActTitles = spine.acts.map((a) => a.title);
+    expect(new Set(allActTitles).size).toBe(allActTitles.length);
 
-    const laterActSlots = new Set(spine.acts.slice(1).flatMap((a) => a.slots.map((s) => s.title)));
-    expect(events.some((e) => e.startsWith("narrate:") && laterActSlots.has(e.slice("narrate:".length)))).toBe(true);
+    const laterActs = new Set(spine.acts.slice(1).map((a) => a.title));
+    expect(events.some((e) => e.startsWith("narrate:") && laterActs.has(e.slice("narrate:".length)))).toBe(true);
 
     // And every act still emits, once, in order — streaming did not lose one.
     expect(events.filter((e) => e.startsWith("ready:"))).toEqual(spine.acts.map((_a, i) => `ready:${i}`));
@@ -606,7 +607,7 @@ describe("runForayPipeline — each act is stitched as soon as it is narrated (F
        acts are held, and the wait fails. Ran it — red. */
     const holdMs = 40;
     const { builder: spineBuilder, captured } = capturingSpineBuilder();
-    const isLater = (slotTitle: string) => captured.spine!.acts.slice(1).some((a) => a.slots.some((s) => s.title === slotTitle));
+    const isLater = (actTitle: string) => captured.spine!.acts.slice(1).some((a) => a.title === actTitle);
     const { writer, events, release } = latchedWriter(isLater);
 
     const startedMs = Date.now();

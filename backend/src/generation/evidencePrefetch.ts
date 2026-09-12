@@ -103,8 +103,15 @@ export function evidenceBeatsFor(slot: SourcedSlot, neighbours: SlotNeighbours =
   const beats: EvidenceBeat[] = [];
   for (let i = 0; i < slot.beats.length; i++) {
     const beat = slot.beats[i]!;
-    const mode = beat.sourcing === "narration" ? beat.narration.mode : decideConnectiveNarration(slot, i);
-    if (!mode) continue;
+    /* Q-02: EVERY tape beat is gathered, not only the ones the per-page
+       path gave a Frame. The per-act writer needs each clip's window for
+       the Intro decision (is the host's own introduction in its opening?)
+       and the restate check, and a same-episode continuation the per-page
+       path left silent still needs both. The mode is only the key's
+       `requiresEvidence` (false for any connective mode), so "Intro" here
+       and the act path's `decideConnectiveNarration(...) ?? "Intro"` build
+       the same key. */
+    const mode = beat.sourcing === "narration" ? beat.narration.mode : (decideConnectiveNarration(slot, i) ?? "Intro");
     /* F-82: the SAME builder `writeSlot` uses, neighbours included — the
        adjacent windows are part of the pack, so they are part of the key. */
     beats.push(evidenceBeatFor(slot, i, mode, neighbours));

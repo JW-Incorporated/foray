@@ -398,6 +398,11 @@ describe("evaluateVeracityGate", () => {
     synthesisVerifiedPageDetails: [],
     purposeRevisedPages: 0,
     tapeCitedPages: 0,
+    narrationPagesPerSeam: 1,
+    narrationShare: 0.2,
+    tapeShare: 0.8,
+    introRestates: 0,
+    narrationCallsPerAct: 2,
     pipelineTokens: 1000,
     stageTimings: []
   });
@@ -542,6 +547,11 @@ describe("the publish gate refuses an unverified page (F-51)", () => {
     synthesisVerifiedPageDetails: [],
     purposeRevisedPages: 0,
     tapeCitedPages: 0,
+    narrationPagesPerSeam: 1,
+    narrationShare: 0.2,
+    tapeShare: 0.8,
+    introRestates: 0,
+    narrationCallsPerAct: 2,
     pipelineTokens: 1000,
     stageTimings: []
   });

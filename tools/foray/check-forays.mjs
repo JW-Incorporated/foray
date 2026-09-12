@@ -572,19 +572,19 @@ export function checkForays(files) {
           itemsOk = false;
           continue;
         }
-        /* §7 item 5, clause 2: a `mode` is checked against the six-mode enum
+        /* §7 item 5, clause 2: a `mode` is checked against the mode enum
          * whenever it is PRESENT, on any Foray — this cannot retroactively
          * fail the four admin-authored Forays because none of them sets the
          * field, and a typo'd mode is a real defect worth catching wherever
          * it shows up. Requiring the field to EXIST is narrower and applies
          * only to a generated Foray (`docs/curation/narration-craft.md`'s
-         * six modes are how the pipeline picks a budget for every narration
+         * modes are how the pipeline picks a budget for every narration
          * beat it writes — §2.1 — so a generated item missing one is a
          * pipeline defect, not an admin's choice not to use the concept). */
         if (item.mode !== undefined && !NARRATION_MODES.has(item.mode)) {
-          E(`${where} has \`mode\` ${JSON.stringify(item.mode)}, not one of the six modes in narration-craft.md §0 (${[...NARRATION_MODES].join(", ")})`);
+          E(`${where} has \`mode\` ${JSON.stringify(item.mode)}, not one of the narration modes in narration-craft.md §0 / Q-02 (${[...NARRATION_MODES].join(", ")})`);
         } else if (isGeneratedForay(foray) && item.mode === undefined) {
-          E(`${where} has no \`mode\` — every narration item in a generated Foray must declare one of the six modes (narration-craft.md §0)`);
+          E(`${where} has no \`mode\` — every narration item in a generated Foray must declare one of the narration modes (narration-craft.md §0 / Q-02)`);
         }
         if (item.duration_sec === undefined && !hasScript) {
           E(

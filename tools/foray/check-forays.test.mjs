@@ -2102,7 +2102,7 @@ test("the same script-less, asset-less item is only a WARNING on a non-generated
   assert.match(warnings.join("\n"), /has no usable `audio_url`\/`asset`\/`script`/);
 });
 
-test("a generated Foray's narration item needs a `mode` from the six-mode enum", () => {
+test("a generated Foray's narration item needs a `mode` from the mode enum", () => {
   const f = generatedFixture();
   boundary(f).items.splice(1, 0, bridge({ id: "nar-nomode", mode: undefined }));
   assert.match(errorsFor(f).join("\n"), /has no `mode`/);
@@ -2111,11 +2111,11 @@ test("a generated Foray's narration item needs a `mode` from the six-mode enum",
 test("an invalid `mode` value is rejected on ANY Foray, generated or not", () => {
   const generated = generatedFixture();
   boundary(generated).items.splice(1, 0, bridge({ id: "nar-badmode", mode: "essay" }));
-  assert.match(errorsFor(generated).join("\n"), /not one of the six modes/);
+  assert.match(errorsFor(generated).join("\n"), /not one of the narration modes/);
 
   const admin = fx();
   boundary(admin).items.splice(1, 0, bridge({ id: "nar-badmode", mode: "essay" }));
-  assert.match(errorsFor(admin).join("\n"), /not one of the six modes/);
+  assert.match(errorsFor(admin).join("\n"), /not one of the narration modes/);
 });
 
 test("a valid mode on a non-generated Foray is accepted — the enum check isn't generation-gated", () => {

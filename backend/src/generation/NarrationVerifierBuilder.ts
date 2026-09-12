@@ -1,6 +1,7 @@
 import type { Voice } from "../types/spine";
 import type { NarrationMode, Source } from "../types/narration";
-import type { NarrationBuildContext, NarrationPageBrief } from "./NarrationWriterBuilder";
+import type { EvidenceDoc } from "./gatherEvidence";
+import type { BeatBrief, ClipBrief, IntroKind, NarrationBuildContext, NarrationPageBrief } from "./NarrationWriterBuilder";
 
 /* Re-exported because every implementation of this interface imports its
  * context type from THIS module, and a bare `import type` does not make a
@@ -57,6 +58,89 @@ export interface NarrationVerifierBuilder {
    * a verifier without it leaves every such page unverified.
    */
   verifySynthesis?(request: SynthesisVerifyRequest, ctx: NarrationBuildContext): Promise<SynthesisVerifyResult>;
+
+  /**
+   * Q-03: VERIFIED PER BEAT, against the act's prose and clips. Given the
+   * act's seams (each script with its sources and the documents it quotes),
+   * its clips (the transcript windows) and the beat checklist, the verifier
+   * answers, per BEAT, whether the prose carries its claim — anywhere in
+   * the act, supported by the sources or the clips — and, per SEAM, the
+   * same two questions `verifySlot` asks of a page: is every statement
+   * supported by the source attached to it, is a genuinely contested point
+   * handled. A missed or unsupported beat comes back as a NOTE naming the
+   * beat and its claim ("the prose does not carry beat b3: …; add it where
+   * it belongs"), and the retry edits the act's prose, not a page.
+   *
+   * What counts as verified is unchanged from the per-page path: a quote is
+   * proven a span of a held document in code before this is called (F-51's
+   * evidence rules), and a tape source is judged against the window it
+   * names (F-82). An Intro is not judged here at all — it is checked
+   * structurally in `actSeams.ts`.
+   *
+   * Optional, as `writeAct` is on the writer: both must be present for the
+   * per-act path to run.
+   */
+  verifyAct?(request: ActVerifyRequest, ctx: NarrationBuildContext): Promise<ActVerifyResult>;
+}
+
+/* ------------------------------------------------------------------ *
+ * Q-03: the per-act contract.
+ * ------------------------------------------------------------------ */
+
+/** One seam as the verifier reads it: the script, what it cites, which
+ * beats sit in it, and which clip it introduces. */
+export interface VerifySeamBrief {
+  seamId: string;
+  mode: NarrationMode;
+  script: string;
+  sources: Source[];
+  /** The beat ids positioned in this seam. The verifier may find a beat
+   * carried in another seam; this is where the writer was asked to put it. */
+  carries: string[];
+  follows?: string;
+  introduces?: string;
+  intro?: IntroKind;
+}
+
+/** One clip with its whole transcript window, so a statement about the
+ * tape is judged against everything said in it (F-82). */
+export interface VerifyClipBrief extends ClipBrief {
+  /** The held window's text; empty when the pipeline holds no cue body. */
+  windowText: string;
+}
+
+export interface ActVerifyRequest {
+  actTitle: string;
+  voice: Voice;
+  /** The checklist: every narration beat of the act, in play order. */
+  beats: BeatBrief[];
+  seams: VerifySeamBrief[];
+  clips: VerifyClipBrief[];
+  /** Every document the seams' sources quote. */
+  documents: EvidenceDoc[];
+}
+
+export interface BeatVerdict {
+  beatId: string;
+  /** True when the act's prose (any seam) or a clip carries the beat's
+   * claim, supported by the sources or the window it rests on. */
+  carried: boolean;
+  /** Required when `carried` is false: the note the writer acts on. */
+  notes?: string;
+}
+
+export interface SeamVerdict {
+  seamId: string;
+  /** Q1 of `verifySlot`, for this seam's script. */
+  claimsSupported: boolean;
+  /** Q3 of `verifySlot`, for this seam's script. */
+  contestedHandled: boolean;
+  notes?: string;
+}
+
+export interface ActVerifyResult {
+  beats: BeatVerdict[];
+  seams: SeamVerdict[];
 }
 
 /** F-88: one verified page as the synthesis question sees it — what the
