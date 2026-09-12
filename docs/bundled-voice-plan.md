@@ -1,7 +1,10 @@
 # A voice of our own, inside the app: research and a Hermes deck
 
-**Status:** K-01's probe, K-02, K-03, K-06 and K-07 landed 2026-09-12 (per-card
-**DONE** markers in §9). **K-04 and K-05 are deliberately unstarted**: both are
+**Status:** K-01's probe, K-03, K-06 and K-07 landed 2026-09-12 (per-card
+**DONE** markers in §9). **K-02 is PARTIAL, not done** — corrected 2026-09-12 by a
+machinery-audit pass: its module exists and its tests pass, but no production code
+calls it, so no Foray has ever been phonemized. **K-04 and K-05 are deliberately
+unstarted**: both are
 downstream of a number only a real phone can produce, and that measurement is
 `HUMAN-ACTIONS.md` #45. Nothing a listener hears has changed — every path added so
 far is inert by construction, and the platform voice still speaks every narration
@@ -282,7 +285,14 @@ card linked above; HUMAN-ACTIONS #21 (copying diagnostics out) and #29.
 - **Governance:** `mobile/` auto-merges; the model-fetch step touches the build
   workflows → `founder-approved` (H3; batch with K-06).
 
-#### K-02 · Phonemes are authored with the script — **M** — **DONE** (2026-09-12, `feat/bundled-voice-k-deck`); `tools/narration/phonemize.py` + `requirements.txt`, `backend/src/generation/phonemize.ts` (per PAGE, not per beat — the act-level writer landed the same week), the `tts`/`phonemes`/`est_sec` fields on the item schema, and `check-forays.mjs`'s rules with the card's own named mutation executed. `data/forays.json` is NOT re-authored: misaki is not installed here and a fabricated phoneme string would be worse than none
+#### K-02 · Phonemes are authored with the script — **M** — **PARTIAL, NOT DONE** (2026-09-12, `feat/bundled-voice-k-deck`) — *downgraded from **DONE** on 2026-09-12; it was the one materially false DONE marker in the repo*
+
+**What exists:** `tools/narration/phonemize.py` + `requirements.txt`, `backend/src/generation/phonemize.ts` (per PAGE, not per beat — the act-level writer landed the same week), the `tts`/`phonemes`/`est_sec` fields on the item schema, and `check-forays.mjs`'s rules with the card's own named mutation executed.
+
+**What does not:** ***the stage.*** This card's **Ask** is "the generation pipeline (#487's driver) gains a `phonemize` stage after §4.7", and its **Owned** list names "the pipeline driver" and "the four committed Forays in `data/forays.json` re-authored with phonemes". Neither happened. Verified 2026-09-12: `runPipeline.ts` contains **zero** occurrences of `phonemize`; `runPhonemizer`, `phonemizeItems` and `phonemizeItem` have **no production caller** — the only references repo-wide are the module's own internal call and `backend/test/phonemize.test.ts`. The module is fully dependency-injected (`export type Phonemizer`), so only a pipeline driver could ever supply a real phonemizer, and none does. `data/forays.json` carries **0** `phonemes` fields. The original marker already noted that `forays.json` is not re-authored (misaki is not installed here, and a fabricated phoneme string would be worse than none) — that half was honest; the claim that the STAGE landed was not.
+
+**What is left:** wire the stage into the pipeline driver, which is a decision, not a typo — see `docs/curation/generation-architecture.md` §4.7a, corrected in the same pass.
+
 - **Ask:** the generation pipeline (#487's driver) gains a `phonemize` stage after §4.7
   "Write the narration": apply `hard-terms.json` first (exact IPA for the 83 terms, word
   boundary, case-insensitive), then misaki (`en-us`) with `espeak-ng` fallback for the
@@ -359,7 +369,7 @@ card linked above; HUMAN-ACTIONS #21 (copying diagnostics out) and #29.
   the chosen voice (MUTATION: drop `voice` → red); a legacy item still speaks `script`;
   vocab mismatch → fallback, not silence.
 
-#### K-06 · Size, provenance and licence gates — **S** — **DONE** (2026-09-12, `feat/bundled-voice-k-deck`), **except the workflow step**; `tools/mobile/fetch-models.mjs` pins `{url, sha256, bytes}` for the model and the twelve voices and refuses an unpinned file, the espeak gate and the 150 MB ceiling are in `test/release-gates.test.js`, `prepare-webdir.mjs` refuses a model in the web bundle, and `docs/legal/third-party-notices.md` carries Kokoro/ORT/voices. The build-workflow step that CALLS the fetcher is `.github/` and waits on H3
+#### K-06 · Size, provenance and licence gates — **S** — **DONE** (2026-09-12, `feat/bundled-voice-k-deck`), **except the workflow step and part of the size gate**; `tools/mobile/fetch-models.mjs` pins `{url, sha256, bytes}` for the model and the twelve voices and refuses an unpinned file, the espeak gate and the 150 MB ceiling are in `test/release-gates.test.js`, `prepare-webdir.mjs` refuses a model in the web bundle, and `docs/legal/third-party-notices.md` carries Kokoro/ORT/voices. The build-workflow step that CALLS the fetcher is `.github/` and waits on H3. **Soft spot, noted 2026-09-12:** the 150 MB ceiling is only partly enforced — `test/release-gates.test.js:566-570` asserts the ceiling is below Apple's cellular cap and that this deck names both numbers, which is arithmetic over constants; nothing measures a real `.ipa`/`.aab` and fails on it, because no build produces one here yet
 - **Ask:** (1) `tools/mobile/fetch-models.mjs` pins `{url, sha256, bytes}` for the model
   and each voice; CI fails on a mismatch. (2) A gate test asserts **no `espeak`
   symbol, file or licence text** is present in the built app (`strings` on the binary
@@ -372,7 +382,7 @@ card linked above; HUMAN-ACTIONS #21 (copying diagnostics out) and #29.
   (floor → raise), the build workflows (one step each), `docs/legal/*` (the notice).
 - **Governance:** `.github/` → `founder-approved` (H3). Batch with K-01's workflow step.
 
-#### K-07 · Records — **S** — **DONE** (2026-09-12, `feat/bundled-voice-k-deck`); §1.2 amended, §4.7a added, the DECISIONS entry, `on-device-tts.md` §10, `self-hosted-tts.md`'s addendum, STATE.md and these markers
+#### K-07 · Records — **S** — **DONE** (2026-09-12, `feat/bundled-voice-k-deck`); §1.2 amended, §4.7a added, the DECISIONS entry, `on-device-tts.md` §10, `self-hosted-tts.md`'s addendum, STATE.md and these markers. **Soft spot, noted 2026-09-12:** the card's Ask also says "HUMAN-ACTIONS #40 closed with a pointer here", and item **#40 is still open** (`HUMAN-ACTIONS.md:50`, 🟡 DECIDE — download one Enhanced iPhone voice, then re-listen). It is a founder action, so the card cannot close it; it is recorded here rather than silently left
 - **Ask:** `generation-architecture.md` §1.2 amended ("the bundled voice; the platform's
   engine is the fallback"); `on-device-tts.md` §10 with K-01's measurements;
   DECISIONS entries (engine choice; the three voices); HUMAN-ACTIONS #40 closed with a

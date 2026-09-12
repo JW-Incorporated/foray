@@ -1,7 +1,13 @@
 # Deck: listening quality — the Foray has to sound like a story, not a checklist
 
-**Status:** plan to cut into kanban cards, written 2026-09-12 by the founder's Claude
-session from Wyatt's listening notes below. Cards are **Q-**. Companion to
+**Status:** **Q-01..Q-05 landed 2026-09-12** (#646, #647, #650, #651 — per-card markers
+below). **Q-06, the listening test, is open and is Wyatt's.** Written 2026-09-12 by the
+founder's Claude session from Wyatt's listening notes below; the deck had **one commit in
+its entire history** (#645, the day it was written) while four PRs landed five of its six
+cards, so until 2026-09-12 it still read "plan to cut into kanban cards", still said no
+generation run may launch until it is done, and still sent agents to edit a file that had
+been deleted by its own Q-01. Corrected by the machinery-audit pass;
+`tools/ci/deck-claims.mjs` is the mechanical floor added with it. Cards are **Q-**. Companion to
 `docs/curation/foray-to-spec-roadmap.md` (the G-deck, which is about *producing* a
 Foray at all); this deck is about what the listener hears. It takes priority over
 further generation runs: "let's stop building forays and work on quality."
@@ -81,7 +87,7 @@ acceptance test for this deck is a listening test, not a pass rate.
 
 ## 3. Cards
 
-### Q-01 · Clips start and end at thought boundaries, and run longer — **H · M — overlord (backend)**
+### Q-01 · Clips start and end at thought boundaries, and run longer — **H · M — overlord (backend)** — **DONE** (#647, 2026-09-12; extension to thought boundaries with the 30-minute ceiling, `sourceBeats.ts`. Pass 2 in #651: the extension reaches the seed path, overlapping windows merge into one clip, and `check-forays.mjs` accepts a Q-01 Foray — F-96)
 **Ask.** After `selectTapeWindow` finds the claim's window, extend it backwards to
 the start of the speaker's turn (or the host's question that prompted it) and
 forwards to the end of the answer, using the transcript cues' speaker/turn structure
@@ -107,7 +113,7 @@ boundaries; the anchors still satisfy `check-forays`. Measured on the run-8
 candidate: mean clip length and the share with `boundary: "turn"` in the report.
 **Dependencies.** none. **Human gate.** none.
 
-### Q-02 · Every clip gets an introduction — **H · M — overlord (backend)**
+### Q-02 · Every clip gets an introduction — **H · M — overlord (backend)** — **DONE** (#646, 2026-09-12; the light introduction before each clip, written as part of the act's prose)
 **Ask.** A new page role, **Intro**, placed before a segment: one or two sentences —
 who is speaking (name, role), on which show, and what to listen for — written from
 the clip's *opening*, never from its point. **Light touch** (Wyatt: "don't go
@@ -127,7 +133,7 @@ run-8 candidate re-narrated shows no page whose text repeats the following clip'
 first sentence (a similarity check in the report, `introRestates: 0`).
 **Dependencies.** Q-01 (so the Intro is written from the real opening).
 
-### Q-03 · Narration is written per act, verified per beat — **H · L — overlord (backend)**
+### Q-03 · Narration is written per act, verified per beat — **H · L — overlord (backend)** — **DONE** (#646, 2026-09-12; `writeAct.ts` — a page is now a stretch of prose between clips, not a beat. Pass 2 in #650: act-scoped support, modes assigned after writing, retries edit only the failed seams — F-97)
 **Ask.** The writer receives an act's whole verified material — its clips (with
 Q-01 boundaries), its evidence, its beats — and writes continuous prose for the
 act: the bridges between clips and the argument the act carries, in one voice,
@@ -150,7 +156,7 @@ mutation dropping a beat from the prose is red. Cost: narration calls per act �
 **Dependencies.** Q-02 (the Intro role is part of the act's prose). **Human
 gate.** none for code; Wyatt listens (Q-06).
 
-### Q-04 · Re-measure the placement rules against the new lengths — **M · S — overlord**
+### Q-04 · Re-measure the placement rules against the new lengths — **M · S — overlord** — **DONE** (#647, 2026-09-12; the placement rules re-derived, and `d5Triple.ts` replaced by `d5Pair.ts` in the same PR — see the **Owned** line below, which named the deleted file until 2026-09-12)
 **Ask.** With 60 s to 30 min clips and fewer of them, D3 (mean floor 90 s), D5 (IQR
 floor 45 s, ladder 105/165/135/210), M4 (one episode ≤ 25 % of the Foray), D1
 (starts in a 600 s window) will fire for the wrong reasons — a 30-minute clip that
@@ -159,14 +165,18 @@ listening purpose it serves (D1: ad-safety — keep; M4: no single episode
 dominating — becomes a per-*Foray* cap of one long clip per episode rather than a
 share; D3/D5: variety — restate as "no two consecutive clips within 20 % of the same
 length" rather than a ladder) and change the numbers once, with the reasoning in
-the checker's comment, not per run. Same in `sourceBeats.ts` and `d5Triple.ts`.
+the checker's comment, not per run. Same in `sourceBeats.ts` and `d5Pair.ts`.
 **Owned.** `tools/foray/check-forays.mjs`, `backend/src/generation/sourceBeats.ts`,
-`d5Triple.ts`, their tests, the §2 doc table.
+`d5Pair.ts`, their tests, the §2 doc table. (Both of those read `d5Triple.ts` until
+2026-09-12. That file was DELETED by this card's own PR #647 — `1ac3d4f`, which
+added `d5Pair.ts` and `d5Pair.test.ts` and removed `d5Triple.ts` and
+`d5Triple.test.ts` — so the deck spent a day sending agents to edit a file that no
+longer existed.)
 **Done when.** The run-8 candidate re-sourced under Q-01 passes the checker with
 zero rule errors and the ledger records old vs new values.
 **Dependencies.** Q-01. **Human gate.** D0's targets in the G-deck (Wyatt).
 
-### Q-05 · The tape share target moves up, the page count moves down — **M · S — overlord**
+### Q-05 · The tape share target moves up, the page count moves down — **M · S — overlord** — **DONE** (#646, 2026-09-12; the two listening KPIs in `veracityMetrics.ts` and the `generateForays.ts` report)
 **Ask.** `docs/curation/foray-to-spec-roadmap.md` §1.2's *proposed* targets get two
 listening numbers: tape share ≥ 70 % (run 8 reached 78 %; runs 5–7 sat at 59–61 %)
 and narration ≤ 25 % of runtime with ≤ 1 page per seam. `report.json` already
@@ -196,6 +206,11 @@ day) and **narration** (Q-02 then Q-03 with Q-05's report fields, one agent, two
 to three days). Q-06 closes. Everything is in the `backend/` and `tools/foray/`
 lanes; the overlord labels under standing approval. No generation run is
 launched for any reason other than Q-06 until this deck is done.
+
+**Both lanes finished on 2026-09-12** (#646, #647, #650, #651), so the sentence
+above holds nobody up any more: the only card left is **Q-06**, and Q-06 IS a
+generation run — regenerate the run-8 prompt and Wyatt listens to act 1 on the
+phone. Read the freeze as lifted for that run and for anything gated behind it.
 
 ## 5. Rules for the agents
 

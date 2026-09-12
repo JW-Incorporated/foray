@@ -61,6 +61,7 @@ import {
   num,
   parseArgs,
   resolveReportPath,
+  rowFor,
   rowFromJsonl,
   rowsForReport,
   runIdFor,
@@ -180,14 +181,24 @@ test("cost fills itself the day a report carries usage.costUsd", () => {
 /* 9-13. Rule 2 — a target is named only where §1.2 settled it          */
 /* =================================================================== */
 
-test("the proposed targets are exactly the §1.2 rows marked *proposed*", () => {
-  /* MUTATION: change `targetState: PROPOSED` to SETTLED on tape_share.
+test("the proposed targets are exactly the §1.2 rows marked *proposed*, on the column whose denominator the row names", () => {
+  /* MUTATION: change `targetState: PROPOSED` to SETTLED on tape_of_runtime.
      These five are the ones §1.2's Target column marks *proposed*, all of them
-     waiting on D0. Anything else with a target is settled. */
+     waiting on D0. Anything else with a target is settled.
+     SECOND MUTATION (F-101): move the >= 70 % target back onto `tape_share`.
+     §1.2's row is titled "Tape share OF RUNTIME" and its history divides tape
+     by the candidate's whole runtime; `tape_share` divides by tape + narration
+     and read 0.684 on run 9 where the row's own quantity read 0.557. Grading a
+     proposed founder target against the flattering number is the defect F-101
+     is about. Ran it — red here and in the target-label test. */
   const proposed = COLUMNS.filter((c) => c.targetState === PROPOSED).map((c) => c.key).sort();
-  assert.deepEqual(proposed, ["cost_usd", "narration_share", "pages_per_seam", "tape_share", "wall_min"]);
+  assert.deepEqual(proposed, ["cost_usd", "narration_share", "pages_per_seam", "tape_of_runtime", "wall_min"]);
   const settled = COLUMNS.filter((c) => c.targetState === SETTLED).map((c) => c.key).sort();
-  assert.deepEqual(settled, ["calls_per_beat", "first_pass", "intro_restates", "tokens", "ttl_a1_min", "unverified"]);
+  assert.deepEqual(settled, ["calls_per_beat", "first_pass_pages", "intro_restates", "tokens", "ttl_a1_min", "unverified"]);
+  /* The 80 % first-attempt target is §1.2's "first-attempt PAGE pass rate", so
+     it sits on the pages column and on neither of the other two. */
+  assert.equal(column("first_pass_beats").target, undefined);
+  assert.equal(column("first_pass").target, undefined);
 });
 
 test("every column with a target declares whether it is settled, and vice versa", () => {
@@ -203,9 +214,10 @@ test("every column with a target declares whether it is settled, and vice versa"
 
 test("a proposed target prints with `?` and a settled one prints plain", () => {
   /* MUTATION: `return n` (drop the `?`) in targetLabel(). */
-  assert.equal(targetLabel(column("tape_share")), "0.700?");
+  assert.equal(targetLabel(column("tape_of_runtime")), "0.700?");
   assert.equal(targetLabel(column("wall_min")), "6.0?");
-  assert.equal(targetLabel(column("first_pass")), "0.80");
+  assert.equal(targetLabel(column("first_pass_pages")), "0.80");
+  assert.equal(targetLabel(column("tape_share")), "", "F-101: the report's tape/(tape+narration) grades against nothing");
   assert.equal(targetLabel(column("unverified")), "0");
   assert.equal(targetLabel(column("clips")), "", "a column with no target names none");
 });
@@ -256,6 +268,49 @@ test("tape_share is the report's Q-05 number and tape_of_runtime is the candidat
   assert.equal(Number(row.values.tape_of_runtime.toFixed(3)), 0.557);
   assert.equal(row.sources.tape_of_runtime, "candidate");
   assert.notEqual(row.values.tape_share, row.values.tape_of_runtime);
+});
+
+test("F-101 — the two first-attempt units are separate columns, and an undeclared unit is never guessed into one", () => {
+  /* MUTATION: `first_pass_pages: num(v.firstAttemptPassRate)` in rowFor(), or
+     drop the `=== undefined` guard so a declaring report fills `1stPass?` too.
+     Runs 4-8's 0.68 is a share of kept PAGES; run 9's 0.048 is a share of
+     narration BEATS the verifier confirmed on round 1, and the old reports say
+     which only by their vintage. Folding them into one column is the defect
+     F-101 is about: `writeAct.ts` cites run 8's 0.68 against run 9's 0.048 as
+     evidence the Q-03 contract did not converge, and that pair is two
+     different measurements. Ran it - red on run 9's columns below. */
+  const legacy = run9();
+  /* Run 9's committed report predates F-101: one scalar, no unit. */
+  assert.equal(legacy.values.first_pass, 0.047619047619047616);
+  assert.equal(legacy.sources.first_pass, "report");
+  assert.equal(legacy.values.first_pass_pages, null);
+  assert.equal(legacy.values.first_pass_beats, null);
+  assert.equal(legacy.sources.first_pass_pages, "absent");
+  assert.equal(legacy.sources.first_pass_beats, "absent");
+
+  /* A report written from F-101 on declares both, and the undeclared column
+     goes absent rather than repeating one of them. */
+  const declared = rowFor(
+    { outcome: "generated", detail: "OK x", veracity: { firstAttemptPassRate: 0.05, firstAttemptUnit: "beats", firstAttemptPassRatePages: 0.6, firstAttemptPassRateBeats: 0.05 } },
+    { runId: "run-10" }
+  );
+  assert.equal(declared.values.first_pass_pages, 0.6);
+  assert.equal(declared.values.first_pass_beats, 0.05);
+  assert.equal(declared.values.first_pass, null);
+  assert.equal(declared.sources.first_pass, "absent");
+});
+
+test("F-101 — tape_share reads the renamed report field and falls back to the old name", () => {
+  /* MUTATION: read only `v.tapeShare`, or only `v.tapeOfTapePlusNarration`.
+     The first leaves every post-F-101 report's column empty; the second leaves
+     runs 4-9's empty and erases the trend the harness exists to draw. The two
+     names are the same quantity, so reading either is a rename, not a guess. */
+  const renamed = rowFor({ outcome: "generated", veracity: { tapeOfTapePlusNarration: 0.71, narrationOfTapePlusNarration: 0.29 } }, { runId: "run-10" });
+  assert.equal(renamed.values.tape_share, 0.71);
+  assert.equal(renamed.values.narration_share, 0.29);
+  const old = rowFor({ outcome: "generated", veracity: { tapeShare: 0.684, narrationShare: 0.316 } }, { runId: "run-9" });
+  assert.equal(old.values.tape_share, 0.684);
+  assert.equal(old.values.narration_share, 0.316);
 });
 
 test("the candidate reading reproduces the roadmap's own 56 % for run 9", () => {
@@ -396,7 +451,7 @@ test("an absent cell prints the dash and never a zero", () => {
   const table = formatTable([run4(), run9()]);
   const run4Line = table.split("\n").find((l) => l.trim().startsWith("run-4"));
   assert.equal(run4Line.includes("0"), false, `run 4's row must contain no zeros: ${run4Line}`);
-  assert.equal((run4Line.match(/—/g) || []).length, 17);
+  assert.equal((run4Line.match(/—/g) || []).length, 19);
 });
 
 test("the machine line is one line per run, and absent metrics survive as null", () => {

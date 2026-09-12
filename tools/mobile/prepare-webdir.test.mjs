@@ -54,6 +54,7 @@ import {
   MODEL_EXTENSIONS, assertNoModelWeights,
 } from "./prepare-webdir.mjs";
 import { isMinified, minifySource } from "./minify.mjs";
+import { isGeneratedDraft } from "../../player/foray-resolve.js";
 import { createRequire } from "node:module";
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
@@ -2688,4 +2689,25 @@ test("K-01: the page's two passage URLs match where the file actually lands", ()
   const entry = SHELL_ONLY_FILES.find((f) => f.src.endsWith("kokoro-probe-passage.json"));
   assert.ok(client.includes(`"${entry.dest}"`), "the shell URL must be the bundle destination");
   assert.ok(client.includes(`"${entry.src}"`), "the site URL must be the repo path");
+});
+
+test("seedCarries is exactly the negation of the one `isGeneratedDraft` (audit finding E)", () => {
+  /* The seed leaves out precisely the Forays the generator may re-cut. Those
+     two facts used to be two spellings of `generated === true && status ===
+     "draft"` in two languages (here and backend/src/generation/finalizeForay.ts);
+     this half now imports the predicate from player/foray-resolve.js, the one
+     home, and backend/test/finalizeForay.test.ts pins the other half to it.
+     MUTATION: re-inline the predicate in seedCarries and drop a term -> red. */
+  for (const generated of [true, false, undefined, "true"]) {
+    for (const status of ["draft", "published", "proposed", undefined, ""]) {
+      const row = { id: "x", generated, status };
+      assert.equal(
+        seedCarries(row),
+        !isGeneratedDraft(row),
+        `generated=${String(generated)} status=${String(status)}`
+      );
+    }
+  }
+  assert.equal(seedCarries({ id: "x", generated: true, status: "draft" }), false);
+  assert.equal(seedCarries({ id: "x", generated: true, status: "published" }), true);
 });

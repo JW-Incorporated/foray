@@ -40,6 +40,36 @@ export const PUBLISHED = "published";
 /** The other status — the only one the founder's test-track switch admits. */
 export const DRAFT = "draft";
 
+/**
+ * A Foray THIS PIPELINE GENERATED AND NOBODY HAS CURATED — `generated: true`
+ * and `status: "draft"`, both, on the Foray row itself.
+ *
+ * ONE HOME, BECAUSE THREE DIFFERENT SYSTEMS BRANCH ON IT (audit finding E,
+ * 2026-09-12). It decides which clips the generator may re-cut and whose
+ * runtime it may restate (`backend/src/generation/finalizeForay.ts`, F-98) and
+ * which Forays the native seed leaves to the directory rather than bundling
+ * (`tools/mobile/prepare-webdir.mjs` `seedCarries`, F-92). Those two must agree
+ * exactly: a Foray the seed leaves out but the pipeline will not re-cut, or the
+ * reverse, is a phone showing a Foray whose audio moved under it.
+ *
+ * This module is the home because it is the player's rules-about-the-document
+ * module and `prepare-webdir.mjs` already imports from it. `finalizeForay.ts`
+ * cannot: `backend/tsconfig.json` is `"module": "CommonJS"` and its
+ * `isGeneratedDraft` is called synchronously, so importing this ESM file would
+ * mean `await import()` at every call site. It keeps its own copy, and
+ * `backend/test/finalizeForay.test.ts` asserts the two agree over the whole
+ * truth table — the copy cannot drift without that test going red.
+ *
+ * NOT the same predicate as `forayVisibility` (which is about `status` alone,
+ * and knows nothing of `generated`) and not the same as `app.js`'s
+ * `draftTrackOrder` (which reads `generated` on a list ALREADY filtered to
+ * drafts, to order them). Neither is folded in here: they answer different
+ * questions and collapsing them would be the actual bug.
+ */
+export function isGeneratedDraft(foray) {
+  return foray?.generated === true && foray?.status === DRAFT;
+}
+
 const isNum = (n) => typeof n === "number" && Number.isFinite(n);
 const nonEmpty = (s) => typeof s === "string" && s.trim().length > 0;
 

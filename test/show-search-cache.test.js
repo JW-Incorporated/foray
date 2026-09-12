@@ -69,8 +69,9 @@ const PAGE_IDS = [
   "ep-search-results", "pl-search-results",
 ];
 
-function mount({ breadthOk = true } = {}) {
+function mount({ breadthOk = true, episodesOk = true, episodes = [] } = {}) {
   const calls = [];
+  const records = [];
   const byId = new Map(PAGE_IDS.map((id) => {
     const el = makeEl("div");
     el.id = id;
@@ -93,7 +94,11 @@ function mount({ breadthOk = true } = {}) {
       });
     }
     if (u.includes("api/episodes/search")) {
-      return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ episodes: [] }) });
+      if (!episodesOk) return Promise.resolve({ ok: false, status: 502, json: () => Promise.resolve({}) });
+      return Promise.resolve({
+        ok: true, status: 200,
+        json: () => Promise.resolve({ episodes, source: ["apple"] }),
+      });
     }
     return new Promise(() => {});
   };
@@ -126,6 +131,12 @@ function mount({ breadthOk = true } = {}) {
     URL, URLSearchParams, Math, Date, JSON, Promise, clearTimeout, Intl,
     setTimeout: (fn, ms) => { const t = setTimeout(fn, ms); if (t && t.unref) t.unref(); return t; },
     encodeURIComponent, decodeURIComponent,
+    /* The one diagnostics bridge, spied exactly as
+       test/search-probe-record.test.js spies it: it is a plain global, not DOM
+       plumbing. Deliberately NO `requestIdleCallback` in this context — that is
+       the real fallback path (older WebKit, the native shell), and it is the
+       one a test can drive. */
+    forayRecordSearch: (fields) => { records.push(fields); return true; },
   };
   ctx.window = ctx;
   ctx.globalThis = ctx;
@@ -146,9 +157,10 @@ function mount({ breadthOk = true } = {}) {
     await sleep(20);
   };
   return {
-    ctx, byId, calls, state, search,
+    ctx, byId, calls, state, search, records,
     evalIn: (src) => vm.runInContext(src, ctx),
     breadthCalls: () => calls.filter((u) => u.includes("api/shows/search")),
+    episodeCalls: () => calls.filter((u) => u.includes("api/episodes/search")),
   };
 }
 
@@ -253,4 +265,149 @@ test("the cache is session-scoped memory, never persisted to localStorage", asyn
   await m.search("history");
   const dump = m.evalIn("JSON.stringify(Object.fromEntries(Array.from({length: localStorage.length}, (_, i) => [localStorage.key(i), localStorage.getItem(localStorage.key(i))])))");
   assert.ok(!dump.includes("history"), `search text reached localStorage: ${dump}`);
+});
+
+
+/* ==================================================================== */
+/* S-05, THE EPISODE HALF (finding 4, client audit 2026-09-12)           */
+/* ==================================================================== */
+
+/* The shows half shipped with the hot-query cache, the pre-fetch supersession
+   check and the diagnostics row. The episode half — backed by the SLOWER of
+   the two endpoints — got none of the three and fired on every debounce tick.
+   These are the same three claims as above, asserted against it. */
+
+test("a repeat of an identical query fires ZERO episode requests", async () => {
+  /* The same acceptance line as the shows half, on the endpoint where it costs
+     more. MUTATION: remove the `episodeSearchQueryCache.get(cacheKey)` lookup
+     from `renderEpisodeSearchResults`. The second search fires a second
+     request and the count below is 2. */
+  const m = mount({ episodes: [{ show_id: "1000001", show_title: "Deep History Hour", title: "The First Fire", guid: "g1", audio_url: "https://x.test/a.mp3", duration_seconds: 1800 }] });
+  await m.search("history");
+  assert.strictEqual(m.episodeCalls().length, 1);
+  assert.ok(m.byId.get("ep-search-results").innerHTML.includes("The First Fire"), "the first answer painted");
+  await m.search("history");
+  assert.strictEqual(m.episodeCalls().length, 1, "the second identical query must not reach the network");
+  assert.ok(m.byId.get("ep-search-results").innerHTML.includes("The First Fire"),
+    "and the cached answer must still paint — a cache that renders nothing is a regression, not a saving");
+});
+
+test("the episode cache is keyed on the normalized query, is bounded, and is two entries for two queries", async () => {
+  /* One test for the three properties the shows cache's own suite states
+     separately, because the code is the same code and the point here is that
+     it IS the same code rather than a second convention.
+
+     MUTATION: key on the raw `query` — the case/space variants miss and the
+     count goes to 3. MUTATION: delete the `>= EPISODE_SEARCH_CACHE_MAX` clear
+     — the size assertion goes red. */
+  const m = mount();
+  await m.search("history");
+  await m.search("History");
+  await m.search("  HISTORY  ");
+  assert.strictEqual(m.episodeCalls().length, 1, "case and surrounding space are one question");
+  await m.search("radiolab");
+  assert.strictEqual(m.episodeCalls().length, 2, "and two different queries are two entries");
+
+  const max = m.evalIn("EPISODE_SEARCH_CACHE_MAX");
+  assert.strictEqual(typeof max, "number");
+  m.evalIn(`for (let i = 0; i < ${max} - 1; i++) episodeSearchQueryCache.set("filler-" + i, { episodes: [] });`);
+  await m.search("a fresh query at the cap");
+  assert.strictEqual(m.evalIn("episodeSearchQueryCache.size"), 1,
+    "at the cap the cache clears wholesale and starts again with the new entry");
+});
+
+test("a FAILED episode fetch is not cached, so a later identical query retries", async () => {
+  /* `fetchApiJson` swallows a network error to `null`, which at the call site
+     is indistinguishable from "the endpoint answered with nothing". Caching
+     that would turn one tunnel into a permanently empty Episodes section for
+     that query for the rest of the session.
+
+     MUTATION: cache the response unconditionally rather than inside `if (data)`.
+     The second attempt is served the non-answer and the count stays at 1. */
+  const m = mount({ episodesOk: false });
+  await m.search("history");
+  assert.strictEqual(m.episodeCalls().length, 1);
+  await m.search("history");
+  assert.strictEqual(m.episodeCalls().length, 2, "a failure must not be remembered as an answer");
+});
+
+test("the episode endpoint is not asked at all once a newer query owns the page", async () => {
+  /* The pre-fetch supersession check. The token was checked only on the
+     RESPONSE, so a superseded tick still spent the whole round trip — on a
+     phone, on the slower endpoint, once per keystroke that outran the
+     debounce. The shows half's own section has done this since S-05.
+
+     Driven at the function rather than through the keyboard, because what is
+     being asserted is precisely that nothing happens: a stale token is handed
+     in and the network must stay untouched.
+
+     MUTATION: delete the `if (myToken !== showSearchToken) { report(...); return; }`
+     line above the fetch. The request fires and the count below is 1. */
+  const m = mount();
+  const before = m.episodeCalls().length;
+  m.evalIn("renderEpisodeSearchResults('history', showSearchToken - 1)");
+  await sleep(20);
+  assert.strictEqual(m.episodeCalls().length - before, 0,
+    "a superseded pass must not pay for a round trip whose answer it will throw away");
+});
+
+/* ==================================================================== */
+/* The record measures every slow half (findings 2 + 4)                 */
+/* ==================================================================== */
+
+test("ONE search record carries the episode endpoint AND the playlist CTA's scan, not only the shows half", async () => {
+  /* FINDING 2: `createPlaylistCtaHtml` runs the same 1.3-8 s
+     `searchWithRelaxation` scan `buildPlaylist` does, and it ran behind a
+     `setTimeout(0)` — one paint turn, then the main thread blocked for
+     seconds on the COMMON path (a show-name query matching no playlist). It
+     was invisible in the record built to measure search, because `painted_ms`
+     was stamped from the local pass and the record was closed before the scan
+     ever ran.
+
+     FINDING 4: the episode endpoint was in no record at all.
+
+     Both are now fields of the ONE entry, which is why the record is written
+     when the LAST half answers rather than when the shows half does.
+
+     MUTATION: drop `ctaMs`/`epMs` from the object `runShowSearchCostly`
+     builds, or write the record from the breadth branch again. The field
+     assertions go red. MUTATION: call `settle` twice from one half — the
+     "exactly one" assertion goes red. */
+  const m = mount();
+  await m.search("a query no playlist matches");
+  await sleep(30);
+  assert.strictEqual(m.records.length, 1, `exactly one record per completed search, got ${m.records.length}`);
+  const r = m.records[0];
+  assert.ok(Number.isFinite(r.ctaMs), `the CTA's scan is measured, got ${r.ctaMs}`);
+  assert.ok(Number.isFinite(r.epMs), `the episode endpoint is measured, got ${r.epMs}`);
+  assert.ok(Number.isFinite(r.netMs) && Number.isFinite(r.localMs) && Number.isFinite(r.paintedMs),
+    "and the three that were already there are still there");
+  assert.strictEqual(r.qLen, "a query no playlist matches".length);
+  assert.ok(!Object.values(r).some((v) => typeof v === "string" && v.includes("playlist")),
+    "query LENGTH, never the query text — S-01's rule, restated where the fields grew");
+});
+
+test("the CTA's scan is scheduled through the idle queue, and the record still lands without one", async () => {
+  /* `setTimeout(fn, 0)` buys ONE paint turn and then runs on the very next
+     task; `requestIdleCallback` waits for a frame with room in it and carries
+     a deadline. `init()` has primed the search vocabulary that way since the H
+     bug — this is that idiom, named as `whenIdle` and used by the search tick.
+
+     TWO CLAIMS, because the fallback is the path this harness is on: the
+     helper PREFERS `requestIdleCallback` when the host has one (asserted by
+     installing a spy), and a host without one still completes the search
+     (this whole suite, which has no `requestIdleCallback` at all).
+
+     MUTATION: call `setTimeout(..., 0)` directly again in
+     `renderPlaylistSearchResults`. The spy below is never called and this
+     goes red. */
+  const m = mount();
+  const idleCalls = [];
+  m.ctx.requestIdleCallback = (fn, opts) => { idleCalls.push(opts); return setTimeout(fn, 0); };
+  await m.search("another query no playlist matches");
+  await sleep(30);
+  assert.ok(idleCalls.length >= 1, "the scan went through requestIdleCallback");
+  assert.ok(idleCalls.every((o) => o && Number.isFinite(o.timeout)),
+    "with a deadline, so a permanently busy thread does not mean never");
+  assert.strictEqual(m.records.length, 1, "and the record still lands");
 });

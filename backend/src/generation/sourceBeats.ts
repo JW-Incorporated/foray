@@ -893,10 +893,7 @@ type DurationGate = "d2-short-run" | "d5-pair" | "m4-runtime";
  * Nothing in this file relaxes any of the four.
  */
 function durationVetoFor(itemId: string, durationSec: number, state: SourcingState): DurationGate | null {
-  if (!d2RunAllows(durationSec, state)) return "d2-short-run";
-  if (!placementEscapesD5Pair(state.placedDurations, durationSec)) return "d5-pair";
-  if (!m4RuntimeAllows(itemId, durationSec, state)) return "m4-runtime";
-  return null;
+  return placementAllows(itemId, durationSec, state);
 }
 
 /**
@@ -954,20 +951,117 @@ function d2RunAllows(durationSec: number, state: SourcingState): boolean {
  * clip IS its longest, so its share beyond it is zero and clause 1 cannot count
  * two. From the second clip on both clauses are asked in full.
  */
-function m4RuntimeAllows(itemId: string, durationSec: number, state: SourcingState): boolean {
-  const longestBefore = state.longestSecByItem.get(itemId) ?? 0;
-  if (durationSec > M4_LONG_CLIP_SEC && longestBefore > M4_LONG_CLIP_SEC) return false;
-  const episodeSec = (state.placedSecByItem.get(itemId) ?? 0) + durationSec;
-  const beyondLongest = episodeSec - Math.max(longestBefore, durationSec);
-  const totalSec = state.placedDurations.reduce((a, b) => a + b, 0) + durationSec;
+function m4RuntimeAllows(itemId: string, durationSec: number, state: SourcingState, replacing?: number): boolean {
+  const view = episodeLedgerExcluding(itemId, state, replacing);
+  if (durationSec > M4_LONG_CLIP_SEC && view.longestOtherSec > M4_LONG_CLIP_SEC) return false;
+  const episodeSec = view.episodeOtherSec + durationSec;
+  const beyondLongest = episodeSec - Math.max(view.longestOtherSec, durationSec);
+  const totalSec = view.otherTapeSec + durationSec;
   if (!(totalSec > 0)) return true;
   return beyondLongest / totalSec <= M4_ITEM_SHARE_MAX;
 }
 
+/** What the three Foray-wide ledgers say about an episode and about the tape
+ * WITHOUT the clip at `replacing` — the one view both callers of
+ * `m4RuntimeAllows` need. A fresh placement excludes nothing and reads the maps
+ * straight; a MERGE (F-96) is re-asking the rules at the clip's new length, and
+ * the clip's old length is already in every figure, so it is taken out first.
+ *
+ * `longestSecByItem` is a running maximum and cannot have one clip removed from
+ * it, so the merge path recomputes the episode's longest OTHER clip by scanning
+ * `state.placed`/`state.placedDurations`. That scan is the only thing the two
+ * paths do differently, and it is here rather than in two copies of the rule. */
+function episodeLedgerExcluding(
+  itemId: string,
+  state: SourcingState,
+  replacing?: number
+): { episodeOtherSec: number; longestOtherSec: number; otherTapeSec: number } {
+  if (replacing === undefined) {
+    return {
+      episodeOtherSec: state.placedSecByItem.get(itemId) ?? 0,
+      longestOtherSec: state.longestSecByItem.get(itemId) ?? 0,
+      otherTapeSec: state.placedDurations.reduce((a, b) => a + b, 0)
+    };
+  }
+  const before = state.placedDurations[replacing] ?? 0;
+  let longestOtherSec = 0;
+  let otherTapeSec = 0;
+  state.placed.forEach((p, i) => {
+    if (i === replacing) return;
+    const d = state.placedDurations[i] ?? 0;
+    otherTapeSec += d;
+    if (p.itemId === itemId) longestOtherSec = Math.max(longestOtherSec, d);
+  });
+  return { episodeOtherSec: (state.placedSecByItem.get(itemId) ?? 0) - before, longestOtherSec, otherTapeSec };
+}
+
+/**
+ * THE ONE PLACEMENT PREDICATE (F-101). Every length rule sourcing enforces,
+ * asked once, for both the tier that places a clip and the tier that grows one.
+ *
+ * `replacing` is the index in `state.placed`/`state.placedDurations` of a clip
+ * this placement REPLACES rather than adds — a merge (F-96) re-asking the rules
+ * at the merged clip's new length. It changes two things and only two:
+ *
+ *   D2  is skipped. The merged clip only grew, and D2 is a rule about runs of
+ *       SHORT segments; a clip that was legal at its old length cannot be made
+ *       illegal by getting longer, and asking `d2RunAllows` against the clip
+ *       BEFORE it would judge it against its own predecessor twice.
+ *   D5  is asked against the placements before the replaced clip, because
+ *       nothing sits after it (a clip with a placement after it is closed to
+ *       merging — `placeTape` clears `lastMintedClip`), so the only pair this
+ *       length can create is with the clip before.
+ *
+ * M4 is asked in full either way, through `episodeLedgerExcluding`.
+ *
+ * WHY THIS EXISTS. F-96 wrote the merge's copy of M4's runtime clause as a
+ * second, hand-mirrored implementation of the same formula over the same
+ * ledgers (`mergedClipEscapesLengthRules`). Two copies of a rule that must
+ * agree is the drift this file spends four hundred lines guarding against
+ * everywhere else; one of them would eventually be updated alone.
+ */
+export function placementAllows(
+  itemId: string,
+  durationSec: number,
+  state: SourcingState,
+  options: { replacing?: number } = {}
+): DurationGate | null {
+  const { replacing } = options;
+  if (replacing === undefined && !d2RunAllows(durationSec, state)) return "d2-short-run";
+  const priorDurations = replacing === undefined ? state.placedDurations : state.placedDurations.slice(0, replacing);
+  if (!placementEscapesD5Pair(priorDurations, durationSec)) return "d5-pair";
+  if (!m4RuntimeAllows(itemId, durationSec, state, replacing)) return "m4-runtime";
+  return null;
+}
+
 /** Writes one tape placement into every Foray-wide ledger. The ONLY place they
  * move, so the two tiers cannot drift apart on what "placed" means — which is
- * exactly how tier 2 came to consult none of them. */
-function placeTape(segmentId: string, itemId: string, startSec: number, durationSec: number, state: SourcingState): void {
+ * exactly how tier 2 came to consult none of them.
+ *
+ * F-101 — AND THE MERGE GOES THROUGH HERE TOO, so the sentence above is true
+ * again. F-96's `mergeIntoClip` wrote `placedDurations`, `placedSecByItem` and
+ * `longestSecByItem` inline, outside this function, which is precisely the
+ * drift this comment claimed could not happen. `replacing` is the index of the
+ * clip whose length changed: the used-segment, start-order and count ledgers do
+ * not move (no new clip was placed, and the clip is still where it was), and
+ * `lastMintedClip` is NOT cleared, because a merged clip stays open to the next
+ * beat of the same slot. */
+function placeTape(
+  segmentId: string,
+  itemId: string,
+  startSec: number,
+  durationSec: number,
+  state: SourcingState,
+  options: { replacing?: number } = {}
+): void {
+  const { replacing } = options;
+  if (replacing !== undefined) {
+    const before = state.placedDurations[replacing] ?? 0;
+    state.placedDurations[replacing] = durationSec;
+    state.placedSecByItem.set(itemId, (state.placedSecByItem.get(itemId) ?? 0) - before + durationSec);
+    state.longestSecByItem.set(itemId, Math.max(state.longestSecByItem.get(itemId) ?? 0, durationSec));
+    return;
+  }
   /* A placement after a minted clip closes it to merging (F-96): a beat
      whose tape sits after ANOTHER clip in play order is not adjacent to it. */
   state.lastMintedClip = null;
@@ -1715,7 +1809,6 @@ class Tier2Walk {
     if (!mergedClipEscapesLengthRules(last, durationSec, state)) return null;
 
     /* Apply — every live copy of the end, together. */
-    const before = last.segment.endSec - last.segment.startSec;
     last.segment.endSec = span.endSec;
     last.segment.endAnchor = span.endAnchor;
     last.segment.boundary = span.boundary ?? boundary;
@@ -1729,9 +1822,9 @@ class Tier2Walk {
       last.relevanceRow.boundary = last.segment.boundary;
       last.relevanceRow.extendedBySec = last.segment.extendedBySec;
     }
-    state.placedDurations[last.placedIndex] = durationSec;
-    state.placedSecByItem.set(last.itemId, (state.placedSecByItem.get(last.itemId) ?? 0) - before + durationSec);
-    state.longestSecByItem.set(last.itemId, Math.max(state.longestSecByItem.get(last.itemId) ?? 0, durationSec));
+    /* F-101: through `placeTape`, like every other ledger write in this file,
+       so the invariant its comment claims is true. */
+    placeTape(last.segment.id, last.itemId, last.segment.startSec, durationSec, state, { replacing: last.placedIndex });
 
     return {
       kind: "tape",
@@ -1762,34 +1855,17 @@ function weakerBoundary(a: TapeBoundary, b: TapeBoundary): TapeBoundary {
 }
 
 /**
- * The length rules a MERGED clip is re-asked at its new length (F-96) — the
- * same arithmetic as `durationVetoFor`, with the clip's own old length taken
- * out of the ledger first, because the ledger already holds it. D2 cannot
- * refuse a clip that only grew; D5's pair is against the placement BEFORE
- * the clip (nothing has been placed after it, or it could not be merged
- * into); M4's two clauses read the episode's seconds with this clip at its
- * new length.
+ * The length rules a MERGED clip is re-asked at its new length (F-96) — now
+ * literally `placementAllows` with `replacing` set (F-101), rather than a
+ * second hand-mirrored copy of M4's arithmetic. Everything the merge needs to
+ * say differently is said by that one argument: D2 cannot refuse a clip that
+ * only grew; D5's pair is against the placement BEFORE the clip (nothing has
+ * been placed after it, or it could not be merged into); M4's clauses read the
+ * episode's seconds with this clip at its new length and its old length taken
+ * out of every figure it appears in.
  */
 function mergedClipEscapesLengthRules(last: LastMintedClip, durationSec: number, state: SourcingState): boolean {
-  const before = state.placedDurations[last.placedIndex] ?? 0;
-  if (!placementEscapesD5Pair(state.placedDurations.slice(0, last.placedIndex), durationSec)) return false;
-  /* M4, with this clip's old length removed from every figure it appears in. */
-  const others = state.placedDurations.filter((_, i) => i !== last.placedIndex);
-  const episodeOthersSec = (state.placedSecByItem.get(last.itemId) ?? 0) - before;
-  let longestOther = 0;
-  let longOthers = 0;
-  state.placed.forEach((p, i) => {
-    if (i === last.placedIndex || p.itemId !== last.itemId) return;
-    const d = state.placedDurations[i] ?? 0;
-    longestOther = Math.max(longestOther, d);
-    if (d > M4_LONG_CLIP_SEC) longOthers += 1;
-  });
-  if (durationSec > M4_LONG_CLIP_SEC && longOthers > 0) return false;
-  const episodeSec = episodeOthersSec + durationSec;
-  const beyondLongest = episodeSec - Math.max(longestOther, durationSec);
-  const totalSec = others.reduce((a, b) => a + b, 0) + durationSec;
-  if (!(totalSec > 0)) return true;
-  return beyondLongest / totalSec <= M4_ITEM_SHARE_MAX;
+  return placementAllows(last.itemId, durationSec, state, { replacing: last.placedIndex }) === null;
 }
 
 /* ------------------------------------------------------------------------- */

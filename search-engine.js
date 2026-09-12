@@ -1800,6 +1800,13 @@ const SHOW_MATCH_WORD_START = 2;
 const SHOW_MATCH_SUBSTRING = 3;
 const SHOW_MATCH_NONE = -1;
 
+/** A FIFTH bucket, after every real match: a row that is in the list because a
+    SERVER chose it, not because its title matched anything typed. Declared here
+    with the other four rather than beside `rankShows` (its only producer),
+    because `compareShowMatches` reads it — and a constant a comparator depends
+    on belongs with the vocabulary the comparator is written in. */
+const SHOW_MATCH_UNMATCHED = SHOW_MATCH_SUBSTRING + 1;
+
 /* What separates two words of a title. Unicode property escapes rather than
    `\W`, because `\W` is ASCII-only and this catalogue is not: "伊藤洋一のRound
    Up World Now！" and "99% Invisible" both have to tokenize sensibly, and an
@@ -1872,6 +1879,33 @@ function compareTitles(a, b) {
     agree and a result cannot jump when the index finishes loading. */
 function compareShowMatches(a, b) {
   if (a.bucket !== b.bucket) return a.bucket - b.bucket;
+  /* S-06 BUG (client audit 2026-09-12): TWO UNMATCHED ROWS ARE NOT OURS TO
+     ORDER, so this says so and stops. `Array.prototype.sort` has been required
+     to be STABLE since ES2019, so returning 0 here leaves the pair in the order
+     it arrived in — which for the Apple fall-through is the order the endpoint
+     replied in, i.e. Apple's own relevance.
+
+     WHAT IT COST BEFORE. `mapAppleShow` stamps `tier: "breadth"` and no
+     `chart_rank`, and Apple matches on `artistName` and fuzzily, so EVERY
+     Apple row is `SHOW_MATCH_UNMATCHED` with the same breadth flag and the
+     same (empty) popularity band — every test above this line tied, and the
+     whole list fell through to `compareTitles` and came out A-Z. The
+     fall-through only fires when nothing on the device matched, so on that
+     path 100% of what the listener saw was Apple's answer with Apple's
+     ranking thrown away: `Zebra Talks | Morning Brief | Acquired` came back
+     `Acquired | Morning Brief | Zebra Talks`.
+
+     A stable no-op rather than a `serverRank` field carried down from
+     `api/shows/appleShowSearch.ts`, because the endpoint's order IS the rank —
+     a number restating the array index would have to be produced, plumbed and
+     kept in step by every endpoint that ever feeds this comparator, and the
+     first one that forgot would silently be back to A-Z with nothing to see.
+     Arrival order cannot fall out of step with itself.
+
+     This can only fire for rows `rankShows` bucketed: `searchShows` and the
+     index passes FILTER on `SHOW_MATCH_NONE`, so nothing they hand over is
+     ever unmatched, and their ordering is untouched. */
+  if (a.bucket === SHOW_MATCH_UNMATCHED) return 0;
   const ab = isBreadthShow(a.show) ? 1 : 0;
   const bb = isBreadthShow(b.show) ? 1 : 0;
   if (ab !== bb) return ab - bb;
@@ -1909,8 +1943,10 @@ function searchShows(query, shows) {
  *
  *  A row that does not match at all sorts into a bucket AFTER every real
  *  match, rather than being dropped or promoted: the listener still sees the
- *  obvious answers first, and the server's extra suggestions below them. */
-const SHOW_MATCH_UNMATCHED = SHOW_MATCH_SUBSTRING + 1;
+ *  obvious answers first, and the server's extra suggestions below them — IN
+ *  THE ORDER THE SERVER GAVE THEM (see `compareShowMatches`'s
+ *  `SHOW_MATCH_UNMATCHED` line: the sort is stable and that group is left
+ *  exactly as it arrived). */
 function rankShows(query, shows) {
   const q = String(query || "").trim().toLowerCase();
   const scored = (shows || []).map((show) => {

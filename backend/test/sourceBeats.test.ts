@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { existsSync, readFileSync } from "fs";
 import { join } from "path";
-import { sourceBeats, summarizeSourcing, deriveItemId, D5_TOLERANCE, M4_ITEM_SHARE_MAX, M4_LONG_CLIP_SEC, MERGE_GAP_SEC, m4SegmentCapFor } from "../src/generation/sourceBeats";
+import { sourceBeats, summarizeSourcing, deriveItemId, placementAllows, D5_TOLERANCE, M4_ITEM_SHARE_MAX, M4_LONG_CLIP_SEC, MERGE_GAP_SEC, m4SegmentCapFor } from "../src/generation/sourceBeats";
 import { placementEscapesD5Pair } from "../src/generation/d5Pair";
 import { capArgumentBeats, deepenActs } from "../src/generation/deepenActs";
 import { buildResearchShape } from "../src/generation/researchShape";
@@ -4243,4 +4243,93 @@ describe("sourceBeats — WS-H/F-61 offline: the real archive on the generation 
     },
     300000
   );
+});
+
+describe("sourceBeats — F-101: one placement predicate, asked by both the tier that places a clip and the tier that grows one", () => {
+  /**
+   * `placementAllows` is the whole of the length rules. Before F-101 the merge
+   * path (`mergedClipEscapesLengthRules`, F-96) carried a SECOND hand-mirrored
+   * copy of M4's runtime clause over the same three ledgers, and the invariant
+   * comment on `placeTape` — "the ONLY place they move, so the two tiers cannot
+   * drift apart" — was false, because `mergeIntoClip` wrote all three inline.
+   * These tests ask the predicate both ways and pin that `replacing` changes
+   * exactly two things and nothing else.
+   *
+   * The ledger fields are the only ones the predicate reads, so the state is
+   * built from those alone; everything else a real `SourcingState` carries is
+   * about finding tape, not about judging a length.
+   */
+  type Ledger = { itemId: string; sec: number };
+  function ledgerState(placed: Ledger[]) {
+    const placedSecByItem = new Map<string, number>();
+    const longestSecByItem = new Map<string, number>();
+    for (const p of placed) {
+      placedSecByItem.set(p.itemId, (placedSecByItem.get(p.itemId) ?? 0) + p.sec);
+      longestSecByItem.set(p.itemId, Math.max(longestSecByItem.get(p.itemId) ?? 0, p.sec));
+    }
+    return {
+      placedDurations: placed.map((p) => p.sec),
+      placed: placed.map((p, i) => ({ itemId: p.itemId, startSec: i * 1000 })),
+      placedSecByItem,
+      longestSecByItem
+    } as unknown as Parameters<typeof placementAllows>[2];
+  }
+
+  it("a merge and a fresh placement reach the same M4 verdict for the same episode seconds", () => {
+    /* MUTATION THAT KILLS THIS: leave `mergedClipEscapesLengthRules` as its own
+       copy of the formula and change one of the two — say, divide by the whole
+       tape including the replaced clip's OLD length in the merge path only.
+       That is the drift F-101 removed: two implementations of the rule
+       `check-forays.mjs` is the authority for, one of which would eventually be
+       updated alone. Ran it — red on the two verdicts disagreeing. */
+    /* `ep-a` already has a 200 s clip; a second of 200 s puts 200 s beyond its
+       longest against 1,400 s of tape — 14.3 %, under the 25 % cap. */
+    const under = [{ itemId: "ep-a", sec: 200 }, { itemId: "ep-other", sec: 1000 }];
+    const fresh = placementAllows("ep-a", 200, ledgerState(under));
+    /* The same end state reached by GROWING a 50 s clip of `ep-a` to 200 s. */
+    const merged = placementAllows("ep-a", 200, ledgerState([...under, { itemId: "ep-a", sec: 50 }]), { replacing: 2 });
+    expect(fresh).toBe(null);
+    expect(merged).toBe(null);
+
+    /* And they agree when the rule REFUSES: 250 s beyond the longest against
+       900 s of tape is 27.8 %, over the cap, either way. */
+    const over = [{ itemId: "ep-a", sec: 250 }, { itemId: "ep-other", sec: 400 }];
+    const freshOver = placementAllows("ep-a", 250, ledgerState(over));
+    const mergedOver = placementAllows("ep-a", 250, ledgerState([...over, { itemId: "ep-a", sec: 50 }]), { replacing: 2 });
+    expect(freshOver).toBe("m4-runtime");
+    expect(mergedOver).toBe("m4-runtime");
+  });
+
+  it("`replacing` skips D2 and narrows D5's window to the placements BEFORE the clip, and changes nothing else", () => {
+    /* MUTATION THAT KILLS THIS: ask `d2RunAllows` on the merge path too, or
+       give D5 the whole `placedDurations` instead of the slice. The first
+       refuses a clip that only grew — D2 is a rule about runs of SHORT
+       segments and a merged clip is longer than it was; the second compares
+       the merged clip against ITSELF at its old length, which is a uniform
+       pair by construction (ratio 1.0 after a no-op merge). Ran both — red. */
+    const shortRun = [{ itemId: "ep-a", sec: 40 }, { itemId: "ep-b", sec: 45 }];
+    /* Fresh: a third short segment after two is D2's run clause. */
+    expect(placementAllows("ep-c", 40, ledgerState(shortRun))).toBe("d2-short-run");
+    /* The same length, as a merge of the clip at index 1: D2 is not asked, and
+       D5 sees only index 0 (40 s) — 45/40 is 1.125, inside the band. */
+    expect(placementAllows("ep-b", 45, ledgerState(shortRun), { replacing: 1 })).toBe("d5-pair");
+    /* Grown past the band, the merge is allowed: neither D2 nor D5 refuses it,
+       and M4 is asked in full with the clip's old 45 s out of every figure. */
+    expect(placementAllows("ep-b", 120, ledgerState(shortRun), { replacing: 1 })).toBe(null);
+  });
+
+  it("M4's one-long-clip clause counts the episode's OTHER clips, whether the placement is fresh or a merge", () => {
+    /* MUTATION THAT KILLS THIS: in `episodeLedgerExcluding`, read
+       `longestSecByItem` on the merge path too. That map is a running maximum
+       and cannot have one clip taken out of it, so a clip merged past
+       M4_LONG_CLIP_SEC would be counted as its own predecessor and the second
+       long clip the rule forbids would be this one. Ran it — red on the merge
+       line below. */
+    const long = M4_LONG_CLIP_SEC + 10;
+    /* `ep-a` already supplies one long clip: a SECOND is refused. */
+    expect(placementAllows("ep-a", long, ledgerState([{ itemId: "ep-a", sec: long }, { itemId: "ep-b", sec: 4000 }]))).toBe("m4-runtime");
+    /* Growing `ep-a`'s ONLY clip past the threshold is not a second long clip —
+       there is no other long clip of `ep-a` once this one is taken out. */
+    expect(placementAllows("ep-a", long, ledgerState([{ itemId: "ep-b", sec: 4000 }, { itemId: "ep-a", sec: 200 }]), { replacing: 1 })).toBe(null);
+  });
 });

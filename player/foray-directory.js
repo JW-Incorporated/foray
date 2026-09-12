@@ -42,7 +42,21 @@
    "Newer" is DIFFERENT, ordered by `built_at`: deploy ids are content hashes with
    no order of their own. A pointer whose `built_at` is behind the held set's is
    refused as `older` rather than adopted, so a stale edge cannot walk a phone
-   backwards; a real rollback is a revert commit and carries a newer `built_at`.
+   backwards.
+
+   THAT REFUSAL IS PERMANENT, SO THE WRITER HAS TO MOVE FORWARD (audit finding C,
+   2026-09-12). `older` is not a retry: it is re-decided from the same two
+   timestamps on every refresh, forever, and a fresh install is worse still — its
+   seed is `partial: true` (F-92) and so never `current`, so a pointer it reads as
+   older leaves it showing the seed and nothing else. A `git revert` does NOT move
+   `built_at` forward on its own: the pointer rides in the same squashed commit as
+   the three data files (`manifest-autofix.yml` commits `data/forays-directory.json`
+   onto the data PR's head), so reverting restores its old bytes and its old stamp.
+   What makes a rollback reach a phone is `tools/ci/forays-directory.mjs`'s
+   `writePointer` rollback clause: a pointer whose `built_at` is behind the stamp
+   at its branch's MERGE BASE with main is restamped even when its content is
+   byte-identical, and `pointerProblems` reports it so `--check` is red until it
+   is. Read that function's header before changing anything about ordering here.
 
    The bundled pointer is read for `version`/`built_at`/`partial` ONLY. The bundle
    carries slices of all three files (`prepare-webdir.mjs` §"the Foray segment
@@ -227,6 +241,16 @@ export function parseCachedSet(raw) {
     version: obj.version,
     built_at: typeof obj.built_at === "string" ? obj.built_at : null,
     fetched_at: typeof obj.fetched_at === "string" ? obj.fetched_at : null,
+    /* F-92 CARRIED, NOT ASSUMED (audit finding E, 2026-09-12). `partial` is the
+       field that decides whether a held set can ever be `current`: a partial set
+       at the live version still has the rest of the set to fetch, once. Only
+       whole sets are written to the cache today, so dropping the field on the
+       round-trip was harmless — but "harmless" rested on a convention the parser
+       itself did not hold, and the day anything caches a partial set the loss is
+       silent and the phone simply stops fetching. Round-tripping it costs one
+       line. `=== true` only, so a legacy row written before this reads as whole,
+       exactly as it did before. */
+    partial: obj.partial === true,
     forays: obj.forays,
     segments: obj.segments,
     sources: obj.sources,
@@ -238,6 +262,7 @@ export function serializeSet(set) {
     version: set.version,
     built_at: set.built_at ?? null,
     fetched_at: set.fetched_at ?? null,
+    partial: set.partial === true,
     forays: set.forays,
     segments: set.segments,
     sources: set.sources,
@@ -576,11 +601,6 @@ function parseJson(bytes) {
   } catch (_) {
     return null;
   }
-}
-
-function countForays(set) {
-  const list = set?.forays?.forays;
-  return Array.isArray(list) ? list.length : 0;
 }
 
 /** Per file, as the field record wants it: `source@version`. The three always

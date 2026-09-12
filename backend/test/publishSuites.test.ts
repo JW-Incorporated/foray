@@ -5,6 +5,7 @@ import {
   REAL_DATA_READ_RE,
   REAL_DATA_SUITES,
   formatSuiteFailure,
+  knownUncoveredGuidance,
   parseTapCounts,
   parseTapFailures,
   runRealDataSuites,
@@ -282,5 +283,61 @@ describe("runRealDataSuites — how the suites are run and how a broken run is r
     );
     const green = runRealDataSuites({ repoRoot: ROOT, files: ["a.test.js"], spawn: fakeSpawn({ status: 0, stdout: GREEN_TAP }).spawn });
     expect(suiteSummaryLine(green)).toMatch(/^real-data suites \(G-21c\): GREEN — 1 suites, 2 tests, 2 passed, 0 failed, 0 failure\(s\)/);
+  });
+});
+
+/**
+ * AUDIT FINDING B (2026-09-12): G-21c part (2) was invisible to G-21c part (1).
+ *
+ * MUTATIONS, one per test:
+ *   - drop `tools/foray/fixture-coverage.test.mjs` from REAL_DATA_SUITES → "the
+ *     fixture-coverage suite is in the gate" is red (and so is the anti-rot
+ *     grep above, now that the regex can see it — which is the point);
+ *   - drop the `|\bloadFiles\s*\(` alternative from REAL_DATA_READ_RE → "a bare
+ *     `loadFiles(` read is a real-data read" is red;
+ *   - make `knownUncoveredGuidance` return `[]`, or drop the word DELETE, or
+ *     stop naming the shape → "says DELETE the entry, names the shape" is red;
+ *   - make it match any failure rather than `KNOWN_UNCOVERED: ` names → "an
+ *     ordinary red suite gets no coverage-gate guidance" is red.
+ */
+describe("the fixture-coverage suite joins the publish gate (G-21c part (2))", () => {
+  it("the fixture-coverage suite is in the gate, and reads the real data root", () => {
+    expect(REAL_DATA_SUITES).toContain("tools/foray/fixture-coverage.test.mjs");
+    const src = fs.readFileSync(path.join(REPO_ROOT, "tools/foray/fixture-coverage.test.mjs"), "utf8");
+    /* It reads `data/` through check-forays.mjs's loader, naming no filename —
+       which is exactly why the grep could not see it before. */
+    expect(src).toMatch(/loadFiles\(DATA_ROOT\)/);
+  });
+
+  it("a bare `loadFiles(` read is a real-data read, and the negatives still are not", () => {
+    expect(REAL_DATA_READ_RE.test("const files = loadFiles(DATA_ROOT);")).toBe(true);
+    expect(REAL_DATA_READ_RE.test("const live = loadFiles(REPO_ROOT);")).toBe(true);
+    expect(REAL_DATA_READ_RE.test('import { ACCEPTED_SHAPES, loadFiles } from "./check-forays.mjs";')).toBe(false);
+    expect(REAL_DATA_READ_RE.test('const FORAYS = "data/forays.json";')).toBe(false);
+  });
+
+  it("a KNOWN_UNCOVERED failure says DELETE the entry in this PR, and names the shape", () => {
+    const lines = knownUncoveredGuidance([
+      {
+        suite: "tools/foray/fixture-coverage.test.mjs",
+        name: 'KNOWN_UNCOVERED: segment.boundary = "turn" still has no committed carrier',
+        error: 'segment.boundary = "turn" is now carried by engineers-1',
+        location: "tools/foray/fixture-coverage.test.mjs:210:3"
+      }
+    ]);
+    expect(lines.join("\n")).toMatch(/DELETE the KNOWN_UNCOVERED entry for segment\.boundary = "turn"/);
+    expect(lines.join("\n")).toMatch(/tools\/foray\/fixture-coverage\.test\.mjs IN THIS PR/);
+    /* The operator must be told not to re-cut a perfectly good Foray. */
+    expect(lines.join("\n")).toMatch(/do not re-cut the Foray/);
+    expect(lines.join("\n")).not.toMatch(/still has no committed carrier/);
+  });
+
+  it("an ordinary red suite gets no coverage-gate guidance", () => {
+    expect(
+      knownUncoveredGuidance([
+        { suite: "player/media-session.test.js", name: "every segment maps to an artist", error: ASSERTION, location: "" }
+      ])
+    ).toEqual([]);
+    expect(knownUncoveredGuidance([])).toEqual([]);
   });
 });

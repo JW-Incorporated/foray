@@ -212,7 +212,7 @@ import { artworkUrlsByShow, collectionIdsByShow } from "../../player/foray-sourc
    "segment" here, so the item type this slice counts is the item type the player
    dispatches on. */
 import {
-  allForays, hydrateForayItems, indexSegments, indexSources,
+  allForays, hydrateForayItems, indexSegments, indexSources, isGeneratedDraft,
 } from "../../player/foray-resolve.js";
 import { SEGMENT } from "../../player/foray-queue.js";
 
@@ -1012,12 +1012,15 @@ export function assertDiscoverSliceComplete(source, slice) {
  * DOES enter the seed — `data/forays.json`'s budget in `PROJECTED_DATA` is the
  * alarm for how many of those the seed can hold before it needs a rule of its own.
  *
- * `generated: true` and `status: "draft"` are read exactly as `app.js`'s
- * `draftTrackOrder` and `forayVisibility` read them, so the seed leaves out
- * precisely the Forays the switch admits.
+ * `generated: true` and `status: "draft"` are not spelled here: the predicate is
+ * `isGeneratedDraft` from `player/foray-resolve.js`, the one home it shares with
+ * `backend/src/generation/finalizeForay.ts` (audit finding E, 2026-09-12). The
+ * two must agree exactly — the pipeline re-cuts the clips of precisely the
+ * Forays the seed leaves to the directory — and a second spelling here is how
+ * they would stop agreeing.
  */
 export function seedCarries(foray) {
-  return !(foray?.generated === true && foray?.status === "draft");
+  return !isGeneratedDraft(foray);
 }
 
 /**

@@ -384,7 +384,16 @@ function segmentReferenceCount(foray: ForayRowLike, segmentId: string): number {
 }
 
 /** A Foray this pipeline generated and nobody has curated: the only kind whose
- * clips this pipeline may re-cut, and whose runtime it may restate. */
+ * clips this pipeline may re-cut, and whose runtime it may restate.
+ *
+ * THE HOME OF THIS PREDICATE IS `player/foray-resolve.js` (audit finding E,
+ * 2026-09-12). `tools/mobile/prepare-webdir.mjs`'s `seedCarries` is its
+ * negation and imports it from there; this copy exists ONLY because this
+ * package is `"module": "CommonJS"` (`backend/tsconfig.json`) and this function
+ * is called synchronously, so importing that ESM module would mean an
+ * `await import()` at every call site. `backend/test/finalizeForay.test.ts`
+ * asserts the two agree over the whole truth table, so the copy cannot drift
+ * silently — change one and change the other, in the same commit. */
 export function isGeneratedDraft(foray: ForayRowLike): boolean {
   return foray.generated === true && foray.status === "draft";
 }

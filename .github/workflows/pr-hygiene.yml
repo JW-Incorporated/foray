@@ -61,7 +61,17 @@ on:
   schedule:
     # :23, off the top of the hour — GitHub's scheduler is badly contended at
     # :00 (measured on this repo: a 09:40 cron starting at 10:54).
-    - cron: "23 */6 * * *"
+    #
+    # HOURLY SINCE 2026-09-12, was `23 */6 * * *`. The checks-missing self-heal
+    # now also runs on the PR events above, which covers the case that actually
+    # produces a check-less head (an `edited`/`labeled`/`unlabeled` event, which
+    # `ci.yml`'s bare `pull_request:` does not subscribe to). The sweep is the
+    # backstop for a PR that then receives no further event at all, and at six
+    # hours that backstop was worse than the disease: worst-case 6.5 hours of a
+    # PR sitting at "Expected — waiting for status to be reported". The run is
+    # ~30s and now dispatches nothing it does not have to (see the `dispatch-ci`
+    # guard below), so the extra five runs an hour cost almost nothing.
+    - cron: "23 * * * *"
   workflow_dispatch: {}
 
 permissions:
@@ -156,9 +166,18 @@ jobs:
             head_sha=$(jq -r '.head.sha' <<<"$pr")
             checks=$(gh api --paginate "repos/$REPO/commits/$head_sha/check-runs" \
                        --jq '[.check_runs[].name]' | jq -s 'add // []')
+            # WHEN THE HEAD COMMIT WAS MADE. The checks-missing self-heal is
+            # time-gated, and `updated_at` is the wrong clock for it: a comment,
+            # a label, a review or a title edit all reset it, and THIS WORKFLOW
+            # writes labels — so a stuck PR it labels every sweep could never age
+            # past the gate and the heal for it would never fire. The head
+            # commit's date moves only when the head moves.
+            head_at=$(gh api "repos/$REPO/commits/$head_sha" --jq '.commit.committer.date' || echo "")
             jq -n --argjson pr "$pr" --argjson files "$files" \
                   --argjson comments "$comments" --argjson checks "$checks" \
-              '$pr + {files: $files, comments: $comments, checkNames: $checks}' > "pr-$n.json"
+                  --arg head_at "$head_at" \
+              '$pr + {files: $files, comments: $comments, checkNames: $checks,
+                      headCommittedAt: (if $head_at == "" then null else $head_at end)}' > "pr-$n.json"
             jq -s '.[0] + [.[1]]' prs.json "pr-$n.json" > prs.tmp && mv prs.tmp prs.json
           done
           echo "gathered $(jq length prs.json) PR(s)"
@@ -292,7 +311,31 @@ jobs:
                 ;;
               # The other half of the pairing — without this the updated PR has
               # no checks on its new head SHA and can never merge.
-              dispatch-ci)   gh workflow run ci.yml --repo "$REPO" --ref "$ref" ;;
+              #
+              # GUARDED SINCE 2026-09-12. Measured over the last 200 `ci.yml`
+              # runs: 178 distinct SHAs, 26 `workflow_dispatch` runs, and 22 of
+              # those 26 sat on a SHA that ALSO had a `pull_request` run, usually
+              # 1–4 seconds apart — 85% of every dispatched run was a duplicate.
+              # (`update-branch` with the automatic GITHUB_TOKEN does produce a
+              # `synchronize` run most of the time after all; the pairing above
+              # is for the times it does not, which is why the dispatch stays and
+              # this is a guard on it rather than a removal.)
+              #
+              # The decision lives in `tools/ci/pr-triage.mjs` with tests, not in
+              # this `case`. Exit 1 means "a run already exists" and is not a
+              # failure; exit 2 is a real error, and it dispatches anyway —
+              # a duplicate run costs runner minutes, a missing one strands the
+              # PR forever, which is what this whole file exists to prevent.
+              dispatch-ci)
+                sha=$(gh api "repos/$REPO/pulls/$pr" --jq '.head.sha')
+                gh api "repos/$REPO/actions/workflows/ci.yml/runs?head_sha=$sha&per_page=100" \
+                  > ci-runs.json 2>/dev/null || echo '{}' > ci-runs.json
+                node tools/ci/pr-triage.mjs dispatch-needed --from ci-runs.json
+                case "$?" in
+                  1) echo "#$pr: ci.yml already ran for $sha — skipping the dispatch" ;;
+                  *) gh workflow run ci.yml --repo "$REPO" --ref "$ref" ;;
+                esac
+                ;;
               *)             echo "unknown action kind: $kind"; failures=$((failures + 1)) ;;
             esac || { echo "action failed: $kind #$pr"; failures=$((failures + 1)); }
             echo "::endgroup::"

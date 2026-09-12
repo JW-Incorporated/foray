@@ -150,7 +150,49 @@ export function normalizePr(raw = {}) {
     author: raw.author?.login ?? raw.user?.login ?? "",
     createdAt: raw.createdAt ?? raw.created_at ?? null,
     updatedAt: raw.updatedAt ?? raw.updated_at ?? null,
+    /* WHEN THE HEAD COMMIT WAS MADE — not when the PR was last touched.
+       The checks-missing self-heal below is time-gated, and `updatedAt` is the
+       wrong clock for it: a comment, a label, a review, a title edit all reset
+       it, and `pr-hygiene` ITSELF writes labels. A PR stuck with no checks that
+       gets labelled every six hours never ages past the gate, so the heal that
+       exists for it never fires. The head commit's date only moves when the
+       head moves, which is exactly the event whose checks we are waiting on.
+       Populated by pr-hygiene.yml's gather step from
+       `repos/:owner/:repo/commits/:sha` -> `.commit.committer.date`. */
+    headCommittedAt:
+      raw.headCommittedAt ?? raw.head_committed_at ?? raw.headCommit?.committedDate ?? null,
   };
+}
+
+/**
+ * Is a `workflow_dispatch` of `ci.yml` redundant for this head SHA?
+ *
+ * `runs` is what `repos/:owner/:repo/actions/workflows/ci.yml/runs?head_sha=…`
+ * returns (or just the event strings). True iff some run already exists for
+ * that SHA from a trigger OTHER than `workflow_dispatch` — i.e. GitHub already
+ * started CI for these exact bytes and a dispatch would only duplicate it.
+ *
+ * WHY (measured 2026-09-12 over the last 200 `ci.yml` runs): 178 distinct SHAs,
+ * 26 `workflow_dispatch` runs, and 22 of those 26 sat on a SHA that also had a
+ * `pull_request` run — usually 1–4 seconds apart. 85% of every dispatched run
+ * was a duplicate. `update-branch` with the automatic GITHUB_TOKEN turns out to
+ * produce a `pull_request` `synchronize` run after all in most cases; the
+ * pairing in pr-hygiene.yml was written for the case where it does NOT, which
+ * is real but rare, so the dispatch stays and this is the guard on it.
+ *
+ * The guard is here — at the DISPATCHER — and deliberately not as an `if:` on
+ * ci.yml's jobs. A skipped job still publishes a check run under the required
+ * name (`backend`, `data-and-site`), GitHub counts `skipped` as satisfied, and
+ * the dispatch run is created at almost the same instant as the `pull_request`
+ * run — so a job-level skip could overwrite a FAILING required check with a
+ * passing `skipped` one and let a red PR merge. Not dispatching costs nothing
+ * and cannot do that.
+ */
+export function ciDispatchIsRedundant(runs = []) {
+  return (runs ?? []).some((r) => {
+    const event = String((typeof r === "string" ? r : r?.event) ?? "");
+    return event !== "" && event !== "workflow_dispatch";
+  });
 }
 
 /** True if this bot has already said "you are conflicting" on this PR. */
@@ -202,7 +244,10 @@ export function planMergeability(prs, opts = {}) {
   const {
     autoUpdate = true,
     freeze = "",
-    sweep = false,
+    // `sweep` is still ACCEPTED (pr-hygiene.yml passes `--sweep` on the cron,
+    // and callers outside this repo may too) but it no longer gates anything —
+    // see hole 1 in the checks-missing self-heal below.
+    sweep: _sweep = false,
     now = Date.now(),
     requiredChecks = REQUIRED_CHECKS,
     staleAfterMs = 30 * 60 * 1000,
@@ -337,17 +382,47 @@ export function planMergeability(prs, opts = {}) {
     // forever — the exact silent stall this file exists to delete, manufactured
     // by the fix for it. This branch notices and re-dispatches.
     //
-    // Sweep-only and time-gated: on a fresh PR the checks legitimately have not
-    // reported yet, and dispatching into that race would double every CI run.
-    // A head that is 30 minutes old with zero required checks is stuck, not
-    // starting.
-    if (sweep && pr.headRefName && !pr.crossRepo && pr.checkNames.length !== undefined) {
-      const age = pr.updatedAt ? now - Date.parse(pr.updatedAt) : Infinity;
+    // Time-gated, and the gate is the HEAD COMMIT's clock: on a fresh head the
+    // checks legitimately have not reported yet, and dispatching into that race
+    // would double every CI run. A head that is 30 minutes old and still missing
+    // a required check is stuck, not starting.
+    //
+    // THREE HOLES CLOSED 2026-09-12 (machinery audit). As written, this heal
+    // could be up to 6.5 hours late or never fire at all:
+    //
+    //   1. SWEEP-ONLY. `sweep` is set only by the 6-hourly cron
+    //      (`pr-hygiene.yml`, `cron: "23 */6 * * *"`), so the fastest possible
+    //      heal was 23 minutes past the next 6-hour boundary. Worse, the head
+    //      that LANDS in this state does so because of a PR event outside
+    //      `ci.yml`'s three defaults (`opened`/`synchronize`/`reopened`) —
+    //      `edited`, `labeled`, `unlabeled`, `ready_for_review` — and
+    //      `pr-hygiene.yml` is subscribed to four of those. The event that
+    //      creates the stall is an event this workflow already wakes up for, so
+    //      the heal now runs on it. The age gate is what keeps a `synchronize`
+    //      from double-dispatching: a head seconds old is never 30 minutes old.
+    //
+    //   2. THE WRONG CLOCK. `age` came from `pr.updatedAt`, which a comment, a
+    //      label, a review or a title edit resets — and `pr-hygiene` itself
+    //      writes labels, so a PR it labels every sweep could never age past the
+    //      gate. `headCommittedAt` only moves when the head moves.
+    //
+    //   3. ALL-OR-NOTHING. `missing.length === requiredChecks.length` fired only
+    //      when EVERY required check was absent. A partial dispatch — one job
+    //      reported, the other never created — is a head that can never merge
+    //      and that this branch would have skipped forever. Any missing required
+    //      check is the stall; `> 0` is the honest test.
+    //
+    // The duplicate-dispatch cost of (1) and (3) is bounded by
+    // `ciDispatchIsRedundant`, which pr-hygiene.yml consults before every
+    // dispatch: if a run already exists for the head SHA, nothing is sent.
+    if (pr.headRefName && !pr.crossRepo && Array.isArray(pr.checkNames)) {
+      const headAt = pr.headCommittedAt ?? pr.updatedAt;
+      const age = headAt ? now - Date.parse(headAt) : Infinity;
       const missing = requiredChecks.filter((c) => !pr.checkNames.includes(c));
-      if (missing.length === requiredChecks.length && Number.isFinite(age) && age > staleAfterMs) {
+      if (missing.length > 0 && Number.isFinite(age) && age > staleAfterMs) {
         actions.push({ kind: "dispatch-ci", pr: pr.number, ref: pr.headRefName });
         notes.push(
-          `#${pr.number}: head has none of ${requiredChecks.join("/")} after ` +
+          `#${pr.number}: head is missing ${missing.join("/")} after ` +
             `${Math.round(age / 60000)}m — re-dispatching CI`
         );
       }
@@ -577,6 +652,12 @@ function defaultExec(args) {
 const USAGE = `usage:
   node tools/ci/pr-triage.mjs plan    --from <prs.json> [options]
   node tools/ci/pr-triage.mjs waiting --from <prs.json> [--write|--print]
+  node tools/ci/pr-triage.mjs dispatch-needed --from <runs.json>
+                        exit 0 = send the workflow_dispatch, exit 1 = a run
+                        already exists for that head SHA, so do not.
+                        --from takes what
+                        \`actions/workflows/ci.yml/runs?head_sha=…\` returns
+                        (the envelope or just its .workflow_runs array).
 
 options:
   --from <path|->        PRs as a JSON array ("-" = stdin). Accepts the shape of
@@ -587,8 +668,11 @@ options:
   --no-auto-update       plan no update-branch/dispatch-ci actions
   --partial              (plan) this run looked at one PR, not all of them, so
                         do not render the founder queue as if it were complete
-  --sweep                (plan) this is the scheduled sweep, so enable the
-                        checks-missing self-heal (see planMergeability)
+  --sweep                (plan) this is the scheduled sweep. Accepted and
+                        ignored since 2026-09-12: the checks-missing self-heal
+                        used to be gated on it and is now gated only on the head
+                        commit's age (see planMergeability). Kept so an older
+                        workflow invocation still parses.
   --actions <path>       write planned actions as JSON lines here
   --summary <path>       append a markdown report here ($GITHUB_STEP_SUMMARY)
   --file <path>          (waiting) the file to splice, default HUMAN-ACTIONS.md
@@ -609,7 +693,7 @@ const BOOL_FLAGS = new Set(["--no-auto-update", "--write", "--print", "--check",
 
 export function parseArgs(argv) {
   const [command, ...rest] = argv;
-  if (!["plan", "waiting"].includes(command)) {
+  if (!["plan", "waiting", "dispatch-needed"].includes(command)) {
     throw new Error(`unknown command: ${command ?? "(none)"}`);
   }
   const opts = {};
@@ -646,6 +730,36 @@ export function runCli(argv, io = {}) {
     $.err(err.message);
     $.err(USAGE);
     return 2;
+  }
+
+  /* Handled before the PR-shaped `--from` below, because this command's input is
+     workflow RUNS, and the runs API answers with an envelope object rather than
+     a bare array. Exit code is the answer: 0 = dispatch, 1 = already covered.
+     A malformed or unreadable input is 2 and the caller dispatches anyway — a
+     duplicate CI run is a cost, a missing one strands the PR. */
+  if (command === "dispatch-needed") {
+    if (!opts.from) {
+      $.err("dispatch-needed needs --from <runs.json|->");
+      return 2;
+    }
+    let runs;
+    try {
+      const parsed = JSON.parse(opts.from === "-" ? $.readStdin() : $.readFile(opts.from));
+      runs = Array.isArray(parsed) ? parsed : (parsed?.workflow_runs ?? null);
+    } catch (err) {
+      $.err(`--from is not valid JSON: ${err.message}`);
+      return 2;
+    }
+    if (!Array.isArray(runs)) {
+      $.err("--from must be a JSON array of runs, or the runs API's { workflow_runs: [...] }");
+      return 2;
+    }
+    if (ciDispatchIsRedundant(runs)) {
+      $.log(`a ci.yml run already exists for this head SHA (${runs.length} run(s)) — not dispatching`);
+      return 1;
+    }
+    $.log(`no non-dispatch ci.yml run for this head SHA (${runs.length} run(s)) — dispatching`);
+    return 0;
   }
 
   let prs = [];

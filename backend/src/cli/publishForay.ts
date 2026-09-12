@@ -19,6 +19,7 @@ import {
 import { evaluateVeracityGate, type VeracityGateResult, type VeracityMetrics } from "../generation/veracityMetrics";
 import {
   formatSuiteFailure,
+  knownUncoveredGuidance,
   runRealDataSuites,
   suiteSummaryLine,
   type SuiteFailure,
@@ -112,6 +113,14 @@ import {
  * specific failures, in the PR body — it does NOT skip check-forays.mjs/
  * check-narration.mjs, which have no override.
  *
+ * `--force` IMPLIES `hold`, AND `--no-hold` ALONGSIDE IT IS REFUSED (audit
+ * finding A, 2026-09-12). Nothing downstream of this CLI can see that the
+ * veracity gate was overridden: `meta.veracity` is not written into `data/`
+ * (`finalizeForay.ts`), no CI check reads it, and `automerge-nightly.yml`
+ * merges a green `data/`-only PR unless it carries `hold`/`founder-decision`.
+ * So a forced publish always carries `hold`, and the console says the
+ * `--no-hold` it was given was declined and why. See `parseArgs`.
+ *
  * G-21c REAL-DATA SUITES GATE (docs/curation/foray-to-spec-roadmap.md G-21c):
  * after the three files are written and BEFORE commit/push/PR, this runs the
  * app's own suites that read the real `data/` (`REAL_DATA_SUITES` in
@@ -153,7 +162,7 @@ export const PUBLISH_BASE = "origin/main";
  * testable without a git repository. */
 export type Runner = (cmd: string, args: string[]) => string;
 
-interface CliArgs {
+export interface CliArgs {
   input: string | null;
   dryRun: boolean;
   hold: boolean;
@@ -163,21 +172,52 @@ interface CliArgs {
   /** F-98: the prior generated DRAFT of this same prompt, removed by this
    * publish so the Foray list does not accumulate one draft per attempt. */
   supersedes: string | null;
+  /** `--no-hold` was asked for and REFUSED because `--force` was given too.
+   * `main()` says so on the console; the flag combination is not an error, it
+   * is a request the gate declines (see `parseArgs`). */
+  holdForcedByForce: boolean;
 }
 
-function parseArgs(argv: string[]): CliArgs {
+/**
+ * `--force` IMPLIES `hold`, and that is the whole point of this function.
+ *
+ * WHY (audit finding A, 2026-09-12). `--force` overrides the WS-B veracity
+ * gate — the only check that looks at whether the narration is grounded in
+ * the tape — and `meta.veracity` is never written into `data/`, so NOTHING
+ * downstream can see that the override happened. `tools/ci/path-policy.mjs`
+ * allow-lists `data/`, and `.github/workflows/automerge-nightly.yml` merges a
+ * green `data/`-only PR on its own unless it carries `hold` or
+ * `founder-decision`. So `--force --no-hold` put a Foray with unverified
+ * narration on main, and through the directory (FD-03) onto every phone, with
+ * no human in the loop and no artifact of the override outside the PR body
+ * nobody was required to read.
+ *
+ * The G-21c suite override is NOT the same hazard and is deliberately left
+ * alone: a suite that is red here is red in CI too, so `--force` on it buys a
+ * PR that cannot merge. The veracity override is self-limiting in no such way.
+ *
+ * WHY THIS FORCES THE FLAG RATHER THAN REFUSING THE RUN. Refusing would make
+ * an unattended `--force` run exit 1 and publish nothing, which loses the
+ * candidate; forcing `hold` publishes it and asks a founder to look. The
+ * failing direction of an accident should be "a human reads it", not "the work
+ * is thrown away". The console says the flag was refused and why.
+ */
+export function parseArgs(argv: string[]): CliArgs {
   const get = (flag: string): string | undefined => {
     const idx = argv.indexOf(flag);
     return idx >= 0 ? argv[idx + 1] : undefined;
   };
+  const force = argv.includes("--force");
+  const noHold = argv.includes("--no-hold");
   return {
     input: get("--input") ?? null,
     dryRun: argv.includes("--dry-run"),
-    hold: !argv.includes("--no-hold"),
-    force: argv.includes("--force"),
+    hold: force ? true : !noHold,
+    force,
     report: get("--report") ?? null,
     deployId: get("--deploy-id") ?? null,
-    supersedes: get("--supersedes") ?? null
+    supersedes: get("--supersedes") ?? null,
+    holdForcedByForce: force && noHold
   };
 }
 
@@ -473,6 +513,10 @@ export function printSuiteVerdict(suites: SuiteRunResult, force: boolean, out: O
   if (suites.ok) return true;
   out.error("The app's real-data suites FAILED against the written data files (G-21c):");
   for (const f of suites.failures) out.error(`  ${formatSuiteFailure(f)}`);
+  /* Audit finding B: one suite in this gate goes red because the publish is
+     RIGHT, and the operator has to be told the fix is a deletion in this PR
+     rather than a re-cut of the Foray. See `knownUncoveredGuidance`. */
+  for (const line of knownUncoveredGuidance(suites.failures)) out.error(`  ${line}`);
   if (!force) {
     out.error("Refusing to publish. Use --force to override (the override and the failing assertions will be noted in the PR body).");
     return false;
@@ -534,8 +578,20 @@ export function publishPrBody(
 ): string {
   const synthesis = synthesisVerifiedLines(veracity);
   return (
-    `Automated §4.9 finalize/publish. Foray "${input.id}" passed check-forays.mjs and ` +
-    `check-narration.mjs. Phase 1 (docs/curation/generation-architecture.md §1.3): this PR ` +
+    /* WHAT THIS LINE MAY CLAIM (audit finding D, 2026-09-12). It used to say
+       the Foray "passed check-forays.mjs and check-narration.mjs". The second
+       half was not true of THIS Foray and structurally could not be:
+       `check-narration.mjs` validates the curation-authored artifacts under
+       `docs/curation/narration/<id>/`, which the automated §4 pipeline never
+       writes (see `finalizeForay.ts`'s header, "CHECK-NARRATION.MJS'S ACTUAL
+       SCOPE"). The call still happens and its result is still surfaced on the
+       console — it just has nothing of this candidate's to look at, so the PR
+       body no longer implies a narration audit that never ran. */
+    `Automated §4.9 finalize/publish. Foray "${input.id}" passed check-forays.mjs ` +
+    `(the Foray document, the pool join, D1/D5/L2/L3 and the mode bands). ` +
+    `check-narration.mjs also ran and reported nothing, but it validates curation-authored ` +
+    `narration under docs/curation/narration/<id>/, which this pipeline does not write — ` +
+    `it is not a check of this Foray's narration. Phase 1 (docs/curation/generation-architecture.md §1.3): this PR ` +
     "is for a founder to review before it reaches the catalogue — it does not auto-merge while the `hold` label is on." +
     "\n\nBranch cut from `origin/main`; touches only `data/forays.json`, `data/segments.json` and `data/segment-sources.json`. " +
     "Once merged, Vercel deploys `main` and phones pick this Foray up on next launch after the deploy — " +
@@ -551,7 +607,10 @@ export function publishPrBody(
     (suites && !suites.ok
       ? `\n\n**G-21c real-data suites overridden with --force.** Failing assertions at publish time:\n${suites.failures
           .map((f) => `- ${formatSuiteFailure(f)}`)
-          .join("\n")}`
+          .join("\n")}` +
+        (knownUncoveredGuidance(suites.failures).length > 0
+          ? `\n\n${knownUncoveredGuidance(suites.failures).join("\n")}`
+          : "")
       : "") +
     (synthesis.length > 0 ? `\n\n**${synthesis[0]}**\n${synthesis.slice(1).map((l) => `- ${l}`).join("\n")}` : "") +
     supersedeLines(write)
@@ -656,6 +715,14 @@ async function main(): Promise<void> {
     );
     process.exitCode = 1;
     return;
+  }
+  if (args.holdForcedByForce) {
+    console.warn(
+      "--no-hold was REFUSED: --force was given too, and a forced publish always carries the `hold` label " +
+        "(audit finding A). --force overrides the WS-B veracity gate, `meta.veracity` is never written into data/, " +
+        "and automerge-nightly.yml merges a green data/-only PR on its own — so without `hold` an unreviewed " +
+        "narration would reach every phone with no human in the loop. Publish without --force to use --no-hold."
+    );
   }
   const run = makeRunner(REPO_ROOT);
 

@@ -179,10 +179,10 @@ is out of reach, it names the founder decision that re-baselines it.
 | Prompt → Act 1 playable (`ttlA1Ms`) | 18.1 min on the relay (attempt 5, `report.json`) | ≤ 30 s p50 at API latency (fix plan WS-D) | **No.** [estimated] today's stage graph keyed: 3.5–9 min; after every M/S change in Phase 3: **1.5–3 min**, floor = spine + deepen + one write round ≈ 90–180 s. 30–45 s needs an Act-1 fast path (G-38), a design ruling Wyatt has not made → **D6 re-baseline: accept ≤ 3 min p50 for this deck, or fund G-38** | G-32…G-38 |
 | Prompt → finished, validated Foray | 76–91 min on the relay; never validated | *proposed*: ≤ 6 min p50 keyed after Phase 3 (the brief's post-optimisation range is 3–6 min) | Yes, [estimated] 3–6 min; today's keyed pipeline 9–22 min typical (best 7, worst 40) | G-30…G-37 |
 | Prompt → **published** Foray, no human | never | *proposed*: the same clock plus CI; zero operational steps, one editorial keystroke per Foray retained by design (D4) | Yes, once D1, D2, D4 are decided | G-20…G-22 |
-| First-attempt page pass rate | **0.67 (attempt 3), 0.44 (attempt 4b)** — `report.json firstAttemptPassRate` | ≥ 80 % | Partly: G-34 cuts the *cost* of a rejection; the rate itself depends on evidence quality (F-69's empties) and is measured, not promised | G-34, G-35, G-02 |
+| First-attempt page pass rate | **0.67 (attempt 3), 0.44 (attempt 4b)**, 0.68 (run 8) — `report.json firstAttemptPassRatePages` (`firstAttemptPassRate` on runs 4–9, where it meant PAGES). **Run 9's 0.048 is not on this row**: from run 9 the same field silently changed unit to narration BEATS confirmed on round 1 (F-101), and the two are separate columns in the bench (`1stPg`, `1stBt`) | ≥ 80 % | Partly: G-34 cuts the *cost* of a rejection; the rate itself depends on evidence quality (F-69's empties) and is measured, not promised | G-34, G-35, G-02 |
 | Pages verified by end of run (context for the row above) | 30 of 33 (attempt 3), 22 of 28 (attempt 4b) | — | — | — |
 | Narration calls per beat | **1.0 per beat / 1.06 per page** (attempt 3); 1.30 per page (4b) | ≤ 1.5 | Met on attempt 3; hold it | G-34 |
-| **Tape share of runtime** (new row, Q-05) | 59–61 % (runs 5–7), **78 %** (run 8) [measured on `data/forays.json` @ #642]; `report.json tapeShare` from the Q-03 PR on | *proposed*: ≥ 70 % | Yes — Q-01's longer clips and Q-03's fewer pages both move it; measured per run, not promised | Q-01, Q-03, Q-05 |
+| **Tape share of runtime** (new row, Q-05) | 59–61 % (runs 5–7), **78 %** (run 8), **55.7 %** (run 9) [measured on `data/forays.json` @ #642 and on the run-9 candidate]; source: the bench's **`tape/rt`** column (tape ÷ the candidate's whole `runtimeSec`). **NOT `report.json tapeShare`** — that is tape ÷ (tape + narration), 13 points higher on run 9 (0.684 vs 0.557), and naming it here would have graded this proposal against the flattering number (F-101; the report now calls it `tapeOfTapePlusNarration`) | *proposed*: ≥ 70 % | Yes — Q-01's longer clips and Q-03's fewer pages both move it; measured per run, not promised | Q-01, Q-03, Q-05 |
 | **Narration share, pages per seam** (new row, Q-05) | 38–40 pages per Foray, one per beat, **2.35–3.45 pages per seam**; narration **22–41 %** of runtime [measured on `data/forays.json` @ #642]; `narrationShare` / `narrationPagesPerSeam` in `report.json` from the Q-03 PR on | *proposed*: narration ≤ 25 % of runtime and ≤ 1 page per seam (narration-craft §0's whole-Foray target, made a KPI) | Pages per seam: yes by construction (Q-03 writes one page per seam); the share depends on clip length (Q-01) and is measured | Q-02, Q-03, Q-05 |
 | Grounded-quote rate | 86/86, 71/71 (by construction since WS-A) | 100 % | Met | — |
 | Tape beats per medium Foray | 11 of 32 (attempt 6 checkpoint), from **one** show | *proposed*: ≥ 40 % of beats; the "from ≥ 3 shows" half is **deferred until G-18 measures topic depth** | Beats: yes for the run-2 fixture — ≥ 14 with G-24 (measured replay), 18–24 with G-25 (JUDGED, +0.9 per extra seed). Shows: unknown until G-18 → **D0** | G-24, G-25, G-18 |
@@ -1178,6 +1178,18 @@ raised then, not now, per the fourth message:
 Every number in §1.2 comes from `report.json` (per Foray: outcome, wall,
 `ttlA1Ms`, `timings`, `usage`, `meta.veracity`) and the run doc's KPI tables.
 
+**Calibration, not policy — re-measure at G-42b (F-101).** Four constants in the
+generation lane were each fixed on one or two runs and say so honestly in their
+own comments, but nothing schedules the re-measurement, so a number chosen from
+n=2 hardens into a rule by nobody touching it: `SPINE_SEED_FLOOR` 0.5
+(`postSeedSpine.ts`, from runs 8 and 9 — 0.81 and 0.29), `THOUGHT_PAUSE_SEC` 0.7
+(`tapeExtent.ts`, one transcript's pause distribution), `PARAGRAPH_CUE_SEC` 30
+(`tapeExtent.ts`, two episodes' cue lengths against a 16.6 s archive median) and
+`M4_LONG_CLIP_SEC` 300 (`sourceBeats.ts` and `check-forays.mjs`, twice the
+longest hand cut in the pool). They are CALIBRATION — a reading of the corpus —
+not POLICY, and when G-42b has a run series to read they are re-measured against
+it rather than re-argued: each is a number the trend can now answer for.
+
 ### G-42a · Benchmark harness on the generation host — **M · S — Hermes**
 - **DONE 2026-09-12** — the harness is `tools/generation-bench/run.mjs`; the
   trend is `docs/curation/generation-kpis.md` and its machine twin
@@ -1201,13 +1213,20 @@ Every number in §1.2 comes from `report.json` (per Foray: outcome, wall,
     / 0.595 / 0.776 / 0.557 for runs 6–9, against §1.2's "59–61 % (runs 5–7),
     78 % (run 8)" and the ledger's 56 % for run 9), so the rows a scheduled run
     appends will be comparable with the six already there.
-  - **One thing the harness found.** Two different quantities are both called
-    "tape share". `report.json`'s `tapeShare` (Q-05, tape ÷ tape + narration,
-    present from run 9 on) reads **0.684** on run 9; the reading §1.2 quotes
-    (tape ÷ the candidate's `runtimeSec`, which also counts jingles) reads
-    **0.557** on the same run. They are separate columns, and §1.2's tape-share
-    row should say which of the two its ≥ 70 % proposal is about before D0
-    closes it.
+  - **One thing the harness found, now closed (F-101).** Two different
+    quantities were both called "tape share". `report.json`'s `tapeShare`
+    (Q-05, tape ÷ tape + narration, present from run 9 on) reads **0.684** on
+    run 9; the reading §1.2 quotes (tape ÷ the candidate's `runtimeSec`, which
+    also counts jingles) reads **0.557** on the same run. They stay separate
+    columns; the report field is now `tapeOfTapePlusNarration`, §1.2's ≥ 70 %
+    *proposal* is attached to the bench's `tape/rt` column — the one whose
+    denominator the row's own title names — and §1.2's source cell says so.
+  - **And a second (F-101).** `firstAttemptPassRate` changed UNIT mid-trend:
+    share of kept PAGES for runs 4–8, share of narration BEATS confirmed on
+    round 1 from run 9, decided by sniffing the candidate rather than declared.
+    Reports now carry `firstAttemptPassRatePages`, `firstAttemptPassRateBeats`
+    and `firstAttemptUnit`; the bench has a column per unit and a third for
+    runs 4–9's undeclared scalar, which is never guessed into either.
 - **Owner:** Hermes (`tools/`, `docs/` lanes).
 - **Ask.** `tools/generation-bench/run.mjs` runs the two fixed prompts keyed on
   the host **on a schedule** (not per PR — ≈ $2–8 per run, §7), appends one row

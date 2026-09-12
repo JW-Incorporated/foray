@@ -196,19 +196,58 @@ export function computeAttributionStability(writtenActs: WrittenAct[]): number |
 /* firstAttemptPassRate                                                 */
 /* ------------------------------------------------------------------ */
 
+/** The first-attempt rate in BOTH units, plus which one the legacy scalar
+ * `firstAttemptPassRate` carries. F-101 — see `computeFirstAttemptPassRates`. */
+export interface FirstAttemptPassRates {
+  /** Share of KEPT pages whose `attempts.length === 1`. `null` when no kept
+   * page carries `attempts`. Runs 1–8 are this number. */
+  pages: number | null;
+  /** Share of narration BEATS with `verifiedAtAttempt === 1`. `null` when no
+   * beat carries a per-act mark. Run 9 on is this number. */
+  beats: number | null;
+  /** The unit `firstAttemptPassRate` is in for this candidate, or `null` when
+   * neither could be measured. */
+  unit: "pages" | "beats" | null;
+}
+
 /**
- * Share of KEPT pages whose `attempts.length === 1` — the page the
- * candidate carries today was accepted on the writer's first try. Honest
- * scope, stated because it undercounts the failure mode the KPI table
- * names: a connective page that fails all `NARRATION_PAGE_ATTEMPTS` tries
- * is DROPPED (`writeNarration.ts`'s `writeOneBeat` catch branch — tape
- * kept, page silently discarded) and never reaches the final `WrittenAct[]`
- * this function reads, so its 0-for-3 record is invisible here. Those
- * drops are counted separately by `computePagesDropped`; this metric only
- * ever speaks for pages that survived. `null` when nothing in the
- * candidate carries `attempts` data.
+ * TWO RATES, BECAUSE THERE ARE TWO QUESTIONS — and until F-101 one field
+ * answered whichever the data happened to support.
+ *
+ *   `pages`  Share of KEPT pages whose `attempts.length === 1` — the page the
+ *            candidate carries today was accepted on the writer's first try.
+ *            Honest scope, stated because it undercounts the failure mode the
+ *            KPI table names: a connective page that fails all
+ *            `NARRATION_PAGE_ATTEMPTS` tries is DROPPED (`writeNarration.ts`'s
+ *            `writeOneBeat` catch branch — tape kept, page silently discarded)
+ *            and never reaches the final `WrittenAct[]` this function reads, so
+ *            its 0-for-3 record is invisible here. Those drops are counted
+ *            separately by `computePagesDropped`; this number only ever speaks
+ *            for pages that survived.
+ *   `beats`  Share of narration BEATS the verifier confirmed on round 1
+ *            (`verifiedAtAttempt === 1`). A beat never confirmed counts as a
+ *            failure, and the denominator is every narration beat the written
+ *            acts carry — including beats no page ever carried.
+ *
+ * WHY BOTH ARE EMITTED (F-101). Q-03 added the beat reading for the per-act
+ * path and made the choice by SNIFFING THE DATA — if any narration beat carried
+ * `carriedBy` or `verifiedAtAttempt`, the beat number was returned, otherwise
+ * the page number — under one field name, `firstAttemptPassRate`, that the
+ * bench trends across runs 4–9 in one column. Run 9's 0.048 and run 8's 0.68
+ * are therefore not the same measurement, and `writeAct.ts`'s F-97 post-mortem
+ * cites exactly that pair as evidence the Q-03 contract "did not converge". The
+ * sniff stays (it is what an old candidate supports), but it no longer decides
+ * what the report SAYS: both units are emitted, `firstAttemptUnit` names the one
+ * the legacy scalar carries, and the bench trends them in separate columns.
+ *
+ * The two are NOT interchangeable even in principle: `pages` counts writer
+ * attempts on pages that survived, `beats` counts verifier confirmations on
+ * round 1 for every beat. Under run 9's contract the act went back to the
+ * writer whole, so a clean seam was re-attempted (and one clean Intro was
+ * dropped) for another seam's failure — which is why run 9 reads near zero in
+ * BOTH units, not only in the new one. See the F-101 ledger paragraph.
  */
-export function computeFirstAttemptPassRate(writtenActs: WrittenAct[]): number | null {
+export function computeFirstAttemptPassRates(writtenActs: WrittenAct[]): FirstAttemptPassRates {
   /* Q-03: MEASURED AGAINST BEATS on the per-act path. A beat's claim is
      confirmed by the verifier on some round (`verifiedAtAttempt`), or
      never; the rate is the share of narration beats confirmed on round 1.
@@ -216,11 +255,9 @@ export function computeFirstAttemptPassRate(writtenActs: WrittenAct[]): number |
      another's page, or a round recorded on one — so a per-page candidate
      (runs 1–8, the fallback path) is still read page by page below. */
   const narrationBeats = allNarrationBeats(writtenActs);
-  if (narrationBeats.some((b) => b.carriedBy !== undefined || b.verifiedAtAttempt !== undefined)) {
-    const total = narrationBeats.length;
-    const first = narrationBeats.filter((b) => b.verifiedAtAttempt === 1).length;
-    return total > 0 ? first / total : null;
-  }
+  const perAct = narrationBeats.some((b) => b.carriedBy !== undefined || b.verifiedAtAttempt !== undefined);
+  const beats =
+    perAct && narrationBeats.length > 0 ? narrationBeats.filter((b) => b.verifiedAtAttempt === 1).length / narrationBeats.length : null;
 
   let firstAttempt = 0;
   let total = 0;
@@ -230,7 +267,21 @@ export function computeFirstAttemptPassRate(writtenActs: WrittenAct[]): number |
     total++;
     if (attempts.length === 1) firstAttempt++;
   }
-  return total > 0 ? firstAttempt / total : null;
+  const pages = total > 0 ? firstAttempt / total : null;
+
+  /* The legacy scalar's unit, by the same sniff Q-03 made — so a consumer that
+     reads `firstAttemptPassRate` gets exactly the number it got before, and a
+     consumer that wants to compare across runs has the unit in hand. */
+  const unit: "pages" | "beats" | null = perAct ? (beats === null ? null : "beats") : pages === null ? null : "pages";
+  return { pages, beats, unit };
+}
+
+/** The legacy scalar, unchanged: whichever unit `computeFirstAttemptPassRates`
+ * names. Kept so run 4–9 reports and the callers that predate F-101 read the
+ * same number they always did — but read `firstAttemptUnit` beside it. */
+export function computeFirstAttemptPassRate(writtenActs: WrittenAct[]): number | null {
+  const rates = computeFirstAttemptPassRates(writtenActs);
+  return rates.unit === "beats" ? rates.beats : rates.unit === "pages" ? rates.pages : null;
 }
 
 function allNarrationBeats(writtenActs: WrittenAct[]): Array<Extract<WrittenBeat, { sourcing: "narration" }>> {
@@ -665,9 +716,18 @@ export interface ListeningShares {
    * every page the candidate carries. The disclosure item is not a page
    * and is not counted — it is the same ~12 s on every Foray. */
   narrationSec: number;
-  /** tape / (tape + narration); `null` when both are zero. */
-  tapeShare: number | null;
+  /** tape / (tape + narration); `null` when both are zero. The name says the
+   * denominator on purpose — see the note on `computeListeningShares`. */
+  tapeOfTapePlusNarration: number | null;
   /** narration / (tape + narration); `null` when both are zero. */
+  narrationOfTapePlusNarration: number | null;
+  /** @deprecated F-101 — the same number as `tapeOfTapePlusNarration`, under
+   * the name that does not say its denominator. Kept so callers written before
+   * F-101 read what they always read; new readers should take the explicit
+   * name, and anything grading §1.2's "tape share OF RUNTIME" row must take
+   * neither (see below). */
+  tapeShare: number | null;
+  /** @deprecated F-101 — see `tapeShare`. */
   narrationShare: number | null;
 }
 
@@ -678,6 +738,21 @@ export interface ListeningShares {
  * plus narration from the pipeline's own numbers, not the checker's
  * `runtime_sec` — computed before `finalize`, and the same either way to
  * within a jingle.
+ *
+ * F-101 — THE DENOMINATOR IS IN THE NAME NOW, BECAUSE TWO DIFFERENT NUMBERS
+ * WERE BOTH CALLED "TAPE SHARE". This function's denominator is tape PLUS
+ * NARRATION: everything the pipeline itself produced. The roadmap's §1.2 row
+ * is titled "Tape share **of runtime**" and its history (59–61 % runs 5–7,
+ * 78 % run 8, measured on `data/forays.json` @ #642) divides tape by the
+ * candidate's whole `runtimeSec`, which also counts the jingles and the band
+ * the player actually plays. On run 9 the two read 0.684 and 0.557 — thirteen
+ * points apart — and the roadmap named `report.json tapeShare` as that row's
+ * source, so a *proposed* founder target (≥ 70 %) was about to be graded
+ * against the flattering one. The pipeline cannot compute tape-of-runtime here
+ * (it runs before `finalize`, and `runtimeSec` is the finished candidate's), so
+ * the report does not claim to carry it: `tools/generation-bench/run.mjs`
+ * measures it on the candidate beside the report and prints it as its own
+ * column, `tape/rt`, and that column is where §1.2's target now sits.
  */
 export function computeListeningShares(sourcedActs: SourcedAct[], writtenActs: WrittenAct[]): ListeningShares {
   let tapeSec = 0;
@@ -685,11 +760,15 @@ export function computeListeningShares(sourcedActs: SourcedAct[], writtenActs: W
   let narrationSec = 0;
   for (const { page } of flattenWrittenPages(writtenActs)) narrationSec += scriptSeconds(page.script.length);
   const total = tapeSec + narrationSec;
+  const tapeOfTapePlusNarration = total > 0 ? tapeSec / total : null;
+  const narrationOfTapePlusNarration = total > 0 ? narrationSec / total : null;
   return {
     tapeSec,
     narrationSec,
-    tapeShare: total > 0 ? tapeSec / total : null,
-    narrationShare: total > 0 ? narrationSec / total : null
+    tapeOfTapePlusNarration,
+    narrationOfTapePlusNarration,
+    tapeShare: tapeOfTapePlusNarration,
+    narrationShare: narrationOfTapePlusNarration
   };
 }
 
@@ -746,7 +825,17 @@ export interface VeracityMetrics {
   purposeFidelity: number | null;
   tapeRelevance: number | null;
   tapeRelevanceAnchors: TapeAnchorNote[];
+  /** @deprecated F-101 — the rate in whichever unit this candidate supported,
+   * named by `firstAttemptUnit`. Runs 4–8 are pages, run 9 on is beats, and
+   * the two are not comparable: read the two explicit fields below instead. */
   firstAttemptPassRate: number | null;
+  /** F-101: which unit `firstAttemptPassRate` above is in, or `null` when
+   * neither could be measured. Declared rather than inferred. */
+  firstAttemptUnit: "pages" | "beats" | null;
+  /** F-101: share of KEPT pages accepted on the writer's first try. */
+  firstAttemptPassRatePages: number | null;
+  /** F-101: share of narration BEATS the verifier confirmed on round 1. */
+  firstAttemptPassRateBeats: number | null;
   /** Writer + verifier requests per ATTEMPTED PAGE (the name predates the
    * distinction; kept for comparability with run 1's 4.2). */
   callsPerBeat: number | null;
@@ -783,10 +872,19 @@ export interface VeracityMetrics {
   tapeCitedPages: number;
   /** Q-05: pages per seam — target ≤ 1 (`computeNarrationPagesPerSeam`). */
   narrationPagesPerSeam: number | null;
-  /** Q-05: narration seconds over tape + narration — target ≤ 0.25. */
+  /** @deprecated F-101 — `narrationOfTapePlusNarration` under a name that
+   * does not say its denominator. */
   narrationShare: number | null;
-  /** Q-05: tape seconds over tape + narration — proposed target ≥ 0.70. */
+  /** @deprecated F-101 — `tapeOfTapePlusNarration` under a name that does not
+   * say its denominator, and the one §1.2's "tape share OF RUNTIME" row wrongly
+   * named as its source. */
   tapeShare: number | null;
+  /** Q-05/F-101: tape seconds over tape + narration. NOT §1.2's "tape share of
+   * runtime" — that divides by the finished candidate's whole `runtimeSec` and
+   * is the bench's `tape/rt` column (13 points lower on run 9). */
+  tapeOfTapePlusNarration: number | null;
+  /** Q-05/F-101: narration seconds over tape + narration. */
+  narrationOfTapePlusNarration: number | null;
   /** Q-02: pages before a clip that repeat its first sentences — must be 0. */
   introRestates: number;
   /** Q-05: writer + verifier requests per act — ≤ 3 on a clean pass. */
@@ -835,6 +933,7 @@ export function buildVeracityMetrics(input: BuildVeracityMetricsInput): Veracity
     ? tapeRelevanceFromRows(input.tapeRelevanceRows)
     : computeTapeRelevance(input.sourcedActs, input.topic, input.root);
   const shares = computeListeningShares(input.sourcedActs, input.writtenActs);
+  const firstAttempt = computeFirstAttemptPassRates(input.writtenActs);
 
   return {
     groundedQuoteRate: grounded.rate,
@@ -844,7 +943,10 @@ export function buildVeracityMetrics(input: BuildVeracityMetricsInput): Veracity
     purposeFidelity: computePurposeFidelity(input.writtenActs),
     tapeRelevance: tape.rate,
     tapeRelevanceAnchors: tape.anchors,
-    firstAttemptPassRate: computeFirstAttemptPassRate(input.writtenActs),
+    firstAttemptPassRate: firstAttempt.unit === "beats" ? firstAttempt.beats : firstAttempt.unit === "pages" ? firstAttempt.pages : null,
+    firstAttemptUnit: firstAttempt.unit,
+    firstAttemptPassRatePages: firstAttempt.pages,
+    firstAttemptPassRateBeats: firstAttempt.beats,
     callsPerBeat: computeCallsPerBeat(input.sourcedActs, input.writerCalls, input.verifierCalls),
     narrationCallsPerBeat: computeNarrationCallsPerBeat(input.sourcedActs, input.writerCalls, input.verifierCalls),
     narrationCalls: { writer: input.writerCalls, verifier: input.verifierCalls },
@@ -858,8 +960,10 @@ export function buildVeracityMetrics(input: BuildVeracityMetricsInput): Veracity
     purposeRevisedPages: computePurposeRevisedPages(input.writtenActs),
     tapeCitedPages: computeTapeCitedPages(input.writtenActs),
     narrationPagesPerSeam: computeNarrationPagesPerSeam(input.sourcedActs, input.writtenActs),
-    narrationShare: shares.narrationShare,
-    tapeShare: shares.tapeShare,
+    narrationShare: shares.narrationOfTapePlusNarration,
+    tapeShare: shares.tapeOfTapePlusNarration,
+    tapeOfTapePlusNarration: shares.tapeOfTapePlusNarration,
+    narrationOfTapePlusNarration: shares.narrationOfTapePlusNarration,
     introRestates: computeIntroRestates(input.writtenActs),
     narrationCallsPerAct: computeNarrationCallsPerAct(input.sourcedActs, input.writerCalls, input.verifierCalls),
     pipelineTokens: input.pipelineTokens,
