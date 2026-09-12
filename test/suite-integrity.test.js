@@ -521,9 +521,18 @@ const FLOORS = {
      others kept the file's count up, which is precisely what a floor cannot
      see. */
   "test/show-search-live.test.js": 10,
-  "test/show-search-ranking.test.js": 9,
+  "test/show-search-ranking.test.js": 10, // S-06 (2026-09-12): +1 — `rankShows` orders without filtering, so a server's (or Apple's) answer is never discarded client-side; 9 -> 10
   "test/show-index.test.js": 11,
   "test/show-search-cache.test.js": 6,
+  /* S-06 (docs/search-plan.md): the CLIENT side of the Apple fall-through
+     gate and of breadth-show linkability. Floored separately from
+     show-search-live.test.js because it pins a different thing entirely —
+     that one is about WHEN work happens, this one is about whether we spend
+     somebody else's rate limit and whether a shared link resolves. The
+     server side is api/test/shows-search-apple.test.mjs, which is NOT
+     floorable here (api/ is not a SCANNED_DIR — it has its own required CI
+     job, see tools/ci/run-suites.mjs's header for why). */
+  "test/show-search-fallthrough.test.js": 7,
   /* U-05 (docs/ui-transition-plan.md, kanban t_53381ee4, resolves issue
      #135): the Playlists results section under Shows/Episodes on the Shows
      page, plus the "Create a playlist about X" CTA. Floored new rather than

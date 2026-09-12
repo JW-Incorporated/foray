@@ -367,6 +367,29 @@ artwork, no popularity, no chart rank.
 
 ### 3.3 Shows search — a local pass and a breadth pass
 
+> **SUPERSEDED IN PART, 2026-09-12 (PR #657 / the follow-up `api/**` PR,
+> `docs/search-plan.md` S-02/S-03/S-04/S-06).** The description below is kept
+> as the record of what shipped before the S-deck, because §6.2, §6.8 and
+> §6.11 all reason from it. What is now different:
+> 
+> - **There is a keystroke path.** `#sh-input`'s `input` event runs the local
+>   pass alone; the breadth pass, the episode pass and the playlist CTA all
+>   moved onto a **250 ms trailing debounce**. Enter and the Go button skip
+>   the debounce. Clearing the box restores the A-Z list.
+> - **The local pass is no longer 220 shows.** `data/show-index.tsv`
+>   (10,113 shows at the `chart_rank <= 100` cut) is fetched lazily on the
+>   first focus of the search box and searched by binary search on the
+>   keystroke; the linear scan runs only on the debounce tick and only when
+>   the prefix pass returned fewer than 10 hits.
+> - **The ranking rule is four buckets, not three** (exact > prefix >
+>   word-start > substring), with curated-before-breadth and a BUCKETED
+>   `chart_rank` prior. The server's rule in `searchBreadthShows.ts` was
+>   deliberately NOT mirrored — see `docs/DECISIONS.md` 2026-09-12.
+> - **The breadth pass is cached in memory** by normalized query, and falls
+>   through to Apple's directory server-side on a genuine miss, behind two
+>   independent gates.
+
+
 `app.js:renderShowSearchResults(query)` runs three sections against one query,
 all guarded by a single module-level `app.js:showSearchToken`.
 
@@ -802,7 +825,16 @@ shape F4(c) had.** Needs a production probe, then a one-line glob widening.
 function's comment says was written precisely because a fixed offset is not
 reliable across module transforms.
 
-### 6.2 F2 — the Shows search does not filter live as you type — RECORDED (feedback F2, unfiled)
+### 6.2 F2 — the Shows search does not filter live as you type — RESOLVED (PR #657, 2026-09-12)
+
+> **RESOLVED by `docs/search-plan.md` S-02 (PR #657, 2026-09-12).** The fix
+> took the shape F2's own note predicted — local pass on the keystroke,
+> 250 ms debounce for everything that costs something, reusing the show
+> page's existing `onSearchInputChange`/`runSearch` idiom rather than
+> inventing a second debounce. **The Go button survived** (§6.13 row 1, G2's
+> default): Enter still submits, the button still submits, neither is
+> required. The issue this section says is unfiled is filed as part of S-08.
+
 
 `app.js:renderAllShows` binds `#sh-form`'s `submit` only. F2's own note is
 correct about the shape of the fix: the local pass
@@ -887,7 +919,20 @@ root by expanding it the way `app.js:expandTaxonomyPick` already does (the
 taxonomy is capped at two levels, so one parent-lookup covers it). Nothing
 records the defect or the fix.
 
-### 6.8 A breadth show page is not linkable or reloadable — NOT RECORDED ANYWHERE
+### 6.8 A breadth show page is not linkable or reloadable — RESOLVED (the `api/**` PR, 2026-09-12)
+
+> **RESOLVED by `docs/search-plan.md` S-06(b).** Both halves of the fix this
+> section says do not exist now do: `GET /api/shows/search?id=<id>` returns
+> the single merged-catalogue row (a lookup over a per-instance id index,
+> not a scan), and `app.js:resolveMissingShow` seeds `breadthShowCache` from
+> it and re-renders. WHICH PATH ANSWERS: the loaded S-03 index when it is
+> already in memory (free, no network), the endpoint otherwise — fetching
+> 436 KB of index to render one show page would be a worse trade than one
+> row over the wire, and a cold open of a shared link is exactly when the
+> index is not loaded. A confirmed miss still renders "Show not found.",
+> and the endpoint answers it with a **200 and `show: null`** rather than a
+> 404, so the client can tell a real miss from a dead endpoint.
+
 
 `app.js:showById` resolves `state.catalog` then `state.breadthShowCache`, which
 is in-memory and populated **only** by a `renderShowSearchResults` response this
@@ -920,7 +965,22 @@ promotion mechanism. It is sequenced behind #275. Nothing has promoted a breadth
 show into `catalog.json` since; `data/catalog.json`'s last commit is #279's own
 seven drinks shows.
 
-### 6.11 The privacy policy's conditional does not match the code — NOT RECORDED ANYWHERE
+### 6.11 The privacy policy's conditional does not match the code — RESOLVED (PR #657, 2026-09-12)
+
+> **RESOLVED by `docs/search-plan.md` S-07, under G1's Option B ruling
+> (Wyatt, 2026-09-11, `docs/DECISIONS.md`).** The sentence lost its
+> condition; the code did not gain a local-hit branch. §2 now states
+> affirmatively that the lookup happens **whether or not** the show is
+> already on the device, that the typed text and nothing else is sent, that
+> it is debounced rather than per-keystroke, and that a repeat inside the
+> session is answered from memory. The analysis below is left intact because
+> it is the record of what was wrong and why the other option was rejected.
+> `test/release-gates.test.js` now pins the new contract from both sides:
+> `SHOWS_SEARCH_OFF_DEVICE = true` arms its AND-gate for real, and a new case
+> asserts the replacement sentence is **affirmative** rather than merely
+> absent — deleting a false promise without replacing it would have passed
+> the old check and told the reader nothing.
+
 
 `docs/legal/privacy-policy.md` §2, shipped:
 
@@ -958,9 +1018,21 @@ code grows the local-hit branch or the sentence loses its condition.
   undocumented contract.
 - **`data/discover.json` is over its documented soft cap.** 2,080 items against
   `docs/architecture-assessment.md` A26's "~2,000 items / 1.5 MB", at 2.41 MB.
-- **`api/shows/search`'s degraded path sets no `Cache-Control`.** Both other
-  endpoints set `no-store` on their degraded branches; this one sets nothing, so
-  an empty degraded response can be edge-cached under Vercel's default.
+- **`api/shows/search`'s degraded path sets no `Cache-Control`** — **FIXED**
+  (`docs/search-plan.md` S-05, 2026-09-12). It sets `no-store` now, matching
+  the other two endpoints, so a "the catalogue file is unreadable" answer can
+  no longer be edge-cached for five minutes. There are now TWO degraded
+  branches in that file (the search's and the `id` lookup's) and
+  `api/test/shows-search-apple.test.mjs` asserts the count as well as the
+  header, so a third one cannot appear without the header.
+- **The `stale-while-revalidate` directive that endpoint sets does not
+  arrive.** Measured three times independently (`docs/search-plan.md` §1.4,
+  §1.6, §1.7): the source sets
+  `public, max-age=300, stale-while-revalidate=3600` and the response as
+  received carries only `public, max-age=300`. S-05 deliberately did NOT add
+  an `s-maxage` to compensate — that would be a second unverified directive
+  beside the first — and wrote the finding into the source header instead,
+  pinned by a test. **Two decks already assumed this token was in effect.**
 - **`tools/build-catalog-client.mjs` runs in no workflow.** A `data/catalog.json`
   edit that skips the test suite ships a stale client catalogue.
 - **`data/shows-index-pointer.json` does not exist**, so
@@ -975,12 +1047,12 @@ code grows the local-hit branch or the sentence loses its condition.
 
 | # | Decision | Where it is parked |
 |---|---|---|
-| 1 | Does the Go button survive live filtering? | F2; product call, not technical |
+| 1 | ~~Does the Go button survive live filtering?~~ **ANSWERED** — it survives, as G2's default (PR #657): Enter submits, the button submits, neither is required | F2; `docs/search-plan.md` G2 |
 | 2 | Does a curated show get more than 2 taxonomy nodes, or a "general" marker the generators refuse to inherit? | #547's "What to fix" #2 |
 | 3 | Is English a catalogue-level filter or only a tape-level one? | `tools/shows/filter.mjs` gate G6; ADR-0008 says it is unsettled |
 | 4 | Which of the three tailnet options closes G7 for the corpus database? | `4a-shows-pipeline-plan.md` §9 |
 | 5 | Do breadth shows get subjects (from `breadth-classification.json` or `genre-taxonomy-map.json`), or stay lookup-only? | Nowhere — this document raises it (§6.4) |
-| 6 | Does the privacy policy lose its conditional, or does the code gain a local-hit branch? | Nowhere — this document raises it (§6.11) |
+| 6 | ~~Does the privacy policy lose its conditional, or does the code gain a local-hit branch?~~ **RULED by Wyatt 2026-09-11: the policy loses its conditional (Option B)** — shipped in PR #657 | `docs/DECISIONS.md` 2026-09-11; §6.11 |
 
 ---
 
@@ -1070,6 +1142,14 @@ code grows the local-hit branch or the sentence loses its condition.
 | Shows-search request limit | 25 | `app.js:renderShowSearchResults` |
 | Episode-search request limit | 10 (general), 25 (show-scoped) | `app.js` |
 | Show-page search debounce | 250 ms | `app.js:onSearchInputChange` |
+| Shows-page search debounce | 250 ms | `app.js:SHOW_SEARCH_DEBOUNCE_MS` |
+| Prefix-pass under-delivery threshold | 10 hits | `app.js:SHOW_PREFIX_UNDERDELIVERS_BELOW` |
+| Hot-query cache cap | 200 | `app.js:SHOW_BREADTH_CACHE_MAX` |
+| Show-index cut | `chart_rank <= 100` (10,113 shows) | `tools/build-show-index.mjs:BUILD_MAX_RANK` |
+| Show-index bundle budget | 512 KB raw | `tools/mobile/prepare-webdir.mjs:UNPINNED_DATA` |
+| Popularity prior bands | `<=10 / <=50 / <=200 / unranked` | `search-engine.js:SHOW_PRIOR_BANDS` |
+| Show-search Apple bucket / window | 20 / 60 000 (its own instance) | `api/shows/appleShowSearch.ts` |
+| Show-search Apple cache TTL | 1 h | `api/shows/appleShowSearch.ts` |
 | `DEFAULT_LIMIT` / hard cap | 25 / 100 | `searchBreadthShows.ts` / `api/shows/search.ts` |
 | `PAGE_SIZE` | 100 | `api/shows/[show_id]/episodes.ts` |
 | `MAX_RESULTS` | 25 | `api/episodes/search.ts` |

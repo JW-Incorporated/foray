@@ -2499,3 +2499,69 @@ lawyer's eye; it still is, and the policy is still marked DRAFT.
 **Wyatt updates the store listings' privacy copy himself** (the 2026-09-11
 ruling's own term). That is not something this repo can verify, so it is not
 claimed here as done.
+
+## 2026-09-12 (the Apple fall-through, and the two gates that keep it from firing)
+
+**Decision (S-06, `docs/search-plan.md`, the `api/**` PR):** when a show search
+finds nothing, `api/shows/search` asks Apple's public directory
+(`itunes.apple.com/search?entity=podcast`) **server-side**, reusing
+`api/episodes/appleBucket.ts`'s `SlidingWindowBucket` and
+`api/episodes/searchCache.ts`'s `TtlCache` — the same classes, new instances.
+
+**Server-side rather than client-side, argued rather than assumed.** A client
+call would need `https://itunes.apple.com` in `index.html`'s CSP `connect-src`,
+which names exactly three sources and is pinned by `test/api-origin.test.js`
+("the CSP names the API origin, and nothing wider"). `index.html` is UNLISTED
+in `tools/ci/path-policy.mjs`, so that would be a second human-merge file AND a
+loosened security pin, for a fallback. Server-side needs neither, and keeps the
+typed query going to one origin — which is also what
+`docs/legal/privacy-policy.md` §2 now describes.
+
+**TWO INDEPENDENT GATES, and neither is optional.** The client sets
+`fallthrough=1` only when its own local pass found nothing; the endpoint
+performs the call only when the full **19,904-row** merged catalogue also found
+nothing. The second gate exists because of the first's blind spot: the client's
+index is the `chart_rank <= 100` cut (10,113 rows), so "the client found
+nothing" is not "nobody has this show", and acting on the client's word alone
+would spend a 20/min budget on shows we already hold. The first gate exists
+because the second is not free: without it, every zero-hit query from any
+caller — including `tools/search-probe.mjs`'s three forced-MISS samples per
+run — would cost an Apple call.
+
+**A separate bucket instance, not the episode path's singleton.** The card says
+do not copy-paste a third rate limiter, and this does not — it imports the
+class and the constants. But sharing the *instance* would let a listener typing
+in the Shows box starve the Episodes section on the same page. The CAPACITY
+constant is shared, so "20/min" means one thing in this repo. The honest
+limitation is repeated rather than dropped: this is a best-effort
+**per-warm-instance** ceiling, not a global cap.
+
+**`artistName` is kept**, as `artist_name`. §1.1 measured that our own breadth
+catalogue has no author/artist/host field on any of its 19,787 rows — the
+harvester calls Apple's `lookup`, which returns it, and throws it away. This
+fall-through is therefore the only place in the product where the "titles AND
+authors" half of the Pocket Casts premise exists at all. The real fix is a
+re-harvest that keeps the field (`tools/harvest-catalog.mjs`, one line); that is
+not this card's.
+
+**A silent bug this card found in S-04's own code, recorded because the failure
+shape is the interesting part.** `runShowSearchCostly` re-ranked the merged list
+with `searchShows`, which both FILTERS and ranks — so any row whose title did
+not literally contain the typed string was dropped. Correct for the curated
+catalogue and the index, where a row is only in the list because its title
+matched; wrong for anything a SERVER chose. Apple matches fuzzily and on fields
+we do not have, so the entire fall-through answer was being discarded on
+arrival and the box said "No shows match" for a query Apple had just answered.
+`search-engine.js:rankShows` is the same comparator with the filter removed: an
+unmatched row sorts after every real match rather than being dropped. Found by
+a test, not by reading.
+
+**Linkability (#560 item 7, requirements §6.8):** `GET /api/shows/search?id=`
+returns one merged-catalogue row, and `app.js:resolveMissingShow` seeds
+`state.breadthShowCache` from it. An unknown id is a **200 with `show: null`**,
+not a 404 — `fetchApiJson` returns `null` for any non-ok response, so a 404
+would be indistinguishable from a dead endpoint, and those need different UI.
+Which path answers: the loaded S-03 index when it is already in memory, the
+endpoint otherwise; fetching 436 KB of index to render one show page would be a
+worse trade than one row over the wire, and a cold open of a shared link is
+exactly when the index is not loaded.

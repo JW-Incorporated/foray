@@ -1894,6 +1894,33 @@ function searchShows(query, shows) {
   return scored.map(s => s.show);
 }
 
+/** ORDERS an already-chosen set of shows. Never drops one.
+ *
+ *  THE DIFFERENCE FROM `searchShows` IS THE WHOLE POINT, and it was found by a
+ *  test rather than reasoned about: `searchShows` both filters and ranks, so
+ *  using it to re-rank a MERGED list silently discards any row whose title
+ *  does not literally contain the typed string. That is fine for the curated
+ *  catalogue and the index, where a row is only ever in the list because its
+ *  title matched — and wrong for anything that came back from a SERVER, which
+ *  chose those rows by its own rule. Apple's directory in particular matches
+ *  fuzzily and on fields we do not have (`artistName`), so re-filtering its
+ *  answer client-side would throw away exactly the results S-06's fall-through
+ *  went and asked for.
+ *
+ *  A row that does not match at all sorts into a bucket AFTER every real
+ *  match, rather than being dropped or promoted: the listener still sees the
+ *  obvious answers first, and the server's extra suggestions below them. */
+const SHOW_MATCH_UNMATCHED = SHOW_MATCH_SUBSTRING + 1;
+function rankShows(query, shows) {
+  const q = String(query || "").trim().toLowerCase();
+  const scored = (shows || []).map((show) => {
+    const { bucket } = q ? showMatchBucket(show?.title, q) : { bucket: SHOW_MATCH_NONE };
+    return { show, bucket: bucket === SHOW_MATCH_NONE ? SHOW_MATCH_UNMATCHED : bucket };
+  });
+  scored.sort(compareShowMatches);
+  return scored.map(s => s.show);
+}
+
 /* ---------- the client-side show index (S-03, docs/search-plan.md) ----------
 
    `data/show-index.tsv` is a title projection of the merged catalogue
@@ -2018,7 +2045,8 @@ const SearchEngine = {
      the scan pass on the debounce tick. */
   SHOW_MATCH_EXACT, SHOW_MATCH_PREFIX, SHOW_MATCH_WORD_START, SHOW_MATCH_SUBSTRING, SHOW_MATCH_NONE,
   SHOW_PRIOR_BANDS,
-  showMatchBucket, isBreadthShow, popularityBand, compareShowMatches,
+  SHOW_MATCH_UNMATCHED,
+  showMatchBucket, isBreadthShow, popularityBand, compareShowMatches, rankShows,
   parseShowIndex, showIndexLowerBound, prefixSearchShows, scanShowIndex,
 };
 

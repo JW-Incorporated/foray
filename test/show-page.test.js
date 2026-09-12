@@ -76,6 +76,19 @@ function mount({ seed = {}, boot = false } = {}) {
   const ctx = {
     console: { ...console, warn() {}, error() {} },
     fetch: (url) => {
+      /* S-06 (docs/search-plan.md): `renderShow`'s not-found path is no longer
+         synchronous. An id the curated catalogue does not hold is now asked of
+         `api/shows/search?id=`, because `state.breadthShowCache` is
+         session-only and every shared link, reload and restored tab used to
+         render "Show not found." for a perfectly real breadth show (#560 item
+         7). So this stub has to answer that one request, or a not-found test
+         would hang on "Loading show…" forever and pass or fail for the wrong
+         reason. `show: null` is the endpoint's honest "this id is in neither
+         catalogue" answer — a 200, deliberately, so the client can tell it
+         apart from a dead endpoint. */
+      if (String(url).includes("api/shows/search")) {
+        return Promise.resolve({ ok: true, status: 200, json: async () => ({ show: null, degraded: false }) });
+      }
       if (!boot) return new Promise(() => {});
       const file = path.join(ROOT, String(url));
       const ok = String(url).startsWith("data/") && fs.existsSync(file);
@@ -338,21 +351,37 @@ test("every discover-pool episode for the show renders as a playable ep-row", as
 /* 2. NOT-FOUND STATE                                                    */
 /* ==================================================================== */
 
-test("an unknown show_id renders 'Show not found', not a crash", () => {
+test("an unknown show_id renders 'Show not found', not a crash", async () => {
   /* Mirrors renderPlaylistDetail's existing "Playlist not found" guard —
      asserted with a synthetic pool so this test does not depend on the
      network/boot path at all.
 
+     ASYNC SINCE S-06 (docs/search-plan.md), and the change is the point: an
+     id the curated catalogue does not hold is no longer assumed unknown. It
+     is asked of `api/shows/search?id=` first, because `state.breadthShowCache`
+     is session-only and a shared link, a reload or a restored tab used to say
+     "Show not found." for a perfectly real breadth show (#560 item 7). So the
+     sequence is now loading -> confirmed miss -> not-found copy, and this test
+     asserts BOTH ends of it: the interim state must not already claim the show
+     is missing, and the final state must still be the honest empty one.
+
      MUTATION: remove the `if (!show)` guard from renderShow. This throws
-     (reading .title off null) instead of rendering the not-found copy, and
-     the test fails with an uncaught exception rather than a clean assertion. */
+     (reading .title off null) instead of rendering either state.
+     MUTATION 2: have `resolveMissingShow` render "Show not found." before the
+     lookup resolves. The interim assertion below goes red — and a listener
+     opening a valid shared link would see "not found" flash before their
+     show appeared. */
   const m = mount();
   m.state.catalog = { shows: [] };
   m.state.discover = { items: [] };
   m.state.taxonomy = { nodes: [] };
   m.state.session = { session_id: "s-1", builder: "test", episodes: {}, cards: [] };
+  m.ctx.location.hash = "#/show/this-show-does-not-exist";
 
   assert.doesNotThrow(() => m.ctx.renderShow("this-show-does-not-exist"));
+  assert.ok(!m.view().includes("Show not found"),
+    "the interim state must not claim the show is missing before the lookup answers");
+  await new Promise((r) => setTimeout(r, 0));
   const html = m.view();
   assert.ok(html.includes("Show not found"), `expected a not-found message, got: ${html}`);
   assert.strictEqual(rowCount(html), 0, "must render zero episode rows for an unknown show");
@@ -407,9 +436,14 @@ test("a curated-tier show with genuinely zero discover-pool episodes keeps its o
   assert.ok(!html.toLowerCase().includes("fetching"), "must not show the breadth-tier in-progress copy for a curated show");
 });
 
-test("route() dispatches #/show/:id to renderShow, matching the #/playlist/:id pattern", () => {
+test("route() dispatches #/show/:id to renderShow, matching the #/playlist/:id pattern", async () => {
   /* Pins the wiring itself, not just renderShow in isolation — a route()
      regex that stops matching would leave renderShow correct and unreachable.
+
+     ASYNC SINCE S-06: see the not-found test above for why the copy now
+     arrives one turn later. What this test is about is unchanged — that
+     route() reached renderShow at all — so it waits for the same turn rather
+     than asserting a different thing.
 
      MUTATION: delete the `#/show/` branch from route(). This test fails
      because renderHome (the fallback) runs instead and the view never
@@ -424,6 +458,7 @@ test("route() dispatches #/show/:id to renderShow, matching the #/playlist/:id p
 
   m.ctx.location.hash = "#/show/unknown-show";
   m.ctx.route();
+  await new Promise((r) => setTimeout(r, 0));
   assert.ok(m.view().includes("Show not found"), "route() must dispatch to renderShow for #/show/:id");
 });
 

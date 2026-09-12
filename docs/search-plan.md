@@ -681,7 +681,7 @@ prefix lists.
 - **Governance:** `search-engine.js` and `test/` auto-merge; the optional
   `backend/src/` mirror needs **G4**'s label.
 
-#### S-05 · Stop paying for the round trip: cache the hot queries, fix the degraded header — **S**
+#### S-05 · Stop paying for the round trip: cache the hot queries, fix the degraded header — **S** — **DONE** (client half #657, `api/**` half in the follow-up PR, 2026-09-12; a bounded in-memory `Map` in `buildPlaylist`'s `SEARCH_CACHE_MAX` idiom consulted before the debounced breadth pass, the degraded branch set to `no-store`, and the measured finding written into the source: the `stale-while-revalidate` the source sets does NOT arrive in the response — observed three times now, §1.4/§1.6/§1.7 — and no `s-maxage` was added to compensate, because that would be a second unverified directive beside the first. **The refusal held: no warm-up ping, no keep-warm cron**)
 
 - **Ask:** three small things, and one deliberate refusal.
   (1) **In-memory hot-query cache in the client.** `fetchApiJson` passes
@@ -720,7 +720,7 @@ prefix lists.
   unlisted → human merge (G3).** Batch it with S-06's `api/` change into one PR
   if the two land together.
 
-#### S-06 · Fall-through to Apple's directory, and a breadth show page that survives a reload — **L** — *design comment first*
+#### S-06 · Fall-through to Apple's directory, and a breadth show page that survives a reload — **L** — *design comment first* — **DONE** (the `api/**` PR, 2026-09-12; the design comment is at the top of `api/shows/appleShowSearch.ts`. Server-side, TWO independent gates — the client asks only when its own local pass found nothing, the endpoint calls only when the full 19,904 merged rows also found nothing — its own bucket instance so Shows cannot starve Episodes, `artistName` kept as the only author field in the product, and `?id=` + `resolveMissingShow` for linkability. **`api/test/vercel-bundle.test.mjs` needed no extension**: it was already rewritten to DISCOVER handlers and their whole import closure rather than the two hardcoded `TARGETS` the card describes — verified green over the new module)
 
 - **Ask:** two halves that share one endpoint change, which is why they share a
   card.
@@ -836,7 +836,7 @@ prefix lists.
 - **Governance:** `docs/legal/`, `app.js`, `test/` auto-merge.
   **`docs/DECISIONS.md` is DENIED → `founder-approved` (G4).**
 
-#### S-08 · Records, and the after numbers — **S**
+#### S-08 · Records, and the after numbers — **S** — **DONE** (#657 + the `api/**` PR, 2026-09-12; the after table is §1.7 above, beside §1.6's before table, and the probe was extended to measure the index's two passes separately. Requirements §3.3 superseded-in-part, §6.2 / §6.8 / §6.11 RESOLVED, §6.12's degraded-header bullet FIXED with the `stale-while-revalidate` finding added beside it, §6.13 rows 1 and 6 answered, §7.2's new constants. `docs/DECISIONS.md` carries four entries: the client index, the ranking rule and its deliberate client/server divergence, S-07's Option B, and the fall-through's two gates. **Still owed:** a probe run on the founder's device — every number in §1.6 and §1.7 is from this sandbox)
 
 - **Ask:** close the loop the way the other decks do.
   Re-run **S-01's probe** on the CI runner and paste the after table beside the
@@ -956,3 +956,46 @@ If only one card ships, ship that one.
   transmit. Changing that is a separate change behind a real consent gate and
   has to be argued on its own — which is exactly what that file's header already
   says about everything else in it.
+
+---
+
+## 8. Deck status (2026-09-12)
+
+Every card is **DONE**; each heading above names its PR. Two PRs rather than
+eight, split on GOVERNANCE rather than on card boundaries:
+
+| PR | Cards | Why together |
+|---|---|---|
+| **#657** | S-02, S-03, S-04, S-05 (client half), S-07 | All `ALLOWED_PREFIXES` except `docs/DECISIONS.md` (G4's label). S-03 and S-04 cannot sensibly be split — the ranking prior only exists in the index. |
+| **the `api/**` PR** (stacked on #657) | S-05 (`api/` half), S-06, S-08 | **`api/**` is UNLISTED in `tools/ci/path-policy.mjs` → a human merge click (G3), and no label helps.** Both `api/**` touches in this deck are batched into one PR so that is one click, not two — the deck's own "batch every unlisted touch into as few PRs as possible" rule. |
+
+**Gates as they stand:**
+
+- **G1** — RULED Option B, 2026-09-11. Shipped by S-07.
+- **G2** — not asked; the deck's stated default was taken (the button survives,
+  the requirement does not). A one-line follow-up if the founder wants it gone.
+- **G3** — **OPEN.** The `api/**` PR needs a human merge click.
+- **G4** — **OPEN.** `docs/DECISIONS.md` is touched by both PRs and needs the
+  `founder-approved` label. Batch with the R-deck's and L-deck's sittings.
+- **G5** — answered with measurements rather than by the founder: the full
+  19,904-row index is 398.4 KB gzipped against a 400 KB budget (a 0.4 % margin
+  the next harvest breaks) and would put the native bundle at 89 % of its 3 MB
+  cap, so the committed cut is `chart_rank <= 100`. Raising it is one flag and
+  a rebuild if he disagrees.
+
+**What this deck did NOT do, listed so nobody reads the DONE markers as more
+than they are:**
+
+- **No run on the founder's device.** Every number in §1.6 and §1.7 is from one
+  sandbox. S-01's acceptance line asked for a device run; the phone-side claims
+  in §1.3 remain **inferred**.
+- **No server-side ranking mirror.** `backend/src/catalog/searchBreadthShows.ts`
+  keeps the old three-bucket rule; the divergence is deliberate and is only
+  defensible while S-03 keeps the endpoint off the interactive path
+  (`docs/DECISIONS.md` 2026-09-12).
+- **No author index.** `tools/harvest-catalog.mjs` still discards `artistName`,
+  so the "titles *and authors*" half of the Pocket Casts premise exists only in
+  S-06's Apple fall-through. A re-harvest that keeps the field is one line and
+  is not this deck's.
+- **Nothing from §7's non-goals**: no restyling, no international catalogue, no
+  subjects for breadth shows, no semantic merge.
