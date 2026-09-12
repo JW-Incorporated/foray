@@ -54,6 +54,15 @@ export const REAL_DATA_SUITES: readonly string[] = [
   "player/foray-sources.test.js",
   "player/segment-strip.test.js",
   "test/draft-forays-switch.test.js",
+  /* Added 2026-09-12 with the suite itself. It renders every authored item of
+     every committed Foray through `forayRow` — the running order a listener
+     actually reads — so it is a CONSUMER check in exactly the sense this gate
+     exists for: the document can be valid while a row it produces is wrong.
+     Its real-data assertions are deliberately floors and scale-free
+     invariants ("a row links exactly when the show join answers", "no row ever
+     prints a curation code") rather than pinned counts, so a publish that adds
+     a Foray cannot go red for growing the corpus — only for breaking a row. */
+  "test/foray-row-links.test.js",
   "test/home-v2-real-data.test.js",
   "tools/mobile/shell-invariants.test.mjs",
   "tools/segments/merge-segments.test.mjs",

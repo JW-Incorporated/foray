@@ -443,13 +443,18 @@ test("the clamp threshold falls in an empty band of the committed transcript len
       if (typeof it.script === "string" && it.script.trim()) lengths.push(it.script.trim().length);
     }
   }
-  assert.equal(lengths.length, 157, "fixture assumption: 157 scripted narration items on main");
+  assert.ok(lengths.length >= 157, `only ${lengths.length} scripted narration items; 157 when this landed`);
   const below = Math.max(...lengths.filter((l) => l <= n));
   const above = Math.min(...lengths.filter((l) => l > n));
   assert.ok(Number.isFinite(below) && Number.isFinite(above),
     "a threshold that collapses everything or nothing is not a threshold");
-  assert.equal(below, 250, "fixture assumption: the longest never-collapsed script is a 250-char marker");
-  assert.equal(above, 305, "fixture assumption: the shortest collapsed script is a 305-char frame");
+  /* The clearance is asserted, NOT the two specific lengths (250 and 305 when
+     this landed). This suite is in `REAL_DATA_SUITES`, so it runs inside the
+     publish gate: pinning the extremes would refuse a publish merely for
+     adding a Foray whose longest marker is 240, which is not a defect. Pinning
+     the CLEARANCE refuses one only when new scripts crowd the threshold — and
+     then the number really is wrong, because a card would collapse to reveal
+     almost nothing, and re-deriving it is the right thing to be stopped for. */
   assert.ok(n - below >= 20 && above - n >= 20,
     `the threshold ${n} sits ${n - below} above the nearest short script and ${above - n} below the ` +
     "nearest long one — put it in the middle of the empty band, not at the edge of a cluster");
@@ -555,31 +560,50 @@ test("every tape beat of all four generated Forays links to a show page", async 
     for (const entry of resolve.hydrateForayItems(foray, { segments, sources }).items) {
       if (entry.type !== "segment") continue;
       const linked = ctx.forayRow({ ...entry, playable: true, queueIndex: 0 }).includes('href="#/show/');
+      /* THE SCALE-FREE INVARIANT, asserted on every beat of every Foray: a row
+         links exactly when the join answers, and never otherwise. This is the
+         assertion that cannot be broken by new data — only by a code
+         regression — and it is why the counts below are floors rather than
+         equalities. This suite is in `REAL_DATA_SUITES` and runs inside the
+         publish gate; a publish that adds a Foray drawing on a show outside
+         the curated 220 must NOT be refused, because plain text is the
+         designed degrade, not a defect. */
+      assert.equal(linked, ctx.forayShowId(entry) !== null,
+        `${foray.id}/${entry.ord} (${entry.source_id}): rendered link=${linked} but the join says ` +
+        `${ctx.forayShowId(entry)}`);
       if (!foray.generated) { curated++; if (linked) curatedLinked++; continue; }
       generated++;
       if (linked) generatedLinked++;
-      assert.equal(ctx.forayShowId(entry), entry.show_id,
-        `${foray.id}/${entry.ord} (${entry.source_id}) did not link by its own identifier`);
-      if (entry.show_id) byIdentifier++;
+      if (entry.show_id && ctx.showById(entry.show_id)) byIdentifier++;
     }
   }
-  assert.equal(generated, 48, "fixture assumption: 48 tape beats across the four generated Forays");
+  assert.ok(generated >= 48, `only ${generated} generated tape beats; 48 when this landed`);
   assert.equal(generatedLinked, generated,
     `${generated - generatedLinked} generated-Foray beats lost their show link`);
-  assert.equal(byIdentifier, generated, "every generated beat must resolve its show by identifier");
+  assert.ok(byIdentifier >= 48,
+    `only ${byIdentifier} generated beats resolved a show by IDENTIFIER; 48 did when this landed`);
   assert.ok(curatedLinked >= 9,
     `only ${curatedLinked} of ${curated} hand-curated beats link; 9 did when this landed`);
 });
 
-test("no committed Foray renders a curation code, an empty gutter or a sources heading", async () => {
-  /* The end-to-end degrade, over all 289 authored items on main rather than
-     over fixtures — because "it renders exactly as it did, only without the
-     gutter" is the acceptance condition for this card and for shipping the
-     citation renderer ahead of the pipeline that fills it.
+test("no committed Foray renders a curation code or an empty gutter", async () => {
+  /* The end-to-end proof, over every authored item on main (289 when this
+     landed) rather than over fixtures — because "it renders exactly as it did,
+     only without the gutter" is this card's acceptance condition.
 
-     MUTATION: any of the ones named above. This is the net they all fall into.
-     MUTATION 2: render `entry.label` anywhere in the row — `GRID-1` and
-     `SATAY-1` are real labels in data/forays.json and appear here. */
+     ONLY PERMANENT INVARIANTS ARE ASSERTED HERE, because this suite is in
+     `REAL_DATA_SUITES` and runs inside the publish gate. "The gutter is never
+     rendered" and "a curation code is never printed" stay true for any data a
+     publish can write. "No row draws a Sources block" does NOT: the moment a
+     generation run emits `cites`, drawing them is correct behaviour, and
+     asserting their absence here would refuse that publish for doing the right
+     thing. That degrade is proven against synthetic entries instead, in "a
+     narration beat with no citations renders exactly as it does today" above
+     and in `resolveCites`' own null cases.
+
+     MUTATION: render `entry.label` anywhere in the row — `GRID-1` and
+     `SATAY-1` are real labels in data/forays.json and appear here. MUTATION 2:
+     restore the `.fy-label` span to either branch of forayRow. */
   const { ctx, state } = mount();
   state.catalog = readJson("data/catalog.json");
   const resolve = await import("../player/foray-resolve.js");
@@ -593,14 +617,13 @@ test("no committed Foray renders a curation code, an empty gutter or a sources h
       if (entry.label) labelled++;
       const html = ctx.forayRow({ ...entry, playable: true, queueIndex: 0 });
       assert.ok(!html.includes("fy-label"), `${foray.id}/${entry.ord} still renders the gutter`);
-      assert.ok(!html.includes("fy-cites"), `${foray.id}/${entry.ord} drew a sources block with no cites`);
       if (entry.label) {
         assert.ok(!html.includes(entry.label),
           `${foray.id}/${entry.ord} still prints its curation code ${entry.label}`);
       }
     }
   }
-  assert.equal(rows, 289, "fixture assumption: 289 authored items across the eight committed Forays");
+  assert.ok(rows >= 289, `only ${rows} authored items reached the renderer; 289 when this landed`);
   assert.ok(labelled > 0,
     "no committed item carries a label any more — this test can no longer prove the code is hidden");
 });
