@@ -273,6 +273,40 @@ export const SHELL_FILES = [
 /** Never in the bundle, whatever else changes. See the header. */
 export const EXCLUDED_FROM_BUNDLE = ["sw.js"];
 
+/** Extensions that are a NEURAL MODEL, not a web asset (K-06,
+ *  `docs/bundled-voice-plan.md`).
+ *
+ *  WHY THIS IS ITS OWN GATE RATHER THAN "`MAX_BYTES` would have caught it".
+ *  `MAX_BYTES` is 3 MB and the Kokoro q8f16 weights are ~86 MB, so the cap
+ *  WOULD fire — with the message "the client started fetching something big",
+ *  which is the wrong diagnosis and sends the reader to `PROJECTED_DATA`. The
+ *  right answer is that a model is not a bundle-budget question at all: it is
+ *  a native resource fetched at build time by `tools/mobile/fetch-models.mjs`
+ *  against a pinned sha256, and it never passes through this directory. A
+ *  29× overshoot deserves a message that says so.
+ *
+ *  It also closes the hole the cap genuinely has: a SMALL model — one voice
+ *  style file is ~130 KB, and the deck's three voices are ~1.5 MB together —
+ *  fits under 3 MB and would ship silently into the web bundle, where it
+ *  would be re-downloaded by the website as well as the shell. */
+export const MODEL_EXTENSIONS = [".onnx", ".onnx_data", ".ort", ".gguf", ".safetensors", ".bin", ".pt", ".npz"];
+
+/** Throw if anything model-shaped reached the bundle. `files` is the
+ *  `{ rel, bytes }` list `prepareWebDir` builds; exported so the suite can
+ *  drive it without writing 86 MB to a temp directory. */
+export function assertNoModelWeights(files = []) {
+  const offenders = files.filter((f) =>
+    MODEL_EXTENSIONS.some((ext) => String(f.rel || "").toLowerCase().endsWith(ext)));
+  if (offenders.length === 0) return;
+  throw new Error(
+    `A neural model reached the web bundle: ${offenders.map((f) => f.rel).join(", ")}.\n` +
+      `Model weights are NEVER copied here. The web bundle's cap is ${fmt(MAX_BYTES)} and ` +
+      `Kokoro's q8f16 weights alone are ~86 MB — 29x over — so this is not a budget to raise. ` +
+      `Weights are fetched at build time into the NATIVE bundle by ` +
+      `tools/mobile/fetch-models.mjs against a pinned sha256 (docs/bundled-voice-plan.md K-06).`
+  );
+}
+
 /** Files that ship ONLY inside the native shell, with where each one lands.
  *
  *  `src` is repo-relative; `dest` is relative to the bundle root, and it is the
@@ -310,6 +344,21 @@ export const SHELL_ONLY_FILES = [
     src: "mobile/plugins/foray-tts/web/foray-tts.js",
     dest: "foray-tts.js",
     module: true,
+  },
+  /* K-01's measurement passage (docs/bundled-voice-plan.md). NOT a script —
+     `shellScriptTags` filters this list to `.js`, so this entry is copied and
+     never injected — and it is here rather than fetched from `tools/` because
+     the bundle root IS the app's origin root: nothing under `tools/` exists
+     inside the shell, so a probe that fetched its own passage from the repo
+     path would 404 on the one host the measurement has to run on.
+
+     ~1.6 KB, which is the whole of this card's bundle cost. THE MODEL IS NOT
+     HERE AND MUST NEVER BE — see `assertNoModelWeights` above: 86 MB of
+     Kokoro weights against a 3 MB cap is not a budget conversation, it is a
+     different delivery mechanism (`tools/mobile/fetch-models.mjs`, K-06). */
+  {
+    src: "tools/mobile/kokoro-probe-passage.json",
+    dest: "kokoro-probe-passage.json",
   },
 ];
 
@@ -1743,6 +1792,10 @@ export function prepare({
       throw new Error(`${bad} ended up in the bundle. See the header.`);
     }
   }
+  /* K-06. After the cap, not before: when a 86 MB model IS present both fire,
+     and the one that should be read is this one — it names the mechanism, not
+     the number. */
+  assertNoModelWeights(files);
 
   return { out, absOut, files, total, maxBytes };
 }

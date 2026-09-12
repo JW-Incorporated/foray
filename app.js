@@ -4507,6 +4507,36 @@ function unlockedForays() {
    as the `showDrafts` OPTION every visibility call below passes. */
 function showDraftsOn() { return lsGet("cp_show_drafts", false); }
 
+/* ---------- K-01: the founder's voice-engine probe switch ----------
+
+   `docs/bundled-voice-plan.md` K-01 asks for the measurement to reach a phone
+   behind the same unlock discipline HUMAN-ACTIONS.md #29 used — a hidden
+   affordance, not a product feature. That instrument itself is gone (D-01
+   deleted it, and `test/release-gates.test.js` keeps it deleted by name, so
+   nothing here reuses its identifiers). On `main` today the shape that
+   discipline has taken is `showDraftsOn` directly above: a `cp_` key, off by
+   default, a
+   drawer toggle that reads `<thing>: on|off`, and NOTHING RENDERED AT ALL
+   while it is off. This follows it exactly rather than inventing a second
+   idiom for the same job — there is one founder, and two ways of hiding a
+   founder switch is one too many to explain over a phone.
+
+   WHY A SWITCH AND THEN A BUTTON, rather than one button. The probe is a
+   90-second synthesis loop that pins a CPU; a stray tap on it during a drive
+   is a measurement nobody asked for and a battery reading nobody can use. The
+   switch is the deliberate act; the button is the run. When the switch is off
+   the run button is not merely disabled — it is not in the DOM, so the drawer
+   is byte-identical to what shipped before this card (the same claim
+   `test/draft-forays-switch.test.js` makes about its own switch, and
+   `test/voice-probe-switch.test.js` makes here).
+
+   `cp_voice_probe` goes through lsGet/lsSet like every other `cp_` key, has
+   its row in `docs/legal/privacy-policy.md` §1, is counted by
+   `test/data-deletion.test.js`, and is wiped by "Delete my data". `player/`
+   never reads it — `ForayPlayer.runVoiceProbe()` takes no flag, because the
+   decision of whether to offer the run belongs to the page. */
+function voiceProbeOn() { return lsGet("cp_voice_probe", false); }
+
 /** The visibility options every Foray surface hands the bridge: the `?foray=`
     unlock AND the switch, together, so no call site can pass one and forget
     the other. */
@@ -6014,6 +6044,10 @@ function renderDrawer() {
   if (draftsBtn) draftsBtn.textContent = `Show draft Forays: ${showDraftsOn() ? "on" : "off"}`;
   const ui2Btn = $("#ui2-toggle");
   if (ui2Btn) ui2Btn.textContent = `New look (preview): ${ui2On() ? "on" : "off"}`;
+  /* K-01: the toggle's own label AND whether the run button exists at all —
+     one call, because the two answers come from one key and painting them
+     apart is how a stale control survives a flip. */
+  syncVoiceProbeRun();
 }
 
 function openDrawer(open) {
@@ -6128,6 +6162,89 @@ function bindDraftsControl() {
     renderDrawer();
     renderCurrentPage();
   });
+}
+
+/** K-01's switch and its run button (see § voiceProbeOn). The toggle is always
+    in the drawer, in the shape of `#drafts-toggle`; the RUN button exists only
+    while the toggle is on, and `renderDrawer` adds/removes it on every open so
+    a switch flipped on one screen cannot leave a stale control on another.
+
+    APPENDED/REMOVED RATHER THAN `hidden`-TOGGLED, the rule `renderTabBar`'s own
+    comment states and `test/home-layout.test.js`'s BUG 3 established: any
+    author `display` declaration beats the UA stylesheet's `[hidden]` rule, so
+    a `hidden` control here would reappear the first time somebody gave
+    `.drawer-item` a `display`. */
+function bindVoiceProbeControl() {
+  const drawer = $("#drawer");
+  if (!drawer || $("#voice-probe-toggle")) return;
+  const btn = ddEl("button", "drawer-item as-btn", "");
+  btn.type = "button";
+  btn.id = "voice-probe-toggle";
+  drawer.appendChild(btn);
+  btn.addEventListener("click", () => {
+    lsSet("cp_voice_probe", !voiceProbeOn());
+    renderDrawer();
+  });
+}
+
+/** The run control, created on demand by `renderDrawer`. Returns nothing; the
+    element is found by id like every other drawer control. */
+function syncVoiceProbeRun() {
+  const drawer = $("#drawer");
+  if (!drawer) return;
+  const toggle = $("#voice-probe-toggle");
+  if (toggle) toggle.textContent = `Voice engine probe: ${voiceProbeOn() ? "on" : "off"}`;
+  const existing = $("#voice-probe-run");
+  if (!voiceProbeOn()) {
+    if (existing) existing.remove();
+    return;
+  }
+  if (existing) return;
+  const run = ddEl("button", "drawer-item as-btn", "Run the voice engine probe");
+  run.type = "button";
+  run.id = "voice-probe-run";
+  /* Immediately after the toggle, not at the end of the drawer: "Delete my
+     data" is the last item by the rule `bindDeleteControl` states, and a
+     control that appears BELOW it would be the one a scrolled thumb lands on
+     instead. */
+  if (toggle && toggle.parentNode) toggle.parentNode.insertBefore(run, toggle.nextSibling);
+  else drawer.appendChild(run);
+  run.addEventListener("click", () => runVoiceProbe());
+}
+
+/** Run the probe and show its numbers where the founder can copy them: the
+    Playback-diagnostics sheet, which is already the one copyable surface on
+    the phone (HUMAN-ACTIONS.md #21). The record is written into `cp_diag` by
+    `ForayPlayer.runVoiceProbe()` itself, so the sheet's own refresh picks it
+    up — this function opens the sheet and paints the human-readable summary
+    into its status line so the answer is legible before anyone scrolls.
+
+    GUARDED THE SAME WAY EVERY FORAY TAP IS (#225): a rejected promise here
+    must not become a console line nobody has open. */
+async function runVoiceProbe() {
+  const player = window.ForayPlayer;
+  const ui = diagSheet();
+  openDiagSheet();
+  ui.status.textContent = "Running the voice probe — this takes about 90 seconds.";
+  if (!player || typeof player.runVoiceProbe !== "function") {
+    ui.status.textContent = "The player module has not loaded on this page, so the probe cannot run.";
+    return null;
+  }
+  try {
+    const record = await player.runVoiceProbe();
+    refreshDiagSheet();
+    const out = typeof player.formatVoiceProbe === "function"
+      ? player.formatVoiceProbe(record)
+      : { text: "", verdict: { go: false, failures: ["no verdict available"] } };
+    ui.status.textContent = record && record.ok
+      ? `${out.text}\n  go/no-go: ${out.verdict.go ? "GO" : `NO — ${out.verdict.failures.join("; ")}`}`
+      : `The probe could not measure anything: ${record && record.reason ? record.reason : "unknown"}. `
+        + `The record above says the same thing — copy it.`;
+    return record;
+  } catch (_) {
+    ui.status.textContent = "The probe failed to run. Copy the record above and say what build this is.";
+    return null;
+  }
 }
 
 /** CUTOVER (U-11, founder override 2026-09-06): the flag has no off state
@@ -7740,6 +7857,12 @@ async function init() {
   /* "Show draft Forays" — the founder's test track, with the other settings
      toggles and above the diagnostic/destructive controls. */
   bindDraftsControl();
+  /* K-01's measurement switch, with the other founder switches and above the
+     diagnostic/destructive controls — its run button writes into the field
+     record below it, so it has to be bound before that surface exists only in
+     the sense that both must exist; the order here is the drawer's reading
+     order, not a dependency. */
+  bindVoiceProbeControl();
   /* The field record's surface (#264), appended for the same reason as the
      control below it and deliberately ABOVE it: "Delete my data" must stay the
      drawer's last item, because it is the one control in there that cannot be

@@ -224,6 +224,66 @@ work, gated on the fixture below actually passing on real devices. What changed 
 narrower: a Foray whose data already carries a narration `script` is now spoken by
 the player instead of failing to load.
 
+## K-01: the bundled-voice probe (`kokoroProbe`)
+
+`docs/bundled-voice-plan.md` K-01 — a **throwaway measurement path, not a product
+feature**, deleted in K-04's cutover. It answers one question: can this phone
+synthesize Kokoro fast enough, in little enough memory, with the screen locked.
+
+**It is a separate call from `speak()`, and that is a safety decision rather than
+a stylistic one.** `speak()`'s documented contract is a ladder — native, then Web
+Speech, then an honest refusal — which is right for narration and catastrophic for
+a measurement: a probe that fell down that ladder would time the *system* voice and
+report it as a Kokoro number. So `kokoroProbe()` has no ladder under it, no Web
+Speech path, and exactly one answer when nothing is there: `ok: false` with a
+reason. **`speak()` is untouched by this card** — narration is spoken exactly as it
+was before it.
+
+### The shape
+
+```js
+const out = await kokoroProbe({ passage });   // the parsed kokoro-probe-passage.json
+// { ok: true,  path: "native", model, provider, modelLoadColdMs, modelLoadWarmMs,
+//   synthColdMs, synthWarmMs, peakMemoryBytes, availableMemoryBytes,
+//   lockedScreenCompleted, lines }
+// { ok: false, path: "native", reason: "model-absent" | "engine-absent" | ... }
+```
+
+`player/kokoro-probe.js` owns the arithmetic (RTF, megabytes, the go/no-go rule);
+this plugin owns only the transport and the readings. The reason codes are a closed
+set shared with that file's `PROBE_REASONS` — a code invented on one side and not
+the other degrades to `refused`, which loses the diagnosis.
+
+### It is inert on every build that ships today, in four independent ways
+
+1. **No ONNX Runtime dependency.** Neither `Package.swift` nor `android/build.gradle`
+   names it. That is a ~16 MB binary dependency whose build nobody in this repository
+   can verify — this plugin is compiled only by `ios-build.yml` / `android-release.yml`
+   — so adding an unbuilt dependency for a card whose own gate is a founder's phone
+   would risk those jobs for no measurement gained. K-04 adds it.
+2. **No weights.** `tools/mobile/fetch-models.mjs` pins them; the build step that
+   calls it is `.github/` and waits on the founder label (deck H3). Absent weights
+   answer `model-absent`.
+3. **An empty engine seam.** `ForayTtsPlugin.probeEngine` (Swift) and
+   `ForayTtsPlugin.probeEngine` (Java) are `nil`/`null`; K-04 fills them. Absent
+   engine answers `engine-absent`.
+4. **An unphonemized passage.** `tools/mobile/kokoro-probe-passage.json` carries
+   `ids: null` on every line, because nothing in this repository can run misaki.
+   That answers `passage-unphonemized`, and the page refuses before the bridge is
+   even touched.
+
+**None of the four reports a zero.** A probe that answered "RTF 0.00, peak 0 MB,
+locked screen fine" because nothing ran would be worse than one that refuses: the
+first gets pasted into a decision.
+
+### Reaching it from a phone
+
+Settings → **Voice engine probe: on** → **Run the voice engine probe**. Off by
+default, and while it is off the run control is not in the DOM at all — the same
+idiom `app.js`'s "Show draft Forays" switch uses. The numbers land in the
+Playback-diagnostics record as a `voiceProbe` row, which is the surface a founder
+already knows how to copy out. The instruction is `HUMAN-ACTIONS.md` #45.
+
 ## What was NOT verified, stated plainly
 
 Same honesty standard `docs/mobile-shell.md`'s own "launched on Android: No"

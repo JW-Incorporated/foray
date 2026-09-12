@@ -906,6 +906,43 @@ export class PlayerDiagnostics {
    * state here, not an error, matching this record's "absence is a real
    * state" rule everywhere else.
    */
+  /**
+   * K-01's voice-engine measurement, as one row in the record
+   * (`docs/bundled-voice-plan.md` K-01; `player/kokoro-probe.js` owns the
+   * arithmetic that produced it).
+   *
+   * IT GOES IN THE RING RATHER THAN ON A SCREEN OF ITS OWN, and that is the
+   * whole reason the card names this surface: the founder already knows how
+   * to copy this record out (HUMAN-ACTIONS.md #21), and a second copyable
+   * surface would be a second thing to explain over a phone. It is also why
+   * the row survives a backgrounded app — `DiagnosticLog` is durable on
+   * write, so a probe run with the screen locked is still readable after.
+   *
+   * THE FIELDS ARE TAKEN, NOT SPREAD. `kokoro-probe.js` already flattened the
+   * native payload once; naming the fields again here is what stops a future
+   * native addition from silently entering a ring that re-serialises itself
+   * on every one of its next 200 writes (see this file's cost note).
+   */
+  voiceProbe(record = {}) {
+    const num = (v) => (Number.isFinite(v) ? v : null);
+    return this.log.record("voiceProbe", {
+      engine: typeof record.engine === "string" ? record.engine : null,
+      probeOk: record.ok === true,
+      reason: typeof record.reason === "string" ? record.reason : null,
+      provider: typeof record.provider === "string" ? record.provider : null,
+      model: typeof record.model === "string" ? record.model : null,
+      loadColdMs: num(record.modelLoadColdMs),
+      loadWarmMs: num(record.modelLoadWarmMs),
+      rtfCold: num(record.rtfCold),
+      rtfWarm: num(record.rtfWarm),
+      audioSec: num(record.audioSec),
+      peakMemoryMb: num(record.peakMemoryMb),
+      lockedOk: record.lockedScreenCompleted === true,
+      batteryPct: num(record.batteryDeltaPct),
+      hidden: this._isHidden(),
+    });
+  }
+
   search({
     qLen = null, localMs = null, localHits = null,
     netMs = null, netHits = null, paintedMs = null, path = null,
@@ -1144,6 +1181,24 @@ function lineFor(e) {
     /* `over Ns` is not decoration: `x50` alone cannot separate a hand mashing a
        dead button from a listener coming back to it across five minutes, and those
        are different bugs. */
+    /* K-01. ONE LINE, and it has to survive being read aloud over a phone:
+       `voiceProbe kokoro-probe rtf cold 0.94 warm 0.61  load 1840/120ms
+       peak 312MB  locked=y  batt −3%  over 76.5s`. A refusal prints its code
+       and nothing else — the fields are all null on that path and printing
+       seven dashes would bury the one thing that matters, which is WHY. */
+    case "voiceProbe": {
+      if (e.probeOk !== true) {
+        return `${head} ${e.engine ?? "?"} could not measure: ${e.reason ?? "unknown"}`;
+      }
+      const f2 = (v) => (Number.isFinite(v) ? v.toFixed(2) : "—");
+      return `${head} ${e.engine ?? "?"}${e.provider ? `/${e.provider}` : ""}` +
+        `  rtf cold ${f2(e.rtfCold)} warm ${f2(e.rtfWarm)}` +
+        `  load ${ms(e.loadColdMs)}/${ms(e.loadWarmMs)}` +
+        `  peak ${e.peakMemoryMb == null ? "—" : `${e.peakMemoryMb}MB`}` +
+        `  locked=${e.lockedOk ? "y" : "n"}` +
+        `  batt ${e.batteryPct == null ? "—" : `${e.batteryPct}%`}` +
+        `  over ${e.audioSec == null ? "—" : `${e.audioSec.toFixed(1)}s`}`;
+    }
     case "tapFail":
       return `${head} ${e.phase ?? "?"} failed  error=${e.error ?? "none"}` +
         (e.repeated > 1 ? `  x${e.repeated}` : "") +

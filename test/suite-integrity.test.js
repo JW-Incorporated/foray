@@ -92,7 +92,7 @@ const FLOORS = {
   /* 50 -> 55 with S-01 (docs/search-plan.md, kanban t_46366383): a new
      `search` entry kind on PlayerDiagnostics — query length only, never the
      query text, per this suite's own §7. */
-  "player/diagnostic-log.test.js": 57, // FD-01 (2026-09-10): the `data` entry's vocabulary and its line; 55 -> 57
+  "player/diagnostic-log.test.js": 61, // K-01 (2026-09-12): the voiceProbe row — named fields only, null-not-zero on a refusal, and both report lines; 57 -> 61 // FD-01 (2026-09-10): the `data` entry's vocabulary and its line; 55 -> 57
   "player/diagnostic-record.test.js": 23,
   "player/episode-link.test.js": 6,
   /* The durable store (#40). Both of these guard against silent DATA LOSS
@@ -218,7 +218,16 @@ const FLOORS = {
      one non-obvious case is a SHELL BUILT BEFORE IT EXISTED -- the bundle holds a
      flattened build-time copy of `foray-tts.js`, so "the module loaded but has
      no such method" is a real state and not defensiveness. */
-  "player/tts-bridge.test.js": 20,
+  /* K-01's instrument (docs/bundled-voice-plan.md). The one property that makes
+     a measurement worth having: it never reports a number it did not measure.
+     Zero slack, and the reason is specific to this suite — most of its tests
+     kill a mutation of the form "a guard replaced by a default that looks like
+     a pass" (RTF 0 instead of null, an unmeasured ceiling treated as met, a
+     native answer with no  read as success). A record that says "RTF 0.00,
+     locked screen fine" because nothing ran is a record that gets pasted into a
+     decision, and every one of those tests is one edit from allowing it. */
+  "player/kokoro-probe.test.js": 29,
+  "player/tts-bridge.test.js": 24, // K-01 (2026-09-12): the kokoroProbe delegate — one memoised load, an older shell build, and the shared-instance pin; 20 -> 24
   /* The app's name on the surfaces users read (#302), 6 -> 8 when the two
      published legal documents were added, 8 -> 21 when the shipped UI copy that
      suite had only RECORDED as a known gap was renamed and pinned -- twenty
@@ -294,6 +303,12 @@ const FLOORS = {
      toggle re-renders without closing the drawer. Eight mutations named in the
      header, each run and seen red. Zero slack: the OFF half is the visitor
      rule's promise, and every one of these is one edit from its opposite. */
+  /* K-01's founder switch, the drawer half. Same shape as the drafts switch
+     directly below and floored for the same reason: the OFF half is a promise
+     that a listener's drawer is byte-identical to one with no switch in it, and
+     the ON half is a 90-second CPU burn behind two deliberate taps. Both are one
+     edit from their opposite. */
+  "test/voice-probe-switch.test.js": 14,
   "test/draft-forays-switch.test.js": 10,
   /* The standing gate on topic ids in `data/*.json`. Floored because the metric
      it protects is gameable in exactly one direction: a misspelled `food/bakin`
@@ -332,7 +347,7 @@ const FLOORS = {
      app.js and data/ for the diagnostic Foray instrument's three identifying
      strings (HUMAN-ACTIONS.md #29) so it cannot silently come back into a
      release build once deleted. */
-  "test/release-gates.test.js": 6,
+  "test/release-gates.test.js": 13, // K-06 (2026-09-12): the espeak licence gate, the model pin table, the notices file and the 150 MB app-size ceiling; 6 -> 13
   /* The shared search matcher (#218/#219). Floored because both of the things it
      pins are invisible when they break. Loosening the prefix guard buys recall
      and reintroduces a documented collision flood that only the ~170-second
@@ -765,7 +780,7 @@ const FLOORS = {
      D3's (1) went with their rules; the pair clause gained six (reported on
      pre-Q-01 tape, gated on a Q-01 Foray, the CLI exit, the row fields, the
      IQR still reported, the helper) and M4's restatement three. */
-  "tools/foray/check-forays.test.mjs": 129,
+  "tools/foray/check-forays.test.mjs": 140, // K-02 (2026-09-12): the phoneme rules — inert on every legacy item, red when one lexicon override is dropped; 129 -> 140
   /* G-21c fixture-before-emit (F-89). Seven DECLARATIONS, not seven tests: two
      of them sit inside a loop over `ACCEPTED_SHAPES` and expand to one test per
      accepted value (~30 today), so the floor is the count of `test(` lines this
@@ -861,7 +876,7 @@ const FLOORS = {
 
      `shell-invariants` gained one: the same slice against TODAY'S real documents,
      independently of the fixture suite. */
-  "tools/mobile/prepare-webdir.test.mjs": 77, // FD-04 (2026-09-10): the seed is a subset of the directory's files; the seed pointer is optional; 72 -> 74. F-92 (2026-09-12): the seed leaves generated drafts to the directory — the rule on the fixture, the verifier as a reached guard, and the real repo's draft absent from the real bundle; 74 -> 77
+  "tools/mobile/prepare-webdir.test.mjs": 81, // FD-04 (2026-09-10): the seed is a subset of the directory's files; the seed pointer is optional; 72 -> 74. F-92 (2026-09-12): the seed leaves generated drafts to the directory — the rule on the fixture, the verifier as a reached guard, and the real repo's draft absent from the real bundle; 74 -> 77. K-01/K-06 (2026-09-12): the probe passage ships into the shell and a model never does; 77 -> 81
   "tools/mobile/shell-invariants.test.mjs": 53, // +1: iOS plugin never calls setActive (F11/F13, 2026-09-09); +1: Swift writes the L-02 log needle (2026-09-10)
   /* 2026-09-04: the bundle's JS/CSS is minified (comments + whitespace, identifiers
      kept) and its JSON re-serialised on the way in — docs/mobile-shell.md §3.4.
@@ -889,7 +904,12 @@ const FLOORS = {
      Speech fallback applies one, that a voice which is not installed is REPORTED
      rather than silently substituted, and that `listVoices()` answers on every
      path without throwing. */
-  "tools/mobile/foray-tts.test.mjs": 45,
+  /* K-06's model pins. What stands between "the upstream repository re-uploaded
+     this file" and "our app executes whatever is now at that URL" is one hash
+     comparison, and the load-bearing test here is that an UNPINNED entry never
+     verifies however right the bytes are. Zero slack. */
+  "tools/mobile/fetch-models.test.mjs": 16,
+  "tools/mobile/foray-tts.test.mjs": 52, // K-01 (2026-09-12): the probe is a SEPARATE call with no Web Speech ladder under it; 45 -> 52
   /* The foreground service's web half (#27's Android half, on #37). Zero slack, and
      for the reason `media-session.test.js` above gives: what this suite guards is
      mostly a set of single-line edits away from their opposites, on a surface nobody
@@ -1063,6 +1083,20 @@ const FLOORS = {
      appears in EXACTLY ONE `.github` file (the android-bundle composite that
      `release.yml` calls), and the workflow's own header says so. A second path
      to a store is the drift that produced the R-01 TestFlight flood. */
+  /* K-02 and K-03 (docs/bundled-voice-plan.md): the two stages that run on OUR
+     machines and never on a phone. Both suites drive the real Python through
+     the real interpreter, because "test the Python by running it" and "test
+     nothing" were the only honest options in a Node-only test tree.
+
+     THE FLOOR IS PROTECTING THE REFUSALS more than the arithmetic. misaki is
+     not installed here or on CI, so most of what these two files pin is that a
+     missing backend produces a non-zero exit and a command that fixes it —
+     never a phoneme string nobody produced, never an audition clip a founder
+     could not tell from a real one. Those are the tests somebody deleting "the
+     ones that only test the failure path" would take first, and they are the
+     reason this card is not a way to publish a mispronounced Foray. */
+  "tools/narration/phonemize.test.mjs": 13,
+  "tools/narration/render-audition.test.mjs": 12,
   "tools/mobile/android-workflow.test.mjs": 62,
   /* Wiring the signing config into a project nobody commits. ZERO SLACK.
      `mobile/android/` is regenerated on every build, so the only evidence the
@@ -1460,6 +1494,14 @@ const BACKEND_FLOORS = {
   /* Anthropic provider error-path coverage (kanban card t_550d289f): the
      shared parseWithRetry/parseLastJsonBlock helper extracted from the 5
      real Anthropic provider classes' identical private copies. */
+  /* K-02 (docs/bundled-voice-plan.md): the phonemize stage. The property this
+     floor protects is not the arithmetic — it is that a Foray PUBLISHES whether
+     or not the phonemizer worked. The bundled voice is an upgrade to how
+     narration sounds, not a new way for generation to fail, and half this suite
+     is mutations of exactly that: a throwing subprocess, a half-answer with no
+     vocab, a missing interpreter. Delete those and a missing system package
+     takes down a written Foray after the writer has spent its tokens. */
+  "test/phonemize.test.ts": 12,
   "test/parseWithRetry.test.ts": 17,
   "test/parser.test.ts": 29,
   "test/personas.test.ts": 6,

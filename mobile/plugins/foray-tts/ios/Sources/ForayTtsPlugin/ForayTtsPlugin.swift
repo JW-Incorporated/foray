@@ -1,6 +1,33 @@
 import Foundation
 import AVFAudio
 import Capacitor
+import UIKit
+import os
+
+/// K-01's engine seam (`docs/bundled-voice-plan.md`). AT FILE SCOPE and not
+/// nested in `ForayTtsPlugin`, because Swift does not allow a protocol inside
+/// another declaration — a nested one does not compile, and this file is folded
+/// into every generated iOS project by `cap sync`, so it has to build.
+///
+/// What K-01 needs from a runtime, and nothing more: hand it phoneme ids, get
+/// back how long synthesis took and how much audio came out. Deliberately NOT
+/// `speak`-shaped — the probe never plays through the narration path, so an
+/// engine implementing this cannot accidentally become the way narration is
+/// spoken. K-04 promotes it explicitly, or not at all.
+public protocol KokoroProbeEngine {
+    /// The model identifier this engine loaded, for the record.
+    var modelName: String { get }
+    /// The ONNX execution provider actually in use (`cpu`, `coreml`).
+    var provider: String { get }
+    /// Milliseconds to load the model: first ever, and again once warm. Deck
+    /// §5 item 6 says cold start is 1–3 s and the mitigation is loading at app
+    /// start — which only matters if the warm figure is small, so both are
+    /// reported rather than one.
+    func load() -> (coldMs: Double, warmMs: Double)
+    /// Synthesize one line from its phoneme ids. Returns synthesis wall time
+    /// and the seconds of audio produced.
+    func synthesize(ids: [Int], speed: Double) -> (synthMs: Double, audioSec: Double)
+}
 
 /// The bridge half of `foray-tts` on iOS: wraps `AVSpeechSynthesizer` /
 /// `AVSpeechUtterance`, and is the one place in this repo that calls
@@ -29,7 +56,8 @@ public class ForayTtsPlugin: CAPPlugin, CAPBridgedPlugin, AVSpeechSynthesizerDel
     public let pluginMethods: [CAPPluginMethod] = [
         CAPPluginMethod(name: "speak", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "state", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "listVoices", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "listVoices", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "kokoroProbe", returnType: CAPPluginReturnPromise)
     ]
 
     /// §7 item 3 (L-03, `generation-architecture.md` §7 item 3): the event
@@ -570,5 +598,157 @@ public class ForayTtsPlugin: CAPPlugin, CAPBridgedPlugin, AVSpeechSynthesizerDel
         result["speaking"] = synthesizer.isSpeaking
         result["paused"] = synthesizer.isPaused
         call.resolve(result)
+    }
+
+    // MARK: - K-01: the bundled-voice measurement
+    //
+    // `docs/bundled-voice-plan.md` K-01: "a throwaway measurement path, not a
+    // product feature". It answers ONE question — can this phone synthesize
+    // Kokoro fast enough, in little enough memory, with the screen locked —
+    // and it is deleted in K-04's cutover.
+    //
+    // WHAT IS HERE AND WHAT IS DELIBERATELY NOT.
+    // Here: the method, the bundle lookup, the memory and lock-screen
+    // readings, the refusal vocabulary, and the seam an engine plugs into.
+    // Not here: ONNX Runtime, and no `Package.swift` dependency on it. That is
+    // a ~16 MB binary dependency whose build nobody in this repo can verify —
+    // this branch was written on Windows, `ios-build.yml`'s `ios-shell` job is
+    // the only thing that compiles this file, and adding an unbuilt dependency
+    // to the one package every shell build folds in would risk turning that
+    // job red for a card whose own gate is a founder's phone. So the engine is
+    // a REGISTERED SEAM (`probeEngine`), K-04 fills it, and until it does this
+    // method resolves `ok: false, reason: "engine-absent"` — which is a real
+    // finding a founder can read, not a silent zero.
+    //
+    // THE REASON CODES ARE A CLOSED SET shared with `player/kokoro-probe.js`'s
+    // `PROBE_REASONS`. A code this file invents and that file does not know
+    // degrades to `refused`, which loses the diagnosis; keep them in step.
+
+    /// The seam (protocol at file scope, above). `nil` on every build today. K-04 sets it from its
+    /// own `load()`; the XCTest target sets it to a fake to exercise the
+    /// record-building below without a model.
+    public static var probeEngine: KokoroProbeEngine?
+
+    /// The bundled weights, if the build fetched them
+    /// (`tools/mobile/fetch-models.mjs`). Looked up by name rather than
+    /// assumed present: a build that skipped the fetch step must say
+    /// `model-absent`, not crash.
+    static let MODEL_RESOURCE = "kokoro-v1_0-q8f16"
+    static let MODEL_EXTENSION = "onnx"
+
+    @objc func kokoroProbe(_ call: CAPPluginCall) {
+        var result = JSObject()
+        result["platform"] = "ios"
+
+        // The passage, pre-phonemized, from the page. NO TEXT FRONT-END ON
+        // DEVICE is the licence argument this whole deck rests on (deck §4),
+        // so this method never sees a string it would have to phonemize and
+        // never falls back to one.
+        let passage = call.getObject("passage")
+        let lines = (passage?["lines"] as? [[String: Any]]) ?? []
+        let idLines: [[Int]] = lines.compactMap { $0["ids"] as? [Int] }
+        if lines.isEmpty {
+            result["ok"] = false
+            result["reason"] = "passage-empty"
+            call.resolve(result)
+            return
+        }
+        if idLines.count != lines.count {
+            result["ok"] = false
+            result["reason"] = "passage-unphonemized"
+            call.resolve(result)
+            return
+        }
+
+        if Bundle.main.url(forResource: Self.MODEL_RESOURCE, withExtension: Self.MODEL_EXTENSION) == nil {
+            result["ok"] = false
+            result["reason"] = "model-absent"
+            result["lookedFor"] = "\(Self.MODEL_RESOURCE).\(Self.MODEL_EXTENSION)"
+            call.resolve(result)
+            return
+        }
+
+        guard let engine = Self.probeEngine else {
+            result["ok"] = false
+            result["reason"] = "engine-absent"
+            call.resolve(result)
+            return
+        }
+
+        let speed = passage?["speed"] as? Double ?? 1.0
+        let load = engine.load()
+        var synthColdMs: Double = 0
+        var synthWarmMs: Double = 0
+        var audioSec: Double = 0
+        for (index, ids) in idLines.enumerated() {
+            let out = engine.synthesize(ids: ids, speed: speed)
+            audioSec += out.audioSec
+            // FIRST LINE IS THE COLD NUMBER, the rest are the warm one. They
+            // are reported separately rather than averaged because the deck's
+            // go rule is stated on the WARM figure alone (§K-01 acceptance),
+            // and a mean that folded a 2-second first inference into it would
+            // fail a phone that is fine.
+            if index == 0 { synthColdMs = out.synthMs } else { synthWarmMs += out.synthMs }
+        }
+
+        result["ok"] = true
+        result["reason"] = ""
+        result["model"] = engine.modelName
+        result["provider"] = engine.provider
+        result["modelLoadColdMs"] = load.coldMs
+        result["modelLoadWarmMs"] = load.warmMs
+        result["synthColdMs"] = synthColdMs
+        result["synthWarmMs"] = synthWarmMs
+        result["lines"] = idLines.count
+        // `os_proc_available_memory` is the figure Apple documents for "how
+        // much more can this process allocate before jetsam", which is the
+        // number that decides whether narration survives a locked screen —
+        // deck §5 item 3. Peak resident size is read from the task info.
+        result["availableMemoryBytes"] = Double(os_proc_available_memory())
+        result["peakMemoryBytes"] = Double(Self.peakResidentBytes())
+        // The card asks whether synthesis completed WITH THE SCREEN LOCKED for
+        // the whole passage. This reports the honest weaker fact: the app was
+        // NOT frontmost at the moment the last line finished. The founder
+        // instruction (HUMAN-ACTIONS.md H1) is what turns it into the strong
+        // claim — tap run, lock the phone immediately, unlock when the passage
+        // stops, and read this flag. A `true` here with a `false` on the same
+        // phone at the same build means the founder did not lock it, not that
+        // the phone is inconsistent.
+        result["lockedScreenCompleted"] = !Self.isForeground()
+        call.resolve(result)
+    }
+
+    /// Peak resident bytes for this task, or 0 when the kernel refuses. Zero
+    /// is turned into "not measured" by `player/kokoro-probe.js`'s
+    /// `toMegabytes`/`probeVerdict`, which treats an unmeasured ceiling as a
+    /// FAILURE rather than a pass — see that file's own note on why.
+    static func peakResidentBytes() -> UInt64 {
+        var info = task_vm_info_data_t()
+        var count = mach_msg_type_number_t(MemoryLayout<task_vm_info_data_t>.size / MemoryLayout<natural_t>.size)
+        let kerr: kern_return_t = withUnsafeMutablePointer(to: &info) {
+            $0.withMemoryRebound(to: integer_t.self, capacity: Int(count)) {
+                task_info(mach_task_self_, task_flavor_t(TASK_VM_INFO), $0, &count)
+            }
+        }
+        guard kerr == KERN_SUCCESS else { return 0 }
+        return info.phys_footprint
+    }
+
+    /// Whether the app is frontmost right now.
+    ///
+    /// `UIApplication.shared` is main-thread-only, and a Capacitor plugin
+    /// method runs on the bridge's own queue, so this hops. `Thread.isMainThread`
+    /// is checked first because `DispatchQueue.main.sync` FROM the main thread
+    /// is a deadlock, not a slow call — and a probe that hung the app would be
+    /// the worst possible outcome of an instrument whose entire job is to be
+    /// run once by a founder who then has to report what happened.
+    ///
+    /// Defaults to `true` ("frontmost", so `lockedScreenCompleted` reads
+    /// false) when the state cannot be read. Unmeasured must never read as
+    /// proven — the same direction `probeVerdict` fails an unmeasured RTF in.
+    static func isForeground() -> Bool {
+        let read: () -> Bool = { UIApplication.shared.applicationState == .active }
+        if Thread.isMainThread { return read() }
+        return DispatchQueue.main.sync(execute: read)
     }
 }

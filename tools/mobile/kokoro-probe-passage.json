@@ -1,0 +1,58 @@
+{
+  "//": "K-01's measurement passage (docs/bundled-voice-plan.md §6, K-01). ONE passage, shared by the on-phone probe (K-01) and the founder audition (K-03), so the thing Wyatt and Joey rank is the thing the probe timed. Four lines, 1,315 characters, 77.4 s at narration-craft.md §2a's 17 characters/second planning rate — the deck says ≈ 90 s, and this is the real count rather than the estimate. It is long enough for the measurement it has to support (a warm RTF over three lines after a cold first one) and short enough that a founder will actually sit through it twice.",
+  "//shape": "Every line carries `id`, `kind`, `text`, `chars` and `est_sec`. `phonemes` and `ids` are the Kokoro inputs the card requires the phone to receive ('ids computed offline and shipped as JSON; no text front-end on device'). They are NULL here and that is a statement, not a placeholder bug: nothing in this repo can compute them. misaki is a Python package that is not installed on the machine that authored this file, and fabricating a phoneme string would put an unverified claim into the one artefact whose whole job is to be exact. Run `python tools/narration/phonemize.py --passage tools/mobile/kokoro-probe-passage.json --in-place` on a machine with the requirements installed to fill them.",
+  "//inert": "While `ids` is null the probe is INERT by construction: `player/kokoro-probe.js` refuses to report a measurement it could not take (`reason: \"passage-unphonemized\"`) and the native halves refuse before that (`reason: \"model-absent\"`). Nothing about how narration is spoken today reads this file.",
+  "//lexicon": "The fixture line carries exactly six terms from mobile/plugins/foray-tts/lexicon/hard-terms.json, listed in `lexicon_terms`. They are the six the probe and the audition are both judged on: a voice that mangles them is not shippable however fast it renders.",
+  "//provenance": "The disclosure is generation-architecture.md §4.7's exact template. The two narration beats are written for this passage from docs/curation/grilling-history-spine.md §1's through-line — they are not lifted from a published Foray, because no published Foray's narration is stable enough to be a fixture.",
+  "version": 1,
+  "engine": "kokoro-probe",
+  "model": "1.0",
+  "vocab": null,
+  "speed": 1,
+  "lexicon_terms": [
+    "binchōtan",
+    "barbacoa",
+    "asado",
+    "braai",
+    "ch'arki",
+    "Taíno"
+  ],
+  "lines": [
+    {
+      "id": "probe-01-disclosure",
+      "kind": "disclosure",
+      "text": "This is a Foray about the history of barbecue. Much of what you'll hear is written by AI. We work hard to get the facts right, but AI gets things wrong — so take it as a starting point, not a source.",
+      "chars": 199,
+      "est_sec": 11.706,
+      "phonemes": null,
+      "ids": null
+    },
+    {
+      "id": "probe-02-beat-fire",
+      "kind": "narration",
+      "text": "Barbecue is a trade: it turns cheap, tough protein into abundance using fire, smoke and hours instead of cash. Follow the fire and you get technique — combustion, collagen, the chemistry of smoke, the difference between a skewer over coals and a pit dug into the ground. The traditions resemble each other because they are independent answers to the same physics, and the local variables are fuel, animal and faith.",
+      "chars": 415,
+      "est_sec": 24.412,
+      "phonemes": null,
+      "ids": null
+    },
+    {
+      "id": "probe-03-beat-labour",
+      "kind": "narration",
+      "text": "Follow the labour instead and you get history. Because the hours are long, barbecue cannot be one person's weekday dinner; it needs a crowd, so it becomes an institution. And because those hours are hot and punishing, every barbecue culture has to answer the question of who tends the fire — which is always, underneath, a question about who holds power and who gets the credit.",
+      "chars": 378,
+      "est_sec": 22.235,
+      "phonemes": null,
+      "ids": null
+    },
+    {
+      "id": "probe-04-lexicon-fixture",
+      "kind": "fixture",
+      "text": "Six names the narrator has to get right. In Japan the charcoal is binchōtan. In Yucatán the pit is a barbacoa. On the Argentine parrilla it is an asado, and in South Africa the same fire is a braai. The Quechua word for dried, salted meat is ch'arki, and the Taíno of the Caribbean gave the technique the word we still use.",
+      "chars": 323,
+      "est_sec": 19,
+      "phonemes": null,
+      "ids": null
+    }
+  ]
+}

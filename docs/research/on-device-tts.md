@@ -822,3 +822,39 @@ returned a real catalogue; the identifier examples in the plugin README are docu
 naming convention, not a device reading. The Swift assertions added alongside the change
 have never been executed, because nothing in this repo runs `swift test` and the change was
 written on a Windows machine.
+
+---
+
+## 10. The bundled voice — K-01's measurements (2026-09-12, AWAITING A PHONE)
+
+This section is where K-01's numbers go. It is empty, and that is the finding to
+read today: **nobody has run Kokoro on a phone for this product.**
+
+`docs/bundled-voice-plan.md` re-scopes everything above. §1–§9 of this document
+are about speaking a *script* with the *platform's* voice engine, which is what
+ships today and what the 2026-09-11 verdict ("those voices were all so bad") was
+about. The deck's answer is a neural voice of our own, bundled in the app, fed
+phonemes computed at generation time — which means §3's "no pronunciation API on
+the Web Speech path" and §2's "undocumented on Android" stop being constraints,
+because the phone stops doing text processing at all.
+
+**What exists now.** An `engine: "kokoro-probe"` path through `foray-tts` on both
+platforms, a 77-second pre-phonemized passage, a hidden drawer switch, and a
+`voiceProbe` row in the Playback-diagnostics record a founder already knows how to
+copy out. It is inert on every build that ships: no ONNX Runtime dependency, no
+weights, an empty engine seam, and an unphonemized passage. Every one of those
+four refuses with its own named reason rather than reporting a zero.
+
+**The go/no-go rule, written before the run** (K-01): RTF ≤ 0.80 warm on the
+newest phone, ≤ 1.50 on the oldest tried, peak resident memory ≤ 400 MB, and
+locked-screen synthesis completes for the whole passage. Miss any and K-04 waits
+for a design change (fp16 vs q8, execution provider, chunking) or the runner-up
+engine.
+
+| Device | OS | Provider | Model load cold / warm | RTF cold / warm | Peak memory | Locked screen | Battery / 10 min |
+|---|---|---|---|---|---|---|---|
+| Wyatt's iPhone | | | | | | | |
+| Joey's Pixel 10 Pro | | | | | | | |
+| oldest phone tried | | | | | | | |
+
+The instruction that fills this table is `HUMAN-ACTIONS.md` #45.

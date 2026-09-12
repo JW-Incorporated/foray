@@ -141,6 +141,27 @@ export function createTtsBridge({ load = null, candidates = null, log = null } =
       return mod.listVoices(opts);
     },
 
+    /* K-01's measurement (docs/bundled-voice-plan.md). Same lazy-load-then-
+       delegate shape as everything else here and for the identical reason:
+       the module lives at a different URL per host.
+
+       `typeof mod.kokoroProbe !== "function"` is the COMMON case, not a
+       defensive branch — every shell built before this card carries a
+       flattened copy of `foray-tts.js` with no probe in it at all
+       (`listVoices`'s own comment states the same hazard for the same
+       reason). Answering `engine-absent` is what lets the drawer say "this
+       build has no probe in it" instead of throwing a TypeError at a founder
+       who is trying to help. */
+    async kokoroProbe(opts = {}) {
+      if (!pending) pending = loadModule();
+      const mod = await pending;
+      if (!mod) return { ok: false, path: "none", reason: "no-bridge" };
+      if (typeof mod.kokoroProbe !== "function") {
+        return { ok: false, path: "none", reason: "engine-absent" };
+      }
+      return mod.kokoroProbe(opts);
+    },
+
     /* §7 item 3 (L-03). Same lazy-load-then-delegate shape `speak`/
        `listVoices` above already use, and the same reason: the module lives
        at a different URL per host (this file's own header), so a caller must

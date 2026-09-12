@@ -1259,3 +1259,75 @@ test("formatDiagnosticReport renders a data entry as one line naming the source 
   assert.match(text, /data\s+refresh\(boot\) adopted v=deploy-b2 n=6 playable=40 took 812ms/);
   assert.doesNotMatch(text, /\{"/, "no JSON blob for a known type");
 });
+
+/* ==================================================================== */
+/* K-01: the voice-engine probe row (docs/bundled-voice-plan.md)         */
+/* ==================================================================== */
+
+test("voiceProbe takes only the named fields — a native payload cannot bloat the ring", () => {
+  /* The ring re-serialises itself on EVERY write (this module's cost note), so
+     a field carried into an entry is re-written up to 200 more times. The probe
+     record arrives from `player/kokoro-probe.js` already flattened; naming the
+     fields again here is what stops a future native addition from riding in.
+     MUTATION: spread the record instead of picking — `junk` appears in the
+     stored blob. */
+  const { diag, store } = mk();
+  diag.voiceProbe({
+    engine: "kokoro-probe", ok: true, provider: "cpu", model: "1.0",
+    modelLoadColdMs: 1800, modelLoadWarmMs: 90, rtfCold: 0.9, rtfWarm: 0.6,
+    audioSec: 77.4, peakMemoryMb: 300, lockedScreenCompleted: true, batteryDeltaPct: -3,
+    junk: "x".repeat(5000),
+  });
+  const blob = store.getItem(DIAG_KEY);
+  assert.ok(!blob.includes("junk"), "an unnamed field entered the ring");
+  const e = parse(store).entries.at(-1);
+  assert.equal(e.type, "voiceProbe");
+  assert.equal(e.probeOk, true);
+  assert.equal(e.rtfWarm, 0.6);
+  assert.equal(e.lockedOk, true);
+});
+
+test("voiceProbe stores a refusal as null numbers, not zeroes", () => {
+  /* THE LIE THIS ROW EXISTS TO AVOID. A build with no model writing `rtf 0.00,
+     peak 0 MB, locked=y` is a record that gets pasted into a decision.
+     MUTATION: coerce the numeric fields with `|| 0`. */
+  const { diag, store } = mk();
+  diag.voiceProbe({ engine: "kokoro-probe", ok: false, reason: "model-absent" });
+  const e = parse(store).entries.at(-1);
+  assert.equal(e.probeOk, false);
+  assert.equal(e.reason, "model-absent");
+  assert.equal(e.rtfWarm, null);
+  assert.equal(e.peakMemoryMb, null);
+  assert.equal(e.lockedOk, false);
+});
+
+test("the report prints a probe refusal as one line naming the reason", () => {
+  /* Six em-dashes and a hidden reason is not a report. The founder's next
+     action is entirely determined by WHICH refusal this is.
+     MUTATION: fall through to the `default` JSON.stringify branch — the line
+     becomes a blob nobody reads aloud over a phone. */
+  const { diag, log } = mk();
+  diag.voiceProbe({ engine: "kokoro-probe", ok: false, reason: "engine-absent" });
+  const text = formatDiagnosticReport(log.read());
+  assert.match(text, /voiceProbe kokoro-probe could not measure: engine-absent/);
+});
+
+test("the report prints a successful probe with every number K-01 asks for", () => {
+  /* MUTATION: drop any of rtf / load / peak / locked / batt from the line —
+     the field then exists only in the JSON, and the JSON is not what gets
+     pasted into an issue. */
+  const { diag, log } = mk();
+  diag.voiceProbe({
+    engine: "kokoro-probe", ok: true, provider: "coreml", model: "1.0",
+    modelLoadColdMs: 1840, modelLoadWarmMs: 120, rtfCold: 0.94, rtfWarm: 0.61,
+    audioSec: 77.4, peakMemoryMb: 312, lockedScreenCompleted: true, batteryDeltaPct: -3,
+  });
+  const line = formatDiagnosticReport(log.read()).split("\n").find((l) => l.includes("voiceProbe"));
+  assert.match(line, /kokoro-probe\/coreml/);
+  assert.match(line, /rtf cold 0\.94 warm 0\.61/);
+  assert.match(line, /load 1840ms\/120ms/);
+  assert.match(line, /peak 312MB/);
+  assert.match(line, /locked=y/);
+  assert.match(line, /batt -3%/);
+  assert.match(line, /over 77\.4s/);
+});

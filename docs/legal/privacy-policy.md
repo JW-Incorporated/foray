@@ -102,6 +102,7 @@ The app also asks the browser to mark its storage as persistent
 | `cp_player` | Which external podcast app you prefer to open episodes in | **No** |
 | `cp_family` | Family mode on/off — a local content filter that hides explicit-rated episodes | **No** |
 | `cp_show_drafts` | Whether the settings switch that lists unpublished (draft) forays on this device is on — a local per-device preference for testing them before they are published. Off by default | **No** |
+| `cp_voice_probe` | Whether the settings switch that offers the voice-engine measurement on this device is on — a local per-device preference used to test a bundled narration voice before it ships. Off by default; when it is off the control is not shown at all | **No** |
 | `cp_autoadvance` | Up Next auto-advance on/off — a local per-device preference for whether finishing an episode played from your Up Next list starts the next queued item. Off by default | **No** (but see `autoadvance_pref` in §2) |
 | `cp_intro_dismissed` | Whether you dismissed the intro card | **No** |
 | `cp_foray_feedback` | Your per-segment thumbs: direction, reason codes, any note you typed, timestamp | **Yes, via `thumbs`** — see §2 |

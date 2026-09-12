@@ -50,6 +50,7 @@ import {
   referencedSegmentIds, segmentSlice, segmentSourceSlice, assertForaySliceComplete,
   WHY_COPIED_WHOLE, isBundledData, SEED_POINTER, seedPointerPlan,
   seedCarries, seedForays, assertSeedForaysComplete, seedPointerDoc,
+  MODEL_EXTENSIONS, assertNoModelWeights,
 } from "./prepare-webdir.mjs";
 import { isMinified, minifySource } from "./minify.mjs";
 import { createRequire } from "node:module";
@@ -272,9 +273,13 @@ test("shipped JS and CSS arrive minified: comments and whitespace gone, every id
   assert.ok(mod.includes("export function beta("), "an export was renamed or dropped");
   assert.ok(mod.includes("keepMe"), "a local identifier in a module was renamed");
 
-  /* Shell-only scripts go through the same transform: the fixture's is a comment
-     and nothing else, so the bundle's copy is empty — present, and empty. */
-  for (const f of SHELL_ONLY_FILES) {
+  /* Shell-only SCRIPTS go through the same transform: the fixture's is a comment
+     and nothing else, so the bundle's copy is empty — present, and empty.
+     Filtered to `.js` since K-01 added a JSON entry (the probe passage): that
+     one is copied verbatim by `isMinified`'s own dispatch, which the size
+     assertion immediately below already covers — a non-minified file must
+     arrive at exactly its source size. */
+  for (const f of SHELL_ONLY_FILES.filter((x) => x.dest.endsWith(".js"))) {
     assert.equal(bundled(f.dest), "", `${f.dest} was copied rather than minified`);
   }
 
@@ -2546,4 +2551,66 @@ test("FD-04: the seed's pointer rides along when it exists, and its absence is n
     () => assertSlicesOnDisk(path.join(withPointer, "www"), withPointer),
     /not the repo's pointer marked partial/
   );
+});
+
+/* ─────────────────── K-06: a model is not a web asset ───────────────────
+ *
+ * `docs/bundled-voice-plan.md` K-06(3). The Kokoro q8f16 weights are ~86 MB
+ * against this file's 3 MB cap — 29x over — so the cap WOULD fire, with the
+ * message "the client started fetching something big", which is the wrong
+ * diagnosis. And the cap genuinely misses the small case: one voice style file
+ * is ~130 KB and the deck's three voices are ~1.5 MB together, all of which
+ * fits under 3 MB and would ship silently into the web bundle, where the
+ * WEBSITE would serve it too.
+ */
+
+test("K-06: a model file in the bundle fails with the mechanism, not the budget", () => {
+  /* MUTATION: delete the `assertNoModelWeights(files)` call in `prepare` — the
+     86 MB case still fails (on the cap, with the wrong message) and the 130 KB
+     case passes silently. */
+  assert.throws(
+    () => assertNoModelWeights([{ rel: "index.html", bytes: 100 }, { rel: "kokoro-v1_0-q8f16.onnx", bytes: 90e6 }]),
+    /A neural model reached the web bundle: kokoro-v1_0-q8f16\.onnx/,
+  );
+  assert.throws(
+    () => assertNoModelWeights([{ rel: "af_heart.safetensors", bytes: 130 * 1024 }]),
+    /fetched at build time into the NATIVE bundle/,
+    "the SMALL case is the one the 3 MB cap cannot see",
+  );
+  assert.doesNotThrow(() => assertNoModelWeights([{ rel: "app.js", bytes: 1 }, { rel: "data/forays.json", bytes: 2 }]));
+});
+
+test("K-06: the model extension list covers every shape weights arrive in", () => {
+  /* MUTATION: drop `.onnx_data` — ONNX splits tensors over a sidecar file for
+     any model above 2 GB and names it exactly that, so a future fp32 variant
+     would land half-blocked, which is worse than not blocked. */
+  for (const ext of [".onnx", ".onnx_data", ".ort", ".safetensors", ".bin", ".gguf"]) {
+    assert.ok(MODEL_EXTENSIONS.includes(ext), `${ext} must be treated as weights`);
+  }
+});
+
+test("K-01: the probe passage ships into the shell and is not a script tag", () => {
+  /* The passage is the one thing this card adds to the bundle (~1.6 KB). It
+     has to be at the bundle ROOT because nothing under `tools/` exists inside
+     the shell, and it must NOT become a `<script src>`.
+     MUTATION: give the entry `module: true`, or move it out of
+     SHELL_ONLY_FILES — one of the two assertions goes red. */
+  const entry = SHELL_ONLY_FILES.find((f) => f.src.endsWith("kokoro-probe-passage.json"));
+  assert.ok(entry, "the probe passage must ship with the shell");
+  assert.equal(entry.dest, "kokoro-probe-passage.json", "at the bundle root, where the page fetches it");
+  assert.ok(!shellScriptTags().some((t) => t.includes("kokoro-probe-passage")), "a JSON file is not a script");
+  const bytes = fs.statSync(path.join(ROOT, entry.src)).size;
+  assert.ok(bytes < 8 * 1024, `the passage is ${bytes} B — if it grew past 8 KB something other than four lines got in`);
+});
+
+test("K-01: the page's two passage URLs match where the file actually lands", () => {
+  /* `client.js` tries the shell path first inside the shell and the repo path
+     first on the website — the same two-URL problem `tts-bridge.js`'s header
+     describes. A drift between those constants and this copy table is a 404 on
+     the one host the measurement has to run on.
+     MUTATION: change `dest` here without changing the constants. */
+  const client = fs.readFileSync(path.join(ROOT, "player/client.js"), "utf8");
+  const entry = SHELL_ONLY_FILES.find((f) => f.src.endsWith("kokoro-probe-passage.json"));
+  assert.ok(client.includes(`"${entry.dest}"`), "the shell URL must be the bundle destination");
+  assert.ok(client.includes(`"${entry.src}"`), "the site URL must be the repo path");
 });

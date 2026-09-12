@@ -2,10 +2,31 @@
 
 <!-- ha-format: 2 -->
 
-> **31 open.** Closed items are in `HUMAN-ACTIONS-DONE.md` — you never need it.
+> **32 open.** Closed items are in `HUMAN-ACTIONS-DONE.md` — you never need it.
 > To close one: reply `done` (or `skip <why>`) to its card in the project's human-action channel.
 > Anything else you reply is forwarded to a thread on the card.
 
+## #45 🟡 [DECIDE] Run the voice-engine probe on your phone — the one measurement no machine here can take (K-01)
+<!-- ha filed=2026-09-12 kind=default -->
+
+**Why:** the platform voices came back "all so bad" (2026-09-11) and the picker is
+cut down to Samantha as a stopgap. The real fix is our own neural voice bundled in
+the app (`docs/bundled-voice-plan.md`). Everything downstream of that — the engine,
+the player, which three voices ship — waits on ONE number nobody here can produce:
+how fast a real phone synthesizes it, in how much memory, with the screen locked.
+The go/no-go rule was written before the run so it cannot be read generously
+afterwards: RTF ≤ 0.8 warm on the newest phone, ≤ 1.5 on the oldest tried, peak
+memory ≤ 400 MB, and the passage completes with the screen locked.
+
+**Steps:**
+1. Install build N, open Settings, turn on "Voice engine probe", tap "Run the voice engine probe", and immediately lock the phone.
+2. When the passage stops, unlock, tap **Copy** in the sheet that is already open, and paste the whole record here.
+3. Do the same on Joey's Pixel 10 Pro, and on the oldest phone either of you can find — say which record is which phone and which OS version.
+4. If a record says "could not measure (model-absent)" the build did not fetch the weights. Say so and stop: that is a build problem, not a phone one.
+
+**Worked if:** a pasted diagnostics record carrying a `voiceProbe` line with real
+numbers on it, one per phone, each labelled with the device and OS version. Those
+numbers go into `docs/research/on-device-tts.md` §10 and decide K-04.
 ## #44 🟡 [DECIDE] Add the founders as Play testers, so Play actually emails you (R-08)
 <!-- ha filed=2026-09-11 kind=default -->
 

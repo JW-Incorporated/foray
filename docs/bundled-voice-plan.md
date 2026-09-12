@@ -1,6 +1,13 @@
 # A voice of our own, inside the app: research and a Hermes deck
 
-**Status:** research + card deck for Hermes. Written 2026-09-06 by the founder's
+**Status:** K-01's probe, K-02, K-03, K-06 and K-07 landed 2026-09-12 (per-card
+**DONE** markers in §9). **K-04 and K-05 are deliberately unstarted**: both are
+downstream of a number only a real phone can produce, and that measurement is
+`HUMAN-ACTIONS.md` #45. Nothing a listener hears has changed — every path added so
+far is inert by construction, and the platform voice still speaks every narration
+item.
+
+Research + card deck for Hermes. Written 2026-09-06 by the founder's
 Claude session at Wyatt's request. Companion to `docs/ios-controls-and-voice-plan.md`
 (whose V-01 voice picker this deck **re-scopes**, see §8) and to the ruling in
 `docs/curation/generation-architecture.md` §1.2 ("narration is spoken on-device"),
@@ -234,7 +241,7 @@ S-04b). Read first: `CLAUDE.md`; this file; `generation-architecture.md` §1.2, 
 `mobile/plugins/foray-tts/README.md` and both native sources; the onnx-community model
 card linked above; HUMAN-ACTIONS #21 (copying diagnostics out) and #29.
 
-#### K-01 · Measure Kokoro on real phones before anything is built on it — **L** — *design comment first*
+#### K-01 · Measure Kokoro on real phones before anything is built on it — **L** — *design comment first* — **DONE** (2026-09-12, `feat/bundled-voice-k-deck`), **the probe only, not the measurement**: the `engine: "kokoro-probe"` path exists on both platforms behind a `cp_voice_probe` drawer switch and writes a `voiceProbe` row into the Playback-diagnostics record. It is inert — no ORT dependency, no weights, an empty native engine seam, an unphonemized passage — and each of those four refuses with its own named reason rather than a zero. The measurement itself is `HUMAN-ACTIONS.md` #45 and still open; §10 of `on-device-tts.md` is the empty table it fills
 - **Ask:** a throwaway measurement path, not a product feature. Add an `engine: "kokoro-probe"`
   branch to `foray-tts` on both platforms that loads a bundled q8f16 model and one
   voice, synthesizes a pre-phonemized 90 s passage (ids computed offline and shipped as
@@ -261,7 +268,7 @@ card linked above; HUMAN-ACTIONS #21 (copying diagnostics out) and #29.
 - **Governance:** `mobile/` auto-merges; the model-fetch step touches the build
   workflows → `founder-approved` (H3; batch with K-06).
 
-#### K-02 · Phonemes are authored with the script — **M**
+#### K-02 · Phonemes are authored with the script — **M** — **DONE** (2026-09-12, `feat/bundled-voice-k-deck`); `tools/narration/phonemize.py` + `requirements.txt`, `backend/src/generation/phonemize.ts` (per PAGE, not per beat — the act-level writer landed the same week), the `tts`/`phonemes`/`est_sec` fields on the item schema, and `check-forays.mjs`'s rules with the card's own named mutation executed. `data/forays.json` is NOT re-authored: misaki is not installed here and a fabricated phoneme string would be worse than none
 - **Ask:** the generation pipeline (#487's driver) gains a `phonemize` stage after §4.7
   "Write the narration": apply `hard-terms.json` first (exact IPA for the 83 terms, word
   boundary, case-insensitive), then misaki (`en-us`) with `espeak-ng` fallback for the
@@ -281,7 +288,7 @@ card linked above; HUMAN-ACTIONS #21 (copying diagnostics out) and #29.
   phonemized; the fixture's six lexicon terms come out as their IPA verbatim; running
   the stage twice on the same script is byte-identical.
 
-#### K-03 · The audition kit — **S** (+ H2)
+#### K-03 · The audition kit — **S** (+ H2) — **DONE** (2026-09-12, `feat/bundled-voice-k-deck`); `tools/narration/render-audition.py` (same ONNX graph, same q8f16 weights, from K-02's phonemes, deterministic paths, blind A–L labels with a separately-written key) and `docs/research/voice-audition-2026-09.md` with the slate and the combined-rank rule written before the listening. **No clip has been rendered** — the runtime and the weights are absent here — and `--render` refuses rather than writing one a founder could not tell from real
 - **Ask:** render §6's passage in the twelve voices with the **same** ONNX graph and
   q8f16 weights K-01 bundles, from K-02's phonemes, at 1.0×; then the top three at
   1.5× and 2.0×. Publish as one private page (blind labels, one player per clip, a
@@ -338,7 +345,7 @@ card linked above; HUMAN-ACTIONS #21 (copying diagnostics out) and #29.
   the chosen voice (MUTATION: drop `voice` → red); a legacy item still speaks `script`;
   vocab mismatch → fallback, not silence.
 
-#### K-06 · Size, provenance and licence gates — **S**
+#### K-06 · Size, provenance and licence gates — **S** — **DONE** (2026-09-12, `feat/bundled-voice-k-deck`), **except the workflow step**; `tools/mobile/fetch-models.mjs` pins `{url, sha256, bytes}` for the model and the twelve voices and refuses an unpinned file, the espeak gate and the 150 MB ceiling are in `test/release-gates.test.js`, `prepare-webdir.mjs` refuses a model in the web bundle, and `docs/legal/third-party-notices.md` carries Kokoro/ORT/voices. The build-workflow step that CALLS the fetcher is `.github/` and waits on H3
 - **Ask:** (1) `tools/mobile/fetch-models.mjs` pins `{url, sha256, bytes}` for the model
   and each voice; CI fails on a mismatch. (2) A gate test asserts **no `espeak`
   symbol, file or licence text** is present in the built app (`strings` on the binary
@@ -351,7 +358,7 @@ card linked above; HUMAN-ACTIONS #21 (copying diagnostics out) and #29.
   (floor → raise), the build workflows (one step each), `docs/legal/*` (the notice).
 - **Governance:** `.github/` → `founder-approved` (H3). Batch with K-01's workflow step.
 
-#### K-07 · Records — **S**
+#### K-07 · Records — **S** — **DONE** (2026-09-12, `feat/bundled-voice-k-deck`); §1.2 amended, §4.7a added, the DECISIONS entry, `on-device-tts.md` §10, `self-hosted-tts.md`'s addendum, STATE.md and these markers
 - **Ask:** `generation-architecture.md` §1.2 amended ("the bundled voice; the platform's
   engine is the fallback"); `on-device-tts.md` §10 with K-01's measurements;
   DECISIONS entries (engine choice; the three voices); HUMAN-ACTIONS #40 closed with a

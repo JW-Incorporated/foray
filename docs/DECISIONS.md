@@ -2,6 +2,59 @@
 
 Per-topic ADRs live in `docs/adr/`. This file is the chronological record.
 
+## 2026-09-12 (the bundled voice: engine chosen, phonemes move to the server, measurement pending)
+
+- **The narration voice will be our own, bundled in the app: Kokoro-82M, ONNX,
+  q8f16.** Recorded as a decision rather than a plan because it is now what
+  `generation-architecture.md` §1.2 says, and because three cards have shipped
+  against it. The trigger was the founder's 2026-09-11 verdict on the platform
+  voices — *"those voices were all so bad. Samantha was the least worst"* — which
+  cut the narration voice picker to one voice as a stopgap (PR #575). The ruling's
+  economics are untouched: on-device stays, because $0 synthesis and $0 hosting at
+  unlimited user-created volume is the only thing that works at this product's
+  volume. What changes is whose voice.
+
+  **Why Kokoro over the four alternatives** (`docs/bundled-voice-plan.md` §3 has
+  the table and the sources): it is the voice already judged good in this repo's
+  own acceptance fixture; it is the only permissively-licensed candidate with
+  **phoneme input**, which is what makes the 83-term pronunciation lexicon
+  reliable rather than advisory; its quantized weights fit under 100 MB; and it
+  has three independent on-device ports on Apple hardware plus sherpa-onnx on
+  Android. Pocket TTS (MIT) is the recorded runner-up if K-01's phone numbers
+  come back bad, at the cost of pronunciation control. Supertonic is out on its
+  archive notice; Piper is out on licence (GPL-3).
+
+- **Phonemes are computed on our servers and the phone receives ids.** The
+  load-bearing architectural choice, and the reason the licence question has an
+  answer at all: every Kokoro runtime in the wild reaches `espeak-ng` (GPL-3) for
+  its text front-end, and §1.2.1 had already confined espeak to the server for the
+  fallback render path. Phonemizing at generation time (`§4.7a`, K-02) extends the
+  same line to the on-device path, removes a grapheme-to-phoneme port from two
+  platforms, and — because the model is deterministic and the phonemes are
+  identical everywhere — **restores the per-render review gate** `on-device-tts.md`
+  §5 said on-device narration had given up. `test/release-gates.test.js` now fails
+  the build if `espeak` appears in any native build input.
+
+- **The model is fetched, never committed, and never unverified.**
+  `tools/mobile/fetch-models.mjs` pins `{url, sha256, bytes}` per artefact and
+  refuses to accept a file whose pin is absent — "no pin recorded, so nothing to
+  check" is the shape that ships an unverified 86 MB executable. The sha256 values
+  are `null` today: nobody in this repository has downloaded these files, and a
+  hash copied from a model card without hashing the bytes would be an unlabelled
+  claim. **App-size ceiling: 150 MB**, derived from Apple's 200 MB cellular
+  download cap; the measured budget is ~116 MB worst case, leaving ~34 MB. The
+  written trigger for moving to on-demand resources / Play Asset Delivery is the
+  ceiling being reached, or a second language.
+
+- **NOT decided, and deliberately so: which three voices ship, and whether the
+  phone is fast enough.** K-01's go/no-go rule is written (RTF ≤ 0.8 warm on the
+  newest phone, ≤ 1.5 on the oldest, peak memory ≤ 400 MB, locked-screen synthesis
+  completes) and the measurement is `HUMAN-ACTIONS.md` #45 — a real device, which
+  no agent here has. The audition slate of twelve and the combined-rank rule are
+  in `docs/research/voice-audition-2026-09.md`; no clip has been rendered and the
+  kit refuses to render a fake one. Until both come back, every narration item
+  still speaks through the platform engine and nothing a listener hears has
+  changed.
 ## 2026-09-10 (U-11 records closed: #125 resolved, #126 deferred, D3 recorded; deck audit fixes)
 
 - **Issue #125 (C6) resolved: anonymous-first stands.** Wyatt's D2

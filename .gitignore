@@ -38,3 +38,4 @@ dist/
 # local `cd ios && xcodegen` run) — regenerated every time, never hand-edited.
 ios/*.xcodeproj/
 ios/App/Info.plist
+__pycache__/

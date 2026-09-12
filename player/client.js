@@ -116,6 +116,7 @@ import {
 } from "./strip-scrub-gesture.js";
 import { createDurableStore } from "./durable-store.js";
 import { createTtsBridge } from "./tts-bridge.js";
+import { runKokoroProbe, formatProbeReport, probeVerdict } from "./kokoro-probe.js";
 import { createInterludePlayer, readInterludePref } from "./interlude.js";
 import { makeIdbTier } from "./idb-tier.js";
 import { createEventLog } from "./event-log.js";
@@ -149,6 +150,42 @@ let ui = null;
     memoises its own module load, so two callers sharing one instance cost
     exactly one dynamic import either way. */
 const ttsBridge = createTtsBridge();
+
+/* K-01's passage, fetched lazily and memoised.
+
+   TWO URLS FOR THE SAME REASON `tts-bridge.js` HAS TWO (read that file's
+   header): the shell carries a flattened copy at the bundle root, put there by
+   `prepare-webdir.mjs`'s SHELL_ONLY_FILES table, while the website serves the
+   repo verbatim and so holds it at its `tools/` path. Tried in the right order
+   for the host rather than a fixed one, so the shell — the only host where the
+   measurement matters — never eats a 404 first.
+
+   A failed fetch resolves `null`, never throws: `runKokoroProbe` turns that
+   into `passage-missing`, which is a finding a founder can read. */
+let probePassage = null;
+export const PROBE_PASSAGE_SHELL_FIRST = Object.freeze([
+  "kokoro-probe-passage.json",
+  "tools/mobile/kokoro-probe-passage.json",
+]);
+export const PROBE_PASSAGE_SITE_FIRST = Object.freeze([
+  "tools/mobile/kokoro-probe-passage.json",
+  "kokoro-probe-passage.json",
+]);
+
+async function loadProbePassage(
+  fetchJson = (u) => fetch(u).then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status))))),
+  inShell = typeof window !== "undefined" && !!window.Capacitor,
+) {
+  if (probePassage) return probePassage;
+  const urls = inShell ? PROBE_PASSAGE_SHELL_FIRST : PROBE_PASSAGE_SITE_FIRST;
+  for (const u of urls) {
+    try {
+      const doc = await fetchJson(u);
+      if (doc && Array.isArray(doc.lines)) { probePassage = doc; return doc; }
+    } catch (_) { /* try the other host's path */ }
+  }
+  return null;
+}
 /** The lock screen / car / headphone surface (#27). Built once in
     `ensureBooted`, inert where `navigator.mediaSession` does not exist. */
 let media = null;
@@ -1885,6 +1922,42 @@ const ForayPlayer = {
    */
   auditionVoice(text, voiceId) {
     return ttsBridge.speak(text, { rate: currentRate(), voice: voiceId });
+  },
+
+  /* ---------- K-01: the bundled-voice measurement ----------
+
+     `docs/bundled-voice-plan.md` K-01. Runs the probe passage through the
+     `kokoro-probe` engine, writes the numbers into the SAME field record the
+     founder already knows how to copy out, and returns the record so the
+     drawer can show it immediately.
+
+     THROUGH THE SHARED `ttsBridge`, exactly like `auditionVoice` and for the
+     same reason: resolving `foray-tts.js` a second time would give the probe a
+     different module instance from the one narration speaks through, and
+     "which build of the plugin answered?" is one of the questions the probe
+     exists to settle.
+
+     NOTHING ABOUT NARRATION IS TOUCHED. No manager, no queue, no `this._voice`
+     — a measurement that could change what the next narration item sounds like
+     would not be a measurement. */
+  async runVoiceProbe() {
+    const passage = await loadProbePassage();
+    const record = await runKokoroProbe({ tts: ttsBridge, passage, now: () => Date.now() });
+    /* Recorded WHETHER OR NOT it succeeded. "This build has no model in it" is
+       the single most useful thing the first run can tell us, and a record
+       that only kept successes would answer every failed run with silence. */
+    try { diag.voiceProbe(record); } catch (_) { /* the instrument must never be the outage */ }
+    return record;
+  },
+
+  /** The probe record as the several lines the drawer shows, plus K-01's
+      go/no-go verdict applied to it. Re-exported for the same reason
+      `defaultVoice` is: `app.js` is a classic script and must not carry a
+      second copy of a rule the record is judged by. `age` is `"newest"` or
+      `"oldest"` — which phone this is, which the founder says, because the
+      card's ceiling differs between them. */
+  formatVoiceProbe(record, age = "oldest") {
+    return { text: formatProbeReport(record), verdict: probeVerdict(record, age) };
   },
 
   /** Which segment `elapsedSec` lands in, and how far into it — re-exported so
