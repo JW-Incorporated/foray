@@ -115,6 +115,19 @@ export interface ClipBrief {
   opening: string;
   durationSec: number;
   intro: IntroKind;
+  /** F-99: every beat this clip carries — the beat whose clip it is and
+   * any beat §4.5 merged into it (F-96 `mergedInto`: one clip, two claims).
+   * Printed on the CLIP line ("carries beats b2, b3") so the writer knows
+   * what the tape already says and the verifier judges those beats
+   * against the one window. Optional so a request recorded before F-99
+   * (the run-9 replay) still reads. */
+  carries?: ClipBeatBrief[];
+}
+
+/** F-99: one beat a clip carries, as the prompts print it. */
+export interface ClipBeatBrief {
+  beatId: string;
+  claim: string;
 }
 
 /** One beat the act's prose must carry, in play order. */
@@ -128,6 +141,18 @@ export interface BeatBrief {
   /** WS-C: an `argument` beat is a claim about what things mean; an
    * `account` is something that happened. */
   kind: "account" | "argument";
+  /**
+   * F-99: THE SEED IS GONE (`SourcedBeat.seedLost`, F-96). §4.3 wrote this
+   * beat from a stretch of tape and §4.5 could not place that tape, so the
+   * claim names a guest and a moment the Foray never plays — unverifiable
+   * by construction (six of run 9's eight unverified pages). The writer is
+   * told to carry it only as far as the act's sources go and never to
+   * attribute specifics to the person the claim names; the verifier is
+   * told not to demand the seed's specifics, and a beat the act's sources
+   * cannot reach at all is closed as `uncarried: "seed-lost"` after its
+   * first judgement instead of costing three rounds.
+   */
+  seedLost?: true;
 }
 
 /** One seam of the act: the narration between two clips (or before the
