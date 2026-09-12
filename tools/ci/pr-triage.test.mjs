@@ -26,6 +26,7 @@ import {
   planFounderQueue,
   planMergeability,
   planTriage,
+  ciDispatchIsRedundant,
   renderWaitingBlock,
   runCli,
   spliceBlock,
@@ -361,9 +362,19 @@ test("a stale head with none of the required checks is re-dispatched on the swee
   assert.match(notes.join(" "), /re-dispatching CI/);
 });
 
-test("the self-heal never fires outside the scheduled sweep", () => {
+test("the self-heal fires on a PR event too, not only on the 6-hourly sweep", () => {
+  /* MUTATION: restore `sweep &&` to the self-heal's condition. This plans
+     nothing and the assertion fails.
+
+     Hole 1 of three (machinery audit, 2026-09-12). The heal used to require
+     `--sweep`, which only the six-hourly cron run passed, so a stranded head
+     waited up to 6.5 hours. The event that CREATES the stall is a PR event
+     outside ci.yml's three defaults — `edited`, `labeled`, `unlabeled` — and
+     pr-hygiene.yml is subscribed to those, so the run that could heal it was
+     already happening and declining to. The age gate below is what keeps this
+     from double-dispatching on `synchronize`. */
   const { actions } = planMergeability([pr({ autoMergeEnabled: true, checkNames: [], updatedAt: OLD })]);
-  assert.deepEqual(actions, []);
+  assert.deepEqual(kinds(actions), ["dispatch-ci"]);
 });
 
 test("a freshly-updated PR is not re-dispatched into its own CI run", () => {
@@ -374,9 +385,56 @@ test("a freshly-updated PR is not re-dispatched into its own CI run", () => {
   assert.deepEqual(actions, []);
 });
 
-test("a head with even one required check is left alone", () => {
-  const { actions } = planMergeability(
+test("the age gate reads the head commit's clock, not the PR's updatedAt", () => {
+  /* MUTATION: go back to `const age = pr.updatedAt ? ... : Infinity`. The first
+     case below then reads the PR as seconds old and plans nothing.
+
+     Hole 2 of three. `updatedAt` is reset by a comment, a label, a review or a
+     title edit — and pr-hygiene is itself a label writer, so a PR it labels
+     every six hours could never age past a gate keyed on `updatedAt`. The head
+     commit's date moves only when the head moves, which is the event whose
+     checks are missing. The second case is the converse and is the one that
+     would go wrong if the fallback were dropped: a real head that is NEW while
+     the PR record is old must still be left alone. */
+  const stuck = planMergeability([
+    pr({ autoMergeEnabled: true, checkNames: [], headCommittedAt: OLD, updatedAt: new Date().toISOString() }),
+  ]);
+  assert.deepEqual(kinds(stuck.actions), ["dispatch-ci"]);
+
+  const starting = planMergeability([
+    pr({ autoMergeEnabled: true, checkNames: [], headCommittedAt: new Date().toISOString(), updatedAt: OLD }),
+  ]);
+  assert.deepEqual(starting.actions, []);
+});
+
+test("a head missing ONE required check is re-dispatched — a partial dispatch is still a stall", () => {
+  /* MUTATION: restore `missing.length === requiredChecks.length`. `backend`
+     reported and `data-and-site` never did, so `missing` is 1 of 2 and the
+     all-or-nothing test is false: nothing is planned, and the PR sits at
+     "Expected — waiting for status to be reported" forever because it is no
+     longer `behind` and nothing else ever looks at it again.
+
+     Hole 3 of three. */
+  const { actions, notes } = planMergeability(
     [pr({ autoMergeEnabled: true, checkNames: ["backend"], updatedAt: OLD })],
+    { sweep: true }
+  );
+  assert.deepEqual(kinds(actions), ["dispatch-ci"]);
+  assert.match(notes.join(" "), /missing data-and-site/);
+});
+
+test("a head carrying every required check is left alone", () => {
+  /* The other side of the previous test: `> 0` must not mean `>= 0`. Extra
+     check runs beyond the required set (Vercel, automerge-decision) are not
+     the self-heal's business either. */
+  const { actions } = planMergeability(
+    [
+      pr({
+        autoMergeEnabled: true,
+        checkNames: ["backend", "data-and-site", "Vercel Preview Comments"],
+        updatedAt: OLD,
+      }),
+    ],
     { sweep: true }
   );
   assert.deepEqual(actions, []);
@@ -388,6 +446,32 @@ test("the self-heal does not touch forks, whose branches we cannot dispatch on",
     { sweep: true }
   );
   assert.deepEqual(actions, []);
+});
+
+/* ------------------------------------------- the duplicate-dispatch guard */
+
+test("a SHA that already has a pull_request run needs no dispatch", () => {
+  /* MUTATION: return `false` unconditionally (or drop the `!== "workflow_dispatch"`
+     half so a dispatch counts as its own precedent). Measured 2026-09-12 over
+     the last 200 `ci.yml` runs: 178 distinct SHAs, 26 dispatch runs, 22 of them
+     duplicating a `pull_request` run on the same SHA, usually 1–4 seconds apart
+     — 85% of every dispatched run was waste. */
+  assert.equal(ciDispatchIsRedundant([{ event: "pull_request" }]), true);
+  assert.equal(ciDispatchIsRedundant([{ event: "push" }]), true);
+  assert.equal(ciDispatchIsRedundant(["pull_request"]), true);
+});
+
+test("a SHA with only dispatch runs — or none at all — still needs the dispatch", () => {
+  /* The direction that must never go wrong. The self-heal exists because a head
+     can end up with no run at all; answering "redundant" there would strand the
+     PR forever, which is the failure this whole file is about. A previous
+     dispatch is not evidence either: if it had produced the checks, the heal
+     would not have been planned. */
+  assert.equal(ciDispatchIsRedundant([]), false);
+  assert.equal(ciDispatchIsRedundant(), false);
+  assert.equal(ciDispatchIsRedundant(null), false);
+  assert.equal(ciDispatchIsRedundant([{ event: "workflow_dispatch" }]), false);
+  assert.equal(ciDispatchIsRedundant([{}, { event: "" }]), false);
 });
 
 test("a conflicting PR is not re-dispatched — its problem is not missing checks", () => {

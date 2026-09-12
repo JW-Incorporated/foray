@@ -20,7 +20,7 @@
    Usage: node tools/build-catalog-client.mjs [--out path] [--check] */
 
 import { readFileSync, writeFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import path from "node:path";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -81,4 +81,27 @@ function main() {
   console.log(`wrote ${path.relative(ROOT, outPath)}: ${client.shows.length} shows, ${text.length} B.`);
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) main();
+/* THE ENTRYPOINT GUARD, AND WHY IT IS `pathToFileURL` AND NOT A TEMPLATE STRING.
+   This line used to read:
+
+       if (import.meta.url === `file://${process.argv[1]}`) main();
+
+   On Windows `process.argv[1]` is `C:\...\tools\build-catalog-client.mjs`, so
+   the left side is `file:///C:/.../build-catalog-client.mjs` and the right side
+   is `file://C:\...\build-catalog-client.mjs`. They can never be equal, so
+   `main()` never ran: `node tools/build-catalog-client.mjs --check` — the
+   documented regenerate/verify command, and the one `test/show-page.test.js`
+   shells out to — printed nothing and EXITED 0. A stale client catalogue would
+   have passed its own gate on every developer machine in this project (all
+   Windows) and only failed on a Linux runner, if at all.
+
+   `pathToFileURL` produces the same percent-encoded, forward-slashed, drive-
+   lettered URL Node puts in `import.meta.url`, so the comparison is true on
+   both platforms. It is the idiom every other `.mjs` in this repo already used
+   — this file was the last holdout (`tools/build-show-index.mjs`'s header says
+   so in as many words), which is why the bug survived: the fleet was right and
+   the one exception was silent.
+
+   The `process.argv[1] &&` guard matters for `node --eval`, where argv[1] is
+   undefined and `pathToFileURL(undefined)` throws. */
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) main();

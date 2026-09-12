@@ -525,11 +525,27 @@ correct it. Minimum bar:
 Write it once, as a template, and gate it in `check-forays.mjs`: **a generated Foray whose first
 item is not the disclosure fails validation.** It should be impossible to publish without it.
 
-#### 4.7a — Phonemize (K-02, added 2026-09-12)
+#### 4.7a — Phonemize (K-02, added 2026-09-12) — **NOT WIRED: this stage does not run**
 
-**After the narration is written and verified, and before §4.9 publishes**, every narration page
-gains the phonemes the bundled voice will speak. `backend/src/generation/phonemize.ts` is the
-stage; `tools/narration/phonemize.py` is its grapheme-to-phoneme half (misaki `en-us`, with
+> **Corrected 2026-09-12 (machinery-audit pass).** This section was written in the present
+> indicative and described a pipeline stage that has never executed. It is the document most
+> likely to mislead someone debugging pronunciation, so the correction is here rather than in a
+> changelog. Verified on `main`: `runPipeline.ts` contains **zero** occurrences of `phonemize`;
+> `runPhonemizer` (`phonemize.ts:130`), `phonemizeItems` (`:107`) and `phonemizeItem` (`:84`)
+> have **no production caller** — the only references repo-wide are the module's own internal
+> call at `:89` and `backend/test/phonemize.test.ts:10`. The module is fully
+> dependency-injected (`:64 export type Phonemizer`), so only a pipeline driver could supply a
+> real phonemizer, and none does. `data/forays.json` carries **0** `phonemes` fields.
+>
+> **Wiring it is a decision, not a typo**, which is why this correction does not make it: misaki
+> is a Python dependency that is not installed on the generation host, and the card that owns the
+> decision is **K-02** in `docs/bundled-voice-plan.md` (downgraded from DONE to PARTIAL in the
+> same pass). Read everything below as the design K-02 would build, not as what the pipeline does.
+
+**When it will run, once it is wired:** after the narration is written and verified, and before
+§4.9 publishes, every narration page gains the phonemes the bundled voice will speak.
+`backend/src/generation/phonemize.ts` is the stage — **it exists and its tests pass, and nothing
+calls it**; `tools/narration/phonemize.py` is its grapheme-to-phoneme half (misaki `en-us`, with
 `espeak-ng` for out-of-vocabulary words — both server-side, never shipped).
 
 - **The lexicon goes in first and wins.** `mobile/plugins/foray-tts/lexicon/hard-terms.json`'s

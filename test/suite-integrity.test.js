@@ -764,8 +764,32 @@ const FLOORS = {
      load-bearing mutations (named in the suite header) were run and killed;
      the other 17 are named in their tests. */
   "tools/ci/forays-directory.test.mjs": 24,
-  "tools/ci/pr-triage.test.mjs": 85,
+  /* +12 (machinery audit, 2026-09-12): the checks-missing self-heal had three
+     holes — sweep-only, keyed on `pr.updatedAt` (which this workflow's own label
+     writes reset), and firing only when ALL required checks were missing — plus
+     the duplicate-dispatch guard, which 85% of dispatched CI runs needed.
+     85 -> 97. */
+  "tools/ci/pr-triage.test.mjs": 97,
   "tools/ci/run-suites.test.mjs": 36,
+  /* THE TYPE GATE, and the reason it is floored at all. Until 2026-09-12 no CI
+     job in this repo had ever run `tsc` or `eslint`: `backend/package.json`
+     defined `typecheck` and nothing called it, so the TypeScript backend was
+     ungated and four real TS2532 errors sat in the tree. The gate now lives in
+     one `- run:` line of `ci.yml`, which is one careless "simplify CI" edit from
+     being gone with nothing to say so. Deleting it now takes this suite with it.
+     Text assertions over workflow YAML — the same idiom as
+     tools/mobile/ios-workflow.test.mjs, and the same honest limit: it catches a
+     step being deleted, not a step that runs and does nothing. */
+  "tools/ci/ci-workflow.test.mjs": 5,
+  /* The deck-drift rule (machinery audit finding 6). Decks whose PRs edit the
+     deck in the same commit had a 0% false-claim rate; the drift is all in the
+     ones where the marker floats free of the merge, and it runs both ways — one
+     card claimed work that did not exist while three hid work that did. The
+     STRONG version ("every card is DONE-with-a-merged-PR or listed as
+     outstanding") was rejected as unwritable without false alarms; see the
+     module header. 10 fixture tests naming their mutations, plus 3 that run the
+     rules against the real docs/ tree — the last of which is the gate. */
+  "tools/ci/deck-claims.test.mjs": 13,
   // The classify fleet. `no-exclusion` is the founder's "label, never filter"
   // ruling made mechanical — of everything floored in this file it is the one
   // whose deletion would be hardest to notice and most expensive to discover,
@@ -798,6 +822,17 @@ const FLOORS = {
      needed because the sort order is a contract between two files and either
      side can break it alone. */
   "tools/build-show-index.test.mjs": 9,
+  /* The Windows entrypoint-guard class (machinery audit finding 3). A main-
+     module check written as ``import.meta.url === `file://${process.argv[1]}` ``
+     can never be true on Windows, so the script's CLI silently does nothing and
+     EXITS 0 — `tools/build-catalog-client.mjs --check`, the documented
+     regenerate/verify command, certified a catalogue it never looked at. Every
+     developer here is on Windows and nothing in CI runs there, so the class is
+     invisible from both ends. Floored because the scan is over every tracked
+     `.mjs`/`.js` rather than a list: the list is the thing that goes stale, and
+     this bug survived in the one file nobody thought to check while seven others
+     had already been fixed. */
+  "tools/entrypoint-guards.test.mjs": 4,
   /* 82 since #226 (PR #237) added "Foray #1 is labelled superseded". Raised in a
      follow-up rather than in that PR, which is the mistake this floor exists to
      catch: it left one test of slack, and slack is what lets the new gate be
@@ -939,7 +974,7 @@ const FLOORS = {
 
      `shell-invariants` gained one: the same slice against TODAY'S real documents,
      independently of the fixture suite. */
-  "tools/mobile/prepare-webdir.test.mjs": 82, // K-01/K-06 (2026-09-12): the probe passage ships into the shell and a model never does; 78 -> 82 // FD-04 (2026-09-10): the seed is a subset of the directory's files; the seed pointer is optional; 72 -> 74. F-92 (2026-09-12): the seed leaves generated drafts to the directory — the rule on the fixture, the verifier as a reached guard, and the real repo's draft absent from the real bundle; 74 -> 77. S-03 (2026-09-12): the unpinned show index is named, bundled and budgeted; 77 -> 78
+  "tools/mobile/prepare-webdir.test.mjs": 82, // K-01/K-06 (2026-09-12): the probe passage ships into the shell and a model never does; 78 -> 82 // FD-04 (2026-09-10): the seed is a subset of the directory's files; the seed pointer is optional; 72 -> 74. F-92 (2026-09-12): the seed leaves generated drafts to the directory — the rule on the fixture, the verifier as a reached guard, and the real repo's draft absent from the real bundle; 74 -> 77. S-03 (2026-09-12): the unpinned show index is named, bundled and budgeted; 77 -> 78
   "tools/mobile/shell-invariants.test.mjs": 57, // +4: the L-05 plugin methods and the M-03 session needle/event name (2026-09-12) // +1: iOS plugin never calls setActive (F11/F13, 2026-09-09); +1: Swift writes the L-02 log needle (2026-09-10)
   /* 2026-09-04: the bundle's JS/CSS is minified (comments + whitespace, identifiers
      kept) and its JSON re-serialised on the way in — docs/mobile-shell.md §3.4.

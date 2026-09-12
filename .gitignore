@@ -39,3 +39,9 @@ dist/
 ios/*.xcodeproj/
 ios/App/Info.plist
 __pycache__/
+
+# Agent worktrees (`git worktree add .claude/worktrees/<name>`). Nested
+# checkouts of this same repo, 81 of them at the time of writing: untracked and
+# unignored, so `git add -A` in the main checkout tried to stage all of them.
+# The worktrees themselves are managed by `git worktree`, never by `git add`.
+.claude/worktrees/
