@@ -1905,7 +1905,7 @@ const BACKEND_FLOORS = {
      sentence quoted; the verifier re-checks only what changed; F-88's ground
      reaches the act; the validator's zero-source rules are act-scoped.
      One named mutation per test. */
-  "test/actNarration.test.ts": 32,
+  "test/actNarration.test.ts": 38,
 };
 
 /* `it(` as well as `test(`: backend's suites use both spellings. */
