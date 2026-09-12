@@ -109,20 +109,20 @@ async function waitFor(pred: () => boolean, what: string, ms = 20_000): Promise<
 const settle = (ms = 25) => new Promise((r) => setTimeout(r, ms));
 
 /**
- * A stub writer whose writing call can be HELD per slot. `started` is the
- * order slots were requested in; `completed` the order they finished;
- * `inFlight`/`peak` count slots currently inside the call. `hold`
- * returns the latch to await for a slot, or nothing to let it through.
- * The call is `selectAndWrite` — since G-34 a clean slot's one writer
- * request is the merged select+prose call, and `writePages` is reached
- * only on a retry.
+ * A stub writer whose writing call can be HELD per act. `started` is the
+ * order acts were requested in; `completed` the order they finished;
+ * `inFlight`/`peak` count acts currently inside the call. `hold`
+ * returns the latch to await for an act (by its title), or nothing to let
+ * it through. The call is `writeAct` — since Q-03 an act's one writer
+ * request is the per-act call (G-34's merged select+prose call is the
+ * per-slot fallback's, for a writer without the act contract).
  */
-function holdingWriter(hold: (slotTitle: string) => Promise<void> | undefined = () => undefined) {
+function holdingWriter(hold: (actTitle: string) => Promise<void> | undefined = () => undefined) {
   const writer = new StubNarrationWriterBuilder();
-  const real = writer.selectAndWrite.bind(writer);
+  const real = writer.writeAct.bind(writer);
   const state = { started: [] as string[], completed: [] as string[], timeline: [] as string[], inFlight: 0, peak: 0 };
-  writer.selectAndWrite = async (...args: Parameters<StubNarrationWriterBuilder["selectAndWrite"]>) => {
-    const title = args[0].slotTitle;
+  writer.writeAct = async (...args: Parameters<StubNarrationWriterBuilder["writeAct"]>) => {
+    const title = args[0].actTitle;
     state.started.push(title);
     state.timeline.push(`start:${title}`);
     state.inFlight++;
@@ -147,12 +147,12 @@ describe("writeNarration — acts are narrated in parallel (G-32)", () => {
        next). Act 1's slot is then never requested while act 0's is held, and
        `waitFor` fails. Ran it — red. */
     const act0 = deferred();
-    const { writer, state } = holdingWriter((title) => (title === "A0S0" ? act0.promise : undefined));
+    const { writer, state } = holdingWriter((title) => (title === "Act 0" ? act0.promise : undefined));
 
     const run = writeNarration(acts(3), { writer, verifier: new StubNarrationVerifierBuilder(), evidence: gatherer }, voice, ctx);
 
-    await waitFor(() => state.started.includes("A1S0") && state.started.includes("A2S0"), "acts 1 and 2 to start while act 0 is held");
-    expect(state.completed).not.toContain("A0S0");
+    await waitFor(() => state.started.includes("Act 1") && state.started.includes("Act 2"), "acts 1 and 2 to start while act 0 is held");
+    expect(state.completed).not.toContain("Act 0");
     act0.resolve();
 
     const written = await run;
@@ -164,14 +164,14 @@ describe("writeNarration — acts are narrated in parallel (G-32)", () => {
        instead of by index. Act 0 finishes last here, so it comes back last.
        Ran it — red. */
     const act0 = deferred();
-    const { writer, state } = holdingWriter((title) => (title === "A0S0" ? act0.promise : undefined));
+    const { writer, state } = holdingWriter((title) => (title === "Act 0" ? act0.promise : undefined));
 
     const run = writeNarration(acts(3), { writer, verifier: new StubNarrationVerifierBuilder(), evidence: gatherer }, voice, ctx);
-    await waitFor(() => state.completed.includes("A1S0") && state.completed.includes("A2S0"), "acts 1 and 2 to finish before act 0");
+    await waitFor(() => state.completed.includes("Act 1") && state.completed.includes("Act 2"), "acts 1 and 2 to finish before act 0");
     act0.resolve();
 
     const written = await run;
-    expect(state.completed[state.completed.length - 1]).toBe("A0S0");
+    expect(state.completed[state.completed.length - 1]).toBe("Act 0");
     expect(written.map((a) => a.title)).toEqual(["Act 0", "Act 1", "Act 2"]);
     expect(written.map((a) => a.slots[0]!.title)).toEqual(["A0S0", "A1S0", "A2S0"]);
   });
@@ -187,29 +187,29 @@ describe("writeNarration — acts are narrated in parallel (G-32)", () => {
     await waitFor(() => state.started.length === 2, "two acts to start");
     await settle();
     /* Still two: the gate is holding the other four back, not merely slow. */
-    expect(state.started).toEqual(["A0S0", "A1S0"]);
+    expect(state.started).toEqual(["Act 0", "Act 1"]);
     all.resolve();
 
     const written = await run;
     expect(written).toHaveLength(6);
     expect(state.peak).toBe(2);
-    expect(state.started).toEqual(["A0S0", "A1S0", "A2S0", "A3S0", "A4S0", "A5S0"]);
+    expect(state.started).toEqual(["Act 0", "Act 1", "Act 2", "Act 3", "Act 4", "Act 5"]);
   });
 
   it("a cap of 1 is the pre-G-32 series: each act starts only after the previous one finished", async () => {
     /* MUTATION THAT KILLS THIS: the same as above — a gate that does not
        gate. Act 1 starts before act 0 completes. Ran it — red. */
-    const latches = new Map([0, 1, 2].map((i) => [`A${i}S0`, deferred()]));
+    const latches = new Map([0, 1, 2].map((i) => [`Act ${i}`, deferred()]));
     const { writer, state } = holdingWriter((title) => latches.get(title)?.promise);
 
     const run = writeNarration(acts(3), { writer, verifier: new StubNarrationVerifierBuilder(), evidence: gatherer, actConcurrency: 1 }, voice, ctx);
 
     for (const i of [0, 1, 2]) {
-      await waitFor(() => state.started.includes(`A${i}S0`), `act ${i} to start`);
+      await waitFor(() => state.started.includes(`Act ${i}`), `act ${i} to start`);
       await settle();
       expect(state.started).toHaveLength(i + 1);
       expect(state.inFlight).toBe(1);
-      latches.get(`A${i}S0`)!.resolve();
+      latches.get(`Act ${i}`)!.resolve();
     }
     await run;
     expect(state.peak).toBe(1);
@@ -238,7 +238,7 @@ describe("writeNarration — acts are narrated in parallel (G-32)", () => {
       const run = writeNarration(acts(3), { writer, verifier: new StubNarrationVerifierBuilder(), evidence: gatherer }, voice, ctx);
       await waitFor(() => state.started.length === 1, "one act to start");
       await settle();
-      expect(state.started).toEqual(["A0S0"]);
+      expect(state.started).toEqual(["Act 0"]);
       all.resolve();
       await run;
       expect(state.peak).toBe(1);
@@ -251,7 +251,7 @@ describe("writeNarration — acts are narrated in parallel (G-32)", () => {
   it("on a failure: reports the failing act's error, lets in-flight acts finish and bank, and never starts the queued ones", async () => {
     /* Four acts, cap 2: act 0 and act 1 in flight, acts 2 and 3 queued. Act 0
        fails; act 1 is still held. The call must NOT return until act 1 has
-       finished (its slot is banked through `onSlotWritten`), and acts 2 and 3
+       finished (the driver banks it under `narrate:1` the moment it lands), and acts 2 and 3
        must never be asked for.
 
        MUTATION THAT KILLS THIS: `Promise.all` over the acts instead of
@@ -260,11 +260,11 @@ describe("writeNarration — acts are narrated in parallel (G-32)", () => {
        Ran it — red. */
     const fail = deferred();
     const act1 = deferred();
-    const { writer, state } = holdingWriter((title) => (title === "A1S0" ? act1.promise : undefined));
-    const real = writer.selectAndWrite;
-    writer.selectAndWrite = async (...args) => {
-      if (args[0].slotTitle === "A0S0") {
-        state.started.push("A0S0");
+    const { writer, state } = holdingWriter((title) => (title === "Act 1" ? act1.promise : undefined));
+    const real = writer.writeAct;
+    writer.writeAct = async (...args) => {
+      if (args[0].actTitle === "Act 0") {
+        state.started.push("Act 0");
         await fail.promise;
         throw new Error("provider went away mid-slot");
       }
@@ -291,7 +291,7 @@ describe("writeNarration — acts are narrated in parallel (G-32)", () => {
     });
     run.catch(() => undefined);
 
-    await waitFor(() => state.started.includes("A0S0") && state.started.includes("A1S0"), "acts 0 and 1 to start");
+    await waitFor(() => state.started.includes("Act 0") && state.started.includes("Act 1"), "acts 0 and 1 to start");
     fail.resolve();
     await settle();
     expect(pending).toBe(true);
@@ -299,9 +299,13 @@ describe("writeNarration — acts are narrated in parallel (G-32)", () => {
 
     act1.resolve();
     await expect(run).rejects.toThrow(/provider went away/);
-    expect(banked).toEqual(["A1S0"]);
-    expect(state.started).not.toContain("A2S0");
-    expect(state.started).not.toContain("A3S0");
+    /* Act 1 FINISHED before the call settled — the act path banks through the
+       driver's `narrate:1` stage, not `onSlotWritten` (which the per-slot
+       fallback alone calls), so the proof is the writer's own completion log. */
+    expect(state.completed).toEqual(["Act 1"]);
+    expect(banked).toEqual([]);
+    expect(state.started).not.toContain("Act 2");
+    expect(state.started).not.toContain("Act 3");
   });
 
   it("createActGate: FIFO, capped, and abort rejects only what has not started", async () => {
@@ -353,8 +357,8 @@ function fakeFinalize() {
     }) as unknown as FinalizeForayResult;
 }
 
-/** Captures the frozen spine — the only thing that says which act a slot
- * title belongs to — and refuses to proceed if titles are not unique. */
+/** Captures the frozen spine — the source of the act titles the writer's
+ * log is keyed by — and refuses to proceed if titles are not unique. */
 function capturingSpine() {
   const builder = new StubSpineBuilder();
   const real = builder.buildSpine.bind(builder);
@@ -363,13 +367,13 @@ function capturingSpine() {
     captured.spine = await real(...args);
     return captured.spine;
   };
-  const actOf = (slotTitle: string): number => {
+  const actOf = (actTitle: string): number => {
     const spine = captured.spine;
     if (!spine) throw new Error("spine not built yet");
-    const all = spine.acts.flatMap((a) => a.slots.map((s) => s.title));
-    if (new Set(all).size !== all.length) throw new Error("stub spine reused a slot title across acts; the join below is unsound");
-    const i = spine.acts.findIndex((a) => a.slots.some((s) => s.title === slotTitle));
-    if (i < 0) throw new Error(`no act has slot "${slotTitle}"`);
+    const all = spine.acts.map((a) => a.title);
+    if (new Set(all).size !== all.length) throw new Error("stub spine reused an act title; the join below is unsound");
+    const i = spine.acts.findIndex((a) => a.title === actTitle);
+    if (i < 0) throw new Error(`no act is titled "${actTitle}"`);
     return i;
   };
   return { builder, captured, actOf };
@@ -415,7 +419,7 @@ describe("runForayPipeline — all acts narrate at once; stitch and continuity s
     await waitFor(() => {
       const s = spine.captured.spine;
       return s !== null && s.acts.every((_a, i) => state.started.some((t) => spine.actOf(t) === i));
-    }, "a slot of every act to be requested while act 0 is held");
+    }, "every act to be requested while act 0 is held");
     expect(state.completed).toHaveLength(0);
 
     /* Act 0 alone is released; the later acts stay held. Act 0 must become
@@ -482,7 +486,7 @@ describe("runForayPipeline — all acts narrate at once; stitch and continuity s
 
     await waitFor(() => {
       const s = spine.captured.spine;
-      return s !== null && s.acts.slice(1).every((a) => a.slots.every((slot) => state.completed.includes(slot.title)));
+      return s !== null && s.acts.slice(1).every((a) => state.completed.includes(a.title));
     }, "every later act to finish narrating while act 0 is held");
     expect(log).toEqual([]);
     act0.resolve();
@@ -510,8 +514,10 @@ describe("runForayPipeline — all acts narrate at once; stitch and continuity s
 
   it("writes exactly the checkpoint keys the serial pipeline wrote, in the same per-act order", async () => {
     /* MUTATION THAT KILLS THIS: key the act as `narrate:${i}:act`, or save
-       `narrate:i` before its slots. The key set (or the save order) differs.
-       Ran it — red. */
+       `narrate:i` after its stitch. The key set (or the save order) differs.
+       Ran it — red. Since Q-03 the act path writes no `narrate:i:j` slot
+       key (the act is the unit of writing); a slot key here would mean the
+       per-slot fallback ran. */
     const spine = capturingSpine();
     const key = "g-32-keys";
     const store = new FakeCheckpointStore(checkpointFingerprint({ prompt: request.prompt, duration: request.duration, topic: options.topic }));
@@ -527,7 +533,6 @@ describe("runForayPipeline — all acts narrate at once; stitch and continuity s
     const expected = new Set<string>(["understand", "research-shape", "spine", "source"]);
     s.acts.forEach((a, i) => {
       expected.add(`deepen:${i}`);
-      a.slots.forEach((_slot, j) => expected.add(`narrate:${i}:${j}`));
       expected.add(`narrate:${i}`);
       expected.add(`stitch:${i}`);
     });
@@ -539,15 +544,14 @@ describe("runForayPipeline — all acts narrate at once; stitch and continuity s
       expect(i, stage).toBeGreaterThanOrEqual(0);
       return i;
     };
-    s.acts.forEach((a, i) => {
-      a.slots.forEach((_slot, j) => expect(at(`narrate:${i}:${j}`)).toBeLessThan(at(`narrate:${i}`)));
+    s.acts.forEach((_a, i) => {
       expect(at(`narrate:${i}`)).toBeLessThan(at(`stitch:${i}`));
       if (i > 0) expect(at(`stitch:${i - 1}`)).toBeLessThan(at(`stitch:${i}`));
     });
   });
 
   it("resumes a crashed run by narrating only the acts that never landed", async () => {
-    /* Run 1: act 2's slots fail; acts 0, 1 and 3 are in flight beside it and
+    /* Run 1: act 2 fails; acts 0, 1 and 3 are in flight beside it and
        finish, so their `narrate:<i>` keys are banked — and so are
        `stitch:0`/`stitch:1`, which act 2's failure does not reach. Run 2 pays
        for act 2's slots, then smooths the two boundaries that were never
@@ -561,10 +565,10 @@ describe("runForayPipeline — all acts narrate at once; stitch and continuity s
     const store = new FakeCheckpointStore(checkpointFingerprint({ prompt: request.prompt, duration: request.duration, topic: options.topic }));
 
     const { writer, state } = holdingWriter();
-    const real = writer.selectAndWrite;
-    writer.selectAndWrite = async (...args) => {
-      if (spine.actOf(args[0].slotTitle) === 2) {
-        state.started.push(args[0].slotTitle);
+    const real = writer.writeAct;
+    writer.writeAct = async (...args) => {
+      if (spine.actOf(args[0].actTitle) === 2) {
+        state.started.push(args[0].actTitle);
         await settle(10);
         throw new Error("provider went away mid-slot");
       }
@@ -611,8 +615,8 @@ describe("runForayPipeline — all acts narrate at once; stitch and continuity s
     if (out.outcome !== "generated") return;
 
     expect(spineCalls).toBe(0);
-    expect(second.state.started.map((t) => spine.actOf(t))).toEqual(s.acts[2]!.slots.map(() => 2));
-    expect(second.state.started).toHaveLength(s.acts[2]!.slots.length);
+    expect(second.state.started.map((t) => spine.actOf(t))).toEqual([2]);
+    expect(second.state.started).toHaveLength(1);
     expect(smoothCalls).toBe(2);
     expect(store.stageKeys(key).filter((k) => /^(narrate|stitch):\d+$/.test(k))).toHaveLength(8);
     /* The resumed acts are reported as resumed, the rebuilt one as timed. */

@@ -3,9 +3,10 @@ import * as path from "path";
 import type { StageTiming } from "./stageTiming";
 import type { EvidencePrefetchMetrics } from "./evidencePrefetch";
 import type { SourcedAct, SourcedSlot, TapeRelevanceInput } from "../types/tapeSourcing";
-import type { WrittenAct } from "./writeNarration";
-import { decideConnectiveNarration } from "./writeNarration";
-import { isSynthesisVerified, isTapeSource, purposeWasRevised, tapeDocIdFor, type NarratedBeat, type NarrationAttemptRecord } from "../types/narration";
+import type { WrittenAct, WrittenBeat } from "./writeNarration";
+import { decideConnectiveNarration, pageOfWrittenBeat } from "./writeNarration";
+import { clipOpening, introRestatesClip, planActSeams } from "./actSeams";
+import { isSynthesisVerified, isTapeSource, purposeWasRevised, scriptSeconds, tapeDocIdFor, type NarratedBeat, type NarrationAttemptRecord } from "../types/narration";
 import { phraseIsInWindow } from "../types/anchorText";
 import { loadCatalogueData, type CatalogueShow } from "./catalogueLookup";
 import { loadSegmentPool, type SegmentRecord } from "./segmentPoolLookup";
@@ -44,8 +45,11 @@ export function flattenWrittenPages(acts: WrittenAct[]): FlatWrittenPage[] {
   for (const act of acts) {
     for (const slot of act.slots) {
       for (const beat of slot.beats) {
-        if (beat.sourcing === "narration") out.push({ claim: beat.claim, page: beat.narration });
-        else if (beat.connectiveNarration) out.push({ claim: beat.claim, page: beat.connectiveNarration });
+        /* Q-03: a narration beat carried by another beat's seam page holds
+           no page of its own and contributes nothing here — its claim is
+           counted with the page that carries it. */
+        const page = pageOfWrittenBeat(beat);
+        if (page) out.push({ claim: beat.claim, page });
       }
     }
   }
@@ -201,6 +205,19 @@ export function computeAttributionStability(writtenActs: WrittenAct[]): number |
  * candidate carries `attempts` data.
  */
 export function computeFirstAttemptPassRate(writtenActs: WrittenAct[]): number | null {
+  /* Q-03: MEASURED AGAINST BEATS on the per-act path. A beat's claim is
+     confirmed by the verifier on some round (`verifiedAtAttempt`), or
+     never; the rate is the share of narration beats confirmed on round 1.
+     The per-act path is recognised by its marks — a beat carried by
+     another's page, or a round recorded on one — so a per-page candidate
+     (runs 1–8, the fallback path) is still read page by page below. */
+  const narrationBeats = allNarrationBeats(writtenActs);
+  if (narrationBeats.some((b) => b.carriedBy !== undefined || b.verifiedAtAttempt !== undefined)) {
+    const total = narrationBeats.length;
+    const first = narrationBeats.filter((b) => b.verifiedAtAttempt === 1).length;
+    return total > 0 ? first / total : null;
+  }
+
   let firstAttempt = 0;
   let total = 0;
   for (const { page } of flattenWrittenPages(writtenActs)) {
@@ -210,6 +227,12 @@ export function computeFirstAttemptPassRate(writtenActs: WrittenAct[]): number |
     if (attempts.length === 1) firstAttempt++;
   }
   return total > 0 ? firstAttempt / total : null;
+}
+
+function allNarrationBeats(writtenActs: WrittenAct[]): Array<Extract<WrittenBeat, { sourcing: "narration" }>> {
+  const out: Array<Extract<WrittenBeat, { sourcing: "narration" }>> = [];
+  for (const act of writtenActs) for (const slot of act.slots) for (const beat of slot.beats) if (beat.sourcing === "narration") out.push(beat);
+  return out;
 }
 
 /* ------------------------------------------------------------------ */
@@ -408,17 +431,25 @@ export function computePagesDropped(sourcedActs: SourcedAct[], writtenActs: Writ
     const sourcedAct = sourcedActs[a]!;
     const writtenAct = writtenActs[a];
     if (!writtenAct) continue;
+    /* Q-03: on the per-act path the page before a clip is the SEAM's page,
+       recorded on the seam's first narration beat rather than on the clip
+       — so a clip whose seam page is the narration beat just before it
+       (in act play order, across slots) is not dropped. */
+    let previous: WrittenBeat | undefined;
     for (let s = 0; s < sourcedAct.slots.length; s++) {
       const sourcedSlot: SourcedSlot = sourcedAct.slots[s]!;
       const writtenSlot = writtenAct.slots[s];
       if (!writtenSlot) continue;
       for (let i = 0; i < sourcedSlot.beats.length; i++) {
         const beat = sourcedSlot.beats[i]!;
+        const writtenBeat = writtenSlot.beats[i];
+        const before = previous;
+        previous = writtenBeat;
         if (beat.sourcing !== "tape") continue;
         if (!decideConnectiveNarration(sourcedSlot, i)) continue;
-        const writtenBeat = writtenSlot.beats[i];
-        const kept = writtenBeat && writtenBeat.sourcing === "tape" && !!writtenBeat.connectiveNarration;
-        if (!kept) dropped++;
+        const own = writtenBeat && writtenBeat.sourcing === "tape" && !!writtenBeat.connectiveNarration;
+        const seamPageBefore = before !== undefined && before.sourcing === "narration" && (before.narration !== undefined || before.carriedBy !== undefined);
+        if (!own && !seamPageBefore) dropped++;
       }
     }
   }
@@ -592,6 +623,99 @@ export function computeSynthesisVerifiedPages(writtenActs: WrittenAct[]): Synthe
 }
 
 /* ------------------------------------------------------------------ */
+/* Listening KPIs (Q-02 / Q-03 / Q-05)                                   */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Q-05: narration pages per SEAM — the pages the candidate carries over
+ * the seams `planActSeams` finds in the sourced acts (the narration
+ * before the first clip, between clips, after the last). The deck's
+ * target is ≤ 1: one stretch of prose per seam. Runs 1–8 wrote one page
+ * per beat, which read 1.5–2.5 here. `null` with no seams.
+ */
+export function computeNarrationPagesPerSeam(sourcedActs: SourcedAct[], writtenActs: WrittenAct[]): number | null {
+  const seams = sourcedActs.reduce((n, act) => n + planActSeams(act).length, 0);
+  if (seams === 0) return null;
+  return flattenWrittenPages(writtenActs).length / seams;
+}
+
+export interface ListeningShares {
+  /** Seconds of tape the sourced acts play. */
+  tapeSec: number;
+  /** Seconds of narration at the planning rate (`scriptSeconds`), over
+   * every page the candidate carries. The disclosure item is not a page
+   * and is not counted — it is the same ~12 s on every Foray. */
+  narrationSec: number;
+  /** tape / (tape + narration); `null` when both are zero. */
+  tapeShare: number | null;
+  /** narration / (tape + narration); `null` when both are zero. */
+  narrationShare: number | null;
+}
+
+/**
+ * Q-05: the two listening shares. Narration-craft §0's whole-Foray target
+ * is ≤ 25 % narration (ceiling 35 %); the deck proposes tape ≥ 70 %. Runs
+ * 5–7 sat at 59–61 % tape; run 8 reached 78 %. The runtime here is tape
+ * plus narration from the pipeline's own numbers, not the checker's
+ * `runtime_sec` — computed before `finalize`, and the same either way to
+ * within a jingle.
+ */
+export function computeListeningShares(sourcedActs: SourcedAct[], writtenActs: WrittenAct[]): ListeningShares {
+  let tapeSec = 0;
+  for (const act of sourcedActs) for (const slot of act.slots) for (const beat of slot.beats) if (beat.sourcing === "tape") tapeSec += Math.max(0, beat.tape.endSec - beat.tape.startSec);
+  let narrationSec = 0;
+  for (const { page } of flattenWrittenPages(writtenActs)) narrationSec += scriptSeconds(page.script.length);
+  const total = tapeSec + narrationSec;
+  return {
+    tapeSec,
+    narrationSec,
+    tapeShare: total > 0 ? tapeSec / total : null,
+    narrationShare: total > 0 ? narrationSec / total : null
+  };
+}
+
+/**
+ * Q-02: how many pages that play just before a clip repeat that clip's
+ * first sentences (`introRestatesClip` — a six-word run shared with the
+ * clip's opening). Must be 0: the writer is refused for it in code, so a
+ * non-zero here means a page reached the candidate some other way — the
+ * per-page path, a resumed run-1…8 checkpoint — and is what Wyatt heard
+ * ("the narrator would make the point … then it would cut to the part of
+ * the podcast that made the point"). Judged from what the candidate
+ * carries: the page's own evidence holds the clip's window, and the
+ * pointer's anchor says where the clip starts in it. A clip whose window
+ * the page does not hold cannot be judged and is not counted.
+ */
+export function computeIntroRestates(writtenActs: WrittenAct[]): number {
+  let restates = 0;
+  for (const act of writtenActs) {
+    let previousPage: NarratedBeat | undefined;
+    for (const slot of act.slots) {
+      for (const beat of slot.beats) {
+        if (beat.sourcing === "narration") {
+          const page = pageOfWrittenBeat(beat);
+          if (page) previousPage = page;
+          continue;
+        }
+        const before = beat.connectiveNarration ?? previousPage;
+        previousPage = undefined;
+        if (!before) continue;
+        const window = before.evidence?.find((d) => d.docId === tapeDocIdFor(beat.tape.segmentId));
+        if (!window) continue;
+        if (introRestatesClip(before.script, clipOpening(window.text, beat.tape.startAnchor)).restates) restates++;
+      }
+    }
+  }
+  return restates;
+}
+
+/** Q-05: writer + verifier requests per ACT — the deck's cost target for
+ * the per-act writer is ≤ 3 on a clean pass (one write, one verify). */
+export function computeNarrationCallsPerAct(sourcedActs: SourcedAct[], writerCalls: number, verifierCalls: number): number | null {
+  return sourcedActs.length > 0 ? (writerCalls + verifierCalls) / sourcedActs.length : null;
+}
+
+/* ------------------------------------------------------------------ */
 /* Assembly                                                             */
 /* ------------------------------------------------------------------ */
 
@@ -633,6 +757,16 @@ export interface VeracityMetrics {
   /** F-81/F-82: pages whose sources include the tape beside them.
    * Reported, never gated — see `computeTapeCitedPages`. */
   tapeCitedPages: number;
+  /** Q-05: pages per seam — target ≤ 1 (`computeNarrationPagesPerSeam`). */
+  narrationPagesPerSeam: number | null;
+  /** Q-05: narration seconds over tape + narration — target ≤ 0.25. */
+  narrationShare: number | null;
+  /** Q-05: tape seconds over tape + narration — proposed target ≥ 0.70. */
+  tapeShare: number | null;
+  /** Q-02: pages before a clip that repeat its first sentences — must be 0. */
+  introRestates: number;
+  /** Q-05: writer + verifier requests per act — ≤ 3 on a clean pass. */
+  narrationCallsPerAct: number | null;
   pipelineTokens: number;
   /** Pipeline-stage wall times (`stageTiming.ts`'s `StageTiming[]`),
    * `finalizeForay`'s own internal breakdown appended with a `finalize.`
@@ -673,6 +807,7 @@ export function buildVeracityMetrics(input: BuildVeracityMetricsInput): Veracity
   const tape = input.tapeRelevanceRows
     ? tapeRelevanceFromRows(input.tapeRelevanceRows)
     : computeTapeRelevance(input.sourcedActs, input.topic, input.root);
+  const shares = computeListeningShares(input.sourcedActs, input.writtenActs);
 
   return {
     groundedQuoteRate: grounded.rate,
@@ -694,6 +829,11 @@ export function buildVeracityMetrics(input: BuildVeracityMetricsInput): Veracity
     synthesisVerifiedPageDetails: synthesis.pages,
     purposeRevisedPages: computePurposeRevisedPages(input.writtenActs),
     tapeCitedPages: computeTapeCitedPages(input.writtenActs),
+    narrationPagesPerSeam: computeNarrationPagesPerSeam(input.sourcedActs, input.writtenActs),
+    narrationShare: shares.narrationShare,
+    tapeShare: shares.tapeShare,
+    introRestates: computeIntroRestates(input.writtenActs),
+    narrationCallsPerAct: computeNarrationCallsPerAct(input.sourcedActs, input.writerCalls, input.verifierCalls),
     pipelineTokens: input.pipelineTokens,
     stageTimings: input.stageTimings,
     ...(input.retrieval ? { retrieval: input.retrieval } : {})

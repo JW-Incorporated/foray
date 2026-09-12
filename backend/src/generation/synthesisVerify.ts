@@ -1,5 +1,5 @@
 import type { Voice } from "../types/spine";
-import { NO_EVIDENCE_NOTE, NARRATION_PAGE_ATTEMPTS, carryClaims, draftRound, heldDocsOf, newPage, reject, type NarrationWriteStats, type PendingPage, type WrittenAct, type WrittenBeat } from "./writeNarration";
+import { NO_EVIDENCE_NOTE, NARRATION_PAGE_ATTEMPTS, carryClaims, draftRound, heldDocsOf, newPage, pageOfWrittenBeat, reject, type NarrationWriteStats, type PendingPage, type WrittenAct, type WrittenBeat } from "./writeNarration";
 import type { EvidenceDoc, EvidencePack } from "./gatherEvidence";
 import type { NarrationBuildContext, NarrationWriterBuilder } from "./NarrationWriterBuilder";
 import type { NarrationVerifierBuilder, SynthesisVerdict, VerifiedPageSummary } from "./NarrationVerifierBuilder";
@@ -111,9 +111,12 @@ export function countSynthesisCandidates(act: WrittenAct): number {
 }
 
 function pageOf(beat: WrittenBeat): NarratedBeat | undefined {
-  return beat.sourcing === "narration" ? beat.narration : beat.connectiveNarration;
+  return pageOfWrittenBeat(beat);
 }
 
+/* A beat carried by another beat's seam page (Q-03, `carriedBy`) holds no
+   page and is never eligible, so this only ever replaces a page that is
+   there. */
 function withPage(beat: WrittenBeat, page: NarratedBeat): WrittenBeat {
   return beat.sourcing === "narration" ? { ...beat, narration: page } : { ...beat, connectiveNarration: page };
 }

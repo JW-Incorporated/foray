@@ -6,6 +6,8 @@ import { costFor, modelFor } from "../config/models";
 import { defaultBudgetGuard, type BudgetGuard } from "../cost/budgetGuard";
 import { isTapeSource, tapeDocIdFor, type Source } from "../types/narration";
 import type {
+  ActVerifyRequest,
+  ActVerifyResult,
   NarrationBuildContext,
   NarrationVerifierBuilder,
   NarrationVerifyRequest,
@@ -13,6 +15,7 @@ import type {
   SynthesisVerifyRequest,
   SynthesisVerifyResult,
   VerifiedPageSummary,
+  VerifyClipBrief,
   VerifyPageBrief
 } from "./NarrationVerifierBuilder";
 import { recordUsage } from "./usageTracking";
@@ -87,6 +90,13 @@ const RawSynthesisResultSchema = z.object({
   )
 });
 
+/* Q-03: one verdict per beat and one per seam of a whole act. */
+const RawActVerifySchema = z.object({
+  beats: z.array(z.object({ beatId: z.string(), carried: z.boolean(), notes: z.string().optional() })),
+  seams: z.array(z.object({ seamId: z.string(), claimsSupported: z.boolean(), contestedHandled: z.boolean(), notes: z.string().optional() }))
+});
+const MAX_ACT_VERIFY_OUTPUT_TOKENS = 4000;
+
 function roughTokenEstimate(text: string): number {
   return Math.ceil(text.length / 4);
 }
@@ -116,20 +126,25 @@ export class AnthropicNarrationVerifierBuilder implements NarrationVerifierBuild
     return { pages: raw.pages.map((p) => ({ ...p, restsOn: p.restsOn ?? [] })) };
   }
 
-  private async ask<T>(promptText: string, schema: z.ZodType<T>, ctx: NarrationBuildContext): Promise<T> {
+  /** Q-03: the per-beat question for a whole act. See `buildActVerifyPrompt`. */
+  async verifyAct(request: ActVerifyRequest, ctx: NarrationBuildContext): Promise<ActVerifyResult> {
+    return this.ask(buildActVerifyPrompt(request), RawActVerifySchema, ctx, MAX_ACT_VERIFY_OUTPUT_TOKENS);
+  }
+
+  private async ask<T>(promptText: string, schema: z.ZodType<T>, ctx: NarrationBuildContext, maxOutputTokens: number = MAX_OUTPUT_TOKENS): Promise<T> {
     const estimatedInputTokens = roughTokenEstimate(promptText);
     await this.budgetGuard.checkAndRecord({
       userId: ctx.userId,
       operation: "narration_verify",
       provider: this.providerName,
       model: MODEL,
-      estimatedUsd: estimatedInputTokens * USD_PER_INPUT_TOKEN + MAX_OUTPUT_TOKENS * USD_PER_OUTPUT_TOKEN,
+      estimatedUsd: estimatedInputTokens * USD_PER_INPUT_TOKEN + maxOutputTokens * USD_PER_OUTPUT_TOKEN,
       sessionId: ctx.sessionId
     });
 
     const response = await this.client.messages.create({
       model: MODEL,
-      max_tokens: MAX_OUTPUT_TOKENS,
+      max_tokens: maxOutputTokens,
       messages: [{ role: "user", content: promptText }]
     });
 
@@ -150,13 +165,13 @@ export class AnthropicNarrationVerifierBuilder implements NarrationVerifierBuild
         operation: "narration_verify",
         provider: this.providerName,
         model: MODEL,
-        estimatedUsd: reaskEstimatedInputTokens * USD_PER_INPUT_TOKEN + MAX_OUTPUT_TOKENS * USD_PER_OUTPUT_TOKEN,
+        estimatedUsd: reaskEstimatedInputTokens * USD_PER_INPUT_TOKEN + maxOutputTokens * USD_PER_OUTPUT_TOKEN,
         sessionId: ctx.sessionId
       });
 
       const retryResponse = await this.client.messages.create({
         model: MODEL,
-        max_tokens: MAX_OUTPUT_TOKENS,
+        max_tokens: maxOutputTokens,
         messages: [
           { role: "user", content: promptText },
           { role: "assistant", content: textBlock.text },
@@ -211,6 +226,79 @@ function verifiedPageLine(page: VerifiedPageSummary): string {
 function synthesisPageBlock(page: VerifyPageBrief): string {
   const sources = page.sources.map((s, i) => `  Source ${i + 1}: claim="${s.claimText}" quoted from page ${s.publication}`).join("\n");
   return [`PAGE ${page.pageId} — mode ${page.mode}`, `Purpose: ${page.purpose}`, `Script:\n${page.script}`, `Sources:\n${sources || "  (none declared)"}`].join("\n");
+}
+
+/**
+ * Q-03: the per-act verification prompt. The beats are the CHECKLIST;
+ * the act's seams and clips are laid out in play order with every
+ * seam's sources and every clip's transcript window; the answer is one
+ * verdict per beat (carried, or a note naming what is missing and where
+ * it belongs) and one per seam (the two page questions that survive —
+ * support and contested; purpose is now the per-beat question).
+ * Introductions are exempt from the support question: who is speaking,
+ * the show and the episode are checked structurally against the segment
+ * source row before this is called (Q-02). Exported for the prompt
+ * tests only.
+ */
+export function buildActVerifyPrompt(request: ActVerifyRequest): string {
+  const clips = new Map(request.clips.map((c) => [c.clipId, c]));
+  return [
+    `You are the FACT-VERIFICATION pass for the narration of one act ("${request.actTitle}") of an audio documentary ("Foray"). You did NOT write it.`,
+    "",
+    "THE CHECKLIST — every beat the act's narration must carry:",
+    ...request.beats.map((b) => `  ${b.beatId}: ${b.claim}`),
+    "",
+    "THE ACT, IN PLAY ORDER — narration seams and the clips of real tape between them:",
+    actVerifyLayout(request, clips),
+    "",
+    "Answer two sets of questions.",
+    "1. For each BEAT on the checklist: carried — does the act's narration (any seam, not only the one the beat was positioned in) or one of its clips",
+    "   make the beat's point, supported by the sources attached to that seam or by what is said in the clip's window? A beat is carried when a",
+    "   listener would hear its point made, in whatever words. It is NOT carried when no seam makes the point, or a seam makes it with no support.",
+    "   When a beat is not carried, say in notes which seam it belongs in and what is missing, in one sentence a writer can act on.",
+    "2. For each SEAM: claimsSupported — does every statement the script makes about the world follow from the source attached to it?",
+    "   A source marked [TAPE] has no quote to check against: judge every statement about that clip against the clip's transcript window",
+    "   printed on its CLIP line, and only that window. A restatement of a clip with no tape source is unsupported.",
+    "   EXEMPT from this question: the sentences that introduce a clip — who is speaking, the show, the episode — which are checked by",
+    "   structure against the segment's source row before you are called. Do not fail a seam for them.",
+    "   contestedHandled — read the sources: if reputable sources actively disagree about something the script asserts, the script must",
+    "   say the point is disputed, in any natural wording. If nothing is genuinely contested, this is true.",
+    "",
+    "Do NOT check whether a quote exists in its source — that was already proven mechanically before you were called.",
+    "",
+    "DOCUMENTS the seams' sources quote:",
+    request.documents.filter((d) => d.kind !== "tape").map((d) => `  --- ${d.title}${d.url ? ` | ${d.url}` : ""}\n${d.text}`).join("\n") || "  (none — every source is a clip's window)",
+    "",
+    "Respond with ONLY a single JSON object, no markdown fences, no other text, matching exactly:",
+    '{"beats": [{"beatId": string, "carried": boolean, "notes": string (required and specific whenever carried is false)}], ' +
+      '"seams": [{"seamId": string, "claimsSupported": boolean, "contestedHandled": boolean, "notes": string (required whenever an answer is false)}]}'
+  ].join("\n");
+}
+
+function actVerifyLayout(request: ActVerifyRequest, clips: Map<string, VerifyClipBrief>): string {
+  const lines: string[] = [];
+  for (const seam of request.seams) {
+    const edges: string[] = [];
+    if (seam.follows) edges.push(`follows CLIP ${seam.follows}`);
+    if (seam.introduces) edges.push(`introduces CLIP ${seam.introduces} (introduction: ${seam.intro ?? "full"})`);
+    lines.push(`SEAM ${seam.seamId} — mode ${seam.mode}${seam.carries.length > 0 ? `, positioned beats ${seam.carries.join(", ")}` : ", no beat positioned here"}${edges.length > 0 ? ` — ${edges.join(", ")}` : ""}`);
+    lines.push(`  Script:\n${seam.script}`);
+    lines.push(`  Sources:\n${seam.sources.map((s, i) => actSourceLine(s, i)).join("\n") || "    (none declared)"}`);
+    if (seam.introduces) {
+      const clip = clips.get(seam.introduces);
+      if (clip) {
+        lines.push(`CLIP ${clip.clipId} — "${clip.title}" on ${clip.show || "an unnamed show"}, ${Math.round(clip.durationSec)} s of tape${clip.docId ? ` (${clip.docId})` : ""}`);
+        lines.push(`  Transcript window:\n${clip.windowText || "    (the window is not held — treat any statement about this clip as unsupported)"}`);
+      }
+    }
+  }
+  return lines.join("\n");
+}
+
+function actSourceLine(s: Source, i: number): string {
+  const contested = s.contested ? " [marked contested]" : "";
+  if (!isTapeSource(s)) return `    Source ${i + 1}: claim="${s.claimText}" quote="${s.quote}" publication="${s.publication}"${contested}`;
+  return `    Source ${i + 1} [TAPE ${s.segmentId}]: claim="${s.claimText}"${s.quote ? ` echoes="${s.quote}"` : ""} publication="${s.publication}"${contested} — judge against that clip's window`;
 }
 
 /** Exported for the prompt tests only — never instantiate the class in a

@@ -1641,7 +1641,9 @@ const BACKEND_FLOORS = {
      unverified hand-off the gate refuses, and the two former throw sites (no
      evidence, and no page ever produced) are pinned as degrade paths so the
      surviving `NarrationWriteError` guards the beat count and nothing else. */
-  "test/writeNarration.test.ts": 69,
+  /* +1 (Q-03): the stub builders offer the per-act contract, so a dry run pays
+     one write and one verify for an act and never the per-slot calls. */
+  "test/writeNarration.test.ts": 70,
   /* Stage 3b (kanban t_567b570f, docs/show-pages-plan.md §Stage 3): shared
      catalogue store CRUD (scoping by show_id, upsert-not-duplicate on
      (show_id, guid), published_at ordering, feed-state round-trip). */
@@ -1852,6 +1854,19 @@ const BACKEND_FLOORS = {
      Patch never goes through it; the gate counts `synthesisVerifiedPages`
      separately and treats them as verified. One named mutation per test. */
   "test/synthesisVerify.test.ts": 17,
+  /* Q-02/Q-03/Q-05 (listening-quality deck; ledger F-95): narration written
+     per ACT and verified per BEAT. A four-beat, two-clip act passes on all
+     four in two calls with one page per seam; a mutation dropping a beat from
+     the prose is red (the verifier names it, the retry edits the act, the
+     seam is kept unverified for the gate); an Intro before each clip names the
+     show, is absent when the host introduces the guest in the clip, is one
+     clause for a same-episode follow-on, and is refused in code when it
+     repeats the clip's first sentences; the listening KPIs
+     (`narrationPagesPerSeam`, `narrationShare`, `tapeShare`, `introRestates`,
+     `narrationCallsPerAct`, a beat-level `firstAttemptPassRate`); the seam
+     plan and Intro rules; the two prompts; the stitcher's one item per seam.
+     One named mutation per test. */
+  "test/actNarration.test.ts": 24,
 };
 
 /* `it(` as well as `test(`: backend's suites use both spellings. */

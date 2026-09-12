@@ -53,6 +53,10 @@ export const MODE_CHAR_BANDS = {
   correction: [100, 205],
   patch: [340, 765],
   carry: [765, 1870],
+  /* Q-02 (listening-quality deck): one or two sentences before a clip — who is
+     speaking, on which show, what to listen for. Mirrors
+     backend/src/types/narration.ts's `MODE_CHAR_BANDS.Intro`. */
+  intro: [30, 260],
 };
 export const NARRATION_SOFT_MAX_SEC = 150;
 export const NARRATION_HARD_MAX_SEC = 180;

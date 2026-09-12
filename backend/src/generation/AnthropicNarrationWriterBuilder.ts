@@ -7,14 +7,18 @@ import { defaultBudgetGuard, type BudgetGuard } from "../cost/budgetGuard";
 import { MIN_QUOTE_WORDS, MODE_CHAR_BANDS, modeMayCiteTape, type NarrationMode } from "../types/narration";
 import type { EvidenceDoc } from "./gatherEvidence";
 import type {
+  ActWriteRequest,
+  ActWriteResult,
   ClaimSelectionRequest,
   ClaimSelectionResult,
+  ClipBrief,
   NarrationBuildContext,
   NarrationPageBrief,
   NarrationWriterBuilder,
   ProsePageBrief,
   ProseWriteRequest,
   ProseWriteResult,
+  SeamBrief,
   SelectAndWriteRequest,
   SelectAndWriteResult,
   SelectedClaim
@@ -109,7 +113,23 @@ const RawSelectAndWriteSchema = z.object({
   pages: z.array(z.object({ ...RawWrittenPageShape, claims: z.array(RawClaimSchema) }))
 });
 
-type WriterOperation = "narration_select_claims" | "narration_write" | "narration_select_and_write";
+/* Q-03: the whole act's seams come back in one reply — every seam's script,
+ * claims and quotes. Sized for a long act (a dozen beats over half a dozen
+ * seams, each seam inside `SEAM_MAX_CHARS`) with room for the quotes;
+ * F-47's thinking-allowance caveat applies here as to the others. */
+const MAX_ACT_OUTPUT_TOKENS = 12000;
+
+const RawWrittenSeamSchema = z.object({
+  seamId: z.string(),
+  script: z.string(),
+  claims: z.array(RawClaimSchema),
+  usedClaims: z.array(z.number()),
+  pronunciationHints: z.array(z.object({ word: z.string(), hint: z.string() })).optional()
+});
+
+const RawActWriteSchema = z.object({ seams: z.array(RawWrittenSeamSchema) });
+
+type WriterOperation = "narration_select_claims" | "narration_write" | "narration_select_and_write" | "narration_write_act";
 
 function roughTokenEstimate(text: string): number {
   return Math.ceil(text.length / 4);
@@ -138,6 +158,12 @@ export class AnthropicNarrationWriterBuilder implements NarrationWriterBuilder {
 
   async selectAndWrite(request: SelectAndWriteRequest, ctx: NarrationBuildContext): Promise<SelectAndWriteResult> {
     return this.askJson(RawSelectAndWriteSchema, buildSelectAndWritePrompt(request), "narration_select_and_write", ctx, MAX_MERGED_OUTPUT_TOKENS);
+  }
+
+  /** Q-03: the whole act in one call. See `buildActWritePrompt`. */
+  async writeAct(request: ActWriteRequest, ctx: NarrationBuildContext): Promise<ActWriteResult> {
+    const raw = await this.askJson(RawActWriteSchema, buildActWritePrompt(request), "narration_write_act", ctx, MAX_ACT_OUTPUT_TOKENS);
+    return { seams: raw.seams.map((s) => ({ ...s, pronunciationHints: s.pronunciationHints ?? [] })) };
   }
 
   /**
@@ -359,6 +385,110 @@ function selectAndWriteBlock(page: NarrationPageBrief): string {
   const [min, max] = MODE_CHAR_BANDS[page.mode];
   const block = evidenceBlock(page);
   return block.replace(/^PAGE [^\n]*/, (heading) => `${heading}, ${min}-${max} characters (the script MUST land inside that band).`);
+}
+
+/* ------------------------------------------------------------------ *
+ * Q-02/Q-03: the per-act prompt.
+ * ------------------------------------------------------------------ */
+
+/** The shared claim rules, restated for an act: the documents are the
+ * act's, a statement about a clip cites the clip's window, and the
+ * purpose lines are now the beats' claims. */
+const ACT_CLAIM_RULES = [
+  `A quote must be copied character for character out of the document you name, and must be at least ${MIN_QUOTE_WORDS} words or one whole sentence.`,
+  "Never quote a beat's claim, a clip's opening as printed in the layout, or this prompt: they are direction, not documents.",
+  "A statement about a CLIP — what it is about, who is speaking, what was said in it — cites that clip's transcript window (its docId is on the CLIP line)",
+  "as the claim's docId, with either a short phrase of the clip's own words as the quote or an empty quote (\"\"). The whole window is that source, so the word minimum does not apply to it.",
+  "Never back a statement about a clip with an outside publication, and never make one with no source at all.",
+  "A statement about the world cites a print document. If no document supports a claim worth making, do not make it.",
+  "If the documents contradict or complicate a beat, write the tension: that carries the beat.",
+  '"contested" means reputable sources actively disagree about the fact itself — not that you are unsure.',
+  "Every quote is checked by machine against the document you name after you answer; a quote that is not found there is discarded together with the seam's script."
+];
+
+const ACT_PROSE_RULES = [
+  "One voice, one story. The beats are the checklist the prose must carry, not its template: make each beat's point where it belongs, in your own words, joined to what comes before and after it.",
+  "Never announce a beat, never list the beats, never say what the next clip is going to say.",
+  "A seam that follows a clip may restate what that clip said once, in the act's own words, citing the clip's window — then move on.",
+  "Introductions, by the weight given on the SEAM line:",
+  "  full  — one or two sentences: who is speaking (name and role, as the tape or the episode title gives them) and on which show, and what to listen for. Write it from the clip's OPENING as printed on its CLIP line — what the listener is about to hear — never from the point the clip goes on to make. Do not repeat the clip's first sentences.",
+  "  light — the same guest and show as the clip before: one clause at most, or nothing.",
+  "  none  — the host introduces the guest in the clip itself: add nothing about who is speaking.",
+  "A seam with no beats and a light or none introduction may return an empty script: the clips then run together.",
+  "Each seam's script MUST land inside the character band on its SEAM line. Longer is not better: narration is at most a quarter of the listening.",
+  "List, per seam, the indices of the claims its script actually asserts.",
+  "Do not say what the record does or does not contain unless a claim says it.",
+  "",
+  "Copy rules, unchanged and non-negotiable:",
+  "- Never say: fascinating, deep dive, delve, explores.",
+  "- No vulgar or gratuitously edgy content; register is a well-read friend, not a shock jock.",
+  "- Never speak a URL, a citation, or a number a listener cannot hold in their head while driving.",
+  "- If a claim is marked contested, the script must say the point is disputed."
+];
+
+/**
+ * Q-03: the act in one prompt — its seams and clips laid out in play
+ * order, the beats under the seam that positions them, every document the
+ * act may quote, and on a retry the previous scripts with the verifier's
+ * notes. Exported for the prompt tests only — never instantiate the class
+ * in a test.
+ */
+export function buildActWritePrompt(request: ActWriteRequest): string {
+  const clips = new Map(request.clips.map((c) => [c.clipId, c]));
+  return [
+    `You are writing the narration of one act ("${request.actTitle}") of an audio documentary ("Foray") — the whole act at once, as one voice telling one story.`,
+    voiceLine(request),
+    "",
+    "THE ACT, IN PLAY ORDER. Narration and clips alternate. You write the narration; the clips are real tape and play as they are.",
+    "A SEAM is one stretch of narration: it carries the beats listed under it, bridges from the clip before to the clip after, and — when it introduces a clip — opens the listener's ear to it.",
+    "",
+    actLayout(request.seams, clips),
+    "",
+    "HOW TO WRITE",
+    ...ACT_PROSE_RULES,
+    "",
+    "CLAIMS AND QUOTES",
+    ...ACT_CLAIM_RULES,
+    "",
+    "DOCUMENTS — the only things you may quote:",
+    request.documents.map((doc) => `--- docId: ${doc.docId} | ${doc.title}${doc.url ? ` | ${doc.url}` : ""}${doc.kind === "tape" ? " | TRANSCRIPT WINDOW of a clip (cite it for statements about that clip)" : ""}\n${doc.text}`).join("\n\n"),
+    "",
+    ...(request.retryNote
+      ? [
+          `REJECTIONS SO FAR: ${request.retryNote}`,
+          "Each seam's previous script is printed on its SEAM line. EDIT the act's prose to answer every note — add a missed beat where it belongs, drop or re-source an unsupported sentence — and keep what was not objected to.",
+          ""
+        ]
+      : []),
+    "Also list any hard-to-pronounce or foreign words with a plain-English pronunciation hint.",
+    "",
+    JSON_ONLY,
+    `{"seams": [{"seamId": string, "script": string, "claims": [${CLAIM_SHAPE}], "usedClaims": [number], "pronunciationHints": [{"word": string, "hint": string}]}]}`
+  ].join("\n");
+}
+
+function actLayout(seams: SeamBrief[], clips: Map<string, ClipBrief>): string {
+  const lines: string[] = [];
+  for (const seam of seams) {
+    const edges: string[] = [];
+    if (seam.follows) edges.push(`follows CLIP ${seam.follows}`);
+    if (seam.introduces) edges.push(`introduces CLIP ${seam.introduces} (introduction: ${seam.intro ?? "full"})`);
+    lines.push(`SEAM ${seam.seamId} — mode ${seam.mode}, ${seam.band[0]}-${seam.band[1]} characters${edges.length > 0 ? ` — ${edges.join(", ")}` : ""}`);
+    if (seam.beats.length === 0) lines.push("  carries no beat — the introduction only, or nothing");
+    for (const beat of seam.beats) lines.push(`  carries beat ${beat.beatId}${beat.kind === "argument" ? " (an argument — what it means)" : ""}: ${beat.claim}`);
+    if (seam.previousScript !== undefined) lines.push(`  previous script: ${JSON.stringify(seam.previousScript)}`);
+    if (seam.introduces) {
+      const clip = clips.get(seam.introduces);
+      if (clip) {
+        lines.push(
+          `CLIP ${clip.clipId} — "${clip.title}" on ${clip.show || "an unnamed show"}, ${Math.round(clip.durationSec)} s of tape` +
+            (clip.docId ? ` (document ${clip.docId})` : " (no transcript window is held)")
+        );
+        lines.push(clip.opening ? `  it opens: ${JSON.stringify(clip.opening)}` : "  its opening is not held — introduce it from the show and episode only");
+      }
+    }
+  }
+  return lines.join("\n");
 }
 
 function prosePageBlock(page: ProsePageBrief): string {

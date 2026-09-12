@@ -1,6 +1,6 @@
 import type { Voice } from "../types/spine";
 import type { NarrationMode, PronunciationHint } from "../types/narration";
-import type { EvidencePack } from "./gatherEvidence";
+import type { EvidenceDoc, EvidencePack } from "./gatherEvidence";
 
 /**
  * §4.7's writing collaborator (docs/curation/generation-architecture.md
@@ -59,6 +59,131 @@ export interface NarrationWriterBuilder {
   writePages(request: ProseWriteRequest, ctx: NarrationBuildContext): Promise<ProseWriteResult>;
   /** G-34: selection and prose in one reply. See the class comment. */
   selectAndWrite?(request: SelectAndWriteRequest, ctx: NarrationBuildContext): Promise<SelectAndWriteResult>;
+  /**
+   * Q-03: THE WHOLE ACT IN ONE CALL. The writer is handed an act's verified
+   * material — its clips (opening text, guest/show), its documents, its
+   * beats with their claims — laid out in play order as SEAMS (the stretch
+   * of narration between two clips, before the first, after the last) and
+   * writes continuous prose for the act in one voice: the Intro before each
+   * clip (Q-02), the bridges between clips, and the argument the act
+   * carries. The beats are the checklist the prose must carry, not the
+   * template it fills; a seam's script may carry a beat's claim wherever it
+   * belongs. The reply is one script per seam with the claims it asserts
+   * and the spans that back them — the same mechanical quote gate as the
+   * per-page calls runs on it afterwards.
+   *
+   * Optional: a writer without it (a scripted test writer, an older
+   * provider) takes the per-slot, per-page path above, which is kept as
+   * the fallback and as F-88's drafting path. The real and stub builders
+   * both offer it, so production and `--dry-run` write per act.
+   */
+  writeAct?(request: ActWriteRequest, ctx: NarrationBuildContext): Promise<ActWriteResult>;
+}
+
+/* ------------------------------------------------------------------ *
+ * Q-02/Q-03: the per-act contract.
+ * ------------------------------------------------------------------ */
+
+/** How much introducing a clip needs (Q-02, "don't go overkill"):
+ *   - `full`  — a different episode from the previous clip, and the host
+ *               does not introduce the guest in the clip's own opening:
+ *               the prose before it must name who is speaking and on
+ *               which show, and say what to listen for;
+ *   - `light` — the same episode as the previous clip: one clause at
+ *               most, or nothing;
+ *   - `none`  — the host's own introduction is in the clip's opening
+ *               (the sourcing agent extends windows back to the host's
+ *               question): nothing is required, and nothing is repeated. */
+export type IntroKind = "full" | "light" | "none";
+
+/** One clip of the act as the writer and verifier see it. */
+export interface ClipBrief {
+  /** `c<n>` in act play order. */
+  clipId: string;
+  segmentId: string;
+  itemId: string;
+  /** The show and episode from the segment's source row or the pack's
+   * tape context — what an Intro must name (structural check). */
+  show: string;
+  title: string;
+  /** The transcript window's docId when the pipeline holds it
+   * (`tapeDocIdFor`), so a seam may cite the clip. */
+  docId?: string;
+  /** The clip's OPENING — roughly its first minute of speech, from the
+   * start anchor on — the only part of the clip an Intro is written from.
+   * Empty when no window is held. */
+  opening: string;
+  durationSec: number;
+  intro: IntroKind;
+}
+
+/** One beat the act's prose must carry, in play order. */
+export interface BeatBrief {
+  /** `b<n>` over the act's flattened beats. */
+  beatId: string;
+  claim: string;
+  /** A narration beat's sourcing mode (Patch/Carry) — the band it brings
+   * to its seam. */
+  mode: NarrationMode;
+  /** WS-C: an `argument` beat is a claim about what things mean; an
+   * `account` is something that happened. */
+  kind: "account" | "argument";
+}
+
+/** One seam of the act: the narration between two clips (or before the
+ * first, or after the last). Its script carries the beats listed and, when
+ * it introduces a clip, the Intro for it. */
+export interface SeamBrief {
+  /** `s<n>` in play order. */
+  seamId: string;
+  /** The narration beats positioned in this seam — the ones whose page
+   * this seam's script becomes. May be empty for an intro-only seam. */
+  beats: BeatBrief[];
+  /** The clip that plays just before this seam, when one does. */
+  follows?: string;
+  /** The clip this seam introduces (plays just after it), when one does. */
+  introduces?: string;
+  /** The introduction the clip in `introduces` needs. Absent with it. */
+  intro?: IntroKind;
+  /** The mode the seam's page is recorded under: `Carry` when it carries
+   * a Carry beat, `Patch` when it carries beats, `Intro` when it only
+   * introduces. */
+  mode: NarrationMode;
+  /** The character band the script must land in (`seamBand`). */
+  band: [number, number];
+  /** The seam's script from the previous round, when this is a retry —
+   * the writer EDITS the act's prose rather than starting over (Q-03:
+   * "a missed beat sends back a note, not a page"). */
+  previousScript?: string;
+}
+
+export interface ActWriteRequest {
+  actTitle: string;
+  voice: Voice;
+  seams: SeamBrief[];
+  clips: ClipBrief[];
+  /** Every document the act may quote — print passages and the clips'
+   * transcript windows, deduplicated act-wide. Nothing else is quotable. */
+  documents: EvidenceDoc[];
+  /** Every prior rejection of the act, in order (F-35), with the per-beat
+   * and per-seam notes the verifier gave. */
+  retryNote?: string;
+}
+
+/** One seam's script with the claims it asserts. `claims` and
+ * `usedClaims` mean exactly what they mean on a `SelectedAndWrittenPage`;
+ * an empty script is allowed only on a seam with no beats whose intro is
+ * not `full` — it means "no page here, silence bridges". */
+export interface WrittenSeam {
+  seamId: string;
+  script: string;
+  claims: SelectedClaim[];
+  usedClaims: number[];
+  pronunciationHints: PronunciationHint[];
+}
+
+export interface ActWriteResult {
+  seams: WrittenSeam[];
 }
 
 /** One page's brief, shared by both calls and by the verifier. */
