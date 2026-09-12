@@ -75,7 +75,7 @@ import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { crlfOffenders, crlfFatalMessage } from "./crlf-guard.mjs";
-import { POINTER_PATH, deployIdFrom, writePointer, pointerProblems } from "./forays-directory.mjs";
+import { POINTER_PATH, deployIdFrom, writePointer, pointerProblems, builtAtFloorFrom } from "./forays-directory.mjs";
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const MANIFEST_PATH = path.join(ROOT, "deploy-manifest.json");
@@ -193,12 +193,27 @@ function main() {
   if (mode === "write") {
     /* Pointer first — its bytes are a manifest entry, so it has to be on disk
        in its final form before the manifest that names it is written. */
-    const pointer = writePointer(ROOT, base.deploy_id);
+    /* The rollback clause (audit finding C, 2026-09-12): this branch may never
+       move the pointer's `built_at` BACKWARDS from the stamp it started at, or
+       a `git revert` — which restores the pointer's old bytes along with the
+       three data files, since manifest-autofix commits it onto the data PR's
+       own head — ships a pointer every phone holding the reverted version
+       refuses forever (`player/foray-directory.js`, STATUS.OLDER). The floor is
+       the pointer at the MERGE BASE with main, read from git, best-effort: no
+       git, no ref, no merge base -> null -> the behaviour this had before the
+       floor existed. See `writePointer` and `builtAtFloorFrom`. */
+    const builtAtFloor = builtAtFloorFrom(ROOT);
+    const pointer = writePointer(ROOT, base.deploy_id, new Date(), { builtAtFloor });
     const computed = withPointerEntry(base);
     writeFileSync(MANIFEST_PATH, JSON.stringify(computed, null, 2) + "\n");
     stampBuildId(computed.deploy_id);
     console.log(`deploy-manifest.json written — deploy_id ${computed.deploy_id}, ${Object.keys(computed.files).length} files`);
-    console.log(`${POINTER_PATH} ${pointer.changed ? "written" : "unchanged"} — version ${pointer.pointer.version}`);
+    console.log(
+      `${POINTER_PATH} ${pointer.changed ? "written" : "unchanged"} — version ${pointer.pointer.version}` +
+        (pointer.restamped
+          ? ` (built_at RESTAMPED: the committed pointer was behind the ${builtAtFloor} this branch started from — a rollback must move forward)`
+          : "")
+    );
     return;
   }
 
@@ -210,7 +225,7 @@ function main() {
   /* The pointer before the manifest diff: a stale pointer also changes the
      pointer's manifest entry, and "deploy-manifest.json is stale" would send
      the reader looking at the wrong file. */
-  const problems = pointerProblems(ROOT, base.deploy_id);
+  const problems = pointerProblems(ROOT, base.deploy_id, { builtAtFloor: builtAtFloorFrom(ROOT) });
   if (problems.length) {
     console.error(`FATAL: ${POINTER_PATH} is stale or malformed. Run \`node tools/ci/generate-manifest.mjs --write\` and commit the result.`);
     for (const p of problems) console.error(`  ${p}`);
