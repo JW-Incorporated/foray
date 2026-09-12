@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "built_at": "2026-09-09T11:56:26.776Z",
+  "built_at": "2026-09-12T11:58:58.123Z",
   "tags": {
     "lex-fridman-podcast--don-lincoln-physics": [
       "physics",
@@ -17755,6 +17755,595 @@
       "food-science",
       "craft",
       "interview"
+    ],
+    "cleantechies-podcast--292-she-built-a-flying-boat": [
+      "electric-boats",
+      "hydrofoil",
+      "maritime",
+      "clean-energy",
+      "startups",
+      "engineering",
+      "interview"
+    ],
+    "catalyst-shayle-kann--do-data-centers-actually-increase-electricity": [
+      "data-centers",
+      "electricity",
+      "utilities",
+      "clean-energy",
+      "policy",
+      "interview",
+      "economics"
+    ],
+    "lab-to-market-leadership--the-deep-tech-founder-s-guide": [
+      "spac",
+      "ipo",
+      "startups",
+      "deep-tech",
+      "venture-capital",
+      "finance",
+      "founders"
+    ],
+    "cbc-ideas--unpacking-the-contradictions-in-america-s": [
+      "american-history",
+      "democracy",
+      "politics",
+      "ideas",
+      "documentary",
+      "interview"
+    ],
+    "cbc-ideas--human-emotion-behind-ai-chatbot-design": [
+      "artificial-intelligence",
+      "chatbots",
+      "ai",
+      "labor",
+      "psychology",
+      "tech-industry",
+      "interview"
+    ],
+    "cbc-ideas--a-poet-s-journey-from-being": [
+      "refugees",
+      "immigration",
+      "poetry",
+      "human-rights",
+      "personal-story",
+      "interview",
+      "memoir"
+    ],
+    "stuff-you-should-know--the-odyssey-episode": [
+      "mythology",
+      "literature",
+      "ancient-greece",
+      "storytelling",
+      "explainer",
+      "history"
+    ],
+    "being-an-engineer--antonio-valadez-nate-post-building-better": [
+      "engineering",
+      "leadership",
+      "manufacturing",
+      "medical-devices",
+      "mentorship",
+      "careers",
+      "interview"
+    ],
+    "the-rest-is-history--704-roman-civil-war-master-of": [
+      "ancient-rome",
+      "roman-history",
+      "military-history",
+      "ancient-history",
+      "civil-war",
+      "biography"
+    ],
+    "conan-obrien-needs-a-friend--comedy-crimes-with-andy-daly": [
+      "comedy",
+      "interview",
+      "true-crime",
+      "banter",
+      "innocence-project",
+      "legal"
+    ],
+    "business-of-machining--467-spindle-gripping": [
+      "machining",
+      "cnc",
+      "manufacturing",
+      "tools",
+      "machine-shop",
+      "technical"
+    ],
+    "the-ancients--iron-age-ireland": [
+      "archaeology",
+      "ancient-history",
+      "ireland",
+      "iron-age",
+      "mythology",
+      "interview"
+    ],
+    "ancient-history-fangirl--ahfg-book-club-lady-pirates-and": [
+      "mythology",
+      "books",
+      "fiction",
+      "interview",
+      "folklore",
+      "history"
+    ],
+    "engines-of-our-ingenuity--the-engines-of-our-ingenuity-1628": [
+      "medical-history",
+      "military-history",
+      "invention",
+      "history-of-technology",
+      "engineering-history"
+    ],
+    "engines-of-our-ingenuity--the-engines-of-our-ingenuity-1627": [
+      "medical-history",
+      "history-of-science",
+      "invention",
+      "history-of-technology",
+      "medicine"
+    ],
+    "engines-of-our-ingenuity--the-engines-of-our-ingenuity-2639": [
+      "architecture",
+      "history-of-technology",
+      "seattle",
+      "world-fairs",
+      "engineering-history",
+      "landmarks"
+    ],
+    "this-week-in-startups--the-pentagon-wants-equity-in-ai": [
+      "startups",
+      "venture-capital",
+      "ai",
+      "defense",
+      "government-contracts",
+      "policy"
+    ],
+    "this-week-in-startups--becki-degraw-on-founder-vesting-advisor": [
+      "startups",
+      "venture-capital",
+      "legal",
+      "equity",
+      "founders",
+      "business"
+    ],
+    "this-week-in-startups--did-openai-steal-the-navier-stokes": [
+      "ai",
+      "openai",
+      "startups",
+      "tech-industry",
+      "math",
+      "controversy"
+    ],
+    "twenty-minute-vc--20vc-7-predictions-for-how-ai": [
+      "venture-capital",
+      "startups",
+      "ai",
+      "marketing",
+      "interview",
+      "tech-industry"
+    ],
+    "twenty-minute-vc--20vc-jensen-huang-declares-agi-has": [
+      "ai",
+      "venture-capital",
+      "startups",
+      "nvidia",
+      "tesla",
+      "tech-news"
+    ],
+    "fretboard-journal-guitar-podcast--podcast-562-nate-mercereau": [
+      "guitar",
+      "music-production",
+      "interview",
+      "songwriting",
+      "album"
+    ],
+    "fretboard-journal-guitar-podcast--podcast-561-molly-tuttle": [
+      "guitar",
+      "bluegrass",
+      "interview",
+      "music-history",
+      "craftsmanship"
+    ],
+    "fly-on-the-wall--robby-hoffman-could-make-david-hot": [
+      "comedy",
+      "interview",
+      "stand-up",
+      "celebrities",
+      "banter"
+    ],
+    "just-fly-performance-podcast--532-jamie-smith-on-overcoaching-and": [
+      "coaching",
+      "sports-science",
+      "training",
+      "biomechanics",
+      "interview"
+    ],
+    "song-exploder--paula-cole-i-don-t-want": [
+      "songwriting",
+      "music-production",
+      "interview",
+      "album",
+      "music-history"
+    ],
+    "99-percent-invisible--100-objects-17-m43-field-jacket": [
+      "design",
+      "military-history",
+      "fashion",
+      "history-of-technology",
+      "storytelling"
+    ],
+    "the-worlds-best-construction-podcast--manhattan-builds-another-stone-skyscraper-204": [
+      "construction",
+      "architecture",
+      "skyscrapers",
+      "infrastructure",
+      "engineering"
+    ],
+    "off-nominal--256-the-ellis-number": [
+      "space",
+      "rockets",
+      "spaceflight",
+      "commercial-space",
+      "banter"
+    ],
+    "planetary-radio--star-trek-at-60-what-do": [
+      "space",
+      "star-trek",
+      "space-exploration",
+      "pop-culture",
+      "interview"
+    ],
+    "software-engineering-daily--a-rust-framework-to-simplify-distributed": [
+      "software",
+      "distributed-systems",
+      "rust",
+      "computing",
+      "programming",
+      "technical"
+    ],
+    "planet-money--the-loan-at-the-heart-of": [
+      "economics",
+      "housing",
+      "mortgages",
+      "financial-crisis",
+      "finance"
+    ],
+    "odd-lots--robert-friedland-on-the-world-s": [
+      "economics",
+      "commodities",
+      "mining",
+      "copper",
+      "markets",
+      "interview"
+    ],
+    "odd-lots--why-bridgewater-s-cio-says-ai": [
+      "ai",
+      "hedge-funds",
+      "finance",
+      "ai-safety",
+      "interview",
+      "markets"
+    ],
+    "odd-lots--the-rise-of-organized-retail-crime": [
+      "retail",
+      "crime",
+      "economics",
+      "business",
+      "interview"
+    ],
+    "freakonomics-radio--686-why-is-it-so-hard": [
+      "economics",
+      "sports",
+      "nfl",
+      "football",
+      "data-analysis",
+      "psychology"
+    ],
+    "planetgeo-geology-podcast--the-silicates-geology-101-minerals-part": [
+      "geology",
+      "earth-science",
+      "minerals",
+      "education",
+      "explainer"
+    ],
+    "dont-panic-geocast--episode-433-2-totally-useless-degrees": [
+      "geology",
+      "wildfires",
+      "physics",
+      "earth-science",
+      "explainer"
+    ],
+    "tuned-in-hpa--170-engine-building-tuning-training-the": [
+      "automotive",
+      "engine-building",
+      "careers",
+      "education",
+      "interview"
+    ],
+    "the-race-f1-podcast--in-car-insights-reflecting-on-a": [
+      "formula-1",
+      "motorsport",
+      "racing",
+      "analysis",
+      "banter"
+    ],
+    "the-race-f1-podcast--f1-rewind-when-a-young-ayrton": [
+      "formula-1",
+      "motorsport",
+      "racing",
+      "history",
+      "biography"
+    ],
+    "volts--building-a-big-abundant-clean-grid": [
+      "clean-energy",
+      "grid",
+      "climate",
+      "policy",
+      "interview"
+    ],
+    "partially-examined-life--pel-presents-pvi-124-navel-evaluation": [
+      "philosophy",
+      "improv",
+      "comedy",
+      "banter",
+      "ideas"
+    ],
+    "partially-examined-life--pel-presents-nem-260-jacqui-hunt": [
+      "electronic-music",
+      "album",
+      "music-history",
+      "interview",
+      "songwriting"
+    ],
+    "philosophy-bites--nilanjan-das-on-buddhist-philosophy-and": [
+      "philosophy",
+      "buddhism",
+      "caste",
+      "south-asia",
+      "interview"
+    ],
+    "camera-shake-photography-podcast--what-portrait-photographers-should-never-retouch": [
+      "photography",
+      "portraiture",
+      "retouching",
+      "interview",
+      "craft"
+    ],
+    "science-vs--where-have-the-insects-gone-with": [
+      "biology",
+      "insects",
+      "ecology",
+      "science",
+      "explainer"
+    ],
+    "how-i-built-this--advice-line-with-kip-tindell-of": [
+      "startups",
+      "founders",
+      "business",
+      "advice",
+      "interview"
+    ],
+    "masters-of-scale--from-high-school-dropout-to-ceo": [
+      "business",
+      "leadership",
+      "founders",
+      "interview",
+      "tech-industry"
+    ],
+    "we-have-ways-of-making-you-talk--one-man-s-war-rommel-gazala": [
+      "world-war-2",
+      "military-history",
+      "north-africa",
+      "rommel",
+      "history"
+    ],
+    "history-of-wwii-podcast--episode-653-interview-w-jared-diamond": [
+      "world-war-2",
+      "leadership",
+      "history",
+      "interview",
+      "biography"
+    ],
+    "talking-headways--episode-593-carspreading": [
+      "urbanism",
+      "cities",
+      "transportation",
+      "policy",
+      "infrastructure"
+    ],
+    "huberman-lab--essentials-genes-the-inheritance-of-memories": [
+      "neuroscience",
+      "genetics",
+      "epigenetics",
+      "biology",
+      "interview"
+    ],
+    "strict-scrutiny--we-need-to-talk-about-term": [
+      "supreme-court",
+      "law",
+      "policy",
+      "courts",
+      "politics"
+    ],
+    "amicus-dahlia-lithwick--capitulation-nation": [
+      "law",
+      "courts",
+      "politics",
+      "interview",
+      "supreme-court"
+    ],
+    "craft-beer-and-brewing-magazine-podcast--502-pacific-northwest-approaches-to-west": [
+      "craft-beer",
+      "brewing",
+      "ipa",
+      "beer",
+      "panel"
+    ],
+    "the-lonely-palette--episode-72-joe-rosenthal-s-raising": [
+      "art",
+      "photography",
+      "world-war-2",
+      "history",
+      "culture"
+    ],
+    "that-triathlon-show--strength-and-speed-training-methods-of": [
+      "sports-science",
+      "endurance",
+      "training",
+      "cycling",
+      "research"
+    ],
+    "fast-talk--440-new-science-on-heart-remodeling": [
+      "sports-science",
+      "endurance",
+      "cardiology",
+      "research",
+      "training"
+    ],
+    "shipwrecks-and-sea-dogs--this-week-in-shipwrecks-4": [
+      "maritime",
+      "shipwrecks",
+      "news",
+      "history",
+      "disaster"
+    ],
+    "practical-ai--computer-use-agents-and-the-future": [
+      "ai",
+      "artificial-intelligence",
+      "agents",
+      "automation",
+      "interview"
+    ],
+    "twiml-ai--do-ai-tokenomics-matter-more-than": [
+      "ai",
+      "machine-learning",
+      "research",
+      "interview",
+      "tech-industry"
+    ],
+    "ten-percent-happier--neal-brennan-on-talking-back-to": [
+      "mental-health",
+      "psychedelics",
+      "comedy",
+      "interview",
+      "self-improvement"
+    ],
+    "zoe-science-nutrition--the-science-behind-food-that-isn": [
+      "nutrition",
+      "food-science",
+      "health",
+      "interview",
+      "research"
+    ],
+    "mel-robbins-podcast--stanford-psychologist-7-small-things-you": [
+      "self-improvement",
+      "psychology",
+      "mental-health",
+      "interview",
+      "stress"
+    ],
+    "armchair-expert--armchair-anonymous-bad-teacher": [
+      "comedy",
+      "personal-story",
+      "banter",
+      "interview",
+      "education"
+    ],
+    "this-past-weekend-theo-von--682-bishop-robert-barron": [
+      "religion",
+      "catholicism",
+      "faith",
+      "interview",
+      "culture"
+    ],
+    "comedy-bang-bang--bonus-bang-you-know-john-leguizamo": [
+      "comedy",
+      "interview",
+      "improv",
+      "banter",
+      "pop-culture"
+    ],
+    "how-did-this-get-made--jack": [
+      "comedy",
+      "movies",
+      "film",
+      "pop-culture",
+      "banter"
+    ],
+    "handsome--pretty-little-episode-108": [
+      "comedy",
+      "banter",
+      "hang",
+      "improv",
+      "casual"
+    ],
+    "kill-tony--kt-behind-the-tape-ep-784": [
+      "comedy",
+      "stand-up",
+      "behind-the-scenes",
+      "banter",
+      "interview"
+    ],
+    "criminal--family-secrets-part-1": [
+      "true-crime",
+      "investigation",
+      "narrative",
+      "storytelling",
+      "family"
+    ],
+    "casefile--case-352-gregory-smart": [
+      "true-crime",
+      "murder",
+      "investigation",
+      "cold-case",
+      "narrative"
+    ],
+    "unexplained--season-09-episode-34-nine-lives": [
+      "paranormal",
+      "ghosts",
+      "ireland",
+      "mystery",
+      "narrative"
+    ],
+    "dateline--what-s-next-for-lindsay-clancy": [
+      "true-crime",
+      "law",
+      "courts",
+      "investigation",
+      "murder"
+    ],
+    "snap-judgment--the-whale": [
+      "ocean",
+      "storytelling",
+      "science",
+      "mystery",
+      "narrative"
+    ],
+    "the-magnus-archives--the-magnus-protcol-55-blind-spots": [
+      "fiction",
+      "horror",
+      "audio-drama",
+      "supernatural",
+      "narrative"
+    ],
+    "old-gods-of-appalachia--episode-107-the-acolyte": [
+      "fiction",
+      "horror",
+      "audio-drama",
+      "appalachia",
+      "narrative"
+    ],
+    "bourbon-pursuit--twib-the-ky-abc-auctions-off": [
+      "bourbon",
+      "whiskey",
+      "distilling",
+      "news",
+      "drinks"
+    ],
+    "bourbon-pursuit--583-pursuitpalooza-2026-ama-part-1": [
+      "bourbon",
+      "whiskey",
+      "distilling",
+      "panel",
+      "education"
     ]
   }
 }
