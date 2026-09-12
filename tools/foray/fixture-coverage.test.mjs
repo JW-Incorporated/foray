@@ -84,6 +84,7 @@ const CARRIERS = {
   "narration.mode": (v) => ids(narrationItems().filter((x) => x.item.mode === v)),
   "narration.duration_source": (v) => ids(narrationItems().filter((x) => narrationDuration(x.item).source === v)),
   "narration.voice": (v) => ids(narrationItems().filter((x) => nonEmpty(x.item[v]))),
+  "narration.cite_kind": (v) => ids(narrationItems().filter((x) => (Array.isArray(x.item.cites) ? x.item.cites : []).some((c) => c?.kind === v))),
   "segment.role": (v) => ids(playedSegments().filter((x) => (x.seg.role ?? x.item.role ?? null) === v)),
   "segment.transcript_source": (v) => ids(playedSegments().filter((x) => x.seg.transcript_source === v)),
   "segment.source": (v) => ids(playedSegments().filter((x) => x.seg.source === v)),
@@ -136,6 +137,28 @@ const KNOWN_UNCOVERED = [
     value: "asset",
     why: "as above — `asset` is the second field the player reads for rendered audio.",
   },
+  /* F-103 (2026-09-12): a narrated beat ships the sources it rests on. The
+     provenance used to die at §4.8 (`stitchAct.ts` copied `mode` and `script`
+     off the page and nothing else), so the four generated Forays on main were
+     written with no `cites` to carry and CANNOT gain one without being
+     regenerated — this PR deliberately re-publishes nothing. Both kinds land
+     together, from the same `citesFor` call, on the first Foray generated
+     after this; that run is their fixture, and these two entries go with it. */
+  {
+    field: "narration.cite_kind",
+    value: "print",
+    why:
+      "no committed Foray carries `cites` at all: the four generated drafts predate the provenance being carried past " +
+      "§4.8, and F-103 re-publishes nothing. The next generation run is the fixture — print is the shape every Patch " +
+      "and Carry cites, so it lands on the first run that writes one.",
+  },
+  {
+    field: "narration.cite_kind",
+    value: "tape",
+    why:
+      "as above. The tape shape (F-81) is what a Frame/Hinge/Marker/Intro that describes the clip beside it cites, so it " +
+      "lands on the same first run — earlier than print, if anything, since every generated Foray opens its acts with Frames.",
+  },
   {
     field: "segment.role",
     value: "narrative",
@@ -164,7 +187,16 @@ const KNOWN_UNCOVERED = [
   },
 ];
 /** Raise this only with a written reason in the same PR. Lowering it is free. */
-const KNOWN_UNCOVERED_CEILING = 10; // 6 (jingle carrier landed with #632, 2026-09-11) + 1 narration.mode=intro (Q-02, 2026-09-12) + 3 segment.boundary values (Q-01, 2026-09-12), all until Q-06 lands their carriers
+const KNOWN_UNCOVERED_CEILING = 12; // 6 (jingle carrier landed with #632, 2026-09-11) + 1 narration.mode=intro (Q-02, 2026-09-12) + 3 segment.boundary values (Q-01, 2026-09-12) + 2 narration.cite_kind values (F-103, 2026-09-12), all until the next generation run lands their carriers
+/* RAISED 10 -> 12 by F-103, and the reason it is a raise rather than a fixture
+   is the one case this list exists for. Both new shapes are written by the
+   GENERATOR and by nothing else, and the four committed Forays were generated
+   before the writer's provenance survived §4.8 — so there is no committed
+   carrier to be had without re-running the pipeline, which F-103 deliberately
+   does not do (a regeneration is a separate, reviewed act, and hand-writing a
+   `cites` array into `data/` to satisfy a coverage gate is exactly the
+   "inventing data" this file forbids in its own header). The next generation
+   run writes both kinds on its first act and deletes both entries. */
 
 const isKnownUncovered = (field, value) => KNOWN_UNCOVERED.some((k) => k.field === field && k.value === value);
 

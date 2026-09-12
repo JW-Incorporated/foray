@@ -2482,3 +2482,200 @@ test("K-02: the real lexicon loads, and is the file the plugin reads", () => {
   const authored = entries.filter((e) => e.ipa);
   assert.equal(authored.length, 1, "if IPA has been authored for more terms, update this and say who verified it");
 });
+
+/* ============================================================================
+   6. F-103 — a narrated beat ships the sources it rests on
+
+   The field is `cites`, written by `backend/src/generation/forayItems.ts`'s
+   `citesFor` and by nothing else, and INERT on every committed Foray: the four
+   generated drafts were written when the writer's provenance still died at
+   §4.8 (`stitchAct.ts` copied `mode` and `script` off the page and dropped
+   `sources`/`verified`), so none carries one and none can until it is
+   regenerated. Every proof below therefore runs on the fixture, mutated on
+   purpose — the only honest way to test a rule no committed data exercises.
+   ========================================================================= */
+
+/** The generated fixture with `cites` on its disclosure item — the one
+    narration item every generated Foray is guaranteed to have. `cites` may be
+    a function, which is handed the id of a segment the fixture actually plays
+    (a tape citation needs one). */
+function citedFixture(cites) {
+  const f = generatedFixture();
+  const foray = boundary(f);
+  const playedId = foray.items.find((i) => i.type === "segment").segment_id;
+  foray.items[0].cites = typeof cites === "function" ? cites(playedId) : cites;
+  return { f, foray, playedId };
+}
+
+test("F-103: a narration item with no `cites` is untouched — every committed Foray is this case", () => {
+  /* The whole feature has to be invisible until a run writes one, or it would
+     have re-validated four drafts it cannot fix.
+     MUTATION: make `cites` required on a generated Foray's narration items →
+     every committed Foray, and this fixture, go red. */
+  assert.deepEqual(errorsFor(generatedFixture()), []);
+  const { errors } = checkForays(live);
+  assert.deepEqual(errors, [], errors.join("\n"));
+  assert.equal(
+    live.forays.forays.flatMap((x) => x.items || []).filter((i) => i.cites !== undefined).length,
+    0,
+    "a committed Foray now carries `cites` — delete its narration.cite_kind entries from KNOWN_UNCOVERED in fixture-coverage.test.mjs (G-21c)"
+  );
+});
+
+test("F-103: a well-formed pair of citations — one tape, one print — passes clean", () => {
+  const { f } = citedFixture((playedId) => [
+    { kind: "tape", segment_id: playedId },
+    { kind: "print", publication: "Journal of Human Evolution", url: "https://example.org/paper" },
+  ]);
+  assert.deepEqual(errorsFor(f), []);
+});
+
+test("F-103: a print citation needs no url — the publication alone is a whole citation", () => {
+  /* `PrintSource.url` is optional upstream: the evidence pack records what the
+     retriever held, and a document with no web address is still a source.
+     MUTATION: require `url` on a print citation → this goes red, and the
+     mapper would have to either invent an address or drop a real source. */
+  const { f } = citedFixture([{ kind: "print", publication: "Cooking and the Human Body" }]);
+  assert.deepEqual(errorsFor(f), []);
+});
+
+test("F-103: an empty `cites` array is rejected — absence is the empty case", () => {
+  /* Two spellings of "this beat cites nothing" is one more than any consumer
+     should have to handle, and the renderer draws its Sources heading off the
+     field's PRESENCE.
+     MUTATION: accept `[]` as "no citations" → an empty heading ships. */
+  const { f } = citedFixture([]);
+  assert.match(errorsFor(f).join("\n"), /must be a non-empty array/);
+});
+
+test("F-103: a tape citation naming a segment outside the pool is rejected, loudly", () => {
+  /* THE SILENT HALF IS WHY THIS IS FATAL. `player/foray-resolve.js` drops a
+     citation it cannot join to the pool rather than drawing an empty bullet,
+     so an unresolvable id shows a reader NOTHING while `data/forays.json`
+     claims to carry provenance — a failure with no symptom.
+     MUTATION: downgrade this to a warning → CI stays green and the citation
+     never renders. */
+  const { f } = citedFixture([{ kind: "tape", segment_id: "no-such-segment#999" }]);
+  assert.match(errorsFor(f).join("\n"), /not in data\/segments\.json/);
+});
+
+test("F-103: a tape citation for a clip the Foray never plays is rejected", () => {
+  /* A pool-membership check alone waves this through: the id is real, the join
+     succeeds, the renderer draws a credit — for tape the listener was never
+     played. The tape source shape exists (F-81) because a Frame DESCRIBES the
+     clip beside it, which only holds for a clip that is in the show.
+     MUTATION: drop the `seenSegmentIds` pass and keep only `segments.has` →
+     this goes green and a Foray credits an episode it never aired. */
+  const f = generatedFixture();
+  const foray = boundary(f);
+  const playedIds = new Set(foray.items.filter((i) => i.type === "segment").map((i) => i.segment_id));
+  const unplayed = f.segments.segments.find((s) => !playedIds.has(s.id));
+  assert.ok(unplayed, "the fixture pool has no segment this Foray leaves unplayed");
+  foray.items[0].cites = [{ kind: "tape", segment_id: unplayed.id }];
+  assert.match(errorsFor(f).join("\n"), /which this Foray never plays/);
+});
+
+test("F-103: a citation may be listed before the clip it cites — order is not the rule", () => {
+  /* A Frame introducing a clip is written BEFORE that clip in the running
+     order, so an inline check against the ids seen so far would reject the
+     ordinary case.
+     MUTATION: check `seenSegmentIds` inline in the item loop instead of after
+     it → every forward citation, which is most of them, goes red. */
+  const f = generatedFixture();
+  const foray = boundary(f);
+  const lastPlayed = foray.items.filter((i) => i.type === "segment").at(-1).segment_id;
+  foray.items[0].cites = [{ kind: "tape", segment_id: lastPlayed }];
+  assert.deepEqual(errorsFor(f), []);
+});
+
+test("F-103: an unknown citation kind is rejected", () => {
+  const { f } = citedFixture([{ kind: "hearsay", publication: "A friend" }]);
+  assert.match(errorsFor(f).join("\n"), /not one of "tape" or "print"/);
+});
+
+test("F-103: the writer's internal page record cannot ride along — no `quote`, no `claimText`", () => {
+  /* Ruling 3 (`check-narration.mjs`'s REFERENCE_LEAK_RE) keeps a quoted span
+     out of anything a listener reads, and `claimText` is the writer's own
+     restatement of an assertion, never checked as copy. A citation carries the
+     LEAST that identifies what the beat rests on.
+     MUTATION: drop the unknown-key check → `forayItems.ts` gaining a spread
+     ships both fields into data/ and nothing goes red. */
+  const { f } = citedFixture([
+    { kind: "print", publication: "Journal of Human Evolution", quote: "cooking predates Homo sapiens", claimText: "cooking is old" },
+  ]);
+  const errors = errorsFor(f).join("\n");
+  assert.match(errors, /"quote", "claimText"/);
+  assert.match(errors, /has no field for/);
+});
+
+test("F-103: a tape citation may not carry a publication, and a print one may not carry a segment_id", () => {
+  /* The two shapes are disjoint on purpose — a tape source's credit comes from
+     the pool row, not from a string beside it (which is how it would go stale
+     against a re-curated pool). */
+  const { f } = citedFixture((playedId) => [{ kind: "tape", segment_id: playedId, publication: "Origin Stories" }]);
+  assert.match(errorsFor(f).join("\n"), /"publication"[\s\S]*has no field for/);
+  const { f: g } = citedFixture((playedId) => [{ kind: "print", publication: "Somewhere", segment_id: playedId }]);
+  assert.match(errorsFor(g).join("\n"), /"segment_id"[\s\S]*has no field for/);
+});
+
+test("F-103: a citation url must be an http(s) address or absent", () => {
+  /* A href a reader cannot follow is worse than none: the publication name on
+     its own is already a complete citation.
+     MUTATION: accept any non-empty string → `javascript:` and bare titles ship
+     as links. */
+  for (const bad of ["", "   ", "example.org/paper", "javascript:alert(1)", "https://", 42]) {
+    const { f } = citedFixture([{ kind: "print", publication: "Somewhere", url: bad }]);
+    assert.match(errorsFor(f).join("\n"), /must be an http\(s\) address/, `url: ${JSON.stringify(bad)}`);
+  }
+  const { f: ok } = citedFixture([{ kind: "print", publication: "Somewhere", url: "http://example.org/x" }]);
+  assert.deepEqual(errorsFor(ok), [], "plain http is a real address and is accepted");
+});
+
+test("F-103: the same document is cited once, however many claims rest on it", () => {
+  /* Upstream a page carries one `Source` per CLAIM, so three claims from one
+     article are three records; a reader wants the article listed once and the
+     claim-level detail that would distinguish them is exactly what is not
+     published.
+     MUTATION: drop `citesFor`'s dedup (or this check) → the renderer draws the
+     same publication three times. */
+  const { f } = citedFixture([
+    { kind: "print", publication: "Journal of Human Evolution", url: "https://example.org/paper" },
+    { kind: "print", publication: "Journal of Human Evolution", url: "https://example.org/paper" },
+  ]);
+  assert.match(errorsFor(f).join("\n"), /repeats a citation already listed/);
+  /* Same publication, different document: two links, two entries, not a repeat. */
+  const { f: twoDocs } = citedFixture([
+    { kind: "print", publication: "Journal of Human Evolution", url: "https://example.org/a" },
+    { kind: "print", publication: "Journal of Human Evolution", url: "https://example.org/b" },
+  ]);
+  assert.deepEqual(errorsFor(twoDocs), []);
+});
+
+test("F-103: `cites` belongs to the narrator — a segment item carrying one is rejected", () => {
+  /* The tape IS the evidence and a jingle asserts nothing, so neither has
+     anything to cite. Checked ahead of the per-type blocks because those two
+     would simply ignore an unknown key: a mis-placed `cites` would be silently
+     dropped by every consumer while the record looked like it carried
+     provenance.
+     MUTATION: move the check inside the narration block → it never fires. */
+  const f = generatedFixture();
+  const foray = boundary(f);
+  foray.items.find((i) => i.type === "segment").cites = [{ kind: "print", publication: "Somewhere" }];
+  assert.match(errorsFor(f).join("\n"), /is a "segment" item carrying `cites`/);
+});
+
+test("F-103: an admin-authored Foray may carry citations too — the rule is about the field, not the pipeline", () => {
+  /* §1.2's backdoor is real narration on a Foray nobody generated. The shape
+     rules apply wherever the field shows up (a typo'd citation is a defect
+     anywhere); only the pipeline ever writes one today.
+     MUTATION: scope the whole block to `isGeneratedForay` → a hand-authored
+     citation reaches the app unchecked. */
+  const f = fx();
+  const foray = boundary(f);
+  foray.items.unshift({
+    type: "narration", id: "admin-bridge", mode: "frame", slot: foray.slots[0].id,
+    script: "A short hand-authored bridge, long enough to clear the fifty-character floor.",
+    cites: [{ kind: "print", publication: "Somewhere", url: "not-a-url" }],
+  });
+  assert.match(errorsFor(f).join("\n"), /must be an http\(s\) address/);
+});

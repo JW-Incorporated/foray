@@ -870,7 +870,7 @@ const FLOORS = {
      D3's (1) went with their rules; the pair clause gained six (reported on
      pre-Q-01 tape, gated on a Q-01 Foray, the CLI exit, the row fields, the
      IQR still reported, the helper) and M4's restatement three. */
-  "tools/foray/check-forays.test.mjs": 140, // K-02 (2026-09-12): the phoneme rules — inert on every legacy item, red when one lexicon override is dropped; 129 -> 140
+  "tools/foray/check-forays.test.mjs": 154, // K-02 (2026-09-12): the phoneme rules — inert on every legacy item, red when one lexicon override is dropped; 129 -> 140. F-103 (2026-09-12): `cites` — the shape, the two resolvability rules (in the pool, AND played by this Foray), the internal-page-record refusal, the dedup and the url rule, each with its own mutation; 140 -> 154
   /* G-21c fixture-before-emit (F-89). Seven DECLARATIONS, not seven tests: two
      of them sit inside a loop over `ACCEPTED_SHAPES` and expand to one test per
      accepted value (~30 today), so the floor is the count of `test(` lines this
@@ -1886,11 +1886,21 @@ const BACKEND_FLOORS = {
      hard-gate), the forward-only cross-act continuity Builder (§6.2),
      forayItems.ts's mapping to the real data/forays.json schema (with
      an internal-field-leak guard), and the cadence-measurement CLI. */
-  "test/forayItems.test.ts": 7,
+  /* RAISED 7 -> 17 by F-103: the derived `cites` shape a narrated beat
+     publishes — what each source kind reduces to, that an unverified or
+     never-verified page publishes none, that an empty result omits the field
+     rather than shipping `[]`, the dedup, the non-http url drop, and the leak
+     guard now that `sources`/`verified` actually reach this module. */
+  "test/forayItems.test.ts": 17,
   "test/measureCadence.test.ts": 3,
   "test/smoothSeam.test.ts": 8,
   /* RAISED 9 -> 10 by F-96: a clip carrying two beats plays once. */
-  "test/stitchAct.test.ts": 10,
+  /* RAISED 10 -> 13 by F-103: this module is the hop the writer's provenance
+     used to die at, so the three tests are that `sources`/`verified` survive
+     it — from a beat page, from a connective page (the branch a Frame's tape
+     citation takes), and with `verified: false` copied verbatim rather than
+     interpreted here. */
+  "test/stitchAct.test.ts": 13,
   "test/stitchForay.test.ts": 4,
   /* A3.1/Q3 (kanban t_8d1a6a58): backend/src/catalog/breadthCatalog.ts +
      searchBreadthShows.ts — show search over the FULL breadth catalogue

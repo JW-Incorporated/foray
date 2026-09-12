@@ -1,4 +1,5 @@
 import type { WrittenAct, WrittenSlot } from "./writeNarration";
+import type { NarratedBeat } from "../types/narration";
 import type { CoverageEntry, StitchedAct, StitchedItem, StitchedJingleItem, StitchedNarrationItem, StitchedTapeItem } from "../types/stitching";
 
 /**
@@ -98,6 +99,29 @@ function narrationItemId(actLabel: string, beatIndex: number, suffix: string): s
   return `narration-${actLabel}-${beatIndex}-${suffix}`;
 }
 
+/**
+ * F-103: the page's provenance, carried onto the stitched item.
+ *
+ * THIS FUNCTION IS THE HOP THE PROVENANCE USED TO DIE AT. Before it, this
+ * module read `mode` and `script` off the `NarratedBeat` and nothing else,
+ * so the writer's answer to "what does this page rest on" — the verifier's
+ * `restsOn`, resolved into `Source[]` by `writeAct.ts`'s `sourcesForRest`
+ * — reached §4.8 and stopped. Every stage downstream was then correct to
+ * publish no citations: it had none to publish.
+ *
+ * It copies, it does not interpret. Which sources become a published
+ * citation, and whether any do, is `forayItems.ts`'s decision — that
+ * module is the single seam between the pipeline's internal shapes and
+ * `data/forays.json`, and splitting the honesty rule ("an unverified page
+ * publishes no citations") across two modules is how the two would
+ * eventually disagree. `verified` is copied verbatim for the same reason:
+ * this module must not be the thing that decides a page counts as
+ * verified.
+ */
+function provenanceOf(page: { sources: NarratedBeat["sources"]; verified: boolean }): Pick<StitchedNarrationItem, "sources" | "verified"> {
+  return { sources: page.sources, verified: page.verified };
+}
+
 function jingleItemId(actLabel: string, beatIndex: number, reason: "cut" | "cadence"): string {
   return `jingle-${reason}-${actLabel}-${beatIndex}`;
 }
@@ -154,7 +178,8 @@ export function stitchAct(act: WrittenAct, actLabel: string): StitchedAct {
           slotTitle: slot.title,
           mode: beat.narration.mode,
           script: beat.narration.script,
-          id: narrationItemId(actLabel, myIndex, "beat")
+          id: narrationItemId(actLabel, myIndex, "beat"),
+          ...provenanceOf(beat.narration)
         };
         items.push(narrationItem);
         elapsedSinceMarker = 0;
@@ -171,7 +196,8 @@ export function stitchAct(act: WrittenAct, actLabel: string): StitchedAct {
           slotTitle: slot.title,
           mode: beat.connectiveNarration.mode,
           script: beat.connectiveNarration.script,
-          id: narrationItemId(actLabel, myIndex, "connective")
+          id: narrationItemId(actLabel, myIndex, "connective"),
+          ...provenanceOf(beat.connectiveNarration)
         };
         items.push(connectiveItem);
         elapsedSinceMarker = 0;
