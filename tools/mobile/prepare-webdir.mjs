@@ -1447,10 +1447,21 @@ export function assertForaySliceComplete(foraysDoc, full, sliced) {
  *     rather than a 26% one.
  *   - `data/forays.json` — 17 KB today (the four curated Forays; the four generated
  *     drafts are the directory's), budget 64 KB. Its unit is a PUBLISHED GENERATED
- *     Foray, ~18–26 KB of narration-heavy JSON each at today's size, so this is
- *     room for about two of them. When it fires, the question is not the number
- *     but the rule: the seed then needs "the newest N published" rather than
- *     "every published", and `seedCarries` is where that goes.
+ *     Foray, ~24 KB of narration-heavy JSON each at today's size, compact.
+ *     MEASURED 2026-09-12 against the four committed generated Forays, rather
+ *     than estimated: publishing ONE takes the seed to 41 KB (63 % of the
+ *     budget), publishing TWO to 67 KB (102 %) — so this was already room for
+ *     about ONE, not two, before F-103 existed. F-103 (a narrated beat ships the
+ *     sources it rests on, `cites`) adds ~6 KB to a published Foray HERE, where
+ *     the slice is written compact, and 5.5–14.5 KB to the same Foray in the
+ *     repo's own pretty-printed `data/forays.json` (150–180 bytes per citation
+ *     at that file's indentation). That moves the first publish from 63 % to
+ *     72 % and the second from 102 % to 120 %. The budget HOLDS today and this
+ *     change does not move it at all: a generated draft is the directory's and
+ *     costs the seed nothing, and no committed Foray carries `cites`. When the
+ *     alarm does fire, the question is not the number but the rule: the seed
+ *     then needs "the newest N published" rather than "every published", and
+ *     `seedCarries` is where that goes.
  *   - `data/segments.json` — 41 KB today, budget 100 KB. Its unit is a Foray: at
  *     ~0.74 KB per referenced segment and ~19 segments per Foray, that is about
  *     four more Forays the size of today's three combined. Authoring a Foray is a

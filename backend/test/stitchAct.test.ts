@@ -3,7 +3,7 @@ import { stitchAct, countActBeats, TEXTURE_CADENCE_SEC } from "../src/generation
 import { validateActCoverage } from "../src/types/stitching";
 import type { WrittenAct, WrittenBeat } from "../src/generation/writeNarration";
 import type { TapePointer } from "../src/types/tapeSourcing";
-import type { NarratedBeat } from "../src/types/narration";
+import type { NarratedBeat, Source } from "../src/types/narration";
 
 function tapePointer(itemId: string, startSec: number, endSec: number): TapePointer {
   return {
@@ -195,5 +195,91 @@ describe("stitchAct — rule 4: coverage is checked before flow", () => {
       totalBeats
     );
     expect(result.valid).toBe(true);
+  });
+});
+
+describe("stitchAct — F-103: the page's provenance survives the stitch", () => {
+  const printSource = (claimText: string): Source => ({
+    claimText,
+    publication: "Journal of Human Evolution",
+    url: "https://example.org/paper",
+    quote: "the earliest secure evidence of controlled fire",
+    contested: false
+  });
+
+  it("carries `sources` and `verified` from a narration beat's page onto its stitched item", () => {
+    /* THIS IS THE HOP THE PROVENANCE USED TO DIE AT. Before F-103 this module
+       read `mode` and `script` off the `NarratedBeat` and nothing else — the
+       verifier's answer to "what does this page rest on" reached §4.8 and
+       stopped, which is why nothing downstream published citations: it had
+       none to publish.
+       MUTATION: delete the `...provenanceOf(beat.narration)` spread — this
+       goes red here, and everything downstream silently publishes nothing,
+       exactly as it did before. */
+    const page: NarratedBeat = {
+      mode: "Patch",
+      script: "A page that carries the beat's content and cites the article it rests on.",
+      sources: [printSource("Cooking predates anatomically modern humans.")],
+      pronunciationHints: [],
+      verified: true
+    };
+    const act = makeAct([{ title: "slot 1", beats: [{ sourcing: "narration", claim: "A claim.", exploration: false, narration: page }] }]);
+
+    const [item] = stitchAct(act, "act-1").items;
+
+    expect(item!.kind).toBe("narration");
+    expect(item!).toMatchObject({ verified: true, sources: page.sources });
+  });
+
+  it("carries it from a CONNECTIVE page too — the Frame beside a clip is a page like any other", () => {
+    /* Connective narration is a §4.7 decision rather than something
+       `SourcedBeat` flags, so it is written and verified on its own path and
+       is easy to forget when a field is added to the other one. The tape
+       source shape (F-81) exists precisely for these pages, so a Frame is the
+       single most likely narration item in a generated Foray to carry a
+       citation at all.
+       MUTATION: delete the spread on the connective branch only — every Frame
+       in every Foray loses its tape credit while beat pages keep theirs. */
+    const connective: NarratedBeat = {
+      mode: "Frame",
+      script: "A short bridging line that hands the listener into the clip that follows it.",
+      sources: [
+        { kind: "tape", claimText: "The guest describes the gut-reduction argument.", publication: "Origin Stories", contested: false, segmentId: "ep-2#30" }
+      ],
+      pronunciationHints: [],
+      verified: true
+    };
+    const act = makeAct([
+      { title: "slot 1", beats: [tapeBeat("First claim.", "ep-1", 0, 30), tapeBeat("Second claim.", "ep-2", 30, 60, connective)] }
+    ]);
+
+    const narrationItems = stitchAct(act, "act-1").items.filter((i) => i.kind === "narration");
+
+    expect(narrationItems).toHaveLength(1);
+    expect(narrationItems[0]).toMatchObject({ verified: true, sources: connective.sources });
+  });
+
+  it("copies `verified: false` verbatim rather than deciding anything about it", () => {
+    /* F-51 keeps a refused page with `verified: false` instead of ending the
+       run, and the decision about what that costs belongs to the veracity gate
+       — not to a deterministic stitcher, and not to two places at once. This
+       module copies; `forayItems.ts`'s `citesFor` is the single place that
+       turns the flag into "publishes no citations".
+       MUTATION: have this module drop `sources` when `!verified` — the honesty
+       rule then lives in two modules that will eventually disagree, and the
+       pipeline's own report loses the sources of every kept-unverified page. */
+    const refused: NarratedBeat = {
+      mode: "Patch",
+      script: "A page the verifier read and objected to, kept for the gate to count.",
+      sources: [printSource("A claim the verifier would not confirm.")],
+      pronunciationHints: [],
+      verified: false,
+      verifierNotes: "the page states more than its sources carry"
+    };
+    const act = makeAct([{ title: "slot 1", beats: [{ sourcing: "narration", claim: "A claim.", exploration: false, narration: refused }] }]);
+
+    const [item] = stitchAct(act, "act-1").items;
+
+    expect(item).toMatchObject({ verified: false, sources: refused.sources });
   });
 });

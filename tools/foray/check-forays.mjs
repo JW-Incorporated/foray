@@ -248,6 +248,13 @@ export const FORAY_STATUSES = Object.freeze(["draft", "published"]);
     by name (mirroring `player/foray-queue.js` verbatim), so this list is
     documentation for `ACCEPTED_SHAPES` rather than a lookup table. */
 export const NARRATION_VOICE_FIELDS = Object.freeze(["script", "audio_url", "asset"]);
+/** F-103 — `narration.cites[].kind`. What a narrated beat says it rests on:
+    a clip this Foray plays (`tape`), or a document the writer quoted
+    (`print`). Written by `backend/src/generation/forayItems.ts`'s `citesFor`
+    from the verifier's answer, and ONLY for a page the verifier confirmed —
+    see the `cites` block below for what this checker does and does not
+    guarantee about that. */
+export const CITE_KINDS = Object.freeze(["tape", "print"]);
 /** Where a narration item's length comes from, per `narrationDuration`. */
 export const DURATION_SOURCES = Object.freeze([DURATION_MEASURED, DURATION_ESTIMATED, DURATION_FALLBACK]);
 /** `segment.source` — who minted the pool row. NOT checked by this file (any
@@ -287,6 +294,7 @@ export const ACCEPTED_SHAPES = Object.freeze({
   "narration.mode": Object.freeze([...NARRATION_MODES]),
   "narration.duration_source": DURATION_SOURCES,
   "narration.voice": NARRATION_VOICE_FIELDS,
+  "narration.cite_kind": CITE_KINDS,
   "segment.role": ROLES,
   "segment.transcript_source": Object.freeze([...TRANSCRIPT_SOURCES]),
   "segment.source": SEGMENT_PROVENANCE,
@@ -636,10 +644,27 @@ export function checkForays(files) {
     const seenLabels = new Set();
     const seenSegmentIds = new Set();
     const seenNarrationIds = new Set();
+    /** F-103: every tape citation that resolved to a pool row, with the item
+        that made it. Checked AFTER the loop against the set of clips this
+        Foray actually plays, which is only complete once the loop has walked
+        every item — a Frame citing the clip it introduces is written before
+        that clip's own item in the running order about as often as after it. */
+    const citedSegments = [];
     let itemsOk = true;
     for (const [i, item] of foray.items.entries()) {
       const at = `items[${i}]`;
       if (!isPlainObject(item)) { E(`${at} is not an object`); itemsOk = false; continue; }
+      /* F-103: `cites` belongs to the NARRATOR, and only to the narrator.
+       * A segment item is the tape itself — it needs no citation, it IS the
+       * evidence, and its credit comes from the pool row — and a jingle
+       * asserts nothing at all. Rejected here, once, ahead of the per-type
+       * blocks, rather than as a clause inside each of them: the narration
+       * block below reads the field, and the other two would simply ignore an
+       * unknown key, so a mis-placed `cites` would be silently dropped by
+       * every consumer while the record looked like it carried provenance. */
+      if (item.cites !== undefined && item.type !== NARRATION) {
+        E(`${at} is a ${JSON.stringify(item.type)} item carrying \`cites\` — only a narration item cites what it rests on`);
+      }
       /* Narration bridges are the other member of #134's typed list. None are
        * authored yet (grilling-foray.md §5: "no bridge records exist yet"), so a
        * Foray that grows one must not have to change this file to stay valid —
@@ -722,6 +747,88 @@ export function checkForays(files) {
          * item in `data/forays.json` today (none carries a `tts` block), which
          * is why this reads as an addition rather than a re-validation. */
         for (const problem of phonemeProblems(item, lexiconEntries())) E(`${where} ${problem}`);
+        /* F-103: what this beat rests on, as a reader is shown it.
+         *
+         * WHAT THIS CHECKER OWNS AND WHAT IT CANNOT. It owns the SHAPE and the
+         * RESOLVABILITY: every entry names a thing that exists, tape entries
+         * join the pool this Foray plays from, and nothing here is a duplicate
+         * or a dangling link. It does NOT and cannot own the TRUTH of a
+         * citation — whether the page really rests on what it says it does is
+         * the verifier's answer, made three stages upstream
+         * (`writeAct.ts`'s `restsOn`), and the honesty rule that an unverified
+         * page publishes none of its sources lives in `forayItems.ts`'s
+         * `citesFor`, which is the only writer of this field. A checker
+         * reading `data/` has nothing left to check that against; pretending
+         * otherwise would be the kind of second, weaker gate this repo keeps
+         * refusing to add.
+         *
+         * INERT ON EVERY COMMITTED FORAY. None carries `cites` — the four
+         * generated drafts were written before the provenance was carried past
+         * §4.8 and will not gain any until they are regenerated. So this reads
+         * as an addition, like K-02's block above it, not as a
+         * re-validation of anything on main.
+         *
+         * PUBLICATION NAMES ARE NOT GATED AS COPY, for the same reason the
+         * `title`/`summary` loop above says publisher episode titles are not:
+         * a publication is quoted fact — one of the evidence pack's own
+         * document titles (F-27/F-30/F-32) — not prose this project wrote. */
+        if (item.cites !== undefined) {
+          if (!Array.isArray(item.cites) || item.cites.length === 0) {
+            E(
+              `${where} has \`cites\` ${JSON.stringify(item.cites)} — it must be a non-empty array of the things the ` +
+                `beat rests on, or be absent. An empty list is not a legal published value: absence IS the empty case ` +
+                `(a page the verifier did not confirm publishes no citations at all), so an empty array would be a ` +
+                `second spelling of it that every consumer has to handle separately.`
+            );
+          } else {
+            const seenCites = new Set();
+            for (const [c, cite] of item.cites.entries()) {
+              const cAt = `${where}: cites[${c}]`;
+              if (!isPlainObject(cite)) { E(`${cAt} is not an object`); continue; }
+              if (!CITE_KINDS.includes(cite.kind)) {
+                E(`${cAt} has \`kind\` ${JSON.stringify(cite.kind)}, not one of ${CITE_KINDS.map((k) => JSON.stringify(k)).join(" or ")}`);
+                continue;
+              }
+              const allowed = cite.kind === "tape" ? ["kind", "segment_id"] : ["kind", "publication", "url"];
+              const extra = Object.keys(cite).filter((k) => !allowed.includes(k));
+              if (extra.length) {
+                E(
+                  `${cAt} carries ${extra.map((k) => JSON.stringify(k)).join(", ")}, which a ${cite.kind} citation has no ` +
+                    `field for (it may carry only ${allowed.join(", ")}). A citation is the LEAST that identifies what the ` +
+                    `beat rests on — the writer's own page record (\`claimText\`, \`quote\`) is internal and Ruling 3 keeps ` +
+                    `quoted spans out of anything a listener reads.`
+                );
+              }
+              let key;
+              if (cite.kind === "tape") {
+                if (!nonEmptyString(cite.segment_id)) { E(`${cAt} is a tape citation with no \`segment_id\``); continue; }
+                if (!segments.has(cite.segment_id)) {
+                  E(
+                    `${cAt} cites segment "${cite.segment_id}", which is not in data/segments.json. ` +
+                      `player/foray-resolve.js DROPS a citation it cannot join to the pool, so this would show a reader ` +
+                      `nothing while the record claimed to carry provenance — the silent half of the failure is why this is fatal.`
+                  );
+                  continue;
+                }
+                citedSegments.push({ at: cAt, id: cite.segment_id });
+                key = `tape:${cite.segment_id}`;
+              } else {
+                if (!nonEmptyString(cite.publication)) { E(`${cAt} is a print citation with no \`publication\``); continue; }
+                if (cite.url !== undefined && !(nonEmptyString(cite.url) && /^https?:\/\/\S/i.test(cite.url))) {
+                  E(
+                    `${cAt} has \`url\` ${JSON.stringify(cite.url)} — a citation's url must be an http(s) address or be ` +
+                      `absent. The publication name alone is a complete citation; a href a reader cannot follow is worse than none.`
+                  );
+                }
+                key = `print:${cite.publication} ${cite.url ?? ""}`;
+              }
+              if (seenCites.has(key)) {
+                E(`${cAt} repeats a citation already listed on this item — a page cites one document once, however many of its claims rest on it`);
+              }
+              seenCites.add(key);
+            }
+          }
+        }
         if (item.slot !== undefined && slotIds.length && !slotIds.includes(item.slot)) {
           E(`${where} declares slot "${item.slot}", which is not in \`slots\``);
         } else if (item.slot === undefined && slotIds.length && played.length === 0) {
@@ -908,6 +1015,25 @@ export function checkForays(files) {
      * useless for fixing anything. Now the unresolvable items are dropped, the
      * rest is judged, and the fact that the verdicts are partial is said out
      * loud rather than inferred from a missing line. */
+    /* F-103: A BEAT MAY ONLY CITE TAPE THIS FORAY PLAYS. The tape source
+     * shape exists (F-81) because a Frame or Hinge that says what a clip is
+     * about is DESCRIBING that clip, and the clip is its source — which only
+     * holds for a clip the listener hears. A citation naming a segment that
+     * resolves in the pool but appears nowhere in this Foray reads to a reader
+     * as "as heard in this episode" for something they were never played, and
+     * it is the failure a pool-membership check alone would wave through:
+     * the id is real, the join succeeds, the renderer draws a credit, and the
+     * thing credited is not in the show. Checked here rather than inline
+     * because `seenSegmentIds` is only complete once every item has been
+     * walked. */
+    for (const cited of citedSegments) {
+      if (!seenSegmentIds.has(cited.id)) {
+        E(
+          `${cited.at} cites segment "${cited.id}", which this Foray never plays. A tape citation is the clip the beat ` +
+            `describes (F-81); citing one the listener never hears credits them for tape that is not in the Foray.`
+        );
+      }
+    }
     if (played.length === 0) { E("no resolvable segment items"); continue; }
     if (!itemsOk) {
       /* `played` is tape only, so subtracting it from the whole item list

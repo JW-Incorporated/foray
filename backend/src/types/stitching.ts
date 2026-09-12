@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { SourceSchema } from "./narration";
 
 /**
  * §4.8 output types (docs/curation/generation-architecture.md §4.8): the
@@ -17,6 +18,27 @@ import { z } from "zod";
  * brief: "sources/verified/pronunciationHints are internal-only, NOT
  * written to forays.json"). Mixing the two shapes would make it too easy
  * for an internal field to leak into a publish write by accident.
+ *
+ * F-103: THAT SENTENCE WAS ALREADY FALSE WHEN IT WAS WRITTEN, and the way
+ * it was false is what this change fixes. `StitchedNarrationItem` below
+ * never carried `sources` or `verified` at all — `stitchAct.ts` copied
+ * `mode` and `script` off the `NarratedBeat` and nothing else, and the
+ * schema is `.strict()`, so the fields could not have arrived even by
+ * accident. The leak guard `forayItems.ts` runs against its own OUTPUT
+ * (`assertNoInternalFieldsLeaked`) was therefore guarding a leak that was
+ * structurally impossible: the provenance was gone one hop earlier than
+ * the comment claiming to protect it.
+ *
+ * It is carried now, because the reader is owed it. The writer knows what
+ * each page rests on (writeAct.ts: the verifier answers `restsOn`, which
+ * `sourcesForRest` resolves into `Source[]`), and a listener reading a
+ * narrated beat's transcript should be able to see what it rests on. So
+ * `sources` and `verified` ride the stitched item, and `forayItems.ts` —
+ * still the ONE place that decides what reaches `data/forays.json` —
+ * derives the small published `cites` shape from them. The leak guard
+ * stays, and for the first time it guards something real: `sources` and
+ * `verified` themselves must still never appear on a published item, only
+ * the derived `cites`.
  */
 
 export const StitchedTapeItemSchema = z
@@ -55,7 +77,28 @@ export const StitchedNarrationItemSchema = z
     slotTitle: z.string().trim().min(1).optional(),
     mode: z.enum(["Hinge", "Frame", "Marker", "Correction", "Patch", "Carry", "Intro"]),
     script: z.string().trim().min(1),
-    id: z.string().trim().min(1)
+    id: z.string().trim().min(1),
+    /* F-103's two additions — the page's provenance, carried from the
+       `NarratedBeat` `stitchAct.ts` reads `mode`/`script` off. Both
+       OPTIONAL, and the pair below is the reason:
+
+       `verified` absent must mean the same thing as `verified: false`,
+       because a hand-built `StitchedNarrationItem` (every fixture in
+       `backend/test`, and `stitchForay.ts`'s continuity rewrites) says
+       nothing about verification and must not be read as claiming any.
+       `forayItems.ts` publishes citations ONLY for `verified === true`,
+       so an item that never learned its verification state publishes
+       none — the honest default, and the failure-safe one.
+
+       `sources` is the verifier's answer resolved (`sourcesForRest`),
+       one entry per claim, and may legitimately be empty: a pure
+       handoff asserts nothing, and a page verified by SYNTHESIS (F-88)
+       rests on the Foray's own earlier pages rather than on any
+       external document, so its `restsOn` resolves to page ids and its
+       `sources` to nothing. Both publish no citations, which is correct
+       — there is no outside thing for a reader to go and check. */
+    sources: z.array(SourceSchema).optional(),
+    verified: z.boolean().optional()
   })
   .strict();
 export type StitchedNarrationItem = z.infer<typeof StitchedNarrationItemSchema>;

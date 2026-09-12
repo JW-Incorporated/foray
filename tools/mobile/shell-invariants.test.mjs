@@ -413,8 +413,16 @@ test("the sliced files' per-file budgets are pinned, all four of them", () => {
      `data/forays.json` 64 KB, added 2026-09-12 (F-92) when the file stopped being
      copied whole: the seed carries every Foray except a generated draft, so this
      budget watches PUBLISHED generated Forays entering the seed at ~20 KB of
-     narration each — 17 KB today for the four curated ones, room for about two
-     published generated ones before the seed needs "the newest N" as its rule. */
+     narration each — 17 KB today for the four curated ones, room for about ONE
+     published generated one before the seed needs "the newest N" as its rule.
+     "About two" was an estimate here until it was measured (F-103, 2026-09-12):
+     one published generated Foray takes the seed to 41 KB (63 % of this budget)
+     and two to 67 KB (102 %), both BEFORE citations. F-103's `cites` adds ~6 KB
+     to a published Foray in this compact slice, taking those to 72 % and 120 %.
+     The NUMBER is deliberately unchanged: nothing in the seed carries `cites`
+     (a generated draft is the directory's and costs zero here), so this alarm
+     is not ringing, and raising it would answer the wrong question — the next
+     publish needs the rule, not more room. */
   assert.deepEqual(PROJECTED_DATA.map((p) => [p.rel, p.maxBytes]), [
     ["data/forays.json", 64 * 1024],
     ["data/discover.json", 720 * 1024],
