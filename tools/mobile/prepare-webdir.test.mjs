@@ -49,6 +49,7 @@ import {
   assertDiscoverSliceComplete, serializeSlice, sliceBytes, assertSlicesOnDisk, projectData,
   referencedSegmentIds, segmentSlice, segmentSourceSlice, assertForaySliceComplete,
   WHY_COPIED_WHOLE, isBundledData, SEED_POINTER, seedPointerPlan,
+  seedCarries, seedForays, assertSeedForaysComplete, seedPointerDoc,
 } from "./prepare-webdir.mjs";
 import { isMinified, minifySource } from "./minify.mjs";
 import { createRequire } from "node:module";
@@ -1068,7 +1069,7 @@ test("every PROJECTED_DATA entry carries a projection, a verification and a budg
      have `undefined` compared against with `>`, which is false — a budget that can
      never fail. Both are one careless entry away the next time this list grows. */
   assert.deepEqual(PROJECTED_DATA.map((p) => p.rel), [
-    "data/discover.json", "data/segments.json", "data/segment-sources.json",
+    "data/forays.json", "data/discover.json", "data/segments.json", "data/segment-sources.json",
   ]);
   /* ORDER-INDEPENDENCE, ASSERTED RATHER THAN ORDER. The first draft of this test
      pinned segments-before-sources and said the second is derived from the first —
@@ -1181,6 +1182,34 @@ function forayFixture() {
  *  resolver — the same three lines `assertForaySliceComplete` runs, written out here
  *  so the tests can assert on the join directly rather than only through the guard
  *  they are trying to prove. */
+/** `makeForayDocs()` plus one GENERATED DRAFT (F-92), authored over the two segments
+ *  nothing else references — `x#1` on `ep-x`, `y#1` on `ep-y` — so the rows that
+ *  leave the seed with it are identifiable, and a curated Foray sharing one would
+ *  not mask a rule that stopped applying. */
+function withGeneratedDraft(docs) {
+  return {
+    ...docs,
+    forays: {
+      ...docs.forays,
+      forays: [
+        ...docs.forays.forays,
+        {
+          id: "gen-draft-1",
+          kind: "deep-dive",
+          status: "draft",
+          generated: true,
+          title: "A generated draft — the directory's until it is published",
+          slots: [{ id: "g", title: "Slot g" }],
+          items: [
+            { type: "segment", slot: "g", label: "G-1", segment_id: "x#1", role: "explanation" },
+            { type: "narration", slot: "g", label: "G-N", text: "Generated narration." },
+            { type: "segment", slot: "g", label: "G-2", segment_id: "y#1", role: "example" },
+          ],
+        },
+      ],
+    },
+  };
+}
 function hydrateAll(foraysDoc, { segments, sources }) {
   const s = indexSegments(segments);
   const r = indexSources(sources);
@@ -1223,7 +1252,11 @@ test("the slice keeps a DRAFT Foray's segments, because a draft is reachable by 
      ALL THREE REAL Forays are drafts today, so the published-only rule references
      ZERO segments and `segmentSlice`'s own guard fires instead — which is the guard
      working, not this test being unnecessary: the day one Foray is published, that
-     guard goes quiet and this is the only thing left watching. */
+     guard goes quiet and this is the only thing left watching.
+     F-92 (2026-09-12) does not touch this: the seed leaves out GENERATED drafts,
+     and that is applied by `seedForays` BEFORE the slice ever sees the document —
+     a curated draft is still sliced for, and `referencedSegmentIds` still reads
+     every Foray it is handed. */
   const { forays, sliced } = forayFixture();
   const draft = forays.forays.find((f) => f.status === "draft");
   assert.ok(draft, "the fixture has no draft Foray, so this test cannot fail");
@@ -1490,26 +1523,125 @@ test("prepare WRITES both segment slices rather than copying them", () => {
   assert.equal(source("data/segments.json").segments.length, 10);
 });
 
-test("data/forays.json is COPIED WHOLE, because it is the slice's selector", () => {
-  /* THE MUTATION THIS KILLS: adding forays.json to PROJECTED_DATA, or "tidying" the
-     bundle's copy. It is the SELECTOR — slice or reorder it and the segments it names
-     go out of the bundle with it, leaving a Foray that is listed in the app and
-     resolves to an empty running order. It is 20 KB and bounded by how many Forays
-     exist, so there is nothing to gain and a silent empty running order to lose. */
-  assert.ok(COPIED_WHOLE.includes("data/forays.json"));
-  assert.equal(PROJECTED_DATA.some((sp) => sp.rel === "data/forays.json"), false);
-  const fake = makeFakeRepo();
+test("F-92: the seed's data/forays.json is the source minus its generated drafts, and the on-disk guard notices a drift either way", () => {
+  /* UNTIL F-92 THIS TEST SAID "data/forays.json is COPIED WHOLE, because it is the
+     slice's selector". The invariant it guarded stands: the document the bundle
+     ships must be the document the two segment slices were computed from, or a
+     Foray listed in the app resolves to an empty running order. What changed is
+     WHICH document that is — `seedForays(source)`, the source minus its generated
+     drafts — and what keeps it: `assertSeedForaysComplete` pins the bundled
+     document to that projection, and `assertForaySliceComplete` verifies the
+     slices against the document AS BUNDLED.
+     THE MUTATIONS THIS KILLS: reverting `seedForays` to a copy (the generated draft
+     is back, with its ~20 KB); "tidying" the bundle's copy by hand (a curated draft
+     gone). Both reach `assertSlicesOnDisk` and both are named. */
+  assert.ok(!COPIED_WHOLE.includes("data/forays.json"));
+  assert.ok(PROJECTED_DATA.some((sp) => sp.rel === "data/forays.json"));
+  const fake = makeFakeRepo({ forays: withGeneratedDraft(makeForayDocs()) });
   prepare({ root: fake, out: "www" });
-  /* THE GUARD ITSELF, REACHED, for the reason the item-tags test gives: reading the
-     two files and finding them equal proves `prepare` copies, not that anything
-     would notice if it stopped. */
   const bundled = path.join(fake, "www", "data", "forays.json");
+  const source = JSON.parse(fs.readFileSync(path.join(fake, "data", "forays.json"), "utf8"));
   const doc = JSON.parse(fs.readFileSync(bundled, "utf8"));
-  doc.forays = doc.forays.filter((f) => f.status === "published");
-  fs.writeFileSync(bundled, serializeSlice(doc));
+  assert.deepEqual(doc.forays, source.forays.filter(seedCarries));
+  assert.deepEqual(doc.forays.map((f) => f.id), ["published-1", "draft-1"]);
+  assert.deepEqual(doc.bundled_from, { forays: 3, kept: 2, directory_only: ["gen-draft-1"] });
+  /* Top-level keys the projection has never heard of survive. */
+  assert.equal(doc.version, source.version);
+  assert.equal(doc.built_at, source.built_at);
+  /* THE GUARD ITSELF, REACHED, in both directions. Too few: a curated draft dropped. */
+  fs.writeFileSync(bundled, serializeSlice({ ...doc, forays: doc.forays.filter((f) => f.status === "published") }));
   assert.throws(
     () => assertSlicesOnDisk(path.join(fake, "www"), fake),
-    (e) => /does not parse to the same document as the source/.test(e.message) && /SELECTOR/.test(e.message)
+    (e) => /not the source minus its generated drafts/.test(e.message) && /missing \["draft-1"\]/.test(e.message)
+  );
+  /* Too many: the generated draft back in — the pre-F-92 bundle. */
+  fs.writeFileSync(bundled, serializeSlice({ ...doc, forays: source.forays }));
+  assert.throws(
+    () => assertSlicesOnDisk(path.join(fake, "www"), fake),
+    (e) => /not the source minus its generated drafts/.test(e.message) && /carries \["gen-draft-1"\]/.test(e.message)
+  );
+});
+
+test("F-92: the seed leaves a GENERATED draft to the directory, and its segments and sources leave with it", () => {
+  /* THE MUTATIONS THIS KILLS: `seedCarries` returning true unconditionally (the
+     pre-F-92 seed), or either segment projection slicing against
+     `ctx.source("data/forays.json")` instead of `seedForays(...)` of it — a selector
+     wider than the document shipped, and x#1/y#1 back in the bundle with nothing
+     in the package able to reach them: exactly the unreachable bytes #327 took out. */
+  const docs = withGeneratedDraft(makeForayDocs());
+  const fake = makeFakeRepo({ forays: docs });
+  prepare({ root: fake, out: "www" });
+  const read = (rel) => JSON.parse(fs.readFileSync(path.join(fake, "www", rel), "utf8"));
+  const source = (rel) => JSON.parse(fs.readFileSync(path.join(fake, rel), "utf8"));
+  const forays = read("data/forays.json");
+  assert.ok(!forays.forays.some((f) => f.id === "gen-draft-1"), "the generated draft is not in the seed");
+  assert.ok(forays.forays.some((f) => f.id === "draft-1"), "the CURATED draft still is — it is reachable by id");
+  assert.ok(forays.forays.some((f) => f.id === "published-1"));
+  const segIds = new Set(read("data/segments.json").segments.map((s) => s.id));
+  assert.ok(!segIds.has("x#1") && !segIds.has("y#1"), "the generated draft's segments left with it");
+  assert.deepEqual([...segIds].sort(), ["a#100", "b#200", "c#300", "d#400", "dup#7", "orphan#1"]);
+  assert.deepEqual(read("data/segments.json").bundled_from, { segments: 10, referenced: 6, kept: 7 });
+  const srcIds = new Set(read("data/segment-sources.json").sources.map((s) => s.id));
+  assert.ok(!srcIds.has("ep-x") && !srcIds.has("ep-y"), "and its episodes");
+  /* The generated draft really did reference rows nothing else does, or the
+     assertions above are satisfied by the old slice. */
+  assert.ok(source("data/segments.json").segments.some((s) => s.id === "x#1"));
+  assert.ok(source("data/segment-sources.json").sources.some((s) => s.id === "ep-x"));
+  /* The seeded Forays hydrate identically against the bundle and the repo. */
+  assert.deepEqual(
+    hydrateAll(forays, { segments: read("data/segments.json"), sources: read("data/segment-sources.json") }),
+    hydrateAll(forays, { segments: source("data/segments.json"), sources: source("data/segment-sources.json") })
+  );
+  /* And the rule is the exported predicate, in one place, read as strictly as
+     app.js reads the two fields. */
+  assert.equal(seedCarries({ generated: true, status: "draft" }), false);
+  assert.equal(seedCarries({ generated: true, status: "published" }), true);
+  assert.equal(seedCarries({ status: "draft" }), true);
+  assert.equal(seedCarries({ status: "published" }), true);
+  assert.equal(seedCarries({ generated: "true", status: "draft" }), true);
+});
+
+test("assertSeedForaysComplete is a real guard and not decoration", () => {
+  const { forays } = withGeneratedDraft(makeForayDocs());
+  const seeded = seedForays(forays);
+  assert.equal(assertSeedForaysComplete(forays, seeded), true);
+  /* Empty source: vacuous, refused. */
+  assert.throws(
+    () => assertSeedForaysComplete({ forays: [] }, { forays: [] }),
+    (e) => e instanceof WebDirError && /carries no Forays/.test(e.message)
+  );
+  /* More than the source: not a seed of it. */
+  assert.throws(
+    () => assertSeedForaysComplete(forays, { ...seeded, forays: [...forays.forays, forays.forays[0]] }),
+    /cannot carry more/
+  );
+  /* A seeded Foray dropped. */
+  assert.throws(
+    () => assertSeedForaysComplete(forays, { ...seeded, forays: seeded.forays.slice(1) }),
+    /missing \["published-1"\]/
+  );
+  /* The generated draft back in. */
+  assert.throws(
+    () => assertSeedForaysComplete(forays, { ...seeded, forays: forays.forays }),
+    /carries \["gen-draft-1"\]/
+  );
+  /* A kept row edited, and a kept row moved. */
+  assert.throws(
+    () => assertSeedForaysComplete(forays, { ...seeded, forays: seeded.forays.map((f, i) => (i === 0 ? { ...f, title: "x" } : f)) }),
+    /differs from the source's row/
+  );
+  assert.throws(
+    () => assertSeedForaysComplete(forays, { ...seeded, forays: [...seeded.forays].reverse() }),
+    /order changed/
+  );
+  /* A top-level key lost. */
+  const { version: _version, ...noVersion } = seeded;
+  assert.throws(() => assertSeedForaysComplete(forays, noVersion), /top-level "version"/);
+  /* And the projection itself refuses to seed nothing, in both ways it could. */
+  assert.throws(() => seedForays({ forays: [] }), (e) => e instanceof WebDirError);
+  assert.throws(
+    () => seedForays({ forays: [{ id: "g", generated: true, status: "draft" }] }),
+    (e) => e instanceof WebDirError && /every Foray in data\/forays\.json is a generated draft/.test(e.message)
   );
 });
 
@@ -1758,10 +1890,12 @@ test("REAL REPO: the sliced bundle, its budgets and the headroom that is left", 
     }
     /* And the count is EXACT, which no ratio can be: the slice is the referenced set,
        so this is the number of segments today's Forays name and nothing else. */
-    const forays = JSON.parse(fs.readFileSync(path.join(ROOT, "data", "forays.json"), "utf8"));
+    /* The SEEDED Forays (F-92): the generated drafts are the directory's, and so are
+       the segments only they reference. */
+    const forays = seedForays(JSON.parse(fs.readFileSync(path.join(ROOT, "data", "forays.json"), "utf8")));
     const bundledSegments = JSON.parse(fs.readFileSync(path.join(absOut, "data", "segments.json"), "utf8"));
     const referenced = referencedSegmentIds(forays);
-    assert.ok(referenced.size > 0, "today's Forays reference no segments at all");
+    assert.ok(referenced.size > 0, "today's seeded Forays reference no segments at all");
     assert.deepEqual(
       new Set(bundledSegments.segments.map((s) => s.id)),
       referenced,
@@ -1814,6 +1948,54 @@ test("REAL REPO: every segment today's Forays reference resolves out of the bund
        shell-invariants. */
     assert.equal(assertForaySliceComplete(forays, repo, bundled), true);
     assert.ok(r.total < MAX_BYTES);
+  });
+});
+
+test("REAL REPO: a generated draft exists today, the seed leaves it to the directory, and every seeded Foray resolves out of the bundle", (t) => {
+  /* F-92, ON THE REAL DOCUMENT. The fixture tests above prove the rule; this proves
+     it has something to do today — at least one generated draft in
+     data/forays.json — and that the package built from today's data carries exactly
+     the rest, playing identically out of the bundle and out of the repo. The day
+     every generated Foray is published this needs a committed draft fixture, not
+     deleting: the rule would be green by vacuity. */
+  withRealBundle((r, absOut) => {
+    const read = (dir, rel) => JSON.parse(fs.readFileSync(path.join(dir, rel), "utf8"));
+    const repo = read(ROOT, "data/forays.json");
+    const seed = read(absOut, "data/forays.json");
+    const drafts = repo.forays.filter((f) => !seedCarries(f));
+    assert.ok(drafts.length >= 1, "no generated draft in data/forays.json today, so the seed rule is untested against the real document");
+    assert.ok(drafts.every((f) => f.generated === true && f.status === "draft"));
+    for (const d of drafts) assert.ok(!seed.forays.some((f) => f.id === d.id), `${d.id} is a generated draft and is in the seed`);
+    assert.deepEqual(seed.forays, repo.forays.filter(seedCarries), "the seed is the repo's forays.json minus its generated drafts");
+    assert.deepEqual(seed.bundled_from, { forays: repo.forays.length, kept: seed.forays.length, directory_only: drafts.map((d) => d.id) });
+    assert.ok(seed.forays.length >= 1, "the seed carries nothing");
+    assert.equal(assertSeedForaysComplete(repo, seed), true);
+
+    /* Every seeded Foray resolves out of the bundle exactly as it does out of the repo. */
+    const bundled = { segments: read(absOut, "data/segments.json"), sources: read(absOut, "data/segment-sources.json") };
+    const full = { segments: read(ROOT, "data/segments.json"), sources: read(ROOT, "data/segment-sources.json") };
+    const before = hydrateAll(seed, full);
+    const played = before.reduce((n, h) => n + h.items.filter((i) => i.type === "segment").length, 0);
+    assert.ok(played >= 50, `the seeded Forays resolve to only ${played} segment entries`);
+    assert.deepEqual(hydrateAll(seed, bundled), before);
+    /* And nothing the seed cannot reach is in it: the bundled pool is exactly what
+       the SEEDED Forays reference, which the generated drafts' own segments are not
+       (unless a curated Foray shares one). */
+    assert.deepEqual(new Set(bundled.segments.segments.map((s) => s.id)), referencedSegmentIds(seed));
+
+    /* The pointer, as the shell reads it: the repo's, marked partial (F-92). */
+    if (fs.existsSync(path.join(ROOT, SEED_POINTER))) {
+      assert.deepEqual(read(absOut, SEED_POINTER), seedPointerDoc(read(ROOT, SEED_POINTER)));
+      assert.equal(read(absOut, SEED_POINTER).partial, true);
+    }
+
+    /* The numbers, for the record: F-92 was the gate's first real catch, at 42.4 KB
+       of segment-sources against 40 KB with the fourth generated draft in the seed. */
+    for (const spec of PROJECTED_DATA) {
+      const bytes = r.files.find((f) => f.rel === spec.rel).bytes;
+      t.diagnostic(`${spec.rel}: ${(bytes / 1024).toFixed(1)} KB of ${spec.maxBytes / 1024} KB`);
+      assert.ok(bytes <= spec.maxBytes, `${spec.rel} is over budget`);
+    }
   });
 });
 
@@ -2313,10 +2495,17 @@ test("FD-04: the seed is a SUBSET of the directory's files, row for row, under t
     const cap = PROJECTED_DATA.find((p) => p.rel === rel).maxBytes;
     assert.ok(fs.statSync(path.join(fake, "www", rel)).size <= cap, `${rel} is over the cap`);
   }
-  /* The Foray list itself is the directory's, whole. */
-  assert.deepEqual(read(path.join(fake, "www"), "data/forays.json"), read(fake, "data/forays.json"));
+  /* The Foray list itself is a subset of the directory's too (F-92): every seeded
+     row is a row of the source, unchanged, in the source's order — and with no
+     generated draft in this fixture, it is all of them. */
+  const seedForayRows = read(path.join(fake, "www"), "data/forays.json").forays;
+  const sourceForayRows = read(fake, "data/forays.json").forays;
+  assert.deepEqual(seedForayRows, sourceForayRows.filter(seedCarries));
+  assert.deepEqual(seedForayRows, sourceForayRows, "this fixture has no generated draft, so the seed carries every Foray");
+  assert.ok(fs.statSync(path.join(fake, "www", "data/forays.json")).size <= PROJECTED_DATA.find((p) => p.rel === "data/forays.json").maxBytes);
   /* THE CAP, named: the per-file budgets are what bound the seed while the
-     directory carries everything (#327's concern, answered). */
+     directory carries everything (#327's concern, answered; F-92 added the third). */
+  assert.equal(PROJECTED_DATA.find((p) => p.rel === "data/forays.json").maxBytes, 64 * 1024);
   assert.equal(PROJECTED_DATA.find((p) => p.rel === "data/segments.json").maxBytes, 100 * 1024);
   assert.equal(PROJECTED_DATA.find((p) => p.rel === "data/segment-sources.json").maxBytes, 40 * 1024);
 });
@@ -2345,6 +2534,16 @@ test("FD-04: the seed's pointer rides along when it exists, and its absence is n
   assert.ok(buildPlan(withPointer).includes(SEED_POINTER));
   prepare({ root: withPointer, out: "www" });
   const bundled = fs.readFileSync(path.join(withPointer, "www", SEED_POINTER), "utf8");
-  assert.deepEqual(JSON.parse(bundled), pointer, "the pointer parses to the same document");
+  assert.deepEqual(JSON.parse(bundled), { ...pointer, partial: true }, "the pointer parses to the repo's document plus the partial flag (F-92)");
+  assert.deepEqual(JSON.parse(bundled), seedPointerDoc(pointer));
   assert.ok(!bundled.includes("\n  "), "and is compact, like every other bundled data file");
+  /* MUTATION 3 (F-92): write the pointer through the plain `isBundledData` branch
+     instead of `seedPointerDoc`. The flag is gone, a fresh install built from the
+     live deploy answers `current` and never fetches the drafts — and the on-disk
+     re-read is what notices. */
+  fs.writeFileSync(path.join(withPointer, "www", SEED_POINTER), JSON.stringify(pointer));
+  assert.throws(
+    () => assertSlicesOnDisk(path.join(withPointer, "www"), withPointer),
+    /not the repo's pointer marked partial/
+  );
 });

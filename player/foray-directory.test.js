@@ -153,6 +153,11 @@ test("a pointer needs a version and three file paths; bytes and sha256 are optio
   assert.equal(v.pointer.built_at, "2026-09-10T09:00:00Z");
   /* An unparseable clock is null, never a string a comparison would coerce. */
   assert.equal(validatePointer({ version: "a", built_at: "yesterday", files: v.pointer.files }).pointer.built_at, null);
+  /* `partial` (F-92) is carried through strictly: absent or anything but `true` is
+     a whole set. Only the bundled pointer ever says it. */
+  assert.equal(v.pointer.partial, false);
+  assert.equal(validatePointer({ version: "a", files: v.pointer.files, partial: true }).pointer.partial, true);
+  assert.equal(validatePointer({ version: "a", files: v.pointer.files, partial: "true" }).pointer.partial, false);
 });
 
 test("older-than needs a clock on BOTH sides; an unknown side is not older", () => {
@@ -334,6 +339,45 @@ test("a pointer naming the held version is `current`, and fetches no file", asyn
   const out = await d.refresh({ origin: ORIGIN });
   assert.equal(out.status, STATUS.CURRENT);
   assert.equal(fetch.remote().length, 1);
+});
+
+test("F-92: a seed marked `partial` at the live version is fetched whole once, then answers `current`", async () => {
+  /* The seed leaves generated drafts to the directory (prepare-webdir.mjs
+     `seedCarries`), so a package built from the live deploy holds a SUBSET at the
+     live version. `partial: true` on the bundled pointer (`seedPointerDoc`) is what
+     stops the version match above from answering `current` and never fetching them.
+     MUTATION: drop `&& held.partial !== true` from the `current` early return in
+     run(). The first refresh answers `current`, no file is fetched, and the
+     `adopted` assertion is red. */
+  const seed = makeSet(1);
+  const whole = makeSet(2);
+  const ptr = await pointerFor(whole, "v1");
+  const local = { version: "v1", built_at: ptr.built_at, files: ptr.files, partial: true };
+  const fetch = fakeFetch({ ...remote(ptr, whole), "data/forays-directory.json": local });
+  const tier = fakeTier();
+  const { d } = make({ fetch, cache: tier });
+  const held = await d.boot({ seed });
+  assert.equal(held.version, "v1");
+  assert.equal(held.partial, true);
+  assert.equal(d.describe().partial, true);
+  const out = await d.refresh({ origin: ORIGIN });
+  assert.equal(out.status, STATUS.ADOPTED);
+  assert.equal(fetch.remote().length, 4, "the pointer and all three files");
+  assert.equal(d.held().forays.forays.length, 2, "the whole set is held");
+  assert.equal(d.held().partial, false);
+  assert.equal(tier.writes, 1, "and cached, whole");
+  /* Whole now: the same pointer is `current` and costs one request. */
+  const again = await d.refresh({ origin: ORIGIN });
+  assert.equal(again.status, STATUS.CURRENT);
+  assert.equal(fetch.remote().length, 5);
+
+  /* THE CONTROL: the same seed under an unmarked pointer is `current` at once — the
+     pre-F-92 answer, still right for a package whose seed IS the whole set. */
+  const plain = fakeFetch({ ...remote(ptr, whole), "data/forays-directory.json": { version: "v1", built_at: ptr.built_at, files: ptr.files } });
+  const { d: d2 } = make({ fetch: plain, cache: null });
+  assert.equal((await d2.boot({ seed })).partial, false);
+  assert.equal((await d2.refresh({ origin: ORIGIN })).status, STATUS.CURRENT);
+  assert.equal(plain.remote().length, 1);
 });
 
 test("a pointer OLDER than the held set is refused, not adopted", async () => {
