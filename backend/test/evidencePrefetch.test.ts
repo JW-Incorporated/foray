@@ -55,7 +55,7 @@ function narrationBeat(claim: string, mode: "Patch" | "Carry" = "Patch"): Source
   return { sourcing: "narration", claim, exploration: false, narration: { mode, reason: "test" } };
 }
 
-/** One slot with every page shape `writeSlot` distinguishes: a tape beat
+/** One slot with every page shape the narration stage distinguishes: a tape beat
  * that opens the slot (a Frame page, connective), a same-item tape beat
  * after it (no page at all), and a Patch and a Carry (content pages). */
 const MIXED_SLOT: SourcedSlot = {
@@ -103,7 +103,7 @@ class CountingGatherer implements EvidenceGatherer {
 
 const settle = () => new Promise<void>((resolve) => setImmediate(resolve));
 
-describe("evidenceBeatsFor — the same page list writeSlot gathers for", () => {
+describe("evidenceBeatsFor — the same page list the narration stage gathers for", () => {
   it("lists every page in the act's terms: a window for every tape beat — the same-item continuation included (Q-02) — and content flags on the Patch and Carry", () => {
     /* MUTATION THAT KILLS THIS: skip the same-item continuation again
        (`if (!mode) continue` without the `?? "Intro"` default). The list is

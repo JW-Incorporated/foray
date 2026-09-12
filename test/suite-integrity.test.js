@@ -1844,7 +1844,32 @@ const BACKEND_FLOORS = {
      surviving `NarrationWriteError` guards the beat count and nothing else. */
   /* +1 (Q-03): the stub builders offer the per-act contract, so a dry run pays
      one write and one verify for an act and never the per-slot calls. */
-  "test/writeNarration.test.ts": 70,
+  /* LOWERED 70 -> 49 by F-100, deliberately, and this is the reasoning the
+     header asks for. The suite above was written against the per-slot,
+     per-page orchestration runs 1-8 used. Q-03 replaced that orchestration
+     with one writer call per ACT and left the old one standing as a
+     "fallback"; F-100 established that the fallback could not run — both
+     builder factories return builders that implement the per-act contract —
+     and deleted it. The 21 tests that went with it are of two kinds:
+       - CALL ECONOMICS of a path that no longer exists (G-34's merged
+         select+prose call and its retry levers, "two calls per SLOT", the
+         per-slot resume hooks, the per-slot parallelism, F-60's
+         degrade-before-the-first-call). The act path's own economics are
+         measured in actNarration.test.ts, which is unchanged at 38.
+       - DUPLICATES of a rule that is now asserted once. Every mechanical
+         rule the deleted tests drove — the quote gate, the entity decode,
+         publication read off the document, F-42's span floor, F-46's
+         purpose echo, F-45's negative record, F-35's accumulating note —
+         is still asserted in this file, now THROUGH THE ACT PATH, and is
+         additionally pinned as a pure unit test in narrationRules.test.ts
+         (floored at 21, untouched).
+     What is genuinely gone with the path, and is named in the F-100 ledger
+     entry rather than quietly dropped: F-60's "a content page whose pack is
+     empty is degraded to a hand-off before any call", which has no act-path
+     equivalent (an unsupported seam is kept unverified for the gate
+     instead), and F-50's self-reported `purposeRevised` flag, whose only
+     producers were the deleted per-page reply shapes. */
+  "test/writeNarration.test.ts": 49,
   /* Stage 3b (kanban t_567b570f, docs/show-pages-plan.md §Stage 3): shared
      catalogue store CRUD (scoping by show_id, upsert-not-duplicate on
      (show_id, guid), published_at ordering, feed-state round-trip). */
@@ -2067,7 +2092,21 @@ const BACKEND_FLOORS = {
      to end, `tapeCitedPages` counts, and — pinned as unchanged — a page
      with no source that states a fact is still refused. One named
      mutation per test. */
-  "test/hingeTapeSource.test.ts": 19,
+  /* LOWERED 19 -> 17 by F-100. The orchestrator half of this suite drove
+     the per-slot path with a scripted per-page writer; it now drives the
+     act path with the stub builders, which is what production and
+     `--dry-run` run. Two tests went rather than moved, both because the
+     rule they pinned was superseded before F-100 and only the test
+     survived: "a content page that DID find print stays a Carry" (F-97
+     assigns a seam's mode AFTER writing, from what it rests on, so no one
+     can state the mode before the verifier answers — `isTapeClaim`'s mode
+     rule is pinned directly in frameTapeSource.test.ts), and "a content
+     page with neither print nor tape beside it is still degraded unwritten"
+     (F-60's degrade-before-the-first-call was part of the deleted path).
+     Everything else in the F-82 finding — both windows held and positioned,
+     a phrase cited to the wrong window refused with the right one named,
+     the four run-6 pages accepted end to end — is asserted unchanged. */
+  "test/hingeTapeSource.test.ts": 17,
   /* F-84: a tier-2 cut at a start the pool holds reuses the pool's row and
      nothing is minted; the runtime follows the reused cut; the committed row
      wins an id tie in the runtime clock; an unrelated start still mints; a
@@ -2088,7 +2127,21 @@ const BACKEND_FLOORS = {
      a case no verified page covers stays unverified (the mutation test); a
      Patch never goes through it; the gate counts `synthesisVerifiedPages`
      separately and treats them as verified. One named mutation per test. */
-  "test/synthesisVerify.test.ts": 17,
+  /* LOWERED 17 -> 8 by F-100. F-88 shipped as a SEPARATE PASS over pages
+     the per-page path had degraded to `unverifiedReason: "no-evidence"`.
+     Q-03/F-97 superseded it — the act writer is handed the earlier acts'
+     verified pages as documents and the act verifier answers which act
+     sources each seam rests on, in the call it was already making — and
+     after Q-03 the pass could not run at all, because the act path never
+     emits `no-evidence`. The pass is deleted and its nine tests with it.
+     What remains, and is what F-97 consumes: which pages may be ground
+     (never a page that itself rests on pages; never a source-less one),
+     the id and document conventions the writer, the verifier and
+     `verification.restsOn` share, and the gate counting these pages
+     separately while treating them as verified. The end-to-end property —
+     ground reaching the act and a seam resting on `p<n>` — is asserted in
+     actNarration.test.ts, which is unchanged at 38. */
+  "test/synthesisVerify.test.ts": 8,
   /* Q-02/Q-03/Q-05 (listening-quality deck; ledger F-95): narration written
      per ACT and verified per BEAT. A four-beat, two-clip act passes on all
      four in two calls with one page per seam; a mutation dropping a beat from

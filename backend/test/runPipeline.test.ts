@@ -794,11 +794,10 @@ describe("runForayPipeline — evidence is prefetched after source, off narratio
     const stub = new StubNarrationWriterBuilder();
     const writer: NarrationWriterBuilder = {
       providerName: stub.providerName,
-      selectClaims: (request, narrationCtx) => {
+      writeAct: (request, narrationCtx) => {
         if (callsWhenNarrationStarted < 0) callsWhenNarrationStarted = calls.length;
-        return stub.selectClaims(request, narrationCtx);
-      },
-      writePages: (request, narrationCtx) => stub.writePages(request, narrationCtx)
+        return stub.writeAct(request, narrationCtx);
+      }
     };
 
     /* A clock that ticks one millisecond per reading. The report carries the

@@ -7,7 +7,7 @@ import { z } from "zod";
  *
  * THE PROBLEM, IN THE RUN'S OWN NUMBERS. Attempt 4 ran 2 h 35 m, made 103
  * model calls, finished 22 of 31 beats — and then beat 23's narration page was
- * rejected a third time, `NarrationWriteError` propagated out of §4.7, and the
+ * rejected a third time, §4.7 threw, and the
  * batch driver recorded the Foray as `error`. Every finished beat was
  * discarded: the spine, three deepened acts, the whole sourcing pass, 18 kept
  * pages. Three earlier attempts died the same way at beats 1, 1 and 5. The
@@ -56,7 +56,30 @@ import { z } from "zod";
  * and 2, which a single `deepen` key could not express. */
 export type CheckpointStageKey = string;
 
-export const CHECKPOINT_VERSION = 1;
+/**
+ * Bumped when a stage's SHAPE or MEANING changes enough that an older file
+ * would be half-understood rather than simply out of date. A file whose
+ * `version` is not this one is discarded whole (`resumeAll` below,
+ * `FileCheckpointStore.save`), which is the honest outcome: a resume is
+ * worth having only when what comes back means what this code thinks it
+ * means.
+ *
+ * 1 → 2 (F-100, 2026-09-12). Version 1 stood through F-51, F-66, F-80,
+ * F-96, F-98, F-99, Q-01, Q-03 and Q-04, each of which changed a stage and
+ * each of which paid for that with a back-compat shim in `runPipeline.ts`:
+ * two legacy spellings of the D5 gate in the sourcing trace, a whole-Foray
+ * `stitch` key nothing had written since F-66, and the per-slot
+ * `narrate:<i>:<slot>` keys nothing had written since Q-03. Those shims are
+ * deleted with this bump. They were reading files that, in practice, do not
+ * exist: a checkpoint is fingerprinted to ONE prompt and ONE output
+ * directory and is deleted the moment that candidate is written
+ * (`checkpointStore.ts`'s `discard`), so the only file a shim could ever
+ * have helped is a failed run of a pre-Q-03 build of the pipeline, in a
+ * directory nobody has cleaned, resumed against a prompt that has not
+ * changed. Rejecting such a file costs one re-run; half-understanding it
+ * costs a Foray that silently mixes two builds' output.
+ */
+export const CHECKPOINT_VERSION = 2;
 
 export const CheckpointFileSchema = z
   .object({
