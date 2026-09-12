@@ -17,6 +17,12 @@
  * Harness: the same node:vm DOM stub as test/up-next-queue.test.js, with
  * working addEventListener/click on the toggle/drawer elements specifically
  * (the shared stub's are no-ops) so init()'s real click wiring runs.
+ *
+ * `querySelector("#id")` resolves APPENDED elements too, not only the page ids
+ * seeded below. That matters as of the 2026-09-12 client audit: index.html is
+ * outside the auto-merge allowlist, so every control added since is injected in
+ * JS — a lookup that consulted only the seeded map would report the drawer's
+ * newer switches as absent and read as coverage while testing nothing.
  */
 const { test } = require("node:test");
 const assert = require("node:assert");
@@ -71,6 +77,20 @@ function mount({ seed = {}, boot = false } = {}) {
   }));
   const body = makeEl("body");
 
+  /** The seeded page ids, then anything appended under them or under body. */
+  const findById = (id) => {
+    if (byId.has(id)) return byId.get(id);
+    const walk = (el) => {
+      for (const kid of el.children || []) {
+        if (kid.id === id) return kid;
+        const deep = walk(kid);
+        if (deep) return deep;
+      }
+      return null;
+    };
+    return walk(body) || [...byId.values()].reduce((found, el) => found || walk(el), null);
+  };
+
   const ctx = {
     console: { ...console, warn() {}, error() {} },
     fetch: (url) => {
@@ -94,7 +114,7 @@ function mount({ seed = {}, boot = false } = {}) {
       addEventListener() {}, createElement: (t) => makeEl(t),
       querySelector: (sel) => {
         const s = String(sel);
-        return s.startsWith("#") ? byId.get(s.slice(1)) ?? null : null;
+        return s.startsWith("#") ? findById(s.slice(1)) : null;
       },
       querySelectorAll: () => [],
     },
@@ -115,7 +135,7 @@ function mount({ seed = {}, boot = false } = {}) {
 
   const evalIn = (src) => vm.runInContext(src, ctx);
   return {
-    ctx, evalIn, store, body, byId,
+    ctx, evalIn, store, body, byId, findById,
     state: evalIn("state"),
     view: () => byId.get("view").innerHTML,
   };
@@ -215,4 +235,170 @@ test("route() still closes the drawer on a hashchange-driven call", async () => 
   m.ctx.location.hash = "#/queue";
   m.ctx.route();
   assert.strictEqual(m.byId.get("drawer").hidden, true, "route() must still close the drawer for real navigation");
+});
+
+
+/* ==================================================================== */
+/* THE SIXTH SWITCH, AND THE SHAPE (findings 5-7, client audit 2026-09-12)*/
+/* ==================================================================== */
+
+/* Finding 5: `cp_interlude` is disclosed in docs/legal/privacy-policy.md as
+   "On unless you turn it off", and there was no way to turn it off —
+   `writeInterludePref` and `PlayerQueueManager.setInterludeEnabled` were each
+   called from their own test and nowhere else. Finding 6: the five switches
+   that did exist were five copies of one shape, which is what made a sixth
+   expensive. Finding 7: `ui2On()` was `return true` with four live branches. */
+
+const SWITCH_IDS = [
+  "family-toggle", "player-toggle", "autoadvance-toggle",
+  "interlude-toggle", "drafts-toggle", "voice-probe-toggle",
+];
+
+test("the jingle between segments has a switch, and it writes the spelling player/interlude.js reads", async () => {
+  /* THE DISCLOSED SETTING, MADE TRUE. The key is the one `cp_` key that is NOT
+     JSON: `readInterludePref` compares against the literal `"off"` and treats
+     everything else — including an absent key — as ON. Writing it through
+     `lsSet` would store `"false"`, which is not `"off"`, which reads back as
+     ON: an off switch that silently never works.
+
+     MUTATION: make `setInterludeOn` call `lsSet("cp_interlude", on)`. The
+     stored value becomes `"false"` and both the spelling assertion and the
+     round-trip below go red.
+     MUTATION: drop the `drawerToggle("interlude-toggle", ...)` line. The
+     control assertion goes red — and the privacy policy goes back to
+     promising something the app does not have. */
+  const m = await mountBooted();
+  const btn = m.findById("interlude-toggle");
+  assert.ok(btn, "#interlude-toggle is in the drawer after init");
+  assert.ok(m.byId.get("drawer").children.includes(btn),
+    "appended to the drawer, like every other JS-injected control");
+
+  m.byId.get("drawer").hidden = false;
+  m.ctx.openDrawer(true);
+  assert.strictEqual(btn.textContent, "Jingle between segments: on", "ON is the default the policy promises");
+  assert.strictEqual(m.ctx.interludeOn(), true);
+
+  btn._fire("click");
+  assert.strictEqual(m.store.get("cp_interlude"), "off",
+    "the exact word player/interlude.js reads — not `false`, not `0`");
+  assert.strictEqual(m.ctx.interludeOn(), false, "and it round-trips");
+  assert.strictEqual(btn.textContent, "Jingle between segments: off");
+  assert.strictEqual(m.byId.get("drawer").hidden, false, "a settings toggle must not close the drawer");
+
+  btn._fire("click");
+  assert.strictEqual(m.store.get("cp_interlude"), "on");
+  assert.strictEqual(m.ctx.interludeOn(), true);
+});
+
+test("flipping the jingle switch reaches a player that is already running", async () => {
+  /* A setting, not a thing that takes effect at the next launch:
+     `client.js` reads `cp_interlude` ONCE at boot and hands it to the manager,
+     which is why `PlayerQueueManager.setInterludeEnabled` exists at all.
+
+     MUTATION: delete the `player.setInterludeEnabled(on)` call from
+     `setInterludeOn`. The key still changes and nothing hears about it until
+     the app is relaunched — this goes red. */
+  const m = await mountBooted();
+  const told = [];
+  m.ctx.ForayPlayer = { setInterludeEnabled: (on) => { told.push(on); return on; } };
+  m.findById("interlude-toggle")._fire("click");
+  assert.deepStrictEqual(told, [false], "the running manager is told");
+  /* And the PAGE does not also write the key behind the bridge's back: exactly
+     ONE writer knows the value is the literal word "off", and it is
+     `player/interlude.js`'s `writeInterludePref`, which `client.js` calls.
+     This stub is deliberately not a real bridge and stores nothing, so an
+     "off" here could only have come from a second writer in app.js.
+     MUTATION: write the raw string in `setInterludeOn` as well as delegating.
+     Two writers for one key, and this goes red. */
+  assert.strictEqual(m.store.get("cp_interlude"), undefined,
+    "the page delegates the write rather than doing it too");
+
+  /* Stand in for what the real bridge would have persisted, then tap again:
+     the switch reads the STORE on every paint and every tap, so the second tap
+     has to be the other direction. */
+  m.store.set("cp_interlude", "off");
+  m.findById("interlude-toggle")._fire("click");
+  assert.deepStrictEqual(told, [false, true], "the running manager is told, in both directions");
+});
+
+test("a page with no player module loaded still takes the tap", async () => {
+  /* Every `window.ForayPlayer` call on this page is guarded for the same
+     reason: the module is deferred and may have failed to load at all.
+     MUTATION: call `window.ForayPlayer.setInterludeEnabled(on)` unguarded.
+     This throws instead of storing. */
+  const m = await mountBooted();
+  m.ctx.ForayPlayer = undefined;
+  assert.doesNotThrow(() => m.findById("interlude-toggle")._fire("click"));
+  assert.strictEqual(m.store.get("cp_interlude"), "off");
+});
+
+test("every switch in the drawer goes through the ONE helper, in reading order", async () => {
+  /* FINDING 6. Three of these were bound by hand in `init()`, two by
+     near-identical fifteen-line twins, and their labels were five ad-hoc lines
+     in `renderDrawer` — three unguarded, two guarded, each spelling its own
+     on/off. The registry is what makes the sixth switch one line.
+
+     MUTATION: bind any one of them by hand again (its own addEventListener
+     plus its own textContent line). It drops out of `drawerToggles` and the
+     first assertion goes red. */
+  const m = await mountBooted();
+  /* Spread into a host-realm array: the vm's Array has a different prototype,
+     which deepStrictEqual (rightly) refuses to call equal. */
+  const registered = [...m.evalIn("drawerToggles.map(t => t.id)")];
+  assert.deepStrictEqual(registered, SWITCH_IDS,
+    "all six, and in the order they read down the drawer");
+
+  m.ctx.openDrawer(true);
+  for (const id of SWITCH_IDS) {
+    const el = m.findById(id);
+    assert.ok(el, `${id} exists`);
+    assert.match(el.textContent, /^[^:]+: .+$/, `${id} is painted by the one label pass, got "${el.textContent}"`);
+  }
+  assert.ok(["Open in: Apple Podcasts", "Open in: Pocket Casts (show page)"].includes(m.findById("player-toggle").textContent),
+    "a switch whose two states are two DESTINATIONS reads as one of them, never as on/off — that is what `words` is for; "
+    + `got "${m.findById("player-toggle").textContent}"`);
+});
+
+test("binding twice never stacks a second handler or a second button", async () => {
+  /* The guard the two hand-written twins each carried (`if ($("#id")) return`),
+     kept in the helper — with the handler half added, which neither twin had:
+     they returned before appending, so a second call was a no-op only because
+     the element already existed.
+
+     MUTATION: delete the `_drawerToggleBound` guard. The second bind attaches
+     a second click handler, one tap flips the key twice, and the value below
+     comes back unchanged. */
+  const m = await mountBooted();
+  m.evalIn("bindDrawerToggles()");
+  m.evalIn("bindDrawerToggles()");
+  assert.deepStrictEqual([...m.evalIn("drawerToggles.map(t => t.id)")], SWITCH_IDS,
+    "no duplicate registrations");
+  const before = m.ctx.autoAdvanceOn();
+  m.byId.get("autoadvance-toggle")._fire("click");
+  assert.strictEqual(m.ctx.autoAdvanceOn(), !before, "exactly one flip per tap");
+});
+
+test("the retired ui-v2 flag leaves nothing behind, and the ui-v2 class stays", async () => {
+  /* FINDING 7. `ui2On()` was `return true` and four sites still branched on
+     it; `bindUi2Control()` removed an element nothing created and was still
+     called from `init()`; `renderDrawer` painted a label for a switch that did
+     not exist. The pre-cutover copy is in archive/legacy-ui-2026-09/.
+
+     The class is the half that must NOT go: styles.css hangs the whole v2
+     sheet on `body.ui-v2`.
+
+     MUTATION: re-add `function ui2On() { return true; }` and a branch on it.
+     The source sweep goes red. MUTATION: drop `ui-v2` from `setBodyClass`.
+     The class assertion goes red. */
+  const src = fs.readFileSync(path.join(ROOT, "app.js"), "utf8");
+  for (const dead of ["ui2On(", "bindUi2Control", "#ui2-toggle"]) {
+    const hits = src.split(dead).length - 1;
+    const inComments = dead === "ui2On(" ? 1 : dead === "bindUi2Control" ? 1 : 0;
+    assert.strictEqual(hits, inComments,
+      `"${dead}" survives in app.js ${hits} times; only the cutover note may name it`);
+  }
+  const m = await mountBooted();
+  assert.ok(!m.findById("ui2-toggle"), "no element, and nothing trying to remove one");
+  m.ctx.setBodyClass("home");
+  assert.strictEqual(m.body.className, "home ui-v2", "the class styles.css needs is untouched");
 });

@@ -1353,18 +1353,67 @@ export class PlayerQueueManager {
     await this._ttsTransport("pause");
   }
 
+  /* THE TRANSPORT'S ANSWER IS READ, NOT DISCARDED (client audit 2026-09-12),
+     and that is why every line below the await used to be above it.
+
+     `TextToSpeech` HAS NO PAUSE. The Android plugin emulates one as stop plus
+     a remembered word boundary and re-speaks the remainder, and it SAYS SO on
+     the wire — `emulated: true` always, and `fromStart: true` when
+     `onRangeStart` never fired (API 24+, and an engine may simply never call
+     it), meaning the whole line is being spoken again from its first word.
+     `mobile/plugins/foray-tts/README.md` documents both as the platform's
+     limit. Nothing here read either field, so on a `fromStart` resume the
+     in-page clock, the Now Playing elapsed and the segment strip all claimed
+     a position the voice was seconds behind.
+
+     THREE ANSWERS, THREE DIFFERENT THINGS TO DO:
+
+       fromStart === true   the utterance restarted. The elapsed clock restarts
+                            with it — `_narrationStartedAtMs = now` — because
+                            continuing the old number would describe a moment
+                            in the line the listener is about to hear again.
+       accepted !== true    the voice did NOT resume (an older shell whose
+                            `foray-tts.js` has no `resume`, a bridge that has
+                            never spoken, an engine that refused). The manager
+                            STAYS PAUSED: the flag is left true and the ticker
+                            is left stopped, so the page does not run a clock
+                            for a silent voice, and the next `startPlayback`
+                            effect tries the resume again rather than assuming
+                            it already happened.
+       anything else        the ordinary resume: the start stamp moves forward
+                            by the length of the pause, which is what makes
+                            `narrationElapsedSec` CONTINUE from where it froze
+                            instead of jumping the instant the ticker restarts.
+
+     A `null` result is NOT a refusal, deliberately. `_ttsTransport` returns
+     null when there is no transport to ask at all — no `_tts`, no method of
+     that name, or a throw — and in that case there was no `pause()` either, so
+     the voice never stopped and freezing the clock would be the lie this fix
+     exists to remove. Null means "nobody answered", and the honest reading of
+     no answer is today's behaviour.
+
+     The await moved to the TOP for the same reason the fields are read at all:
+     the decision depends on it. `_pauseNarration` still moves first — the
+     state machine has already told the listener it paused, and a bridge that
+     cannot silence a voice must not un-pause the app. */
   async _resumeNarration() {
-    const pausedFor = this._narrationPausedAtMs == null
-      ? 0
-      : Math.max(0, this._scheduler.nowMs() - this._narrationPausedAtMs);
-    /* The start stamp moves forward by the length of the pause, which is what
-       makes `narrationElapsedSec` CONTINUE from where it froze instead of
-       jumping by the pause's length the instant the ticker restarts. */
-    if (this._narrationStartedAtMs != null) this._narrationStartedAtMs += pausedFor;
+    const result = await this._ttsTransport("resume");
+    if (result != null && result.accepted !== true) {
+      this._emit(`tts.resume.refused reason=${result.reason ?? "?"} — narration stays paused`);
+      return;
+    }
+    if (result != null && result.fromStart === true) {
+      this._emit("tts.resume.fromStart — the line restarts, and so does its clock");
+      this._narrationStartedAtMs = this._scheduler.nowMs();
+    } else if (this._narrationStartedAtMs != null) {
+      const pausedFor = this._narrationPausedAtMs == null
+        ? 0
+        : Math.max(0, this._scheduler.nowMs() - this._narrationPausedAtMs);
+      this._narrationStartedAtMs += pausedFor;
+    }
     this._narrationPaused = false;
     this._narrationPausedAtMs = null;
     this._startNarrationTicker();
-    await this._ttsTransport("resume");
   }
 
   /** Silence speech and forget the utterance. Called by `stop()` and

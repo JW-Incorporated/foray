@@ -163,7 +163,8 @@ clock the player spends at the seam, not authored content. The beat and the
 jingle are alternatives, never both (§4.8); the beat remains the floor if the
 jingle stops short, and a jingle that never reports ending is cut at
 `INTERLUDE_CEILING_SEC` so the tape always starts. Always 1.0x. Pause and next
-cut it like any item. Off switch: `localStorage` `cp_interlude = "off"`
+cut it like any item. Off switch: **Settings -> "Jingle between segments"** in
+the drawer, which writes `localStorage` `cp_interlude = "off"`
 (`PlayerQueueManager.setInterludeEnabled` live).
 
 **To swap in the real one:** replace the file at

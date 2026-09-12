@@ -8,9 +8,11 @@ what the merged PRs **actually** did rather than against what `generation-fix-pl
 and against what runs 1 and 2 then showed. Read the **status** column as: `fixed` — merged into
 `generation-run-2026-09-09`, with the PR and the file/function named; `in flight` — an open PR; `card` — a
 workstream or deck card carries it; `issue` — a GitHub issue; `open` — nothing tracks it yet (as of this revision, none); `accepted` — a deliberate deviation or a transport-only note that
-production never sees; `superseded` — another finding replaced it. Nothing on the branch has reached `main`
-yet: **PR #538** (`generation-run-2026-09-09` → `main`) is the open umbrella for all of it, so every `fixed`
-row means *fixed on the generation branch*. Four interventions are omitted as purely historical, with
+production never sees; `superseded` — another finding replaced it. **PR #538** (`generation-run-2026-09-09` → `main`) **merged on
+2026-09-11** as `9a49675`, an ancestor of `main`'s HEAD, so every `fixed` row now means *fixed on `main`*
+— see `foray-to-spec-roadmap.md`'s G-00 card, which has said so since the day it landed. (This paragraph
+read "Nothing on the branch has reached `main` yet … #538 is the open umbrella" until 2026-09-12; it was
+written on 09-09 and outlived the merge by a day.) Four interventions are omitted as purely historical, with
 nothing left to track: **I-04** (attempt 1 aborted on a cp1252 mojibake, fixed the same hour), **I-05**,
 **I-11** and **I-14** (answers replayed between attempts because the prompts were byte-identical).
 

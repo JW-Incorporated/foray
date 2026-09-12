@@ -15,6 +15,31 @@ import { loadBreadthCatalog, type CatalogueShowEntry } from "../src/catalog/brea
  * is not evidence until you have broken it".
  */
 
+/**
+ * The first result, or a red test that says the list was empty.
+ *
+ * `backend/tsconfig.json` sets `noUncheckedIndexedAccess`, so `results[0]` is
+ * `ShowSearchResult | undefined` and reading a field off it does not typecheck.
+ * Four assertions in this file did exactly that and were the ONLY four type
+ * errors in the whole backend — invisible because no CI job ever ran `tsc`
+ * (fixed in the same change as this one: `.github/workflows/ci.yml`'s `backend`
+ * job now runs `npm run typecheck`).
+ *
+ * The guard is written as a throw rather than `!` or a widened tsconfig on
+ * purpose. `!` would silence the compiler and leave the runtime failure as
+ * "cannot read properties of undefined", three frames from the assertion that
+ * cares; this names the actual condition — a ranking test with nothing to rank
+ * — which is the failure a mutation to `searchBreadthShows` that returns `[]`
+ * would produce.
+ */
+function topResult(results: ShowSearchResult[]): ShowSearchResult {
+  const top = results[0];
+  if (top === undefined) {
+    throw new Error("expected at least one search result to rank, got an empty list");
+  }
+  return top;
+}
+
 function fixtureCatalog(): CatalogueShowEntry[] {
   return [
     {
@@ -75,8 +100,8 @@ describe("searchBreadthShows — ranking over the merged catalogue", () => {
     // substring position only — "Science Friday" (exact) would then tie or
     // lose to "science of everything" depending on sort stability.
     const results = searchBreadthShows("science friday", 25, fixtureCatalog());
-    expect(results[0].show_id).toBe("111111");
-    expect(results[0].rank).toBe(0);
+    expect(topResult(results).show_id).toBe("111111");
+    expect(topResult(results).rank).toBe(0);
   });
 
   it("a substring match still surfaces, ranked after exact/prefix matches", () => {
@@ -87,7 +112,7 @@ describe("searchBreadthShows — ranking over the merged catalogue", () => {
     // startsWith-only implementation would drop "Science Friday" entirely.
     const results = searchBreadthShows("friday", 25, fixtureCatalog());
     expect(results.some((r) => r.show_id === "111111")).toBe(true);
-    expect(results[0].rank).toBe(2);
+    expect(topResult(results).rank).toBe(2);
   });
 
   it("no match returns an empty array, not a throw", () => {
@@ -116,7 +141,7 @@ describe("searchBreadthShows — ranking over the merged catalogue", () => {
       { show_id: "c1", title: "Zebra Show", artwork_url: null, feed_url: null, tier: "curated", taxonomy_node_ids: [], editorial_note: null },
     ];
     const results = searchBreadthShows("show", 25, catalog);
-    expect(results[0].show_id).toBe("c1"); // curated "Zebra Show" beats breadth "Anchor Show" despite alphabetical order
+    expect(topResult(results).show_id).toBe("c1"); // curated "Zebra Show" beats breadth "Anchor Show" despite alphabetical order
   });
 });
 

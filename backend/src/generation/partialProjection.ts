@@ -27,16 +27,28 @@ import { MODE_CHAR_BANDS, NARRATION_CHARS_PER_SEC } from "../types/narration";
  * nothing about the whole; those are read from a projection instead.
  *
  *   PROJECTED (`PROJECTED_RULES`, matched by `projectedRuleOf`):
- *     M4        both clauses — one episode's share of segments / of tape
- *               runtime. The denominators are the whole Foray's.
- *     D3        mean segment duration ≥ 90 s — a mean over every segment.
- *     D5-IQR    interquartile range of segment durations ≥ 45 s — a spread
- *               over the whole distribution (a 3-segment act has no IQR to
- *               speak of).
+ *     M4        all three clauses — one episode's share of segments, its
+ *               count of long clips, and its tape seconds beyond its longest
+ *               clip as a share of the tape. The denominators are the whole
+ *               Foray's.
  *     D2-end    "the Foray ends on two consecutive segments under 60 s" — a
  *               partial's last two segments are not the Foray's; the next
  *               act supplies (or fails to supply) the ≥ 150 s recovery.
  *     D4-share  `quote` segments over 20 % of segments — a share.
+ *
+ *   F-101 — TWO RULES LEFT THIS LIST WHEN Q-04 RETIRED THEM, AND THE TABLE
+ *   DID NOT NOTICE. D3 (mean segment duration ≥ 90 s) and D5's interquartile
+ *   clause were both projected here until Q-04 retired D3 outright and
+ *   restated D5 as the consecutive-pair clause (`check-forays.mjs`'s
+ *   length-rules note; `grep -c 'D3 FAIL' tools/foray/check-forays.mjs` is 0
+ *   and "interquartile" survives only in comments). Their entries sat in
+ *   `PROJECTED_RULES` and `PROJECTED_RULE_PATTERNS` for two cards, matching
+ *   nothing — harmless only by luck, since a pattern that matches nothing
+ *   simply never fires. The generalising guard is
+ *   `partialProjectionRules.test.ts`: it drives the REAL `check-forays.mjs`
+ *   over mutated fixtures and asserts every pattern below matches a line the
+ *   checker actually emits, so the next card that renames a rule turns this
+ *   table red instead of leaving it stale.
  *
  *   PARTIAL (`PARTIAL_RULES`), all monotone or per-item:
  *     shape/copy/disclosure/per-item rules (title, summary, slot titles,
@@ -47,7 +59,14 @@ import { MODE_CHAR_BANDS, NARRATION_CHARS_PER_SEC } from "../types/narration";
  *               failure is a whole failure;
  *     D2-run    three consecutive short segments, or two followed by a
  *               short recovery — the offending run is already in the prefix;
- *     D4-adjacent, D5-triples — local runs of items;
+ *     D4-adjacent, D5-pair — local runs of items. D5's pair clause (Q-04,
+ *               `d5Pair.ts`) is two CONSECUTIVE clips within ±20 % of the
+ *               same length: the offending pair is already in the prefix,
+ *               and a later act cannot un-make it. Its message carries the
+ *               two clip names, not a clause word, so `projectedRuleOf`
+ *               returns `null` for it — which is the right answer, and is
+ *               now asserted against the checker's own output rather than
+ *               against a string somebody typed (F-101);
  *     L2/L3/L4  per-segment duration bounds;
  *     M3        same-episode segments out of chronological order — the
  *               out-of-order pair is already in the prefix;
@@ -80,7 +99,7 @@ import { MODE_CHAR_BANDS, NARRATION_CHARS_PER_SEC } from "../types/narration";
  */
 
 /** The share-of-whole rules whose verdict is read from the projection. */
-export const PROJECTED_RULES = ["M4", "D3", "D5-IQR", "D2-end", "D4-share"] as const;
+export const PROJECTED_RULES = ["M4", "D2-end", "D4-share"] as const;
 export type ProjectedRule = (typeof PROJECTED_RULES)[number];
 
 /** Everything else `check-forays.mjs` gates — judged on the partial alone.
@@ -96,21 +115,24 @@ export const PARTIAL_RULES = [
   "D1",
   "D2-run",
   "D4-adjacent",
-  "D5-triples",
+  "D5-pair",
   "L2/L3/L4",
   "M3",
   "#65-anchors"
 ] as const;
 
 /* Matched against the message AFTER the checker's own `foray "<id>": ` prefix
- * is stripped. Each pattern is the opening of exactly one `E(...)` call in
- * `check-forays.mjs`; the two D2 and two D4/D5 clauses share a rule prefix,
+ * is stripped. Each pattern is the opening of at least one `E(...)` call in
+ * `check-forays.mjs`; the two D2 and the two D4 clauses share a rule prefix,
  * so the clause text is what tells the projected clause from the monotone
- * one. */
-const PROJECTED_RULE_PATTERNS: ReadonlyArray<readonly [ProjectedRule, RegExp]> = [
+ * one.
+ *
+ * EXPORTED FOR ONE REASON (F-101): `partialProjectionRules.test.ts` drives the
+ * real checker over mutated fixtures and asserts every pattern here matches a
+ * line it actually emitted. Nothing else should read it — `projectedRuleOf` is
+ * the interface. */
+export const PROJECTED_RULE_PATTERNS: ReadonlyArray<readonly [ProjectedRule, RegExp]> = [
   ["M4", /^M4 FAIL:/],
-  ["D3", /^D3 FAIL:/],
-  ["D5-IQR", /^D5 FAIL: interquartile range/],
   ["D2-end", /^D2 FAIL: the Foray ends on two consecutive segments/],
   ["D4-share", /^D4 FAIL: \d+\/\d+ segments are `quote`/]
 ];

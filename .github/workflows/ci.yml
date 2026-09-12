@@ -30,6 +30,21 @@ jobs:
           cache: npm
           cache-dependency-path: backend/package-lock.json
       - run: npm ci
+      # THE TYPE GATE. Added 2026-09-12 after a machinery audit found that no CI
+      # job in this repo had ever run `tsc` or `eslint`: `backend/package.json`
+      # has defined `typecheck` and `lint` for months and nothing called either,
+      # so the only TypeScript in the product was type-ungated. `vitest` does not
+      # close that hole — it transpiles per file and never type-checks, so a
+      # signature change that breaks a caller `vitest` does not execute is green.
+      #
+      # It runs BEFORE `npm test`: a type error is a 20-second answer and the
+      # suite is ~14 minutes, and a red typecheck usually explains the red suite.
+      #
+      # `lint` is deliberately NOT here. `eslint src test` on this tree reports
+      # a backlog that has never been triaged, and a job that is red on arrival
+      # teaches everyone to ignore the red — the same disease pr-hygiene.yml's
+      # header is about. Adding it is its own PR, whose diff is the backlog.
+      - run: npm run typecheck
       - run: npm test
 
   api:

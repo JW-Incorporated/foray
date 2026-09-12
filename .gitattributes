@@ -51,3 +51,31 @@ STATE.md merge=union
 # source. `parseShowIndex` also strips a trailing "\r" defensively, because a
 # copy of this file can arrive from somewhere git does not control.
 data/show-index.tsv -text
+
+# THE WINDOWS-RED CLASS, AT ITS ROOT (machinery audit, 2026-09-12).
+#
+# Two "known-red on Windows" failures were the same bug wearing two hats, and
+# neither the test nor the production code was wrong.
+#
+# (1) `backend/test/finalizeForay.test.ts` — 5 reds. `finalizeForay.ts`
+#     dynamically imports `tools/foray/check-forays.mjs`; vite-node INLINES that
+#     module into the caller, and Vite strips the shebang with
+#     `hashbangRE = /^#!.*\n/`, which does not match `\r\n`. On a CRLF checkout
+#     the `\r` survives, the shebang lands mid-function-body, and the whole file
+#     dies with `SyntaxError: Invalid or unexpected token`. Every test that
+#     reaches the checker goes red; on Linux CI all five are green.
+#
+# (2) `data/catalog-client.json` — `tools/build-catalog-client.mjs --check` (run
+#     by `test/show-page.test.js`) compares the file's BYTES against a fresh
+#     LF derivation. A CRLF checkout fails that comparison on a clean tree. It
+#     was invisible only because the same script's entrypoint guard was broken
+#     on Windows, so `--check` exited 0 without running; fixing that guard
+#     un-masked this, and this line is what keeps it green.
+#
+# `-text` for the same reason the fixtures above have it: these are bytes that
+# something downstream parses or hashes, not prose git may reflow. The
+# catalog-client line also REMOVES a `tools/ci/crlf-guard.mjs` offender — that
+# file is listed in `deploy-manifest.json`, whose hashes describe the bytes we
+# ship, and a CRLF copy is exactly what that guard refuses to hash.
+tools/foray/*.mjs -text
+data/catalog-client.json -text

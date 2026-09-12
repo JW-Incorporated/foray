@@ -3,6 +3,8 @@ import {
   computeGroundedQuoteRate,
   computeAttributionStability,
   computeFirstAttemptPassRate,
+  computeFirstAttemptPassRates,
+  computeListeningShares,
   computePurposeFidelity,
   computeTapeRelevance,
   computePagesDropped,
@@ -208,6 +210,116 @@ describe("computeFirstAttemptPassRate", () => {
   });
 });
 
+describe("F-101 — computeFirstAttemptPassRates emits BOTH units and declares which the scalar is in", () => {
+  /** A per-act candidate: one beat confirmed on round 1, three not confirmed
+   * at all — run 9's shape in miniature (1 of 21). Its pages ALSO carry
+   * attempts, because `writeAct.ts` records them per seam, so the page unit is
+   * measurable on the same candidate and the two numbers can disagree. */
+  function perActCandidate(): WrittenAct[] {
+    const onePass = narratedBeat({ attempts: [{ attempt: 1, sources: [source()], rejected: false }] });
+    const retried = narratedBeat({
+      attempts: [
+        { attempt: 1, sources: [], rejected: true, rejectionNote: "seam s0: no sources" },
+        { attempt: 2, sources: [source()], rejected: false }
+      ]
+    });
+    const mark = (beat: WrittenBeat, verifiedAtAttempt?: number): WrittenBeat =>
+      ({ ...beat, ...(verifiedAtAttempt === undefined ? { carriedBy: "s0" } : { verifiedAtAttempt }) }) as WrittenBeat;
+    return actsOf([
+      mark(narrationBeat("c1", onePass), 1),
+      mark(narrationBeat("c2", retried), 2),
+      mark(narrationBeat("c3", retried)),
+      mark(narrationBeat("c4", retried))
+    ]);
+  }
+
+  it("reports pages and beats separately on a per-act candidate, and names the unit the legacy scalar carries", () => {
+    /* MUTATION THAT KILLS THIS: return only the sniffed number again (drop
+       `pages` from the per-act branch, or set `unit` to a constant). The bench
+       would go back to trending run 8's 0.68 (pages) against run 9's 0.048
+       (beats) in one column — the comparison `writeAct.ts`'s F-97 paragraph
+       cites as evidence the Q-03 contract did not converge. Ran it — red on
+       the two rates disagreeing below. */
+    const rates = computeFirstAttemptPassRates(perActCandidate());
+    expect(rates.beats).toBe(0.25); // 1 of 4 beats confirmed on round 1
+    expect(rates.pages).toBe(0.25); // 1 of 4 kept pages accepted on attempt 1
+    expect(rates.unit).toBe("beats");
+    /* The legacy scalar is still the sniffed one, unchanged, so run 4–9
+       reports and the callers that predate F-101 read what they always read. */
+    expect(computeFirstAttemptPassRate(perActCandidate())).toBe(rates.beats);
+  });
+
+  it("the two units are genuinely different numbers, not an alias — a beat no page carried drags only `beats` down", () => {
+    /* MUTATION THAT KILLS THIS: compute `beats` over pages rather than over
+       narration beats (or drop never-confirmed beats from the denominator).
+       Both units would then agree on every candidate and the field pair would
+       be decoration. Ran it — red: `beats` comes back 1. */
+    const clean = narratedBeat({ attempts: [{ attempt: 1, sources: [source()], rejected: false }] });
+    const acts = actsOf([
+      { ...narrationBeat("c1", clean), verifiedAtAttempt: 1 } as WrittenBeat,
+      /* A beat the act's prose carries but the verifier never confirmed: no
+         page of its own, so the page unit cannot see it at all. */
+      { sourcing: "narration", claim: "c2", exploration: false, carriedBy: "s0" } as unknown as WrittenBeat
+    ]);
+    const rates = computeFirstAttemptPassRates(acts);
+    expect(rates.pages).toBe(1);
+    expect(rates.beats).toBe(0.5);
+    expect(rates.unit).toBe("beats");
+  });
+
+  it("a per-PAGE candidate (runs 1–8) declares the pages unit and has no beat reading", () => {
+    /* MUTATION THAT KILLS THIS: default `unit` to "beats". Every pre-run-9
+       report replayed through the bench would be filed in the wrong column,
+       which is the exact defect F-101 is about, inverted. */
+    const beat = narratedBeat({ attempts: [{ attempt: 1, sources: [source()], rejected: false }] });
+    const rates = computeFirstAttemptPassRates(actsOf([narrationBeat("c1", beat)]));
+    expect(rates.unit).toBe("pages");
+    expect(rates.pages).toBe(1);
+    expect(rates.beats).toBe(null);
+  });
+});
+
+describe("F-101 — computeListeningShares says its denominator in the field name", () => {
+  it("tapeOfTapePlusNarration divides by tape + narration, NOT by the candidate's runtime, and the deprecated alias is the same number", () => {
+    /* MUTATION THAT KILLS THIS: make `tapeOfTapePlusNarration` divide by
+       anything else — the whole point of the rename is that the name and the
+       arithmetic agree. The roadmap's §1.2 row is titled "Tape share OF
+       RUNTIME" and named `report.json tapeShare` as its source; on run 9 those
+       two quantities read 0.684 and 0.557, so a *proposed* founder target
+       (>= 70 %) was about to be graded against the flattering one. Ran it —
+       red on the exact ratio below. */
+    const sourced: SourcedAct[] = [
+      {
+        title: "Act 1",
+        slots: [
+          {
+            title: "Slot 1",
+            beats: [
+              { sourcing: "tape", claim: "c1", exploration: false, tape: tapePointer({ startSec: 0, endSec: 300 }) },
+              { sourcing: "narration", claim: "c2", exploration: false, narration: { mode: "Patch", reason: "fixture" } }
+            ]
+          }
+        ]
+      }
+    ];
+    const written = actsOf([narrationBeat("c2", narratedBeat({ script: "x".repeat(1700) }))]);
+    const shares = computeListeningShares(sourced, written);
+
+    expect(shares.tapeSec).toBe(300);
+    expect(shares.tapeOfTapePlusNarration).toBeCloseTo(300 / (300 + shares.narrationSec), 9);
+    expect(shares.narrationOfTapePlusNarration).toBeCloseTo(shares.narrationSec / (300 + shares.narrationSec), 9);
+    expect(shares.tapeOfTapePlusNarration! + shares.narrationOfTapePlusNarration!).toBeCloseTo(1, 9);
+    /* The alias is the same number under the name that does not say so. */
+    expect(shares.tapeShare).toBe(shares.tapeOfTapePlusNarration);
+    expect(shares.narrationShare).toBe(shares.narrationOfTapePlusNarration);
+    /* And it is NOT tape over a runtime that also counts jingles and band:
+       a candidate whose runtime is 100 s longer reads 13 points lower, which
+       is exactly run 9's 0.684 against 0.557. */
+    const runtimeSec = 300 + shares.narrationSec + 100;
+    expect(300 / runtimeSec).toBeLessThan(shares.tapeOfTapePlusNarration!);
+  });
+});
+
 describe("computePurposeFidelity", () => {
   it("is always null in this checkout, even for an all-verified candidate", () => {
     /* THE TRAP THIS PINS. `NarratedBeat.verified` is `true` for every page
@@ -387,6 +499,9 @@ describe("evaluateVeracityGate", () => {
     tapeRelevance: 0.95,
     tapeRelevanceAnchors: [{ itemId: "i1", claim: "c1", onTopic: true, families: ["food"] }],
     firstAttemptPassRate: 0.8,
+    firstAttemptUnit: "pages",
+    firstAttemptPassRatePages: 0.8,
+    firstAttemptPassRateBeats: null,
     callsPerBeat: 1.4,
     narrationCallsPerBeat: 1.1,
     narrationCalls: { writer: 4, verifier: 3 },
@@ -402,6 +517,8 @@ describe("evaluateVeracityGate", () => {
     narrationPagesPerSeam: 1,
     narrationShare: 0.2,
     tapeShare: 0.8,
+    tapeOfTapePlusNarration: 0.8,
+    narrationOfTapePlusNarration: 0.2,
     introRestates: 0,
     narrationCallsPerAct: 2,
     pipelineTokens: 1000,
@@ -537,6 +654,9 @@ describe("the publish gate refuses an unverified page (F-51)", () => {
     tapeRelevance: 0.95,
     tapeRelevanceAnchors: [{ itemId: "i1", claim: "c1", onTopic: true, families: ["food"] }],
     firstAttemptPassRate: 0.8,
+    firstAttemptUnit: "pages",
+    firstAttemptPassRatePages: 0.8,
+    firstAttemptPassRateBeats: null,
     callsPerBeat: 1.4,
     narrationCallsPerBeat: 1.1,
     narrationCalls: { writer: 4, verifier: 3 },
@@ -552,6 +672,8 @@ describe("the publish gate refuses an unverified page (F-51)", () => {
     narrationPagesPerSeam: 1,
     narrationShare: 0.2,
     tapeShare: 0.8,
+    tapeOfTapePlusNarration: 0.8,
+    narrationOfTapePlusNarration: 0.2,
     introRestates: 0,
     narrationCallsPerAct: 2,
     pipelineTokens: 1000,

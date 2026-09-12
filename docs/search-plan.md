@@ -1,6 +1,13 @@
 # Hermes deck: Pocket Casts-style typeahead over 4a's own catalogue
 
-**Status:** plan for Hermes to cut into kanban cards. Written 2026-09-09 by the
+**Status:** **the whole deck landed — S-01 (#576), S-02/S-03/S-04/S-05/S-07 (#657),
+S-05's degraded header + S-06 + S-08 (#658)**, per-card **DONE** markers below, after
+numbers in §1.7. Each card's own **Governance** line still names the human gates it
+needed; `docs/DECISIONS.md` is not among the files #658 touched, so read G4 as still
+open unless a DECISIONS entry says otherwise. (S-05, S-06 and S-08 carried no marker at all until
+2026-09-12 — three cards that had landed still reading as outstanding, which is the
+*under*-claiming half of deck drift and just as expensive as the overclaiming half:
+it gets the work done twice.) Written 2026-09-09 by the
 founder's Claude session, from Wyatt's brief, founder feedback **F2**, issue
 **#560**, and `docs/product/suggested-shows-requirements.md` (merged the same
 day, PR #559). Companion to `docs/ui-transition-plan.md` (U-cards),
@@ -278,13 +285,13 @@ handshake cold-start observed), so treat the **shape** (MISS→HIT delta small,
 `stale-while-revalidate` missing) as the durable finding and the absolute
 ms as environment-dependent.
 
-**A diagnostics copy carrying a `search` entry with a non-null `painted_ms`**
+**A diagnostics copy carrying a `search` entry with a non-null `paintedMs`**
 (from `player/diagnostic-log.js`'s new entry kind, S-01's other acceptance
 line), produced via `PlayerDiagnostics.search()` and rendered by
 `formatDiagnosticReport`:
 
 ```
-#1    04:39:28.030 search     q_len=3 local=0ms/1h net=313ms/0h painted=1ms path=local+net
+#1    04:39:28.030 search     qLen=3 local=0ms/1h net=313ms/0h ep=—/—h cta=— painted=1ms path=local+net  hidden=n
 ```
 
 **CI run id**: `node --test` run over `tools/search-probe.test.mjs` (27
@@ -495,8 +502,8 @@ prefix lists.
   report says "no coverage" the way `parseSimulatorLifecycle` already does.
   (c) **Results-to-paint** in the page: a `search` entry kind in
   `player/diagnostic-log.js` (the idiom L-06 uses for `nowplaying`), written by
-  `app.js` once per completed search with `{q_len, local_ms, local_hits,
-  net_ms, net_hits, painted_ms, path}` — **query length, never the query
+  `app.js` once per completed search with `{qLen, localMs, localHits,
+  netMs, netHits, epMs, epHits, ctaMs, paintedMs, path, hidden}` — **query length, never the query
   text**, because `diagnostic-log.js`'s header is explicit that this record does
   not transmit and must not become a reason to reconsider that. Surfaced in the
   existing *Playback diagnostics* copy-out.
@@ -508,7 +515,7 @@ prefix lists.
 - **Dependencies:** none. Day 0.
 - **Acceptance:** a CI run id with the twelve-query table, median and p95, on the
   runner; a diagnostics copy from the founder's device carrying at least one
-  `search` entry with a non-null `painted_ms`; the doc quotes both. **Not
+  `search` entry with a non-null `paintedMs`; the doc quotes both. **Not
   acceptable:** a single sample, a mean without a p95, or a network number with
   no `X-Vercel-Cache` beside it.
 - **Governance:** all auto-merge paths.
@@ -681,7 +688,7 @@ prefix lists.
 - **Governance:** `search-engine.js` and `test/` auto-merge; the optional
   `backend/src/` mirror needs **G4**'s label.
 
-#### S-05 · Stop paying for the round trip: cache the hot queries, fix the degraded header — **S**
+#### S-05 · Stop paying for the round trip: cache the hot queries, fix the degraded header — **S** — **DONE** (#657 and #658, 2026-09-12; the in-memory hot-query cache landed in #657, the degraded header in #658)
 
 - **Ask:** three small things, and one deliberate refusal.
   (1) **In-memory hot-query cache in the client.** `fetchApiJson` passes
@@ -720,7 +727,7 @@ prefix lists.
   unlisted → human merge (G3).** Batch it with S-06's `api/` change into one PR
   if the two land together.
 
-#### S-06 · Fall-through to Apple's directory, and a breadth show page that survives a reload — **L** — *design comment first*
+#### S-06 · Fall-through to Apple's directory, and a breadth show page that survives a reload — **L** — *design comment first* — **DONE** (#658, 2026-09-12; the Apple fall-through on a zero-hit local query, and breadth show pages that are linkable and survive a reload)
 
 - **Ask:** two halves that share one endpoint change, which is why they share a
   card.
@@ -836,7 +843,7 @@ prefix lists.
 - **Governance:** `docs/legal/`, `app.js`, `test/` auto-merge.
   **`docs/DECISIONS.md` is DENIED → `founder-approved` (G4).**
 
-#### S-08 · Records, and the after numbers — **S**
+#### S-08 · Records, and the after numbers — **S** — **DONE** (#658, 2026-09-12; the after table is §1.7 above, measured on `feat/search-deck-s02-s08`)
 
 - **Ask:** close the loop the way the other decks do.
   Re-run **S-01's probe** on the CI runner and paste the after table beside the
